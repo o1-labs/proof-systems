@@ -9,7 +9,8 @@
 - [Rings](./fundamentals/zkbook_rings.md)
 - [Fields](./fundamentals/zkbook.md)
 - [Polynomials](./fundamentals/zkbook_polynomials.md)
-  - [Polynomial multiplications with FFT](./fundamentals/zkbook_fft.md)
+  - [Multiplying polynomials](./fundamentals/zkbook_multiplying_polynomials.md)
+  - [Fast Fourier transform](./fundamentals/zkbook_fft.md)
 
 # Cryptographic tools
 

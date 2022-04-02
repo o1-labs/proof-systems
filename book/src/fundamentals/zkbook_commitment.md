@@ -25,19 +25,84 @@ $$
 \mathsf{open}(x, r) = (x, r)
 $$
 
-The second argument of the $\mathsf{commit}$ and $\mathsf{open}$ function is data that is known only to the committer. When a committer wants to commit to a field element $x$, they sample a random "blinder" $r \in \mathbb{F}_p$ and hash it together with $x$ to form the committment.
+The second argument of the $\mathsf{commit}$ and $\mathsf{open}$ function is data that is known only to the committer. When a committer wants to commit to a field element $x$, they sample a random "blinder" $r \in \mathbb{F}_p$ and hash it together with $x$ to form the commitment.
 
-To open, they simply provide the commited value together with the blinder.
+To open, they simply provide the committed value together with the blinder.
 
-If the hash function is collision-resistant, then this function is binding (because there's no way the comitter could find another preimage of $h([x, r])$).
+If the hash function is collision-resistant, then this function is binding (because there's no way the committer could find another preimage of $h([x, r])$).
 
 If the hash function is one-way, then this commitment is also hiding.
+
+## Algebraic and homomorphic commitments
+
+Instead of a cryptographic hash function, we can use elliptic curve cryptography to construct a commitment scheme.  Here elliptic curve scalar
+multiplication is used as the one way function.  Suppose we have
+
+- $\mathbb{F}_p$ a prime order field, with $p$ being large (e.g. something like $2^{256}$).
+- Publicly agreed generator point $G$ over an elliptic curve $E(\mathbb{F}_p)$
+- Another publicly agreed curve point $H$ for which noone knows the discrete logarithm
+
+$$
+\mathsf{commit}(x, r) = xG + rH \\
+\mathsf{open}(x, r) = (x, r)
+$$
+
+where $x \in \mathbb{F}_p$ is the value being committed to, $r \in \mathbb{F_p}$ is a random blinding factor and the commitment $\mathsf{commit}(x, r)$ is a curve point.
+
+These commitments are algebraic (i.e. they do not use a cryptographic hash function) and consequentially have homomorphic properties: you can add commitments
+together to form another commitment of the added committed values. For example, if you have commitments $A$ and $B$, you can perform:
+
+$$
+\begin{aligned}
+A + B &= \mathsf{commit}(x_a, r_a) + \mathsf{commit}(x_b, r_b) \\
+&= x_aG +r_aH + x_bG + r_bH \\
+&= (x_a + x_b)G + (r_a + r_b)H \\
+&= \mathsf{commit}(x_a + x_b, r_a + r_b)
+\end{aligned}
+$$
+
+In other words, the sum of commitments $A$ and $B$ is equal to the commitment of the sum of the two committed values $x_a$ and $x_b$ and blinders $r_a$ and $r_b$.
+
+> As a cryptographic primitive, the ability to find a public curve point $H$ for which noone knows the discrete logarithm may, at first, seem rather mind-blowing and powerful.
+>
+> Actually, it's as easy as it is awesome to find such a point--- simply perform rejection sampling by cryptographically hashing $G$ (or, respectively, the
+> hash output), using the output as the $x$-coordinate of a candidate point on $E$ and checking whether it's valid.  The first valid curve point obtained is $H$ and
+> by the hardness assumption of the elliptic curve discrete logarithm problem (ELDP), noone knows it.
+>
+> Since approximately half of the hash outputs will be valid curve points on $E$, sampling will terminate very quickly.  Indeed, as we will see later,
+> this process can be used to sample many public curve points $H_1, \ldots, H_n$ for which the discrete logarithms are unknown; the so-called *hash to curve* algorithm.
+
+## Pedersen commitments
+
+The homomorphic commitment scheme described above is known as a Pedersen commitment.  As mentioned it relies on the ELDP hardness assumption.
+
+This means that, at least theoretically, you might be lucky (or have a quantum computer) and figure out that $H = hG$, which would allow you to find different values $x'$ and $h'$ to open the commitment.
+We say that pedersen commitments are **computationally binding** and not unconditionally binding.  For example, you could express $c = xG + rH$ alternatively as
+$c = xG + rh G = (x + rh) G$ and compute a satisfying opening pair $x' = xh$ and $r' = \frac{x}{h}$.
+
+On the other hand, Pedersen commitments are **unconditionally hiding**, as there is no way (even with a magic computer) to reveal what $x$ is without knowing $r$.
+Lack of perfect binding is the reason why most of the "proofs" we will see later in this book are not referred to as proofs, but instead are referred to as
+**arguments** of knowledge (although we may care little about this distinction). Just remember that you need perfect binding to be called a proof.
+
+> Interestingly, it is impossible to have a commitment scheme that has both perfect hiding and perfect binding.
+
+To recap, in cryptography the following distinctions are important
+
+- **Perfect.** The property that an algorithm is statistically sound without hardness assumptions, also known as unconditional or statistical soundness.
+
+- **Computational.** The algorithm relies on a hardness assumption or computational limitation for soundness.
+
+Thus, said another way, Pedersen commitments provide perfect hiding and statistical computational binding.
+
+## Vector commitments
+
+
 
 ## Polynomial commitments
 
 To construct SNARKs we use use polynomial commitments. A **polynomial commitment scheme**  for a field $F$ (or it could even be a ring) is a way of commiting to a polynomial $f \in F[x]$ to get a commitment $c$, in such a way that for any $\alpha \in F$, you can provide $y = f(\alpha)$, along with an "opening proof" $\pi$ that proves that the polynomial committed to in $c$ equals $y$ when evaluated at $\alpha$.
 
-In other words, it is a type of commitments $C$, a type of randomness $R$, a type of opening proof $P$ along with algorithms
+In other words, it is a type of commitment $C$, a type of randomness $R$, a type of opening proof $P$ along with algorithms
 
 $$
 \mathsf{commit} \colon F[x] \times R \to C \\
@@ -45,20 +110,20 @@ $$
 \mathsf{verify} \colon C \times (F \times P) \to \mathsf{Bool}
 $$
 
-such that for any $f \in F[x],\; r \in R,\; a \in F$ , we have
+such that for any $f \in F[x],\; r \in R,\; \alpha \in F$ , we have
 
 $$
 c := \mathsf{commit}(f, r) \\
-\mathsf{verify}(c, \mathsf{open}(c, a, (f, r))) = \mathsf{true}
+\mathsf{verify}(c, \mathsf{open}(c, \alpha, (f, r))) = \mathsf{true}
 $$
 
-and if $b \neq f(a)$ then it is not possible to compute $\pi \in P$ such that
+and if $b \neq f(\alpha)$ then it is not possible to compute $\pi \in P$ such that
 
 $$
 \mathsf{verify}(c, (b, \pi)) = \mathsf{true}
 $$
 
-In other words, if $b \neq f(a)$ then every $\pi$ which is feasible to compute results in $\mathsf{verify}(c, (b, \pi)) = \mathsf{false}$.
+In other words, if $b \neq f(\alpha)$ then every $\pi$ which is feasible to compute results in $\mathsf{verify}(c, (b, \pi)) = \mathsf{false}$.
 
 > One thing that's pretty cool is that because polynomial commitment schemes let you construct zk-SNARKs, polynomial commitment schemes imply commitment schemes with arbitrary opening functionality. TODO
 
@@ -78,10 +143,10 @@ The first thing to know about the KZG scheme is it requires that we randomly sam
 
 $$
 h_{i} := (\tau^i) \cdot g_1 \\
-w := \tau \cdot g_2 
+w := \tau \cdot g_2
 $$
 
-And then **throw away $\tau$**. The security depends on no-one knowing this value. Basically we compute the generator scaled by powers of $\tau$ up to the degree bound. We make a security assumption about the groups which says that all anyone can really do with group elements is take linear combinations of them. 
+And then **throw away $\tau$**. The security depends on no-one knowing this value. Basically we compute the generator scaled by powers of $\tau$ up to the degree bound. We make a security assumption about the groups which says that all anyone can really do with group elements is take linear combinations of them.
 
 Now suppose we have a polynomial $f \in \mathbb{F}_p[x]_{<d}$ with $f = \sum_{i < d} a_i x^i$ that we would like to commit to. We will describe a version of the scheme that is binding but not hiding, so it may leak information about the polynomial. Now, to commit to $f$, we compute
 
