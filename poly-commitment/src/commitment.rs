@@ -21,6 +21,7 @@ use ark_poly::{
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use core::ops::{Add, Sub};
 use groupmap::{BWParameters, GroupMap};
+use o1_utils::math;
 use o1_utils::ExtendedDensePolynomial as _;
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand_core::{CryptoRng, RngCore};
@@ -262,22 +263,6 @@ pub fn b_poly_coefficients<F: Field>(chals: &[F]) -> Vec<F> {
         s[i] = s[i - (pow >> 1)] * chals[rounds - 1 - (k - 1)];
     }
     s
-}
-
-// TODO: move to utils
-/// Returns ceil(log2(d)) but panics if d = 0.
-pub fn ceil_log2(d: usize) -> usize {
-    assert!(d != 0);
-    let mut pow2 = 1;
-    let mut ceil_log2 = 0;
-    while d > pow2 {
-        ceil_log2 += 1;
-        pow2 = match pow2.checked_mul(2) {
-            Some(x) => x,
-            None => break,
-        }
-    }
-    ceil_log2
 }
 
 /// `pows(d, x)` returns a vector containing the first `d` powers of the field element `x` (from `1` to `x^(d-1)`).
@@ -720,7 +705,7 @@ impl<G: CommitmentCurve> SRS<G> {
 
         let nonzero_length = self.g.len();
 
-        let max_rounds = ceil_log2(nonzero_length);
+        let max_rounds = math::ceil_log2(nonzero_length);
 
         let padded_length = 1 << max_rounds;
 
@@ -924,23 +909,6 @@ mod tests {
     use oracle::constants::PlonkSpongeConstantsKimchi as SC;
     use oracle::{pasta::fq_kimchi::params as spongeFqParams, sponge::DefaultFqSponge};
     use rand::{rngs::StdRng, SeedableRng};
-
-    #[test]
-    fn test_log2() {
-        let tests = [
-            (1, 0),
-            (2, 1),
-            (3, 2),
-            (9, 4),
-            (15, 4),
-            (15430, 14),
-            (usize::MAX, 64),
-        ];
-        for (d, expected_res) in tests.iter() {
-            let res = ceil_log2(*d);
-            println!("ceil(log2({})) = {}, expected = {}", d, res, expected_res);
-        }
-    }
 
     #[test]
     fn test_lagrange_commitments() {

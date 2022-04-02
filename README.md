@@ -20,7 +20,7 @@ We assume that you already have:
 Then, you can create an URS for your circuit in the following way:
 
 ```rust,ignore
-use kimchi::circuits::constraints;
+use kimchi::{circuits::constraints, verifier::verify};
 use mina_curves::pasta::{fp::Fp, vesta::{Affine, VestaParameters}, pallas::Affine as Other};
 use oracle::{
     constants::PlonkSpongeConstantsKimchi,
@@ -66,7 +66,7 @@ let proof = {
 };
 
 // verify a proof
-batch_verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &[(verifier_index, proof)]).unwrap();
+verify::<Affine, BaseSponge, ScalarSponge>(&group_map, verifier_index, proof).unwrap();
 ```
 
 Note that kimchi is specifically designed for use in a recursion proof system, like [pickles](https://medium.com/minaprotocol/meet-pickles-snark-enabling-smart-contract-on-coda-protocol-7ede3b54c250), but can also be used a stand alone for normal proofs.

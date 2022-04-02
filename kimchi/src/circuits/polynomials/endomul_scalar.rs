@@ -116,7 +116,6 @@ fn polynomial<F: Field>(coeffs: &[F], x: &E<F>) -> E<F> {
 /// = x^4 - 6*x^3 + 11*x^2 - 6*x
 /// = x *(x^3 - 6*x^2 + 11*x - 6)
 /// ```
-#[derive(Default)]
 pub struct EndomulScalar<F>(PhantomData<F>);
 
 impl<F> Argument<F> for EndomulScalar<F>

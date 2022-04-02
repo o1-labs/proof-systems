@@ -13,7 +13,7 @@
 use std::marker::PhantomData;
 
 use ark_ff::{FftField, One};
-use CurrOrNext::*;
+use CurrOrNext::{Curr, Next};
 
 use crate::circuits::{
     argument::{Argument, ArgumentType},
@@ -326,7 +326,6 @@ pub fn witness<F: FftField + std::fmt::Display>(
 }
 
 /// Implementation of the VarbaseMul gate
-#[derive(Default)]
 pub struct VarbaseMul<F>(PhantomData<F>);
 
 impl<F> Argument<F> for VarbaseMul<F>

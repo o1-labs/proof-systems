@@ -2,10 +2,10 @@
 //! You can derive this struct from the [ProverIndex] struct.
 
 use crate::alphas::Alphas;
+use crate::circuits::lookup::lookups::LookupsUsed;
 use crate::circuits::{
     constraints::{zk_polynomial, zk_w3},
     expr::{Linearization, PolishToken},
-    gate::LookupsUsed,
     wires::*,
 };
 use crate::prover_index::ProverIndex;

@@ -6,11 +6,11 @@ use crate::{
     },
     prover::ProverProof,
     prover_index::testing::new_index_for_test,
-    verifier::{batch_verify, verify},
+    verifier::verify,
 };
 use array_init::array_init;
 use colored::Colorize;
-use commitment_dlog::commitment::{ceil_log2, CommitmentCurve};
+use commitment_dlog::commitment::CommitmentCurve;
 use groupmap::GroupMap;
 use mina_curves::pasta::{
     fp::Fp,
@@ -21,6 +21,8 @@ use oracle::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use std::time::Instant;
+
+use o1_utils::math;
 
 // aliases
 
@@ -35,7 +37,7 @@ fn chacha_prover() {
     let num_chachas = 8;
     let rows_per_chacha = 20 * 4 * 10;
     let n_lower_bound = rows_per_chacha * num_chachas;
-    let max_size = 1 << ceil_log2(n_lower_bound);
+    let max_size = 1 << math::ceil_log2(n_lower_bound);
     println!("{} {}", n_lower_bound, max_size);
 
     let s0: Vec<u32> = vec![

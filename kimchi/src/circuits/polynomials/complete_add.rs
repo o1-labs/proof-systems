@@ -87,7 +87,6 @@ fn zero_check<F: Field>(z: E<F>, z_inv: E<F>, r: E<F>) -> Vec<E<F>> {
 /// for doubling.
 ///
 /// See [here](https://en.wikipedia.org/wiki/Elliptic_curve#The_group_law) for the formulas used.
-#[derive(Default)]
 pub struct CompleteAdd<F>(PhantomData<F>);
 
 impl<F> Argument<F> for CompleteAdd<F>
