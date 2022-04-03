@@ -210,15 +210,7 @@ pub mod caml {
         ),
         pub generic_selector: Vec<CamlF>,
         pub poseidon_selector: Vec<CamlF>,
-        pub cairo_selector: (
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-        ),
+        pub cairo_selector: (Vec<CamlF>, Vec<CamlF>, Vec<CamlF>, Vec<CamlF>),
     }
 
     //
@@ -277,21 +269,6 @@ pub mod caml {
                     .cloned()
                     .map(Into::into)
                     .collect(),
-                pe.cairo_selector[4]
-                    .iter()
-                    .cloned()
-                    .map(Into::into)
-                    .collect(),
-                pe.cairo_selector[5]
-                    .iter()
-                    .cloned()
-                    .map(Into::into)
-                    .collect(),
-                pe.cairo_selector[6]
-                    .iter()
-                    .cloned()
-                    .map(Into::into)
-                    .collect(),
             );
             Self {
                 w,
@@ -336,48 +313,10 @@ pub mod caml {
                 cpe.s.5.into_iter().map(Into::into).collect(),
             ];
             let cairo_selector = [
-                cpe.cairo_selector
-                    .0
-                    .iter()
-                    .cloned()
-                    .map(Into::into)
-                    .collect(),
-                cpe.cairo_selector
-                    .1
-                    .iter()
-                    .cloned()
-                    .map(Into::into)
-                    .collect(),
-                cpe.cairo_selector
-                    .2
-                    .iter()
-                    .cloned()
-                    .map(Into::into)
-                    .collect(),
-                cpe.cairo_selector
-                    .3
-                    .iter()
-                    .cloned()
-                    .map(Into::into)
-                    .collect(),
-                cpe.cairo_selector
-                    .4
-                    .iter()
-                    .cloned()
-                    .map(Into::into)
-                    .collect(),
-                cpe.cairo_selector
-                    .5
-                    .iter()
-                    .cloned()
-                    .map(Into::into)
-                    .collect(),
-                cpe.cairo_selector
-                    .6
-                    .iter()
-                    .cloned()
-                    .map(Into::into)
-                    .collect(),
+                cpe.cairo_selector.0.into_iter().map(Into::into).collect(),
+                cpe.cairo_selector.1.into_iter().map(Into::into).collect(),
+                cpe.cairo_selector.2.into_iter().map(Into::into).collect(),
+                cpe.cairo_selector.3.into_iter().map(Into::into).collect(),
             ];
             Self {
                 w,
