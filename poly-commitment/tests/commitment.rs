@@ -12,7 +12,7 @@ use mina_curves::pasta::{
     Fp,
 };
 use o1_utils::ExtendedDensePolynomial as _;
-use oracle::poseidon::PlonkSpongeConstantsKimchi as SC;
+use oracle::constants::PlonkSpongeConstantsKimchi as SC;
 use oracle::sponge::DefaultFqSponge;
 use oracle::FqSponge as _;
 use rand::Rng;
@@ -148,7 +148,10 @@ where
 
             let mut chunked_evals = vec![];
             for point in eval_points.clone() {
-                chunked_evals.push(poly.eval(point, srs.g.len()));
+                chunked_evals.push(
+                    poly.to_chunked_polynomial(srs.g.len())
+                        .evaluate_chunks(point),
+                );
             }
 
             let commit = Commitment {

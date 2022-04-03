@@ -1,50 +1,10 @@
 //! This module implements Poseidon Hash Function primitive
 
+use crate::constants::SpongeConstants;
+use crate::permutation::{full_round, poseidon_block_cipher};
 use ark_ff::Field;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-
-pub trait SpongeConstants {
-    const SPONGE_CAPACITY: usize = 1;
-    const SPONGE_WIDTH: usize = 3;
-    const SPONGE_RATE: usize = 2;
-    const PERM_ROUNDS_FULL: usize;
-    const PERM_ROUNDS_PARTIAL: usize;
-    const PERM_HALF_ROUNDS_FULL: usize;
-    const PERM_SBOX: u32;
-    const PERM_FULL_MDS: bool;
-    const PERM_INITIAL_ARK: bool;
-}
-
-#[derive(Clone)]
-pub struct PlonkSpongeConstantsLegacy {}
-
-impl SpongeConstants for PlonkSpongeConstantsLegacy {
-    const SPONGE_CAPACITY: usize = 1;
-    const SPONGE_WIDTH: usize = 3;
-    const SPONGE_RATE: usize = 2;
-    const PERM_ROUNDS_FULL: usize = 63;
-    const PERM_ROUNDS_PARTIAL: usize = 0;
-    const PERM_HALF_ROUNDS_FULL: usize = 0;
-    const PERM_SBOX: u32 = 5;
-    const PERM_FULL_MDS: bool = true;
-    const PERM_INITIAL_ARK: bool = true;
-}
-
-#[derive(Clone)]
-pub struct PlonkSpongeConstantsKimchi {}
-
-impl SpongeConstants for PlonkSpongeConstantsKimchi {
-    const SPONGE_CAPACITY: usize = 1;
-    const SPONGE_WIDTH: usize = 3;
-    const SPONGE_RATE: usize = 2;
-    const PERM_ROUNDS_FULL: usize = 55;
-    const PERM_ROUNDS_PARTIAL: usize = 0;
-    const PERM_HALF_ROUNDS_FULL: usize = 0;
-    const PERM_SBOX: u32 = 7;
-    const PERM_FULL_MDS: bool = true;
-    const PERM_INITIAL_ARK: bool = false;
-}
 
 /// Cryptographic sponge interface - for hashing an arbitrary amount of
 /// data into one or more field elements
@@ -89,106 +49,6 @@ pub struct ArithmeticSponge<F: Field, SC: SpongeConstants> {
     pub state: Vec<F>,
     params: ArithmeticSpongeParams<F>,
     pub constants: std::marker::PhantomData<SC>,
-}
-
-fn apply_mds_matrix<F: Field, SC: SpongeConstants>(
-    params: &ArithmeticSpongeParams<F>,
-    state: &[F],
-) -> Vec<F> {
-    if SC::PERM_FULL_MDS {
-        params
-            .mds
-            .iter()
-            .map(|m| {
-                state
-                    .iter()
-                    .zip(m.iter())
-                    .fold(F::zero(), |x, (s, &m)| m * s + x)
-            })
-            .collect()
-    } else {
-        vec![
-            state[0] + state[2],
-            state[0] + state[1],
-            state[1] + state[2],
-        ]
-    }
-}
-
-pub fn full_round<F: Field, SC: SpongeConstants>(
-    params: &ArithmeticSpongeParams<F>,
-    state: &mut Vec<F>,
-    r: usize,
-) {
-    for state_i in state.iter_mut() {
-        *state_i = sbox::<F, SC>(*state_i);
-    }
-    *state = apply_mds_matrix::<F, SC>(params, state);
-    for (i, x) in params.round_constants[r].iter().enumerate() {
-        state[i].add_assign(x);
-    }
-}
-
-fn half_rounds<F: Field, SC: SpongeConstants>(
-    params: &ArithmeticSpongeParams<F>,
-    state: &mut Vec<F>,
-) {
-    for r in 0..SC::PERM_HALF_ROUNDS_FULL {
-        for (i, x) in params.round_constants[r].iter().enumerate() {
-            state[i].add_assign(x);
-        }
-        for state_i in state.iter_mut() {
-            *state_i = sbox::<F, SC>(*state_i);
-        }
-        apply_mds_matrix::<F, SC>(params, state);
-    }
-
-    for r in 0..SC::PERM_ROUNDS_PARTIAL {
-        for (i, x) in params.round_constants[SC::PERM_HALF_ROUNDS_FULL + r]
-            .iter()
-            .enumerate()
-        {
-            state[i].add_assign(x);
-        }
-        state[0] = sbox::<F, SC>(state[0]);
-        apply_mds_matrix::<F, SC>(params, state);
-    }
-
-    for r in 0..SC::PERM_HALF_ROUNDS_FULL {
-        for (i, x) in params.round_constants
-            [SC::PERM_HALF_ROUNDS_FULL + SC::PERM_ROUNDS_PARTIAL + r]
-            .iter()
-            .enumerate()
-        {
-            state[i].add_assign(x);
-        }
-        for state_i in state.iter_mut() {
-            *state_i = sbox::<F, SC>(*state_i);
-        }
-        apply_mds_matrix::<F, SC>(params, state);
-    }
-}
-
-pub fn poseidon_block_cipher<F: Field, SC: SpongeConstants>(
-    params: &ArithmeticSpongeParams<F>,
-    state: &mut Vec<F>,
-) {
-    if SC::PERM_HALF_ROUNDS_FULL == 0 {
-        if SC::PERM_INITIAL_ARK {
-            for (i, x) in params.round_constants[0].iter().enumerate() {
-                state[i].add_assign(x);
-            }
-            for r in 0..SC::PERM_ROUNDS_FULL {
-                full_round::<F, SC>(params, state, r + 1);
-            }
-        } else {
-            for r in 0..SC::PERM_ROUNDS_FULL {
-                full_round::<F, SC>(params, state, r);
-            }
-        }
-    } else {
-        half_rounds::<F, SC>(params, state);
-    }
 }
 
 impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {

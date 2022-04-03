@@ -245,7 +245,7 @@ def sample(domain, i):
     return shift, i
 ```
 
-**`Public`**. This variable simply contains the number of public inputs.
+**`Public`**. This variable simply contains the number of public inputs. (TODO: actually, it's not contained in the verifier index)
 
 The compilation steps to create the common index are as follow:
 
@@ -258,7 +258,7 @@ These pre-computations are optimizations, in the context of normal proofs, but t
 
 {sections.prover_index}
 
-## Verifier Index
+### Verifier Index
 
 Same as the prover index, we have a number of pre-computations as part of the verifier index.
 
@@ -313,6 +313,10 @@ A proof consists of:
 * optionally, the public input used (the public input could be implied by the surrounding context and not part of the proof itself)
 * optionally, the previous challenges (in case we are in a recursive prover)
 
+From the code:
+
+{sections.proof}
+
 The following sections specify how a prover creates a proof, and how a verifier validates a number of proofs.
 
 ### Proof Creation
@@ -340,6 +344,8 @@ The prover then follows the following steps to create the proof:
 {sections.prover}
 
 ### Proof Verification
+
+We define two helper algorithms below, used in the batch verification of proofs. 
 
 {sections.verifier}
 

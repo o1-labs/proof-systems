@@ -56,10 +56,20 @@ jobs:
       - name: Enforce clean clippy output
         run: cargo clippy -- -D warnings
 
-      - name: Check that up-to-date specification is checked in
+      - name: Set up cargo-spec for specifications
         run: |
           cargo install cargo-spec --version 0.3.0
+
+      - name: Build the kimchi specification
+        run: |          
           cd book/specifications
-          cd kimchi && make build && cd ..
-          cd poly-commitment && make build && cd ..
+          cd kimchi && make build 
+
+      - name: Build the polynomial commitment specification
+        run: |
+          cd book/specifications
+          cd poly-commitment && make build 
+
+      - name: Check that up-to-date specification is checked in
+        run: |
           git diff --exit-code

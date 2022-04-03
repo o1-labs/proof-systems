@@ -1,4 +1,5 @@
-use crate::poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge, SpongeConstants};
+use crate::constants::SpongeConstants;
+use crate::poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge};
 use ark_ec::{short_weierstrass_jacobian::GroupAffine, SWModelParameters};
 use ark_ff::{BigInteger, Field, FpParameters, One, PrimeField, Zero};
 

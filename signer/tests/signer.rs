@@ -1,8 +1,7 @@
 pub mod transaction;
 
 use ark_ff::Zero;
-use mina_signer::{BaseField, Keypair, NetworkId, PubKey, ScalarField, Signer};
-use rand;
+use mina_signer::{self, BaseField, Keypair, NetworkId, PubKey, ScalarField, Signer};
 pub use transaction::Transaction;
 
 enum TransactionType {
@@ -36,11 +35,11 @@ macro_rules! assert_sign_verify_tx {
 
         tx = tx.set_valid_until($valid_until).set_memo_str($memo);
 
-        let mut testnet_ctx = mina_signer::create(NetworkId::TESTNET);
-        let testnet_sig = testnet_ctx.sign(kp, tx);
-
-        let mut mainnet_ctx = mina_signer::create(NetworkId::MAINNET);
-        let mainnet_sig = mainnet_ctx.sign(kp, tx);
+        // TODO only one context
+        let mut testnet_ctx = mina_signer::create_legacy(NetworkId::TESTNET);
+        let mut mainnet_ctx = mina_signer::create_legacy(NetworkId::MAINNET);
+        let testnet_sig = testnet_ctx.sign(&kp, &tx);
+        let mainnet_sig = mainnet_ctx.sign(&kp, &tx);
 
         // Signing checks
         assert_ne!(testnet_sig, mainnet_sig); // Testnet and mainnet sigs are not equal
@@ -48,15 +47,16 @@ macro_rules! assert_sign_verify_tx {
         assert_eq!(mainnet_sig.to_string(), $mainnet_target); // Mainnet target check
 
         // Verification checks
-        assert_eq!(testnet_ctx.verify(testnet_sig, kp.public, tx), true);
-        assert_eq!(mainnet_ctx.verify(mainnet_sig, kp.public, tx), true);
+        assert_eq!(testnet_ctx.verify(&testnet_sig, &kp.public, &tx), true);
+        assert_eq!(mainnet_ctx.verify(&mainnet_sig, &kp.public, &tx), true);
 
-        assert_eq!(mainnet_ctx.verify(testnet_sig, kp.public, tx), false);
-        assert_eq!(testnet_ctx.verify(mainnet_sig, kp.public, tx), false);
+        assert_eq!(mainnet_ctx.verify(&testnet_sig, &kp.public, &tx), false);
+        assert_eq!(testnet_ctx.verify(&mainnet_sig, &kp.public, &tx), false);
 
         tx.valid_until = !tx.valid_until;
-        assert_eq!(testnet_ctx.verify(testnet_sig, kp.public, tx), false);
-        assert_eq!(mainnet_ctx.verify(mainnet_sig, kp.public, tx), false);
+        assert_eq!(mainnet_ctx.verify(&testnet_sig, &kp.public, &tx), false);
+
+        assert_eq!(testnet_ctx.verify(&mainnet_sig, &kp.public, &tx), false);
     };
 }
 
@@ -85,8 +85,8 @@ fn signer_test_raw() {
         ]
     );
 
-    let mut ctx = mina_signer::create(NetworkId::TESTNET);
-    let sig = ctx.sign(kp, tx);
+    let mut ctx = mina_signer::create_legacy(NetworkId::TESTNET);
+    let sig = ctx.sign(&kp, &tx);
 
     assert_eq!(sig.to_string(),
                 "11a36a8dfe5b857b95a2a7b7b17c62c3ea33411ae6f4eb3a907064aecae353c60794f1d0288322fe3f8bb69d6fabd4fd7c15f8d09f8783b2f087a80407e299af");
@@ -105,20 +105,20 @@ fn signer_zero_test() {
         16,
     );
 
-    let mut ctx = mina_signer::create(NetworkId::TESTNET);
-    let sig = ctx.sign(kp, tx);
+    let mut ctx = mina_signer::create_legacy(NetworkId::TESTNET);
+    let sig = ctx.sign(&kp, &tx);
 
-    assert_eq!(ctx.verify(sig, kp.public, tx), true);
+    assert_eq!(ctx.verify(&sig, &kp.public, &tx), true);
 
     // Zero some things
     let mut sig2 = sig;
     sig2.rx = BaseField::zero();
-    assert_eq!(ctx.verify(sig2, kp.public, tx), false);
+    assert_eq!(ctx.verify(&sig2, &kp.public, &tx), false);
     let mut sig3 = sig;
     sig3.s = ScalarField::zero();
-    assert_eq!(ctx.verify(sig3, kp.public, tx), false);
+    assert_eq!(ctx.verify(&sig3, &kp.public, &tx), false);
     sig3.rx = BaseField::zero();
-    assert_eq!(ctx.verify(sig3, kp.public, tx), false);
+    assert_eq!(ctx.verify(&sig3, &kp.public, &tx), false);
 }
 
 #[test]
@@ -255,17 +255,4 @@ fn sign_delegation_test_4() {
         /* testnet signature */ "26ca6b95dee29d956b813afa642a6a62cd89b1929320ed6b099fd191a217b08d2c9a54ba1c95e5000b44b93cfbd3b625e20e95636f1929311473c10858a27f09",
         /* mainnet signature */ "093f9ef0e4e051279da0a3ded85553847590ab739ee1bfd59e5bb30f98ed8a001a7a60d8506e2572164b7a525617a09f17e1756ac37555b72e01b90f37271595"
     );
-}
-
-#[test]
-fn custom_signer_test() {
-    use oracle::{pasta, poseidon};
-
-    let kp = Keypair::rand(&mut rand::rngs::OsRng);
-    let mut ctx = mina_signer::custom::<poseidon::PlonkSpongeConstantsKimchi>(
-        pasta::fp_kimchi::params(),
-        NetworkId::MAINNET,
-    );
-    let tx = Transaction::new_payment(kp.public, kp.public, 2049, 1, 0);
-    ctx.sign(kp, tx);
 }

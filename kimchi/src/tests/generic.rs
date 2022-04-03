@@ -1,22 +1,24 @@
 use crate::circuits::polynomials::generic::testing::{create_circuit, fill_in_witness};
 use crate::circuits::{gate::CircuitGate, wires::COLUMNS};
-use crate::prover::ProverProof;
+use crate::proof::ProverProof;
 use crate::prover_index::testing::new_index_for_test;
-use crate::verifier::batch_verify;
+use crate::verifier::verify;
 use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use array_init::array_init;
-use commitment_dlog::commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve};
+use commitment_dlog::commitment::{b_poly_coefficients, CommitmentCurve};
 use groupmap::GroupMap;
 use mina_curves::pasta::{
     fp::Fp,
     vesta::{Affine, VestaParameters},
 };
 use oracle::{
-    poseidon::PlonkSpongeConstantsKimchi,
+    constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use rand::{rngs::StdRng, SeedableRng};
+
+use o1_utils::math;
 
 // aliases
 
@@ -62,7 +64,7 @@ fn verify_proof(gates: Vec<CircuitGate<Fp>>, witness: [Vec<Fp>; COLUMNS], public
 
     // previous opening for recursion
     let prev = {
-        let k = ceil_log2(index.srs.g.len());
+        let k = math::ceil_log2(index.srs.g.len());
         let chals: Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();
         let comm = {
             let coeffs = b_poly_coefficients(&chals);
@@ -73,19 +75,15 @@ fn verify_proof(gates: Vec<CircuitGate<Fp>>, witness: [Vec<Fp>; COLUMNS], public
     };
 
     // add the proof to the batch
-    let mut batch = Vec::new();
-    batch.push(
-        ProverProof::create_recursive::<BaseSponge, ScalarSponge>(
-            &group_map,
-            witness,
-            &index,
-            vec![prev],
-        )
-        .unwrap(),
-    );
+    let proof = ProverProof::create_recursive::<BaseSponge, ScalarSponge>(
+        &group_map,
+        witness,
+        &index,
+        vec![prev],
+    )
+    .unwrap();
 
     // verify the proof
     let verifier_index = index.verifier_index();
-    let batch: Vec<_> = batch.iter().map(|proof| (&verifier_index, proof)).collect();
-    batch_verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &batch).unwrap();
+    verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &verifier_index, &proof).unwrap();
 }

@@ -2,7 +2,7 @@
 
 use crate::circuits::{
     domains::EvaluationDomains,
-    gate::{self, CircuitGate, GateType, LookupInfo, LookupTable, LookupsUsed},
+    gate::{CircuitGate, GateType},
     polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
     wires::*,
 };
@@ -14,10 +14,16 @@ use ark_poly::{
 };
 use array_init::array_init;
 use blake2::{Blake2b512, Digest};
-use o1_utils::ExtendedEvaluations;
+use o1_utils::{field_helpers::i32_to_field, ExtendedEvaluations};
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
+
+use super::lookup::{
+    constraints::LookupConfiguration,
+    lookups::{JointLookup, LookupInfo},
+    tables::LookupTable,
+};
 
 //
 // Constants
@@ -33,9 +39,6 @@ pub const ZK_ROWS: u64 = 3;
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct LookupConstraintSystem<F: FftField> {
     /// Lookup tables
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub dummy_lookup_value: Vec<F>,
-    pub dummy_lookup_table_id: i32,
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub lookup_table: Vec<DP<F>>,
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
@@ -55,13 +58,9 @@ pub struct LookupConstraintSystem<F: FftField> {
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub lookup_selectors: Vec<E<F, D<F>>>,
 
-    /// The kind of lookups used
-    pub lookup_used: LookupsUsed,
-
-    /// The maximum number of lookups per row
-    pub max_lookups_per_row: usize,
-    /// The maximum number of elements in a vector lookup
-    pub max_joint_size: u32,
+    /// Configuration for the lookup constraint.
+    #[serde(bound = "LookupConfiguration<F>: Serialize + DeserializeOwned")]
+    pub configuration: LookupConfiguration<F>,
 }
 
 #[serde_as]
@@ -380,7 +379,7 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                     if table.id != 0 {
                         non_zero_table_id = true;
                     }
-                    let table_id: F = gate::i32_to_field(table.id);
+                    let table_id: F = i32_to_field(table.id);
                     table_ids.extend((0..table_len).map(|_| table_id));
 
                     // Update lookup_table values
@@ -407,8 +406,10 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
 
                 // For computational efficiency, we choose the dummy lookup value to be all 0s in
                 // table 0.
-                let dummy_lookup_value: Vec<F> = vec![];
-                let dummy_lookup_table_id = 0;
+                let dummy_lookup = JointLookup {
+                    entry: vec![],
+                    table_id: 0,
+                };
 
                 // Pad up to the end of the table with the dummy value.
                 lookup_table
@@ -440,15 +441,16 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                 // generate the look up selector polynomials
                 Ok(Some(Self {
                     lookup_selectors,
-                    dummy_lookup_value,
-                    dummy_lookup_table_id,
                     lookup_table8,
                     lookup_table: lookup_table_polys,
                     table_ids,
                     table_ids8,
-                    lookup_used,
-                    max_lookups_per_row: lookup_info.max_per_row as usize,
-                    max_joint_size: lookup_info.max_joint_size,
+                    configuration: LookupConfiguration {
+                        lookup_used,
+                        max_lookups_per_row: lookup_info.max_per_row as usize,
+                        max_joint_size: lookup_info.max_joint_size,
+                        dummy_lookup,
+                    },
                 }))
             }
         }

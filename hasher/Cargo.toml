@@ -1,0 +1,21 @@
+[package]
+name = "mina-hasher"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+oracle = { path = "../oracle" }
+mina-curves = { path = "../curves" }
+o1-utils = { path = "../utils" }
+
+ark-ff = { version = "0.3.0", features = [ "parallel", "asm" ] }
+
+bitvec = "1.0.0"
+serde = { version = "1.0", features = ["derive"] }
+
+[dev-dependencies]
+serde_json = { version = "1.0" }
