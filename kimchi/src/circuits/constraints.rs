@@ -364,10 +364,9 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                 // Get the max width of all lookup tables
                 let max_table_width = lookup_tables
                     .iter()
-                    .fold(0, |max_width, LookupTable { data, .. }| {
-                        std::cmp::max(max_width, data.len())
-                    });
-
+                    .map(|table| table.data.len())
+                    .max()
+                    .unwrap_or(0);
                 let max_num_entries = d1_size - (ZK_ROWS as usize) - 1;
 
                 let mut lookup_table = vec![Vec::with_capacity(d1_size); max_table_width];
