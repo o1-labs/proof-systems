@@ -4,7 +4,7 @@ use crate::circuits::{
     domains::EvaluationDomains,
     gate::{CircuitGate, GateType, LookupInfo, LookupsUsed},
     polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
-    prover_precomputations::ProverPrecomputations,
+    domain_constant_evaluation::DomainConstantEvaluations,
     wires::*,
 };
 use ark_ff::{FftField, SquareRootField, Zero};
@@ -14,8 +14,8 @@ use ark_poly::{
 };
 use array_init::array_init;
 use blake2::{Blake2b512, Digest};
+use core::borrow::Borrow;
 use o1_utils::ExtendedEvaluations;
-use once_cell::unsync::OnceCell;
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
@@ -59,7 +59,7 @@ pub struct LookupConstraintSystem<F: FftField> {
 
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct ConstraintSystem<F: FftField> {
+pub struct ConstraintSystem<F: FftField, B: Borrow<DomainConstantEvaluations<F>>> {
     // Basics
     // ------
     /// number of public inputs
@@ -153,7 +153,36 @@ pub struct ConstraintSystem<F: FftField> {
 
     /// precomputes
     #[serde(skip)]
-    pub precompute_cell: OnceCell<ProverPrecomputations<F>>,
+    pub precomputations: B,
+}
+
+impl<F: FftField> Default for ConstraintSystem<F, DomainConstantEvaluations<F>> {
+    fn default() -> Self {
+        ConstraintSystem {
+            public: 0,
+            domain: EvaluationDomains::create(0).unwrap(),
+            gates: vec![],
+            sigmam: <[DP<F>; PERMUTS]>::default(),
+            coefficients8: array_init(|_| E::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap())),
+            genericm: DP::default(),
+            psm: DP::default(),
+            generic4: E::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap()),
+            sigmal1: array_init(|_| E::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap())),
+            sigmal8: array_init(|_| E::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap())),
+            sid: vec![],
+            ps8: E::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap()),
+            complete_addl4: E::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap()),
+            mull8: E::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap()),
+            emull: E::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap()),
+            chacha8: None,
+            endomul_scalar8: E::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap()),
+            shift: [F::default(); PERMUTS],
+            endo: F::default(),
+            fr_sponge_params: ArithmeticSpongeParams::default(),
+            lookup_constraint_system: None,
+            precomputations: DomainConstantEvaluations::default(),
+        }
+    }
 }
 
 // TODO: move Shifts, and permutation-related functions to the permutation module
@@ -300,7 +329,10 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
     }
 }
 
-impl<F: FftField + SquareRootField> ConstraintSystem<F> {
+impl<F> ConstraintSystem<F, DomainConstantEvaluations<F>>
+where
+    F: FftField + SquareRootField,
+{
     /// creates a constraint system from a vector of gates ([CircuitGate]), some sponge parameters ([ArithmeticSpongeParams]), and the number of public inputs.
     pub fn create(
         mut gates: Vec<CircuitGate<F>>,
@@ -495,7 +527,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // TODO: remove endo as a field
         let endo = F::zero();
 
-        let precompute_cell = OnceCell::new();
+        let precompute_borrow = DomainConstantEvaluations::create(domain).unwrap();
 
         Some(ConstraintSystem {
             chacha8,
@@ -519,13 +551,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             endo,
             fr_sponge_params,
             lookup_constraint_system,
-            precompute_cell,
+            precomputations: precompute_borrow,
         })
-    }
-
-    pub fn get_precomputation(&self) -> &ProverPrecomputations<F> {
-        self.precompute_cell
-            .get_or_init(|| ProverPrecomputations::create(self.domain).unwrap())
     }
 
     /// This function verifies the consistency of the wire
@@ -628,17 +655,17 @@ pub mod tests {
     use ark_ff::{FftField, SquareRootField};
     use mina_curves::pasta::fp::Fp;
 
-    impl<F: FftField + SquareRootField> ConstraintSystem<F> {
+    impl<F: FftField + SquareRootField> ConstraintSystem<F, DomainConstantEvaluations<F>> {
         pub fn for_testing(
             sponge_params: ArithmeticSpongeParams<F>,
             gates: Vec<CircuitGate<F>>,
         ) -> Self {
             let public = 0;
-            ConstraintSystem::<F>::create(gates, vec![], sponge_params, public).unwrap()
+            ConstraintSystem::<F, DomainConstantEvaluations<F>>::create(gates, vec![], sponge_params, public).unwrap()
         }
     }
 
-    impl ConstraintSystem<Fp> {
+    impl ConstraintSystem<Fp, DomainConstantEvaluations<Fp>> {
         pub fn fp_for_testing(gates: Vec<CircuitGate<Fp>>) -> Self {
             let fp_sponge_params = oracle::pasta::fp_kimchi::params();
             Self::for_testing(fp_sponge_params, gates)

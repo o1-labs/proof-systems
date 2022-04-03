@@ -37,7 +37,7 @@ use crate::circuits::{
     constraints::ConstraintSystem,
     gate::{CircuitGate, GateType},
     polynomial::COLUMNS,
-    wires::GateWires,
+    wires::GateWires, domain_constant_evaluation::DomainConstantEvaluations,
 };
 use ark_ff::{FftField, SquareRootField, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
@@ -163,7 +163,7 @@ impl<F: FftField> CircuitGate<F> {
 //~
 //~ where the $c_i$ are the [coefficients]().
 
-impl<F: FftField + SquareRootField> ConstraintSystem<F> {
+impl<F: FftField + SquareRootField> ConstraintSystem<F, DomainConstantEvaluations<F>> {
     /// generic constraint quotient poly contribution computation
     pub fn gnrc_quot(
         &self,
@@ -207,8 +207,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 
             // alpha
             let alpha_pow = {
-                let precomputation = self.get_precomputation();
-                let mut res = precomputation.constant_1_d4.clone();
+                let mut res = self.precomputations.constant_1_d4.clone();
                 res.evals.par_iter_mut().for_each(|x| *x *= &alpha_pow);
                 res
             };
@@ -307,8 +306,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 // -------------------------------------------------
 
 pub mod testing {
-    use super::*;
-    use crate::circuits::wires::Wire;
+    use core::borrow::Borrow;
+use super::*;
+    use crate::circuits::{domain_constant_evaluation::DomainConstantEvaluations, wires::Wire};
     use itertools::iterate;
 
     impl<F: FftField> CircuitGate<F> {
@@ -353,7 +353,7 @@ pub mod testing {
         }
     }
 
-    impl<F: FftField + SquareRootField> ConstraintSystem<F> {
+    impl<F: FftField + SquareRootField, B: Borrow<DomainConstantEvaluations<F>>> ConstraintSystem<F, B> {
         /// Function to verify the generic polynomials with a witness.
         pub fn verify_generic(
             &self,

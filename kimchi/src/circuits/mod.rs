@@ -9,7 +9,7 @@ pub mod gate;
 pub mod gates;
 pub mod polynomial;
 pub mod polynomials;
-pub mod prover_precomputations;
+pub mod domain_constant_evaluation;
 pub mod scalars;
 pub mod wires;
 pub mod zk_polynomial;

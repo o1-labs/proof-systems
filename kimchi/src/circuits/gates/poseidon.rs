@@ -3,7 +3,7 @@
 use crate::circuits::{
     constraints::ConstraintSystem,
     gate::{CircuitGate, GateType},
-    wires::{GateWires, Wire, COLUMNS},
+    wires::{GateWires, Wire, COLUMNS}, domain_constant_evaluation::DomainConstantEvaluations,
 };
 use ark_ff::{FftField, Field};
 use array_init::array_init;
@@ -111,7 +111,7 @@ impl<F: FftField> CircuitGate<F> {
         row: usize,
         // TODO(mimoo): we should just pass two rows instead of the whole witness
         witness: &[Vec<F>; COLUMNS],
-        cs: &ConstraintSystem<F>,
+        cs: &ConstraintSystem<F, DomainConstantEvaluations<F>>,
     ) -> Result<(), String> {
         ensure_eq!(
             self.typ,

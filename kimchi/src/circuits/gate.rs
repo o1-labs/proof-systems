@@ -11,6 +11,8 @@ use serde_with::serde_as;
 use std::collections::{hash_map::Entry, HashMap, HashSet};
 use std::io::{Result as IoResult, Write};
 
+use super::domain_constant_evaluation::DomainConstantEvaluations;
+
 type Evaluations<Field> = E<Field, D<Field>>;
 
 /// A row accessible from a given row, corresponds to the fact that we open all polynomials
@@ -491,7 +493,7 @@ impl<F: FftField> CircuitGate<F> {
         &self,
         row: usize,
         witness: &[Vec<F>; COLUMNS],
-        cs: &ConstraintSystem<F>,
+        cs: &ConstraintSystem<F, DomainConstantEvaluations<F>>,
         public: &[F],
     ) -> Result<(), String> {
         use GateType::*;

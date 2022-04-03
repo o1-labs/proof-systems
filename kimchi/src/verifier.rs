@@ -9,7 +9,7 @@ use crate::{
         gate::{GateType, LookupsUsed},
         polynomials::{generic, permutation},
         scalars::RandomOracles,
-        wires::*,
+        wires::*, domain_constant_evaluation::DomainConstantEvaluations,
     },
     error::{ProofError, Result},
     plonk_sponge::FrSponge,
@@ -415,7 +415,7 @@ where
                 all_alphas.get_alphas(ArgumentType::Gate(GateType::Generic), generic::CONSTRAINTS);
 
             let generic_scalars =
-                &ConstraintSystem::gnrc_scalars(alphas, &evals[0].w, evals[0].generic_selector);
+                &ConstraintSystem::<_, DomainConstantEvaluations<_>>::gnrc_scalars(alphas, &evals[0].w, evals[0].generic_selector);
 
             let generic_com = index.coefficients_comm.iter().take(generic_scalars.len());
 

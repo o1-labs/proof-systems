@@ -5,7 +5,7 @@ use crate::circuits::{
     constraints::ConstraintSystem,
     expr::{prologue::*, Cache},
     gate::{CircuitGate, GateType},
-    wires::COLUMNS,
+    wires::COLUMNS, domain_constant_evaluation::DomainConstantEvaluations,
 };
 use ark_ff::{BitIteratorLE, FftField, Field, PrimeField, Zero};
 use array_init::array_init;
@@ -15,7 +15,7 @@ impl<F: FftField> CircuitGate<F> {
         &self,
         row: usize,
         witness: &[Vec<F>; COLUMNS],
-        _cs: &ConstraintSystem<F>,
+        _cs: &ConstraintSystem<F, DomainConstantEvaluations<F>>,
     ) -> Result<(), String> {
         ensure_eq!(self.typ, GateType::EndoMulScalar, "incorrect gate type");
 

@@ -46,7 +46,7 @@ use crate::{
         polynomial::WitnessOverDomains,
         scalars::ProofEvaluations,
         wires::*,
-        zk_polynomial::ZkPolynomial,
+        zk_polynomial::ZkPolynomial, domain_constant_evaluation::DomainConstantEvaluations,
     },
     error::{ProofError, Result},
 };
@@ -84,7 +84,7 @@ pub fn vanishes_on_last_4_rows<F: FftField>(domain: D<F>) -> DensePolynomial<F> 
     &(&(&x - &c(w1)) * &(&x - &c(w2))) * &(&(&x - &c(w3)) * &(&x - &c(w4)))
 }
 
-impl<F: FftField + SquareRootField> ConstraintSystem<F> {
+impl<F: FftField + SquareRootField> ConstraintSystem<F, DomainConstantEvaluations<F>> {
     /// permutation quotient poly contribution computation
     #[allow(clippy::type_complexity)]
     pub fn perm_quot(
@@ -100,8 +100,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let alpha2 = alphas.next().expect("missing power of alpha");
 
         // constant gamma in evaluation form (in domain d8)
-        let precomputation = self.get_precomputation();
-        let gamma = &precomputation.constant_1_d8.scale(gamma);
+        let gamma = &self.precomputations.constant_1_d8.scale(gamma);
 
         //~ The quotient contribution of the permutation is split into two parts $perm$ and $bnd$.
         //~ They will be used by the prover.
@@ -139,8 +138,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             // in evaluation form in d8
             let mut shifts = lagrange.d8.this.z.clone();
             for (witness, shift) in lagrange.d8.this.w.iter().zip(self.shift.iter()) {
-                let precomputation = self.get_precomputation();
-                let beta_shift = &precomputation.poly_x_d1.scale(beta * shift).clone();
+                let beta_shift = &self.precomputations.poly_x_d1.scale(beta * shift).clone();
                 let term = &(witness + gamma) + beta_shift;
                 shifts = &shifts * &term;
             }
@@ -156,8 +154,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                 sigmas = &sigmas * &term;
             }
 
-            let precomputation = self.get_precomputation();
-            &(&shifts - &sigmas).scale(alpha0) * &precomputation.zkpl
+            &(&shifts - &sigmas).scale(alpha0) * &self.precomputations.zkpl
         };
 
         //~ and `bnd`:

@@ -25,6 +25,7 @@
 //! * (ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)
 //!
 
+use crate::circuits::domain_constant_evaluation::DomainConstantEvaluations;
 use crate::circuits::argument::Argument;
 use crate::circuits::expr;
 use crate::circuits::gate::{CircuitGate, GateType};
@@ -50,7 +51,7 @@ impl<F: FftField> CircuitGate<F> {
         &self,
         row: usize,
         witness: &[Vec<F>; COLUMNS],
-        cs: &ConstraintSystem<F>,
+        cs: &ConstraintSystem<F, DomainConstantEvaluations<F>>,
     ) -> Result<(), String> {
         ensure_eq!(self.typ, GateType::EndoMul, "incorrect gate type");
 

@@ -1,5 +1,6 @@
 use crate::circuits::domains::EvaluationDomains;
 use ark_ff::FftField;
+use ark_poly::EvaluationDomain;
 use ark_poly::UVPolynomial;
 use ark_poly::{univariate::DensePolynomial as DP, Evaluations as E, Radix2EvaluationDomain as D};
 use serde::{Deserialize, Serialize};
@@ -10,7 +11,7 @@ use super::zk_polynomial::ZkPolynomial;
 
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct ProverPrecomputations<F: FftField> {
+pub struct DomainConstantEvaluations<F: FftField> {
     /// 1-st Lagrange evaluated over domain.d8
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub poly_x_d1: E<F, D<F>>,
@@ -29,7 +30,21 @@ pub struct ProverPrecomputations<F: FftField> {
     pub zkpl: E<F, D<F>>,
 }
 
-impl<F: FftField> ProverPrecomputations<F> {
+impl<F: FftField> Default for DomainConstantEvaluations<F> {
+    fn default() -> Self {
+        let evaluation_domain = E::from_vec_and_domain(vec![], D::<F>::new(0).unwrap());
+
+        DomainConstantEvaluations {
+            poly_x_d1: evaluation_domain.clone(),
+            constant_1_d4: evaluation_domain.clone(),
+            constant_1_d8: evaluation_domain.clone(),
+            vanishes_on_last_4_rows: evaluation_domain.clone(),
+            zkpl: evaluation_domain.clone(),
+        }
+    }
+}
+
+impl<F: FftField> DomainConstantEvaluations<F> {
     pub fn create(domain: EvaluationDomains<F>) -> Option<Self> {
         let poly_x_d1 = DP::from_coefficients_slice(&[F::zero(), F::one()])
             .evaluate_over_domain_by_ref(domain.d8);
@@ -44,7 +59,7 @@ impl<F: FftField> ProverPrecomputations<F> {
         let zkp = ZkPolynomial::create(domain).unwrap();
         let zkpl = zkp.zkpm.evaluate_over_domain_by_ref(domain.d8);
 
-        Some(ProverPrecomputations {
+        Some(DomainConstantEvaluations {
             poly_x_d1,
             constant_1_d4,
             constant_1_d8,
