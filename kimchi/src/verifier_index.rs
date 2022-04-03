@@ -141,7 +141,7 @@ where
                 .lookup_constraint_system
                 .as_ref()
                 .map(|cs| LookupVerifierIndex {
-                    lookup_used: cs.lookup_used,
+                    lookup_used: cs.configuration.lookup_used,
                     lookup_selectors: cs
                         .lookup_selectors
                         .iter()
@@ -156,7 +156,7 @@ where
                         self.srs
                             .commit_evaluations_non_hiding(domain, table_ids8, None)
                     }),
-                    max_joint_size: cs.max_joint_size,
+                    max_joint_size: cs.configuration.max_joint_size,
                 })
         };
 

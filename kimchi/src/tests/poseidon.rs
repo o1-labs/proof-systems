@@ -1,13 +1,6 @@
-use crate::{
-    circuits::{
-        gate::CircuitGate,
-        gates::poseidon::{self, ROUNDS_PER_ROW},
-        wires::{Wire, COLUMNS},
-    },
-    prover_index::testing::new_index_for_test,
-    verifier::batch_verify,
-};
-use crate::{prover::ProverProof, prover_index::ProverIndex};
+use std::time::Instant;
+use std::{io, io::Write};
+
 use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use array_init::array_init;
@@ -19,12 +12,22 @@ use mina_curves::pasta::{
     vesta::{Affine, VestaParameters},
 };
 use oracle::{
-    poseidon::{PlonkSpongeConstantsKimchi, SpongeConstants},
+    constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use rand::{rngs::StdRng, SeedableRng};
-use std::time::Instant;
-use std::{io, io::Write};
+
+use crate::{
+    circuits::{
+        gate::CircuitGate,
+        polynomials,
+        polynomials::poseidon::ROUNDS_PER_ROW,
+        wires::{Wire, COLUMNS},
+    },
+    prover_index::testing::new_index_for_test,
+    verifier::batch_verify,
+};
+use crate::{prover::ProverProof, prover_index::ProverIndex};
 
 // aliases
 
@@ -120,7 +123,7 @@ fn positive(index: &ProverIndex<Affine>) {
             // index
             let first_row = h * (POS_ROWS_PER_HASH + 1);
 
-            poseidon::generate_witness(
+            polynomials::poseidon::generate_witness(
                 first_row,
                 oracle::pasta::fp_kimchi::params(),
                 &mut witness_cols,

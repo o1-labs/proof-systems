@@ -5,20 +5,22 @@ use crate::{
         argument::{Argument, ArgumentType},
         constraints::{LookupConstraintSystem, ZK_ROWS},
         expr::{l0_1, Constants, Environment, LookupEnvironment},
-        gate::{combine_table_entry, i32_to_field, GateType, LookupsUsed},
+        gate::{combine_table_entry, GateType, LookupsUsed},
         polynomials::{
             chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal},
             complete_add::CompleteAdd,
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
-            generic, lookup, permutation,
+            generic, lookup,
+            lookup::LookupConfiguration,
+            permutation,
             poseidon::Poseidon,
             varbasemul::VarbaseMul,
         },
         scalars::{LookupEvaluations, ProofEvaluations},
         wires::{COLUMNS, PERMUTS},
     },
-    error::{ProofError, Result},
+    error::ProofError,
     plonk_sponge::FrSponge,
     prover_index::ProverIndex,
 };
@@ -36,10 +38,19 @@ use itertools::Itertools;
 use lookup::CombinedEntry;
 use o1_utils::ExtendedDensePolynomial;
 use oracle::{sponge::ScalarChallenge, FqSponge};
+use rayon::iter::{
+    IndexedParallelIterator, IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator,
+};
 use std::collections::HashMap;
 
+/// Alias to refer to the scalar field of a curve.
 type Fr<G> = <G as AffineCurve>::ScalarField;
+
+/// Alias to refer to the base field of a curve.
 type Fq<G> = <G as AffineCurve>::BaseField;
+
+/// The result of a proof creation or verification.
+pub type Result<T> = std::result::Result<T, ProofError>;
 
 #[derive(Clone)]
 pub struct LookupCommitments<G: AffineCurve> {
@@ -47,6 +58,7 @@ pub struct LookupCommitments<G: AffineCurve> {
     pub aggreg: PolyComm<G>,
 }
 
+/// All the commitments that the prover creates as part of the proof.
 #[derive(Clone)]
 pub struct ProverCommitments<G: AffineCurve> {
     /// The commitments to the witness (execution trace)
@@ -59,6 +71,7 @@ pub struct ProverCommitments<G: AffineCurve> {
     pub lookup: Option<LookupCommitments<G>>,
 }
 
+/// The proof that the prover creates from a [ProverIndex] and a `witness`.
 #[derive(Clone)]
 pub struct ProverProof<G: AffineCurve> {
     /// All the polynomial commitments required in the proof
@@ -199,11 +212,19 @@ where
             let s = match index.cs.lookup_constraint_system.as_ref() {
                 None
                 | Some(LookupConstraintSystem {
-                    lookup_used: LookupsUsed::Single,
+                    configuration:
+                        LookupConfiguration {
+                            lookup_used: LookupsUsed::Single,
+                            ..
+                        },
                     ..
                 }) => ScalarChallenge(Fr::<G>::zero()),
                 Some(LookupConstraintSystem {
-                    lookup_used: LookupsUsed::Joint,
+                    configuration:
+                        LookupConfiguration {
+                            lookup_used: LookupsUsed::Joint,
+                            ..
+                        },
                     ..
                 }) => ScalarChallenge(fq_sponge.challenge()),
             };
@@ -212,6 +233,17 @@ where
 
         // TODO: that seems like an unecessary line
         let joint_combiner: Fr<G> = joint_combiner_.1;
+
+        let table_id_combiner: Fr<G> = if let Some(lcs) = index.cs.lookup_constraint_system.as_ref()
+        {
+            if let Some(_) = lcs.table_ids8.as_ref() {
+                joint_combiner.pow([lcs.configuration.max_joint_size as u64])
+            } else {
+                Fr::<G>::zero()
+            }
+        } else {
+            Fr::<G>::zero()
+        };
 
         // TODO: Looking-up a tuple (f_0, f_1, ..., f_{m-1}) in a tuple of tables (T_0, ..., T_{m-1}) is
         // reduced to a single lookup
@@ -257,12 +289,10 @@ where
         let dummy_lookup_value = {
             let x = match index.cs.lookup_constraint_system.as_ref() {
                 None => Fr::<G>::zero(),
-                Some(lcs) => combine_table_entry(
-                    joint_combiner,
-                    i32_to_field(lcs.dummy_lookup_table_id),
-                    lcs.max_joint_size,
-                    lcs.dummy_lookup_value.iter(),
-                ),
+                Some(lcs) => lcs
+                    .configuration
+                    .dummy_lookup
+                    .evaluate(&joint_combiner, &table_id_combiner),
             };
             CombinedEntry(x)
         };
@@ -284,10 +314,10 @@ where
                                 }
                             };
                             CombinedEntry(combine_table_entry(
-                                joint_combiner,
-                                table_id,
-                                lcs.max_joint_size,
+                                &joint_combiner,
+                                &table_id_combiner,
                                 row,
+                                table_id,
                             ))
                         })
                     };
@@ -301,8 +331,7 @@ where
                         index.cs.domain.d1,
                         &index.cs.gates,
                         &witness,
-                        joint_combiner,
-                        lcs.max_joint_size,
+                        (joint_combiner, table_id_combiner),
                     )?;
 
                     let lookup_sorted: Vec<_> = lookup_sorted
@@ -358,7 +387,7 @@ where
                                     // table ID is identically 0.
                                     Fr::<G>::zero(),
                             };
-                        combine_table_entry(joint_combiner, table_id, lcs.max_joint_size, row)
+                        combine_table_entry(&joint_combiner, &table_id_combiner, row, table_id)
                     });
 
                     let aggreg =
@@ -368,8 +397,8 @@ where
                             index.cs.domain.d1,
                             &index.cs.gates,
                             &witness,
-                            joint_combiner,
-                            lcs.max_joint_size,
+                            &joint_combiner,
+                            &table_id_combiner,
                             beta, gamma,
                             &lookup_sorted,
                             rng)?;
@@ -417,14 +446,16 @@ where
             let joint_table = &lcs.lookup_table8;
             let mut res = joint_table[joint_table.len() - 1].clone();
             for col in joint_table.iter().rev().skip(1) {
-                res.evals.iter_mut().for_each(|e| *e *= joint_combiner);
+                res.evals.par_iter_mut().for_each(|e| *e *= joint_combiner);
                 res += col;
             }
-            let table_id_combiner = joint_combiner.pow([lcs.max_joint_size as u64]);
             if let Some(table_ids8) = &lcs.table_ids8 {
-                for (x, table_id) in res.evals.iter_mut().zip(table_ids8.evals.iter()) {
-                    *x += table_id_combiner * table_id;
-                }
+                res.evals
+                    .par_iter_mut()
+                    .zip(table_ids8.evals.par_iter())
+                    .for_each(|(x, table_id)| {
+                        *x += table_id_combiner * table_id;
+                    })
             }
             res
         });
@@ -649,12 +680,7 @@ where
             if let Some(lcs) = index.cs.lookup_constraint_system.as_ref() {
                 let lookup_alphas =
                     all_alphas.get_alphas(ArgumentType::Lookup, lookup::CONSTRAINTS);
-                let constraints = lookup::constraints(
-                    &lcs.dummy_lookup_value,
-                    lcs.dummy_lookup_table_id,
-                    index.cs.domain.d1,
-                    lcs.max_joint_size,
-                );
+                let constraints = lookup::constraints(&lcs.configuration, index.cs.domain.d1);
 
                 for (constraint, alpha_pow) in constraints.into_iter().zip_eq(lookup_alphas) {
                     let mut eval = constraint.evaluations(&env);
@@ -745,15 +771,11 @@ where
                             });
                         match lcs.table_ids.as_ref() {
                             None => base_table,
-                            Some(table_ids) => {
-                                let table_combiner =
-                                    joint_combiner.pow([lcs.max_joint_size as u64]);
-                                base_table
-                                    .into_iter()
-                                    .zip(table_ids.eval(e, index.max_poly_size))
-                                    .map(|(x, table_id)| x + (table_combiner * table_id))
-                                    .collect()
-                            }
+                            Some(table_ids) => base_table
+                                .into_iter()
+                                .zip(table_ids.eval(e, index.max_poly_size))
+                                .map(|(x, table_id)| x + (table_id_combiner * table_id))
+                                .collect(),
                         }
                     },
                 })

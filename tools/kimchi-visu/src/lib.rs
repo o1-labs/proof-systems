@@ -17,7 +17,7 @@ use kimchi::{
     },
     prover_index::ProverIndex,
 };
-use serde::Serialize;
+use serde::{de::DeserializeOwned, Serialize};
 use std::{
     collections::HashMap,
     fmt::Display,
@@ -80,6 +80,7 @@ where
 pub fn visu<G>(index: &ProverIndex<G>, witness: Option<Witness<Fr<G>>>)
 where
     G: CommitmentCurve,
+    ProverIndex<G>: Serialize + DeserializeOwned,
 {
     // serialize index
     let index = serde_json::to_string(index).expect("couldn't serialize index");

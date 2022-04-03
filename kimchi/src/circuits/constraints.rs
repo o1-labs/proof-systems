@@ -2,8 +2,9 @@
 
 use crate::circuits::{
     domains::EvaluationDomains,
-    gate::{self, CircuitGate, GateType, LookupInfo, LookupTable, LookupsUsed},
+    gate::{CircuitGate, GateType, JointLookup, LookupInfo, LookupTable},
     polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
+    polynomials::lookup::LookupConfiguration,
     wires::*,
 };
 use ark_ff::{FftField, SquareRootField, Zero};
@@ -14,7 +15,7 @@ use ark_poly::{
 };
 use array_init::array_init;
 use blake2::{Blake2b512, Digest};
-use o1_utils::ExtendedEvaluations;
+use o1_utils::{field_helpers::i32_to_field, ExtendedEvaluations};
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
@@ -34,9 +35,6 @@ pub const ZK_ROWS: u64 = 3;
 pub struct LookupConstraintSystem<F: FftField> {
     /// Lookup tables
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub dummy_lookup_value: Vec<F>,
-    pub dummy_lookup_table_id: i32,
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub lookup_table: Vec<DP<F>>,
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub lookup_table8: Vec<E<F, D<F>>>,
@@ -55,13 +53,9 @@ pub struct LookupConstraintSystem<F: FftField> {
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub lookup_selectors: Vec<E<F, D<F>>>,
 
-    /// The kind of lookups used
-    pub lookup_used: LookupsUsed,
-
-    /// The maximum number of lookups per row
-    pub max_lookups_per_row: usize,
-    /// The maximum number of elements in a vector lookup
-    pub max_joint_size: u32,
+    /// Configuration for the lookup constraint.
+    #[serde(bound = "LookupConfiguration<F>: Serialize + DeserializeOwned")]
+    pub configuration: LookupConfiguration<F>,
 }
 
 #[serde_as]
@@ -356,17 +350,21 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                 let lookup_table = lookup_tables.into_iter().next().unwrap();
 
                 // get the last entry in each column of each table
-                let dummy_lookup_value: Vec<F> = lookup_table
+                let dummy_lookup_entry: Vec<F> = lookup_table
                     .data
                     .iter()
                     .map(|col| col[col.len() - 1])
                     .collect();
                 let dummy_lookup_table_id = lookup_table.id;
+                let dummy_lookup = JointLookup {
+                    entry: dummy_lookup_entry,
+                    table_id: dummy_lookup_table_id,
+                };
 
                 // pre-compute polynomial and evaluation form for the look up tables
                 let mut lookup_table_polys: Vec<DP<F>> = vec![];
                 let mut lookup_table8: Vec<E<F, D<F>>> = vec![];
-                for (mut col, dummy) in lookup_table.data.into_iter().zip(&dummy_lookup_value) {
+                for (mut col, dummy) in lookup_table.data.into_iter().zip(&dummy_lookup.entry) {
                     // pad each column to the size of the domain
                     let padding = (0..(d1_size - col.len())).map(|_| dummy);
                     col.extend(padding);
@@ -377,7 +375,7 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                 }
 
                 let (table_ids, table_ids8) = if lookup_table.id != 0 {
-                    let table_ids = vec![gate::i32_to_field(lookup_table.id); d1_size];
+                    let table_ids = vec![i32_to_field(lookup_table.id); d1_size];
                     let table_ids: DP<F> =
                         E::<F, D<F>>::from_vec_and_domain(table_ids, domain.d1).interpolate();
                     let table_ids8: E<F, D<F>> = table_ids.evaluate_over_domain_by_ref(domain.d8);
@@ -389,15 +387,16 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                 // generate the look up selector polynomials
                 Some(Self {
                     lookup_selectors,
-                    dummy_lookup_value,
-                    dummy_lookup_table_id,
                     lookup_table8,
                     lookup_table: lookup_table_polys,
                     table_ids,
                     table_ids8,
-                    lookup_used,
-                    max_lookups_per_row: lookup_info.max_per_row as usize,
-                    max_joint_size: lookup_info.max_joint_size,
+                    configuration: LookupConfiguration {
+                        lookup_used,
+                        max_lookups_per_row: lookup_info.max_per_row as usize,
+                        max_joint_size: lookup_info.max_joint_size,
+                        dummy_lookup,
+                    },
                 })
             }
         }

@@ -17,7 +17,7 @@ use groupmap::{BWParameters, GroupMap};
 use mina_curves::pasta::vesta::VestaParameters;
 use mina_curves::pasta::{fp::Fp, vesta::Affine};
 use oracle::{
-    poseidon::PlonkSpongeConstantsKimchi,
+    constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use rand::{rngs::StdRng, SeedableRng};
