@@ -422,7 +422,6 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                 let mut lookup_table_polys: Vec<DP<F>> = vec![];
                 let mut lookup_table8: Vec<E<F, D<F>>> = vec![];
                 for col in lookup_table.into_iter() {
-                    // pad each column to the size of the domain
                     let poly = E::<F, D<F>>::from_vec_and_domain(col, domain.d1).interpolate();
                     let eval = poly.evaluate_over_domain_by_ref(domain.d8);
                     lookup_table_polys.push(poly);
