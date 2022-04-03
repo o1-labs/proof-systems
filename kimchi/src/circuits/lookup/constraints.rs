@@ -9,7 +9,7 @@ use crate::{
     error::ProofError,
 };
 use ark_ff::{FftField, One, Zero};
-use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
+use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
@@ -432,7 +432,7 @@ pub struct LookupConfiguration<F: FftField> {
 }
 
 /// Specifies the lookup constraints as expressions.
-pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>) -> Vec<E<F>> {
+pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>) -> Vec<E<F>> {
     // Something important to keep in mind is that the last 2 rows of
     // all columns will have random values in them to maintain zero-knowledge.
     //
@@ -606,8 +606,7 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>
     let aggreg_equation = E::cell(Column::LookupAggreg, Next) * denominator
         - E::cell(Column::LookupAggreg, Curr) * numerator;
 
-    let num_rows = d1.size();
-    let num_lookup_rows = num_rows - ZK_ROWS - 1;
+    let num_lookup_rows = -(ZK_ROWS as i32) - 1;
 
     let mut res = vec![
         // the accumulator except for the last 4 rows

@@ -368,7 +368,7 @@ pub enum Expr<C> {
     VanishesOnLast4Rows,
     /// UnnormalizedLagrangeBasis(i) is
     /// (x^n - 1) / (x - omega^i)
-    UnnormalizedLagrangeBasis(usize),
+    UnnormalizedLagrangeBasis(i32),
     Pow(Box<Expr<C>>, u64),
     Cache(CacheId, Box<Expr<C>>),
 }
@@ -392,7 +392,7 @@ pub enum PolishToken<F> {
     Mul,
     Sub,
     VanishesOnLast4Rows,
-    UnnormalizedLagrangeBasis(usize),
+    UnnormalizedLagrangeBasis(i32),
     Store,
     Load(usize),
 }
@@ -597,7 +597,7 @@ pub fn pows<F: Field>(x: F, n: usize) -> Vec<F> {
 /// = ((omega_8^n)^r - 1) / (omega^q omega_8^r - omega^i)
 fn unnormalized_lagrange_evals<F: FftField>(
     l0_1: F,
-    i: usize,
+    i: u32,
     res_domain: Domain,
     env: &Environment<F>,
 ) -> Evaluations<F, D<F>> {
@@ -645,7 +645,7 @@ fn unnormalized_lagrange_evals<F: FftField>(
     for q in 0..(n as usize) {
         evals[k * q] = F::zero();
     }
-    evals[k * i] = omega_minus_i * l0_1;
+    evals[k * (i as usize)] = omega_minus_i * l0_1;
 
     // Finish computing the non-zero mod k indices
     for q in 0..(n as usize) {
@@ -1287,7 +1287,7 @@ impl<F: FftField> Expr<F> {
 
         let mut cache = HashMap::new();
 
-        let evals = match self.evaluations_helper(&mut cache, d, env) {
+        let evals = match self.evaluations_helper(&mut cache, d, d1_size, env) {
             Either::Left(x) => x,
             Either::Right(id) => cache.get(&id).unwrap().clone(),
         };
@@ -1317,6 +1317,7 @@ impl<F: FftField> Expr<F> {
         &self,
         cache: &'b mut HashMap<CacheId, EvalResult<'a, F>>,
         d: Domain,
+        d1_size: u64,
         env: &Environment<'a, F>,
     ) -> Either<EvalResult<'a, F>, CacheId>
     where
@@ -1325,12 +1326,12 @@ impl<F: FftField> Expr<F> {
         let dom = (d, get_domain(d, env));
 
         let res: EvalResult<'a, F> = match self {
-            Expr::Square(x) => match x.evaluations_helper(cache, d, env) {
+            Expr::Square(x) => match x.evaluations_helper(cache, d, d1_size, env) {
                 Either::Left(x) => x.square(dom),
                 Either::Right(id) => id.get_from(cache).unwrap().square(dom),
             },
             Expr::Double(x) => {
-                let x = x.evaluations_helper(cache, d, env);
+                let x = x.evaluations_helper(cache, d, d1_size, env);
                 let res = match x {
                     Either::Left(x) => {
                         let x = match x {
@@ -1372,7 +1373,7 @@ impl<F: FftField> Expr<F> {
             Expr::Cache(id, e) => match cache.get(id) {
                 Some(_) => return Either::Right(*id),
                 None => {
-                    match e.evaluations_helper(cache, d, env) {
+                    match e.evaluations_helper(cache, d, d1_size, env) {
                         Either::Left(es) => {
                             cache.insert(*id, es);
                         }
@@ -1382,7 +1383,7 @@ impl<F: FftField> Expr<F> {
                 }
             },
             Expr::Pow(x, p) => {
-                let x = x.evaluations_helper(cache, d, env);
+                let x = x.evaluations_helper(cache, d, d1_size, env);
                 match x {
                     Either::Left(x) => x.pow(*p, (d, get_domain(d, env))),
                     Either::Right(id) => {
@@ -1396,10 +1397,19 @@ impl<F: FftField> Expr<F> {
                 evals: env.vanishes_on_last_4_rows,
             },
             Expr::Constant(x) => EvalResult::Constant(*x),
-            Expr::UnnormalizedLagrangeBasis(i) => EvalResult::Evals {
-                domain: d,
-                evals: unnormalized_lagrange_evals(env.l0_1, *i, d, env),
-            },
+            Expr::UnnormalizedLagrangeBasis(i) => {
+                let i = {
+                    if *i >= 0 {
+                        *i as u32
+                    } else {
+                        (d1_size as u32) * (d as u32) - ((-*i) as u32)
+                    }
+                };
+                EvalResult::Evals {
+                    domain: d,
+                    evals: unnormalized_lagrange_evals(env.l0_1, i, d, env),
+                }
+            }
             Expr::Cell(Variable { col, row }) => {
                 let evals: &'a Evaluations<F, D<F>> = {
                     match env.get_column(col) {
@@ -1420,8 +1430,8 @@ impl<F: FftField> Expr<F> {
                     Op2::Add => x.add(y, dom),
                     Op2::Sub => x.sub(y, dom),
                 };
-                let e1 = e1.evaluations_helper(cache, d, env);
-                let e2 = e2.evaluations_helper(cache, d, env);
+                let e1 = e1.evaluations_helper(cache, d, d1_size, env);
+                let e2 = e2.evaluations_helper(cache, d, d1_size, env);
                 use Either::*;
                 match (e1, e2) {
                     (Left(e1), Left(e2)) => f(e1, e2),
