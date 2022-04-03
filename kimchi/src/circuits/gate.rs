@@ -88,8 +88,7 @@ pub enum GateType {
     CairoInstruction = 13,
     CairoFlags = 14,
     CairoTransition = 15,
-    CairoAuxiliary = 16,
-    CairoClaim = 17,
+    CairoClaim = 16,
 }
 
 #[serde_as]
@@ -153,7 +152,7 @@ impl<F: FftField> CircuitGate<F> {
             // TODO: implement the verification for chacha
             ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => Ok(()),
             CairoInitial | CairoMemory | CairoInstruction | CairoFlags | CairoTransition
-            | CairoAuxiliary | CairoClaim => self.verify_cairo_gate(row, witness, cs),
+            | CairoClaim => self.verify_cairo_gate(row, witness, cs),
         }
     }
 }

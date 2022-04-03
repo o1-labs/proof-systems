@@ -413,8 +413,7 @@ where
             index_evals.insert(CairoInstruction, &index.cs.cairo8[2]);
             index_evals.insert(CairoFlags, &index.cs.cairo8[3]);
             index_evals.insert(CairoTransition, &index.cs.cairo8[4]);
-            index_evals.insert(CairoAuxiliary, &index.cs.cairo8[5]);
-            index_evals.insert(CairoClaim, &index.cs.cairo8[6]);
+            index_evals.insert(CairoClaim, &index.cs.cairo8[5]);
 
             Environment {
                 constants: Constants {

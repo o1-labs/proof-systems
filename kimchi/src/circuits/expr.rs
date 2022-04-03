@@ -418,8 +418,7 @@ impl Variable {
             Index(GateType::CairoInstruction) => Ok(evals.cairo_selector[2]),
             Index(GateType::CairoFlags) => Ok(evals.cairo_selector[3]),
             Index(GateType::CairoTransition) => Ok(evals.cairo_selector[4]),
-            Index(GateType::CairoAuxiliary) => Ok(evals.cairo_selector[5]),
-            Index(GateType::CairoClaim) => Ok(evals.cairo_selector[6]),
+            Index(GateType::CairoClaim) => Ok(evals.cairo_selector[5]),
             Coefficient(_) | LookupKindIndex(_) | Index(_) => {
                 Err("Cannot get index evaluation (should have been linearized away)")
             }

@@ -90,6 +90,7 @@ use ark_ff::{FftField, Field, One};
 use array_init::array_init;
 use cairo::runner::ACC_PER_INS;
 use cairo::{
+    flags::NUM_FLAGS,
     runner::{CairoInstruction, CairoProgram, Pointers},
     word::{FlagBits, Offsets},
 };
@@ -97,8 +98,7 @@ use rand::prelude::StdRng;
 use rand::SeedableRng;
 use std::marker::PhantomData;
 
-const NUM_FLAGS: usize = 16;
-pub const CIRCUIT_GATE_COUNT: usize = 7;
+pub const CIRCUIT_GATE_COUNT: usize = 6;
 
 // GATE-RELATED
 
@@ -106,7 +106,6 @@ fn gate_type_to_selector<F: FftField>(typ: GateType) -> [F; CIRCUIT_GATE_COUNT] 
     match typ {
         GateType::CairoInitial => [
             F::one(),
-            F::zero(),
             F::zero(),
             F::zero(),
             F::zero(),
@@ -120,13 +119,11 @@ fn gate_type_to_selector<F: FftField>(typ: GateType) -> [F; CIRCUIT_GATE_COUNT] 
             F::zero(),
             F::zero(),
             F::zero(),
-            F::zero(),
         ],
         GateType::CairoInstruction => [
             F::zero(),
             F::zero(),
             F::one(),
-            F::zero(),
             F::zero(),
             F::zero(),
             F::zero(),
@@ -138,7 +135,6 @@ fn gate_type_to_selector<F: FftField>(typ: GateType) -> [F; CIRCUIT_GATE_COUNT] 
             F::one(),
             F::zero(),
             F::zero(),
-            F::zero(),
         ],
         GateType::CairoTransition => [
             F::zero(),
@@ -147,19 +143,8 @@ fn gate_type_to_selector<F: FftField>(typ: GateType) -> [F; CIRCUIT_GATE_COUNT] 
             F::zero(),
             F::one(),
             F::zero(),
-            F::zero(),
-        ],
-        GateType::CairoAuxiliary => [
-            F::zero(),
-            F::zero(),
-            F::zero(),
-            F::zero(),
-            F::zero(),
-            F::one(),
-            F::zero(),
         ],
         GateType::CairoClaim => [
-            F::zero(),
             F::zero(),
             F::zero(),
             F::zero(),
@@ -190,7 +175,7 @@ pub fn cairo_witness<F: Field>(prog: &CairoProgram<F>) -> [Vec<F>; COLUMNS] {
     // 5i+1: 1 row per instruction for CairoInstruction gate
     // 5i+2: 1 row per instruction for Flags argument
     // 5i+3: 1 row per instruction for CairoTransition gate
-    // 5i+4: 1 row per instruction for Cairo Auxiliary gate
+    // 5i+4: 1 row per instruction for Cairo Zero gate
     // 5i:   1 row per instruction for CairoMemory gate
     // ...
     // 5n-4: 1 row for last instruction
@@ -204,7 +189,7 @@ pub fn cairo_witness<F: Field>(prog: &CairoProgram<F>) -> [Vec<F>; COLUMNS] {
     for (i, inst) in prog.trace().iter().enumerate() {
         let ini_wit = {
             if i == 0 {
-                initial_witness(i, prog)
+                initial_witness(prog)
             } else {
                 memory_witness(i, prog, perm)
             }
@@ -256,17 +241,18 @@ fn partial_perm<F: Field>(
         / ((adr[0] + val[0]) * (adr[1] + val[1]) * (adr[2] + val[2]) * (adr[3] + val[3]))
 }
 
-fn initial_witness<F: Field>(i: usize, prog: &CairoProgram<F>) -> [F; COLUMNS] {
+fn initial_witness<F: Field>(prog: &CairoProgram<F>) -> [F; COLUMNS] {
+    let ini = 0;
     let prev = F::one();
-    let adr = prog.addresses(i);
-    let val = prog.values(i);
-    let perm = partial_perm(F::one(), &prog.trace()[i], &adr, &val);
+    let adr = prog.addresses(ini);
+    let val = prog.values(ini);
+    let perm = partial_perm(F::one(), &prog.trace()[ini], &adr, &val);
     [
-        prev,                    // previous partial permutation ratio
-        perm,                    // current partial permutation ratio
-        prog.trace()[i].instr(), // for copy check of instruction with public input
-        prog.trace()[0].pc(),    // initial pc from public input
-        prog.trace()[0].ap(),    // initial ap from public input
+        prev,                      // previous partial permutation ratio
+        perm,                      // current partial permutation ratio
+        prog.trace()[ini].instr(), // for copy check of instruction with public input
+        prog.ini().pc(),           // initial pc from public input
+        prog.ini().ap(),           // initial ap from public input
         adr[3],
         val[3],
         adr[2],
@@ -453,15 +439,6 @@ impl<F: FftField> CircuitGate<F> {
         }
     }
 
-    /// This function creates a CairoAuxiliary gate
-    pub fn create_cairo_auxiliary(wires: GateWires) -> Self {
-        CircuitGate {
-            typ: GateType::CairoAuxiliary,
-            wires,
-            coeffs: vec![],
-        }
-    }
-
     /// This function creates a CairoClaim gate
     pub fn create_cairo_claim(wires: GateWires) -> Self {
         CircuitGate {
@@ -496,7 +473,7 @@ impl<F: FftField> CircuitGate<F> {
             gates.push(CircuitGate::create_cairo_instruction(ins_gate));
             gates.push(CircuitGate::create_cairo_flags(flg_gate));
             gates.push(CircuitGate::create_cairo_transition(tra_gate));
-            gates.push(CircuitGate::create_cairo_auxiliary(aux_gate));
+            gates.push(CircuitGate::zero(aux_gate));
         }
         // the final instruction
         let mem_gate = Wire::new(row + 5 * (num - 1));
@@ -505,7 +482,7 @@ impl<F: FftField> CircuitGate<F> {
         let fin_gate = Wire::new(row + 5 * (num - 1) + 3);
         gates.push(CircuitGate::create_cairo_memory(mem_gate));
         gates.push(CircuitGate::create_cairo_instruction(ins_gate));
-        gates.push(CircuitGate::create_cairo_auxiliary(aux_gate));
+        gates.push(CircuitGate::zero(aux_gate));
         gates.push(CircuitGate::create_cairo_claim(fin_gate));
 
         gates
@@ -521,7 +498,7 @@ impl<F: FftField> CircuitGate<F> {
         // assignments
         let curr: [F; COLUMNS] = array_init(|i| witness[i][row]);
         let mut next: [F; COLUMNS] = array_init(|_| F::zero());
-        if self.typ != GateType::CairoAuxiliary && self.typ != GateType::CairoClaim {
+        if self.typ != GateType::Zero && self.typ != GateType::CairoClaim {
             next = array_init(|i| witness[i][row + 1]);
         }
 
@@ -537,7 +514,6 @@ impl<F: FftField> CircuitGate<F> {
             h.insert(Column::Index(GateType::CairoInstruction));
             h.insert(Column::Index(GateType::CairoFlags));
             h.insert(Column::Index(GateType::CairoTransition));
-            h.insert(Column::Index(GateType::CairoAuxiliary));
             h.insert(Column::Index(GateType::CairoClaim));
             h
         };
@@ -627,7 +603,7 @@ impl<F: FftField> CircuitGate<F> {
                 let next: [F; COLUMNS] = array_init(|i| witness[i][row + 1]);
                 CircuitGate::ensure_transition(&this, &next)
             }
-            GateType::CairoAuxiliary => Ok(()),
+            GateType::Zero => Ok(()),
             GateType::CairoClaim => CircuitGate::ensure_claim(&this), // CircuitGate::ensure_transition(&this),
             _ => Err(
                 "Incorrect GateType: expected CairoInstruction, CairoTransition, or CairoClaim"
@@ -1027,7 +1003,6 @@ pub fn gate_combined_constraints<F: FftField>(alphas: &Alphas<F>) -> E<F> {
         + Instruction::combined_constraints(alphas)
         + Flags::combined_constraints(alphas)
         + Transition::combined_constraints(alphas)
-        + Auxiliary::combined_constraints(alphas)
         + Claim::combined_constraints(alphas)
 }
 
@@ -1039,7 +1014,7 @@ pub fn circuit_gate_combined_constraints<F: FftField>(typ: GateType, alphas: &Al
         GateType::CairoInstruction => Instruction::combined_constraints(alphas),
         GateType::CairoFlags => Flags::combined_constraints(alphas),
         GateType::CairoTransition => Transition::combined_constraints(alphas),
-        GateType::CairoAuxiliary => Auxiliary::combined_constraints(alphas),
+        GateType::Zero => E::literal(F::zero()),
         GateType::CairoClaim => Claim::combined_constraints(alphas),
         _ => panic!("invalid gate type"),
     }
@@ -1421,24 +1396,6 @@ where
         let constraints: Vec<Expr<ConstantExpr<F>>> =
             vec![next_pc - pcup, next_ap - apup, next_fp - fpup];
 
-        constraints
-    }
-}
-
-pub struct Auxiliary<F>(PhantomData<F>);
-
-impl<F> Argument<F> for Auxiliary<F>
-where
-    F: FftField,
-{
-    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CairoAuxiliary);
-    const CONSTRAINTS: u32 = 1;
-
-    /// Generates the constraints for the Cairo auxiliary gate
-    ///     Accesses Curr row only
-    fn constraints() -> Vec<E<F>> {
-        // dummy constraint
-        let constraints: Vec<Expr<ConstantExpr<F>>> = vec![E::literal(F::zero())];
         constraints
     }
 }

@@ -618,8 +618,7 @@ where
                             CairoInstruction => &index.cairo_comm[2],
                             CairoFlags => &index.cairo_comm[3],
                             CairoTransition => &index.cairo_comm[4],
-                            CairoAuxiliary => &index.cairo_comm[5],
-                            CairoClaim => &index.cairo_comm[6],
+                            CairoClaim => &index.cairo_comm[5],
                         };
                         scalars.push(scalar);
                         commitments.push(c);
