@@ -2,9 +2,8 @@
 
 use crate::circuits::{
     domains::EvaluationDomains,
-    gate::{CircuitGate, GateType, JointLookup, LookupInfo, LookupTable},
+    gate::{CircuitGate, GateType},
     polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
-    polynomials::lookup::LookupConfiguration,
     wires::*,
 };
 use ark_ff::{FftField, SquareRootField, Zero};
@@ -19,6 +18,12 @@ use o1_utils::{field_helpers::i32_to_field, ExtendedEvaluations};
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
+
+use super::lookup::{
+    constraints::LookupConfiguration,
+    lookups::{JointLookup, LookupInfo},
+    tables::LookupTable,
+};
 
 //
 // Constants
@@ -364,6 +369,7 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                 // pre-compute polynomial and evaluation form for the look up tables
                 let mut lookup_table_polys: Vec<DP<F>> = vec![];
                 let mut lookup_table8: Vec<E<F, D<F>>> = vec![];
+
                 for (mut col, dummy) in lookup_table.data.into_iter().zip(&dummy_lookup.entry) {
                     // pad each column to the size of the domain
                     let padding = (0..(d1_size - col.len())).map(|_| dummy);

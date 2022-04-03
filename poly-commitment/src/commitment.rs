@@ -16,11 +16,12 @@ use ark_ff::{
 };
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
-    UVPolynomial,
 };
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use core::ops::{Add, Sub};
 use groupmap::{BWParameters, GroupMap};
+use o1_utils::math;
+use o1_utils::types::fields::*;
 use o1_utils::ExtendedDensePolynomial as _;
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand_core::{CryptoRng, RngCore};
@@ -30,9 +31,6 @@ use serde_with::serde_as;
 use std::iter::Iterator;
 
 use super::evaluation_proof::*;
-
-type Fr<G> = <G as AffineCurve>::ScalarField;
-type Fq<G> = <G as AffineCurve>::BaseField;
 
 /// A polynomial commitment.
 #[serde_as]
@@ -264,22 +262,6 @@ pub fn b_poly_coefficients<F: Field>(chals: &[F]) -> Vec<F> {
     s
 }
 
-// TODO: move to utils
-/// Returns ceil(log2(d)) but panics if d = 0.
-pub fn ceil_log2(d: usize) -> usize {
-    assert!(d != 0);
-    let mut pow2 = 1;
-    let mut ceil_log2 = 0;
-    while d > pow2 {
-        ceil_log2 += 1;
-        pow2 = match pow2.checked_mul(2) {
-            Some(x) => x,
-            None => break,
-        }
-    }
-    ceil_log2
-}
-
 /// `pows(d, x)` returns a vector containing the first `d` powers of the field element `x` (from `1` to `x^(d-1)`).
 pub fn pows<F: Field>(d: usize, x: F) -> Vec<F> {
     let mut acc = F::one();
@@ -397,15 +379,15 @@ pub fn to_group<G: CommitmentCurve>(m: &G::Map, t: <G as AffineCurve>::BaseField
 /// the evaluation for the last segment is potentially shifted to meet the proof.
 #[allow(clippy::type_complexity)]
 pub fn combined_inner_product<G: CommitmentCurve>(
-    evaluation_points: &[Fr<G>],
-    xi: &Fr<G>,
-    r: &Fr<G>,
+    evaluation_points: &[ScalarField<G>],
+    xi: &ScalarField<G>,
+    r: &ScalarField<G>,
     // TODO(mimoo): needs a type that can get you evaluations or segments
-    polys: &[(Vec<Vec<Fr<G>>>, Option<usize>)],
+    polys: &[(Vec<Vec<ScalarField<G>>>, Option<usize>)],
     srs_length: usize,
-) -> Fr<G> {
-    let mut res = Fr::<G>::zero();
-    let mut xi_i = Fr::<G>::one();
+) -> ScalarField<G> {
+    let mut res = ScalarField::<G>::zero();
+    let mut xi_i = ScalarField::<G>::one();
 
     for (evals_tr, shifted) in polys.iter().filter(|(evals_tr, _)| !evals_tr[0].is_empty()) {
         // transpose the evaluations
@@ -415,7 +397,7 @@ pub fn combined_inner_product<G: CommitmentCurve>(
 
         // iterating over the polynomial segments
         for eval in evals.iter() {
-            let term = DensePolynomial::<Fr<G>>::eval_polynomial(eval, *r);
+            let term = DensePolynomial::<ScalarField<G>>::eval_polynomial(eval, *r);
 
             res += &(xi_i * term);
             xi_i *= xi;
@@ -424,7 +406,7 @@ pub fn combined_inner_product<G: CommitmentCurve>(
         if let Some(m) = shifted {
             // xi^i sum_j r^j elm_j^{N - m} f(elm_j)
             let last_evals = if *m > evals.len() * srs_length {
-                vec![Fr::<G>::zero(); evaluation_points.len()]
+                vec![ScalarField::<G>::zero(); evaluation_points.len()]
             } else {
                 evals[evals.len() - 1].clone()
             };
@@ -434,70 +416,11 @@ pub fn combined_inner_product<G: CommitmentCurve>(
                 .map(|(elm, f_elm)| elm.pow(&[(srs_length - (*m) % srs_length) as u64]) * f_elm)
                 .collect();
 
-            res += &(xi_i * DensePolynomial::<Fr<G>>::eval_polynomial(&shifted_evals, *r));
+            res += &(xi_i * DensePolynomial::<ScalarField<G>>::eval_polynomial(&shifted_evals, *r));
             xi_i *= xi;
         }
     }
     res
-}
-
-enum OptShiftedPolynomial<P> {
-    Unshifted(P),
-    Shifted(P, usize),
-}
-
-/// A formal sum of the form
-/// `s_0 * p_0 + ... s_n * p_n`
-/// where each `s_i` is a scalar and each `p_i` is an optionally shifted polynomial.
-pub struct ChunkedPolynomial<F, P>(Vec<(F, OptShiftedPolynomial<P>)>);
-
-impl<F, P> Default for ChunkedPolynomial<F, P> {
-    fn default() -> ChunkedPolynomial<F, P> {
-        ChunkedPolynomial(vec![])
-    }
-}
-
-impl<F, P> ChunkedPolynomial<F, P> {
-    pub fn add_unshifted(&mut self, scale: F, p: P) {
-        self.0.push((scale, OptShiftedPolynomial::Unshifted(p)))
-    }
-
-    pub fn add_shifted(&mut self, scale: F, shift: usize, p: P) {
-        self.0
-            .push((scale, OptShiftedPolynomial::Shifted(p, shift)))
-    }
-}
-
-impl<'a, F: Field> ChunkedPolynomial<F, &'a [F]> {
-    pub fn to_dense_polynomial(&self) -> DensePolynomial<F> {
-        let mut res = DensePolynomial::<F>::zero();
-
-        let scaled: Vec<_> = self
-            .0
-            .par_iter()
-            .map(|(scale, segment)| {
-                let scale = *scale;
-                match segment {
-                    OptShiftedPolynomial::Unshifted(segment) => {
-                        let v = segment.par_iter().map(|x| scale * *x).collect();
-                        DensePolynomial::from_coefficients_vec(v)
-                    }
-                    OptShiftedPolynomial::Shifted(segment, shift) => {
-                        let mut v: Vec<_> = segment.par_iter().map(|x| scale * *x).collect();
-                        let mut res = vec![F::zero(); *shift];
-                        res.append(&mut v);
-                        DensePolynomial::from_coefficients_vec(res)
-                    }
-                }
-            })
-            .collect();
-
-        for p in scaled {
-            res += &p;
-        }
-
-        res
-    }
 }
 
 /// Contains the evaluation of a polynomial commitment at a set of points.
@@ -509,7 +432,7 @@ where
     pub commitment: PolyComm<G>,
 
     /// Contains an evaluation table
-    pub evaluations: Vec<Vec<Fr<G>>>,
+    pub evaluations: Vec<Vec<ScalarField<G>>>,
 
     /// optional degree bound
     pub degree_bound: Option<usize>,
@@ -520,16 +443,16 @@ where
 pub struct BatchEvaluationProof<'a, G, EFqSponge>
 where
     G: AffineCurve,
-    EFqSponge: FqSponge<Fq<G>, G, Fr<G>>,
+    EFqSponge: FqSponge<BaseField<G>, G, ScalarField<G>>,
 {
     pub sponge: EFqSponge,
     pub evaluations: Vec<Evaluation<G>>,
     /// vector of evaluation points
-    pub evaluation_points: Vec<Fr<G>>,
+    pub evaluation_points: Vec<ScalarField<G>>,
     /// scaling factor for evaluation point powers
-    pub xi: Fr<G>,
+    pub xi: ScalarField<G>,
     /// scaling factor for polynomials
-    pub r: Fr<G>,
+    pub r: ScalarField<G>,
     /// batched opening proof
     pub opening: &'a OpeningProof<G>,
 }
@@ -538,10 +461,10 @@ impl<G: CommitmentCurve> SRS<G> {
     /// Commits a polynomial, potentially splitting the result in multiple commitments.
     pub fn commit(
         &self,
-        plnm: &DensePolynomial<Fr<G>>,
+        plnm: &DensePolynomial<ScalarField<G>>,
         max: Option<usize>,
         rng: &mut (impl RngCore + CryptoRng),
-    ) -> (PolyComm<G>, PolyComm<Fr<G>>) {
+    ) -> (PolyComm<G>, PolyComm<ScalarField<G>>) {
         self.mask(self.commit_non_hiding(plnm, max), rng)
     }
 
@@ -550,14 +473,14 @@ impl<G: CommitmentCurve> SRS<G> {
         &self,
         c: PolyComm<G>,
         rng: &mut (impl RngCore + CryptoRng),
-    ) -> (PolyComm<G>, PolyComm<Fr<G>>) {
+    ) -> (PolyComm<G>, PolyComm<ScalarField<G>>) {
         c.map(|g: G| {
             if g.is_zero() {
                 // TODO: This leaks information when g is the identity!
                 // We should change this so that we still mask in this case
-                (g, Fr::<G>::zero())
+                (g, ScalarField::<G>::zero())
             } else {
-                let w = Fr::<G>::rand(rng);
+                let w = ScalarField::<G>::rand(rng);
                 let mut g_masked = self.h.mul(w);
                 g_masked.add_assign_mixed(&g);
                 (g_masked.into_affine(), w)
@@ -574,14 +497,14 @@ impl<G: CommitmentCurve> SRS<G> {
     /// Note that a maximum degree cannot (and doesn't need to) be enforced via a shift if `max` is a multiple of `n`.
     pub fn commit_non_hiding(
         &self,
-        plnm: &DensePolynomial<Fr<G>>,
+        plnm: &DensePolynomial<ScalarField<G>>,
         max: Option<usize>,
     ) -> PolyComm<G> {
         Self::commit_helper(&plnm.coeffs[..], &self.g[..], None, plnm.is_zero(), max)
     }
 
     pub fn commit_helper(
-        scalars: &[Fr<G>],
+        scalars: &[ScalarField<G>],
         basis: &[G],
         n: Option<usize>,
         is_zero: bool,
@@ -640,8 +563,8 @@ impl<G: CommitmentCurve> SRS<G> {
 
     pub fn commit_evaluations_non_hiding(
         &self,
-        domain: D<Fr<G>>,
-        plnm: &Evaluations<Fr<G>, D<Fr<G>>>,
+        domain: D<ScalarField<G>>,
+        plnm: &Evaluations<ScalarField<G>, D<ScalarField<G>>>,
         max: Option<usize>,
     ) -> PolyComm<G> {
         let is_zero = plnm.evals.iter().all(|x| x.is_zero());
@@ -668,11 +591,11 @@ impl<G: CommitmentCurve> SRS<G> {
 
     pub fn commit_evaluations(
         &self,
-        domain: D<Fr<G>>,
-        plnm: &Evaluations<Fr<G>, D<Fr<G>>>,
+        domain: D<ScalarField<G>>,
+        plnm: &Evaluations<ScalarField<G>, D<ScalarField<G>>>,
         max: Option<usize>,
         rng: &mut (impl RngCore + CryptoRng),
-    ) -> (PolyComm<G>, PolyComm<Fr<G>>) {
+    ) -> (PolyComm<G>, PolyComm<ScalarField<G>>) {
         self.mask(self.commit_evaluations_non_hiding(domain, plnm, max), rng)
     }
 
@@ -694,7 +617,7 @@ impl<G: CommitmentCurve> SRS<G> {
         rng: &mut RNG,
     ) -> bool
     where
-        EFqSponge: FqSponge<Fq<G>, G, Fr<G>>,
+        EFqSponge: FqSponge<BaseField<G>, G, ScalarField<G>>,
         RNG: RngCore + CryptoRng,
         G::BaseField: PrimeField,
     {
@@ -720,7 +643,7 @@ impl<G: CommitmentCurve> SRS<G> {
 
         let nonzero_length = self.g.len();
 
-        let max_rounds = ceil_log2(nonzero_length);
+        let max_rounds = math::ceil_log2(nonzero_length);
 
         let padded_length = 1 << max_rounds;
 
@@ -730,15 +653,15 @@ impl<G: CommitmentCurve> SRS<G> {
         points.extend(self.g.clone());
         points.extend(vec![G::zero(); padding]);
 
-        let mut scalars = vec![Fr::<G>::zero(); padded_length + 1];
+        let mut scalars = vec![ScalarField::<G>::zero(); padded_length + 1];
         assert_eq!(scalars.len(), points.len());
 
         // sample randomiser to scale the proofs with
-        let rand_base = Fr::<G>::rand(rng);
-        let sg_rand_base = Fr::<G>::rand(rng);
+        let rand_base = ScalarField::<G>::rand(rng);
+        let sg_rand_base = ScalarField::<G>::rand(rng);
 
-        let mut rand_base_i = Fr::<G>::one();
-        let mut sg_rand_base_i = Fr::<G>::one();
+        let mut rand_base_i = ScalarField::<G>::one();
+        let mut sg_rand_base_i = ScalarField::<G>::one();
 
         for BatchEvaluationProof {
             sponge,
@@ -790,8 +713,8 @@ impl<G: CommitmentCurve> SRS<G> {
             // ==
             // sum_i r^i < s, pows(evaluation_point[i]) >
             let b0 = {
-                let mut scale = Fr::<G>::one();
-                let mut res = Fr::<G>::zero();
+                let mut scale = ScalarField::<G>::one();
+                let mut res = ScalarField::<G>::zero();
                 for &e in evaluation_points.iter() {
                     let term = b_poly(&chal, e);
                     res += &(scale * term);
@@ -853,7 +776,7 @@ impl<G: CommitmentCurve> SRS<G> {
             // == sum_j sum_i r^j xi^i f_i(elm_j)
             // == sum_i xi^i sum_j r^j f_i(elm_j)
             {
-                let mut xi_i = Fr::<G>::one();
+                let mut xi_i = ScalarField::<G>::one();
 
                 for Evaluation {
                     commitment,
@@ -918,29 +841,12 @@ mod tests {
     use super::*;
 
     use crate::srs::SRS;
-    use ark_poly::Polynomial;
+    use ark_poly::{Polynomial, UVPolynomial};
     use array_init::array_init;
     use mina_curves::pasta::{fp::Fp, vesta::Affine as VestaG};
     use oracle::constants::PlonkSpongeConstantsKimchi as SC;
     use oracle::{pasta::fq_kimchi::params as spongeFqParams, sponge::DefaultFqSponge};
     use rand::{rngs::StdRng, SeedableRng};
-
-    #[test]
-    fn test_log2() {
-        let tests = [
-            (1, 0),
-            (2, 1),
-            (3, 2),
-            (9, 4),
-            (15, 4),
-            (15430, 14),
-            (usize::MAX, 64),
-        ];
-        for (d, expected_res) in tests.iter() {
-            let res = ceil_log2(*d);
-            println!("ceil(log2({})) = {}, expected = {}", d, res, expected_res);
-        }
-    }
 
     #[test]
     fn test_lagrange_commitments() {
@@ -1002,8 +908,12 @@ mod tests {
 
         // evaluate the polynomials at these two points
         let poly1_chunked_evals = vec![
-            poly1.eval(elm[0], srs.g.len()),
-            poly1.eval(elm[1], srs.g.len()),
+            poly1
+                .to_chunked_polynomial(srs.g.len())
+                .evaluate_chunks(elm[0]),
+            poly1
+                .to_chunked_polynomial(srs.g.len())
+                .evaluate_chunks(elm[1]),
         ];
 
         fn sum(c: &[Fp]) -> Fp {
@@ -1014,8 +924,12 @@ mod tests {
         assert_eq!(sum(&poly1_chunked_evals[1]), poly1.evaluate(&elm[1]));
 
         let poly2_chunked_evals = vec![
-            poly2.eval(elm[0], srs.g.len()),
-            poly2.eval(elm[1], srs.g.len()),
+            poly2
+                .to_chunked_polynomial(srs.g.len())
+                .evaluate_chunks(elm[0]),
+            poly2
+                .to_chunked_polynomial(srs.g.len())
+                .evaluate_chunks(elm[1]),
         ];
 
         assert_eq!(sum(&poly2_chunked_evals[0]), poly2.evaluate(&elm[0]));

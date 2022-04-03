@@ -33,7 +33,7 @@ use oracle::constants::{PlonkSpongeConstantsKimchi, SpongeConstants};
 use oracle::poseidon::{sbox, ArithmeticSponge, ArithmeticSpongeParams, Sponge};
 use std::marker::PhantomData;
 use std::ops::Range;
-use CurrOrNext::*;
+use CurrOrNext::{Curr, Next};
 
 use crate::circuits::constraints::ConstraintSystem;
 use crate::circuits::polynomial::COLUMNS;
@@ -316,7 +316,6 @@ const ROUND_EQUATIONS: [RoundEquation; ROUNDS_PER_ROW] = [
 ///
 /// The rth position in this array contains the alphas used for the equations that
 /// constrain the values of the (r+1)th state.
-#[derive(Default)]
 pub struct Poseidon<F>(PhantomData<F>);
 
 impl<F> Poseidon<F> where F: Field {}

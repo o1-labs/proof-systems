@@ -1,6 +1,5 @@
 //! Implements a tool to visualize a circuit as an HTML page.
 
-use ark_ec::AffineCurve;
 use ark_ff::PrimeField;
 use commitment_dlog::commitment::CommitmentCurve;
 use kimchi::{
@@ -17,7 +16,8 @@ use kimchi::{
     },
     prover_index::ProverIndex,
 };
-use serde::{de::DeserializeOwned, Serialize};
+use o1_utils::types::fields::*;
+use serde::Serialize;
 use std::{
     collections::HashMap,
     fmt::Display,
@@ -37,8 +37,6 @@ struct Context {
     js: String,
     data: String,
 }
-
-type Fr<G> = <G as AffineCurve>::ScalarField;
 
 /// Allows us to quickly implement a LaTeX encoder for each gate
 trait LaTeX<F>: Argument<F>
@@ -64,23 +62,22 @@ where
     G: CommitmentCurve,
 {
     let mut map = HashMap::new();
-    map.insert("Poseidon", Poseidon::<Fr<G>>::latex());
-    map.insert("CompleteAdd", CompleteAdd::<Fr<G>>::latex());
-    map.insert("VarBaseMul", VarbaseMul::<Fr<G>>::latex());
-    map.insert("EndoMul", EndosclMul::<Fr<G>>::latex());
-    map.insert("EndoMulScalar", EndomulScalar::<Fr<G>>::latex());
-    map.insert("ChaCha0", ChaCha0::<Fr<G>>::latex());
-    map.insert("ChaCha1", ChaCha1::<Fr<G>>::latex());
-    map.insert("ChaCha2", ChaCha2::<Fr<G>>::latex());
-    map.insert("ChaChaFinal", ChaChaFinal::<Fr<G>>::latex());
+    map.insert("Poseidon", Poseidon::<ScalarField<G>>::latex());
+    map.insert("CompleteAdd", CompleteAdd::<ScalarField<G>>::latex());
+    map.insert("VarBaseMul", VarbaseMul::<ScalarField<G>>::latex());
+    map.insert("EndoMul", EndosclMul::<ScalarField<G>>::latex());
+    map.insert("EndoMulScalar", EndomulScalar::<ScalarField<G>>::latex());
+    map.insert("ChaCha0", ChaCha0::<ScalarField<G>>::latex());
+    map.insert("ChaCha1", ChaCha1::<ScalarField<G>>::latex());
+    map.insert("ChaCha2", ChaCha2::<ScalarField<G>>::latex());
+    map.insert("ChaChaFinal", ChaChaFinal::<ScalarField<G>>::latex());
     map
 }
 
 /// Produces a `circuit.html` in the current folder.
-pub fn visu<G>(index: &ProverIndex<G>, witness: Option<Witness<Fr<G>>>)
+pub fn visu<G>(index: &ProverIndex<G>, witness: Option<Witness<ScalarField<G>>>)
 where
     G: CommitmentCurve,
-    ProverIndex<G>: Serialize + DeserializeOwned,
 {
     // serialize index
     let index = serde_json::to_string(index).expect("couldn't serialize index");

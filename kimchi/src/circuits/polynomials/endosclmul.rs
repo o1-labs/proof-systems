@@ -1,33 +1,6 @@
-//! This module implements short Weierstrass curve endomorphism optimised variable base
+//! This module implements short Weierstrass curve
+//! endomorphism optimised variable base
 //! scalar multiplication custom Plonk polynomials.
-//!
-//! EVBSM gate constraints
-//!
-//! <pre>
-//!     b1*(b1-1) = 0
-//!     b2*(b2-1) = 0
-//!     b3*(b3-1) = 0
-//!     b4*(b4-1) = 0
-//!     ((1 + (endo - 1) * b2) * xt - xp) * s1 = (2*b1-1)*yt - yp
-//!     (2*xp – s1^2 + (1 + (endo - 1) * b2) * xt) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2*yp
-//!     (yr + yp)^2 = (xp – xr)^2 * (s1^2 – (1 + (endo - 1) * b2) * xt + xr)
-//!     ((1 + (endo - 1) * b2) * xt - xr) * s3 = (2*b3-1)*yt - yr
-//!     (2*xr – s3^2 + (1 + (endo - 1) * b4) * xt) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2*yr
-//!     (ys + yr)^2 = (xr – xs)^2 * (s3^2 – (1 + (endo - 1) * b4) * xt + xs)
-//!     n_next = 16*n + 8*b1 + 4*b2 + 2*b3 + b4
-//! </pre>
-//!
-//! The constraints above are derived from the following EC Affine arithmetic equations:
-//!
-//! <pre>
-//!     (xq1 - xp) * s1 = yq1 - yp
-//!     (2*xp – s1^2 + xq1) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2*yp
-//!     (yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)
-//!
-//!     (xq2 - xr) * s3 = yq2 - yr
-//!     (2*xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2*yr
-//!     (ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)
-//! </pre>
 
 use std::marker::PhantomData;
 
@@ -35,7 +8,6 @@ use ark_ff::{FftField, Field, One};
 
 use crate::circuits::constraints::ConstraintSystem;
 use crate::circuits::gate::CircuitGate;
-use crate::circuits::scalars::ProofEvaluations;
 use crate::circuits::wires::GateWires;
 use crate::circuits::{
     argument::{Argument, ArgumentType},
@@ -44,32 +16,100 @@ use crate::circuits::{
     gate::GateType,
     wires::COLUMNS,
 };
+use crate::proof::ProofEvaluations;
+
+//~ We implement custom gate constraints for short Weierstrass curve
+//~ endomorphism optimised variable base scalar multiplication.
+//~
+//~ Given a finite field $\mathbb{F}_q$ of order $q$, if the order is not a multiple of 2 nor 3, then an
+//~ elliptic curve over $\mathbb{F}_q$ in short Weierstrass form is represented by the set of points $(x,y)$
+//~ that satisfy the following equation with $a,b\in\mathbb{F}_q$ and $4a^3+27b^2\neq_{\mathbb{F}_q} 0$:
+//~ $$E(\mathbb{F}_q): y^2 = x^3 + a x + b$$
+//~ If $P=(x_p, y_p)$ and $T=(x_t, y_t)$ are two points in the curve E(\mathbb{F}_q), the goal of this
+//~ operation is to perform the operation $2P±T$ efficiently as $(P±T)+P$.
+//~
+//~ `S = (P + (b ? T : −T)) + P`
+//~
+//~ The same algorithm can be used to perform other scalar multiplications, meaning it is
+//~ not restricted to the case $2\cdot P$, but it can be used for any arbitrary $k\cdot P$. This is done
+//~ by decomposing the scalar $k$ into its binary representation.
+//~ Moreover, for every step, there will be a one-bit constraint meant to differentiate between addition and subtraction
+//~ for the operation $(P±T)+P$:
+//~
+//~ In particular, the constraints of this gate take care of 4 bits of the scalar withing a single EVBSM row.
+//~ When the scalar is longer (which will usually be the case), multiple EVBSM rows will be concatenated.
+//~
+//~ |  Row  |  0 |  1 |  2 |  3 |  4 |  5 |  6 |   7 |   8 |   9 |  10 |  11 |  12 |  13 |  14 |  Type |
+//~ |-------|----|----|----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|-------|
+//~ |     i | xT | yT |  Ø |  Ø | xP | yP | n  |  xR |  yR |  s1 | s3  | b1  |  b2 |  b3 |  b4 | EVBSM |
+//~ |   i+1 |  = |  = |    |    | xS | yS | n' | xR' | yR' | s1' | s3' | b1' | b2' | b3' | b4' | EVBSM |
+//~
+//~ The layout of this gate (and the next row) allows for this chained behaviour where the output point
+//~ of the current row $S$ gets accumulated as one of the inputs of the following row, becoming $P$ in
+//~ the next constraints. Similarly, the scalar is decomposed into binary form and $n$ ($n'$ respectively)
+//~ will store the current accumulated value and the next one for the check.
+//~
+//~ For readability, we define the following variables for the constraints:
+//~
+//~   * `endo` $:=$ `EndoCoefficient`
+//~   * `xq1` $:= (1 + ($`endo`$ - 1)\cdot b_1) \cdot x_t$
+//~   * `xq2` $:= (1 + ($`endo`$ - 1)\cdot b_3) \cdot x_t$
+//~   * `yq1` $:= (2\cdot b_2 - 1) \cdot y_t$
+//~   * `yq2` $:= (2\cdot b_4 - 1) \cdot y_t$
+//~
+//~ These are the 11 constraints that correspond to each EVBSM gate,
+//~ which take care of 4 bits of the scalar within a single EVBSM row:
+//~
+//~ * First block:
+//~   * `(xq1 - xp) * s1 = yq1 - yp`
+//~   * `(2 * xp – s1^2 + xq1) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2 * yp`
+//~   * `(yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)`
+//~ * Second block:
+//~   * `(xq2 - xr) * s3 = yq2 - yr`
+//~   * `(2*xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2 * yr`
+//~   * `(ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)`
+//~ * Booleanity checks:
+//~   * Bit flag $b_1$: `0 = b1 * (b1 - 1)`
+//~   * Bit flag $b_2$: `0 = b2 * (b2 - 1)`
+//~   * Bit flag $b_3$: `0 = b3 * (b3 - 1)`
+//~   * Bit flag $b_4$: `0 = b4 * (b4 - 1)`
+//~ * Binary decomposition:
+//~   * Accumulated scalar: `n_next = 16 * n + 8 * b1 + 4 * b2 + 2 * b3 + b4`
+//~
+//~ The constraints above are derived from the following EC Affine arithmetic equations:
+//~
+//~ * (1) => $(x_{q_1} - x_p) \cdot s_1 = y_{q_1} - y_p$
+//~ * (2&3) => $(x_p – x_r) \cdot s_2 = y_r + y_p$
+//~ * (2) => $(2 \cdot x_p + x_{q_1} – s_1^2) \cdot (s_1 + s_2) = 2 \cdot y_p$
+//~     * <=> $(2 \cdot x_p – s_1^2 + x_{q_1}) \cdot ((x_p – x_r) \cdot s_1 + y_r + y_p) = (x_p – x_r) \cdot 2 \cdot y_p$
+//~ * (3) => $s_1^2 - s_2^2 = x_{q_1} - x_r$
+//~     * <=> $(y_r + y_p)^2 = (x_p – x_r)^2 \cdot (s_1^2 – x_{q_1} + x_r)$
+//~ *
+//~ * (4) => $(x_{q_2} - x_r) \cdot s_3 = y_{q_2} - y_r$
+//~ * (5&6) => $(x_r – x_s) \cdot s_4 = y_s + y_r$
+//~ * (5) => $(2 \cdot x_r + x_{q_2} – s_3^2) \cdot (s_3 + s_4) = 2 \cdot y_r$
+//~     * <=> $(2 \cdot x_r – s_3^2 + x_{q_2}) \cdot ((x_r – x_s) \cdot s_3 + y_s + y_r) = (x_r – x_s) \cdot 2 \cdot y_r$
+//~ * (6) => $s_3^2 – s_4^2 = x_{q_2} - x_s$
+//~     * <=> $(y_s + y_r)^2 = (x_r – x_s)^2 \cdot (s_3^2 – x_{q_2} + x_s)$
+//~
+//~ Defining $s_2$ and $s_4$ as
+//~
+//~ * $s_2 := \frac{2 \cdot y_P}{2 * x_P + x_T - s_1^2} - s_1$
+//~ * $s_4 := \frac{2 \cdot y_R}{2 * x_R + x_T - s_3^2} - s_3$
+//~
+//~ Gives the following equations when substituting the values of $s_2$ and $s_4$:
+//~
+//~ 1. `(xq1 - xp) * s1 = (2 * b1 - 1) * yt - yp`
+//~ 2. `(2 * xp – s1^2 + xq1) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2 * yp`
+//~ 3. `(yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)`
+//~ -
+//~ 4. `(xq2 - xr) * s3 = (2 * b2 - 1) * yt - yr`
+//~ 5. `(2 * xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2 * yr`
+//~ 6. `(ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)`
+//~
 
 /// Implementation of group endomorphism optimised
 /// variable base scalar multiplication custom Plonk constraints.
-///
-/// EVBSM gate constraints:
-/// * b1*(b1-1) = 0
-/// * b2*(b2-1) = 0
-/// * b3*(b3-1) = 0
-/// * b4*(b4-1) = 0
-/// * ((1 + (endo - 1) * b2) * xt - xp) * s1 = (2*b1-1)*yt - yp
-/// * (2*xp – s1^2 + (1 + (endo - 1) * b2) * xt) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2*yp
-/// * (yr + yp)^2 = (xp – xr)^2 * (s1^2 – (1 + (endo - 1) * b2) * xt + xr)
-/// * ((1 + (endo - 1) * b2) * xt - xr) * s3 = (2*b3-1)*yt - yr
-/// * (2*xr – s3^2 + (1 + (endo - 1) * b4) * xt) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2*yr
-/// * (ys + yr)^2 = (xr – xs)^2 * (s3^2 – (1 + (endo - 1) * b4) * xt + xs)
-/// * n_next = 16*n + 8*b1 + 4*b2 + 2*b3 + b4
-///
-/// The constraints above are derived from the following EC Affine arithmetic equations:
-///
-/// * (xq1 - xp) * s1 = yq1 - yp
-/// * (2*xp – s1^2 + xq1) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2*yp
-/// * (yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)
-///
-/// * (xq2 - xr) * s3 = yq2 - yr
-/// * (2*xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2*yr
-/// * (ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)
 impl<F: FftField> CircuitGate<F> {
     pub fn create_endomul(wires: GateWires) -> Self {
         CircuitGate {
@@ -131,7 +171,6 @@ impl<F: FftField> CircuitGate<F> {
 }
 
 /// Implementation of the EndosclMul gate.
-#[derive(Default)]
 pub struct EndosclMul<F>(PhantomData<F>);
 
 impl<F> Argument<F> for EndosclMul<F>
@@ -176,10 +215,11 @@ where
 
         // n_next = 16*n + 8*b1 + 4*b2 + 2*b3 + b4
         let n = witness_curr(6);
+        let n_next = witness_next(6);
         let n_constraint =
             (((n.double() + b1.clone()).double() + b2.clone()).double() + b3.clone()).double()
                 + b4.clone()
-                - witness_next(6);
+                - n_next;
 
         let xp_xr = cache.cache(xp.clone() - xr.clone());
         let xr_xs = cache.cache(xr.clone() - xs.clone());

@@ -1,5 +1,5 @@
-use crate::prover::ProverProof;
-use crate::verifier::{batch_verify, verify};
+use crate::proof::ProverProof;
+use crate::verifier::verify;
 use crate::{
     circuits::{
         gate::{CircuitGate, GateType},
