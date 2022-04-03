@@ -119,6 +119,14 @@
 <span id="114">114</span>
 <span id="115">115</span>
 <span id="116">116</span>
+<span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the prover index as [ProverIndex].</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::alphas::Alphas</span>;
@@ -218,13 +226,18 @@
 
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">testing</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::gate::CircuitGate</span>;
+    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{<span class="ident">gate::CircuitGate</span>, <span class="ident">lookup::tables::LookupTable</span>};
     <span class="kw">use</span> <span class="ident">commitment_dlog::srs::endos</span>;
     <span class="kw">use</span> <span class="ident">mina_curves::pasta</span>::{<span class="ident">pallas::Affine</span> <span class="kw">as</span> <span class="ident">Other</span>, <span class="ident">vesta::Affine</span>, <span class="ident">Fp</span>};
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_index_for_test</span>(<span class="ident">gates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">public</span>: <span class="ident">usize</span>) -&gt; <span class="ident">ProverIndex</span><span class="op">&lt;</span><span class="ident">Affine</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_index_for_test_with_lookups</span>(
+        <span class="ident">gates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">public</span>: <span class="ident">usize</span>,
+        <span class="ident">lookup_tables</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">LookupTable</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    ) -&gt; <span class="ident">ProverIndex</span><span class="op">&lt;</span><span class="ident">Affine</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">fp_sponge_params</span> <span class="op">=</span> <span class="ident">oracle::pasta::fp_kimchi::params</span>();
-        <span class="kw">let</span> <span class="ident">cs</span> <span class="op">=</span> <span class="ident">ConstraintSystem</span>::<span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">gates</span>, <span class="macro">vec!</span>[], <span class="ident">fp_sponge_params</span>, <span class="ident">public</span>).<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">cs</span> <span class="op">=</span>
+            <span class="ident">ConstraintSystem</span>::<span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">gates</span>, <span class="ident">lookup_tables</span>, <span class="ident">fp_sponge_params</span>, <span class="ident">public</span>).<span class="ident">unwrap</span>();
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">srs</span> <span class="op">=</span> <span class="ident">SRS</span>::<span class="op">&lt;</span><span class="ident">Affine</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>);
         <span class="ident">srs</span>.<span class="ident">add_lagrange_basis</span>(<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>);
@@ -233,6 +246,9 @@
         <span class="kw">let</span> <span class="ident">fq_sponge_params</span> <span class="op">=</span> <span class="ident">oracle::pasta::fq_kimchi::params</span>();
         <span class="kw">let</span> (<span class="ident">endo_q</span>, <span class="ident">_endo_r</span>) <span class="op">=</span> <span class="ident">endos</span>::<span class="op">&lt;</span><span class="ident">Other</span><span class="op">&gt;</span>();
         <span class="ident">ProverIndex</span>::<span class="op">&lt;</span><span class="ident">Affine</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">cs</span>, <span class="ident">fq_sponge_params</span>, <span class="ident">endo_q</span>, <span class="ident">srs</span>)
+    }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_index_for_test</span>(<span class="ident">gates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">public</span>: <span class="ident">usize</span>) -&gt; <span class="ident">ProverIndex</span><span class="op">&lt;</span><span class="ident">Affine</span><span class="op">&gt;</span> {
+        <span class="ident">new_index_for_test_with_lookups</span>(<span class="ident">gates</span>, <span class="ident">public</span>, <span class="macro">vec!</span>[])
     }
 }
 </code></pre></div>

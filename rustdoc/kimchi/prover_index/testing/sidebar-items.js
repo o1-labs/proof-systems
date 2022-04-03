@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["new_index_for_test",""]]});
+initSidebarItems({"fn":[["new_index_for_test",""],["new_index_for_test_with_lookups",""]]});
