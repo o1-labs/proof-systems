@@ -317,7 +317,8 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
     d1: D<F>,
     gates: &[CircuitGate<F>],
     witness: &[Vec<F>; COLUMNS],
-    joint_combiner: F,
+    joint_combiner: &F,
+    table_id_combiner: &F,
     beta: F,
     gamma: F,
     sorted: &[Evaluations<F, D<F>>],
@@ -383,7 +384,7 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
                 // `max_lookups_per_row (=4) * n` field elements of
                 // memory.
                 spec.iter().fold(padding, |acc, j| {
-                    acc * (gamma + j.evaluate(joint_combiner, &eval))
+                    acc * (gamma + j.evaluate(joint_combiner, table_id_combiner, &eval))
                 })
             };
 
@@ -502,12 +503,17 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>
             let padding_len = lookup_info.max_per_row - spec.len();
             let padding = dummy_padding[padding_len].clone();
 
+            let joint_combiner = E::constant(ConstantExpr::JointCombiner);
+            let table_id_combiner = joint_combiner
+                .clone()
+                .pow(configuration.max_joint_size.into());
+
             // padding * \mul (gamma + combined_witnesses)
             let eval = |pos: LocalPosition| witness(pos.column, pos.row);
             spec.iter()
                 .map(|j| {
                     E::Constant(ConstantExpr::Gamma)
-                        + j.evaluate(E::constant(ConstantExpr::JointCombiner), &eval)
+                        + j.evaluate(&joint_combiner, &table_id_combiner, &eval)
                 })
                 .fold(E::Constant(padding), |acc: E<F>, x| acc * x)
         };
@@ -624,7 +630,8 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
     d1: D<F>,
     gates: &[CircuitGate<F>],
     witness: &[Vec<F>; COLUMNS],
-    joint_combiner: F,
+    joint_combiner: &F,
+    table_id_combiner: &F,
     sorted: &[Evaluations<F, D<F>>],
 ) {
     sorted
@@ -696,7 +703,8 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
             witness[pos.column][row]
         };
         for joint_lookup in spec.iter() {
-            let joint_lookup_evaluation = joint_lookup.evaluate(joint_combiner, &eval);
+            let joint_lookup_evaluation =
+                joint_lookup.evaluate(joint_combiner, table_id_combiner, &eval);
             *all_lookups.entry(joint_lookup_evaluation).or_insert(0) += 1
         }
 
