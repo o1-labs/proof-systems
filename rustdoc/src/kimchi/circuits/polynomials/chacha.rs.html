@@ -636,6 +636,13 @@
 <span id="631">631</span>
 <span id="632">632</span>
 <span id="633">633</span>
+<span id="634">634</span>
+<span id="635">635</span>
+<span id="636">636</span>
+<span id="637">637</span>
+<span id="638">638</span>
+<span id="639">639</span>
+<span id="640">640</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the ChaCha constraints.</span>
 
 <span class="comment">//~ There are four chacha constraint types, corresponding to the four lines in each quarter round.</span>
@@ -784,8 +791,12 @@
     <span class="ident">argument</span>::{<span class="ident">Argument</span>, <span class="ident">ArgumentType</span>},
     <span class="ident">expr</span>::{<span class="ident">constraints::boolean</span>, <span class="ident">prologue</span>::<span class="kw-2">*</span>, <span class="ident">ConstantExpr</span> <span class="kw">as</span> <span class="ident">C</span>},
     <span class="ident">gate</span>::{<span class="ident">CurrOrNext</span>, <span class="ident">GateType</span>},
+    <span class="ident">lookup::tables::LookupTable</span>,
 };
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">Field</span>, <span class="ident">Zero</span>};
+
+<span class="doccomment">/// The table ID associated with the XOR lookup table.</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">XOR_TABLE_ID</span>: <span class="ident">i32</span> <span class="op">=</span> <span class="number">0</span>;
 
 <span class="doccomment">/// The lookup table for 4-bit xor.</span>
 <span class="doccomment">/// Note that it is constructed so that (0, 0, 0) is the last position in the table.</span>
@@ -798,26 +809,29 @@
 <span class="doccomment">/// 0 = 0 + joint_combiner * 0 + joint_combiner^2 * 0</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// will translate into a scalar multiplication by 0, which is free.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">xor_table</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="macro">vec!</span>[]; <span class="number">3</span>];
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">xor_table</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>() -&gt; <span class="ident">LookupTable</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">data</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="macro">vec!</span>[]; <span class="number">3</span>];
 
     <span class="comment">// XOR for all possible four-bit arguments.</span>
     <span class="comment">// I suppose this could be computed a bit faster using symmetry but it&#39;s quite</span>
     <span class="comment">// small (16*16 = 256 entries) so let&#39;s just keep it simple.</span>
     <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0u32</span>..<span class="op">=</span><span class="number">0b1111</span> {
         <span class="kw">for</span> <span class="ident">j</span> <span class="kw">in</span> <span class="number">0u32</span>..<span class="op">=</span><span class="number">0b1111</span> {
-            <span class="ident">res</span>[<span class="number">0</span>].<span class="ident">push</span>(<span class="ident">F::from</span>(<span class="ident">i</span>));
-            <span class="ident">res</span>[<span class="number">1</span>].<span class="ident">push</span>(<span class="ident">F::from</span>(<span class="ident">j</span>));
-            <span class="ident">res</span>[<span class="number">2</span>].<span class="ident">push</span>(<span class="ident">F::from</span>(<span class="ident">i</span> <span class="op">^</span> <span class="ident">j</span>));
+            <span class="ident">data</span>[<span class="number">0</span>].<span class="ident">push</span>(<span class="ident">F::from</span>(<span class="ident">i</span>));
+            <span class="ident">data</span>[<span class="number">1</span>].<span class="ident">push</span>(<span class="ident">F::from</span>(<span class="ident">j</span>));
+            <span class="ident">data</span>[<span class="number">2</span>].<span class="ident">push</span>(<span class="ident">F::from</span>(<span class="ident">i</span> <span class="op">^</span> <span class="ident">j</span>));
         }
     }
 
-    <span class="kw">for</span> <span class="ident">r</span> <span class="kw">in</span> <span class="kw-2">&amp;mut</span> <span class="ident">res</span> {
+    <span class="kw">for</span> <span class="ident">r</span> <span class="kw">in</span> <span class="kw-2">&amp;mut</span> <span class="ident">data</span> {
         <span class="ident">r</span>.<span class="ident">reverse</span>();
         <span class="comment">// Just to be safe.</span>
         <span class="macro">assert!</span>(<span class="ident">r</span>[<span class="ident">r</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>].<span class="ident">is_zero</span>());
     }
-    <span class="ident">res</span>
+    <span class="ident">LookupTable</span> {
+        <span class="ident">id</span>: <span class="ident">XOR_TABLE_ID</span>,
+        <span class="ident">data</span>,
+    }
 }
 
 <span class="comment">//</span>
