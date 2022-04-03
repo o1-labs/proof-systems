@@ -195,7 +195,7 @@ where
 
         let table_id_combiner: ScalarField<G> =
             if let Some(lcs) = index.cs.lookup_constraint_system.as_ref() {
-                if let Some(_) = lcs.table_ids8.as_ref() {
+                if lcs.table_ids8.as_ref().is_some() {
                     joint_combiner.pow([lcs.configuration.max_joint_size as u64])
                 } else {
                     ScalarField::<G>::zero()
