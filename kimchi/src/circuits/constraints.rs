@@ -14,6 +14,7 @@ use ark_poly::{
 };
 use array_init::array_init;
 use blake2::{Blake2b512, Digest};
+use itertools::repeat_n;
 use o1_utils::{field_helpers::i32_to_field, ExtendedEvaluations};
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -380,7 +381,7 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                         non_zero_table_id = true;
                     }
                     let table_id: F = i32_to_field(table.id);
-                    table_ids.extend((0..table_len).map(|_| table_id));
+                    table_ids.extend(repeat_n(table_id, table_len));
 
                     // Update lookup_table values
                     for (i, col) in table.data.iter().enumerate() {
@@ -390,9 +391,9 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                         lookup_table[i].extend(col);
                     }
 
-                    // Fill in any unused columns with 0
+                    // Fill in any unused columns with 0 to match the dummy value
                     for lookup_table in lookup_table.iter_mut().skip(table.data.len()) {
-                        lookup_table.extend((0..table_len).map(|_| F::zero()))
+                        lookup_table.extend(repeat_n(F::zero(), table_len))
                     }
                 }
 
@@ -414,8 +415,8 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                 // Pad up to the end of the table with the dummy value.
                 lookup_table
                     .iter_mut()
-                    .for_each(|col| col.extend((col.len()..max_num_entries).map(|_| F::zero())));
-                table_ids.extend((table_ids.len()..max_num_entries).map(|_| F::zero()));
+                    .for_each(|col| col.extend(repeat_n(F::zero(), max_num_entries - col.len())));
+                table_ids.extend(repeat_n(F::zero(), max_num_entries - table_ids.len()));
 
                 // pre-compute polynomial and evaluation form for the look up tables
                 let mut lookup_table_polys: Vec<DP<F>> = vec![];
