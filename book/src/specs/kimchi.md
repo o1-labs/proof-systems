@@ -143,8 +143,8 @@ $$ \sum_i \alpha^i \cdot \text{constraint}_i $$
 The different ranges of alpha are described as follows:
 
 <!-- generated using `cargo test -p kimchi --lib -- alphas::tests::get_alphas_for_spec --nocapture` -->
-* **gates**. Offset starts at 0 and 21 powers of $\alpha$ are used
-* **Permutation**. Offset starts at 21 and 3 powers of $\alpha$ are used
+* **gates**. Offset starts at 0 and 28 powers of $\alpha$ are used
+* **Permutation**. Offset starts at 28 and 3 powers of $\alpha$ are used
 
 ```admonish
 As gates are mutually exclusive (a single gate is used on each row), we can reuse the same range of powers of alpha across all the gates. 
@@ -1183,7 +1183,7 @@ pub struct VerifierIndex<G: CommitmentCurve> {
 
     // Cairo polynomial commitment
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub cairo_comm: [PolyComm<G>; cairo::CIRCUIT_GATE_COUNT],
+    pub cairo_comm: [PolyComm<G>; crate::circuits::polynomials::turshi::CIRCUIT_GATE_COUNT],
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -1280,7 +1280,7 @@ pub struct LookupEvaluations<Field> {
     pub table: Field,
 }
 
-// TODO: this should really be vectors here, perhaps create another type for chuncked evaluations?
+// TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
 #[derive(Clone)]
 pub struct ProofEvaluations<Field> {
     /// witness polynomials
@@ -1296,6 +1296,8 @@ pub struct ProofEvaluations<Field> {
     pub generic_selector: Field,
     /// evaluation of the poseidon selector polynomial
     pub poseidon_selector: Field,
+    /// evaluation of the cairo selector polynomial
+    pub cairo_selector: [Field; crate::circuits::polynomials::turshi::CIRCUIT_GATE_COUNT],
 }
 
 /// Commitments linked to the lookup feature
