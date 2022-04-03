@@ -1,9 +1,9 @@
-name: Basic rust CI stuff
+name: CI
 
 on:
   push:
     branches:
-      - main
+      - master
   pull_request:
 
 env:
@@ -39,6 +39,10 @@ jobs:
       - name: Run cargo check
         run: cargo check --release
 
+      # https://github.com/o1-labs/proof-systems/issues/398
+      - name: Compile tests
+        run: cargo test --release --no-run
+
       - name: Run cargo check with all features (including ocaml_types)
         run: cargo check --release --all-features
 
@@ -52,10 +56,20 @@ jobs:
       - name: Enforce clean clippy output
         run: cargo clippy -- -D warnings
 
+      - name: Set up cargo-spec for specifications
+        run: |
+          cargo install cargo-spec --version 0.3.0
+
+      - name: Build the kimchi specification
+        run: |          
+          cd book/specifications
+          cd kimchi && make build 
+
+      - name: Build the polynomial commitment specification
+        run: |
+          cd book/specifications
+          cd poly-commitment && make build 
+
       - name: Check that up-to-date specification is checked in
         run: |
-          cargo install cargo-spec --version 0.1.3
-          cd book/specifications
-          cd kimchi && make build && cd ..
-          cd poly-commitment && make build && cd ..
           git diff --exit-code

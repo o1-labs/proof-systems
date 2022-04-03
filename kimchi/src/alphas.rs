@@ -25,6 +25,7 @@ use ark_ff::Field;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
+    fmt::Display,
     iter::{Cloned, Skip, Take},
     ops::Range,
     slice::Iter,
@@ -165,6 +166,33 @@ impl<F: Field> Alphas<F> {
     }
 }
 
+impl<T> Display for Alphas<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for arg in [
+            ArgumentType::Gate(GateType::Zero),
+            ArgumentType::Permutation,
+            //            ArgumentType::Lookup,
+        ] {
+            let name = if matches!(arg, ArgumentType::Gate(_)) {
+                "gates".to_string()
+            } else {
+                format!("{:?}", arg)
+            };
+            let range = self
+                .mapping
+                .get(&arg)
+                .expect("you need to register all arguments before calling display");
+            writeln!(
+                f,
+                "* **{}**. Offset starts at {} and {} powers of $\\alpha$ are used",
+                name, range.0, range.1
+            )?;
+        }
+
+        Ok(())
+    }
+}
+
 // ------------------------------------------
 
 /// Wrapper around an iterator that warns you if not consumed entirely.
@@ -211,6 +239,8 @@ where
 
 #[cfg(test)]
 mod tests {
+    use std::{fs, path::Path};
+
     use super::*;
     use crate::circuits::gate::GateType;
     use mina_curves::pasta::Fp;
@@ -279,5 +309,44 @@ mod tests {
         assert_eq!(alphas.next(), Some(2.into()));
         assert_eq!(alphas.next(), Some(4.into()));
         assert_eq!(alphas.next(), Some(8.into()));
+    }
+
+    // useful for the spec
+
+    use crate::{
+        circuits::{gate::CircuitGate, wires::Wire},
+        linearization::expr_linearization,
+        prover_index::testing::new_index_for_test,
+    };
+
+    #[test]
+    fn get_alphas_for_spec() {
+        let gates = vec![CircuitGate::<Fp>::zero(Wire::new(0)); 2];
+        let index = new_index_for_test(gates, 0);
+        let (_linearization, powers_of_alpha) = expr_linearization(
+            index.cs.domain.d1,
+            index.cs.chacha8.is_some(),
+            index
+                .cs
+                .lookup_constraint_system
+                .as_ref()
+                .map(|lcs| &lcs.configuration),
+        );
+
+        // make sure this is present in the specification
+        let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+        let spec_path = Path::new(&manifest_dir)
+            .join("..")
+            .join("book")
+            .join("specifications")
+            .join("kimchi")
+            .join("template.md");
+
+        let spec = fs::read_to_string(spec_path).unwrap();
+        if !spec.contains(&powers_of_alpha.to_string()) {
+            panic!(
+                "the specification of kimchi must contain the following paragraph:\n\n{powers_of_alpha}\n\n"
+            );
+        }
     }
 }

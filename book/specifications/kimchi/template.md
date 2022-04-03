@@ -3,6 +3,10 @@
 * This document specifies *kimchi*, a zero-knowledge proof system that's a variant of PLONK.
 * This document does not specify how circuits are created or executed, but only how to convert a circuit and its execution into a proof.
 
+Table of content:
+
+<!-- toc -->
+
 ## Overview
 
 There are three main algorithms to kimchi:
@@ -40,10 +44,10 @@ Think of them as intermediary or temporary values needed in the computation when
 |   0   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |
 
 
-**Wiring (or Permutation)**. For gates to take the outputs of other gates as inputs, we use a wiring table to wire registers together. 
+**Wiring (or Permutation, or sigmas)**. For gates to take the outputs of other gates as inputs, we use a wiring table to wire registers together. 
 It is defined at every row, but only for the first $7$ registers. 
 Each cell specifies a `(row, column)` tuple that it should be wired to.  Cells that are not connected to another cell are wired to themselves.
-Note that if three or more registered are wired together, they must form a cycle. 
+Note that if three or more registers are wired together, they must form a cycle. 
 For example, if register `(0, 4)` is wired to both registers `(80, 6)` and `(90, 0)` then you would have the following table:
 
 |  row  |    0    |   1   |   2   |   3   |    4     |   5   |    6     |
@@ -63,20 +67,27 @@ It is a single column that applies on all the rows as well, which the prover com
 
 **Lookup**: TODO
 
-This specification does not document how to create a circuit, we assume that the following gates are created prior to calling the [setup]() function:
+To summarize, the following tables are created and used to describe a circuit:
 
 * gates
 * coefficients
 * wiring (permutation)
 * TODO: lookup
 
-To create a proof, the prover will execute the circuit and record an execution trace using the following tables:
+```admonish
+This specification does not document how to create a circuit.
+```
+
+And to create a proof, the prover will execute the circuit and record an execution trace with the following tables:
 
 * registers
 * wiring (permutation) trace
 * TODO: lookup
 
 ## Dependencies
+
+To specify kimchi, we rely on a number of primitives that are specified outside of this specification.
+In this section we list these specifications, as well as the interfaces we make use of in this specification.
 
 ### Polynomial Commitments
 
@@ -119,7 +130,27 @@ See the [Pasta curves specification](./pasta.md).
 
 ## Constraints
 
-TODO: use expr to define the index columns?
+Kimchi enforces the correct execution of a circuit by creating a number of constraints and combining them together.
+In this section, we describe all the constraints that make up the main polynomial $f$ once combined.
+
+We define the following functions:
+
+* `combine_constraints(range_alpha, constraints)`, which takes a range of contiguous powers of alpha and a number of constraints. 
+It returns the sum of all the constraints, where each constraint has been multiplied by a power of alpha. 
+In other words it returns:
+$$ \sum_i \alpha^i \cdot \text\{constraint}_i $$
+
+The different ranges of alpha are described as follows:
+
+<!-- generated using `cargo test -p kimchi --lib -- alphas::tests::get_alphas_for_spec --nocapture` -->
+* **gates**. Offset starts at 0 and 21 powers of $\alpha$ are used
+* **Permutation**. Offset starts at 21 and 3 powers of $\alpha$ are used
+
+```admonish
+As gates are mutually exclusive (a single gate is used on each row), we can reuse the same range of powers of alpha across all the gates. 
+```
+
+TODO: linearization
 
 ### Permutation
 
@@ -130,6 +161,11 @@ TODO: use expr to define the index columns?
 {sections.lookup}
 
 ### Gates
+
+A circuit is described as a series of gates.
+In this section we describe the different gates currently supported by kimchi, the constraints associated to them, and the way the register table, coefficient table, and permutation can be used in conjunction.
+
+TODO: for each gate describe how to create it?
 
 #### Double Generic Gate
 
@@ -159,40 +195,92 @@ TODO: use expr to define the index columns?
 
 {sections.varbasemul}
 
-## Constraint System Creation
+## Setup
+
+In this section we specify the setup that goes into creating two indexes from a circuit:
+
+* A [*prover index*](#prover-index), necessary for the prover to to create proofs.
+* A [*verifier index*](#verifier-index), necessary for the verifier to verify proofs.
+
+```admonish
+The circuit creation part is not specified in this document. It might be specified in a separate document, or we might want to specify how to create the circuit description tables.
+```
+
+As such, the transformation of a circuit into these two indexes can be seen as a compilation step. Note that the prover still needs access to the original circuit to create proofs, as they need to execute it to create the witness (register table).
+
+### Common Index
+
+In this section we describe data that both the prover and the verifier index share.
+
+**`URS` (Uniform Reference String)** The URS is a set of parameters that is generated once, and shared between the prover and the verifier. 
+It is used for polynomial commitments, so refer to the [poly-commitment specification](./poly-commitment.md) for more details.
+
+```admonish
+Kimchi currently generates the URS based on the circuit, and attach it to the index. So each circuit can potentially be accompanied with a different URS. On the other hand, Mina reuses the same URS for multiple circuits ([see zkapps for more details](https://minaprotocol.com/blog/what-are-zkapps)).
+```
+
+**`Domain`**. A domain large enough to contain the circuit and the zero-knowledge rows (used to provide zero-knowledge to the protocol). Specifically, the smallest subgroup in our field that has order greater or equal to `n + ZK_ROWS`, with `n` is the number of gates in the circuit. 
+TODO: what if the domain is larger than the URS?
+
+**`Shifts`**. As part of the permutation, we need to create `PERMUTS` shifts.
+To do that, the following logic is followed (in pseudo code):
+(TODO: move shift creation within the permutation section?)
+
+```python
+shifts[0] = 1 # first shift is identity
+
+for i in 0..7: # generate 7 shifts
+    i = 7
+    shift, i = sample(domain, i)
+    while shifts.contains(shift) do:
+        shift, i = sample(domain, i)
+    shift[i] = shift
+
+def sample(domain, i):
+    i += 1
+    shift = Field(Blake2b512(to_be_bytes(i)))
+    while is_not_quadratic_non_residue(shift) || domain.contains(shift):
+        i += 1
+        shift = Field(Blake2b512(to_be_bytes(i)))
+    return shift, i
+```
+
+**`Public`**. This variable simply contains the number of public inputs. (TODO: actually, it's not contained in the verifier index)
+
+The compilation steps to create the common index are as follow:
 
 {sections.constraint_system}
 
-## Prover Index
+### Prover Index
+
+Both the prover and the verifier index, besides the common parts described above, are made out of pre-computations which can be used to speed up the protocol.
+These pre-computations are optimizations, in the context of normal proofs, but they are necessary for recursion.
 
 {sections.prover_index}
 
-## Verifier Index
+### Verifier Index
 
-The verifier index is essentially a number of pre-computations containing:
-
-* the (non-hidding) commitments of all the required polynomials
+Same as the prover index, we have a number of pre-computations as part of the verifier index.
 
 {sections.verifier_index}
 
-## Proof Data Structure
+## Proof
 
 Originally, kimchi is based on an interactive protocol that was transformed into a non-interactive one using the [Fiat-Shamir](https://o1-labs.github.io/mina-book/crypto/plonk/fiat_shamir.html) transform.
 For this reason, it can be useful to visualize the high-level interactive protocol before the transformation:
-
 
 ```mermaid
 sequenceDiagram
     participant Prover
     participant Verifier
-    Prover->>Verifier: public & witness commitment
+    Prover->>Verifier: public input & witness commitment
     Verifier->>Prover: beta & gamma
     Prover->>Verifier: permutation commitment
     Verifier->>Prover: alpha
     Prover->>Verifier: quotient commitment
     Verifier->>Prover: zeta
     Note over Verifier: change of verifier (change of sponge)
-    Prover->>Verifier: negated public poly p(zeta) & p(zeta * omega)
+    Prover->>Verifier: negated public input p(zeta) & p(zeta * omega)
     Prover->>Verifier: permutation poly z(zeta) & z(zeta * omega)
     Prover->>Verifier: the generic selector gen(zeta) & gen(zeta * omega)
     Prover->>Verifier: the poseidon selector pos(zeta) & pos(zeta * omega)
@@ -216,7 +304,7 @@ A proof consists of:
   * TODO: lookup
   * TODO: public commitment is not here, but is in the sequence diagram
 * evaluations of these polynomials at two random points $\zeta$ and $\zeta \omega$
-* evaluations at the two random points of these addotional polynomials:
+* evaluations at the two random points of these additional polynomials:
   * the 6 s (sigma)
   * TODO: lookup
   * generic selector
@@ -224,6 +312,10 @@ A proof consists of:
 * evaluation at $\zeta \omega$ of ft
 * optionally, the public input used (the public input could be implied by the surrounding context and not part of the proof itself)
 * optionally, the previous challenges (in case we are in a recursive prover)
+
+From the code:
+
+{sections.proof}
 
 The following sections specify how a prover creates a proof, and how a verifier validates a number of proofs.
 
@@ -234,11 +326,26 @@ To create a proof, the prover expects:
 * A prover index, containing a representation of the circuit (and optionaly pre-computed values to be used in the proof creation).
 * The (filled) registers table, representing parts of the execution trace of the circuit.
 
+```admonish
+The public input is expected to be passed in the first `Public` rows of the registers table.
+```
+
+The following constants are set:
+
+* `EVAL_POINTS = 2`. This is the number of points that the prover has to evaluate their polynomials at. 
+($\zeta$ and $\zeta\omega$ where $\zeta$ will be deterministically generated.)
+* `ZK_ROWS = 3`. This is the number of rows that will be randomized to provide zero-knowledgeness. 
+Note that it only needs to be greater or equal to the number of evaluations (2) in the protocol. 
+Yet, it contains one extra row to take into account the last constraint (final value of the permutation accumulator). 
+(TODO: treat the final constraint separately so that ZK_ROWS = 2)
+
 The prover then follows the following steps to create the proof:
 
 {sections.prover}
 
 ### Proof Verification
+
+We define two helper algorithms below, used in the batch verification of proofs. 
 
 {sections.verifier}
 

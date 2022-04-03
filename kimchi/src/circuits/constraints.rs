@@ -2,7 +2,7 @@
 
 use crate::circuits::{
     domains::EvaluationDomains,
-    gate::{self, CircuitGate, GateType, LookupInfo, LookupTable, LookupsUsed},
+    gate::{CircuitGate, GateType},
     polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
     wires::*,
 };
@@ -14,10 +14,17 @@ use ark_poly::{
 };
 use array_init::array_init;
 use blake2::{Blake2b512, Digest};
-use o1_utils::ExtendedEvaluations;
+use itertools::repeat_n;
+use o1_utils::{field_helpers::i32_to_field, ExtendedEvaluations};
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
+
+use super::lookup::{
+    constraints::LookupConfiguration,
+    lookups::{JointLookup, LookupInfo},
+    tables::LookupTable,
+};
 
 //
 // Constants
@@ -33,9 +40,6 @@ pub const ZK_ROWS: u64 = 3;
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct LookupConstraintSystem<F: FftField> {
     /// Lookup tables
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub dummy_lookup_value: Vec<F>,
-    pub dummy_lookup_table_id: i32,
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub lookup_table: Vec<DP<F>>,
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
@@ -55,13 +59,9 @@ pub struct LookupConstraintSystem<F: FftField> {
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub lookup_selectors: Vec<E<F, D<F>>>,
 
-    /// The kind of lookups used
-    pub lookup_used: LookupsUsed,
-
-    /// The maximum number of lookups per row
-    pub max_lookups_per_row: usize,
-    /// The maximum number of elements in a vector lookup
-    pub max_joint_size: u32,
+    /// Configuration for the lookup constraint.
+    #[serde(bound = "LookupConfiguration<F>: Serialize + DeserializeOwned")]
+    pub configuration: LookupConfiguration<F>,
 }
 
 #[serde_as]
@@ -186,6 +186,8 @@ pub struct ConstraintSystem<F: FftField> {
     #[serde(bound = "LookupConstraintSystem<F>: Serialize + DeserializeOwned")]
     pub lookup_constraint_system: Option<LookupConstraintSystem<F>>,
 }
+
+// TODO: move Shifts, and permutation-related functions to the permutation module
 
 /// Shifts represent the shifts required in the permutation argument of PLONK.
 /// It also caches the shifted powers of omega for optimization purposes.
@@ -362,10 +364,14 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                 // Get the max width of all lookup tables
                 let max_table_width = lookup_tables
                     .iter()
-                    .fold(0, |max_width, LookupTable { data, .. }| {
-                        std::cmp::max(max_width, data.len())
-                    });
+                    .map(|table| table.data.len())
+                    .max()
+                    .unwrap_or(0);
 
+                // The maximum number of entries that can be provided across all tables.
+                // Since we do not assert the lookup constraint on the final `ZK_ROWS` rows, and
+                // because the row before is used to assert that the lookup argument's final
+                // product is 1, we cannot use those rows to store any values.
                 let max_num_entries = d1_size - (ZK_ROWS as usize) - 1;
 
                 let mut lookup_table = vec![Vec::with_capacity(d1_size); max_table_width];
@@ -378,8 +384,8 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                     if table.id != 0 {
                         non_zero_table_id = true;
                     }
-                    let table_id: F = gate::i32_to_field(table.id);
-                    table_ids.extend((0..table_len).map(|_| table_id));
+                    let table_id: F = i32_to_field(table.id);
+                    table_ids.extend(repeat_n(table_id, table_len));
 
                     // Update lookup_table values
                     for (i, col) in table.data.iter().enumerate() {
@@ -389,9 +395,9 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                         lookup_table[i].extend(col);
                     }
 
-                    // Fill in any unused columns with 0
+                    // Fill in any unused columns with 0 to match the dummy value
                     for lookup_table in lookup_table.iter_mut().skip(table.data.len()) {
-                        lookup_table.extend((0..table_len).map(|_| F::zero()))
+                        lookup_table.extend(repeat_n(F::zero(), table_len))
                     }
                 }
 
@@ -405,20 +411,21 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
 
                 // For computational efficiency, we choose the dummy lookup value to be all 0s in
                 // table 0.
-                let dummy_lookup_value: Vec<F> = vec![];
-                let dummy_lookup_table_id = 0;
+                let dummy_lookup = JointLookup {
+                    entry: vec![],
+                    table_id: F::zero(),
+                };
 
                 // Pad up to the end of the table with the dummy value.
                 lookup_table
                     .iter_mut()
-                    .for_each(|col| col.extend((col.len()..max_num_entries).map(|_| F::zero())));
-                table_ids.extend((table_ids.len()..max_num_entries).map(|_| F::zero()));
+                    .for_each(|col| col.extend(repeat_n(F::zero(), max_num_entries - col.len())));
+                table_ids.extend(repeat_n(F::zero(), max_num_entries - table_ids.len()));
 
                 // pre-compute polynomial and evaluation form for the look up tables
                 let mut lookup_table_polys: Vec<DP<F>> = vec![];
                 let mut lookup_table8: Vec<E<F, D<F>>> = vec![];
                 for col in lookup_table.into_iter() {
-                    // pad each column to the size of the domain
                     let poly = E::<F, D<F>>::from_vec_and_domain(col, domain.d1).interpolate();
                     let eval = poly.evaluate_over_domain_by_ref(domain.d8);
                     lookup_table_polys.push(poly);
@@ -438,15 +445,16 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                 // generate the look up selector polynomials
                 Ok(Some(Self {
                     lookup_selectors,
-                    dummy_lookup_value,
-                    dummy_lookup_table_id,
                     lookup_table8,
                     lookup_table: lookup_table_polys,
                     table_ids,
                     table_ids8,
-                    lookup_used,
-                    max_lookups_per_row: lookup_info.max_per_row as usize,
-                    max_joint_size: lookup_info.max_joint_size,
+                    configuration: LookupConfiguration {
+                        lookup_used,
+                        max_lookups_per_row: lookup_info.max_per_row as usize,
+                        max_joint_size: lookup_info.max_joint_size,
+                        dummy_lookup,
+                    },
                 }))
             }
         }
@@ -461,15 +469,17 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         fr_sponge_params: ArithmeticSpongeParams<F>,
         public: usize,
     ) -> Option<Self> {
+        //~ 1. If the circuit is less than 2 gates, abort.
         // for some reason we need more than 1 gate for the circuit to work, see TODO below
         assert!(gates.len() > 1);
 
-        //~ 1. +3 on gates.len() here to ensure that we have room for the zero-knowledge entries of the permutation polynomial
-        //~    see https://minaprotocol.com/blog/a-more-efficient-approach-to-zero-knowledge-for-plonk
+        //~ 2. Create a domain for the circuit. That is,
+        //~    compute the smallest subgroup of the field that
+        //~    has order greater or equal to `n + ZK_ROWS` elements.
         let domain = EvaluationDomains::<F>::create(gates.len() + ZK_ROWS as usize)?;
         assert!(domain.d1.size > ZK_ROWS);
 
-        //~ 2. pad the rows: add zero gates to reach the domain size
+        //~ 3. Pad the circuit: add zero gates to reach the domain size.
         let d1_size = domain.d1.size();
         let mut padding = (gates.len()..d1_size)
             .map(|i| {
@@ -481,15 +491,16 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             .collect();
         gates.append(&mut padding);
 
-        //
-        // Permutation
-        //
-
-        // sample the coordinate shifts
+        //~ 4. sample the `PERMUTS` shifts.
         let shifts = Shifts::new(&domain.d1);
 
-        // pre-compute all the elements
-        let sid = shifts.map[0].clone();
+        // Precomputations
+        // ===============
+        // what follows are pre-computations.
+
+        //
+        // Permutation
+        // -----------
 
         // compute permutation polynomials
         let mut sigmal1: [Vec<F>; PERMUTS] =
@@ -522,20 +533,23 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let zkpm = zk_polynomial(domain.d1);
         let zkpl = zkpm.evaluate_over_domain_by_ref(domain.d8);
 
-        //
         // Gates
+        // -----
         //
+        // Compute each gate's polynomial as
+        // the polynomial that evaluates to 1 at $g^i$
+        // where $i$ is the row where a gate is active.
+        // Note: gates must be mutually exclusive.
 
-        // compute generic constraint polynomials
-
-        // compute poseidon constraint polynomials
+        // poseidon gate
         let psm = E::<F, D<F>>::from_vec_and_domain(
             gates.iter().map(|gate| gate.ps()).collect(),
             domain.d1,
         )
         .interpolate();
+        let ps8 = psm.evaluate_over_domain_by_ref(domain.d8);
 
-        // compute ECC arithmetic constraint polynomials
+        // ECC gates
         let complete_addm = E::<F, D<F>>::from_vec_and_domain(
             gates
                 .iter()
@@ -544,16 +558,22 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             domain.d1,
         )
         .interpolate();
+        let complete_addl4 = complete_addm.evaluate_over_domain_by_ref(domain.d4);
+
         let mulm = E::<F, D<F>>::from_vec_and_domain(
             gates.iter().map(|gate| gate.vbmul()).collect(),
             domain.d1,
         )
         .interpolate();
+        let mull8 = mulm.evaluate_over_domain_by_ref(domain.d8);
+
         let emulm = E::<F, D<F>>::from_vec_and_domain(
             gates.iter().map(|gate| gate.endomul()).collect(),
             domain.d1,
         )
         .interpolate();
+        let emull = emulm.evaluate_over_domain_by_ref(domain.d8);
+
         let endomul_scalarm = E::<F, D<F>>::from_vec_and_domain(
             gates
                 .iter()
@@ -562,9 +582,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             domain.d1,
         )
         .interpolate();
+        let endomul_scalar8 = endomul_scalarm.evaluate_over_domain_by_ref(domain.d8);
 
-        // generic constraint polynomials
-
+        // double generic gate
         let genericm = E::<F, D<F>>::from_vec_and_domain(
             gates
                 .iter()
@@ -581,6 +601,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         .interpolate();
         let generic4 = genericm.evaluate_over_domain_by_ref(domain.d4);
 
+        // chacha gate
         let chacha8 = {
             use GateType::*;
             let has_chacha_gate = gates
@@ -611,6 +632,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             }
         };
 
+        //
+        // Coefficient
+        // -----------
+        //
+
+        // coefficient polynomial
         let coefficientsm: [_; COLUMNS] = array_init(|i| {
             let padded = gates
                 .iter()
@@ -622,15 +649,19 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // TODO: This doesn't need to be degree 8 but that would require some changes in expr
         let coefficients8 = array_init(|i| coefficientsm[i].evaluate_over_domain_by_ref(domain.d8));
 
-        let ps8 = psm.evaluate_over_domain_by_ref(domain.d8);
+        //
+        // Lookup
+        // ------
 
-        // ECC arithmetic constraint polynomials
-        let mull8 = mulm.evaluate_over_domain_by_ref(domain.d8);
-        let emull = emulm.evaluate_over_domain_by_ref(domain.d8);
-        let endomul_scalar8 = endomul_scalarm.evaluate_over_domain_by_ref(domain.d8);
-        let complete_addl4 = complete_addm.evaluate_over_domain_by_ref(domain.d4);
+        let lookup_constraint_system =
+            LookupConstraintSystem::create(&gates, lookup_tables, &domain).ok()?;
 
-        // constant polynomials
+        //
+        // Constant polynomials
+        // --------------------
+
+        let sid = shifts.map[0].clone();
+
         let l1 = DP::from_coefficients_slice(&[F::zero(), F::one()])
             .evaluate_over_domain_by_ref(domain.d8);
         // TODO: These are all unnecessary. Remove
@@ -646,22 +677,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let vanishes_on_last_4_rows =
             vanishes_on_last_4_rows(domain.d1).evaluate_over_domain(domain.d8);
 
-        // endo
+        // TODO: remove endo as a field
         let endo = F::zero();
-
-        //
-        // Lookup
-        //
-
-        let lookup_constraint_system =
-            match LookupConstraintSystem::create(&gates, lookup_tables, &domain) {
-                Ok(res) => res,
-                Err(_) => None?,
-            };
-
-        //
-        // return result
-        //
 
         Some(ConstraintSystem {
             chacha8,
