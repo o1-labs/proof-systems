@@ -26,6 +26,7 @@
 //~
 
 use crate::circuits::argument::{Argument, ArgumentType};
+use crate::circuits::domain_constant_evaluation::DomainConstantEvaluations;
 use crate::circuits::expr::{prologue::*, Cache, ConstantExpr};
 use crate::circuits::gate::{CircuitGate, CurrOrNext, GateType};
 use ark_ff::{FftField, Field};
@@ -137,7 +138,7 @@ impl<F: FftField> CircuitGate<F> {
         row: usize,
         // TODO(mimoo): we should just pass two rows instead of the whole witness
         witness: &[Vec<F>; COLUMNS],
-        cs: &ConstraintSystem<F>,
+        cs: &ConstraintSystem<F, DomainConstantEvaluations<F>>,
     ) -> Result<(), String> {
         ensure_eq!(
             self.typ,

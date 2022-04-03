@@ -1,9 +1,8 @@
 use crate::{
     circuits::{
-        constraints::eval_vanishes_on_last_4_rows,
         domains::EvaluationDomains,
         gate::{CurrOrNext, GateType},
-        wires::COLUMNS,
+        wires::COLUMNS, polynomials::permutation::eval_vanishes_on_last_4_rows,
     },
     proof::ProofEvaluations,
 };
@@ -2210,7 +2209,7 @@ pub mod test {
             },
             witness: &domain_evals.d8.this.w,
             coefficient: &constraint_system.coefficients8,
-            vanishes_on_last_4_rows: &constraint_system.vanishes_on_last_4_rows,
+            vanishes_on_last_4_rows: &constraint_system.precomputations.vanishes_on_last_4_rows,
             z: &domain_evals.d8.this.z,
             l0_1: l0_1(constraint_system.domain.d1),
             domain: constraint_system.domain,

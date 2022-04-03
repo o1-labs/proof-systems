@@ -1,5 +1,6 @@
 //! This module implements Plonk circuit constraint primitive.
 
+use crate::circuits::domain_constant_evaluation::DomainConstantEvaluations;
 use crate::circuits::{
     domains::EvaluationDomains,
     gate::{CircuitGate, GateType},
@@ -7,30 +8,27 @@ use crate::circuits::{
     wires::*,
 };
 use ark_ff::{FftField, SquareRootField, Zero};
-use ark_poly::UVPolynomial;
 use ark_poly::{
     univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
     Radix2EvaluationDomain as D,
 };
 use array_init::array_init;
 use blake2::{Blake2b512, Digest};
+use core::borrow::Borrow;
 use itertools::repeat_n;
 use o1_utils::{field_helpers::i32_to_field, ExtendedEvaluations};
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 
-use super::lookup::{
-    constraints::LookupConfiguration,
-    lookups::{JointLookup, LookupInfo},
-    tables::LookupTable,
+use super::{
+    lookup::{
+        constraints::LookupConfiguration,
+        lookups::{JointLookup, LookupInfo},
+        tables::LookupTable,
+    },
+    polynomials::permutation::ZK_ROWS,
 };
-
-//
-// Constants
-//
-
-pub const ZK_ROWS: u64 = 3;
 
 //
 // ConstraintSystem
@@ -66,7 +64,7 @@ pub struct LookupConstraintSystem<F: FftField> {
 
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct ConstraintSystem<F: FftField> {
+pub struct ConstraintSystem<F: FftField, B: Borrow<DomainConstantEvaluations<F>>> {
     // Basics
     // ------
     /// number of public inputs
@@ -83,9 +81,6 @@ pub struct ConstraintSystem<F: FftField> {
     /// permutation polynomial array
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub sigmam: [DP<F>; PERMUTS],
-    /// zero-knowledge polynomial
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub zkpm: DP<F>,
 
     // Coefficient polynomials. These define constant that gates can use as they like.
     // ---------------------------------------
@@ -146,31 +141,6 @@ pub struct ConstraintSystem<F: FftField> {
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub endomul_scalar8: E<F, D<F>>,
 
-    // Constant polynomials
-    // --------------------
-    /// 1-st Lagrange evaluated over domain.d8
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub l1: E<F, D<F>>,
-    /// 0-th Lagrange evaluated over domain.d4
-    // TODO(mimoo): be consistent with the paper/spec, call it L1 here or call it L0 there
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub l04: E<F, D<F>>,
-    /// 0-th Lagrange evaluated over domain.d8
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub l08: E<F, D<F>>,
-    /// zero evaluated over domain.d8
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub zero4: E<F, D<F>>,
-    /// zero evaluated over domain.d8
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub zero8: E<F, D<F>>,
-    /// zero-knowledge polynomial over domain.d8
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub zkpl: E<F, D<F>>,
-    /// the polynomial that vanishes on the last four rows
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub vanishes_on_last_4_rows: E<F, D<F>>,
-
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub shift: [F; PERMUTS],
@@ -185,6 +155,39 @@ pub struct ConstraintSystem<F: FftField> {
     /// lookup constraint system
     #[serde(bound = "LookupConstraintSystem<F>: Serialize + DeserializeOwned")]
     pub lookup_constraint_system: Option<LookupConstraintSystem<F>>,
+
+    /// precomputes
+    #[serde(skip)]
+    pub precomputations: B,
+}
+
+impl<F: FftField> Default for ConstraintSystem<F, DomainConstantEvaluations<F>> {
+    fn default() -> Self {
+        ConstraintSystem {
+            public: 0,
+            domain: EvaluationDomains::create(0).unwrap(),
+            gates: vec![],
+            sigmam: <[DP<F>; PERMUTS]>::default(),
+            coefficients8: array_init(|_| E::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap())),
+            genericm: DP::default(),
+            psm: DP::default(),
+            generic4: E::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap()),
+            sigmal1: array_init(|_| E::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap())),
+            sigmal8: array_init(|_| E::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap())),
+            sid: vec![],
+            ps8: E::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap()),
+            complete_addl4: E::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap()),
+            mull8: E::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap()),
+            emull: E::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap()),
+            chacha8: None,
+            endomul_scalar8: E::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap()),
+            shift: [F::default(); PERMUTS],
+            endo: F::default(),
+            fr_sponge_params: ArithmeticSpongeParams::default(),
+            lookup_constraint_system: None,
+            precomputations: DomainConstantEvaluations::default(),
+        }
+    }
 }
 
 // TODO: move Shifts, and permutation-related functions to the permutation module
@@ -259,63 +262,6 @@ where
     fn cell_to_field(&self, &Wire { row, col }: &Wire) -> F {
         self.map[col][row]
     }
-}
-
-///
-
-/// Returns the end of the circuit, which is used for introducing zero-knowledge in the permutation polynomial
-pub fn zk_w3<F: FftField>(domain: D<F>) -> F {
-    domain.group_gen.pow(&[domain.size - (ZK_ROWS)])
-}
-
-/// Evaluates the polynomial
-/// (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
-pub fn eval_zk_polynomial<F: FftField>(domain: D<F>, x: F) -> F {
-    let w3 = zk_w3(domain);
-    let w2 = domain.group_gen * w3;
-    let w1 = domain.group_gen * w2;
-    (x - w1) * (x - w2) * (x - w3)
-}
-
-/// Evaluates the polynomial
-/// (x - w^{n - 4}) (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
-pub fn eval_vanishes_on_last_4_rows<F: FftField>(domain: D<F>, x: F) -> F {
-    let w4 = domain.group_gen.pow(&[domain.size - (ZK_ROWS + 1)]);
-    let w3 = domain.group_gen * w4;
-    let w2 = domain.group_gen * w3;
-    let w1 = domain.group_gen * w2;
-    (x - w1) * (x - w2) * (x - w3) * (x - w4)
-}
-
-/// The polynomial
-/// (x - w^{n - 4}) (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
-pub fn vanishes_on_last_4_rows<F: FftField>(domain: D<F>) -> DP<F> {
-    let x = DP::from_coefficients_slice(&[F::zero(), F::one()]);
-    let c = |a: F| DP::from_coefficients_slice(&[a]);
-    let w4 = domain.group_gen.pow(&[domain.size - (ZK_ROWS + 1)]);
-    let w3 = domain.group_gen * w4;
-    let w2 = domain.group_gen * w3;
-    let w1 = domain.group_gen * w2;
-    &(&(&x - &c(w1)) * &(&x - &c(w2))) * &(&(&x - &c(w3)) * &(&x - &c(w4)))
-}
-
-/// Computes the zero-knowledge polynomial for blinding the permutation polynomial: `(x-w^{n-k})(x-w^{n-k-1})...(x-w^n)`.
-/// Currently, we use k = 3 for 2 blinding factors,
-/// see <https://www.plonk.cafe/t/noob-questions-plonk-paper/73>
-pub fn zk_polynomial<F: FftField>(domain: D<F>) -> DP<F> {
-    let w3 = zk_w3(domain);
-    let w2 = domain.group_gen * w3;
-    let w1 = domain.group_gen * w2;
-
-    // (x-w3)(x-w2)(x-w1) =
-    // x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3
-    let w1w2 = w1 * w2;
-    DP::from_coefficients_slice(&[
-        -w1w2 * w3,                   // 1
-        w1w2 + (w1 * w3) + (w3 * w2), // x
-        -w1 - w2 - w3,                // x^2
-        F::one(),                     // x^3
-    ])
 }
 
 /// Represents an error found when verifying a witness with a gate
@@ -461,13 +407,13 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
     }
 }
 
-impl<F: FftField + SquareRootField> ConstraintSystem<F> {
+impl<F: FftField + SquareRootField> ConstraintSystem<F, DomainConstantEvaluations<F>> {
     /// creates a constraint system from a vector of gates ([CircuitGate]), some sponge parameters ([ArithmeticSpongeParams]), and the number of public inputs.
     pub fn create(
         mut gates: Vec<CircuitGate<F>>,
         lookup_tables: Vec<LookupTable<F>>,
         fr_sponge_params: ArithmeticSpongeParams<F>,
-        public: usize,
+        public: usize
     ) -> Option<Self> {
         //~ 1. If the circuit is less than 2 gates, abort.
         // for some reason we need more than 1 gate for the circuit to work, see TODO below
@@ -528,10 +474,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let sigmam: [DP<F>; PERMUTS] = array_init(|i| sigmal1[i].clone().interpolate());
 
         let sigmal8 = array_init(|i| sigmam[i].evaluate_over_domain_by_ref(domain.d8));
-
-        // x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3
-        let zkpm = zk_polynomial(domain.d1);
-        let zkpl = zkpm.evaluate_over_domain_by_ref(domain.d8);
 
         // Gates
         // -----
@@ -656,29 +598,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let lookup_constraint_system =
             LookupConstraintSystem::create(&gates, lookup_tables, &domain).ok()?;
 
-        //
-        // Constant polynomials
-        // --------------------
-
         let sid = shifts.map[0].clone();
-
-        let l1 = DP::from_coefficients_slice(&[F::zero(), F::one()])
-            .evaluate_over_domain_by_ref(domain.d8);
-        // TODO: These are all unnecessary. Remove
-        let l04 =
-            E::<F, D<F>>::from_vec_and_domain(vec![F::one(); domain.d4.size as usize], domain.d4);
-        let l08 =
-            E::<F, D<F>>::from_vec_and_domain(vec![F::one(); domain.d8.size as usize], domain.d8);
-        let zero4 =
-            E::<F, D<F>>::from_vec_and_domain(vec![F::zero(); domain.d4.size as usize], domain.d4);
-        let zero8 =
-            E::<F, D<F>>::from_vec_and_domain(vec![F::zero(); domain.d8.size as usize], domain.d8);
-
-        let vanishes_on_last_4_rows =
-            vanishes_on_last_4_rows(domain.d1).evaluate_over_domain(domain.d8);
 
         // TODO: remove endo as a field
         let endo = F::zero();
+
+        let precomputations = DomainConstantEvaluations::create(domain).unwrap();
 
         Some(ConstraintSystem {
             chacha8,
@@ -697,19 +622,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             complete_addl4,
             mull8,
             emull,
-            l1,
-            l04,
-            l08,
-            zero4,
-            zero8,
-            zkpl,
-            zkpm,
-            vanishes_on_last_4_rows,
             gates,
             shift: shifts.shifts,
             endo,
             fr_sponge_params,
             lookup_constraint_system,
+            precomputations,
         })
     }
 
@@ -813,17 +731,17 @@ pub mod tests {
     use ark_ff::{FftField, SquareRootField};
     use mina_curves::pasta::fp::Fp;
 
-    impl<F: FftField + SquareRootField> ConstraintSystem<F> {
+    impl<F: FftField + SquareRootField> ConstraintSystem<F, DomainConstantEvaluations<F>> {
         pub fn for_testing(
             sponge_params: ArithmeticSpongeParams<F>,
             gates: Vec<CircuitGate<F>>,
         ) -> Self {
             let public = 0;
-            ConstraintSystem::<F>::create(gates, vec![], sponge_params, public).unwrap()
+            ConstraintSystem::<F, DomainConstantEvaluations<F>>::create(gates, vec![], sponge_params, public).unwrap()
         }
     }
 
-    impl ConstraintSystem<Fp> {
+    impl ConstraintSystem<Fp, DomainConstantEvaluations<Fp>> {
         pub fn fp_for_testing(gates: Vec<CircuitGate<Fp>>) -> Self {
             let fp_sponge_params = oracle::pasta::fp_kimchi::params();
             Self::for_testing(fp_sponge_params, gates)

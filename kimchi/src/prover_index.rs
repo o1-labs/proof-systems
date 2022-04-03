@@ -1,6 +1,7 @@
 //! This module implements the prover index as [ProverIndex].
 
 use crate::alphas::Alphas;
+use crate::circuits::domain_constant_evaluation::DomainConstantEvaluations;
 use crate::circuits::{
     constraints::ConstraintSystem,
     expr::{Linearization, PolishToken},
@@ -11,7 +12,7 @@ use ark_ff::PrimeField;
 use commitment_dlog::{commitment::CommitmentCurve, srs::SRS};
 use o1_utils::types::fields::*;
 use oracle::poseidon::ArithmeticSpongeParams;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::sync::Arc;
 
@@ -21,8 +22,9 @@ use std::sync::Arc;
 //~spec:startcode
 pub struct ProverIndex<G: CommitmentCurve> {
     /// constraints system polynomials
-    #[serde(bound = "ConstraintSystem<ScalarField<G>>: Serialize + DeserializeOwned")]
-    pub cs: ConstraintSystem<ScalarField<G>>,
+    // #[serde(bound = "ConstraintSystem<ScalarField<G>>: Serialize + DeserializeOwned")]
+    #[serde(skip)]
+    pub cs: ConstraintSystem<ScalarField<G>, DomainConstantEvaluations<ScalarField<G>>>,
 
     /// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
     #[serde(skip)]
@@ -54,7 +56,7 @@ where
 {
     /// this function compiles the index from constraints
     pub fn create(
-        mut cs: ConstraintSystem<ScalarField<G>>,
+        mut cs: ConstraintSystem<ScalarField<G>, DomainConstantEvaluations<ScalarField<G>>>,
         fq_sponge_params: ArithmeticSpongeParams<BaseField<G>>,
         endo_q: ScalarField<G>,
         srs: Arc<SRS<G>>,
@@ -108,7 +110,7 @@ pub mod testing {
     ) -> ProverIndex<Affine> {
         let fp_sponge_params = oracle::pasta::fp_kimchi::params();
         let cs =
-            ConstraintSystem::<Fp>::create(gates, lookup_tables, fp_sponge_params, public).unwrap();
+            ConstraintSystem::<Fp, DomainConstantEvaluations<Fp>>::create(gates, lookup_tables, fp_sponge_params, public).unwrap();
 
         let mut srs = SRS::<Affine>::create(cs.domain.d1.size as usize);
         srs.add_lagrange_basis(cs.domain.d1);
