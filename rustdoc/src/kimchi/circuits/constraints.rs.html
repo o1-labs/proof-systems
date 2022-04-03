@@ -752,6 +752,15 @@
 <span id="747">747</span>
 <span id="748">748</span>
 <span id="749">749</span>
+<span id="750">750</span>
+<span id="751">751</span>
+<span id="752">752</span>
+<span id="753">753</span>
+<span id="754">754</span>
+<span id="755">755</span>
+<span id="756">756</span>
+<span id="757">757</span>
+<span id="758">758</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk circuit constraint primitive.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
@@ -793,6 +802,13 @@
     <span class="kw">pub</span> <span class="ident">lookup_table</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DP</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">lookup_table8</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+
+    <span class="doccomment">/// Table IDs for the lookup values.</span>
+    <span class="doccomment">/// This may be `None` if all lookups originate from table 0.</span>
+    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">table_ids</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">DP</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">table_ids8</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 
     <span class="doccomment">/// Lookup selectors:</span>
     <span class="doccomment">/// For each kind of lookup-pattern, we have a selector that&#39;s</span>
@@ -1120,6 +1136,8 @@
                     <span class="ident">lookup_selectors</span>,
                     <span class="ident">lookup_table8</span>,
                     <span class="ident">lookup_table</span>: <span class="ident">lookup_table_polys</span>,
+                    <span class="ident">table_ids</span>: <span class="prelude-val">None</span>,
+                    <span class="ident">table_ids8</span>: <span class="prelude-val">None</span>,
                     <span class="ident">configuration</span>: <span class="ident">LookupConfiguration</span> {
                         <span class="ident">lookup_used</span>,
                         <span class="ident">max_lookups_per_row</span>: <span class="ident">lookup_info</span>.<span class="ident">max_per_row</span> <span class="kw">as</span> <span class="ident">usize</span>,
@@ -1502,5 +1520,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (76d770ac2 2022-04-02)" ></div>
 </body></html>

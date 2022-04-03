@@ -253,6 +253,19 @@
 <span id="248">248</span>
 <span id="249">249</span>
 <span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the verifier index as [VerifierIndex].</span>
 <span class="doccomment">//! You can derive this struct from the [ProverIndex] struct.</span>
 
@@ -291,6 +304,14 @@
     <span class="kw">pub</span> <span class="ident">lookup_table</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">bound</span> <span class="op">=</span> <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">lookup_selectors</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+
+    <span class="doccomment">/// Table IDs for the lookup values.</span>
+    <span class="doccomment">/// This may be `None` if all lookups originate from table 0.</span>
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">bound</span> <span class="op">=</span> <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">table_ids</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+
+    <span class="doccomment">/// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.</span>
+    <span class="kw">pub</span> <span class="ident">max_joint_size</span>: <span class="ident">u32</span>,
 }
 
 <span class="attribute">#[<span class="ident">serde_as</span>]</span>
@@ -396,6 +417,11 @@
                         .<span class="ident">iter</span>()
                         .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">srs</span>.<span class="ident">commit_evaluations_non_hiding</span>(<span class="ident">domain</span>, <span class="ident">e</span>, <span class="prelude-val">None</span>))
                         .<span class="ident">collect</span>(),
+                    <span class="ident">table_ids</span>: <span class="ident">cs</span>.<span class="ident">table_ids8</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">table_ids8</span><span class="op">|</span> {
+                        <span class="self">self</span>.<span class="ident">srs</span>
+                            .<span class="ident">commit_evaluations_non_hiding</span>(<span class="ident">domain</span>, <span class="ident">table_ids8</span>, <span class="prelude-val">None</span>)
+                    }),
+                    <span class="ident">max_joint_size</span>: <span class="ident">cs</span>.<span class="ident">configuration</span>.<span class="ident">max_joint_size</span>,
                 })
         };
 
@@ -504,5 +530,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (76d770ac2 2022-04-02)" ></div>
 </body></html>

@@ -811,6 +811,15 @@
 <span id="806">806</span>
 <span id="807">807</span>
 <span id="808">808</span>
+<span id="809">809</span>
+<span id="810">810</span>
+<span id="811">811</span>
+<span id="812">812</span>
+<span id="813">813</span>
+<span id="814">814</span>
+<span id="815">815</span>
+<span id="816">816</span>
+<span id="817">817</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements zk-proof batch verifier functionality.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -1411,6 +1420,15 @@
                                 <span class="ident">scalars</span>.<span class="ident">push</span>(<span class="ident">scalar</span> <span class="op">*</span> <span class="ident">j</span>);
                                 <span class="ident">commitments</span>.<span class="ident">push</span>(<span class="ident">t</span>);
                             }
+                            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">table_ids</span>) <span class="op">=</span> <span class="ident">lindex</span>.<span class="ident">table_ids</span>.<span class="ident">as_ref</span>() {
+                                <span class="ident">scalars</span>.<span class="ident">push</span>(
+                                    <span class="ident">scalar</span>
+                                        <span class="op">*</span> <span class="ident">constants</span>
+                                            .<span class="ident">joint_combiner</span>
+                                            .<span class="ident">pow</span>([<span class="ident">lindex</span>.<span class="ident">max_joint_size</span> <span class="kw">as</span> <span class="ident">u64</span>]),
+                                );
+                                <span class="ident">commitments</span>.<span class="ident">push</span>(<span class="ident">table_ids</span>);
+                            }
                         }
                     },
                     <span class="ident">Index</span>(<span class="ident">t</span>) =&gt; {
@@ -1620,5 +1638,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (76d770ac2 2022-04-02)" ></div>
 </body></html>

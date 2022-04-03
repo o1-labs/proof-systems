@@ -216,7 +216,17 @@
 <span id="211">211</span>
 <span id="212">212</span>
 <span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">Field</span>, <span class="ident">PrimeField</span>};
+<span class="kw">use</span> <span class="ident">std::ops::Neg</span>;
 <span class="kw">use</span> <span class="ident">thiserror::Error</span>;
 
 <span class="comment">// Field helpers error</span>
@@ -301,6 +311,14 @@
             }
             <span class="ident">bits</span>
         })
+    }
+}
+
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">i32_to_field</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">From</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">Neg</span><span class="op">&lt;</span><span class="ident">Output</span> <span class="op">=</span> <span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="ident">i</span>: <span class="ident">i32</span>) -&gt; <span class="ident">F</span> {
+    <span class="kw">if</span> <span class="ident">i</span> <span class="op">&gt;</span><span class="op">=</span> <span class="number">0</span> {
+        <span class="ident">F::from</span>(<span class="ident">i</span> <span class="kw">as</span> <span class="ident">u64</span>)
+    } <span class="kw">else</span> {
+        <span class="op">-</span><span class="ident">F::from</span>(<span class="op">-</span><span class="ident">i</span> <span class="kw">as</span> <span class="ident">u64</span>)
     }
 }
 
@@ -430,5 +448,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="o1_utils" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="o1_utils" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (76d770ac2 2022-04-02)" ></div>
 </body></html>
