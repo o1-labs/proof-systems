@@ -41,11 +41,9 @@
 //~
 
 use crate::{
-    circuits::{
-        constraints::ConstraintSystem, polynomial::WitnessOverDomains, scalars::ProofEvaluations,
-        wires::*,
-    },
-    error::{ProofError, Result},
+    circuits::{constraints::ConstraintSystem, polynomial::WitnessOverDomains, wires::*},
+    error::ProofError,
+    proof::ProofEvaluations,
 };
 use ark_ff::{FftField, SquareRootField, Zero};
 use ark_poly::{
@@ -69,7 +67,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         gamma: F,
         z: &DensePolynomial<F>,
         mut alphas: impl Iterator<Item = F>,
-    ) -> Result<(Evaluations<F, D<F>>, DensePolynomial<F>)> {
+    ) -> Result<(Evaluations<F, D<F>>, DensePolynomial<F>), ProofError> {
         let alpha0 = alphas.next().expect("missing power of alpha");
         let alpha1 = alphas.next().expect("missing power of alpha");
         let alpha2 = alphas.next().expect("missing power of alpha");
@@ -242,7 +240,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         beta: &F,
         gamma: &F,
         rng: &mut (impl RngCore + CryptoRng),
-    ) -> Result<DensePolynomial<F>> {
+    ) -> Result<DensePolynomial<F>, ProofError> {
         let n = self.domain.d1.size as usize;
 
         // only works if first element is 1

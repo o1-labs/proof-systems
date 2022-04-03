@@ -1,9 +1,10 @@
 use crate::{
     circuits::{
-        gate::{CircuitGate, GateType, LookupTable},
+        gate::{CircuitGate, GateType},
+        lookup::tables::LookupTable,
         wires::Wire,
     },
-    prover::ProverProof,
+    proof::ProverProof,
     prover_index::testing::new_index_for_test_with_lookups,
     verifier::batch_verify,
 };
@@ -17,7 +18,7 @@ use mina_curves::pasta::{
     vesta::{Affine, VestaParameters},
 };
 use oracle::{
-    poseidon::PlonkSpongeConstantsKimchi,
+    constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use std::time::Instant;
@@ -100,8 +101,7 @@ fn setup_lookup_proof(use_values_from_table: bool) {
 
     let start = Instant::now();
     let proof =
-        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &index)
-            .unwrap();
+        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &index).unwrap();
     println!("{}{:?}", "Prover time: ".yellow(), start.elapsed());
 
     let start = Instant::now();

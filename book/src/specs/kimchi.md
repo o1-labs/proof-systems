@@ -294,6 +294,126 @@ in order to add zero-knowledge to the protocol.
 ### Lookup
 
 
+Because of our ZK-rows, we can't do the trick in the plookup paper of
+wrapping around to enforce consistency between the sorted lookup columns.
+
+Instead, we arrange the LookupSorted table into columns in a snake-shape.
+
+Like so,
+_   _
+| | | | |
+| | | | |
+|_| |_| |
+
+or, imagining the full sorted array is [ s0, ..., s8 ], like
+
+s0 s4 s4 s8
+s1 s3 s5 s7
+s2 s2 s6 s6
+
+So the direction ("increasing" or "decreasing" (relative to LookupTable)
+is
+if i % 2 = 0 { Increasing } else { Decreasing }
+
+Then, for each i < max_lookups_per_row, if i % 2 = 0, we enforce that the
+last element of LookupSorted(i) = last element of LookupSorted(i + 1),
+and if i % 2 = 1, we enforce that the
+first element of LookupSorted(i) = first element of LookupSorted(i + 1)
+
+Overview of the protocol
+========================
+* We have our initial table `lookup_table`, with our desired values listed.
+* We have the implicit table `lookups(witness)` representing the values looked up in each row
+  of the witness.
+  - This table is initially variable-width, where some rows have no lookups, and others have
+    several.
+  - We explicitly compute this table, and where the width for a particular row is less than the
+    maximum width, we insert a 'dummy' lookup value as many times as we need to to give every
+    row the same number of lookups.
+  - We'll call this padded table `witness_lookups`.
+* We want to generate a `sorted_table` that contains every entry from the concatenated table
+`lookup_table||witness_lookups`, where values are in the same order as `lookup_table`, with all
+duplicates placed next to each other.
+  - There's an edge case around duplicate values in the `lookup_table` itself: these should
+    appear in `sorted_table` at least once each time they appeared in the `lookup_table`.
+  - This ensures that, for any `beta` and for each `i`, the pair `lookup_table[i] + beta *
+    lookup_table[i+1]` corresponds to some distinct `j` such that `sorted_table[j] + beta *
+    sorted_table[j+1]`.
+  - For all other values of `j`, `sorted_table[j] = sorted_table[j+1]`: since we've dealt with
+    all of the 'different' pairs corresponding from moving from one value in `lookup_table` to
+    the next, the only remaining pairs are those corresponding to the duplicates provided by the
+    lookups in `witness_lookups`.
+  - For example, if `lookup_table` is `[0, 1, 2, 3, 4, 5]` and `witness_lookups` is
+    `[0, 0, 0, 2, 2, 4]`, then `sorted_table` is `[0, 0, 0, 0, 1, 2, 2, 2, 3, 4, 4, 5]`, and
+    the differences are
+    `[(0, 0), (0, 0), (0, 0), (0, 1), (1, 2), (2, 2), (2, 2), (2, 3), (3, 4), (4, 4), (4, 5)]`.
+    The entries where the pairs are different are those that match with the `lookup_table`, and
+    the equal pairs can be paired with the `witness_lookups`. This `sorted_table` is computed
+    by the `sorted` function.
+* in order to check the multiset inclusion, we calculate the product over our sorted table:
+  `gamma * (1 + beta) + sorted_table[i] + beta * sorted_table[i+1]`
+  - again, when the adjacent terms `sorted_table[i]` and `sorted_table[i+1]` are equal, this
+    simplifies to `(gamma + sorted_table[i]) * (1 + beta)`
+  - when they are different, there is some `j` such that it equals `gamma * (1 + beta) +
+    lookup_table[i] + beta * lookup_table[i+1]`
+  - using the example above, this becomes
+    ```ignore
+        gamma * (1 + beta) + 0 + beta * 0
+      * gamma * (1 + beta) + 0 + beta * 0
+      * gamma * (1 + beta) + 0 + beta * 0
+      * gamma * (1 + beta) + 0 + beta * 1
+      * gamma * (1 + beta) + 1 + beta * 2
+      * gamma * (1 + beta) + 2 + beta * 2
+      * gamma * (1 + beta) + 2 + beta * 2
+      * gamma * (1 + beta) + 2 + beta * 3
+      * gamma * (1 + beta) + 3 + beta * 4
+      * gamma * (1 + beta) + 4 + beta * 4
+      * gamma * (1 + beta) + 4 + beta * 5
+    ```
+    which we can simplify to
+    ```ignore
+        (gamma + 0) * (1 + beta)
+      * (gamma + 0) * (1 + beta)
+      * (gamma + 0) * (1 + beta)
+      * gamma * (1 + beta) + 0 + beta * 1
+      * gamma * (1 + beta) + 1 + beta * 2
+      * (gamma + 2) * (1 + beta)
+      * (gamma + 2) * (1 + beta)
+      * gamma * (1 + beta) + 2 + beta * 3
+      * gamma * (1 + beta) + 3 + beta * 4
+      * (gamma + 4) * (1 + beta)
+      * gamma * (1 + beta) + 4 + beta * 5
+    ```
+* because we said before that each pair corresponds to either a pair in the `lookup_table` or a
+  duplicate from the `witness_table`, the product over the sorted table should equal the
+  product of `gamma * (1 + beta) + lookup_table[i] + beta * lookup_table[i+1]` multiplied by
+  the product of `(gamma + witness_table[i]) * (1 + beta)`, since each term individually
+  cancels out.
+  - using the example above, the `lookup_table` terms become
+    ```ignore
+        gamma * (1 + beta) + 0 + beta * 1
+      * gamma * (1 + beta) + 1 + beta * 2
+      * gamma * (1 + beta) + 2 + beta * 3
+      * gamma * (1 + beta) + 3 + beta * 4
+      * gamma * (1 + beta) + 4 + beta * 5
+    ```
+    and the `witness_table` terms become
+    ```ignore
+        (gamma + 0) * (1 + beta)
+      * (gamma + 0) * (1 + beta)
+      * (gamma + 0) * (1 + beta)
+      * (gamma + 2) * (1 + beta)
+      * (gamma + 2) * (1 + beta)
+      * (gamma + 4) * (1 + beta)
+    ```
+
+There is some nuance around table lengths; for example, notice that `witness_table` need not be
+the same length as `lookup_table` (and indeed is not in our implementation, due to multiple
+lookups per row), and that `sorted_table` will always be longer than `lookup_table`, which is
+where we require 'snakifying' to check consistency. Happily, we don't have to perform
+snakifying on `witness_table`, because its contribution above only uses a single term rather
+than a pair of terms.
+
 
 ### Gates
 
@@ -415,6 +535,145 @@ where $w_{i, next}$ is the polynomial $w_i(\omega x)$ which points to the next r
 
 #### Chacha 
 
+There are four chacha constraint types, corresponding to the four lines in each quarter round.
+
+```
+a += b; d ^= a; d <<<= 16;
+c += d; b ^= c; b <<<= 12;
+a += b; d ^= a; d <<<= 8;
+c += d; b ^= c; b <<<= 7;
+```
+
+or, written without mutation, (and where `+` is mod $2^32$),
+
+```
+a'  = a + b ; d' = (d ⊕ a') <<< 16;
+c'  = c + d'; b' = (b ⊕ c') <<< 12;
+a'' = a' + b'; d'' = (d' ⊕ a') <<< 8;
+c'' = c' + d''; b'' = (c'' ⊕ b') <<< 7;
+```
+
+We lay each line as two rows.
+
+Each line has the form
+
+```
+x += z; y ^= x; y <<<= k
+```
+
+or without mutation,
+
+```
+x' = x + z; y' = (y ⊕ x') <<< k
+```
+
+which we abbreviate as
+
+L(x, x', y, y', z, k)
+
+In general, such a line will be laid out as the two rows
+
+
+| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
+|---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|
+| x | y | z | (y^x')_0 | (y^x')_1 | (y^x')_2 | (y^x')_3 | (x+z)_0 | (x+z)_1 | (x+z)_2 | (x+z)_3 | y_0 | y_1 | y_2 | y_3 |
+| x' | y' | (x+z)_8 | (y^x')_4 | (y^x')_5 | (y^x')_6 | (y^x')_7 | (x+z)_4 | (x+z)_5 | (x+z)_6 | (x+z)_7 | y_4 | y_5 | y_6 | y_7 |
+
+where A_i indicates the i^th nybble (four-bit chunk) of the value A.
+
+$(x+z)_8$ is special, since we know it is actually at most 1 bit (representing the overflow bit of x + z).
+
+So the first line `L(a, a', d, d', b, 8)` for example becomes the two rows
+
+| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
+|---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|
+| a | d | b | (d^a')_0 | (d^a')_1 | (d^a')_2 | (d^a')_3 | (a+b)_0 | (a+b)_1 | (a+b)_2 | (a+b)_3 | d_0 | d_1 | d_2 | d_3 |
+| a' | d' | (a+b)_8 | (d^a')_4 | (d^a')_5 | (d^a')_6 | (d^a')_7 | (a+b)_4 | (a+b)_5 | (a+b)_6 | (a+b)_7 | d_4 | d_5 | d_6 | d_7 |
+
+along with the equations
+
+* $(a+b)_8^2 = (a+b)_8$ (booleanity check)
+* $a' = \sum_{i = 0}^7 (2^4)^i (a+b)_i$
+* $a + b = 2^{32} (a+b)_8 + a'$
+* $d = \sum_{i = 0}^7 (2^4)^i d_i$
+* $d' = \sum_{i = 0}^7 (2^4)^{(i + 4) \mod 8} (a+b)_i$
+
+The $(i + 4) \mod 8$ rotates the nybbles left by 4, which means bit-rotating by $4 \times 4 = 16$ as desired.
+
+The final line is a bit more complicated as we have to rotate by 7, which is not a multiple of 4.
+We accomplish this as follows.
+
+Let's say we want to rotate the nybbles $A_0, \cdots, A_7$ left by 7.
+First we'll rotate left by 4 to get
+
+$$A_7, A_0, A_1, \cdots, A_6$$
+
+Rename these as
+$$B_0, \cdots, B_7$$
+
+We now want to left-rotate each $B_i$ by 3.
+
+Let $b_i$ be the low bit of $B_i$.
+Then, the low 3 bits of $B_i$ are
+$(B_i - b_i) / 2$.
+
+The result will thus be
+
+* $2^3 b_0 + (B_7 - b_7)/2$
+* $2^3 b_1 + (B_0 - b_0)/2$
+* $2^3 b_2 + (B_1 - b_1)/2$
+* $\cdots$
+* $2^3 b_7 + (B_6 - b_6)/2$
+
+or re-writing in terms of our original nybbles $A_i$,
+
+* $2^3 a_7 + (A_6 - a_6)/2$
+* $2^3 a_0 + (A_7 - a_7)/2$
+* $2^3 a_1 + (A_0 - a_0)/2$
+* $2^3 a_2 + (A_1 - a_1)/2$
+* $2^3 a_3 + (A_2 - a_2)/2$
+* $2^3 a_4 + (A_3 - a_3)/2$
+* $2^3 a_5 + (A_4 - a_4)/2$
+* $2^3 a_6 + (A_5 - a_5)/2$
+
+For neatness, letting $(x, y, z) = (c', b', d'')$, the first 2 rows for the final line will be:
+
+| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
+|---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|
+| x | y | z | (y^x')_0 | (y^x')_1 | (y^x')_2 | (y^x')_3 | (x+z)_0 | (x+z)_1 | (x+z)_2 | (x+z)_3 | y_0 | y_1 | y_2 | y_3 |
+| x' | _ | (x+z)_8 | (y^x')_4 | (y^x')_5 | (y^x')_6 | (y^x')_7 | (x+z)_4 | (x+z)_5 | (x+z)_6 | (x+z)_7 | y_4 | y_5 | y_6 | y_7 |
+
+but then we also need to perform the bit-rotate by 1.
+
+For this we'll add an additional 2 rows. It's probably possible to do it with just 1,
+but I think we'd have to change our plookup setup somehow, or maybe expand the number of columns,
+or allow access to the previous row.
+
+Let $lo(n)$ be the low bit of the nybble n. The 2 rows will be
+
+| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
+|---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|
+| y' | (y^x')_0 | (y^x')_1 | (y^x')_2 | (y^x')_3 | lo((y^x')_0) | lo((y^x')_1) | lo((y^x')_2) | lo((y^x')_3) |
+| _ | (y^x')_4 | (y^x')_5 | (y^x')_6 | (y^x')_7 | lo((y^x')_4) | lo((y^x')_5) | lo((y^x')_6) | lo((y^x')_7) |
+
+On each of them we'll do the plookups
+
+```
+((cols[1] - cols[5])/2, (cols[1] - cols[5])/2, 0) in XOR
+((cols[2] - cols[6])/2, (cols[2] - cols[6])/2, 0) in XOR
+((cols[3] - cols[7])/2, (cols[3] - cols[7])/2, 0) in XOR
+((cols[4] - cols[8])/2, (cols[4] - cols[8])/2, 0) in XOR
+```
+
+which checks that $(y^{x'})_i - lo((y^{x'})_i)$ is a nybble,
+which guarantees that the low bit is computed correctly.
+
+There is no need to check nybbleness of $(y^x')_i$ because those will be constrained to
+be equal to the copies of those values from previous rows, which have already been
+constrained for nybbleness (by the lookup in the XOR table).
+
+And we'll check that y' is the sum of the shifted nybbles.
+
 
 
 #### Elliptic Curve Addition
@@ -472,13 +731,304 @@ constraint 7:
 
 #### Endo Scalar
 
+We give constraints for the endomul scalar computation.
+
+Each row corresponds to 8 iterations of the inner loop in "Algorithm 2" on page 29 of
+[the Halo paper](https://eprint.iacr.org/2019/1021.pdf).
+
+The state of the algorithm that's updated across iterations of the loop is `(a, b)`.
+It's clear from that description of the algorithm that an iteration of the loop can
+be written as
+
+```ignore
+(a, b, i) ->
+  ( 2 * a + c_func(r_{2 * i}, r_{2 * i + 1}),
+    2 * b + d_func(r_{2 * i}, r_{2 * i + 1}) )
+```
+
+for some functions `c_func` and `d_func`. If one works out what these functions are on
+every input (thinking of a two-bit input as a number in $\{0, 1, 2, 3\}$), one finds they
+are given by
+
+`c_func(x)`, defined by
+- `c_func(0) = 0`
+- `c_func(1) = 0`
+- `c_func(2) = -1`
+- `c_func(3) = 1`
+
+`d_func(x)`, defined by
+- `d_func(0) = -1`
+- `d_func(1) = 1`
+- `d_func(2) = 0`
+- `d_func(3) = 0`
+
+One can then interpolate to find polynomials that implement these functions on $\{0, 1, 2, 3\}$.
+
+You can use [`sage`](https://www.sagemath.org/), as
+```ignore
+R = PolynomialRing(QQ, 'x')
+c_func = R.lagrange_polynomial([(0, 0), (1, 0), (2, -1), (3, 1)])
+d_func = R.lagrange_polynomial([(0, -1), (1, 1), (2, 0), (3, 0)])
+```
+
+Then, `c_func` is given by
+
+```ignore
+2/3 * x^3 - 5/2 * x^2 + 11/6 * x
+```
+
+and `d_func` is given by
+```ignore
+2/3 * x^3 - 7/2 * x^2 + 29/6 * x - 1 <=> c_func + (-x^2 + 3x - 1)
+```
+
+We lay it out the witness as
+
+|  0 |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |  9 | 10 | 11 | 12 | 13 | 14 | Type |
+|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|------|
+| n0 | n8 | a0 | b0 | a8 | b8 | x0 | x1 | x2 | x3 | x4 | x5 | x6 | x7 |    | ENDO |
+
+where each `xi` is a two-bit "crumb".
+
+We also use a polynomial to check that each `xi` is indeed in $\{0, 1, 2, 3\}$,
+which can be done by checking that each $x_i$ is a root of the polyunomial below:
+
+```ignore
+crumb(x)
+= x (x - 1) (x - 2) (x - 3)
+= x^4 - 6*x^3 + 11*x^2 - 6*x
+= x *(x^3 - 6*x^2 + 11*x - 6)
+```
+Each iteration performs the following computations
+
+* Update $n$: $\quad n_{i+1} = 2 \cdot n_{i} + x_i$
+* Update $a$: $\quad a_{i+1} = 2 \cdot a_{i} + c_i$
+* Update $b$: $\quad b_{i+1} = 2 \cdot b_{i} + d_i$
+
+Then, after the 8 iterations, we compute expected values of the above operations as:
+
+* `expected_n8 := 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * (2 * n0 + x0) + x1 ) + x2 ) + x3 ) + x4 ) + x5 ) + x6 ) + x7`
+* `expected_a8 := 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * (2 * a0 + c0) + c1 ) + c2 ) + c3 ) + c4 ) + c5 ) + c6 ) + c7`
+* `expected_b8 := 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * (2 * b0 + d0) + d1 ) + d2 ) + d3 ) + d4 ) + d5 ) + d6 ) + d7`
+
+Putting together all of the above, these are the 11 constraints for this gate
+
+* Checking values after the 8 iterations:
+  * Constrain $n$: ` 0 = expected_n8 - n8`
+  * Constrain $a$: ` 0 = expected_a8 - a8`
+  * Constrain $b$: ` 0 = expected_b8 - b8`
+* Checking the crumbs, meaning each $x$ is indeed in the range $\{0, 1, 2, 3\}$:
+  * Constrain $x_0$: `0 = x0 * ( x0^3 - 6 * x0^2 + 11 * x0 - 6 )`
+  * Constrain $x_1$: `0 = x1 * ( x1^3 - 6 * x1^2 + 11 * x1 - 6 )`
+  * Constrain $x_2$: `0 = x2 * ( x2^3 - 6 * x2^2 + 11 * x2 - 6 )`
+  * Constrain $x_3$: `0 = x3 * ( x3^3 - 6 * x3^2 + 11 * x3 - 6 )`
+  * Constrain $x_4$: `0 = x4 * ( x4^3 - 6 * x4^2 + 11 * x4 - 6 )`
+  * Constrain $x_5$: `0 = x5 * ( x5^3 - 6 * x5^2 + 11 * x5 - 6 )`
+  * Constrain $x_6$: `0 = x6 * ( x6^3 - 6 * x6^2 + 11 * x6 - 6 )`
+  * Constrain $x_7$: `0 = x7 * ( x7^3 - 6 * x7^2 + 11 * x7 - 6 )`
+
 
 
 #### Endo Scalar Multiplication
 
+We implement custom gate constraints for short Weierstrass curve
+endomorphism optimised variable base scalar multiplication.
+
+Given a finite field $\mathbb{F}_q$ of order $q$, if the order is not a multiple of 2 nor 3, then an
+elliptic curve over $\mathbb{F}_q$ in short Weierstrass form is represented by the set of points $(x,y)$
+that satisfy the following equation with $a,b\in\mathbb{F}_q$ and $4a^3+27b^2\neq_{\mathbb{F}_q} 0$:
+$$E(\mathbb{F}_q): y^2 = x^3 + a x + b$$
+If $P=(x_p, y_p)$ and $T=(x_t, y_t)$ are two points in the curve E(\mathbb{F}_q), the goal of this
+operation is to perform the operation $2P±T$ efficiently as $(P±T)+P$.
+
+`S = (P + (b ? T : −T)) + P`
+
+The same algorithm can be used to perform other scalar multiplications, meaning it is
+not restricted to the case $2\cdot P$, but it can be used for any arbitrary $k\cdot P$. This is done
+by decomposing the scalar $k$ into its binary representation.
+Moreover, for every step, there will be a one-bit constraint meant to differentiate between addition and subtraction
+for the operation $(P±T)+P$:
+
+In particular, the constraints of this gate take care of 4 bits of the scalar withing a single EVBSM row.
+When the scalar is longer (which will usually be the case), multiple EVBSM rows will be concatenated.
+
+|  Row  |  0 |  1 |  2 |  3 |  4 |  5 |  6 |   7 |   8 |   9 |  10 |  11 |  12 |  13 |  14 |  Type |
+|-------|----|----|----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|-------|
+|     i | xT | yT |  Ø |  Ø | xP | yP | n  |  xR |  yR |  s1 | s3  | b1  |  b2 |  b3 |  b4 | EVBSM |
+|   i+1 |  = |  = |    |    | xS | yS | n' | xR' | yR' | s1' | s3' | b1' | b2' | b3' | b4' | EVBSM |
+
+The layout of this gate (and the next row) allows for this chained behaviour where the output point
+of the current row $S$ gets accumulated as one of the inputs of the following row, becoming $P$ in
+the next constraints. Similarly, the scalar is decomposed into binary form and $n$ ($n'$ respectively)
+will store the current accumulated value and the next one for the check.
+
+For readability, we define the following variables for the constraints:
+
+  * `endo` $:=$ `EndoCoefficient`
+  * `xq1` $:= (1 + ($`endo`$ - 1)\cdot b_1) \cdot x_t$
+  * `xq2` $:= (1 + ($`endo`$ - 1)\cdot b_3) \cdot x_t$
+  * `yq1` $:= (2\cdot b_2 - 1) \cdot y_t$
+  * `yq2` $:= (2\cdot b_4 - 1) \cdot y_t$
+
+These are the 11 constraints that correspond to each EVBSM gate,
+which take care of 4 bits of the scalar within a single EVBSM row:
+
+* First block:
+  * `(xq1 - xp) * s1 = yq1 - yp`
+  * `(2 * xp – s1^2 + xq1) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2 * yp`
+  * `(yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)`
+* Second block:
+  * `(xq2 - xr) * s3 = yq2 - yr`
+  * `(2*xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2 * yr`
+  * `(ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)`
+* Booleanity checks:
+  * Bit flag $b_1$: `0 = b1 * (b1 - 1)`
+  * Bit flag $b_2$: `0 = b2 * (b2 - 1)`
+  * Bit flag $b_3$: `0 = b3 * (b3 - 1)`
+  * Bit flag $b_4$: `0 = b4 * (b4 - 1)`
+* Binary decomposition:
+  * Accumulated scalar: `n_next = 16 * n + 8 * b1 + 4 * b2 + 2 * b3 + b4`
+
+The constraints above are derived from the following EC Affine arithmetic equations:
+
+* (1) => $(x_{q_1} - x_p) \cdot s_1 = y_{q_1} - y_p$
+* (2&3) => $(x_p – x_r) \cdot s_2 = y_r + y_p$
+* (2) => $(2 \cdot x_p + x_{q_1} – s_1^2) \cdot (s_1 + s_2) = 2 \cdot y_p$
+    * <=> $(2 \cdot x_p – s_1^2 + x_{q_1}) \cdot ((x_p – x_r) \cdot s_1 + y_r + y_p) = (x_p – x_r) \cdot 2 \cdot y_p$
+* (3) => $s_1^2 - s_2^2 = x_{q_1} - x_r$
+    * <=> $(y_r + y_p)^2 = (x_p – x_r)^2 \cdot (s_1^2 – x_{q_1} + x_r)$
+*
+* (4) => $(x_{q_2} - x_r) \cdot s_3 = y_{q_2} - y_r$
+* (5&6) => $(x_r – x_s) \cdot s_4 = y_s + y_r$
+* (5) => $(2 \cdot x_r + x_{q_2} – s_3^2) \cdot (s_3 + s_4) = 2 \cdot y_r$
+    * <=> $(2 \cdot x_r – s_3^2 + x_{q_2}) \cdot ((x_r – x_s) \cdot s_3 + y_s + y_r) = (x_r – x_s) \cdot 2 \cdot y_r$
+* (6) => $s_3^2 – s_4^2 = x_{q_2} - x_s$
+    * <=> $(y_s + y_r)^2 = (x_r – x_s)^2 \cdot (s_3^2 – x_{q_2} + x_s)$
+
+Defining $s_2$ and $s_4$ as
+
+* $s_2 := \frac{2 \cdot y_P}{2 * x_P + x_T - s_1^2} - s_1$
+* $s_4 := \frac{2 \cdot y_R}{2 * x_R + x_T - s_3^2} - s_3$
+
+Gives the following equations when substituting the values of $s_2$ and $s_4$:
+
+1. `(xq1 - xp) * s1 = (2 * b1 - 1) * yt - yp`
+2. `(2 * xp – s1^2 + xq1) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2 * yp`
+3. `(yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)`
+-
+4. `(xq2 - xr) * s3 = (2 * b2 - 1) * yt - yr`
+5. `(2 * xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2 * yr`
+6. `(ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)`
+
 
 
 #### Scalar Multiplication 
+
+We implement custom Plonk constraints for short Weierstrass curve variable base scalar multiplication.
+
+Given a finite field $\mathbb{F}_q$ of order $q$, if the order is not a multiple of 2 nor 3, then an
+elliptic curve over $\mathbb{F}_q$ in short Weierstrass form is represented by the set of points $(x,y)$
+that satisfy the following equation with $a,b\in\mathbb{F}_q$ and $4a^3+27b^2\neq_{\mathbb{F}_q} 0$:
+$$E(\mathbb{F}_q): y^2 = x^3 + a x + b$$
+If $P=(x_p, y_p)$ and $Q=(x_q, y_q)$ are two points in the curve $E(\mathbb{F}_q)$, the algorithm we
+represent here computes the operation $2P+Q$ (point doubling and point addition) as $(P+Q)+Q$.
+
+```admonish info
+Point $Q=(x_q, y_q)$ has nothing to do with the order $q$ of the field $\mathbb{F}_q$.
+```
+
+The original algorithm that is being used can be found in the Section 3.1 of <https://arxiv.org/pdf/math/0208038.pdf>,
+which can perform the above operation using 1 multiplication, 2 squarings and 2 divisions (one more squaring)
+if $P=Q$), thanks to the fact that computing the $Y$-coordinate of the intermediate addition is not required.
+This is more efficient to the standard algorithm that requires 1 more multiplication, 3 squarings in total and 2 divisions.
+
+Moreover, this algorithm can be applied not only to the operation $2P+Q$, but any other scalar multiplication $kP$.
+This can be done by expressing the scalar $k$ in biwise form and performing a double-and-add approach.
+Nonetheless, this requires conditionals to differentiate $2P$ from $2P+Q$. For that reason, we will implement
+the following pseudocode from <https://github.com/zcash/zcash/issues/3924> (where instead, they give a variant
+of the above efficient algorithm for Montgomery curves $b\cdot y^2 = x^3 + a \cdot x^2 + x$).
+
+```ignore
+Acc := [2]T
+for i = n-1 ... 0:
+   Q := (r_i == 1) ? T : -T
+   Acc := Acc + (Q + Acc)
+return (d_0 == 0) ? Q - P : Q
+```
+
+
+The layout of the witness requires 2 rows.
+The i-th row will be a `VBSM` gate whereas the next row will be a `ZERO` gate.
+
+|  Row  |  0 |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |  9 | 10 | 11 | 12 | 13 | 14 | Type |
+|-------|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|------|
+|     i | xT | yT | x0 | y0 |  n | n' |    | x1 | y1 | x2 | y2 | x3 | y3 | x4 | y4 | VBSM |
+|   i+1 | x5 | y5 | b0 | b1 | b2 | b3 | b4 | s0 | s1 | s2 | s3 | s4 |    |    |    | ZERO |
+
+The gate constraints take care of 5 bits of the scalar multiplication.
+Each single bit consists of 4 constraints.
+There is one additional constraint imposed on the final number.
+Thus, the `VarBaseMul` gate argument requires 21 constraints.
+
+For every bit, there will be one constraint meant to differentiate between addition and subtraction
+for the operation $(P±T)+P$:
+
+`S = (P + (b ? T : −T)) + P`
+
+We follow this criteria:
+- If the bit is positive, the sign should be a subtraction
+- If the bit is negative, the sign should be an addition
+
+Then, paraphrasing the above, we will represent this behavior as:
+
+`S = (P - (2 * b - 1) * T ) + P`
+
+Let us call `Input` the point with coordinates `(xI, yI)` and
+`Target` is the point being added with coordinates `(xT, yT)`.
+Then `Output` will be the point with coordinates `(xO, yO)` resulting from `O = ( I ± T ) + I`
+
+```admonish info
+Do not confuse our `Output` point `(xO, yO)` with the point at infinity that is normally represented as $\mathcal{O}$.
+```
+
+In each step of the algorithm, we consider the following elliptic curves affine arithmetic equations:
+
+* $s_1 := \frac{y_i - (2\cdot b - 1) \cdot y_t}{x_i - x_t}$
+* $s_2 := \frac{2 \cdot y_i}{2 * x_i + x_t - s_1^2} - s_1$
+* $x_o := x_t + s_2^2 - s_1^2$
+* $y_o := s_2 \cdot (x_i - x_o) - y_i$
+
+For readability, we define the following 3 variables
+in such a way that $s_2$ can be expressed as `u / t`:
+
+  * `rx` $:= s_1^2 - x_i - x_t$
+  * `t` $:= x_i - $ `rx` $ \iff 2 \cdot x_i - s_1^2 + x_t$
+  * `u` $:= 2 \cdot y_i - $ `t` $\cdot s_1 \iff 2 \cdot y_i - s_1 \cdot (2\cdot x_i - s^2_1 + x_t)$
+
+Next, for each bit in the algorithm, we create the following 4 constraints that derive from the above:
+
+* Booleanity check on the bit $b$:
+`0 = b * b - b`
+* Constrain $s_1$:
+`(xI - xT) * s1 = yI – (2b - 1) * yT`
+* Constrain `Output` $X$-coordinate $x_o$ and $s_2$:
+`0 = u^2 - t^2 * (xO - xT + s1^2)`
+* Constrain `Output` $Y$-coordinate $y_o$ and $s_2$:
+`0 = (yO + yI) * t - (xI - xO) * u`
+
+When applied to the 5 bits, the value of the `Target` point `(xT, yT)` is maintained,
+whereas the values for the `Input` and `Output` points form the chain:
+
+`[(x0, y0) -> (x1, y1) -> (x2, y2) -> (x3, y3) -> (x4, y4) -> (x5, y5)]`
+
+Similarly, 5 different `s0..s4` are required, just like the 5 bits `b0..b4`.
+
+Finally, the additional constraint makes sure that the scalar is being correctly expressed
+into its binary form (using the double-and-add decomposition) as:
+$$ n' = 2^5 \cdot n + 2^4 \cdot b_0 + 2^3 \cdot b_1 + 2^2 \cdot b_2 + 2^1 \cdot b_3 + b_4$$
+This equation is translated as the constraint:
+* Binary decomposition:
+`0 = n' - (b4 + 2 * (b3 + 2 * (b2 + 2 * (b1 + 2 * (b0 + 2*n)))))`
 
 
 
@@ -532,7 +1082,7 @@ def sample(domain, i):
     return shift, i
 ```
 
-**`Public`**. This variable simply contains the number of public inputs.
+**`Public`**. This variable simply contains the number of public inputs. (TODO: actually, it's not contained in the verifier index)
 
 The compilation steps to create the common index are as follow:
 
@@ -552,16 +1102,16 @@ These pre-computations are optimizations, in the context of normal proofs, but t
 ```rs
 pub struct ProverIndex<G: CommitmentCurve> {
     /// constraints system polynomials
-    #[serde(bound = "ConstraintSystem<Fr<G>>: Serialize + DeserializeOwned")]
-    pub cs: ConstraintSystem<Fr<G>>,
+    #[serde(bound = "ConstraintSystem<ScalarField<G>>: Serialize + DeserializeOwned")]
+    pub cs: ConstraintSystem<ScalarField<G>>,
 
     /// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
     #[serde(skip)]
-    pub linearization: Linearization<Vec<PolishToken<Fr<G>>>>,
+    pub linearization: Linearization<Vec<PolishToken<ScalarField<G>>>>,
 
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
-    pub powers_of_alpha: Alphas<Fr<G>>,
+    pub powers_of_alpha: Alphas<ScalarField<G>>,
 
     /// polynomial commitment keys
     #[serde(skip)]
@@ -575,12 +1125,12 @@ pub struct ProverIndex<G: CommitmentCurve> {
 
     /// random oracle argument parameters
     #[serde(skip)]
-    pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
+    pub fq_sponge_params: ArithmeticSpongeParams<BaseField<G>>,
 }
 ```
 
 
-## Verifier Index
+### Verifier Index
 
 Same as the prover index, we have a number of pre-computations as part of the verifier index.
 
@@ -588,7 +1138,7 @@ Same as the prover index, we have a number of pre-computations as part of the ve
 pub struct VerifierIndex<G: CommitmentCurve> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub domain: D<Fr<G>>,
+    pub domain: D<ScalarField<G>>,
     /// maximal size of polynomial section
     pub max_poly_size: usize,
     /// maximal size of the quotient polynomial according to the supported constraints
@@ -633,32 +1183,32 @@ pub struct VerifierIndex<G: CommitmentCurve> {
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
-    pub shift: [Fr<G>; PERMUTS],
+    pub shift: [ScalarField<G>; PERMUTS],
     /// zero-knowledge polynomial
     #[serde(skip)]
-    pub zkpm: DensePolynomial<Fr<G>>,
+    pub zkpm: DensePolynomial<ScalarField<G>>,
     // TODO(mimoo): isn't this redundant with domain.d1.group_gen ?
     /// domain offset for zero-knowledge
     #[serde(skip)]
-    pub w: Fr<G>,
+    pub w: ScalarField<G>,
     /// endoscalar coefficient
     #[serde(skip)]
-    pub endo: Fr<G>,
+    pub endo: ScalarField<G>,
 
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub lookup_index: Option<LookupVerifierIndex<G>>,
 
     #[serde(skip)]
-    pub linearization: Linearization<Vec<PolishToken<Fr<G>>>>,
+    pub linearization: Linearization<Vec<PolishToken<ScalarField<G>>>>,
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
-    pub powers_of_alpha: Alphas<Fr<G>>,
+    pub powers_of_alpha: Alphas<ScalarField<G>>,
 
     // random oracle argument parameters
     #[serde(skip)]
-    pub fr_sponge_params: ArithmeticSpongeParams<Fr<G>>,
+    pub fr_sponge_params: ArithmeticSpongeParams<ScalarField<G>>,
     #[serde(skip)]
-    pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
+    pub fq_sponge_params: ArithmeticSpongeParams<BaseField<G>>,
 }
 ```
 
@@ -712,6 +1262,83 @@ A proof consists of:
 * optionally, the public input used (the public input could be implied by the surrounding context and not part of the proof itself)
 * optionally, the previous challenges (in case we are in a recursive prover)
 
+From the code:
+
+```rs
+#[derive(Clone)]
+pub struct LookupEvaluations<Field> {
+    /// sorted lookup table polynomial
+    pub sorted: Vec<Field>,
+    /// lookup aggregation polynomial
+    pub aggreg: Field,
+    // TODO: May be possible to optimize this away?
+    /// lookup table polynomial
+    pub table: Field,
+}
+
+// TODO: this should really be vectors here, perhaps create another type for chuncked evaluations?
+#[derive(Clone)]
+pub struct ProofEvaluations<Field> {
+    /// witness polynomials
+    pub w: [Field; COLUMNS],
+    /// permutation polynomial
+    pub z: Field,
+    /// permutation polynomials
+    /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
+    pub s: [Field; PERMUTS - 1],
+    /// lookup-related evaluations
+    pub lookup: Option<LookupEvaluations<Field>>,
+    /// evaluation of the generic selector polynomial
+    pub generic_selector: Field,
+    /// evaluation of the poseidon selector polynomial
+    pub poseidon_selector: Field,
+}
+
+/// Commitments linked to the lookup feature
+#[derive(Clone)]
+pub struct LookupCommitments<G: AffineCurve> {
+    pub sorted: Vec<PolyComm<G>>,
+    pub aggreg: PolyComm<G>,
+}
+
+/// All the commitments that the prover creates as part of the proof.
+#[derive(Clone)]
+pub struct ProverCommitments<G: AffineCurve> {
+    /// The commitments to the witness (execution trace)
+    pub w_comm: [PolyComm<G>; COLUMNS],
+    /// The commitment to the permutation polynomial
+    pub z_comm: PolyComm<G>,
+    /// The commitment to the quotient polynomial
+    pub t_comm: PolyComm<G>,
+    /// Commitments related to the lookup argument
+    pub lookup: Option<LookupCommitments<G>>,
+}
+
+/// The proof that the prover creates from a [ProverIndex] and a `witness`.
+#[derive(Clone)]
+pub struct ProverProof<G: AffineCurve> {
+    /// All the polynomial commitments required in the proof
+    pub commitments: ProverCommitments<G>,
+
+    /// batched commitment opening proof
+    pub proof: OpeningProof<G>,
+
+    /// Two evaluations over a number of committed polynomials
+    // TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }
+    pub evals: [ProofEvaluations<Vec<ScalarField<G>>>; 2],
+
+    /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
+    pub ft_eval1: ScalarField<G>,
+
+    /// The public input
+    pub public: Vec<ScalarField<G>>,
+
+    /// The challenges underlying the optional polynomials folded into the proof
+    pub prev_challenges: Vec<(Vec<ScalarField<G>>, PolyComm<G>)>,
+}
+```
+
+
 The following sections specify how a prover creates a proof, and how a verifier validates a number of proofs.
 
 ### Proof Creation
@@ -747,8 +1374,11 @@ The prover then follows the following steps to create the proof:
 4. Compute the negated public input polynomial as
    the polynomial that evaluates to $-p_i$ for the first `public_input_size` values of the domain,
    and $0$ for the rest.
-5. Commit (non-hiding) to the negated public input polynomial. **TODO: seems unecessary**
-6. Absorb the public polynomial with the Fq-Sponge. **TODO: seems unecessary**
+5. Commit (non-hiding) to the negated public input polynomial.
+6. Absorb the commitment to the public polynomial with the Fq-Sponge.
+   Note: unlike the original PLONK protocol,
+   the prover also provides evaluations of the public polynomial to help the verifier circuit.
+   This is why we need to absorb the commitment to the public polynomial at this point.
 7. Commit to the witness columns by creating `COLUMNS` hidding commitments.
    Note: since the witness is in evaluation form,
    we can use the `commit_evaluation` optimization.
@@ -826,7 +1456,7 @@ The prover then follows the following steps to create the proof:
     (and evaluation proofs) in the protocol.
     First, include the previous challenges, in case we are in a recursive prover.
 44. Then, include:
-    - the negated public polynomial (TODO: why?)
+    - the negated public polynomial
     - the ft polynomial
     - the permutation aggregation polynomial z polynomial
     - the generic selector
@@ -838,6 +1468,80 @@ The prover then follows the following steps to create the proof:
 
 ### Proof Verification
 
+We define two helper algorithms below, used in the batch verification of proofs. 
+
+
+#### Fiat-Shamir argument
+
+We run the following algorithm:
+
+1. Setup the Fq-Sponge.
+2. Absorb the commitment of the public input polynomial with the Fq-Sponge.
+3. Absorb the commitments to the registers / witness columns with the Fq-Sponge.
+4. TODO: lookup (joint combiner challenge)
+5. TODO: lookup (absorb)
+6. Sample $\beta$ with the Fq-Sponge.
+7. Sample $\gamma$ with the Fq-Sponge.
+8. TODO: lookup
+9. Absorb the commitment to the permutation trace with the Fq-Sponge.
+10. Sample $\alpha'$ with the Fq-Sponge.
+11. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
+12. Enforce that the length of the $t$ commitment is of size `PERMUTS`.
+13. Absorb the commitment to the quotient polynomial $t$ into the argument.
+14. Sample $\zeta'$ with the Fq-Sponge.
+15. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
+16. Setup the Fr-Sponge.
+17. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
+18. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
+    NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
+19. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
+    - the public polynomial
+    - z
+    - generic selector
+    - poseidon selector
+    - the 15 register/witness
+    - 6 sigmas evaluations (the last one is not evaluated)
+20. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
+21. Sample $v'$ with the Fr-Sponge.
+22. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
+23. Sample $u'$ with the Fr-Sponge.
+24. Derive $u$ from $u'$ using the endomorphism (TODO: specify).
+25. Create a list of all polynomials that have an evaluation proof.
+26. Compute the evaluation of $ft(\zeta)$.
+
+#### Partial verification
+
+For every proof we want to verify, we defer the proof opening to the very end.
+This allows us to potentially batch verify a number of partially verified proofs.
+Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
+
+1. Commit to the negated public input polynomial.
+2. Run the [Fiat-Shamir argument](#fiat-shamir-argument).
+3. Combine the chunked polynomials' evaluations
+   (TODO: most likely only the quotient polynomial is chunked)
+   with the right powers of $\zeta^n$ and $(\zeta * \omega)^n$.
+4. Compute the commitment to the linearized polynomial $f$.
+5. Compute the (chuncked) commitment of $ft$
+   (see [Maller's optimization](../crypto/plonk/maller_15.html)).
+6. List the polynomial commitments, and their associated evaluations,
+   that are associated to the aggregated evaluation proof in the proof:
+    - recursion
+    - public input commitment
+    - ft commitment (chunks of it)
+    - permutation commitment
+    - index commitments that use the coefficients
+    - witness commitments
+    - sigma commitments
+#### Batch verification of proofs
+
+Below, we define the steps to verify a number of proofs
+(each associated to a [verifier index](#verifier-index)).
+You can, of course, use it to verify a single proof.
+
+1. If there's no proof to verify, the proof validates trivially.
+2. Ensure that all the proof's verifier index have a URS of the same length. (TODO: do they have to be the same URS though? should we check for that?)
+3. Validate each proof separately following the [partial verification](#partial-verification) steps.
+4. Use the [`PolyCom.verify`](#polynomial-commitments) to verify the partially evaluated proofs.
 
 
 ## Optimizations
