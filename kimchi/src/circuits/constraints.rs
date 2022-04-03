@@ -367,6 +367,11 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                     .map(|table| table.data.len())
                     .max()
                     .unwrap_or(0);
+
+                // The maximum number of entries that can be provided across all tables.
+                // Since we do not assert the lookup constraint on the final `ZK_ROWS` rows, and
+                // because the row before is used to assert that the lookup argument's final
+                // product is 1, we cannot use those rows to store any values.
                 let max_num_entries = d1_size - (ZK_ROWS as usize) - 1;
 
                 let mut lookup_table = vec![Vec::with_capacity(d1_size); max_table_width];
