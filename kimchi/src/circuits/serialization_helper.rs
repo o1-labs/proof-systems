@@ -173,7 +173,7 @@ impl<'de, F, G: DeserializeAs<'de, F>> DeserializeAs<'de, JointLookup<F>> for Jo
                 })
             }
         }
-        const FIELDS: &'static [&'static str] = &["table_id", "entry"];
+        const FIELDS: &[&str] = &["table_id", "entry"];
         Deserializer::deserialize_struct(
             deserializer,
             "JointLookup",
