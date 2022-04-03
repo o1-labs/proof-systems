@@ -14,12 +14,16 @@ use ark_poly::{
 };
 use array_init::array_init;
 use blake2::{Blake2b512, Digest};
-use o1_utils::ExtendedEvaluations;
+use o1_utils::{field_helpers::i32_to_field, ExtendedEvaluations};
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 
-use super::lookup::{constraints::LookupConfiguration, lookups::LookupInfo};
+use super::lookup::{
+    constraints::LookupConfiguration,
+    lookups::{JointLookup, LookupInfo},
+    tables::LookupTable,
+};
 
 //
 // Constants
@@ -327,7 +331,7 @@ pub enum GateError {
 impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
     pub fn create(
         gates: &[CircuitGate<F>],
-        lookup_tables: Vec<Vec<Vec<F>>>,
+        lookup_tables: Vec<LookupTable<F>>,
         domain: &EvaluationDomains<F>,
     ) -> Option<Self> {
         let lookup_info = LookupInfo::<F>::create();
@@ -351,14 +355,22 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                 let lookup_table = lookup_tables.into_iter().next().unwrap();
 
                 // get the last entry in each column of each table
-                let dummy_lookup_entry: Vec<F> =
-                    lookup_table.iter().map(|col| col[col.len() - 1]).collect();
+                let dummy_lookup_entry: Vec<F> = lookup_table
+                    .data
+                    .iter()
+                    .map(|col| col[col.len() - 1])
+                    .collect();
+                let dummy_lookup_table_id = lookup_table.id;
+                let dummy_lookup = JointLookup {
+                    entry: dummy_lookup_entry,
+                    table_id: dummy_lookup_table_id,
+                };
 
                 // pre-compute polynomial and evaluation form for the look up tables
                 let mut lookup_table_polys: Vec<DP<F>> = vec![];
                 let mut lookup_table8: Vec<E<F, D<F>>> = vec![];
 
-                for (mut col, dummy) in lookup_table.into_iter().zip(&dummy_lookup_entry) {
+                for (mut col, dummy) in lookup_table.data.into_iter().zip(&dummy_lookup.entry) {
                     // pad each column to the size of the domain
                     let padding = (0..(d1_size - col.len())).map(|_| dummy);
                     col.extend(padding);
@@ -368,18 +380,28 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                     lookup_table8.push(eval);
                 }
 
+                let (table_ids, table_ids8) = if lookup_table.id != 0 {
+                    let table_ids = vec![i32_to_field(lookup_table.id); d1_size];
+                    let table_ids: DP<F> =
+                        E::<F, D<F>>::from_vec_and_domain(table_ids, domain.d1).interpolate();
+                    let table_ids8: E<F, D<F>> = table_ids.evaluate_over_domain_by_ref(domain.d8);
+                    (Some(table_ids), Some(table_ids8))
+                } else {
+                    (None, None)
+                };
+
                 // generate the look up selector polynomials
                 Some(Self {
                     lookup_selectors,
                     lookup_table8,
                     lookup_table: lookup_table_polys,
-                    table_ids: None,
-                    table_ids8: None,
+                    table_ids,
+                    table_ids8,
                     configuration: LookupConfiguration {
                         lookup_used,
                         max_lookups_per_row: lookup_info.max_per_row as usize,
                         max_joint_size: lookup_info.max_joint_size,
-                        dummy_lookup_entry,
+                        dummy_lookup,
                     },
                 })
             }
@@ -391,7 +413,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// creates a constraint system from a vector of gates ([CircuitGate]), some sponge parameters ([ArithmeticSpongeParams]), and the number of public inputs.
     pub fn create(
         mut gates: Vec<CircuitGate<F>>,
-        lookup_tables: Vec<Vec<Vec<F>>>,
+        lookup_tables: Vec<LookupTable<F>>,
         fr_sponge_params: ArithmeticSpongeParams<F>,
         public: usize,
     ) -> Option<Self> {

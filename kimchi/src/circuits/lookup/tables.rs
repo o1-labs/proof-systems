@@ -94,7 +94,11 @@ impl<F: Field> Entry for UncombinedEntry<F> {
     }
 }
 
-pub type LookupTable<F> = Vec<Vec<F>>;
+/// A table of values that can be used for a lookup, along with the ID for the table.
+pub struct LookupTable<F> {
+    pub id: i32,
+    pub data: Vec<Vec<F>>,
+}
 
 pub fn get_table<F: FftField>(table_name: GateLookupTable) -> LookupTable<F> {
     match table_name {

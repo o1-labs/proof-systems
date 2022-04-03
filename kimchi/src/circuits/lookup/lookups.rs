@@ -3,6 +3,7 @@ use super::tables::{
 };
 use crate::circuits::domains::EvaluationDomains;
 use crate::circuits::gate::{CircuitGate, CurrOrNext, GateType};
+use crate::circuits::polynomials::chacha::XOR_TABLE_ID;
 use ark_ff::{FftField, Field, One, Zero};
 use ark_poly::{Evaluations as E, Radix2EvaluationDomain as D};
 use o1_utils::field_helpers::i32_to_field;
@@ -179,7 +180,7 @@ impl<F: Copy> SingleLookup<F> {
 }
 
 /// A spec for checking that the given vector belongs to a vector-valued lookup table.
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct JointLookup<SingleLookup> {
     /// The ID for the table associated with this lookup.
     /// Positive IDs are intended to be used for the fixed tables associated with individual gates,
@@ -268,14 +269,14 @@ impl GateType {
                     value: vec![(F::one(), loc)],
                 };
                 JointLookup {
-                    table_id: 0,
+                    table_id: XOR_TABLE_ID,
                     entry: vec![l(left), l(right), l(output)],
                 }
             })
             .collect();
 
         let mut chacha_where = HashSet::new();
-        use CurrOrNext::{Curr, Next};
+        use CurrOrNext::*;
         use GateType::*;
 
         for g in &[ChaCha0, ChaCha1, ChaCha2] {
@@ -296,7 +297,7 @@ impl GateType {
                     value: vec![(one_half, nybble), (neg_one_half, low_bit)],
                 };
                 JointLookup {
-                    table_id: 0,
+                    table_id: XOR_TABLE_ID,
                     entry: vec![x.clone(), x, SingleLookup { value: vec![] }],
                 }
             })
@@ -334,27 +335,32 @@ impl GateType {
     pub fn lookup_kinds_map<F: Field>(
         locations_with_tables: Vec<GatesLookupSpec>,
     ) -> GatesLookupMaps {
-        let mut gate_selector_map = HashMap::with_capacity(locations_with_tables.len());
-        let mut gate_table_map = HashMap::with_capacity(locations_with_tables.len());
-
-        for (i, gate_lookups) in locations_with_tables.into_iter().enumerate() {
-            for location in gate_lookups.gate_positions {
-                // each "list of lookups in a row" is associated to a selector
-                if let Entry::Vacant(e) = gate_selector_map.entry(location) {
+        let mut index_map = HashMap::with_capacity(locations_with_tables.len());
+        let mut table_map = HashMap::with_capacity(locations_with_tables.len());
+        for (
+            i,
+            GatesLookupSpec {
+                gate_positions: locs,
+                gate_lookup_table: table_kind,
+            },
+        ) in locations_with_tables.into_iter().enumerate()
+        {
+            for location in locs {
+                if let Entry::Vacant(e) = index_map.entry(location) {
                     e.insert(i);
                 } else {
                     panic!("Multiple lookup patterns asserted on same row.")
                 }
-                if let Some(table_kind) = gate_lookups.gate_lookup_table {
-                    if let Entry::Vacant(e) = gate_table_map.entry(location) {
+                if let Some(table_kind) = table_kind {
+                    if let Entry::Vacant(e) = table_map.entry(location) {
                         e.insert(table_kind);
                     }
                 }
             }
         }
         GatesLookupMaps {
-            gate_selector_map,
-            gate_table_map,
+            gate_selector_map: index_map,
+            gate_table_map: table_map,
         }
     }
 }

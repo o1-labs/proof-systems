@@ -248,15 +248,10 @@ where
         let dummy_lookup_value = {
             let x = match index.cs.lookup_constraint_system.as_ref() {
                 None => ScalarField::<G>::zero(),
-                Some(lcs) => {
-                    let table_id = ScalarField::<G>::zero();
-                    combine_table_entry(
-                        &joint_combiner,
-                        &table_id_combiner,
-                        lcs.configuration.dummy_lookup_entry.iter(),
-                        table_id,
-                    )
-                }
+                Some(lcs) => lcs
+                    .configuration
+                    .dummy_lookup
+                    .evaluate(&joint_combiner, &table_id_combiner),
             };
             CombinedEntry(x)
         };

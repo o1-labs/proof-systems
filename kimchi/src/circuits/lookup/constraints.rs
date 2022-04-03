@@ -16,7 +16,7 @@ use serde_with::serde_as;
 use CurrOrNext::{Curr, Next};
 
 use super::{
-    lookups::{JointLookupSpec, LocalPosition, LookupInfo, LookupsUsed},
+    lookups::{JointLookup, JointLookupSpec, LocalPosition, LookupInfo, LookupsUsed},
     tables::Entry,
 };
 
@@ -236,6 +236,13 @@ pub fn sorted<
             sorted[i].push(end_val);
         }
 
+        // Duplicate the final sorted value, to fix the off-by-one in the last lookup row.
+        // This is caused by the snakification: all other sorted columns have the value from the
+        // next column added to their end, but the final sorted column has no subsequent column to
+        // pull this value from.
+        let final_sorted_col = &mut sorted[max_lookups_per_row];
+        final_sorted_col.push(final_sorted_col[final_sorted_col.len() - 1].clone());
+
         // snake-ify (see top comment)
         for s in sorted.iter_mut().skip(1).step_by(2) {
             s.reverse();
@@ -414,12 +421,12 @@ pub struct LookupConfiguration<F: FftField> {
     /// The maximum number of elements in a vector lookup
     pub max_joint_size: u32,
 
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     /// A placeholder value that is known to appear in the lookup table.
     /// This is used to pad the lookups to `max_lookups_per_row` when fewer lookups are used in a
     /// particular row, so that we can treat each row uniformly as having the same number of
     /// lookups.
-    pub dummy_lookup_entry: Vec<F>,
+    #[serde_as(as = "JointLookup<o1_utils::serialization::SerdeAs>")]
+    pub dummy_lookup: JointLookup<F>,
 }
 
 /// Specifies the lookup constraints as expressions.
@@ -460,14 +467,24 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>
             E::one() - lookup_indicator
         };
 
+        let joint_combiner = ConstantExpr::JointCombiner;
+        let table_id_combiner = joint_combiner
+            .clone()
+            .pow(configuration.max_joint_size.into());
+
         // combine the columns of the dummy lookup row
-        let dummy_lookup: ConstantExpr<F> = configuration
-            .dummy_lookup_entry
-            .iter()
-            .rev()
-            .fold(ConstantExpr::zero(), |acc, x| {
-                ConstantExpr::JointCombiner * acc + ConstantExpr::Literal(*x)
-            });
+        let dummy_lookup = {
+            let expr_dummy: JointLookup<ConstantExpr<F>> = JointLookup {
+                entry: configuration
+                    .dummy_lookup
+                    .entry
+                    .iter()
+                    .map(|x| ConstantExpr::Literal(*x))
+                    .collect(),
+                table_id: configuration.dummy_lookup.table_id,
+            };
+            expr_dummy.evaluate(&joint_combiner, &table_id_combiner)
+        };
 
         // pre-compute the padding dummies we can use depending on the number of lookups to the `max_per_row` lookups
         // each value is also multipled with (1 + beta)^max_per_row
@@ -503,17 +520,16 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>
             let padding_len = lookup_info.max_per_row - spec.len();
             let padding = dummy_padding[padding_len].clone();
 
-            let joint_combiner = E::constant(ConstantExpr::JointCombiner);
-            let table_id_combiner = joint_combiner
-                .clone()
-                .pow(configuration.max_joint_size.into());
-
             // padding * \mul (gamma + combined_witnesses)
             let eval = |pos: LocalPosition| witness(pos.column, pos.row);
             spec.iter()
                 .map(|j| {
                     E::Constant(ConstantExpr::Gamma)
-                        + j.evaluate(&joint_combiner, &table_id_combiner, &eval)
+                        + j.evaluate(
+                            &E::Constant(joint_combiner.clone()),
+                            &E::Constant(table_id_combiner.clone()),
+                            &eval,
+                        )
                 })
                 .fold(E::Constant(padding), |acc: E<F>, x| acc * x)
         };
