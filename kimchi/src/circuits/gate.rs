@@ -83,13 +83,10 @@ pub enum GateType {
     ChaCha2 = 9,
     ChaChaFinal = 10,
     /// Gates for Cairo
-    CairoInitial = 11,
-    CairoMemory = 12,
-    CairoInstruction = 13,
-    CairoFlags = 14,
-    CairoTransition = 15,
-    CairoAuxiliary = 16,
-    CairoClaim = 17,
+    CairoClaim = 11,
+    CairoInstruction = 12,
+    CairoFlags = 13,
+    CairoTransition = 14,
 }
 
 #[serde_as]
@@ -152,8 +149,9 @@ impl<F: FftField> CircuitGate<F> {
             EndoMulScalar => self.verify_endomul_scalar(row, witness, cs),
             // TODO: implement the verification for chacha
             ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => Ok(()),
-            CairoInitial | CairoMemory | CairoInstruction | CairoFlags | CairoTransition
-            | CairoAuxiliary | CairoClaim => self.verify_cairo_gate(row, witness, cs),
+            CairoClaim | CairoInstruction | CairoFlags | CairoTransition => {
+                self.verify_cairo_gate(row, witness, cs)
+            }
         }
     }
 }

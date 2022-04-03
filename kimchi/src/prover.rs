@@ -19,7 +19,7 @@ use crate::{
             endosclmul::EndosclMul,
             generic, permutation,
             poseidon::Poseidon,
-            turshi::{Claim, Flags, Initial, Instruction, Memory, Transition},
+            turshi::{Claim, Flags, Instruction, Transition},
             varbasemul::VarbaseMul,
         },
         wires::{COLUMNS, PERMUTS},
@@ -408,13 +408,10 @@ where
                         index_evals.insert(*g, &c[i]);
                     }
                 });
-            index_evals.insert(CairoInitial, &index.cs.cairo8[0]);
-            index_evals.insert(CairoMemory, &index.cs.cairo8[1]);
-            index_evals.insert(CairoInstruction, &index.cs.cairo8[2]);
-            index_evals.insert(CairoFlags, &index.cs.cairo8[3]);
-            index_evals.insert(CairoTransition, &index.cs.cairo8[4]);
-            index_evals.insert(CairoAuxiliary, &index.cs.cairo8[5]);
-            index_evals.insert(CairoClaim, &index.cs.cairo8[6]);
+            index_evals.insert(CairoClaim, &index.cs.cairo8[0]);
+            index_evals.insert(CairoInstruction, &index.cs.cairo8[1]);
+            index_evals.insert(CairoFlags, &index.cs.cairo8[2]);
+            index_evals.insert(CairoTransition, &index.cs.cairo8[3]);
 
             Environment {
                 constants: Constants {
@@ -600,12 +597,10 @@ where
 
             // cairo
             let cairoevals = [
-                Initial::combined_constraints(&all_alphas).evaluations(&env),
-                Memory::combined_constraints(&all_alphas).evaluations(&env),
+                Claim::combined_constraints(&all_alphas).evaluations(&env),
                 Instruction::combined_constraints(&all_alphas).evaluations(&env),
                 Flags::combined_constraints(&all_alphas).evaluations(&env),
                 Transition::combined_constraints(&all_alphas).evaluations(&env),
-                Claim::combined_constraints(&all_alphas).evaluations(&env),
             ];
             // intentionally leaving Auxiliary out
             for eval in cairoevals {
