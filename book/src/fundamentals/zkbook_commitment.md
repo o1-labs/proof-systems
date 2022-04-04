@@ -40,7 +40,7 @@ multiplication is used as the one way function.  Suppose we have
 
 - $\mathbb{F}_p$ a prime order field, with $p$ being large (e.g. something like $2^{256}$).
 - Publicly agreed generator point $G$ over an elliptic curve $E(\mathbb{F}_p)$
-- Another publicly agreed curve point $H$ for which noone knows the discrete logarithm
+- Another publicly agreed curve point $H$ for which no one knows the discrete logarithm
 
 $$
 \mathsf{commit}(x, r) = xG + rH \\
@@ -63,11 +63,11 @@ $$
 
 In other words, the sum of commitments $A$ and $B$ is equal to the commitment of the sum of the two committed values $x_a$ and $x_b$ and blinders $r_a$ and $r_b$.
 
-> As a cryptographic primitive, the ability to find a public curve point $H$ for which noone knows the discrete logarithm may, at first, seem rather mind-blowing and powerful.
+> As a cryptographic primitive, the ability to find a public curve point $H$ for which no one knows the discrete logarithm may, at first, seem rather mind-blowing and powerful.
 >
 > Actually, it's as easy as it is awesome to find such a point--- simply perform rejection sampling by cryptographically hashing $G$ (or, respectively, the
 > hash output), using the output as the $x$-coordinate of a candidate point on $E$ and checking whether it's valid.  The first valid curve point obtained is $H$ and
-> by the hardness assumption of the elliptic curve discrete logarithm problem (ECDLP), noone knows it.
+> by the hardness assumption of the elliptic curve discrete logarithm problem (ECDLP), no one knows it.
 >
 > Since approximately half of the hash outputs will be valid curve points on $E$, sampling will terminate very quickly.  Indeed, as we will see later,
 > this process can be used to sample many public curve points $G_1, \ldots, G_n$ for which the discrete logarithms are unknown; the so-called *hash to curve* algorithm.
@@ -105,7 +105,7 @@ x_1 G + r_1 H, \\
 x_n G + r_n H \\
 $$
 
-But we can instead batch/aggregate all of these commitments together as:
+But we can instead batch/aggregate all of these commitments together as a single commitment:
 
 $$
 x_1 G_1 + \cdots + x_n G_n + r H
@@ -174,12 +174,12 @@ h_{i} := (\tau^i) \cdot g_1 \\
 w := \tau \cdot g_2
 $$
 
-And then **throw away $\tau$**. The security depends on no-one knowing this value. Basically we compute the generator scaled by powers of $\tau$ up to the degree bound. We make a security assumption about the groups which says that all anyone can really do with group elements is take linear combinations of them.
+And then **throw away $\tau$**. The security depends on no one knowing $\tau$, which is sometimes referred to as the **toxic waste** of the trusted setup. Basically we compute the generator scaled by powers of $\tau$ up to the degree bound. We make a security assumption about the groups which says that all anyone can really do with group elements is take linear combinations of them.
 
 Now suppose we have a polynomial $f \in \mathbb{F}_p[x]_{<d}$ with $f = \sum_{i < d} a_i x^i$ that we would like to commit to. We will describe a version of the scheme that is binding but not hiding, so it may leak information about the polynomial. Now, to commit to $f$, we compute
 
 $$
-c_f := a_0 \cdot h_{0} + a_1 \cdot h_{1} + \dots + a_{d-1} \cdot h_{d-1}
+c_f := \mathsf{commit}(f) = a_0 \cdot h_{0} + a_1 \cdot h_{1} + \dots + a_{d-1} \cdot h_{d-1}
 $$
 
 so that $c_f \in G_1$ and
@@ -194,7 +194,7 @@ c_f &= \sum_{i< d} a_i \cdot h_{i} \\
 \end{aligned}
 $$
 
-So $c$ is $g_1$ scaled by $f(\tau)$ and the fact that $G_1$ is an $\mathbb{F}_p$-module means we can compute $f(\tau) \cdot g_1$ from the $h_{i}$ and the coefficients of $f$ without knowing $\tau$.
+So $c_f$ is $g_1$ scaled by $f(\tau)$ and the fact that $G_1$ is an $\mathbb{F}_p$-module (i.e. a vector space whose scalars come from $\mathbb{F}_p$) means we can compute $f(\tau) \cdot g_1$ from the $h_{i}$ and the coefficients of $f$ without knowing $\tau$.
 
 Now how does opening work? Well, say we want to open at a point $a$ to $b = f(a)$. Then the polynomial $f - b$ vanishes at $a$, which means that it is divisible by the polynomial $x - a$ (exercise, use polynomial division and analyze the remainder).
 
@@ -210,7 +210,9 @@ $$
 \mathsf{verify}(c_f, (b, c_q)) := e(c_q, w - a \cdot g_2)=_? e(c_f, g_2)
 $$
 
-This amounts to checking "is the polynomial committed to $c_f$ equal to the polynomial committed to by $c_q$ times $x - a$"?To see why, remember that $w = \tau \cdot g_2$, and say $c_q = s_q\cdot g_1$, $c_f = s_f \cdot g_1$ so we are checking
+This amounts to checking: *"is the polynomial committed to $c_f$ equal to the polynomial committed to by $c_q$ times $x - a$"?*
+
+To see why, remember that $w = \tau \cdot g_2$, and say $c_q = s_q\cdot g_1$ and $c_f = s_f \cdot g_1$ so we are checking
 
 $$
 e(s_q \cdot g_1, (\tau - a) \cdot g_2) =_? e(s_f \cdot g_1, g_2)

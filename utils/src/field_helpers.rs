@@ -1,4 +1,4 @@
-use ark_ff::{Field, PrimeField};
+use ark_ff::{Field, PrimeField, BigInteger};
 use thiserror::Error;
 
 // Field helpers error
