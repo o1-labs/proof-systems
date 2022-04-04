@@ -67,7 +67,7 @@ In other words, the sum of commitments $A$ and $B$ is equal to the commitment of
 >
 > Actually, it's as easy as it is awesome to find such a point--- simply perform rejection sampling by cryptographically hashing $G$ (or, respectively, the
 > hash output), using the output as the $x$-coordinate of a candidate point on $E$ and checking whether it's valid.  The first valid curve point obtained is $H$ and
-> by the hardness assumption of the elliptic curve discrete logarithm problem (ELDP), noone knows it.
+> by the hardness assumption of the elliptic curve discrete logarithm problem (ECDLP), noone knows it.
 >
 > Since approximately half of the hash outputs will be valid curve points on $E$, sampling will terminate very quickly.  Indeed, as we will see later,
 > this process can be used to sample many public curve points $G_1, \ldots, G_n$ for which the discrete logarithms are unknown; the so-called *hash to curve* algorithm.
@@ -75,7 +75,7 @@ In other words, the sum of commitments $A$ and $B$ is equal to the commitment of
 ## Pedersen commitments
 
 The homomorphic commitment $\mathsf{commit}(x, r) = xG + rH$ described above is known as a Pedersen commitment. If you remove the $rH$ term you
-get a non-hiding commitment, also called a *Pedersen hash*. Both rely on the ELDP hardness assumption.
+get a non-hiding commitment, called a *Pedersen hash*. Both rely on the ECDLP hardness assumption.
 
 This means that, at least theoretically, you might be lucky (or have a quantum computer) and figure out that $H = hG$, which would allow you to find different values $x'$ and $h'$ to open the commitment.
 We say that pedersen commitments are **computationally binding** and not unconditionally binding.  For example, you could express $c = xG + rH$ alternatively as
