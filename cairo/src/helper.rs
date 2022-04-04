@@ -1,7 +1,7 @@
 //! This module inlcudes some field helpers that are useful for Cairo
 
 use ark_ff::Field;
-use o1_utils::FieldHelpers;
+use o1_utils::{field_helpers::i128_to_field, FieldHelpers};
 
 //(TODO move to utils inside FieldHelpers)
 
@@ -50,15 +50,7 @@ impl<F: Field> CairoFieldHelpers<F> for F {
     }
 
     fn vec_to_field(vec: &[i128]) -> Vec<F> {
-        vec.iter()
-            .map(|i| {
-                if *i < 0 {
-                    -F::from((-(*i)) as u64)
-                } else {
-                    F::from((*i) as u64)
-                }
-            })
-            .collect()
+        vec.iter().map(|i| i128_to_field::<F>(*i)).collect()
     }
 }
 

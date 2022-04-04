@@ -95,6 +95,14 @@ pub fn i32_to_field<F: From<u64> + Neg<Output = F>>(i: i32) -> F {
     }
 }
 
+pub fn i128_to_field<F: From<u128> + Neg<Output = F>>(i: i128) -> F {
+    if i >= 0 {
+        F::from(i as u128)
+    } else {
+        -F::from(-i as u128)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use ark_ec::AffineCurve;
