@@ -52,6 +52,7 @@
 - [RFC 0: Alternative zero-knowledge](./plonk/zkpm.md)
 - [RFC 1: Final check](./plonk/final_check.md)
 - [RFC 2: Maller's optimization for kimchi](./plonk/maller_15.md)
+- [RFC 3: Plookup integration in kimchi](./rfcs/3-lookup.md)
 
 # Specifications
 
