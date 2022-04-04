@@ -36,7 +36,7 @@ If the hash function is one-way, then this commitment is also hiding.
 ## Algebraic and homomorphic commitments
 
 Instead of a cryptographic hash function, we can use elliptic curve cryptography to construct a commitment scheme.  Here elliptic curve scalar
-multiplication is used as the one way function.  Suppose we have
+multiplication is used like a one way function based on some hardness assumptions.  Suppose we have
 
 - $\mathbb{F}_p$ a prime order field, with $p$ being large (e.g. something like $2^{256}$).
 - Publicly agreed generator point $G$ over an elliptic curve $E(\mathbb{F}_p)$
