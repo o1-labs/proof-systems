@@ -164,9 +164,9 @@ where
             )
             .interpolate()
         });
-
-        //~ 10. TODO: lookup
-        let joint_combiner_ = {
+        //~ 10. If there's a joint lookup being used in the circuit (TODO: define joint lookup vs single lookup):
+        let joint_combiner: ScalarField<G> = {
+            //~     - Sample the joint combinator (lookup challenge) $j$ with the Fq-Sponge.
             // TODO: how will the verifier circuit handle these kind of things? same with powers of alpha...
             let s = match index.cs.lookup_constraint_system.as_ref() {
                 None
@@ -187,11 +187,10 @@ where
                     ..
                 }) => ScalarChallenge(fq_sponge.challenge()),
             };
-            (s, s.to_field(&index.srs.endo_r))
-        };
 
-        // TODO: that seems like an unecessary line
-        let joint_combiner: ScalarField<G> = joint_combiner_.1;
+            //~     - derive the scalar joint combinator $j$ from $j'$ using the endomorphism (TODO: details, explicitly say that we change the field).
+            s.to_field(&index.srs.endo_r)
+        };
 
         let table_id_combiner: ScalarField<G> =
             if let Some(lcs) = index.cs.lookup_constraint_system.as_ref() {

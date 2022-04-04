@@ -47,6 +47,7 @@ pub trait Entry {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct CombinedEntry<F>(pub F);
+
 impl<F: Field> Entry for CombinedEntry<F> {
     type Field = F;
     type Params = (F, F);
