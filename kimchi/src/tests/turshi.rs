@@ -87,9 +87,9 @@ fn test_cairo_cs() {
     let mut row = 0;
     for gate in circuit {
         let res = gate.verify_cairo_gate(row, &witness, &cs);
-        //if res.is_err() {
-        println!("{:?}", res);
-        //}
+        if res.is_err() {
+            println!("{:?}", res);
+        }
         row = row + 1;
     }
 }
@@ -141,9 +141,9 @@ fn test_long_cairo_gate() {
     let mut row = 0;
     for gate in circuit {
         let res = gate.ensure_cairo_gate(row, &witness);
-        //if res.is_err() {
-        println!("{:?}", res);
-        //}
+        if res.is_err() {
+            println!("{:?}", res);
+        }
         row = row + 1;
     }
 }
