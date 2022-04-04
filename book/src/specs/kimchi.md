@@ -293,6 +293,142 @@ in order to add zero-knowledge to the protocol.
 
 ### Lookup
 
+Lookups in kimchi allows you to check if a single value, or a series of values, are part of a table.
+The first case is useful to check for magic values, whereas the second case is useful to check truth tables (for example, checking that three values form the columns of an XOR table).
+
+```admonish
+Similarly to the generic gate, each values in a lookup can be scaled by a fixed field element.
+```
+
+The lookup functionality is an opt-in feature of kimchi that can be used by gates.
+From the user perspective not using a particular gatemeans that lookup will be disabled and there will be no overhead to the protocol.
+For now the Chacha gates are the only gates making use of lookups.
+
+### Overview of using lookup in kimchi
+
+* We have our initial table `lookup_table`, with our desired values listed.
+* We have the implicit table `lookups(witness)` representing the values looked up in each row
+  of the witness.
+  - This table is initially variable-width, where some rows have no lookups, and others have several.
+  - We explicitly compute this table, and where the width for a particular row is less than the maximum width, we insert a 'dummy' lookup value as many times as we need to to give every row the same number of lookups.
+  - We'll call this padded table `witness_lookups`.
+* We want to generate a `sorted_table` that contains every entry from the concatenated table `lookup_table||witness_lookups`, where values are in the same order as `lookup_table`, with all duplicates placed next to each other.
+  - There's an edge case around duplicate values in the `lookup_table` itself: these should
+    appear in `sorted_table` at least once each time they appeared in the `lookup_table`.
+  - This ensures that, for any `beta` and for each `i`, the pair `lookup_table[i] + beta *
+    lookup_table[i+1]` corresponds to some distinct `j` such that `sorted_table[j] + beta *
+    sorted_table[j+1]`.
+  - For all other values of `j`, `sorted_table[j] = sorted_table[j+1]`: since we've dealt with
+    all of the 'different' pairs corresponding from moving from one value in `lookup_table` to
+    the next, the only remaining pairs are those corresponding to the duplicates provided by the
+    lookups in `witness_lookups`.
+  - For example, if `lookup_table` is `[0, 1, 2, 3, 4, 5]` and `witness_lookups` is
+    `[0, 0, 0, 2, 2, 4]`, then `sorted_table` is `[0, 0, 0, 0, 1, 2, 2, 2, 3, 4, 4, 5]`, and
+    the differences are
+    `[(0, 0), (0, 0), (0, 0), (0, 1), (1, 2), (2, 2), (2, 2), (2, 3), (3, 4), (4, 4), (4, 5)]`.
+    The entries where the pairs are different are those that match with the `lookup_table`, and
+    the equal pairs can be paired with the `witness_lookups`. This `sorted_table` is computed
+    by the `sorted` function.
+* in order to check the multiset inclusion, we calculate the product over our sorted table:
+  `gamma * (1 + beta) + sorted_table[i] + beta * sorted_table[i+1]`
+  - again, when the adjacent terms `sorted_table[i]` and `sorted_table[i+1]` are equal, this
+    simplifies to `(gamma + sorted_table[i]) * (1 + beta)`
+  - when they are different, there is some `j` such that it equals `gamma * (1 + beta) +
+    lookup_table[i] + beta * lookup_table[i+1]`
+  - using the example above, this becomes
+    ```ignore
+        gamma * (1 + beta) + 0 + beta * 0
+      * gamma * (1 + beta) + 0 + beta * 0
+      * gamma * (1 + beta) + 0 + beta * 0
+      * gamma * (1 + beta) + 0 + beta * 1
+      * gamma * (1 + beta) + 1 + beta * 2
+      * gamma * (1 + beta) + 2 + beta * 2
+      * gamma * (1 + beta) + 2 + beta * 2
+      * gamma * (1 + beta) + 2 + beta * 3
+      * gamma * (1 + beta) + 3 + beta * 4
+      * gamma * (1 + beta) + 4 + beta * 4
+      * gamma * (1 + beta) + 4 + beta * 5
+    ```
+    which we can simplify to
+    ```ignore
+        (gamma + 0) * (1 + beta)
+      * (gamma + 0) * (1 + beta)
+      * (gamma + 0) * (1 + beta)
+      * gamma * (1 + beta) + 0 + beta * 1
+      * gamma * (1 + beta) + 1 + beta * 2
+      * (gamma + 2) * (1 + beta)
+      * (gamma + 2) * (1 + beta)
+      * gamma * (1 + beta) + 2 + beta * 3
+      * gamma * (1 + beta) + 3 + beta * 4
+      * (gamma + 4) * (1 + beta)
+      * gamma * (1 + beta) + 4 + beta * 5
+    ```
+* because we said before that each pair corresponds to either a pair in the `lookup_table` or a
+  duplicate from the `witness_table`, the product over the sorted table should equal the
+  product of `gamma * (1 + beta) + lookup_table[i] + beta * lookup_table[i+1]` multiplied by
+  the product of `(gamma + witness_table[i]) * (1 + beta)`, since each term individually
+  cancels out.
+  - using the example above, the `lookup_table` terms become
+    ```ignore
+        gamma * (1 + beta) + 0 + beta * 1
+      * gamma * (1 + beta) + 1 + beta * 2
+      * gamma * (1 + beta) + 2 + beta * 3
+      * gamma * (1 + beta) + 3 + beta * 4
+      * gamma * (1 + beta) + 4 + beta * 5
+    ```
+    and the `witness_table` terms become
+    ```ignore
+        (gamma + 0) * (1 + beta)
+      * (gamma + 0) * (1 + beta)
+      * (gamma + 0) * (1 + beta)
+      * (gamma + 2) * (1 + beta)
+      * (gamma + 2) * (1 + beta)
+      * (gamma + 4) * (1 + beta)
+    ```
+
+There is some nuance around table lengths; for example, notice that `witness_table` need not be
+the same length as `lookup_table` (and indeed is not in our implementation, due to multiple
+lookups per row), and that `sorted_table` will always be longer than `lookup_table`, which is
+where we require 'snakifying' to check consistency. Happily, we don't have to perform
+snakifying on `witness_table`, because its contribution above only uses a single term rather
+than a pair of terms.
+
+#### Producing the sorted table as the prover
+
+
+Because of our ZK-rows, we can't do the trick in the plookup paper of
+wrapping around to enforce consistency between the sorted lookup columns.
+
+Instead, we arrange the LookupSorted table into columns in a snake-shape.
+
+Like so,
+
+```
+_   _
+| | | | |
+| | | | |
+|_| |_| |
+```
+
+or, imagining the full sorted array is `[ s0, ..., s8 ]`, like
+
+```
+s0 s4 s4 s8
+s1 s3 s5 s7
+s2 s2 s6 s6
+```
+
+So the direction ("increasing" or "decreasing" (relative to LookupTable) is
+
+```
+if i % 2 = 0 { Increasing } else { Decreasing }
+```
+
+Then, for each `i < max_lookups_per_row`, if `i % 2 = 0`, we enforce that the
+last element of `LookupSorted(i) = last element of LookupSorted(i + 1)`,
+and if `i % 2 = 1`, we enforce that
+the first element of `LookupSorted(i) = first element of LookupSorted(i + 1)`.
+
 
 Because of our ZK-rows, we can't do the trick in the plookup paper of
 wrapping around to enforce consistency between the sorted lookup columns.
@@ -1385,7 +1521,19 @@ The prover then follows the following steps to create the proof:
 8. Absorb the witness commitments with the Fq-Sponge.
 9. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
    TODO: why not do this first, and then commit? Why commit from evaluation directly?
-10. TODO: lookup
+10. If there's a joint lookup being used in the circuit (TODO: define joint lookup vs single lookup):
+    - Sample the joint combinator (lookup challenge) $j$ with the Fq-Sponge.
+    - derive the scalar joint combinator $j$ from $j'$ using the endomorphism (TODO: details, explicitly say that we change the field).
+11. If using lookup compute the *lookup dummy value* as
+    the combination of the dummy lookup value with the joint combinator.
+    In other words, compute $d_0 + d_1 j + d_2 j^2 + \cdots$,
+    where $d_i$ are the columns of the dummy entry.
+    If not using lookup, simply use zero.
+12. If using lookup:
+    - Compute the sorted table.
+    - Compute the sorted coefficients.
+    - Commit to each of the sorted table columns.
+      (See section on lookup to see how to compute it.)
 11. Sample $\beta$ with the Fq-Sponge.
 12. Sample $\gamma$ with the Fq-Sponge.
 13. TODO: lookup

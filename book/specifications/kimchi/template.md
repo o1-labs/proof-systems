@@ -65,14 +65,29 @@ It is a single column that applies on all the rows as well, which the prover com
 | :---: | :---: |
 |   0   |   /   |
 
-**Lookup**: TODO
+### Lookup specific tables
+
+The lookup feature is currently optional, as it can add some overhead to the protocol.
+In the case where you would want to use lookups, the following tables would be needed:
+
+**Lookup Tables**. These are the different lookup tables that one can perform lookup one.
+
+**Lookup Queries Table**. This is the table containing the lookup queries made from the registers table to the lookup tables. It should show both the patterns and the selectors.
+
+**Lookup Queries Trace table**. This is the actual table filled by the prover and verifier.
+
+**Lookup (aggregation, or permutation) trace**. This is a one column table that is similar to the wiring trace we talked above.
+
+### The tables used to describe the circuit, and create proofs
 
 To summarize, the following tables are created and used to describe a circuit:
 
 * gates
 * coefficients
 * wiring (permutation)
-* TODO: lookup
+* if lookup is used:
+  - lookup tables
+  - lookup queries table
 
 ```admonish
 This specification does not document how to create a circuit.
@@ -82,7 +97,9 @@ And to create a proof, the prover will execute the circuit and record an executi
 
 * registers
 * wiring (permutation) trace
-* TODO: lookup
+* if lookup is used:
+  - lookup queries trace table
+  - lookup trace.
 
 ## Dependencies
 
@@ -158,6 +175,112 @@ TODO: linearization
 
 ### Lookup
 
+Lookups in kimchi allows you to check if a single value, or a series of values, are part of a table.
+The first case is useful to check for checking if a value belongs to a range (from 0 to 1,000, for example), whereas the second case is useful to check truth tables (for example, checking that three values can be found in the rows of an XOR table).
+
+```admonish
+Similarly to the generic gate, each values in a lookup can be scaled with a fixed field element.
+```
+
+The lookup functionality is an opt-in feature of kimchi that can be used by gates.
+From the user perspective not using a particular gatemeans that lookup will be disabled and there will be no overhead to the protocol.
+For now the Chacha gates are the only gates making use of lookups.
+
+#### Overview of using lookup in kimchi
+
+* We have our initial table `lookup_table`, with our desired values listed.
+* We have the implicit table `lookups(witness)` representing the values looked up in each row
+  of the witness.
+  - This table is initially variable-width, where some rows have no lookups, and others have several.
+  - We explicitly compute this table, and where the width for a particular row is less than the maximum width, we insert a 'dummy' lookup value as many times as we need to to give every row the same number of lookups.
+  - We'll call this padded table `witness_lookups`.
+* We want to generate a `sorted_table` that contains every entry from the concatenated table `lookup_table||witness_lookups`, where values are in the same order as `lookup_table`, with all duplicates placed next to each other.
+  - There's an edge case around duplicate values in the `lookup_table` itself: these should
+    appear in `sorted_table` at least once each time they appeared in the `lookup_table`.
+  - This ensures that, for any `beta` and for each `i`, the pair `lookup_table[i] + beta *
+    lookup_table[i+1]` corresponds to some distinct `j` such that `sorted_table[j] + beta *
+    sorted_table[j+1]`.
+  - For all other values of `j`, `sorted_table[j] = sorted_table[j+1]`: since we've dealt with
+    all of the 'different' pairs corresponding from moving from one value in `lookup_table` to
+    the next, the only remaining pairs are those corresponding to the duplicates provided by the
+    lookups in `witness_lookups`.
+  - For example, if `lookup_table` is `[0, 1, 2, 3, 4, 5]` and `witness_lookups` is
+    `[0, 0, 0, 2, 2, 4]`, then `sorted_table` is `[0, 0, 0, 0, 1, 2, 2, 2, 3, 4, 4, 5]`, and
+    the differences are
+    `[(0, 0), (0, 0), (0, 0), (0, 1), (1, 2), (2, 2), (2, 2), (2, 3), (3, 4), (4, 4), (4, 5)]`.
+    The entries where the pairs are different are those that match with the `lookup_table`, and
+    the equal pairs can be paired with the `witness_lookups`. This `sorted_table` is computed
+    by the `sorted` function.
+* in order to check the multiset inclusion, we calculate the product over our sorted table:
+  `gamma * (1 + beta) + sorted_table[i] + beta * sorted_table[i+1]`
+  - again, when the adjacent terms `sorted_table[i]` and `sorted_table[i+1]` are equal, this
+    simplifies to `(gamma + sorted_table[i]) * (1 + beta)`
+  - when they are different, there is some `j` such that it equals `gamma * (1 + beta) +
+    lookup_table[i] + beta * lookup_table[i+1]`
+  - using the example above, this becomes
+    ```ignore
+        gamma * (1 + beta) + 0 + beta * 0
+      * gamma * (1 + beta) + 0 + beta * 0
+      * gamma * (1 + beta) + 0 + beta * 0
+      * gamma * (1 + beta) + 0 + beta * 1
+      * gamma * (1 + beta) + 1 + beta * 2
+      * gamma * (1 + beta) + 2 + beta * 2
+      * gamma * (1 + beta) + 2 + beta * 2
+      * gamma * (1 + beta) + 2 + beta * 3
+      * gamma * (1 + beta) + 3 + beta * 4
+      * gamma * (1 + beta) + 4 + beta * 4
+      * gamma * (1 + beta) + 4 + beta * 5
+    ```
+    which we can simplify to
+    ```ignore
+        (gamma + 0) * (1 + beta)
+      * (gamma + 0) * (1 + beta)
+      * (gamma + 0) * (1 + beta)
+      * gamma * (1 + beta) + 0 + beta * 1
+      * gamma * (1 + beta) + 1 + beta * 2
+      * (gamma + 2) * (1 + beta)
+      * (gamma + 2) * (1 + beta)
+      * gamma * (1 + beta) + 2 + beta * 3
+      * gamma * (1 + beta) + 3 + beta * 4
+      * (gamma + 4) * (1 + beta)
+      * gamma * (1 + beta) + 4 + beta * 5
+    ```
+* because we said before that each pair corresponds to either a pair in the `lookup_table` or a
+  duplicate from the `witness_table`, the product over the sorted table should equal the
+  product of `gamma * (1 + beta) + lookup_table[i] + beta * lookup_table[i+1]` multiplied by
+  the product of `(gamma + witness_table[i]) * (1 + beta)`, since each term individually
+  cancels out.
+  - using the example above, the `lookup_table` terms become
+    ```ignore
+        gamma * (1 + beta) + 0 + beta * 1
+      * gamma * (1 + beta) + 1 + beta * 2
+      * gamma * (1 + beta) + 2 + beta * 3
+      * gamma * (1 + beta) + 3 + beta * 4
+      * gamma * (1 + beta) + 4 + beta * 5
+    ```
+    and the `witness_table` terms become
+    ```ignore
+        (gamma + 0) * (1 + beta)
+      * (gamma + 0) * (1 + beta)
+      * (gamma + 0) * (1 + beta)
+      * (gamma + 2) * (1 + beta)
+      * (gamma + 2) * (1 + beta)
+      * (gamma + 4) * (1 + beta)
+    ```
+
+There is some nuance around table lengths; for example, notice that `witness_table` need not be
+the same length as `lookup_table` (and indeed is not in our implementation, due to multiple
+lookups per row), and that `sorted_table` will always be longer than `lookup_table`, which is
+where we require 'snakifying' to check consistency. Happily, we don't have to perform
+snakifying on `witness_table`, because its contribution above only uses a single term rather
+than a pair of terms.
+
+#### The Queries tables
+
+
+
+#### Producing the sorted table as the prover
+
 {sections.lookup}
 
 ### Gates
@@ -221,6 +344,10 @@ Kimchi currently generates the URS based on the circuit, and attach it to the in
 
 **`Domain`**. A domain large enough to contain the circuit and the zero-knowledge rows (used to provide zero-knowledge to the protocol). Specifically, the smallest subgroup in our field that has order greater or equal to `n + ZK_ROWS`, with `n` is the number of gates in the circuit. 
 TODO: what if the domain is larger than the URS?
+
+```admonish warning "Ordering of elements in the domain"
+Note that in this specification we always assume that the first element of a domain is $1$.
+```
 
 **`Shifts`**. As part of the permutation, we need to create `PERMUTS` shifts.
 To do that, the following logic is followed (in pseudo code):
