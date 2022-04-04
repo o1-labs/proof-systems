@@ -49,10 +49,10 @@ pub trait Entry {
 pub struct CombinedEntry<F>(pub F);
 impl<F: Field> Entry for CombinedEntry<F> {
     type Field = F;
-    type Params = F;
+    type Params = (F, F);
 
     fn evaluate(
-        joint_combiner: &F,
+        (joint_combiner, table_id_combiner): &(F, F),
         j: &JointLookupSpec<F>,
         witness: &[Vec<F>; COLUMNS],
         row: usize,
@@ -65,7 +65,7 @@ impl<F: Field> Entry for CombinedEntry<F> {
             witness[pos.column][row]
         };
 
-        CombinedEntry(j.evaluate(*joint_combiner, &eval))
+        CombinedEntry(j.evaluate(joint_combiner, table_id_combiner, &eval))
     }
 }
 
@@ -94,7 +94,11 @@ impl<F: Field> Entry for UncombinedEntry<F> {
     }
 }
 
-pub type LookupTable<F> = Vec<Vec<F>>;
+/// A table of values that can be used for a lookup, along with the ID for the table.
+pub struct LookupTable<F> {
+    pub id: i32,
+    pub data: Vec<Vec<F>>,
+}
 
 pub fn get_table<F: FftField>(table_name: GateLookupTable) -> LookupTable<F> {
     match table_name {
@@ -115,7 +119,12 @@ pub fn get_table<F: FftField>(table_name: GateLookupTable) -> LookupTable<F> {
 /// analogously using `joint_combiner`.
 ///
 /// This function computes that combined value.
-pub fn combine_table_entry<'a, F, I>(joint_combiner: F, v: I) -> F
+pub fn combine_table_entry<'a, F, I>(
+    joint_combiner: &F,
+    table_id_combiner: &F,
+    v: I,
+    table_id: F,
+) -> F
 where
     F: 'a, // Any references in `F` must have a lifetime longer than `'a`.
     F: Zero + One + Clone,
@@ -123,4 +132,5 @@ where
 {
     v.rev()
         .fold(F::zero(), |acc, x| joint_combiner.clone() * acc + x.clone())
+        + table_id_combiner.clone() * table_id
 }

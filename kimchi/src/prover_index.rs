@@ -97,13 +97,18 @@ where
 
 pub mod testing {
     use super::*;
-    use crate::circuits::gate::CircuitGate;
+    use crate::circuits::{gate::CircuitGate, lookup::tables::LookupTable};
     use commitment_dlog::srs::endos;
     use mina_curves::pasta::{pallas::Affine as Other, vesta::Affine, Fp};
 
-    pub fn new_index_for_test(gates: Vec<CircuitGate<Fp>>, public: usize) -> ProverIndex<Affine> {
+    pub fn new_index_for_test_with_lookups(
+        gates: Vec<CircuitGate<Fp>>,
+        public: usize,
+        lookup_tables: Vec<LookupTable<Fp>>,
+    ) -> ProverIndex<Affine> {
         let fp_sponge_params = oracle::pasta::fp_kimchi::params();
-        let cs = ConstraintSystem::<Fp>::create(gates, vec![], fp_sponge_params, public).unwrap();
+        let cs =
+            ConstraintSystem::<Fp>::create(gates, lookup_tables, fp_sponge_params, public).unwrap();
 
         let mut srs = SRS::<Affine>::create(cs.domain.d1.size as usize);
         srs.add_lagrange_basis(cs.domain.d1);
@@ -112,5 +117,8 @@ pub mod testing {
         let fq_sponge_params = oracle::pasta::fq_kimchi::params();
         let (endo_q, _endo_r) = endos::<Other>();
         ProverIndex::<Affine>::create(cs, fq_sponge_params, endo_q, srs)
+    }
+    pub fn new_index_for_test(gates: Vec<CircuitGate<Fp>>, public: usize) -> ProverIndex<Affine> {
+        new_index_for_test_with_lookups(gates, public, vec![])
     }
 }

@@ -1946,6 +1946,12 @@ impl<F: Field> From<u64> for Expr<ConstantExpr<F>> {
     }
 }
 
+impl<F: Field> From<u64> for ConstantExpr<F> {
+    fn from(x: u64) -> Self {
+        ConstantExpr::Literal(F::from(x))
+    }
+}
+
 impl<F: Field> Mul<F> for Expr<ConstantExpr<F>> {
     type Output = Expr<ConstantExpr<F>>;
 

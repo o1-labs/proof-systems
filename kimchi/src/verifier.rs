@@ -598,6 +598,15 @@ where
                                 scalars.push(scalar * j);
                                 commitments.push(t);
                             }
+                            if let Some(table_ids) = lindex.table_ids.as_ref() {
+                                scalars.push(
+                                    scalar
+                                        * constants
+                                            .joint_combiner
+                                            .pow([lindex.max_joint_size as u64]),
+                                );
+                                commitments.push(table_ids);
+                            }
                         }
                     },
                     Index(t) => {
