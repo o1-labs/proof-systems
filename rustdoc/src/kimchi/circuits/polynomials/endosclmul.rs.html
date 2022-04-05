@@ -386,7 +386,7 @@
 <span class="comment">//~ elliptic curve over $\mathbb{F}_q$ in short Weierstrass form is represented by the set of points $(x,y)$</span>
 <span class="comment">//~ that satisfy the following equation with $a,b\in\mathbb{F}_q$ and $4a^3+27b^2\neq_{\mathbb{F}_q} 0$:</span>
 <span class="comment">//~ $$E(\mathbb{F}_q): y^2 = x^3 + a x + b$$</span>
-<span class="comment">//~ If $P=(x_p, y_p)$ and $T=(x_t, y_t)$ are two points in the curve E(\mathbb{F}_q), the goal of this</span>
+<span class="comment">//~ If $P=(x_p, y_p)$ and $T=(x_t, y_t)$ are two points in the curve $E(\mathbb{F}_q)$, the goal of this</span>
 <span class="comment">//~ operation is to perform the operation $2P±T$ efficiently as $(P±T)+P$.</span>
 <span class="comment">//~</span>
 <span class="comment">//~ `S = (P + (b ? T : −T)) + P`</span>
@@ -397,7 +397,7 @@
 <span class="comment">//~ Moreover, for every step, there will be a one-bit constraint meant to differentiate between addition and subtraction</span>
 <span class="comment">//~ for the operation $(P±T)+P$:</span>
 <span class="comment">//~</span>
-<span class="comment">//~ In particular, the constraints of this gate take care of 4 bits of the scalar withing a single EVBSM row.</span>
+<span class="comment">//~ In particular, the constraints of this gate take care of 4 bits of the scalar within a single EVBSM row.</span>
 <span class="comment">//~ When the scalar is longer (which will usually be the case), multiple EVBSM rows will be concatenated.</span>
 <span class="comment">//~</span>
 <span class="comment">//~ |  Row  |  0 |  1 |  2 |  3 |  4 |  5 |  6 |   7 |   8 |   9 |  10 |  11 |  12 |  13 |  14 |  Type |</span>
@@ -405,7 +405,7 @@
 <span class="comment">//~ |     i | xT | yT |  Ø |  Ø | xP | yP | n  |  xR |  yR |  s1 | s3  | b1  |  b2 |  b3 |  b4 | EVBSM |</span>
 <span class="comment">//~ |   i+1 |  = |  = |    |    | xS | yS | n&#39; | xR&#39; | yR&#39; | s1&#39; | s3&#39; | b1&#39; | b2&#39; | b3&#39; | b4&#39; | EVBSM |</span>
 <span class="comment">//~</span>
-<span class="comment">//~ The layout of this gate (and the next row) allows for this chained behaviour where the output point</span>
+<span class="comment">//~ The layout of this gate (and the next row) allows for this chained behavior where the output point</span>
 <span class="comment">//~ of the current row $S$ gets accumulated as one of the inputs of the following row, becoming $P$ in</span>
 <span class="comment">//~ the next constraints. Similarly, the scalar is decomposed into binary form and $n$ ($n&#39;$ respectively)</span>
 <span class="comment">//~ will store the current accumulated value and the next one for the check.</span>
@@ -716,5 +716,5 @@
     <span class="ident">EndoMulResult</span> { <span class="ident">acc</span>, <span class="ident">n</span>: <span class="ident">n_acc</span> }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (6af09d250 2022-04-03)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (60e50fc1c 2022-04-04)" ></div>
 </body></html>
