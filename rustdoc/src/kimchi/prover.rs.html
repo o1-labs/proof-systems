@@ -1256,7 +1256,6 @@
 <span id="1251">1251</span>
 <span id="1252">1252</span>
 <span id="1253">1253</span>
-<span id="1254">1254</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements prover&#39;s zk-proof primitive.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -1423,9 +1422,9 @@
             )
             .<span class="ident">interpolate</span>()
         });
-
-        <span class="comment">//~ 10. TODO: lookup</span>
-        <span class="kw">let</span> <span class="ident">joint_combiner_</span> <span class="op">=</span> {
+        <span class="comment">//~ 10. If there&#39;s a joint lookup being used in the circuit (TODO: define joint lookup vs single lookup):</span>
+        <span class="kw">let</span> <span class="ident">joint_combiner</span>: <span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> <span class="op">=</span> {
+            <span class="comment">//~     - Sample the joint combinator (lookup challenge) $j$ with the Fq-Sponge.</span>
             <span class="comment">// TODO: how will the verifier circuit handle these kind of things? same with powers of alpha...</span>
             <span class="kw">let</span> <span class="ident">s</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">lookup_constraint_system</span>.<span class="ident">as_ref</span>() {
                 <span class="prelude-val">None</span>
@@ -1446,11 +1445,10 @@
                     ..
                 }) =&gt; <span class="ident">ScalarChallenge</span>(<span class="ident">fq_sponge</span>.<span class="ident">challenge</span>()),
             };
-            (<span class="ident">s</span>, <span class="ident">s</span>.<span class="ident">to_field</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">endo_r</span>))
-        };
 
-        <span class="comment">// TODO: that seems like an unecessary line</span>
-        <span class="kw">let</span> <span class="ident">joint_combiner</span>: <span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">joint_combiner_</span>.<span class="number">1</span>;
+            <span class="comment">//~     - derive the scalar joint combinator $j$ from $j&#39;$ using the endomorphism (TODO: details, explicitly say that we change the field).</span>
+            <span class="ident">s</span>.<span class="ident">to_field</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">endo_r</span>)
+        };
 
         <span class="kw">let</span> <span class="ident">table_id_combiner</span>: <span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> <span class="op">=</span>
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">lcs</span>) <span class="op">=</span> <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">lookup_constraint_system</span>.<span class="ident">as_ref</span>() {

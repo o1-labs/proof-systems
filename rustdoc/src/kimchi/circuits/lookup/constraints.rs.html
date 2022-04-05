@@ -756,6 +756,10 @@
     <span class="ident">circuits</span>::{
         <span class="ident">expr</span>::{<span class="ident">prologue</span>::<span class="kw-2">*</span>, <span class="ident">Column</span>, <span class="ident">ConstantExpr</span>},
         <span class="ident">gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">CurrOrNext</span>},
+        <span class="ident">lookup</span>::{
+            <span class="ident">lookups</span>::{<span class="ident">JointLookup</span>, <span class="ident">JointLookupSpec</span>, <span class="ident">LocalPosition</span>, <span class="ident">LookupInfo</span>, <span class="ident">LookupsUsed</span>},
+            <span class="ident">tables::Entry</span>,
+        },
         <span class="ident">wires::COLUMNS</span>,
     },
     <span class="ident">error::ProofError</span>,
@@ -766,11 +770,6 @@
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">serde_with::serde_as</span>;
 <span class="kw">use</span> <span class="ident">CurrOrNext</span>::{<span class="ident">Curr</span>, <span class="ident">Next</span>};
-
-<span class="kw">use</span> <span class="kw">super</span>::{
-    <span class="ident">lookups</span>::{<span class="ident">JointLookup</span>, <span class="ident">JointLookupSpec</span>, <span class="ident">LocalPosition</span>, <span class="ident">LookupInfo</span>, <span class="ident">LookupsUsed</span>},
-    <span class="ident">tables::Entry</span>,
-};
 
 <span class="doccomment">/// Number of constraints produced by the argument.</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">7</span>;
@@ -947,6 +946,7 @@
         <span class="ident">counts</span>.<span class="ident">entry</span>(<span class="ident">t</span>).<span class="ident">or_insert</span>(<span class="number">1</span>);
     }
 
+    <span class="comment">// TODO: shouldn&#39;t we make sure that lookup rows is the same as the number of active gates in the circuit as well? danger: What if we have gates that use lookup but are not counted here?</span>
     <span class="kw">for</span> (<span class="ident">i</span>, <span class="ident">row</span>) <span class="kw">in</span> <span class="ident">by_row</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>().<span class="ident">take</span>(<span class="ident">lookup_rows</span>) {
         <span class="kw">let</span> <span class="ident">spec</span> <span class="op">=</span> <span class="ident">row</span>;
         <span class="kw">let</span> <span class="ident">padding</span> <span class="op">=</span> <span class="ident">max_lookups_per_row</span> <span class="op">-</span> <span class="ident">spec</span>.<span class="ident">len</span>();

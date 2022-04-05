@@ -1389,7 +1389,11 @@ we can use the <code>commit_evaluation</code> optimization.</p>
 TODO: why not do this first, and then commit? Why commit from evaluation directly?</p>
 </li>
 <li>
-<p>TODO: lookup</p>
+<p>If there’s a joint lookup being used in the circuit (TODO: define joint lookup vs single lookup):</p>
+<ul>
+<li>Sample the joint combinator (lookup challenge) <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.85396em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.05724em;">j</span></span></span></span> with the Fq-Sponge.</li>
+<li>derive the scalar joint combinator <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.85396em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.05724em;">j</span></span></span></span> from <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.946332em;vertical-align:-0.19444em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.05724em;">j</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span> using the endomorphism (TODO: details, explicitly say that we change the field).</li>
+</ul>
 </li>
 <li>
 <p>Sample <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.05278em;">β</span></span></span></span> with the Fq-Sponge.</p>

@@ -36,6 +36,9 @@
 <span id="31">31</span>
 <span id="32">32</span>
 <span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the [ProofError] type.</span>
 
 <span class="kw">use</span> <span class="ident">thiserror::Error</span>;
@@ -68,6 +71,9 @@
 
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;the opening proof failed to verify&quot;</span>)]</span>
     <span class="ident">OpenProof</span>,
+
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;lookup used in circuit, but proof is missing lookup commitments&quot;</span>)]</span>
+    <span class="ident">LookupCommitmentMissing</span>,
 }
 </code></pre></div>
 </section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (60e50fc1c 2022-04-04)" ></div>
