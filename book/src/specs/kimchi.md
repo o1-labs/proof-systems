@@ -1385,7 +1385,9 @@ The prover then follows the following steps to create the proof:
 8. Absorb the witness commitments with the Fq-Sponge.
 9. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
    TODO: why not do this first, and then commit? Why commit from evaluation directly?
-10. TODO: lookup
+10. If there's a joint lookup being used in the circuit (TODO: define joint lookup vs single lookup):
+    - Sample the joint combinator (lookup challenge) $j$ with the Fq-Sponge.
+    - derive the scalar joint combinator $j$ from $j'$ using the endomorphism (TODO: details, explicitly say that we change the field).
 11. Sample $\beta$ with the Fq-Sponge.
 12. Sample $\gamma$ with the Fq-Sponge.
 13. TODO: lookup
