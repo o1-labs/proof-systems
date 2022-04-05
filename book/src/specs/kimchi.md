@@ -1511,11 +1511,14 @@ We run the following algorithm:
 1. Setup the Fq-Sponge.
 2. Absorb the commitment of the public input polynomial with the Fq-Sponge.
 3. Absorb the commitments to the registers / witness columns with the Fq-Sponge.
-4. TODO: lookup (joint combiner challenge)
-5. TODO: lookup (absorb)
+4. If lookup is not used,
+   or is used with queries to single-column lookup tables only,
+   then set the joint combiner challenge $j$ to $0$.
+   Otherwise, squeeze the Fq-Sponge to obtain the joint combiner challenge $j$.
+5. If using lookup, absorb the commitments to the sorted polynomials.
 6. Sample $\beta$ with the Fq-Sponge.
 7. Sample $\gamma$ with the Fq-Sponge.
-8. TODO: lookup
+8. If using lookup, absorb the commitment to the aggregation lookup polynomial.
 9. Absorb the commitment to the permutation trace with the Fq-Sponge.
 10. Sample $\alpha'$ with the Fq-Sponge.
 11. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
@@ -1554,6 +1557,13 @@ Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
    (TODO: most likely only the quotient polynomial is chunked)
    with the right powers of $\zeta^n$ and $(\zeta * \omega)^n$.
 4. Compute the commitment to the linearized polynomial $f$.
+   To do this, add the constraints of all of the gates, of the permutation,
+   and optionally of the lookup.
+   (See the separate sections in the [constraints](#constraints) section.)
+   Any polynomial should be replaced by its associated commitment,
+   contained in the verifier index or in the proof,
+   unless a polynomial has its evaluation provided by the proof
+   in which case the evaluation should be used in place of the commitment.
 5. Compute the (chuncked) commitment of $ft$
    (see [Maller's optimization](../crypto/plonk/maller_15.html)).
 6. List the polynomial commitments, and their associated evaluations,
