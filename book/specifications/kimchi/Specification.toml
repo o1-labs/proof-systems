@@ -21,6 +21,7 @@ poseidon = "../../../kimchi/src/circuits/polynomials/poseidon.rs"
 varbasemul = "../../../kimchi/src/circuits/polynomials/varbasemul.rs"
 
 # lookup
+tables = "../../../kimchi/src/circuits/lookup/tables/mod.rs"
 xor = "../../../kimchi/src/circuits/lookup/tables/xor.rs"
 lookup = "../../../kimchi/src/circuits/lookup/constraints.rs"
 

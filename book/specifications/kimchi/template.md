@@ -203,7 +203,9 @@ In this section, we describe the tables kimchi supports, as well as the differen
 
 #### The Lookup Tables
 
-Kimchi currently supports a single lookup table: the XOR lookup table.
+Kimchi currently supports a single lookup table: 
+
+{sections.tables}
 
 **XOR**. {sections.xor}
 

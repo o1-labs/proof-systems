@@ -338,7 +338,13 @@ In this section, we describe the tables kimchi supports, as well as the differen
 
 #### The Lookup Tables
 
-Kimchi currently supports a single lookup table: the XOR lookup table.
+Kimchi currently supports a single lookup table: 
+
+```rs
+/// The table ID associated with the XOR lookup table.
+pub const XOR_TABLE_ID: i32 = 0;
+```
+
 
 **XOR**. The lookup table for 4-bit xor.
 Note that it is constructed so that `(0, 0, 0)` is the last position in the table.
