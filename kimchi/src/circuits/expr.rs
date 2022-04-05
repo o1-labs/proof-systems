@@ -14,9 +14,12 @@ use ark_poly::{
 use itertools::Itertools;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 use std::ops::{Add, AddAssign, Mul, Neg, Sub};
+use std::{
+    collections::{HashMap, HashSet},
+    ops::MulAssign,
+};
 use CurrOrNext::{Curr, Next};
 
 /// The collection of constants required to evaluate an `Expr`.
@@ -1279,7 +1282,7 @@ impl<F: FftField> Expr<F> {
         } else if deg <= 8 * d1_size {
             Domain::D8
         } else {
-            panic!("constraint had degree {} > 8", deg);
+            panic!("constraint had degree {deg} > d8 ({})", 8 * d1_size);
         };
 
         let mut cache = HashMap::new();
@@ -1533,6 +1536,7 @@ impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
 
 impl<F: One> Expr<F> {
     /// Exponentiate an expression
+    #[must_use]
     pub fn pow(self, p: u64) -> Self {
         use Expr::*;
         if p == 0 {
@@ -1901,6 +1905,21 @@ impl<F: Zero + One + PartialEq> Mul<Expr<F>> for Expr<F> {
     }
 }
 
+impl<F> MulAssign<Expr<F>> for Expr<F>
+where
+    F: Zero + One + PartialEq + Clone,
+{
+    fn mul_assign(&mut self, other: Self) {
+        if self.is_zero() || other.is_zero() {
+            *self = Self::zero();
+        } else if self.is_one() {
+            *self = other;
+        } else if !other.is_one() {
+            *self = Expr::BinOp(Op2::Mul, Box::new(self.clone()), Box::new(other));
+        }
+    }
+}
+
 impl<F: Zero> Sub<Expr<F>> for Expr<F> {
     type Output = Expr<F>;
     fn sub(self, other: Self) -> Self {
@@ -1920,6 +1939,12 @@ impl<F: Field> From<u64> for Expr<F> {
 impl<F: Field> From<u64> for Expr<ConstantExpr<F>> {
     fn from(x: u64) -> Self {
         Expr::Constant(ConstantExpr::Literal(F::from(x)))
+    }
+}
+
+impl<F: Field> From<u64> for ConstantExpr<F> {
+    fn from(x: u64) -> Self {
+        ConstantExpr::Literal(F::from(x))
     }
 }
 
@@ -2087,7 +2112,12 @@ pub mod constraints {
 /// An alias for the intended usage of the expression type in constructing constraints.
 pub type E<F> = Expr<ConstantExpr<F>>;
 
-/// Handy function to quickly create an expression for a witness.
+/// Convenience function to create a constant as [Expr].
+pub fn constant<F>(x: F) -> E<F> {
+    Expr::Constant(ConstantExpr::Literal(x))
+}
+
+/// Helper function to quickly create an expression for a witness.
 pub fn witness<F>(i: usize, row: CurrOrNext) -> E<F> {
     E::<F>::cell(Column::Witness(i), row)
 }
@@ -2113,5 +2143,82 @@ pub fn coeff<F>(i: usize) -> E<F> {
 
 /// You can import this module like `use kimchi::circuits::expr::prologue::*` to obtain a number of handy aliases and helpers
 pub mod prologue {
-    pub use super::{coeff, index, witness, witness_curr, witness_next, E};
+    pub use super::{coeff, constant, index, witness, witness_curr, witness_next, E};
+}
+
+#[cfg(test)]
+pub mod test {
+    use super::*;
+    use crate::circuits::{
+        constraints::ConstraintSystem, gate::CircuitGate, polynomials::generic::GenericGateSpec,
+        wires::Wire,
+    };
+    use array_init::array_init;
+    use mina_curves::pasta::fp::Fp;
+
+    #[test]
+    #[should_panic]
+    fn test_failed_linearize() {
+        // w0 * w1
+        let mut expr: E<Fp> = E::zero();
+        expr += witness_curr(0);
+        expr *= witness_curr(1);
+
+        // since none of w0 or w1 is evaluated this should panic
+        let evaluated = HashSet::new();
+        expr.linearize(evaluated).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_degree_tracking() {
+        // The selector CompleteAdd has degree n-1 (so can be tracked with n evaluations in the domain d1 of size n).
+        // Raising a polynomial of degree n-1 to the power 8 makes it degree 8*(n-1) (and so it needs `8(n-1) + 1` evaluations).
+        // Since `d8` is of size `8n`, we are still good with that many evaluations to track the new polynomial.
+        // Raising it to the power 9 pushes us out of the domain d8, which will panic.
+        let mut expr: E<Fp> = E::zero();
+        expr += index(GateType::CompleteAdd);
+        let expr = expr.pow(9);
+
+        // create a dummy env
+        let one = Fp::from(1u32);
+        let mut gates = vec![];
+        gates.push(CircuitGate::create_generic_gadget(
+            Wire::new(0),
+            GenericGateSpec::Const(1u32.into()),
+            None,
+        ));
+        gates.push(CircuitGate::create_generic_gadget(
+            Wire::new(1),
+            GenericGateSpec::Const(1u32.into()),
+            None,
+        ));
+        let constraint_system = ConstraintSystem::fp_for_testing(gates);
+
+        let witness_cols: [_; COLUMNS] = array_init(|_| DensePolynomial::zero());
+        let permutation = DensePolynomial::zero();
+        let domain_evals = constraint_system.evaluate(&witness_cols, &permutation);
+
+        let env = Environment {
+            constants: Constants {
+                alpha: one,
+                beta: one,
+                gamma: one,
+                joint_combiner: one,
+                endo_coefficient: one,
+                mds: vec![vec![]],
+            },
+            witness: &domain_evals.d8.this.w,
+            coefficient: &constraint_system.coefficients8,
+            vanishes_on_last_4_rows: &constraint_system.vanishes_on_last_4_rows,
+            z: &domain_evals.d8.this.z,
+            l0_1: l0_1(constraint_system.domain.d1),
+            domain: constraint_system.domain,
+            index: HashMap::new(),
+            lookup: None,
+        };
+
+        // this should panic as we don't have a domain large enough
+        expr.evaluations(&env);
+    }
 }

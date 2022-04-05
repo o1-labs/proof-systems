@@ -731,9 +731,194 @@ constraint 7:
 
 #### Endo Scalar
 
+We give constraints for the endomul scalar computation.
+
+Each row corresponds to 8 iterations of the inner loop in "Algorithm 2" on page 29 of
+[the Halo paper](https://eprint.iacr.org/2019/1021.pdf).
+
+The state of the algorithm that's updated across iterations of the loop is `(a, b)`.
+It's clear from that description of the algorithm that an iteration of the loop can
+be written as
+
+```ignore
+(a, b, i) ->
+  ( 2 * a + c_func(r_{2 * i}, r_{2 * i + 1}),
+    2 * b + d_func(r_{2 * i}, r_{2 * i + 1}) )
+```
+
+for some functions `c_func` and `d_func`. If one works out what these functions are on
+every input (thinking of a two-bit input as a number in $\{0, 1, 2, 3\}$), one finds they
+are given by
+
+`c_func(x)`, defined by
+- `c_func(0) = 0`
+- `c_func(1) = 0`
+- `c_func(2) = -1`
+- `c_func(3) = 1`
+
+`d_func(x)`, defined by
+- `d_func(0) = -1`
+- `d_func(1) = 1`
+- `d_func(2) = 0`
+- `d_func(3) = 0`
+
+One can then interpolate to find polynomials that implement these functions on $\{0, 1, 2, 3\}$.
+
+You can use [`sage`](https://www.sagemath.org/), as
+```ignore
+R = PolynomialRing(QQ, 'x')
+c_func = R.lagrange_polynomial([(0, 0), (1, 0), (2, -1), (3, 1)])
+d_func = R.lagrange_polynomial([(0, -1), (1, 1), (2, 0), (3, 0)])
+```
+
+Then, `c_func` is given by
+
+```ignore
+2/3 * x^3 - 5/2 * x^2 + 11/6 * x
+```
+
+and `d_func` is given by
+```ignore
+2/3 * x^3 - 7/2 * x^2 + 29/6 * x - 1 <=> c_func + (-x^2 + 3x - 1)
+```
+
+We lay it out the witness as
+
+|  0 |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |  9 | 10 | 11 | 12 | 13 | 14 | Type |
+|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|------|
+| n0 | n8 | a0 | b0 | a8 | b8 | x0 | x1 | x2 | x3 | x4 | x5 | x6 | x7 |    | ENDO |
+
+where each `xi` is a two-bit "crumb".
+
+We also use a polynomial to check that each `xi` is indeed in $\{0, 1, 2, 3\}$,
+which can be done by checking that each $x_i$ is a root of the polyunomial below:
+
+```ignore
+crumb(x)
+= x (x - 1) (x - 2) (x - 3)
+= x^4 - 6*x^3 + 11*x^2 - 6*x
+= x *(x^3 - 6*x^2 + 11*x - 6)
+```
+Each iteration performs the following computations
+
+* Update $n$: $\quad n_{i+1} = 2 \cdot n_{i} + x_i$
+* Update $a$: $\quad a_{i+1} = 2 \cdot a_{i} + c_i$
+* Update $b$: $\quad b_{i+1} = 2 \cdot b_{i} + d_i$
+
+Then, after the 8 iterations, we compute expected values of the above operations as:
+
+* `expected_n8 := 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * (2 * n0 + x0) + x1 ) + x2 ) + x3 ) + x4 ) + x5 ) + x6 ) + x7`
+* `expected_a8 := 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * (2 * a0 + c0) + c1 ) + c2 ) + c3 ) + c4 ) + c5 ) + c6 ) + c7`
+* `expected_b8 := 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * (2 * b0 + d0) + d1 ) + d2 ) + d3 ) + d4 ) + d5 ) + d6 ) + d7`
+
+Putting together all of the above, these are the 11 constraints for this gate
+
+* Checking values after the 8 iterations:
+  * Constrain $n$: ` 0 = expected_n8 - n8`
+  * Constrain $a$: ` 0 = expected_a8 - a8`
+  * Constrain $b$: ` 0 = expected_b8 - b8`
+* Checking the crumbs, meaning each $x$ is indeed in the range $\{0, 1, 2, 3\}$:
+  * Constrain $x_0$: `0 = x0 * ( x0^3 - 6 * x0^2 + 11 * x0 - 6 )`
+  * Constrain $x_1$: `0 = x1 * ( x1^3 - 6 * x1^2 + 11 * x1 - 6 )`
+  * Constrain $x_2$: `0 = x2 * ( x2^3 - 6 * x2^2 + 11 * x2 - 6 )`
+  * Constrain $x_3$: `0 = x3 * ( x3^3 - 6 * x3^2 + 11 * x3 - 6 )`
+  * Constrain $x_4$: `0 = x4 * ( x4^3 - 6 * x4^2 + 11 * x4 - 6 )`
+  * Constrain $x_5$: `0 = x5 * ( x5^3 - 6 * x5^2 + 11 * x5 - 6 )`
+  * Constrain $x_6$: `0 = x6 * ( x6^3 - 6 * x6^2 + 11 * x6 - 6 )`
+  * Constrain $x_7$: `0 = x7 * ( x7^3 - 6 * x7^2 + 11 * x7 - 6 )`
+
 
 
 #### Endo Scalar Multiplication
+
+We implement custom gate constraints for short Weierstrass curve
+endomorphism optimised variable base scalar multiplication.
+
+Given a finite field $\mathbb{F}_q$ of order $q$, if the order is not a multiple of 2 nor 3, then an
+elliptic curve over $\mathbb{F}_q$ in short Weierstrass form is represented by the set of points $(x,y)$
+that satisfy the following equation with $a,b\in\mathbb{F}_q$ and $4a^3+27b^2\neq_{\mathbb{F}_q} 0$:
+$$E(\mathbb{F}_q): y^2 = x^3 + a x + b$$
+If $P=(x_p, y_p)$ and $T=(x_t, y_t)$ are two points in the curve $E(\mathbb{F}_q)$, the goal of this
+operation is to perform the operation $2P±T$ efficiently as $(P±T)+P$.
+
+`S = (P + (b ? T : −T)) + P`
+
+The same algorithm can be used to perform other scalar multiplications, meaning it is
+not restricted to the case $2\cdot P$, but it can be used for any arbitrary $k\cdot P$. This is done
+by decomposing the scalar $k$ into its binary representation.
+Moreover, for every step, there will be a one-bit constraint meant to differentiate between addition and subtraction
+for the operation $(P±T)+P$:
+
+In particular, the constraints of this gate take care of 4 bits of the scalar within a single EVBSM row.
+When the scalar is longer (which will usually be the case), multiple EVBSM rows will be concatenated.
+
+|  Row  |  0 |  1 |  2 |  3 |  4 |  5 |  6 |   7 |   8 |   9 |  10 |  11 |  12 |  13 |  14 |  Type |
+|-------|----|----|----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|-------|
+|     i | xT | yT |  Ø |  Ø | xP | yP | n  |  xR |  yR |  s1 | s3  | b1  |  b2 |  b3 |  b4 | EVBSM |
+|   i+1 |  = |  = |    |    | xS | yS | n' | xR' | yR' | s1' | s3' | b1' | b2' | b3' | b4' | EVBSM |
+
+The layout of this gate (and the next row) allows for this chained behavior where the output point
+of the current row $S$ gets accumulated as one of the inputs of the following row, becoming $P$ in
+the next constraints. Similarly, the scalar is decomposed into binary form and $n$ ($n'$ respectively)
+will store the current accumulated value and the next one for the check.
+
+For readability, we define the following variables for the constraints:
+
+  * `endo` $:=$ `EndoCoefficient`
+  * `xq1` $:= (1 + ($`endo`$ - 1)\cdot b_1) \cdot x_t$
+  * `xq2` $:= (1 + ($`endo`$ - 1)\cdot b_3) \cdot x_t$
+  * `yq1` $:= (2\cdot b_2 - 1) \cdot y_t$
+  * `yq2` $:= (2\cdot b_4 - 1) \cdot y_t$
+
+These are the 11 constraints that correspond to each EVBSM gate,
+which take care of 4 bits of the scalar within a single EVBSM row:
+
+* First block:
+  * `(xq1 - xp) * s1 = yq1 - yp`
+  * `(2 * xp – s1^2 + xq1) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2 * yp`
+  * `(yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)`
+* Second block:
+  * `(xq2 - xr) * s3 = yq2 - yr`
+  * `(2*xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2 * yr`
+  * `(ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)`
+* Booleanity checks:
+  * Bit flag $b_1$: `0 = b1 * (b1 - 1)`
+  * Bit flag $b_2$: `0 = b2 * (b2 - 1)`
+  * Bit flag $b_3$: `0 = b3 * (b3 - 1)`
+  * Bit flag $b_4$: `0 = b4 * (b4 - 1)`
+* Binary decomposition:
+  * Accumulated scalar: `n_next = 16 * n + 8 * b1 + 4 * b2 + 2 * b3 + b4`
+
+The constraints above are derived from the following EC Affine arithmetic equations:
+
+* (1) => $(x_{q_1} - x_p) \cdot s_1 = y_{q_1} - y_p$
+* (2&3) => $(x_p – x_r) \cdot s_2 = y_r + y_p$
+* (2) => $(2 \cdot x_p + x_{q_1} – s_1^2) \cdot (s_1 + s_2) = 2 \cdot y_p$
+    * <=> $(2 \cdot x_p – s_1^2 + x_{q_1}) \cdot ((x_p – x_r) \cdot s_1 + y_r + y_p) = (x_p – x_r) \cdot 2 \cdot y_p$
+* (3) => $s_1^2 - s_2^2 = x_{q_1} - x_r$
+    * <=> $(y_r + y_p)^2 = (x_p – x_r)^2 \cdot (s_1^2 – x_{q_1} + x_r)$
+*
+* (4) => $(x_{q_2} - x_r) \cdot s_3 = y_{q_2} - y_r$
+* (5&6) => $(x_r – x_s) \cdot s_4 = y_s + y_r$
+* (5) => $(2 \cdot x_r + x_{q_2} – s_3^2) \cdot (s_3 + s_4) = 2 \cdot y_r$
+    * <=> $(2 \cdot x_r – s_3^2 + x_{q_2}) \cdot ((x_r – x_s) \cdot s_3 + y_s + y_r) = (x_r – x_s) \cdot 2 \cdot y_r$
+* (6) => $s_3^2 – s_4^2 = x_{q_2} - x_s$
+    * <=> $(y_s + y_r)^2 = (x_r – x_s)^2 \cdot (s_3^2 – x_{q_2} + x_s)$
+
+Defining $s_2$ and $s_4$ as
+
+* $s_2 := \frac{2 \cdot y_P}{2 * x_P + x_T - s_1^2} - s_1$
+* $s_4 := \frac{2 \cdot y_R}{2 * x_R + x_T - s_3^2} - s_3$
+
+Gives the following equations when substituting the values of $s_2$ and $s_4$:
+
+1. `(xq1 - xp) * s1 = (2 * b1 - 1) * yt - yp`
+2. `(2 * xp – s1^2 + xq1) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2 * yp`
+3. `(yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)`
+-
+4. `(xq2 - xr) * s3 = (2 * b2 - 1) * yt - yr`
+5. `(2 * xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2 * yr`
+6. `(ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)`
 
 
 
@@ -742,8 +927,8 @@ constraint 7:
 We implement custom Plonk constraints for short Weierstrass curve variable base scalar multiplication.
 
 Given a finite field $\mathbb{F}_q$ of order $q$, if the order is not a multiple of 2 nor 3, then an
-elliptic curve over $\mathbb{F}_q$ in Weierstrass form is represented by the set of points $(x,y)$ that
-satisfy the following equation with $a,b\in\mathbb{F}_q$:
+elliptic curve over $\mathbb{F}_q$ in short Weierstrass form is represented by the set of points $(x,y)$
+that satisfy the following equation with $a,b\in\mathbb{F}_q$ and $4a^3+27b^2\neq_{\mathbb{F}_q} 0$:
 $$E(\mathbb{F}_q): y^2 = x^3 + a x + b$$
 If $P=(x_p, y_p)$ and $Q=(x_q, y_q)$ are two points in the curve $E(\mathbb{F}_q)$, the algorithm we
 represent here computes the operation $2P+Q$ (point doubling and point addition) as $(P+Q)+Q$.

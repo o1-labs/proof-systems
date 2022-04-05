@@ -39,6 +39,9 @@ use commitment_dlog::commitment::{b_poly_coefficients, CommitmentCurve, PolyComm
 use itertools::Itertools;
 use o1_utils::{types::fields::*, ExtendedDensePolynomial as _};
 use oracle::{sponge::ScalarChallenge, FqSponge};
+use rayon::iter::{
+    IndexedParallelIterator, IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator,
+};
 use std::collections::HashMap;
 
 /// The result of a proof creation or verification.
@@ -190,6 +193,17 @@ where
         // TODO: that seems like an unecessary line
         let joint_combiner: ScalarField<G> = joint_combiner_.1;
 
+        let table_id_combiner: ScalarField<G> =
+            if let Some(lcs) = index.cs.lookup_constraint_system.as_ref() {
+                if lcs.table_ids8.as_ref().is_some() {
+                    joint_combiner.pow([lcs.configuration.max_joint_size as u64])
+                } else {
+                    ScalarField::<G>::zero()
+                }
+            } else {
+                ScalarField::<G>::zero()
+            };
+
         // TODO: Looking-up a tuple (f_0, f_1, ..., f_{m-1}) in a tuple of tables (T_0, ..., T_{m-1}) is
         // reduced to a single lookup
         // sum_i joint_combiner^i f_i
@@ -234,9 +248,10 @@ where
         let dummy_lookup_value = {
             let x = match index.cs.lookup_constraint_system.as_ref() {
                 None => ScalarField::<G>::zero(),
-                Some(lcs) => {
-                    combine_table_entry(joint_combiner, lcs.configuration.dummy_lookup_entry.iter())
-                }
+                Some(lcs) => lcs
+                    .configuration
+                    .dummy_lookup
+                    .evaluate(&joint_combiner, &table_id_combiner),
             };
             CombinedEntry(x)
         };
@@ -248,7 +263,21 @@ where
                     let iter_lookup_table = || {
                         (0..d1_size).map(|i| {
                             let row = lcs.lookup_table8.iter().map(|e| &e.evals[8 * i]);
-                            CombinedEntry(combine_table_entry(joint_combiner, row))
+                            let table_id = match lcs.table_ids8.as_ref() {
+                                Some(table_ids8) => table_ids8.evals[8 * i],
+                                None =>
+                                // If there is no `table_ids8` in the constraint system,
+                                // every table ID is identically 0.
+                                {
+                                    ScalarField::<G>::zero()
+                                }
+                            };
+                            CombinedEntry(combine_table_entry(
+                                &joint_combiner,
+                                &table_id_combiner,
+                                row,
+                                table_id,
+                            ))
                         })
                     };
 
@@ -262,7 +291,7 @@ where
                             index.cs.domain.d1,
                             &index.cs.gates,
                             &witness,
-                            joint_combiner,
+                            (joint_combiner, table_id_combiner),
                         )?;
 
                     let lookup_sorted: Vec<_> = lookup_sorted
@@ -310,7 +339,15 @@ where
                 (Some(lcs), Some(lookup_sorted)) => {
                     let iter_lookup_table = || (0..d1_size).map(|i| {
                         let row = lcs.lookup_table8.iter().map(|e| & e.evals[8 * i]);
-                        combine_table_entry(joint_combiner, row)
+                        let table_id =
+                            match lcs.table_ids8.as_ref() {
+                                Some(table_ids8) => table_ids8.evals[8 * i],
+                                None =>
+                                    // If there is no `table_ids8` in the constraint system, every
+                                    // table ID is identically 0.
+                                    ScalarField::<G>::zero(),
+                            };
+                        combine_table_entry(&joint_combiner, &table_id_combiner, row, table_id)
                     });
 
                     let aggreg =
@@ -320,7 +357,8 @@ where
                             index.cs.domain.d1,
                             &index.cs.gates,
                             &witness,
-                            joint_combiner,
+                            &joint_combiner,
+                            &table_id_combiner,
                             beta, gamma,
                             &lookup_sorted,
                             rng)?;
@@ -368,8 +406,16 @@ where
             let joint_table = &lcs.lookup_table8;
             let mut res = joint_table[joint_table.len() - 1].clone();
             for col in joint_table.iter().rev().skip(1) {
-                res.evals.iter_mut().for_each(|e| *e *= joint_combiner);
+                res.evals.par_iter_mut().for_each(|e| *e *= joint_combiner);
                 res += col;
+            }
+            if let Some(table_ids8) = &lcs.table_ids8 {
+                res.evals
+                    .par_iter_mut()
+                    .zip(table_ids8.evals.par_iter())
+                    .for_each(|(x, table_id)| {
+                        *x += table_id_combiner * table_id;
+                    })
             }
             res
         });
@@ -677,20 +723,34 @@ where
                                 .evaluate_chunks(e)
                         })
                         .collect(),
-                    table: lcs
-                        .lookup_table
-                        .iter()
-                        .map(|p| {
-                            p.to_chunked_polynomial(index.max_poly_size)
-                                .evaluate_chunks(e)
-                        })
-                        .rev()
-                        .fold(vec![ScalarField::<G>::zero()], |acc, x| {
-                            acc.into_iter()
-                                .zip(x.iter())
-                                .map(|(acc, x)| acc * joint_combiner + x)
-                                .collect()
-                        }),
+                    table: {
+                        let base_table = lcs
+                            .lookup_table
+                            .iter()
+                            .map(|p| {
+                                p.to_chunked_polynomial(index.max_poly_size)
+                                    .evaluate_chunks(e)
+                            })
+                            .rev()
+                            .fold(vec![ScalarField::<G>::zero()], |acc, x| {
+                                acc.into_iter()
+                                    .zip(x.iter())
+                                    .map(|(acc, x)| acc * joint_combiner + x)
+                                    .collect()
+                            });
+                        match lcs.table_ids.as_ref() {
+                            None => base_table,
+                            Some(table_ids) => base_table
+                                .into_iter()
+                                .zip(
+                                    table_ids
+                                        .to_chunked_polynomial(index.max_poly_size)
+                                        .evaluate_chunks(e),
+                                )
+                                .map(|(x, table_id)| x + (table_id_combiner * table_id))
+                                .collect(),
+                        }
+                    },
                 })
         };
 
