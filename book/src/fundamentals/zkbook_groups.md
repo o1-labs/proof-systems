@@ -86,9 +86,9 @@ A cyclic group $G$ is a special kind of abelian group. It is an abelian group ge
 
 ### Groups in cryptography
 
-Many cryptographic protocols are defined generically with respect to any abelian group that has a "hard discrete log". 
+Many cryptographic protocols are defined generically with respect to any abelian group that has a "hard discrete log".
 
-Let 
+Let
 
 - $G$ be a cyclic group
 
@@ -97,10 +97,10 @@ Let
 - $\mu$ a probability distribution on $G$
 
 - $\mathcal{A}$ a set of algorithms of type $G \to \mathbb{Z}$ with runtime and memory usage bounds. In other words, a set of tuples $(P, t, m)$ where $P$ is a program of type $G \to \Z$, $t$ is a bound on the time that program can be run, and $m$ is a bound on the amount of memory that program can use.
-  
+
   In practice you fix this to be something like, the set of all computations that can be run for less than 1 trillion \$.
 
-- $\varepsilon \in [0, 1]$ a probability, usually taken to be something close to 0 like $1 / 2^{128}$ 
+- $\varepsilon \in [0, 1]$ a probability, usually taken to be something close to 0 like $1 / 2^{128}$
 
 Then we can define the **$(G, g, \mu, \mathcal{A}, \varepsilon)$-computational discrete-log assumption** which says:
 
@@ -136,7 +136,7 @@ $$
 \{ (x, y) \in F \times F \mid y^2 = x^3 + ax + b \}
 $$
 
-for some $a, b \in F$, plus an additonal point $O$ which is called the point at infinity. Basically it's a set of pairs satisfying some equation of that form. The data of the elliptic curve itself is just the field $F$ together with the constants $a$ and $b$. 
+for some $a, b \in F$, plus an additional point $O$ which is called the point at infinity. Basically it's a set of pairs satisfying some equation of that form. The data of the elliptic curve itself is just the field $F$ together with the constants $a$ and $b$.
 
 What is special about elliptic curves is that there is a way of giving them a group structure with simple to compute operations that we believe satisfy the hardness assumptions described above.
 
@@ -153,13 +153,13 @@ The identity for the group is $O$, the point at infinity. For that point we may 
 Group addition is more complicated to define, so we will not, but here is what's worth knowing about how to compute $(x_0, y_0) + (x_1, y_1)$
 
 - There are three cases
-  
+
   1. $x_0 \neq x_1$
-  
+
   2. $x_0 = x_1$ and $y_0 = y_1$
-  
-  3. $x_0 = x_1$ but $y_0 \neq y_1$. In this case it turns out $y_0 = -y_1$ and so the two points are inverse, and we return $O$ 
-  
+
+  3. $x_0 = x_1$ but $y_0 \neq y_1$. In this case it turns out $y_0 = -y_1$ and so the two points are inverse, and we return $O$
+
   In cases 1 and 2, the algorithm to compute the result just performs a simple sequence of some field operations (multiplications, additions, divisions, subtractions) with the input values. In other words, there is a simple arithmetic formula for computing the result.
 
 #### Elliptic curves in Rust
@@ -178,9 +178,9 @@ So, for any $y$, unless $y$ is 0, $y$ and $-y$ have opposite parities. Parity ca
 
 - The least significant bit $b_0$ of $y$
 
-Given this, we can reconstruct $y$ as follows. 
+Given this, we can reconstruct $y$ as follows.
 
-1. Compute any square root $Y$ of $x^3 + ax + b$ 
+1. Compute any square root $Y$ of $x^3 + ax + b$
 
 2. If the least significant bit of $Y$ is equal to $b_0$, then $y = Y$, otherwise, $y = -Y$
 
@@ -200,7 +200,7 @@ If you think about it, this is saying that $(X/Z, Y/Z)$ is a point on the origin
 
 To be clear, this means curve points have many different representations. If $(x, y, z)$ is a curve point in projective coordinates, and $s$ is any element of $F$, then $(sx,sy,sz)$  is another representation of the same curve point.
 
-This means curve points require more space to store, but it makes the group operation much more efficient to compute, as we can avoid having to do any field divisions, which are expensive. 
+This means curve points require more space to store, but it makes the group operation much more efficient to compute, as we can avoid having to do any field divisions, which are expensive.
 
 ##### Jacobian form / Jacobian coordinates
 
@@ -214,8 +214,8 @@ so the triple $(X, Y, Z)$ corresponds to the affine point $(X/Z^2, Y/Z^3)$. Thes
 
 #### Take aways
 
-- Use affine coordinates when the cost of division doesn't matther and saving space is important. Specific contexts to keep in mind:
-  
+- Use affine coordinates when the cost of division doesn't matter and saving space is important. Specific contexts to keep in mind:
+
   - Working with elliptic curve points inside a SNARK circuit
 
 - Use Jacobian coordinates for computations on normal computers, or other circumstances where space usage is not that costly and division is expensive.
@@ -231,9 +231,9 @@ so the triple $(X, Y, Z)$ corresponds to the affine point $(X/Z^2, Y/Z^3)$. Thes
 - Implement a type `JacobianPoint<F:Field>` and functions for computing the group operation
 
 - Familiarize yourself with the types and traits in `ark_ec`. Specifically,
-  
+
   - todo
 
 - Implement `fn decompress<F: SquareRootField>(c: (F, bool)) -> (F, F)`
 
-- 
+-
