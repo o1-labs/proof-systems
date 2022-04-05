@@ -115,7 +115,7 @@ We can picture the protocol as follows:
 2. The verifier sends a point $s$, asking for the value $f(s)$. To help the prover perform a proof of correct evaluation, they also send a random challenge $x$.
 3. The prover sends the result of the evaluation, $z$, as well as a proof.
 
-![inner 1](../../img/inner1.png)
+![inner 1](../img/inner1.png)
 
 <!--
 ```sequence
@@ -189,7 +189,7 @@ So in the end, the proof has become:
 
 We can update our previous diagram:
 
-![inner 2](../../img/inner2.png)
+![inner 2](../img/inner2.png)
 
 <!--
 ```sequence
@@ -252,7 +252,7 @@ $$\langle \vec{a'}, \vec{G'} \rangle  + \langle \vec{a'}, \vec{b'} \rangle U$$
 For this, the verifier needs to recompute $\vec{G'}$ and $\vec{b'}$ by themselves, which they can as they have all the necessary information.
 We can update our previous diagram:
 
-![inner 3](../../img/inner3.png)
+![inner 3](../img/inner3.png)
 
 <!--
 ```sequence
@@ -323,7 +323,7 @@ where can I find a proof? perhaps appendix C of https://eprint.iacr.org/2017/106
 
 Finally, we can look at what the real protocol end up looking at with $log_2(n)$ rounds of reduction followed by a commitment opening.
 
-![inner 4](../../img/inner4.png)
+![inner 4](../img/inner4.png)
 
 <!--
 ```sequence
