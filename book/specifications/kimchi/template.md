@@ -201,13 +201,13 @@ Refer to the [lookup RFC](../rfcs/3-lookup.md) for an overview of the lookup fea
 
 In this section, we describe the tables kimchi supports, as well as the different lookup selectors (and their associated queries)
 
-#### The Lookup tables
+#### The Lookup Tables
 
 Kimchi currently supports a single lookup table: the XOR lookup table.
 
 **XOR**. {sections.xor}
 
-#### Lookup selectors
+#### The Lookup Selectors
 
 **ChaChaSelector**. Performs 4 queries to the XOR lookup table.
 
@@ -315,6 +315,16 @@ def sample(domain, i):
 The compilation steps to create the common index are as follow:
 
 {sections.constraint_system}
+
+### Lookup Index
+
+If lookup is used, the following values are added to the common index:
+
+**`LookupSelectors`**. The list of lookup selectors used. In practice, this tells you which lookup tables are used.
+
+**`TableIds`**. This is a list of table ids used by the Lookup gate.
+
+**`MaxJointSize`**. This is the maximum number of columns appearing in the lookup tables used by the lookup selectors. For example, the XOR lookup has 3 columns.
 
 ### Prover Index
 

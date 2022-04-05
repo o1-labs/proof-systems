@@ -336,7 +336,7 @@ Refer to the [lookup RFC](../rfcs/3-lookup.md) for an overview of the lookup fea
 
 In this section, we describe the tables kimchi supports, as well as the different lookup selectors (and their associated queries)
 
-#### The Lookup tables
+#### The Lookup Tables
 
 Kimchi currently supports a single lookup table: the XOR lookup table.
 
@@ -353,7 +353,7 @@ $$0 = 0 + j * 0 + j^2 * 0$$
 will translate into a scalar multiplication by 0, which is free.
 
 
-#### Lookup selectors
+#### The Lookup Selectors
 
 **ChaChaSelector**. Performs 4 queries to the XOR lookup table.
 
@@ -1084,6 +1084,16 @@ The compilation steps to create the common index are as follow:
 4. sample the `PERMUTS` shifts.
 
 
+### Lookup Index
+
+If lookup is used, the following values are added to the common index:
+
+**`LookupSelectors`**. The list of lookup selectors used. In practice, this tells you which lookup tables are used.
+
+**`TableIds`**. This is a list of table ids used by the Lookup gate.
+
+**`MaxJointSize`**. This is the maximum number of columns appearing in the lookup tables used by the lookup selectors. For example, the XOR lookup has 3 columns.
+
 ### Prover Index
 
 Both the prover and the verifier index, besides the common parts described above, are made out of pre-computations which can be used to speed up the protocol.
@@ -1125,6 +1135,26 @@ pub struct ProverIndex<G: CommitmentCurve> {
 Same as the prover index, we have a number of pre-computations as part of the verifier index.
 
 ```rs
+#[serde_as]
+#[derive(Serialize, Deserialize)]
+pub struct LookupVerifierIndex<G: CommitmentCurve> {
+    pub lookup_used: LookupsUsed,
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub lookup_table: Vec<PolyComm<G>>,
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub lookup_selectors: Vec<PolyComm<G>>,
+
+    /// Table IDs for the lookup values.
+    /// This may be `None` if all lookups originate from table 0.
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub table_ids: Option<PolyComm<G>>,
+
+    /// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
+    pub max_joint_size: u32,
+}
+
+#[serde_as]
+#[derive(Serialize, Deserialize)]
 pub struct VerifierIndex<G: CommitmentCurve> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
@@ -1375,14 +1405,7 @@ The prover then follows the following steps to create the proof:
 8. Absorb the witness commitments with the Fq-Sponge.
 9. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
    TODO: why not do this first, and then commit? Why commit from evaluation directly?
-10. If there's a joint lookup being used in the circuit (TODO: define joint lookup vs single lookup):
-    - Sample the joint combinator (lookup challenge) $j$ with the Fq-Sponge.
-    - derive the scalar joint combinator $j$ from $j'$ using the endomorphism (TODO: details, explicitly say that we change the field).
-11. If using lookup compute the *lookup dummy value* as
-    the combination of the dummy lookup value with the joint combinator.
-    In other words, compute $d_0 + d_1 j + d_2 j^2 + \cdots$,
-    where $d_i$ are the columns of the dummy entry.
-    If not using lookup, simply use zero.
+10. TODO: lookup
 12. If using lookup:
     - Compute the sorted table.
     - Compute the sorted coefficients.

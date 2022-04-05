@@ -10,6 +10,11 @@ use CurrOrNext::{Curr, Next};
 
 pub mod xor;
 
+//~ spec:startcode
+/// The table ID associated with the XOR lookup table.
+pub const XOR_TABLE_ID: i32 = 0;
+//~ spec:endcode
+
 /// Enumerates the different 'fixed' lookup tables used by individual gates
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum GateLookupTable {

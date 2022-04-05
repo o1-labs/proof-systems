@@ -1,8 +1,5 @@
-use crate::circuits::lookup::tables::LookupTable;
-use ark_ff::{Field, Zero};
-
-/// The table ID associated with the XOR lookup table.
-pub const XOR_TABLE_ID: i32 = 0;
+use crate::circuits::lookup::tables::{LookupTable, XOR_TABLE_ID};
+use ark_ff::Field;
 
 //~ The lookup table for 4-bit xor.
 //~ Note that it is constructed so that `(0, 0, 0)` is the last position in the table.
