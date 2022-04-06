@@ -198,8 +198,9 @@
 <li><a href="#verifier-index">Verifier Index</a></li>
 </ul>
 </li>
-<li><a href="#proof">Proof</a>
+<li><a href="#proof-construction--verification">Proof Construction &amp; Verification</a>
 <ul>
+<li><a href="#proof-structure">Proof Structure</a></li>
 <li><a href="#proof-creation">Proof Creation</a></li>
 <li><a href="#proof-verification">Proof Verification</a>
 <ul>
@@ -1194,57 +1195,68 @@ pub struct VerifierIndex&lt;G: CommitmentCurve&gt; {
     pub fq_sponge_params: ArithmeticSpongeParams&lt;BaseField&lt;G&gt;&gt;,
 }
 </code></pre>
-<h2 id="proof"><a class="header" href="#proof">Proof</a></h2>
+<h2 id="proof-construction--verification"><a class="header" href="#proof-construction--verification">Proof Construction &amp; Verification</a></h2>
 <p>Originally, kimchi is based on an interactive protocol that was transformed into a non-interactive one using the <a href="https://o1-labs.github.io/mina-book/crypto/plonk/fiat_shamir.html">Fiat-Shamir</a> transform.
 For this reason, it can be useful to visualize the high-level interactive protocol before the transformation:</p>
 <pre class="mermaid">sequenceDiagram
     participant Prover
     participant Verifier
+
+    Note over Prover,Verifier: Prover produces commitments to secret polynomials
+
     Prover-&gt;&gt;Verifier: public input &amp; witness commitment
+
     Verifier-&gt;&gt;Prover: beta &amp; gamma
     Prover-&gt;&gt;Verifier: permutation commitment
+
+    opt lookup
+        Prover-&gt;&gt;Verifier: sorted
+        Prover-&gt;&gt;Verifier: aggreg
+    end
+
+    Note over Prover,Verifier: Prover produces commitment to quotient polynomial
+
     Verifier-&gt;&gt;Prover: alpha
     Prover-&gt;&gt;Verifier: quotient commitment
+
+    Note over Prover,Verifier: Verifier produces an evaluation point
+
     Verifier-&gt;&gt;Prover: zeta
-    Note over Verifier: change of verifier (change of sponge)
-    Prover-&gt;&gt;Verifier: negated public input p(zeta) &amp; p(zeta * omega)
-    Prover-&gt;&gt;Verifier: permutation poly z(zeta) &amp; z(zeta * omega)
+
+    Note over Prover,Verifier: Prover provides helper evaluations
+
     Prover-&gt;&gt;Verifier: the generic selector gen(zeta) &amp; gen(zeta * omega)
     Prover-&gt;&gt;Verifier: the poseidon selector pos(zeta) &amp; pos(zeta * omega)
+    Prover-&gt;&gt;Verifier: negated public input p(zeta) &amp; p(zeta * omega)
+
+    Note over Prover,Verifier: Prover provides needed evaluations for the linearization
+
+    Note over Verifier: change of verifier (change of sponge)
+
+    Prover-&gt;&gt;Verifier: permutation poly z(zeta) &amp; z(zeta * omega)
     Prover-&gt;&gt;Verifier: the 15 registers w_i(zeta) &amp; w_i(zeta * omega)
     Prover-&gt;&gt;Verifier: the 6 sigmas s_i(zeta) &amp; s_i(zeta * omega)
+
     Prover-&gt;&gt;Verifier: ft(zeta * omega)
+
+    opt lookup
+        Prover-&gt;&gt;Verifier: sorted(zeta) &amp; sorted(zeta * omega)
+        Prover-&gt;&gt;Verifier: aggreg(zeta) &amp; aggreg(zeta * omega)
+        Prover-&gt;&gt;Verifier: table(zeta) &amp; table(zeta * omega)
+    end
+
+    Note over Prover,Verifier: Batch verification of evaluation proofs
+
     Verifier-&gt;&gt;Prover: u, v
+
     Note over Verifier: change of verifier (change of sponge)
-    Prover-&gt;&gt;Verifier: evaluation proof (involves more interaction)
+
+    Prover-&gt;&gt;Verifier: aggregated evaluation proof (involves more interaction)
 </pre>
 <p>The Fiat-Shamir transform simulates the verifier messages via a hash function that hashes the transcript of the protocol so far before outputing verifier messages.
 You can find these operations under the <a href="#proof-creation">proof creation</a> and <a href="#proof-verification">proof verification</a> algorithms as absorption and squeezing of values with the sponge.</p>
-<p>A proof consists of:</p>
-<ul>
-<li>a number of (hidden) polynomial commitments:
-<ul>
-<li>the 15 registers/witness columns</li>
-<li>the permutation</li>
-<li>the quotient</li>
-<li>TODO: lookup</li>
-<li>TODO: public commitment is not here, but is in the sequence diagram</li>
-</ul>
-</li>
-<li>evaluations of these polynomials at two random points <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span></span></span></span> and <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span><span class="mord mathnormal" style="margin-right:0.03588em;">ω</span></span></span></span></li>
-<li>evaluations at the two random points of these additional polynomials:
-<ul>
-<li>the 6 s (sigma)</li>
-<li>TODO: lookup</li>
-<li>generic selector</li>
-<li>poseidon selector</li>
-</ul>
-</li>
-<li>evaluation at <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span><span class="mord mathnormal" style="margin-right:0.03588em;">ω</span></span></span></span> of ft</li>
-<li>optionally, the public input used (the public input could be implied by the surrounding context and not part of the proof itself)</li>
-<li>optionally, the previous challenges (in case we are in a recursive prover)</li>
-</ul>
-<p>From the code:</p>
+<h3 id="proof-structure"><a class="header" href="#proof-structure">Proof Structure</a></h3>
+<p>A proof consists of the following data structures:</p>
 <pre><code class="language-rs">#[derive(Clone)]
 pub struct LookupEvaluations&lt;Field&gt; {
     /// sorted lookup table polynomial
@@ -1553,6 +1565,7 @@ First, include the previous challenges, in case we are in a recursive prover.</p
 </li>
 </ol>
 <h3 id="proof-verification"><a class="header" href="#proof-verification">Proof Verification</a></h3>
+<p>TODO: we talk about batch verification, but is there an actual batch operation? It seems like we’re just verifying an aggregated opening proof</p>
 <p>We define two helper algorithms below, used in the batch verification of proofs. </p>
 <h4 id="fiat-shamir-argument"><a class="header" href="#fiat-shamir-argument">Fiat-Shamir argument</a></h4>
 <p>We run the following algorithm:</p>
