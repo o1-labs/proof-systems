@@ -148,11 +148,11 @@ pub struct ConstraintSystem<F: FftField> {
     pub endomul_scalar8: E<F, D<F>>,
 
     /// Cairo constraint selector polynomials
-    #[serde_as(as = "[o1_utils::serialization::SerdeAs; turshi::CIRCUIT_GATE_COUNT]")]
-    pub cairo: [DP<F>; turshi::CIRCUIT_GATE_COUNT],
+    #[serde_as(as = "Option<[o1_utils::serialization::SerdeAs; turshi::CIRCUIT_GATE_COUNT]>")]
+    pub cairo: Option<[DP<F>; turshi::CIRCUIT_GATE_COUNT]>,
     /// Cairo selector evaluations over domain.d8
-    #[serde_as(as = "[o1_utils::serialization::SerdeAs; turshi::CIRCUIT_GATE_COUNT]")]
-    pub cairo8: [E<F, D<F>>; turshi::CIRCUIT_GATE_COUNT],
+    #[serde_as(as = "Option<[o1_utils::serialization::SerdeAs; turshi::CIRCUIT_GATE_COUNT]>")]
+    pub cairo8: Option<[E<F, D<F>>; turshi::CIRCUIT_GATE_COUNT]>,
 
     // Constant polynomials
     // --------------------
@@ -657,44 +657,72 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // TODO: This doesn't need to be degree 8 but that would require some changes in expr
         let coefficients8 = array_init(|i| coefficientsm[i].evaluate_over_domain_by_ref(domain.d8));
 
-        // Cairo constraint selector polynomials
-        let cairo: [DP<F>; turshi::CIRCUIT_GATE_COUNT] = array_init(|i| {
-            let g = match i {
-                0 => GateType::CairoClaim,
-                1 => GateType::CairoInstruction,
-                2 => GateType::CairoFlags,
-                3 => GateType::CairoTransition,
-                _ => panic!("Invalid index"),
-            };
-            E::<F, D<F>>::from_vec_and_domain(
-                gates
-                    .iter()
-                    .map(|gate| if gate.typ == g { F::one() } else { F::zero() })
-                    .collect(),
-                domain.d1,
-            )
-            .interpolate()
-        });
+        // Cairo selector polynomials
+        let cairo: Option<[DP<F>; turshi::CIRCUIT_GATE_COUNT]> = {
+            use GateType::*;
+            let has_cairo_gate = gates.iter().any(|gate| {
+                matches!(
+                    gate.typ,
+                    CairoClaim | CairoInstruction | CairoFlags | CairoTransition
+                )
+            });
+            if !has_cairo_gate {
+                None
+            } else {
+                let a = array_init(|i| {
+                    let g = match i {
+                        0 => GateType::CairoClaim,
+                        1 => GateType::CairoInstruction,
+                        2 => GateType::CairoFlags,
+                        3 => GateType::CairoTransition,
+                        _ => panic!("Invalid index"),
+                    };
+                    E::<F, D<F>>::from_vec_and_domain(
+                        gates
+                            .iter()
+                            .map(|gate| if gate.typ == g { F::one() } else { F::zero() })
+                            .collect(),
+                        domain.d1,
+                    )
+                    .interpolate()
+                });
+                Some(a)
+            }
+        };
 
-        // Cairo constraint polynomials
-        let cairo8: [E<F, D<F>>; turshi::CIRCUIT_GATE_COUNT] = array_init(|i| {
-            let g = match i {
-                0 => GateType::CairoClaim,
-                1 => GateType::CairoInstruction,
-                2 => GateType::CairoFlags,
-                3 => GateType::CairoTransition,
-                _ => panic!("Invalid index"),
-            };
-            E::<F, D<F>>::from_vec_and_domain(
-                gates
-                    .iter()
-                    .map(|gate| if gate.typ == g { F::one() } else { F::zero() })
-                    .collect(),
-                domain.d1,
-            )
-            .interpolate()
-            .evaluate_over_domain_by_ref(domain.d8)
-        });
+        // Cairo evaluated selector polynomials
+        let cairo8: Option<[E<F, D<F>>; turshi::CIRCUIT_GATE_COUNT]> = {
+            use GateType::*;
+            let has_cairo_gate = gates.iter().any(|gate| {
+                matches!(
+                    gate.typ,
+                    CairoClaim | CairoInstruction | CairoFlags | CairoTransition
+                )
+            });
+            if !has_cairo_gate {
+                None
+            } else {
+                let a = array_init(|i| {
+                    let g = match i {
+                        0 => GateType::CairoClaim,
+                        1 => GateType::CairoInstruction,
+                        2 => GateType::CairoFlags,
+                        3 => GateType::CairoTransition,
+                        _ => panic!("Invalid index"),
+                    };
+                    E::<F, D<F>>::from_vec_and_domain(
+                        gates
+                            .iter()
+                            .map(|gate| if gate.typ == g { F::one() } else { F::zero() })
+                            .collect(),
+                        domain.d1,
+                    )
+                    .interpolate()
+                    .evaluate_over_domain_by_ref(domain.d8)
+                });
+                Some(a)
+            }
+        };
 
         //
         // Lookup

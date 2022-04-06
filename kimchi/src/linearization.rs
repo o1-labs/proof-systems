@@ -23,17 +23,26 @@ use ark_poly::Radix2EvaluationDomain as D;
 pub fn constraints_expr<F: FftField + SquareRootField>(
     domain: D<F>,
     chacha: bool,
+    cairo: bool,
     lookup_constraint_system: Option<&LookupConfiguration<F>>,
 ) -> (Expr<ConstantExpr<F>>, Alphas<F>) {
     // register powers of alpha so that we don't reuse them across mutually inclusive constraints
     let mut powers_of_alpha = Alphas::<F>::default();
 
     // gates
-    let highest_constraints = Instruction::<F>::CONSTRAINTS;
-    powers_of_alpha.register(
-        ArgumentType::Gate(GateType::CairoInstruction),
-        highest_constraints,
-    );
+    if cairo {
+        let highest_constraints = Instruction::<F>::CONSTRAINTS;
+        powers_of_alpha.register(
+            ArgumentType::Gate(GateType::CairoInstruction),
+            highest_constraints,
+        );
+    } else {
+        let highest_constraints = VarbaseMul::<F>::CONSTRAINTS;
+        powers_of_alpha.register(
+            ArgumentType::Gate(GateType::VarBaseMul),
+            highest_constraints,
+        );
+    }
 
     let mut expr = Poseidon::combined_constraints(&powers_of_alpha);
     expr += VarbaseMul::combined_constraints(&powers_of_alpha);
@@ -48,7 +57,9 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
         expr += ChaChaFinal::combined_constraints(&powers_of_alpha);
     }
 
-    expr += crate::circuits::polynomials::turshi::gate_combined_constraints(&powers_of_alpha);
+    if cairo {
+        expr += crate::circuits::polynomials::turshi::gate_combined_constraints(&powers_of_alpha);
+    }
 
     // permutation
     powers_of_alpha.register(ArgumentType::Permutation, permutation::CONSTRAINTS);
@@ -95,11 +106,12 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
 pub fn expr_linearization<F: FftField + SquareRootField>(
     domain: D<F>,
     chacha: bool,
+    cairo: bool,
     lookup_constraint_system: Option<&LookupConfiguration<F>>,
 ) -> (Linearization<Vec<PolishToken<F>>>, Alphas<F>) {
     let evaluated_cols = linearization_columns::<F>(lookup_constraint_system);
 
-    let (expr, powers_of_alpha) = constraints_expr(domain, chacha, lookup_constraint_system);
+    let (expr, powers_of_alpha) = constraints_expr(domain, chacha, cairo, lookup_constraint_system);
 
     let linearization = expr
         .linearize(evaluated_cols)

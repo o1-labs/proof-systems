@@ -3,6 +3,7 @@
 
 use crate::alphas::Alphas;
 use crate::circuits::lookup::lookups::LookupsUsed;
+use crate::circuits::polynomials::turshi;
 use crate::circuits::{
     constraints::{zk_polynomial, zk_w3},
     expr::{Linearization, PolishToken},
@@ -97,7 +98,7 @@ pub struct VerifierIndex<G: CommitmentCurve> {
 
     // Cairo polynomial commitment
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub cairo_comm: [PolyComm<G>; crate::circuits::polynomials::turshi::CIRCUIT_GATE_COUNT],
+    pub cairo_comm: Option<[PolyComm<G>; turshi::CIRCUIT_GATE_COUNT]>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -200,9 +201,8 @@ where
                 array_init(|i| self.srs.commit_evaluations_non_hiding(domain, &c[i], None))
             }),
 
-            cairo_comm: array_init(|i| {
-                self.srs
-                    .commit_evaluations_non_hiding(domain, &self.cs.cairo8[i], None)
+            cairo_comm: self.cs.cairo8.as_ref().map(|c| {
+                array_init(|i| self.srs.commit_evaluations_non_hiding(domain, &c[i], None))
             }),
 
             shift: self.cs.shift,

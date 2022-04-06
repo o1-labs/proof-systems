@@ -29,17 +29,6 @@ impl<F: Field> CairoWord<F> {
         self.0
     }
 
-    /*
-    /// Returns vector of 16 flags
-    fn flags(&self) -> Vec<F> {
-        let mut flags = Vec::with_capacity(NUM_FLAGS);
-        // The most significant 16 bits
-        for i in 0..NUM_FLAGS {
-            flags.push(self.flag_at(i));
-        }
-        flags
-    }*/
-
     /// Returns i-th bit-flag
     fn flag_at(&self, pos: usize) -> F {
         self.word().to_bits()[POS_FLAGS + pos].into()
@@ -136,17 +125,17 @@ pub trait FlagSets<F> {
 impl<F: Field> Offsets<F> for CairoWord<F> {
     fn off_dst(&self) -> F {
         // The least significant 16 bits
-        bias(self.word().chunk_u16(POS_DST))
+        bias(self.word().of_u16_chunk(POS_DST))
     }
 
     fn off_op0(&self) -> F {
         // From the 32nd bit to the 17th
-        bias(self.word().chunk_u16(POS_OP0))
+        bias(self.word().of_u16_chunk(POS_OP0))
     }
 
     fn off_op1(&self) -> F {
         // From the 48th bit to the 33rd
-        bias(self.word().chunk_u16(POS_OP1))
+        bias(self.word().of_u16_chunk(POS_OP1))
     }
 }
 
@@ -219,37 +208,37 @@ impl<F: Field> FlagBits<F> for CairoWord<F> {
 impl<F: Field> FlagSets<F> for CairoWord<F> {
     fn dst_reg(&self) -> u8 {
         // dst_reg = fDST_REG
-        self.f_dst_fp().lsb()
+        self.f_dst_fp().of_lsb()
     }
 
     fn op0_reg(&self) -> u8 {
         // op0_reg = fOP0_REG
-        self.f_op0_fp().lsb()
+        self.f_op0_fp().of_lsb()
     }
 
     fn op1_src(&self) -> u8 {
         // op1_src = 4*fOP1_AP + 2*fOP1_FP + fOP1_VAL
-        2 * (2 * self.f_op1_ap().lsb() + self.f_op1_fp().lsb()) + self.f_op1_val().lsb()
+        2 * (2 * self.f_op1_ap().of_lsb() + self.f_op1_fp().of_lsb()) + self.f_op1_val().of_lsb()
     }
 
     fn res_log(&self) -> u8 {
         // res_log = 2*fRES_MUL + fRES_ADD
-        2 * self.f_res_mul().lsb() + self.f_res_add().lsb()
+        2 * self.f_res_mul().of_lsb() + self.f_res_add().of_lsb()
     }
 
     fn pc_up(&self) -> u8 {
         // pc_up = 4*fPC_JNZ + 2*fPC_REL + fPC_ABS
-        2 * (2 * self.f_pc_jnz().lsb() + self.f_pc_rel().lsb()) + self.f_pc_abs().lsb()
+        2 * (2 * self.f_pc_jnz().of_lsb() + self.f_pc_rel().of_lsb()) + self.f_pc_abs().of_lsb()
     }
 
     fn ap_up(&self) -> u8 {
         // ap_up = 2*fAP_ONE + fAP_ADD
-        2 * self.f_ap_one().lsb() + self.f_ap_add().lsb()
+        2 * self.f_ap_one().of_lsb() + self.f_ap_add().of_lsb()
     }
 
     fn opcode(&self) -> u8 {
         // opcode = 4*fOPC_AEQ + 2*fOPC_RET + fOPC_CALL
-        2 * (2 * self.f_opc_aeq().lsb() + self.f_opc_ret().lsb()) + self.f_opc_call().lsb()
+        2 * (2 * self.f_opc_aeq().of_lsb() + self.f_opc_ret().of_lsb()) + self.f_opc_call().of_lsb()
     }
 }
 

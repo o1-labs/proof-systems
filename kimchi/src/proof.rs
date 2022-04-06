@@ -37,7 +37,7 @@ pub struct ProofEvaluations<Field> {
     /// evaluation of the poseidon selector polynomial
     pub poseidon_selector: Field,
     /// evaluation of the cairo selector polynomial
-    pub cairo_selector: [Field; crate::circuits::polynomials::turshi::CIRCUIT_GATE_COUNT],
+    pub cairo_selector: Option<[Field; crate::circuits::polynomials::turshi::CIRCUIT_GATE_COUNT]>,
 }
 
 /// Commitments linked to the lookup feature
@@ -93,7 +93,7 @@ impl<F: Zero> ProofEvaluations<F> {
             lookup: None,
             generic_selector: F::zero(),
             poseidon_selector: F::zero(),
-            cairo_selector: array_init(|_| F::zero()),
+            cairo_selector: None,
         }
     }
 }
@@ -115,9 +115,11 @@ impl<F: FftField> ProofEvaluations<Vec<F>> {
             }),
             generic_selector: DensePolynomial::eval_polynomial(&self.generic_selector, pt),
             poseidon_selector: DensePolynomial::eval_polynomial(&self.poseidon_selector, pt),
-            cairo_selector: array_init(|i| {
-                DensePolynomial::eval_polynomial(&self.cairo_selector[i], pt)
-            }),
+            cairo_selector: if let Some(c) = &self.cairo_selector {
+                Some(array_init(|i| DensePolynomial::eval_polynomial(&c[i], pt)))
+            } else {
+                None
+            },
         }
     }
 }

@@ -454,10 +454,14 @@ where
                         index_evals.insert(*g, &c[i]);
                     }
                 });
-            index_evals.insert(CairoClaim, &index.cs.cairo8[0]);
-            index_evals.insert(CairoInstruction, &index.cs.cairo8[1]);
-            index_evals.insert(CairoFlags, &index.cs.cairo8[2]);
-            index_evals.insert(CairoTransition, &index.cs.cairo8[3]);
+            [CairoClaim, CairoInstruction, CairoFlags, CairoTransition]
+                .iter()
+                .enumerate()
+                .for_each(|(i, g)| {
+                    if let Some(c) = &index.cs.cairo8 {
+                        index_evals.insert(*g, &c[i]);
+                    }
+                });
 
             Environment {
                 constants: Constants {
@@ -641,31 +645,33 @@ where
                 }
             }
 
-            // cairo
-            let cairoevals = [
-                Claim::combined_constraints(&all_alphas).evaluations(&env),
-                Instruction::combined_constraints(&all_alphas).evaluations(&env),
-                Flags::combined_constraints(&all_alphas).evaluations(&env),
-                Transition::combined_constraints(&all_alphas).evaluations(&env),
-            ];
-            // intentionally leaving Auxiliary out
-            for eval in cairoevals {
-                if eval.domain().size == t4.domain().size {
-                    t4 += &eval;
-                } else if eval.domain().size == t8.domain().size {
-                    t8 += &eval;
-                } else {
-                    panic!("Bad evaluation")
+            if index.cs.cairo8.as_ref().is_some() {
+                // cairo
+                let cairoevals = [
+                    Claim::combined_constraints(&all_alphas).evaluations(&env),
+                    Instruction::combined_constraints(&all_alphas).evaluations(&env),
+                    Flags::combined_constraints(&all_alphas).evaluations(&env),
+                    Transition::combined_constraints(&all_alphas).evaluations(&env),
+                ];
+                // intentionally leaving Auxiliary out
+                for eval in cairoevals {
+                    if eval.domain().size == t4.domain().size {
+                        t4 += &eval;
+                    } else if eval.domain().size == t8.domain().size {
+                        t8 += &eval;
+                    } else {
+                        panic!("Bad evaluation")
+                    }
+                    if cfg!(test) {
+                        let (_, res) = eval
+                            .clone()
+                            .interpolate()
+                            .divide_by_vanishing_poly(index.cs.domain.d1)
+                            .unwrap();
+                        assert!(res.is_zero());
+                    }
+                    drop(eval);
                 }
-                if cfg!(test) {
-                    let (_, res) = eval
-                        .clone()
-                        .interpolate()
-                        .divide_by_vanishing_poly(index.cs.domain.d1)
-                        .unwrap();
-                    assert!(res.is_zero());
-                }
-                drop(eval);
             }
 
             // lookup
@@ -835,11 +841,16 @@ where
                     .to_chunked_polynomial(index.max_poly_size)
                     .evaluate_chunks(zeta),
 
-                cairo_selector: array_init(|i| {
-                    index.cs.cairo[i]
-                        .to_chunked_polynomial(index.max_poly_size)
-                        .evaluate_chunks(zeta)
-                }),
+                cairo_selector: {
+                    if let Some(c) = &index.cs.cairo {
+                        Some(array_init(|i| {
+                            c[i].to_chunked_polynomial(index.max_poly_size)
+                                .evaluate_chunks(zeta)
+                        }))
+                    } else {
+                        None
+                    }
+                },
             };
             let chunked_evals_zeta_omega = ProofEvaluations::<Vec<ScalarField<G>>> {
                 s: array_init(|i| {
@@ -872,11 +883,16 @@ where
                     .to_chunked_polynomial(index.max_poly_size)
                     .evaluate_chunks(zeta_omega),
 
-                cairo_selector: array_init(|i| {
-                    index.cs.cairo[i]
-                        .to_chunked_polynomial(index.max_poly_size)
-                        .evaluate_chunks(zeta_omega)
-                }),
+                cairo_selector: {
+                    if let Some(c) = &index.cs.cairo {
+                        Some(array_init(|i| {
+                            c[i].to_chunked_polynomial(index.max_poly_size)
+                                .evaluate_chunks(zeta_omega)
+                        }))
+                    } else {
+                        None
+                    }
+                },
             };
 
             [chunked_evals_zeta, chunked_evals_zeta_omega]
@@ -911,9 +927,11 @@ where
                     }),
                     generic_selector: DensePolynomial::eval_polynomial(&es.generic_selector, e1),
                     poseidon_selector: DensePolynomial::eval_polynomial(&es.poseidon_selector, e1),
-                    cairo_selector: array_init(|i| {
-                        DensePolynomial::eval_polynomial(&es.cairo_selector[i], e1)
-                    }),
+                    cairo_selector: if let Some(c) = &es.cairo_selector {
+                        Some(array_init(|i| DensePolynomial::eval_polynomial(&c[i], e1)))
+                    } else {
+                        None
+                    },
                 })
                 .collect::<Vec<_>>()
         };

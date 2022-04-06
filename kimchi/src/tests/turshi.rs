@@ -2,35 +2,11 @@ use crate::circuits::constraints::ConstraintSystem;
 use crate::circuits::gate::CircuitGate;
 use crate::circuits::polynomials::turshi::*;
 use ark_ec::AffineCurve;
-use cairo::{helper::*, memory::CairoMemory, runner::CairoProgram};
+use cairo::{memory::CairoMemory, runner::CairoProgram};
 use mina_curves::pasta::fp::Fp as F;
 use mina_curves::pasta::pallas;
 
 type PallasField = <pallas::Affine as AffineCurve>::BaseField;
-
-/*
-fn view_witness<F: Field>(witness: &[Vec<F>; COLUMNS]) {
-    let rows = witness[0].len();
-    for i in 0..rows {
-        print!("row {}: [", i);
-        for j in 0..witness.len() {
-            print!("{} , ", witness[j][i].to_u64());
-        }
-        println!("]");
-    }
-}
-
-fn view_table<F: Field>(table: &Vec<[F; COLUMNS]>) {
-    let rows = table.len();
-    for i in 0..rows {
-        print!("row {}: [", i);
-        for j in 0..COLUMNS {
-            print!("{} , ", table[i][j].to_u64());
-        }
-        println!("]");
-    }
-}
-*/
 
 // creates a constraint system for a number of Cairo instructions
 fn create_test_consys(inirow: usize, ninstr: usize) -> ConstraintSystem<PallasField> {
@@ -39,40 +15,40 @@ fn create_test_consys(inirow: usize, ninstr: usize) -> ConstraintSystem<PallasFi
 }
 
 #[test]
-fn test_cairo_cs() {
-    let instrs: Vec<i128> = vec![
-        0x400380007ffc7ffd,
-        0x482680017ffc8000,
-        1,
-        0x208b7fff7fff7ffe,
-        0x480680017fff8000,
-        10,
-        0x48307fff7fff8000,
-        0x48507fff7fff8000,
-        0x48307ffd7fff8000,
-        0x480a7ffd7fff8000,
-        0x48127ffb7fff8000,
-        0x1104800180018000,
-        -11,
-        0x48127ff87fff8000,
-        0x1104800180018000,
-        -14,
-        0x48127ff67fff8000,
-        0x1104800180018000,
-        -17,
-        0x208b7fff7fff7ffe,
+fn test_cairo_gate() {
+    let instrs: Vec<F> = vec![
+        F::from(0x400380007ffc7ffdi64),
+        F::from(0x482680017ffc8000u64),
+        F::from(1),
+        F::from(0x208b7fff7fff7ffeu64),
+        F::from(0x480680017fff8000u64),
+        F::from(10),
+        F::from(0x48307fff7fff8000u64),
+        F::from(0x48507fff7fff8000u64),
+        F::from(0x48307ffd7fff8000u64),
+        F::from(0x480a7ffd7fff8000u64),
+        F::from(0x48127ffb7fff8000u64),
+        F::from(0x1104800180018000u64),
+        F::from(-11),
+        F::from(0x48127ff87fff8000u64),
+        F::from(0x1104800180018000u64),
+        -F::from(14),
+        F::from(0x48127ff67fff8000u64),
+        F::from(0x1104800180018000u64),
+        -F::from(17),
+        F::from(0x208b7fff7fff7ffeu64),
         /*41, // beginning of outputs
         44,   // end of outputs
         44,   // input
         */
     ];
 
-    let mut mem = CairoMemory::<F>::new(F::vec_to_field(&instrs));
+    let mut mem = CairoMemory::<F>::new(instrs);
     // TODO(querolita): Need to know how to find out (hints)
     mem.write(F::from(21u32), F::from(41u32)); // beginning of outputs
     mem.write(F::from(22u32), F::from(44u32)); // end of outputs
     mem.write(F::from(23u32), F::from(44u32)); //end of program
-    let prog = CairoProgram::new(&mut mem, 5, 24);
+    let prog = CairoProgram::new(&mut mem, 5);
 
     let witness = cairo_witness(&prog);
 
@@ -86,92 +62,13 @@ fn test_cairo_cs() {
     // Verify each gate
     let mut row = 0;
     for gate in circuit {
-        let res = gate.verify_cairo_gate(row, &witness, &cs);
-        if res.is_err() {
-            println!("{:?}", res);
+        let res_ensure = gate.ensure_cairo_gate(row, &witness);
+        if res_ensure.is_err() {
+            eprintln!("{:?}", res_ensure);
         }
-        row = row + 1;
-    }
-}
-
-#[test]
-fn test_long_cairo_gate() {
-    let instrs: Vec<i128> = vec![
-        0x400380007ffc7ffd,
-        0x482680017ffc8000,
-        1,
-        0x208b7fff7fff7ffe,
-        0x480680017fff8000,
-        10,
-        0x48307fff7fff8000,
-        0x48507fff7fff8000,
-        0x48307ffd7fff8000,
-        0x480a7ffd7fff8000,
-        0x48127ffb7fff8000,
-        0x1104800180018000,
-        -11,
-        0x48127ff87fff8000,
-        0x1104800180018000,
-        -14,
-        0x48127ff67fff8000,
-        0x1104800180018000,
-        -17,
-        0x208b7fff7fff7ffe,
-        /*41, // beginning of outputs
-        44,   // end of outputs
-        44,   // input
-        */
-    ];
-
-    let mut mem = CairoMemory::<F>::new(F::vec_to_field(&instrs));
-    // Need to know how to find out
-    mem.write(F::from(21u32), F::from(41u32)); // beginning of outputs
-    mem.write(F::from(22u32), F::from(44u32)); // end of outputs
-    mem.write(F::from(23u32), F::from(44u32)); //end of program
-    let prog = CairoProgram::new(&mut mem, 5, 24);
-
-    let witness = cairo_witness(&prog);
-    //view_witness(&witness);
-
-    // Create the Cairo circuit
-    let num = prog.trace().len();
-    let circuit = CircuitGate::<F>::create_cairo_gadget(0, num);
-
-    // Verify each gate
-    let mut row = 0;
-    for gate in circuit {
-        let res = gate.ensure_cairo_gate(row, &witness);
-        if res.is_err() {
-            println!("{:?}", res);
-        }
-        row = row + 1;
-    }
-}
-#[test]
-fn test_cairo_gate() {
-    // Compute the Cairo witness
-    let instrs = vec![
-        F::from(0x480680017fff8000u64),
-        F::from(10u64),
-        F::from(0x208b7fff7fff7ffeu64),
-    ];
-    let mut mem = CairoMemory::<F>::new(instrs);
-    mem.write(F::from(4u32), F::from(7u32)); //beginning of output
-    mem.write(F::from(5u32), F::from(7u32)); //end of output
-    let prog = CairoProgram::new(&mut mem, 1, 6);
-    let witness = cairo_witness(&prog);
-    //view_witness(&witness);
-
-    // Create the Cairo circuit
-    let num = prog.trace().len();
-    let circuit = CircuitGate::<F>::create_cairo_gadget(0, num);
-
-    // Verify each gate
-    let mut row = 0;
-    for gate in circuit {
-        let res = gate.ensure_cairo_gate(row, &witness);
-        if res.is_err() {
-            println!("{:?}", res);
+        let res_verify = gate.verify_cairo_gate(row, &witness, &cs);
+        if res_verify.is_err() {
+            eprintln!("{:?}", res_verify);
         }
         row = row + 1;
     }

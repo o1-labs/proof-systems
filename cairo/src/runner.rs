@@ -6,9 +6,6 @@ use crate::memory::CairoMemory;
 use crate::word::{CairoWord, FlagBits, FlagSets, Offsets};
 use ark_ff::Field;
 
-/// Number of memory accesses per instruction
-pub const ACC_PER_INS: usize = 4;
-
 /// A structure to store program counter, allocation pointer and frame pointer
 #[derive(Clone, Copy)]
 pub struct CairoState<F> {
@@ -507,7 +504,8 @@ pub struct CairoProgram<'a, F> {
 
 impl<'a, F: Field> CairoProgram<'a, F> {
     /// Creates a Cairo execution from the public information (memory and initial pointers)
-    pub fn new(mem: &mut CairoMemory<F>, pc: u64, ap: u64) -> CairoProgram<F> {
+    pub fn new(mem: &mut CairoMemory<F>, pc: u64) -> CairoProgram<F> {
+        let ap = mem.len();
         let mut prog = CairoProgram {
             steps: F::zero(),
             mem,
@@ -524,7 +522,7 @@ impl<'a, F: Field> CairoProgram<'a, F> {
         self.steps
     }
 
-    /// Outputs the final value of the pointers after the execution carried out by the runner
+    /// Outputs the initial value of the pointers after the execution carried out by the runner
     pub fn ini(&self) -> CairoState<F> {
         self.ini
     }
@@ -581,7 +579,6 @@ impl<'a, F: Field> CairoProgram<'a, F> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::helper::CairoFieldHelpers;
     use mina_curves::pasta::fp::Fp as F;
 
     #[test]
@@ -621,7 +618,7 @@ mod tests {
         // Is it final ap and/or final fp? Will write to starkware guys to learn about this
         mem.write(F::from(4u32), F::from(7u32)); //beginning of output
         mem.write(F::from(5u32), F::from(7u32)); //end of output
-        let prog = CairoProgram::new(&mut mem, 1, 6);
+        let prog = CairoProgram::new(&mut mem, 1);
         println!("{}", prog.mem);
     }
 
@@ -642,39 +639,39 @@ mod tests {
             return ()
         end
         */
-        let instrs: Vec<i128> = vec![
-            0x400380007ffc7ffd,
-            0x482680017ffc8000,
-            1,
-            0x208b7fff7fff7ffe,
-            0x480680017fff8000,
-            10,
-            0x48307fff7fff8000,
-            0x48507fff7fff8000,
-            0x48307ffd7fff8000,
-            0x480a7ffd7fff8000,
-            0x48127ffb7fff8000,
-            0x1104800180018000,
-            -11,
-            0x48127ff87fff8000,
-            0x1104800180018000,
-            -14,
-            0x48127ff67fff8000,
-            0x1104800180018000,
-            -17,
-            0x208b7fff7fff7ffe,
+        let instrs: Vec<F> = vec![
+            F::from(0x400380007ffc7ffdi64),
+            F::from(0x482680017ffc8000u64),
+            F::from(1),
+            F::from(0x208b7fff7fff7ffeu64),
+            F::from(0x480680017fff8000u64),
+            F::from(10),
+            F::from(0x48307fff7fff8000u64),
+            F::from(0x48507fff7fff8000u64),
+            F::from(0x48307ffd7fff8000u64),
+            F::from(0x480a7ffd7fff8000u64),
+            F::from(0x48127ffb7fff8000u64),
+            F::from(0x1104800180018000u64),
+            F::from(-11),
+            F::from(0x48127ff87fff8000u64),
+            F::from(0x1104800180018000u64),
+            -F::from(14),
+            F::from(0x48127ff67fff8000u64),
+            F::from(0x1104800180018000u64),
+            -F::from(17),
+            F::from(0x208b7fff7fff7ffeu64),
             /*41, // beginning of outputs
             44,   // end of outputs
             44,   // input
             */
         ];
 
-        let mut mem = CairoMemory::<F>::new(F::vec_to_field(&instrs));
+        let mut mem = CairoMemory::<F>::new(instrs);
         // Need to know how to find out
         mem.write(F::from(21u32), F::from(41u32)); // beginning of outputs
         mem.write(F::from(22u32), F::from(44u32)); // end of outputs
         mem.write(F::from(23u32), F::from(44u32)); //end of program
-        let prog = CairoProgram::new(&mut mem, 5, 24);
+        let prog = CairoProgram::new(&mut mem, 5);
         assert_eq!(prog.fin().pc, F::from(20u32));
         assert_eq!(prog.fin().ap, F::from(41u32));
         assert_eq!(prog.fin().fp, F::from(24u32));

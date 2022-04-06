@@ -393,7 +393,7 @@ impl<F: FftField> CircuitGate<F> {
             s: array_init(|_| F::rand(rng)),
             generic_selector: F::zero(),
             poseidon_selector: F::zero(),
-            cairo_selector: gate_type_to_selector(self.typ),
+            cairo_selector: Some(gate_type_to_selector(self.typ)),
             lookup: None,
         };
         let evals = vec![eval(curr), eval(next)];

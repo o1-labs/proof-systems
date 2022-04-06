@@ -37,7 +37,7 @@ impl<F: Field> IndexMut<F> for CairoMemory<F> {
 
 impl<F: Field> Display for CairoMemory<F> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        for i in 1..self.size() {
+        for i in 1..self.len() {
             // Visualize content of memory excluding the 0th dummy entry
             if let Some(elem) = self[F::from(i)] {
                 if writeln!(f, "{0:>6}: 0x{1:}", i, elem.word().to_hex_be()).is_err() {
@@ -70,7 +70,7 @@ impl<F: Field> CairoMemory<F> {
     }
 
     /// Get size of the full memory including dummy 0th entry
-    pub fn size(&self) -> u64 {
+    pub fn len(&self) -> u64 {
         self.data.len() as u64
     }
 
@@ -79,7 +79,7 @@ impl<F: Field> CairoMemory<F> {
         // if you want to access an index of the memory but its size is less or equal than this
         // you will need to extend the vector with enough spaces (taking into account that
         // vectors start by index 0, the 0 address is dummy, and size starts in 1)
-        if let Some(additional) = addr.checked_sub(self.size() - 1) {
+        if let Some(additional) = addr.checked_sub(self.len() - 1) {
             self.data.extend(repeat(None).take(additional as usize));
         }
     }
@@ -117,9 +117,9 @@ mod tests {
             F::from(0x208b7fff7fff7ffeu64),
         ];
         let mut memory = CairoMemory::new(instrs);
-        memory.write(F::from(memory.size()), F::from(7u64));
-        memory.write(F::from(memory.size()), F::from(7u64));
-        memory.write(F::from(memory.size()), F::from(10u64));
+        memory.write(F::from(memory.len()), F::from(7u64));
+        memory.write(F::from(memory.len()), F::from(7u64));
+        memory.write(F::from(memory.len()), F::from(10u64));
         println!("{}", memory);
         // Check content of an address
         assert_eq!(
@@ -129,7 +129,7 @@ mod tests {
         // Check that the program contained 3 words
         assert_eq!(3, memory.get_codelen());
         // Check we have 6 words, excluding the dummy entry
-        assert_eq!(6, memory.size() - 1);
+        assert_eq!(6, memory.len() - 1);
         memory.read(F::from(10u32));
     }
 }

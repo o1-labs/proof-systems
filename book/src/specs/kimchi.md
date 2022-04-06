@@ -1183,7 +1183,7 @@ pub struct VerifierIndex<G: CommitmentCurve> {
 
     // Cairo polynomial commitment
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub cairo_comm: [PolyComm<G>; crate::circuits::polynomials::turshi::CIRCUIT_GATE_COUNT],
+    pub cairo_comm: Option<[PolyComm<G>; turshi::CIRCUIT_GATE_COUNT]>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -1297,7 +1297,7 @@ pub struct ProofEvaluations<Field> {
     /// evaluation of the poseidon selector polynomial
     pub poseidon_selector: Field,
     /// evaluation of the cairo selector polynomial
-    pub cairo_selector: [Field; crate::circuits::polynomials::turshi::CIRCUIT_GATE_COUNT],
+    pub cairo_selector: Option<[Field; crate::circuits::polynomials::turshi::CIRCUIT_GATE_COUNT]>,
 }
 
 /// Commitments linked to the lookup feature
