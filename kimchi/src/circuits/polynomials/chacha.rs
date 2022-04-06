@@ -559,7 +559,7 @@ mod tests {
             alpha: F::rand(rng),
             beta: F::rand(rng),
             gamma: F::rand(rng),
-            joint_combiner: F::rand(rng),
+            joint_combiner: None,
             endo_coefficient: F::zero(),
             mds: vec![],
         };

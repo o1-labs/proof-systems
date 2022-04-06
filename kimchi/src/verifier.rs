@@ -136,31 +136,34 @@ where
             .iter()
             .for_each(|c| fq_sponge.absorb_g(&c.unshifted));
 
-        //~ 4. If lookup is not used,
-        //~    or is used with queries to single-column lookup tables only,
-        //~    then set the joint combiner challenge $j$ to $0$.
-        //~    Otherwise, squeeze the Fq-Sponge to obtain the joint combiner challenge $j$.
-        let joint_combiner = {
-            let s = match index.lookup_index {
-                None
-                | Some(LookupVerifierIndex {
-                    lookup_used: LookupsUsed::Single,
-                    ..
-                }) => ScalarChallenge(ScalarField::<G>::zero()),
-                Some(LookupVerifierIndex {
-                    lookup_used: LookupsUsed::Joint,
-                    ..
-                }) => ScalarChallenge(fq_sponge.challenge()),
+        //~ 4. If lookup is used:
+        let joint_combiner = if let Some(l) = &index.lookup_index {
+            //~    - If it involves queries to a multiple-column lookup table,
+            //~      then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
+            //~      otherwise set the joint combiner challenge $j'$ to $0$.
+            let joint_lookup_used = matches!(l.lookup_used, LookupsUsed::Joint);
+            let joint_combiner = if joint_lookup_used {
+                fq_sponge.challenge()
+            } else {
+                ScalarField::<G>::zero()
             };
-            (s, s.to_field(&index.srs.endo_r))
-        };
 
-        //~ 5. If using lookup, absorb the commitments to the sorted polynomials.
-        self.commitments.lookup.iter().for_each(|l| {
-            l.sorted
-                .iter()
-                .for_each(|c| fq_sponge.absorb_g(&c.unshifted));
-        });
+            //~    - Derive the scalar joint combiner challenge $j$ from $j'$ using the endomorphism.
+            //~    (TODO: specify endomorphism)
+            let joint_combiner = ScalarChallenge(joint_combiner);
+            let joint_combiner = (joint_combiner, joint_combiner.to_field(&index.srs.endo_r));
+
+            //~    - absorb the commitments to the sorted polynomials.
+            self.commitments.lookup.iter().for_each(|l| {
+                l.sorted
+                    .iter()
+                    .for_each(|c| fq_sponge.absorb_g(&c.unshifted));
+            });
+
+            Some(joint_combiner)
+        } else {
+            None
+        };
 
         //~ 6. Sample $\beta$ with the Fq-Sponge.
         let beta = fq_sponge.challenge();
@@ -349,7 +352,7 @@ where
                 alpha,
                 beta,
                 gamma,
-                joint_combiner: joint_combiner.1,
+                joint_combiner: joint_combiner.map(|j| j.1),
                 endo_coefficient: index.endo,
                 mds: index.fr_sponge_params.mds.clone(),
             };
@@ -554,7 +557,7 @@ where
                 alpha: oracles.alpha,
                 beta: oracles.beta,
                 gamma: oracles.gamma,
-                joint_combiner: oracles.joint_combiner.1,
+                joint_combiner: oracles.joint_combiner.map(|j| j.1),
                 endo_coefficient: index.endo,
                 mds: index.fr_sponge_params.mds.clone(),
             };
@@ -610,20 +613,19 @@ where
                             panic!("Attempted to use {:?}, but no lookup index was given", col)
                         }
                         Some(lindex) => {
+                            let joint_combiner =
+                                constants.joint_combiner.expect("missing joint combiner");
                             let mut j = ScalarField::<G>::one();
                             scalars.push(scalar);
                             commitments.push(&lindex.lookup_table[0]);
                             for t in lindex.lookup_table.iter().skip(1) {
-                                j *= constants.joint_combiner;
+                                j *= joint_combiner;
                                 scalars.push(scalar * j);
                                 commitments.push(t);
                             }
                             if let Some(table_ids) = lindex.table_ids.as_ref() {
                                 scalars.push(
-                                    scalar
-                                        * constants
-                                            .joint_combiner
-                                            .pow([lindex.max_joint_size as u64]),
+                                    scalar * joint_combiner.pow([lindex.max_joint_size as u64]),
                                 );
                                 commitments.push(table_ids);
                             }

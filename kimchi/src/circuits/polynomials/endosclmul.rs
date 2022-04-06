@@ -136,7 +136,7 @@ impl<F: FftField> CircuitGate<F> {
             alpha: F::zero(),
             beta: F::zero(),
             gamma: F::zero(),
-            joint_combiner: F::zero(),
+            joint_combiner: None,
             mds: vec![],
             endo_coefficient: cs.endo,
         };
