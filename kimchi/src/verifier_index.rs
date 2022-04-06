@@ -201,8 +201,11 @@ where
                 array_init(|i| self.srs.commit_evaluations_non_hiding(domain, &c[i], None))
             }),
 
-            cairo_comm: self.cs.cairo8.as_ref().map(|c| {
-                array_init(|i| self.srs.commit_evaluations_non_hiding(domain, &c[i], None))
+            cairo_comm: self.cs.cairo_cs.as_ref().map(|c| {
+                array_init(|i| {
+                    self.srs
+                        .commit_evaluations_non_hiding(domain, &c.cairo8[i], None)
+                })
             }),
 
             shift: self.cs.shift,

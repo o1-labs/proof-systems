@@ -457,8 +457,8 @@ where
                 .iter()
                 .enumerate()
                 .for_each(|(i, g)| {
-                    if let Some(c) = &index.cs.cairo8 {
-                        index_evals.insert(*g, &c[i]);
+                    if let Some(cs) = &index.cs.cairo_cs {
+                        index_evals.insert(*g, &cs.cairo8[i]);
                     }
                 });
 
@@ -644,7 +644,7 @@ where
                 }
             }
 
-            if index.cs.cairo8.as_ref().is_some() {
+            if index.cs.cairo_cs.is_some() {
                 // cairo
                 let cairoevals = [
                     Claim::combined_constraints(&all_alphas).evaluations(&env),
@@ -840,9 +840,10 @@ where
                     .to_chunked_polynomial(index.max_poly_size)
                     .evaluate_chunks(zeta),
 
-                cairo_selector: index.cs.cairo.as_ref().map(|c| {
+                cairo_selector: index.cs.cairo_cs.as_ref().map(|c| {
                     array_init(|i| {
-                        c[i].to_chunked_polynomial(index.max_poly_size)
+                        c.cairo[i]
+                            .to_chunked_polynomial(index.max_poly_size)
                             .evaluate_chunks(zeta)
                     })
                 }),
@@ -878,9 +879,10 @@ where
                     .to_chunked_polynomial(index.max_poly_size)
                     .evaluate_chunks(zeta_omega),
 
-                cairo_selector: index.cs.cairo.as_ref().map(|c| {
+                cairo_selector: index.cs.cairo_cs.as_ref().map(|c| {
                     array_init(|i| {
-                        c[i].to_chunked_polynomial(index.max_poly_size)
+                        c.cairo[i]
+                            .to_chunked_polynomial(index.max_poly_size)
                             .evaluate_chunks(zeta_omega)
                     })
                 }),
