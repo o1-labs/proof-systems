@@ -369,12 +369,16 @@
 <span id="364">364</span>
 <span id="365">365</span>
 <span id="366">366</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">super</span>::tables</span>::{
-    <span class="ident">combine_table_entry</span>, <span class="ident">get_table</span>, <span class="ident">GateLookupTable</span>, <span class="ident">GatesLookupMaps</span>, <span class="ident">GatesLookupSpec</span>, <span class="ident">LookupTable</span>,
+<span id="367">367</span>
+<span id="368">368</span>
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
+    <span class="ident">domains::EvaluationDomains</span>,
+    <span class="ident">gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">CurrOrNext</span>, <span class="ident">GateType</span>},
+    <span class="ident">lookup::tables</span>::{
+        <span class="ident">combine_table_entry</span>, <span class="ident">get_table</span>, <span class="ident">GateLookupTable</span>, <span class="ident">GatesLookupMaps</span>, <span class="ident">GatesLookupSpec</span>,
+        <span class="ident">LookupTable</span>, <span class="ident">XOR_TABLE_ID</span>,
+    },
 };
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::domains::EvaluationDomains</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">CurrOrNext</span>, <span class="ident">GateType</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::polynomials::chacha::XOR_TABLE_ID</span>;
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">Field</span>, <span class="ident">One</span>, <span class="ident">Zero</span>};
 <span class="kw">use</span> <span class="ident">ark_poly</span>::{<span class="ident">Evaluations</span> <span class="kw">as</span> <span class="ident">E</span>, <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>};
 <span class="kw">use</span> <span class="ident">o1_utils::field_helpers::i32_to_field</span>;

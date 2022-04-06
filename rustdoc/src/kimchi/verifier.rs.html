@@ -830,6 +830,16 @@
 <span id="825">825</span>
 <span id="826">826</span>
 <span id="827">827</span>
+<span id="828">828</span>
+<span id="829">829</span>
+<span id="830">830</span>
+<span id="831">831</span>
+<span id="832">832</span>
+<span id="833">833</span>
+<span id="834">834</span>
+<span id="835">835</span>
+<span id="836">836</span>
+<span id="837">837</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements zk-proof batch verifier functionality.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -968,7 +978,10 @@
             .<span class="ident">iter</span>()
             .<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">fq_sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span><span class="ident">c</span>.<span class="ident">unshifted</span>));
 
-        <span class="comment">//~ 4. TODO: lookup (joint combiner challenge)</span>
+        <span class="comment">//~ 4. If lookup is not used,</span>
+        <span class="comment">//~    or is used with queries to single-column lookup tables only,</span>
+        <span class="comment">//~    then set the joint combiner challenge $j$ to $0$.</span>
+        <span class="comment">//~    Otherwise, squeeze the Fq-Sponge to obtain the joint combiner challenge $j$.</span>
         <span class="kw">let</span> <span class="ident">joint_combiner</span> <span class="op">=</span> {
             <span class="kw">let</span> <span class="ident">s</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">index</span>.<span class="ident">lookup_index</span> {
                 <span class="prelude-val">None</span>
@@ -984,7 +997,7 @@
             (<span class="ident">s</span>, <span class="ident">s</span>.<span class="ident">to_field</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">endo_r</span>))
         };
 
-        <span class="comment">//~ 5. TODO: lookup (absorb)</span>
+        <span class="comment">//~ 5. If using lookup, absorb the commitments to the sorted polynomials.</span>
         <span class="self">self</span>.<span class="ident">commitments</span>.<span class="ident">lookup</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">l</span><span class="op">|</span> {
             <span class="ident">l</span>.<span class="ident">sorted</span>
                 .<span class="ident">iter</span>()
@@ -997,7 +1010,7 @@
         <span class="comment">//~ 7. Sample $\gamma$ with the Fq-Sponge.</span>
         <span class="kw">let</span> <span class="ident">gamma</span> <span class="op">=</span> <span class="ident">fq_sponge</span>.<span class="ident">challenge</span>();
 
-        <span class="comment">//~ 8. TODO: lookup</span>
+        <span class="comment">//~ 8. If using lookup, absorb the commitment to the aggregation lookup polynomial.</span>
         <span class="self">self</span>.<span class="ident">commitments</span>.<span class="ident">lookup</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">l</span><span class="op">|</span> {
             <span class="ident">fq_sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span><span class="ident">l</span>.<span class="ident">aggreg</span>.<span class="ident">unshifted</span>);
         });
@@ -1338,8 +1351,15 @@
     ];
 
     <span class="comment">//~ 4. Compute the commitment to the linearized polynomial $f$.</span>
+    <span class="comment">//~    To do this, add the constraints of all of the gates, of the permutation,</span>
+    <span class="comment">//~    and optionally of the lookup.</span>
+    <span class="comment">//~    (See the separate sections in the [constraints](#constraints) section.)</span>
+    <span class="comment">//~    Any polynomial should be replaced by its associated commitment,</span>
+    <span class="comment">//~    contained in the verifier index or in the proof,</span>
+    <span class="comment">//~    unless a polynomial has its evaluation provided by the proof</span>
+    <span class="comment">//~    in which case the evaluation should be used in place of the commitment.</span>
     <span class="kw">let</span> <span class="ident">f_comm</span> <span class="op">=</span> {
-        <span class="comment">// permutation</span>
+        <span class="comment">// the permutation is written manually (not using the expr framework)</span>
         <span class="kw">let</span> <span class="ident">zkp</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">zkpm</span>.<span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="ident">oracles</span>.<span class="ident">zeta</span>);
 
         <span class="kw">let</span> <span class="ident">alphas</span> <span class="op">=</span> <span class="ident">all_alphas</span>.<span class="ident">get_alphas</span>(<span class="ident">ArgumentType::Permutation</span>, <span class="ident">permutation::CONSTRAINTS</span>);
@@ -1353,7 +1373,7 @@
             <span class="ident">zkp</span>,
         )];
 
-        <span class="comment">// generic</span>
+        <span class="comment">// generic is written manually (not using the expr framework)</span>
         {
             <span class="kw">let</span> <span class="ident">alphas</span> <span class="op">=</span>
                 <span class="ident">all_alphas</span>.<span class="ident">get_alphas</span>(<span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::Generic</span>), <span class="ident">generic::CONSTRAINTS</span>);

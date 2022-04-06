@@ -1256,6 +1256,11 @@
 <span id="1251">1251</span>
 <span id="1252">1252</span>
 <span id="1253">1253</span>
+<span id="1254">1254</span>
+<span id="1255">1255</span>
+<span id="1256">1256</span>
+<span id="1257">1257</span>
+<span id="1258">1258</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements prover&#39;s zk-proof primitive.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -1513,6 +1518,7 @@
             <span class="ident">CombinedEntry</span>(<span class="ident">x</span>)
         };
 
+        <span class="comment">//~ 12. If using lookup:</span>
         <span class="kw">let</span> (<span class="ident">lookup_sorted</span>, <span class="ident">lookup_sorted_coeffs</span>, <span class="ident">lookup_sorted_comm</span>, <span class="ident">lookup_sorted8</span>) <span class="op">=</span>
             <span class="kw">match</span> <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">lookup_constraint_system</span>.<span class="ident">as_ref</span>() {
                 <span class="prelude-val">None</span> =&gt; (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>),
@@ -1538,6 +1544,7 @@
                         })
                     };
 
+                    <span class="comment">//~     - Compute the sorted table.</span>
                     <span class="comment">// TODO: Once we switch to committing using lagrange commitments,</span>
                     <span class="comment">// `witness` will be consumed when we interpolate, so interpolation will</span>
                     <span class="comment">// have to moved below this.</span>
@@ -1551,6 +1558,7 @@
                             (<span class="ident">joint_combiner</span>, <span class="ident">table_id_combiner</span>),
                         )<span class="question-mark">?</span>;
 
+                    <span class="comment">//~     - Compute the sorted coefficients.</span>
                     <span class="kw">let</span> <span class="ident">lookup_sorted</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">lookup_sorted</span>
                         .<span class="ident">into_iter</span>()
                         .<span class="ident">map</span>(<span class="op">|</span><span class="ident">chunk</span><span class="op">|</span> {
@@ -1559,6 +1567,8 @@
                         })
                         .<span class="ident">collect</span>();
 
+                    <span class="comment">//~     - Commit to each of the sorted table columns.</span>
+                    <span class="comment">//~       (See section on lookup to see how to compute it.)</span>
                     <span class="kw">let</span> <span class="ident">comm</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">lookup_sorted</span>
                         .<span class="ident">iter</span>()
                         .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> {
