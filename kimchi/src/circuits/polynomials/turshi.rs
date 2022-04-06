@@ -111,19 +111,6 @@ fn gate_type_to_selector<F: FftField>(typ: GateType) -> [F; CIRCUIT_GATE_COUNT] 
     }
 }
 
-/*
-fn view_table<F: Field>(table: &Vec<[F; COLUMNS]>) {
-    let rows = table.len();
-    for i in 0..rows {
-        print!("row {}: [", i);
-        for j in 0..COLUMNS {
-            print!("{} , ", table[i][j].to_u64());
-        }
-        println!("]");
-    }
-}
-*/
-
 /// Returns the witness of an execution of a Cairo program in CircuitGate format
 pub fn cairo_witness<F: Field>(prog: &CairoProgram<F>) -> [Vec<F>; COLUMNS] {
     // 0: 1 row for final check CairoClaim gate
@@ -752,14 +739,6 @@ impl<F: FftField> CircuitGate<F> {
 /// Returns the expression corresponding to the literal "2"
 fn two<F: Field>() -> E<F> {
     Expr::Constant(ConstantExpr::Literal(2u16.into())) // 2
-}
-
-/// Combines the constraints for the Cairo gates
-pub fn gate_combined_constraints<F: FftField>(alphas: &Alphas<F>) -> E<F> {
-    Claim::combined_constraints(alphas)
-        + Instruction::combined_constraints(alphas)
-        + Flags::combined_constraints(alphas)
-        + Transition::combined_constraints(alphas)
 }
 
 /// Combines the constraints for the Cairo gates depending on its type

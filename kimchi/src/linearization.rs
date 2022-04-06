@@ -10,7 +10,7 @@ use crate::circuits::polynomials::endomul_scalar::EndomulScalar;
 use crate::circuits::polynomials::endosclmul::EndosclMul;
 use crate::circuits::polynomials::permutation;
 use crate::circuits::polynomials::poseidon::Poseidon;
-use crate::circuits::polynomials::turshi::Instruction;
+use crate::circuits::polynomials::turshi::{Claim, Flags, Instruction, Transition};
 use crate::circuits::polynomials::varbasemul::VarbaseMul;
 use crate::circuits::{
     expr::{Column, ConstantExpr, Expr, Linearization, PolishToken},
@@ -58,7 +58,10 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
     }
 
     if cairo {
-        expr += crate::circuits::polynomials::turshi::gate_combined_constraints(&powers_of_alpha);
+        expr += Claim::combined_constraints(&powers_of_alpha);
+        expr += Instruction::combined_constraints(&powers_of_alpha);
+        expr += Flags::combined_constraints(&powers_of_alpha);
+        expr += Transition::combined_constraints(&powers_of_alpha);
     }
 
     // permutation
