@@ -15,6 +15,33 @@ fn create_test_consys(inirow: usize, ninstr: usize) -> ConstraintSystem<PallasFi
 }
 
 #[test]
+fn test_cairo_should_fail() {
+    let instrs = vec![
+        F::from(0x480680017fff8000u64),
+        F::from(10u64),
+        F::from(0x208b7fff7fff7ffeu64),
+    ];
+    let mut mem = CairoMemory::<F>::new(instrs);
+    mem.write(F::from(4u32), F::from(7u32)); //beginning of output
+    mem.write(F::from(5u32), F::from(7u32)); //end of output
+    let prog = CairoProgram::new(&mut mem, 1);
+
+    // Create the Cairo circuit
+    let ninstr = prog.trace().len();
+    let inirow = 0;
+    let circuit = CircuitGate::<F>::create_cairo_gadget(inirow, ninstr);
+
+    let cs = create_test_consys(inirow, ninstr);
+    let mut witness = cairo_witness(&prog);
+    // break a witness
+    witness[0][0] += F::from(1u32);
+    let res_ensure = circuit[0].ensure_cairo_gate(0, &witness);
+    let res_verify = circuit[0].verify_cairo_gate(0, &witness, &cs);
+    assert_eq!(Err("wrong initial pc".to_string()), res_ensure);
+    assert_eq!(Err("Invalid CairoClaim constraint".to_string()), res_verify);
+}
+
+#[test]
 fn test_cairo_gate() {
     let instrs: Vec<F> = vec![
         F::from(0x400380007ffc7ffdu64),
@@ -63,13 +90,9 @@ fn test_cairo_gate() {
     let mut row = 0;
     for gate in circuit {
         let res_ensure = gate.ensure_cairo_gate(row, &witness);
-        if res_ensure.is_err() {
-            eprintln!("{:?}", res_ensure);
-        }
+        assert_eq!(Ok(()), res_ensure);
         let res_verify = gate.verify_cairo_gate(row, &witness, &cs);
-        if res_verify.is_err() {
-            eprintln!("{:?}", res_verify);
-        }
+        assert_eq!(Ok(()), res_verify);
         row = row + 1;
     }
 }
