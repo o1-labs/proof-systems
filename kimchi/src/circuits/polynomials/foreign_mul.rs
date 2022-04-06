@@ -449,12 +449,11 @@ fn init_foreign_mul_row<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], row: usi
     }
 }
 
-pub fn create_witness<F: PrimeField>(a: BigUint) -> [Vec<F>; COLUMNS] {
-    assert!(a.bits() <= (MAX_LIMBS * LIMB_SIZE) as u64);
-    let mut witness: [Vec<F>; COLUMNS] = array_init(|_| vec![F::zero(); 4]);
+fn append_foreign_field_element_rows<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], fe: BigUint) {
+    assert!(fe.bits() <= (MAX_LIMBS * LIMB_SIZE) as u64);
     let mut last_row_number = 0;
 
-    for (row, chunk) in a
+    for (row, chunk) in fe
         .to_bytes_le() // F::from_bytes() below is little-endian
         .chunks(LIMB_SIZE / 8 + (LIMB_SIZE % 8 != 0) as usize)
         .enumerate()
@@ -465,12 +464,19 @@ pub fn create_witness<F: PrimeField>(a: BigUint) -> [Vec<F>; COLUMNS] {
         let limb_fe = F::from_bytes(&limb_bytes).expect("failed to deserialize limb field bytes");
 
         // Initialize the row based on the limb and public input shape
-        init_foreign_mul_row(&mut witness, row, limb_fe);
+        init_foreign_mul_row(witness, row, limb_fe);
         last_row_number += 1;
     }
 
     // Initialize last row
-    init_foreign_mul_row(&mut witness, last_row_number, F::zero());
+    init_foreign_mul_row(witness, last_row_number, F::zero());
+}
+
+pub fn create_witness<F: PrimeField>(a: BigUint, b: BigUint) -> [Vec<F>; COLUMNS] {
+    assert!(a.bits() <= (MAX_LIMBS * LIMB_SIZE) as u64);
+    let mut witness: [Vec<F>; COLUMNS] = array_init(|_| vec![F::zero(); 8]);
+    append_foreign_field_element_rows(&mut witness, a);
+    append_foreign_field_element_rows(&mut witness, b);
     witness
 }
 
@@ -708,7 +714,7 @@ where
     F: FftField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignMul2);
-    const CONSTRAINTS: u32 = 25;
+    const CONSTRAINTS: u32 = 5;
 
     // Constraints for ForeignMul2
     //   * Operates on Curr row
@@ -726,15 +732,29 @@ where
 
         // Apply range constraints on sublimbs (create 4 12-bit plookup range constraints)
         // crumbs were constrained by ForeignMul1 circuit gate
-        (1..5).map(|i| sublimb_plookup_constraint(&w(i))).collect()
+        let mut constraints: Vec<E<F>> =
+            (1..5).map(|i| sublimb_plookup_constraint(&w(i))).collect();
+
+        // Temporary dummy constraint to avoid zero polynomial edge case
+        // and avoid check that verifier does that all commitments aren't identically zero
+        constraints.push(E::<F>::cell(
+            Column::Index(GateType::Poseidon),
+            CurrOrNext::Curr,
+        ));
+
+        constraints
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::circuits::{
-        constraints::ConstraintSystem, gate::CircuitGate, polynomial::COLUMNS,
-        polynomials::foreign_mul::create_witness, wires::Wire,
+    use crate::{
+        circuits::{
+            constraints::ConstraintSystem, gate::CircuitGate, polynomial::COLUMNS,
+            polynomials::foreign_mul::create_witness, wires::Wire,
+        },
+        proof::ProverProof,
+        prover_index::testing::new_index_for_test,
     };
 
     use ark_ec::AffineCurve;
@@ -759,6 +779,19 @@ mod tests {
             0,
         )
         .unwrap()
+    }
+
+    fn create_test_prover_index(
+        foreign_modulus: BigUint,
+        public_size: usize,
+    ) -> ProverIndex<mina_curves::pasta::vesta::Affine> {
+        let wires = array_init(|i| Wire::new(i));
+        let gates = CircuitGate::<PallasField>::create_foreign_mul(&wires);
+        new_index_for_test(
+            gates,
+            o1_utils::packed_modulus::<PallasField>(foreign_modulus),
+            public_size,
+        )
     }
 
     fn biguint_from_hex_le(hex: &str) -> BigUint {
@@ -792,9 +825,10 @@ mod tests {
     fn verify_foreign_mul0_valid_witness() {
         let cs = create_test_constraint_system();
 
-        let witness: [Vec<PallasField>; 15] = create_witness(biguint_from_hex_le(
-            "1112223334445556667777888999aaabbbcccdddeeefff111222333444555611",
-        ));
+        let witness: [Vec<PallasField>; 15] = create_witness(
+            biguint_from_hex_le("1112223334445556667777888999aaabbbcccdddeeefff111222333444555611"),
+            biguint_from_hex_le("1112223334445556667777888999aaabbbcccdddeeefff111222333444555611"),
+        );
 
         // gates[0] is ForeignMul0
         assert_eq!(cs.gates[0].verify_foreign_mul(0, &witness, &cs), Ok(()));
@@ -802,9 +836,10 @@ mod tests {
         // gates[1] is ForeignMul0
         assert_eq!(cs.gates[1].verify_foreign_mul(1, &witness, &cs), Ok(()));
 
-        let witness: [Vec<PallasField>; 15] = create_witness(biguint_from_hex_le(
-            "f59abe33f5d808f8df3e63984621b01e375585fea8dd4030f71a0d80ac06d423",
-        ));
+        let witness: [Vec<PallasField>; 15] = create_witness(
+            biguint_from_hex_le("f59abe33f5d808f8df3e63984621b01e375585fea8dd4030f71a0d80ac06d423"),
+            biguint_from_hex_le("f59abe33f5d808f8df3e63984621b01e375585fea8dd4030f71a0d80ac06d423"),
+        );
 
         // gates[0] is ForeignMul0
         assert_eq!(cs.gates[0].verify_foreign_mul(0, &witness, &cs), Ok(()));
@@ -817,9 +852,10 @@ mod tests {
     fn verify_foreign_mul0_invalid_witness() {
         let cs = create_test_constraint_system();
 
-        let mut witness: [Vec<PallasField>; 15] = create_witness(biguint_from_hex_le(
-            "bca91cf9df6cfd8bd225fd3f46ba2f3f33809d0ee2e7ad338448b4ece7b4f622",
-        ));
+        let mut witness: [Vec<PallasField>; 15] = create_witness(
+            biguint_from_hex_le("bca91cf9df6cfd8bd225fd3f46ba2f3f33809d0ee2e7ad338448b4ece7b4f622"),
+            biguint_from_hex_le("bca91cf9df6cfd8bd225fd3f46ba2f3f33809d0ee2e7ad338448b4ece7b4f622"),
+        );
 
         // Invalidate witness
         witness[5][0] += PallasField::one();
@@ -830,9 +866,10 @@ mod tests {
             Err(String::from("Invalid ForeignMul0 constraint"))
         );
 
-        let mut witness: [Vec<PallasField>; 15] = create_witness(biguint_from_hex_le(
-            "301a091e9f74cd459a448c311ae47fe2f4311db61ae1cbd2afee0171e2b5ca22",
-        ));
+        let mut witness: [Vec<PallasField>; 15] = create_witness(
+            biguint_from_hex_le("301a091e9f74cd459a448c311ae47fe2f4311db61ae1cbd2afee0171e2b5ca22"),
+            biguint_from_hex_le("301a091e9f74cd459a448c311ae47fe2f4311db61ae1cbd2afee0171e2b5ca22"),
+        );
 
         // Invalidate witness
         witness[8][0] = witness[0][0] + PallasField::one();
@@ -848,16 +885,18 @@ mod tests {
     fn verify_foreign_mul1_valid_witness() {
         let cs = create_test_constraint_system();
 
-        let witness: [Vec<PallasField>; 15] = create_witness(biguint_from_hex_le(
-            "72de0b593fbd97e172ddfb1d7c1f7488948c622a7ff6bffa0279e35a7c148733",
-        ));
+        let witness: [Vec<PallasField>; 15] = create_witness(
+            biguint_from_hex_le("72de0b593fbd97e172ddfb1d7c1f7488948c622a7ff6bffa0279e35a7c148733"),
+            biguint_from_hex_le("72de0b593fbd97e172ddfb1d7c1f7488948c622a7ff6bffa0279e35a7c148733"),
+        );
 
         // gates[2] is ForeignMul1
         assert_eq!(cs.gates[2].verify_foreign_mul(2, &witness, &cs), Ok(()));
 
-        let witness: [Vec<PallasField>; 15] = create_witness(biguint_from_hex_le(
-            "58372fb93039e7106c68488dceb6cab3ffb0e7c8594dcc3bc7160321fcf6960d",
-        ));
+        let witness: [Vec<PallasField>; 15] = create_witness(
+            biguint_from_hex_le("58372fb93039e7106c68488dceb6cab3ffb0e7c8594dcc3bc7160321fcf6960d"),
+            biguint_from_hex_le("58372fb93039e7106c68488dceb6cab3ffb0e7c8594dcc3bc7160321fcf6960d"),
+        );
 
         // gates[2] is ForeignMul1
         assert_eq!(cs.gates[2].verify_foreign_mul(2, &witness, &cs), Ok(()));
@@ -867,9 +906,10 @@ mod tests {
     fn verify_foreign_mul1_invalid_witness() {
         let cs = create_test_constraint_system();
 
-        let mut witness: [Vec<PallasField>; 15] = create_witness(biguint_from_hex_le(
-            "260efa1879427b08ca608d455d9f39954b5243dd52117e9ed5982f94acd3e22c",
-        ));
+        let mut witness: [Vec<PallasField>; 15] = create_witness(
+            biguint_from_hex_le("260efa1879427b08ca608d455d9f39954b5243dd52117e9ed5982f94acd3e22c"),
+            biguint_from_hex_le("260efa1879427b08ca608d455d9f39954b5243dd52117e9ed5982f94acd3e22c"),
+        );
 
         // Corrupt witness
         witness[0][2] = witness[7][2];
@@ -880,9 +920,10 @@ mod tests {
             Err(String::from("Invalid ForeignMul1 constraint"))
         );
 
-        let mut witness: [Vec<PallasField>; 15] = create_witness(biguint_from_hex_le(
-            "afd209d02c77546022ea860f9340e4289ecdd783e9c0012fd383dcd2940cd51b",
-        ));
+        let mut witness: [Vec<PallasField>; 15] = create_witness(
+            biguint_from_hex_le("afd209d02c77546022ea860f9340e4289ecdd783e9c0012fd383dcd2940cd51b"),
+            biguint_from_hex_le("afd209d02c77546022ea860f9340e4289ecdd783e9c0012fd383dcd2940cd51b"),
+        );
 
         // Corrupt witness
         witness[13][2] = witness[1][2];
@@ -898,16 +939,18 @@ mod tests {
     fn verify_foreign_mul2_valid_witness() {
         let _cs = create_test_constraint_system();
 
-        let _witness: [Vec<PallasField>; 15] = create_witness(biguint_from_hex_le(
-            "1aed1a6bc2ca84ee6edaedea4eb9b623392d24f64dfb0a8134ff16289bfc3c1f",
-        ));
+        let _witness: [Vec<PallasField>; 15] = create_witness(
+            biguint_from_hex_le("1aed1a6bc2ca84ee6edaedea4eb9b623392d24f64dfb0a8134ff16289bfc3c1f"),
+            biguint_from_hex_le("1aed1a6bc2ca84ee6edaedea4eb9b623392d24f64dfb0a8134ff16289bfc3c1f"),
+        );
 
         // gates[3] is ForeignMul2 (cannot validate until plookup is implemented)
         // assert_eq!(cs.gates[3].verify_foreign_mul(3, &witness, &cs), Ok(()));
 
-        let _witness: [Vec<PallasField>; 15] = create_witness(biguint_from_hex_le(
-            "fd944d6dad12b5398bd2901b92439c6af31eca1766a1915bcd611df90830b508",
-        ));
+        let _witness: [Vec<PallasField>; 15] = create_witness(
+            biguint_from_hex_le("fd944d6dad12b5398bd2901b92439c6af31eca1766a1915bcd611df90830b508"),
+            biguint_from_hex_le("fd944d6dad12b5398bd2901b92439c6af31eca1766a1915bcd611df90830b508"),
+        );
 
         // gates[3] is ForeignMul2 (cannot validate until plookup is implemented)
         // assert_eq!(cs.gates[3].verify_foreign_mul(3, &witness, &cs), Ok(()));
@@ -917,9 +960,10 @@ mod tests {
     fn verify_foreign_mul2_invalid_witness() {
         let _cs = create_test_constraint_system();
 
-        let mut witness: [Vec<PallasField>; 15] = create_witness(biguint_from_hex_le(
-            "56acede83576c45ec8c11a85ac97e2393a9f88308b4b42d1b1506f2faaafc02b",
-        ));
+        let mut witness: [Vec<PallasField>; 15] = create_witness(
+            biguint_from_hex_le("56acede83576c45ec8c11a85ac97e2393a9f88308b4b42d1b1506f2faaafc02b"),
+            biguint_from_hex_le("56acede83576c45ec8c11a85ac97e2393a9f88308b4b42d1b1506f2faaafc02b"),
+        );
 
         // Corrupt witness
         witness[12][2] = witness[2][2];
@@ -927,14 +971,63 @@ mod tests {
         // gates[3] is ForeignMul2 (cannot validate until plookup is implemented)
         // assert_eq!(cs.gates[3].verify_foreign_mul(3, &witness, &cs), Ok(()));
 
-        let mut witness: [Vec<PallasField>; 15] = create_witness(biguint_from_hex_le(
-            "56acede83576c45ec8c11a85ac97e2393a9f88308b4b42d1b1506f2faaafc02b",
-        ));
+        let mut witness: [Vec<PallasField>; 15] = create_witness(
+            biguint_from_hex_le("56acede83576c45ec8c11a85ac97e2393a9f88308b4b42d1b1506f2faaafc02b"),
+            biguint_from_hex_le("56acede83576c45ec8c11a85ac97e2393a9f88308b4b42d1b1506f2faaafc02b"),
+        );
 
         // Corrupt witness
         witness[6][2] = witness[3][2];
 
         // gates[3] is ForeignMul2 (cannot validate until plookup is implemented)
         // assert_eq!(cs.gates[3].verify_foreign_mul(3, &witness, &cs), Ok(()));
+    }
+
+    use crate::{prover_index::ProverIndex, verifier::verify};
+    use commitment_dlog::commitment::CommitmentCurve;
+    use groupmap::GroupMap;
+    use mina_curves::pasta as pasta_curves;
+    use oracle::{
+        constants::PlonkSpongeConstantsKimchi,
+        sponge::{DefaultFqSponge, DefaultFrSponge},
+    };
+
+    type BaseSponge =
+        DefaultFqSponge<pasta_curves::vesta::VestaParameters, PlonkSpongeConstantsKimchi>;
+    type ScalarSponge = DefaultFrSponge<pasta_curves::Fp, PlonkSpongeConstantsKimchi>;
+
+    #[test]
+    fn verify_foreign_mul_proof1() {
+        // Create prover index
+        let prover_index = create_test_prover_index(o1_utils::get_modulus::<VestaField>(), 0);
+
+        // Create witness
+        let witness: [Vec<PallasField>; 15] = create_witness(
+            biguint_from_hex_le("56acede83576c45ec8c11a85ac97e2393a9f88308b4b42d1b1506f2faaafc02b"),
+            biguint_from_hex_le("56acede83576c45ec8c11a85ac97e2393a9f88308b4b42d1b1506f2faaafc02b"),
+        );
+
+        // Verify computed witness satisfies the circuit
+        prover_index.cs.verify(&witness, &[]).unwrap();
+
+        // Generate proof
+        println!("Proving stuff in the new way...");
+        // Get group map
+        let group_map = <pasta_curves::vesta::Affine as CommitmentCurve>::Map::setup();
+        let proof =
+            ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &prover_index)
+                .expect("failed to generate proof");
+
+        // Get the verifier index
+        let verifier_index = prover_index.verifier_index();
+
+        // Verify proof
+        let res = verify::<pasta_curves::vesta::Affine, BaseSponge, ScalarSponge>(
+            &group_map,
+            &verifier_index,
+            &proof,
+        );
+
+        println!("Verification result = {:?}", res);
     }
 }

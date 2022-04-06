@@ -135,7 +135,7 @@ pub struct ConstraintSystem<F: FftField> {
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub endomul_scalar8: E<F, D<F>>,
 
-    /// Foreign field multiplicate constraint selector polynomials
+    /// Foreign field multiplication constraint selector polynomials
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; foreign_mul::CIRCUIT_GATE_COUNT]")]
     pub foreign_mulm: [DP<F>; foreign_mul::CIRCUIT_GATE_COUNT],
     /// Foreign field multiplication selector evaluations over domain.d8

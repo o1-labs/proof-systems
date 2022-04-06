@@ -497,7 +497,6 @@ where
                         gate_type,
                         &all_alphas,
                     );
-                    println!("Created expr for {:?}", gate_type);
 
                     let evals = expr.evaluations(&env);
 
@@ -507,10 +506,25 @@ where
                             .interpolate()
                             .divide_by_vanishing_poly(index.cs.domain.d1)
                             .unwrap();
-                        assert!(res.is_zero());
+                        if !res.is_zero() {
+                            panic!(
+                                "Nonzero vanishing polynomial division for {:?}",
+                                gate_type
+                            );
+                        }
                     }
 
-                    t8 += &evals;
+                    if evals.domain().size == t4.domain().size {
+                        t4 += &evals;
+                    } else if evals.domain().size == t8.domain().size {
+                        t8 += &evals;
+                    } else {
+                        panic!(
+                            "Bad evaluation domain size {} for {:?}",
+                            evals.domain().size,
+                            gate_type
+                        );
+                    }
                 }
             }
 

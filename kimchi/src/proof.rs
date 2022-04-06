@@ -1,6 +1,9 @@
 //! This module implements the data structures of a proof.
 
-use crate::circuits::{wires::{COLUMNS, PERMUTS}, polynomials::foreign_mul};
+use crate::circuits::{
+    polynomials::foreign_mul,
+    wires::{COLUMNS, PERMUTS},
+};
 use ark_ec::AffineCurve;
 use ark_ff::{FftField, Zero};
 use ark_poly::univariate::DensePolynomial;
