@@ -200,170 +200,122 @@ where
             )
             .interpolate()
         });
-        //~ 10. If there's a joint lookup being used in the circuit (TODO: define joint lookup vs single lookup):
-        let joint_combiner: ScalarField<G> = {
-            //~     - Sample the joint combinator (lookup challenge) $j$ with the Fq-Sponge.
-            // TODO: how will the verifier circuit handle these kind of things? same with powers of alpha...
-            let s = match index.cs.lookup_constraint_system.as_ref() {
-                None
-                | Some(LookupConstraintSystem {
-                    configuration:
-                        LookupConfiguration {
-                            lookup_used: LookupsUsed::Single,
-                            ..
-                        },
-                    ..
-                }) => ScalarChallenge(ScalarField::<G>::zero()),
-                Some(LookupConstraintSystem {
-                    configuration:
-                        LookupConfiguration {
-                            lookup_used: LookupsUsed::Joint,
-                            ..
-                        },
-                    ..
-                }) => ScalarChallenge(fq_sponge.challenge()),
-            };
 
-            //~     - derive the scalar joint combinator $j$ from $j'$ using the endomorphism (TODO: details, explicitly say that we change the field).
-            s.to_field(&index.srs.endo_r)
-        };
+        let mut lookup_context = LookupContext::default();
 
-        let table_id_combiner: ScalarField<G> =
-            if let Some(lcs) = index.cs.lookup_constraint_system.as_ref() {
-                if lcs.table_ids8.as_ref().is_some() {
-                    joint_combiner.pow([lcs.configuration.max_joint_size as u64])
-                } else {
-                    ScalarField::<G>::zero()
-                }
+        //~ 10. If using lookup:
+        if let Some(lcs) = &index.cs.lookup_constraint_system {
+            //~     - If queries involve a lookup table with multiple columns
+            //~     then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
+            //~     otherwise set the joint combiner challenge $j'$ to $0$.
+            let joint_lookup_used = matches!(lcs.configuration.lookup_used, LookupsUsed::Joint);
+
+            let joint_combiner = if joint_lookup_used {
+                fq_sponge.challenge()
             } else {
                 ScalarField::<G>::zero()
             };
 
-        // TODO: Looking-up a tuple (f_0, f_1, ..., f_{m-1}) in a tuple of tables (T_0, ..., T_{m-1}) is
-        // reduced to a single lookup
-        // sum_i joint_combiner^i f_i
-        // in the "joint table"
-        // sum_i joint_combiner^i T_i
-        //
-        // We write down all these combined joint lookups in the sorted-lookup
-        // table, so `lookup_sorted` ends up being a list of all these combined values.
-        //
-        // We will commit to the columns of lookup_sorted. For example, the 0th one,
-        //
-        // as
-        //
-        // sum_i lookup_sorted[0][i] L_i
-        //
-        // where L_i is the ith normalized lagrange commitment, and where
-        // lookup_sorted[0][i] = sum_j joint_combiner^j f_{0, i, j}
-        //
-        // for some lookup values f_{0, i, j}
-        //
-        // Computing it that way is not the best, since for example, in our four-bit xor table,
-        // all the individual f_{0, i, j} are only four bits while the combined scalar
-        //
-        // sum_j joint_combiner^j f_{0, i, j}
-        //
-        // will (with overwhelming probability) be a basically full width field element.
-        //
-        // As a result, if the lookup values are smaller, it will be better not to
-        // combine the joint lookup values and instead to compute the commitment to
-        // lookup_sorted[0][i] (for example) as
-        //
-        // sum_j joint_combiner^j (sum_i f_{0, i, j} L_i)
-        // = sum_i (sum_j joint_combiner^j f_{0, i, j}) L_i
-        // = sum_i lookup_sorted[0][i] L_i
-        //
-        // This should be quite a lot cheaper when the scalars f_{0, i, j} are small.
-        // We should try it to see how it is in practice. It would be nice if there
-        // were some cheap computation we could run on the lookup values to determine
-        // whether we should combine the scalars before the multi-exp or not, like computing
-        // their average length or something like that.
+            //~     - Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TOOD: specify)
+            let joint_combiner: ScalarField<G> =
+                ScalarChallenge(joint_combiner).to_field(&index.srs.endo_r);
 
-        let dummy_lookup_value = {
-            let x = match index.cs.lookup_constraint_system.as_ref() {
-                None => ScalarField::<G>::zero(),
-                Some(lcs) => lcs
+            //~     - If multiple lookup tables are involved,
+            //~      set the `table_id_combiner` as the $j^i$ with $i$ the maximum width of any used table.
+            //~      Essentially, this is to add a last column of table ids to the concatenated lookup tables.
+            let table_id_combiner: ScalarField<G> = if lcs.table_ids8.as_ref().is_some() {
+                joint_combiner.pow([lcs.configuration.max_joint_size as u64])
+            } else {
+                // TODO: just set this to None in case multiple tables are not used
+                ScalarField::<G>::zero()
+            };
+            lookup_context.table_id_combiner = Some(table_id_combiner);
+
+            //~     - Compute the dummy lookup value as the combination of the last entry of the XOR table (so `(0, 0, 0)`).
+            //~      Warning: This assumes that we always use the XOR table when using lookups.
+            let dummy_lookup_value = {
+                let x = lcs
                     .configuration
                     .dummy_lookup
-                    .evaluate(&joint_combiner, &table_id_combiner),
-            };
-            CombinedEntry(x)
-        };
+                    .evaluate(&joint_combiner, &table_id_combiner);
 
-        //~ 12. If using lookup:
-        let (lookup_sorted, lookup_sorted_coeffs, lookup_sorted_comm, lookup_sorted8) =
-            match index.cs.lookup_constraint_system.as_ref() {
-                None => (None, None, None, None),
-                Some(lcs) => {
-                    let iter_lookup_table = || {
-                        (0..d1_size).map(|i| {
-                            let row = lcs.lookup_table8.iter().map(|e| &e.evals[8 * i]);
-                            let table_id = match lcs.table_ids8.as_ref() {
-                                Some(table_ids8) => table_ids8.evals[8 * i],
-                                None =>
-                                // If there is no `table_ids8` in the constraint system,
-                                // every table ID is identically 0.
-                                {
-                                    ScalarField::<G>::zero()
-                                }
-                            };
-                            CombinedEntry(combine_table_entry(
-                                &joint_combiner,
-                                &table_id_combiner,
-                                row,
-                                table_id,
-                            ))
-                        })
+                CombinedEntry(x)
+            };
+            lookup_context.dummy_lookup_value = Some(dummy_lookup_value);
+
+            //~      - Compute the sorted evaluations.
+            let iter_lookup_table = || {
+                (0..d1_size).map(|i| {
+                    let row = lcs.lookup_table8.iter().map(|e| &e.evals[8 * i]);
+                    let table_id = match lcs.table_ids8.as_ref() {
+                        Some(table_ids8) => table_ids8.evals[8 * i],
+                        None =>
+                        // If there is no `table_ids8` in the constraint system,
+                        // every table ID is identically 0.
+                        {
+                            ScalarField::<G>::zero()
+                        }
                     };
-
-                    //~     - Compute the sorted table.
-                    // TODO: Once we switch to committing using lagrange commitments,
-                    // `witness` will be consumed when we interpolate, so interpolation will
-                    // have to moved below this.
-                    let lookup_sorted: Vec<Vec<CombinedEntry<ScalarField<G>>>> =
-                        lookup::constraints::sorted(
-                            dummy_lookup_value,
-                            iter_lookup_table,
-                            index.cs.domain.d1,
-                            &index.cs.gates,
-                            &witness,
-                            (joint_combiner, table_id_combiner),
-                        )?;
-
-                    //~     - Compute the sorted coefficients.
-                    let lookup_sorted: Vec<_> = lookup_sorted
-                        .into_iter()
-                        .map(|chunk| {
-                            let v: Vec<_> = chunk.into_iter().map(|x| x.0).collect();
-                            lookup::constraints::zk_patch(v, index.cs.domain.d1, rng)
-                        })
-                        .collect();
-
-                    //~     - Commit to each of the sorted table columns.
-                    //~       (See section on lookup to see how to compute it.)
-                    let comm: Vec<_> = lookup_sorted
-                        .iter()
-                        .map(|v| {
-                            index
-                                .srs
-                                .commit_evaluations(index.cs.domain.d1, v, None, rng)
-                        })
-                        .collect();
-                    let coeffs : Vec<_> =
-                        // TODO: We can avoid storing these coefficients.
-                        lookup_sorted.iter().map(|e| e.clone().interpolate()).collect();
-                    let evals8: Vec<_> = coeffs
-                        .iter()
-                        .map(|v| v.evaluate_over_domain_by_ref(index.cs.domain.d8))
-                        .collect();
-
-                    // absorb lookup polynomials
-                    comm.iter().for_each(|c| fq_sponge.absorb_g(&c.0.unshifted));
-
-                    (Some(lookup_sorted), Some(coeffs), Some(comm), Some(evals8))
-                }
+                    CombinedEntry(combine_table_entry(
+                        &joint_combiner,
+                        &table_id_combiner,
+                        row,
+                        table_id,
+                    ))
+                })
             };
+
+            // TODO: Once we switch to committing using lagrange commitments,
+            // `witness` will be consumed when we interpolate, so interpolation will
+            // have to moved below this.
+            let sorted: Vec<Vec<CombinedEntry<ScalarField<G>>>> = lookup::constraints::sorted(
+                dummy_lookup_value,
+                iter_lookup_table,
+                index.cs.domain.d1,
+                &index.cs.gates,
+                &witness,
+                (joint_combiner, table_id_combiner),
+            )?;
+
+            //~      - Randomize the last `EVALS` rows in each of the sorted polynomials
+            //~       in order to add zero-knowledge to the protocol.
+            let sorted: Vec<_> = sorted
+                .into_iter()
+                .map(|chunk| {
+                    let v: Vec<_> = chunk.into_iter().map(|x| x.0).collect();
+                    lookup::constraints::zk_patch(v, index.cs.domain.d1, rng)
+                })
+                .collect();
+
+            //~      - Commit each of the sorted polynomials.
+            let sorted_comm: Vec<_> = sorted
+                .iter()
+                .map(|v| {
+                    index
+                        .srs
+                        .commit_evaluations(index.cs.domain.d1, v, None, rng)
+                })
+                .collect();
+
+            //~      - Absorb each commitments to the sorted polynomials.
+            sorted_comm
+                .iter()
+                .for_each(|c| fq_sponge.absorb_g(&c.0.unshifted));
+
+            // precompute different forms of the sorted polynomials for later
+            // TODO: We can avoid storing these coefficients.
+            let sorted_coeffs: Vec<_> = sorted.iter().map(|e| e.clone().interpolate()).collect();
+            let sorted8: Vec<_> = sorted_coeffs
+                .iter()
+                .map(|v| v.evaluate_over_domain_by_ref(index.cs.domain.d8))
+                .collect();
+
+            lookup_context.joint_combiner = Some(joint_combiner);
+            lookup_context.sorted = Some(sorted);
+            lookup_context.sorted_coeffs = Some(sorted_coeffs);
+            lookup_context.sorted_comm = Some(sorted_comm);
+            lookup_context.sorted8 = Some(sorted8);
+        }
 
         //~ 11. Sample $\beta$ with the Fq-Sponge.
         let beta = fq_sponge.challenge();
