@@ -323,49 +323,62 @@ where
         //~ 12. Sample $\gamma$ with the Fq-Sponge.
         let gamma = fq_sponge.challenge();
 
-        //~ 13. TODO: lookup
-        let (lookup_aggreg_coeffs, lookup_aggreg_comm, lookup_aggreg8) =
-            // compute lookup aggregation polynomial
-            match (index.cs.lookup_constraint_system.as_ref(), lookup_sorted) {
-                (None, None) | (None, Some(_)) | (Some(_), None) => (None, None, None),
-                (Some(lcs), Some(lookup_sorted)) => {
-                    let iter_lookup_table = || (0..d1_size).map(|i| {
-                        let row = lcs.lookup_table8.iter().map(|e| & e.evals[8 * i]);
-                        let table_id =
-                            match lcs.table_ids8.as_ref() {
-                                Some(table_ids8) => table_ids8.evals[8 * i],
-                                None =>
-                                    // If there is no `table_ids8` in the constraint system, every
-                                    // table ID is identically 0.
-                                    ScalarField::<G>::zero(),
-                            };
-                        combine_table_entry(&joint_combiner, &table_id_combiner, row, table_id)
-                    });
-
-                    let aggreg =
-                        lookup::constraints::aggregation::<_, ScalarField<G>, _>(
-                            dummy_lookup_value.0,
-                            iter_lookup_table(),
-                            index.cs.domain.d1,
-                            &index.cs.gates,
-                            &witness,
-                            &joint_combiner,
-                            &table_id_combiner,
-                            beta, gamma,
-                            &lookup_sorted,
-                            rng)?;
-
-                    let comm = index.srs.commit_evaluations(index.cs.domain.d1, &aggreg, None, rng);
-                    fq_sponge.absorb_g(&comm.0.unshifted);
-
-                    let coeffs = aggreg.interpolate();
-
-                    // TODO: There's probably a clever way to expand the domain without
-                    // interpolating
-                    let evals8 = coeffs.evaluate_over_domain_by_ref(index.cs.domain.d8);
-                    (Some(coeffs), Some(comm), Some(evals8))
-                },
+        //~ 13. If using lookup:
+        if let Some(lcs) = &index.cs.lookup_constraint_system {
+            //~     - Compute the lookup aggregation polynomial.
+            let iter_lookup_table = || {
+                (0..d1_size).map(|i| {
+                    let row = lcs.lookup_table8.iter().map(|e| &e.evals[8 * i]);
+                    let table_id = match lcs.table_ids8.as_ref() {
+                        Some(table_ids8) => table_ids8.evals[8 * i],
+                        None =>
+                        // If there is no `table_ids8` in the constraint system, every
+                        // table ID is identically 0.
+                        {
+                            ScalarField::<G>::zero()
+                        }
+                    };
+                    combine_table_entry(
+                        &lookup_context.joint_combiner.unwrap(),
+                        &lookup_context.table_id_combiner.unwrap(),
+                        row,
+                        table_id,
+                    )
+                })
             };
+
+            let aggreg = lookup::constraints::aggregation::<_, ScalarField<G>, _>(
+                lookup_context.dummy_lookup_value.unwrap().0,
+                iter_lookup_table(),
+                index.cs.domain.d1,
+                &index.cs.gates,
+                &witness,
+                &lookup_context.joint_combiner.unwrap(),
+                &lookup_context.table_id_combiner.unwrap(),
+                beta,
+                gamma,
+                &lookup_context.sorted.unwrap(),
+                rng,
+            )?;
+
+            //~     - Commit to the aggregation polynomial.
+            let aggreg_comm = index
+                .srs
+                .commit_evaluations(index.cs.domain.d1, &aggreg, None, rng);
+
+            //~     - Absorb the commitment to the aggregation polynomial with the Fq-Sponge.
+            fq_sponge.absorb_g(&aggreg_comm.0.unshifted);
+
+            // precompute different forms of the aggregation polynomial for later
+            let aggreg_coeffs = aggreg.interpolate();
+            // TODO: There's probably a clever way to expand the domain without
+            // interpolating
+            let aggreg8 = aggreg_coeffs.evaluate_over_domain_by_ref(index.cs.domain.d8);
+
+            lookup_context.aggreg_comm = Some(aggreg_comm);
+            lookup_context.aggreg_coeffs = Some(aggreg_coeffs);
+            lookup_context.aggreg8 = Some(aggreg8);
+        }
 
         //~ 14. Compute the permutation aggregation polynomial $z$.
         let z_poly = index.cs.perm_aggreg(&witness, &beta, &gamma, rng)?;
