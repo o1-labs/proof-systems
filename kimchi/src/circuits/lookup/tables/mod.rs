@@ -1,5 +1,6 @@
 use crate::circuits::{
     gate::{CurrOrNext, GateType},
+    lookup::lookups::{JointLookupSpec, LocalPosition},
     wires::COLUMNS,
 };
 use ark_ff::{FftField, Field, One, Zero};
@@ -7,7 +8,12 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use CurrOrNext::{Curr, Next};
 
-use super::lookups::{JointLookupSpec, LocalPosition};
+pub mod xor;
+
+//~ spec:startcode
+/// The table ID associated with the XOR lookup table.
+pub const XOR_TABLE_ID: i32 = 0;
+//~ spec:endcode
 
 /// Enumerates the different 'fixed' lookup tables used by individual gates
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -101,9 +107,10 @@ pub struct LookupTable<F> {
     pub data: Vec<Vec<F>>,
 }
 
+/// Returns the lookup table associated to a [GateLookupTable].
 pub fn get_table<F: FftField>(table_name: GateLookupTable) -> LookupTable<F> {
     match table_name {
-        GateLookupTable::Xor => crate::circuits::polynomials::chacha::xor_table(),
+        GateLookupTable::Xor => xor::xor_table(),
     }
 }
 

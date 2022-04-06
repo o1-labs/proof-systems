@@ -1,7 +1,7 @@
 use crate::{
     circuits::{
         gate::{CircuitGate, GateType},
-        lookup::tables::LookupTable,
+        lookup::tables::{LookupTable, XOR_TABLE_ID},
         polynomials::chacha,
         wires::{Wire, COLUMNS},
     },
@@ -248,12 +248,12 @@ fn chacha_setup_bad_lookup(table_id: i32) {
 #[test]
 #[should_panic]
 fn chacha_prover_fake_lookup_in_different_table_fails() {
-    chacha_setup_bad_lookup(chacha::XOR_TABLE_ID + 1)
+    chacha_setup_bad_lookup(XOR_TABLE_ID + 1)
 }
 
 // Test lookup domain collisions: if the same table ID is used, we should be able to inject and use
 // a value when it wasn't previously in the table.
 #[test]
 fn chacha_prover_fake_lookup_in_same_table() {
-    chacha_setup_bad_lookup(chacha::XOR_TABLE_ID)
+    chacha_setup_bad_lookup(XOR_TABLE_ID)
 }
