@@ -46,7 +46,7 @@ There's one challenge that prevents us from directly using this approach: $com(t
 Thus, the **verifier** will have to produce split commitments of $L$ and combine them with powers of $\zeta^n$ to verify an evaluation proof. Let's define $L$ as:
 
 $$
-L = L_0 + x^n L_1 + x^{2n} L_1 + \cdots
+L = L_0 + x^n L_1 + x^{2n} L_2 + \cdots
 $$
 
 where every $L_i$ is of degree $n-1$ at most.
@@ -82,7 +82,7 @@ $$
 
 To compute it, there are two rules to follow:
 
-* when two commitment are **added** together, their associated blinding factors get added as well:
+* when two commitments are **added** together, their associated blinding factors get added as well:
     $$com(a) + com(b) \implies r_a + r_b$$
 * when **scaling** a commitment, its blinding factor gets scalled too:
     $$n \cdot com(a) \implies n \cdot r_a$$
@@ -166,5 +166,5 @@ Note right of Verifier: verifies the evaluation proof \n to check that L_bar(zet
 The proposal is implemented in [#150](https://github.com/o1-labs/proof-systems/pull/150) with the following details:
 
 * the $\tilde L$ polynomial is called $ft$.
-* the evaluation of $\tilde L(\zeta)$ is called $ft_eval0$.
-* the evaluation $\tilde L(\zeta\omega)$ is called $ft_eval1$
+* the evaluation of $\tilde L(\zeta)$ is called $ft_{eval0}$.
+* the evaluation $\tilde L(\zeta\omega)$ is called $ft_{eval1}$
