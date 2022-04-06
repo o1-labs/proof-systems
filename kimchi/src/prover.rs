@@ -47,6 +47,42 @@ use std::collections::HashMap;
 /// The result of a proof creation or verification.
 type Result<T> = std::result::Result<T, ProofError>;
 
+/// Contains variables needed for lookup in the prover algorithm.
+#[derive(Default)]
+struct LookupContext<G, F>
+where
+    G: CommitmentCurve,
+    F: FftField,
+{
+    /// The joint combiner used to join the columns of lookup tables
+    joint_combiner: Option<F>,
+
+    /// The power of the joint_combiner that can be used to add a table_id column
+    /// to the concatenated lookup tables.
+    table_id_combiner: Option<F>,
+
+    /// The combined lookup entry that can be used as dummy value
+    dummy_lookup_value: Option<CombinedEntry<F>>,
+
+    /// The combined lookup table
+    combined_table: Option<Evaluations<F, D<F>>>,
+
+    /// The sorted polynomials `s` in different forms
+    sorted: Option<Vec<Evaluations<F, D<F>>>>,
+    sorted_coeffs: Option<Vec<DensePolynomial<F>>>,
+    sorted_comm: Option<Vec<(PolyComm<G>, PolyComm<F>)>>,
+    sorted8: Option<Vec<Evaluations<F, D<F>>>>,
+
+    /// The aggregation polynomial in different forms
+    aggreg_coeffs: Option<DensePolynomial<F>>,
+    aggreg_comm: Option<(PolyComm<G>, PolyComm<F>)>,
+    aggreg8: Option<Evaluations<F, D<F>>>,
+
+    /// The evaluations of the aggregation polynomial for the proof
+    eval_zeta: Option<LookupEvaluations<Vec<F>>>,
+    eval_zeta_omega: Option<LookupEvaluations<Vec<F>>>,
+}
+
 impl<G: CommitmentCurve> ProverProof<G>
 where
     G::BaseField: PrimeField,
