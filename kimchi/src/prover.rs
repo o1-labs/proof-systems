@@ -841,16 +841,12 @@ where
                     .to_chunked_polynomial(index.max_poly_size)
                     .evaluate_chunks(zeta),
 
-                cairo_selector: {
-                    if let Some(c) = &index.cs.cairo {
-                        Some(array_init(|i| {
-                            c[i].to_chunked_polynomial(index.max_poly_size)
-                                .evaluate_chunks(zeta)
-                        }))
-                    } else {
-                        None
-                    }
-                },
+                cairo_selector: index.cs.cairo.as_ref().map(|c| {
+                    array_init(|i| {
+                        c[i].to_chunked_polynomial(index.max_poly_size)
+                            .evaluate_chunks(zeta)
+                    })
+                }),
             };
             let chunked_evals_zeta_omega = ProofEvaluations::<Vec<ScalarField<G>>> {
                 s: array_init(|i| {
@@ -883,16 +879,12 @@ where
                     .to_chunked_polynomial(index.max_poly_size)
                     .evaluate_chunks(zeta_omega),
 
-                cairo_selector: {
-                    if let Some(c) = &index.cs.cairo {
-                        Some(array_init(|i| {
-                            c[i].to_chunked_polynomial(index.max_poly_size)
-                                .evaluate_chunks(zeta_omega)
-                        }))
-                    } else {
-                        None
-                    }
-                },
+                cairo_selector: index.cs.cairo.as_ref().map(|c| {
+                    array_init(|i| {
+                        c[i].to_chunked_polynomial(index.max_poly_size)
+                            .evaluate_chunks(zeta_omega)
+                    })
+                }),
             };
 
             [chunked_evals_zeta, chunked_evals_zeta_omega]
@@ -927,11 +919,10 @@ where
                     }),
                     generic_selector: DensePolynomial::eval_polynomial(&es.generic_selector, e1),
                     poseidon_selector: DensePolynomial::eval_polynomial(&es.poseidon_selector, e1),
-                    cairo_selector: if let Some(c) = &es.cairo_selector {
-                        Some(array_init(|i| DensePolynomial::eval_polynomial(&c[i], e1)))
-                    } else {
-                        None
-                    },
+                    cairo_selector: es
+                        .cairo_selector
+                        .as_ref()
+                        .map(|c| array_init(|i| DensePolynomial::eval_polynomial(&c[i], e1))),
                 })
                 .collect::<Vec<_>>()
         };

@@ -74,6 +74,11 @@ impl<F: Field> CairoMemory<F> {
         self.data.len() as u64
     }
 
+    /// Returns whether the memory is empty (either length 0, or with the dummy first entry)
+    pub fn is_empty(&self) -> bool {
+        self.data.len() < 2
+    }
+
     /// Resizes memory with enough additional None slots if necessary before writing or reading
     fn resize(&mut self, addr: u64) {
         // if you want to access an index of the memory but its size is less or equal than this

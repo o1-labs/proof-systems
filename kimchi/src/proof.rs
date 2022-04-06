@@ -115,11 +115,10 @@ impl<F: FftField> ProofEvaluations<Vec<F>> {
             }),
             generic_selector: DensePolynomial::eval_polynomial(&self.generic_selector, pt),
             poseidon_selector: DensePolynomial::eval_polynomial(&self.poseidon_selector, pt),
-            cairo_selector: if let Some(c) = &self.cairo_selector {
-                Some(array_init(|i| DensePolynomial::eval_polynomial(&c[i], pt)))
-            } else {
-                None
-            },
+            cairo_selector: self
+                .cairo_selector
+                .as_ref()
+                .map(|c| array_init(|i| DensePolynomial::eval_polynomial(&c[i], pt))),
         }
     }
 }
@@ -212,7 +211,7 @@ pub mod caml {
         ),
         pub generic_selector: Vec<CamlF>,
         pub poseidon_selector: Vec<CamlF>,
-        pub cairo_selector: (Vec<CamlF>, Vec<CamlF>, Vec<CamlF>, Vec<CamlF>),
+        pub cairo_selector: Option<(Vec<CamlF>, Vec<CamlF>, Vec<CamlF>, Vec<CamlF>)>,
     }
 
     //
@@ -250,28 +249,19 @@ pub mod caml {
                 pe.s[4].iter().cloned().map(Into::into).collect(),
                 pe.s[5].iter().cloned().map(Into::into).collect(),
             );
-            let cairo_selector = (
-                pe.cairo_selector[0]
-                    .iter()
-                    .cloned()
-                    .map(Into::into)
-                    .collect(),
-                pe.cairo_selector[1]
-                    .iter()
-                    .cloned()
-                    .map(Into::into)
-                    .collect(),
-                pe.cairo_selector[2]
-                    .iter()
-                    .cloned()
-                    .map(Into::into)
-                    .collect(),
-                pe.cairo_selector[3]
-                    .iter()
-                    .cloned()
-                    .map(Into::into)
-                    .collect(),
-            );
+            let cairo_selector = {
+                if let Some(c) = pe.cairo_selector {
+                    Some((
+                        c[0].iter().cloned().map(Into::into).collect(),
+                        c[1].iter().cloned().map(Into::into).collect(),
+                        c[2].iter().cloned().map(Into::into).collect(),
+                        c[3].iter().cloned().map(Into::into).collect(),
+                    ))
+                } else {
+                    None
+                }
+            };
+
             Self {
                 w,
                 z: pe.z.into_iter().map(Into::into).collect(),
@@ -314,12 +304,18 @@ pub mod caml {
                 cpe.s.4.into_iter().map(Into::into).collect(),
                 cpe.s.5.into_iter().map(Into::into).collect(),
             ];
-            let cairo_selector = [
-                cpe.cairo_selector.0.into_iter().map(Into::into).collect(),
-                cpe.cairo_selector.1.into_iter().map(Into::into).collect(),
-                cpe.cairo_selector.2.into_iter().map(Into::into).collect(),
-                cpe.cairo_selector.3.into_iter().map(Into::into).collect(),
-            ];
+            let cairo_selector = {
+                if let Some(c) = cpe.cairo_selector {
+                    Some([
+                        c.0.into_iter().map(Into::into).collect(),
+                        c.1.into_iter().map(Into::into).collect(),
+                        c.2.into_iter().map(Into::into).collect(),
+                        c.3.into_iter().map(Into::into).collect(),
+                    ])
+                } else {
+                    None
+                }
+            };
             Self {
                 w,
                 z: cpe.z.into_iter().map(Into::into).collect(),
