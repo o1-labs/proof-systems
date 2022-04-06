@@ -642,10 +642,9 @@ where
                             ChaCha1 => &index.chacha_comm.as_ref().unwrap()[1],
                             ChaCha2 => &index.chacha_comm.as_ref().unwrap()[2],
                             ChaChaFinal => &index.chacha_comm.as_ref().unwrap()[3],
-                            CairoClaim => &index.cairo_comm.as_ref().unwrap()[0],
-                            CairoInstruction => &index.cairo_comm.as_ref().unwrap()[1],
-                            CairoFlags => &index.cairo_comm.as_ref().unwrap()[2],
-                            CairoTransition => &index.cairo_comm.as_ref().unwrap()[3],
+                            CairoClaim | CairoInstruction | CairoFlags | CairoTransition => {
+                                panic!("TODO")
+                            }
                         };
                         scalars.push(scalar);
                         commitments.push(c);

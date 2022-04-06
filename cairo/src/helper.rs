@@ -8,10 +8,10 @@ use o1_utils::FieldHelpers;
 /// Field element helpers for Cairo
 pub trait CairoFieldHelpers<F> {
     /// Return field element as byte, if it fits. Otherwise returns least significant byte
-    fn of_lsb(self) -> u8;
+    fn lsb(self) -> u8;
 
     /// Return `pos`-th 16-bit chunk as another field element
-    fn of_u16_chunk(self, pos: usize) -> F;
+    fn u16_chunk(self, pos: usize) -> F;
 
     /// Return first 64 bits of the field element
     fn to_u64(self) -> u64;
@@ -21,11 +21,11 @@ pub trait CairoFieldHelpers<F> {
 }
 
 impl<F: Field> CairoFieldHelpers<F> for F {
-    fn of_lsb(self) -> u8 {
+    fn lsb(self) -> u8 {
         self.to_bytes()[0]
     }
 
-    fn of_u16_chunk(self, pos: usize) -> F {
+    fn u16_chunk(self, pos: usize) -> F {
         let bytes = self.to_bytes();
         let chunk = u16::from(bytes[2 * pos]) + u16::from(bytes[2 * pos + 1]) * 2u16.pow(8);
         F::from(chunk)
@@ -69,7 +69,7 @@ mod tests {
     #[test]
     fn test_field_to_chunks() {
         let fe = BaseField::from(0x480680017fff8000u64);
-        let chunk = fe.of_u16_chunk(1);
+        let chunk = fe.u16_chunk(1);
         assert_eq!(chunk, BaseField::from(0x7fff));
     }
 

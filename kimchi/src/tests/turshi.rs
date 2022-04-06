@@ -1,18 +1,7 @@
-use crate::circuits::constraints::ConstraintSystem;
 use crate::circuits::gate::CircuitGate;
 use crate::circuits::polynomials::turshi::*;
-use ark_ec::AffineCurve;
 use cairo::{memory::CairoMemory, runner::CairoProgram};
 use mina_curves::pasta::fp::Fp as F;
-use mina_curves::pasta::pallas;
-
-type PallasField = <pallas::Affine as AffineCurve>::BaseField;
-
-// creates a constraint system for a number of Cairo instructions
-fn create_test_consys(inirow: usize, ninstr: usize) -> ConstraintSystem<PallasField> {
-    let gates = CircuitGate::<PallasField>::create_cairo_gadget(inirow, ninstr);
-    ConstraintSystem::create(gates, vec![], oracle::pasta::fp_kimchi::params(), 0).unwrap()
-}
 
 #[test]
 fn test_cairo_should_fail() {
@@ -31,14 +20,11 @@ fn test_cairo_should_fail() {
     let inirow = 0;
     let circuit = CircuitGate::<F>::create_cairo_gadget(inirow, ninstr);
 
-    let cs = create_test_consys(inirow, ninstr);
     let mut witness = cairo_witness(&prog);
     // break a witness
     witness[0][0] += F::from(1u32);
     let res_ensure = circuit[0].ensure_cairo_gate(0, &witness);
-    let res_verify = circuit[0].verify_cairo_gate(0, &witness, &cs);
     assert_eq!(Err("wrong initial pc".to_string()), res_ensure);
-    assert_eq!(Err("Invalid CairoClaim constraint".to_string()), res_verify);
 }
 
 #[test]
@@ -84,15 +70,11 @@ fn test_cairo_gate() {
     let inirow = 0;
     let circuit = CircuitGate::<F>::create_cairo_gadget(inirow, ninstr);
 
-    let cs = create_test_consys(inirow, ninstr);
-
     // Verify each gate
     let mut row = 0;
     for gate in circuit {
         let res_ensure = gate.ensure_cairo_gate(row, &witness);
         assert_eq!(Ok(()), res_ensure);
-        let res_verify = gate.verify_cairo_gate(row, &witness, &cs);
-        assert_eq!(Ok(()), res_verify);
         row = row + 1;
     }
 }

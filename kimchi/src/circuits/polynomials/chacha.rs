@@ -552,7 +552,6 @@ mod tests {
                 aggreg: F::rand(rng),
                 table: F::rand(rng),
             }),
-            cairo_selector: None,
         };
         let evals = vec![eval(), eval()];
 

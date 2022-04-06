@@ -85,6 +85,5 @@ fn verify_proof(gates: Vec<CircuitGate<Fp>>, witness: [Vec<Fp>; COLUMNS], public
 
     // verify the proof
     let verifier_index = index.verifier_index();
-
     verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &verifier_index, &proof).unwrap();
 }

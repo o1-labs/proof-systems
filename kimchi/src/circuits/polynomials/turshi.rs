@@ -101,16 +101,6 @@ pub const CIRCUIT_GATE_COUNT: usize = 4;
 
 // GATE-RELATED
 
-fn gate_type_to_selector<F: FftField>(typ: GateType) -> [F; CIRCUIT_GATE_COUNT] {
-    match typ {
-        GateType::CairoClaim => [F::one(), F::zero(), F::zero(), F::zero()],
-        GateType::CairoInstruction => [F::zero(), F::one(), F::zero(), F::zero()],
-        GateType::CairoFlags => [F::zero(), F::zero(), F::one(), F::zero()],
-        GateType::CairoTransition => [F::zero(), F::zero(), F::zero(), F::one()],
-        _ => [F::zero(); CIRCUIT_GATE_COUNT],
-    }
-}
-
 /// Returns the witness of an execution of a Cairo program in CircuitGate format
 pub fn cairo_witness<F: Field>(prog: &CairoProgram<F>) -> [Vec<F>; COLUMNS] {
     // 0: 1 row for final check CairoClaim gate
@@ -380,7 +370,6 @@ impl<F: FftField> CircuitGate<F> {
             s: array_init(|_| F::rand(rng)),
             generic_selector: F::zero(),
             poseidon_selector: F::zero(),
-            cairo_selector: Some(gate_type_to_selector(self.typ)),
             lookup: None,
         };
         let evals = vec![eval(curr), eval(next)];
