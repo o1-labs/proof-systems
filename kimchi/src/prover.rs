@@ -399,43 +399,50 @@ where
         let mut all_alphas = index.powers_of_alpha.clone();
         all_alphas.instantiate(alpha);
 
-        //~ 20. TODO: this is just an optimization, ignore?
-        let lagrange = index.cs.evaluate(&witness_poly, &z_poly);
+        //~ 20. If using lookup:
+        let lookup_env = if let Some(lcs) = &index.cs.lookup_constraint_system {
+            let lookup_table_combined = {
+                //~     - computing the combined lookup table by combining the
+                //~       columns of the lookup table with the joint combiner $j$:
+                //~       $$
+                //~       t[0] + j \cdot t[1] + j^2 \cdot t[2] + \cdots
+                //~       $$
+                //~       where $t$ is the lookup table.
+                let joint_table = &lcs.lookup_table8;
+                let mut res = joint_table[joint_table.len() - 1].clone();
+                for col in joint_table.iter().rev().skip(1) {
+                    res.evals
+                        .par_iter_mut()
+                        .for_each(|e| *e *= lookup_context.joint_combiner.unwrap());
+                    res += col;
+                }
 
-        //~ 21. TODO: lookup
-        let lookup_table_combined = index.cs.lookup_constraint_system.as_ref().map(|lcs| {
-            let joint_table = &lcs.lookup_table8;
-            let mut res = joint_table[joint_table.len() - 1].clone();
-            for col in joint_table.iter().rev().skip(1) {
-                res.evals.par_iter_mut().for_each(|e| *e *= joint_combiner);
-                res += col;
-            }
-            if let Some(table_ids8) = &lcs.table_ids8 {
-                res.evals
-                    .par_iter_mut()
-                    .zip(table_ids8.evals.par_iter())
-                    .for_each(|(x, table_id)| {
-                        *x += table_id_combiner * table_id;
-                    })
-            }
-            res
-        });
+                //~     - if we are using several lookup tables, add the table id vector
+                //~       as the last column of the concatenated lookup tables
+                //~       (including padding via the `table_id_combiner`).
+                if let Some(table_ids8) = &lcs.table_ids8 {
+                    let table_id_combiner = lookup_context.table_id_combiner.unwrap();
+                    res.evals
+                        .par_iter_mut()
+                        .zip(table_ids8.evals.par_iter())
+                        .for_each(|(x, table_id)| {
+                            *x += table_id_combiner * table_id;
+                        })
+                }
+                res
+            };
 
-        let lookup_env = lookup_table_combined
-            .as_ref()
-            .zip(lookup_sorted8.as_ref())
-            .zip(lookup_aggreg8.as_ref())
-            .zip(index.cs.lookup_constraint_system.as_ref())
-            .map(
-                |(((lookup_table_combined, lookup_sorted), lookup_aggreg), lcs)| {
-                    LookupEnvironment {
-                        aggreg: lookup_aggreg,
-                        sorted: lookup_sorted,
-                        table: lookup_table_combined,
-                        selectors: &lcs.lookup_selectors,
-                    }
-                },
-            );
+            lookup_context.combined_table = Some(lookup_table_combined);
+
+            Some(LookupEnvironment {
+                aggreg: lookup_context.aggreg8.as_ref().unwrap(),
+                sorted: lookup_context.sorted8.as_ref().unwrap(),
+                selectors: &lcs.lookup_selectors,
+                table: lookup_context.combined_table.as_ref().unwrap(),
+            })
+        } else {
+            None
+        };
 
         //~ 22. TODO: setup the env
         let env = {
