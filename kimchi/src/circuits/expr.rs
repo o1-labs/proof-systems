@@ -99,24 +99,22 @@ impl<'a, F: FftField> Environment<'a, F> {
     }
 }
 
-// In this file, we define
+// In this file, we define...
 //
-// l_i(x) to be the unnormalized lagrange polynomial,
-// (x^n - 1) / (x - omega^i)
-// = prod_{j != i} (x - omega^j)
+//     The unnormalized lagrange polynomial
 //
-// and L_i(x) to be the normalized lagrange polynomial,
-// L_i(x) = l_i(x) / l_i(omega^i)
+//         l_i(x) = (x^n - 1) / (x - omega^i) = prod_{j != i} (x - omega^j)
+//
+//     and the normalized lagrange polynomial
+//
+//         L_i(x) = l_i(x) / l_i(omega^i)
 
-/// Computes `prod_{j != 1} (1 - omega^j)`
+/// Computes `prod_{j != n} (1 - omega^j)`
+///     Assure we don't multiply by (1 - omega^n) = (1 - omega^0) = (1 - 1) = 0
 pub fn l0_1<F: FftField>(d: D<F>) -> F {
-    let mut omega_j = d.group_gen;
-    let mut res = F::one();
-    for _ in 1..(d.size as usize) {
-        res *= F::one() - omega_j;
-        omega_j *= d.group_gen;
-    }
-    res
+    d.elements()
+        .skip(1)
+        .fold(F::one(), |acc, omega_j| acc * (F::one() - omega_j))
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
