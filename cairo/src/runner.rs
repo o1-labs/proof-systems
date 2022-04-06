@@ -640,7 +640,7 @@ mod tests {
         end
         */
         let instrs: Vec<F> = vec![
-            F::from(0x400380007ffc7ffdi64),
+            F::from(0x400380007ffc7ffdu64),
             F::from(0x482680017ffc8000u64),
             F::from(1),
             F::from(0x208b7fff7fff7ffeu64),
