@@ -48,7 +48,7 @@ where
     pub p_eval: Vec<Vec<ScalarField<G>>>,
     /// zeta^n and (zeta * omega)^n
     pub powers_of_eval_points_for_chunks: [ScalarField<G>; 2],
-    /// ?
+    /// recursion data
     #[allow(clippy::type_complexity)]
     pub polys: Vec<(PolyComm<G>, Vec<Vec<ScalarField<G>>>)>,
     /// pre-computed zeta^n
@@ -553,7 +553,7 @@ where
                 let scalar =
                     PolishToken::evaluate(tokens, index.domain, oracles.zeta, &evals, &constants)
                         .expect("should evaluate");
-                let l = proof.commitments.lookup.as_ref();
+
                 use Column::*;
                 match col {
                     Witness(i) => {
@@ -569,12 +569,22 @@ where
                         commitments.push(&proof.commitments.z_comm);
                     }
                     LookupSorted(i) => {
+                        let lookup_coms = proof
+                            .commitments
+                            .lookup
+                            .as_ref()
+                            .ok_or(VerifyError::LookupCommitmentMissing)?;
                         scalars.push(scalar);
-                        commitments.push(&l.unwrap().sorted[*i])
+                        commitments.push(&lookup_coms.sorted[*i])
                     }
                     LookupAggreg => {
+                        let lookup_coms = proof
+                            .commitments
+                            .lookup
+                            .as_ref()
+                            .ok_or(VerifyError::LookupCommitmentMissing)?;
                         scalars.push(scalar);
-                        commitments.push(&l.unwrap().aggreg)
+                        commitments.push(&lookup_coms.aggreg)
                     }
                     LookupKindIndex(i) => match index.lookup_index.as_ref() {
                         None => {

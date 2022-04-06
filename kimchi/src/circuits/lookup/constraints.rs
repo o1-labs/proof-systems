@@ -4,6 +4,10 @@ use crate::{
     circuits::{
         expr::{prologue::*, Column, ConstantExpr},
         gate::{CircuitGate, CurrOrNext},
+        lookup::{
+            lookups::{JointLookup, JointLookupSpec, LocalPosition, LookupInfo, LookupsUsed},
+            tables::Entry,
+        },
         wires::COLUMNS,
     },
     error::ProofError,
@@ -14,11 +18,6 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use CurrOrNext::{Curr, Next};
-
-use super::{
-    lookups::{JointLookup, JointLookupSpec, LocalPosition, LookupInfo, LookupsUsed},
-    tables::Entry,
-};
 
 /// Number of constraints produced by the argument.
 pub const CONSTRAINTS: u32 = 7;
@@ -195,6 +194,7 @@ pub fn sorted<
         counts.entry(t).or_insert(1);
     }
 
+    // TODO: shouldn't we make sure that lookup rows is the same as the number of active gates in the circuit as well? danger: What if we have gates that use lookup but are not counted here?
     for (i, row) in by_row.iter().enumerate().take(lookup_rows) {
         let spec = row;
         let padding = max_lookups_per_row - spec.len();
