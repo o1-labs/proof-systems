@@ -45,7 +45,7 @@ use rayon::iter::{
 use std::collections::HashMap;
 
 /// The result of a proof creation or verification.
-pub type Result<T> = std::result::Result<T, ProofError>;
+type Result<T> = std::result::Result<T, ProofError>;
 
 impl<G: CommitmentCurve> ProverProof<G>
 where
