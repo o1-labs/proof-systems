@@ -319,7 +319,15 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
             lookup_aggreg[i + 1] *= prev;
         });
 
-    Ok(zk_patch(lookup_aggreg, d1, rng))
+    let res = zk_patch(lookup_aggreg, d1, rng);
+
+    // check that the final evaluation is equal to 1
+    let final_val = res.evals[d1.size() - (ZK_ROWS + 1)];
+    if cfg!(debug_assertions) && final_val != F::one() {
+        panic!("aggregation incorrect: {}", final_val);
+    }
+
+    Ok(res)
 }
 
 /// Configuration for the lookup constraint.

@@ -403,10 +403,6 @@ where
                             &lookup_sorted,
                             rng)?;
 
-                    if aggreg.evals[d1_size - (ZK_ROWS as usize + 1)] != ScalarField::<G>::one() {
-                        panic!("aggregation incorrect: {}", aggreg.evals[d1_size-(ZK_ROWS as usize + 1)]);
-                    }
-
                     let comm = index.srs.commit_evaluations(index.cs.domain.d1, &aggreg, None, rng);
                     fq_sponge.absorb_g(&comm.0.unshifted);
 
