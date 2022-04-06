@@ -255,6 +255,7 @@ where
             CombinedEntry(x)
         };
 
+        //~ 12. If using lookup:
         let (lookup_sorted, lookup_sorted_coeffs, lookup_sorted_comm, lookup_sorted8) =
             match index.cs.lookup_constraint_system.as_ref() {
                 None => (None, None, None, None),
@@ -280,6 +281,7 @@ where
                         })
                     };
 
+                    //~     - Compute the sorted table.
                     // TODO: Once we switch to committing using lagrange commitments,
                     // `witness` will be consumed when we interpolate, so interpolation will
                     // have to moved below this.
@@ -293,6 +295,7 @@ where
                             (joint_combiner, table_id_combiner),
                         )?;
 
+                    //~     - Compute the sorted coefficients.
                     let lookup_sorted: Vec<_> = lookup_sorted
                         .into_iter()
                         .map(|chunk| {
@@ -301,6 +304,8 @@ where
                         })
                         .collect();
 
+                    //~     - Commit to each of the sorted table columns.
+                    //~       (See section on lookup to see how to compute it.)
                     let comm: Vec<_> = lookup_sorted
                         .iter()
                         .map(|v| {
