@@ -341,7 +341,7 @@ Same as the prover index, we have a number of pre-computations as part of the ve
 
 {sections.verifier_index}
 
-## Proof
+## Proof Construction & Verification
 
 Originally, kimchi is based on an interactive protocol that was transformed into a non-interactive one using the [Fiat-Shamir](https://o1-labs.github.io/mina-book/crypto/plonk/fiat_shamir.html) transform.
 For this reason, it can be useful to visualize the high-level interactive protocol before the transformation:
@@ -350,47 +350,65 @@ For this reason, it can be useful to visualize the high-level interactive protoc
 sequenceDiagram
     participant Prover
     participant Verifier
+
+    Note over Prover,Verifier: Prover produces commitments to secret polynomials
+
     Prover->>Verifier: public input & witness commitment
+
     Verifier->>Prover: beta & gamma
     Prover->>Verifier: permutation commitment
+
+    opt lookup
+        Prover->>Verifier: sorted
+        Prover->>Verifier: aggreg
+    end
+
+    Note over Prover,Verifier: Prover produces commitment to quotient polynomial
+
     Verifier->>Prover: alpha
     Prover->>Verifier: quotient commitment
+
+    Note over Prover,Verifier: Verifier produces an evaluation point
+
     Verifier->>Prover: zeta
-    Note over Verifier: change of verifier (change of sponge)
-    Prover->>Verifier: negated public input p(zeta) & p(zeta * omega)
-    Prover->>Verifier: permutation poly z(zeta) & z(zeta * omega)
+
+    Note over Prover,Verifier: Prover provides helper evaluations
+
     Prover->>Verifier: the generic selector gen(zeta) & gen(zeta * omega)
     Prover->>Verifier: the poseidon selector pos(zeta) & pos(zeta * omega)
+    Prover->>Verifier: negated public input p(zeta) & p(zeta * omega)
+
+    Note over Prover,Verifier: Prover provides needed evaluations for the linearization
+
+    Note over Verifier: change of verifier (change of sponge)
+
+    Prover->>Verifier: permutation poly z(zeta) & z(zeta * omega)
     Prover->>Verifier: the 15 registers w_i(zeta) & w_i(zeta * omega)
     Prover->>Verifier: the 6 sigmas s_i(zeta) & s_i(zeta * omega)
+
     Prover->>Verifier: ft(zeta * omega)
+
+    opt lookup
+        Prover->>Verifier: sorted(zeta) & sorted(zeta * omega)
+        Prover->>Verifier: aggreg(zeta) & aggreg(zeta * omega)
+        Prover->>Verifier: table(zeta) & table(zeta * omega)
+    end
+
+    Note over Prover,Verifier: Batch verification of evaluation proofs
+
     Verifier->>Prover: u, v
+
     Note over Verifier: change of verifier (change of sponge)
-    Prover->>Verifier: evaluation proof (involves more interaction)
+
+    Prover->>Verifier: aggregated evaluation proof (involves more interaction)
 ```
 
 The Fiat-Shamir transform simulates the verifier messages via a hash function that hashes the transcript of the protocol so far before outputing verifier messages.
 You can find these operations under the [proof creation](#proof-creation) and [proof verification](#proof-verification) algorithms as absorption and squeezing of values with the sponge.
 
-A proof consists of:
+### Proof Structure
 
-* a number of (hidden) polynomial commitments:
-  * the 15 registers/witness columns
-  * the permutation
-  * the quotient
-  * TODO: lookup
-  * TODO: public commitment is not here, but is in the sequence diagram
-* evaluations of these polynomials at two random points $\zeta$ and $\zeta \omega$
-* evaluations at the two random points of these additional polynomials:
-  * the 6 s (sigma)
-  * TODO: lookup
-  * generic selector
-  * poseidon selector
-* evaluation at $\zeta \omega$ of ft
-* optionally, the public input used (the public input could be implied by the surrounding context and not part of the proof itself)
-* optionally, the previous challenges (in case we are in a recursive prover)
-
-From the code:
+A proof consists of the following data structures:
 
 {sections.proof}
 
@@ -421,6 +439,8 @@ The prover then follows the following steps to create the proof:
 {sections.prover}
 
 ### Proof Verification
+
+TODO: we talk about batch verification, but is there an actual batch operation? It seems like we're just verifying an aggregated opening proof
 
 We define two helper algorithms below, used in the batch verification of proofs. 
 
