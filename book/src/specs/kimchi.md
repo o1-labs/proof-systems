@@ -1135,6 +1135,26 @@ pub struct ProverIndex<G: CommitmentCurve> {
 Same as the prover index, we have a number of pre-computations as part of the verifier index.
 
 ```rs
+#[serde_as]
+#[derive(Serialize, Deserialize)]
+pub struct LookupVerifierIndex<G: CommitmentCurve> {
+    pub lookup_used: LookupsUsed,
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub lookup_table: Vec<PolyComm<G>>,
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub lookup_selectors: Vec<PolyComm<G>>,
+
+    /// Table IDs for the lookup values.
+    /// This may be `None` if all lookups originate from table 0.
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub table_ids: Option<PolyComm<G>>,
+
+    /// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
+    pub max_joint_size: u32,
+}
+
+#[serde_as]
+#[derive(Serialize, Deserialize)]
 pub struct VerifierIndex<G: CommitmentCurve> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
@@ -1480,36 +1500,41 @@ We run the following algorithm:
 1. Setup the Fq-Sponge.
 2. Absorb the commitment of the public input polynomial with the Fq-Sponge.
 3. Absorb the commitments to the registers / witness columns with the Fq-Sponge.
-4. TODO: lookup (joint combiner challenge)
-5. TODO: lookup (absorb)
-6. Sample $\beta$ with the Fq-Sponge.
-7. Sample $\gamma$ with the Fq-Sponge.
-8. TODO: lookup
-9. Absorb the commitment to the permutation trace with the Fq-Sponge.
-10. Sample $\alpha'$ with the Fq-Sponge.
-11. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
-12. Enforce that the length of the $t$ commitment is of size `PERMUTS`.
-13. Absorb the commitment to the quotient polynomial $t$ into the argument.
-14. Sample $\zeta'$ with the Fq-Sponge.
-15. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
-16. Setup the Fr-Sponge.
-17. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
-18. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
+4. If lookup is used:
+   - If it involves queries to a multiple-column lookup table,
+     then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
+     otherwise set the joint combiner challenge $j'$ to $0$.
+   - Derive the scalar joint combiner challenge $j$ from $j'$ using the endomorphism.
+   (TODO: specify endomorphism)
+   - absorb the commitments to the sorted polynomials.
+5. Sample $\beta$ with the Fq-Sponge.
+6. Sample $\gamma$ with the Fq-Sponge.
+7. If using lookup, absorb the commitment to the aggregation lookup polynomial.
+8. Absorb the commitment to the permutation trace with the Fq-Sponge.
+9. Sample $\alpha'$ with the Fq-Sponge.
+10. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
+11. Enforce that the length of the $t$ commitment is of size `PERMUTS`.
+12. Absorb the commitment to the quotient polynomial $t$ into the argument.
+13. Sample $\zeta'$ with the Fq-Sponge.
+14. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
+15. Setup the Fr-Sponge.
+16. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
+17. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
     NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
-19. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
+18. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
     - the public polynomial
     - z
     - generic selector
     - poseidon selector
     - the 15 register/witness
     - 6 sigmas evaluations (the last one is not evaluated)
-20. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
-21. Sample $v'$ with the Fr-Sponge.
-22. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
-23. Sample $u'$ with the Fr-Sponge.
-24. Derive $u$ from $u'$ using the endomorphism (TODO: specify).
-25. Create a list of all polynomials that have an evaluation proof.
-26. Compute the evaluation of $ft(\zeta)$.
+19. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
+20. Sample $v'$ with the Fr-Sponge.
+21. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
+22. Sample $u'$ with the Fr-Sponge.
+23. Derive $u$ from $u'$ using the endomorphism (TODO: specify).
+24. Create a list of all polynomials that have an evaluation proof.
+25. Compute the evaluation of $ft(\zeta)$.
 
 #### Partial verification
 
@@ -1523,6 +1548,13 @@ Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
    (TODO: most likely only the quotient polynomial is chunked)
    with the right powers of $\zeta^n$ and $(\zeta * \omega)^n$.
 4. Compute the commitment to the linearized polynomial $f$.
+   To do this, add the constraints of all of the gates, of the permutation,
+   and optionally of the lookup.
+   (See the separate sections in the [constraints](#constraints) section.)
+   Any polynomial should be replaced by its associated commitment,
+   contained in the verifier index or in the proof,
+   unless a polynomial has its evaluation provided by the proof
+   in which case the evaluation should be used in place of the commitment.
 5. Compute the (chuncked) commitment of $ft$
    (see [Maller's optimization](../crypto/plonk/maller_15.html)).
 6. List the polynomial commitments, and their associated evaluations,
