@@ -14,7 +14,7 @@ pub struct CairoMemory<F> {
     /// length of the public memory
     codelen: usize,
     /// full memory vector, None if non initialized
-    pub data: Vec<Option<CairoWord<F>>>,
+    data: Vec<Option<CairoWord<F>>>,
 }
 
 impl<F: Field> Index<F> for CairoMemory<F> {

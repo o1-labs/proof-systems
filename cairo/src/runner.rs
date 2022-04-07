@@ -250,7 +250,7 @@ impl<F: Field> FlagBits<F> for CairoInstruction<F> {
 /// A data structure to store a current step of Cairo computation
 pub struct CairoStep<'a, F> {
     /// state of the computation
-    pub mem: &'a mut CairoMemory<F>,
+    mem: &'a mut CairoMemory<F>,
     // comment instr for efficiency
     /// current pointers
     curr: CairoState<F>,
