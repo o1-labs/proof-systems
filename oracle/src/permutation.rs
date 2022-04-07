@@ -30,7 +30,7 @@ fn apply_mds_matrix<F: Field, SC: SpongeConstants>(
 
 pub fn full_round<F: Field, SC: SpongeConstants>(
     params: &ArithmeticSpongeParams<F>,
-    state: &mut Vec<F>,
+    state: &mut [F],
     r: usize,
 ) {
     for state_i in state.iter_mut() {
