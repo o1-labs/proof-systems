@@ -1,9 +1,11 @@
-use super::tables::{
-    combine_table_entry, get_table, GateLookupTable, GatesLookupMaps, GatesLookupSpec, LookupTable,
+use crate::circuits::{
+    domains::EvaluationDomains,
+    gate::{CircuitGate, CurrOrNext, GateType},
+    lookup::tables::{
+        combine_table_entry, get_table, GateLookupTable, GatesLookupMaps, GatesLookupSpec,
+        LookupTable, XOR_TABLE_ID,
+    },
 };
-use crate::circuits::domains::EvaluationDomains;
-use crate::circuits::gate::{CircuitGate, CurrOrNext, GateType};
-use crate::circuits::polynomials::chacha::XOR_TABLE_ID;
 use ark_ff::{FftField, Field, One, Zero};
 use ark_poly::{Evaluations as E, Radix2EvaluationDomain as D};
 use o1_utils::field_helpers::i32_to_field;
