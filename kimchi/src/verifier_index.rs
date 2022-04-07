@@ -2,14 +2,13 @@
 //! You can derive this struct from the [ProverIndex] struct.
 
 use crate::alphas::Alphas;
+use crate::circuits::lookup::lookups::LookupsUsed;
 use crate::circuits::{
     constraints::{zk_polynomial, zk_w3},
     expr::{Linearization, PolishToken},
-    gate::LookupsUsed,
     wires::*,
 };
 use crate::prover_index::ProverIndex;
-use ark_ec::AffineCurve;
 use ark_ff::PrimeField;
 use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D};
 use array_init::array_init;
@@ -17,6 +16,7 @@ use commitment_dlog::{
     commitment::{CommitmentCurve, PolyComm},
     srs::SRS,
 };
+use o1_utils::types::fields::*;
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
@@ -28,9 +28,7 @@ use std::{
     sync::Arc,
 };
 
-type Fr<G> = <G as AffineCurve>::ScalarField;
-type Fq<G> = <G as AffineCurve>::BaseField;
-
+//~spec:startcode
 #[serde_as]
 #[derive(Serialize, Deserialize)]
 pub struct LookupVerifierIndex<G: CommitmentCurve> {
@@ -51,11 +49,10 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 
 #[serde_as]
 #[derive(Serialize, Deserialize)]
-//~spec:startcode
 pub struct VerifierIndex<G: CommitmentCurve> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub domain: D<Fr<G>>,
+    pub domain: D<ScalarField<G>>,
     /// maximal size of polynomial section
     pub max_poly_size: usize,
     /// maximal size of the quotient polynomial according to the supported constraints
@@ -100,32 +97,32 @@ pub struct VerifierIndex<G: CommitmentCurve> {
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
-    pub shift: [Fr<G>; PERMUTS],
+    pub shift: [ScalarField<G>; PERMUTS],
     /// zero-knowledge polynomial
     #[serde(skip)]
-    pub zkpm: DensePolynomial<Fr<G>>,
+    pub zkpm: DensePolynomial<ScalarField<G>>,
     // TODO(mimoo): isn't this redundant with domain.d1.group_gen ?
     /// domain offset for zero-knowledge
     #[serde(skip)]
-    pub w: Fr<G>,
+    pub w: ScalarField<G>,
     /// endoscalar coefficient
     #[serde(skip)]
-    pub endo: Fr<G>,
+    pub endo: ScalarField<G>,
 
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub lookup_index: Option<LookupVerifierIndex<G>>,
 
     #[serde(skip)]
-    pub linearization: Linearization<Vec<PolishToken<Fr<G>>>>,
+    pub linearization: Linearization<Vec<PolishToken<ScalarField<G>>>>,
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
-    pub powers_of_alpha: Alphas<Fr<G>>,
+    pub powers_of_alpha: Alphas<ScalarField<G>>,
 
     // random oracle argument parameters
     #[serde(skip)]
-    pub fr_sponge_params: ArithmeticSpongeParams<Fr<G>>,
+    pub fr_sponge_params: ArithmeticSpongeParams<ScalarField<G>>,
     #[serde(skip)]
-    pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
+    pub fq_sponge_params: ArithmeticSpongeParams<BaseField<G>>,
 }
 //~spec:endcode
 
@@ -222,8 +219,8 @@ where
         offset: Option<u64>,
         // TODO: we shouldn't have to pass these
         endo: G::ScalarField,
-        fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
-        fr_sponge_params: ArithmeticSpongeParams<Fr<G>>,
+        fq_sponge_params: ArithmeticSpongeParams<BaseField<G>>,
+        fr_sponge_params: ArithmeticSpongeParams<ScalarField<G>>,
     ) -> Result<Self, String> {
         // open file
         let file = File::open(path).map_err(|e| e.to_string())?;

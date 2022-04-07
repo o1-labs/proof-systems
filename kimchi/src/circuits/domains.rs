@@ -25,6 +25,10 @@ impl<F: FftField> EvaluationDomains<F> {
         let n = Domain::<F>::compute_size_of_domain(n)?;
 
         let d1 = Domain::<F>::new(n)?;
+
+        // we also create domains of larger sizes
+        // to efficiently operate on polynomials in evaluation form.
+        // (in evaluation form, the domain needs to grow as the degree of a polynomial grows)
         let d2 = Domain::<F>::new(2 * n)?;
         let d4 = Domain::<F>::new(4 * n)?;
         let d8 = Domain::<F>::new(8 * n)?;

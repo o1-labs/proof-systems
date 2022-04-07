@@ -1,27 +1,30 @@
 use crate::{
     circuits::{
-        gate::{CircuitGate, GateType, LookupTable},
+        gate::{CircuitGate, GateType},
+        lookup::tables::{LookupTable, XOR_TABLE_ID},
         polynomials::chacha,
         wires::{Wire, COLUMNS},
     },
-    prover::ProverProof,
+    proof::ProverProof,
     prover_index::testing::{new_index_for_test, new_index_for_test_with_lookups},
-    verifier::batch_verify,
+    verifier::verify,
 };
 use ark_ff::Zero;
 use array_init::array_init;
 use colored::Colorize;
-use commitment_dlog::commitment::{ceil_log2, CommitmentCurve};
+use commitment_dlog::commitment::CommitmentCurve;
 use groupmap::GroupMap;
 use mina_curves::pasta::{
     fp::Fp,
     vesta::{Affine, VestaParameters},
 };
 use oracle::{
-    poseidon::PlonkSpongeConstantsKimchi,
+    constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use std::time::Instant;
+
+use o1_utils::math;
 
 // aliases
 
@@ -36,7 +39,7 @@ fn chacha_prover() {
     let num_chachas = 8;
     let rows_per_chacha = 20 * 4 * 10;
     let n_lower_bound = rows_per_chacha * num_chachas;
-    let max_size = 1 << ceil_log2(n_lower_bound);
+    let max_size = 1 << math::ceil_log2(n_lower_bound);
     println!("{} {}", n_lower_bound, max_size);
 
     let s0: Vec<u32> = vec![
@@ -84,17 +87,15 @@ fn chacha_prover() {
 
     let start = Instant::now();
     let proof =
-        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &index, vec![])
-            .unwrap();
+        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &index).unwrap();
     println!("{}{:?}", "Prover time: ".yellow(), start.elapsed());
 
     let start = Instant::now();
     let verifier_index = index.verifier_index();
     println!("{}{:?}", "Verifier index time: ".yellow(), start.elapsed());
 
-    let batch: Vec<_> = vec![(&verifier_index, &proof)];
     let start = Instant::now();
-    match batch_verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &batch) {
+    match verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &verifier_index, &proof) {
         Err(error) => panic!("Failure verifying the prover's proofs in batch: {}", error),
         Ok(_) => {
             println!("{}{:?}", "Verifier time: ".yellow(), start.elapsed());
@@ -226,17 +227,15 @@ fn chacha_setup_bad_lookup(table_id: i32) {
 
     let start = Instant::now();
     let proof =
-        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &index, vec![])
-            .unwrap();
+        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &index).unwrap();
     println!("{}{:?}", "Prover time: ".yellow(), start.elapsed());
 
     let start = Instant::now();
     let verifier_index = index.verifier_index();
     println!("{}{:?}", "Verifier index time: ".yellow(), start.elapsed());
 
-    let batch: Vec<_> = vec![(&verifier_index, &proof)];
     let start = Instant::now();
-    match batch_verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &batch) {
+    match verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &verifier_index, &proof) {
         Err(error) => panic!("Failure verifying the prover's proofs in batch: {}", error),
         Ok(_) => {
             println!("{}{:?}", "Verifier time: ".yellow(), start.elapsed());
@@ -249,12 +248,12 @@ fn chacha_setup_bad_lookup(table_id: i32) {
 #[test]
 #[should_panic]
 fn chacha_prover_fake_lookup_in_different_table_fails() {
-    chacha_setup_bad_lookup(chacha::XOR_TABLE_ID + 1)
+    chacha_setup_bad_lookup(XOR_TABLE_ID + 1)
 }
 
 // Test lookup domain collisions: if the same table ID is used, we should be able to inject and use
 // a value when it wasn't previously in the table.
 #[test]
 fn chacha_prover_fake_lookup_in_same_table() {
-    chacha_setup_bad_lookup(chacha::XOR_TABLE_ID)
+    chacha_setup_bad_lookup(XOR_TABLE_ID)
 }
