@@ -1702,7 +1702,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify</span><span class="op">&lt;</span><span class="ident">EFqSponge</span>, <span class="ident">RNG</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">group_map</span>: <span class="kw-2">&amp;</span><span class="ident">G::Map</span>,
-        <span class="ident">batch</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BatchEvaluationProof</span><span class="op">&lt;</span><span class="ident">G</span>, <span class="ident">EFqSponge</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">batch</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">BatchEvaluationProof</span><span class="op">&lt;</span><span class="ident">G</span>, <span class="ident">EFqSponge</span><span class="op">&gt;</span>],
         <span class="ident">rng</span>: <span class="kw-2">&amp;mut</span> <span class="ident">RNG</span>,
     ) -&gt; <span class="ident">bool</span>
     <span class="kw">where</span>
