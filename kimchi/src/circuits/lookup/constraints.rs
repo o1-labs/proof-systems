@@ -7,7 +7,7 @@ use crate::{
         lookup::{
             lookups::{
                 JointLookup, JointLookupSpec, JointLookupValue, LocalPosition, LookupInfo,
-                LookupTableID, LookupsUsed,
+                LookupsUsed,
             },
             tables::Entry,
         },
@@ -17,10 +17,10 @@ use crate::{
 };
 use ark_ff::{FftField, One, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
+use o1_utils::field_helpers::i32_to_field;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use std::collections::HashMap;
 use CurrOrNext::{Curr, Next};
 
 /// Number of constraints produced by the argument.
@@ -44,6 +44,41 @@ pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
     Evaluations::<F, D<F>>::from_vec_and_domain(e, d)
 }
 
+//~
+//~ Because of our ZK-rows, we can't do the trick in the plookup paper of
+//~ wrapping around to enforce consistency between the sorted lookup columns.
+//~
+//~ Instead, we arrange the LookupSorted table into columns in a snake-shape.
+//~
+//~ Like so,
+//~
+//~ ```
+//~ _   _
+//~ | | | | |
+//~ | | | | |
+//~ |_| |_| |
+//~ ```
+//~
+//~ or, imagining the full sorted array is `[ s0, ..., s8 ]`, like
+//~
+//~ ```
+//~ s0 s4 s4 s8
+//~ s1 s3 s5 s7
+//~ s2 s2 s6 s6
+//~ ```
+//~
+//~ So the direction ("increasing" or "decreasing" (relative to LookupTable) is
+//~
+//~ ```
+//~ if i % 2 = 0 { Increasing } else { Decreasing }
+//~ ```
+//~
+//~ Then, for each `i < max_lookups_per_row`, if `i % 2 = 0`, we enforce that the
+//~ last element of `LookupSorted(i) = last element of LookupSorted(i + 1)`,
+//~ and if `i % 2 = 1`, we enforce that
+//~ the first element of `LookupSorted(i) = first element of LookupSorted(i + 1)`.
+//~
+
 /// Computes the sorted lookup tables required by the lookup argument.
 pub fn sorted<
     F: FftField,
@@ -51,7 +86,6 @@ pub fn sorted<
     I: Iterator<Item = E>,
     G: Fn() -> I,
 >(
-    configuration: &LookupConfiguration<F>,
     dummy_lookup_value: E,
     lookup_table: G,
     d1: D<F>,
@@ -83,13 +117,7 @@ pub fn sorted<
         let spec = row;
         let padding = max_lookups_per_row - spec.len();
         for joint_lookup in spec.iter() {
-            let joint_lookup_evaluation = E::evaluate(
-                &params,
-                joint_lookup,
-                witness,
-                i,
-                configuration.max_joint_size,
-            );
+            let joint_lookup_evaluation = E::evaluate(&params, joint_lookup, witness, i);
             match counts.get_mut(&joint_lookup_evaluation) {
                 None => return Err(ProofError::ValueNotInTable),
                 Some(count) => *count += 1,
@@ -209,7 +237,6 @@ fn adjacent_pairs<A: Copy, I: Iterator<Item = A>>(i: I) -> AdjacentPairs<A, I> {
 /// because of the random choice of beta and gamma, there is negligible probability that the terms will cancel if s is not a sorting of f and t
 #[allow(clippy::too_many_arguments)]
 pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
-    configuration: &LookupConfiguration<F>,
     dummy_lookup_value: F,
     lookup_table: I,
     d1: D<F>,
@@ -282,13 +309,7 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
                 // `max_lookups_per_row (=4) * n` field elements of
                 // memory.
                 spec.iter().fold(padding, |acc, j| {
-                    acc * (gamma
-                        + j.evaluate(
-                            joint_combiner,
-                            table_id_combiner,
-                            &eval,
-                            configuration.max_joint_size,
-                        ))
+                    acc * (gamma + j.evaluate(joint_combiner, table_id_combiner, &eval))
                 })
             };
 
@@ -448,32 +469,6 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>
         f_chunk * t_chunk
     };
 
-    // Because of our ZK-rows, we can't do the trick in the plookup paper of
-    // wrapping around to enforce consistency between the sorted lookup columns.
-    //
-    // Instead, we arrange the LookupSorted table into columns in a snake-shape.
-    //
-    // Like so,
-    //    _   _
-    // | | | | |
-    // | | | | |
-    // |_| |_| |
-    //
-    // or, imagining the full sorted array is [ s0, ..., s8 ], like
-    //
-    // s0 s4 s4 s8
-    // s1 s3 s5 s7
-    // s2 s2 s6 s6
-    //
-    // So the direction ("increasing" or "decreasing" (relative to LookupTable)
-    // is
-    // if i % 2 = 0 { Increasing } else { Decreasing }
-    //
-    // Then, for each i < max_lookups_per_row, if i % 2 = 0, we enforce that the
-    // last element of LookupSorted(i) = last element of LookupSorted(i + 1),
-    // and if i % 2 = 1, we enforce that the
-    // first element of LookupSorted(i) = first element of LookupSorted(i + 1)
-
     let sorted_size = lookup_info.max_per_row + 1 /* for the XOR lookup table */;
 
     let denominator = (0..sorted_size)
@@ -533,7 +528,6 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>
 /// Checks that all the lookup constraints are satisfied.
 #[allow(clippy::too_many_arguments)]
 pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
-    configuration: &LookupConfiguration<F>,
     dummy_lookup_value: F,
     lookup_table: G,
     lookup_table_entries: usize,
@@ -541,6 +535,7 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
     gates: &[CircuitGate<F>],
     witness: &[Vec<F>; COLUMNS],
     joint_combiner: &F,
+    table_id_combiner: &F,
     sorted: &[Evaluations<F, D<F>>],
 ) {
     sorted
