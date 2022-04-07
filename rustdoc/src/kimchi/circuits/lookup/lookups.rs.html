@@ -371,6 +371,26 @@
 <span id="366">366</span>
 <span id="367">367</span>
 <span id="368">368</span>
+<span id="369">369</span>
+<span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
     <span class="ident">domains::EvaluationDomains</span>,
     <span class="ident">gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">CurrOrNext</span>, <span class="ident">GateType</span>},
@@ -683,6 +703,25 @@
             <span class="ident">chacha_final_where</span>.<span class="ident">insert</span>((<span class="ident">ChaChaFinal</span>, <span class="kw-2">*</span><span class="ident">r</span>));
         }
 
+        <span class="kw">let</span> <span class="ident">lookup_gate_pattern</span> <span class="op">=</span> (<span class="number">0</span>..<span class="number">3</span>)
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
+                <span class="comment">// 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14</span>
+                <span class="comment">// - i v - - - - - - - -  -  -  -  -</span>
+                <span class="comment">// - - - i v - - - - - -  -  -  -  -</span>
+                <span class="comment">// - - - - - i v - - - -  -  -  -  -</span>
+                <span class="kw">let</span> <span class="ident">index</span> <span class="op">=</span> <span class="ident">curr_row</span>(<span class="number">2</span> <span class="op">*</span> <span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>);
+                <span class="kw">let</span> <span class="ident">value</span> <span class="op">=</span> <span class="ident">curr_row</span>(<span class="number">2</span> <span class="op">*</span> <span class="ident">i</span> <span class="op">+</span> <span class="number">2</span>);
+                <span class="kw">let</span> <span class="ident">l</span> <span class="op">=</span> <span class="op">|</span><span class="ident">loc</span>: <span class="ident">LocalPosition</span><span class="op">|</span> <span class="ident">SingleLookup</span> {
+                    <span class="ident">value</span>: <span class="macro">vec!</span>[(<span class="ident">F::one</span>(), <span class="ident">loc</span>)],
+                };
+                <span class="ident">JointLookup</span> {
+                    <span class="ident">table_id</span>: <span class="number">1</span>,
+                    <span class="ident">entry</span>: <span class="macro">vec!</span>[<span class="ident">l</span>(<span class="ident">index</span>), <span class="ident">l</span>(<span class="ident">value</span>)],
+                }
+            })
+            .<span class="ident">collect</span>();
+        <span class="kw">let</span> <span class="ident">lookup_gate_where</span> <span class="op">=</span> <span class="ident">HashSet::from</span>([(<span class="ident">Lookup</span>, <span class="ident">Curr</span>)]);
+
         <span class="kw">let</span> <span class="ident">lookups</span> <span class="op">=</span> [
             (<span class="ident">chacha_pattern</span>, <span class="ident">chacha_where</span>, <span class="prelude-val">Some</span>(<span class="ident">GateLookupTable::Xor</span>)),
             (
@@ -690,6 +729,7 @@
                 <span class="ident">chacha_final_where</span>,
                 <span class="prelude-val">Some</span>(<span class="ident">GateLookupTable::Xor</span>),
             ),
+            (<span class="ident">lookup_gate_pattern</span>, <span class="ident">lookup_gate_where</span>, <span class="prelude-val">None</span>),
         ];
 
         <span class="comment">// Convert from an array of tuples to a tuple of vectors</span>
@@ -740,5 +780,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (306ba8357 2022-04-05)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (8f36334ca 2022-04-06)" ></div>
 </body></html>

@@ -309,6 +309,9 @@
 <span id="304">304</span>
 <span id="305">305</span>
 <span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk constraint gate primitive.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{<span class="ident">constraints::ConstraintSystem</span>, <span class="ident">wires</span>::<span class="kw-2">*</span>};
@@ -393,6 +396,7 @@
     <span class="ident">ChaCha1</span> <span class="op">=</span> <span class="number">8</span>,
     <span class="ident">ChaCha2</span> <span class="op">=</span> <span class="number">9</span>,
     <span class="ident">ChaChaFinal</span> <span class="op">=</span> <span class="number">10</span>,
+    <span class="ident">Lookup</span> <span class="op">=</span> <span class="number">11</span>,
 }
 
 <span class="attribute">#[<span class="ident">serde_as</span>]</span>
@@ -455,6 +459,8 @@
             <span class="ident">EndoMulScalar</span> =&gt; <span class="self">self</span>.<span class="ident">verify_endomul_scalar</span>(<span class="ident">row</span>, <span class="ident">witness</span>, <span class="ident">cs</span>),
             <span class="comment">// TODO: implement the verification for chacha</span>
             <span class="ident">ChaCha0</span> <span class="op">|</span> <span class="ident">ChaCha1</span> <span class="op">|</span> <span class="ident">ChaCha2</span> <span class="op">|</span> <span class="ident">ChaChaFinal</span> =&gt; <span class="prelude-val">Ok</span>(()),
+            <span class="comment">// TODO: implement the verification for the lookup gate</span>
+            <span class="ident">Lookup</span> =&gt; <span class="prelude-val">Ok</span>(()),
         }
     }
 }
@@ -616,5 +622,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (306ba8357 2022-04-05)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (8f36334ca 2022-04-06)" ></div>
 </body></html>
