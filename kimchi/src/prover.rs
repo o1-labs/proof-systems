@@ -408,9 +408,14 @@ where
                         index_evals.insert(*g, &c[i]);
                     }
                 });
-            index_evals.insert(ForeignMul0, &index.cs.foreign_mul_eval8[0]);
-            index_evals.insert(ForeignMul1, &index.cs.foreign_mul_eval8[1]);
-            index_evals.insert(ForeignMul2, &index.cs.foreign_mul_eval8[2]);
+            [ForeignMul0, ForeignMul1, ForeignMul2]
+                .iter()
+                .enumerate()
+                .for_each(|(i, gate_type)| {
+                    if let Some(polys) = &index.cs.foreign_mul_eval8 {
+                        index_evals.insert(*gate_type, &polys[i]);
+                    }
+                });
 
             Environment {
                 constants: Constants {
@@ -491,6 +496,9 @@ where
             }
 
             if !index.cs.foreign_modulus.is_empty() {
+                assert!(index.cs.foreign_mul_coeff.is_some());
+                assert!(index.cs.foreign_mul_eval8.is_some());
+
                 // foreign field multiplication
                 for gate_type in polynomials::foreign_mul::get_circuit_gates() {
                     let expr = polynomials::foreign_mul::circuit_gate_combined_constraints(
@@ -785,10 +793,12 @@ where
                     .to_chunked_polynomial(index.max_poly_size)
                     .evaluate_chunks(zeta),
 
-                foreign_mul_selector: array_init(|i| {
-                    index.cs.foreign_mul_coeff[i]
-                        .to_chunked_polynomial(index.max_poly_size)
-                        .evaluate_chunks(zeta)
+                foreign_mul_selector: index.cs.foreign_mul_coeff.as_ref().map(|polys| {
+                    array_init(|i| {
+                        polys[i]
+                            .to_chunked_polynomial(index.max_poly_size)
+                            .evaluate_chunks(zeta)
+                    })
                 }),
             };
             let chunked_evals_zeta_omega = ProofEvaluations::<Vec<ScalarField<G>>> {
@@ -822,10 +832,12 @@ where
                     .to_chunked_polynomial(index.max_poly_size)
                     .evaluate_chunks(zeta_omega),
 
-                foreign_mul_selector: array_init(|i| {
-                    index.cs.foreign_mul_coeff[i]
-                        .to_chunked_polynomial(index.max_poly_size)
-                        .evaluate_chunks(zeta_omega)
+                foreign_mul_selector: index.cs.foreign_mul_coeff.as_ref().map(|polys| {
+                    array_init(|i| {
+                        polys[i]
+                            .to_chunked_polynomial(index.max_poly_size)
+                            .evaluate_chunks(zeta_omega)
+                    })
                 }),
             };
 
@@ -861,8 +873,8 @@ where
                     }),
                     generic_selector: DensePolynomial::eval_polynomial(&es.generic_selector, e1),
                     poseidon_selector: DensePolynomial::eval_polynomial(&es.poseidon_selector, e1),
-                    foreign_mul_selector: array_init(|i| {
-                        DensePolynomial::eval_polynomial(&es.foreign_mul_selector[i], e1)
+                    foreign_mul_selector: es.foreign_mul_selector.as_ref().map(|polys| {
+                        array_init(|i| DensePolynomial::eval_polynomial(&polys[i], e1))
                     }),
                 })
                 .collect::<Vec<_>>()

@@ -415,9 +415,9 @@ impl Variable {
             LookupTable => l.map(|l| l.table),
             Index(GateType::Poseidon) => Ok(evals.poseidon_selector),
             Index(GateType::Generic) => Ok(evals.generic_selector),
-            Index(GateType::ForeignMul0) => Ok(evals.foreign_mul_selector[0]),
-            Index(GateType::ForeignMul1) => Ok(evals.foreign_mul_selector[1]),
-            Index(GateType::ForeignMul2) => Ok(evals.foreign_mul_selector[2]),
+            Index(GateType::ForeignMul0) => Ok(evals.foreign_mul_selector.as_ref().unwrap()[0]),
+            Index(GateType::ForeignMul1) => Ok(evals.foreign_mul_selector.as_ref().unwrap()[1]),
+            Index(GateType::ForeignMul2) => Ok(evals.foreign_mul_selector.as_ref().unwrap()[2]),
             Coefficient(_) => {
                 Err("Cannot get index evaluation Coefficient (should have been linearized away)")
             }

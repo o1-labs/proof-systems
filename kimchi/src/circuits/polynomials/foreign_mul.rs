@@ -142,12 +142,12 @@ pub const CIRCUIT_GATE_COUNT: usize = 3;
 const MAX_LIMBS: usize = 3;
 const LIMB_SIZE: usize = 88;
 
-fn gate_type_to_selector<F: FftField>(typ: GateType) -> [F; CIRCUIT_GATE_COUNT] {
+fn gate_type_to_selector<F: FftField>(typ: GateType) -> Option<[F; CIRCUIT_GATE_COUNT]> {
     match typ {
-        GateType::ForeignMul0 => [F::one(), F::zero(), F::zero()],
-        GateType::ForeignMul1 => [F::zero(), F::one(), F::zero()],
-        GateType::ForeignMul2 => [F::zero(), F::zero(), F::one()],
-        _ => [F::zero(); CIRCUIT_GATE_COUNT],
+        GateType::ForeignMul0 => Some([F::one(), F::zero(), F::zero()]),
+        GateType::ForeignMul1 => Some([F::zero(), F::one(), F::zero()]),
+        GateType::ForeignMul2 => Some([F::zero(), F::zero(), F::one()]),
+        _ => None,
     }
 }
 
