@@ -2,9 +2,9 @@
 
 use crate::circuits::{
     domains::EvaluationDomains,
-    gate::{self, CircuitGate, GateType, LookupInfo, LookupTable},
+    gate::{CircuitGate, GateType},
+    lookup::{constraints::LookupConfiguration, lookups::LookupInfo, tables::LookupTable},
     polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
-    polynomials::lookup::LookupConfiguration,
     wires::*,
 };
 use ark_ff::{FftField, SquareRootField, Zero};
@@ -20,12 +20,6 @@ use o1_utils::{field_helpers::i32_to_field, ExtendedEvaluations};
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
-
-use super::lookup::{
-    constraints::LookupConfiguration,
-    lookups::{JointLookup, LookupInfo},
-    tables::LookupTable,
-};
 
 //
 // Constants
@@ -412,10 +406,8 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
 
                 // For computational efficiency, we choose the dummy lookup value to be all 0s in
                 // table 0.
-                let dummy_lookup = JointLookup {
-                    entry: vec![],
-                    table_id: F::zero(),
-                };
+                let dummy_lookup_value: Vec<F> = vec![];
+                let dummy_lookup_table_id = 0;
 
                 // Pad up to the end of the table with the dummy value.
                 lookup_table

@@ -7,7 +7,7 @@ use crate::{
         lookup::{
             lookups::{
                 JointLookup, JointLookupSpec, JointLookupValue, LocalPosition, LookupInfo,
-                LookupTableID, LookupsUsed,
+                LookupsUsed,
             },
             tables::Entry,
         },
@@ -17,10 +17,10 @@ use crate::{
 };
 use ark_ff::{FftField, One, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
+use o1_utils::field_helpers::i32_to_field;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use std::collections::HashMap;
 use CurrOrNext::{Curr, Next};
 
 /// Number of constraints produced by the argument.
@@ -51,7 +51,6 @@ pub fn sorted<
     I: Iterator<Item = E>,
     G: Fn() -> I,
 >(
-    configuration: &LookupConfiguration<F>,
     dummy_lookup_value: E,
     lookup_table: G,
     d1: D<F>,
@@ -83,13 +82,7 @@ pub fn sorted<
         let spec = row;
         let padding = max_lookups_per_row - spec.len();
         for joint_lookup in spec.iter() {
-            let joint_lookup_evaluation = E::evaluate(
-                &params,
-                joint_lookup,
-                witness,
-                i,
-                configuration.max_joint_size,
-            );
+            let joint_lookup_evaluation = E::evaluate(&params, joint_lookup, witness, i);
             match counts.get_mut(&joint_lookup_evaluation) {
                 None => return Err(ProofError::ValueNotInTable),
                 Some(count) => *count += 1,
@@ -209,7 +202,6 @@ fn adjacent_pairs<A: Copy, I: Iterator<Item = A>>(i: I) -> AdjacentPairs<A, I> {
 /// because of the random choice of beta and gamma, there is negligible probability that the terms will cancel if s is not a sorting of f and t
 #[allow(clippy::too_many_arguments)]
 pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
-    configuration: &LookupConfiguration<F>,
     dummy_lookup_value: F,
     lookup_table: I,
     d1: D<F>,
@@ -282,13 +274,7 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
                 // `max_lookups_per_row (=4) * n` field elements of
                 // memory.
                 spec.iter().fold(padding, |acc, j| {
-                    acc * (gamma
-                        + j.evaluate(
-                            joint_combiner,
-                            table_id_combiner,
-                            &eval,
-                            configuration.max_joint_size,
-                        ))
+                    acc * (gamma + j.evaluate(joint_combiner, table_id_combiner, &eval))
                 })
             };
 
@@ -533,7 +519,6 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>
 /// Checks that all the lookup constraints are satisfied.
 #[allow(clippy::too_many_arguments)]
 pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
-    configuration: &LookupConfiguration<F>,
     dummy_lookup_value: F,
     lookup_table: G,
     lookup_table_entries: usize,
@@ -541,6 +526,7 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
     gates: &[CircuitGate<F>],
     witness: &[Vec<F>; COLUMNS],
     joint_combiner: &F,
+    table_id_combiner: &F,
     sorted: &[Evaluations<F, D<F>>],
 ) {
     sorted
