@@ -63,7 +63,7 @@ impl<F: Field> Default for CairoContext<F> {
 /// A data structure to store a current step of Cairo computation
 pub struct CairoStep<'a, F> {
     /// current word of the program
-    pub mem: &'a mut CairoMemory<F>,
+    mem: &'a mut CairoMemory<F>,
     // comment instr for efficiency
     /// current pointers
     curr: CairoState<F>,
