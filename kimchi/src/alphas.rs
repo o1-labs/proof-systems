@@ -326,6 +326,7 @@ mod tests {
         let (_linearization, powers_of_alpha) = expr_linearization(
             index.cs.domain.d1,
             index.cs.chacha8.is_some(),
+            index.cs.foreign_mul_eval8.is_some(),
             index
                 .cs
                 .lookup_constraint_system

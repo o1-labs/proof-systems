@@ -562,6 +562,43 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             }
         };
 
+        // Foreign field multiplication constraint selector polynomials
+        let (foreign_mul_coeff, foreign_mul_eval8) = if gates.iter().any(|gate| {
+            matches!(
+                gate.typ,
+                GateType::ForeignMul0 | GateType::ForeignMul1 | GateType::ForeignMul2
+            )
+        }) {
+            assert!(!foreign_modulus.is_empty());
+
+            // Coefficient form
+            let foreign_mul_coeff: [DP<F>; foreign_mul::CIRCUIT_GATE_COUNT] = array_init(|i| {
+                let g = match i {
+                    0 => GateType::ForeignMul0,
+                    1 => GateType::ForeignMul1,
+                    2 => GateType::ForeignMul2,
+                    _ => panic!("Invalid index"),
+                };
+                E::<F, D<F>>::from_vec_and_domain(
+                    gates
+                        .iter()
+                        .map(|gate| if gate.typ == g { F::one() } else { F::zero() })
+                        .collect(),
+                    domain.d1,
+                )
+                .interpolate()
+            });
+
+            // Evaluation form (evaluated over d8)
+            let foreign_mul_eval8 = foreign_mul_coeff
+                .clone()
+                .map(|poly| poly.evaluate_over_domain_by_ref(domain.d8));
+
+            (Some(foreign_mul_coeff), Some(foreign_mul_eval8))
+        } else {
+            (None, None)
+        };
+
         //
         // Coefficient
         // -----------
@@ -591,43 +628,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // --------------------
 
         let sid = shifts.map[0].clone();
-
-        // Foreign field multiplication constraint selector polynomials
-        let (foreign_mul_coeff, foreign_mul_eval8) = if gates.iter().any(|gate| {
-            matches!(
-                gate.typ,
-                GateType::ForeignMul0 | GateType::ForeignMul1 | GateType::ForeignMul2
-            )
-        }) {
-            assert!(foreign_modulus.len() != 0);
-
-            // Coefficient form
-            let foreign_mul_coeff: [DP<F>; foreign_mul::CIRCUIT_GATE_COUNT] = array_init(|i| {
-                let g = match i {
-                    0 => GateType::ForeignMul0,
-                    1 => GateType::ForeignMul1,
-                    2 => GateType::ForeignMul2,
-                    _ => panic!("Invalid index"),
-                };
-                E::<F, D<F>>::from_vec_and_domain(
-                    gates
-                        .iter()
-                        .map(|gate| if gate.typ == g { F::one() } else { F::zero() })
-                        .collect(),
-                    domain.d1,
-                )
-                .interpolate()
-            });
-
-            // Evaluation form (evaluated over d8)
-            let foreign_mul_eval8 = foreign_mul_coeff
-                .clone()
-                .map(|poly| poly.evaluate_over_domain_by_ref(domain.d8));
-
-            (Some(foreign_mul_coeff), Some(foreign_mul_eval8))
-        } else {
-            (None, None)
-        };
 
         // constant polynomials
         let l1 = DP::from_coefficients_slice(&[F::zero(), F::one()])

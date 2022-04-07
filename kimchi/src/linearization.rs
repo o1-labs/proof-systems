@@ -8,7 +8,7 @@ use crate::circuits::polynomials::chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFina
 use crate::circuits::polynomials::complete_add::CompleteAdd;
 use crate::circuits::polynomials::endomul_scalar::EndomulScalar;
 use crate::circuits::polynomials::endosclmul::EndosclMul;
-use crate::circuits::polynomials::foreign_mul::ForeignMul1;
+use crate::circuits::polynomials::foreign_mul::{self, ForeignMul1};
 use crate::circuits::polynomials::permutation;
 use crate::circuits::polynomials::poseidon::Poseidon;
 use crate::circuits::polynomials::varbasemul::VarbaseMul;
@@ -23,6 +23,7 @@ use ark_poly::Radix2EvaluationDomain as D;
 pub fn constraints_expr<F: FftField + SquareRootField>(
     domain: D<F>,
     chacha: bool,
+    foreign_mul: bool,
     lookup_constraint_system: Option<&LookupConfiguration<F>>,
 ) -> (Expr<ConstantExpr<F>>, Alphas<F>) {
     // register powers of alpha so that we don't reuse them across mutually inclusive constraints
@@ -46,6 +47,10 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
         expr += ChaCha1::combined_constraints(&powers_of_alpha);
         expr += ChaCha2::combined_constraints(&powers_of_alpha);
         expr += ChaChaFinal::combined_constraints(&powers_of_alpha);
+    }
+
+    if foreign_mul {
+        expr += foreign_mul::gate_combined_constraints(&powers_of_alpha);
     }
 
     // permutation
@@ -93,11 +98,13 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
 pub fn expr_linearization<F: FftField + SquareRootField>(
     domain: D<F>,
     chacha: bool,
+    foreign_mul: bool,
     lookup_constraint_system: Option<&LookupConfiguration<F>>,
 ) -> (Linearization<Vec<PolishToken<F>>>, Alphas<F>) {
     let evaluated_cols = linearization_columns::<F>(lookup_constraint_system);
 
-    let (expr, powers_of_alpha) = constraints_expr(domain, chacha, lookup_constraint_system);
+    let (expr, powers_of_alpha) =
+        constraints_expr(domain, chacha, foreign_mul, lookup_constraint_system);
 
     let linearization = expr
         .linearize(evaluated_cols)

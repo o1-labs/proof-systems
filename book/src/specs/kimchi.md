@@ -1181,6 +1181,10 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub chacha_comm: Option<[PolyComm<G>; 4]>,
 
+    // Pasta pallas foreign field multiplication polynomial commitment
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub foreign_mul_comm: Option<[PolyComm<G>; foreign_mul::CIRCUIT_GATE_COUNT]>,
+
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub shift: [ScalarField<G>; PERMUTS],
@@ -1209,6 +1213,10 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     pub fr_sponge_params: ArithmeticSpongeParams<ScalarField<G>>,
     #[serde(skip)]
     pub fq_sponge_params: ArithmeticSpongeParams<BaseField<G>>,
+
+    // Foreign field modulus
+    #[serde(skip)]
+    pub foreign_modulus: Vec<ScalarField<G>>,
 }
 ```
 
@@ -1292,6 +1300,8 @@ pub struct ProofEvaluations<Field> {
     pub generic_selector: Field,
     /// evaluation of the poseidon selector polynomial
     pub poseidon_selector: Field,
+    /// evaluations of the foreign field multiplication circuit gate selector polynomials
+    pub foreign_mul_selector: Option<[Field; foreign_mul::CIRCUIT_GATE_COUNT]>,
 }
 
 /// Commitments linked to the lookup feature
@@ -1419,6 +1429,7 @@ The prover then follows the following steps to create the proof:
     * lookup (TODO)
     * generic selector
     * poseidon selector
+    * foreign mul selector
 
     By "chunk evaluate" we mean that the evaluation of each polynomial can potentially be a vector of values.
     This is because the index's `max_poly_size` parameter dictates the maximum size of a polynomial in the protocol.

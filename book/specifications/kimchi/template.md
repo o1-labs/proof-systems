@@ -17,8 +17,8 @@ There are three main algorithms to kimchi:
 
 As part of these algorithms, a number of tables are created (and then converted into polynomials) to create a proof.
 
-**Gates**. A circuit is described by a series of gates, that we list in a table. 
-The columns of the tables list the gates, while the rows are the length of the circuit. 
+**Gates**. A circuit is described by a series of gates, that we list in a table.
+The columns of the tables list the gates, while the rows are the length of the circuit.
 For each row, only a single gate can take a value $1$ while all other gates take the value $0$.
 
 |  row  | Generic | Poseidon | CompleteAdd | VarBaseMul | EndoMul | EndoMulScalar | ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal |
@@ -26,17 +26,17 @@ For each row, only a single gate can take a value $1$ while all other gates take
 |   0   |    1    |    0     |      0      |     0      |    0    |       0       |    0    |    0    |    0    |      0      |
 |   1   |    0    |    1     |      0      |     0      |    0    |       0       |    0    |    0    |    0    |      0      |
 
-**Coefficients**. The coefficient table has 15 columns, and is used to tweak the gates. 
-Currently, only the [Generic](#double-generic-gate) and the [Poseidon](#poseidon) gates use it (refer to their own sections to see how). 
+**Coefficients**. The coefficient table has 15 columns, and is used to tweak the gates.
+Currently, only the [Generic](#double-generic-gate) and the [Poseidon](#poseidon) gates use it (refer to their own sections to see how).
 All other gates set their values to $0$.
 
 |  row  |   0   |   1   |   2   |   3   |   4   |   5   |   6   |   7   |   8   |   9   |  10   |  11   |  12   |  13   |  14   |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 |   0   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |
 
-**Registers (or Witness)**. Registers are also defined at every row, and are split into two types: the *IO registers* from $0$ to $6$ usually contain input or output of the gates (note that a gate can output a value on the next row as well). 
-I/O registers can be wired to each other (they'll be forced to have the same value), no matter what row they're on (for example, the register at `row:0, col:4` can be wired to the register at `row:80, col:6`). 
-The rest of the registers, $7$ through $14$, are called *advice registers* as they can store values that useful only for the row's active gate. 
+**Registers (or Witness)**. Registers are also defined at every row, and are split into two types: the *IO registers* from $0$ to $6$ usually contain input or output of the gates (note that a gate can output a value on the next row as well).
+I/O registers can be wired to each other (they'll be forced to have the same value), no matter what row they're on (for example, the register at `row:0, col:4` can be wired to the register at `row:80, col:6`).
+The rest of the registers, $7$ through $14$, are called *advice registers* as they can store values that useful only for the row's active gate.
 Think of them as intermediary or temporary values needed in the computation when the prover executes a circuit.
 
 |  row  |   0   |   1   |   2   |   3   |   4   |   5   |   6   |   7   |   8   |   9   |  10   |  11   |  12   |  13   |  14   |
@@ -44,10 +44,10 @@ Think of them as intermediary or temporary values needed in the computation when
 |   0   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |
 
 
-**Wiring (or Permutation, or sigmas)**. For gates to take the outputs of other gates as inputs, we use a wiring table to wire registers together. 
-It is defined at every row, but only for the first $7$ registers. 
+**Wiring (or Permutation, or sigmas)**. For gates to take the outputs of other gates as inputs, we use a wiring table to wire registers together.
+It is defined at every row, but only for the first $7$ registers.
 Each cell specifies a `(row, column)` tuple that it should be wired to.  Cells that are not connected to another cell are wired to themselves.
-Note that if three or more registers are wired together, they must form a cycle. 
+Note that if three or more registers are wired together, they must form a cycle.
 For example, if register `(0, 4)` is wired to both registers `(80, 6)` and `(90, 0)` then you would have the following table:
 
 |  row  |    0    |   1   |   2   |   3   |    4     |   5   |    6     |
@@ -58,7 +58,7 @@ For example, if register `(0, 4)` is wired to both registers `(80, 6)` and `(90,
 |  ...  |         |       |       |       |          |       |          |
 |  90   | **0,4** | 90,1  | 90,2  | 90,3  |   90,4   | 90,5  |   90,6   |
 
-**Wiring (Permutation) trace**. You can think of the permutation trace as an extra register that is used to enforce the wiring specified in the wiring table. 
+**Wiring (Permutation) trace**. You can think of the permutation trace as an extra register that is used to enforce the wiring specified in the wiring table.
 It is a single column that applies on all the rows as well, which the prover computes as part of a proof.
 
 |  row  |  pt   |
@@ -91,7 +91,7 @@ In this section we list these specifications, as well as the interfaces we make 
 
 ### Polynomial Commitments
 
-Refer to the [specification on polynomial commitments](./poly-commitment.md). 
+Refer to the [specification on polynomial commitments](./poly-commitment.md).
 We make use of the following functions from that specification:
 
 - `PolyCom.non_hiding_commit(poly) -> PolyCom::NonHidingCommitment`
@@ -101,7 +101,7 @@ We make use of the following functions from that specification:
 
 ### Poseidon hash function
 
-Refer to the [specification on Poseidon](./poseidon.md). 
+Refer to the [specification on Poseidon](./poseidon.md).
 We make use of the following functions from that specification:
 
 - `Poseidon.init(params) -> FqSponge`
@@ -135,19 +135,19 @@ In this section, we describe all the constraints that make up the main polynomia
 
 We define the following functions:
 
-* `combine_constraints(range_alpha, constraints)`, which takes a range of contiguous powers of alpha and a number of constraints. 
-It returns the sum of all the constraints, where each constraint has been multiplied by a power of alpha. 
+* `combine_constraints(range_alpha, constraints)`, which takes a range of contiguous powers of alpha and a number of constraints.
+It returns the sum of all the constraints, where each constraint has been multiplied by a power of alpha.
 In other words it returns:
 $$ \sum_i \alpha^i \cdot \text\{constraint}_i $$
 
 The different ranges of alpha are described as follows:
 
 <!-- generated using `cargo test -p kimchi --lib -- alphas::tests::get_alphas_for_spec --nocapture` -->
-* **gates**. Offset starts at 0 and 21 powers of $\alpha$ are used
-* **Permutation**. Offset starts at 21 and 3 powers of $\alpha$ are used
+* **gates**. Offset starts at 0 and 25 powers of $\alpha$ are used
+* **Permutation**. Offset starts at 25 and 3 powers of $\alpha$ are used
 
 ```admonish
-As gates are mutually exclusive (a single gate is used on each row), we can reuse the same range of powers of alpha across all the gates. 
+As gates are mutually exclusive (a single gate is used on each row), we can reuse the same range of powers of alpha across all the gates.
 ```
 
 TODO: linearization
@@ -175,7 +175,7 @@ TODO: for each gate describe how to create it?
 
 {sections.poseidon}
 
-#### Chacha 
+#### Chacha
 
 {sections.chacha}
 
@@ -191,7 +191,7 @@ TODO: for each gate describe how to create it?
 
 {sections.endosclmul}
 
-#### Scalar Multiplication 
+#### Scalar Multiplication
 
 {sections.varbasemul}
 
@@ -212,14 +212,14 @@ As such, the transformation of a circuit into these two indexes can be seen as a
 
 In this section we describe data that both the prover and the verifier index share.
 
-**`URS` (Uniform Reference String)** The URS is a set of parameters that is generated once, and shared between the prover and the verifier. 
+**`URS` (Uniform Reference String)** The URS is a set of parameters that is generated once, and shared between the prover and the verifier.
 It is used for polynomial commitments, so refer to the [poly-commitment specification](./poly-commitment.md) for more details.
 
 ```admonish
 Kimchi currently generates the URS based on the circuit, and attach it to the index. So each circuit can potentially be accompanied with a different URS. On the other hand, Mina reuses the same URS for multiple circuits ([see zkapps for more details](https://minaprotocol.com/blog/what-are-zkapps)).
 ```
 
-**`Domain`**. A domain large enough to contain the circuit and the zero-knowledge rows (used to provide zero-knowledge to the protocol). Specifically, the smallest subgroup in our field that has order greater or equal to `n + ZK_ROWS`, with `n` is the number of gates in the circuit. 
+**`Domain`**. A domain large enough to contain the circuit and the zero-knowledge rows (used to provide zero-knowledge to the protocol). Specifically, the smallest subgroup in our field that has order greater or equal to `n + ZK_ROWS`, with `n` is the number of gates in the circuit.
 TODO: what if the domain is larger than the URS?
 
 **`Shifts`**. As part of the permutation, we need to create `PERMUTS` shifts.
@@ -332,11 +332,11 @@ The public input is expected to be passed in the first `Public` rows of the regi
 
 The following constants are set:
 
-* `EVAL_POINTS = 2`. This is the number of points that the prover has to evaluate their polynomials at. 
+* `EVAL_POINTS = 2`. This is the number of points that the prover has to evaluate their polynomials at.
 ($\zeta$ and $\zeta\omega$ where $\zeta$ will be deterministically generated.)
-* `ZK_ROWS = 3`. This is the number of rows that will be randomized to provide zero-knowledgeness. 
-Note that it only needs to be greater or equal to the number of evaluations (2) in the protocol. 
-Yet, it contains one extra row to take into account the last constraint (final value of the permutation accumulator). 
+* `ZK_ROWS = 3`. This is the number of rows that will be randomized to provide zero-knowledgeness.
+Note that it only needs to be greater or equal to the number of evaluations (2) in the protocol.
+Yet, it contains one extra row to take into account the last constraint (final value of the permutation accumulator).
 (TODO: treat the final constraint separately so that ZK_ROWS = 2)
 
 The prover then follows the following steps to create the proof:
@@ -345,7 +345,7 @@ The prover then follows the following steps to create the proof:
 
 ### Proof Verification
 
-We define two helper algorithms below, used in the batch verification of proofs. 
+We define two helper algorithms below, used in the batch verification of proofs.
 
 {sections.verifier}
 

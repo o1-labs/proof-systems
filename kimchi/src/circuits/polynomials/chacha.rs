@@ -505,7 +505,6 @@ mod tests {
         circuits::{
             expr::{Column, Constants, PolishToken},
             lookup::lookups::LookupInfo,
-            polynomials::foreign_mul,
             wires::*,
         },
         proof::{LookupEvaluations, ProofEvaluations},

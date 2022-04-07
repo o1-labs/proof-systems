@@ -521,7 +521,6 @@ where
                     }
 
                     if cfg!(test) {
-                        println!("Testing constraint for {:?}", gate_type);
                         let (_, res) = evals
                             .clone()
                             .interpolate()

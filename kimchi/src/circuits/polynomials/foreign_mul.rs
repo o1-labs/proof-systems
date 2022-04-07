@@ -1011,8 +1011,6 @@ mod tests {
         prover_index.cs.verify(&witness, &[]).unwrap();
 
         // Generate proof
-        println!("Proving stuff in the new way...");
-        // Get group map
         let group_map = <pasta_curves::vesta::Affine as CommitmentCurve>::Map::setup();
         let proof =
             ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &prover_index)
@@ -1028,7 +1026,6 @@ mod tests {
             &proof,
         );
 
-        println!("Verification result = {:?}", res);
         assert!(!res.is_err());
     }
 }
