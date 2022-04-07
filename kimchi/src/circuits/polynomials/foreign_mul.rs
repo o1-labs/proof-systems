@@ -1029,5 +1029,6 @@ mod tests {
         );
 
         println!("Verification result = {:?}", res);
+        assert!(!res.is_err());
     }
 }

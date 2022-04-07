@@ -349,7 +349,7 @@ where
                 joint_combiner: joint_combiner.1,
                 endo_coefficient: index.endo,
                 mds: index.fr_sponge_params.mds.clone(),
-                foreign_modulus: vec![], // TODO
+                foreign_modulus: index.foreign_modulus.clone(),
             };
             ft_eval0 -= PolishToken::evaluate(
                 &index.linearization.constant_term,

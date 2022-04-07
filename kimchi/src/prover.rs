@@ -408,9 +408,9 @@ where
                         index_evals.insert(*g, &c[i]);
                     }
                 });
-            index_evals.insert(ForeignMul0, &index.cs.foreign_mul8[0]);
-            index_evals.insert(ForeignMul1, &index.cs.foreign_mul8[1]);
-            index_evals.insert(ForeignMul2, &index.cs.foreign_mul8[2]);
+            index_evals.insert(ForeignMul0, &index.cs.foreign_mul_eval8[0]);
+            index_evals.insert(ForeignMul1, &index.cs.foreign_mul_eval8[1]);
+            index_evals.insert(ForeignMul2, &index.cs.foreign_mul_eval8[2]);
 
             Environment {
                 constants: Constants {
@@ -500,20 +500,6 @@ where
 
                     let evals = expr.evaluations(&env);
 
-                    if cfg!(test) {
-                        let (_, res) = evals
-                            .clone()
-                            .interpolate()
-                            .divide_by_vanishing_poly(index.cs.domain.d1)
-                            .unwrap();
-                        if !res.is_zero() {
-                            panic!(
-                                "Nonzero vanishing polynomial division for {:?}",
-                                gate_type
-                            );
-                        }
-                    }
-
                     if evals.domain().size == t4.domain().size {
                         t4 += &evals;
                     } else if evals.domain().size == t8.domain().size {
@@ -524,6 +510,18 @@ where
                             evals.domain().size,
                             gate_type
                         );
+                    }
+
+                    if cfg!(test) {
+                        println!("Testing constraint for {:?}", gate_type);
+                        let (_, res) = evals
+                            .clone()
+                            .interpolate()
+                            .divide_by_vanishing_poly(index.cs.domain.d1)
+                            .unwrap();
+                        if !res.is_zero() {
+                            panic!("Nonzero vanishing polynomial division for {:?}", gate_type);
+                        }
                     }
                 }
             }
@@ -788,7 +786,7 @@ where
                     .evaluate_chunks(zeta),
 
                 foreign_mul_selector: array_init(|i| {
-                    index.cs.foreign_mulm[i]
+                    index.cs.foreign_mul_coeff[i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta)
                 }),
@@ -825,7 +823,7 @@ where
                     .evaluate_chunks(zeta_omega),
 
                 foreign_mul_selector: array_init(|i| {
-                    index.cs.foreign_mulm[i]
+                    index.cs.foreign_mul_coeff[i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta_omega)
                 }),

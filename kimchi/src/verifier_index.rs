@@ -194,7 +194,7 @@ where
 
             foreign_mul_comm: array_init(|i| {
                 self.srs
-                    .commit_evaluations_non_hiding(domain, &self.cs.foreign_mul8[i], None)
+                    .commit_evaluations_non_hiding(domain, &self.cs.foreign_mul_eval8[i], None)
             }),
 
             shift: self.cs.shift,

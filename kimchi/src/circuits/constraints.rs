@@ -135,12 +135,12 @@ pub struct ConstraintSystem<F: FftField> {
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub endomul_scalar8: E<F, D<F>>,
 
-    /// Foreign field multiplication constraint selector polynomials
+    /// Foreign field multiplication constraint selector polynomials in coefficient form
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; foreign_mul::CIRCUIT_GATE_COUNT]")]
-    pub foreign_mulm: [DP<F>; foreign_mul::CIRCUIT_GATE_COUNT],
-    /// Foreign field multiplication selector evaluations over domain.d8
+    pub foreign_mul_coeff: [DP<F>; foreign_mul::CIRCUIT_GATE_COUNT],
+    /// Foreign field multiplication constraint selector polynomials in evaluation form (evaluated over d8)
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; foreign_mul::CIRCUIT_GATE_COUNT]")]
-    pub foreign_mul8: [E<F, D<F>>; foreign_mul::CIRCUIT_GATE_COUNT],
+    pub foreign_mul_eval8: [E<F, D<F>>; foreign_mul::CIRCUIT_GATE_COUNT],
 
     // Constant polynomials
     // --------------------
@@ -592,8 +592,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 
         let sid = shifts.map[0].clone();
 
-        // Forieign field multiplication constraint selector polynomials
-        let foreign_mulm: [DP<F>; foreign_mul::CIRCUIT_GATE_COUNT] = array_init(|i| {
+        // Foreign field multiplication constraint selector polynomials in coefficient form
+        let foreign_mul_coeff: [DP<F>; foreign_mul::CIRCUIT_GATE_COUNT] = array_init(|i| {
             let g = match i {
                 0 => GateType::ForeignMul0,
                 1 => GateType::ForeignMul1,
@@ -610,24 +610,10 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             .interpolate()
         });
 
-        // Forieign field multiplication constraint polynomials
-        let foreign_mul8: [E<F, D<F>>; foreign_mul::CIRCUIT_GATE_COUNT] = array_init(|i| {
-            let g = match i {
-                0 => GateType::ForeignMul0,
-                1 => GateType::ForeignMul1,
-                2 => GateType::ForeignMul2,
-                _ => panic!("Invalid index"),
-            };
-            E::<F, D<F>>::from_vec_and_domain(
-                gates
-                    .iter()
-                    .map(|gate| if gate.typ == g { F::one() } else { F::zero() })
-                    .collect(),
-                domain.d1,
-            )
-            .interpolate()
-            .evaluate_over_domain_by_ref(domain.d8)
-        });
+        // Foreign field multiplication constraint selector polynomials in evaluation form (evaluated over d8)
+        let foreign_mul_eval8 = foreign_mul_coeff
+            .clone()
+            .map(|poly| poly.evaluate_over_domain_by_ref(domain.d8));
 
         // constant polynomials
         let l1 = DP::from_coefficients_slice(&[F::zero(), F::one()])
@@ -665,8 +651,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             complete_addl4,
             mull8,
             emull,
-            foreign_mulm,
-            foreign_mul8,
+            foreign_mul_coeff,
+            foreign_mul_eval8,
             l1,
             l04,
             l08,
