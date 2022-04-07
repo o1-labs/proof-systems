@@ -4,7 +4,6 @@ use crate::circuits::{
     domains::EvaluationDomains,
     gate::{CircuitGate, GateType},
     polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
-    polynomials::turshi,
     wires::*,
 };
 use ark_ff::{FftField, SquareRootField, Zero};
@@ -63,17 +62,6 @@ pub struct LookupConstraintSystem<F: FftField> {
     /// Configuration for the lookup constraint.
     #[serde(bound = "LookupConfiguration<F>: Serialize + DeserializeOwned")]
     pub configuration: LookupConfiguration<F>,
-}
-
-#[serde_as]
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct CairoConstraintSystem<F: FftField> {
-    /// Cairo constraint selector polynomials
-    #[serde_as(as = "[o1_utils::serialization::SerdeAs; turshi::CIRCUIT_GATE_COUNT]")]
-    pub cairo: [DP<F>; turshi::CIRCUIT_GATE_COUNT],
-    /// Cairo selector evaluations over domain.d8
-    #[serde_as(as = "[o1_utils::serialization::SerdeAs; turshi::CIRCUIT_GATE_COUNT]")]
-    pub cairo8: [E<F, D<F>>; turshi::CIRCUIT_GATE_COUNT],
 }
 
 #[serde_as]
@@ -157,10 +145,6 @@ pub struct ConstraintSystem<F: FftField> {
     /// EC point addition selector evaluations w over domain.d8
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub endomul_scalar8: E<F, D<F>>,
-
-    // Cairo constraint system
-    #[serde(bound = "Option<CairoConstraintSystem<F>>: Serialize + DeserializeOwned")]
-    pub cairo_cs: Option<CairoConstraintSystem<F>>,
 
     // Constant polynomials
     // --------------------
@@ -477,46 +461,6 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
     }
 }
 
-impl<F: FftField> CairoConstraintSystem<F> {
-    pub fn create(gates: &[CircuitGate<F>], domain: &EvaluationDomains<F>) -> Option<Self> {
-        // Cairo selector polynomials
-        let has_cairo_gate = gates.iter().any(|gate| {
-            matches!(
-                gate.typ,
-                GateType::CairoClaim
-                    | GateType::CairoInstruction
-                    | GateType::CairoFlags
-                    | GateType::CairoTransition
-            )
-        });
-        if !has_cairo_gate {
-            None
-        } else {
-            let cairo = array_init(|i| {
-                let g = match i {
-                    0 => GateType::CairoClaim,
-                    1 => GateType::CairoInstruction,
-                    2 => GateType::CairoFlags,
-                    3 => GateType::CairoTransition,
-                    _ => panic!("Invalid index"),
-                };
-                E::<F, D<F>>::from_vec_and_domain(
-                    gates
-                        .iter()
-                        .map(|gate| if gate.typ == g { F::one() } else { F::zero() })
-                        .collect(),
-                    domain.d1,
-                )
-                .interpolate()
-            });
-            let cairo8 = cairo
-                .clone()
-                .map(|c| c.evaluate_over_domain_by_ref(domain.d8));
-            Some(Self { cairo, cairo8 })
-        }
-    }
-}
-
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// creates a constraint system from a vector of gates ([CircuitGate]), some sponge parameters ([ArithmeticSpongeParams]), and the number of public inputs.
     pub fn create(
@@ -688,9 +632,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             }
         };
 
-        // Cairo
-        let cairo_cs = CairoConstraintSystem::create(&gates, &domain);
-
         //
         // Coefficient
         // -----------
@@ -769,7 +710,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             endo,
             fr_sponge_params,
             lookup_constraint_system,
-            cairo_cs,
         })
     }
 
