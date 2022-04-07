@@ -30,7 +30,7 @@ fn apply_mds_matrix<F: Field, SC: SpongeConstants>(
 
 pub fn full_round<F: Field, SC: SpongeConstants>(
     params: &ArithmeticSpongeParams<F>,
-    state: &mut [F],
+    state: &mut Vec<F>,
     r: usize,
 ) {
     for state_i in state.iter_mut() {
@@ -44,7 +44,7 @@ pub fn full_round<F: Field, SC: SpongeConstants>(
 
 pub fn half_rounds<F: Field, SC: SpongeConstants>(
     params: &ArithmeticSpongeParams<F>,
-    state: &mut Vec<F>,
+    state: &mut [F],
 ) {
     for r in 0..SC::PERM_HALF_ROUNDS_FULL {
         for (i, x) in params.round_constants[r].iter().enumerate() {
