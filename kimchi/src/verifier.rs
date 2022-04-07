@@ -632,7 +632,9 @@ where
                     Index(t) => {
                         use GateType::*;
                         let c = match t {
-                            Zero | Generic => panic!("Selector for {:?} not defined", t),
+                            Zero | Generic | Lookup => {
+                                panic!("Selector for {:?} not defined", t)
+                            }
                             CompleteAdd => &index.complete_add_comm,
                             VarBaseMul => &index.mul_comm,
                             EndoMul => &index.emul_comm,
