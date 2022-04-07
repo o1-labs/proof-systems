@@ -9,19 +9,19 @@ const DELEGATION_TX_TAG: [bool; TAG_BITS] = [false, false, true];
 #[derive(Clone, Copy)]
 pub struct Transaction {
     // Common
-    pub fee: u64,
-    pub fee_token: u64,
-    pub fee_payer_pk: CompressedPubKey,
-    pub nonce: u32,
+    fee: u64,
+    fee_token: u64,
+    fee_payer_pk: CompressedPubKey,
+    nonce: u32,
     pub valid_until: u32,
-    pub memo: [u8; MEMO_BYTES],
+    memo: [u8; MEMO_BYTES],
     // Body
-    pub tag: [bool; TAG_BITS],
-    pub source_pk: CompressedPubKey,
-    pub receiver_pk: CompressedPubKey,
-    pub token_id: u64,
-    pub amount: u64,
-    pub token_locked: bool,
+    tag: [bool; TAG_BITS],
+    source_pk: CompressedPubKey,
+    receiver_pk: CompressedPubKey,
+    token_id: u64,
+    amount: u64,
+    token_locked: bool,
 }
 
 impl Hashable for Transaction {
@@ -104,6 +104,10 @@ impl Transaction {
         self.valid_until = global_slot;
 
         self
+    }
+
+    pub fn get_memo(&self) -> [u8; MEMO_BYTES] {
+        self.memo
     }
 
     pub fn set_memo(mut self, memo: [u8; MEMO_BYTES - 2]) -> Self {
