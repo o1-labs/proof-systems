@@ -21,7 +21,6 @@ use std::sync::Arc;
 //~spec:startcode
 pub struct ProverIndex<G: CommitmentCurve> {
     /// constraints system polynomials
-    // #[serde(bound = "ConstraintSystem<ScalarField<G>>: Serialize + DeserializeOwned")]
     #[serde(skip)]
     pub cs: ConstraintSystem<ScalarField<G>>,
 
