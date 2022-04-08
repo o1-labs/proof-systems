@@ -116,11 +116,10 @@ mod tests {
         // end
         // And checks that memory writing and reading works as expected by completing
         // the total memory of executing the program
-        let instrs = vec![
-            F::from(0x480680017fff8000u64),
-            F::from(10u64),
-            F::from(0x208b7fff7fff7ffeu64),
-        ];
+        let instrs = vec![0x480680017fff8000, 10, 0x208b7fff7fff7ffe]
+            .iter()
+            .map(|&i: &i64| F::from(i))
+            .collect();
         let mut memory = CairoMemory::new(instrs);
         memory.write(F::from(memory.len()), F::from(7u64));
         memory.write(F::from(memory.len()), F::from(7u64));

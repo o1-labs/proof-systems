@@ -87,6 +87,7 @@ impl<F: Field> Default for CairoContext<F> {
     }
 }
 
+#[derive(Clone, Copy)]
 /// This structure stores all the needed information relative to an instruction at a given step of computation
 pub struct CairoInstruction<F> {
     /// instruction word
@@ -99,11 +100,11 @@ pub struct CairoInstruction<F> {
 
 impl<F: Field> CairoInstruction<F> {
     /// Creates a [CairoInstruction]
-    pub fn new(word: &CairoWord<F>, ptrs: &CairoState<F>, vars: &CairoContext<F>) -> Self {
+    pub fn new(word: CairoWord<F>, ptrs: CairoState<F>, vars: CairoContext<F>) -> Self {
         Self {
-            word: *word,
-            ptrs: *ptrs,
-            vars: *vars,
+            word: word,
+            ptrs: ptrs,
+            vars: vars,
         }
     }
 
@@ -286,7 +287,7 @@ impl<'a, F: Field> CairoStep<'a, F> {
             next_ap.expect("Empty next allocation pointer"),
             next_fp.expect("Empty next frame pointer"),
         ));
-        CairoInstruction::new(&self.instr(), &self.curr, &self.vars)
+        CairoInstruction::new(self.instr(), self.curr, self.vars)
     }
 
     /// This function returns the current word instruction being executed
@@ -585,11 +586,10 @@ mod tests {
     fn test_cairo_step() {
         // This tests that CairoStep works for a 2 word instruction
         //    tempvar x = 10;
-        let instrs = vec![
-            F::from(0x480680017fff8000u64),
-            F::from(10u64),
-            F::from(0x208b7fff7fff7ffeu64),
-        ];
+        let instrs = vec![0x480680017fff8000, 10, 0x208b7fff7fff7ffe]
+            .iter()
+            .map(|&i: &i64| F::from(i))
+            .collect();
         let mut mem = CairoMemory::new(instrs);
         // Need to know how to find out
         // Is it final ap and/or final fp? Will write to starkware guys to learn about this
@@ -608,11 +608,10 @@ mod tests {
 
     #[test]
     fn test_cairo_program() {
-        let instrs = vec![
-            F::from(0x480680017fff8000u64),
-            F::from(10u64),
-            F::from(0x208b7fff7fff7ffeu64),
-        ];
+        let instrs = vec![0x480680017fff8000, 10, 0x208b7fff7fff7ffe]
+            .iter()
+            .map(|&i: &i64| F::from(i))
+            .collect();
         let mut mem = CairoMemory::<F>::new(instrs);
         // Need to know how to find out
         // Is it final ap and/or final fp? Will write to starkware guys to learn about this
@@ -639,32 +638,35 @@ mod tests {
             return ()
         end
         */
-        let instrs: Vec<F> = vec![
-            F::from(0x400380007ffc7ffdu64),
-            F::from(0x482680017ffc8000u64),
-            F::from(1),
-            F::from(0x208b7fff7fff7ffeu64),
-            F::from(0x480680017fff8000u64),
-            F::from(10),
-            F::from(0x48307fff7fff8000u64),
-            F::from(0x48507fff7fff8000u64),
-            F::from(0x48307ffd7fff8000u64),
-            F::from(0x480a7ffd7fff8000u64),
-            F::from(0x48127ffb7fff8000u64),
-            F::from(0x1104800180018000u64),
-            F::from(-11),
-            F::from(0x48127ff87fff8000u64),
-            F::from(0x1104800180018000u64),
-            -F::from(14),
-            F::from(0x48127ff67fff8000u64),
-            F::from(0x1104800180018000u64),
-            -F::from(17),
-            F::from(0x208b7fff7fff7ffeu64),
+        let instrs = vec![
+            0x400380007ffc7ffd,
+            0x482680017ffc8000,
+            1,
+            0x208b7fff7fff7ffe,
+            0x480680017fff8000,
+            10,
+            0x48307fff7fff8000,
+            0x48507fff7fff8000,
+            0x48307ffd7fff8000,
+            0x480a7ffd7fff8000,
+            0x48127ffb7fff8000,
+            0x1104800180018000,
+            -11,
+            0x48127ff87fff8000,
+            0x1104800180018000,
+            -14,
+            0x48127ff67fff8000,
+            0x1104800180018000,
+            -17,
+            0x208b7fff7fff7ffe,
             /*41, // beginning of outputs
             44,   // end of outputs
             44,   // input
             */
-        ];
+        ]
+        .iter()
+        .map(|&i: &i64| F::from(i))
+        .collect();
 
         let mut mem = CairoMemory::<F>::new(instrs);
         // Need to know how to find out
