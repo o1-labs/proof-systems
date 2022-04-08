@@ -214,7 +214,7 @@ fn chacha_setup_bad_lookup(table_id: i32) {
     ];
 
     // create the index
-    let index = new_index_for_test_with_lookups(gates, PUBLIC, lookup_tables);
+    let index = new_index_for_test_with_lookups(gates, vec![], PUBLIC, lookup_tables);
 
     let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![]);
     for r in rows.into_iter() {

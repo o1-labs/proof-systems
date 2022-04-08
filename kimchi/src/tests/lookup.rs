@@ -60,7 +60,7 @@ fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_siz
         .collect();
 
     // create the index
-    let index = new_index_for_test_with_lookups(gates, PUBLIC, lookup_tables);
+    let index = new_index_for_test_with_lookups(gates, vec![], PUBLIC, lookup_tables);
 
     let witness = {
         let mut lookup_table_ids = Vec::with_capacity(num_lookups);

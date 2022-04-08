@@ -458,9 +458,11 @@ where
                             index_evals.insert(*g, &c[i]);
                         }
                     });
-                index_evals.extend(foreign_mul::circuit_gates().iter().enumerate().map(
-                    |(i, gate_type)| (*gate_type, &index.cs.foreign_mul_selector_polys[i].eval8),
-                ));
+                if !index.cs.foreign_mul_selector_polys.is_empty() {
+                    index_evals.extend(foreign_mul::circuit_gates().iter().enumerate().map(
+                        |(i, gate_type)| (*gate_type, &index.cs.foreign_mul_selector_polys[i].eval8),
+                    ));
+                }
 
                 Environment {
                     constants: Constants {
