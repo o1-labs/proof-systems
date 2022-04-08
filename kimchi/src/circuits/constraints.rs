@@ -1,5 +1,7 @@
 //! This module implements Plonk circuit constraint primitive.
 
+use std::collections::HashSet;
+
 use crate::circuits::{
     domains::EvaluationDomains,
     gate::{CircuitGate, GateType},
@@ -135,12 +137,9 @@ pub struct ConstraintSystem<F: FftField> {
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub endomul_scalar8: E<F, D<F>>,
 
-    /// Foreign field multiplication constraint selector polynomials in coefficient form
-    #[serde_as(as = "Option<[o1_utils::serialization::SerdeAs; foreign_mul::CIRCUIT_GATE_COUNT]>")]
-    pub foreign_mul_coeff: Option<[DP<F>; foreign_mul::CIRCUIT_GATE_COUNT]>,
-    /// Foreign field multiplication constraint selector polynomials in evaluation form (evaluated over d8)
-    #[serde_as(as = "Option<[o1_utils::serialization::SerdeAs; foreign_mul::CIRCUIT_GATE_COUNT]>")]
-    pub foreign_mul_eval8: Option<[E<F, D<F>>; foreign_mul::CIRCUIT_GATE_COUNT]>,
+    /// Foreign field multiplication gate selector polynomials
+    #[serde_as(as = "Vec<foreign_mul::SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
+    pub foreign_mul_selector_polys: Vec<foreign_mul::SelectorPolynomial<F>>,
 
     // Constant polynomials
     // --------------------
@@ -421,6 +420,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             .collect();
         gates.append(&mut padding);
 
+        // Record which gates are used by this constraint system
+        let mut circuit_gates_used = HashSet::<GateType>::default();
+        gates.iter().for_each(|gate| {
+            circuit_gates_used.insert(gate.typ);
+        });
+
         //~ 4. sample the `PERMUTS` shifts.
         let shifts = Shifts::new(&domain.d1);
 
@@ -563,40 +568,13 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         };
 
         // Foreign field multiplication constraint selector polynomials
-        let (foreign_mul_coeff, foreign_mul_eval8) = if gates.iter().any(|gate| {
-            matches!(
-                gate.typ,
-                GateType::ForeignMul0 | GateType::ForeignMul1 | GateType::ForeignMul2
-            )
-        }) {
-            assert!(!foreign_modulus.is_empty());
-
-            // Coefficient form
-            let foreign_mul_coeff: [DP<F>; foreign_mul::CIRCUIT_GATE_COUNT] = array_init(|i| {
-                let g = match i {
-                    0 => GateType::ForeignMul0,
-                    1 => GateType::ForeignMul1,
-                    2 => GateType::ForeignMul2,
-                    _ => panic!("Invalid index"),
-                };
-                E::<F, D<F>>::from_vec_and_domain(
-                    gates
-                        .iter()
-                        .map(|gate| if gate.typ == g { F::one() } else { F::zero() })
-                        .collect(),
-                    domain.d1,
-                )
-                .interpolate()
-            });
-
-            // Evaluation form (evaluated over d8)
-            let foreign_mul_eval8 = foreign_mul_coeff
-                .clone()
-                .map(|poly| poly.evaluate_over_domain_by_ref(domain.d8));
-
-            (Some(foreign_mul_coeff), Some(foreign_mul_eval8))
-        } else {
-            (None, None)
+        let foreign_mul_selector_polys = {
+            if !circuit_gates_used.is_disjoint(&foreign_mul::circuit_gates().into_iter().collect())
+            {
+                foreign_mul::selector_polynomials(&gates, &domain)
+            } else {
+                Vec::new()
+            }
         };
 
         //
@@ -665,8 +643,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             complete_addl4,
             mull8,
             emull,
-            foreign_mul_coeff,
-            foreign_mul_eval8,
+            foreign_mul_selector_polys,
             l1,
             l04,
             l08,

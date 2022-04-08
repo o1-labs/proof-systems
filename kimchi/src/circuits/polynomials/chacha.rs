@@ -585,7 +585,7 @@ mod tests {
                 aggreg: F::rand(rng),
                 table: F::rand(rng),
             }),
-            foreign_mul_selector: None,
+            foreign_mul_selector: Vec::new(),
         };
         let evals = vec![eval(), eval()];
 

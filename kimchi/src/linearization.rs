@@ -8,7 +8,7 @@ use crate::circuits::polynomials::chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFina
 use crate::circuits::polynomials::complete_add::CompleteAdd;
 use crate::circuits::polynomials::endomul_scalar::EndomulScalar;
 use crate::circuits::polynomials::endosclmul::EndosclMul;
-use crate::circuits::polynomials::foreign_mul::{self, ForeignMul1};
+use crate::circuits::polynomials::foreign_mul;
 use crate::circuits::polynomials::permutation;
 use crate::circuits::polynomials::poseidon::Poseidon;
 use crate::circuits::polynomials::varbasemul::VarbaseMul;
@@ -30,7 +30,7 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
     let mut powers_of_alpha = Alphas::<F>::default();
 
     // gates
-    let highest_constraints = ForeignMul1::<F>::CONSTRAINTS;
+    let highest_constraints = foreign_mul::ForeignMul1::<F>::CONSTRAINTS;
     powers_of_alpha.register(
         ArgumentType::Gate(GateType::VarBaseMul),
         highest_constraints,
@@ -50,7 +50,7 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
     }
 
     if foreign_mul {
-        expr += foreign_mul::gate_combined_constraints(&powers_of_alpha);
+        expr += foreign_mul::combined_constraints(&powers_of_alpha);
     }
 
     // permutation

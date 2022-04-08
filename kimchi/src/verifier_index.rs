@@ -6,7 +6,6 @@ use crate::circuits::lookup::lookups::LookupsUsed;
 use crate::circuits::{
     constraints::{zk_polynomial, zk_w3},
     expr::{Linearization, PolishToken},
-    polynomials::foreign_mul,
     wires::*,
 };
 use crate::prover_index::ProverIndex;
@@ -89,8 +88,8 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     pub chacha_comm: Option<[PolyComm<G>; 4]>,
 
     // Pasta pallas foreign field multiplication polynomial commitment
-    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub foreign_mul_comm: Option<[PolyComm<G>; foreign_mul::CIRCUIT_GATE_COUNT]>,
+    #[serde(bound = "Vec<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub foreign_mul_comm: Vec<PolyComm<G>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -192,12 +191,15 @@ where
                 array_init(|i| self.srs.commit_evaluations_non_hiding(domain, &c[i], None))
             }),
 
-            foreign_mul_comm: self.cs.foreign_mul_eval8.as_ref().map(|poly| {
-                array_init(|i| {
+            foreign_mul_comm: self
+                .cs
+                .foreign_mul_selector_polys
+                .iter()
+                .map(|poly| {
                     self.srs
-                        .commit_evaluations_non_hiding(domain, &poly[i], None)
+                        .commit_evaluations_non_hiding(domain, &poly.eval8, None)
                 })
-            }),
+                .collect(),
 
             shift: self.cs.shift,
             zkpm: self.cs.zkpm.clone(),

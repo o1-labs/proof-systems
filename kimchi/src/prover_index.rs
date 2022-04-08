@@ -72,7 +72,7 @@ where
         let (linearization, powers_of_alpha) = expr_linearization(
             cs.domain.d1,
             cs.chacha8.is_some(),
-            cs.foreign_mul_eval8.is_some(),
+            !cs.foreign_mul_selector_polys.is_empty(),
             cs.lookup_constraint_system
                 .as_ref()
                 .map(|lcs| &lcs.configuration),

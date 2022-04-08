@@ -1,9 +1,6 @@
 //! This module implements the data structures of a proof.
 
-use crate::circuits::{
-    polynomials::foreign_mul,
-    wires::{COLUMNS, PERMUTS},
-};
+use crate::circuits::wires::{COLUMNS, PERMUTS};
 use ark_ec::AffineCurve;
 use ark_ff::{FftField, Zero};
 use ark_poly::univariate::DensePolynomial;
@@ -40,7 +37,7 @@ pub struct ProofEvaluations<Field> {
     /// evaluation of the poseidon selector polynomial
     pub poseidon_selector: Field,
     /// evaluations of the foreign field multiplication circuit gate selector polynomials
-    pub foreign_mul_selector: Option<[Field; foreign_mul::CIRCUIT_GATE_COUNT]>,
+    pub foreign_mul_selector: Vec<Field>,
 }
 
 /// Commitments linked to the lookup feature
@@ -96,7 +93,7 @@ impl<F: Zero> ProofEvaluations<F> {
             lookup: None,
             generic_selector: F::zero(),
             poseidon_selector: F::zero(),
-            foreign_mul_selector: None,
+            foreign_mul_selector: Vec::new(),
         }
     }
 }
@@ -120,8 +117,9 @@ impl<F: FftField> ProofEvaluations<Vec<F>> {
             poseidon_selector: DensePolynomial::eval_polynomial(&self.poseidon_selector, pt),
             foreign_mul_selector: self
                 .foreign_mul_selector
-                .as_ref()
-                .map(|polys| array_init(|i| DensePolynomial::eval_polynomial(&polys[i], pt))),
+                .iter()
+                .map(|poly| DensePolynomial::eval_polynomial(poly, pt))
+                .collect(),
         }
     }
 }
@@ -255,11 +253,23 @@ pub mod caml {
 
             let foreign_mul_selector = {
                 // Array to tuple
-                if let Some(v) = pe.foreign_mul_selector {
+                if !pe.foreign_mul_selector.is_empty() {
                     Some((
-                        v[0].iter().cloned().map(Into::into).collect(),
-                        v[1].iter().cloned().map(Into::into).collect(),
-                        v[2].iter().cloned().map(Into::into).collect(),
+                        pe.foreign_mul_selector[0]
+                            .iter()
+                            .cloned()
+                            .map(Into::into)
+                            .collect(),
+                        pe.foreign_mul_selector[1]
+                            .iter()
+                            .cloned()
+                            .map(Into::into)
+                            .collect(),
+                        pe.foreign_mul_selector[2]
+                            .iter()
+                            .cloned()
+                            .map(Into::into)
+                            .collect(),
                     ))
                 } else {
                     None
@@ -312,13 +322,14 @@ pub mod caml {
             let foreign_mul_selector = {
                 // Tuple to array
                 if let Some(v) = cpe.foreign_mul_selector {
-                    Some([
+                    [
                         v.0.into_iter().map(Into::into).collect(),
                         v.1.into_iter().map(Into::into).collect(),
                         v.2.into_iter().map(Into::into).collect(),
-                    ])
+                    ]
+                    .into()
                 } else {
-                    None
+                    Vec::new()
                 }
             };
 

@@ -615,9 +615,9 @@ where
                             ChaCha1 => &index.chacha_comm.as_ref().unwrap()[1],
                             ChaCha2 => &index.chacha_comm.as_ref().unwrap()[2],
                             ChaChaFinal => &index.chacha_comm.as_ref().unwrap()[3],
-                            ForeignMul0 => &index.foreign_mul_comm.as_ref().unwrap()[0],
-                            ForeignMul1 => &index.foreign_mul_comm.as_ref().unwrap()[1],
-                            ForeignMul2 => &index.foreign_mul_comm.as_ref().unwrap()[2],
+                            ForeignMul0 => &index.foreign_mul_comm[0],
+                            ForeignMul1 => &index.foreign_mul_comm[1],
+                            ForeignMul2 => &index.foreign_mul_comm[2],
                         };
                         scalars.push(scalar);
                         commitments.push(c);

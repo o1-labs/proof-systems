@@ -13,12 +13,11 @@ use crate::{
             tables::{combine_table_entry, CombinedEntry},
         },
         polynomials::{
-            self,
             chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal},
             complete_add::CompleteAdd,
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
-            generic, permutation,
+            foreign_mul, generic, permutation,
             poseidon::Poseidon,
             varbasemul::VarbaseMul,
         },
@@ -392,51 +391,47 @@ where
             );
 
         //~ 22. TODO: setup the env
-        let env = {
-            let mut index_evals = HashMap::new();
-            use GateType::*;
-            index_evals.insert(Poseidon, &index.cs.ps8);
-            index_evals.insert(CompleteAdd, &index.cs.complete_addl4);
-            index_evals.insert(VarBaseMul, &index.cs.mull8);
-            index_evals.insert(EndoMul, &index.cs.emull);
-            index_evals.insert(EndoMulScalar, &index.cs.endomul_scalar8);
-            [ChaCha0, ChaCha1, ChaCha2, ChaChaFinal]
-                .iter()
-                .enumerate()
-                .for_each(|(i, g)| {
-                    if let Some(c) = &index.cs.chacha8 {
-                        index_evals.insert(*g, &c[i]);
-                    }
-                });
-            [ForeignMul0, ForeignMul1, ForeignMul2]
-                .iter()
-                .enumerate()
-                .for_each(|(i, gate_type)| {
-                    if let Some(polys) = &index.cs.foreign_mul_eval8 {
-                        index_evals.insert(*gate_type, &polys[i]);
-                    }
-                });
+        let env =
+            {
+                let mut index_evals = HashMap::new();
+                use GateType::*;
+                index_evals.insert(Poseidon, &index.cs.ps8);
+                index_evals.insert(CompleteAdd, &index.cs.complete_addl4);
+                index_evals.insert(VarBaseMul, &index.cs.mull8);
+                index_evals.insert(EndoMul, &index.cs.emull);
+                index_evals.insert(EndoMulScalar, &index.cs.endomul_scalar8);
+                [ChaCha0, ChaCha1, ChaCha2, ChaChaFinal]
+                    .iter()
+                    .enumerate()
+                    .for_each(|(i, g)| {
+                        if let Some(c) = &index.cs.chacha8 {
+                            index_evals.insert(*g, &c[i]);
+                        }
+                    });
+                index_evals.extend(foreign_mul::circuit_gates().iter().enumerate().map(
+                    |(i, gate_type)| (*gate_type, &index.cs.foreign_mul_selector_polys[i].eval8),
+                ));
 
-            Environment {
-                constants: Constants {
-                    alpha,
-                    beta,
-                    gamma,
-                    joint_combiner,
-                    endo_coefficient: index.cs.endo,
-                    mds: index.cs.fr_sponge_params.mds.clone(),
-                    foreign_modulus: index.cs.foreign_modulus.clone(),
-                },
-                witness: &lagrange.d8.this.w,
-                coefficient: &index.cs.coefficients8,
-                vanishes_on_last_4_rows: &index.cs.vanishes_on_last_4_rows,
-                z: &lagrange.d8.this.z,
-                l0_1: l0_1(index.cs.domain.d1),
-                domain: index.cs.domain,
-                index: index_evals,
-                lookup: lookup_env,
-            }
-        };
+                Environment {
+                    constants: Constants {
+                        alpha,
+                        beta,
+                        gamma,
+                        joint_combiner,
+                        endo_coefficient: index.cs.endo,
+                        mds: index.cs.fr_sponge_params.mds.clone(),
+                        foreign_modulus: index.cs.foreign_modulus.clone(),
+                    },
+                    witness: &lagrange.d8.this.w,
+                    coefficient: &index.cs.coefficients8,
+                    vanishes_on_last_4_rows: &index.cs.vanishes_on_last_4_rows,
+                    z: &lagrange.d8.this.z,
+                    l0_1: l0_1(index.cs.domain.d1),
+                    domain: index.cs.domain,
+                    index: index_evals,
+                    lookup: lookup_env,
+                }
+            };
 
         //~ 23. Compute the quotient polynomial (the $t$ in $f = Z_H \cdot t$).
         //~     The quotient polynomial is computed by adding all these polynomials together:
@@ -495,16 +490,12 @@ where
                 assert!(res.is_zero());
             }
 
-            if !index.cs.foreign_modulus.is_empty() {
-                assert!(index.cs.foreign_mul_coeff.is_some());
-                assert!(index.cs.foreign_mul_eval8.is_some());
+            if !index.cs.foreign_mul_selector_polys.is_empty() {
+                assert!(!index.cs.foreign_modulus.is_empty());
 
                 // foreign field multiplication
-                for gate_type in polynomials::foreign_mul::get_circuit_gates() {
-                    let expr = polynomials::foreign_mul::circuit_gate_combined_constraints(
-                        gate_type,
-                        &all_alphas,
-                    );
+                for gate_type in foreign_mul::circuit_gates() {
+                    let expr = foreign_mul::circuit_gate_constraints(gate_type, &all_alphas);
 
                     let evals = expr.evaluations(&env);
 
@@ -792,13 +783,16 @@ where
                     .to_chunked_polynomial(index.max_poly_size)
                     .evaluate_chunks(zeta),
 
-                foreign_mul_selector: index.cs.foreign_mul_coeff.as_ref().map(|polys| {
-                    array_init(|i| {
-                        polys[i]
+                foreign_mul_selector: index
+                    .cs
+                    .foreign_mul_selector_polys
+                    .iter()
+                    .map(|poly| {
+                        poly.coeff
                             .to_chunked_polynomial(index.max_poly_size)
                             .evaluate_chunks(zeta)
                     })
-                }),
+                    .collect(),
             };
             let chunked_evals_zeta_omega = ProofEvaluations::<Vec<ScalarField<G>>> {
                 s: array_init(|i| {
@@ -831,13 +825,16 @@ where
                     .to_chunked_polynomial(index.max_poly_size)
                     .evaluate_chunks(zeta_omega),
 
-                foreign_mul_selector: index.cs.foreign_mul_coeff.as_ref().map(|polys| {
-                    array_init(|i| {
-                        polys[i]
+                foreign_mul_selector: index
+                    .cs
+                    .foreign_mul_selector_polys
+                    .iter()
+                    .map(|poly| {
+                        poly.coeff
                             .to_chunked_polynomial(index.max_poly_size)
                             .evaluate_chunks(zeta_omega)
                     })
-                }),
+                    .collect(),
             };
 
             [chunked_evals_zeta, chunked_evals_zeta_omega]
@@ -872,9 +869,11 @@ where
                     }),
                     generic_selector: DensePolynomial::eval_polynomial(&es.generic_selector, e1),
                     poseidon_selector: DensePolynomial::eval_polynomial(&es.poseidon_selector, e1),
-                    foreign_mul_selector: es.foreign_mul_selector.as_ref().map(|polys| {
-                        array_init(|i| DensePolynomial::eval_polynomial(&polys[i], e1))
-                    }),
+                    foreign_mul_selector: es
+                        .foreign_mul_selector
+                        .iter()
+                        .map(|poly| DensePolynomial::eval_polynomial(poly, e1))
+                        .collect(),
                 })
                 .collect::<Vec<_>>()
         };
