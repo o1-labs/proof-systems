@@ -276,7 +276,7 @@ where
                                 &joint_combiner,
                                 &table_id_combiner,
                                 row,
-                                table_id,
+                                &table_id,
                             ))
                         })
                     };
@@ -351,7 +351,7 @@ where
                                     // table ID is identically 0.
                                     ScalarField::<G>::zero(),
                             };
-                        combine_table_entry(&joint_combiner, &table_id_combiner, row, table_id)
+                        combine_table_entry(&joint_combiner, &table_id_combiner, row, &table_id)
                     });
 
                     let aggreg =

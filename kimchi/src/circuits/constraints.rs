@@ -413,7 +413,7 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                 // table 0.
                 let dummy_lookup = JointLookup {
                     entry: vec![],
-                    table_id: 0,
+                    table_id: F::zero(),
                 };
 
                 // Pad up to the end of the table with the dummy value.

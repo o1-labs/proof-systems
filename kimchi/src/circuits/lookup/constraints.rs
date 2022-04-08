@@ -5,7 +5,10 @@ use crate::{
         expr::{prologue::*, Column, ConstantExpr},
         gate::{CircuitGate, CurrOrNext},
         lookup::{
-            lookups::{JointLookup, JointLookupSpec, LocalPosition, LookupInfo, LookupsUsed},
+            lookups::{
+                JointLookup, JointLookupSpec, JointLookupValue, LocalPosition, LookupInfo,
+                LookupsUsed,
+            },
             tables::Entry,
         },
         wires::COLUMNS,
@@ -339,8 +342,8 @@ pub struct LookupConfiguration<F: FftField> {
     /// This is used to pad the lookups to `max_lookups_per_row` when fewer lookups are used in a
     /// particular row, so that we can treat each row uniformly as having the same number of
     /// lookups.
-    #[serde_as(as = "JointLookup<o1_utils::serialization::SerdeAs>")]
-    pub dummy_lookup: JointLookup<F>,
+    #[serde_as(as = "JointLookupValue<o1_utils::serialization::SerdeAs>")]
+    pub dummy_lookup: JointLookupValue<F>,
 }
 
 /// Specifies the lookup constraints as expressions.
@@ -388,14 +391,14 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>
 
         // combine the columns of the dummy lookup row
         let dummy_lookup = {
-            let expr_dummy: JointLookup<ConstantExpr<F>> = JointLookup {
+            let expr_dummy: JointLookupValue<ConstantExpr<F>> = JointLookup {
                 entry: configuration
                     .dummy_lookup
                     .entry
                     .iter()
                     .map(|x| ConstantExpr::Literal(*x))
                     .collect(),
-                table_id: configuration.dummy_lookup.table_id,
+                table_id: ConstantExpr::Literal(configuration.dummy_lookup.table_id),
             };
             expr_dummy.evaluate(&joint_combiner, &table_id_combiner)
         };
