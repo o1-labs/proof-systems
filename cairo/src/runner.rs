@@ -101,11 +101,7 @@ pub struct CairoInstruction<F> {
 impl<F: Field> CairoInstruction<F> {
     /// Creates a [CairoInstruction]
     pub fn new(word: CairoWord<F>, ptrs: CairoState<F>, vars: CairoContext<F>) -> Self {
-        Self {
-            word: word,
-            ptrs: ptrs,
-            vars: vars,
-        }
+        Self { word, ptrs, vars }
     }
 
     /// Returns the field element corresponding to the [CairoInstruction]
