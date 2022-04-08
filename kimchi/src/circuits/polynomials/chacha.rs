@@ -149,39 +149,6 @@ use crate::circuits::{
 };
 use ark_ff::{FftField, Field, Zero};
 
-/// The lookup table for 4-bit xor.
-/// Note that it is constructed so that (0, 0, 0) is the last position in the table.
-///
-/// This is because tables are extended to the full size of a column (essentially)
-/// by padding them with their final value. And, having the value (0, 0, 0) here means
-/// that when we commit to this table and use the dummy value in the `lookup_sorted`
-/// columns, those entries that have the dummy value of
-///
-/// 0 = 0 + joint_combiner * 0 + joint_combiner^2 * 0
-///
-/// will translate into a scalar multiplication by 0, which is free.
-pub fn xor_table<F: Field>() -> Vec<Vec<F>> {
-    let mut res = vec![vec![]; 3];
-
-    // XOR for all possible four-bit arguments.
-    // I suppose this could be computed a bit faster using symmetry but it's quite
-    // small (16*16 = 256 entries) so let's just keep it simple.
-    for i in 0u32..=0b1111 {
-        for j in 0u32..=0b1111 {
-            res[0].push(F::from(i));
-            res[1].push(F::from(j));
-            res[2].push(F::from(i ^ j));
-        }
-    }
-
-    for r in &mut res {
-        r.reverse();
-        // Just to be safe.
-        assert!(r[r.len() - 1].is_zero());
-    }
-    res
-}
-
 //
 // Implementation internals
 //

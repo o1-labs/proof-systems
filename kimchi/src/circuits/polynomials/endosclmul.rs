@@ -25,7 +25,7 @@ use crate::proof::ProofEvaluations;
 //~ elliptic curve over $\mathbb{F}_q$ in short Weierstrass form is represented by the set of points $(x,y)$
 //~ that satisfy the following equation with $a,b\in\mathbb{F}_q$ and $4a^3+27b^2\neq_{\mathbb{F}_q} 0$:
 //~ $$E(\mathbb{F}_q): y^2 = x^3 + a x + b$$
-//~ If $P=(x_p, y_p)$ and $T=(x_t, y_t)$ are two points in the curve E(\mathbb{F}_q), the goal of this
+//~ If $P=(x_p, y_p)$ and $T=(x_t, y_t)$ are two points in the curve $E(\mathbb{F}_q)$, the goal of this
 //~ operation is to perform the operation $2P±T$ efficiently as $(P±T)+P$.
 //~
 //~ `S = (P + (b ? T : −T)) + P`
@@ -36,7 +36,7 @@ use crate::proof::ProofEvaluations;
 //~ Moreover, for every step, there will be a one-bit constraint meant to differentiate between addition and subtraction
 //~ for the operation $(P±T)+P$:
 //~
-//~ In particular, the constraints of this gate take care of 4 bits of the scalar withing a single EVBSM row.
+//~ In particular, the constraints of this gate take care of 4 bits of the scalar within a single EVBSM row.
 //~ When the scalar is longer (which will usually be the case), multiple EVBSM rows will be concatenated.
 //~
 //~ |  Row  |  0 |  1 |  2 |  3 |  4 |  5 |  6 |   7 |   8 |   9 |  10 |  11 |  12 |  13 |  14 |  Type |
@@ -44,7 +44,7 @@ use crate::proof::ProofEvaluations;
 //~ |     i | xT | yT |  Ø |  Ø | xP | yP | n  |  xR |  yR |  s1 | s3  | b1  |  b2 |  b3 |  b4 | EVBSM |
 //~ |   i+1 |  = |  = |    |    | xS | yS | n' | xR' | yR' | s1' | s3' | b1' | b2' | b3' | b4' | EVBSM |
 //~
-//~ The layout of this gate (and the next row) allows for this chained behaviour where the output point
+//~ The layout of this gate (and the next row) allows for this chained behavior where the output point
 //~ of the current row $S$ gets accumulated as one of the inputs of the following row, becoming $P$ in
 //~ the next constraints. Similarly, the scalar is decomposed into binary form and $n$ ($n'$ respectively)
 //~ will store the current accumulated value and the next one for the check.

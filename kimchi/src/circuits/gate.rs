@@ -82,10 +82,11 @@ pub enum GateType {
     ChaCha1 = 8,
     ChaCha2 = 9,
     ChaChaFinal = 10,
-    /// Foreign field multiplication (reserving 11-19)
-    ForeignMul0 = 11,
-    ForeignMul1 = 12,
-    ForeignMul2 = 13,
+    Lookup = 11,
+    /// Foreign field multiplication (reserving 12-20)
+    ForeignMul0 = 12,
+    ForeignMul1 = 13,
+    ForeignMul2 = 14,
 }
 
 #[serde_as]
@@ -148,6 +149,8 @@ impl<F: FftField> CircuitGate<F> {
             EndoMulScalar => self.verify_endomul_scalar(row, witness, cs),
             ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => Ok(()),
             ForeignMul0 | ForeignMul1 | ForeignMul2 => self.verify_foreign_mul(row, witness, cs),
+            // TODO: implement the verification for the lookup gate
+            Lookup => Ok(()),
         }
     }
 }

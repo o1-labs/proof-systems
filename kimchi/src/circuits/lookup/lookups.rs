@@ -1,13 +1,17 @@
-use super::tables::{
-    combine_table_entry, get_table, GateLookupTable, GatesLookupMaps, GatesLookupSpec, LookupTable,
+use crate::circuits::{
+    domains::EvaluationDomains,
+    gate::{CircuitGate, CurrOrNext, GateType},
+    lookup::tables::{
+        combine_table_entry, get_table, GateLookupTable, GatesLookupMaps, GatesLookupSpec,
+        LookupTable, XOR_TABLE_ID,
+    },
 };
-use crate::circuits::domains::EvaluationDomains;
-use crate::circuits::gate::{CircuitGate, CurrOrNext, GateType};
 use ark_ff::{FftField, Field, One, Zero};
 use ark_poly::{Evaluations as E, Radix2EvaluationDomain as D};
+use o1_utils::field_helpers::i32_to_field;
 use serde::{Deserialize, Serialize};
 use std::collections::{hash_map::Entry, HashMap, HashSet};
-use std::ops::Mul;
+use std::ops::{Mul, Neg};
 
 type Evaluations<Field> = E<Field, D<Field>>;
 
@@ -177,47 +181,85 @@ impl<F: Copy> SingleLookup<F> {
     }
 }
 
+/// The table ID associated with a particular lookup
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub enum LookupTableID {
+    /// Look up the value from the given fixed table ID
+    Constant(i32),
+    /// Look up the value in the table with ID given by the value in the witness column
+    WitnessColumn(usize),
+}
+
 /// A spec for checking that the given vector belongs to a vector-valued lookup table.
-#[derive(Clone, Serialize, Deserialize)]
-pub struct JointLookup<SingleLookup> {
-    pub table_id: i32,
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct JointLookup<SingleLookup, LookupTableID> {
+    /// The ID for the table associated with this lookup.
+    /// Positive IDs are intended to be used for the fixed tables associated with individual gates,
+    /// with negative IDs reserved for gates defined by the particular constraint system to avoid
+    /// accidental collisions.
+    pub table_id: LookupTableID,
     pub entry: Vec<SingleLookup>,
 }
 
 /// A spec for checking that the given vector belongs to a vector-valued lookup table, where the
 /// components of the vector are computed from a linear combination of locally-accessible cells.
-pub type JointLookupSpec<F> = JointLookup<SingleLookup<F>>;
+pub type JointLookupSpec<F> = JointLookup<SingleLookup<F>, LookupTableID>;
 
-impl<F: Zero + One + Clone> JointLookup<F> {
+/// A concrete value or representation of a lookup.
+pub type JointLookupValue<F> = JointLookup<F, F>;
+
+impl<F: Zero + One + Clone + Neg<Output = F> + From<u64>> JointLookupValue<F> {
     // TODO: Support multiple tables
     /// Evaluate the combined value of a joint-lookup.
-    pub fn evaluate(&self, joint_combiner: F) -> F {
-        combine_table_entry(joint_combiner, self.entry.iter())
+    pub fn evaluate(&self, joint_combiner: &F, table_id_combiner: &F) -> F {
+        combine_table_entry(
+            joint_combiner,
+            table_id_combiner,
+            self.entry.iter(),
+            &self.table_id,
+        )
     }
 }
 
-impl<F: Copy> JointLookup<SingleLookup<F>> {
+impl<F: Copy> JointLookup<SingleLookup<F>, LookupTableID> {
     /// Reduce linear combinations in the lookup entries to a single value, resolving local
     /// positions using the given function.
-    pub fn reduce<K, G: Fn(LocalPosition) -> K>(&self, eval: &G) -> JointLookup<K>
+    pub fn reduce<K, G: Fn(LocalPosition) -> K>(&self, eval: &G) -> JointLookupValue<K>
     where
         K: Zero,
         K: Mul<F, Output = K>,
+        K: Neg<Output = K>,
+        K: From<u64>,
     {
+        let table_id = match self.table_id {
+            LookupTableID::Constant(table_id) => i32_to_field(table_id),
+            LookupTableID::WitnessColumn(column) => eval(LocalPosition {
+                row: CurrOrNext::Curr,
+                column,
+            }),
+        };
         JointLookup {
-            table_id: self.table_id,
+            table_id,
             entry: self.entry.iter().map(|s| s.evaluate(eval)).collect(),
         }
     }
 
     /// Evaluate the combined value of a joint-lookup, resolving local positions using the given
     /// function.
-    pub fn evaluate<K, G: Fn(LocalPosition) -> K>(&self, joint_combiner: K, eval: &G) -> K
+    pub fn evaluate<K, G: Fn(LocalPosition) -> K>(
+        &self,
+        joint_combiner: &K,
+        table_id_combiner: &K,
+        eval: &G,
+    ) -> K
     where
         K: Zero + One + Clone,
         K: Mul<F, Output = K>,
+        K: Neg<Output = K>,
+        K: From<u64>,
     {
-        self.reduce(eval).evaluate(joint_combiner)
+        self.reduce(eval)
+            .evaluate(joint_combiner, table_id_combiner)
     }
 }
 
@@ -250,14 +292,14 @@ impl GateType {
                     value: vec![(F::one(), loc)],
                 };
                 JointLookup {
-                    table_id: 0,
+                    table_id: LookupTableID::Constant(XOR_TABLE_ID),
                     entry: vec![l(left), l(right), l(output)],
                 }
             })
             .collect();
 
         let mut chacha_where = HashSet::new();
-        use CurrOrNext::{Curr, Next};
+        use CurrOrNext::*;
         use GateType::*;
 
         for g in &[ChaCha0, ChaCha1, ChaCha2] {
@@ -278,7 +320,7 @@ impl GateType {
                     value: vec![(one_half, nybble), (neg_one_half, low_bit)],
                 };
                 JointLookup {
-                    table_id: 0,
+                    table_id: LookupTableID::Constant(XOR_TABLE_ID),
                     entry: vec![x.clone(), x, SingleLookup { value: vec![] }],
                 }
             })
@@ -289,6 +331,25 @@ impl GateType {
             chacha_final_where.insert((ChaChaFinal, *r));
         }
 
+        let lookup_gate_pattern = (0..3)
+            .map(|i| {
+                // 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
+                // - i v - - - - - - - -  -  -  -  -
+                // - - - i v - - - - - -  -  -  -  -
+                // - - - - - i v - - - -  -  -  -  -
+                let index = curr_row(2 * i + 1);
+                let value = curr_row(2 * i + 2);
+                let l = |loc: LocalPosition| SingleLookup {
+                    value: vec![(F::one(), loc)],
+                };
+                JointLookup {
+                    table_id: LookupTableID::WitnessColumn(0),
+                    entry: vec![l(index), l(value)],
+                }
+            })
+            .collect();
+        let lookup_gate_where = HashSet::from([(Lookup, Curr)]);
+
         let lookups = [
             (chacha_pattern, chacha_where, Some(GateLookupTable::Xor)),
             (
@@ -296,6 +357,7 @@ impl GateType {
                 chacha_final_where,
                 Some(GateLookupTable::Xor),
             ),
+            (lookup_gate_pattern, lookup_gate_where, None),
         ];
 
         // Convert from an array of tuples to a tuple of vectors
@@ -316,27 +378,32 @@ impl GateType {
     pub fn lookup_kinds_map<F: Field>(
         locations_with_tables: Vec<GatesLookupSpec>,
     ) -> GatesLookupMaps {
-        let mut gate_selector_map = HashMap::with_capacity(locations_with_tables.len());
-        let mut gate_table_map = HashMap::with_capacity(locations_with_tables.len());
-
-        for (i, gate_lookups) in locations_with_tables.into_iter().enumerate() {
-            for location in gate_lookups.gate_positions {
-                // each "list of lookups in a row" is associated to a selector
-                if let Entry::Vacant(e) = gate_selector_map.entry(location) {
+        let mut index_map = HashMap::with_capacity(locations_with_tables.len());
+        let mut table_map = HashMap::with_capacity(locations_with_tables.len());
+        for (
+            i,
+            GatesLookupSpec {
+                gate_positions: locs,
+                gate_lookup_table: table_kind,
+            },
+        ) in locations_with_tables.into_iter().enumerate()
+        {
+            for location in locs {
+                if let Entry::Vacant(e) = index_map.entry(location) {
                     e.insert(i);
                 } else {
                     panic!("Multiple lookup patterns asserted on same row.")
                 }
-                if let Some(table_kind) = gate_lookups.gate_lookup_table {
-                    if let Entry::Vacant(e) = gate_table_map.entry(location) {
+                if let Some(table_kind) = table_kind {
+                    if let Entry::Vacant(e) = table_map.entry(location) {
                         e.insert(table_kind);
                     }
                 }
             }
         }
         GatesLookupMaps {
-            gate_selector_map,
-            gate_table_map,
+            gate_selector_map: index_map,
+            gate_table_map: table_map,
         }
     }
 }
