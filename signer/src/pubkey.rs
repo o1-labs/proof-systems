@@ -142,7 +142,7 @@ pub struct CompressedPubKey {
     pub x: BaseField,
 
     /// Parity of y-coordinate
-    pub is_odd: bool,
+    is_odd: bool,
 }
 
 fn into_address(x: BaseField, is_odd: bool) -> String {
@@ -175,6 +175,11 @@ impl CompressedPubKey {
     /// Deserialize Mina address into compressed public key (via an uncompressed PubKey)
     pub fn from_address(address: &str) -> Result<Self> {
         Ok(PubKey::from_address(address)?.into_compressed())
+    }
+
+    /// Gets the y-coordinate parity
+    pub fn is_odd(&self) -> bool {
+        self.is_odd
     }
 }
 

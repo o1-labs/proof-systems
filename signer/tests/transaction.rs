@@ -36,7 +36,7 @@ impl Hashable for Transaction {
 
         roi.append_u64(self.fee);
         roi.append_u64(self.fee_token);
-        roi.append_bool(self.fee_payer_pk.is_odd);
+        roi.append_bool(self.fee_payer_pk.is_odd());
         roi.append_u32(self.nonce);
         roi.append_u32(self.valid_until);
         roi.append_bytes(&self.memo);
@@ -45,8 +45,8 @@ impl Hashable for Transaction {
             roi.append_bool(tag_bit);
         }
 
-        roi.append_bool(self.source_pk.is_odd);
-        roi.append_bool(self.receiver_pk.is_odd);
+        roi.append_bool(self.source_pk.is_odd());
+        roi.append_bool(self.receiver_pk.is_odd());
         roi.append_u64(self.token_id);
         roi.append_u64(self.amount);
         roi.append_bool(self.token_locked);
