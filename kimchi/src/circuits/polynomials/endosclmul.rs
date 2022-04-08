@@ -7,7 +7,6 @@ use std::marker::PhantomData;
 use ark_ff::{FftField, Field, One};
 
 use crate::circuits::constraints::ConstraintSystem;
-use crate::circuits::domain_constant_evaluation::DomainConstantEvaluations;
 use crate::circuits::gate::CircuitGate;
 use crate::circuits::wires::GateWires;
 use crate::circuits::{
@@ -124,7 +123,7 @@ impl<F: FftField> CircuitGate<F> {
         &self,
         row: usize,
         witness: &[Vec<F>; COLUMNS],
-        cs: &ConstraintSystem<F, DomainConstantEvaluations<F>>,
+        cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
         ensure_eq!(self.typ, GateType::EndoMul, "incorrect gate type");
 

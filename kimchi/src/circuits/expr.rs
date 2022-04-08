@@ -2,7 +2,8 @@ use crate::{
     circuits::{
         domains::EvaluationDomains,
         gate::{CurrOrNext, GateType},
-        wires::COLUMNS, polynomials::permutation::eval_vanishes_on_last_4_rows,
+        polynomials::permutation::eval_vanishes_on_last_4_rows,
+        wires::COLUMNS,
     },
     proof::ProofEvaluations,
 };

@@ -37,7 +37,7 @@ use crate::circuits::{
     constraints::ConstraintSystem,
     gate::{CircuitGate, GateType},
     polynomial::COLUMNS,
-    wires::GateWires, domain_constant_evaluation::DomainConstantEvaluations,
+    wires::GateWires,
 };
 use ark_ff::{FftField, SquareRootField, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
@@ -163,7 +163,7 @@ impl<F: FftField> CircuitGate<F> {
 //~
 //~ where the $c_i$ are the [coefficients]().
 
-impl<F: FftField + SquareRootField> ConstraintSystem<F, DomainConstantEvaluations<F>> {
+impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// generic constraint quotient poly contribution computation
     pub fn gnrc_quot(
         &self,
@@ -352,7 +352,7 @@ pub mod testing {
         }
     }
 
-    impl<F: FftField + SquareRootField> ConstraintSystem<F, DomainConstantEvaluations<F>> {
+    impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         /// Function to verify the generic polynomials with a witness.
         pub fn verify_generic(
             &self,

@@ -14,7 +14,6 @@ use ark_poly::{
 };
 use array_init::array_init;
 use blake2::{Blake2b512, Digest};
-use core::borrow::Borrow;
 use itertools::repeat_n;
 use o1_utils::{field_helpers::i32_to_field, ExtendedEvaluations};
 use oracle::poseidon::ArithmeticSpongeParams;
@@ -65,7 +64,7 @@ pub struct LookupConstraintSystem<F: FftField> {
 
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct ConstraintSystem<F: FftField, B: Borrow<DomainConstantEvaluations<F>>> {
+pub struct ConstraintSystem<F: FftField> {
     // Basics
     // ------
     /// number of public inputs
@@ -159,10 +158,10 @@ pub struct ConstraintSystem<F: FftField, B: Borrow<DomainConstantEvaluations<F>>
 
     /// precomputes
     #[serde(skip)]
-    pub precomputations: B,
+    pub precomputations: Arc<DomainConstantEvaluations<F>>,
 }
 
-impl<F: FftField> Default for ConstraintSystem<F, DomainConstantEvaluations<F>> {
+impl<F: FftField> Default for ConstraintSystem<F> {
     fn default() -> Self {
         ConstraintSystem {
             public: 0,
@@ -192,7 +191,7 @@ impl<F: FftField> Default for ConstraintSystem<F, DomainConstantEvaluations<F>> 
             endo: F::default(),
             fr_sponge_params: ArithmeticSpongeParams::default(),
             lookup_constraint_system: None,
-            precomputations: DomainConstantEvaluations::default(),
+            precomputations: Arc::new(DomainConstantEvaluations::default()),
         }
     }
 }
@@ -414,13 +413,14 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
     }
 }
 
-impl<F: FftField + SquareRootField> ConstraintSystem<F, DomainConstantEvaluations<F>> {
+impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// creates a constraint system from a vector of gates ([CircuitGate]), some sponge parameters ([ArithmeticSpongeParams]), and the number of public inputs.
     pub fn create(
         mut gates: Vec<CircuitGate<F>>,
         lookup_tables: Vec<LookupTable<F>>,
         fr_sponge_params: ArithmeticSpongeParams<F>,
         public: usize,
+        precompute: Option<Arc<DomainConstantEvaluations<F>>>,
     ) -> Option<Self> {
         //~ 1. If the circuit is less than 2 gates, abort.
         // for some reason we need more than 1 gate for the circuit to work, see TODO below
@@ -609,7 +609,11 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F, DomainConstantEvaluation
 
         // TODO: remove endo as a field
         let endo = F::zero();
-        let precomputations = DomainConstantEvaluations::create(domain).unwrap();
+
+        let precomputations = match precompute {
+            Some(t) => t,
+            None => Arc::new(DomainConstantEvaluations::create(domain).unwrap()),
+        };
 
         Some(ConstraintSystem {
             chacha8,
@@ -731,251 +735,23 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F, DomainConstantEvaluation
     }
 }
 
-impl<F: FftField + SquareRootField> ConstraintSystem<F, Arc<DomainConstantEvaluations<F>>> {
-    pub fn create_with_precompute(
-        mut gates: Vec<CircuitGate<F>>,
-        lookup_tables: Vec<LookupTable<F>>,
-        fr_sponge_params: ArithmeticSpongeParams<F>,
-        public: usize,
-        precompute: Arc<DomainConstantEvaluations<F>>,
-    ) -> Option<Self> {
-        //~ 1. If the circuit is less than 2 gates, abort.
-        // for some reason we need more than 1 gate for the circuit to work, see TODO below
-        assert!(gates.len() > 1);
-
-        //~ 2. Create a domain for the circuit. That is,
-        //~    compute the smallest subgroup of the field that
-        //~    has order greater or equal to `n + ZK_ROWS` elements.
-        let domain = EvaluationDomains::<F>::create(gates.len() + ZK_ROWS as usize)?;
-        assert!(domain.d1.size > ZK_ROWS);
-
-        //~ 3. Pad the circuit: add zero gates to reach the domain size.
-        let d1_size = domain.d1.size();
-        let mut padding = (gates.len()..d1_size)
-            .map(|i| {
-                CircuitGate::<F>::zero(array_init(|j| Wire {
-                    col: WIRES[j],
-                    row: i,
-                }))
-            })
-            .collect();
-        gates.append(&mut padding);
-
-        //~ 4. sample the `PERMUTS` shifts.
-        let shifts = Shifts::new(&domain.d1);
-
-        // Precomputations
-        // ===============
-        // what follows are pre-computations.
-
-        //
-        // Permutation
-        // -----------
-
-        // compute permutation polynomials
-        let mut sigmal1: [Vec<F>; PERMUTS] =
-            array_init(|_| vec![F::zero(); domain.d1.size as usize]);
-
-        for (row, gate) in gates.iter().enumerate() {
-            for (cell, sigma) in gate.wires.iter().zip(sigmal1.iter_mut()) {
-                sigma[row] = shifts.cell_to_field(cell);
-            }
-        }
-
-        let sigmal1: [_; PERMUTS] = {
-            let [s0, s1, s2, s3, s4, s5, s6] = sigmal1;
-            [
-                E::<F, D<F>>::from_vec_and_domain(s0, domain.d1),
-                E::<F, D<F>>::from_vec_and_domain(s1, domain.d1),
-                E::<F, D<F>>::from_vec_and_domain(s2, domain.d1),
-                E::<F, D<F>>::from_vec_and_domain(s3, domain.d1),
-                E::<F, D<F>>::from_vec_and_domain(s4, domain.d1),
-                E::<F, D<F>>::from_vec_and_domain(s5, domain.d1),
-                E::<F, D<F>>::from_vec_and_domain(s6, domain.d1),
-            ]
-        };
-
-        let sigmam: [DP<F>; PERMUTS] = array_init(|i| sigmal1[i].clone().interpolate());
-
-        let sigmal8 = array_init(|i| sigmam[i].evaluate_over_domain_by_ref(domain.d8));
-
-        // Gates
-        // -----
-        //
-        // Compute each gate's polynomial as
-        // the polynomial that evaluates to 1 at $g^i$
-        // where $i$ is the row where a gate is active.
-        // Note: gates must be mutually exclusive.
-
-        // poseidon gate
-        let psm = E::<F, D<F>>::from_vec_and_domain(
-            gates.iter().map(|gate| gate.ps()).collect(),
-            domain.d1,
-        )
-        .interpolate();
-        let ps8 = psm.evaluate_over_domain_by_ref(domain.d8);
-
-        // ECC gates
-        let complete_addm = E::<F, D<F>>::from_vec_and_domain(
-            gates
-                .iter()
-                .map(|gate| F::from((gate.typ == GateType::CompleteAdd) as u64))
-                .collect(),
-            domain.d1,
-        )
-        .interpolate();
-        let complete_addl4 = complete_addm.evaluate_over_domain_by_ref(domain.d4);
-
-        let mulm = E::<F, D<F>>::from_vec_and_domain(
-            gates.iter().map(|gate| gate.vbmul()).collect(),
-            domain.d1,
-        )
-        .interpolate();
-        let mull8 = mulm.evaluate_over_domain_by_ref(domain.d8);
-
-        let emulm = E::<F, D<F>>::from_vec_and_domain(
-            gates.iter().map(|gate| gate.endomul()).collect(),
-            domain.d1,
-        )
-        .interpolate();
-        let emull = emulm.evaluate_over_domain_by_ref(domain.d8);
-
-        let endomul_scalarm = E::<F, D<F>>::from_vec_and_domain(
-            gates
-                .iter()
-                .map(|gate| F::from((gate.typ == GateType::EndoMulScalar) as u64))
-                .collect(),
-            domain.d1,
-        )
-        .interpolate();
-        let endomul_scalar8 = endomul_scalarm.evaluate_over_domain_by_ref(domain.d8);
-
-        // double generic gate
-        let genericm = E::<F, D<F>>::from_vec_and_domain(
-            gates
-                .iter()
-                .map(|gate| {
-                    if matches!(gate.typ, GateType::Generic) {
-                        F::one()
-                    } else {
-                        F::zero()
-                    }
-                })
-                .collect(),
-            domain.d1,
-        )
-        .interpolate();
-        let generic4 = genericm.evaluate_over_domain_by_ref(domain.d4);
-
-        // chacha gate
-        let chacha8 = {
-            use GateType::*;
-            let has_chacha_gate = gates
-                .iter()
-                .any(|gate| matches!(gate.typ, ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal));
-            if !has_chacha_gate {
-                None
-            } else {
-                let a: [_; 4] = array_init(|i| {
-                    let g = match i {
-                        0 => ChaCha0,
-                        1 => ChaCha1,
-                        2 => ChaCha2,
-                        3 => ChaChaFinal,
-                        _ => panic!("Invalid index"),
-                    };
-                    E::<F, D<F>>::from_vec_and_domain(
-                        gates
-                            .iter()
-                            .map(|gate| if gate.typ == g { F::one() } else { F::zero() })
-                            .collect(),
-                        domain.d1,
-                    )
-                    .interpolate()
-                    .evaluate_over_domain(domain.d8)
-                });
-                Some(a)
-            }
-        };
-
-        //
-        // Coefficient
-        // -----------
-        //
-
-        // coefficient polynomial
-        let coefficientsm: [_; COLUMNS] = array_init(|i| {
-            let padded = gates
-                .iter()
-                .map(|gate| gate.coeffs.get(i).cloned().unwrap_or_else(F::zero))
-                .collect();
-            let eval = E::from_vec_and_domain(padded, domain.d1);
-            eval.interpolate()
-        });
-        // TODO: This doesn't need to be degree 8 but that would require some changes in expr
-        let coefficients8 = array_init(|i| coefficientsm[i].evaluate_over_domain_by_ref(domain.d8));
-
-        //
-        // Lookup
-        // ------
-
-        let lookup_constraint_system =
-            LookupConstraintSystem::create(&gates, lookup_tables, &domain).ok()?;
-
-        let sid = shifts.map[0].clone();
-
-        // TODO: remove endo as a field
-        let endo = F::zero();
-
-        Some(ConstraintSystem {
-            chacha8,
-            endomul_scalar8,
-            domain,
-            public,
-            sid,
-            sigmal1,
-            sigmal8,
-            sigmam,
-            genericm,
-            generic4,
-            coefficients8,
-            ps8,
-            psm,
-            complete_addl4,
-            mull8,
-            emull,
-            gates,
-            shift: shifts.shifts,
-            endo,
-            fr_sponge_params,
-            lookup_constraint_system,
-            precomputations: precompute,
-        })
-    }
-}
 #[cfg(test)]
 pub mod tests {
     use super::*;
     use ark_ff::{FftField, SquareRootField};
     use mina_curves::pasta::fp::Fp;
 
-    impl<F: FftField + SquareRootField> ConstraintSystem<F, DomainConstantEvaluations<F>> {
+    impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         pub fn for_testing(
             sponge_params: ArithmeticSpongeParams<F>,
             gates: Vec<CircuitGate<F>>,
         ) -> Self {
             let public = 0;
-            ConstraintSystem::<F, DomainConstantEvaluations<F>>::create(
-                gates,
-                vec![],
-                sponge_params,
-                public,
-            )
-            .unwrap()
+            ConstraintSystem::<F>::create(gates, vec![], sponge_params, public, None).unwrap()
         }
     }
 
-    impl ConstraintSystem<Fp, DomainConstantEvaluations<Fp>> {
+    impl ConstraintSystem<Fp> {
         pub fn fp_for_testing(gates: Vec<CircuitGate<Fp>>) -> Self {
             let fp_sponge_params = oracle::pasta::fp_kimchi::params();
             Self::for_testing(fp_sponge_params, gates)

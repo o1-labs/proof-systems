@@ -41,19 +41,16 @@
 //~
 
 use crate::{
-    circuits::{
-        constraints::ConstraintSystem, domain_constant_evaluation::DomainConstantEvaluations,
-        polynomial::WitnessOverDomains, wires::*,
-    },
+    circuits::{constraints::ConstraintSystem, polynomial::WitnessOverDomains, wires::*},
     error::ProofError,
     proof::ProofEvaluations,
 };
 use ark_ff::{FftField, SquareRootField, Zero};
-use ark_poly::{UVPolynomial, Polynomial};
 use ark_poly::{
     univariate::{DenseOrSparsePolynomial, DensePolynomial},
     EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
+use ark_poly::{Polynomial, UVPolynomial};
 use o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
 use rand::{CryptoRng, RngCore};
 
@@ -115,7 +112,7 @@ pub fn zk_polynomial<F: FftField>(domain: D<F>) -> DensePolynomial<F> {
     ])
 }
 
-impl<F: FftField + SquareRootField> ConstraintSystem<F, DomainConstantEvaluations<F>> {
+impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// permutation quotient poly contribution computation
     #[allow(clippy::type_complexity)]
     pub fn perm_quot(

@@ -4,7 +4,7 @@ use crate::prover::permutation::ZK_ROWS;
 use crate::{
     circuits::{
         argument::{Argument, ArgumentType},
-        constraints::{LookupConstraintSystem},
+        constraints::LookupConstraintSystem,
         expr::{l0_1, Constants, Environment, LookupEnvironment},
         gate::GateType,
         lookup::{

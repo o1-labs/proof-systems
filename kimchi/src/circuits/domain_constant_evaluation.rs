@@ -43,8 +43,8 @@ impl<F: FftField> Default for DomainConstantEvaluations<F> {
             constant_1_d4: evaluation_domain.clone(),
             constant_1_d8: evaluation_domain.clone(),
             vanishes_on_last_4_rows: evaluation_domain.clone(),
-            zkpl: evaluation_domain.clone(),
-            zkpm: DP::default()
+            zkpl: evaluation_domain,
+            zkpm: DP::default(),
         }
     }
 }
@@ -70,10 +70,10 @@ impl<F: FftField> DomainConstantEvaluations<F> {
         Some(DomainConstantEvaluations {
             poly_x_d1,
             constant_1_d4,
-            constant_1_d8,  
+            constant_1_d8,
             vanishes_on_last_4_rows,
             zkpl,
-            zkpm
+            zkpm,
         })
     }
 }

@@ -9,8 +9,6 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::io::{Result as IoResult, Write};
 
-use super::domain_constant_evaluation::DomainConstantEvaluations;
-
 /// A row accessible from a given row, corresponds to the fact that we open all polynomials
 /// at `zeta` **and** `omega * zeta`.
 #[repr(C)]
@@ -132,7 +130,7 @@ impl<F: FftField> CircuitGate<F> {
         &self,
         row: usize,
         witness: &[Vec<F>; COLUMNS],
-        cs: &ConstraintSystem<F, DomainConstantEvaluations<F>>,
+        cs: &ConstraintSystem<F>,
         public: &[F],
     ) -> Result<(), String> {
         use GateType::*;
