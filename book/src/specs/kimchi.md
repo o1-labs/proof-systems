@@ -30,8 +30,8 @@ For each row, only a single gate can take a value $1$ while all other gates take
 |   0   |    1    |    0     |      0      |     0      |    0    |       0       |    0    |    0    |    0    |      0      |
 |   1   |    0    |    1     |      0      |     0      |    0    |       0       |    0    |    0    |    0    |      0      |
 
-**Coefficients**. The coefficient table has 15 columns, and is used to tweak the gates. 
-Currently, only the [Generic](#double-generic-gate) and the [Poseidon](#poseidon) gates use it (refer to their own sections to see how). 
+**Coefficients**. The coefficient table has 15 columns, and is used to tweak the gates.
+Currently, only the [Generic](#double-generic-gate) and the [Poseidon](#poseidon) gates use it (refer to their own sections to see how).
 All other gates set their values to $0$.
 
 |  row  |   0   |   1   |   2   |   3   |   4   |   5   |   6   |   7   |   8   |   9   |  10   |  11   |  12   |  13   |  14   |
@@ -42,7 +42,7 @@ All other gates set their values to $0$.
 To learn about registers, see the next section.
 It is defined at every row, but only for the first $7$ registers. 
 Each cell specifies a `(row, column)` tuple that it should be wired to.  Cells that are not connected to another cell are wired to themselves.
-Note that if three or more registers are wired together, they must form a cycle. 
+Note that if three or more registers are wired together, they must form a cycle.
 For example, if register `(0, 4)` is wired to both registers `(80, 6)` and `(90, 0)` then you would have the following table:
 
 |  row  |    0    |   1   |   2   |   3   |    4     |   5   |    6     |
@@ -116,7 +116,7 @@ In this section we list these specifications, as well as the interfaces we make 
 
 ### Polynomial Commitments
 
-Refer to the [specification on polynomial commitments](./poly-commitment.md). 
+Refer to the [specification on polynomial commitments](./poly-commitment.md).
 We make use of the following functions from that specification:
 
 - `PolyCom.non_hiding_commit(poly) -> PolyCom::NonHidingCommitment`
@@ -126,7 +126,7 @@ We make use of the following functions from that specification:
 
 ### Poseidon hash function
 
-Refer to the [specification on Poseidon](./poseidon.md). 
+Refer to the [specification on Poseidon](./poseidon.md).
 We make use of the following functions from that specification:
 
 - `Poseidon.init(params) -> FqSponge`
@@ -160,19 +160,19 @@ In this section, we describe all the constraints that make up the main polynomia
 
 We define the following functions:
 
-* `combine_constraints(range_alpha, constraints)`, which takes a range of contiguous powers of alpha and a number of constraints. 
-It returns the sum of all the constraints, where each constraint has been multiplied by a power of alpha. 
+* `combine_constraints(range_alpha, constraints)`, which takes a range of contiguous powers of alpha and a number of constraints.
+It returns the sum of all the constraints, where each constraint has been multiplied by a power of alpha.
 In other words it returns:
 $$ \sum_i \alpha^i \cdot \text{constraint}_i $$
 
 The different ranges of alpha are described as follows:
 
 <!-- generated using `cargo test -p kimchi --lib -- alphas::tests::get_alphas_for_spec --nocapture` -->
-* **gates**. Offset starts at 0 and 21 powers of $\alpha$ are used
-* **Permutation**. Offset starts at 21 and 3 powers of $\alpha$ are used
+* **gates**. Offset starts at 0 and 25 powers of $\alpha$ are used
+* **Permutation**. Offset starts at 25 and 3 powers of $\alpha$ are used
 
 ```admonish
-As gates are mutually exclusive (a single gate is used on each row), we can reuse the same range of powers of alpha across all the gates. 
+As gates are mutually exclusive (a single gate is used on each row), we can reuse the same range of powers of alpha across all the gates.
 ```
 
 TODO: linearization
@@ -525,7 +525,7 @@ fifth round:
 where $w_{i, next}$ is the polynomial $w_i(\omega x)$ which points to the next row.
 
 
-#### Chacha 
+#### Chacha
 
 There are four chacha constraint types, corresponding to the four lines in each quarter round.
 
@@ -914,7 +914,7 @@ Gives the following equations when substituting the values of $s_2$ and $s_4$:
 
 
 
-#### Scalar Multiplication 
+#### Scalar Multiplication
 
 We implement custom Plonk constraints for short Weierstrass curve variable base scalar multiplication.
 
@@ -1041,14 +1041,14 @@ As such, the transformation of a circuit into these two indexes can be seen as a
 
 In this section we describe data that both the prover and the verifier index share.
 
-**`URS` (Uniform Reference String)** The URS is a set of parameters that is generated once, and shared between the prover and the verifier. 
+**`URS` (Uniform Reference String)** The URS is a set of parameters that is generated once, and shared between the prover and the verifier.
 It is used for polynomial commitments, so refer to the [poly-commitment specification](./poly-commitment.md) for more details.
 
 ```admonish
 Kimchi currently generates the URS based on the circuit, and attach it to the index. So each circuit can potentially be accompanied with a different URS. On the other hand, Mina reuses the same URS for multiple circuits ([see zkapps for more details](https://minaprotocol.com/blog/what-are-zkapps)).
 ```
 
-**`Domain`**. A domain large enough to contain the circuit and the zero-knowledge rows (used to provide zero-knowledge to the protocol). Specifically, the smallest subgroup in our field that has order greater or equal to `n + ZK_ROWS`, with `n` is the number of gates in the circuit. 
+**`Domain`**. A domain large enough to contain the circuit and the zero-knowledge rows (used to provide zero-knowledge to the protocol). Specifically, the smallest subgroup in our field that has order greater or equal to `n + ZK_ROWS`, with `n` is the number of gates in the circuit.
 TODO: what if the domain is larger than the URS?
 
 ```admonish warning "Ordering of elements in the domain"
@@ -1208,8 +1208,8 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     pub chacha_comm: Option<[PolyComm<G>; 4]>,
 
     // Pasta pallas foreign field multiplication polynomial commitment
-    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub foreign_mul_comm: Option<[PolyComm<G>; foreign_mul::CIRCUIT_GATE_COUNT]>,
+    #[serde(bound = "Vec<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub foreign_mul_comm: Vec<PolyComm<G>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -1345,7 +1345,7 @@ pub struct ProofEvaluations<Field> {
     /// evaluation of the poseidon selector polynomial
     pub poseidon_selector: Field,
     /// evaluations of the foreign field multiplication circuit gate selector polynomials
-    pub foreign_mul_selector: Option<[Field; foreign_mul::CIRCUIT_GATE_COUNT]>,
+    pub foreign_mul_selector: Vec<Field>,
 }
 
 /// Commitments linked to the lookup feature
@@ -1408,11 +1408,11 @@ The public input is expected to be passed in the first `Public` rows of the regi
 
 The following constants are set:
 
-* `EVAL_POINTS = 2`. This is the number of points that the prover has to evaluate their polynomials at. 
+* `EVAL_POINTS = 2`. This is the number of points that the prover has to evaluate their polynomials at.
 ($\zeta$ and $\zeta\omega$ where $\zeta$ will be deterministically generated.)
-* `ZK_ROWS = 3`. This is the number of rows that will be randomized to provide zero-knowledgeness. 
-Note that it only needs to be greater or equal to the number of evaluations (2) in the protocol. 
-Yet, it contains one extra row to take into account the last constraint (final value of the permutation accumulator). 
+* `ZK_ROWS = 3`. This is the number of rows that will be randomized to provide zero-knowledgeness.
+Note that it only needs to be greater or equal to the number of evaluations (2) in the protocol.
+Yet, it contains one extra row to take into account the last constraint (final value of the permutation accumulator).
 (TODO: treat the final constraint separately so that ZK_ROWS = 2)
 
 The prover then follows the following steps to create the proof:
