@@ -1,7 +1,5 @@
 //! This module implements Plonk circuit constraint primitive.
 
-use std::collections::HashSet;
-
 use crate::circuits::{
     domains::EvaluationDomains,
     gate::{CircuitGate, GateType},
@@ -22,6 +20,7 @@ use o1_utils::{field_helpers::i32_to_field, ExtendedEvaluations};
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
+use std::collections::HashSet;
 
 use super::lookup::{
     constraints::LookupConfiguration,
@@ -656,7 +655,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             {
                 foreign_mul::selector_polynomials(&gates, &domain)
             } else {
-                Vec::new()
+                vec![]
             }
         };
 

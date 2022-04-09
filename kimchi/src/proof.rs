@@ -93,7 +93,7 @@ impl<F: Zero> ProofEvaluations<F> {
             lookup: None,
             generic_selector: F::zero(),
             poseidon_selector: F::zero(),
-            foreign_mul_selector: Vec::new(),
+            foreign_mul_selector: vec![],
         }
     }
 }
@@ -329,7 +329,7 @@ pub mod caml {
                     ]
                     .into()
                 } else {
-                    Vec::new()
+                    vec![]
                 }
             };
 

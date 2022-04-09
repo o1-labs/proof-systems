@@ -148,9 +148,9 @@ impl<F: FftField> CircuitGate<F> {
             EndoMul => self.verify_endomul(row, witness, cs),
             EndoMulScalar => self.verify_endomul_scalar(row, witness, cs),
             ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => Ok(()),
-            ForeignMul0 | ForeignMul1 | ForeignMul2 => self.verify_foreign_mul(row, witness, cs),
             // TODO: implement the verification for the lookup gate
             Lookup => Ok(()),
+            ForeignMul0 | ForeignMul1 | ForeignMul2 => self.verify_foreign_mul(row, witness, cs),
         }
     }
 }

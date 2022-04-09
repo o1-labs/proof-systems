@@ -37,7 +37,7 @@ pub struct Constants<F> {
     pub endo_coefficient: F,
     /// The MDS matrix
     pub mds: Vec<Vec<F>>,
-    // Foreign field moduli
+    // Foreign field modulus
     pub foreign_modulus: Vec<F>,
 }
 
@@ -416,18 +416,12 @@ impl Variable {
             Index(GateType::ForeignMul0) => Ok(evals.foreign_mul_selector[0]),
             Index(GateType::ForeignMul1) => Ok(evals.foreign_mul_selector[1]),
             Index(GateType::ForeignMul2) => Ok(evals.foreign_mul_selector[2]),
-            Coefficient(_) => {
-                Err("Cannot get index evaluation Coefficient (should have been linearized away)")
-            }
-            LookupKindIndex(_) => Err(
-                "Cannot get index evaluation LookupKindIndex (should have been linearized away)",
-            ),
-            Index(gate_type) => {
+            Coefficient(_) | LookupKindIndex(_) | Index(_) => {
                 println!(
-                    "Cannot get index evaluation Index (should have been linearized away) {:?}",
-                    gate_type
+                    "Cannot get index evaluation {:?} (should have been linearized away)",
+                    self.col
                 );
-                Err("Cannot get index evaluation Index (should have been linearized away)")
+                Err("Cannot get index evaluation (should have been linearized away)")
             }
         }
     }

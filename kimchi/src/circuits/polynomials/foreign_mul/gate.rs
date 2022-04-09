@@ -195,7 +195,7 @@ pub fn combined_constraints<F: FftField>(alphas: &Alphas<F>) -> E<F> {
         + ForeignMul2::combined_constraints(alphas)
 }
 
-/// Foreign field multiplication CircuitGate selector polynomials
+/// Foreign field multiplication CircuitGate selector polynomial
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct SelectorPolynomial<F: FftField> {
