@@ -150,7 +150,7 @@ pub struct ConstraintSystem<F: FftField> {
     pub endomul_scalar8: E<F, D<F>>,
 
     /// Foreign field multiplication gate selector polynomials
-    #[serde_as(as = "Vec<foreign_mul::SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
+    #[serde(bound = "Vec<foreign_mul::SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
     pub foreign_mul_selector_polys: Vec<foreign_mul::SelectorPolynomial<F>>,
 
     // Constant polynomials

@@ -65,7 +65,7 @@ where
             (1..5).map(|i| sublimb_plookup_constraint(&w(i))).collect();
 
         // Temporary dummy constraint to avoid zero polynomial edge case
-        // and avoid check that verifier does that all commitments aren't identically zero
+        // and avoid verifier check that all commitments aren't identically zero
         constraints.push(E::<F>::cell(
             Column::Index(GateType::Poseidon),
             CurrOrNext::Curr,
