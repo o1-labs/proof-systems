@@ -441,49 +441,48 @@ where
             );
 
         //~ 22. TODO: setup the env
-        let env =
-            {
-                let mut index_evals = HashMap::new();
-                use GateType::*;
-                index_evals.insert(Poseidon, &index.cs.ps8);
-                index_evals.insert(CompleteAdd, &index.cs.complete_addl4);
-                index_evals.insert(VarBaseMul, &index.cs.mull8);
-                index_evals.insert(EndoMul, &index.cs.emull);
-                index_evals.insert(EndoMulScalar, &index.cs.endomul_scalar8);
-                [ChaCha0, ChaCha1, ChaCha2, ChaChaFinal]
-                    .iter()
-                    .enumerate()
-                    .for_each(|(i, g)| {
-                        if let Some(c) = &index.cs.chacha8 {
-                            index_evals.insert(*g, &c[i]);
-                        }
-                    });
-                if !index.cs.foreign_mul_selector_polys.is_empty() {
-                    index_evals.extend(foreign_mul::circuit_gates().iter().enumerate().map(
-                        |(i, gate_type)| (*gate_type, &index.cs.foreign_mul_selector_polys[i].eval8),
-                    ));
-                }
+        let env = {
+            let mut index_evals = HashMap::new();
+            use GateType::*;
+            index_evals.insert(Poseidon, &index.cs.ps8);
+            index_evals.insert(CompleteAdd, &index.cs.complete_addl4);
+            index_evals.insert(VarBaseMul, &index.cs.mull8);
+            index_evals.insert(EndoMul, &index.cs.emull);
+            index_evals.insert(EndoMulScalar, &index.cs.endomul_scalar8);
+            [ChaCha0, ChaCha1, ChaCha2, ChaChaFinal]
+                .iter()
+                .enumerate()
+                .for_each(|(i, g)| {
+                    if let Some(c) = &index.cs.chacha8 {
+                        index_evals.insert(*g, &c[i]);
+                    }
+                });
+            if !index.cs.foreign_mul_selector_polys.is_empty() {
+                index_evals.extend(foreign_mul::circuit_gates().iter().enumerate().map(
+                    |(i, gate_type)| (*gate_type, &index.cs.foreign_mul_selector_polys[i].eval8),
+                ));
+            }
 
-                Environment {
-                    constants: Constants {
-                        alpha,
-                        beta,
-                        gamma,
-                        joint_combiner,
-                        endo_coefficient: index.cs.endo,
-                        mds: index.cs.fr_sponge_params.mds.clone(),
-                        foreign_modulus: index.cs.foreign_modulus.clone(),
-                    },
-                    witness: &lagrange.d8.this.w,
-                    coefficient: &index.cs.coefficients8,
-                    vanishes_on_last_4_rows: &index.cs.vanishes_on_last_4_rows,
-                    z: &lagrange.d8.this.z,
-                    l0_1: l0_1(index.cs.domain.d1),
-                    domain: index.cs.domain,
-                    index: index_evals,
-                    lookup: lookup_env,
-                }
-            };
+            Environment {
+                constants: Constants {
+                    alpha,
+                    beta,
+                    gamma,
+                    joint_combiner,
+                    endo_coefficient: index.cs.endo,
+                    mds: index.cs.fr_sponge_params.mds.clone(),
+                    foreign_modulus: index.cs.foreign_modulus.clone(),
+                },
+                witness: &lagrange.d8.this.w,
+                coefficient: &index.cs.coefficients8,
+                vanishes_on_last_4_rows: &index.cs.vanishes_on_last_4_rows,
+                z: &lagrange.d8.this.z,
+                l0_1: l0_1(index.cs.domain.d1),
+                domain: index.cs.domain,
+                index: index_evals,
+                lookup: lookup_env,
+            }
+        };
 
         //~ 23. Compute the quotient polynomial (the $t$ in $f = Z_H \cdot t$).
         //~     The quotient polynomial is computed by adding all these polynomials together:
