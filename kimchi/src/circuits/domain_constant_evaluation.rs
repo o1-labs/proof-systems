@@ -5,7 +5,6 @@ use crate::circuits::domains::EvaluationDomains;
 use crate::circuits::polynomials::permutation::zk_polynomial;
 use crate::circuits::polynomials::permutation::ZK_ROWS;
 use ark_ff::FftField;
-use ark_poly::EvaluationDomain;
 use ark_poly::UVPolynomial;
 use ark_poly::{univariate::DensePolynomial as DP, Evaluations as E, Radix2EvaluationDomain as D};
 use serde::{Deserialize, Serialize};
@@ -35,21 +34,6 @@ pub struct DomainConstantEvaluations<F: FftField> {
     pub zkpl: E<F, D<F>>,
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub zkpm: DP<F>,
-}
-
-impl<F: FftField> Default for DomainConstantEvaluations<F> {
-    fn default() -> Self {
-        let evaluation_domain = E::from_vec_and_domain(vec![], D::<F>::new(0).unwrap());
-
-        DomainConstantEvaluations {
-            poly_x_d1: evaluation_domain.clone(),
-            constant_1_d4: evaluation_domain.clone(),
-            constant_1_d8: evaluation_domain.clone(),
-            vanishes_on_last_4_rows: evaluation_domain.clone(),
-            zkpl: evaluation_domain,
-            zkpm: DP::default(),
-        }
-    }
 }
 
 impl<F: FftField> DomainConstantEvaluations<F> {
