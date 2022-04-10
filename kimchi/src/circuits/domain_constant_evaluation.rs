@@ -1,3 +1,6 @@
+//! This module contains the constant evaluations
+//! for domain d4 and d8
+
 use crate::circuits::domains::EvaluationDomains;
 use crate::circuits::polynomials::permutation::zk_polynomial;
 use crate::circuits::polynomials::permutation::ZK_ROWS;
@@ -9,10 +12,10 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
 use super::polynomials::permutation::vanishes_on_last_4_rows;
-// use super::zk_polynomial::ZkPolynomial;
 
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
+/// pre-computed polynomials that depend only on the chosen field and domain
 pub struct DomainConstantEvaluations<F: FftField> {
     /// 1-st Lagrange evaluated over domain.d8
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]

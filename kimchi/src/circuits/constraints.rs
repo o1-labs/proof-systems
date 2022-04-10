@@ -16,6 +16,7 @@ use array_init::array_init;
 use blake2::{Blake2b512, Digest};
 use itertools::repeat_n;
 use o1_utils::{field_helpers::i32_to_field, ExtendedEvaluations};
+use once_cell::sync::OnceCell;
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
@@ -158,42 +159,7 @@ pub struct ConstraintSystem<F: FftField> {
 
     /// precomputes
     #[serde(skip)]
-    pub precomputations: Arc<DomainConstantEvaluations<F>>,
-}
-
-impl<F: FftField> Default for ConstraintSystem<F> {
-    fn default() -> Self {
-        ConstraintSystem {
-            public: 0,
-            domain: EvaluationDomains::create(0).unwrap(),
-            gates: vec![],
-            sigmam: <[DP<F>; PERMUTS]>::default(),
-            coefficients8: array_init(|_| {
-                E::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap())
-            }),
-            genericm: DP::default(),
-            psm: DP::default(),
-            generic4: E::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap()),
-            sigmal1: array_init(|_| {
-                E::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap())
-            }),
-            sigmal8: array_init(|_| {
-                E::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap())
-            }),
-            sid: vec![],
-            ps8: E::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap()),
-            complete_addl4: E::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap()),
-            mull8: E::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap()),
-            emull: E::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap()),
-            chacha8: None,
-            endomul_scalar8: E::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap()),
-            shift: [F::default(); PERMUTS],
-            endo: F::default(),
-            fr_sponge_params: ArithmeticSpongeParams::default(),
-            lookup_constraint_system: None,
-            precomputations: Arc::new(DomainConstantEvaluations::default()),
-        }
-    }
+    pub precomputations: OnceCell<Arc<DomainConstantEvaluations<F>>>,
 }
 
 // TODO: move Shifts, and permutation-related functions to the permutation module
@@ -416,11 +382,27 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// creates a constraint system from a vector of gates ([CircuitGate]), some sponge parameters ([ArithmeticSpongeParams]), and the number of public inputs.
     pub fn create(
+        gates: Vec<CircuitGate<F>>,
+        lookup_tables: Vec<LookupTable<F>>,
+        fr_sponge_params: ArithmeticSpongeParams<F>,
+        public: usize,
+    ) -> Option<Self> {
+        ConstraintSystem::<F>::create_with_shared_precomputations(
+            gates,
+            lookup_tables,
+            fr_sponge_params,
+            public,
+            None,
+        )
+    }
+
+    /// similar to create. but this fn creates a constraint system with a shared precomputation previously created elsewhere
+    pub fn create_with_shared_precomputations(
         mut gates: Vec<CircuitGate<F>>,
         lookup_tables: Vec<LookupTable<F>>,
         fr_sponge_params: ArithmeticSpongeParams<F>,
         public: usize,
-        precompute: Option<Arc<DomainConstantEvaluations<F>>>,
+        precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
     ) -> Option<Self> {
         //~ 1. If the circuit is less than 2 gates, abort.
         // for some reason we need more than 1 gate for the circuit to work, see TODO below
@@ -610,12 +592,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // TODO: remove endo as a field
         let endo = F::zero();
 
-        let precomputations = match precompute {
-            Some(t) => t,
-            None => Arc::new(DomainConstantEvaluations::create(domain).unwrap()),
-        };
+        let domain_constant_evaluation = OnceCell::new();
 
-        Some(ConstraintSystem {
+        let constraints = ConstraintSystem {
             chacha8,
             endomul_scalar8,
             domain,
@@ -637,7 +616,21 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             endo,
             fr_sponge_params,
             lookup_constraint_system,
-            precomputations,
+            precomputations: domain_constant_evaluation,
+        };
+
+        constraints.get_or_set_domain_constant_evaluation(precomputations);
+
+        Some(constraints)
+    }
+
+    pub fn get_or_set_domain_constant_evaluation(
+        &self,
+        precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
+    ) -> &Arc<DomainConstantEvaluations<F>> {
+        self.precomputations.get_or_init(|| match precomputations {
+            Some(t) => t,
+            None => Arc::new(DomainConstantEvaluations::create(self.domain).unwrap()),
         })
     }
 
@@ -747,7 +740,7 @@ pub mod tests {
             gates: Vec<CircuitGate<F>>,
         ) -> Self {
             let public = 0;
-            ConstraintSystem::<F>::create(gates, vec![], sponge_params, public, None).unwrap()
+            ConstraintSystem::<F>::create(gates, vec![], sponge_params, public).unwrap()
         }
     }
 
