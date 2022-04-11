@@ -131,7 +131,7 @@ pub fn combine_table_entry<'a, F, I>(
     joint_combiner: &F,
     table_id_combiner: &F,
     v: I,
-    table_id: F,
+    table_id: &F,
 ) -> F
 where
     F: 'a, // Any references in `F` must have a lifetime longer than `'a`.
@@ -140,5 +140,5 @@ where
 {
     v.rev()
         .fold(F::zero(), |acc, x| joint_combiner.clone() * acc + x.clone())
-        + table_id_combiner.clone() * table_id
+        + table_id_combiner.clone() * table_id.clone()
 }

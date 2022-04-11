@@ -101,153 +101,6 @@ pub const CIRCUIT_GATE_COUNT: usize = 4;
 
 // GATE-RELATED
 
-/// Returns the witness of an execution of a Cairo program in CircuitGate format
-pub fn cairo_witness<F: Field>(prog: &CairoProgram<F>) -> [Vec<F>; COLUMNS] {
-    // 0: 1 row for final check CairoClaim gate
-    // 4i+1: 1 row per instruction for CairoInstruction gate
-    // 4i+2: 1 row per instruction for Flags argument
-    // 4i+3: 1 row per instruction for CairoTransition gate
-    // 4i+4: 1 row per instruction for Auxiliary gate (Zero)
-    // ...
-    // 4n-3: 1 row for last instruction
-    // 4n-2: 1 row for Auxiliary argument (no constraints)
-    let n = prog.trace().len();
-    let rows = 4 * n - 1;
-    let mut table: Vec<[F; COLUMNS]> = Vec::new();
-    table.resize(rows, [F::zero(); COLUMNS]);
-    for (i, inst) in prog.trace().iter().enumerate() {
-        if i == 0 {
-            let claim_wit = claim_witness(prog);
-            table[i] = claim_wit;
-        }
-        let ins_wit = instruction_witness(inst);
-        let flg_wit = flag_witness(inst);
-        table[4 * i + 1] = ins_wit;
-        table[4 * i + 2] = flg_wit;
-        if i != n - 1 {
-            // all but last instruction
-            let tra_wit = transition_witness(inst, &prog.trace()[i + 1]);
-            let aux_wit = auxiliary_witness(&prog.trace()[i + 1]);
-            table[4 * i + 3] = tra_wit;
-            table[4 * i + 4] = aux_wit;
-        }
-    }
-
-    let mut witness: [Vec<F>; COLUMNS] = Default::default();
-    for col in 0..COLUMNS {
-        // initialize column with zeroes
-        witness[col].resize(table.len(), F::zero());
-        for (row, wit) in table.iter().enumerate() {
-            witness[col][row] = wit[col];
-        }
-    }
-    witness
-}
-
-fn claim_witness<F: Field>(prog: &CairoProgram<F>) -> [F; COLUMNS] {
-    let last = prog.trace().len() - 1;
-    [
-        prog.ini().pc(),         // initial pc from public input
-        prog.ini().ap(),         // initial ap from public input
-        prog.fin().pc(),         // final pc from public input
-        prog.fin().ap(),         // final ap from public input
-        prog.trace()[last].pc(), // real last pc
-        prog.trace()[last].ap(), // real last ap
-        F::zero(),
-        F::zero(),
-        F::zero(),
-        F::zero(),
-        F::zero(),
-        F::zero(),
-        F::zero(),
-        F::zero(),
-        F::zero(),
-    ]
-}
-
-fn instruction_witness<F: Field>(inst: &CairoInstruction<F>) -> [F; COLUMNS] {
-    [
-        inst.pc(),
-        inst.ap(),
-        inst.fp(),
-        inst.size(),
-        inst.res(),
-        inst.dst(),
-        inst.op1(),
-        inst.op0(),
-        inst.off_dst(),
-        inst.off_op1(),
-        inst.off_op0(),
-        inst.adr_dst(),
-        inst.adr_op1(),
-        inst.adr_op0(),
-        inst.instr(),
-    ]
-}
-
-fn flag_witness<F: Field>(inst: &CairoInstruction<F>) -> [F; COLUMNS] {
-    [
-        inst.f_dst_fp(),
-        inst.f_op0_fp(),
-        inst.f_op1_val(),
-        inst.f_op1_fp(),
-        inst.f_op1_ap(),
-        inst.f_res_add(),
-        inst.f_res_mul(),
-        inst.f_pc_abs(),
-        inst.f_pc_rel(),
-        inst.f_pc_jnz(),
-        inst.f_ap_add(),
-        inst.f_ap_one(),
-        inst.f_opc_call(),
-        inst.f_opc_ret(),
-        inst.f_opc_aeq(),
-    ]
-}
-
-fn transition_witness<F: Field>(
-    curr: &CairoInstruction<F>,
-    next: &CairoInstruction<F>,
-) -> [F; COLUMNS] {
-    [
-        curr.pc(),
-        curr.ap(),
-        curr.fp(),
-        curr.size(),
-        curr.res(),
-        curr.dst(),
-        curr.op1(),
-        next.pc(),
-        next.ap(),
-        next.fp(),
-        F::zero(),
-        F::zero(),
-        F::zero(),
-        F::zero(),
-        F::zero(),
-    ]
-}
-
-fn auxiliary_witness<F: Field>(next: &CairoInstruction<F>) -> [F; COLUMNS] {
-    [
-        next.pc(),
-        next.ap(),
-        next.fp(),
-        F::zero(),
-        F::zero(),
-        F::zero(),
-        F::zero(),
-        F::zero(),
-        F::zero(),
-        F::zero(),
-        F::zero(),
-        F::zero(),
-        F::zero(),
-        F::zero(),
-        F::zero(),
-    ]
-}
-
 impl<F: FftField> CircuitGate<F> {
     /// This function creates a CairoClaim gate
     pub fn create_cairo_claim(wires: GateWires) -> Self {
@@ -285,12 +138,13 @@ impl<F: FftField> CircuitGate<F> {
     }
 
     /// Gadget generator of the whole cairo circuits from an absolute row and number of instructions
+    /// Returns a vector of gates, and the next available row after the gadget
     pub fn create_cairo_gadget(
         // the absolute row in the circuit
         row: usize,
         // number of instructions
         num: usize,
-    ) -> Vec<Self> {
+    ) -> (Vec<Self>, usize) {
         // 0: 1 row for final check CairoClaim gate
         // 4i+1: 1 row per instruction for CairoInstruction gate
         // 4i+2: 1 row per instruction for Flags argument
@@ -315,13 +169,15 @@ impl<F: FftField> CircuitGate<F> {
             gates.push(CircuitGate::create_cairo_transition(tra_gate));
             gates.push(CircuitGate::zero(aux_gate));
         }
+        // next available row after the full
+        let next = row + 4 * last + 3;
         // the final instruction
-        let ins_gate = Wire::new(row + 4 * last + 1);
-        let aux_gate = Wire::new(row + 4 * last + 2);
+        let ins_gate = Wire::new(next - 2);
+        let aux_gate = Wire::new(next - 1);
         gates.push(CircuitGate::create_cairo_instruction(ins_gate));
         gates.push(CircuitGate::zero(aux_gate));
 
-        gates
+        (gates, next)
     }
 
     /// verifies that the Cairo gate constraints are solved by the witness depending on its type
@@ -404,10 +260,165 @@ impl<F: FftField> CircuitGate<F> {
             }
         }
     }
+}
+
+pub mod witness {
+    use super::*;
+
+    /// Returns the witness of an execution of a Cairo program in CircuitGate format
+    pub fn cairo_witness<F: Field>(prog: &CairoProgram<F>) -> [Vec<F>; COLUMNS] {
+        // 0: 1 row for final check CairoClaim gate
+        // 4i+1: 1 row per instruction for CairoInstruction gate
+        // 4i+2: 1 row per instruction for Flags argument
+        // 4i+3: 1 row per instruction for CairoTransition gate
+        // 4i+4: 1 row per instruction for Auxiliary gate (Zero)
+        // ...
+        // 4n-3: 1 row for last instruction
+        // 4n-2: 1 row for Auxiliary argument (no constraints)
+        let n = prog.trace().len();
+        let rows = 4 * n - 1;
+        let mut table: Vec<[F; COLUMNS]> = Vec::new();
+        table.resize(rows, [F::zero(); COLUMNS]);
+        for (i, inst) in prog.trace().iter().enumerate() {
+            if i == 0 {
+                let claim_wit = claim_witness(prog);
+                table[i] = claim_wit;
+            }
+            let ins_wit = instruction_witness(inst);
+            let flg_wit = flag_witness(inst);
+            table[4 * i + 1] = ins_wit;
+            table[4 * i + 2] = flg_wit;
+            if i != n - 1 {
+                // all but last instruction
+                let tra_wit = transition_witness(inst, &prog.trace()[i + 1]);
+                let aux_wit = auxiliary_witness(&prog.trace()[i + 1]);
+                table[4 * i + 3] = tra_wit;
+                table[4 * i + 4] = aux_wit;
+            }
+        }
+
+        let mut witness: [Vec<F>; COLUMNS] = Default::default();
+        for col in 0..COLUMNS {
+            // initialize column with zeroes
+            witness[col].resize(table.len(), F::zero());
+            for (row, wit) in table.iter().enumerate() {
+                witness[col][row] = wit[col];
+            }
+        }
+        witness
+    }
+
+    fn claim_witness<F: Field>(prog: &CairoProgram<F>) -> [F; COLUMNS] {
+        let last = prog.trace().len() - 1;
+        [
+            prog.ini().pc(),         // initial pc from public input
+            prog.ini().ap(),         // initial ap from public input
+            prog.fin().pc(),         // final pc from public input
+            prog.fin().ap(),         // final ap from public input
+            prog.trace()[last].pc(), // real last pc
+            prog.trace()[last].ap(), // real last ap
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+        ]
+    }
+
+    fn instruction_witness<F: Field>(inst: &CairoInstruction<F>) -> [F; COLUMNS] {
+        [
+            inst.pc(),
+            inst.ap(),
+            inst.fp(),
+            inst.size(),
+            inst.res(),
+            inst.dst(),
+            inst.op1(),
+            inst.op0(),
+            inst.off_dst(),
+            inst.off_op1(),
+            inst.off_op0(),
+            inst.adr_dst(),
+            inst.adr_op1(),
+            inst.adr_op0(),
+            inst.instr(),
+        ]
+    }
+
+    fn flag_witness<F: Field>(inst: &CairoInstruction<F>) -> [F; COLUMNS] {
+        [
+            inst.f_dst_fp(),
+            inst.f_op0_fp(),
+            inst.f_op1_val(),
+            inst.f_op1_fp(),
+            inst.f_op1_ap(),
+            inst.f_res_add(),
+            inst.f_res_mul(),
+            inst.f_pc_abs(),
+            inst.f_pc_rel(),
+            inst.f_pc_jnz(),
+            inst.f_ap_add(),
+            inst.f_ap_one(),
+            inst.f_opc_call(),
+            inst.f_opc_ret(),
+            inst.f_opc_aeq(),
+        ]
+    }
+
+    fn transition_witness<F: Field>(
+        curr: &CairoInstruction<F>,
+        next: &CairoInstruction<F>,
+    ) -> [F; COLUMNS] {
+        [
+            curr.pc(),
+            curr.ap(),
+            curr.fp(),
+            curr.size(),
+            curr.res(),
+            curr.dst(),
+            curr.op1(),
+            next.pc(),
+            next.ap(),
+            next.fp(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+        ]
+    }
+
+    fn auxiliary_witness<F: Field>(next: &CairoInstruction<F>) -> [F; COLUMNS] {
+        [
+            next.pc(),
+            next.ap(),
+            next.fp(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+        ]
+    }
+}
+
+pub mod testing {
+    use super::*;
 
     /// verifies that the Cairo gate constraints are solved by the witness depending on its type
-    pub fn ensure_cairo_gate(
-        &self,
+    pub fn ensure_cairo_gate<F: FftField>(
+        gate: &CircuitGate<F>,
         row: usize,
         witness: &[Vec<F>; COLUMNS],
         //_cs: &ConstraintSystem<F>,
@@ -415,22 +426,22 @@ impl<F: FftField> CircuitGate<F> {
         // assignments
         let this: [F; COLUMNS] = array_init(|i| witness[i][row]);
 
-        match self.typ {
+        match gate.typ {
             GateType::CairoClaim => {
                 let next: [F; COLUMNS] = array_init(|i| witness[i][row + 1]);
-                CircuitGate::ensure_claim(&this, &next) // CircuitGate::ensure_transition(&this),
+                ensure_claim(&this, &next) // CircuitGate::ensure_transition(&this),
             }
             GateType::CairoInstruction => {
                 let next: [F; COLUMNS] = array_init(|i| witness[i][row + 1]);
-                CircuitGate::ensure_instruction(&this, &next)
+                ensure_instruction(&this, &next)
             }
             GateType::CairoFlags => {
                 let next: [F; COLUMNS] = array_init(|i| witness[i][row + 1]);
-                CircuitGate::ensure_flags(&this, &next)
+                ensure_flags(&this, &next)
             }
             GateType::CairoTransition => {
                 let next: [F; COLUMNS] = array_init(|i| witness[i][row + 1]);
-                CircuitGate::ensure_transition(&this, &next)
+                ensure_transition(&this, &next)
             }
             GateType::Zero => Ok(()),
             _ => Err(
@@ -440,7 +451,7 @@ impl<F: FftField> CircuitGate<F> {
         }
     }
 
-    fn ensure_instruction(vars: &[F], flags: &[F]) -> Result<(), String> {
+    fn ensure_instruction<F: FftField>(vars: &[F], flags: &[F]) -> Result<(), String> {
         let pc = vars[0];
         let ap = vars[1];
         let fp = vars[2];
@@ -596,7 +607,7 @@ impl<F: FftField> CircuitGate<F> {
         Ok(())
     }
 
-    fn ensure_flags(curr: &[F], next: &[F]) -> Result<(), String> {
+    fn ensure_flags<F: FftField>(curr: &[F], next: &[F]) -> Result<(), String> {
         let f_pc_abs = curr[7];
         let f_pc_rel = curr[8];
         let f_pc_jnz = curr[9];
@@ -659,7 +670,7 @@ impl<F: FftField> CircuitGate<F> {
         Ok(())
     }
 
-    fn ensure_transition(curr: &[F], next: &[F]) -> Result<(), String> {
+    fn ensure_transition<F: FftField>(curr: &[F], next: &[F]) -> Result<(), String> {
         let pcup = curr[7];
         let apup = curr[8];
         let fpup = curr[9];
@@ -681,7 +692,7 @@ impl<F: FftField> CircuitGate<F> {
         Ok(())
     }
 
-    fn ensure_claim(claim: &[F], next: &[F]) -> Result<(), String> {
+    fn ensure_claim<F: FftField>(claim: &[F], next: &[F]) -> Result<(), String> {
         let pc_ini = claim[0];
         let ap_ini = claim[1];
         let pc_fin = claim[2];

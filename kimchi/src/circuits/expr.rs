@@ -414,7 +414,7 @@ impl Variable {
             Index(GateType::CairoClaim)
             | Index(GateType::CairoInstruction)
             | Index(GateType::CairoFlags)
-            | Index(GateType::CairoTransition) => panic!("TODO"),
+            | Index(GateType::CairoTransition) => todo!(),
             Coefficient(_) | LookupKindIndex(_) | Index(_) => {
                 Err("Cannot get index evaluation (should have been linearized away)")
             }

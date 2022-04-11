@@ -1,4 +1,4 @@
-use crate::circuits::lookup::lookups::JointLookup;
+use crate::circuits::lookup::lookups::{JointLookup, JointLookupValue};
 use serde::{
     de::{Error, IgnoredAny, MapAccess, SeqAccess},
     ser::SerializeStruct,
@@ -8,16 +8,16 @@ use serde_with::{de::DeserializeAsWrap, ser::SerializeAsWrap, DeserializeAs, Ser
 use std::fmt::Formatter;
 use std::marker::PhantomData;
 
-impl<F, G> SerializeAs<JointLookup<F>> for JointLookup<G>
+impl<F, G> SerializeAs<JointLookupValue<F>> for JointLookupValue<G>
 where
     G: SerializeAs<F>,
 {
-    fn serialize_as<S>(source: &JointLookup<F>, serializer: S) -> Result<S::Ok, S::Error>
+    fn serialize_as<S>(source: &JointLookupValue<F>, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         let mut s = serializer.serialize_struct("JointLookup", 2)?;
-        s.serialize_field("table_id", &source.table_id)?;
+        s.serialize_field("table_id", &SerializeAsWrap::<F, G>::new(&source.table_id))?;
         s.serialize_field(
             "entry",
             &SerializeAsWrap::<Vec<F>, Vec<G>>::new(&source.entry),
@@ -26,8 +26,10 @@ where
     }
 }
 
-impl<'de, F, G: DeserializeAs<'de, F>> DeserializeAs<'de, JointLookup<F>> for JointLookup<G> {
-    fn deserialize_as<D>(deserializer: D) -> Result<JointLookup<F>, D::Error>
+impl<'de, F, G: DeserializeAs<'de, F>> DeserializeAs<'de, JointLookupValue<F>>
+    for JointLookupValue<G>
+{
+    fn deserialize_as<D>(deserializer: D) -> Result<JointLookupValue<F>, D::Error>
     where
         D: Deserializer<'de>,
     {
@@ -87,15 +89,15 @@ impl<'de, F, G: DeserializeAs<'de, F>> DeserializeAs<'de, JointLookup<F>> for Jo
         where
             G: DeserializeAs<'de, F>,
         {
-            marker: PhantomData<JointLookup<F>>,
-            marker2: PhantomData<JointLookup<G>>,
+            marker: PhantomData<JointLookupValue<F>>,
+            marker2: PhantomData<JointLookupValue<G>>,
             lifetime: PhantomData<&'de ()>,
         }
         impl<'de, F, G> serde::de::Visitor<'de> for Visitor<'de, F, G>
         where
             G: DeserializeAs<'de, F>,
         {
-            type Value = JointLookup<F>;
+            type Value = JointLookupValue<F>;
             fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
                 Formatter::write_str(formatter, "struct JointLookup")
             }
@@ -104,8 +106,8 @@ impl<'de, F, G: DeserializeAs<'de, F>> DeserializeAs<'de, JointLookup<F>> for Jo
             where
                 A: SeqAccess<'de>,
             {
-                let field0 = match SeqAccess::next_element::<i32>(&mut seq)? {
-                    Some(value) => value,
+                let field0 = match SeqAccess::next_element::<DeserializeAsWrap<F, G>>(&mut seq)? {
+                    Some(value) => value.into_inner(),
                     None => {
                         return Err(Error::invalid_length(
                             0usize,
@@ -133,7 +135,7 @@ impl<'de, F, G: DeserializeAs<'de, F>> DeserializeAs<'de, JointLookup<F>> for Jo
             where
                 A: MapAccess<'de>,
             {
-                let mut field0: Option<i32> = None;
+                let mut field0: Option<F> = None;
                 let mut field1: Option<Vec<F>> = None;
                 while let Some(key) = MapAccess::next_key::<Field>(&mut map)? {
                     match key {
@@ -141,7 +143,10 @@ impl<'de, F, G: DeserializeAs<'de, F>> DeserializeAs<'de, JointLookup<F>> for Jo
                             if Option::is_some(&field0) {
                                 return Err(A::Error::duplicate_field("table_id"));
                             }
-                            field0 = Some(MapAccess::next_value::<i32>(&mut map)?);
+                            field0 = Some(
+                                MapAccess::next_value::<DeserializeAsWrap<F, G>>(&mut map)?
+                                    .into_inner(),
+                            );
                         }
                         Field::field1 => {
                             if Option::is_some(&field1) {
@@ -179,8 +184,8 @@ impl<'de, F, G: DeserializeAs<'de, F>> DeserializeAs<'de, JointLookup<F>> for Jo
             "JointLookup",
             FIELDS,
             Visitor {
-                marker: PhantomData::<JointLookup<F>>,
-                marker2: PhantomData::<JointLookup<G>>,
+                marker: PhantomData::<JointLookupValue<F>>,
+                marker2: PhantomData::<JointLookupValue<G>>,
                 lifetime: PhantomData,
             },
         )
