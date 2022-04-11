@@ -411,6 +411,10 @@ impl Variable {
             LookupTable => l.map(|l| l.table),
             Index(GateType::Poseidon) => Ok(evals.poseidon_selector),
             Index(GateType::Generic) => Ok(evals.generic_selector),
+            Index(GateType::CairoClaim)
+            | Index(GateType::CairoInstruction)
+            | Index(GateType::CairoFlags)
+            | Index(GateType::CairoTransition) => todo!(),
             Coefficient(_) | LookupKindIndex(_) | Index(_) => {
                 Err("Cannot get index evaluation (should have been linearized away)")
             }
@@ -2120,7 +2124,7 @@ pub fn witness<F>(i: usize, row: CurrOrNext) -> E<F> {
     E::<F>::cell(Column::Witness(i), row)
 }
 
-/// Same as [witness] but for the next row.
+/// Same as [witness] but for the current row.
 pub fn witness_curr<F>(i: usize) -> E<F> {
     witness(i, CurrOrNext::Curr)
 }

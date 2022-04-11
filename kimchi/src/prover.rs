@@ -457,7 +457,6 @@ where
                         index_evals.insert(*g, &c[i]);
                     }
                 });
-
             Environment {
                 constants: Constants {
                     alpha,
