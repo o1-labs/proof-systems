@@ -82,11 +82,17 @@ pub enum GateType {
     ChaCha1 = 8,
     ChaCha2 = 9,
     ChaChaFinal = 10,
+    // Lookup
     Lookup = 11,
-    /// Foreign field multiplication (reserving 12-20)
-    ForeignMul0 = 12,
-    ForeignMul1 = 13,
-    ForeignMul2 = 14,
+    /// Cairo
+    CairoClaim = 12,
+    CairoInstruction = 13,
+    CairoFlags = 14,
+    CairoTransition = 15,
+    // Foreign field multiplication (16-24)
+    ForeignMul0 = 16,
+    ForeignMul1 = 17,
+    ForeignMul2 = 18,
 }
 
 #[serde_as]
@@ -130,7 +136,7 @@ impl<F: FftField> CircuitGate<F> {
     }
 
     /// This function verifies the consistency of the wire
-    /// assignements (witness) against the constraints
+    /// assignments (witness) against the constraints
     pub fn verify(
         &self,
         row: usize,
@@ -150,6 +156,9 @@ impl<F: FftField> CircuitGate<F> {
             ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => Ok(()),
             // TODO: implement the verification for the lookup gate
             Lookup => Ok(()),
+            CairoClaim | CairoInstruction | CairoFlags | CairoTransition => {
+                self.verify_cairo_gate(row, witness, cs)
+            }
             ForeignMul0 | ForeignMul1 | ForeignMul2 => self.verify_foreign_mul(row, witness, cs),
         }
     }

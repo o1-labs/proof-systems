@@ -28,6 +28,7 @@ serde_with = "1.10.0"
 thiserror = "1.0.30"
 hex = "0.4"
 
+cairo = { path = "../cairo" }
 commitment_dlog = { path = "../poly-commitment" }
 groupmap = { path = "../groupmap" }
 mina-curves = { path = "../curves" }

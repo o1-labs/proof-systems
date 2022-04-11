@@ -1328,7 +1328,7 @@ pub struct LookupEvaluations<Field> {
     pub table: Field,
 }
 
-// TODO: this should really be vectors here, perhaps create another type for chuncked evaluations?
+// TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
 #[derive(Clone)]
 pub struct ProofEvaluations<Field> {
     /// witness polynomials
