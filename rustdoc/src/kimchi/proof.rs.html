@@ -299,6 +299,7 @@
 <span id="294">294</span>
 <span id="295">295</span>
 <span id="296">296</span>
+<span id="297">297</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the data structures of a proof.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::wires</span>::{<span class="ident">COLUMNS</span>, <span class="ident">PERMUTS</span>};
@@ -321,7 +322,7 @@
     <span class="kw">pub</span> <span class="ident">table</span>: <span class="ident">Field</span>,
 }
 
-<span class="comment">// TODO: this should really be vectors here, perhaps create another type for chuncked evaluations?</span>
+<span class="comment">// TODO: this should really be vectors here, perhaps create another type for chunked evaluations?</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProofEvaluations</span><span class="op">&lt;</span><span class="ident">Field</span><span class="op">&gt;</span> {
     <span class="doccomment">/// witness polynomials</span>
@@ -542,6 +543,7 @@
                 <span class="ident">pe</span>.<span class="ident">s</span>[<span class="number">4</span>].<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
                 <span class="ident">pe</span>.<span class="ident">s</span>[<span class="number">5</span>].<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
             );
+
             <span class="self">Self</span> {
                 <span class="ident">w</span>,
                 <span class="ident">z</span>: <span class="ident">pe</span>.<span class="ident">z</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
@@ -596,5 +598,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (8f36334ca 2022-04-06)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (1f7fb6413 2022-04-10)" ></div>
 </body></html>

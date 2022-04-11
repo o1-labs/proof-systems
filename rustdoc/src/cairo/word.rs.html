@@ -308,16 +308,6 @@
 <span id="303">303</span>
 <span id="304">304</span>
 <span id="305">305</span>
-<span id="306">306</span>
-<span id="307">307</span>
-<span id="308">308</span>
-<span id="309">309</span>
-<span id="310">310</span>
-<span id="311">311</span>
-<span id="312">312</span>
-<span id="313">313</span>
-<span id="314">314</span>
-<span id="315">315</span>
 </pre><pre class="rust"><code><span class="doccomment">//! The Cairo language works natively for field elements in the finite field with</span>
 <span class="doccomment">//! modulus 0x800000000000011000000000000000000000000000000000000000000000001</span>
 <span class="doccomment">//! This is the hexadecimal value for 2 ^ 251 + 17 * 2 ^ 192 + 1</span>
@@ -348,10 +338,15 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">word</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
         <span class="self">self</span>.<span class="number">0</span>
     }
+
+    <span class="doccomment">/// Returns i-th bit-flag</span>
+    <span class="kw">fn</span> <span class="ident">flag_at</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">pos</span>: <span class="ident">usize</span>) -&gt; <span class="ident">F</span> {
+        <span class="self">self</span>.<span class="ident">word</span>().<span class="ident">to_bits</span>()[<span class="ident">POS_FLAGS</span> <span class="op">+</span> <span class="ident">pos</span>].<span class="ident">into</span>()
+    }
 }
 
-<span class="doccomment">/// This trait contains methods that decompose a field element into [CairoWord] components</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Decomposition</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+<span class="doccomment">/// This trait contains methods to obtain the offset decomposition of a [CairoWord]</span>
+<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Offsets</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Returns the destination offset in biased representation</span>
     <span class="kw">fn</span> <span class="ident">off_dst</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span>;
 
@@ -360,13 +355,10 @@
 
     <span class="doccomment">/// Returns the second operand offset in biased representation</span>
     <span class="kw">fn</span> <span class="ident">off_op1</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span>;
+}
 
-    <span class="doccomment">/// Returns vector of 16 flags</span>
-    <span class="kw">fn</span> <span class="ident">flags</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>;
-
-    <span class="doccomment">/// Returns i-th bit-flag</span>
-    <span class="kw">fn</span> <span class="ident">flag_at</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">pos</span>: <span class="ident">usize</span>) -&gt; <span class="ident">F</span>;
-
+<span class="doccomment">/// This trait contains methods that decompose a field element into [CairoWord] flagbits</span>
+<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">FlagBits</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Returns bit-flag for destination register as `F`</span>
     <span class="kw">fn</span> <span class="ident">f_dst_fp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span>;
 
@@ -414,7 +406,10 @@
 
     <span class="doccomment">/// Returns bit-flag for 16th position</span>
     <span class="kw">fn</span> <span class="ident">f15</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span>;
+}
 
+<span class="doccomment">/// This trait contains methods that decompose a field element into [CairoWord] flagsets</span>
+<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">FlagSets</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Returns flagset for destination register</span>
     <span class="kw">fn</span> <span class="ident">dst_reg</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u8</span>;
 
@@ -437,35 +432,24 @@
     <span class="kw">fn</span> <span class="ident">opcode</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u8</span>;
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span> <span class="ident">Decomposition</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CairoWord</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span> <span class="ident">Offsets</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CairoWord</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="kw">fn</span> <span class="ident">off_dst</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
         <span class="comment">// The least significant 16 bits</span>
-        <span class="ident">bias</span>(<span class="self">self</span>.<span class="ident">word</span>().<span class="ident">chunk_u16</span>(<span class="ident">POS_DST</span>))
+        <span class="ident">bias</span>(<span class="self">self</span>.<span class="ident">word</span>().<span class="ident">u16_chunk</span>(<span class="ident">POS_DST</span>))
     }
 
     <span class="kw">fn</span> <span class="ident">off_op0</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
         <span class="comment">// From the 32nd bit to the 17th</span>
-        <span class="ident">bias</span>(<span class="self">self</span>.<span class="ident">word</span>().<span class="ident">chunk_u16</span>(<span class="ident">POS_OP0</span>))
+        <span class="ident">bias</span>(<span class="self">self</span>.<span class="ident">word</span>().<span class="ident">u16_chunk</span>(<span class="ident">POS_OP0</span>))
     }
 
     <span class="kw">fn</span> <span class="ident">off_op1</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
         <span class="comment">// From the 48th bit to the 33rd</span>
-        <span class="ident">bias</span>(<span class="self">self</span>.<span class="ident">word</span>().<span class="ident">chunk_u16</span>(<span class="ident">POS_OP1</span>))
+        <span class="ident">bias</span>(<span class="self">self</span>.<span class="ident">word</span>().<span class="ident">u16_chunk</span>(<span class="ident">POS_OP1</span>))
     }
+}
 
-    <span class="kw">fn</span> <span class="ident">flags</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">flags</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">NUM_FLAGS</span>);
-        <span class="comment">// The most significant 16 bits</span>
-        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">NUM_FLAGS</span> {
-            <span class="ident">flags</span>.<span class="ident">push</span>(<span class="self">self</span>.<span class="ident">flag_at</span>(<span class="ident">i</span>));
-        }
-        <span class="ident">flags</span>
-    }
-
-    <span class="kw">fn</span> <span class="ident">flag_at</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">pos</span>: <span class="ident">usize</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">word</span>().<span class="ident">to_bits</span>()[<span class="ident">POS_FLAGS</span> <span class="op">+</span> <span class="ident">pos</span>].<span class="ident">into</span>()
-    }
-
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span> <span class="ident">FlagBits</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CairoWord</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="kw">fn</span> <span class="ident">f_dst_fp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
         <span class="self">self</span>.<span class="ident">flag_at</span>(<span class="number">0</span>)
     }
@@ -529,53 +513,49 @@
     <span class="kw">fn</span> <span class="ident">f15</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
         <span class="self">self</span>.<span class="ident">flag_at</span>(<span class="number">15</span>)
     }
+}
 
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span> <span class="ident">FlagSets</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CairoWord</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="kw">fn</span> <span class="ident">dst_reg</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u8</span> {
         <span class="comment">// dst_reg = fDST_REG</span>
-        <span class="self">self</span>.<span class="ident">f_dst_fp</span>().<span class="ident">least_significant_byte</span>()
+        <span class="self">self</span>.<span class="ident">f_dst_fp</span>().<span class="ident">lsb</span>()
     }
 
     <span class="kw">fn</span> <span class="ident">op0_reg</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u8</span> {
         <span class="comment">// op0_reg = fOP0_REG</span>
-        <span class="self">self</span>.<span class="ident">f_op0_fp</span>().<span class="ident">least_significant_byte</span>()
+        <span class="self">self</span>.<span class="ident">f_op0_fp</span>().<span class="ident">lsb</span>()
     }
 
     <span class="kw">fn</span> <span class="ident">op1_src</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u8</span> {
         <span class="comment">// op1_src = 4*fOP1_AP + 2*fOP1_FP + fOP1_VAL</span>
-        <span class="number">2</span> <span class="op">*</span> (<span class="number">2</span> <span class="op">*</span> <span class="self">self</span>.<span class="ident">f_op1_ap</span>().<span class="ident">least_significant_byte</span>()
-            <span class="op">+</span> <span class="self">self</span>.<span class="ident">f_op1_fp</span>().<span class="ident">least_significant_byte</span>())
-            <span class="op">+</span> <span class="self">self</span>.<span class="ident">f_op1_val</span>().<span class="ident">least_significant_byte</span>()
+        <span class="number">2</span> <span class="op">*</span> (<span class="number">2</span> <span class="op">*</span> <span class="self">self</span>.<span class="ident">f_op1_ap</span>().<span class="ident">lsb</span>() <span class="op">+</span> <span class="self">self</span>.<span class="ident">f_op1_fp</span>().<span class="ident">lsb</span>()) <span class="op">+</span> <span class="self">self</span>.<span class="ident">f_op1_val</span>().<span class="ident">lsb</span>()
     }
 
     <span class="kw">fn</span> <span class="ident">res_log</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u8</span> {
         <span class="comment">// res_log = 2*fRES_MUL + fRES_ADD</span>
-        <span class="number">2</span> <span class="op">*</span> <span class="self">self</span>.<span class="ident">f_res_mul</span>().<span class="ident">least_significant_byte</span>() <span class="op">+</span> <span class="self">self</span>.<span class="ident">f_res_add</span>().<span class="ident">least_significant_byte</span>()
+        <span class="number">2</span> <span class="op">*</span> <span class="self">self</span>.<span class="ident">f_res_mul</span>().<span class="ident">lsb</span>() <span class="op">+</span> <span class="self">self</span>.<span class="ident">f_res_add</span>().<span class="ident">lsb</span>()
     }
 
     <span class="kw">fn</span> <span class="ident">pc_up</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u8</span> {
         <span class="comment">// pc_up = 4*fPC_JNZ + 2*fPC_REL + fPC_ABS</span>
-        <span class="number">2</span> <span class="op">*</span> (<span class="number">2</span> <span class="op">*</span> <span class="self">self</span>.<span class="ident">f_pc_jnz</span>().<span class="ident">least_significant_byte</span>()
-            <span class="op">+</span> <span class="self">self</span>.<span class="ident">f_pc_rel</span>().<span class="ident">least_significant_byte</span>())
-            <span class="op">+</span> <span class="self">self</span>.<span class="ident">f_pc_abs</span>().<span class="ident">least_significant_byte</span>()
+        <span class="number">2</span> <span class="op">*</span> (<span class="number">2</span> <span class="op">*</span> <span class="self">self</span>.<span class="ident">f_pc_jnz</span>().<span class="ident">lsb</span>() <span class="op">+</span> <span class="self">self</span>.<span class="ident">f_pc_rel</span>().<span class="ident">lsb</span>()) <span class="op">+</span> <span class="self">self</span>.<span class="ident">f_pc_abs</span>().<span class="ident">lsb</span>()
     }
 
     <span class="kw">fn</span> <span class="ident">ap_up</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u8</span> {
         <span class="comment">// ap_up = 2*fAP_ONE + fAP_ADD</span>
-        <span class="number">2</span> <span class="op">*</span> <span class="self">self</span>.<span class="ident">f_ap_one</span>().<span class="ident">least_significant_byte</span>() <span class="op">+</span> <span class="self">self</span>.<span class="ident">f_ap_add</span>().<span class="ident">least_significant_byte</span>()
+        <span class="number">2</span> <span class="op">*</span> <span class="self">self</span>.<span class="ident">f_ap_one</span>().<span class="ident">lsb</span>() <span class="op">+</span> <span class="self">self</span>.<span class="ident">f_ap_add</span>().<span class="ident">lsb</span>()
     }
 
     <span class="kw">fn</span> <span class="ident">opcode</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u8</span> {
         <span class="comment">// opcode = 4*fOPC_AEQ + 2*fOPC_RET + fOPC_CALL</span>
-        <span class="number">2</span> <span class="op">*</span> (<span class="number">2</span> <span class="op">*</span> <span class="self">self</span>.<span class="ident">f_opc_aeq</span>().<span class="ident">least_significant_byte</span>()
-            <span class="op">+</span> <span class="self">self</span>.<span class="ident">f_opc_ret</span>().<span class="ident">least_significant_byte</span>())
-            <span class="op">+</span> <span class="self">self</span>.<span class="ident">f_opc_call</span>().<span class="ident">least_significant_byte</span>()
+        <span class="number">2</span> <span class="op">*</span> (<span class="number">2</span> <span class="op">*</span> <span class="self">self</span>.<span class="ident">f_opc_aeq</span>().<span class="ident">lsb</span>() <span class="op">+</span> <span class="self">self</span>.<span class="ident">f_opc_ret</span>().<span class="ident">lsb</span>()) <span class="op">+</span> <span class="self">self</span>.<span class="ident">f_opc_call</span>().<span class="ident">lsb</span>()
     }
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span> {
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::flags</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::word::Decomposition</span>;
+    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::word</span>::{<span class="ident">FlagBits</span>, <span class="ident">FlagSets</span>, <span class="ident">Offsets</span>};
     <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">One</span>, <span class="ident">Zero</span>};
     <span class="kw">use</span> <span class="ident">mina_curves::pasta::fp::Fp</span> <span class="kw">as</span> <span class="ident">F</span>;
 
@@ -634,5 +614,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="cairo" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (8f36334ca 2022-04-06)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="cairo" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (1f7fb6413 2022-04-10)" ></div>
 </body></html>

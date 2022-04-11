@@ -2225,6 +2225,10 @@
 <span id="2220">2220</span>
 <span id="2221">2221</span>
 <span id="2222">2222</span>
+<span id="2223">2223</span>
+<span id="2224">2224</span>
+<span id="2225">2225</span>
+<span id="2226">2226</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">circuits</span>::{
         <span class="ident">constraints::eval_vanishes_on_last_4_rows</span>,
@@ -2638,6 +2642,10 @@
             <span class="ident">LookupTable</span> =&gt; <span class="ident">l</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">l</span><span class="op">|</span> <span class="ident">l</span>.<span class="ident">table</span>),
             <span class="ident">Index</span>(<span class="ident">GateType::Poseidon</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">evals</span>.<span class="ident">poseidon_selector</span>),
             <span class="ident">Index</span>(<span class="ident">GateType::Generic</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">evals</span>.<span class="ident">generic_selector</span>),
+            <span class="ident">Index</span>(<span class="ident">GateType::CairoClaim</span>)
+            <span class="op">|</span> <span class="ident">Index</span>(<span class="ident">GateType::CairoInstruction</span>)
+            <span class="op">|</span> <span class="ident">Index</span>(<span class="ident">GateType::CairoFlags</span>)
+            <span class="op">|</span> <span class="ident">Index</span>(<span class="ident">GateType::CairoTransition</span>) =&gt; <span class="macro">todo!</span>(),
             <span class="ident">Coefficient</span>(<span class="kw">_</span>) <span class="op">|</span> <span class="ident">LookupKindIndex</span>(<span class="kw">_</span>) <span class="op">|</span> <span class="ident">Index</span>(<span class="kw">_</span>) =&gt; {
                 <span class="prelude-val">Err</span>(<span class="string">&quot;Cannot get index evaluation (should have been linearized away)&quot;</span>)
             }
@@ -4347,7 +4355,7 @@
     <span class="ident">E</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::cell</span>(<span class="ident">Column::Witness</span>(<span class="ident">i</span>), <span class="ident">row</span>)
 }
 
-<span class="doccomment">/// Same as [witness] but for the next row.</span>
+<span class="doccomment">/// Same as [witness] but for the current row.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">witness_curr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">i</span>: <span class="ident">usize</span>) -&gt; <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="ident">witness</span>(<span class="ident">i</span>, <span class="ident">CurrOrNext::Curr</span>)
 }
@@ -4448,5 +4456,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (8f36334ca 2022-04-06)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (1f7fb6413 2022-04-10)" ></div>
 </body></html>
