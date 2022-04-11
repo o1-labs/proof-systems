@@ -1341,7 +1341,8 @@ pub struct ProofEvaluations<Field> {
     /// evaluation of the poseidon selector polynomial
     pub poseidon_selector: Field,
     /// evaluation of the cairo selector polynomial
-    pub cairo_selector: Option<[Field; turshi::CIRCUIT_GATE_COUNT]>,
+    pub cairo_selector: Option<[Field; TURSHI_GATE_COUNT]>,
+
 }
 
 /// Commitments linked to the lookup feature
