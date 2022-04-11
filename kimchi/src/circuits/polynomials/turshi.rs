@@ -227,6 +227,7 @@ impl<F: FftField> CircuitGate<F> {
             generic_selector: F::zero(),
             poseidon_selector: F::zero(),
             lookup: None,
+            foreign_mul_selector: vec![F::zero(), F::zero(), F::zero()],
         };
         let evals = vec![eval(curr), eval(next)];
 
@@ -238,6 +239,7 @@ impl<F: FftField> CircuitGate<F> {
             joint_combiner: F::rand(rng),
             endo_coefficient: cs.endo,
             mds: vec![],
+            foreign_modulus: vec![],
         };
 
         let pt = F::rand(rng);
