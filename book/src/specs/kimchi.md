@@ -1206,7 +1206,7 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     /// Chacha polynomial commitments
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub chacha_comm: Option<[PolyComm<G>; 4]>,
-    
+
     // Cairo polynomial commitment
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub cairo_comm: Option<[PolyComm<G>; TURSHI_GATE_COUNT]>,
@@ -1342,7 +1342,6 @@ pub struct ProofEvaluations<Field> {
     pub poseidon_selector: Field,
     /// evaluation of the cairo selector polynomial
     pub cairo_selector: Option<[Field; TURSHI_GATE_COUNT]>,
-
 }
 
 /// Commitments linked to the lookup feature
