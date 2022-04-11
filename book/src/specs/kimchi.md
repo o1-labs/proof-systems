@@ -1206,6 +1206,10 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     /// Chacha polynomial commitments
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub chacha_comm: Option<[PolyComm<G>; 4]>,
+    
+    // Cairo polynomial commitment
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub cairo_comm: Option<[PolyComm<G>; TURSHI_GATE_COUNT]>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -1336,6 +1340,8 @@ pub struct ProofEvaluations<Field> {
     pub generic_selector: Field,
     /// evaluation of the poseidon selector polynomial
     pub poseidon_selector: Field,
+    /// evaluation of the cairo selector polynomial
+    pub cairo_selector: Option<[Field; turshi::CIRCUIT_GATE_COUNT]>,
 }
 
 /// Commitments linked to the lookup feature

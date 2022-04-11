@@ -97,9 +97,19 @@ use rand::SeedableRng;
 use std::marker::PhantomData;
 
 const NUM_FLAGS: usize = 16;
-pub const CIRCUIT_GATE_COUNT: usize = 4;
+pub const TURSHI_GATE_COUNT: usize = 4;
 
 // GATE-RELATED
+
+fn gate_type_to_selector<F: FftField>(typ: GateType) -> [F; TURSHI_GATE_COUNT] {
+    match typ {
+        GateType::CairoClaim => [F::one(), F::zero(), F::zero(), F::zero()],
+        GateType::CairoInstruction => [F::zero(), F::one(), F::zero(), F::zero()],
+        GateType::CairoFlags => [F::zero(), F::zero(), F::one(), F::zero()],
+        GateType::CairoTransition => [F::zero(), F::zero(), F::zero(), F::one()],
+        _ => [F::zero(); TURSHI_GATE_COUNT],
+    }
+}
 
 impl<F: FftField> CircuitGate<F> {
     /// This function creates a CairoClaim gate
@@ -180,6 +190,15 @@ impl<F: FftField> CircuitGate<F> {
         (gates, next)
     }
 
+    /// determines if `Self` is a Cairo gate
+    pub fn is_cairo(&self) -> bool {
+        use GateType::*;
+        matches!(
+            self.typ,
+            CairoClaim | CairoInstruction | CairoFlags | CairoTransition
+        )
+    }
+
     /// verifies that the Cairo gate constraints are solved by the witness depending on its type
     pub fn verify_cairo_gate(
         &self,
@@ -226,6 +245,7 @@ impl<F: FftField> CircuitGate<F> {
             s: array_init(|_| F::rand(rng)),
             generic_selector: F::zero(),
             poseidon_selector: F::zero(),
+            cairo_selector: Some(gate_type_to_selector::<F>(self.typ)),
             lookup: None,
         };
         let evals = vec![eval(curr), eval(next)];

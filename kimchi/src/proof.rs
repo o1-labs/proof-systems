@@ -1,5 +1,6 @@
 //! This module implements the data structures of a proof.
 
+use crate::circuits::polynomials::turshi::TURSHI_GATE_COUNT;
 use crate::circuits::wires::{COLUMNS, PERMUTS};
 use ark_ec::AffineCurve;
 use ark_ff::{FftField, Zero};
@@ -36,6 +37,8 @@ pub struct ProofEvaluations<Field> {
     pub generic_selector: Field,
     /// evaluation of the poseidon selector polynomial
     pub poseidon_selector: Field,
+    /// evaluation of the cairo selector polynomial
+    pub cairo_selector: Option<[Field; TURSHI_GATE_COUNT]>,
 }
 
 /// Commitments linked to the lookup feature
@@ -91,6 +94,7 @@ impl<F: Zero> ProofEvaluations<F> {
             lookup: None,
             generic_selector: F::zero(),
             poseidon_selector: F::zero(),
+            cairo_selector: None,
         }
     }
 }
@@ -112,6 +116,10 @@ impl<F: FftField> ProofEvaluations<Vec<F>> {
             }),
             generic_selector: DensePolynomial::eval_polynomial(&self.generic_selector, pt),
             poseidon_selector: DensePolynomial::eval_polynomial(&self.poseidon_selector, pt),
+            cairo_selector: self
+                .cairo_selector
+                .as_ref()
+                .map(|c| array_init(|i| DensePolynomial::eval_polynomial(&c[i], pt))),
         }
     }
 }
@@ -204,6 +212,7 @@ pub mod caml {
         ),
         pub generic_selector: Vec<CamlF>,
         pub poseidon_selector: Vec<CamlF>,
+        pub cairo_selector: Option<(Vec<CamlF>, Vec<CamlF>, Vec<CamlF>, Vec<CamlF>)>,
     }
 
     //
@@ -241,13 +250,25 @@ pub mod caml {
                 pe.s[4].iter().cloned().map(Into::into).collect(),
                 pe.s[5].iter().cloned().map(Into::into).collect(),
             );
-
+            let cairo_selector = {
+                if let Some(c) = pe.cairo_selector {
+                    Some((
+                        c[0].iter().cloned().map(Into::into).collect(),
+                        c[1].iter().cloned().map(Into::into).collect(),
+                        c[2].iter().cloned().map(Into::into).collect(),
+                        c[3].iter().cloned().map(Into::into).collect(),
+                    ))
+                } else {
+                    None
+                }
+            };
             Self {
                 w,
                 z: pe.z.into_iter().map(Into::into).collect(),
                 s,
                 generic_selector: pe.generic_selector.into_iter().map(Into::into).collect(),
                 poseidon_selector: pe.poseidon_selector.into_iter().map(Into::into).collect(),
+                cairo_selector,
             }
         }
     }
@@ -283,6 +304,18 @@ pub mod caml {
                 cpe.s.4.into_iter().map(Into::into).collect(),
                 cpe.s.5.into_iter().map(Into::into).collect(),
             ];
+            let cairo_selector = {
+                if let Some(c) = cpe.cairo_selector {
+                    Some([
+                        c.0.into_iter().map(Into::into).collect(),
+                        c.1.into_iter().map(Into::into).collect(),
+                        c.2.into_iter().map(Into::into).collect(),
+                        c.3.into_iter().map(Into::into).collect(),
+                    ])
+                } else {
+                    None
+                }
+            };
 
             Self {
                 w,
@@ -291,6 +324,7 @@ pub mod caml {
                 lookup: None,
                 generic_selector: cpe.generic_selector.into_iter().map(Into::into).collect(),
                 poseidon_selector: cpe.poseidon_selector.into_iter().map(Into::into).collect(),
+                cairo_selector,
             }
         }
     }
