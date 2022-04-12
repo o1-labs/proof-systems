@@ -29,6 +29,7 @@ use std::{
     sync::Arc,
 };
 
+//~spec:startcode
 #[serde_as]
 #[derive(Serialize, Deserialize)]
 pub struct LookupVerifierIndex<G: CommitmentCurve> {
@@ -49,7 +50,6 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 
 #[serde_as]
 #[derive(Serialize, Deserialize)]
-//~spec:startcode
 pub struct VerifierIndex<G: CommitmentCurve> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]

@@ -28,10 +28,15 @@ impl<F: Field> CairoWord<F> {
     pub fn word(&self) -> F {
         self.0
     }
+
+    /// Returns i-th bit-flag
+    fn flag_at(&self, pos: usize) -> F {
+        self.word().to_bits()[POS_FLAGS + pos].into()
+    }
 }
 
-/// This trait contains methods that decompose a field element into [CairoWord] components
-pub trait Decomposition<F> {
+/// This trait contains methods to obtain the offset decomposition of a [CairoWord]
+pub trait Offsets<F> {
     /// Returns the destination offset in biased representation
     fn off_dst(&self) -> F;
 
@@ -40,13 +45,10 @@ pub trait Decomposition<F> {
 
     /// Returns the second operand offset in biased representation
     fn off_op1(&self) -> F;
+}
 
-    /// Returns vector of 16 flags
-    fn flags(&self) -> Vec<F>;
-
-    /// Returns i-th bit-flag
-    fn flag_at(&self, pos: usize) -> F;
-
+/// This trait contains methods that decompose a field element into [CairoWord] flagbits
+pub trait FlagBits<F> {
     /// Returns bit-flag for destination register as `F`
     fn f_dst_fp(&self) -> F;
 
@@ -94,7 +96,10 @@ pub trait Decomposition<F> {
 
     /// Returns bit-flag for 16th position
     fn f15(&self) -> F;
+}
 
+/// This trait contains methods that decompose a field element into [CairoWord] flagsets
+pub trait FlagSets<F> {
     /// Returns flagset for destination register
     fn dst_reg(&self) -> u8;
 
@@ -117,35 +122,24 @@ pub trait Decomposition<F> {
     fn opcode(&self) -> u8;
 }
 
-impl<F: Field> Decomposition<F> for CairoWord<F> {
+impl<F: Field> Offsets<F> for CairoWord<F> {
     fn off_dst(&self) -> F {
         // The least significant 16 bits
-        bias(self.word().chunk_u16(POS_DST))
+        bias(self.word().u16_chunk(POS_DST))
     }
 
     fn off_op0(&self) -> F {
         // From the 32nd bit to the 17th
-        bias(self.word().chunk_u16(POS_OP0))
+        bias(self.word().u16_chunk(POS_OP0))
     }
 
     fn off_op1(&self) -> F {
         // From the 48th bit to the 33rd
-        bias(self.word().chunk_u16(POS_OP1))
+        bias(self.word().u16_chunk(POS_OP1))
     }
+}
 
-    fn flags(&self) -> Vec<F> {
-        let mut flags = Vec::with_capacity(NUM_FLAGS);
-        // The most significant 16 bits
-        for i in 0..NUM_FLAGS {
-            flags.push(self.flag_at(i));
-        }
-        flags
-    }
-
-    fn flag_at(&self, pos: usize) -> F {
-        self.word().to_bits()[POS_FLAGS + pos].into()
-    }
-
+impl<F: Field> FlagBits<F> for CairoWord<F> {
     fn f_dst_fp(&self) -> F {
         self.flag_at(0)
     }
@@ -209,53 +203,49 @@ impl<F: Field> Decomposition<F> for CairoWord<F> {
     fn f15(&self) -> F {
         self.flag_at(15)
     }
+}
 
+impl<F: Field> FlagSets<F> for CairoWord<F> {
     fn dst_reg(&self) -> u8 {
         // dst_reg = fDST_REG
-        self.f_dst_fp().least_significant_byte()
+        self.f_dst_fp().lsb()
     }
 
     fn op0_reg(&self) -> u8 {
         // op0_reg = fOP0_REG
-        self.f_op0_fp().least_significant_byte()
+        self.f_op0_fp().lsb()
     }
 
     fn op1_src(&self) -> u8 {
         // op1_src = 4*fOP1_AP + 2*fOP1_FP + fOP1_VAL
-        2 * (2 * self.f_op1_ap().least_significant_byte()
-            + self.f_op1_fp().least_significant_byte())
-            + self.f_op1_val().least_significant_byte()
+        2 * (2 * self.f_op1_ap().lsb() + self.f_op1_fp().lsb()) + self.f_op1_val().lsb()
     }
 
     fn res_log(&self) -> u8 {
         // res_log = 2*fRES_MUL + fRES_ADD
-        2 * self.f_res_mul().least_significant_byte() + self.f_res_add().least_significant_byte()
+        2 * self.f_res_mul().lsb() + self.f_res_add().lsb()
     }
 
     fn pc_up(&self) -> u8 {
         // pc_up = 4*fPC_JNZ + 2*fPC_REL + fPC_ABS
-        2 * (2 * self.f_pc_jnz().least_significant_byte()
-            + self.f_pc_rel().least_significant_byte())
-            + self.f_pc_abs().least_significant_byte()
+        2 * (2 * self.f_pc_jnz().lsb() + self.f_pc_rel().lsb()) + self.f_pc_abs().lsb()
     }
 
     fn ap_up(&self) -> u8 {
         // ap_up = 2*fAP_ONE + fAP_ADD
-        2 * self.f_ap_one().least_significant_byte() + self.f_ap_add().least_significant_byte()
+        2 * self.f_ap_one().lsb() + self.f_ap_add().lsb()
     }
 
     fn opcode(&self) -> u8 {
         // opcode = 4*fOPC_AEQ + 2*fOPC_RET + fOPC_CALL
-        2 * (2 * self.f_opc_aeq().least_significant_byte()
-            + self.f_opc_ret().least_significant_byte())
-            + self.f_opc_call().least_significant_byte()
+        2 * (2 * self.f_opc_aeq().lsb() + self.f_opc_ret().lsb()) + self.f_opc_call().lsb()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::flags::*;
-    use crate::word::Decomposition;
+    use crate::word::{FlagBits, FlagSets, Offsets};
     use ark_ff::{One, Zero};
     use mina_curves::pasta::fp::Fp as F;
 
