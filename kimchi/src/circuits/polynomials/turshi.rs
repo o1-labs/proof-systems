@@ -96,6 +96,8 @@ use rand::prelude::StdRng;
 use rand::SeedableRng;
 use std::marker::PhantomData;
 
+use super::foreign_mul;
+
 const NUM_FLAGS: usize = 16;
 pub const CIRCUIT_GATE_COUNT: usize = 4;
 
@@ -227,7 +229,7 @@ impl<F: FftField> CircuitGate<F> {
             generic_selector: F::zero(),
             poseidon_selector: F::zero(),
             lookup: None,
-            foreign_mul_selector: vec![F::zero(), F::zero(), F::zero()],
+            foreign_mul_selector: foreign_mul::off(),
         };
         let evals = vec![eval(curr), eval(next)];
 
