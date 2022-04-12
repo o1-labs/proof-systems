@@ -3,6 +3,7 @@ pub mod macros;
 
 pub mod argument;
 pub mod constraints;
+pub mod domain_constant_evaluation;
 pub mod domains;
 pub mod expr;
 pub mod gate;
