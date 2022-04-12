@@ -2231,9 +2231,9 @@
 <span id="2226">2226</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">circuits</span>::{
-        <span class="ident">constraints::eval_vanishes_on_last_4_rows</span>,
         <span class="ident">domains::EvaluationDomains</span>,
         <span class="ident">gate</span>::{<span class="ident">CurrOrNext</span>, <span class="ident">GateType</span>},
+        <span class="ident">polynomials::permutation::eval_vanishes_on_last_4_rows</span>,
         <span class="ident">wires::COLUMNS</span>,
     },
     <span class="ident">proof::ProofEvaluations</span>,
@@ -4443,7 +4443,7 @@
             },
             <span class="ident">witness</span>: <span class="kw-2">&amp;</span><span class="ident">domain_evals</span>.<span class="ident">d8</span>.<span class="ident">this</span>.<span class="ident">w</span>,
             <span class="ident">coefficient</span>: <span class="kw-2">&amp;</span><span class="ident">constraint_system</span>.<span class="ident">coefficients8</span>,
-            <span class="ident">vanishes_on_last_4_rows</span>: <span class="kw-2">&amp;</span><span class="ident">constraint_system</span>.<span class="ident">vanishes_on_last_4_rows</span>,
+            <span class="ident">vanishes_on_last_4_rows</span>: <span class="kw-2">&amp;</span><span class="ident">constraint_system</span>.<span class="ident">precomputations</span>().<span class="ident">vanishes_on_last_4_rows</span>,
             <span class="ident">z</span>: <span class="kw-2">&amp;</span><span class="ident">domain_evals</span>.<span class="ident">d8</span>.<span class="ident">this</span>.<span class="ident">z</span>,
             <span class="ident">l0_1</span>: <span class="ident">l0_1</span>(<span class="ident">constraint_system</span>.<span class="ident">domain</span>.<span class="ident">d1</span>),
             <span class="ident">domain</span>: <span class="ident">constraint_system</span>.<span class="ident">domain</span>,

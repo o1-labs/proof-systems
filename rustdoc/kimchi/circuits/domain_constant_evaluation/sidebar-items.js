@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["DomainConstantEvaluations","pre-computed polynomials that depend only on the chosen field and domain"]]});

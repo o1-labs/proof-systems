@@ -266,13 +266,15 @@
 <span id="261">261</span>
 <span id="262">262</span>
 <span id="263">263</span>
+<span id="264">264</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the verifier index as [VerifierIndex].</span>
 <span class="doccomment">//! You can derive this struct from the [ProverIndex] struct.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::alphas::Alphas</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::lookup::lookups::LookupsUsed</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::polynomials::permutation::zk_polynomial</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::polynomials::permutation::zk_w3</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
-    <span class="ident">constraints</span>::{<span class="ident">zk_polynomial</span>, <span class="ident">zk_w3</span>},
     <span class="ident">expr</span>::{<span class="ident">Linearization</span>, <span class="ident">PolishToken</span>},
     <span class="ident">wires</span>::<span class="kw-2">*</span>,
 };
@@ -465,7 +467,7 @@
             }),
 
             <span class="ident">shift</span>: <span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">shift</span>,
-            <span class="ident">zkpm</span>: <span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">zkpm</span>.<span class="ident">clone</span>(),
+            <span class="ident">zkpm</span>: <span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">precomputations</span>().<span class="ident">zkpm</span>.<span class="ident">clone</span>(),
             <span class="ident">w</span>: <span class="ident">zk_w3</span>(<span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>),
             <span class="ident">endo</span>: <span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">endo</span>,
             <span class="ident">lookup_index</span>,

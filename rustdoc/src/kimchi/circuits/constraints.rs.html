@@ -764,79 +764,9 @@
 <span id="759">759</span>
 <span id="760">760</span>
 <span id="761">761</span>
-<span id="762">762</span>
-<span id="763">763</span>
-<span id="764">764</span>
-<span id="765">765</span>
-<span id="766">766</span>
-<span id="767">767</span>
-<span id="768">768</span>
-<span id="769">769</span>
-<span id="770">770</span>
-<span id="771">771</span>
-<span id="772">772</span>
-<span id="773">773</span>
-<span id="774">774</span>
-<span id="775">775</span>
-<span id="776">776</span>
-<span id="777">777</span>
-<span id="778">778</span>
-<span id="779">779</span>
-<span id="780">780</span>
-<span id="781">781</span>
-<span id="782">782</span>
-<span id="783">783</span>
-<span id="784">784</span>
-<span id="785">785</span>
-<span id="786">786</span>
-<span id="787">787</span>
-<span id="788">788</span>
-<span id="789">789</span>
-<span id="790">790</span>
-<span id="791">791</span>
-<span id="792">792</span>
-<span id="793">793</span>
-<span id="794">794</span>
-<span id="795">795</span>
-<span id="796">796</span>
-<span id="797">797</span>
-<span id="798">798</span>
-<span id="799">799</span>
-<span id="800">800</span>
-<span id="801">801</span>
-<span id="802">802</span>
-<span id="803">803</span>
-<span id="804">804</span>
-<span id="805">805</span>
-<span id="806">806</span>
-<span id="807">807</span>
-<span id="808">808</span>
-<span id="809">809</span>
-<span id="810">810</span>
-<span id="811">811</span>
-<span id="812">812</span>
-<span id="813">813</span>
-<span id="814">814</span>
-<span id="815">815</span>
-<span id="816">816</span>
-<span id="817">817</span>
-<span id="818">818</span>
-<span id="819">819</span>
-<span id="820">820</span>
-<span id="821">821</span>
-<span id="822">822</span>
-<span id="823">823</span>
-<span id="824">824</span>
-<span id="825">825</span>
-<span id="826">826</span>
-<span id="827">827</span>
-<span id="828">828</span>
-<span id="829">829</span>
-<span id="830">830</span>
-<span id="831">831</span>
-<span id="832">832</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk circuit constraint primitive.</span>
 
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::domain_constant_evaluation::DomainConstantEvaluations</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
     <span class="ident">domains::EvaluationDomains</span>,
     <span class="ident">gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">GateType</span>},
@@ -844,7 +774,6 @@
     <span class="ident">wires</span>::<span class="kw-2">*</span>,
 };
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">SquareRootField</span>, <span class="ident">Zero</span>};
-<span class="kw">use</span> <span class="ident">ark_poly::UVPolynomial</span>;
 <span class="kw">use</span> <span class="ident">ark_poly</span>::{
     <span class="ident">univariate::DensePolynomial</span> <span class="kw">as</span> <span class="ident">DP</span>, <span class="ident">EvaluationDomain</span>, <span class="ident">Evaluations</span> <span class="kw">as</span> <span class="ident">E</span>,
     <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>,
@@ -853,21 +782,20 @@
 <span class="kw">use</span> <span class="ident">blake2</span>::{<span class="ident">Blake2b512</span>, <span class="ident">Digest</span>};
 <span class="kw">use</span> <span class="ident">itertools::repeat_n</span>;
 <span class="kw">use</span> <span class="ident">o1_utils</span>::{<span class="ident">field_helpers::i32_to_field</span>, <span class="ident">ExtendedEvaluations</span>};
+<span class="kw">use</span> <span class="ident">once_cell::sync::OnceCell</span>;
 <span class="kw">use</span> <span class="ident">oracle::poseidon::ArithmeticSpongeParams</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">de::DeserializeOwned</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">serde_with::serde_as</span>;
+<span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::lookup</span>::{
-    <span class="ident">constraints::LookupConfiguration</span>,
-    <span class="ident">lookups</span>::{<span class="ident">JointLookup</span>, <span class="ident">LookupInfo</span>},
-    <span class="ident">tables::LookupTable</span>,
+<span class="kw">use</span> <span class="kw">super</span>::{
+    <span class="ident">lookup</span>::{
+        <span class="ident">constraints::LookupConfiguration</span>,
+        <span class="ident">lookups</span>::{<span class="ident">JointLookup</span>, <span class="ident">LookupInfo</span>},
+        <span class="ident">tables::LookupTable</span>,
+    },
+    <span class="ident">polynomials::permutation::ZK_ROWS</span>,
 };
-
-<span class="comment">//</span>
-<span class="comment">// Constants</span>
-<span class="comment">//</span>
-
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">ZK_ROWS</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">3</span>;
 
 <span class="comment">//</span>
 <span class="comment">// ConstraintSystem</span>
@@ -920,9 +848,6 @@
     <span class="doccomment">/// permutation polynomial array</span>
     <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;[o1_utils::serialization::SerdeAs; PERMUTS]&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">sigmam</span>: [<span class="ident">DP</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">PERMUTS</span>],
-    <span class="doccomment">/// zero-knowledge polynomial</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">zkpm</span>: <span class="ident">DP</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
 
     <span class="comment">// Coefficient polynomials. These define constant that gates can use as they like.</span>
     <span class="comment">// ---------------------------------------</span>
@@ -983,31 +908,6 @@
     <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">endomul_scalar8</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 
-    <span class="comment">// Constant polynomials</span>
-    <span class="comment">// --------------------</span>
-    <span class="doccomment">/// 1-st Lagrange evaluated over domain.d8</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">l1</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// 0-th Lagrange evaluated over domain.d4</span>
-    <span class="comment">// TODO(mimoo): be consistent with the paper/spec, call it L1 here or call it L0 there</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">l04</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// 0-th Lagrange evaluated over domain.d8</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">l08</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// zero evaluated over domain.d8</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">zero4</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// zero evaluated over domain.d8</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">zero8</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// zero-knowledge polynomial over domain.d8</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">zkpl</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// the polynomial that vanishes on the last four rows</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">vanishes_on_last_4_rows</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-
     <span class="doccomment">/// wire coordinate shifts</span>
     <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;[o1_utils::serialization::SerdeAs; PERMUTS]&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">shift</span>: [<span class="ident">F</span>; <span class="ident">PERMUTS</span>],
@@ -1022,6 +922,10 @@
     <span class="doccomment">/// lookup constraint system</span>
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">bound</span> <span class="op">=</span> <span class="string">&quot;LookupConstraintSystem&lt;F&gt;: Serialize + DeserializeOwned&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">lookup_constraint_system</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LookupConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+
+    <span class="doccomment">/// precomputes</span>
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip</span>)]</span>
+    <span class="ident">precomputations</span>: <span class="ident">OnceCell</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">DomainConstantEvaluations</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 }
 
 <span class="comment">// TODO: move Shifts, and permutation-related functions to the permutation module</span>
@@ -1096,63 +1000,6 @@
     <span class="kw">fn</span> <span class="ident">cell_to_field</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">&amp;</span><span class="ident">Wire</span> { <span class="ident">row</span>, <span class="ident">col</span> }: <span class="kw-2">&amp;</span><span class="ident">Wire</span>) -&gt; <span class="ident">F</span> {
         <span class="self">self</span>.<span class="ident">map</span>[<span class="ident">col</span>][<span class="ident">row</span>]
     }
-}
-
-<span class="doccomment">///</span>
-
-<span class="doccomment">/// Returns the end of the circuit, which is used for introducing zero-knowledge in the permutation polynomial</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">zk_w3</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">domain</span>: <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="ident">F</span> {
-    <span class="ident">domain</span>.<span class="ident">group_gen</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="ident">domain</span>.<span class="ident">size</span> <span class="op">-</span> (<span class="ident">ZK_ROWS</span>)])
-}
-
-<span class="doccomment">/// Evaluates the polynomial</span>
-<span class="doccomment">/// (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">eval_zk_polynomial</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">domain</span>: <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">x</span>: <span class="ident">F</span>) -&gt; <span class="ident">F</span> {
-    <span class="kw">let</span> <span class="ident">w3</span> <span class="op">=</span> <span class="ident">zk_w3</span>(<span class="ident">domain</span>);
-    <span class="kw">let</span> <span class="ident">w2</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span> <span class="op">*</span> <span class="ident">w3</span>;
-    <span class="kw">let</span> <span class="ident">w1</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span> <span class="op">*</span> <span class="ident">w2</span>;
-    (<span class="ident">x</span> <span class="op">-</span> <span class="ident">w1</span>) <span class="op">*</span> (<span class="ident">x</span> <span class="op">-</span> <span class="ident">w2</span>) <span class="op">*</span> (<span class="ident">x</span> <span class="op">-</span> <span class="ident">w3</span>)
-}
-
-<span class="doccomment">/// Evaluates the polynomial</span>
-<span class="doccomment">/// (x - w^{n - 4}) (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">eval_vanishes_on_last_4_rows</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">domain</span>: <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">x</span>: <span class="ident">F</span>) -&gt; <span class="ident">F</span> {
-    <span class="kw">let</span> <span class="ident">w4</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="ident">domain</span>.<span class="ident">size</span> <span class="op">-</span> (<span class="ident">ZK_ROWS</span> <span class="op">+</span> <span class="number">1</span>)]);
-    <span class="kw">let</span> <span class="ident">w3</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span> <span class="op">*</span> <span class="ident">w4</span>;
-    <span class="kw">let</span> <span class="ident">w2</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span> <span class="op">*</span> <span class="ident">w3</span>;
-    <span class="kw">let</span> <span class="ident">w1</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span> <span class="op">*</span> <span class="ident">w2</span>;
-    (<span class="ident">x</span> <span class="op">-</span> <span class="ident">w1</span>) <span class="op">*</span> (<span class="ident">x</span> <span class="op">-</span> <span class="ident">w2</span>) <span class="op">*</span> (<span class="ident">x</span> <span class="op">-</span> <span class="ident">w3</span>) <span class="op">*</span> (<span class="ident">x</span> <span class="op">-</span> <span class="ident">w4</span>)
-}
-
-<span class="doccomment">/// The polynomial</span>
-<span class="doccomment">/// (x - w^{n - 4}) (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">vanishes_on_last_4_rows</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">domain</span>: <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="ident">DP</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">DP::from_coefficients_slice</span>(<span class="kw-2">&amp;</span>[<span class="ident">F::zero</span>(), <span class="ident">F::one</span>()]);
-    <span class="kw">let</span> <span class="ident">c</span> <span class="op">=</span> <span class="op">|</span><span class="ident">a</span>: <span class="ident">F</span><span class="op">|</span> <span class="ident">DP::from_coefficients_slice</span>(<span class="kw-2">&amp;</span>[<span class="ident">a</span>]);
-    <span class="kw">let</span> <span class="ident">w4</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="ident">domain</span>.<span class="ident">size</span> <span class="op">-</span> (<span class="ident">ZK_ROWS</span> <span class="op">+</span> <span class="number">1</span>)]);
-    <span class="kw">let</span> <span class="ident">w3</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span> <span class="op">*</span> <span class="ident">w4</span>;
-    <span class="kw">let</span> <span class="ident">w2</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span> <span class="op">*</span> <span class="ident">w3</span>;
-    <span class="kw">let</span> <span class="ident">w1</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span> <span class="op">*</span> <span class="ident">w2</span>;
-    <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span><span class="ident">x</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">c</span>(<span class="ident">w1</span>)) <span class="op">*</span> <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span><span class="ident">x</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">c</span>(<span class="ident">w2</span>))) <span class="op">*</span> <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span><span class="ident">x</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">c</span>(<span class="ident">w3</span>)) <span class="op">*</span> <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span><span class="ident">x</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">c</span>(<span class="ident">w4</span>)))
-}
-
-<span class="doccomment">/// Computes the zero-knowledge polynomial for blinding the permutation polynomial: `(x-w^{n-k})(x-w^{n-k-1})...(x-w^n)`.</span>
-<span class="doccomment">/// Currently, we use k = 3 for 2 blinding factors,</span>
-<span class="doccomment">/// see &lt;https://www.plonk.cafe/t/noob-questions-plonk-paper/73&gt;</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">zk_polynomial</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">domain</span>: <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="ident">DP</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">w3</span> <span class="op">=</span> <span class="ident">zk_w3</span>(<span class="ident">domain</span>);
-    <span class="kw">let</span> <span class="ident">w2</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span> <span class="op">*</span> <span class="ident">w3</span>;
-    <span class="kw">let</span> <span class="ident">w1</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span> <span class="op">*</span> <span class="ident">w2</span>;
-
-    <span class="comment">// (x-w3)(x-w2)(x-w1) =</span>
-    <span class="comment">// x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3</span>
-    <span class="kw">let</span> <span class="ident">w1w2</span> <span class="op">=</span> <span class="ident">w1</span> <span class="op">*</span> <span class="ident">w2</span>;
-    <span class="ident">DP::from_coefficients_slice</span>(<span class="kw-2">&amp;</span>[
-        <span class="op">-</span><span class="ident">w1w2</span> <span class="op">*</span> <span class="ident">w3</span>,                   <span class="comment">// 1</span>
-        <span class="ident">w1w2</span> <span class="op">+</span> (<span class="ident">w1</span> <span class="op">*</span> <span class="ident">w3</span>) <span class="op">+</span> (<span class="ident">w3</span> <span class="op">*</span> <span class="ident">w2</span>), <span class="comment">// x</span>
-        <span class="op">-</span><span class="ident">w1</span> <span class="op">-</span> <span class="ident">w2</span> <span class="op">-</span> <span class="ident">w3</span>,                <span class="comment">// x^2</span>
-        <span class="ident">F::one</span>(),                     <span class="comment">// x^3</span>
-    ])
 }
 
 <span class="doccomment">/// Represents an error found when verifying a witness with a gate</span>
@@ -1301,10 +1148,27 @@
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">SquareRootField</span><span class="op">&gt;</span> <span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="doccomment">/// creates a constraint system from a vector of gates ([CircuitGate]), some sponge parameters ([ArithmeticSpongeParams]), and the number of public inputs.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create</span>(
+        <span class="ident">gates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">lookup_tables</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">LookupTable</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">fr_sponge_params</span>: <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
+        <span class="ident">public</span>: <span class="ident">usize</span>,
+    ) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
+        <span class="ident">ConstraintSystem</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::create_with_shared_precomputations</span>(
+            <span class="ident">gates</span>,
+            <span class="ident">lookup_tables</span>,
+            <span class="ident">fr_sponge_params</span>,
+            <span class="ident">public</span>,
+            <span class="prelude-val">None</span>,
+        )
+    }
+
+    <span class="doccomment">/// similar to create. but this fn creates a constraint system with a shared precomputation previously created elsewhere</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_with_shared_precomputations</span>(
         <span class="kw-2">mut</span> <span class="ident">gates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">lookup_tables</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">LookupTable</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">fr_sponge_params</span>: <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
         <span class="ident">public</span>: <span class="ident">usize</span>,
+        <span class="ident">precomputations</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">DomainConstantEvaluations</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
         <span class="comment">//~ 1. If the circuit is less than 2 gates, abort.</span>
         <span class="comment">// for some reason we need more than 1 gate for the circuit to work, see TODO below</span>
@@ -1365,10 +1229,6 @@
         <span class="kw">let</span> <span class="ident">sigmam</span>: [<span class="ident">DP</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">PERMUTS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">sigmal1</span>[<span class="ident">i</span>].<span class="ident">clone</span>().<span class="ident">interpolate</span>());
 
         <span class="kw">let</span> <span class="ident">sigmal8</span> <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">sigmam</span>[<span class="ident">i</span>].<span class="ident">evaluate_over_domain_by_ref</span>(<span class="ident">domain</span>.<span class="ident">d8</span>));
-
-        <span class="comment">// x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3</span>
-        <span class="kw">let</span> <span class="ident">zkpm</span> <span class="op">=</span> <span class="ident">zk_polynomial</span>(<span class="ident">domain</span>.<span class="ident">d1</span>);
-        <span class="kw">let</span> <span class="ident">zkpl</span> <span class="op">=</span> <span class="ident">zkpm</span>.<span class="ident">evaluate_over_domain_by_ref</span>(<span class="ident">domain</span>.<span class="ident">d8</span>);
 
         <span class="comment">// Gates</span>
         <span class="comment">// -----</span>
@@ -1493,31 +1353,14 @@
         <span class="kw">let</span> <span class="ident">lookup_constraint_system</span> <span class="op">=</span>
             <span class="ident">LookupConstraintSystem::create</span>(<span class="kw-2">&amp;</span><span class="ident">gates</span>, <span class="ident">lookup_tables</span>, <span class="kw-2">&amp;</span><span class="ident">domain</span>).<span class="ident">ok</span>()<span class="question-mark">?</span>;
 
-        <span class="comment">//</span>
-        <span class="comment">// Constant polynomials</span>
-        <span class="comment">// --------------------</span>
-
         <span class="kw">let</span> <span class="ident">sid</span> <span class="op">=</span> <span class="ident">shifts</span>.<span class="ident">map</span>[<span class="number">0</span>].<span class="ident">clone</span>();
-
-        <span class="kw">let</span> <span class="ident">l1</span> <span class="op">=</span> <span class="ident">DP::from_coefficients_slice</span>(<span class="kw-2">&amp;</span>[<span class="ident">F::zero</span>(), <span class="ident">F::one</span>()])
-            .<span class="ident">evaluate_over_domain_by_ref</span>(<span class="ident">domain</span>.<span class="ident">d8</span>);
-        <span class="comment">// TODO: These are all unnecessary. Remove</span>
-        <span class="kw">let</span> <span class="ident">l04</span> <span class="op">=</span>
-            <span class="ident">E</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::from_vec_and_domain</span>(<span class="macro">vec!</span>[<span class="ident">F::one</span>(); <span class="ident">domain</span>.<span class="ident">d4</span>.<span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>], <span class="ident">domain</span>.<span class="ident">d4</span>);
-        <span class="kw">let</span> <span class="ident">l08</span> <span class="op">=</span>
-            <span class="ident">E</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::from_vec_and_domain</span>(<span class="macro">vec!</span>[<span class="ident">F::one</span>(); <span class="ident">domain</span>.<span class="ident">d8</span>.<span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>], <span class="ident">domain</span>.<span class="ident">d8</span>);
-        <span class="kw">let</span> <span class="ident">zero4</span> <span class="op">=</span>
-            <span class="ident">E</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::from_vec_and_domain</span>(<span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="ident">domain</span>.<span class="ident">d4</span>.<span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>], <span class="ident">domain</span>.<span class="ident">d4</span>);
-        <span class="kw">let</span> <span class="ident">zero8</span> <span class="op">=</span>
-            <span class="ident">E</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::from_vec_and_domain</span>(<span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="ident">domain</span>.<span class="ident">d8</span>.<span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>], <span class="ident">domain</span>.<span class="ident">d8</span>);
-
-        <span class="kw">let</span> <span class="ident">vanishes_on_last_4_rows</span> <span class="op">=</span>
-            <span class="ident">vanishes_on_last_4_rows</span>(<span class="ident">domain</span>.<span class="ident">d1</span>).<span class="ident">evaluate_over_domain</span>(<span class="ident">domain</span>.<span class="ident">d8</span>);
 
         <span class="comment">// TODO: remove endo as a field</span>
         <span class="kw">let</span> <span class="ident">endo</span> <span class="op">=</span> <span class="ident">F::zero</span>();
 
-        <span class="prelude-val">Some</span>(<span class="ident">ConstraintSystem</span> {
+        <span class="kw">let</span> <span class="ident">domain_constant_evaluation</span> <span class="op">=</span> <span class="ident">OnceCell::new</span>();
+
+        <span class="kw">let</span> <span class="ident">constraints</span> <span class="op">=</span> <span class="ident">ConstraintSystem</span> {
             <span class="ident">chacha8</span>,
             <span class="ident">endomul_scalar8</span>,
             <span class="ident">domain</span>,
@@ -1534,20 +1377,35 @@
             <span class="ident">complete_addl4</span>,
             <span class="ident">mull8</span>,
             <span class="ident">emull</span>,
-            <span class="ident">l1</span>,
-            <span class="ident">l04</span>,
-            <span class="ident">l08</span>,
-            <span class="ident">zero4</span>,
-            <span class="ident">zero8</span>,
-            <span class="ident">zkpl</span>,
-            <span class="ident">zkpm</span>,
-            <span class="ident">vanishes_on_last_4_rows</span>,
             <span class="ident">gates</span>,
             <span class="ident">shift</span>: <span class="ident">shifts</span>.<span class="ident">shifts</span>,
             <span class="ident">endo</span>,
             <span class="ident">fr_sponge_params</span>,
             <span class="ident">lookup_constraint_system</span>,
-        })
+            <span class="ident">precomputations</span>: <span class="ident">domain_constant_evaluation</span>,
+        };
+
+        <span class="kw">match</span> <span class="ident">precomputations</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">t</span>) =&gt; {
+                <span class="ident">constraints</span>.<span class="ident">set_precomputations</span>(<span class="ident">t</span>);
+            }
+            <span class="prelude-val">None</span> =&gt; {
+                <span class="ident">constraints</span>.<span class="ident">precomputations</span>();
+            }
+        }
+
+        <span class="prelude-val">Some</span>(<span class="ident">constraints</span>)
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">precomputations</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">DomainConstantEvaluations</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">precomputations</span>
+            .<span class="ident">get_or_init</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">Arc::new</span>(<span class="ident">DomainConstantEvaluations::create</span>(<span class="self">self</span>.<span class="ident">domain</span>).<span class="ident">unwrap</span>()))
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_precomputations</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">precomputations</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">DomainConstantEvaluations</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>) {
+        <span class="self">self</span>.<span class="ident">precomputations</span>
+            .<span class="ident">set</span>(<span class="ident">precomputations</span>)
+            .<span class="ident">expect</span>(<span class="string">&quot;Precomputation has been set before&quot;</span>);
     }
 
     <span class="doccomment">/// This function verifies the consistency of the wire</span>
