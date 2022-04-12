@@ -1,5 +1,4 @@
-//! This module contains the constant evaluations
-//! for domain d4 and d8
+//! This contains the [DomainConstantEvaluations] which is used to provide precomputations to a [ConstraintSystem].
 
 use crate::circuits::domains::EvaluationDomains;
 use crate::circuits::polynomials::permutation::zk_polynomial;
