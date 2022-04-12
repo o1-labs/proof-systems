@@ -19,6 +19,7 @@ use crate::{
             endosclmul::EndosclMul,
             generic, permutation,
             poseidon::Poseidon,
+            turshi::{Claim, Flags, Instruction, Transition},
             varbasemul::VarbaseMul,
         },
         wires::{COLUMNS, PERMUTS},
@@ -457,6 +458,14 @@ where
                         index_evals.insert(*g, &c[i]);
                     }
                 });
+            [CairoClaim, CairoInstruction, CairoFlags, CairoTransition]
+                .iter()
+                .enumerate()
+                .for_each(|(i, g)| {
+                    if let Some(c) = &index.cs.cairo_cs {
+                        index_evals.insert(*g, &c.cairo8[i]);
+                    }
+                });
             Environment {
                 constants: Constants {
                     alpha,
@@ -636,6 +645,34 @@ where
                         .divide_by_vanishing_poly(index.cs.domain.d1)
                         .unwrap();
                     assert!(res.is_zero());
+                }
+            }
+
+            if index.cs.cairo_cs.is_some() {
+                // cairo
+                let cairoevals = [
+                    Claim::combined_constraints(&all_alphas).evaluations(&env),
+                    Instruction::combined_constraints(&all_alphas).evaluations(&env),
+                    Flags::combined_constraints(&all_alphas).evaluations(&env),
+                    Transition::combined_constraints(&all_alphas).evaluations(&env),
+                ];
+                for eval in cairoevals {
+                    if eval.domain().size == t4.domain().size {
+                        t4 += &eval;
+                    } else if eval.domain().size == t8.domain().size {
+                        t8 += &eval;
+                    } else {
+                        panic!("Bad evaluation")
+                    }
+                    if cfg!(test) {
+                        let (_, res) = eval
+                            .clone()
+                            .interpolate()
+                            .divide_by_vanishing_poly(index.cs.domain.d1)
+                            .unwrap();
+                        assert!(res.is_zero());
+                    }
+                    drop(eval);
                 }
             }
 
