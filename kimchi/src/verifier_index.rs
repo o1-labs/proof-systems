@@ -198,7 +198,7 @@ where
             }),
 
             shift: self.cs.shift,
-            zkpm: self.cs.precomputations.get().unwrap().zkpm.clone(),
+            zkpm: self.cs.precomputations().zkpm.clone(),
             w: zk_w3(self.cs.domain.d1),
             endo: self.cs.endo,
             lookup_index,

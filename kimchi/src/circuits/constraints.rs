@@ -159,7 +159,7 @@ pub struct ConstraintSystem<F: FftField> {
 
     /// precomputes
     #[serde(skip)]
-    pub precomputations: OnceCell<Arc<DomainConstantEvaluations<F>>>,
+    precomputations: OnceCell<Arc<DomainConstantEvaluations<F>>>,
 }
 
 // TODO: move Shifts, and permutation-related functions to the permutation module
@@ -619,19 +619,27 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             precomputations: domain_constant_evaluation,
         };
 
-        constraints.get_or_set_domain_constant_evaluation(precomputations);
+        match precomputations {
+            Some(t) => {
+                constraints.set_precomputations(t);
+            }
+            None => {
+                constraints.precomputations();
+            }
+        }
 
         Some(constraints)
     }
 
-    pub fn get_or_set_domain_constant_evaluation(
-        &self,
-        precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
-    ) -> &Arc<DomainConstantEvaluations<F>> {
-        self.precomputations.get_or_init(|| match precomputations {
-            Some(t) => t,
-            None => Arc::new(DomainConstantEvaluations::create(self.domain).unwrap()),
-        })
+    pub fn precomputations(&self) -> &Arc<DomainConstantEvaluations<F>> {
+        self.precomputations
+            .get_or_init(|| Arc::new(DomainConstantEvaluations::create(self.domain).unwrap()))
+    }
+
+    pub fn set_precomputations(&self, precomputations: Arc<DomainConstantEvaluations<F>>) {
+        self.precomputations
+            .set(precomputations)
+            .expect("Precomputation has been set before");
     }
 
     /// This function verifies the consistency of the wire

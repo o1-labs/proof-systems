@@ -128,12 +128,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let alpha2 = alphas.next().expect("missing power of alpha");
 
         // constant gamma in evaluation form (in domain d8)
-        let gamma = &self
-            .precomputations
-            .get()
-            .unwrap()
-            .constant_1_d8
-            .scale(gamma);
+        let gamma = &self.precomputations().constant_1_d8.scale(gamma);
 
         //~ The quotient contribution of the permutation is split into two parts $perm$ and $bnd$.
         //~ They will be used by the prover.
@@ -171,13 +166,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             // in evaluation form in d8
             let mut shifts = lagrange.d8.this.z.clone();
             for (witness, shift) in lagrange.d8.this.w.iter().zip(self.shift.iter()) {
-                let term = &(witness + gamma)
-                    + &self
-                        .precomputations
-                        .get()
-                        .unwrap()
-                        .poly_x_d1
-                        .scale(beta * shift);
+                let term =
+                    &(witness + gamma) + &self.precomputations().poly_x_d1.scale(beta * shift);
                 shifts = &shifts * &term;
             }
 
@@ -192,7 +182,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                 sigmas = &sigmas * &term;
             }
 
-            &(&shifts - &sigmas).scale(alpha0) * &self.precomputations.get().unwrap().zkpl
+            &(&shifts - &sigmas).scale(alpha0) * &self.precomputations().zkpl
         };
 
         //~ and `bnd`:
@@ -253,7 +243,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         //~
         //~ $\text{scalar} \cdot \sigma_6(x)$
         //~
-        let zkpm_zeta = self.precomputations.get().unwrap().zkpm.evaluate(&zeta);
+        let zkpm_zeta = self.precomputations().zkpm.evaluate(&zeta);
         let scalar = Self::perm_scalars(e, beta, gamma, alphas, zkpm_zeta);
         self.sigmam[PERMUTS - 1].scale(scalar)
     }
