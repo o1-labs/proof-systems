@@ -1,6 +1,9 @@
 //! This module implements the data structures of a proof.
 
-use crate::circuits::wires::{COLUMNS, PERMUTS};
+use crate::circuits::{
+    polynomials::foreign_mul,
+    wires::{COLUMNS, PERMUTS},
+};
 use ark_ec::AffineCurve;
 use ark_ff::{FftField, Zero};
 use ark_poly::univariate::DensePolynomial;
@@ -93,7 +96,7 @@ impl<F: Zero> ProofEvaluations<F> {
             lookup: None,
             generic_selector: F::zero(),
             poseidon_selector: F::zero(),
-            foreign_mul_selector: vec![],
+            foreign_mul_selector: foreign_mul::off(),
         }
     }
 }

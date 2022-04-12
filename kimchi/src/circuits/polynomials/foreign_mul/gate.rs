@@ -1,4 +1,4 @@
-use ark_ff::FftField;
+use ark_ff::{FftField, Zero};
 use ark_poly::{univariate::DensePolynomial as DP, Evaluations as EV, Radix2EvaluationDomain as D};
 use array_init::array_init;
 use rand::{prelude::StdRng, SeedableRng};
@@ -234,6 +234,11 @@ pub fn selector_polynomials<F: FftField>(
 
         SelectorPolynomial { coeff, eval8 }
     }))
+}
+
+/// Switch off foreign field multiplication, with zero circuit gate selector evaluations
+pub fn off<F: Zero>() -> Vec<F> {
+    circuit_gates().iter().map(|_| F::zero()).collect()
 }
 
 #[cfg(test)]
