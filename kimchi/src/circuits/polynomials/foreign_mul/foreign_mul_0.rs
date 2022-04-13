@@ -34,7 +34,7 @@ use crate::circuits::{
 use ark_ff::{FftField, Zero};
 use CurrOrNext::*;
 
-use super::constraints::{sublimb_plookup_constraint, two, sublimb_crumb_constraint};
+use super::constraints::{sublimb_crumb_constraint, sublimb_plookup_constraint, two};
 
 #[derive(Default)]
 pub struct ForeignMul0<F>(PhantomData<F>);
