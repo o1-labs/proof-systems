@@ -472,6 +472,7 @@ mod tests {
         circuits::{
             expr::{Column, Constants, PolishToken},
             lookup::lookups::LookupInfo,
+            polynomials::foreign_mul,
             wires::*,
         },
         proof::{LookupEvaluations, ProofEvaluations},
@@ -552,7 +553,7 @@ mod tests {
                 aggreg: F::rand(rng),
                 table: F::rand(rng),
             }),
-            foreign_mul_selector: vec![],
+            foreign_mul_selector: foreign_mul::off(),
         };
         let evals = vec![eval(), eval()];
 

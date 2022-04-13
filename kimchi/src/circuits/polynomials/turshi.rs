@@ -96,8 +96,6 @@ use rand::prelude::StdRng;
 use rand::SeedableRng;
 use std::marker::PhantomData;
 
-use super::foreign_mul;
-
 const NUM_FLAGS: usize = 16;
 pub const CIRCUIT_GATE_COUNT: usize = 4;
 
@@ -222,16 +220,10 @@ impl<F: FftField> CircuitGate<F> {
 
         // Setup proof evaluations
         let rng = &mut StdRng::from_seed([0u8; 32]);
-        let mut eval = |witness| ProofEvaluations {
-            w: witness,
-            z: F::rand(rng),
-            s: array_init(|_| F::rand(rng)),
-            generic_selector: F::zero(),
-            poseidon_selector: F::zero(),
-            lookup: None,
-            foreign_mul_selector: foreign_mul::off(),
-        };
-        let evals = vec![eval(curr), eval(next)];
+        let evals = vec![
+            ProofEvaluations::dummy_with_witness_evaluations(curr),
+            ProofEvaluations::dummy_with_witness_evaluations(next),
+        ];
 
         // Setup circuit constants
         let constants = expr::Constants {
