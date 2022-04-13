@@ -9,6 +9,7 @@ use o1_utils::FieldHelpers;
 
 use crate::circuits::polynomial::COLUMNS;
 
+// The maximum supported foreign field element size is 264-bits
 const MAX_LIMBS: usize = 3;
 const LIMB_SIZE: usize = 88;
 
@@ -19,9 +20,10 @@ enum WitnessCell {
     Zero,
 }
 
+// Witness cell copied from another
 struct CopyWitnessCell {
-    row: usize, // Cell row
-    col: usize, // Cell col
+    row: usize,
+    col: usize,
 }
 impl CopyWitnessCell {
     const fn create(row: usize, col: usize) -> WitnessCell {
@@ -29,6 +31,7 @@ impl CopyWitnessCell {
     }
 }
 
+// Witness cell for a foreign field element limb
 struct LimbWitnessCell;
 impl LimbWitnessCell {
     const fn create() -> WitnessCell {
@@ -36,6 +39,7 @@ impl LimbWitnessCell {
     }
 }
 
+// Witness cell for a foreign field element sub-limb
 struct SublimbWitnessCell {
     row: usize,   // Cell row
     col: usize,   // Cell col
@@ -54,6 +58,7 @@ impl SublimbWitnessCell {
     }
 }
 
+// An cell containing zero
 struct ZeroWitnessCell;
 impl ZeroWitnessCell {
     const fn create() -> WitnessCell {

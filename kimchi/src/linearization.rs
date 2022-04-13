@@ -30,11 +30,15 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
     let mut powers_of_alpha = Alphas::<F>::default();
 
     // gates
-    let highest_constraints = foreign_mul::ForeignMul1::<F>::CONSTRAINTS;
-    powers_of_alpha.register(
-        ArgumentType::Gate(GateType::VarBaseMul),
-        highest_constraints,
-    );
+    let (highest_gate_type, highest_constraints) = if foreign_mul {
+        (
+            GateType::ForeignMul1,
+            foreign_mul::ForeignMul1::<F>::CONSTRAINTS,
+        )
+    } else {
+        (GateType::VarBaseMul, VarbaseMul::<F>::CONSTRAINTS)
+    };
+    powers_of_alpha.register(ArgumentType::Gate(highest_gate_type), highest_constraints);
 
     let mut expr = Poseidon::combined_constraints(&powers_of_alpha);
     expr += VarbaseMul::combined_constraints(&powers_of_alpha);

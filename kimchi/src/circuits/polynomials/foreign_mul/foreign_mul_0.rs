@@ -34,7 +34,7 @@ use crate::circuits::{
 use ark_ff::{FftField, Zero};
 use CurrOrNext::*;
 
-use super::constraints::{sublimb_plookup_constraint, two};
+use super::constraints::{sublimb_plookup_constraint, two, sublimb_crumb_constraint};
 
 #[derive(Default)]
 pub struct ForeignMul0<F>(PhantomData<F>);
@@ -66,7 +66,7 @@ where
         // Create 8 2-bit chunk range constraints
         constraints.append(
             &mut (7..COLUMNS)
-                .map(|i| sublimb_plookup_constraint(&w(i)))
+                .map(|i| sublimb_crumb_constraint(&w(i)))
                 .collect::<Vec<E<F>>>(),
         );
 
