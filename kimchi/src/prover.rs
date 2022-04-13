@@ -1,9 +1,10 @@
 //! This module implements prover's zk-proof primitive.
 
+use crate::prover::permutation::ZK_ROWS;
 use crate::{
     circuits::{
         argument::{Argument, ArgumentType},
-        constraints::{LookupConstraintSystem, ZK_ROWS},
+        constraints::LookupConstraintSystem,
         expr::{l0_1, Constants, Environment, LookupEnvironment},
         gate::GateType,
         lookup::{
@@ -475,7 +476,7 @@ where
                 },
                 witness: &lagrange.d8.this.w,
                 coefficient: &index.cs.coefficients8,
-                vanishes_on_last_4_rows: &index.cs.vanishes_on_last_4_rows,
+                vanishes_on_last_4_rows: &index.cs.precomputations().vanishes_on_last_4_rows,
                 z: &lagrange.d8.this.z,
                 l0_1: l0_1(index.cs.domain.d1),
                 domain: index.cs.domain,

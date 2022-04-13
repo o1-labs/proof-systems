@@ -3,8 +3,9 @@
 
 use crate::alphas::Alphas;
 use crate::circuits::lookup::lookups::LookupsUsed;
+use crate::circuits::polynomials::permutation::zk_polynomial;
+use crate::circuits::polynomials::permutation::zk_w3;
 use crate::circuits::{
-    constraints::{zk_polynomial, zk_w3},
     expr::{Linearization, PolishToken},
     wires::*,
 };
@@ -215,7 +216,7 @@ where
                 .collect(),
 
             shift: self.cs.shift,
-            zkpm: self.cs.zkpm.clone(),
+            zkpm: self.cs.precomputations().zkpm.clone(),
             w: zk_w3(self.cs.domain.d1),
             endo: self.cs.endo,
             lookup_index,
