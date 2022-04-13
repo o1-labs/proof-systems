@@ -21,8 +21,8 @@ As part of these algorithms, a number of tables are created (and then converted 
 
 The following tables are created to describe the circuit:
 
-**Gates**. A circuit is described by a series of gates, that we list in a table. 
-The columns of the tables list the gates, while the rows are the length of the circuit. 
+**Gates**. A circuit is described by a series of gates, that we list in a table.
+The columns of the tables list the gates, while the rows are the length of the circuit.
 For each row, only a single gate can take a value $1$ while all other gates take the value $0$.
 
 |  row  | Generic | Poseidon | CompleteAdd | VarBaseMul | EndoMul | EndoMulScalar | ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal |
@@ -38,9 +38,9 @@ All other gates set their values to $0$.
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 |   0   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |
 
-**Wiring (or Permutation, or sigmas)**. For gates to take the outputs of other gates as inputs, we use a wiring table to wire registers together. 
+**Wiring (or Permutation, or sigmas)**. For gates to take the outputs of other gates as inputs, we use a wiring table to wire registers together.
 To learn about registers, see the next section.
-It is defined at every row, but only for the first $7$ registers. 
+It is defined at every row, but only for the first $7$ registers.
 Each cell specifies a `(row, column)` tuple that it should be wired to.  Cells that are not connected to another cell are wired to themselves.
 Note that if three or more registers are wired together, they must form a cycle.
 For example, if register `(0, 4)` is wired to both registers `(80, 6)` and `(90, 0)` then you would have the following table:
@@ -74,7 +74,7 @@ We currently have two lookup selectors:
 |   0   |      0      |        0         |
 |   1   |      1      |        0         |
 
-Where each apply 4 queries. A query is a table describing which lookup table it queries, and the linear combination of the witness to use in the query. 
+Where each apply 4 queries. A query is a table describing which lookup table it queries, and the linear combination of the witness to use in the query.
 For example, the following table describes a query into the XOR table made out of linear combinations of registers (checking that $r_0 \oplus r_2 = 2 \cdot r_1$):
 
 | table_id |   l   |   r   |   o   |
@@ -85,16 +85,16 @@ For example, the following table describes a query into the XOR table made out o
 
 The following tables are created by the prover at runtime:
 
-**Registers (or Witness)**. Registers are also defined at every row, and are split into two types: the *IO registers* from $0$ to $6$ usually contain input or output of the gates (note that a gate can output a value on the next row as well). 
-I/O registers can be wired to each other (they'll be forced to have the same value), no matter what row they're on (for example, the register at `row:0, col:4` can be wired to the register at `row:80, col:6`). 
-The rest of the registers, $7$ through $14$, are called *advice registers* as they can store values that useful only for the row's active gate. 
+**Registers (or Witness)**. Registers are also defined at every row, and are split into two types: the *IO registers* from $0$ to $6$ usually contain input or output of the gates (note that a gate can output a value on the next row as well).
+I/O registers can be wired to each other (they'll be forced to have the same value), no matter what row they're on (for example, the register at `row:0, col:4` can be wired to the register at `row:80, col:6`).
+The rest of the registers, $7$ through $14$, are called *advice registers* as they can store values that useful only for the row's active gate.
 Think of them as intermediary or temporary values needed in the computation when the prover executes a circuit.
 
 |  row  |   0   |   1   |   2   |   3   |   4   |   5   |   6   |   7   |   8   |   9   |  10   |  11   |  12   |  13   |  14   |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 |   0   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |
 
-**Wiring (Permutation) trace**. You can think of the permutation trace as an extra register that is used to enforce the wiring specified in the wiring table. 
+**Wiring (Permutation) trace**. You can think of the permutation trace as an extra register that is used to enforce the wiring specified in the wiring table.
 It is a single column that applies on all the rows as well, which the prover computes as part of a proof.
 
 |  row  |  pt   |
@@ -168,8 +168,8 @@ $$ \sum_i \alpha^i \cdot \text{constraint}_i $$
 The different ranges of alpha are described as follows:
 
 <!-- generated using `cargo test -p kimchi --lib -- alphas::tests::get_alphas_for_spec --nocapture` -->
-* **gates**. Offset starts at 0 and 25 powers of $\alpha$ are used
-* **Permutation**. Offset starts at 25 and 3 powers of $\alpha$ are used
+* **gates**. Offset starts at 0 and 21 powers of $\alpha$ are used
+* **Permutation**. Offset starts at 21 and 3 powers of $\alpha$ are used
 
 ```admonish
 As gates are mutually exclusive (a single gate is used on each row), we can reuse the same range of powers of alpha across all the gates.
@@ -338,7 +338,7 @@ In this section, we describe the tables kimchi supports, as well as the differen
 
 #### The Lookup Tables
 
-Kimchi currently supports a single lookup table: 
+Kimchi currently supports a single lookup table:
 
 ```rs
 /// The table ID associated with the XOR lookup table.
@@ -1532,7 +1532,7 @@ The prover then follows the following steps to create the proof:
 
 TODO: we talk about batch verification, but is there an actual batch operation? It seems like we're just verifying an aggregated opening proof
 
-We define two helper algorithms below, used in the batch verification of proofs. 
+We define two helper algorithms below, used in the batch verification of proofs.
 
 
 #### Fiat-Shamir argument
