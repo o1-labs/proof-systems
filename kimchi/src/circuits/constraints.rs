@@ -395,12 +395,14 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         gates: Vec<CircuitGate<F>>,
         lookup_tables: Vec<LookupTable<F>>,
         fr_sponge_params: ArithmeticSpongeParams<F>,
+        foreign_modulus: Vec<F>,
         public: usize,
     ) -> Option<Self> {
         ConstraintSystem::<F>::create_with_shared_precomputations(
             gates,
             lookup_tables,
             fr_sponge_params,
+            foreign_modulus,
             public,
             None,
         )
