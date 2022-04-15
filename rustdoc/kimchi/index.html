@@ -51,18 +51,8 @@
 
 <span class="comment">// create a proof</span>
 <span class="kw">let</span> <span class="ident">group_map</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">Affine</span> <span class="kw">as</span> <span class="ident">CommitmentCurve</span><span class="op">&gt;</span><span class="ident">::Map::setup</span>();
-<span class="kw">let</span> <span class="ident">proof</span> <span class="op">=</span> {
-    <span class="comment">// for recursion</span>
-    <span class="kw">let</span> <span class="ident">k</span> <span class="op">=</span> <span class="ident">ceil_log2</span>(<span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">g</span>.<span class="ident">len</span>());
-    <span class="kw">let</span> <span class="ident">chals</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">k</span>).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Fp::rand</span>(<span class="ident">rng</span>)).<span class="ident">collect</span>();
-    <span class="kw">let</span> <span class="ident">comm</span> <span class="op">=</span> {
-        <span class="kw">let</span> <span class="ident">coeffs</span> <span class="op">=</span> <span class="ident">b_poly_coefficients</span>(<span class="kw-2">&amp;</span><span class="ident">chals</span>);
-        <span class="kw">let</span> <span class="ident">b</span> <span class="op">=</span> <span class="ident">DensePolynomial::from_coefficients_vec</span>(<span class="ident">coeffs</span>);
-        <span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="ident">b</span>, <span class="prelude-val">None</span>)
-    };
-    (<span class="ident">chals</span>, <span class="ident">comm</span>)
-    <span class="ident">ProverProof::create</span>::<span class="op">&lt;</span><span class="ident">BaseSponge</span>, <span class="ident">ScalarSponge</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="ident">group_map</span>, <span class="ident">witness</span>, <span class="kw-2">&amp;</span><span class="ident">prover_index</span>, <span class="macro">vec!</span>[<span class="ident">prev</span>])
-};
+<span class="kw">let</span> <span class="ident">proof</span> <span class="op">=</span>  <span class="ident">ProverProof::create</span>::<span class="op">&lt;</span><span class="ident">BaseSponge</span>, <span class="ident">ScalarSponge</span><span class="op">&gt;</span>(
+    <span class="kw-2">&amp;</span><span class="ident">group_map</span>, <span class="ident">witness</span>, <span class="kw-2">&amp;</span><span class="ident">prover_index</span>);
 
 <span class="comment">// verify a proof</span>
 <span class="ident">verify</span>::<span class="op">&lt;</span><span class="ident">Affine</span>, <span class="ident">BaseSponge</span>, <span class="ident">ScalarSponge</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="ident">group_map</span>, <span class="ident">verifier_index</span>, <span class="ident">proof</span>).<span class="ident">unwrap</span>();</code></pre></div>
@@ -83,13 +73,8 @@
 <li><a href="https://github.com/o1-labs/proof-systems/tree/master/tools">tools/</a>. Various tooling to help us work on kimchi.</li>
 <li><a href="https://github.com/o1-labs/proof-systems/tree/master/utils">utils/</a>. Collection of useful functions and traits.</li>
 </ul>
-<h3 id="windows-development"><a href="#windows-development">Windows Development</a></h3>
-<p>Windows development can be done using <a href="https://docs.microsoft.com/en-us/windows/wsl/install">Windows Subsystem for Linux (WSL)</a>.</p>
-<ul>
-<li>Install and open WSL</li>
-<li>Within WSL, install OCaml using your distro’s package manager. For example: <code>apt install opam</code></li>
-<li>Within WSL, navigate to the project directory and run <code>cargo test</code>. If there are no failures then everything is set up correctly.</li>
-</ul>
+<h3 id="contributing"><a href="#contributing">Contributing</a></h3>
+<p>Check <a href="CONTRIBUTING.md">CONTRIBUTING.md</a> if you are interested in contributing to this project.</p>
 </div></details><h2 id="modules" class="small-section-header"><a href="#modules">Modules</a></h2>
 <div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="mod" href="alphas/index.html" title="kimchi::alphas mod">alphas</a></div><div class="item-right docblock-short"><p>This module implements an abstraction to keep track of the powers of alphas.
 As a recap, alpha is a challenge sent by the verifier in PLONK,
@@ -106,5 +91,5 @@ As such, we want two properties from this:</p>
 </div></div><div class="item-row"><div class="item-left module-item"><a class="mod" href="verifier/index.html" title="kimchi::verifier mod">verifier</a></div><div class="item-right docblock-short"><p>This module implements zk-proof batch verifier functionality.</p>
 </div></div><div class="item-row"><div class="item-left module-item"><a class="mod" href="verifier_index/index.html" title="kimchi::verifier_index mod">verifier_index</a></div><div class="item-right docblock-short"><p>This module implements the verifier index as <a href="verifier_index/struct.VerifierIndex.html" title="VerifierIndex">VerifierIndex</a>.
 You can derive this struct from the <a href="prover_index/struct.ProverIndex.html" title="ProverIndex">ProverIndex</a> struct.</p>
-</div></div></div></section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (90ca44752 2022-04-11)" ></div>
+</div></div></div></section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (e7575f967 2022-04-14)" ></div>
 </body></html>
