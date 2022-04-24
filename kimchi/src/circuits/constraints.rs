@@ -656,11 +656,11 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         //
         // Lookup
         // ------
-
         let lookup_constraint_system =
-            LookupConstraintSystem::create(&gates, lookup_tables, &domain)
-                .ok()
-                .unwrap();
+            match LookupConstraintSystem::create(&gates, lookup_tables, &domain) {
+                Ok(ok) => ok,
+                Err(_) => return Err(ProverError::SetupError),
+            };
 
         //
         // Constant polynomials

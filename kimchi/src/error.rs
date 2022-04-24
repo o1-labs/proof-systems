@@ -20,6 +20,9 @@ pub enum ProverError {
 
     #[error("the lookup failed to find a match in the table")]
     ValueNotInTable,
+
+    #[error("the lookup contraint system could not be constructed")]
+    SetupError,
 }
 
 /// Errors that can arise when verifying a proof
