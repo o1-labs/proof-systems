@@ -1,11 +1,14 @@
 //! This module implements Plonk circuit constraint primitive.
 
-use crate::circuits::domain_constant_evaluation::DomainConstantEvaluations;
-use crate::circuits::{
-    domains::EvaluationDomains,
-    gate::{CircuitGate, GateType},
-    polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
-    wires::*,
+use crate::{
+    circuits::{
+        domain_constant_evaluation::DomainConstantEvaluations,
+        domains::EvaluationDomains,
+        gate::{CircuitGate, GateType},
+        polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
+        wires::*,
+    },
+    error::ProverError,
 };
 use ark_ff::{FftField, SquareRootField, Zero};
 use ark_poly::{
@@ -412,6 +415,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         //~    compute the smallest subgroup of the field that
         //~    has order greater or equal to `n + ZK_ROWS` elements.
         let domain = EvaluationDomains::<F>::create(gates.len() + ZK_ROWS as usize)?;
+
         assert!(domain.d1.size > ZK_ROWS);
 
         //~ 3. Pad the circuit: add zero gates to reach the domain size.
@@ -583,9 +587,11 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         //
         // Lookup
         // ------
-
         let lookup_constraint_system =
-            LookupConstraintSystem::create(&gates, lookup_tables, &domain).ok()?;
+            match LookupConstraintSystem::create(&gates, lookup_tables, &domain) {
+                Ok(ok) => ok,
+                Err(_) => return Err(ProverError::SetupError),
+            };
 
         let sid = shifts.map[0].clone();
 

@@ -1,11 +1,11 @@
-//! This module implements the [ProofError] type.
+//! This module implements the [ProverError] type.
 
 use thiserror::Error;
 
 /// Errors that can arise when creating a proof
 // TODO(mimoo): move this out of oracle
 #[derive(Error, Debug, Clone, Copy)]
-pub enum ProofError {
+pub enum ProverError {
     #[error("the circuit is too large")]
     NoRoomForZkInWitness,
 
@@ -20,6 +20,9 @@ pub enum ProofError {
 
     #[error("the lookup failed to find a match in the table")]
     ValueNotInTable,
+
+    #[error("the lookup contraint system could not be constructed")]
+    SetupError,
 }
 
 /// Errors that can arise when verifying a proof
