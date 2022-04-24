@@ -20,7 +20,7 @@ pub struct LookupEvaluations<Field> {
     pub table: Field,
 }
 
-// TODO: this should really be vectors here, perhaps create another type for chuncked evaluations?
+// TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
 #[derive(Clone)]
 pub struct ProofEvaluations<Field> {
     /// witness polynomials
@@ -241,6 +241,7 @@ pub mod caml {
                 pe.s[4].iter().cloned().map(Into::into).collect(),
                 pe.s[5].iter().cloned().map(Into::into).collect(),
             );
+
             Self {
                 w,
                 z: pe.z.into_iter().map(Into::into).collect(),

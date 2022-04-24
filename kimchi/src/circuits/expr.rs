@@ -1,8 +1,8 @@
 use crate::{
     circuits::{
-        constraints::eval_vanishes_on_last_4_rows,
         domains::EvaluationDomains,
         gate::{CurrOrNext, GateType},
+        polynomials::permutation::eval_vanishes_on_last_4_rows,
         wires::COLUMNS,
     },
     proof::ProofEvaluations,
@@ -99,24 +99,22 @@ impl<'a, F: FftField> Environment<'a, F> {
     }
 }
 
-// In this file, we define
+// In this file, we define...
 //
-// l_i(x) to be the unnormalized lagrange polynomial,
-// (x^n - 1) / (x - omega^i)
-// = prod_{j != i} (x - omega^j)
+//     The unnormalized lagrange polynomial
 //
-// and L_i(x) to be the normalized lagrange polynomial,
-// L_i(x) = l_i(x) / l_i(omega^i)
+//         l_i(x) = (x^n - 1) / (x - omega^i) = prod_{j != i} (x - omega^j)
+//
+//     and the normalized lagrange polynomial
+//
+//         L_i(x) = l_i(x) / l_i(omega^i)
 
-/// Computes `prod_{j != 1} (1 - omega^j)`
+/// Computes `prod_{j != n} (1 - omega^j)`
+///     Assure we don't multiply by (1 - omega^n) = (1 - omega^0) = (1 - 1) = 0
 pub fn l0_1<F: FftField>(d: D<F>) -> F {
-    let mut omega_j = d.group_gen;
-    let mut res = F::one();
-    for _ in 1..(d.size as usize) {
-        res *= F::one() - omega_j;
-        omega_j *= d.group_gen;
-    }
-    res
+    d.elements()
+        .skip(1)
+        .fold(F::one(), |acc, omega_j| acc * (F::one() - omega_j))
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -413,6 +411,10 @@ impl Variable {
             LookupTable => l.map(|l| l.table),
             Index(GateType::Poseidon) => Ok(evals.poseidon_selector),
             Index(GateType::Generic) => Ok(evals.generic_selector),
+            Index(GateType::CairoClaim)
+            | Index(GateType::CairoInstruction)
+            | Index(GateType::CairoFlags)
+            | Index(GateType::CairoTransition) => todo!(),
             Coefficient(_) | LookupKindIndex(_) | Index(_) => {
                 Err("Cannot get index evaluation (should have been linearized away)")
             }
@@ -2122,7 +2124,7 @@ pub fn witness<F>(i: usize, row: CurrOrNext) -> E<F> {
     E::<F>::cell(Column::Witness(i), row)
 }
 
-/// Same as [witness] but for the next row.
+/// Same as [witness] but for the current row.
 pub fn witness_curr<F>(i: usize) -> E<F> {
     witness(i, CurrOrNext::Curr)
 }
@@ -2210,7 +2212,7 @@ pub mod test {
             },
             witness: &domain_evals.d8.this.w,
             coefficient: &constraint_system.coefficients8,
-            vanishes_on_last_4_rows: &constraint_system.vanishes_on_last_4_rows,
+            vanishes_on_last_4_rows: &constraint_system.precomputations().vanishes_on_last_4_rows,
             z: &domain_evals.d8.this.z,
             l0_1: l0_1(constraint_system.domain.d1),
             domain: constraint_system.domain,

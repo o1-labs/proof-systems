@@ -33,4 +33,7 @@ pub enum VerifyError {
 
     #[error("the opening proof failed to verify")]
     OpenProof,
+
+    #[error("lookup used in circuit, but proof is missing lookup commitments")]
+    LookupCommitmentMissing,
 }

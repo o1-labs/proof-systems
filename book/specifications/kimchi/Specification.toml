@@ -8,9 +8,8 @@ authors = ["Izaak Meckler", "Vanishree Rao", "Matthew Ryan", "Joseph Spadavecchi
 template = "template.md"
 
 [sections]
-# arguments
+# permutation
 permutation = "../../../kimchi/src/circuits/polynomials/permutation.rs"
-lookup = "../../../kimchi/src/circuits/lookup/constraints.rs"
 
 # gates
 chacha = "../../../kimchi/src/circuits/polynomials/chacha.rs"
@@ -20,6 +19,11 @@ endosclmul = "../../../kimchi/src/circuits/polynomials/endosclmul.rs"
 generic = "../../../kimchi/src/circuits/polynomials/generic.rs"
 poseidon = "../../../kimchi/src/circuits/polynomials/poseidon.rs"
 varbasemul = "../../../kimchi/src/circuits/polynomials/varbasemul.rs"
+
+# lookup
+tables = "../../../kimchi/src/circuits/lookup/tables/mod.rs"
+xor = "../../../kimchi/src/circuits/lookup/tables/xor.rs"
+lookup = "../../../kimchi/src/circuits/lookup/constraints.rs"
 
 # setup
 constraint_system = "../../../kimchi/src/circuits/constraints.rs"

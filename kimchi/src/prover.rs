@@ -1,9 +1,10 @@
 //! This module implements prover's zk-proof primitive.
 
+use crate::prover::permutation::ZK_ROWS;
 use crate::{
     circuits::{
         argument::{Argument, ArgumentType},
-        constraints::{LookupConstraintSystem, ZK_ROWS},
+        constraints::LookupConstraintSystem,
         expr::{l0_1, Constants, Environment, LookupEnvironment},
         gate::GateType,
         lookup::{
@@ -164,9 +165,9 @@ where
             )
             .interpolate()
         });
-
-        //~ 10. TODO: lookup
-        let joint_combiner_ = {
+        //~ 10. If there's a joint lookup being used in the circuit (TODO: define joint lookup vs single lookup):
+        let joint_combiner: ScalarField<G> = {
+            //~     - Sample the joint combinator (lookup challenge) $j$ with the Fq-Sponge.
             // TODO: how will the verifier circuit handle these kind of things? same with powers of alpha...
             let s = match index.cs.lookup_constraint_system.as_ref() {
                 None
@@ -187,11 +188,10 @@ where
                     ..
                 }) => ScalarChallenge(fq_sponge.challenge()),
             };
-            (s, s.to_field(&index.srs.endo_r))
-        };
 
-        // TODO: that seems like an unecessary line
-        let joint_combiner: ScalarField<G> = joint_combiner_.1;
+            //~     - derive the scalar joint combinator $j$ from $j'$ using the endomorphism (TODO: details, explicitly say that we change the field).
+            s.to_field(&index.srs.endo_r)
+        };
 
         let table_id_combiner: ScalarField<G> =
             if let Some(lcs) = index.cs.lookup_constraint_system.as_ref() {
@@ -256,6 +256,7 @@ where
             CombinedEntry(x)
         };
 
+        //~ 12. If using lookup:
         let (lookup_sorted, lookup_sorted_coeffs, lookup_sorted_comm, lookup_sorted8) =
             match index.cs.lookup_constraint_system.as_ref() {
                 None => (None, None, None, None),
@@ -276,11 +277,12 @@ where
                                 &joint_combiner,
                                 &table_id_combiner,
                                 row,
-                                table_id,
+                                &table_id,
                             ))
                         })
                     };
 
+                    //~     - Compute the sorted table.
                     // TODO: Once we switch to committing using lagrange commitments,
                     // `witness` will be consumed when we interpolate, so interpolation will
                     // have to moved below this.
@@ -294,6 +296,7 @@ where
                             (joint_combiner, table_id_combiner),
                         )?;
 
+                    //~     - Compute the sorted coefficients.
                     let lookup_sorted: Vec<_> = lookup_sorted
                         .into_iter()
                         .map(|chunk| {
@@ -302,6 +305,8 @@ where
                         })
                         .collect();
 
+                    //~     - Commit to each of the sorted table columns.
+                    //~       (See section on lookup to see how to compute it.)
                     let comm: Vec<_> = lookup_sorted
                         .iter()
                         .map(|v| {
@@ -347,7 +352,7 @@ where
                                     // table ID is identically 0.
                                     ScalarField::<G>::zero(),
                             };
-                        combine_table_entry(&joint_combiner, &table_id_combiner, row, table_id)
+                        combine_table_entry(&joint_combiner, &table_id_combiner, row, &table_id)
                     });
 
                     let aggreg =
@@ -453,7 +458,6 @@ where
                         index_evals.insert(*g, &c[i]);
                     }
                 });
-
             Environment {
                 constants: Constants {
                     alpha,
@@ -465,7 +469,7 @@ where
                 },
                 witness: &lagrange.d8.this.w,
                 coefficient: &index.cs.coefficients8,
-                vanishes_on_last_4_rows: &index.cs.vanishes_on_last_4_rows,
+                vanishes_on_last_4_rows: &index.cs.precomputations().vanishes_on_last_4_rows,
                 z: &lagrange.d8.this.z,
                 l0_1: l0_1(index.cs.domain.d1),
                 domain: index.cs.domain,
