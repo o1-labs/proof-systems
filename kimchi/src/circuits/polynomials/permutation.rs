@@ -41,11 +41,9 @@
 //~
 
 use crate::{
-    circuits::{
-        constraints::ConstraintSystem, polynomial::WitnessOverDomains, scalars::ProofEvaluations,
-        wires::*,
-    },
+    circuits::{constraints::ConstraintSystem, polynomial::WitnessOverDomains, wires::*},
     error::ProofError,
+    proof::ProofEvaluations,
 };
 use ark_ff::{FftField, SquareRootField, Zero};
 use ark_poly::{
@@ -58,6 +56,61 @@ use rand::{CryptoRng, RngCore};
 
 /// Number of constraints produced by the argument.
 pub const CONSTRAINTS: u32 = 3;
+pub const ZK_ROWS: u64 = 3;
+/// Evaluates the polynomial
+/// (x - w^{n - 4}) (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
+pub fn eval_vanishes_on_last_4_rows<F: FftField>(domain: D<F>, x: F) -> F {
+    let w4 = domain.group_gen.pow(&[domain.size - (ZK_ROWS + 1)]);
+    let w3 = domain.group_gen * w4;
+    let w2 = domain.group_gen * w3;
+    let w1 = domain.group_gen * w2;
+    (x - w1) * (x - w2) * (x - w3) * (x - w4)
+}
+
+/// The polynomial
+/// (x - w^{n - 4}) (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
+pub fn vanishes_on_last_4_rows<F: FftField>(domain: D<F>) -> DensePolynomial<F> {
+    let x = DensePolynomial::from_coefficients_slice(&[F::zero(), F::one()]);
+    let c = |a: F| DensePolynomial::from_coefficients_slice(&[a]);
+    let w4 = domain.group_gen.pow(&[domain.size - (ZK_ROWS + 1)]);
+    let w3 = domain.group_gen * w4;
+    let w2 = domain.group_gen * w3;
+    let w1 = domain.group_gen * w2;
+    &(&(&x - &c(w1)) * &(&x - &c(w2))) * &(&(&x - &c(w3)) * &(&x - &c(w4)))
+}
+
+/// Returns the end of the circuit, which is used for introducing zero-knowledge in the permutation polynomial
+pub fn zk_w3<F: FftField>(domain: D<F>) -> F {
+    domain.group_gen.pow(&[domain.size - (ZK_ROWS)])
+}
+
+/// Evaluates the polynomial
+/// (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
+pub fn eval_zk_polynomial<F: FftField>(domain: D<F>, x: F) -> F {
+    let w3 = zk_w3(domain);
+    let w2 = domain.group_gen * w3;
+    let w1 = domain.group_gen * w2;
+    (x - w1) * (x - w2) * (x - w3)
+}
+
+/// Computes the zero-knowledge polynomial for blinding the permutation polynomial: `(x-w^{n-k})(x-w^{n-k-1})...(x-w^n)`.
+/// Currently, we use k = 3 for 2 blinding factors,
+/// see <https://www.plonk.cafe/t/noob-questions-plonk-paper/73>
+pub fn zk_polynomial<F: FftField>(domain: D<F>) -> DensePolynomial<F> {
+    let w3 = zk_w3(domain);
+    let w2 = domain.group_gen * w3;
+    let w1 = domain.group_gen * w2;
+
+    // (x-w3)(x-w2)(x-w1) =
+    // x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3
+    let w1w2 = w1 * w2;
+    DensePolynomial::from_coefficients_slice(&[
+        -w1w2 * w3,                   // 1
+        w1w2 + (w1 * w3) + (w3 * w2), // x
+        -w1 - w2 - w3,                // x^2
+        F::one(),                     // x^3
+    ])
+}
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// permutation quotient poly contribution computation
@@ -75,7 +128,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let alpha2 = alphas.next().expect("missing power of alpha");
 
         // constant gamma in evaluation form (in domain d8)
-        let gamma = &self.l08.scale(gamma);
+        let gamma = &self.precomputations().constant_1_d8.scale(gamma);
 
         //~ The quotient contribution of the permutation is split into two parts $perm$ and $bnd$.
         //~ They will be used by the prover.
@@ -113,7 +166,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             // in evaluation form in d8
             let mut shifts = lagrange.d8.this.z.clone();
             for (witness, shift) in lagrange.d8.this.w.iter().zip(self.shift.iter()) {
-                let term = &(witness + gamma) + &self.l1.scale(beta * shift);
+                let term =
+                    &(witness + gamma) + &self.precomputations().poly_x_d1.scale(beta * shift);
                 shifts = &shifts * &term;
             }
 
@@ -128,7 +182,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                 sigmas = &sigmas * &term;
             }
 
-            &(&shifts - &sigmas).scale(alpha0) * &self.zkpl
+            &(&shifts - &sigmas).scale(alpha0) * &self.precomputations().zkpl
         };
 
         //~ and `bnd`:
@@ -189,7 +243,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         //~
         //~ $\text{scalar} \cdot \sigma_6(x)$
         //~
-        let zkpm_zeta = self.zkpm.evaluate(&zeta);
+        let zkpm_zeta = self.precomputations().zkpm.evaluate(&zeta);
         let scalar = Self::perm_scalars(e, beta, gamma, alphas, zkpm_zeta);
         self.sigmam[PERMUTS - 1].scale(scalar)
     }

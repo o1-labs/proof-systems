@@ -8,9 +8,8 @@ authors = ["Izaak Meckler", "Vanishree Rao", "Matthew Ryan", "Joseph Spadavecchi
 template = "template.md"
 
 [sections]
-# arguments
+# permutation
 permutation = "../../../kimchi/src/circuits/polynomials/permutation.rs"
-lookup = "../../../kimchi/src/circuits/polynomials/lookup.rs"
 
 # gates
 chacha = "../../../kimchi/src/circuits/polynomials/chacha.rs"
@@ -21,11 +20,17 @@ generic = "../../../kimchi/src/circuits/polynomials/generic.rs"
 poseidon = "../../../kimchi/src/circuits/polynomials/poseidon.rs"
 varbasemul = "../../../kimchi/src/circuits/polynomials/varbasemul.rs"
 
+# lookup
+tables = "../../../kimchi/src/circuits/lookup/tables/mod.rs"
+xor = "../../../kimchi/src/circuits/lookup/tables/xor.rs"
+lookup = "../../../kimchi/src/circuits/lookup/constraints.rs"
+
 # setup
 constraint_system = "../../../kimchi/src/circuits/constraints.rs"
 prover_index = "../../../kimchi/src/prover_index.rs"
 verifier_index = "../../../kimchi/src/verifier_index.rs"
 
 # proof
+proof = "../../../kimchi/src/proof.rs"
 prover = "../../../kimchi/src/prover.rs"
 verifier = "../../../kimchi/src/verifier.rs"
