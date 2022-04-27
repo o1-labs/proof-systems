@@ -80,6 +80,7 @@ fn verify_proof(gates: Vec<CircuitGate<Fp>>, witness: [Vec<Fp>; COLUMNS], public
         witness,
         &index,
         vec![prev],
+        array_init(|_| None),
     )
     .unwrap();
 

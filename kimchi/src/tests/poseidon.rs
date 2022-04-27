@@ -159,6 +159,7 @@ fn positive(index: &ProverIndex<Affine>) {
                 witness_cols,
                 index,
                 vec![prev],
+                array_init(|_| None),
             )
             .unwrap(),
         );
