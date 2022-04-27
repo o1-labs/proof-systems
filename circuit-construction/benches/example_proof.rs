@@ -17,6 +17,7 @@ use mina_curves::pasta::{
 use o1_utils::types::fields::*;
 use oracle::{
     constants::*,
+    poseidon::{ArithmeticSponge, Sponge},
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use std::sync::Arc;
@@ -27,14 +28,20 @@ type SpongeR = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>;
 type PSpongeQ = DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi>;
 type PSpongeR = DefaultFrSponge<Fq, PlonkSpongeConstantsKimchi>;
 
-// Prove knowledge of discrete log
+pub struct Witness<G: AffineCurve> {
+    pub s: ScalarField<G>,
+    pub preimage: G::BaseField,
+}
+
+// Prove knowledge of discrete log and poseidon preimage of a hash
 pub fn circuit<
     F: PrimeField + FftField,
     G: AffineCurve<BaseField = F> + CoordinateCurve,
     Sys: Cs<F>,
 >(
+    constants: &Constants<F>,
     // The witness
-    s: &Option<ScalarField<G>>,
+    witness: &Option<Witness<G>>,
     sys: &mut Sys,
     public_input: Vec<Var<F>>,
 ) {
@@ -47,21 +54,27 @@ pub fn circuit<
     };
 
     let base = constant_curve_pt(sys, G::prime_subgroup_generator().to_coords().unwrap());
-    let scalar = sys.scalar(G::ScalarField::size_in_bits(), || s.unwrap());
+    let scalar = sys.scalar(G::ScalarField::size_in_bits(), || {
+        witness.as_ref().unwrap().s
+    });
     let actual = sys.scalar_mul(zero, base, scalar);
+
+    let preimage = sys.var(|| witness.as_ref().unwrap().preimage);
+    let actual_hash = sys.poseidon(constants, vec![preimage, zero, zero])[0];
 
     sys.assert_eq(actual.0, public_input[0]);
     sys.assert_eq(actual.1, public_input[1]);
+    sys.assert_eq(actual_hash, public_input[2]);
 
     sys.zk()
 }
 
-const PUBLIC_INPUT_LENGTH: usize = 2;
+const PUBLIC_INPUT_LENGTH: usize = 3;
 
 fn main() {
-    // 2^7 = 128
+    // 2^8 = 256
     let srs = {
-        let mut srs = SRS::<Affine>::create(1 << 7);
+        let mut srs = SRS::<Affine>::create(1 << 8);
         srs.add_lagrange_basis(D::new(srs.g.len()).unwrap());
         Arc::new(srs)
     };
@@ -74,7 +87,7 @@ fn main() {
         &proof_system_constants,
         &fq_poseidon,
         PUBLIC_INPUT_LENGTH,
-        |sys, p| circuit::<_, Other, _>(&None, sys, p),
+        |sys, p| circuit::<_, Other, _>(&proof_system_constants, &None, sys, p),
     );
 
     let group_map = <Affine as CommitmentCurve>::Map::setup();
@@ -87,12 +100,26 @@ fn main() {
         .mul(private_key)
         .into_affine();
 
+    let preimage = BaseField::<Other>::rand(&mut rng);
+
+    let witness = Witness {
+        s: private_key,
+        preimage,
+    };
+
+    let hash = {
+        let mut s: ArithmeticSponge<_, PlonkSpongeConstantsKimchi> =
+            ArithmeticSponge::new(proof_system_constants.poseidon.clone());
+        s.absorb(&[preimage]);
+        s.squeeze()
+    };
+
     let proof = prove::<Affine, _, SpongeQ, SpongeR>(
         &prover_index,
         &group_map,
         None,
-        vec![public_key.x, public_key.y],
-        |sys, p| circuit::<Fp, Other, _>(&Some(private_key), sys, p),
+        vec![public_key.x, public_key.y, hash],
+        |sys, p| circuit::<Fp, Other, _>(&proof_system_constants, &Some(witness), sys, p),
     );
 
     let verifier_index = prover_index.verifier_index();
