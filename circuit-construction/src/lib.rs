@@ -8,15 +8,15 @@ use commitment_dlog::{
 use kimchi::circuits::{
     constraints::ConstraintSystem,
     gate::{CircuitGate, GateType},
-    wires::{COLUMNS, Wire},
+    wires::{Wire, COLUMNS},
 };
-use kimchi::{prover_index::ProverIndex, plonk_sponge::FrSponge, prover::ProverProof};
+use kimchi::{plonk_sponge::FrSponge, proof::ProverProof, prover_index::ProverIndex};
 use mina_curves::pasta::{fp::Fp, fq::Fq, pallas::Affine as Other, vesta::Affine};
-use oracle::{poseidon::ArithmeticSpongeParams, permutation::full_round, FqSponge, constants::*};
+use oracle::{constants::*, permutation::full_round, poseidon::ArithmeticSpongeParams, FqSponge};
 use std::collections::HashMap;
 
 pub const GENERICS: usize = 3;
-pub const ZK_ROWS: usize = kimchi::circuits::constraints::ZK_ROWS as usize;
+pub const ZK_ROWS: usize = kimchi::circuits::polynomials::permutation::ZK_ROWS as usize;
 
 pub const SINGLE_GENERIC_COEFFS: usize = 5;
 pub const GENERIC_ROW_COEFFS: usize = 2 * SINGLE_GENERIC_COEFFS;
@@ -788,9 +788,7 @@ impl<F: FftField + PrimeField> Cs<F> for WitnessGenerator<F> {
 
 impl<F: FftField> WitnessGenerator<F> {
     fn columns(&self) -> [Vec<F>; COLUMNS] {
-        array_init(|col| {
-            self.rows.iter().map(|row| row[col]).collect()
-        })
+        array_init(|col| self.rows.iter().map(|row| row[col]).collect())
     }
 }
 
@@ -895,8 +893,14 @@ where
         }),
     };
 
-    ProverProof::create_recursive::<EFqSponge, EFrSponge>(group_map, columns, index, vec![], blinders)
-        .unwrap()
+    ProverProof::create_recursive::<EFqSponge, EFrSponge>(
+        group_map,
+        columns,
+        index,
+        vec![],
+        blinders,
+    )
+    .unwrap()
 }
 
 pub fn generate_prover_index<C: Cycle, H>(
@@ -979,7 +983,6 @@ pub fn shift<F: PrimeField>(size: usize) -> F {
     let two: F = (2 as u64).into();
     two.pow(&[size as u64])
 }
-
 
 pub trait CoordinateCurve: AffineCurve {
     fn to_coords(&self) -> Option<(Self::BaseField, Self::BaseField)>;

@@ -3,8 +3,9 @@
 
 use crate::alphas::Alphas;
 use crate::circuits::lookup::lookups::LookupsUsed;
+use crate::circuits::polynomials::permutation::zk_polynomial;
+use crate::circuits::polynomials::permutation::zk_w3;
 use crate::circuits::{
-    constraints::{zk_polynomial, zk_w3},
     expr::{Linearization, PolishToken},
     wires::*,
 };
@@ -28,6 +29,7 @@ use std::{
     sync::Arc,
 };
 
+//~spec:startcode
 #[serde_as]
 #[derive(Serialize, Deserialize)]
 pub struct LookupVerifierIndex<G: CommitmentCurve> {
@@ -36,11 +38,18 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
     pub lookup_table: Vec<PolyComm<G>>,
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub lookup_selectors: Vec<PolyComm<G>>,
+
+    /// Table IDs for the lookup values.
+    /// This may be `None` if all lookups originate from table 0.
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub table_ids: Option<PolyComm<G>>,
+
+    /// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
+    pub max_joint_size: u32,
 }
 
 #[serde_as]
 #[derive(Serialize, Deserialize)]
-//~spec:startcode
 pub struct VerifierIndex<G: CommitmentCurve> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
@@ -141,6 +150,11 @@ where
                         .iter()
                         .map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None))
                         .collect(),
+                    table_ids: cs.table_ids8.as_ref().map(|table_ids8| {
+                        self.srs
+                            .commit_evaluations_non_hiding(domain, table_ids8, None)
+                    }),
+                    max_joint_size: cs.configuration.max_joint_size,
                 })
         };
 
@@ -184,7 +198,7 @@ where
             }),
 
             shift: self.cs.shift,
-            zkpm: self.cs.zkpm.clone(),
+            zkpm: self.cs.precomputations().zkpm.clone(),
             w: zk_w3(self.cs.domain.d1),
             endo: self.cs.endo,
             lookup_index,
