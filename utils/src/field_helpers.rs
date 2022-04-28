@@ -1,4 +1,5 @@
 use ark_ff::{Field, PrimeField};
+use std::ops::Neg;
 use thiserror::Error;
 
 // Field helpers error
@@ -83,6 +84,14 @@ impl<F: Field> FieldHelpers<F> for F {
             }
             bits
         })
+    }
+}
+
+pub fn i32_to_field<F: From<u64> + Neg<Output = F>>(i: i32) -> F {
+    if i >= 0 {
+        F::from(i as u64)
+    } else {
+        -F::from(-i as u64)
     }
 }
 

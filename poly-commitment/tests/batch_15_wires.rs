@@ -2,23 +2,21 @@
 //! verification of a batch of batched opening proofs of polynomial commitments
 
 use ark_ff::{UniformRand, Zero};
+use ark_poly::{univariate::DensePolynomial, UVPolynomial};
+use colored::Colorize;
 use commitment_dlog::{
     commitment::{BatchEvaluationProof, CommitmentCurve, Evaluation},
     srs::SRS,
 };
+use groupmap::GroupMap;
 use mina_curves::pasta::{
     vesta::{Affine, VestaParameters},
     Fp,
 };
-use o1_utils::ExtendedDensePolynomial;
-
+use o1_utils::ExtendedDensePolynomial as _;
 use oracle::constants::PlonkSpongeConstantsKimchi as SC;
 use oracle::sponge::DefaultFqSponge;
 use oracle::FqSponge;
-
-use ark_poly::{univariate::DensePolynomial, UVPolynomial};
-use colored::Colorize;
-use groupmap::GroupMap;
 use rand::Rng;
 use std::time::{Duration, Instant};
 
@@ -81,7 +79,9 @@ where
                 .map(|i| {
                     (
                         srs.commit(&a[i].clone(), bounds[i], rng),
-                        x.iter().map(|xx| a[i].eval(*xx, size)).collect::<Vec<_>>(),
+                        x.iter()
+                            .map(|xx| a[i].to_chunked_polynomial(size).evaluate_chunks(*xx))
+                            .collect::<Vec<_>>(),
                         bounds[i],
                     )
                 })

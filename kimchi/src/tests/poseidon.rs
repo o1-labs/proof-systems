@@ -9,11 +9,11 @@ use crate::{
     prover_index::testing::new_index_for_test,
     verifier::batch_verify,
 };
-use crate::{prover::ProverProof, prover_index::ProverIndex};
+use crate::{proof::ProverProof, prover_index::ProverIndex};
 use ark_ff::{UniformRand, Zero};
 use array_init::array_init;
 use colored::Colorize;
-use commitment_dlog::commitment::{b_poly_coefficients, CommitmentCurve};
+use commitment_dlog::commitment::CommitmentCurve;
 use groupmap::GroupMap;
 use mina_curves::pasta::{
     fp::Fp,

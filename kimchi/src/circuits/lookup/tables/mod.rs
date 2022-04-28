@@ -1,5 +1,6 @@
 use crate::circuits::{
     gate::{CurrOrNext, GateType},
+    lookup::lookups::{JointLookupSpec, LocalPosition},
     wires::COLUMNS,
 };
 use ark_ff::{FftField, Field, One, Zero};
@@ -7,7 +8,12 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use CurrOrNext::{Curr, Next};
 
-use super::lookups::{JointLookupSpec, LocalPosition};
+pub mod xor;
+
+//~ spec:startcode
+/// The table ID associated with the XOR lookup table.
+pub const XOR_TABLE_ID: i32 = 0;
+//~ spec:endcode
 
 /// Enumerates the different 'fixed' lookup tables used by individual gates
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -47,12 +53,13 @@ pub trait Entry {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct CombinedEntry<F>(pub F);
+
 impl<F: Field> Entry for CombinedEntry<F> {
     type Field = F;
-    type Params = F;
+    type Params = (F, F);
 
     fn evaluate(
-        joint_combiner: &F,
+        (joint_combiner, table_id_combiner): &(F, F),
         j: &JointLookupSpec<F>,
         witness: &[Vec<F>; COLUMNS],
         row: usize,
@@ -65,7 +72,7 @@ impl<F: Field> Entry for CombinedEntry<F> {
             witness[pos.column][row]
         };
 
-        CombinedEntry(j.evaluate(*joint_combiner, &eval))
+        CombinedEntry(j.evaluate(joint_combiner, table_id_combiner, &eval))
     }
 }
 
@@ -94,11 +101,16 @@ impl<F: Field> Entry for UncombinedEntry<F> {
     }
 }
 
-pub type LookupTable<F> = Vec<Vec<F>>;
+/// A table of values that can be used for a lookup, along with the ID for the table.
+pub struct LookupTable<F> {
+    pub id: i32,
+    pub data: Vec<Vec<F>>,
+}
 
+/// Returns the lookup table associated to a [GateLookupTable].
 pub fn get_table<F: FftField>(table_name: GateLookupTable) -> LookupTable<F> {
     match table_name {
-        GateLookupTable::Xor => crate::circuits::polynomials::chacha::xor_table(),
+        GateLookupTable::Xor => xor::xor_table(),
     }
 }
 
@@ -115,7 +127,12 @@ pub fn get_table<F: FftField>(table_name: GateLookupTable) -> LookupTable<F> {
 /// analogously using `joint_combiner`.
 ///
 /// This function computes that combined value.
-pub fn combine_table_entry<'a, F, I>(joint_combiner: F, v: I) -> F
+pub fn combine_table_entry<'a, F, I>(
+    joint_combiner: &F,
+    table_id_combiner: &F,
+    v: I,
+    table_id: &F,
+) -> F
 where
     F: 'a, // Any references in `F` must have a lifetime longer than `'a`.
     F: Zero + One + Clone,
@@ -123,4 +140,5 @@ where
 {
     v.rev()
         .fold(F::zero(), |acc, x| joint_combiner.clone() * acc + x.clone())
+        + table_id_combiner.clone() * table_id.clone()
 }

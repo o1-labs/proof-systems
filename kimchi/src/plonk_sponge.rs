@@ -1,10 +1,11 @@
-use crate::circuits::scalars::ProofEvaluations;
 use ark_ff::{Field, PrimeField};
 use oracle::sponge::{DefaultFrSponge, ScalarChallenge};
 use oracle::{
     constants::PlonkSpongeConstantsKimchi as SC,
     poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge},
 };
+
+use crate::proof::{ProofChunkedEvaluations, ProofEvaluations};
 
 pub trait FrSponge<Fr: Field> {
     /// Creates a new Fr-Sponge.
@@ -18,7 +19,7 @@ pub trait FrSponge<Fr: Field> {
 
     /// Absorbs the given evaluations into the sponge.
     // TODO: IMO this function should be inlined in prover/verifier
-    fn absorb_evaluations(&mut self, p: &[Fr], e: &ProofEvaluations<Vec<Fr>>);
+    fn absorb_evaluations(&mut self, p: &[Fr], e: &ProofChunkedEvaluations<Fr>);
 }
 
 impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
@@ -39,7 +40,7 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
         ScalarChallenge(self.squeeze(oracle::sponge::CHALLENGE_LENGTH_IN_LIMBS))
     }
 
-    fn absorb_evaluations(&mut self, p: &[Fr], e: &ProofEvaluations<Vec<Fr>>) {
+    fn absorb_evaluations(&mut self, p: &[Fr], e: &ProofChunkedEvaluations<Fr>) {
         self.last_squeezed = vec![];
         self.sponge.absorb(p);
 
@@ -70,8 +71,10 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
             &e.s[5],
         ];
 
-        for p in &points {
-            self.sponge.absorb(p);
+        for p in points {
+            for chunk in *p {
+                self.sponge.absorb(&[chunk]);
+            }
         }
     }
 }

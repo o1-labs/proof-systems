@@ -7,16 +7,13 @@ use crate::circuits::{
     wires::*,
 };
 use crate::linearization::expr_linearization;
-use ark_ec::AffineCurve;
 use ark_ff::PrimeField;
 use commitment_dlog::{commitment::CommitmentCurve, srs::SRS};
+use o1_utils::types::fields::*;
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::sync::Arc;
-
-type Fr<G> = <G as AffineCurve>::ScalarField;
-type Fq<G> = <G as AffineCurve>::BaseField;
 
 /// The index used by the prover
 #[serde_as]
@@ -24,16 +21,16 @@ type Fq<G> = <G as AffineCurve>::BaseField;
 //~spec:startcode
 pub struct ProverIndex<G: CommitmentCurve> {
     /// constraints system polynomials
-    #[serde(bound = "ConstraintSystem<Fr<G>>: Serialize + DeserializeOwned")]
-    pub cs: ConstraintSystem<Fr<G>>,
+    #[serde(bound = "ConstraintSystem<ScalarField<G>>: Serialize + DeserializeOwned")]
+    pub cs: ConstraintSystem<ScalarField<G>>,
 
     /// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
     #[serde(skip)]
-    pub linearization: Linearization<Vec<PolishToken<Fr<G>>>>,
+    pub linearization: Linearization<Vec<PolishToken<ScalarField<G>>>>,
 
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
-    pub powers_of_alpha: Alphas<Fr<G>>,
+    pub powers_of_alpha: Alphas<ScalarField<G>>,
 
     /// polynomial commitment keys
     #[serde(skip)]
@@ -47,7 +44,7 @@ pub struct ProverIndex<G: CommitmentCurve> {
 
     /// random oracle argument parameters
     #[serde(skip)]
-    pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
+    pub fq_sponge_params: ArithmeticSpongeParams<BaseField<G>>,
 }
 //~spec:endcode
 
@@ -57,9 +54,9 @@ where
 {
     /// this function compiles the index from constraints
     pub fn create(
-        mut cs: ConstraintSystem<Fr<G>>,
-        fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
-        endo_q: Fr<G>,
+        mut cs: ConstraintSystem<ScalarField<G>>,
+        fq_sponge_params: ArithmeticSpongeParams<BaseField<G>>,
+        endo_q: ScalarField<G>,
         srs: Arc<SRS<G>>,
     ) -> Self {
         let max_poly_size = srs.g.len();
@@ -100,13 +97,18 @@ where
 
 pub mod testing {
     use super::*;
-    use crate::circuits::gate::CircuitGate;
+    use crate::circuits::{gate::CircuitGate, lookup::tables::LookupTable};
     use commitment_dlog::srs::endos;
     use mina_curves::pasta::{pallas::Affine as Other, vesta::Affine, Fp};
 
-    pub fn new_index_for_test(gates: Vec<CircuitGate<Fp>>, public: usize) -> ProverIndex<Affine> {
+    pub fn new_index_for_test_with_lookups(
+        gates: Vec<CircuitGate<Fp>>,
+        public: usize,
+        lookup_tables: Vec<LookupTable<Fp>>,
+    ) -> ProverIndex<Affine> {
         let fp_sponge_params = oracle::pasta::fp_kimchi::params();
-        let cs = ConstraintSystem::<Fp>::create(gates, vec![], fp_sponge_params, public).unwrap();
+        let cs =
+            ConstraintSystem::<Fp>::create(gates, lookup_tables, fp_sponge_params, public).unwrap();
 
         let mut srs = SRS::<Affine>::create(cs.domain.d1.size as usize);
         srs.add_lagrange_basis(cs.domain.d1);
@@ -115,5 +117,8 @@ pub mod testing {
         let fq_sponge_params = oracle::pasta::fq_kimchi::params();
         let (endo_q, _endo_r) = endos::<Other>();
         ProverIndex::<Affine>::create(cs, fq_sponge_params, endo_q, srs)
+    }
+    pub fn new_index_for_test(gates: Vec<CircuitGate<Fp>>, public: usize) -> ProverIndex<Affine> {
+        new_index_for_test_with_lookups(gates, public, vec![])
     }
 }

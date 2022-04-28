@@ -8,10 +8,10 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 
 /// Alias to refer to the scalar field of a curve.
-type Fr<G> = <G as AffineCurve>::ScalarField;
+pub type Fr<G> = <G as AffineCurve>::ScalarField;
 
 /// Alias to refer to the base field of a curve.
-type Fq<G> = <G as AffineCurve>::BaseField;
+pub type Fq<G> = <G as AffineCurve>::BaseField;
 
 /// Contains the previous proof's challenges which verification was deferred to the next proof.
 #[serde_as]
@@ -78,7 +78,7 @@ pub mod testing {
     use crate::prover_index::ProverIndex;
     use ark_ff::UniformRand;
     use ark_poly::{univariate::DensePolynomial, UVPolynomial};
-    use commitment_dlog::commitment::ceil_log2;
+    use o1_utils::math::ceil_log2;
 
     pub fn new_recursion_for_testing<G>(
         index: &ProverIndex<G>,
