@@ -1,27 +1,27 @@
-// ForeignMul2 - Foreign field element constraints
-//
-//     Foreign field element F is comprised of three 88-bit limbs L0L1L2
-//
-//     * This circuit gate is used to partially constrain L0 and L1
-//     * Together with two instances of ForeignMul0 the limbs L0 and L1 are fully constrained
-//     * It operates on the Curr row
-//
-// Column | Curr
-//      0 | 0 (ignored)
-//      1 | plookup L0p4
-//      2 | plookup L0p5
-//      3 | plookup L1p4
-//      4 | plookup L1p5
-//      5 | (ignored)
-//      6 | (ignored)
-//      7 | (ignored)
-//      8 | (ignored)
-//      9 | (ignored)
-//     10 | (ignored)
-//     11 | (ignored)
-//     12 | (ignored)
-//     13 | (ignored)
-//     14 | (ignored)
+//! ForeignMul2 - Foreign field element constraints
+//!
+//!     Foreign field element F is comprised of three 88-bit limbs L0L1L2
+//!
+//!     * This circuit gate is used to partially constrain L0 and L1
+//!     * Together with two instances of ForeignMul0 the limbs L0 and L1 are fully constrained
+//!     * It operates on the Curr row
+//!
+//! Column | Curr
+//!      0 | 0 (ignored)
+//!      1 | plookup L0p4
+//!      2 | plookup L0p5
+//!      3 | plookup L1p4
+//!      4 | plookup L1p5
+//!      5 | (ignored)
+//!      6 | (ignored)
+//!      7 | (ignored)
+//!      8 | (ignored)
+//!      9 | (ignored)
+//!     10 | (ignored)
+//!     11 | (ignored)
+//!     12 | (ignored)
+//!     13 | (ignored)
+//!     14 | (ignored)
 
 use std::marker::PhantomData;
 

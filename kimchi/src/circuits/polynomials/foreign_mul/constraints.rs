@@ -1,6 +1,6 @@
-//
-// Fundamental constraints and related helpers
-//
+//!
+//! Fundamental constraints and related helpers
+//!
 
 use std::cell::RefCell;
 

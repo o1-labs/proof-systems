@@ -1,27 +1,27 @@
-// ForeignMul0 - Foreign field element constraints
-//
-//     Foreign field element F is comprised of three 88-bit limbs L0L1L2
-//
-//     * This circuit gate is used to partially constrain L0 or L1
-//     * The rest of L0 and L1 are constrained by a single ForeignMul2
-//     * It operates on the Curr row
-//
-// Column | Curr
-//      0 | L
-//      1 | plookup Lp0
-//      2 | plookup Lp1
-//      3 | plookup Lp2
-//      4 | plookup Lp3
-//      5 | copy Lp4
-//      6 | copy Lp5
-//      7 | crumb Lc0
-//      8 | crumb Lc1
-//      9 | crumb Lc2
-//     10 | crumb Lc3
-//     11 | crumb Lc4
-//     12 | crumb Lc5
-//     13 | crumb Lc6
-//     14 | crumb Lc7
+//! ForeignMul0 - Foreign field element constraints
+//!
+//!     Foreign field element F is comprised of three 88-bit limbs L0L1L2
+//!
+//!     * This circuit gate is used to partially constrain L0 or L1
+//!     * The rest of L0 and L1 are constrained by a single ForeignMul2
+//!     * It operates on the Curr row
+//!
+//! Column | Curr
+//!      0 | L
+//!      1 | plookup Lp0
+//!      2 | plookup Lp1
+//!      3 | plookup Lp2
+//!      4 | plookup Lp3
+//!      5 | copy Lp4
+//!      6 | copy Lp5
+//!      7 | crumb Lc0
+//!      8 | crumb Lc1
+//!      9 | crumb Lc2
+//!     10 | crumb Lc3
+//!     11 | crumb Lc4
+//!     12 | crumb Lc5
+//!     13 | crumb Lc6
+//!     14 | crumb Lc7
 
 use std::marker::PhantomData;
 
