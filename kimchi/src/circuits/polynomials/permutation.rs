@@ -56,11 +56,16 @@ use rand::{CryptoRng, RngCore};
 
 /// Number of constraints produced by the argument.
 pub const CONSTRAINTS: u32 = 3;
-pub const ZK_ROWS: u64 = 3;
+/// Number of randomized rows (1 per evaluation).
+pub const ZK_ROWS: u64 = 2;
+/// Number of rows for the final accumulator value.
+pub const ACC_ROWS: u64 = 1;
+/// Total number of evaluation rows.
+pub const EVAL_ROWS: u64 = ZK_ROWS + ACC_ROWS;
 /// Evaluates the polynomial
 /// (x - w^{n - 4}) (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
 pub fn eval_vanishes_on_last_4_rows<F: FftField>(domain: D<F>, x: F) -> F {
-    let w4 = domain.group_gen.pow(&[domain.size - (ZK_ROWS + 1)]);
+    let w4 = domain.group_gen.pow(&[domain.size - (EVAL_ROWS + 1)]);
     let w3 = domain.group_gen * w4;
     let w2 = domain.group_gen * w3;
     let w1 = domain.group_gen * w2;
@@ -72,7 +77,7 @@ pub fn eval_vanishes_on_last_4_rows<F: FftField>(domain: D<F>, x: F) -> F {
 pub fn vanishes_on_last_4_rows<F: FftField>(domain: D<F>) -> DensePolynomial<F> {
     let x = DensePolynomial::from_coefficients_slice(&[F::zero(), F::one()]);
     let c = |a: F| DensePolynomial::from_coefficients_slice(&[a]);
-    let w4 = domain.group_gen.pow(&[domain.size - (ZK_ROWS + 1)]);
+    let w4 = domain.group_gen.pow(&[domain.size - (EVAL_ROWS + 1)]);
     let w3 = domain.group_gen * w4;
     let w2 = domain.group_gen * w3;
     let w1 = domain.group_gen * w2;
@@ -81,7 +86,7 @@ pub fn vanishes_on_last_4_rows<F: FftField>(domain: D<F>) -> DensePolynomial<F> 
 
 /// Returns the end of the circuit, which is used for introducing zero-knowledge in the permutation polynomial
 pub fn zk_w3<F: FftField>(domain: D<F>) -> F {
-    domain.group_gen.pow(&[domain.size - (ZK_ROWS)])
+    domain.group_gen.pow(&[domain.size - (EVAL_ROWS)])
 }
 
 /// Evaluates the polynomial

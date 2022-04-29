@@ -1,6 +1,6 @@
 //! This module implements prover's zk-proof primitive.
 
-use crate::prover::permutation::ZK_ROWS;
+use crate::prover::permutation::EVAL_ROWS;
 use crate::{
     circuits::{
         argument::{Argument, ArgumentType},
@@ -90,18 +90,18 @@ where
         //~ 1. Ensure we have room in the witness for the zero-knowledge rows.
         //~    We currently expect the witness not to be of the same length as the domain,
         //~    but instead be of the length of the (smaller) circuit.
-        //~    If we cannot add `ZK_ROWS` rows to the columns of the witness before reaching
+        //~    If we cannot add `EVAL_ROWS` rows to the columns of the witness before reaching
         //~    the size of the domain, abort.
         let length_witness = witness[0].len();
         let length_padding = d1_size
             .checked_sub(length_witness)
             .ok_or(ProofError::NoRoomForZkInWitness)?;
-        if length_padding < ZK_ROWS as usize {
+        if length_padding < EVAL_ROWS as usize {
             return Err(ProofError::NoRoomForZkInWitness);
         }
 
         //~ 2. Pad the witness columns with Zero gates to make them the same length as the domain.
-        //~    Then, randomize the last `ZK_ROWS` of each columns.
+        //~    Then, randomize the last `EVAL_ROWS` of each columns.
         for w in &mut witness {
             if w.len() != length_witness {
                 return Err(ProofError::WitnessCsInconsistent);
@@ -110,8 +110,8 @@ where
             // padding
             w.extend(std::iter::repeat(ScalarField::<G>::zero()).take(length_padding));
 
-            // zk-rows
-            for row in w.iter_mut().rev().take(ZK_ROWS as usize) {
+            // padding for eval-rows = zk-rows + acc-rows
+            for row in w.iter_mut().rev().take(EVAL_ROWS as usize) {
                 *row = ScalarField::<G>::rand(rng);
             }
         }
@@ -368,8 +368,8 @@ where
                             &lookup_sorted,
                             rng)?;
 
-                    if aggreg.evals[d1_size - (ZK_ROWS as usize + 1)] != ScalarField::<G>::one() {
-                        panic!("aggregation incorrect: {}", aggreg.evals[d1_size-(ZK_ROWS as usize + 1)]);
+                    if aggreg.evals[d1_size - (EVAL_ROWS as usize + 1)] != ScalarField::<G>::one() {
+                        panic!("aggregation incorrect: {}", aggreg.evals[d1_size-(EVAL_ROWS as usize + 1)]);
                     }
 
                     let comm = index.srs.commit_evaluations(index.cs.domain.d1, &aggreg, None, rng);

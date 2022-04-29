@@ -28,7 +28,7 @@ use super::{
         lookups::{JointLookup, LookupInfo},
         tables::LookupTable,
     },
-    polynomials::permutation::ZK_ROWS,
+    polynomials::permutation::EVAL_ROWS,
 };
 
 //
@@ -287,10 +287,10 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                     .unwrap_or(0);
 
                 // The maximum number of entries that can be provided across all tables.
-                // Since we do not assert the lookup constraint on the final `ZK_ROWS` rows, and
+                // Since we do not assert the lookup constraint on the final `EVAL_ROWS` rows, and
                 // because the row before is used to assert that the lookup argument's final
                 // product is 1, we cannot use those rows to store any values.
-                let max_num_entries = d1_size - (ZK_ROWS as usize) - 1;
+                let max_num_entries = d1_size - (EVAL_ROWS as usize) - 1;
 
                 let mut lookup_table = vec![Vec::with_capacity(d1_size); max_table_width];
                 let mut table_ids: Vec<F> = Vec::with_capacity(d1_size);
@@ -410,9 +410,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 
         //~ 2. Create a domain for the circuit. That is,
         //~    compute the smallest subgroup of the field that
-        //~    has order greater or equal to `n + ZK_ROWS` elements.
-        let domain = EvaluationDomains::<F>::create(gates.len() + ZK_ROWS as usize)?;
-        assert!(domain.d1.size > ZK_ROWS);
+        //~    has order greater or equal to `n + EVAL_ROWS` elements.
+        let domain = EvaluationDomains::<F>::create(gates.len() + EVAL_ROWS as usize)?;
+        assert!(domain.d1.size > EVAL_ROWS);
 
         //~ 3. Pad the circuit: add zero gates to reach the domain size.
         let d1_size = domain.d1.size();

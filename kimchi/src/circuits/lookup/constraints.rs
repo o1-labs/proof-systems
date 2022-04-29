@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::circuits::polynomials::permutation::EVAL_ROWS;
 use crate::{
     circuits::{
         expr::{prologue::*, Column, ConstantExpr},
@@ -25,9 +26,6 @@ use CurrOrNext::{Curr, Next};
 /// Number of constraints produced by the argument.
 pub const CONSTRAINTS: u32 = 7;
 
-/// The number of random values to append to columns for zero-knowledge.
-pub const ZK_ROWS: usize = 3;
-
 /// Pad with zeroes and then add 3 random elements in the last two
 /// rows for zero knowledge.
 pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
@@ -37,9 +35,9 @@ pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
 ) -> Evaluations<F, D<F>> {
     let n = d.size as usize;
     let k = e.len();
-    assert!(k <= n - ZK_ROWS);
-    e.extend((0..((n - ZK_ROWS) - k)).map(|_| F::zero()));
-    e.extend((0..ZK_ROWS).map(|_| F::rand(rng)));
+    assert!(k <= n - EVAL_ROWS as usize);
+    e.extend((0..((n - EVAL_ROWS as usize) - k)).map(|_| F::zero()));
+    e.extend((0..EVAL_ROWS as usize).map(|_| F::rand(rng)));
     Evaluations::<F, D<F>>::from_vec_and_domain(e, d)
 }
 
@@ -98,7 +96,7 @@ pub fn sorted<
     let n = d1.size as usize;
     let mut counts: HashMap<E, usize> = HashMap::new();
 
-    let lookup_rows = n - ZK_ROWS - 1;
+    let lookup_rows = n - EVAL_ROWS as usize - 1;
     let lookup_info = LookupInfo::<F>::create();
     let by_row = lookup_info.by_row(gates);
     let max_lookups_per_row = lookup_info.max_per_row;
@@ -249,7 +247,7 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
     rng: &mut R,
 ) -> Result<Evaluations<F, D<F>>, ProofError> {
     let n = d1.size as usize;
-    let lookup_rows = n - ZK_ROWS - 1;
+    let lookup_rows = n - EVAL_ROWS as usize - 1;
     let beta1 = F::one() + beta;
     let gammabeta1 = gamma * beta1;
     let mut lookup_aggreg = vec![F::one()];
@@ -522,7 +520,7 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>
         - E::cell(Column::LookupAggreg, Curr) * numerator;
 
     let num_rows = d1.size();
-    let num_lookup_rows = num_rows - ZK_ROWS - 1;
+    let num_lookup_rows = num_rows - EVAL_ROWS as usize - 1;
 
     let mut res = vec![
         // the accumulator except for the last 4 rows
@@ -571,7 +569,7 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
         .iter()
         .for_each(|s| assert_eq!(d1.size, s.domain().size));
     let n = d1.size as usize;
-    let lookup_rows = n - ZK_ROWS - 1;
+    let lookup_rows = n - EVAL_ROWS as usize - 1;
 
     // Check that the (desnakified) sorted table is
     // 1. Sorted
