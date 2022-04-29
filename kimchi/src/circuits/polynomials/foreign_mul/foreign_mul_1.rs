@@ -1,26 +1,26 @@
-//! ForeignMul1 - Foreign field element constraints
-//!
-//!     Foreign field element F is comprised of three 88-bit limbs L0L1L2
-//!
-//!     * This circuit gate is used to fully constrain L2
-//!     * It operates on the Curr and Next rows
-//!
-//! Column | Curr         | Next
-//!      0 | L2           | 0 (ignored)
-//!      1 | plookup L2p0 | (ignored)
-//!      2 | plookup L2p1 | (ignored)
-//!      3 | plookup L2p2 | (ignored)
-//!      4 | plookup L2p3 | (ignored)
-//!      5 | crumb L2c0   | crumb L2c10
-//!      6 | crumb L2c1   | crumb L2c11
-//!      7 | crumb L2c2   | crumb L2c12
-//!      8 | crumb L2c3   | crumb L2c13
-//!      9 | crumb L2c4   | crumb L2c14
-//!     10 | crumb L2c5   | crumb L2c15
-//!     11 | crumb L2c6   | crumb L2c16
-//!     12 | crumb L2c7   | crumb L2c17
-//!     13 | crumb L2c8   | crumb L2c18
-//!     14 | crumb L2c9   | crumb L2c19
+/// ForeignMul1 - Foreign field element constraints
+///
+///    Foreign field element F is comprised of three 88-bit limbs L0L1L2
+///
+///    * This circuit gate is used to fully constrain L2
+///    * It operates on the Curr and Next rows
+///
+/// Column | Curr         | Next
+///      0 | L2           | 0 (ignored)
+///      1 | plookup L2p0 | (ignored)
+///      2 | plookup L2p1 | (ignored)
+///      3 | plookup L2p2 | (ignored)
+///      4 | plookup L2p3 | (ignored)
+///      5 | crumb L2c0   | crumb L2c10
+///      6 | crumb L2c1   | crumb L2c11
+///      7 | crumb L2c2   | crumb L2c12
+///      8 | crumb L2c3   | crumb L2c13
+///      9 | crumb L2c4   | crumb L2c14
+///     10 | crumb L2c5   | crumb L2c15
+///     11 | crumb L2c6   | crumb L2c16
+///     12 | crumb L2c7   | crumb L2c17
+///     13 | crumb L2c8   | crumb L2c18
+///     14 | crumb L2c9   | crumb L2c19
 
 use std::marker::PhantomData;
 

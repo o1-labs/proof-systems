@@ -1,3 +1,5 @@
+//! Foreign field multiplication gate
+
 use ark_ff::{FftField, Zero};
 use ark_poly::{univariate::DensePolynomial as DP, Evaluations as EV, Radix2EvaluationDomain as D};
 use array_init::array_init;
