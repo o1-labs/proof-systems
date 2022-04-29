@@ -112,7 +112,7 @@ where
 
             // zk-rows
             for row in w.iter_mut().rev().take(ZK_ROWS as usize) {
-                *row = ScalarField::<G>::rand(rng);
+                *row = <ScalarField<G> as UniformRand>::rand(rng);
             }
         }
 
@@ -691,7 +691,7 @@ where
             // the higher degree coefficients of `t` are 0.
             for _ in 0..dummies {
                 use ark_ec::ProjectiveCurve;
-                let w = ScalarField::<G>::rand(rng);
+                let w = <ScalarField<G> as UniformRand>::rand(rng);
                 t_comm.unshifted.push(index.srs.h.mul(w).into_affine());
                 omega_t.unshifted.push(w);
             }
