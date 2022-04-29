@@ -3374,9 +3374,11 @@ In other words it returns:
 <li><strong>gates</strong>. Offset starts at 0 and 21 powers of <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.43056em;vertical-align:0em;"></span><span class="mord mathnormal" style="margin-right:0.0037em;">α</span></span></span></span> are used</li>
 <li><strong>Permutation</strong>. Offset starts at 21 and 3 powers of <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.43056em;vertical-align:0em;"></span><span class="mord mathnormal" style="margin-right:0.0037em;">α</span></span></span></span> are used</li>
 </ul>
-<div class="admonition note">
+<div id="admonition-note" class="admonition note">
 <div class="admonition-title">
+<a class="admonition-anchor-link" href="specs/kimchi.html#admonition-note">
 <p>Note</p>
+</a>
 </div>
 <div>
 <p>As gates are mutually exclusive (a single gate is used on each row), we can reuse the same range of powers of alpha across all the gates.</p>
@@ -3420,9 +3422,11 @@ in order to add zero-knowledge to the protocol.</p>
 <h3 id="lookup-1"><a class="header" href="#lookup-1">Lookup</a></h3>
 <p>Lookups in kimchi allows you to check if a single value, or a series of values, are part of a table.
 The first case is useful to check for checking if a value belongs to a range (from 0 to 1,000, for example), whereas the second case is useful to check truth tables (for example, checking that three values can be found in the rows of an XOR table) or write and read from a memory vector (where one column is an index, and the other is the value stored at that index).</p>
-<div class="admonition note">
+<div id="admonition-note-1" class="admonition note">
 <div class="admonition-title">
+<a class="admonition-anchor-link" href="specs/kimchi.html#admonition-note-1">
 <p>Note</p>
+</a>
 </div>
 <div>
 <p>Similarly to the generic gate, each values taking part in a lookup can be scaled with a fixed field element.</p>
@@ -3430,9 +3434,11 @@ The first case is useful to check for checking if a value belongs to a range (fr
 </div>
 <p>The lookup functionality is an opt-in feature of kimchi that can be used by custom gates.
 From the user’s perspective, not using any gates that make use of lookups means that the  feature will be disabled and there will be no overhead to the protocol.</p>
-<div class="admonition note">
+<div id="admonition-note-2" class="admonition note">
 <div class="admonition-title">
+<a class="admonition-anchor-link" href="specs/kimchi.html#admonition-note-2">
 <p>Note</p>
+</a>
 </div>
 <div>
 <p>For now, the Chacha gates are the only gates making use of lookups.</p>
@@ -3531,9 +3537,11 @@ and the next state, after permutation, is represented by <code>(s1, s1, s1)</cod
 <li>or with a Zero gate, and a permutation to use the output elsewhere in the circuit.</li>
 <li>or with another gate expecting an input of 3 field elements in its first registers.</li>
 </ul>
-<div class="admonition note">
+<div id="admonition-note-3" class="admonition note">
 <div class="admonition-title">
+<a class="admonition-anchor-link" href="specs/kimchi.html#admonition-note-3">
 <p>Note</p>
+</a>
 </div>
 <div>
 <p>As some of the poseidon hash variants might not use <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.69444em;vertical-align:0em;"></span><span class="mord">5</span><span class="mord mathnormal" style="margin-right:0.03148em;">k</span></span></span></span> rounds (for some <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.69444em;vertical-align:0em;"></span><span class="mord mathnormal" style="margin-right:0.03148em;">k</span></span></span></span>),
@@ -3936,9 +3944,11 @@ that satisfy the following equation with <span class="katex"><span class="katex-
 <span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.036108em;vertical-align:-0.286108em;"></span><span class="mord mathnormal" style="margin-right:0.05764em;">E</span><span class="mopen">(</span><span class="mord"><span class="mord mathbb">F</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.15139200000000003em;"><span style="top:-2.5500000000000003em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.03588em;">q</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.286108em;"><span></span></span></span></span></span></span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">:</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:1.0585479999999998em;vertical-align:-0.19444em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">y</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8641079999999999em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:0.9474379999999999em;vertical-align:-0.08333em;"></span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8641079999999999em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">3</span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.66666em;vertical-align:-0.08333em;"></span><span class="mord mathnormal">a</span><span class="mord mathnormal">x</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.69444em;vertical-align:0em;"></span><span class="mord mathnormal">b</span></span></span></span></span>
 If <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.68333em;vertical-align:0em;"></span><span class="mord mathnormal" style="margin-right:0.13889em;">P</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:1.036108em;vertical-align:-0.286108em;"></span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.15139200000000003em;"><span style="top:-2.5500000000000003em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">p</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.286108em;"><span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">y</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.15139200000000003em;"><span style="top:-2.5500000000000003em;margin-left:-0.03588em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">p</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.286108em;"><span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span> and <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8777699999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal">Q</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:1.036108em;vertical-align:-0.286108em;"></span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.15139200000000003em;"><span style="top:-2.5500000000000003em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.03588em;">q</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.286108em;"><span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">y</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.15139200000000003em;"><span style="top:-2.5500000000000003em;margin-left:-0.03588em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.03588em;">q</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.286108em;"><span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span> are two points in the curve <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.036108em;vertical-align:-0.286108em;"></span><span class="mord mathnormal" style="margin-right:0.05764em;">E</span><span class="mopen">(</span><span class="mord"><span class="mord mathbb">F</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.15139200000000003em;"><span style="top:-2.5500000000000003em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.03588em;">q</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.286108em;"><span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span>, the algorithm we
 represent here computes the operation <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.76666em;vertical-align:-0.08333em;"></span><span class="mord">2</span><span class="mord mathnormal" style="margin-right:0.13889em;">P</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.8777699999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal">Q</span></span></span></span> (point doubling and point addition) as <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.13889em;">P</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">Q</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.8777699999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal">Q</span></span></span></span>.</p>
-<div class="admonition info">
+<div id="admonition-info" class="admonition info">
 <div class="admonition-title">
+<a class="admonition-anchor-link" href="specs/kimchi.html#admonition-info">
 <p>Info</p>
+</a>
 </div>
 <div>
 <p>Point <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8777699999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal">Q</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:1.036108em;vertical-align:-0.286108em;"></span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.15139200000000003em;"><span style="top:-2.5500000000000003em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.03588em;">q</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.286108em;"><span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">y</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.15139200000000003em;"><span style="top:-2.5500000000000003em;margin-left:-0.03588em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.03588em;">q</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.286108em;"><span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span> has nothing to do with the order <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.625em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">q</span></span></span></span> of the field <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.974998em;vertical-align:-0.286108em;"></span><span class="mord"><span class="mord mathbb">F</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.15139200000000003em;"><span style="top:-2.5500000000000003em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.03588em;">q</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.286108em;"><span></span></span></span></span></span></span></span></span></span>.</p>
@@ -3982,9 +3992,11 @@ for the operation <span class="katex"><span class="katex-html" aria-hidden="true
 <p>Let us call <code>Input</code> the point with coordinates <code>(xI, yI)</code> and
 <code>Target</code> is the point being added with coordinates <code>(xT, yT)</code>.
 Then <code>Output</code> will be the point with coordinates <code>(xO, yO)</code> resulting from <code>O = ( I ± T ) + I</code></p>
-<div class="admonition info">
+<div id="admonition-info-1" class="admonition info">
 <div class="admonition-title">
+<a class="admonition-anchor-link" href="specs/kimchi.html#admonition-info-1">
 <p>Info</p>
+</a>
 </div>
 <div>
 <p>Do not confuse our <code>Output</code> point <code>(xO, yO)</code> with the point at infinity that is normally represented as <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.68333em;vertical-align:0em;"></span><span class="mord mathcal" style="margin-right:0.02778em;">O</span></span></span></span>.</p>
@@ -4033,9 +4045,11 @@ This equation is translated as the constraint:</p>
 <li>A <a href="specs/kimchi.html#prover-index"><em>prover index</em></a>, necessary for the prover to to create proofs.</li>
 <li>A <a href="specs/kimchi.html#verifier-index"><em>verifier index</em></a>, necessary for the verifier to verify proofs.</li>
 </ul>
-<div class="admonition note">
+<div id="admonition-note-4" class="admonition note">
 <div class="admonition-title">
+<a class="admonition-anchor-link" href="specs/kimchi.html#admonition-note-4">
 <p>Note</p>
+</a>
 </div>
 <div>
 <p>The circuit creation part is not specified in this document. It might be specified in a separate document, or we might want to specify how to create the circuit description tables.</p>
@@ -4046,9 +4060,11 @@ This equation is translated as the constraint:</p>
 <p>In this section we describe data that both the prover and the verifier index share.</p>
 <p><strong><code>URS</code> (Uniform Reference String)</strong> The URS is a set of parameters that is generated once, and shared between the prover and the verifier. 
 It is used for polynomial commitments, so refer to the <a href="specs/./poly-commitment.html">poly-commitment specification</a> for more details.</p>
-<div class="admonition note">
+<div id="admonition-note-5" class="admonition note">
 <div class="admonition-title">
+<a class="admonition-anchor-link" href="specs/kimchi.html#admonition-note-5">
 <p>Note</p>
+</a>
 </div>
 <div>
 <p>Kimchi currently generates the URS based on the circuit, and attach it to the index. So each circuit can potentially be accompanied with a different URS. On the other hand, Mina reuses the same URS for multiple circuits (<a href="https://minaprotocol.com/blog/what-are-zkapps">see zkapps for more details</a>).</p>
@@ -4056,9 +4072,11 @@ It is used for polynomial commitments, so refer to the <a href="specs/./poly-com
 </div>
 <p><strong><code>Domain</code></strong>. A domain large enough to contain the circuit and the zero-knowledge rows (used to provide zero-knowledge to the protocol). Specifically, the smallest subgroup in our field that has order greater or equal to <code>n + ZK_ROWS</code>, with <code>n</code> is the number of gates in the circuit. 
 TODO: what if the domain is larger than the URS?</p>
-<div class="admonition warning">
+<div id="admonition-ordering-of-elements-in-the-domain" class="admonition warning">
 <div class="admonition-title">
+<a class="admonition-anchor-link" href="specs/kimchi.html#admonition-ordering-of-elements-in-the-domain">
 <p>Ordering of elements in the domain</p>
+</a>
 </div>
 <div>
 <p>Note that in this specification we always assume that the first element of a domain is <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">1</span></span></span></span>.</p>
@@ -4369,9 +4387,11 @@ pub struct ProverProof&lt;G: AffineCurve&gt; {
 <li>A prover index, containing a representation of the circuit (and optionaly pre-computed values to be used in the proof creation).</li>
 <li>The (filled) registers table, representing parts of the execution trace of the circuit.</li>
 </ul>
-<div class="admonition note">
+<div id="admonition-note-6" class="admonition note">
 <div class="admonition-title">
+<a class="admonition-anchor-link" href="specs/kimchi.html#admonition-note-6">
 <p>Note</p>
+</a>
 </div>
 <div>
 <p>The public input is expected to be passed in the first <code>Public</code> rows of the registers table.</p>

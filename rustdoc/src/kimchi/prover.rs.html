@@ -1375,7 +1375,7 @@
 
             <span class="comment">// zk-rows</span>
             <span class="kw">for</span> <span class="ident">row</span> <span class="kw">in</span> <span class="ident">w</span>.<span class="ident">iter_mut</span>().<span class="ident">rev</span>().<span class="ident">take</span>(<span class="ident">ZK_ROWS</span> <span class="kw">as</span> <span class="ident">usize</span>) {
-                <span class="kw-2">*</span><span class="ident">row</span> <span class="op">=</span> <span class="ident">ScalarField</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::rand</span>(<span class="ident">rng</span>);
+                <span class="kw-2">*</span><span class="ident">row</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> <span class="kw">as</span> <span class="ident">UniformRand</span><span class="op">&gt;</span><span class="ident">::rand</span>(<span class="ident">rng</span>);
             }
         }
 
@@ -1954,7 +1954,7 @@
             <span class="comment">// the higher degree coefficients of `t` are 0.</span>
             <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">dummies</span> {
                 <span class="kw">use</span> <span class="ident">ark_ec::ProjectiveCurve</span>;
-                <span class="kw">let</span> <span class="ident">w</span> <span class="op">=</span> <span class="ident">ScalarField</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::rand</span>(<span class="ident">rng</span>);
+                <span class="kw">let</span> <span class="ident">w</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> <span class="kw">as</span> <span class="ident">UniformRand</span><span class="op">&gt;</span><span class="ident">::rand</span>(<span class="ident">rng</span>);
                 <span class="ident">t_comm</span>.<span class="ident">unshifted</span>.<span class="ident">push</span>(<span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">h</span>.<span class="ident">mul</span>(<span class="ident">w</span>).<span class="ident">into_affine</span>());
                 <span class="ident">omega_t</span>.<span class="ident">unshifted</span>.<span class="ident">push</span>(<span class="ident">w</span>);
             }
@@ -2520,5 +2520,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (e7575f967 2022-04-14)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (e85edd9a8 2022-04-28)" ></div>
 </body></html>
