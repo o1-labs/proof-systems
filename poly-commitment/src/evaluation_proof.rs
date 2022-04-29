@@ -213,8 +213,8 @@ impl<G: CommitmentCurve> SRS<G> {
             let (a_lo, a_hi) = (&a[0..n], &a[n..]);
             let (b_lo, b_hi) = (&b[0..n], &b[n..]);
 
-            let rand_l = ScalarField::<G>::rand(rng);
-            let rand_r = ScalarField::<G>::rand(rng);
+            let rand_l = <ScalarField<G> as UniformRand>::rand(rng);
+            let rand_r = <ScalarField<G> as UniformRand>::rand(rng);
 
             let l = VariableBaseMSM::multi_scalar_mul(
                 &[&g[0..n], &[self.h, u]].concat(),
@@ -287,8 +287,8 @@ impl<G: CommitmentCurve> SRS<G> {
             .map(|((l, r), (u, u_inv))| ((*l) * u_inv) + (*r * u))
             .fold(blinding_factor, |acc, x| acc + x);
 
-        let d = ScalarField::<G>::rand(rng);
-        let r_delta = ScalarField::<G>::rand(rng);
+        let d = <ScalarField<G> as UniformRand>::rand(rng);
+        let r_delta = <ScalarField<G> as UniformRand>::rand(rng);
 
         let delta = ((g0.into_projective() + (u.mul(b0))).into_affine().mul(d)
             + self.h.mul(r_delta))
