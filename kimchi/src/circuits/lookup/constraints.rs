@@ -302,12 +302,18 @@ pub struct LookupConfiguration<F: FftField> {
     pub lookup_used: LookupsUsed,
 
     /// The maximum number of lookups per row
+    // TODO: rename to `lookups_per_row`
     pub max_lookups_per_row: usize,
+
     /// The maximum number of elements in a vector lookup
+    // TODO: rename to `table_columns`
     pub max_joint_size: u32,
 
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    // TODO: isn't it always zero? Hardcode this as a static?
     pub dummy_lookup_value: Vec<F>,
+
+    // TODO: hardcode this?
     pub dummy_lookup_table_id: i32,
 }
 
