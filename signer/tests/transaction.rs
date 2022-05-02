@@ -14,7 +14,7 @@ pub struct Transaction {
     pub fee_payer_pk: CompressedPubKey,
     pub nonce: u32,
     pub valid_until: u32,
-    pub memo: [u8; MEMO_BYTES],
+    memo: [u8; MEMO_BYTES],
     // Body
     pub tag: [bool; TAG_BITS],
     pub source_pk: CompressedPubKey,
