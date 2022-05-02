@@ -39,14 +39,24 @@
 <span id="34">34</span>
 <span id="35">35</span>
 <span id="36">36</span>
-</pre><pre class="rust"><code><span class="doccomment">//! This module implements the [ProofError] type.</span>
+<span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
+<span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This module implements the [ProverError] type.</span>
 
 <span class="kw">use</span> <span class="ident">thiserror::Error</span>;
 
 <span class="doccomment">/// Errors that can arise when creating a proof</span>
 <span class="comment">// TODO(mimoo): move this out of oracle</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProofError</span> {
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProverError</span> {
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;the circuit is too large&quot;</span>)]</span>
     <span class="ident">NoRoomForZkInWitness</span>,
 
@@ -74,6 +84,16 @@
 
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;lookup used in circuit, but proof is missing lookup commitments&quot;</span>)]</span>
     <span class="ident">LookupCommitmentMissing</span>,
+}
+
+<span class="doccomment">/// Errors that can arise when preparing the setup</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">SetupError</span> {
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;the domain could not be constructed: {0}&quot;</span>)]</span>
+    <span class="ident">ConstraintSystem</span>(<span class="ident">String</span>),
+
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;the domain could not be constructed: {0}&quot;</span>)]</span>
+    <span class="ident">DomainCreation</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>),
 }
 </code></pre></div>
 </section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (4dd8b420c 2022-05-01)" ></div>

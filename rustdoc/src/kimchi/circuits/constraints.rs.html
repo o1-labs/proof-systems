@@ -764,14 +764,23 @@
 <span id="759">759</span>
 <span id="760">760</span>
 <span id="761">761</span>
+<span id="762">762</span>
+<span id="763">763</span>
+<span id="764">764</span>
+<span id="765">765</span>
+<span id="766">766</span>
+<span id="767">767</span>
+<span id="768">768</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk circuit constraint primitive.</span>
-
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::domain_constant_evaluation::DomainConstantEvaluations</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
-    <span class="ident">domains::EvaluationDomains</span>,
-    <span class="ident">gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">GateType</span>},
-    <span class="ident">polynomial</span>::{<span class="ident">WitnessEvals</span>, <span class="ident">WitnessOverDomains</span>, <span class="ident">WitnessShifts</span>},
-    <span class="ident">wires</span>::<span class="kw-2">*</span>,
+<span class="kw">use</span> <span class="kw">crate</span>::{
+    <span class="ident">circuits</span>::{
+        <span class="ident">domain_constant_evaluation::DomainConstantEvaluations</span>,
+        <span class="ident">domains::EvaluationDomains</span>,
+        <span class="ident">gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">GateType</span>},
+        <span class="ident">polynomial</span>::{<span class="ident">WitnessEvals</span>, <span class="ident">WitnessOverDomains</span>, <span class="ident">WitnessShifts</span>},
+        <span class="ident">wires</span>::<span class="kw-2">*</span>,
+    },
+    <span class="ident">error::SetupError</span>,
 };
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">SquareRootField</span>, <span class="ident">Zero</span>};
 <span class="kw">use</span> <span class="ident">ark_poly</span>::{
@@ -787,6 +796,7 @@
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">de::DeserializeOwned</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">serde_with::serde_as</span>;
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
+<span class="kw">use</span> <span class="ident">thiserror::Error</span>;
 
 <span class="kw">use</span> <span class="kw">super</span>::{
     <span class="ident">lookup</span>::{
@@ -1014,11 +1024,13 @@
 }
 
 <span class="doccomment">/// Represents an error found when computing the lookup constraint system</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">LookupError</span> {
     <span class="doccomment">/// One of the lookup tables has columns of different lengths</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Inconsisten table length&quot;</span>)]</span>
     <span class="ident">InconsistentTableLength</span>,
     <span class="doccomment">/// The combined lookup table is larger than allowed by the domain size</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Lookup table too long&quot;</span>)]</span>
     <span class="ident">LookupTableTooLong</span> {
         <span class="ident">length</span>: <span class="ident">usize</span>,
         <span class="ident">maximum_allowed</span>: <span class="ident">usize</span>,
@@ -1152,7 +1164,7 @@
         <span class="ident">lookup_tables</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">LookupTable</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">fr_sponge_params</span>: <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
         <span class="ident">public</span>: <span class="ident">usize</span>,
-    ) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">SetupError</span><span class="op">&gt;</span> {
         <span class="ident">ConstraintSystem</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::create_with_shared_precomputations</span>(
             <span class="ident">gates</span>,
             <span class="ident">lookup_tables</span>,
@@ -1169,7 +1181,7 @@
         <span class="ident">fr_sponge_params</span>: <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
         <span class="ident">public</span>: <span class="ident">usize</span>,
         <span class="ident">precomputations</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">DomainConstantEvaluations</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">SetupError</span><span class="op">&gt;</span> {
         <span class="comment">//~ 1. If the circuit is less than 2 gates, abort.</span>
         <span class="comment">// for some reason we need more than 1 gate for the circuit to work, see TODO below</span>
         <span class="macro">assert!</span>(<span class="ident">gates</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="number">1</span>);
@@ -1178,6 +1190,7 @@
         <span class="comment">//~    compute the smallest subgroup of the field that</span>
         <span class="comment">//~    has order greater or equal to `n + ZK_ROWS` elements.</span>
         <span class="kw">let</span> <span class="ident">domain</span> <span class="op">=</span> <span class="ident">EvaluationDomains</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">gates</span>.<span class="ident">len</span>() <span class="op">+</span> <span class="ident">ZK_ROWS</span> <span class="kw">as</span> <span class="ident">usize</span>)<span class="question-mark">?</span>;
+
         <span class="macro">assert!</span>(<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span> <span class="op">&gt;</span> <span class="ident">ZK_ROWS</span>);
 
         <span class="comment">//~ 3. Pad the circuit: add zero gates to reach the domain size.</span>
@@ -1349,9 +1362,9 @@
         <span class="comment">//</span>
         <span class="comment">// Lookup</span>
         <span class="comment">// ------</span>
-
         <span class="kw">let</span> <span class="ident">lookup_constraint_system</span> <span class="op">=</span>
-            <span class="ident">LookupConstraintSystem::create</span>(<span class="kw-2">&amp;</span><span class="ident">gates</span>, <span class="ident">lookup_tables</span>, <span class="kw-2">&amp;</span><span class="ident">domain</span>).<span class="ident">ok</span>()<span class="question-mark">?</span>;
+            <span class="ident">LookupConstraintSystem::create</span>(<span class="kw-2">&amp;</span><span class="ident">gates</span>, <span class="ident">lookup_tables</span>, <span class="kw-2">&amp;</span><span class="ident">domain</span>)
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">SetupError::ConstraintSystem</span>(<span class="ident">e</span>.<span class="ident">to_string</span>()))<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">sid</span> <span class="op">=</span> <span class="ident">shifts</span>.<span class="ident">map</span>[<span class="number">0</span>].<span class="ident">clone</span>();
 
@@ -1394,7 +1407,7 @@
             }
         }
 
-        <span class="prelude-val">Some</span>(<span class="ident">constraints</span>)
+        <span class="prelude-val">Ok</span>(<span class="ident">constraints</span>)
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">precomputations</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">DomainConstantEvaluations</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
@@ -1514,6 +1527,7 @@
             <span class="ident">gates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         ) -&gt; <span class="self">Self</span> {
             <span class="kw">let</span> <span class="ident">public</span> <span class="op">=</span> <span class="number">0</span>;
+            <span class="comment">// not sure if theres a smarter way instead of the double unwrap, but should be fine in the test</span>
             <span class="ident">ConstraintSystem</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">gates</span>, <span class="macro">vec!</span>[], <span class="ident">sponge_params</span>, <span class="ident">public</span>).<span class="ident">unwrap</span>()
         }
     }

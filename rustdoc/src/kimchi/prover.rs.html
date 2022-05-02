@@ -1287,7 +1287,7 @@
         },
         <span class="ident">wires</span>::{<span class="ident">COLUMNS</span>, <span class="ident">PERMUTS</span>},
     },
-    <span class="ident">error::ProofError</span>,
+    <span class="ident">error::ProverError</span>,
     <span class="ident">plonk_sponge::FrSponge</span>,
     <span class="ident">proof</span>::{
         <span class="ident">LookupCommitments</span>, <span class="ident">LookupEvaluations</span>, <span class="ident">ProofEvaluations</span>, <span class="ident">ProverCommitments</span>, <span class="ident">ProverProof</span>,
@@ -1309,7 +1309,7 @@
 <span class="kw">use</span> <span class="ident">std::collections::HashMap</span>;
 
 <span class="doccomment">/// The result of a proof creation or verification.</span>
-<span class="kw">pub</span> <span class="kw">type</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">std::result::Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">ProofError</span><span class="op">&gt;</span>;
+<span class="kw">pub</span> <span class="kw">type</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">std::result::Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">ProverError</span><span class="op">&gt;</span>;
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">CommitmentCurve</span><span class="op">&gt;</span> <span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
 <span class="kw">where</span>
@@ -1358,16 +1358,16 @@
         <span class="kw">let</span> <span class="ident">length_witness</span> <span class="op">=</span> <span class="ident">witness</span>[<span class="number">0</span>].<span class="ident">len</span>();
         <span class="kw">let</span> <span class="ident">length_padding</span> <span class="op">=</span> <span class="ident">d1_size</span>
             .<span class="ident">checked_sub</span>(<span class="ident">length_witness</span>)
-            .<span class="ident">ok_or</span>(<span class="ident">ProofError::NoRoomForZkInWitness</span>)<span class="question-mark">?</span>;
+            .<span class="ident">ok_or</span>(<span class="ident">ProverError::NoRoomForZkInWitness</span>)<span class="question-mark">?</span>;
         <span class="kw">if</span> <span class="ident">length_padding</span> <span class="op">&lt;</span> <span class="ident">ZK_ROWS</span> <span class="kw">as</span> <span class="ident">usize</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProofError::NoRoomForZkInWitness</span>);
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProverError::NoRoomForZkInWitness</span>);
         }
 
         <span class="comment">//~ 2. Pad the witness columns with Zero gates to make them the same length as the domain.</span>
         <span class="comment">//~    Then, randomize the last `ZK_ROWS` of each columns.</span>
         <span class="kw">for</span> <span class="ident">w</span> <span class="kw">in</span> <span class="kw-2">&amp;mut</span> <span class="ident">witness</span> {
             <span class="kw">if</span> <span class="ident">w</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">length_witness</span> {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProofError::WitnessCsInconsistent</span>);
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProverError::WitnessCsInconsistent</span>);
             }
 
             <span class="comment">// padding</span>
@@ -1931,9 +1931,9 @@
             <span class="comment">// divide contributions with vanishing polynomial</span>
             <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">quotient</span>, <span class="ident">res</span>) <span class="op">=</span> <span class="ident">f</span>
                 .<span class="ident">divide_by_vanishing_poly</span>(<span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>)
-                .<span class="ident">ok_or</span>(<span class="ident">ProofError::Prover</span>(<span class="string">&quot;division by vanishing polynomial&quot;</span>))<span class="question-mark">?</span>;
+                .<span class="ident">ok_or</span>(<span class="ident">ProverError::Prover</span>(<span class="string">&quot;division by vanishing polynomial&quot;</span>))<span class="question-mark">?</span>;
             <span class="kw">if</span> <span class="op">!</span><span class="ident">res</span>.<span class="ident">is_zero</span>() {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProofError::Prover</span>(
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProverError::Prover</span>(
                     <span class="string">&quot;rest of division by vanishing polynomial&quot;</span>,
                 ));
             }
