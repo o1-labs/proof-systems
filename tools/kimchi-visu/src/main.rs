@@ -1,7 +1,7 @@
 use kimchi::{
     circuits::{
         gate::CircuitGate,
-        polynomials::{generic::GenericGateSpec, poseidon::generate_witness},
+        polynomials::{generic::GenericGateSpec, poseidon},
         wires::Wire,
     },
     prover_index::testing::new_index_for_test,
@@ -43,7 +43,8 @@ fn main() {
         };
 
         // public input is output of poseidon
-        {
+        let row = {
+            // we're in the zero gate
             gates[0].wires[0] = Wire { row, col: 0 };
             gates[1].wires[0] = Wire { row, col: 1 };
             gates[2].wires[0] = Wire { row, col: 2 };
@@ -52,7 +53,17 @@ fn main() {
             poseidon_output[0] = Wire { row: 0, col: 0 };
             poseidon_output[1] = Wire { row: 0, col: 1 };
             poseidon_output[2] = Wire { row: 0, col: 2 };
-        }
+
+            row + 1
+        };
+
+        // range checks (using lookup)
+        let row = {
+            let wires = Wire::new(row);
+            let g = CircuitGate::<Fp>::create_range(wires);
+            gates.push(g);
+            row + 1
+        };
 
         (gates, row)
     };
@@ -61,9 +72,22 @@ fn main() {
     let index = new_index_for_test(gates, public);
 
     // create the witness
-    let mut witness = Witness::new(row + 1).inner();
-    let input = [1u32.into(), 2u32.into(), 3u32.into()];
-    generate_witness(3, poseidon_params, &mut witness, input);
+    let witness = {
+        let mut witness = Witness::new(row + 1).inner();
+        let input = [1u32.into(), 2u32.into(), 3u32.into()];
+        poseidon::generate_witness(3, poseidon_params, &mut witness, input);
+
+        // lookup
+        witness[0][row] = 1u32.into();
+        witness[1][row] = 1u32.into();
+        witness[2][row] = 1u32.into();
+        witness[3][row] = 1u32.into();
+        witness[4][row] = 1u32.into();
+        witness[5][row] = 1u32.into();
+        witness[6][row] = 1u32.into();
+
+        witness
+    };
 
     // create the HTML
     visu(&index, Some(witness.into()));
