@@ -21,7 +21,6 @@
 ///     12 | crumb L2c7   | crumb L2c17
 ///     13 | crumb L2c8   | crumb L2c18
 ///     14 | crumb L2c9   | crumb L2c19
-
 use std::marker::PhantomData;
 
 use crate::circuits::{

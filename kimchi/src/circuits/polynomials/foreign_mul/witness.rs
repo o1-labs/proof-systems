@@ -1,7 +1,6 @@
 //! Witness computation
 
 /// TODO: make dynamic
-
 use ark_ff::PrimeField;
 use array_init::array_init;
 use num_bigint::BigUint;

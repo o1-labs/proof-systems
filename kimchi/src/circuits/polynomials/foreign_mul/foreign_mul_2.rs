@@ -22,7 +22,6 @@
 ///     12 | (ignored)
 ///     13 | (ignored)
 ///     14 | (ignored)
-
 use std::marker::PhantomData;
 
 use crate::circuits::{
