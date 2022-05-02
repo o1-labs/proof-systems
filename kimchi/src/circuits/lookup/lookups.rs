@@ -1,10 +1,12 @@
 use crate::circuits::{
     domains::EvaluationDomains,
+    expr::Column,
     gate::{CircuitGate, CurrOrNext, GateType},
     lookup::tables::{
         combine_table_entry, get_table, GateLookupTable, GatesLookupMaps, GatesLookupSpec,
         LookupTable, RANGE_TABLE_ID, XOR_TABLE_ID,
     },
+    wires::PERMUTS,
 };
 use ark_ff::{FftField, Field, One, Zero};
 use ark_poly::{Evaluations as E, Radix2EvaluationDomain as D};
@@ -28,7 +30,7 @@ pub enum LookupsUsed {
 }
 
 /// Describes the desired lookup configuration.
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LookupInfo<F> {
     /// A single lookup constraint is a vector of lookup constraints to be applied at a row.
     /// This is a vector of all the kinds of lookup constraints in this configuration.
@@ -89,6 +91,27 @@ impl<F: FftField> LookupInfo<F> {
         gates: &[CircuitGate<F>],
     ) -> (Vec<Evaluations<F>>, Vec<LookupTable<F>>) {
         let n = domain.d1.size as usize;
+
+        // get all lookups used in circuit
+        let lookups = gates.iter().map(|g| g.lookups());
+
+        // get all lookup table used
+        let lookup_tables = HashSet::new();
+        lookups.iter().map(|l|
+            l.tables().foreach(|t| lookup_tables.insert(t))
+        );
+        let lookup_tables = lookup_tables.iter().map(get_table).collect();
+
+        // create selector values
+        let mut selectors = HashMap::new();
+        for lookups.foreach(|l| selectors.insert(l, E::zero()));
+
+        for (row, g) in gates.iter().enumerate() {
+            let lookup = g.lookups();
+            selectors[lookup][row] = F::one();
+        }
+
+        /*
         let mut selector_values: Vec<_> = self.kinds.iter().map(|_| vec![F::zero(); n]).collect();
         let mut gate_tables = HashSet::new();
 
@@ -121,8 +144,10 @@ impl<F: FftField> LookupInfo<F> {
                     .evaluate_over_domain(domain.d8)
             })
             .collect();
+        println!("gate tables: {:#?}", gate_tables);
         let res_tables: Vec<_> = gate_tables.into_iter().map(get_table).collect();
         (selector_values8, res_tables)
+        */
     }
 
     /// For each row in the circuit, which lookup-constraints should be enforced at that row.
