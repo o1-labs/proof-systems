@@ -9,19 +9,19 @@ const DELEGATION_TX_TAG: [bool; TAG_BITS] = [false, false, true];
 #[derive(Clone, Copy)]
 pub struct Transaction {
     // Common
-    fee: u64,
-    fee_token: u64,
-    fee_payer_pk: CompressedPubKey,
-    nonce: u32,
+    pub fee: u64,
+    pub fee_token: u64,
+    pub fee_payer_pk: CompressedPubKey,
+    pub nonce: u32,
     pub valid_until: u32,
-    memo: [u8; MEMO_BYTES],
+    pub memo: [u8; MEMO_BYTES],
     // Body
-    tag: [bool; TAG_BITS],
-    source_pk: CompressedPubKey,
-    receiver_pk: CompressedPubKey,
-    token_id: u64,
-    amount: u64,
-    token_locked: bool,
+    pub tag: [bool; TAG_BITS],
+    pub source_pk: CompressedPubKey,
+    pub receiver_pk: CompressedPubKey,
+    pub token_id: u64,
+    pub amount: u64,
+    pub token_locked: bool,
 }
 
 impl Hashable for Transaction {
