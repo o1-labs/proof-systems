@@ -204,7 +204,6 @@ pub mod caml {
         ),
         pub generic_selector: Vec<CamlF>,
         pub poseidon_selector: Vec<CamlF>,
-        pub cairo_selector: Option<(Vec<CamlF>, Vec<CamlF>, Vec<CamlF>, Vec<CamlF>)>,
     }
 
     //
@@ -242,18 +241,6 @@ pub mod caml {
                 pe.s[4].iter().cloned().map(Into::into).collect(),
                 pe.s[5].iter().cloned().map(Into::into).collect(),
             );
-            let cairo_selector = {
-                if let Some(c) = pe.cairo_selector {
-                    Some((
-                        c[0].iter().cloned().map(Into::into).collect(),
-                        c[1].iter().cloned().map(Into::into).collect(),
-                        c[2].iter().cloned().map(Into::into).collect(),
-                        c[3].iter().cloned().map(Into::into).collect(),
-                    ))
-                } else {
-                    None
-                }
-            };
 
             Self {
                 w,
@@ -261,7 +248,6 @@ pub mod caml {
                 s,
                 generic_selector: pe.generic_selector.into_iter().map(Into::into).collect(),
                 poseidon_selector: pe.poseidon_selector.into_iter().map(Into::into).collect(),
-                cairo_selector,
             }
         }
     }
@@ -297,18 +283,6 @@ pub mod caml {
                 cpe.s.4.into_iter().map(Into::into).collect(),
                 cpe.s.5.into_iter().map(Into::into).collect(),
             ];
-            let cairo_selector = {
-                if let Some(c) = cpe.cairo_selector {
-                    Some([
-                        c.0.into_iter().map(Into::into).collect(),
-                        c.1.into_iter().map(Into::into).collect(),
-                        c.2.into_iter().map(Into::into).collect(),
-                        c.3.into_iter().map(Into::into).collect(),
-                    ])
-                } else {
-                    None
-                }
-            };
             Self {
                 w,
                 z: cpe.z.into_iter().map(Into::into).collect(),
@@ -316,7 +290,6 @@ pub mod caml {
                 lookup: None,
                 generic_selector: cpe.generic_selector.into_iter().map(Into::into).collect(),
                 poseidon_selector: cpe.poseidon_selector.into_iter().map(Into::into).collect(),
-                cairo_selector,
             }
         }
     }

@@ -136,7 +136,10 @@ where
             .iter()
             .for_each(|c| fq_sponge.absorb_g(&c.unshifted));
 
-        //~ 4. TODO: lookup (joint combiner challenge)
+        //~ 4. If lookup is not used,
+        //~    or is used with queries to single-column lookup tables only,
+        //~    then set the joint combiner challenge $j$ to $0$.
+        //~    Otherwise, squeeze the Fq-Sponge to obtain the joint combiner challenge $j$.
         let joint_combiner = {
             let s = match index.lookup_index {
                 None
@@ -152,7 +155,7 @@ where
             (s, s.to_field(&index.srs.endo_r))
         };
 
-        //~ 5. TODO: lookup (absorb)
+        //~ 5. If using lookup, absorb the commitments to the sorted polynomials.
         self.commitments.lookup.iter().for_each(|l| {
             l.sorted
                 .iter()
@@ -165,7 +168,7 @@ where
         //~ 7. Sample $\gamma$ with the Fq-Sponge.
         let gamma = fq_sponge.challenge();
 
-        //~ 8. TODO: lookup
+        //~ 8. If using lookup, absorb the commitment to the aggregation lookup polynomial.
         self.commitments.lookup.iter().for_each(|l| {
             fq_sponge.absorb_g(&l.aggreg.unshifted);
         });
@@ -506,8 +509,15 @@ where
     ];
 
     //~ 4. Compute the commitment to the linearized polynomial $f$.
+    //~    To do this, add the constraints of all of the gates, of the permutation,
+    //~    and optionally of the lookup.
+    //~    (See the separate sections in the [constraints](#constraints) section.)
+    //~    Any polynomial should be replaced by its associated commitment,
+    //~    contained in the verifier index or in the proof,
+    //~    unless a polynomial has its evaluation provided by the proof
+    //~    in which case the evaluation should be used in place of the commitment.
     let f_comm = {
-        // permutation
+        // the permutation is written manually (not using the expr framework)
         let zkp = index.zkpm.evaluate(&oracles.zeta);
 
         let alphas = all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
@@ -521,7 +531,7 @@ where
             zkp,
         )];
 
-        // generic
+        // generic is written manually (not using the expr framework)
         {
             let alphas =
                 all_alphas.get_alphas(ArgumentType::Gate(GateType::Generic), generic::CONSTRAINTS);
@@ -622,7 +632,9 @@ where
                     Index(t) => {
                         use GateType::*;
                         let c = match t {
-                            Zero | Generic => panic!("Selector for {:?} not defined", t),
+                            Zero | Generic | Lookup => {
+                                panic!("Selector for {:?} not defined", t)
+                            }
                             CompleteAdd => &index.complete_add_comm,
                             VarBaseMul => &index.mul_comm,
                             EndoMul => &index.emul_comm,
@@ -632,6 +644,9 @@ where
                             ChaCha1 => &index.chacha_comm.as_ref().unwrap()[1],
                             ChaCha2 => &index.chacha_comm.as_ref().unwrap()[2],
                             ChaChaFinal => &index.chacha_comm.as_ref().unwrap()[3],
+                            CairoClaim | CairoInstruction | CairoFlags | CairoTransition => {
+                                unimplemented!()
+                            }
                         };
                         scalars.push(scalar);
                         commitments.push(c);

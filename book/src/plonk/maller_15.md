@@ -22,7 +22,7 @@ $$
 
 Since they already know $f$, they can produce $com(f)$, the only thing they need is $com(t)$. So the protocol looks like that:
 
-![maller 15 1](../../img/maller_15_1.png)
+![maller 15 1](../img/maller_15_1.png)
 
 <!--
 ```sequence
@@ -149,7 +149,7 @@ Now here's how we need to modify the current protocol:
 5. The verifier must recreate $com(\tilde L)$, the commitment to $\tilde L$, themselves so that they can verify the evaluation proofs of both $\tilde L(\zeta)$ and $\tilde L(\zeta\omega)$.
 6. The evaluation of $\tilde L(\zeta \omega)$ must be absorbed in both sponges (Fq and Fr).
 
-![maller 15 2](../../img/maller_15_2.png)
+![maller 15 2](../img/maller_15_2.png)
 <!--
 ```sequence
 Prover->Verifier: com(t) (several of them)

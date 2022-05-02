@@ -1,9 +1,10 @@
 //! This module implements prover's zk-proof primitive.
 
+use crate::prover::permutation::ZK_ROWS;
 use crate::{
     circuits::{
         argument::{Argument, ArgumentType},
-        constraints::{LookupConstraintSystem, ZK_ROWS},
+        constraints::LookupConstraintSystem,
         expr::{l0_1, Constants, Environment, LookupEnvironment},
         gate::GateType,
         lookup::{
@@ -23,7 +24,7 @@ use crate::{
         },
         wires::{COLUMNS, PERMUTS},
     },
-    error::ProofError,
+    error::ProverError,
     plonk_sponge::FrSponge,
     proof::{
         LookupCommitments, LookupEvaluations, ProofEvaluations, ProverCommitments, ProverProof,
@@ -45,7 +46,7 @@ use rayon::iter::{
 use std::collections::HashMap;
 
 /// The result of a proof creation or verification.
-pub type Result<T> = std::result::Result<T, ProofError>;
+pub type Result<T> = std::result::Result<T, ProverError>;
 
 impl<G: CommitmentCurve> ProverProof<G>
 where
@@ -94,16 +95,16 @@ where
         let length_witness = witness[0].len();
         let length_padding = d1_size
             .checked_sub(length_witness)
-            .ok_or(ProofError::NoRoomForZkInWitness)?;
+            .ok_or(ProverError::NoRoomForZkInWitness)?;
         if length_padding < ZK_ROWS as usize {
-            return Err(ProofError::NoRoomForZkInWitness);
+            return Err(ProverError::NoRoomForZkInWitness);
         }
 
         //~ 2. Pad the witness columns with Zero gates to make them the same length as the domain.
         //~    Then, randomize the last `ZK_ROWS` of each columns.
         for w in &mut witness {
             if w.len() != length_witness {
-                return Err(ProofError::WitnessCsInconsistent);
+                return Err(ProverError::WitnessCsInconsistent);
             }
 
             // padding
@@ -111,7 +112,7 @@ where
 
             // zk-rows
             for row in w.iter_mut().rev().take(ZK_ROWS as usize) {
-                *row = ScalarField::<G>::rand(rng);
+                *row = <ScalarField<G> as UniformRand>::rand(rng);
             }
         }
 
@@ -255,6 +256,7 @@ where
             CombinedEntry(x)
         };
 
+        //~ 12. If using lookup:
         let (lookup_sorted, lookup_sorted_coeffs, lookup_sorted_comm, lookup_sorted8) =
             match index.cs.lookup_constraint_system.as_ref() {
                 None => (None, None, None, None),
@@ -275,11 +277,12 @@ where
                                 &joint_combiner,
                                 &table_id_combiner,
                                 row,
-                                table_id,
+                                &table_id,
                             ))
                         })
                     };
 
+                    //~     - Compute the sorted table.
                     // TODO: Once we switch to committing using lagrange commitments,
                     // `witness` will be consumed when we interpolate, so interpolation will
                     // have to moved below this.
@@ -293,6 +296,7 @@ where
                             (joint_combiner, table_id_combiner),
                         )?;
 
+                    //~     - Compute the sorted coefficients.
                     let lookup_sorted: Vec<_> = lookup_sorted
                         .into_iter()
                         .map(|chunk| {
@@ -301,6 +305,8 @@ where
                         })
                         .collect();
 
+                    //~     - Commit to each of the sorted table columns.
+                    //~       (See section on lookup to see how to compute it.)
                     let comm: Vec<_> = lookup_sorted
                         .iter()
                         .map(|v| {
@@ -346,7 +352,7 @@ where
                                     // table ID is identically 0.
                                     ScalarField::<G>::zero(),
                             };
-                        combine_table_entry(&joint_combiner, &table_id_combiner, row, table_id)
+                        combine_table_entry(&joint_combiner, &table_id_combiner, row, &table_id)
                     });
 
                     let aggreg =
@@ -452,7 +458,6 @@ where
                         index_evals.insert(*g, &c[i]);
                     }
                 });
-
             Environment {
                 constants: Constants {
                     alpha,
@@ -464,7 +469,7 @@ where
                 },
                 witness: &lagrange.d8.this.w,
                 coefficient: &index.cs.coefficients8,
-                vanishes_on_last_4_rows: &index.cs.vanishes_on_last_4_rows,
+                vanishes_on_last_4_rows: &index.cs.precomputations().vanishes_on_last_4_rows,
                 z: &lagrange.d8.this.z,
                 l0_1: l0_1(index.cs.domain.d1),
                 domain: index.cs.domain,
@@ -663,9 +668,9 @@ where
             // divide contributions with vanishing polynomial
             let (mut quotient, res) = f
                 .divide_by_vanishing_poly(index.cs.domain.d1)
-                .ok_or(ProofError::Prover("division by vanishing polynomial"))?;
+                .ok_or(ProverError::Prover("division by vanishing polynomial"))?;
             if !res.is_zero() {
-                return Err(ProofError::Prover(
+                return Err(ProverError::Prover(
                     "rest of division by vanishing polynomial",
                 ));
             }
@@ -686,7 +691,7 @@ where
             // the higher degree coefficients of `t` are 0.
             for _ in 0..dummies {
                 use ark_ec::ProjectiveCurve;
-                let w = ScalarField::<G>::rand(rng);
+                let w = <ScalarField<G> as UniformRand>::rand(rng);
                 t_comm.unshifted.push(index.srs.h.mul(w).into_affine());
                 omega_t.unshifted.push(w);
             }

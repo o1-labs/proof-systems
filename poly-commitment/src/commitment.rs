@@ -613,7 +613,7 @@ impl<G: CommitmentCurve> SRS<G> {
     pub fn verify<EFqSponge, RNG>(
         &self,
         group_map: &G::Map,
-        batch: &mut Vec<BatchEvaluationProof<G, EFqSponge>>,
+        batch: &mut [BatchEvaluationProof<G, EFqSponge>],
         rng: &mut RNG,
     ) -> bool
     where

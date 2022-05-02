@@ -1,11 +1,11 @@
-//! This module implements the [ProofError] type.
+//! This module implements the [ProverError] type.
 
 use thiserror::Error;
 
 /// Errors that can arise when creating a proof
 // TODO(mimoo): move this out of oracle
 #[derive(Error, Debug, Clone, Copy)]
-pub enum ProofError {
+pub enum ProverError {
     #[error("the circuit is too large")]
     NoRoomForZkInWitness,
 
@@ -33,4 +33,14 @@ pub enum VerifyError {
 
     #[error("lookup used in circuit, but proof is missing lookup commitments")]
     LookupCommitmentMissing,
+}
+
+/// Errors that can arise when preparing the setup
+#[derive(Error, Debug, Clone)]
+pub enum SetupError {
+    #[error("the domain could not be constructed: {0}")]
+    ConstraintSystem(String),
+
+    #[error("the domain could not be constructed: {0}")]
+    DomainCreation(&'static str),
 }

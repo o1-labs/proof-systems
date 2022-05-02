@@ -82,6 +82,13 @@ pub enum GateType {
     ChaCha1 = 8,
     ChaCha2 = 9,
     ChaChaFinal = 10,
+    // Lookup
+    Lookup = 11,
+    /// Cairo
+    CairoClaim = 12,
+    CairoInstruction = 13,
+    CairoFlags = 14,
+    CairoTransition = 15,
 }
 
 #[serde_as]
@@ -125,7 +132,7 @@ impl<F: FftField> CircuitGate<F> {
     }
 
     /// This function verifies the consistency of the wire
-    /// assignements (witness) against the constraints
+    /// assignments (witness) against the constraints
     pub fn verify(
         &self,
         row: usize,
@@ -144,6 +151,11 @@ impl<F: FftField> CircuitGate<F> {
             EndoMulScalar => self.verify_endomul_scalar(row, witness, cs),
             // TODO: implement the verification for chacha
             ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => Ok(()),
+            // TODO: implement the verification for the lookup gate
+            Lookup => Ok(()),
+            CairoClaim | CairoInstruction | CairoFlags | CairoTransition => {
+                self.verify_cairo_gate(row, witness, cs)
+            }
         }
     }
 }

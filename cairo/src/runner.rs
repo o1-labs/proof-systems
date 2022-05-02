@@ -3,7 +3,7 @@
 
 use crate::flags::*;
 use crate::memory::CairoMemory;
-use crate::word::{CairoWord, Decomposition};
+use crate::word::{CairoWord, FlagBits, FlagSets, Offsets};
 use ark_ff::Field;
 
 /// A structure to store program counter, allocation pointer and frame pointer
@@ -17,6 +17,18 @@ pub struct CairoState<F> {
     fp: F,
 }
 
+/// This trait contains functions to obtain the Cairo pointers (program counter, allocation pointer and frame pointer)
+pub trait Pointers<F> {
+    /// Returns the program counter
+    fn pc(&self) -> F;
+
+    /// Returns the allocation pointer
+    fn ap(&self) -> F;
+
+    /// Returns the frame pointer
+    fn fp(&self) -> F;
+}
+
 impl<F: Field> CairoState<F> {
     /// Creates a new triple of pointers
     pub fn new(pc: F, ap: F, fp: F) -> Self {
@@ -24,6 +36,21 @@ impl<F: Field> CairoState<F> {
     }
 }
 
+impl<F: Field> Pointers<F> for CairoState<F> {
+    fn pc(&self) -> F {
+        self.pc
+    }
+
+    fn ap(&self) -> F {
+        self.ap
+    }
+
+    fn fp(&self) -> F {
+        self.fp
+    }
+}
+
+#[derive(Clone, Copy)]
 /// A structure to store auxiliary variables throughout computation
 pub struct CairoContext<F> {
     /// Destination
@@ -35,11 +62,11 @@ pub struct CairoContext<F> {
     /// Result
     res: Option<F>,
     /// Destination address
-    dst_addr: F,
+    adr_dst: F,
     /// First operand address
-    op0_addr: F,
+    adr_op0: F,
     /// Second operand address
-    op1_addr: F,
+    adr_op1: F,
     /// Size of the instruction
     size: F,
 }
@@ -52,17 +79,174 @@ impl<F: Field> Default for CairoContext<F> {
             op0: None,
             op1: None,
             res: None,
-            dst_addr: F::zero(),
-            op0_addr: F::zero(),
-            op1_addr: F::zero(),
+            adr_dst: F::zero(),
+            adr_op0: F::zero(),
+            adr_op1: F::zero(),
             size: F::zero(),
         }
     }
 }
 
+#[derive(Clone, Copy)]
+/// This structure stores all the needed information relative to an instruction at a given step of computation
+pub struct CairoInstruction<F> {
+    /// instruction word
+    word: CairoWord<F>,
+    /// pointers
+    ptrs: CairoState<F>,
+    /// auxiliary variables
+    vars: CairoContext<F>,
+}
+
+impl<F: Field> CairoInstruction<F> {
+    /// Creates a [CairoInstruction]
+    pub fn new(word: CairoWord<F>, ptrs: CairoState<F>, vars: CairoContext<F>) -> Self {
+        Self { word, ptrs, vars }
+    }
+
+    /// Returns the field element corresponding to the [CairoInstruction]
+    pub fn instr(&self) -> F {
+        self.word.word()
+    }
+
+    /// Returns the size of the instruction
+    pub fn size(&self) -> F {
+        self.vars.size
+    }
+
+    /// Returns the result of the instruction
+    pub fn res(&self) -> F {
+        self.vars.res.expect("None res")
+    }
+
+    /// Returns the destination of the instruction
+    pub fn dst(&self) -> F {
+        self.vars.dst.expect("None dst")
+    }
+
+    /// Returns the first operand of the instruction
+    pub fn op0(&self) -> F {
+        self.vars.op0.expect("None op0")
+    }
+
+    /// Returns the second operand of the instruction
+    pub fn op1(&self) -> F {
+        self.vars.op1.expect("None op1")
+    }
+
+    /// Returns the destination address of the instruction
+    pub fn adr_dst(&self) -> F {
+        self.vars.adr_dst
+    }
+
+    /// Returns the first operand address of the instruction
+    pub fn adr_op0(&self) -> F {
+        self.vars.adr_op0
+    }
+
+    /// Returns the second operand address of the instruction
+    pub fn adr_op1(&self) -> F {
+        self.vars.adr_op1
+    }
+}
+
+impl<F: Field> Pointers<F> for CairoInstruction<F> {
+    fn pc(&self) -> F {
+        self.ptrs.pc // Returns the current program counter
+    }
+
+    fn ap(&self) -> F {
+        self.ptrs.ap //Returns the current allocation pointer
+    }
+
+    fn fp(&self) -> F {
+        self.ptrs.fp // Returns the current program counter
+    }
+}
+
+impl<F: Field> Offsets<F> for CairoInstruction<F> {
+    fn off_dst(&self) -> F {
+        self.word.off_dst()
+    }
+
+    fn off_op0(&self) -> F {
+        self.word.off_op0()
+    }
+
+    fn off_op1(&self) -> F {
+        self.word.off_op1()
+    }
+}
+
+impl<F: Field> FlagBits<F> for CairoInstruction<F> {
+    fn f_dst_fp(&self) -> F {
+        self.word.f_dst_fp()
+    }
+
+    fn f_op0_fp(&self) -> F {
+        self.word.f_op0_fp()
+    }
+
+    fn f_op1_val(&self) -> F {
+        self.word.f_op1_val()
+    }
+
+    fn f_op1_fp(&self) -> F {
+        self.word.f_op1_fp()
+    }
+
+    fn f_op1_ap(&self) -> F {
+        self.word.f_op1_ap()
+    }
+
+    fn f_res_add(&self) -> F {
+        self.word.f_res_add()
+    }
+
+    fn f_res_mul(&self) -> F {
+        self.word.f_res_mul()
+    }
+
+    fn f_pc_abs(&self) -> F {
+        self.word.f_pc_abs()
+    }
+
+    fn f_pc_rel(&self) -> F {
+        self.word.f_pc_rel()
+    }
+
+    fn f_pc_jnz(&self) -> F {
+        self.word.f_pc_jnz()
+    }
+
+    fn f_ap_add(&self) -> F {
+        self.word.f_ap_add()
+    }
+
+    fn f_ap_one(&self) -> F {
+        self.word.f_ap_one()
+    }
+
+    fn f_opc_call(&self) -> F {
+        self.word.f_opc_call()
+    }
+
+    fn f_opc_ret(&self) -> F {
+        self.word.f_opc_ret()
+    }
+
+    fn f_opc_aeq(&self) -> F {
+        self.word.f_opc_aeq()
+    }
+
+    fn f15(&self) -> F {
+        self.word.f15()
+    }
+}
+
 /// A data structure to store a current step of Cairo computation
 pub struct CairoStep<'a, F> {
-    /// current word of the program
+    /// state of the computation
     mem: &'a mut CairoMemory<F>,
     // comment instr for efficiency
     /// current pointers
@@ -85,7 +269,7 @@ impl<'a, F: Field> CairoStep<'a, F> {
     }
 
     /// Executes a Cairo step from the current registers
-    pub fn execute(&mut self) {
+    pub fn execute(&mut self) -> CairoInstruction<F> {
         // This order is important in order to allocate the memory in time
         self.set_op0();
         self.set_op1();
@@ -99,6 +283,7 @@ impl<'a, F: Field> CairoStep<'a, F> {
             next_ap.expect("Empty next allocation pointer"),
             next_fp.expect("Empty next frame pointer"),
         ));
+        CairoInstruction::new(self.instr(), self.curr, self.vars)
     }
 
     /// This function returns the current word instruction being executed
@@ -112,8 +297,8 @@ impl<'a, F: Field> CairoStep<'a, F> {
             /*0*/ OP0_AP => self.curr.ap, // reads first word from allocated memory
             /*1*/ _ => self.curr.fp, // reads first word from input stack
         }; // no more values than 0 and 1 because op0_reg is one bit
-        self.vars.op0_addr = reg + self.instr().off_op0();
-        self.vars.op0 = self.mem.read(self.vars.op0_addr);
+        self.vars.adr_op0 = reg + self.instr().off_op0();
+        self.vars.op0 = self.mem.read(self.vars.adr_op0);
     }
 
     /// This function computes the second operand address and content and the instruction size
@@ -129,8 +314,8 @@ impl<'a, F: Field> CairoStep<'a, F> {
             _ => panic!("Invalid op1_src flagset"),
         };
         self.vars.size = size;
-        self.vars.op1_addr = reg + self.instr().off_op1(); // apply second offset to corresponding register
-        self.vars.op1 = self.mem.read(self.vars.op1_addr);
+        self.vars.adr_op1 = reg + self.instr().off_op1(); // apply second offset to corresponding register
+        self.vars.op1 = self.mem.read(self.vars.adr_op1);
     }
 
     /// This function computes the value of the result of the arithmetic operation
@@ -187,8 +372,8 @@ impl<'a, F: Field> CairoStep<'a, F> {
             /*0*/ DST_AP => self.curr.ap, // read from stack
             /*1*/ _ => self.curr.fp, // read from parameters
         }; // no more values than 0 and 1 because op0_reg is one bit
-        self.vars.dst_addr = reg + self.instr().off_dst();
-        self.vars.dst = self.mem.read(self.vars.dst_addr);
+        self.vars.adr_dst = reg + self.instr().off_dst();
+        self.vars.dst = self.mem.read(self.vars.adr_dst);
     }
 
     /// This function computes the next program counter
@@ -226,9 +411,12 @@ impl<'a, F: Field> CairoStep<'a, F> {
             /*1*/
             // "call" instruction
             self.mem.write(self.curr.ap, self.curr.fp); // Save current fp
+            self.vars.dst = self.mem.read(self.curr.ap); // update dst content
             self.mem
                 .write(self.curr.ap + F::one(), self.curr.pc + self.vars.size); // Save next instruction
-                                                                                // Update fp
+            self.vars.op0 = self.mem.read(self.curr.ap + F::one()); //update op0 content
+
+            // Update fp
             next_fp = Some(self.curr.ap + F::from(2u32)); // pointer for next frame is after current fp and instruction after call
                                                           // Update ap
             match self.instr().ap_up() {
@@ -264,18 +452,25 @@ impl<'a, F: Field> CairoStep<'a, F> {
                     // The following conditional is a fix that is not explained in the whitepaper
                     // The goal is to distinguish two types of ASSERT_EQUAL where one checks that
                     // dst = res , but in order for this to be true, one sometimes needs to write
-                    // the res in mem(dst_addr) and sometimes write dst in mem(res_dir). The only
-                    // case where res can be None is when res = op1 and thus res_dir = op1_addr
+                    // the res in mem(adr_dst) and sometimes write dst in mem(res_dir). The only
+                    // case where res can be None is when res = op1 and thus res_dir = adr_op1
                     if self.vars.res.is_none() {
+                        // res = dst
                         self.mem.write(
-                            self.vars.op1_addr,
+                            self.vars.adr_op1,
                             self.vars.dst.expect("None dst after OPC_AEQ"),
-                        ); // res = dst
+                        );
+                        // update the value of the variable as well
+                        self.vars.op1 = self.mem.read(self.vars.adr_op1);
+                        self.vars.res = self.mem.read(self.vars.adr_op1);
                     } else {
+                        // dst = res
                         self.mem.write(
-                            self.vars.dst_addr,
+                            self.vars.adr_dst,
                             self.vars.res.expect("None res after OPC_AEQ"),
-                        ); // dst = res
+                        );
+                        // update the value of the variable as well
+                        self.vars.dst = self.mem.read(self.vars.adr_dst);
                     }
                     next_fp = Some(self.curr.fp); // no modification on fp
                 }
@@ -300,29 +495,43 @@ pub struct CairoProgram<'a, F> {
     ini: CairoState<F>,
     /// final computation pointers
     fin: CairoState<F>,
+    /// execution trace as a vector of [CairoInstruction]
+    trace: Vec<CairoInstruction<F>>,
 }
 
 impl<'a, F: Field> CairoProgram<'a, F> {
     /// Creates a Cairo execution from the public information (memory and initial pointers)
-    pub fn new(mem: &mut CairoMemory<F>, pc: u64, ap: u64) -> CairoProgram<F> {
+    pub fn new(mem: &mut CairoMemory<F>, pc: u64) -> CairoProgram<F> {
+        let ap = mem.len();
         let mut prog = CairoProgram {
             steps: F::zero(),
             mem,
             ini: CairoState::new(F::from(pc), F::from(ap), F::from(ap)),
             fin: CairoState::new(F::zero(), F::zero(), F::zero()),
+            trace: Vec::new(),
         };
         prog.execute();
         prog
     }
 
     /// Outputs the total number of steps of the execution carried out by the runner
-    pub fn get_steps(&self) -> F {
+    pub fn steps(&self) -> F {
         self.steps
     }
 
+    /// Outputs the initial value of the pointers after the execution carried out by the runner
+    pub fn ini(&self) -> CairoState<F> {
+        self.ini
+    }
+
     /// Outputs the final value of the pointers after the execution carried out by the runner
-    pub fn get_final(&self) -> CairoState<F> {
+    pub fn fin(&self) -> CairoState<F> {
         self.fin
+    }
+
+    /// Returns a reference to the set of instructions
+    pub fn trace(&self) -> &Vec<CairoInstruction<F>> {
+        &self.trace
     }
 
     /// This function simulates an execution of the Cairo program received as input.
@@ -342,7 +551,8 @@ impl<'a, F: Field> CairoProgram<'a, F> {
             // save current value of the pointers
             curr = step.curr;
             // execute current step and increase time counter
-            step.execute();
+            let instr = step.execute();
+            self.trace.push(instr);
             n += 1;
             match step.next {
                 None => end = true, // if find no next pointers, end
@@ -366,18 +576,16 @@ impl<'a, F: Field> CairoProgram<'a, F> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::helper::CairoFieldHelpers;
     use mina_curves::pasta::fp::Fp as F;
 
     #[test]
     fn test_cairo_step() {
         // This tests that CairoStep works for a 2 word instruction
         //    tempvar x = 10;
-        let instrs = vec![
-            F::from(0x480680017fff8000u64),
-            F::from(10u64),
-            F::from(0x208b7fff7fff7ffeu64),
-        ];
+        let instrs = vec![0x480680017fff8000, 10, 0x208b7fff7fff7ffe]
+            .iter()
+            .map(|&i: &i64| F::from(i))
+            .collect();
         let mut mem = CairoMemory::new(instrs);
         // Need to know how to find out
         // Is it final ap and/or final fp? Will write to starkware guys to learn about this
@@ -396,17 +604,16 @@ mod tests {
 
     #[test]
     fn test_cairo_program() {
-        let instrs = vec![
-            F::from(0x480680017fff8000u64),
-            F::from(10u64),
-            F::from(0x208b7fff7fff7ffeu64),
-        ];
+        let instrs = vec![0x480680017fff8000, 10, 0x208b7fff7fff7ffe]
+            .iter()
+            .map(|&i: &i64| F::from(i))
+            .collect();
         let mut mem = CairoMemory::<F>::new(instrs);
         // Need to know how to find out
         // Is it final ap and/or final fp? Will write to starkware guys to learn about this
         mem.write(F::from(4u32), F::from(7u32)); //beginning of output
         mem.write(F::from(5u32), F::from(7u32)); //end of output
-        let prog = CairoProgram::new(&mut mem, 1, 6);
+        let prog = CairoProgram::new(&mut mem, 1);
         println!("{}", prog.mem);
     }
 
@@ -427,7 +634,7 @@ mod tests {
             return ()
         end
         */
-        let instrs: Vec<i128> = vec![
+        let instrs = vec![
             0x400380007ffc7ffd,
             0x482680017ffc8000,
             1,
@@ -452,17 +659,20 @@ mod tests {
             44,   // end of outputs
             44,   // input
             */
-        ];
+        ]
+        .iter()
+        .map(|&i: &i64| F::from(i))
+        .collect();
 
-        let mut mem = CairoMemory::<F>::new(F::vec_to_field(&instrs));
+        let mut mem = CairoMemory::<F>::new(instrs);
         // Need to know how to find out
         mem.write(F::from(21u32), F::from(41u32)); // beginning of outputs
         mem.write(F::from(22u32), F::from(44u32)); // end of outputs
         mem.write(F::from(23u32), F::from(44u32)); //end of program
-        let prog = CairoProgram::new(&mut mem, 5, 24);
-        assert_eq!(prog.get_final().pc, F::from(20u32));
-        assert_eq!(prog.get_final().ap, F::from(41u32));
-        assert_eq!(prog.get_final().fp, F::from(24u32));
+        let prog = CairoProgram::new(&mut mem, 5);
+        assert_eq!(prog.fin().pc, F::from(20u32));
+        assert_eq!(prog.fin().ap, F::from(41u32));
+        assert_eq!(prog.fin().fp, F::from(24u32));
         println!("{}", prog.mem);
         assert_eq!(prog.mem.read(F::from(24u32)).unwrap(), F::from(10u32));
         assert_eq!(prog.mem.read(F::from(25u32)).unwrap(), F::from(20u32));
