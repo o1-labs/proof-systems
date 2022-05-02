@@ -68,25 +68,12 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
         domain: &EvaluationDomains<F>,
     ) -> Result<Option<Self>, LookupError> {
         let lookup_info = LookupInfo::<F>::create();
+
+        //~ 1. If no lookup is used in the circuit, do not create a lookup index
         match lookup_info.lookup_used(gates) {
             None => Ok(None),
             Some(lookup_used) => {
                 let d1_size = domain.d1.size();
-
-                let (lookup_selectors, gate_lookup_tables) =
-                    lookup_info.selector_polynomials_and_tables(domain, gates);
-
-                let lookup_tables: Vec<_> = gate_lookup_tables
-                    .into_iter()
-                    .chain(lookup_tables.into_iter())
-                    .collect();
-
-                // Get the max width of all lookup tables
-                let max_table_width = lookup_tables
-                    .iter()
-                    .map(|table| table.data.len())
-                    .max()
-                    .unwrap_or(0);
 
                 // The maximum number of entries that can be provided across all tables.
                 // Since we do not assert the lookup constraint on the final `ZK_ROWS` rows, and
@@ -94,9 +81,29 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                 // product is 1, we cannot use those rows to store any values.
                 let max_num_entries = d1_size - (ZK_ROWS as usize) - 1;
 
+                //~ 2. Get the lookup selectors and lookup tables (TODO: how?)
+                let (lookup_selectors, gate_lookup_tables) =
+                    lookup_info.selector_polynomials_and_tables(domain, gates);
+
+                //~ 3. Concatenate runtime lookup tables with the ones used by gates
+                let lookup_tables: Vec<_> = gate_lookup_tables
+                    .into_iter()
+                    .chain(lookup_tables.into_iter())
+                    .collect();
+
+                //~ 4. Get the highest number of columns `max_table_width`
+                //~    that a lookup table can have.
+                let max_table_width = lookup_tables
+                    .iter()
+                    .map(|table| table.data.len())
+                    .max()
+                    .unwrap_or(0);
+
+                //~ 5. Add the table ID stuff
                 let mut lookup_table = vec![Vec::with_capacity(d1_size); max_table_width];
                 let mut table_ids: Vec<F> = Vec::with_capacity(d1_size);
                 let mut non_zero_table_id = false;
+                //~ 6. For each table:
                 for table in lookup_tables.iter() {
                     let table_len = table.data[0].len();
 
@@ -104,10 +111,11 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                     if table.id != 0 {
                         non_zero_table_id = true;
                     }
+                    //~ c. Update table IDs
                     let table_id: F = i32_to_field(table.id);
                     table_ids.extend(repeat_n(table_id, table_len));
 
-                    // Update lookup_table values
+                    //~ d. Update lookup_table values
                     for (i, col) in table.data.iter().enumerate() {
                         if col.len() != table_len {
                             return Err(LookupError::InconsistentTableLength);
@@ -115,7 +123,7 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                         lookup_table[i].extend(col);
                     }
 
-                    // Fill in any unused columns with 0 to match the dummy value
+                    //~ e. Fill in any unused columns with 0 to match the dummy value
                     for lookup_table in lookup_table.iter_mut().skip(table.data.len()) {
                         lookup_table.extend(repeat_n(F::zero(), table_len))
                     }
