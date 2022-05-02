@@ -1109,7 +1109,7 @@ These pre-computations are optimizations, in the context of normal proofs, but t
 pub struct ProverIndex<G: CommitmentCurve> {
     /// constraints system polynomials
     #[serde(bound = "ConstraintSystem<ScalarField<G>>: Serialize + DeserializeOwned")]
-    pub(crate) cs: ConstraintSystem<ScalarField<G>>,
+    pub cs: ConstraintSystem<ScalarField<G>>,
 
     /// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
     #[serde(skip)]
@@ -1121,7 +1121,7 @@ pub struct ProverIndex<G: CommitmentCurve> {
 
     /// polynomial commitment keys
     #[serde(skip)]
-    pub(crate) srs: Arc<SRS<G>>,
+    pub srs: Arc<SRS<G>>,
 
     /// maximal size of polynomial section
     pub(crate) max_poly_size: usize,
@@ -1168,7 +1168,7 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     /// maximal size of polynomial section
     pub(crate) max_poly_size: usize,
     /// maximal size of the quotient polynomial according to the supported constraints
-    pub(crate) max_quot_size: usize,
+    max_quot_size: usize, // TODO: (querolita) seems like we are not using this field
     /// polynomial commitment keys
     #[serde(skip)]
     pub(crate) srs: Arc<SRS<G>>,
@@ -1349,13 +1349,13 @@ pub struct LookupCommitments<G: AffineCurve> {
 #[derive(Clone)]
 pub struct ProverCommitments<G: AffineCurve> {
     /// The commitments to the witness (execution trace)
-    pub(crate) w_comm: [PolyComm<G>; COLUMNS],
+    pub w_comm: [PolyComm<G>; COLUMNS],
     /// The commitment to the permutation polynomial
-    pub(crate) z_comm: PolyComm<G>,
+    pub z_comm: PolyComm<G>,
     /// The commitment to the quotient polynomial
-    pub(crate) t_comm: PolyComm<G>,
+    pub t_comm: PolyComm<G>,
     /// Commitments related to the lookup argument
-    pub(crate) lookup: Option<LookupCommitments<G>>,
+    pub lookup: Option<LookupCommitments<G>>,
 }
 
 /// The proof that the prover creates from a [ProverIndex] and a `witness`.
