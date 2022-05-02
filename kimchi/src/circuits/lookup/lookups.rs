@@ -3,7 +3,7 @@ use crate::circuits::{
     gate::{CircuitGate, CurrOrNext, GateType},
     lookup::tables::{
         combine_table_entry, get_table, GateLookupTable, GatesLookupMaps, GatesLookupSpec,
-        LookupTable, XOR_TABLE_ID,
+        LookupTable, RANGE_TABLE_ID, XOR_TABLE_ID,
     },
 };
 use ark_ff::{FftField, Field, One, Zero};

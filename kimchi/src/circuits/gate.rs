@@ -83,6 +83,8 @@ pub enum GateType {
     ChaCha2 = 9,
     ChaChaFinal = 10,
     Lookup = 11,
+
+    Range = 12,
 }
 
 #[serde_as]
@@ -147,6 +149,8 @@ impl<F: FftField> CircuitGate<F> {
             ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => Ok(()),
             // TODO: implement the verification for the lookup gate
             Lookup => Ok(()),
+            // TODO: implement
+            Range => Ok(()),
         }
     }
 }
