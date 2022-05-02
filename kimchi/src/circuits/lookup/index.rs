@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::circuits::{domains::EvaluationDomains, gate::CircuitGate};
 use crate::circuits::{
     lookup::{
@@ -103,9 +105,16 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                 //~ 5. Add the table ID stuff
                 let mut lookup_table = vec![Vec::with_capacity(d1_size); max_table_width];
                 let mut table_ids: Vec<F> = Vec::with_capacity(d1_size);
+                let mut table_ids_so_far = HashSet::new();
+
                 //~ 6. For each table:
                 for table in lookup_tables.iter() {
                     let table_len = table.data[0].len();
+
+                    //~ a. Make sure tables don't share the same id.
+                    if !table_ids_so_far.insert(table.id) {
+                        return Err(LookupError::DuplicateTableID);
+                    }
 
                     //~ b. Make sure that if table with id 0 is used, then it's the XOR table.
                     //~    We do this because we use a table with id 0 and
