@@ -114,11 +114,17 @@ where
 {
     /// Return true if the table has an entry containing all zeros.
     pub fn has_zero_entry(&self) -> bool {
-        for entry in &self.data {
-            if entry.iter().all(|e| e.is_zero()) {
+        // reminder: a table is written as a list of columns,
+        // not as a list of row entries.
+        for row in 0..self.data[0].len() {
+            for col in &self.data {
+                if !col[row].is_zero() {
+                    continue;
+                }
                 return true;
             }
         }
+
         false
     }
 }
