@@ -4,7 +4,7 @@ Here's all you need to know to start contributing to kimchi.
 
 ## Navigating the project
 
-* [The following video]((https://www.youtube.com/watch?v=WUP54nqVedc)) goes over the project organization.
+* [The following video](https://www.youtube.com/watch?v=WUP54nqVedc) goes over the project organization.
 * The [Mina book](https://o1-labs.github.io/proof-systems/) contains specifications, rust documentation, RFCs, and explainers on the different aspects of the system.
 * The [Discussion page](https://github.com/o1-labs/proof-systems/discussions) can be used to start discussions or ask questions.
 
