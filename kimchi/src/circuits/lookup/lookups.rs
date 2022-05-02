@@ -39,11 +39,8 @@ pub struct LookupInfo<F> {
     /// A map from the kind of gate (and whether it is the current row or next row) to the lookup
     /// table that is used by the gate, if any.
     pub kinds_tables: HashMap<(GateType, CurrOrNext), GateLookupTable>,
-    /// The maximum length of an element of `kinds`. This can be computed from `kinds`.
-    pub max_per_row: usize,
-    /// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
-    pub max_joint_size: u32,
     /// An empty vector.
+    // TODO: delete
     empty: Vec<JointLookupSpec<F>>,
 }
 
@@ -57,18 +54,10 @@ impl<F: FftField> LookupInfo<F> {
             gate_table_map: kinds_tables,
         } = GateType::lookup_kinds_map::<F>(locations_with_tables);
 
-        let max_per_row = max_lookups_per_row(&kinds);
-
         LookupInfo {
-            max_joint_size: kinds.iter().fold(0, |acc0, v| {
-                v.iter()
-                    .fold(acc0, |acc, j| std::cmp::max(acc, j.entry.len() as u32))
-            }),
-
             kinds_map,
             kinds_tables,
             kinds,
-            max_per_row,
             empty: vec![],
         }
     }

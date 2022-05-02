@@ -67,7 +67,7 @@ pub fn sorted<
     let lookup_rows = n - ZK_ROWS - 1;
     let lookup_info = LookupInfo::<F>::create();
     let by_row = lookup_info.by_row(gates);
-    let max_lookups_per_row = lookup_info.max_per_row;
+    let max_lookups_per_row = configuration.max_lookups_per_row;
 
     for t in lookup_table().take(lookup_rows) {
         // Don't multiply-count duplicate values in the table, or they'll be duplicated for each
@@ -237,7 +237,8 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
     ark_ff::fields::batch_inversion::<F>(&mut lookup_aggreg[1..]);
 
     let lookup_info = LookupInfo::<F>::create();
-    let max_lookups_per_row = lookup_info.max_per_row;
+
+    let max_lookups_per_row = configuration.max_lookups_per_row;
 
     let complements_with_beta_term = {
         let mut v = vec![F::one()];
@@ -291,6 +292,7 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
     Ok(zk_patch(lookup_aggreg, d1, rng))
 }
 
+// TODO: move to lookup/index
 /// Configuration for the lookup constraint.
 /// These values are independent of the choice of lookup values.
 #[serde_as]
@@ -373,14 +375,14 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>
             // v[i] = (gamma + dummy)^i
             let mut dummies = vec![ConstantExpr::one()];
             let dummy = ConstantExpr::Gamma + dummy_lookup;
-            for i in 1..(lookup_info.max_per_row + 1) {
+            for i in 1..(configuration.max_lookups_per_row + 1) {
                 dummies.push(dummies[i - 1].clone() * dummy.clone())
             }
 
             // TODO: we can just multiply with (1+beta)^max_per_row at the end for any f_term, it feels weird to do it here
             // (1 + beta)^max_per_row
-            let beta1_per_row: ConstantExpr<F> =
-                (ConstantExpr::one() + ConstantExpr::Beta).pow(lookup_info.max_per_row as u64);
+            let beta1_per_row: ConstantExpr<F> = (ConstantExpr::one() + ConstantExpr::Beta)
+                .pow(configuration.max_lookups_per_row as u64);
 
             dummies
                 .iter()
@@ -393,10 +395,10 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>
         // and
         // on non-lookup rows, will be equal to 1.
         let f_term = |spec: &Vec<JointLookupSpec<_>>| {
-            assert!(spec.len() <= lookup_info.max_per_row);
+            assert!(spec.len() <= configuration.max_lookups_per_row);
 
             // padding is (1+beta)^max_per_rows * (gamma + dummy)^pad
-            let padding_len = lookup_info.max_per_row - spec.len();
+            let padding_len = configuration.max_lookups_per_row - spec.len();
             let padding = dummy_padding[padding_len].clone();
 
             // padding * \mul (gamma + combined_witnesses)
