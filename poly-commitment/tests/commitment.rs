@@ -47,7 +47,7 @@ mod prover {
     /// This struct represents a commitment with associated secret information
     pub struct CommitmentAndSecrets {
         /// the commitment evaluated at some points
-        pub eval_commit: EvaluatedCommitment,
+        pub(crate) eval_commit: EvaluatedCommitment,
         /// the polynomial
         pub(crate) poly: DensePolynomial<Fp>,
         /// the blinding part
