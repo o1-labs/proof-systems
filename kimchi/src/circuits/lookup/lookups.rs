@@ -40,7 +40,7 @@ pub struct LookupInfo<F> {
     /// table that is used by the gate, if any.
     kinds_tables: HashMap<(GateType, CurrOrNext), GateLookupTable>,
     /// The maximum length of an element of `kinds`. This can be computed from `kinds`.
-    pub(crate) max_per_row: usize,
+    pub max_per_row: usize,
     /// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
     pub(crate) max_joint_size: u32,
     /// An empty vector.
