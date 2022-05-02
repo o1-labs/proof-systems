@@ -7,7 +7,7 @@ use crate::circuits::{
     },
     polynomials::permutation::ZK_ROWS,
 };
-use ark_ff::{FftField, SquareRootField};
+use ark_ff::{FftField, SquareRootField, Zero};
 use ark_poly::{
     univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
     Radix2EvaluationDomain as D,
@@ -16,6 +16,7 @@ use itertools::repeat_n;
 use o1_utils::field_helpers::i32_to_field;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
+use thiserror::Error;
 
 /// Represents an error found when computing the lookup constraint system
 #[derive(Debug, Error)]
@@ -102,15 +103,19 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                 //~ 5. Add the table ID stuff
                 let mut lookup_table = vec![Vec::with_capacity(d1_size); max_table_width];
                 let mut table_ids: Vec<F> = Vec::with_capacity(d1_size);
-                let mut non_zero_table_id = false;
                 //~ 6. For each table:
                 for table in lookup_tables.iter() {
                     let table_len = table.data[0].len();
 
-                    // Update table IDs
-                    if table.id != 0 {
-                        non_zero_table_id = true;
+                    //~ b. Make sure that if table with id 0 is used, then it's the XOR table.
+                    //~    We do this because we use a table with id 0 and
+                    //~
+                    if table.id == 0 {
+                        if !table.has_zero_entry() {
+                            return Err(LookupError::TableIDZeroMustHaveZeroEntry);
+                        }
                     }
+
                     //~ c. Update table IDs
                     let table_id: F = i32_to_field(table.id);
                     table_ids.extend(repeat_n(table_id, table_len));
@@ -161,13 +166,14 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                 }
 
                 // pre-compute polynomial and evaluation form for the table IDs, if needed
-                let (table_ids, table_ids8) = if non_zero_table_id {
-                    let table_ids: DP<F> =
-                        E::<F, D<F>>::from_vec_and_domain(table_ids, domain.d1).interpolate();
+                let table_ids: DP<F> =
+                    E::<F, D<F>>::from_vec_and_domain(table_ids, domain.d1).interpolate();
+
+                let (table_ids, table_ids8) = if table_ids.is_zero() {
+                    (None, None)
+                } else {
                     let table_ids8: E<F, D<F>> = table_ids.evaluate_over_domain_by_ref(domain.d8);
                     (Some(table_ids), Some(table_ids8))
-                } else {
-                    (None, None)
                 };
 
                 // generate the look up selector polynomials
