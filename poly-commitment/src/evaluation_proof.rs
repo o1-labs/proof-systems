@@ -313,11 +313,11 @@ impl<G: CommitmentCurve> SRS<G> {
 #[derive(Clone, Debug)]
 pub struct OpeningProof<G: AffineCurve> {
     /// vector of rounds of L & R commitments
-    pub(crate) lr: Vec<(G, G)>,
-    pub(crate) delta: G,
-    pub(crate) z1: G::ScalarField,
-    pub(crate) z2: G::ScalarField,
-    pub(crate) sg: G,
+    pub lr: Vec<(G, G)>,
+    pub delta: G,
+    pub z1: G::ScalarField,
+    pub z2: G::ScalarField,
+    pub sg: G,
 }
 
 pub struct Challenges<F> {
