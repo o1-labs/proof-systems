@@ -49,13 +49,13 @@ pub struct LookupCommitments<G: AffineCurve> {
 #[derive(Clone)]
 pub struct ProverCommitments<G: AffineCurve> {
     /// The commitments to the witness (execution trace)
-    pub(crate) w_comm: [PolyComm<G>; COLUMNS],
+    pub w_comm: [PolyComm<G>; COLUMNS],
     /// The commitment to the permutation polynomial
-    pub(crate) z_comm: PolyComm<G>,
+    pub z_comm: PolyComm<G>,
     /// The commitment to the quotient polynomial
-    pub(crate) t_comm: PolyComm<G>,
+    pub t_comm: PolyComm<G>,
     /// Commitments related to the lookup argument
-    pub(crate) lookup: Option<LookupCommitments<G>>,
+    pub lookup: Option<LookupCommitments<G>>,
 }
 
 /// The proof that the prover creates from a [ProverIndex] and a `witness`.
@@ -283,6 +283,7 @@ pub mod caml {
                 cpe.s.4.into_iter().map(Into::into).collect(),
                 cpe.s.5.into_iter().map(Into::into).collect(),
             ];
+
             Self {
                 w,
                 z: cpe.z.into_iter().map(Into::into).collect(),
