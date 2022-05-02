@@ -57,7 +57,7 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     /// maximal size of polynomial section
     pub(crate) max_poly_size: usize,
     /// maximal size of the quotient polynomial according to the supported constraints
-    pub(crate) max_quot_size: usize,
+    max_quot_size: usize, // TODO: (querolita) seems like we are not using this field
     /// polynomial commitment keys
     #[serde(skip)]
     pub(crate) srs: Arc<SRS<G>>,
