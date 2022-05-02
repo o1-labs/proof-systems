@@ -16,7 +16,7 @@ use std::ops::{Mul, Neg};
 type Evaluations<Field> = E<Field, D<Field>>;
 
 fn max_lookups_per_row<F>(kinds: &[Vec<JointLookupSpec<F>>]) -> usize {
-    kinds.iter().fold(0, |acc, x| std::cmp::max(x.len(), acc))
+    kinds.iter().map(|x| x.len()).max().unwrap_or(0)
 }
 
 /// Specifies whether a constraint system uses joint lookups. Used to make sure we
