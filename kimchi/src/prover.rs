@@ -4,12 +4,12 @@ use crate::prover::permutation::ZK_ROWS;
 use crate::{
     circuits::{
         argument::{Argument, ArgumentType},
-        constraints::LookupConstraintSystem,
         expr::{l0_1, Constants, Environment, LookupEnvironment},
         gate::GateType,
         lookup::{
             self,
             constraints::LookupConfiguration,
+            index::LookupConstraintSystem,
             lookups::LookupsUsed,
             tables::{combine_table_entry, CombinedEntry},
         },
