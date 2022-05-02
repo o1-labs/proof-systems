@@ -20,7 +20,17 @@ use std::{
     collections::{HashMap, HashSet},
     ops::MulAssign,
 };
+use thiserror::Error;
 use CurrOrNext::{Curr, Next};
+
+#[derive(Debug, Error)]
+pub enum ExprError {
+    #[error("Linearization failed (needed {0:?} evaluated at the {1:?} row")]
+    MissingEvaluation(Column, CurrOrNext),
+
+    #[error("Linearization failed")]
+    FailedLinearization,
+}
 
 /// The collection of constants required to evaluate an `Expr`.
 pub struct Constants<F> {
@@ -1686,7 +1696,10 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
     /// this function computes `lin_or_err(factor_{V_0}(e))`, although it does not
     /// compute it in that way. Instead, it computes it by reducing the expression into
     /// a sum of monomials with `F` coefficients, and then factors the monomials.
-    pub fn linearize(&self, evaluated: HashSet<Column>) -> Result<Linearization<Expr<F>>, &str> {
+    pub fn linearize(
+        &self,
+        evaluated: HashSet<Column>,
+    ) -> Result<Linearization<Expr<F>>, ExprError> {
         let mut res: HashMap<Column, Expr<F>> = HashMap::new();
         let mut constant_term: Expr<F> = Self::zero();
         let monomials = self.monomials(&evaluated);
@@ -1701,9 +1714,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
                 let var = unevaluated.remove(0);
                 match var.row {
                     Next => {
-                        return Err(
-                            "Linearization failed (needed polynomial value at \"next\" row)",
-                        )
+                        return Err(ExprError::MissingEvaluation(var.col, var.row));
                     }
                     Curr => {
                         let e = match res.remove(&var.col) {
@@ -1726,6 +1737,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
                 }
             } else {
                 return Err("Linearization failed");
+                return Err(ExprError::FailedLinearization);
             }
         }
         Ok(Linearization {
