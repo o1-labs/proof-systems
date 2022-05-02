@@ -389,7 +389,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         lookup_tables: Vec<LookupTable<F>>,
         fr_sponge_params: ArithmeticSpongeParams<F>,
         public: usize,
-    ) -> Result<Option<Self>, ProverError> {
+    ) -> Result<Self, ProverError> {
         ConstraintSystem::<F>::create_with_shared_precomputations(
             gates,
             lookup_tables,
@@ -406,7 +406,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         fr_sponge_params: ArithmeticSpongeParams<F>,
         public: usize,
         precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
-    ) -> Result<Option<Self>, ProverError> {
+    ) -> Result<Self, ProverError> {
         //~ 1. If the circuit is less than 2 gates, abort.
         // for some reason we need more than 1 gate for the circuit to work, see TODO below
         assert!(gates.len() > 1);
@@ -634,7 +634,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             }
         }
 
-        Ok(Some(constraints))
+        Ok(constraints)
     }
 
     pub fn precomputations(&self) -> &Arc<DomainConstantEvaluations<F>> {
@@ -755,9 +755,7 @@ pub mod tests {
         ) -> Self {
             let public = 0;
             // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
-            ConstraintSystem::<F>::create(gates, vec![], sponge_params, public)
-                .unwrap()
-                .unwrap()
+            ConstraintSystem::<F>::create(gates, vec![], sponge_params, public).unwrap()
         }
     }
 
