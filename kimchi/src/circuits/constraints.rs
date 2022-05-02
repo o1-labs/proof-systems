@@ -7,7 +7,7 @@ use crate::{
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
         wires::*,
     },
-    error::{self, ProverError, SetupError},
+    error::SetupError,
 };
 use ark_ff::{FftField, SquareRootField, Zero};
 use ark_poly::{
@@ -22,7 +22,7 @@ use once_cell::sync::OnceCell;
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
-use std::{borrow::Borrow, sync::Arc};
+use std::sync::Arc;
 use thiserror::Error;
 
 use super::{

@@ -3,7 +3,7 @@ use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as Domain};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
-use crate::error::{ProverError, SetupError};
+use crate::error::SetupError;
 
 #[serde_as]
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]

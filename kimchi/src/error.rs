@@ -2,8 +2,6 @@
 
 use thiserror::Error;
 
-use crate::circuits::constraints::LookupError;
-
 /// Errors that can arise when creating a proof
 // TODO(mimoo): move this out of oracle
 #[derive(Error, Debug, Clone, Copy)]
