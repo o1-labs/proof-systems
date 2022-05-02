@@ -3,9 +3,10 @@
 use crate::{
     circuits::{
         argument::{Argument, ArgumentType},
-        constraints::{LookupConstraintSystem, ZK_ROWS},
+        constraints::ZK_ROWS,
         expr::{l0_1, Constants, Environment, LookupEnvironment},
         gate::GateType,
+        lookup::index::LookupConstraintSystem,
         lookup::{
             self,
             constraints::LookupConfiguration,

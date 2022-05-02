@@ -29,6 +29,7 @@ lookup = "../../../kimchi/src/circuits/lookup/constraints.rs"
 constraint_system = "../../../kimchi/src/circuits/constraints.rs"
 prover_index = "../../../kimchi/src/prover_index.rs"
 verifier_index = "../../../kimchi/src/verifier_index.rs"
+lookup_index = "../../../kimchi/src/circuits/lookup/index.rs"
 
 # proof
 proof = "../../../kimchi/src/proof.rs"
