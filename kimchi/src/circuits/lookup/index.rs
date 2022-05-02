@@ -18,15 +18,19 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 
 /// Represents an error found when computing the lookup constraint system
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum LookupError {
-    /// One of the lookup tables has columns of different lengths
+    #[error("One of the lookup tables has columns of different lengths")]
     InconsistentTableLength,
-    /// The combined lookup table is larger than allowed by the domain size
+    #[error("The combined lookup table is larger than allowed by the domain size. Obsered: {length}, expected: {maximum_allowed}")]
     LookupTableTooLong {
         length: usize,
         maximum_allowed: usize,
     },
+    #[error("Multiple tables shared the same table IDs")]
+    DuplicateTableID,
+    #[error("The table with id 0 must have an entry of all zeros")]
+    TableIDZeroMustHaveZeroEntry,
 }
 
 #[serde_as]
