@@ -2,6 +2,8 @@
 
 use thiserror::Error;
 
+use crate::circuits::constraints::LookupError;
+
 /// Errors that can arise when creating a proof
 // TODO(mimoo): move this out of oracle
 #[derive(Error, Debug, Clone, Copy)]
@@ -20,9 +22,6 @@ pub enum ProverError {
 
     #[error("the lookup failed to find a match in the table")]
     ValueNotInTable,
-
-    #[error("the lookup contraint system could not be constructed")]
-    SetupError,
 }
 
 /// Errors that can arise when verifying a proof
@@ -36,4 +35,14 @@ pub enum VerifyError {
 
     #[error("lookup used in circuit, but proof is missing lookup commitments")]
     LookupCommitmentMissing,
+}
+
+/// Errors that can arise when preparing the setup
+#[derive(Error, Debug, Clone)]
+pub enum SetupError {
+    #[error("the domain could not be constructed: {0}")]
+    ConstraintSystem(String),
+
+    #[error("the domain could not be constructed: {0}")]
+    DomainCreation(&'static str),
 }

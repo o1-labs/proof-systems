@@ -3,7 +3,7 @@ use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as Domain};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
-use crate::error::ProverError;
+use crate::error::{ProverError, SetupError};
 
 #[serde_as]
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -22,25 +22,25 @@ impl<F: FftField> EvaluationDomains<F> {
     /// Creates 4 evaluation domains `d1` (of size `n`), `d2` (of size `2n`), `d4` (of size `4n`),
     /// and `d8` (of size `8n`). If generator of `d8` is `g`, the generator
     /// of `d4` is `g^2`, the generator of `d2` is `g^4`, and the generator of `d1` is `g^8`.
-    // TODO(mimoo): should we instead panic/return an error if any of these return None?
-    pub fn create(n: usize) -> Result<Self, ProverError> {
-        let n = Domain::<F>::compute_size_of_domain(n)
-            .ok_or(ProverError::Prover("could not compute size of domain n"))?;
+    pub fn create(n: usize) -> Result<Self, SetupError> {
+        let n = Domain::<F>::compute_size_of_domain(n).ok_or(SetupError::DomainCreation(
+            "could not compute size of domain",
+        ))?;
 
-        let d1 = Domain::<F>::new(n).ok_or(ProverError::Prover(
+        let d1 = Domain::<F>::new(n).ok_or(SetupError::DomainCreation(
             "construction of domain d1 did not work as intended",
         ))?;
 
         // we also create domains of larger sizes
         // to efficiently operate on polynomials in evaluation form.
         // (in evaluation form, the domain needs to grow as the degree of a polynomial grows)
-        let d2 = Domain::<F>::new(2 * n).ok_or(ProverError::Prover(
+        let d2 = Domain::<F>::new(2 * n).ok_or(SetupError::DomainCreation(
             "construction of domain d2 did not work as intended",
         ))?;
-        let d4 = Domain::<F>::new(4 * n).ok_or(ProverError::Prover(
+        let d4 = Domain::<F>::new(4 * n).ok_or(SetupError::DomainCreation(
             "construction of domain d4 did not work as intended",
         ))?;
-        let d8 = Domain::<F>::new(8 * n).ok_or(ProverError::Prover(
+        let d8 = Domain::<F>::new(8 * n).ok_or(SetupError::DomainCreation(
             "construction of domain d8 did not work as intended",
         ))?;
 

@@ -1,5 +1,4 @@
 //! This module implements Plonk circuit constraint primitive.
-
 use crate::{
     circuits::{
         domain_constant_evaluation::DomainConstantEvaluations,
@@ -8,7 +7,7 @@ use crate::{
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
         wires::*,
     },
-    error::ProverError,
+    error::{self, ProverError, SetupError},
 };
 use ark_ff::{FftField, SquareRootField, Zero};
 use ark_poly::{
@@ -23,7 +22,8 @@ use once_cell::sync::OnceCell;
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
-use std::sync::Arc;
+use std::{borrow::Borrow, sync::Arc};
+use thiserror::Error;
 
 use super::{
     lookup::{
@@ -251,11 +251,13 @@ pub enum GateError {
 }
 
 /// Represents an error found when computing the lookup constraint system
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum LookupError {
     /// One of the lookup tables has columns of different lengths
+    #[error("Inconsisten table length")]
     InconsistentTableLength,
     /// The combined lookup table is larger than allowed by the domain size
+    #[error("Lookup table too long")]
     LookupTableTooLong {
         length: usize,
         maximum_allowed: usize,
@@ -389,7 +391,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         lookup_tables: Vec<LookupTable<F>>,
         fr_sponge_params: ArithmeticSpongeParams<F>,
         public: usize,
-    ) -> Result<Self, ProverError> {
+    ) -> Result<Self, SetupError> {
         ConstraintSystem::<F>::create_with_shared_precomputations(
             gates,
             lookup_tables,
@@ -406,7 +408,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         fr_sponge_params: ArithmeticSpongeParams<F>,
         public: usize,
         precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
-    ) -> Result<Self, ProverError> {
+    ) -> Result<Self, SetupError> {
         //~ 1. If the circuit is less than 2 gates, abort.
         // for some reason we need more than 1 gate for the circuit to work, see TODO below
         assert!(gates.len() > 1);
@@ -588,10 +590,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // Lookup
         // ------
         let lookup_constraint_system =
-            match LookupConstraintSystem::create(&gates, lookup_tables, &domain) {
-                Ok(ok) => ok,
-                Err(_) => return Err(ProverError::SetupError),
-            };
+            LookupConstraintSystem::create(&gates, lookup_tables, &domain)
+                .map_err(|e| SetupError::ConstraintSystem(e.to_string()))?;
 
         let sid = shifts.map[0].clone();
 
