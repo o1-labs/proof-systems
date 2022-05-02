@@ -390,7 +390,11 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
 }
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
-    /// creates a constraint system from a vector of gates ([CircuitGate]), some sponge parameters ([ArithmeticSpongeParams]), and the number of public inputs.
+    /// Creates a constraint system from a vector of gates ([CircuitGate]),
+    ///   some sponge parameters ([ArithmeticSpongeParams]),
+    ///   an optional foreign modulus, and the number of public inputs.
+    ///   Note that passing an empty vector for the foreign modulus parameter
+    ///   disables the foreign field multiplication gate.
     pub fn create(
         gates: Vec<CircuitGate<F>>,
         lookup_tables: Vec<LookupTable<F>>,
