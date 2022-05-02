@@ -417,7 +417,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // ------
 
         let lookup_constraint_system =
-            LookupConstraintSystem::create(&gates, lookup_tables, &domain).ok()?;
+            LookupConstraintSystem::create(&gates, lookup_tables, &domain).unwrap();
 
         let sid = shifts.map[0].clone();
 

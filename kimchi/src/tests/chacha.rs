@@ -202,16 +202,10 @@ fn chacha_setup_bad_lookup(table_id: i32) {
     // .. and one fake witness.
     push_rows(true);
 
-    let lookup_tables = vec![
-        LookupTable {
-            id: 0,
-            data: vec![vec![Fp::from(0); 10]],
-        },
-        LookupTable {
-            id: table_id,
-            data: fakes,
-        },
-    ];
+    let lookup_tables = vec![LookupTable {
+        id: table_id,
+        data: fakes,
+    }];
 
     // create the index
     let index = new_index_for_test_with_lookups(gates, PUBLIC, lookup_tables);
@@ -251,9 +245,9 @@ fn chacha_prover_fake_lookup_in_different_table_fails() {
     chacha_setup_bad_lookup(XOR_TABLE_ID + 1)
 }
 
-// Test lookup domain collisions: if the same table ID is used, we should be able to inject and use
-// a value when it wasn't previously in the table.
+// Test lookup domain collisions: if the same table ID is used, we should panic.
 #[test]
+#[should_panic]
 fn chacha_prover_fake_lookup_in_same_table() {
     chacha_setup_bad_lookup(XOR_TABLE_ID)
 }
