@@ -94,7 +94,7 @@ pub struct CircuitGate<F: FftField> {
     pub wires: GateWires,
     /// public selector polynomials that can used as handy coefficients in gates
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub coeffs: Vec<F>,
+    pub(crate) coeffs: Vec<F>,
 }
 
 impl<F: FftField> ToBytes for CircuitGate<F> {
@@ -176,7 +176,7 @@ pub mod caml {
             CamlWire,
             CamlWire,
         ),
-        pub coeffs: Vec<F>,
+        pub(crate) coeffs: Vec<F>,
     }
 
     impl<F, CamlF> From<CircuitGate<F>> for CamlCircuitGate<CamlF>

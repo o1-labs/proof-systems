@@ -31,19 +31,19 @@ use std::{
 #[serde_as]
 #[derive(Serialize, Deserialize)]
 pub struct LookupVerifierIndex<G: CommitmentCurve> {
-    pub lookup_used: LookupsUsed,
+    pub(crate) lookup_used: LookupsUsed,
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub lookup_table: Vec<PolyComm<G>>,
+    pub(crate) lookup_table: Vec<PolyComm<G>>,
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub lookup_selectors: Vec<PolyComm<G>>,
+    pub(crate) lookup_selectors: Vec<PolyComm<G>>,
 
     /// Table IDs for the lookup values.
     /// This may be `None` if all lookups originate from table 0.
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub table_ids: Option<PolyComm<G>>,
+    pub(crate) table_ids: Option<PolyComm<G>>,
 
     /// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
-    pub max_joint_size: u32,
+    pub(crate) max_joint_size: u32,
 }
 
 #[serde_as]
@@ -52,77 +52,77 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 pub struct VerifierIndex<G: CommitmentCurve> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub domain: D<ScalarField<G>>,
+    pub(crate) domain: D<ScalarField<G>>,
     /// maximal size of polynomial section
-    pub max_poly_size: usize,
+    pub(crate) max_poly_size: usize,
     /// maximal size of the quotient polynomial according to the supported constraints
-    pub max_quot_size: usize,
+    pub(crate) max_quot_size: usize,
     /// polynomial commitment keys
     #[serde(skip)]
-    pub srs: Arc<SRS<G>>,
+    pub(crate) srs: Arc<SRS<G>>,
 
     // index polynomial commitments
     /// permutation commitment array
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub sigma_comm: [PolyComm<G>; PERMUTS],
+    pub(crate) sigma_comm: [PolyComm<G>; PERMUTS],
     /// coefficient commitment array
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub coefficients_comm: [PolyComm<G>; COLUMNS],
+    pub(crate) coefficients_comm: [PolyComm<G>; COLUMNS],
     /// coefficient commitment array
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub generic_comm: PolyComm<G>,
+    pub(crate) generic_comm: PolyComm<G>,
 
     // poseidon polynomial commitments
     /// poseidon constraint selector polynomial commitment
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub psm_comm: PolyComm<G>,
+    pub(crate) psm_comm: PolyComm<G>,
 
     // ECC arithmetic polynomial commitments
     /// EC addition selector polynomial commitment
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub complete_add_comm: PolyComm<G>,
+    pub(crate) complete_add_comm: PolyComm<G>,
     /// EC variable base scalar multiplication selector polynomial commitment
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub mul_comm: PolyComm<G>,
+    pub(crate) mul_comm: PolyComm<G>,
     /// endoscalar multiplication selector polynomial commitment
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub emul_comm: PolyComm<G>,
+    pub(crate) emul_comm: PolyComm<G>,
     /// endoscalar multiplication scalar computation selector polynomial commitment
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub endomul_scalar_comm: PolyComm<G>,
+    pub(crate) endomul_scalar_comm: PolyComm<G>,
 
     /// Chacha polynomial commitments
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub chacha_comm: Option<[PolyComm<G>; 4]>,
+    pub(crate) chacha_comm: Option<[PolyComm<G>; 4]>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
-    pub shift: [ScalarField<G>; PERMUTS],
+    pub(crate) shift: [ScalarField<G>; PERMUTS],
     /// zero-knowledge polynomial
     #[serde(skip)]
-    pub zkpm: DensePolynomial<ScalarField<G>>,
+    pub(crate) zkpm: DensePolynomial<ScalarField<G>>,
     // TODO(mimoo): isn't this redundant with domain.d1.group_gen ?
     /// domain offset for zero-knowledge
     #[serde(skip)]
-    pub w: ScalarField<G>,
+    pub(crate) w: ScalarField<G>,
     /// endoscalar coefficient
     #[serde(skip)]
-    pub endo: ScalarField<G>,
+    pub(crate) endo: ScalarField<G>,
 
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub lookup_index: Option<LookupVerifierIndex<G>>,
+    pub(crate) lookup_index: Option<LookupVerifierIndex<G>>,
 
     #[serde(skip)]
-    pub linearization: Linearization<Vec<PolishToken<ScalarField<G>>>>,
+    pub(crate) linearization: Linearization<Vec<PolishToken<ScalarField<G>>>>,
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
-    pub powers_of_alpha: Alphas<ScalarField<G>>,
+    pub(crate) powers_of_alpha: Alphas<ScalarField<G>>,
 
     // random oracle argument parameters
     #[serde(skip)]
-    pub fr_sponge_params: ArithmeticSpongeParams<ScalarField<G>>,
+    pub(crate) fr_sponge_params: ArithmeticSpongeParams<ScalarField<G>>,
     #[serde(skip)]
-    pub fq_sponge_params: ArithmeticSpongeParams<BaseField<G>>,
+    pub(crate) fq_sponge_params: ArithmeticSpongeParams<BaseField<G>>,
 }
 //~spec:endcode
 

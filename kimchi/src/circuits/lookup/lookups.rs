@@ -30,17 +30,17 @@ pub enum LookupsUsed {
 pub struct LookupInfo<F> {
     /// A single lookup constraint is a vector of lookup constraints to be applied at a row.
     /// This is a vector of all the kinds of lookup constraints in this configuration.
-    pub kinds: Vec<Vec<JointLookupSpec<F>>>,
+    pub(crate) kinds: Vec<Vec<JointLookupSpec<F>>>,
     /// A map from the kind of gate (and whether it is the current row or next row) to the lookup
     /// constraint (given as an index into `kinds`) that should be applied there, if any.
-    pub kinds_map: HashMap<(GateType, CurrOrNext), usize>,
+    kinds_map: HashMap<(GateType, CurrOrNext), usize>,
     /// A map from the kind of gate (and whether it is the current row or next row) to the lookup
     /// table that is used by the gate, if any.
-    pub kinds_tables: HashMap<(GateType, CurrOrNext), GateLookupTable>,
+    kinds_tables: HashMap<(GateType, CurrOrNext), GateLookupTable>,
     /// The maximum length of an element of `kinds`. This can be computed from `kinds`.
-    pub max_per_row: usize,
+    pub(crate) max_per_row: usize,
     /// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
-    pub max_joint_size: u32,
+    pub(crate) max_joint_size: u32,
     /// An empty vector.
     empty: Vec<JointLookupSpec<F>>,
 }
@@ -154,8 +154,8 @@ impl<F: FftField> LookupInfo<F> {
 /// A position in the circuit relative to a given row.
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct LocalPosition {
-    pub row: CurrOrNext,
-    pub column: usize,
+    pub(crate) row: CurrOrNext,
+    pub(crate) column: usize,
 }
 
 /// Look up a single value in a lookup table. The value may be computed as a linear
@@ -163,7 +163,7 @@ pub struct LocalPosition {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SingleLookup<F> {
     /// Linear combination of local-positions
-    pub value: Vec<(F, LocalPosition)>,
+    value: Vec<(F, LocalPosition)>,
 }
 
 impl<F: Copy> SingleLookup<F> {

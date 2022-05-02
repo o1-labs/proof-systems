@@ -41,21 +41,21 @@ pub struct ProofEvaluations<Field> {
 /// Commitments linked to the lookup feature
 #[derive(Clone)]
 pub struct LookupCommitments<G: AffineCurve> {
-    pub sorted: Vec<PolyComm<G>>,
-    pub aggreg: PolyComm<G>,
+    pub(crate) sorted: Vec<PolyComm<G>>,
+    pub(crate) aggreg: PolyComm<G>,
 }
 
 /// All the commitments that the prover creates as part of the proof.
 #[derive(Clone)]
 pub struct ProverCommitments<G: AffineCurve> {
     /// The commitments to the witness (execution trace)
-    pub w_comm: [PolyComm<G>; COLUMNS],
+    pub(crate) w_comm: [PolyComm<G>; COLUMNS],
     /// The commitment to the permutation polynomial
-    pub z_comm: PolyComm<G>,
+    pub(crate) z_comm: PolyComm<G>,
     /// The commitment to the quotient polynomial
-    pub t_comm: PolyComm<G>,
+    pub(crate) t_comm: PolyComm<G>,
     /// Commitments related to the lookup argument
-    pub lookup: Option<LookupCommitments<G>>,
+    pub(crate) lookup: Option<LookupCommitments<G>>,
 }
 
 /// The proof that the prover creates from a [ProverIndex] and a `witness`.

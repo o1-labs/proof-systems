@@ -7,7 +7,7 @@ pub struct ChunkedPolynomial<F: Field> {
     pub polys: Vec<DensePolynomial<F>>,
 
     /// Each chunk polynomial has degree `size-1`.
-    pub size: usize,
+    pub(crate) size: usize,
 }
 
 impl<F: Field> ChunkedPolynomial<F> {

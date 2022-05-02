@@ -1033,11 +1033,11 @@ pub mod caml {
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlOpeningProof<G, F> {
         /// vector of rounds of L & R commitments
-        pub lr: Vec<(G, G)>,
-        pub delta: G,
-        pub z1: F,
-        pub z2: F,
-        pub sg: G,
+        pub(crate) lr: Vec<(G, G)>,
+        pub(crate) delta: G,
+        pub(crate) z1: F,
+        pub(crate) z2: F,
+        pub(crate) sg: G,
     }
 
     impl<G, CamlF, CamlG> From<OpeningProof<G>> for CamlOpeningProof<CamlG, CamlF>

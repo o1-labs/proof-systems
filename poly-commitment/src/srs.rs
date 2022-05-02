@@ -30,7 +30,7 @@ pub struct SRS<G: CommitmentCurve> {
     pub endo_r: G::ScalarField,
     /// Coefficient for the curve endomorphism
     #[serde(skip)]
-    pub endo_q: G::BaseField,
+    pub(crate) endo_q: G::BaseField,
 }
 
 pub fn endos<G: CommitmentCurve>() -> (G::BaseField, G::ScalarField)

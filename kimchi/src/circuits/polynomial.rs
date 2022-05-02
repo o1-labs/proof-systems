@@ -10,25 +10,25 @@ use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain 
 #[derive(Clone)]
 pub struct WitnessEvals<F: FftField> {
     /// wire evaluations
-    pub w: [Evaluations<F, D<F>>; COLUMNS],
+    pub(crate) w: [Evaluations<F, D<F>>; COLUMNS],
     /// permutation evaluations
-    pub z: Evaluations<F, D<F>>,
+    pub(crate) z: Evaluations<F, D<F>>,
 }
 
 #[derive(Clone)]
 pub struct WitnessShifts<F: FftField> {
     /// this wire evaluations
-    pub this: WitnessEvals<F>,
+    pub(crate) this: WitnessEvals<F>,
     /// next wire evaluations
-    pub next: WitnessEvals<F>,
+    pub(crate) next: WitnessEvals<F>,
 }
 
 #[derive(Clone)]
 pub struct WitnessOverDomains<F: FftField> {
     /// evaluations over domain d4
-    pub d4: WitnessShifts<F>,
+    pub(crate) d4: WitnessShifts<F>,
     /// evaluations over domain d8
-    pub d8: WitnessShifts<F>,
+    pub(crate) d8: WitnessShifts<F>,
 }
 
 // PLOOKUP

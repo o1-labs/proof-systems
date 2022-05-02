@@ -414,19 +414,19 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct LookupConfiguration<F: FftField> {
     /// The kind of lookups used
-    pub lookup_used: LookupsUsed,
+    pub(crate) lookup_used: LookupsUsed,
 
     /// The maximum number of lookups per row
-    pub max_lookups_per_row: usize,
+    pub(crate) max_lookups_per_row: usize,
     /// The maximum number of elements in a vector lookup
-    pub max_joint_size: u32,
+    pub(crate) max_joint_size: u32,
 
     /// A placeholder value that is known to appear in the lookup table.
     /// This is used to pad the lookups to `max_lookups_per_row` when fewer lookups are used in a
     /// particular row, so that we can treat each row uniformly as having the same number of
     /// lookups.
     #[serde_as(as = "JointLookup<o1_utils::serialization::SerdeAs>")]
-    pub dummy_lookup: JointLookup<F>,
+    pub(crate) dummy_lookup: JointLookup<F>,
 }
 
 /// Specifies the lookup constraints as expressions.

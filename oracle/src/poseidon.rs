@@ -48,7 +48,7 @@ pub struct ArithmeticSponge<F: Field, SC: SpongeConstants> {
     // TODO(mimoo: an array enforcing the width is better no? or at least an assert somewhere)
     pub state: Vec<F>,
     params: ArithmeticSpongeParams<F>,
-    pub constants: std::marker::PhantomData<SC>,
+    constants: std::marker::PhantomData<SC>,
 }
 
 impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {

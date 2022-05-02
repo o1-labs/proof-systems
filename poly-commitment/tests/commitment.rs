@@ -49,9 +49,9 @@ mod prover {
         /// the commitment evaluated at some points
         pub eval_commit: EvaluatedCommitment,
         /// the polynomial
-        pub poly: DensePolynomial<Fp>,
+        pub(crate) poly: DensePolynomial<Fp>,
         /// the blinding part
-        pub chunked_blinding: PolyComm<Fp>,
+        pub(crate) chunked_blinding: PolyComm<Fp>,
     }
 }
 

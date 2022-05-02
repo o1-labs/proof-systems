@@ -44,13 +44,13 @@ pub struct Constants<F> {
 /// All are evaluations over the D8 domain
 pub struct LookupEnvironment<'a, F: FftField> {
     /// The sorted lookup table polynomials.
-    pub sorted: &'a Vec<Evaluations<F, D<F>>>,
+    pub(crate) sorted: &'a Vec<Evaluations<F, D<F>>>,
     /// The lookup aggregation polynomials.
-    pub aggreg: &'a Evaluations<F, D<F>>,
+    pub(crate) aggreg: &'a Evaluations<F, D<F>>,
     /// The lookup-type selector polynomials.
-    pub selectors: &'a Vec<Evaluations<F, D<F>>>,
+    pub(crate) selectors: &'a Vec<Evaluations<F, D<F>>>,
     /// The evaluations of the combined lookup table polynomial.
-    pub table: &'a Evaluations<F, D<F>>,
+    pub(crate) table: &'a Evaluations<F, D<F>>,
 }
 
 /// The collection of polynomials (all in evaluation form) and constants
@@ -59,24 +59,24 @@ pub struct LookupEnvironment<'a, F: FftField> {
 /// All are evaluations.
 pub struct Environment<'a, F: FftField> {
     /// The witness column polynomials
-    pub witness: &'a [Evaluations<F, D<F>>; COLUMNS],
+    pub(crate) witness: &'a [Evaluations<F, D<F>>; COLUMNS],
     /// The coefficient column polynomials
-    pub coefficient: &'a [Evaluations<F, D<F>>; COLUMNS],
+    pub(crate) coefficient: &'a [Evaluations<F, D<F>>; COLUMNS],
     /// The polynomial which vanishes on the last 4 elements of the domain.
-    pub vanishes_on_last_4_rows: &'a Evaluations<F, D<F>>,
+    pub(crate) vanishes_on_last_4_rows: &'a Evaluations<F, D<F>>,
     /// The permutation aggregation polynomial.
-    pub z: &'a Evaluations<F, D<F>>,
+    pub(crate) z: &'a Evaluations<F, D<F>>,
     /// The index selector polynomials.
-    pub index: HashMap<GateType, &'a Evaluations<F, D<F>>>,
+    pub(crate) index: HashMap<GateType, &'a Evaluations<F, D<F>>>,
     /// The value `prod_{j != 1} (1 - omega^j)`, used for efficiently
     /// computing the evaluations of the unnormalized Lagrange basis polynomials.
-    pub l0_1: F,
+    pub(crate) l0_1: F,
     /// Constant values required
-    pub constants: Constants<F>,
+    pub(crate) constants: Constants<F>,
     /// The domains used in the PLONK argument.
-    pub domain: EvaluationDomains<F>,
+    pub(crate) domain: EvaluationDomains<F>,
     /// Lookup specific polynomials
-    pub lookup: Option<LookupEnvironment<'a, F>>,
+    pub(crate) lookup: Option<LookupEnvironment<'a, F>>,
 }
 
 impl<'a, F: FftField> Environment<'a, F> {
@@ -157,8 +157,8 @@ impl Column {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
-/// A type representing a variable which can appear in a constraint. It specifies a column
-/// and a relative position (Curr or Next)
+/// A type representing a variable which can appear in a constraint.
+/// It specifies a column and a relative position (Curr or Next)
 pub struct Variable {
     /// The column of this variable
     pub col: Column,

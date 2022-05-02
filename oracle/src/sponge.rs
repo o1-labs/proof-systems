@@ -60,8 +60,8 @@ impl<F: PrimeField> ScalarChallenge<F> {
 
 #[derive(Clone)]
 pub struct DefaultFqSponge<P: SWModelParameters, SC: SpongeConstants> {
-    pub sponge: ArithmeticSponge<P::BaseField, SC>,
-    pub last_squeezed: Vec<u64>,
+    sponge: ArithmeticSponge<P::BaseField, SC>,
+    last_squeezed: Vec<u64>,
 }
 
 pub struct DefaultFrSponge<Fr: Field, SC: SpongeConstants> {

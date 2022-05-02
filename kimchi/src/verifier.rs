@@ -37,24 +37,24 @@ where
     EFqSponge: Clone + FqSponge<BaseField<G>, G, ScalarField<G>>,
 {
     /// A sponge that acts on the base field of a curve
-    pub fq_sponge: EFqSponge,
+    fq_sponge: EFqSponge,
     /// the last evaluation of the Fq-Sponge in this protocol
     pub digest: ScalarField<G>,
     /// the challenges produced in the protocol
-    pub oracles: RandomOracles<ScalarField<G>>,
+    oracles: RandomOracles<ScalarField<G>>,
     /// the computed powers of alpha
-    pub all_alphas: Alphas<ScalarField<G>>,
+    all_alphas: Alphas<ScalarField<G>>,
     /// public polynomial evaluations
-    pub p_eval: Vec<Vec<ScalarField<G>>>,
+    p_eval: Vec<Vec<ScalarField<G>>>,
     /// zeta^n and (zeta * omega)^n
-    pub powers_of_eval_points_for_chunks: [ScalarField<G>; 2],
+    powers_of_eval_points_for_chunks: [ScalarField<G>; 2],
     /// recursion data
     #[allow(clippy::type_complexity)]
-    pub polys: Vec<(PolyComm<G>, Vec<Vec<ScalarField<G>>>)>,
+    polys: Vec<(PolyComm<G>, Vec<Vec<ScalarField<G>>>)>,
     /// pre-computed zeta^n
-    pub zeta1: ScalarField<G>,
+    zeta1: ScalarField<G>,
     /// The evaluation f(zeta) - t(zeta) * Z_H(zeta)
-    pub ft_eval0: ScalarField<G>,
+    ft_eval0: ScalarField<G>,
     /// Used by the OCaml side
     pub combined_inner_product: ScalarField<G>,
 }
