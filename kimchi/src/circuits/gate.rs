@@ -188,7 +188,7 @@ pub mod caml {
             CamlWire,
             CamlWire,
         ),
-        pub(crate) coeffs: Vec<F>,
+        pub coeffs: Vec<F>,
     }
 
     impl<F, CamlF> From<CircuitGate<F>> for CamlCircuitGate<CamlF>
