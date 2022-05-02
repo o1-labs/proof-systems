@@ -214,13 +214,7 @@ pub trait Cs<F: FftField + PrimeField> {
         c[0] = F::one();
         c[GENERICS + 1] = -x;
 
-        let row = array_init(|i| {
-            if i == 0 {
-                v.clone()
-            } else {
-                self.var(|| F::zero())
-            }
-        });
+        let row = array_init(|i| if i == 0 { v } else { self.var(|| F::zero()) });
 
         self.gate(GateSpec {
             typ: GateType::Generic,
@@ -512,14 +506,14 @@ pub trait Cs<F: FftField + PrimeField> {
         let bits: Vec<_> = (0..length_in_bits)
             .map(|i| {
                 self.var(|| {
-                    if bits_.len() == 0 {
+                    if bits_.is_empty() {
                         bits_ = scalar
                             .val()
                             .into_repr()
                             .to_bits_le()
                             .iter()
                             .take(length_in_bits)
-                            .map(|x| *x)
+                            .copied()
                             .rev()
                             .collect()
                     }
@@ -617,7 +611,7 @@ pub trait Cs<F: FftField + PrimeField> {
         acc
     }
 
-    fn assert_pack(&mut self, zero: Var<F>, x: Var<F>, bits_lsb: &Vec<Var<F>>) {
+    fn assert_pack(&mut self, zero: Var<F>, x: Var<F>, bits_lsb: &[Var<F>]) {
         let crumbs_per_row = 8;
         let bits_per_row = 2 * crumbs_per_row;
         assert_eq!(bits_lsb.len() % bits_per_row, 0);
@@ -712,7 +706,7 @@ pub trait Cs<F: FftField + PrimeField> {
                                             .map(|x| x.val())
                                             .collect();
                                         full_round::<F, PlonkSpongeConstantsKimchi>(
-                                            &params,
+                                            params,
                                             &mut acc,
                                             offset + i,
                                         );
@@ -733,9 +727,9 @@ pub trait Cs<F: FftField + PrimeField> {
                     .map(|i| rc[offset + (i / width)][i % width])
                     .collect(),
                 row: [
-                    states[offset + 0][0],
-                    states[offset + 0][1],
-                    states[offset + 0][2],
+                    states[offset][0],
+                    states[offset][1],
+                    states[offset][2],
                     states[offset + 4][0],
                     states[offset + 4][1],
                     states[offset + 4][2],
@@ -830,7 +824,7 @@ impl<F: FftField> System<F> {
                 }
             });
             let g = CircuitGate {
-                typ: gs.typ.clone(),
+                typ: gs.typ,
                 coeffs: gs.c.clone(),
                 wires,
             };
@@ -838,16 +832,15 @@ impl<F: FftField> System<F> {
         }
 
         for (v, first) in first_cell.iter() {
-            let last = most_recent_cell.get(v).unwrap().clone();
+            let last = *most_recent_cell.get(v).unwrap();
             gates[first.row].wires[first.col] = last;
         }
 
-        return gates;
+        gates
     }
 }
 
 pub fn prove<
-    'a,
     G: CommitmentCurve,
     H,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
@@ -860,7 +853,7 @@ pub fn prove<
     main: H,
 ) -> ProverProof<G>
 where
-    H: FnOnce(&mut WitnessGenerator<G::ScalarField>, Vec<Var<G::ScalarField>>) -> (),
+    H: FnOnce(&mut WitnessGenerator<G::ScalarField>, Vec<Var<G::ScalarField>>),
     G::BaseField: PrimeField,
 {
     let mut gen: WitnessGenerator<G::ScalarField> = WitnessGenerator {
@@ -911,7 +904,7 @@ pub fn generate_prover_index<C: Cycle, H>(
     main: H,
 ) -> ProverIndex<C::Outer>
 where
-    H: FnOnce(&mut System<C::InnerField>, Vec<Var<C::InnerField>>) -> (),
+    H: FnOnce(&mut System<C::InnerField>, Vec<Var<C::InnerField>>),
 {
     let mut system: System<C::InnerField> = System {
         next_variable: 0,
@@ -925,7 +918,7 @@ where
             let v = system.var(|| panic!("fail"));
             let row = array_init(|i| {
                 if i == 0 {
-                    v.clone()
+                    v
                 } else {
                     system.var(|| panic!("fail"))
                 }
@@ -980,7 +973,7 @@ pub fn fq_constants() -> Constants<Fq> {
 }
 
 pub fn shift<F: PrimeField>(size: usize) -> F {
-    let two: F = (2 as u64).into();
+    let two: F = 2_u64.into();
     two.pow(&[size as u64])
 }
 
