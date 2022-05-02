@@ -56,7 +56,7 @@ pub struct Constants<F> {
     pub endo_coefficient: F,
     /// The MDS matrix
     pub mds: Vec<Vec<F>>,
-    // Foreign field modulus
+    /// Foreign field modulus
     pub foreign_modulus: Vec<F>,
 }
 

@@ -54,7 +54,7 @@
 ///
 ///   Rows -->
 ///         0              1              2              3
-///  C  0 | a0           | a1             a2
+///  C  0 | a0           | a1           | a2           | 0
 ///  o  1 | plookup a0p0 | plookup a1p0 | plookup a2p0 | plookup a0p4
 ///  l  2 | plookup a0p1 | plookup a1p1 | plookup a2p1 | plookup a0p5
 ///  s  3 | plookup a0p2 | plookup a1p2 | plookup a2p2 | plookup a1p4
