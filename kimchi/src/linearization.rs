@@ -73,14 +73,9 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
     for i in 0..COLUMNS {
         h.insert(Witness(i));
     }
-    match lookup_constraint_system.as_ref() {
-        None => (),
-        Some(lcs) => {
-            for i in 0..(lcs.max_lookups_per_row + 1) {
-                h.insert(LookupSorted(i));
-            }
-        }
-    }
+    lookup_constraint_system
+        .as_ref()
+        .map(|lcs| h.extend(lcs.sorted_columns()));
     h.insert(Z);
     h.insert(LookupAggreg);
     h.insert(LookupTable);

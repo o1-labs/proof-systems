@@ -317,6 +317,26 @@ pub struct LookupConfiguration<F: FftField> {
     pub dummy_lookup_table_id: i32,
 }
 
+impl<F> LookupConfiguration<F>
+where
+    F: FftField,
+{
+    /// Returns the list of sorted polynomials used in the lookup argument
+    /// in [Column] format.
+    pub fn sorted_columns(&self) -> Vec<Column> {
+        let mut res = vec![];
+        // Note: this is calculated assuming that the concatenated tables
+        // AND the duplicated elements of each lookups (due to the snake)
+        // are of size less than n
+
+        // it'd be good to calculate this size actually...
+        for i in 0..(self.max_lookups_per_row + 1) {
+            res.push(Column::LookupSorted(i));
+        }
+        res
+    }
+}
+
 /// Specifies the lookup constraints as expressions.
 pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>) -> Vec<E<F>> {
     // Something important to keep in mind is that the last 2 rows of
