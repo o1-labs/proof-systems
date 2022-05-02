@@ -1,11 +1,13 @@
 //! This module implements Plonk circuit constraint primitive.
-
-use crate::circuits::domain_constant_evaluation::DomainConstantEvaluations;
-use crate::circuits::{
-    domains::EvaluationDomains,
-    gate::{CircuitGate, GateType},
-    polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
-    wires::*,
+use crate::{
+    circuits::{
+        domain_constant_evaluation::DomainConstantEvaluations,
+        domains::EvaluationDomains,
+        gate::{CircuitGate, GateType},
+        polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
+        wires::*,
+    },
+    error::SetupError,
 };
 use ark_ff::{FftField, SquareRootField, Zero};
 use ark_poly::{
@@ -21,6 +23,7 @@ use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::sync::Arc;
+use thiserror::Error;
 
 use super::{
     lookup::{
@@ -248,11 +251,13 @@ pub enum GateError {
 }
 
 /// Represents an error found when computing the lookup constraint system
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum LookupError {
     /// One of the lookup tables has columns of different lengths
+    #[error("Inconsisten table length")]
     InconsistentTableLength,
     /// The combined lookup table is larger than allowed by the domain size
+    #[error("Lookup table too long")]
     LookupTableTooLong {
         length: usize,
         maximum_allowed: usize,
@@ -386,7 +391,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         lookup_tables: Vec<LookupTable<F>>,
         fr_sponge_params: ArithmeticSpongeParams<F>,
         public: usize,
-    ) -> Option<Self> {
+    ) -> Result<Self, SetupError> {
         ConstraintSystem::<F>::create_with_shared_precomputations(
             gates,
             lookup_tables,
@@ -403,7 +408,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         fr_sponge_params: ArithmeticSpongeParams<F>,
         public: usize,
         precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
-    ) -> Option<Self> {
+    ) -> Result<Self, SetupError> {
         //~ 1. If the circuit is less than 2 gates, abort.
         // for some reason we need more than 1 gate for the circuit to work, see TODO below
         assert!(gates.len() > 1);
@@ -412,6 +417,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         //~    compute the smallest subgroup of the field that
         //~    has order greater or equal to `n + ZK_ROWS` elements.
         let domain = EvaluationDomains::<F>::create(gates.len() + ZK_ROWS as usize)?;
+
         assert!(domain.d1.size > ZK_ROWS);
 
         //~ 3. Pad the circuit: add zero gates to reach the domain size.
@@ -583,9 +589,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         //
         // Lookup
         // ------
-
         let lookup_constraint_system =
-            LookupConstraintSystem::create(&gates, lookup_tables, &domain).ok()?;
+            LookupConstraintSystem::create(&gates, lookup_tables, &domain)
+                .map_err(|e| SetupError::ConstraintSystem(e.to_string()))?;
 
         let sid = shifts.map[0].clone();
 
@@ -628,7 +634,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             }
         }
 
-        Some(constraints)
+        Ok(constraints)
     }
 
     pub fn precomputations(&self) -> &Arc<DomainConstantEvaluations<F>> {
@@ -748,6 +754,7 @@ pub mod tests {
             gates: Vec<CircuitGate<F>>,
         ) -> Self {
             let public = 0;
+            // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
             ConstraintSystem::<F>::create(gates, vec![], sponge_params, public).unwrap()
         }
     }
