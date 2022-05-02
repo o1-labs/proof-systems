@@ -22,7 +22,7 @@ use std::sync::Arc;
 pub struct ProverIndex<G: CommitmentCurve> {
     /// constraints system polynomials
     #[serde(bound = "ConstraintSystem<ScalarField<G>>: Serialize + DeserializeOwned")]
-    pub(crate) cs: ConstraintSystem<ScalarField<G>>,
+    pub cs: ConstraintSystem<ScalarField<G>>,
 
     /// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
     #[serde(skip)]
@@ -34,7 +34,7 @@ pub struct ProverIndex<G: CommitmentCurve> {
 
     /// polynomial commitment keys
     #[serde(skip)]
-    pub(crate) srs: Arc<SRS<G>>,
+    pub srs: Arc<SRS<G>>,
 
     /// maximal size of polynomial section
     pub(crate) max_poly_size: usize,
