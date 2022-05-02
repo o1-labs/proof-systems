@@ -52,11 +52,11 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
 
     // lookup
     if let Some(lcs) = lookup_constraint_system.as_ref() {
-        powers_of_alpha.register(ArgumentType::Lookup, lookup::constraints::CONSTRAINTS);
-        let alphas =
-            powers_of_alpha.get_exponents(ArgumentType::Lookup, lookup::constraints::CONSTRAINTS);
-
         let constraints = lookup::constraints::constraints(lcs, domain);
+
+        powers_of_alpha.register(ArgumentType::Lookup, constraints.len() as u32);
+        let alphas = powers_of_alpha.get_exponents(ArgumentType::Lookup, constraints.len() as u32);
+
         let combined = Expr::combine_constraints(alphas, constraints);
         expr += combined;
     }
