@@ -151,7 +151,7 @@ pub struct LocalPosition {
 
 /// Look up a single value in a lookup table. The value may be computed as a linear
 /// combination of locally-accessible cells.
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SingleLookup<F> {
     /// Linear combination of local-positions
     pub value: Vec<(F, LocalPosition)>,
@@ -252,6 +252,13 @@ impl<F: Copy> JointLookup<SingleLookup<F>, LookupTableID> {
     }
 }
 
+fn curr_row(column: usize) -> LocalPosition {
+    LocalPosition {
+        row: CurrOrNext::Curr,
+        column,
+    }
+}
+
 impl GateType {
     /// Which lookup-patterns should be applied on which rows.
     /// Currently there is only the lookup pattern used in the ChaCha rows, and it
@@ -260,10 +267,8 @@ impl GateType {
     /// See circuits/kimchi/src/polynomials/chacha.rs for an explanation of
     /// how these work.
     pub fn lookup_kinds<F: Field>() -> (Vec<Vec<JointLookupSpec<F>>>, Vec<GatesLookupSpec>) {
-        let curr_row = |column| LocalPosition {
-            row: CurrOrNext::Curr,
-            column,
-        };
+        // ChaCha{0, 1, 2}
+
         let chacha_pattern = (0..4)
             .map(|i| {
                 // each row represents an XOR operation
@@ -297,6 +302,8 @@ impl GateType {
             }
         }
 
+        // ChaChaFinal
+
         let one_half = F::from(2u64).inverse().unwrap();
         let neg_one_half = -one_half;
         let chacha_final_pattern = (0..4)
@@ -320,6 +327,7 @@ impl GateType {
             chacha_final_where.insert((ChaChaFinal, *r));
         }
 
+        // lookup pattern
         let lookup_gate_pattern = (0..3)
             .map(|i| {
                 // 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
@@ -339,6 +347,25 @@ impl GateType {
             .collect();
         let lookup_gate_where = HashSet::from([(Lookup, Curr)]);
 
+        // Range
+        let mut range_pattern = vec![];
+        // 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
+        // v v v v v v v - - - -  -  -  -  -
+        for register in 0..PERMUTS {
+            let query = JointLookup {
+                table_id: LookupTableID::Constant(RANGE_TABLE_ID),
+                entry: vec![SingleLookup {
+                    value: vec![(F::one(), curr_row(register))],
+                }],
+            };
+            range_pattern.push(query);
+        }
+
+        let mut range_where = HashSet::new();
+        range_where.insert((Range, Curr));
+
+        // list
+
         let lookups = [
             (chacha_pattern, chacha_where, Some(GateLookupTable::Xor)),
             (
@@ -347,9 +374,11 @@ impl GateType {
                 Some(GateLookupTable::Xor),
             ),
             (lookup_gate_pattern, lookup_gate_where, None),
+            (range_pattern, range_where, Some(GateLookupTable::Range)),
         ];
 
         // Convert from an array of tuples to a tuple of vectors
+
         {
             let mut patterns = Vec::with_capacity(lookups.len());
             let mut locations_with_tables = Vec::with_capacity(lookups.len());
