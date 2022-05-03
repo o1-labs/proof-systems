@@ -2229,6 +2229,8 @@
 <span id="2224">2224</span>
 <span id="2225">2225</span>
 <span id="2226">2226</span>
+<span id="2227">2227</span>
+<span id="2228">2228</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">circuits</span>::{
         <span class="ident">domains::EvaluationDomains</span>,
@@ -2263,7 +2265,7 @@
     <span class="kw">pub</span> <span class="ident">gamma</span>: <span class="ident">F</span>,
     <span class="doccomment">/// The challenge joint_combiner which is used to combine</span>
     <span class="doccomment">/// joint lookup tables.</span>
-    <span class="kw">pub</span> <span class="ident">joint_combiner</span>: <span class="ident">F</span>,
+    <span class="kw">pub</span> <span class="ident">joint_combiner</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
     <span class="doccomment">/// The endomorphism coefficient</span>
     <span class="kw">pub</span> <span class="ident">endo_coefficient</span>: <span class="ident">F</span>,
     <span class="doccomment">/// The MDS matrix</span>
@@ -2490,7 +2492,7 @@
             <span class="ident">Alpha</span> =&gt; <span class="ident">c</span>.<span class="ident">alpha</span>,
             <span class="ident">Beta</span> =&gt; <span class="ident">c</span>.<span class="ident">beta</span>,
             <span class="ident">Gamma</span> =&gt; <span class="ident">c</span>.<span class="ident">gamma</span>,
-            <span class="ident">JointCombiner</span> =&gt; <span class="ident">c</span>.<span class="ident">joint_combiner</span>,
+            <span class="ident">JointCombiner</span> =&gt; <span class="ident">c</span>.<span class="ident">joint_combiner</span>.<span class="ident">expect</span>(<span class="string">&quot;joint lookup was not expected&quot;</span>),
             <span class="ident">EndoCoefficient</span> =&gt; <span class="ident">c</span>.<span class="ident">endo_coefficient</span>,
             <span class="ident">Mds</span> { <span class="ident">row</span>, <span class="ident">col</span> } =&gt; <span class="ident">c</span>.<span class="ident">mds</span>[<span class="kw-2">*</span><span class="ident">row</span>][<span class="kw-2">*</span><span class="ident">col</span>],
             <span class="ident">Literal</span>(<span class="ident">x</span>) =&gt; <span class="kw-2">*</span><span class="ident">x</span>,
@@ -2671,7 +2673,9 @@
                 <span class="ident">Alpha</span> =&gt; <span class="ident">stack</span>.<span class="ident">push</span>(<span class="ident">c</span>.<span class="ident">alpha</span>),
                 <span class="ident">Beta</span> =&gt; <span class="ident">stack</span>.<span class="ident">push</span>(<span class="ident">c</span>.<span class="ident">beta</span>),
                 <span class="ident">Gamma</span> =&gt; <span class="ident">stack</span>.<span class="ident">push</span>(<span class="ident">c</span>.<span class="ident">gamma</span>),
-                <span class="ident">JointCombiner</span> =&gt; <span class="ident">stack</span>.<span class="ident">push</span>(<span class="ident">c</span>.<span class="ident">joint_combiner</span>),
+                <span class="ident">JointCombiner</span> =&gt; {
+                    <span class="ident">stack</span>.<span class="ident">push</span>(<span class="ident">c</span>.<span class="ident">joint_combiner</span>.<span class="ident">expect</span>(<span class="string">&quot;no joint lookup was expected&quot;</span>))
+                }
                 <span class="ident">EndoCoefficient</span> =&gt; <span class="ident">stack</span>.<span class="ident">push</span>(<span class="ident">c</span>.<span class="ident">endo_coefficient</span>),
                 <span class="ident">Mds</span> { <span class="ident">row</span>, <span class="ident">col</span> } =&gt; <span class="ident">stack</span>.<span class="ident">push</span>(<span class="ident">c</span>.<span class="ident">mds</span>[<span class="kw-2">*</span><span class="ident">row</span>][<span class="kw-2">*</span><span class="ident">col</span>]),
                 <span class="ident">VanishesOnLast4Rows</span> =&gt; <span class="ident">stack</span>.<span class="ident">push</span>(<span class="ident">eval_vanishes_on_last_4_rows</span>(<span class="ident">d</span>, <span class="ident">pt</span>)),
@@ -4437,7 +4441,7 @@
                 <span class="ident">alpha</span>: <span class="ident">one</span>,
                 <span class="ident">beta</span>: <span class="ident">one</span>,
                 <span class="ident">gamma</span>: <span class="ident">one</span>,
-                <span class="ident">joint_combiner</span>: <span class="ident">one</span>,
+                <span class="ident">joint_combiner</span>: <span class="prelude-val">None</span>,
                 <span class="ident">endo_coefficient</span>: <span class="ident">one</span>,
                 <span class="ident">mds</span>: <span class="macro">vec!</span>[<span class="macro">vec!</span>[]],
             },
@@ -4456,5 +4460,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (4dd8b420c 2022-05-01)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (bed05e996 2022-05-02)" ></div>
 </body></html>

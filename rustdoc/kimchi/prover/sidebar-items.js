@@ -1,1 +1,1 @@
-initSidebarItems({"type":[["Result","The result of a proof creation or verification."]]});
+initSidebarItems({});

@@ -667,6 +667,16 @@
 <span id="662">662</span>
 <span id="663">663</span>
 <span id="664">664</span>
+<span id="665">665</span>
+<span id="666">666</span>
+<span id="667">667</span>
+<span id="668">668</span>
+<span id="669">669</span>
+<span id="670">670</span>
+<span id="671">671</span>
+<span id="672">672</span>
+<span id="673">673</span>
+<span id="674">674</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections::HashMap</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -991,7 +1001,17 @@
             <span class="ident">lookup_aggreg</span>[<span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>] <span class="kw-2">*</span><span class="op">=</span> <span class="ident">prev</span>;
         });
 
-    <span class="prelude-val">Ok</span>(<span class="ident">zk_patch</span>(<span class="ident">lookup_aggreg</span>, <span class="ident">d1</span>, <span class="ident">rng</span>))
+    <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">zk_patch</span>(<span class="ident">lookup_aggreg</span>, <span class="ident">d1</span>, <span class="ident">rng</span>);
+
+    <span class="comment">// check that the final evaluation is equal to 1</span>
+    <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">debug_assertions</span>) {
+        <span class="kw">let</span> <span class="ident">final_val</span> <span class="op">=</span> <span class="ident">res</span>.<span class="ident">evals</span>[<span class="ident">d1</span>.<span class="ident">size</span>() <span class="op">-</span> (<span class="ident">ZK_ROWS</span> <span class="op">+</span> <span class="number">1</span>)];
+        <span class="kw">if</span> <span class="ident">final_val</span> <span class="op">!</span><span class="op">=</span> <span class="ident">F::one</span>() {
+            <span class="macro">panic!</span>(<span class="string">&quot;aggregation incorrect: {}&quot;</span>, <span class="ident">final_val</span>);
+        }
+    }
+
+    <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
 }
 
 <span class="doccomment">/// Configuration for the lookup constraint.</span>
@@ -1332,5 +1352,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (4dd8b420c 2022-05-01)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (bed05e996 2022-05-02)" ></div>
 </body></html>
