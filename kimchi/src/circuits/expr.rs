@@ -259,7 +259,7 @@ impl<F: Field> ConstantExpr<F> {
             Alpha => c.alpha,
             Beta => c.beta,
             Gamma => c.gamma,
-            JointCombiner => c.joint_combiner.expect("lookup was not expected"),
+            JointCombiner => c.joint_combiner.expect("joint lookup was not expected"),
             EndoCoefficient => c.endo_coefficient,
             Mds { row, col } => c.mds[*row][*col],
             Literal(x) => *x,
@@ -440,7 +440,9 @@ impl<F: FftField> PolishToken<F> {
                 Alpha => stack.push(c.alpha),
                 Beta => stack.push(c.beta),
                 Gamma => stack.push(c.gamma),
-                JointCombiner => stack.push(c.joint_combiner.expect("no lookup was expected")),
+                JointCombiner => {
+                    stack.push(c.joint_combiner.expect("no joint lookup was expected"))
+                }
                 EndoCoefficient => stack.push(c.endo_coefficient),
                 Mds { row, col } => stack.push(c.mds[*row][*col]),
                 VanishesOnLast4Rows => stack.push(eval_vanishes_on_last_4_rows(d, pt)),
