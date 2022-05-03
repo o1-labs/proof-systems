@@ -3,7 +3,6 @@
 use crate::{
     circuits::{
         argument::{Argument, ArgumentType},
-        constraints::ZK_ROWS,
         expr::{l0_1, Constants, Environment, LookupEnvironment},
         gate::GateType,
         lookup::{
@@ -17,12 +16,13 @@ use crate::{
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
             generic, permutation,
+            permutation::ZK_ROWS,
             poseidon::Poseidon,
             varbasemul::VarbaseMul,
         },
         wires::{COLUMNS, PERMUTS},
     },
-    error::ProofError,
+    error::ProverError,
     plonk_sponge::FrSponge,
     proof::{
         LookupCommitments, LookupEvaluations, ProofEvaluations, ProverCommitments, ProverProof,
@@ -44,7 +44,7 @@ use rayon::iter::{
 use std::collections::HashMap;
 
 /// The result of a proof creation or verification.
-type Result<T> = std::result::Result<T, ProofError>;
+type Result<T> = std::result::Result<T, ProverError>;
 
 /// Contains variables needed for lookup in the prover algorithm.
 #[derive(Default)]
@@ -129,16 +129,16 @@ where
         let length_witness = witness[0].len();
         let length_padding = d1_size
             .checked_sub(length_witness)
-            .ok_or(ProofError::NoRoomForZkInWitness)?;
+            .ok_or(ProverError::NoRoomForZkInWitness)?;
         if length_padding < ZK_ROWS as usize {
-            return Err(ProofError::NoRoomForZkInWitness);
+            return Err(ProverError::NoRoomForZkInWitness);
         }
 
         //~ 2. Pad the witness columns with Zero gates to make them the same length as the domain.
         //~    Then, randomize the last `ZK_ROWS` of each columns.
         for w in &mut witness {
             if w.len() != length_witness {
-                return Err(ProofError::WitnessCsInconsistent);
+                return Err(ProverError::WitnessCsInconsistent);
             }
 
             // padding
@@ -146,7 +146,7 @@ where
 
             // zk-rows
             for row in w.iter_mut().rev().take(ZK_ROWS as usize) {
-                *row = ScalarField::<G>::rand(rng);
+                *row = <ScalarField<G> as UniformRand>::rand(rng);
             }
         }
 
@@ -259,7 +259,7 @@ where
                         &joint_combiner,
                         &table_id_combiner,
                         row,
-                        table_id,
+                        &table_id,
                     ))
                 })
             };
@@ -341,7 +341,7 @@ where
                         &lookup_context.joint_combiner.unwrap(),
                         &lookup_context.table_id_combiner.unwrap(),
                         row,
-                        table_id,
+                        &table_id,
                     )
                 })
             };
@@ -469,7 +469,6 @@ where
                         index_evals.insert(*g, &c[i]);
                     }
                 });
-
             Environment {
                 constants: Constants {
                     alpha,
@@ -481,7 +480,7 @@ where
                 },
                 witness: &lagrange.d8.this.w,
                 coefficient: &index.cs.coefficients8,
-                vanishes_on_last_4_rows: &index.cs.vanishes_on_last_4_rows,
+                vanishes_on_last_4_rows: &index.cs.precomputations().vanishes_on_last_4_rows,
                 z: &lagrange.d8.this.z,
                 l0_1: l0_1(index.cs.domain.d1),
                 domain: index.cs.domain,
@@ -672,9 +671,9 @@ where
             // divide contributions with vanishing polynomial
             let (mut quotient, res) = f
                 .divide_by_vanishing_poly(index.cs.domain.d1)
-                .ok_or(ProofError::Prover("division by vanishing polynomial"))?;
+                .ok_or(ProverError::Prover("division by vanishing polynomial"))?;
             if !res.is_zero() {
-                return Err(ProofError::Prover(
+                return Err(ProverError::Prover(
                     "rest of division by vanishing polynomial",
                 ));
             }
@@ -695,7 +694,7 @@ where
             // the higher degree coefficients of `t` are 0.
             for _ in 0..dummies {
                 use ark_ec::ProjectiveCurve;
-                let w = ScalarField::<G>::rand(rng);
+                let w = <ScalarField<G> as UniformRand>::rand(rng);
                 t_comm.unshifted.push(index.srs.h.mul(w).into_affine());
                 omega_t.unshifted.push(w);
             }

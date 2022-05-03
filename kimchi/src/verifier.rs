@@ -634,7 +634,9 @@ where
                     Index(t) => {
                         use GateType::*;
                         let c = match t {
-                            Zero | Generic => panic!("Selector for {:?} not defined", t),
+                            Zero | Generic | Lookup => {
+                                panic!("Selector for {:?} not defined", t)
+                            }
                             CompleteAdd => &index.complete_add_comm,
                             VarBaseMul => &index.mul_comm,
                             EndoMul => &index.emul_comm,
@@ -644,6 +646,9 @@ where
                             ChaCha1 => &index.chacha_comm.as_ref().unwrap()[1],
                             ChaCha2 => &index.chacha_comm.as_ref().unwrap()[2],
                             ChaChaFinal => &index.chacha_comm.as_ref().unwrap()[3],
+                            CairoClaim | CairoInstruction | CairoFlags | CairoTransition => {
+                                unimplemented!()
+                            }
                         };
                         scalars.push(scalar);
                         commitments.push(c);

@@ -67,13 +67,13 @@ Kimchi uses a single **lookup table** at the moment of this writing; the XOR tab
 | 1   | 1   | 0   |
 | 0   | 0   | 0   |
 
-Whereas kimchi uses the XOR table for values of 4 bits, which has $2^{12}$ entries.
+Whereas kimchi uses the XOR table for values of 4 bits, which has $2^{8}$ entries.
 
 Note: the (0, 0, 0) **entry** is at the very end on purpose (as it will be used as dummy entry for rows of the witness that don't care about lookups).
 
 ### Querying the table
 
-The plookup paper handles a vector of lookups $f$ which we do not have. So the first step it to create such a table from the witness columns (or registers). To do this, we define the following objects:
+The plookup paper handles a vector of lookups $f$ which we do not have. So the first step is to create such a table from the witness columns (or registers). To do this, we define the following objects:
 
 * a **query** tells us what registers, in what order, and scaled by how much, are part of a query
 * a **query selector** tells us which rows are using the query. It is pretty much the same as a [gate selector]().

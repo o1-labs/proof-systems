@@ -332,7 +332,6 @@ mod tests {
                 .as_ref()
                 .map(|lcs| &lcs.configuration),
         );
-
         // make sure this is present in the specification
         let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
         let spec_path = Path::new(&manifest_dir)
