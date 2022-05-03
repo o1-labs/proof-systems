@@ -22,7 +22,7 @@ use ark_poly::Radix2EvaluationDomain as D;
 pub fn constraints_expr<F: FftField + SquareRootField>(
     domain: D<F>,
     chacha: bool,
-    lookup_constraint_system: Option<&LookupConfiguration<F>>,
+    lookup_constraint_system: Option<&LookupConfiguration>,
 ) -> (Expr<ConstantExpr<F>>, Alphas<F>) {
     // register powers of alpha so that we don't reuse them across mutually inclusive constraints
     let mut powers_of_alpha = Alphas::<F>::default();
@@ -66,7 +66,7 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
 }
 
 pub fn linearization_columns<F: FftField + SquareRootField>(
-    lookup_constraint_system: Option<&LookupConfiguration<F>>,
+    lookup_constraint_system: Option<&LookupConfiguration>,
 ) -> std::collections::HashSet<Column> {
     let mut h = std::collections::HashSet::new();
     use Column::*;
@@ -92,7 +92,7 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
 pub fn expr_linearization<F: FftField + SquareRootField>(
     domain: D<F>,
     chacha: bool,
-    lookup_constraint_system: Option<&LookupConfiguration<F>>,
+    lookup_constraint_system: Option<&LookupConfiguration>,
 ) -> (Linearization<Vec<PolishToken<F>>>, Alphas<F>) {
     let evaluated_cols = linearization_columns::<F>(lookup_constraint_system);
 

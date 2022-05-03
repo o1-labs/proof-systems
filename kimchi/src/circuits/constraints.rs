@@ -4,6 +4,10 @@ use crate::{
         domain_constant_evaluation::DomainConstantEvaluations,
         domains::EvaluationDomains,
         gate::{CircuitGate, GateType},
+        lookup::{
+            constraints::{domain_for_tables, max_num_entries},
+            tables::{get_table, GateLookupTable},
+        },
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
         wires::*,
     },
@@ -62,8 +66,7 @@ pub struct LookupConstraintSystem<F: FftField> {
     pub lookup_selectors: Vec<E<F, D<F>>>,
 
     /// Configuration for the lookup constraint.
-    #[serde(bound = "LookupConfiguration<F>: Serialize + DeserializeOwned")]
-    pub configuration: LookupConfiguration<F>,
+    pub configuration: LookupConfiguration,
 }
 
 #[serde_as]
@@ -268,119 +271,94 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
     pub fn create(
         gates: &[CircuitGate<F>],
         lookup_tables: Vec<LookupTable<F>>,
+        lookup_info: LookupInfo<F>,
+        configuration: LookupConfiguration,
         domain: &EvaluationDomains<F>,
-    ) -> Result<Option<Self>, LookupError> {
-        let lookup_info = LookupInfo::<F>::create();
-        match lookup_info.lookup_used(gates) {
-            None => Ok(None),
-            Some(lookup_used) => {
-                let d1_size = domain.d1.size();
+    ) -> Result<Self, LookupError> {
+        let d1_size = domain.d1.size();
 
-                let (lookup_selectors, gate_lookup_tables) =
-                    lookup_info.selector_polynomials_and_tables(domain, gates);
+        // obtain the lookup selectors
+        let lookup_selectors = lookup_info.selector_polynomials(domain, gates);
 
-                let lookup_tables: Vec<_> = gate_lookup_tables
-                    .into_iter()
-                    .chain(lookup_tables.into_iter())
-                    .collect();
+        // Get the max width of all lookup tables
+        let max_table_width = lookup_tables
+            .iter()
+            .map(|table| table.data.len())
+            .max()
+            .unwrap_or(0);
 
-                // Get the max width of all lookup tables
-                let max_table_width = lookup_tables
-                    .iter()
-                    .map(|table| table.data.len())
-                    .max()
-                    .unwrap_or(0);
+        // create the big concatenated table (including the table id)
+        let mut lookup_table = vec![Vec::with_capacity(d1_size); max_table_width];
+        let mut table_ids: Vec<F> = Vec::with_capacity(d1_size);
 
-                // The maximum number of entries that can be provided across all tables.
-                // Since we do not assert the lookup constraint on the final `ZK_ROWS` rows, and
-                // because the row before is used to assert that the lookup argument's final
-                // product is 1, we cannot use those rows to store any values.
-                let max_num_entries = d1_size - (ZK_ROWS as usize) - 1;
+        for table in lookup_tables.iter() {
+            let table_len = table.data[0].len();
 
-                let mut lookup_table = vec![Vec::with_capacity(d1_size); max_table_width];
-                let mut table_ids: Vec<F> = Vec::with_capacity(d1_size);
-                let mut non_zero_table_id = false;
-                for table in lookup_tables.iter() {
-                    let table_len = table.data[0].len();
+            // Update table IDs
+            let table_id: F = i32_to_field(table.id);
+            table_ids.extend(repeat_n(table_id, table_len));
 
-                    // Update table IDs
-                    if table.id != 0 {
-                        non_zero_table_id = true;
-                    }
-                    let table_id: F = i32_to_field(table.id);
-                    table_ids.extend(repeat_n(table_id, table_len));
-
-                    // Update lookup_table values
-                    for (i, col) in table.data.iter().enumerate() {
-                        if col.len() != table_len {
-                            return Err(LookupError::InconsistentTableLength);
-                        }
-                        lookup_table[i].extend(col);
-                    }
-
-                    // Fill in any unused columns with 0 to match the dummy value
-                    for lookup_table in lookup_table.iter_mut().skip(table.data.len()) {
-                        lookup_table.extend(repeat_n(F::zero(), table_len))
-                    }
+            // Update lookup_table values
+            for (col_idx, col) in table.data.iter().enumerate() {
+                if col.len() != table_len {
+                    return Err(LookupError::InconsistentTableLength);
                 }
+                lookup_table[col_idx].extend(col);
+            }
 
-                // Note: we use `>=` here to leave space for the dummy value.
-                if lookup_table[0].len() >= max_num_entries {
-                    return Err(LookupError::LookupTableTooLong {
-                        length: lookup_table[0].len(),
-                        maximum_allowed: max_num_entries - 1,
-                    });
-                }
-
-                // For computational efficiency, we choose the dummy lookup value to be all 0s in
-                // table 0.
-                let dummy_lookup = JointLookup {
-                    entry: vec![],
-                    table_id: F::zero(),
-                };
-
-                // Pad up to the end of the table with the dummy value.
-                lookup_table
-                    .iter_mut()
-                    .for_each(|col| col.extend(repeat_n(F::zero(), max_num_entries - col.len())));
-                table_ids.extend(repeat_n(F::zero(), max_num_entries - table_ids.len()));
-
-                // pre-compute polynomial and evaluation form for the look up tables
-                let mut lookup_table_polys: Vec<DP<F>> = vec![];
-                let mut lookup_table8: Vec<E<F, D<F>>> = vec![];
-                for col in lookup_table.into_iter() {
-                    let poly = E::<F, D<F>>::from_vec_and_domain(col, domain.d1).interpolate();
-                    let eval = poly.evaluate_over_domain_by_ref(domain.d8);
-                    lookup_table_polys.push(poly);
-                    lookup_table8.push(eval);
-                }
-
-                // pre-compute polynomial and evaluation form for the table IDs, if needed
-                let (table_ids, table_ids8) = if non_zero_table_id {
-                    let table_ids: DP<F> =
-                        E::<F, D<F>>::from_vec_and_domain(table_ids, domain.d1).interpolate();
-                    let table_ids8: E<F, D<F>> = table_ids.evaluate_over_domain_by_ref(domain.d8);
-                    (Some(table_ids), Some(table_ids8))
-                } else {
-                    (None, None)
-                };
-
-                // generate the look up selector polynomials
-                Ok(Some(Self {
-                    lookup_selectors,
-                    lookup_table8,
-                    lookup_table: lookup_table_polys,
-                    table_ids,
-                    table_ids8,
-                    configuration: LookupConfiguration {
-                        lookup_used,
-                        max_lookups_per_row: lookup_info.max_per_row as usize,
-                        max_joint_size: lookup_info.max_joint_size,
-                        dummy_lookup,
-                    },
-                }))
+            // Fill in any unused columns with 0 to match the dummy value
+            for lookup_table in lookup_table.iter_mut().skip(table.data.len()) {
+                lookup_table.extend(repeat_n(F::zero(), table_len))
             }
         }
+
+        // Make sure we have space
+        // Note: this error should be converted to an assert, as this shouldn't happened since we padded the circuit to the correct length
+        let max_num_entries = max_num_entries(d1_size);
+
+        if lookup_table[0].len() > max_num_entries {
+            return Err(LookupError::LookupTableTooLong {
+                length: lookup_table[0].len(),
+                maximum_allowed: max_num_entries - 1,
+            });
+        }
+
+        // Pad up to the end of the table with the dummy value.
+        lookup_table
+            .iter_mut()
+            .for_each(|col| col.extend(repeat_n(F::zero(), max_num_entries - col.len())));
+        table_ids.extend(repeat_n(F::zero(), max_num_entries - table_ids.len()));
+
+        // pre-compute polynomial and evaluation form for the look up tables
+        let mut lookup_table_polys: Vec<DP<F>> = vec![];
+        let mut lookup_table8: Vec<E<F, D<F>>> = vec![];
+        for col in lookup_table.into_iter() {
+            let poly = E::<F, D<F>>::from_vec_and_domain(col, domain.d1).interpolate();
+            let eval = poly.evaluate_over_domain_by_ref(domain.d8);
+            lookup_table_polys.push(poly);
+            lookup_table8.push(eval);
+        }
+
+        // pre-compute polynomial and evaluation form for the table IDs, if needed
+        // NOTE: if there's only one runtime table, it will have a negative ID, and so we still need to use a table id (basically this code won't work with runtime tables)
+        let (table_ids, table_ids8) = if lookup_tables.len() > 1 {
+            let table_ids: DP<F> =
+                E::<F, D<F>>::from_vec_and_domain(table_ids, domain.d1).interpolate();
+            let table_ids8: E<F, D<F>> = table_ids.evaluate_over_domain_by_ref(domain.d8);
+            (Some(table_ids), Some(table_ids8))
+        } else {
+            (None, None)
+        };
+
+        // generate the look up selector polynomials
+        Ok(Self {
+            lookup_selectors,
+            lookup_table8,
+            lookup_table: lookup_table_polys,
+            table_ids,
+            table_ids8,
+            configuration,
+        })
     }
 }
 
@@ -413,9 +391,88 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // for some reason we need more than 1 gate for the circuit to work, see TODO below
         assert!(gates.len() > 1);
 
+        // if we are using lookup, create the lookup configuration now
+        let lookup_info = LookupInfo::<F>::create();
+
+        let lookup_configuration_and_tables =
+            if let Some(lookup_used) = lookup_info.lookup_used(&gates) {
+                // user-provided fixed tables should have negative ids
+                lookup_tables.iter().for_each(|table| {
+                    if table.id >= 0 {
+                        panic!("custom lookup tables must have negative ids");
+                    }
+                });
+
+                // get all tables used by the circuit
+                let builtin_tables_used = lookup_info.tables_used(&gates);
+
+                // convert to their actual tables
+                let builtin_tables: Vec<_> =
+                    builtin_tables_used.iter().cloned().map(get_table).collect();
+
+                let mut all_tables = vec![];
+
+                // add a dummy table only if:
+                let dummy_table_needed = 
+                    // - user-provided fixed tables are present
+                    !lookup_tables.is_empty()
+                    // - or there's either more than one table used
+                    || builtin_tables_used.len() > 1
+                    // - or there's a single table and it doesn't have a dummy entry
+                    || !builtin_tables[0].has_zero_entry();
+
+                if dummy_table_needed {
+                    all_tables.push(get_table(GateLookupTable::Dummy));
+                }
+
+                // give each table an increasing id
+                all_tables.extend(
+                    builtin_tables
+                        .into_iter()
+                        .zip(0..) // starting at 0
+                        .map(|(table, id)| LookupTable { id, ..table }),
+                );
+
+                // concatenate built-in tables with custom tables
+                all_tables.extend(lookup_tables);
+
+                // size of the concatenated tables
+                let mut concatenated_table_len = 0;
+                for table in &all_tables {
+                    concatenated_table_len += table.data[0].len();
+                }
+
+                // pad the circuit with zero gates if the concatenated tables needs more space
+                // this will ensure that the domain will be large enough to hold the concatenated tables
+                let minimum_domain = domain_for_tables(concatenated_table_len);
+                if gates.len() < minimum_domain {
+                    let mut padding = (gates.len()..minimum_domain)
+                        .map(|row| CircuitGate::<F>::zero(Wire::new(row)))
+                        .collect();
+                    gates.append(&mut padding);
+                }
+
+                //
+                Some((
+                    LookupConfiguration {
+                        lookup_used,
+                        used_tables: builtin_tables_used,
+                        max_lookups_per_row: lookup_info.max_per_row as usize,
+                        max_joint_size: lookup_info.max_joint_size,
+                    },
+                    all_tables,
+                ))
+            } else {
+                None
+            };
+
         //~ 2. Create a domain for the circuit. That is,
         //~    compute the smallest subgroup of the field that
         //~    has order greater or equal to `n + ZK_ROWS` elements.
+        // Note: in the optional lookup code,
+        // we might have already padded the circuit for ZK_ROWS.
+        // ideally we wouldn't add room again here,
+        // but it's not clear how to do this without introducing footguns.
         let domain = EvaluationDomains::<F>::create(gates.len() + ZK_ROWS as usize)?;
 
         assert!(domain.d1.size > ZK_ROWS);
@@ -423,12 +480,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         //~ 3. Pad the circuit: add zero gates to reach the domain size.
         let d1_size = domain.d1.size();
         let mut padding = (gates.len()..d1_size)
-            .map(|i| {
-                CircuitGate::<F>::zero(array_init(|j| Wire {
-                    col: WIRES[j],
-                    row: i,
-                }))
-            })
+            .map(|row| CircuitGate::<F>::zero(Wire::new(row)))
             .collect();
         gates.append(&mut padding);
 
@@ -590,8 +642,24 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // Lookup
         // ------
         let lookup_constraint_system =
-            LookupConstraintSystem::create(&gates, lookup_tables, &domain)
-                .map_err(|e| SetupError::ConstraintSystem(e.to_string()))?;
+            if let Some((lookup_configuration, lookup_tables)) = lookup_configuration_and_tables {
+                Some(
+                    LookupConstraintSystem::create(
+                        &gates,
+                        lookup_tables,
+                        lookup_info,
+                        lookup_configuration,
+                        &domain,
+                    )
+                    .map_err(|e| SetupError::ConstraintSystem(e.to_string()))?,
+                )
+            } else {
+                None
+            };
+
+        //
+        // Other
+        // -----
 
         let sid = shifts.map[0].clone();
 

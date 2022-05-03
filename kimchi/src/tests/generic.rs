@@ -78,6 +78,7 @@ fn verify_proof(gates: Vec<CircuitGate<Fp>>, witness: [Vec<Fp>; COLUMNS], public
     let proof = ProverProof::create_recursive::<BaseSponge, ScalarSponge>(
         &group_map,
         witness,
+        None,
         &index,
         vec![prev],
     )

@@ -22,11 +22,27 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use CurrOrNext::{Curr, Next};
 
+use super::{lookups::dummy_lookup, tables::GateLookupTable};
+
 /// Number of constraints produced by the argument.
 pub const CONSTRAINTS: u32 = 7;
 
 /// The number of random values to append to columns for zero-knowledge.
 pub const ZK_ROWS: usize = 3;
+
+// Rows or constraints that are reserved in the domain,
+// and thus cannot be used to contain lookup table entries.
+pub const RESERVED_ROWS: usize = ZK_ROWS + 1 /* final lookup argument must be equal to 1 */;
+
+/// The maximum number of entries that can be provided across all tables.
+pub fn max_num_entries(domain_size: usize) -> usize {
+    domain_size - RESERVED_ROWS
+}
+
+/// Returns the minimum domain size needed to contain a given number of table lookup entries.
+pub fn domain_for_tables(entries: usize) -> usize {
+    entries + RESERVED_ROWS
+}
 
 /// Pad with zeroes and then add 3 random elements in the last two
 /// rows for zero knowledge.
@@ -85,6 +101,7 @@ pub fn sorted<
     I: Iterator<Item = E>,
     G: Fn() -> I,
 >(
+    lookup_configuration: &LookupConfiguration,
     dummy_lookup_value: E,
     lookup_table: G,
     d1: D<F>,
@@ -116,7 +133,8 @@ pub fn sorted<
         let spec = row;
         let padding = max_lookups_per_row - spec.len();
         for joint_lookup in spec.iter() {
-            let joint_lookup_evaluation = E::evaluate(&params, joint_lookup, witness, i);
+            let joint_lookup_evaluation =
+                E::evaluate(lookup_configuration, &params, joint_lookup, witness, i);
             match counts.get_mut(&joint_lookup_evaluation) {
                 None => return Err(ProverError::ValueNotInTable),
                 Some(count) => *count += 1,
@@ -236,6 +254,7 @@ fn adjacent_pairs<A: Copy, I: Iterator<Item = A>>(i: I) -> AdjacentPairs<A, I> {
 /// because of the random choice of beta and gamma, there is negligible probability that the terms will cancel if s is not a sorting of f and t
 #[allow(clippy::too_many_arguments)]
 pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
+    lookup_configuration: &LookupConfiguration,
     dummy_lookup_value: F,
     lookup_table: I,
     d1: D<F>,
@@ -308,7 +327,13 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
                 // `max_lookups_per_row (=4) * n` field elements of
                 // memory.
                 spec.iter().fold(padding, |acc, j| {
-                    acc * (gamma + j.evaluate(joint_combiner, table_id_combiner, &eval))
+                    acc * (gamma
+                        + j.evaluate(
+                            lookup_configuration,
+                            joint_combiner,
+                            table_id_combiner,
+                            &eval,
+                        ))
                 })
             };
 
@@ -329,25 +354,33 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
 /// These values are independent of the choice of lookup values.
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct LookupConfiguration<F: FftField> {
+pub struct LookupConfiguration {
     /// The kind of lookups used
     pub lookup_used: LookupsUsed,
 
+    /// Built-in tables used by lookups
+    /// The order is related to the table ids used by these tables
+    pub used_tables: Vec<GateLookupTable>,
+
     /// The maximum number of lookups per row
     pub max_lookups_per_row: usize,
+
     /// The maximum number of elements in a vector lookup
     pub max_joint_size: u32,
+}
 
-    /// A placeholder value that is known to appear in the lookup table.
-    /// This is used to pad the lookups to `max_lookups_per_row` when fewer lookups are used in a
-    /// particular row, so that we can treat each row uniformly as having the same number of
-    /// lookups.
-    #[serde_as(as = "JointLookupValue<o1_utils::serialization::SerdeAs>")]
-    pub dummy_lookup: JointLookupValue<F>,
+impl LookupConfiguration {
+    pub fn get_table_id(&self, table_enum: GateLookupTable) -> usize {
+        dbg!(table_enum);
+        self.used_tables
+            .iter()
+            .position(|&e| e == table_enum)
+            .expect("table not found")
+    }
 }
 
 /// Specifies the lookup constraints as expressions.
-pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>) -> Vec<E<F>> {
+pub fn constraints<F: FftField>(configuration: &LookupConfiguration, d1: D<F>) -> Vec<E<F>> {
     // Something important to keep in mind is that the last 2 rows of
     // all columns will have random values in them to maintain zero-knowledge.
     //
@@ -391,14 +424,14 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>
 
         // combine the columns of the dummy lookup row
         let dummy_lookup = {
+            let dummy_lookup = dummy_lookup();
             let expr_dummy: JointLookupValue<ConstantExpr<F>> = JointLookup {
-                entry: configuration
-                    .dummy_lookup
+                entry: dummy_lookup
                     .entry
                     .iter()
                     .map(|x| ConstantExpr::Literal(*x))
                     .collect(),
-                table_id: ConstantExpr::Literal(configuration.dummy_lookup.table_id),
+                table_id: ConstantExpr::Literal(dummy_lookup.table_id),
             };
             expr_dummy.evaluate(&joint_combiner, &table_id_combiner)
         };
@@ -443,6 +476,7 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>
                 .map(|j| {
                     E::Constant(ConstantExpr::Gamma)
                         + j.evaluate(
+                            configuration,
                             &E::Constant(joint_combiner.clone()),
                             &E::Constant(table_id_combiner.clone()),
                             &eval,
@@ -557,6 +591,7 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>
 /// Checks that all the lookup constraints are satisfied.
 #[allow(clippy::too_many_arguments)]
 pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
+    lookup_configuration: &LookupConfiguration,
     dummy_lookup_value: F,
     lookup_table: G,
     lookup_table_entries: usize,
@@ -636,8 +671,12 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
             witness[pos.column][row]
         };
         for joint_lookup in spec.iter() {
-            let joint_lookup_evaluation =
-                joint_lookup.evaluate(joint_combiner, table_id_combiner, &eval);
+            let joint_lookup_evaluation = joint_lookup.evaluate(
+                lookup_configuration,
+                joint_combiner,
+                table_id_combiner,
+                &eval,
+            );
             *all_lookups.entry(joint_lookup_evaluation).or_insert(0) += 1
         }
 

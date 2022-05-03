@@ -53,7 +53,7 @@ let verifier_index = prover_index.verifier_index();
 // create a proof
 let group_map = <Affine as CommitmentCurve>::Map::setup();
 let proof =  ProverProof::create::<BaseSponge, ScalarSponge>(
-    &group_map, witness, &prover_index);
+    &group_map, witness, None, &prover_index);
 
 // verify a proof
 verify::<Affine, BaseSponge, ScalarSponge>(&group_map, verifier_index, proof).unwrap();

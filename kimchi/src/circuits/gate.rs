@@ -77,18 +77,20 @@ pub enum GateType {
     EndoMul = 5,
     /// Gate for computing the scalar corresponding to an endoscaling
     EndoMulScalar = 6,
-    /// ChaCha
+    // ChaCha
     ChaCha0 = 7,
     ChaCha1 = 8,
     ChaCha2 = 9,
     ChaChaFinal = 10,
     // Lookup
     Lookup = 11,
-    /// Cairo
+    // Cairo
     CairoClaim = 12,
     CairoInstruction = 13,
     CairoFlags = 14,
     CairoTransition = 15,
+    // Range
+    Range = 16,
 }
 
 #[serde_as]
@@ -156,6 +158,7 @@ impl<F: FftField> CircuitGate<F> {
             CairoClaim | CairoInstruction | CairoFlags | CairoTransition => {
                 self.verify_cairo_gate(row, witness, cs)
             }
+            Range => Ok(()),
         }
     }
 }

@@ -1,5 +1,7 @@
 //! This module implements prover's zk-proof primitive.
 
+use crate::circuits::lookup::lookups::dummy_lookup;
+use crate::circuits::lookup::tables::LookupTable;
 use crate::prover::permutation::ZK_ROWS;
 use crate::{
     circuits::{
@@ -43,7 +45,7 @@ use oracle::{sponge::ScalarChallenge, FqSponge};
 use rayon::iter::{
     IndexedParallelIterator, IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator,
 };
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// The result of a proof creation or verification.
 pub type Result<T> = std::result::Result<T, ProverError>;
@@ -59,9 +61,16 @@ where
     >(
         groupmap: &G::Map,
         witness: [Vec<ScalarField<G>>; COLUMNS],
+        runtime_tables: Option<&[LookupTable<ScalarField<G>>]>,
         index: &ProverIndex<G>,
     ) -> Result<Self> {
-        Self::create_recursive::<EFqSponge, EFrSponge>(groupmap, witness, index, Vec::new())
+        Self::create_recursive::<EFqSponge, EFrSponge>(
+            groupmap,
+            witness,
+            runtime_tables,
+            index,
+            Vec::new(),
+        )
     }
 
     /// This function constructs prover's recursive zk-proof from the witness & the ProverIndex against SRS instance
@@ -71,6 +80,7 @@ where
     >(
         group_map: &G::Map,
         mut witness: [Vec<ScalarField<G>>; COLUMNS],
+        runtime_tables: Option<&[LookupTable<ScalarField<G>>]>,
         index: &ProverIndex<G>,
         prev_challenges: Vec<(Vec<ScalarField<G>>, PolyComm<G>)>,
     ) -> Result<Self> {
@@ -85,6 +95,21 @@ where
                 .cs
                 .verify(&witness, &public)
                 .expect("incorrect witness");
+        }
+
+        // runtime tables should have negative ids,
+        // and all ids should be distinct as well
+        if let Some(runtime_tables) = runtime_tables {
+            let mut ids = HashSet::new();
+
+            runtime_tables.iter().for_each(|table| {
+                if table.id >= 0 {
+                    panic!("custom lookup tables must have negative ids");
+                }
+                if !ids.insert(table.id) {
+                    panic!("two runtime tables share the same ID");
+                }
+            });
         }
 
         //~ 1. Ensure we have room in the witness for the zero-knowledge rows.
@@ -248,10 +273,7 @@ where
         let dummy_lookup_value = {
             let x = match index.cs.lookup_constraint_system.as_ref() {
                 None => ScalarField::<G>::zero(),
-                Some(lcs) => lcs
-                    .configuration
-                    .dummy_lookup
-                    .evaluate(&joint_combiner, &table_id_combiner),
+                Some(_lcs) => dummy_lookup().evaluate(&joint_combiner, &table_id_combiner),
             };
             CombinedEntry(x)
         };
@@ -288,6 +310,7 @@ where
                     // have to moved below this.
                     let lookup_sorted: Vec<Vec<CombinedEntry<ScalarField<G>>>> =
                         lookup::constraints::sorted(
+                            &lcs.configuration,
                             dummy_lookup_value,
                             iter_lookup_table,
                             index.cs.domain.d1,
@@ -355,8 +378,11 @@ where
                         combine_table_entry(&joint_combiner, &table_id_combiner, row, &table_id)
                     });
 
+                    let lookup_configuration = &lcs.configuration;
+
                     let aggreg =
                         lookup::constraints::aggregation::<_, ScalarField<G>, _>(
+                            lookup_configuration,
                             dummy_lookup_value.0,
                             iter_lookup_table(),
                             index.cs.domain.d1,

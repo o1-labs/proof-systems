@@ -89,14 +89,12 @@ impl<F: FftField> CircuitGate<F> {
     /// `create_poseidon_gadget(row, first_and_last_row, round_constants)`  creates an entire set of constraint for a Poseidon hash.
     /// For that, you need to pass:
     /// - the index of the first `row`
-    /// - the first and last rows' wires (because they are used in the permutation)
     /// - the round constants
     /// The function returns a set of gates, as well as the next pointer to the circuit (next empty absolute row)
     pub fn create_poseidon_gadget(
         // the absolute row in the circuit
         row: usize,
         // first and last row of the poseidon circuit (because they are used in the permutation)
-        first_and_last_row: [GateWires; 2],
         round_constants: &[Vec<F>],
     ) -> (Vec<Self>, usize) {
         let mut gates = vec![];
@@ -108,11 +106,7 @@ impl<F: FftField> CircuitGate<F> {
 
         for (abs_row, rel_row) in absolute_rows.zip(relative_rows) {
             // the 15 wires for this row
-            let wires = if rel_row == 0 {
-                first_and_last_row[0]
-            } else {
-                array_init::array_init(|col| Wire { col, row: abs_row })
-            };
+            let wires = Wire::new(abs_row);
 
             // round constant for this row
             let coeffs = array_init::array_init(|offset| {
@@ -125,10 +119,10 @@ impl<F: FftField> CircuitGate<F> {
         }
 
         // final (zero) gate that contains the output of poseidon
-        gates.push(CircuitGate::zero(first_and_last_row[1]));
+        gates.push(CircuitGate::zero(Wire::new(last_row)));
 
         //
-        (gates, last_row)
+        (gates, last_row + 1)
     }
 
     /// Checks if a witness verifies a poseidon gate

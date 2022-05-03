@@ -647,6 +647,7 @@ where
                             CairoClaim | CairoInstruction | CairoFlags | CairoTransition => {
                                 unimplemented!()
                             }
+                            Range => unimplemented!(),
                         };
                         scalars.push(scalar);
                         commitments.push(c);

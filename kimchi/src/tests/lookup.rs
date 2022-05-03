@@ -116,7 +116,7 @@ fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_siz
 
     let start = Instant::now();
     let proof =
-        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &index).unwrap();
+        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, None, &index).unwrap();
     println!("{}{:?}", "Prover time: ".yellow(), start.elapsed());
 
     let start = Instant::now();

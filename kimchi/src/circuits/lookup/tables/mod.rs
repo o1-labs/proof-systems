@@ -8,17 +8,25 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use CurrOrNext::{Curr, Next};
 
+use super::constraints::LookupConfiguration;
+
+pub mod range;
 pub mod xor;
 
 //~ spec:startcode
 /// The table ID associated with the XOR lookup table.
 pub const XOR_TABLE_ID: i32 = 0;
+
+/// The table ID associated with the Range lookup table.
+pub const RANGE_TABLE_ID: i32 = 2;
 //~ spec:endcode
 
 /// Enumerates the different 'fixed' lookup tables used by individual gates
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum GateLookupTable {
+    Dummy,
     Xor,
+    Range,
 }
 
 /// Specifies the relative position of gates and the fixed lookup table (if applicable) that a
@@ -44,6 +52,7 @@ pub trait Entry {
     type Params;
 
     fn evaluate(
+        lookup_configuration: &LookupConfiguration,
         p: &Self::Params,
         j: &JointLookupSpec<Self::Field>,
         witness: &[Vec<Self::Field>; COLUMNS],
@@ -59,6 +68,7 @@ impl<F: Field> Entry for CombinedEntry<F> {
     type Params = (F, F);
 
     fn evaluate(
+        lookup_configuration: &LookupConfiguration,
         (joint_combiner, table_id_combiner): &(F, F),
         j: &JointLookupSpec<F>,
         witness: &[Vec<F>; COLUMNS],
@@ -72,7 +82,12 @@ impl<F: Field> Entry for CombinedEntry<F> {
             witness[pos.column][row]
         };
 
-        CombinedEntry(j.evaluate(joint_combiner, table_id_combiner, &eval))
+        CombinedEntry(j.evaluate(
+            lookup_configuration,
+            joint_combiner,
+            table_id_combiner,
+            &eval,
+        ))
     }
 }
 
@@ -84,6 +99,7 @@ impl<F: Field> Entry for UncombinedEntry<F> {
     type Params = ();
 
     fn evaluate(
+        lookup_configuration: &LookupConfiguration,
         _: &(),
         j: &JointLookupSpec<F>,
         witness: &[Vec<F>; COLUMNS],
@@ -103,14 +119,37 @@ impl<F: Field> Entry for UncombinedEntry<F> {
 
 /// A table of values that can be used for a lookup, along with the ID for the table.
 pub struct LookupTable<F> {
+    // TODO: remove this
     pub id: i32,
     pub data: Vec<Vec<F>>,
 }
 
+impl<F> LookupTable<F>
+where
+    F: FftField,
+{
+    /// Return true if the table has an entry containing all zeros.
+    pub fn has_zero_entry(&self) -> bool {
+        for entry in &self.data {
+            if entry.iter().all(|e| e.is_zero()) {
+                return true;
+            }
+        }
+        false
+    }
+}
+
 /// Returns the lookup table associated to a [GateLookupTable].
+// TODO: should we implement this as a From<GateLookupTable> for LookupTable?
 pub fn get_table<F: FftField>(table_name: GateLookupTable) -> LookupTable<F> {
+    use GateLookupTable::*;
     match table_name {
-        GateLookupTable::Xor => xor::xor_table(),
+        Dummy => LookupTable {
+            id: 0,
+            data: vec![vec![F::zero()]],
+        },
+        Xor => xor::xor_table(),
+        Range => range::range_table(),
     }
 }
 

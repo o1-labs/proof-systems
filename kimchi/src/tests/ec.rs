@@ -170,7 +170,7 @@ fn ec_test() {
 
     let start = Instant::now();
     let proof =
-        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &index).unwrap();
+        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, None, &index).unwrap();
     println!("{}{:?}", "Prover time: ".yellow(), start.elapsed());
 
     let start = Instant::now();

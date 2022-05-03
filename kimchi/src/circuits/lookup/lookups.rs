@@ -3,8 +3,9 @@ use crate::circuits::{
     gate::{CircuitGate, CurrOrNext, GateType},
     lookup::tables::{
         combine_table_entry, get_table, GateLookupTable, GatesLookupMaps, GatesLookupSpec,
-        LookupTable, XOR_TABLE_ID,
+        LookupTable, RANGE_TABLE_ID, XOR_TABLE_ID,
     },
+    wires::PERMUTS,
 };
 use ark_ff::{FftField, Field, One, Zero};
 use ark_poly::{Evaluations as E, Radix2EvaluationDomain as D};
@@ -13,10 +14,25 @@ use serde::{Deserialize, Serialize};
 use std::collections::{hash_map::Entry, HashMap, HashSet};
 use std::ops::{Mul, Neg};
 
+use super::constraints::LookupConfiguration;
+
 type Evaluations<Field> = E<Field, D<Field>>;
 
+/// Returns the maximum number of lookups done in a row
 fn max_lookups_per_row<F>(kinds: &[Vec<JointLookupSpec<F>>]) -> usize {
     kinds.iter().fold(0, |acc, x| std::cmp::max(x.len(), acc))
+}
+
+/// Returns a dummy lookup
+pub fn dummy_lookup<F>() -> JointLookup<F, F>
+where
+    F: Zero,
+{
+    // For computational efficiency, the dummy lookup value is  all 0s in table 0.
+    JointLookup {
+        table_id: F::zero(),
+        entry: vec![F::zero()],
+    }
 }
 
 /// Specifies whether a constraint system uses joint lookups. Used to make sure we
@@ -76,6 +92,7 @@ impl<F: FftField> LookupInfo<F> {
     /// Check what kind of lookups, if any, are used by this circuit.
     pub fn lookup_used(&self, gates: &[CircuitGate<F>]) -> Option<LookupsUsed> {
         let mut lookups_used = None;
+
         for g in gates.iter() {
             let typ = g.typ;
 
@@ -92,16 +109,36 @@ impl<F: FftField> LookupInfo<F> {
         lookups_used
     }
 
+    pub fn tables_used(&self, gates: &[CircuitGate<F>]) -> Vec<GateLookupTable> {
+        let mut tables = HashSet::new();
+        for CircuitGate { typ, .. } in gates {
+            // TODO: we should really have a map of gate -> table used (instead of doing this dance with Curr, Next)
+            if let Some(table_kind) = self.kinds_tables.get(&(*typ, CurrOrNext::Curr)) {
+                tables.insert(*table_kind);
+            }
+            if let Some(table_kind) = self.kinds_tables.get(&(*typ, CurrOrNext::Next)) {
+                tables.insert(*table_kind);
+            }
+        }
+
+        // A hashset does not have a deterministic ordering,
+        // we sort the vec deterministically so that compilation
+        // always gives out the same constraint system / index.
+        let mut tables: Vec<_> = tables.into_iter().collect();
+        tables.sort();
+
+        tables
+    }
+
     /// Each entry in `kinds` has a corresponding selector polynomial that controls whether that
     /// lookup kind should be enforced at a given row. This computes those selector polynomials.
-    pub fn selector_polynomials_and_tables(
+    pub fn selector_polynomials(
         &self,
         domain: &EvaluationDomains<F>,
         gates: &[CircuitGate<F>],
-    ) -> (Vec<Evaluations<F>>, Vec<LookupTable<F>>) {
+    ) -> Vec<Evaluations<F>> {
         let n = domain.d1.size as usize;
         let mut selector_values: Vec<_> = self.kinds.iter().map(|_| vec![F::zero(); n]).collect();
-        let mut gate_tables = HashSet::new();
 
         // TODO: is take(n) useful here? I don't see why we need this
         for (i, gate) in gates.iter().enumerate().take(n) {
@@ -112,13 +149,6 @@ impl<F: FftField> LookupInfo<F> {
             }
             if let Some(selector_index) = self.kinds_map.get(&(typ, CurrOrNext::Next)) {
                 selector_values[*selector_index][i + 1] = F::one();
-            }
-
-            if let Some(table_kind) = self.kinds_tables.get(&(typ, CurrOrNext::Curr)) {
-                gate_tables.insert(*table_kind);
-            }
-            if let Some(table_kind) = self.kinds_tables.get(&(typ, CurrOrNext::Next)) {
-                gate_tables.insert(*table_kind);
             }
         }
 
@@ -132,8 +162,8 @@ impl<F: FftField> LookupInfo<F> {
                     .evaluate_over_domain(domain.d8)
             })
             .collect();
-        let res_tables: Vec<_> = gate_tables.into_iter().map(get_table).collect();
-        (selector_values8, res_tables)
+
+        selector_values8
     }
 
     /// For each row in the circuit, which lookup-constraints should be enforced at that row.
@@ -186,6 +216,8 @@ impl<F: Copy> SingleLookup<F> {
 pub enum LookupTableID {
     /// Look up the value from the given fixed table ID
     Constant(i32),
+    /// Look up the value from the configuration
+    Configuration(GateLookupTable),
     /// Look up the value in the table with ID given by the value in the witness column
     WitnessColumn(usize),
 }
@@ -224,7 +256,11 @@ impl<F: Zero + One + Clone + Neg<Output = F> + From<u64>> JointLookupValue<F> {
 impl<F: Copy> JointLookup<SingleLookup<F>, LookupTableID> {
     /// Reduce linear combinations in the lookup entries to a single value, resolving local
     /// positions using the given function.
-    pub fn reduce<K, G: Fn(LocalPosition) -> K>(&self, eval: &G) -> JointLookupValue<K>
+    pub fn reduce<K, G: Fn(LocalPosition) -> K>(
+        &self,
+        lookup_configuration: &LookupConfiguration,
+        eval: &G,
+    ) -> JointLookupValue<K>
     where
         K: Zero,
         K: Mul<F, Output = K>,
@@ -233,6 +269,9 @@ impl<F: Copy> JointLookup<SingleLookup<F>, LookupTableID> {
     {
         let table_id = match self.table_id {
             LookupTableID::Constant(table_id) => i32_to_field(table_id),
+            LookupTableID::Configuration(table_enum) => {
+                K::from(lookup_configuration.get_table_id(table_enum) as u64)
+            }
             LookupTableID::WitnessColumn(column) => eval(LocalPosition {
                 row: CurrOrNext::Curr,
                 column,
@@ -248,6 +287,7 @@ impl<F: Copy> JointLookup<SingleLookup<F>, LookupTableID> {
     /// function.
     pub fn evaluate<K, G: Fn(LocalPosition) -> K>(
         &self,
+        lookup_configuration: &LookupConfiguration,
         joint_combiner: &K,
         table_id_combiner: &K,
         eval: &G,
@@ -258,7 +298,7 @@ impl<F: Copy> JointLookup<SingleLookup<F>, LookupTableID> {
         K: Neg<Output = K>,
         K: From<u64>,
     {
-        self.reduce(eval)
+        self.reduce(lookup_configuration, eval)
             .evaluate(joint_combiner, table_id_combiner)
     }
 }
@@ -275,6 +315,11 @@ impl GateType {
             row: CurrOrNext::Curr,
             column,
         };
+
+        //
+        // ChaCha0, ChaCha1, ChaCha2
+        //
+
         let chacha_pattern = (0..4)
             .map(|i| {
                 // each row represents an XOR operation
@@ -292,7 +337,7 @@ impl GateType {
                     value: vec![(F::one(), loc)],
                 };
                 JointLookup {
-                    table_id: LookupTableID::Constant(XOR_TABLE_ID),
+                    table_id: LookupTableID::Configuration(GateLookupTable::Xor),
                     entry: vec![l(left), l(right), l(output)],
                 }
             })
@@ -308,6 +353,10 @@ impl GateType {
             }
         }
 
+        //
+        // ChaChaFinal
+        //
+
         let one_half = F::from(2u64).inverse().unwrap();
         let neg_one_half = -one_half;
         let chacha_final_pattern = (0..4)
@@ -320,7 +369,7 @@ impl GateType {
                     value: vec![(one_half, nybble), (neg_one_half, low_bit)],
                 };
                 JointLookup {
-                    table_id: LookupTableID::Constant(XOR_TABLE_ID),
+                    table_id: LookupTableID::Configuration(GateLookupTable::Xor),
                     entry: vec![x.clone(), x, SingleLookup { value: vec![] }],
                 }
             })
@@ -330,6 +379,30 @@ impl GateType {
         for r in &[Curr, Next] {
             chacha_final_where.insert((ChaChaFinal, *r));
         }
+
+        //
+        // Range
+        //
+
+        let mut range_pattern = vec![];
+        // 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
+        // v v v v - - - - - - -  -  -  -  -
+        for register in 0..4 {
+            let query = JointLookup {
+                table_id: LookupTableID::Configuration(GateLookupTable::Range),
+                entry: vec![SingleLookup {
+                    value: vec![(F::one(), curr_row(register))],
+                }],
+            };
+            range_pattern.push(query);
+        }
+
+        let mut range_where = HashSet::new();
+        range_where.insert((Range, Curr));
+
+        //
+        // User-defined
+        //
 
         let lookup_gate_pattern = (0..3)
             .map(|i| {
@@ -358,6 +431,7 @@ impl GateType {
                 Some(GateLookupTable::Xor),
             ),
             (lookup_gate_pattern, lookup_gate_where, None),
+            (range_pattern, range_where, Some(GateLookupTable::Range)),
         ];
 
         // Convert from an array of tuples to a tuple of vectors
