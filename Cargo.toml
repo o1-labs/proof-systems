@@ -10,6 +10,7 @@ members = [
     "ocaml/ocaml-gen/derive",
     "oracle",
     "oracle/export_test_vectors",
+    "pickles",
     "poly-commitment",
     "signer",
     "tools/kimchi-visu",

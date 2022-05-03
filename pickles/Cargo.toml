@@ -1,0 +1,13 @@
+[package]
+name = "pickles"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+commitment_dlog = { path = "../poly-commitment" }
+groupmap = { path = "../groupmap" }
+mina-curves = { path = "../curves" }
+o1-utils = { path = "../utils" }
+oracle = { path = "../oracle" }
+kimchi = { path = "../kimchi" }
+circuit-construction = {path = "../circuit-construction" }
