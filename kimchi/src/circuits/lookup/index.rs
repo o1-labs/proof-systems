@@ -119,10 +119,8 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                     //~ b. Make sure that if table with id 0 is used, then it's the XOR table.
                     //~    We do this because we use a table with id 0 and
                     //~
-                    if table.id == 0 {
-                        if !table.has_zero_entry() {
-                            return Err(LookupError::TableIDZeroMustHaveZeroEntry);
-                        }
+                    if table.id == 0 && !table.has_zero_entry() {
+                        return Err(LookupError::TableIDZeroMustHaveZeroEntry);
                     }
 
                     //~ c. Update table IDs
