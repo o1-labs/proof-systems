@@ -1148,9 +1148,6 @@ To create the index, follow these steps:
 
    To do this, for each table:
 
-      - Make sure that if a table with id 0 is used, then it has an all-zeros entry.
-        We do this because we use a table with id 0 for the all-zeros dummy entry.
-
       - Update the corresponding entries in a table id vector (of size the domain as well)
         with the table ID of the table.
       - Copy the entries from the table to new rows in the corresponding columns of the concatenated table.
