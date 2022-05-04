@@ -1086,7 +1086,6 @@
 <span id="1081">1081</span>
 <span id="1082">1082</span>
 <span id="1083">1083</span>
-<span id="1084">1084</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Dlog-based polynomial commitment schema.</span>
 <span class="doccomment">//! The folowing functionality is implemented</span>
 <span class="doccomment">//!</span>
@@ -1698,7 +1697,6 @@
     <span class="doccomment">///     oracle_params: parameters for the random oracle argument</span>
     <span class="doccomment">///     randomness source context</span>
     <span class="doccomment">///     RETURN: verification status</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::type_complexity</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify</span><span class="op">&lt;</span><span class="ident">EFqSponge</span>, <span class="ident">RNG</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">group_map</span>: <span class="kw-2">&amp;</span><span class="ident">G::Map</span>,
