@@ -147,15 +147,6 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                 for table in lookup_tables.iter() {
                     let table_len = table.data[0].len();
 
-                    //~       - Make sure that if a table with id 0 is used, then it has an all-zeros entry.
-                    //~         We do this because we use a table with id 0 for the all-zeros dummy entry.
-                    //~
-                    if table.id == 0 {
-                        if !table.has_zero_entry() {
-                            return Err(LookupError::TableIDZeroMustHaveZeroEntry);
-                        }
-                    }
-
                     if table.id != 0 {
                         non_zero_table_id = true;
                     }
