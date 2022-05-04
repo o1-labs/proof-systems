@@ -1100,6 +1100,65 @@ If lookup is used, the following values are added to the common index:
 
 **`MaxJointSize`**. This is the maximum number of columns appearing in the lookup tables used by the lookup selectors. For example, the XOR lookup has 3 columns.
 
+To create the index, follow these steps:
+
+1. If no lookup is used in the circuit, do not create a lookup index
+2. Get the lookup selectors and lookup tables (TODO: how?)
+3. Concatenate runtime lookup tables with the ones used by gates
+4. Get the highest number of columns `max_table_width`
+   that a lookup table can have.
+5. Create the concatenated table of all the fixed lookup tables.
+   It will be of height the size of the domain,
+   and of width the maximum width of any of the lookup tables.
+   In addition, create an additional column to store all the tables' table IDs.
+
+   For example, if you have a table with ID 0
+
+   |       |       |       |
+   | :---: | :---: | :---: |
+   |   1   |   2   |   3   |
+   |   5   |   6   |   7   |
+   |   0   |   0   |   0   |
+
+   and another table with ID 1
+
+   |       |       |
+   | :---: | :---: |
+   |   8   |   9   |
+
+   the concatenated table in a domain of size 5 looks like this:
+
+   |       |       |       |
+   | :---: | :---: | :---: |
+   |   1   |   2   |   3   |
+   |   5   |   6   |   7   |
+   |   0   |   0   |   0   |
+   |   8   |   9   |   0   |
+   |   0   |   0   |   0   |
+
+   with the table id vector:
+
+   | table id |
+   | :------: |
+   |    0     |
+   |    0     |
+   |    0     |
+   |    1     |
+   |    0     |
+
+   To do this, for each table:
+
+      - Update the corresponding entries in a table id vector (of size the domain as well)
+        with the table ID of the table.
+      - Copy the entries from the table to new rows in the corresponding columns of the concatenated table.
+      - Fill in any unused columns with 0 (to match the dummy value)
+6. Pad the end of the concatened table with the dummy value.
+7. Pad the end of the table id vector with 0s.
+8. pre-compute polynomial and evaluation form for the look up tables
+9. pre-compute polynomial and evaluation form for the table IDs,
+   only if a table with an ID different from zero was used.
+
+
 ### Prover Index
 
 Both the prover and the verifier index, besides the common parts described above, are made out of pre-computations which can be used to speed up the protocol.
