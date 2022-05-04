@@ -609,7 +609,6 @@ impl<G: CommitmentCurve> SRS<G> {
     ///     oracle_params: parameters for the random oracle argument
     ///     randomness source context
     ///     RETURN: verification status
-    #[allow(clippy::type_complexity)]
     pub fn verify<EFqSponge, RNG>(
         &self,
         group_map: &G::Map,
