@@ -20,6 +20,9 @@ pub enum ProverError {
 
     #[error("the lookup failed to find a match in the table")]
     ValueNotInTable,
+
+    #[error("the runtime tables provided did not match the index's configuration")]
+    RuntimeTablesInconsistent,
 }
 
 /// Errors that can arise when verifying a proof
@@ -39,6 +42,9 @@ pub enum VerifyError {
 
     #[error("lookup used in circuit, but proof has inconsistent number of lookup evaluations and commitments")]
     ProofInconsistentLookup,
+
+    #[error("runtime tables are used, but missing from the proof")]
+    IncorrectRuntimeProof,
 }
 
 /// Errors that can arise when preparing the setup

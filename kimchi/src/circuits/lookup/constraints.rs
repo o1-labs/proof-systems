@@ -19,6 +19,8 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use CurrOrNext::{Curr, Next};
 
+use super::runtime_tables::{self, RuntimeTableConfiguration};
+
 /// Number of constraints produced by the argument.
 pub const CONSTRAINTS: u32 = 7;
 
@@ -322,6 +324,7 @@ where
 
 /// Configuration for the lookup constraint.
 /// These values are independent of the choice of lookup values.
+// TODO: move to lookup::index
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct LookupConfiguration<F: FftField> {
@@ -330,8 +333,15 @@ pub struct LookupConfiguration<F: FftField> {
 
     /// The maximum number of lookups per row
     pub max_lookups_per_row: usize,
+
     /// The maximum number of elements in a vector lookup
     pub max_joint_size: u32,
+
+    /// Optional runtime tables, listed as tuples `(length, id)`.
+    pub runtime_tables: Option<Vec<RuntimeTableConfiguration>>,
+
+    /// The offset of the runtime table within the concatenated table
+    pub runtime_table_offset: Option<usize>,
 
     /// A placeholder value that is known to appear in the lookup table.
     /// This is used to pad the lookups to `max_lookups_per_row` when fewer lookups are used in a
@@ -545,6 +555,13 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>
         })
         .collect();
     res.extend(compatibility_checks);
+
+    // if we are using runtime tables, we add:
+    // $RT(x) (1 - \text{selector}_{RT}(x)) = 0$
+    if configuration.runtime_tables.is_some() {
+        let rt_constraints = runtime_tables::constraints();
+        res.extend(rt_constraints);
+    }
 
     res
 }

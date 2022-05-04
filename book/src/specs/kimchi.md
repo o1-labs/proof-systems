@@ -1216,6 +1216,10 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 
     /// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
     pub max_joint_size: u32,
+
+    /// An optional selector polynomial for runtime tables
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub runtime_tables_selector: Option<PolyComm<G>>,
 }
 
 #[serde_as]
@@ -1377,6 +1381,9 @@ pub struct LookupEvaluations<Field> {
     // TODO: May be possible to optimize this away?
     /// lookup table polynomial
     pub table: Field,
+
+    /// Optionally, a runtime table polynomial.
+    pub runtime: Option<Field>,
 }
 
 // TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
@@ -1402,6 +1409,9 @@ pub struct ProofEvaluations<Field> {
 pub struct LookupCommitments<G: AffineCurve> {
     pub sorted: Vec<PolyComm<G>>,
     pub aggreg: PolyComm<G>,
+
+    /// Optional commitment to concatenated runtime tables
+    pub runtime: Option<PolyComm<G>>,
 }
 
 /// All the commitments that the prover creates as part of the proof.
@@ -1530,6 +1540,8 @@ The prover then follows the following steps to create the proof:
 23. Sample $\zeta'$ with the Fq-Sponge.
 24. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
 25. If lookup is used, evaluate the following polynomials at $\zeta$ and $\zeta \omega$:
+    - the aggregation polynomial
+    - the sorted polynomials
 26. Chunk evaluate the following polynomials at both $\zeta$ and $\zeta \omega$:
     * $s_i$
     * $w_i$
@@ -1581,6 +1593,7 @@ The prover then follows the following steps to create the proof:
     - the poseidon selector
     - the 15 registers/witness columns
     - the 6 sigmas
+    - optionally, the runtime table
 42. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
 
 

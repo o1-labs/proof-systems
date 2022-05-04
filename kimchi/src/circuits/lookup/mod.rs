@@ -4,4 +4,5 @@
 pub mod constraints;
 pub mod index;
 pub mod lookups;
+pub mod runtime_tables;
 pub mod tables;

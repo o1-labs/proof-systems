@@ -89,7 +89,7 @@ fn chacha_prover() {
 
     let start = Instant::now();
     let proof =
-        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &index).unwrap();
+        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &[], &index).unwrap();
     println!("{}{:?}", "Prover time: ".yellow(), start.elapsed());
 
     let start = Instant::now();
@@ -222,7 +222,7 @@ fn chacha_setup_bad_lookup(table_id: i32) {
         }
     }
 
-    TestFramework::run_test_lookups(gates, witness, &[], lookup_tables);
+    TestFramework::run_test_lookups(gates, witness, &[], lookup_tables, None);
 }
 
 // Test lookup domain separation: if a different table ID is used, we shouldn't be able to use a
