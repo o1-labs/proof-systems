@@ -37,15 +37,15 @@ where
     EFqSponge: Clone + FqSponge<BaseField<G>, G, ScalarField<G>>,
 {
     /// A sponge that acts on the base field of a curve
-    fq_sponge: EFqSponge,
+    pub fq_sponge: EFqSponge,
     /// the last evaluation of the Fq-Sponge in this protocol
     pub digest: ScalarField<G>,
     /// the challenges produced in the protocol
-    oracles: RandomOracles<ScalarField<G>>,
+    pub oracles: RandomOracles<ScalarField<G>>,
     /// the computed powers of alpha
     all_alphas: Alphas<ScalarField<G>>,
     /// public polynomial evaluations
-    p_eval: Vec<Vec<ScalarField<G>>>,
+    pub p_eval: Vec<Vec<ScalarField<G>>>,
     /// zeta^n and (zeta * omega)^n
     powers_of_eval_points_for_chunks: [ScalarField<G>; 2],
     /// recursion data

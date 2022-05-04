@@ -26,11 +26,11 @@ pub struct ProverIndex<G: CommitmentCurve> {
 
     /// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
     #[serde(skip)]
-    pub(crate) linearization: Linearization<Vec<PolishToken<ScalarField<G>>>>,
+    pub linearization: Linearization<Vec<PolishToken<ScalarField<G>>>>,
 
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
-    pub(crate) powers_of_alpha: Alphas<ScalarField<G>>,
+    pub powers_of_alpha: Alphas<ScalarField<G>>,
 
     /// polynomial commitment keys
     #[serde(skip)]
@@ -44,7 +44,7 @@ pub struct ProverIndex<G: CommitmentCurve> {
 
     /// random oracle argument parameters
     #[serde(skip)]
-    pub(crate) fq_sponge_params: ArithmeticSpongeParams<BaseField<G>>,
+    pub fq_sponge_params: ArithmeticSpongeParams<BaseField<G>>,
 }
 //~spec:endcode
 
