@@ -27,8 +27,6 @@ pub enum LookupError {
         length: usize,
         maximum_allowed: usize,
     },
-    #[error("Multiple tables shared the same table IDs")]
-    DuplicateTableID,
     #[error("The table with id 0 must have an entry of all zeros")]
     TableIDZeroMustHaveZeroEntry,
 }
