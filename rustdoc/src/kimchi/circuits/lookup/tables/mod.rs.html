@@ -147,6 +147,28 @@
 <span id="142">142</span>
 <span id="143">143</span>
 <span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
     <span class="ident">gate</span>::{<span class="ident">CurrOrNext</span>, <span class="ident">GateType</span>},
     <span class="ident">lookup::lookups</span>::{<span class="ident">JointLookupSpec</span>, <span class="ident">LocalPosition</span>},
@@ -251,9 +273,31 @@
 }
 
 <span class="doccomment">/// A table of values that can be used for a lookup, along with the ID for the table.</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LookupTable</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="kw">pub</span> <span class="ident">id</span>: <span class="ident">i32</span>,
     <span class="kw">pub</span> <span class="ident">data</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+}
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="ident">LookupTable</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
+<span class="kw">where</span>
+    <span class="ident">F</span>: <span class="ident">FftField</span>,
+{
+    <span class="doccomment">/// Return true if the table has an entry containing all zeros.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">has_zero_entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
+        <span class="comment">// reminder: a table is written as a list of columns,</span>
+        <span class="comment">// not as a list of row entries.</span>
+        <span class="kw">for</span> <span class="ident">row</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">data</span>[<span class="number">0</span>].<span class="ident">len</span>() {
+            <span class="kw">for</span> <span class="ident">col</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">data</span> {
+                <span class="kw">if</span> <span class="op">!</span><span class="ident">col</span>[<span class="ident">row</span>].<span class="ident">is_zero</span>() {
+                    <span class="kw">continue</span>;
+                }
+                <span class="kw">return</span> <span class="bool-val">true</span>;
+            }
+        }
+
+        <span class="bool-val">false</span>
+    }
 }
 
 <span class="doccomment">/// Returns the lookup table associated to a [GateLookupTable].</span>

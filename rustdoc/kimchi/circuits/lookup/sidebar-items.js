@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["constraints",""],["lookups",""],["tables",""]]});
+initSidebarItems({"mod":[["constraints",""],["index",""],["lookups",""],["tables",""]]});

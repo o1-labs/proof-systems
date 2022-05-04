@@ -1084,6 +1084,74 @@ has order greater or equal to <code>n + ZK_ROWS</code> elements.</li>
 <p><strong><code>LookupSelectors</code></strong>. The list of lookup selectors used. In practice, this tells you which lookup tables are used.</p>
 <p><strong><code>TableIds</code></strong>. This is a list of table ids used by the Lookup gate.</p>
 <p><strong><code>MaxJointSize</code></strong>. This is the maximum number of columns appearing in the lookup tables used by the lookup selectors. For example, the XOR lookup has 3 columns.</p>
+<p>To create the index, follow these steps:</p>
+<ol>
+<li>
+<p>If no lookup is used in the circuit, do not create a lookup index</p>
+</li>
+<li>
+<p>Get the lookup selectors and lookup tables (TODO: how?)</p>
+</li>
+<li>
+<p>Concatenate runtime lookup tables with the ones used by gates</p>
+</li>
+<li>
+<p>Get the highest number of columns <code>max_table_width</code>
+that a lookup table can have.</p>
+</li>
+<li>
+<p>Create the concatenated table of all the fixed lookup tables.
+It will be of height the size of the domain,
+and of width the maximum width of any of the lookup tables.
+In addition, create an additional column to store all the tables’ table IDs.</p>
+<p>For example, if you have a table with ID 0</p>
+<table><thead><tr><th style="text-align: center"></th><th style="text-align: center"></th><th style="text-align: center"></th></tr></thead><tbody>
+<tr><td style="text-align: center">1</td><td style="text-align: center">2</td><td style="text-align: center">3</td></tr>
+<tr><td style="text-align: center">5</td><td style="text-align: center">6</td><td style="text-align: center">7</td></tr>
+<tr><td style="text-align: center">0</td><td style="text-align: center">0</td><td style="text-align: center">0</td></tr>
+</tbody></table>
+<p>and another table with ID 1</p>
+<table><thead><tr><th style="text-align: center"></th><th style="text-align: center"></th></tr></thead><tbody>
+<tr><td style="text-align: center">8</td><td style="text-align: center">9</td></tr>
+</tbody></table>
+<p>the concatenated table in a domain of size 5 looks like this:</p>
+<table><thead><tr><th style="text-align: center"></th><th style="text-align: center"></th><th style="text-align: center"></th></tr></thead><tbody>
+<tr><td style="text-align: center">1</td><td style="text-align: center">2</td><td style="text-align: center">3</td></tr>
+<tr><td style="text-align: center">5</td><td style="text-align: center">6</td><td style="text-align: center">7</td></tr>
+<tr><td style="text-align: center">0</td><td style="text-align: center">0</td><td style="text-align: center">0</td></tr>
+<tr><td style="text-align: center">8</td><td style="text-align: center">9</td><td style="text-align: center">0</td></tr>
+<tr><td style="text-align: center">0</td><td style="text-align: center">0</td><td style="text-align: center">0</td></tr>
+</tbody></table>
+<p>with the table id vector:</p>
+<table><thead><tr><th style="text-align: center">table id</th></tr></thead><tbody>
+<tr><td style="text-align: center">0</td></tr>
+<tr><td style="text-align: center">0</td></tr>
+<tr><td style="text-align: center">0</td></tr>
+<tr><td style="text-align: center">1</td></tr>
+<tr><td style="text-align: center">0</td></tr>
+</tbody></table>
+<p>To do this, for each table:</p>
+<ul>
+<li>Update the corresponding entries in a table id vector (of size the domain as well)
+with the table ID of the table.</li>
+<li>Copy the entries from the table to new rows in the corresponding columns of the concatenated table.</li>
+<li>Fill in any unused columns with 0 (to match the dummy value)</li>
+</ul>
+</li>
+<li>
+<p>Pad the end of the concatened table with the dummy value.</p>
+</li>
+<li>
+<p>Pad the end of the table id vector with 0s.</p>
+</li>
+<li>
+<p>pre-compute polynomial and evaluation form for the look up tables</p>
+</li>
+<li>
+<p>pre-compute polynomial and evaluation form for the table IDs,
+only if a table with an ID different from zero was used.</p>
+</li>
+</ol>
 <h3 id="prover-index"><a class="header" href="#prover-index">Prover Index</a></h3>
 <p>Both the prover and the verifier index, besides the common parts described above, are made out of pre-computations which can be used to speed up the protocol.
 These pre-computations are optimizations, in the context of normal proofs, but they are necessary for recursion.</p>
