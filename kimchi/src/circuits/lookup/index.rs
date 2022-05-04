@@ -102,7 +102,43 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                 //~    It will be of height the size of the domain,
                 //~    and of width the maximum width of any of the lookup tables.
                 //~    In addition, create an additional column to store all the tables' table IDs.
-                //~    For each table:
+                //~
+                //~    For example, if you have a table with ID 0
+                //~
+                //~    |       |       |       |
+                //~    | :---: | :---: | :---: |
+                //~    |   1   |   2   |   3   |
+                //~    |   5   |   6   |   7   |
+                //~    |   0   |   0   |   0   |
+                //~
+                //~    and another table with ID 1
+                //~
+                //~    |       |       |
+                //~    | :---: | :---: |
+                //~    |   8   |   9   |
+                //~
+                //~    the concatenated table in a domain of size 5 looks like this:
+                //~
+                //~    |       |       |       |
+                //~    | :---: | :---: | :---: |
+                //~    |   1   |   2   |   3   |
+                //~    |   5   |   6   |   7   |
+                //~    |   0   |   0   |   0   |
+                //~    |   8   |   9   |   0   |
+                //~    |   0   |   0   |   0   |
+                //~
+                //~    with the table id vector:
+                //~
+                //~    | table id |
+                //~    | :------: |
+                //~    |    0     |
+                //~    |    0     |
+                //~    |    0     |
+                //~    |    1     |
+                //~    |    0     |
+                //~
+                //~    To do this, for each table:
+                //~
                 let mut lookup_table = vec![Vec::with_capacity(d1_size); max_table_width];
                 let mut table_ids: Vec<F> = Vec::with_capacity(d1_size);
 
@@ -111,8 +147,8 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                 for table in lookup_tables.iter() {
                     let table_len = table.data[0].len();
 
-                    //~     a. Make sure that if a table with id 0 is used, then it has an all-zeros entry.
-                    //~        We do this because we use a table with id 0 for the all-zeros dummy entry.
+                    //~       - Make sure that if a table with id 0 is used, then it has an all-zeros entry.
+                    //~         We do this because we use a table with id 0 for the all-zeros dummy entry.
                     //~
                     if table.id == 0 {
                         if !table.has_zero_entry() {
@@ -124,12 +160,12 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                         non_zero_table_id = true;
                     }
 
-                    //~     b. Update the corresponding entries in a table id vector (of size the domain as well)
-                    //~        with the table ID of the table.
+                    //~       - Update the corresponding entries in a table id vector (of size the domain as well)
+                    //~         with the table ID of the table.
                     let table_id: F = i32_to_field(table.id);
                     table_ids.extend(repeat_n(table_id, table_len));
 
-                    //~     c. Copy the entries from the table to new rows in the corresponding columns of the concatenated table.
+                    //~       - Copy the entries from the table to new rows in the corresponding columns of the concatenated table.
                     for (i, col) in table.data.iter().enumerate() {
                         if col.len() != table_len {
                             return Err(LookupError::InconsistentTableLength);
@@ -137,7 +173,7 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                         lookup_table[i].extend(col);
                     }
 
-                    //~     d. Fill in any unused columns with 0 (to match the dummy value)
+                    //~       - Fill in any unused columns with 0 (to match the dummy value)
                     for lookup_table in lookup_table.iter_mut().skip(table.data.len()) {
                         lookup_table.extend(repeat_n(F::zero(), table_len))
                     }
@@ -158,13 +194,15 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                     table_id: F::zero(),
                 };
 
-                // Pad up to the end of the table with the dummy value.
+                //~ 6. Pad the end of the concatened table with the dummy value.
                 lookup_table
                     .iter_mut()
                     .for_each(|col| col.extend(repeat_n(F::zero(), max_num_entries - col.len())));
+
+                //~ 7. Pad the end of the table id vector with 0s.
                 table_ids.extend(repeat_n(F::zero(), max_num_entries - table_ids.len()));
 
-                // pre-compute polynomial and evaluation form for the look up tables
+                //~ 8. pre-compute polynomial and evaluation form for the look up tables
                 let mut lookup_table_polys: Vec<DP<F>> = vec![];
                 let mut lookup_table8: Vec<E<F, D<F>>> = vec![];
                 for col in lookup_table.into_iter() {
@@ -174,7 +212,8 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                     lookup_table8.push(eval);
                 }
 
-                // pre-compute polynomial and evaluation form for the table IDs, if needed
+                //~ 9. pre-compute polynomial and evaluation form for the table IDs,
+                //~    only if a table with an ID different from zero was used.
                 let (table_ids, table_ids8) = if non_zero_table_id {
                     let table_ids: DP<F> =
                         E::<F, D<F>>::from_vec_and_domain(table_ids, domain.d1).interpolate();
@@ -184,7 +223,6 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                     (None, None)
                 };
 
-                // generate the look up selector polynomials
                 Ok(Some(Self {
                     lookup_selectors,
                     lookup_table8,
