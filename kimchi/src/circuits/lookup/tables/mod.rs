@@ -102,9 +102,31 @@ impl<F: Field> Entry for UncombinedEntry<F> {
 }
 
 /// A table of values that can be used for a lookup, along with the ID for the table.
+#[derive(Debug)]
 pub struct LookupTable<F> {
     pub id: i32,
     pub data: Vec<Vec<F>>,
+}
+
+impl<F> LookupTable<F>
+where
+    F: FftField,
+{
+    /// Return true if the table has an entry containing all zeros.
+    pub fn has_zero_entry(&self) -> bool {
+        // reminder: a table is written as a list of columns,
+        // not as a list of row entries.
+        for row in 0..self.data[0].len() {
+            for col in &self.data {
+                if !col[row].is_zero() {
+                    continue;
+                }
+                return true;
+            }
+        }
+
+        false
+    }
 }
 
 /// Returns the lookup table associated to a [GateLookupTable].

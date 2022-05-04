@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use crate::circuits::{domains::EvaluationDomains, gate::CircuitGate};
 use crate::circuits::{
     lookup::{
@@ -108,6 +106,15 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                 //~ 6. For each table:
                 for table in lookup_tables.iter() {
                     let table_len = table.data[0].len();
+
+                    //~ b. Make sure that if table with id 0 is used, then it's the XOR table.
+                    //~    We do this because we use a table with id 0 and
+                    //~
+                    if table.id == 0 {
+                        if !table.has_zero_entry() {
+                            return Err(LookupError::TableIDZeroMustHaveZeroEntry);
+                        }
+                    }
 
                     // Update table IDs
                     if table.id != 0 {
