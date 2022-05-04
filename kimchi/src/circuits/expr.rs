@@ -32,7 +32,7 @@ pub struct Constants<F> {
     pub gamma: F,
     /// The challenge joint_combiner which is used to combine
     /// joint lookup tables.
-    pub joint_combiner: F,
+    pub joint_combiner: Option<F>,
     /// The endomorphism coefficient
     pub endo_coefficient: F,
     /// The MDS matrix
@@ -259,7 +259,7 @@ impl<F: Field> ConstantExpr<F> {
             Alpha => c.alpha,
             Beta => c.beta,
             Gamma => c.gamma,
-            JointCombiner => c.joint_combiner,
+            JointCombiner => c.joint_combiner.expect("joint lookup was not expected"),
             EndoCoefficient => c.endo_coefficient,
             Mds { row, col } => c.mds[*row][*col],
             Literal(x) => *x,
@@ -440,7 +440,9 @@ impl<F: FftField> PolishToken<F> {
                 Alpha => stack.push(c.alpha),
                 Beta => stack.push(c.beta),
                 Gamma => stack.push(c.gamma),
-                JointCombiner => stack.push(c.joint_combiner),
+                JointCombiner => {
+                    stack.push(c.joint_combiner.expect("no joint lookup was expected"))
+                }
                 EndoCoefficient => stack.push(c.endo_coefficient),
                 Mds { row, col } => stack.push(c.mds[*row][*col]),
                 VanishesOnLast4Rows => stack.push(eval_vanishes_on_last_4_rows(d, pt)),
@@ -2206,7 +2208,7 @@ pub mod test {
                 alpha: one,
                 beta: one,
                 gamma: one,
-                joint_combiner: one,
+                joint_combiner: None,
                 endo_coefficient: one,
                 mds: vec![vec![]],
             },
