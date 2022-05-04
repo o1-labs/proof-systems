@@ -99,9 +99,6 @@ When using this library, make sure to include in your Cargo.toml the following d
 `
 [dependencies]
 kimchi = { git = "https://github.com/o1-labs/proof-systems" }
-mina-curves = { git = "https://github.com/o1-labs/proof-systems" }
-oracle = { git = "https://github.com/o1-labs/proof-systems" }
-commitment_dlog = { git = "https://github.com/o1-labs/proof-systems" }
 `
 
 Here is an example that uses this library. This code takes the output of a hash and makes sure that the prover knows the input to the hash function.
