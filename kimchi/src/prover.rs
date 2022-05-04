@@ -7,8 +7,6 @@ use crate::{
         gate::GateType,
         lookup::{
             self,
-            constraints::LookupConfiguration,
-            index::LookupConstraintSystem,
             lookups::LookupsUsed,
             tables::{combine_table_entry, CombinedEntry},
         },

@@ -16,6 +16,7 @@ use itertools::repeat_n;
 use o1_utils::field_helpers::i32_to_field;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
+use thiserror::Error;
 
 /// Represents an error found when computing the lookup constraint system
 #[derive(Debug, Error)]
