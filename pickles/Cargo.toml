@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+ark-ff = { version = "0.3.0", features = [ "parallel", "asm" ] }
 commitment_dlog = { path = "../poly-commitment" }
 groupmap = { path = "../groupmap" }
 mina-curves = { path = "../curves" }

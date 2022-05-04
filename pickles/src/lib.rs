@@ -1,12 +1,19 @@
-/// Step proof:
+/// Step (Tick, over Vesta Curve) proof:
 /// 
-/// Application logic proof and verification of the "wrap" verifier
+/// Application logic proof and verification of the "wrap" verifier.
+/// 
 mod step;
 
-/// Wrap proof:
+/// Wrap (Tock, over Pallas Curve) proof:
 /// 
 /// Proof of correct execution of the "step" verifier
 mod wrap;
+
+/// Generic plonk types/methods
+mod plonk;
+
+/// Accumulation for IPA
+mod ipa;
 
 trait Rule {  }
 
