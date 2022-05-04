@@ -97,16 +97,21 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                     .max()
                     .unwrap_or(0);
 
-                //~ 5. Add the table ID stuff
+                //~ 5. Create the concatenated table of all the fixed lookup tables.
+                //~    It will be of height the size of the domain,
+                //~    and of width the maximum width of any of the lookup tables.
+                //~    In addition, create an additional column to store all the tables' table IDs.
+                //~    For each table:
                 let mut lookup_table = vec![Vec::with_capacity(d1_size); max_table_width];
                 let mut table_ids: Vec<F> = Vec::with_capacity(d1_size);
+
                 let mut non_zero_table_id = false;
-                //~ 6. For each table:
+
                 for table in lookup_tables.iter() {
                     let table_len = table.data[0].len();
 
-                    //~ b. Make sure that if table with id 0 is used, then it's the XOR table.
-                    //~    We do this because we use a table with id 0 and
+                    //~     a. Make sure that if a table with id 0 is used, then it has an all-zeros entry.
+                    //~        We do this because we use a table with id 0 for the all-zeros dummy entry.
                     //~
                     if table.id == 0 {
                         if !table.has_zero_entry() {
@@ -114,15 +119,16 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                         }
                     }
 
-                    // Update table IDs
                     if table.id != 0 {
                         non_zero_table_id = true;
                     }
-                    //~ c. Update table IDs
+
+                    //~     b. Update the corresponding entries in a table id vector (of size the domain as well)
+                    //~        with the table ID of the table.
                     let table_id: F = i32_to_field(table.id);
                     table_ids.extend(repeat_n(table_id, table_len));
 
-                    //~ d. Update lookup_table values
+                    //~     c. Copy the entries from the table to new rows in the corresponding columns of the concatenated table.
                     for (i, col) in table.data.iter().enumerate() {
                         if col.len() != table_len {
                             return Err(LookupError::InconsistentTableLength);
@@ -130,7 +136,7 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                         lookup_table[i].extend(col);
                     }
 
-                    //~ e. Fill in any unused columns with 0 to match the dummy value
+                    //~     d. Fill in any unused columns with 0 (to match the dummy value)
                     for lookup_table in lookup_table.iter_mut().skip(table.data.len()) {
                         lookup_table.extend(repeat_n(F::zero(), table_len))
                     }
