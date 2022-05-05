@@ -34,7 +34,7 @@ The code above also defines a generator $g$ for it, such that $g^{2^{32}} = 1$ a
 To find any of these groups, it is pretty straight forward as well. Notice that:
 
 * let $h = g^2$, then $h^{2^{31}} = g^{2^{32}} = 1$ and so $h$ generates a subgroup of order 31
-* let $h = g^{2^2}$, then $h^{2^{30}} = g^{2^{32}} = 1$ and so $h$ generates a subgroup of order 30
+* let $t = g^{2^2}$, then $t^{2^{30}} = g^{2^{32}} = 1$ and so $t$ generates a subgroup of order 30
 * and so on...
 
 In [arkworks](https://github.com/arkworks-rs/algebra/blob/master/ff/src/fields/mod.rs#L216) you can see how this is implemented:
@@ -52,7 +52,7 @@ this allows you to easily find subgroups of different sizes of powers of 2, whic
 
 ## Efficient computation of the vanishing polynomial
 
-For each curve, we generate a domain $H$ as the set $H = {1, \omega, \omega^2, \cdots}$. 
+For each curve, we generate a domain $H$ as the set $H = {1, \omega, \omega^2, \cdots, \omega^{n-1}}$. 
 As we work in a multiplicative subgroup, the polynomial that vanishes in all of these points can be written and efficiently calculated as $Z_H(x) = x^{|H|} - 1$.  
 This is because, by definition, $\omega^{|H|} = 1$. If $x \in H$, then $x = \omega^i$ for some $i$, and we have:
 
