@@ -3,9 +3,34 @@
 #[macro_use]
 extern crate num_derive;
 
-pub use commitment_dlog::*;
-pub use mina_curves::*;
-pub use oracle::*;
+pub use cairo::{
+    memory::CairoMemory,
+    runner::{CairoInstruction, CairoProgram, Pointers},
+    word::{FlagBits, Offsets},
+};
+pub use commitment_dlog::{
+    commitment::{
+        b_poly, b_poly_coefficients, combined_inner_product, BatchEvaluationProof, CommitmentCurve,
+        Evaluation, PolyComm,
+    },
+    evaluation_proof::OpeningProof,
+    srs::{endos, SRS},
+};
+pub use groupmap::{BWParameters, GroupMap};
+pub use mina_curves::pasta::{
+    fp::Fp,
+    pallas::Affine as Other,
+    vesta::{Affine, VestaParameters},
+};
+pub use o1_utils::{
+    field_helpers::i32_to_field, hasher::CryptoDigest, math, types::fields::*,
+    ExtendedDensePolynomial, ExtendedEvaluations,
+};
+pub use oracle::{
+    constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
+    poseidon::{sbox, ArithmeticSponge, ArithmeticSpongeParams, Sponge},
+    sponge::{DefaultFqSponge, DefaultFrSponge, FqSponge, ScalarChallenge},
+};
 
 pub mod alphas;
 pub mod bench;
