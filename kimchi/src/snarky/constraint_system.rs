@@ -236,13 +236,14 @@ enum Circuit<Field, RustGates> {
 }
 
 /** The constraint system. */
-struct SnarkyConstraintSystem<Field, RustGates> {
+pub struct SnarkyConstraintSystem<Field, RustGates> {
     /** Map of cells that share the same value (enforced by to the permutation). */
     equivalence_classes: HashMap<V, Vec<Position<Row>>>,
+    next_internal_var: usize,
     /** How to compute each internal variable (as a linear combination of other variables). */
     internal_vars: HashMap<InternalVar, (Vec<(Field, V)>, Option<Field>)>,
     /** The variables that hold each witness value for each row, in reverse order. */
-    rows_rev: Vec<Vec<Option<V>>>,
+    rows: Vec<Vec<Option<V>>>,
     /** A circuit is described by a series of gates.
        A gate is finalized once [finalize_and_get_gates] is called.
        The finalized tag contains the digest of the circuit.
@@ -284,7 +285,7 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
         let mut equivalence_classes: HashMap<usize, HashSet<Position<Row>>> = HashMap::new();
         for (key, data) in self.equivalence_classes.iter() {
             let u = self.union_finds.find(*key).unwrap();
-            let entry = equivalence_classes.entry(u).or_insert(HashSet::new());
+            let entry = equivalence_classes.entry(u).or_insert_with(HashSet::new);
             for position in data.iter() {
                 entry.insert(*position);
             }
@@ -312,9 +313,7 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
         for i in 0..public_input_size {
             res[0][i] = external_values(i + 1);
         }
-        let last_idx = self.rows_rev.len() - 1;
-        for i_after_input in 0..self.rows_rev.len() {
-            let cols = &self.rows_rev[last_idx - i_after_input];
+        for (i_after_input, cols) in self.rows.iter().enumerate() {
             let row_idx = i_after_input + public_input_size;
             for (col_idx, var) in cols.iter().enumerate() {
                 match var {
@@ -346,5 +345,97 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
             }
         }
         res
+    }
+
+    fn union_find(self: &mut Self, value: V) {
+        self.union_finds.make_set(value)
+    }
+
+    fn create_internal(self: &mut Self, constant: Option<Field>, lc: Vec<(Field, V)>) -> V {
+        let v = InternalVar(self.next_internal_var);
+        self.next_internal_var += 1;
+        self.union_find(V::Internal(v));
+        self.internal_vars.insert(v, (lc, constant));
+        V::Internal(v)
+    }
+
+    pub fn create() -> Self {
+        Self {
+            public_input_size: None,
+            next_internal_var: 0,
+            internal_vars: HashMap::new(),
+            gates: Circuit::Unfinalized(Vec::new()),
+            rows: Vec::new(),
+            next_row: 0,
+            equivalence_classes: HashMap::new(),
+            auxiliary_input_size: 0,
+            pending_generic_gate: None,
+            cached_constants: HashMap::new(),
+            union_finds: disjoint_set::DisjointSet::new(),
+        }
+    }
+
+    /** Returns the number of auxiliary inputs. */
+    pub fn get_auxiliary_input_size(self: &Self) -> usize {
+        self.auxiliary_input_size
+    }
+
+    /** Returns the number of public inputs. */
+    pub fn get_primary_input_size(self: &Self) -> usize {
+        self.public_input_size.unwrap()
+    }
+
+    /** Non-public part of the witness. */
+    pub fn set_auxiliary_input_size(self: &mut Self, x: usize) {
+        self.auxiliary_input_size = x
+    }
+
+    /** Sets the number of public-input. It should only be called once. */
+    pub fn set_public_input_size(self: &mut Self, x: usize) {
+        self.public_input_size = Some(x)
+    }
+
+    /** Adds {row; col} to the system's wiring under a specific key.
+    A key is an external or internal variable.
+    The row must be given relative to the start of the circuit
+    (so at the start of the public-input rows). */
+    fn wire_(self: &mut Self, key: V, row: Row, col: usize) {
+        self.union_find(key);
+        self.equivalence_classes
+            .entry(key)
+            .or_insert_with(Vec::new)
+            .push(Position { row, col })
+    }
+
+    /** Same as wire', except that the row must be given relatively to the end of the public-input rows. */
+    fn wire(self: &mut Self, key: V, row: usize, col: usize) {
+        self.wire_(key, Row::AfterPublicInput(row), col)
+    }
+
+    /** Adds a row/gate/constraint to a constraint system `sys`. */
+    fn add_row(self: &mut Self, vars: Vec<Option<V>>, kind: GateType, coeffs: Vec<Field>) {
+        /* As we're adding a row, we're adding new cells.
+           If these cells (the first 7) contain variables,
+           make sure that they are wired
+        */
+        let num_vars = std::cmp::min(PERMUTS, vars.len());
+        for (col, x) in vars.iter().take(num_vars).enumerate() {
+            match x {
+                None => (),
+                Some(x) => self.wire(*x, self.next_row, col),
+            }
+        }
+        match &mut self.gates {
+            Circuit::Compiled(_, _) => panic!("add_row called on finalized constraint system"),
+            Circuit::Unfinalized(gates) => {
+                gates.push(GateSpec {
+                    kind,
+                    wired_to: Vec::new(),
+                    coeffs,
+                });
+            }
+        }
+        self.next_row += 1;
+        self.rows.push(vars);
     }
 }
