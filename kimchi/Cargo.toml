@@ -26,6 +26,9 @@ serde = "1.0.130"
 serde_with = "1.10.0"
 thiserror = "1.0.30"
 
+# TODO: audit this
+disjoint-set = "0.0.2"
+
 commitment_dlog = { path = "../poly-commitment" }
 groupmap = { path = "../groupmap" }
 mina-curves = { path = "../curves" }
