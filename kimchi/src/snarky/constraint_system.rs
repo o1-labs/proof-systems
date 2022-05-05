@@ -300,4 +300,51 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
         }
         res
     }
+
+    /** Compute the witness, given the constraint system `sys`
+       and a function that converts the indexed secret inputs to their concrete values.
+    */
+    fn compute_witness<F: Fn(usize) -> Field>(self: &Self, external_values: F) -> Vec<Vec<Field>> {
+        let mut internal_values = HashMap::new();
+        let public_input_size = self.public_input_size.unwrap();
+        let num_rows = public_input_size + self.next_row;
+        let mut res = vec![vec![Field::zero(); num_rows]; COLUMNS];
+        for i in 0..public_input_size {
+            res[0][i] = external_values(i + 1);
+        }
+        let last_idx = self.rows_rev.len() - 1;
+        for i_after_input in 0..self.rows_rev.len() {
+            let cols = &self.rows_rev[last_idx - i_after_input];
+            let row_idx = i_after_input + public_input_size;
+            for (col_idx, var) in cols.iter().enumerate() {
+                match var {
+                    None => (),
+                    Some(V::External(var)) => res[col_idx][row_idx] = external_values(*var),
+                    Some(V::Internal(var)) => {
+                        let (lc, c) = {
+                            match self.internal_vars.get(var) {
+                                None => panic!("Could not find {:?}", var),
+                                Some(x) => x,
+                            }
+                        };
+                        let value = {
+                            lc.iter().fold(c.unwrap_or(Field::zero()), |acc, (s, x)| {
+                                let x = match x {
+                                    V::External(x) => external_values(*x),
+                                    V::Internal(x) => match internal_values.get(x) {
+                                        None => panic!("Could not find {:?}", *x),
+                                        Some(value) => *value,
+                                    },
+                                };
+                                acc + (*s * x)
+                            })
+                        };
+                        res[col_idx][row_idx] = value;
+                        internal_values.insert(var, value);
+                    }
+                }
+            }
+        }
+        res
+    }
 }
