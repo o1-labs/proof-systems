@@ -251,7 +251,7 @@ struct SnarkyConstraintSystem<Field, RustGates> {
     /** The row to use the next time we add a constraint. */
     next_row: usize,
     /** The size of the public input (which fills the first rows of our constraint system. */
-    public_input_size: usize,
+    public_input_size: Option<usize>,
     /** Whatever is not public input. */
     auxiliary_input_size: usize,
     /** Queue (of size 1) of generic gate. */
