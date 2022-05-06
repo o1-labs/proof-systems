@@ -173,6 +173,13 @@ pub struct EndoscaleScalarRound<A> {
     x7: A,
 }
 
+pub enum BasicSnarkyConstraint<Var> {
+    Boolean(Var),
+    Equal(Var, Var),
+    Square(Var, Var),
+    R1CS(Var, Var, Var),
+}
+
 /** A PLONK constraint (or gate) can be [Basic], [Poseidon], [EC_add_complete], [EC_scale], [EC_endoscale], or [EC_endoscalar]. */
 pub enum PlonkConstraint<Var, Field> {
     Basic {
@@ -726,6 +733,246 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
                     ],
                 );
                 (Field::one(), ConstantOrVar::Var(res))
+            }
+        }
+    }
+
+    pub fn add_basic_snarky_constraint<Cvar>(
+        self: &mut Self,
+        constraint: BasicSnarkyConstraint<Cvar>,
+    ) where
+        Cvar: SnarkyCvar<Field = Field>,
+    {
+        match constraint {
+            BasicSnarkyConstraint::Square(v1, v2) => {
+                match (self.reduce_lincom(v1), self.reduce_lincom(v2)) {
+                    ((sl, ConstantOrVar::Var(xl)), (so, ConstantOrVar::Var(xo))) =>
+                    /* (sl * xl)^2 = so * xo
+                       sl^2 * xl * xl - so * xo = 0
+                    */
+                    {
+                        self.add_generic_constraint(
+                            Some(xl),
+                            Some(xl),
+                            Some(xo),
+                            vec![Field::zero(), Field::zero(), -so, sl * sl, Field::zero()],
+                        )
+                    }
+                    ((sl, ConstantOrVar::Var(xl)), (so, ConstantOrVar::Constant)) =>
+                    /* TODO: it's hard to read the array of selector values, name them! */
+                    {
+                        self.add_generic_constraint(
+                            Some(xl),
+                            Some(xl),
+                            None,
+                            vec![Field::zero(), Field::zero(), Field::zero(), sl * sl, -so],
+                        )
+                    }
+                    ((sl, ConstantOrVar::Constant), (so, ConstantOrVar::Var(xo))) =>
+                    /* sl^2 = so * xo */
+                    {
+                        self.add_generic_constraint(
+                            None,
+                            None,
+                            Some(xo),
+                            vec![Field::zero(), Field::zero(), so, Field::zero(), -(sl * sl)],
+                        )
+                    }
+                    ((sl, ConstantOrVar::Constant), (so, ConstantOrVar::Constant)) => {
+                        assert_eq!(sl * sl, so)
+                    }
+                }
+            }
+            BasicSnarkyConstraint::R1CS(v1, v2, v3) => match (
+                self.reduce_lincom(v1),
+                self.reduce_lincom(v2),
+                self.reduce_lincom(v3),
+            ) {
+                (
+                    (s1, ConstantOrVar::Var(x1)),
+                    (s2, ConstantOrVar::Var(x2)),
+                    (s3, ConstantOrVar::Var(x3)),
+                ) =>
+                /* s1 x1 * s2 x2 = s3 x3
+                   - s1 s2 (x1 x2) + s3 x3 = 0
+                */
+                {
+                    self.add_generic_constraint(
+                        Some(x1),
+                        Some(x2),
+                        Some(x3),
+                        vec![Field::zero(), Field::zero(), s3, (-s1) * s2, Field::zero()],
+                    )
+                }
+                (
+                    (s1, ConstantOrVar::Var(x1)),
+                    (s2, ConstantOrVar::Var(x2)),
+                    (s3, ConstantOrVar::Constant),
+                ) => self.add_generic_constraint(
+                    Some(x1),
+                    Some(x2),
+                    None,
+                    vec![Field::zero(), Field::zero(), Field::zero(), (s1 * s2), -s3],
+                ),
+                (
+                    (s1, ConstantOrVar::Var(x1)),
+                    (s2, ConstantOrVar::Constant),
+                    (s3, ConstantOrVar::Var(x3)),
+                ) =>
+                /* s1 x1 * s2 = s3 x3 */
+                {
+                    self.add_generic_constraint(
+                        Some(x1),
+                        None,
+                        Some(x3),
+                        vec![(s1 * s2), Field::zero(), -s3, Field::zero(), Field::zero()],
+                    )
+                }
+                (
+                    (s1, ConstantOrVar::Constant),
+                    (s2, ConstantOrVar::Var(x2)),
+                    (s3, ConstantOrVar::Var(x3)),
+                ) => self.add_generic_constraint(
+                    None,
+                    Some(x2),
+                    Some(x3),
+                    vec![Field::zero(), (s1 * s2), -s3, Field::zero(), Field::zero()],
+                ),
+                (
+                    (s1, ConstantOrVar::Var(x1)),
+                    (s2, ConstantOrVar::Constant),
+                    (s3, ConstantOrVar::Constant),
+                ) => self.add_generic_constraint(
+                    Some(x1),
+                    None,
+                    None,
+                    vec![(s1 * s2), Field::zero(), Field::zero(), Field::zero(), -s3],
+                ),
+                (
+                    (s1, ConstantOrVar::Constant),
+                    (s2, ConstantOrVar::Var(x2)),
+                    (s3, ConstantOrVar::Constant),
+                ) => self.add_generic_constraint(
+                    None,
+                    None,
+                    Some(x2),
+                    vec![Field::zero(), (s1 * s2), Field::zero(), Field::zero(), -s3],
+                ),
+                (
+                    (s1, ConstantOrVar::Constant),
+                    (s2, ConstantOrVar::Constant),
+                    (s3, ConstantOrVar::Var(x3)),
+                ) => self.add_generic_constraint(
+                    None,
+                    None,
+                    Some(x3),
+                    vec![Field::zero(), Field::zero(), s3, Field::zero(), (-s1) * s2],
+                ),
+                (
+                    (s1, ConstantOrVar::Constant),
+                    (s2, ConstantOrVar::Constant),
+                    (s3, ConstantOrVar::Constant),
+                ) => assert_eq!(s3, s1 * s2),
+            },
+            BasicSnarkyConstraint::Boolean(v) => {
+                let (s, x) = self.reduce_lincom(v);
+                match x {
+                    ConstantOrVar::Var(x) =>
+                    /* -x + x * x = 0  */
+                    {
+                        self.add_generic_constraint(
+                            Some(x),
+                            Some(x),
+                            None,
+                            vec![
+                                -Field::one(),
+                                Field::zero(),
+                                Field::zero(),
+                                Field::one(),
+                                Field::zero(),
+                            ],
+                        )
+                    }
+                    ConstantOrVar::Constant => assert_eq!(s, (s * s)),
+                }
+            }
+            BasicSnarkyConstraint::Equal(v1, v2) => {
+                let ((s1, x1), (s2, x2)) = (self.reduce_lincom(v1), self.reduce_lincom(v2));
+                match (x1, x2) {
+                    (ConstantOrVar::Var(x1), ConstantOrVar::Var(x2)) => {
+                        /* TODO: This logic is wrong, but matches the OCaml side. Fix both. */
+                        if s1 == s2 {
+                            if !s1.is_zero() {
+                                self.union_find(x1);
+                                self.union_find(x2);
+                                assert!(self.union_finds.union(x1, x2).is_ok());
+                            }
+                        } else if
+                        /* s1 x1 - s2 x2 = 0 */
+                        s1 != s2 {
+                            self.add_generic_constraint(
+                                Some(x1),
+                                Some(x2),
+                                None,
+                                vec![s1, -s2, Field::zero(), Field::zero(), Field::zero()],
+                            )
+                        } else {
+                            self.add_generic_constraint(
+                                Some(x1),
+                                Some(x2),
+                                None,
+                                vec![s1, -s2, Field::zero(), Field::zero(), Field::zero()],
+                            )
+                        }
+                    }
+                    (ConstantOrVar::Var(x1), ConstantOrVar::Constant) => {
+                        /* s1 * x1 = s2
+                           x1 = s2 / s1
+                        */
+                        let ratio = s2 / s1;
+                        match self.cached_constants.get(&ratio) {
+                            Some(x2) => {
+                                let x2 = x2.clone();
+                                self.union_find(x1);
+                                self.union_find(x2);
+                                assert!(self.union_finds.union(x1, x2).is_ok());
+                            }
+                            None => {
+                                self.add_generic_constraint(
+                                    Some(x1),
+                                    None,
+                                    None,
+                                    vec![s1, Field::zero(), Field::zero(), Field::zero(), -s2],
+                                );
+                                self.cached_constants.insert(ratio, x1);
+                            }
+                        }
+                    }
+                    (ConstantOrVar::Constant, ConstantOrVar::Var(x2)) => {
+                        /* s1 = s2 * x2
+                           x2 = s1 / s2
+                        */
+                        let ratio = s1 / s2;
+                        match self.cached_constants.get(&ratio) {
+                            Some(x1) => {
+                                let x1 = x1.clone();
+                                self.union_find(x1);
+                                self.union_find(x2);
+                                assert!(self.union_finds.union(x1, x2).is_ok());
+                            }
+                            None => {
+                                self.add_generic_constraint(
+                                    None,
+                                    Some(x2),
+                                    None,
+                                    vec![Field::zero(), s2, Field::zero(), Field::zero(), -s1],
+                                );
+                                self.cached_constants.insert(ratio, x2);
+                            }
+                        }
+                    }
+                    (ConstantOrVar::Constant, ConstantOrVar::Constant) => assert_eq!(s1, s2),
+                }
             }
         }
     }
