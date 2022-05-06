@@ -3,11 +3,6 @@
 #[macro_use]
 extern crate num_derive;
 
-pub use cairo::{
-    memory::CairoMemory,
-    runner::{CairoInstruction, CairoProgram, Pointers},
-    word::{FlagBits, Offsets},
-};
 pub use commitment_dlog::{
     commitment::{
         b_poly, b_poly_coefficients, combined_inner_product, BatchEvaluationProof, CommitmentCurve,

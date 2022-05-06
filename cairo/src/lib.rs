@@ -9,3 +9,7 @@ pub mod helper;
 pub mod memory;
 pub mod runner;
 pub mod word;
+
+pub use memory::CairoMemory;
+pub use runner::{CairoInstruction, CairoProgram, Pointers};
+pub use word::{FlagBits, Offsets};
