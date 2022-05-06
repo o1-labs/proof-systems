@@ -181,7 +181,7 @@ pub enum BasicSnarkyConstraint<Var> {
 }
 
 /** A PLONK constraint (or gate) can be [Basic], [Poseidon], [EC_add_complete], [EC_scale], [EC_endoscale], or [EC_endoscalar]. */
-pub enum PlonkConstraint<Var, Field> {
+pub enum KimchiConstraint<Var, Field> {
     Basic {
         l: (Field, Var),
         r: (Field, Var),
