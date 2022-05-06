@@ -595,6 +595,7 @@ where
     let terms = accumulate_terms(terms);
     let mut terms_list: Vec<_> = terms.into_iter().map(|(key, data)| (data, key)).collect();
     terms_list.sort();
+    terms_list.reverse();
     let num_terms = terms_list.len();
     Some((terms_list, num_terms, has_constant_term))
 }
@@ -639,7 +640,11 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
     - return (1, internal_var_2)
 
     It assumes that the list of terms is not empty. */
-    fn completely_reduce(self: &mut Self, terms: Vec<(Field, usize)>) -> (Field, V) {
+    fn completely_reduce<Terms>(self: &mut Self, terms: Terms) -> (Field, V)
+    where
+        Terms: IntoIterator<Item = (Field, usize)>,
+        <Terms as IntoIterator>::IntoIter: DoubleEndedIterator,
+    {
         let mut res = None;
         for last in terms.into_iter().rev() {
             match res {
@@ -663,4 +668,67 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
         }
         res.expect("At least one term")
     }
+
+    /** Converts a linear combination of variables into a set of constraints.
+      It returns the output variable as (1, `Var res),
+      unless the output is a constant, in which case it returns (c, `Constant).
+    */
+    fn reduce_lincom<Cvar>(self: &mut Self, x: Cvar) -> (Field, ConstantOrVar)
+    where
+        Cvar: SnarkyCvar<Field = Field>,
+    {
+        let (constant, terms) = x.to_constant_and_terms();
+        let terms = accumulate_terms(terms);
+        let mut terms_list: Vec<_> = terms.into_iter().map(|(key, data)| (data, key)).collect();
+        /* WARNING: The order here may differ from the OCaml order, since that depends on the order
+        of the map. */
+        terms_list.sort();
+        terms_list.reverse();
+        match (constant, terms_list.len()) {
+            (Some(c), 0) => (c, ConstantOrVar::Constant),
+            (None, 0) => (Field::zero(), ConstantOrVar::Constant),
+            (None, 1) => {
+                let (ls, lx) = &terms_list[0];
+                (*ls, ConstantOrVar::Var(V::External(*lx)))
+            }
+            (Some(c), 1) => {
+                let (ls, lx) = &terms_list[0];
+                /* res = ls * lx + c */
+                let res = self.create_internal(Some(c), vec![(*ls, V::External(*lx))]);
+                self.add_generic_constraint(
+                    Some(V::External(*lx)),
+                    None,
+                    Some(res),
+                    vec![*ls, Field::zero(), -Field::one(), Field::zero(), c],
+                );
+                (Field::one(), ConstantOrVar::Var(res))
+            }
+            _ => {
+                /* reduce the terms, then add the constant */
+                let mut terms_list_iterator = terms_list.into_iter();
+                let (ls, lx) = terms_list_iterator.next().unwrap();
+                let (rs, rx) = self.completely_reduce(terms_list_iterator);
+                let res = self.create_internal(constant, vec![(ls, V::External(lx)), (rs, rx)]);
+                /* res = ls * lx + rs * rx + c */
+                self.add_generic_constraint(
+                    Some(V::External(lx)),
+                    Some(rx),
+                    Some(res),
+                    vec![
+                        ls,
+                        rs,
+                        -Field::one(),
+                        Field::zero(),
+                        constant.unwrap_or(Field::zero()),
+                    ],
+                );
+                (Field::one(), ConstantOrVar::Var(res))
+            }
+        }
+    }
+}
+
+enum ConstantOrVar {
+    Constant,
+    Var(V),
 }
