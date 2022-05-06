@@ -578,6 +578,7 @@ pub trait SnarkyCvar {
 
     fn to_constant_and_terms(self: &Self) -> (Option<Self::Field>, Vec<(Self::Field, usize)>);
 }
+
 pub fn canonicalize<Cvar>(x: Cvar) -> Option<(Vec<(Cvar::Field, usize)>, usize, bool)>
 where
     Cvar: SnarkyCvar,
@@ -596,4 +597,30 @@ where
     terms_list.sort();
     let num_terms = terms_list.len();
     Some((terms_list, num_terms, has_constant_term))
+}
+
+impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Gates> {
+    /** Adds a generic constraint to the constraint system.
+    As there are two generic gates per row, we queue
+    every other generic gate.
+    */
+    fn add_generic_constraint(
+        self: &mut Self,
+        l: Option<V>,
+        r: Option<V>,
+        o: Option<V>,
+        mut coeffs: Vec<Field>,
+    ) {
+        match self.pending_generic_gate {
+            None => self.pending_generic_gate = Some((l, r, o, coeffs)),
+            Some(_) => {
+                if let Some((l2, r2, o2, coeffs2)) =
+                    std::mem::replace(&mut self.pending_generic_gate, None)
+                {
+                    coeffs.extend(coeffs2);
+                    self.add_row(vec![l, r, o, l2, r2, o2], GateType::Generic, coeffs);
+                }
+            }
+        }
+    }
 }
