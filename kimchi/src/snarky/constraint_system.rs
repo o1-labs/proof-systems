@@ -4,7 +4,7 @@ use ark_ff::FftField;
 use std::collections::{HashMap, HashSet};
 
 /** A gate interface, parameterized by a field. */
-trait GateVector<Field: FftField> {
+pub trait GateVector<Field: FftField> {
     fn create() -> Self;
     fn add(self: &mut Self, gate: CircuitGate<Field>);
     fn get(self: &Self, idx: usize) -> CircuitGate<Field>;
@@ -131,7 +131,7 @@ impl<Field: FftField> GateSpec<usize, Field> {
     }
 }
 
-struct ScaleRound<A> {
+pub struct ScaleRound<A> {
     accs: Vec<(A, A)>,
     bits: Vec<A>,
     ss: Vec<A>,
@@ -140,7 +140,7 @@ struct ScaleRound<A> {
     n_next: A,
 }
 
-struct EndoscaleRound<A> {
+pub struct EndoscaleRound<A> {
     xt: A,
     yt: A,
     xp: A,
@@ -156,7 +156,7 @@ struct EndoscaleRound<A> {
     b4: A,
 }
 
-struct EndoscaleScalarRound<A> {
+pub struct EndoscaleScalarRound<A> {
     n0: A,
     n8: A,
     a0: A,
@@ -174,7 +174,7 @@ struct EndoscaleScalarRound<A> {
 }
 
 /** A PLONK constraint (or gate) can be [Basic], [Poseidon], [EC_add_complete], [EC_scale], [EC_endoscale], or [EC_endoscalar]. */
-enum PlonkConstraint<Var, Field> {
+pub enum PlonkConstraint<Var, Field> {
     Basic {
         l: (Field, Var),
         r: (Field, Var),
@@ -305,7 +305,10 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
     /** Compute the witness, given the constraint system `sys`
        and a function that converts the indexed secret inputs to their concrete values.
     */
-    fn compute_witness<F: Fn(usize) -> Field>(self: &Self, external_values: F) -> Vec<Vec<Field>> {
+    pub fn compute_witness<F: Fn(usize) -> Field>(
+        self: &Self,
+        external_values: F,
+    ) -> Vec<Vec<Field>> {
         let mut internal_values = HashMap::new();
         let public_input_size = self.public_input_size.unwrap();
         let num_rows = public_input_size + self.next_row;
