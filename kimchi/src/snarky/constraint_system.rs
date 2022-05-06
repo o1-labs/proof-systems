@@ -623,4 +623,44 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
             }
         }
     }
+
+    /** Converts a number of scaled additions \sum s_i * x_i
+    to as many constraints as needed,
+    creating temporary variables for each new row/constraint,
+    and returning the output variable.
+
+    For example, [(s1, x1), (s2, x2)] is transformed into:
+    - internal_var_1 = s1 * x1 + s2 * x2
+    - return (1, internal_var_1)
+
+    and [(s1, x1), (s2, x2), (s3, x3)] is transformed into:
+    - internal_var_1 = s1 * x1 + s2 * x2
+    - internal_var_2 = 1 * internal_var_1 + s3 * x3
+    - return (1, internal_var_2)
+
+    It assumes that the list of terms is not empty. */
+    fn completely_reduce(self: &mut Self, terms: Vec<(Field, usize)>) -> (Field, V) {
+        let mut res = None;
+        for last in terms.into_iter().rev() {
+            match res {
+                None => {
+                    let (s, x) = last;
+                    res = Some((s, V::External(x)));
+                }
+                Some((rs, rx)) => {
+                    let (ls, lx) = last;
+                    let lx = V::External(lx);
+                    let s1x1_plus_s2x2 = self.create_internal(None, vec![(ls, lx), (rs, rx)]);
+                    self.add_generic_constraint(
+                        Some(lx),
+                        Some(rx),
+                        Some(s1x1_plus_s2x2),
+                        vec![ls, rs, -Field::one(), Field::zero(), Field::zero()],
+                    );
+                    res = Some((Field::one(), s1x1_plus_s2x2));
+                }
+            }
+        }
+        res.expect("At least one term")
+    }
 }
