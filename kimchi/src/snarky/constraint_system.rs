@@ -541,3 +541,34 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
         }
     }
 }
+
+/** Regroup terms that share the same variable.
+    For example, (3, i2) ; (2, i2) can be simplified to (5, i2).
+    It assumes that the list of given terms is sorted,
+    and that i0 is the smallest one.
+    For example, `i0 = 1` and `terms = [(_, 2); (_, 2); (_; 4); ...]`
+
+    Returns `(last_scalar, last_variable, terms, terms_length)`
+    where terms does not contain the last scalar and last variable observed.
+*/
+fn accumulate_terms<Field: FftField>(terms: Vec<(Field, usize)>) -> HashMap<usize, Field> {
+    let mut acc = HashMap::new();
+    for (x, i) in terms.into_iter() {
+        match acc.entry(i) {
+            std::collections::hash_map::Entry::Occupied(mut entry) => {
+                let res = x + entry.get();
+                if res.is_zero() {
+                    entry.remove();
+                } else {
+                    *entry.get_mut() = res;
+                }
+            }
+            std::collections::hash_map::Entry::Vacant(entry) => {
+                if !x.is_zero() {
+                    entry.insert(x);
+                }
+            }
+        }
+    }
+    acc
+}
