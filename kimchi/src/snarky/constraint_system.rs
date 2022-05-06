@@ -976,6 +976,74 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
             }
         }
     }
+
+    pub fn add_constraint<Cvar>(self: &mut Self, constraint: KimchiConstraint<Cvar, Field>)
+    where
+        Cvar: SnarkyCvar<Field = Field>,
+    {
+        match constraint {
+            KimchiConstraint::Basic { l, r, o, m, c } => {
+                /* 0
+                   = l.s * l.x
+                   + r.s * r.x
+                   + o.s * o.x
+                   + m * (l.x * r.x)
+                   + c
+                   =
+                     l.s * l.s' * l.x'
+                   + r.s * r.s' * r.x'
+                   + o.s * o.s' * o.x'
+                   + m * (l.s' * l.x' * r.s' * r.x')
+                   + c
+                   =
+                     (l.s * l.s') * l.x'
+                   + (r.s * r.s') * r.x'
+                   + (o.s * o.s') * o.x'
+                   + (m * l.s' * r.s') * l.x' r.x'
+                   + c
+                */
+                let mut c = c;
+                let mut red_pr = |(s, x)| match self.reduce_lincom(x) {
+                    (s2, ConstantOrVar::Constant) => {
+                        c += s * s2;
+                        (s2, None)
+                    }
+                    (s2, ConstantOrVar::Var(x)) => (s2, Some((s * s2, x))),
+                };
+                /* l.s * l.x
+                   + r.s * r.x
+                   + o.s * o.x
+                   + m * (l.x * r.x)
+                   + c
+                   =
+                     l.s * l.s' * l.x'
+                   + r.s * r.x
+                   + o.s * o.x
+                   + m * (l.x * r.x)
+                   + c
+                   =
+                */
+                let (l_s, l) = red_pr(l);
+                let (r_s, r) = red_pr(r);
+                let (_, o) = red_pr(o);
+                let var = |x: Option<_>| x.map(|(_, x)| x);
+                let coeff = |x: Option<_>| x.map_or(Field::zero(), |(x, _)| x);
+                let m = match (l, r) {
+                    (Some(_), Some(_)) => l_s * r_s * m,
+                    _ => {
+                        panic!("Must use non-constant car in plonk constraints")
+                    }
+                };
+                self.add_generic_constraint(
+                    var(l),
+                    var(r),
+                    var(o),
+                    vec![coeff(l), coeff(r), coeff(o), m, c],
+                )
+            }
+            _ => unimplemented!(),
+        }
+    }
 }
 
 enum ConstantOrVar {
