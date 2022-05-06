@@ -141,11 +141,25 @@ pub struct WitnessGenerator<F> {
 type Row<V> = [V; COLUMNS];
 
 pub trait Cs<F: FftField + PrimeField> {
+    /// In cases where you want to create a free variable in the circuit,
+    /// as in the variable is not constrained _yet_
+    /// and can be anything that the prover wants.
+    /// For example, division can be implemented as:
+    ///
+    /// ```
+    /// let a = sys.constant(5u32.into());
+    /// let b = sys.constant(10u32.into());
+    /// let c = sys.var(|| {
+    ///    b.value * a.value.inverse().unwrap()
+    /// });
+    /// sys.assert_eq(a * c, b);
+    /// ```
+    ///
     fn var<G>(&mut self, g: G) -> Var<F>
     where
         G: FnOnce() -> F;
 
-    fn curr_gate_count(&self) -> usize;
+    fn len(&self) -> usize;
 
     fn endo_scalar<G, N: BigInteger>(&mut self, length: usize, g: G) -> Var<F>
     where
@@ -182,10 +196,14 @@ pub trait Cs<F: FftField + PrimeField> {
         ShiftedScalar(v)
     }
 
+    /// In circuit mode, adds a gate to the circuit.
+    /// In witness generation mode, adds the corresponding row to the witness.
     fn gate(&mut self, g: GateSpec<F>);
 
     // TODO: Optimize to use permutation argument.
     fn assert_eq(&mut self, x1: Var<F>, x2: Var<F>) {
+        // | 0  | 1  | 2 | ...
+        // | x1 | x2 | 0 | ...
         let row = array_init(|i| {
             if i == 0 {
                 x1
@@ -196,6 +214,7 @@ pub trait Cs<F: FftField + PrimeField> {
             }
         });
 
+        // constrain `x1 - x2 = 0`
         let mut c = vec![F::zero(); GENERIC_ROW_COEFFS];
         c[0] = F::one();
         c[1] = -F::one();
@@ -771,7 +790,7 @@ impl<F: FftField + PrimeField> Cs<F> for WitnessGenerator<F> {
         }
     }
 
-    fn curr_gate_count(&self) -> usize {
+    fn len(&self) -> usize {
         self.rows.len()
     }
 
@@ -781,6 +800,7 @@ impl<F: FftField + PrimeField> Cs<F> for WitnessGenerator<F> {
 }
 
 impl<F: FftField> WitnessGenerator<F> {
+    /// Returns the columns of the witness.
     fn columns(&self) -> [Vec<F>; COLUMNS] {
         array_init(|col| self.rows.iter().map(|row| row[col]).collect())
     }
@@ -796,7 +816,7 @@ impl<F: FftField + PrimeField> Cs<F> for System<F> {
         }
     }
 
-    fn curr_gate_count(&self) -> usize {
+    fn len(&self) -> usize {
         self.gates.len()
     }
 
@@ -806,33 +826,43 @@ impl<F: FftField + PrimeField> Cs<F> for System<F> {
 }
 
 impl<F: FftField> System<F> {
+    /// Compiles our intermediate representation into a circuit.
     pub fn gates(&self) -> Vec<CircuitGate<F>> {
         let mut first_cell: HashMap<usize, Wire> = HashMap::new();
         let mut most_recent_cell: HashMap<usize, Wire> = HashMap::new();
         let mut gates = vec![];
 
-        for (i, gs) in self.gates.iter().enumerate() {
-            let wires = array_init(|j| -> Wire {
-                let v = gs.row[j].index;
-                let curr = Wire { row: i, col: j };
-                match most_recent_cell.insert(v, curr) {
+        // convert GateSpec into CircuitGate
+        for (row, gate) in self.gates.iter().enumerate() {
+            // while tracking the wiring
+            let wires = array_init(|col| -> Wire {
+                let var = gate.row[col].index;
+                let curr = Wire { row, col };
+
+                // wire this cell to the previous one
+                match most_recent_cell.insert(var, curr) {
                     Some(w) => w,
+                    // unless it is the first cell,
+                    // in which case we just save it for the very end
+                    // (to complete the cycle)
                     None => {
-                        first_cell.insert(v, curr);
+                        first_cell.insert(var, curr);
                         curr
                     }
                 }
             });
+
             let g = CircuitGate {
-                typ: gs.typ,
-                coeffs: gs.c.clone(),
+                typ: gate.typ,
+                coeffs: gate.c.clone(),
                 wires,
             };
             gates.push(g);
         }
 
-        for (v, first) in first_cell.iter() {
-            let last = *most_recent_cell.get(v).unwrap();
+        // finish the permutation cycle
+        for (var, first) in first_cell.iter() {
+            let last = *most_recent_cell.get(var).unwrap();
             gates[first.row].wires[first.col] = last;
         }
 
@@ -840,22 +870,21 @@ impl<F: FftField> System<F> {
     }
 }
 
-pub fn prove<
-    G: CommitmentCurve,
-    H,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-    EFrSponge: FrSponge<G::ScalarField>,
->(
+pub fn prove<G, H, EFqSponge, EFrSponge>(
     index: &ProverIndex<G>,
     group_map: &G::Map,
     blinders: Option<[Option<G::ScalarField>; COLUMNS]>,
     public_input: Vec<G::ScalarField>,
-    main: H,
+    mut main: H,
 ) -> ProverProof<G>
 where
-    H: FnOnce(&mut WitnessGenerator<G::ScalarField>, Vec<Var<G::ScalarField>>),
+    H: FnMut(&mut WitnessGenerator<G::ScalarField>, Vec<Var<G::ScalarField>>),
     G::BaseField: PrimeField,
+    G: CommitmentCurve,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+    EFrSponge: FrSponge<G::ScalarField>,
 {
+    // create the public rows
     let mut gen: WitnessGenerator<G::ScalarField> = WitnessGenerator {
         rows: public_input
             .iter()
@@ -863,19 +892,20 @@ where
             .collect(),
     };
 
-    main(
-        &mut gen,
-        public_input
-            .iter()
-            .map(|x| Var {
-                index: 0,
-                value: Some(*x),
-            })
-            .collect(),
-    );
+    // run the witness generation
+    let public_vars = public_input
+        .iter()
+        .map(|x| Var {
+            index: 0,
+            value: Some(*x),
+        })
+        .collect();
+    main(&mut gen, public_vars);
 
+    // get the witness columns
     let columns = gen.columns();
 
+    // TODO: woot??
     let blinders: [Option<PolyComm<G::ScalarField>>; COLUMNS] = match blinders {
         None => array_init(|_| None),
         Some(bs) => array_init(|i| {
@@ -886,6 +916,7 @@ where
         }),
     };
 
+    // create the proof
     ProverProof::create_recursive::<EFqSponge, EFrSponge>(
         group_map,
         columns,
@@ -896,7 +927,7 @@ where
     .unwrap()
 }
 
-pub fn generate_prover_index<C: Cycle, H>(
+pub fn generate_prover_index<C, H>(
     srs: std::sync::Arc<SRS<C::Outer>>,
     constants: &Constants<C::InnerField>,
     poseidon_params: &ArithmeticSpongeParams<C::OuterField>,
@@ -905,6 +936,7 @@ pub fn generate_prover_index<C: Cycle, H>(
 ) -> ProverIndex<C::Outer>
 where
     H: FnOnce(&mut System<C::InnerField>, Vec<Var<C::InnerField>>),
+    C: Cycle,
 {
     let mut system: System<C::InnerField> = System {
         next_variable: 0,
@@ -912,6 +944,7 @@ where
     };
     let z = C::InnerField::zero();
 
+    // create public input variables
     let public_input_row = vec![C::InnerField::one(), z, z, z, z, z, z, z, z, z];
     let public_input: Vec<_> = (0..public)
         .map(|_| {
