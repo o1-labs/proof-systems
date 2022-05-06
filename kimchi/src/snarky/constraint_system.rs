@@ -572,3 +572,28 @@ fn accumulate_terms<Field: FftField>(terms: Vec<(Field, usize)>) -> HashMap<usiz
     }
     acc
 }
+
+pub trait SnarkyCvar {
+    type Field;
+
+    fn to_constant_and_terms(self: &Self) -> (Option<Self::Field>, Vec<(Self::Field, usize)>);
+}
+pub fn canonicalize<Cvar>(x: Cvar) -> Option<(Vec<(Cvar::Field, usize)>, usize, bool)>
+where
+    Cvar: SnarkyCvar,
+    Cvar::Field: FftField,
+{
+    let (c, mut terms) = x.to_constant_and_terms();
+    /* Note: [(c, 0)] represents the field element [c] multiplied by the 0th
+       variable, which is held constant as [Field.one].
+    */
+    if let Some(c) = c {
+        terms.push((c, 0));
+    }
+    let has_constant_term = c.is_some();
+    let terms = accumulate_terms(terms);
+    let mut terms_list: Vec<_> = terms.into_iter().map(|(key, data)| (data, key)).collect();
+    terms_list.sort();
+    let num_terms = terms_list.len();
+    Some((terms_list, num_terms, has_constant_term))
+}
