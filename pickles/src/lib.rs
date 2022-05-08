@@ -1,5 +1,5 @@
-/// QUESTION: Could we hope to extract a verfier from the recursive verifier?
-/// (rather than implement twice in Kimchi and Pickles?)
+/// QUESTION: Could we hope to extract a Kimchi verfier from the Pickles descriuption?
+/// (rather than implement twice in Kimchi and Pickles? To simplify maintainence)
 
 /// Step (Tick, over Vesta Curve) proof:
 /// 
@@ -17,6 +17,8 @@ mod plonk;
 
 /// Accumulation for IPA
 mod ipa;
+
+mod context;
 
 mod transcript;
 

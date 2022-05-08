@@ -13,12 +13,17 @@ const COLUMNS: usize = 15;
 /// (remaining columns are gate-hints)
 /// 
 /// 
-const PERMUTS_MINUS_1: usize = 6;
+const PERMUTS: usize = 7;
 
 pub struct Commits<A: AffineCurve> {
-    witness: [A; COLUMNS],
-    s: [A; PERMUTS_MINUS_1],
+    /// Commitment to witness columns
+    w: [A; COLUMNS],
+
+    /// Commitment to permutation polynomial
     z: A,
+
+    /// Commitment to quotient polynomial
+    t: A,
 }
 
 /// We linearlize by:
@@ -27,14 +32,24 @@ pub struct Commits<A: AffineCurve> {
 /// 2. Evaluating the rows checks
 /// 3. Convoluting with the selectors (part of the index)
 pub struct Openings<F: FftField + PrimeField> {
-    witness: [F; COLUMNS],
+    /// Opening of witness polynomial
+    w: [F; COLUMNS],
+
+    /// Opening of permutation polynomial
+    z: F,
+
+    /// Opening of permutation polynomials
+    s: [F; PERMUTS - 1],
+
+    /// Opening of generic selector
+    generic_selector: F,
+
+    /// Opening of Poseidon selector
+    poseidon_selector: F,
 }
 
 /// Abstracted PlonK proof.
 /// https://eprint.iacr.org/2019/953.pdf
-///
-/// A PlonK proof over a general field,
-/// agnostic to the underlaying polynomial commitment scheme.
 ///
 /// The relation verified by the PlonK proofs in Pickles are:
 ///
@@ -46,6 +61,9 @@ pub struct Openings<F: FftField + PrimeField> {
 /// to verify the PlonK proof more efficiently
 /// 
 /// QUESTION: what is the "Poseidon selector"?
+/// 
+/// Note: PlonK proofs are always recursively verified over A::BaseField, 
+/// defering the scalar field operations to the complement proof by committing to the field elements.
 pub struct Plonk<A: AffineCurve> {
     comm: Commits<A>,
     open: Openings<A::ScalarField>,
