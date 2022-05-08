@@ -1,9 +1,5 @@
-
-
 /// State to pass-through to "Step" proof
-struct PassThrough {
-    
-}
+struct PassThrough {}
 
 ///
 struct Proof {}

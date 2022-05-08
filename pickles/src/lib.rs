@@ -1,3 +1,6 @@
+/// QUESTION: Could we hope to extract a verfier from the recursive verifier?
+/// (rather than implement twice in Kimchi and Pickles?)
+
 /// Step (Tick, over Vesta Curve) proof:
 /// 
 /// Application logic proof and verification of the "wrap" verifier.
@@ -14,6 +17,8 @@ mod plonk;
 
 /// Accumulation for IPA
 mod ipa;
+
+mod transcript;
 
 trait Rule {  }
 
