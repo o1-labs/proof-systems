@@ -1,8 +1,8 @@
-use ark_ff::{FftField, PrimeField};
 use ark_ec::AffineCurve;
+use ark_ff::{FftField, PrimeField};
 
-use super::plonk::Plonk;
 use super::ipa::Accumulator;
+use super::plonk::Plonk;
 
 /// State to pass-through to "Wrap" proof:
 struct PassThrough {}
@@ -10,7 +10,7 @@ struct PassThrough {}
 struct Proof<A: AffineCurve> {
     pass: PassThrough,
     accum: Accumulator<A::ScalarField>, // accumulator for the polynomial commitment scheme
-    plonk: Plonk<A>,       // plonk proof
+    plonk: Plonk<A>,                    // plonk proof
 }
 
 ///

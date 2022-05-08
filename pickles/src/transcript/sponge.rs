@@ -1,4 +1,4 @@
-use circuit_construction::{Cs, Var, Constants};
+use circuit_construction::{Constants, Cs, Var};
 
 use ark_ff::{FftField, PrimeField};
 
@@ -14,15 +14,19 @@ pub(super) struct ZkSponge<F: FftField + PrimeField> {
     constants: Constants<F>,
 }
 
-impl <F: FftField + PrimeField> ZkSponge<F> {
+impl<F: FftField + PrimeField> ZkSponge<F> {
     pub fn new(constants: Constants<F>) -> Self {
-        ZkSponge{
+        ZkSponge {
             state: unimplemented!(),
-            constants
+            constants,
         }
     }
 
-    pub fn absorb<'b, C: Cs<F>, I: Iterator<Item = &'b Var<F>>>(&mut self, cs: &mut C, mut vars: I) {
+    pub fn absorb<'b, C: Cs<F>, I: Iterator<Item = &'b Var<F>>>(
+        &mut self,
+        cs: &mut C,
+        mut vars: I,
+    ) {
         for var in vars {
             // TODO: implement
         }

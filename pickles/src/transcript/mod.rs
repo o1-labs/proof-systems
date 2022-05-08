@@ -1,26 +1,28 @@
-use circuit_construction::{Cs, Var, Constants};
+use circuit_construction::{Constants, Cs, Var};
 
 use ark_ff::{FftField, PrimeField};
 
 mod sponge;
 
+use super::MutualContext;
+
 use sponge::ZkSponge;
 
 /// Defered hash transcript
-/// 
-/// 
+///
+///
 /// # Dealing with Fr elements
-/// 
+///
 /// A fresh sponge is initialized on the complement side:
-/// 
-/// The intermediate digest value is then 
+///
+/// The intermediate digest value is then
 /// provided as part of the statement on the current side:
 ///  
 /// Schematically it looks something like this:
-/// 
+///
 /// ```
 /// On current side:
-/// 
+///
 ///   transcript, h1, h2, transcript_new (statement)
 ///       |       |   |        |
 /// m1 -> H       |   |        |
@@ -34,7 +36,7 @@ use sponge::ZkSponge;
 ///       H <---------/        |
 ///       |                    |
 ///       \---------------------
-/// 
+///
 /// On complement side:
 ///
 ///             zero state
@@ -45,19 +47,19 @@ use sponge::ZkSponge;
 ///                |
 ///                |
 ///     
-/// 
-/// 
+///
+///
 /// ```
-/// 
-/// 
-/// Include the final hash state in the statement of the 
+///
+///
+/// Include the final hash state in the statement of the
 
 /// An efficient transcript hash
-/// 
-/// 
-/// Assumes (for soundness) that there is no ambiguity 
+///
+///
+/// Assumes (for soundness) that there is no ambiguity
 /// in the order between native and foreign field elements
-/// 
+///
 /// In practice: Fp is always going to be the base field of the Plonk proof,
 /// while Fr is the scalar field of the Plonk proof
 struct Transcript<Fp: FftField + PrimeField, Fr: FftField + PrimeField> {
@@ -65,7 +67,6 @@ struct Transcript<Fp: FftField + PrimeField, Fr: FftField + PrimeField> {
     fr_vars: Vec<Var<Fr>>,
     comm: Option<Var<Fp>>, // Commitment to Sponge value (last value squeezed after absorbind)
 }
-
 
 impl<Fp, Fr> Transcript<Fp, Fr>
 where
@@ -83,12 +84,11 @@ where
     }
 
     /// Get an Fp challenge from the verifier
-    /// 
+    ///
     /// Yields a variable in the native field containing a challenge.
-    fn squeeze<Cp: Cs<Fp>, Cr: Cs<Fr>>(
-        &mut self, 
-        cs_fp: &mut Cp,
-        cs_fr: &mut Cr
+    fn squeeze<CsFp: Cs<Fp>, CsFr: Cs<Fr>>(
+        &mut self,
+        ctx: &mut MutualContext<Fp, Fr, CsFp, CsFr>, //
     ) -> Var<Fp> {
         /*
         // "Apply" Fp sponge (to "consume" Fp elements)
@@ -98,25 +98,27 @@ where
         //  1. Create a fresh Fr sponge
         //  2. "Consume" Fr elements in the Cr proof system
         //  3. Add the Fr digest to the statmement
-        //  4. 
-        
+        //  4.
+
         let actual_hash = cs_fq.poseidon(constants, vec![preimage, zero, zero])[0];
         */
         if !self.fr_vars.is_empty() {
-            let mut fr_zk_sponge: ZkSponge<Fr> = ZkSponge::new(unimplemented!());
-        }
+            // create fresh sponge
+            let mut fr_zk_sponge: ZkSponge<Fr> = ZkSponge::new(ctx.fr.constants.clone());
 
+            // absorb queued Fr variables
+
+            // enforce binding between proofs
+        }
 
         // Squeeeeze!
         unimplemented!()
     }
 
     /// Squeeze a 128-bit (endo-scalar) challenge
-    fn sqeeze_chal() {
+    fn squeeze_chal() {}
 
-    }
-
-    // Commits to the current transcripts and 
+    // Commits to the current transcripts and
     // flips the fields in the transcript for on the complement side
     fn flip(self) -> Transcript<Fr, Fp> {
         unimplemented!()

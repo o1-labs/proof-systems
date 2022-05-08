@@ -1,5 +1,5 @@
-use ark_ff::{FftField, PrimeField};
 use ark_ec::AffineCurve;
+use ark_ff::{FftField, PrimeField};
 
 use oracle::sponge::ScalarChallenge;
 
@@ -11,8 +11,8 @@ const COLUMNS: usize = 15;
 
 /// Number of columns in permutation argument
 /// (remaining columns are gate-hints)
-/// 
-/// 
+///
+///
 const PERMUTS: usize = 7;
 
 pub struct Commits<A: AffineCurve> {
@@ -27,7 +27,7 @@ pub struct Commits<A: AffineCurve> {
 }
 
 /// We linearlize by:
-/// 
+///
 /// 1. Opening the witness columns
 /// 2. Evaluating the rows checks
 /// 3. Convoluting with the selectors (part of the index)
@@ -59,10 +59,10 @@ pub struct Openings<F: FftField + PrimeField> {
 ///
 /// TODO: some of these should be Endoscalar challenges
 /// to verify the PlonK proof more efficiently
-/// 
+///
 /// QUESTION: what is the "Poseidon selector"?
-/// 
-/// Note: PlonK proofs are always recursively verified over A::BaseField, 
+///
+/// Note: PlonK proofs are always recursively verified over A::BaseField,
 /// defering the scalar field operations to the complement proof by committing to the field elements.
 pub struct Plonk<A: AffineCurve> {
     comm: Commits<A>,

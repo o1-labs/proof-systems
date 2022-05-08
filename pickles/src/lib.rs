@@ -2,13 +2,13 @@
 /// (rather than implement twice in Kimchi and Pickles? To simplify maintainence)
 
 /// Step (Tick, over Vesta Curve) proof:
-/// 
+///
 /// Application logic proof and verification of the "wrap" verifier.
-/// 
+///
 mod step;
 
 /// Wrap (Tock, over Pallas Curve) proof:
-/// 
+///
 /// Proof of correct execution of the "step" verifier
 mod wrap;
 
@@ -20,12 +20,14 @@ mod ipa;
 
 mod context;
 
+use context::MutualContext;
+
 mod transcript;
 
-trait Rule {  }
+trait Rule {}
 
 /// An inductive set defined by an enumerable set of production rules
-/// 
+///
 /// A set produces a single prover/verifier
 trait Set {
     /// The production rule
@@ -44,9 +46,7 @@ enum VoteRules {
     Tally(),
 }
 
-impl Rule for VoteRules {
-
-}
+impl Rule for VoteRules {}
 
 /// Production rules for votes
 struct Votes {
@@ -60,7 +60,7 @@ impl Set for Votes {
 
     //
     type Rules = std::array::IntoIter<Self::Rule, 2>;
-    
+
     fn enum_rules() -> Self::Rules {
         [VoteRules::Base(), VoteRules::Tally()].into_iter()
     }
