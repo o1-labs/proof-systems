@@ -321,18 +321,9 @@ where
             //~     - Compute the lookup aggregation polynomial.
             let joint_lookup_table_d8 = lookup_context.joint_lookup_table_d8.as_ref().unwrap();
 
-            let joint_lookup_table = {
-                let mut evals = vec![];
-
-                for e in joint_lookup_table_d8.evals.iter().step_by(8) {
-                    evals.push(*e);
-                }
-                Evaluations::from_vec_and_domain(evals, index.cs.domain.d1)
-            };
-
-            let aggreg = lookup::constraints::aggregation::<_, ScalarField<G>, _>(
+            let aggreg = lookup::constraints::aggregation::<_, ScalarField<G>>(
                 lookup_context.dummy_lookup_value.unwrap(),
-                joint_lookup_table.evals.into_iter(),
+                joint_lookup_table_d8,
                 index.cs.domain.d1,
                 &index.cs.gates,
                 &witness,

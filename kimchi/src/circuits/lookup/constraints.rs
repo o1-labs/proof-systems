@@ -13,6 +13,7 @@ use crate::{
 };
 use ark_ff::{FftField, One, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
+use o1_utils::adjacent_pairs::AdjacentPairs;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
@@ -208,9 +209,9 @@ where
 /// after multiplying all of the values, all of the terms will have cancelled if s is a sorting of f and t, and the final term will be 1
 /// because of the random choice of beta and gamma, there is negligible probability that the terms will cancel if s is not a sorting of f and t
 #[allow(clippy::too_many_arguments)]
-pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
+pub fn aggregation<R, F>(
     dummy_lookup_value: F,
-    lookup_table: I,
+    joint_lookup_table_d8: &Evaluations<F, D<F>>,
     d1: D<F>,
     gates: &[CircuitGate<F>],
     witness: &[Vec<F>; COLUMNS],
@@ -220,7 +221,11 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
     gamma: F,
     sorted: &[Evaluations<F, D<F>>],
     rng: &mut R,
-) -> Result<Evaluations<F, D<F>>, ProverError> {
+) -> Result<Evaluations<F, D<F>>, ProverError>
+where
+    R: Rng + ?Sized,
+    F: FftField,
+{
     let n = d1.size as usize;
     let lookup_rows = n - ZK_ROWS - 1;
     let beta1 = F::one() + beta;
@@ -259,7 +264,7 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
         v
     };
 
-    adjacent_pairs(lookup_table)
+    AdjacentPairs::from(joint_lookup_table_d8.evals.iter().step_by(8))
         .take(lookup_rows)
         .zip(lookup_info.by_row(gates))
         .enumerate()
