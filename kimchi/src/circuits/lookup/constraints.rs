@@ -119,7 +119,7 @@ where
                 Some(count) => *count += 1,
             }
         }
-        *counts.entry(dummy_lookup_value.clone()).or_insert(0) += padding;
+        *counts.entry(dummy_lookup_value).or_insert(0) += padding;
     }
 
     let sorted = {
@@ -140,13 +140,13 @@ where
             for j in 0..t_count {
                 let idx = i + j;
                 let col = idx / lookup_rows;
-                sorted[col].push(t.clone());
+                sorted[col].push(t);
             }
             i += t_count;
         }
 
         for i in 0..max_lookups_per_row {
-            let end_val = sorted[i + 1][0].clone();
+            let end_val = sorted[i + 1][0];
             sorted[i].push(end_val);
         }
 
@@ -155,7 +155,7 @@ where
         // next column added to their end, but the final sorted column has no subsequent column to
         // pull this value from.
         let final_sorted_col = &mut sorted[max_lookups_per_row];
-        final_sorted_col.push(final_sorted_col[final_sorted_col.len() - 1].clone());
+        final_sorted_col.push(final_sorted_col[final_sorted_col.len() - 1]);
 
         // snake-ify (see top comment)
         for s in sorted.iter_mut().skip(1).step_by(2) {
