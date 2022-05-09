@@ -159,7 +159,7 @@
 <p>Under such configuration, a circuit is specified by</p>
 <ul>
 <li>A number of rows <code>n</code></li>
-<li>A vector <code>cs of constraint-types of length </code>n`. I.e., a vector that specifies, for each row, which types of constraints should be enforced on that row.</li>
+<li>A vector <code>cs</code> of constraint-types of length <code>n</code>. I.e., a vector that specifies, for each row, which types of constraints should be enforced on that row.</li>
 <li>A vector <code>eqs : Vec&lt;(Position, Position)&gt;</code> of equalities to enforce, where <code>struct Position { row: usize, column: usize }</code>. E.g., if the pair <code>(Position { row: 0, col: 8 }, Position { row: 10, col: 2 })</code> is in <code>eqs</code>, then the circuit is saying the entries in those two positions should be equal, or in other words that they refer to the same value. This is where the distinction between “eq-able” and “advice” columns comes in. The <code>column</code> field of a position in the <code>eqs</code> array can only refer to one of the first <code>W</code> columns. Equalities cannot be enforced on entries in the <code>A</code> columns after that.</li>
 </ul>
 <p>Then, given such a circuit, PLONK lets you produce proofs for the statement</p>
