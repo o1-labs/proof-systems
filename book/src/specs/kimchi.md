@@ -1498,6 +1498,7 @@ The prover then follows the following steps to create the proof:
      Essentially, this is to add a last column of table ids to the concatenated lookup tables.
     - Compute the dummy lookup value as the combination of the last entry of the XOR table (so `(0, 0, 0)`).
      Warning: This assumes that we always use the XOR table when using lookups.
+    - Compute the lookup table values as the combination of the lookup table entries.
      - Compute the sorted evaluations.
      - Randomize the last `EVALS` rows in each of the sorted polynomials
       in order to add zero-knowledge to the protocol.
@@ -1515,17 +1516,7 @@ The prover then follows the following steps to create the proof:
 17. Sample $\alpha'$ with the Fq-Sponge.
 18. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details)
 19. TODO: instantiate alpha?
-20. If using lookup:
-    - computing the combined lookup table by combining the
-      columns of the lookup table with the joint combiner $j$:
-      $$
-      t[0] + j \cdot t[1] + j^2 \cdot t[2] + \cdots
-      $$
-      where $t$ is the lookup table.
-    - if we are using several lookup tables, add the table id vector
-      as the last column of the concatenated lookup tables
-      (including padding via the `table_id_combiner`).
-21. Compute the quotient polynomial (the $t$ in $f = Z_H \cdot t$).
+20. Compute the quotient polynomial (the $t$ in $f = Z_H \cdot t$).
     The quotient polynomial is computed by adding all these polynomials together:
     - the combined constraints for all the gates
     - the combined constraints for the permutation
@@ -1533,13 +1524,13 @@ The prover then follows the following steps to create the proof:
     - the negated public polynomial
     and by then dividing the resulting polynomial with the vanishing polynomial $Z_H$.
     TODO: specify the split of the permutation polynomial into perm and bnd?
-22. commit (hiding) to the quotient polynomial $t$
+21. commit (hiding) to the quotient polynomial $t$
     TODO: specify the dummies
-23. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.
-24. Sample $\zeta'$ with the Fq-Sponge.
-25. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
-26. If lookup is used, evaluate the following polynomials at $\zeta$ and $\zeta \omega$:
-27. Chunk evaluate the following polynomials at both $\zeta$ and $\zeta \omega$:
+22. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.
+23. Sample $\zeta'$ with the Fq-Sponge.
+24. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
+25. If lookup is used, evaluate the following polynomials at $\zeta$ and $\zeta \omega$:
+26. Chunk evaluate the following polynomials at both $\zeta$ and $\zeta \omega$:
     * $s_i$
     * $w_i$
     * $z$
@@ -1557,32 +1548,32 @@ The prover then follows the following steps to create the proof:
     $$(f_0(x), f_1(x), f_2(x), \ldots)$$
 
      TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)
-28. Evaluate the same polynomials without chunking them
+27. Evaluate the same polynomials without chunking them
     (so that each polynomial should correspond to a single value this time).
-29. Compute the ft polynomial.
+28. Compute the ft polynomial.
     This is to implement [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html).
-30. construct the blinding part of the ft polynomial commitment
+29. construct the blinding part of the ft polynomial commitment
     see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#evaluation-proof-and-blinding-factors
-31. Evaluate the ft polynomial at $\zeta\omega$ only.
-32. Setup the Fr-Sponge
-33. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
-34. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
-35. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
+30. Evaluate the ft polynomial at $\zeta\omega$ only.
+31. Setup the Fr-Sponge
+32. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
+33. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
+34. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
     - the public polynomial
     - z
     - generic selector
     - poseidon selector
     - the 15 register/witness
     - 6 sigmas evaluations (the last one is not evaluated)
-36. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
-37. Sample $v'$ with the Fr-Sponge
-38. Derive $v$ from $v'$ using the endomorphism (TODO: specify)
-39. Sample $u'$ with the Fr-Sponge
-40. Derive $u$ from $u'$ using the endomorphism (TODO: specify)
-41. Create a list of all polynomials that will require evaluations
+35. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
+36. Sample $v'$ with the Fr-Sponge
+37. Derive $v$ from $v'$ using the endomorphism (TODO: specify)
+38. Sample $u'$ with the Fr-Sponge
+39. Derive $u$ from $u'$ using the endomorphism (TODO: specify)
+40. Create a list of all polynomials that will require evaluations
     (and evaluation proofs) in the protocol.
     First, include the previous challenges, in case we are in a recursive prover.
-42. Then, include:
+41. Then, include:
     - the negated public polynomial
     - the ft polynomial
     - the permutation aggregation polynomial z polynomial
@@ -1590,7 +1581,7 @@ The prover then follows the following steps to create the proof:
     - the poseidon selector
     - the 15 registers/witness columns
     - the 6 sigmas
-43. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
+42. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
 
 
 ### Proof Verification
