@@ -4,12 +4,8 @@ use crate::{
     circuits::{
         expr::{prologue::*, Column, ConstantExpr},
         gate::{CircuitGate, CurrOrNext},
-        lookup::{
-            lookups::{
-                JointLookup, JointLookupSpec, JointLookupValue, LocalPosition, LookupInfo,
-                LookupsUsed,
-            },
-            tables::Entry,
+        lookup::lookups::{
+            JointLookup, JointLookupSpec, JointLookupValue, LocalPosition, LookupInfo, LookupsUsed,
         },
         wires::COLUMNS,
     },
@@ -21,6 +17,8 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use CurrOrNext::{Curr, Next};
+
+use super::tables::evaluate_joint_lookup;
 
 /// Number of constraints produced by the argument.
 pub const CONSTRAINTS: u32 = 7;
@@ -79,24 +77,19 @@ pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
 //~
 
 /// Computes the sorted lookup tables required by the lookup argument.
-pub fn sorted<
-    F: FftField,
-    E: Entry<Field = F> + Eq + std::hash::Hash + Clone,
-    I: Iterator<Item = E>,
-    G: Fn() -> I,
->(
-    dummy_lookup_value: E,
+pub fn sorted<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
+    dummy_lookup_value: F,
     lookup_table: G,
     d1: D<F>,
     gates: &[CircuitGate<F>],
     witness: &[Vec<F>; COLUMNS],
-    params: E::Params,
-) -> Result<Vec<Vec<E>>, ProverError> {
+    params: (F, F), // join_combiner, table_id_combiner
+) -> Result<Vec<Vec<F>>, ProverError> {
     // We pad the lookups so that it is as if we lookup exactly
     // `max_lookups_per_row` in every row.
 
     let n = d1.size as usize;
-    let mut counts: HashMap<E, usize> = HashMap::new();
+    let mut counts: HashMap<F, usize> = HashMap::new();
 
     let lookup_rows = n - ZK_ROWS - 1;
     let lookup_info = LookupInfo::<F>::create();
@@ -116,7 +109,7 @@ pub fn sorted<
         let spec = row;
         let padding = max_lookups_per_row - spec.len();
         for joint_lookup in spec.iter() {
-            let joint_lookup_evaluation = E::evaluate(&params, joint_lookup, witness, i);
+            let joint_lookup_evaluation = evaluate_joint_lookup(&params, joint_lookup, witness, i);
             match counts.get_mut(&joint_lookup_evaluation) {
                 None => return Err(ProverError::ValueNotInTable),
                 Some(count) => *count += 1,
@@ -126,7 +119,7 @@ pub fn sorted<
     }
 
     let sorted = {
-        let mut sorted: Vec<Vec<E>> =
+        let mut sorted: Vec<Vec<F>> =
             vec![Vec::with_capacity(lookup_rows + 1); max_lookups_per_row + 1];
 
         let mut i = 0;

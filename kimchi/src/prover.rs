@@ -5,11 +5,7 @@ use crate::{
         argument::{Argument, ArgumentType},
         expr::{l0_1, Constants, Environment, LookupEnvironment},
         gate::GateType,
-        lookup::{
-            self,
-            lookups::LookupsUsed,
-            tables::{combine_table_entry, CombinedEntry},
-        },
+        lookup::{self, lookups::LookupsUsed, tables::combine_table_entry},
         polynomials::{
             chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal},
             complete_add::CompleteAdd,
@@ -61,7 +57,7 @@ where
     table_id_combiner: Option<F>,
 
     /// The combined lookup entry that can be used as dummy value
-    dummy_lookup_value: Option<CombinedEntry<F>>,
+    dummy_lookup_value: Option<F>,
 
     /// The combined lookup table
     combined_table: Option<Evaluations<F, D<F>>>,
@@ -232,14 +228,10 @@ where
 
             //~     - Compute the dummy lookup value as the combination of the last entry of the XOR table (so `(0, 0, 0)`).
             //~      Warning: This assumes that we always use the XOR table when using lookups.
-            let dummy_lookup_value = {
-                let x = lcs
-                    .configuration
-                    .dummy_lookup
-                    .evaluate(&joint_combiner, &table_id_combiner);
-
-                CombinedEntry(x)
-            };
+            let dummy_lookup_value = lcs
+                .configuration
+                .dummy_lookup
+                .evaluate(&joint_combiner, &table_id_combiner);
             lookup_context.dummy_lookup_value = Some(dummy_lookup_value);
 
             //~      - Compute the sorted evaluations.
@@ -255,19 +247,14 @@ where
                             ScalarField::<G>::zero()
                         }
                     };
-                    CombinedEntry(combine_table_entry(
-                        &joint_combiner,
-                        &table_id_combiner,
-                        row,
-                        &table_id,
-                    ))
+                    combine_table_entry(&joint_combiner, &table_id_combiner, row, &table_id)
                 })
             };
 
             // TODO: Once we switch to committing using lagrange commitments,
             // `witness` will be consumed when we interpolate, so interpolation will
             // have to moved below this.
-            let sorted: Vec<Vec<CombinedEntry<ScalarField<G>>>> = lookup::constraints::sorted(
+            let sorted: Vec<_> = lookup::constraints::sorted(
                 dummy_lookup_value,
                 iter_lookup_table,
                 index.cs.domain.d1,
@@ -280,10 +267,7 @@ where
             //~       in order to add zero-knowledge to the protocol.
             let sorted: Vec<_> = sorted
                 .into_iter()
-                .map(|chunk| {
-                    let v: Vec<_> = chunk.into_iter().map(|x| x.0).collect();
-                    lookup::constraints::zk_patch(v, index.cs.domain.d1, rng)
-                })
+                .map(|chunk| lookup::constraints::zk_patch(chunk, index.cs.domain.d1, rng))
                 .collect();
 
             //~      - Commit each of the sorted polynomials.
@@ -347,7 +331,7 @@ where
             };
 
             let aggreg = lookup::constraints::aggregation::<_, ScalarField<G>, _>(
-                lookup_context.dummy_lookup_value.unwrap().0,
+                lookup_context.dummy_lookup_value.unwrap(),
                 iter_lookup_table(),
                 index.cs.domain.d1,
                 &index.cs.gates,

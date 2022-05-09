@@ -39,41 +39,22 @@ pub struct GatesLookupMaps {
     pub gate_table_map: HashMap<(GateType, CurrOrNext), GateLookupTable>,
 }
 
-pub trait Entry {
-    type Field: Field;
-    type Params;
-
-    fn evaluate(
-        p: &Self::Params,
-        j: &JointLookupSpec<Self::Field>,
-        witness: &[Vec<Self::Field>; COLUMNS],
-        row: usize,
-    ) -> Self;
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct CombinedEntry<F>(pub F);
-
-impl<F: Field> Entry for CombinedEntry<F> {
-    type Field = F;
-    type Params = (F, F);
-
-    fn evaluate(
-        (joint_combiner, table_id_combiner): &(F, F),
-        j: &JointLookupSpec<F>,
-        witness: &[Vec<F>; COLUMNS],
-        row: usize,
-    ) -> CombinedEntry<F> {
-        let eval = |pos: LocalPosition| -> F {
-            let row = match pos.row {
-                Curr => row,
-                Next => row + 1,
-            };
-            witness[pos.column][row]
+/// Evaluates a joint lookup.
+pub fn evaluate_joint_lookup<F: FftField>(
+    (joint_combiner, table_id_combiner): &(F, F),
+    j: &JointLookupSpec<F>,
+    witness: &[Vec<F>; COLUMNS],
+    row: usize,
+) -> F {
+    let eval = |pos: LocalPosition| -> F {
+        let row = match pos.row {
+            Curr => row,
+            Next => row + 1,
         };
+        witness[pos.column][row]
+    };
 
-        CombinedEntry(j.evaluate(joint_combiner, table_id_combiner, &eval))
-    }
+    j.evaluate(joint_combiner, table_id_combiner, &eval)
 }
 
 /// A table of values that can be used for a lookup, along with the ID for the table.
