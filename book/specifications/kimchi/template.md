@@ -328,6 +328,10 @@ If lookup is used, the following values are added to the common index:
 
 **`MaxJointSize`**. This is the maximum number of columns appearing in the lookup tables used by the lookup selectors. For example, the XOR lookup has 3 columns.
 
+To create the index, follow these steps:
+
+{sections.lookup_index}
+
 ### Prover Index
 
 Both the prover and the verifier index, besides the common parts described above, are made out of pre-computations which can be used to speed up the protocol.

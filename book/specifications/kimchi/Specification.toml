@@ -24,6 +24,7 @@ varbasemul = "../../../kimchi/src/circuits/polynomials/varbasemul.rs"
 tables = "../../../kimchi/src/circuits/lookup/tables/mod.rs"
 xor = "../../../kimchi/src/circuits/lookup/tables/xor.rs"
 lookup = "../../../kimchi/src/circuits/lookup/constraints.rs"
+lookup_index = "../../../kimchi/src/circuits/lookup/index.rs"
 
 # setup
 constraint_system = "../../../kimchi/src/circuits/constraints.rs"

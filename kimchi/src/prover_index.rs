@@ -109,6 +109,8 @@ pub mod testing {
         lookup_tables: Vec<LookupTable<Fp>>,
     ) -> ProverIndex<Affine> {
         let fp_sponge_params = oracle::pasta::fp_kimchi::params();
+
+        // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
         let cs = ConstraintSystem::<Fp>::create(
             gates,
             lookup_tables,
@@ -117,7 +119,6 @@ pub mod testing {
             public,
         )
         .unwrap();
-
         let mut srs = SRS::<Affine>::create(cs.domain.d1.size as usize);
         srs.add_lagrange_basis(cs.domain.d1);
         let srs = Arc::new(srs);

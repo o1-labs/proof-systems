@@ -230,7 +230,7 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
             alpha: F::rand(rng),
             beta: F::rand(rng),
             gamma: F::rand(rng),
-            joint_combiner: F::rand(rng),
+            joint_combiner: None,
             endo_coefficient: cs.endo,
             mds: vec![],
             foreign_modulus: vec![],

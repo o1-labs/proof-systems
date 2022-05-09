@@ -15,7 +15,7 @@ use crate::{
     error::VerifyError,
     plonk_sponge::FrSponge,
     proof::ProverProof,
-    verifier_index::{LookupVerifierIndex, VerifierIndex},
+    verifier_index::VerifierIndex,
 };
 use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Polynomial};
@@ -136,71 +136,74 @@ where
             .iter()
             .for_each(|c| fq_sponge.absorb_g(&c.unshifted));
 
-        //~ 4. If lookup is not used,
-        //~    or is used with queries to single-column lookup tables only,
-        //~    then set the joint combiner challenge $j$ to $0$.
-        //~    Otherwise, squeeze the Fq-Sponge to obtain the joint combiner challenge $j$.
-        let joint_combiner = {
-            let s = match index.lookup_index {
-                None
-                | Some(LookupVerifierIndex {
-                    lookup_used: LookupsUsed::Single,
-                    ..
-                }) => ScalarChallenge(ScalarField::<G>::zero()),
-                Some(LookupVerifierIndex {
-                    lookup_used: LookupsUsed::Joint,
-                    ..
-                }) => ScalarChallenge(fq_sponge.challenge()),
+        //~ 4. If lookup is used:
+        let joint_combiner = if let Some(l) = &index.lookup_index {
+            //~    - If it involves queries to a multiple-column lookup table,
+            //~      then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
+            //~      otherwise set the joint combiner challenge $j'$ to $0$.
+            let joint_lookup_used = matches!(l.lookup_used, LookupsUsed::Joint);
+            let joint_combiner = if joint_lookup_used {
+                fq_sponge.challenge()
+            } else {
+                ScalarField::<G>::zero()
             };
-            (s, s.to_field(&index.srs.endo_r))
+
+            //~    - Derive the scalar joint combiner challenge $j$ from $j'$ using the endomorphism.
+            //~    (TODO: specify endomorphism)
+            let joint_combiner = ScalarChallenge(joint_combiner);
+            let joint_combiner = (joint_combiner, joint_combiner.to_field(&index.srs.endo_r));
+
+            //~    - absorb the commitments to the sorted polynomials.
+            self.commitments.lookup.iter().for_each(|l| {
+                l.sorted
+                    .iter()
+                    .for_each(|c| fq_sponge.absorb_g(&c.unshifted));
+            });
+
+            Some(joint_combiner)
+        } else {
+            None
         };
 
-        //~ 5. If using lookup, absorb the commitments to the sorted polynomials.
-        self.commitments.lookup.iter().for_each(|l| {
-            l.sorted
-                .iter()
-                .for_each(|c| fq_sponge.absorb_g(&c.unshifted));
-        });
-
-        //~ 6. Sample $\beta$ with the Fq-Sponge.
+        //~ 5. Sample $\beta$ with the Fq-Sponge.
         let beta = fq_sponge.challenge();
 
-        //~ 7. Sample $\gamma$ with the Fq-Sponge.
+        //~ 6. Sample $\gamma$ with the Fq-Sponge.
         let gamma = fq_sponge.challenge();
 
-        //~ 8. If using lookup, absorb the commitment to the aggregation lookup polynomial.
+        //~ 7. If using lookup, absorb the commitment to the aggregation lookup polynomial.
         self.commitments.lookup.iter().for_each(|l| {
             fq_sponge.absorb_g(&l.aggreg.unshifted);
         });
 
-        //~ 9. Absorb the commitment to the permutation trace with the Fq-Sponge.
+        //~ 8. Absorb the commitment to the permutation trace with the Fq-Sponge.
         fq_sponge.absorb_g(&self.commitments.z_comm.unshifted);
 
-        //~ 10. Sample $\alpha'$ with the Fq-Sponge.
+        //~ 9. Sample $\alpha'$ with the Fq-Sponge.
         let alpha_chal = ScalarChallenge(fq_sponge.challenge());
 
-        //~ 11. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
+        //~ 10. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
         let alpha = alpha_chal.to_field(&index.srs.endo_r);
 
-        //~ 12. Enforce that the length of the $t$ commitment is of size `PERMUTS`.
+        //~ 11. Enforce that the length of the $t$ commitment is of size `PERMUTS`.
         if self.commitments.t_comm.unshifted.len() != PERMUTS {
             return Err(VerifyError::IncorrectCommitmentLength("t"));
         }
 
-        //~ 13. Absorb the commitment to the quotient polynomial $t$ into the argument.
+        //~ 12. Absorb the commitment to the quotient polynomial $t$ into the argument.
         fq_sponge.absorb_g(&self.commitments.t_comm.unshifted);
 
-        //~ 14. Sample $\zeta'$ with the Fq-Sponge.
+        //~ 13. Sample $\zeta'$ with the Fq-Sponge.
         let zeta_chal = ScalarChallenge(fq_sponge.challenge());
 
-        //~ 15. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
+        //~ 14. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
         let zeta = zeta_chal.to_field(&index.srs.endo_r);
 
-        //~ 16. Setup the Fr-Sponge.
+        //~ 15. Setup the Fr-Sponge.
         let digest = fq_sponge.clone().digest();
         let mut fr_sponge = EFrSponge::new(index.fr_sponge_params.clone());
 
-        //~ 17. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
+        //~ 16. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
         fr_sponge.absorb(&digest);
 
         // prepare some often used values
@@ -222,7 +225,7 @@ where
 
         ark_ff::fields::batch_inversion::<ScalarField<G>>(&mut zeta_minus_x);
 
-        //~ 18. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
+        //~ 17. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
         //~     NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
         let p_eval = if !self.public.is_empty() {
             vec![
@@ -253,7 +256,7 @@ where
             vec![Vec::<ScalarField<G>>::new(), Vec::<ScalarField<G>>::new()]
         };
 
-        //~ 19. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
+        //~ 18. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
         //~     - the public polynomial
         //~     - z
         //~     - generic selector
@@ -264,22 +267,22 @@ where
             fr_sponge.absorb_evaluations(p, e);
         }
 
-        //~ 20. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
+        //~ 19. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
         fr_sponge.absorb(&self.ft_eval1);
 
-        //~ 21. Sample $v'$ with the Fr-Sponge.
+        //~ 20. Sample $v'$ with the Fr-Sponge.
         let v_chal = fr_sponge.challenge();
 
-        //~ 22. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
+        //~ 21. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
         let v = v_chal.to_field(&index.srs.endo_r);
 
-        //~ 23. Sample $u'$ with the Fr-Sponge.
+        //~ 22. Sample $u'$ with the Fr-Sponge.
         let u_chal = fr_sponge.challenge();
 
-        //~ 24. Derive $u$ from $u'$ using the endomorphism (TODO: specify).
+        //~ 23. Derive $u$ from $u'$ using the endomorphism (TODO: specify).
         let u = u_chal.to_field(&index.srs.endo_r);
 
-        //~ 25. Create a list of all polynomials that have an evaluation proof.
+        //~ 24. Create a list of all polynomials that have an evaluation proof.
         let evaluation_points = [zeta, zetaw];
         let powers_of_eval_points_for_chunks = [
             zeta.pow(&[index.max_poly_size as u64]),
@@ -298,7 +301,7 @@ where
             self.evals[1].combine(powers_of_eval_points_for_chunks[1]),
         ];
 
-        //~ 26. Compute the evaluation of $ft(\zeta)$.
+        //~ 25. Compute the evaluation of $ft(\zeta)$.
         let ft_eval0 = {
             let zkp = index.zkpm.evaluate(&zeta);
             let zeta1m1 = zeta1 - ScalarField::<G>::one();
@@ -349,7 +352,7 @@ where
                 alpha,
                 beta,
                 gamma,
-                joint_combiner: joint_combiner.1,
+                joint_combiner: joint_combiner.map(|j| j.1),
                 endo_coefficient: index.endo,
                 mds: index.fr_sponge_params.mds.clone(),
                 foreign_modulus: index.foreign_modulus.clone(),
@@ -555,7 +558,7 @@ where
                 alpha: oracles.alpha,
                 beta: oracles.beta,
                 gamma: oracles.gamma,
-                joint_combiner: oracles.joint_combiner.1,
+                joint_combiner: oracles.joint_combiner.map(|j| j.1),
                 endo_coefficient: index.endo,
                 mds: index.fr_sponge_params.mds.clone(),
                 foreign_modulus: index.foreign_modulus.clone(),
@@ -612,20 +615,19 @@ where
                             panic!("Attempted to use {:?}, but no lookup index was given", col)
                         }
                         Some(lindex) => {
+                            let joint_combiner =
+                                constants.joint_combiner.expect("missing joint combiner");
                             let mut j = ScalarField::<G>::one();
                             scalars.push(scalar);
                             commitments.push(&lindex.lookup_table[0]);
                             for t in lindex.lookup_table.iter().skip(1) {
-                                j *= constants.joint_combiner;
+                                j *= joint_combiner;
                                 scalars.push(scalar * j);
                                 commitments.push(t);
                             }
                             if let Some(table_ids) = lindex.table_ids.as_ref() {
                                 scalars.push(
-                                    scalar
-                                        * constants
-                                            .joint_combiner
-                                            .pow([lindex.max_joint_size as u64]),
+                                    scalar * joint_combiner.pow([lindex.max_joint_size as u64]),
                                 );
                                 commitments.push(table_ids);
                             }

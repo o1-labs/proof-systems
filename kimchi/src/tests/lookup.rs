@@ -1,35 +1,12 @@
-use crate::{
-    circuits::{
-        gate::{CircuitGate, GateType},
-        lookup::tables::LookupTable,
-        wires::Wire,
-    },
-    proof::ProverProof,
-    prover_index::testing::new_index_for_test_with_lookups,
-    verifier::batch_verify,
+use super::framework::TestFramework;
+use crate::circuits::{
+    gate::{CircuitGate, GateType},
+    lookup::tables::LookupTable,
+    wires::Wire,
 };
 use ark_ff::Zero;
 use array_init::array_init;
-use colored::Colorize;
-use commitment_dlog::commitment::CommitmentCurve;
-use groupmap::GroupMap;
-use mina_curves::pasta::{
-    fp::Fp,
-    vesta::{Affine, VestaParameters},
-};
-use oracle::{
-    constants::PlonkSpongeConstantsKimchi,
-    sponge::{DefaultFqSponge, DefaultFrSponge},
-};
-use std::time::Instant;
-
-// aliases
-
-type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
-type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
-
-const PUBLIC: usize = 0;
+use mina_curves::pasta::fp::Fp;
 
 fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_sizes: Vec<usize>) {
     let lookup_table_values: Vec<Vec<_>> = table_sizes
@@ -58,9 +35,6 @@ fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_siz
             wires: Wire::new(i),
         })
         .collect();
-
-    // create the index
-    let index = new_index_for_test_with_lookups(gates, vec![], PUBLIC, lookup_tables);
 
     let witness = {
         let mut lookup_table_ids = Vec::with_capacity(num_lookups);
@@ -112,25 +86,7 @@ fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_siz
         ]
     };
 
-    let group_map = <Affine as CommitmentCurve>::Map::setup();
-
-    let start = Instant::now();
-    let proof =
-        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &index).unwrap();
-    println!("{}{:?}", "Prover time: ".yellow(), start.elapsed());
-
-    let start = Instant::now();
-    let verifier_index = index.verifier_index();
-    println!("{}{:?}", "Verifier index time: ".yellow(), start.elapsed());
-
-    let batch: Vec<_> = vec![(&verifier_index, &proof)];
-    let start = Instant::now();
-    match batch_verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &batch) {
-        Err(error) => panic!("Failure verifying the prover's proofs in batch: {}", error),
-        Ok(_) => {
-            println!("{}{:?}", "Verifier time: ".yellow(), start.elapsed());
-        }
-    }
+    TestFramework::run_test_lookups(gates, witness, &[], lookup_tables);
 }
 
 #[test]

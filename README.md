@@ -52,18 +52,8 @@ let verifier_index = prover_index.verifier_index();
 
 // create a proof
 let group_map = <Affine as CommitmentCurve>::Map::setup();
-let proof = {
-    // for recursion
-    let k = ceil_log2(index.srs.g.len());
-    let chals: Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();
-    let comm = {
-        let coeffs = b_poly_coefficients(&chals);
-        let b = DensePolynomial::from_coefficients_vec(coeffs);
-        index.srs.commit_non_hiding(&b, None)
-    };
-    (chals, comm)
-    ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &prover_index, vec![prev])
-};
+let proof =  ProverProof::create::<BaseSponge, ScalarSponge>(
+    &group_map, witness, &prover_index);
 
 // verify a proof
 verify::<Affine, BaseSponge, ScalarSponge>(&group_map, verifier_index, proof).unwrap();
@@ -88,8 +78,6 @@ The project is organized in the following way:
 * [tools/](https://github.com/o1-labs/proof-systems/tree/master/tools). Various tooling to help us work on kimchi.
 * [utils/](https://github.com/o1-labs/proof-systems/tree/master/utils). Collection of useful functions and traits.
 
-## Windows Development
-Windows development can be done using [Windows Subsystem for Linux (WSL)](https://docs.microsoft.com/en-us/windows/wsl/install).
-* Install and open WSL
-* Within WSL, install OCaml using your distro's package manager. For example: `apt install opam`
-* Within WSL, navigate to the project directory and run `cargo test`. If there are no failures then everything is set up correctly.
+## Contributing
+
+Check [CONTRIBUTING.md](CONTRIBUTING.md) if you are interested in contributing to this project.
