@@ -1489,26 +1489,26 @@ The prover then follows the following steps to create the proof:
 9. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
    TODO: why not do this first, and then commit? Why commit from evaluation directly?
 10. If using lookup:
-    - If queries involve a lookup table with multiple columns
-    then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
-    otherwise set the joint combiner challenge $j'$ to $0$.
-    - Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TOOD: specify)
-    - If multiple lookup tables are involved,
-     set the `table_id_combiner` as the $j^i$ with $i$ the maximum width of any used table.
-     Essentially, this is to add a last column of table ids to the concatenated lookup tables.
-    - Compute the dummy lookup value as the combination of the last entry of the XOR table (so `(0, 0, 0)`).
-     Warning: This assumes that we always use the XOR table when using lookups.
-     - Compute the sorted evaluations.
-     - Randomize the last `EVALS` rows in each of the sorted polynomials
-      in order to add zero-knowledge to the protocol.
-     - Commit each of the sorted polynomials.
-     - Absorb each commitments to the sorted polynomials.
+	- If queries involve a lookup table with multiple columns
+	  then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
+	  otherwise set the joint combiner challenge $j'$ to $0$.
+	- Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TOOD: specify)
+	- If multiple lookup tables are involved,
+	  set the `table_id_combiner` as the $j^i$ with $i$ the maximum width of any used table.
+	  Essentially, this is to add a last column of table ids to the concatenated lookup tables.
+	- Compute the dummy lookup value as the combination of the last entry of the XOR table (so `(0, 0, 0)`).
+	  Warning: This assumes that we always use the XOR table when using lookups.
+	- Compute the sorted evaluations.
+	- Randomize the last `EVALS` rows in each of the sorted polynomials
+	  in order to add zero-knowledge to the protocol.
+	- Commit each of the sorted polynomials.
+	- Absorb each commitments to the sorted polynomials.
 11. Sample $\beta$ with the Fq-Sponge.
 12. Sample $\gamma$ with the Fq-Sponge.
 13. If using lookup:
-    - Compute the lookup aggregation polynomial.
-    - Commit to the aggregation polynomial.
-    - Absorb the commitment to the aggregation polynomial with the Fq-Sponge.
+	- Compute the lookup aggregation polynomial.
+	- Commit to the aggregation polynomial.
+	- Absorb the commitment to the aggregation polynomial with the Fq-Sponge.
 14. Compute the permutation aggregation polynomial $z$.
 15. Commit (hidding) to the permutation aggregation polynomial $z$.
 16. Absorb the permutation aggregation polynomial $z$ with the Fq-Sponge.
@@ -1516,23 +1516,21 @@ The prover then follows the following steps to create the proof:
 18. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details)
 19. TODO: instantiate alpha?
 20. If using lookup:
-    - computing the combined lookup table by combining the
-      columns of the lookup table with the joint combiner $j$:
-      $$
-      t[0] + j \cdot t[1] + j^2 \cdot t[2] + \cdots
-      $$
-      where $t$ is the lookup table.
-    - if we are using several lookup tables, add the table id vector
-      as the last column of the concatenated lookup tables
-      (including padding via the `table_id_combiner`).
+	- computing the combined lookup table by combining the
+	  columns of the lookup table with the joint combiner $j$:
+	  $$
+	  t[0] + j \cdot t[1] + j^2 \cdot t[2] + \cdots
+	  $$
+	  where $t$ is the lookup table.
+	- if we are using several lookup tables, add the table id vector
+   as the last column of the concatenated lookup tables
+   (including padding via the `table_id_combiner`).
 21. Compute the quotient polynomial (the $t$ in $f = Z_H \cdot t$).
-    The quotient polynomial is computed by adding all these polynomials together:
-    - the combined constraints for all the gates
-    - the combined constraints for the permutation
-    - TODO: lookup
-    - the negated public polynomial
-    and by then dividing the resulting polynomial with the vanishing polynomial $Z_H$.
-    TODO: specify the split of the permutation polynomial into perm and bnd?
+    The quotient polynomial is computed by adding all the following polynomials together and dividing the result with the vanishing polynomial $Z_H$:
+	- the combined constraints for all the gates
+	- the combined constraints for the permutation
+	- TODO: lookup
+	- the negated public polynomial
 22. commit (hiding) to the quotient polynomial $t$
     TODO: specify the dummies
 23. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.
@@ -1540,12 +1538,12 @@ The prover then follows the following steps to create the proof:
 25. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
 26. If lookup is used, evaluate the following polynomials at $\zeta$ and $\zeta \omega$:
 27. Chunk evaluate the following polynomials at both $\zeta$ and $\zeta \omega$:
-    * $s_i$
-    * $w_i$
-    * $z$
-    * lookup (TODO)
-    * generic selector
-    * poseidon selector
+	- $s_i$
+	- $w_i$
+	- $z$
+	- lookup (TODO)
+	- generic selector
+	- poseidon selector
 
     By "chunk evaluate" we mean that the evaluation of each polynomial can potentially be a vector of values.
     This is because the index's `max_poly_size` parameter dictates the maximum size of a polynomial in the protocol.
@@ -1556,7 +1554,7 @@ The prover then follows the following steps to create the proof:
 
     $$(f_0(x), f_1(x), f_2(x), \ldots)$$
 
-     TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)
+    TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)
 28. Evaluate the same polynomials without chunking them
     (so that each polynomial should correspond to a single value this time).
 29. Compute the ft polynomial.
@@ -1568,12 +1566,12 @@ The prover then follows the following steps to create the proof:
 33. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
 34. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
 35. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
-    - the public polynomial
-    - z
-    - generic selector
-    - poseidon selector
-    - the 15 register/witness
-    - 6 sigmas evaluations (the last one is not evaluated)
+	- the public polynomial
+	- z
+	- generic selector
+	- poseidon selector
+	- the 15 register/witness
+	- 6 sigmas evaluations (the last one is not evaluated)
 36. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
 37. Sample $v'$ with the Fr-Sponge
 38. Derive $v$ from $v'$ using the endomorphism (TODO: specify)
@@ -1583,13 +1581,13 @@ The prover then follows the following steps to create the proof:
     (and evaluation proofs) in the protocol.
     First, include the previous challenges, in case we are in a recursive prover.
 42. Then, include:
-    - the negated public polynomial
-    - the ft polynomial
-    - the permutation aggregation polynomial z polynomial
-    - the generic selector
-    - the poseidon selector
-    - the 15 registers/witness columns
-    - the 6 sigmas
+	- the negated public polynomial
+	- the ft polynomial
+	- the permutation aggregation polynomial z polynomial
+	- the generic selector
+	- the poseidon selector
+	- the 15 registers/witness columns
+	- the 6 sigmas
 43. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
 
 

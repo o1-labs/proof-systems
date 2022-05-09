@@ -204,9 +204,9 @@ where
 
         //~ 10. If using lookup:
         if let Some(lcs) = &index.cs.lookup_constraint_system {
-            //~     - If queries involve a lookup table with multiple columns
-            //~     then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
-            //~     otherwise set the joint combiner challenge $j'$ to $0$.
+            //~~ - If queries involve a lookup table with multiple columns
+            //~~   then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
+            //~~   otherwise set the joint combiner challenge $j'$ to $0$.
             let joint_lookup_used = matches!(lcs.configuration.lookup_used, LookupsUsed::Joint);
 
             let joint_combiner = if joint_lookup_used {
@@ -215,13 +215,13 @@ where
                 ScalarField::<G>::zero()
             };
 
-            //~     - Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TOOD: specify)
+            //~~ - Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TOOD: specify)
             let joint_combiner: ScalarField<G> =
                 ScalarChallenge(joint_combiner).to_field(&index.srs.endo_r);
 
-            //~     - If multiple lookup tables are involved,
-            //~      set the `table_id_combiner` as the $j^i$ with $i$ the maximum width of any used table.
-            //~      Essentially, this is to add a last column of table ids to the concatenated lookup tables.
+            //~~ - If multiple lookup tables are involved,
+            //~~   set the `table_id_combiner` as the $j^i$ with $i$ the maximum width of any used table.
+            //~~   Essentially, this is to add a last column of table ids to the concatenated lookup tables.
             let table_id_combiner: ScalarField<G> = if lcs.table_ids8.as_ref().is_some() {
                 joint_combiner.pow([lcs.configuration.max_joint_size as u64])
             } else {
@@ -230,8 +230,8 @@ where
             };
             lookup_context.table_id_combiner = Some(table_id_combiner);
 
-            //~     - Compute the dummy lookup value as the combination of the last entry of the XOR table (so `(0, 0, 0)`).
-            //~      Warning: This assumes that we always use the XOR table when using lookups.
+            //~~ - Compute the dummy lookup value as the combination of the last entry of the XOR table (so `(0, 0, 0)`).
+            //~~   Warning: This assumes that we always use the XOR table when using lookups.
             let dummy_lookup_value = {
                 let x = lcs
                     .configuration
@@ -242,7 +242,7 @@ where
             };
             lookup_context.dummy_lookup_value = Some(dummy_lookup_value);
 
-            //~      - Compute the sorted evaluations.
+            //~~ - Compute the sorted evaluations.
             let iter_lookup_table = || {
                 (0..d1_size).map(|i| {
                     let row = lcs.lookup_table8.iter().map(|e| &e.evals[8 * i]);
@@ -276,8 +276,8 @@ where
                 (joint_combiner, table_id_combiner),
             )?;
 
-            //~      - Randomize the last `EVALS` rows in each of the sorted polynomials
-            //~       in order to add zero-knowledge to the protocol.
+            //~~ - Randomize the last `EVALS` rows in each of the sorted polynomials
+            //~~   in order to add zero-knowledge to the protocol.
             let sorted: Vec<_> = sorted
                 .into_iter()
                 .map(|chunk| {
@@ -286,7 +286,7 @@ where
                 })
                 .collect();
 
-            //~      - Commit each of the sorted polynomials.
+            //~~ - Commit each of the sorted polynomials.
             let sorted_comm: Vec<_> = sorted
                 .iter()
                 .map(|v| {
@@ -296,7 +296,7 @@ where
                 })
                 .collect();
 
-            //~      - Absorb each commitments to the sorted polynomials.
+            //~~ - Absorb each commitments to the sorted polynomials.
             sorted_comm
                 .iter()
                 .for_each(|c| fq_sponge.absorb_g(&c.0.unshifted));
@@ -324,7 +324,7 @@ where
 
         //~ 13. If using lookup:
         if let Some(lcs) = &index.cs.lookup_constraint_system {
-            //~     - Compute the lookup aggregation polynomial.
+            //~~ - Compute the lookup aggregation polynomial.
             let iter_lookup_table = || {
                 (0..d1_size).map(|i| {
                     let row = lcs.lookup_table8.iter().map(|e| &e.evals[8 * i]);
@@ -360,12 +360,12 @@ where
                 rng,
             )?;
 
-            //~     - Commit to the aggregation polynomial.
+            //~~ - Commit to the aggregation polynomial.
             let aggreg_comm = index
                 .srs
                 .commit_evaluations(index.cs.domain.d1, &aggreg, None, rng);
 
-            //~     - Absorb the commitment to the aggregation polynomial with the Fq-Sponge.
+            //~~ - Absorb the commitment to the aggregation polynomial with the Fq-Sponge.
             fq_sponge.absorb_g(&aggreg_comm.0.unshifted);
 
             // precompute different forms of the aggregation polynomial for later
@@ -401,12 +401,12 @@ where
         //~ 20. If using lookup:
         let lookup_env = if let Some(lcs) = &index.cs.lookup_constraint_system {
             let lookup_table_combined = {
-                //~     - computing the combined lookup table by combining the
-                //~       columns of the lookup table with the joint combiner $j$:
-                //~       $$
-                //~       t[0] + j \cdot t[1] + j^2 \cdot t[2] + \cdots
-                //~       $$
-                //~       where $t$ is the lookup table.
+                //~~ - computing the combined lookup table by combining the
+                //~~   columns of the lookup table with the joint combiner $j$:
+                //~~   $$
+                //~~   t[0] + j \cdot t[1] + j^2 \cdot t[2] + \cdots
+                //~~   $$
+                //~~   where $t$ is the lookup table.
                 let joint_table = &lcs.lookup_table8;
                 let mut res = joint_table[joint_table.len() - 1].clone();
                 for col in joint_table.iter().rev().skip(1) {
@@ -416,9 +416,9 @@ where
                     res += col;
                 }
 
-                //~     - if we are using several lookup tables, add the table id vector
-                //~       as the last column of the concatenated lookup tables
-                //~       (including padding via the `table_id_combiner`).
+                //~~ - if we are using several lookup tables, add the table id vector
+                //~    as the last column of the concatenated lookup tables
+                //~    (including padding via the `table_id_combiner`).
                 if let Some(table_ids8) = &lcs.table_ids8 {
                     let table_id_combiner = lookup_context.table_id_combiner.unwrap();
                     res.evals
@@ -444,14 +444,11 @@ where
         };
 
         //~ 21. Compute the quotient polynomial (the $t$ in $f = Z_H \cdot t$).
-        //~     The quotient polynomial is computed by adding all these polynomials together:
-        //~     - the combined constraints for all the gates
-        //~     - the combined constraints for the permutation
-        //~     - TODO: lookup
-        //~     - the negated public polynomial
-        //~     and by then dividing the resulting polynomial with the vanishing polynomial $Z_H$.
-        //~     TODO: specify the split of the permutation polynomial into perm and bnd?
-
+        //~     The quotient polynomial is computed by adding all the following polynomials together and dividing the result with the vanishing polynomial $Z_H$:
+        //~~ - the combined constraints for all the gates
+        //~~ - the combined constraints for the permutation
+        //~~ - TODO: lookup
+        //~~ - the negated public polynomial
         let lagrange = index.cs.evaluate(&witness_poly, &z_poly);
         let env = {
             let mut index_evals = HashMap::new();
@@ -774,12 +771,12 @@ where
         }
 
         //~ 27. Chunk evaluate the following polynomials at both $\zeta$ and $\zeta \omega$:
-        //~     * $s_i$
-        //~     * $w_i$
-        //~     * $z$
-        //~     * lookup (TODO)
-        //~     * generic selector
-        //~     * poseidon selector
+        //~~ - $s_i$
+        //~~ - $w_i$
+        //~~ - $z$
+        //~~ - lookup (TODO)
+        //~~ - generic selector
+        //~~ - poseidon selector
         //~
         //~     By "chunk evaluate" we mean that the evaluation of each polynomial can potentially be a vector of values.
         //~     This is because the index's `max_poly_size` parameter dictates the maximum size of a polynomial in the protocol.
@@ -790,7 +787,7 @@ where
         //~
         //~     $$(f_0(x), f_1(x), f_2(x), \ldots)$$
         //~
-        //~      TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)
+        //~     TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)
         let chunked_evals = {
             let chunked_evals_zeta = ProofEvaluations::<Vec<ScalarField<G>>> {
                 s: array_init(|i| {
@@ -964,12 +961,12 @@ where
         };
 
         //~ 35. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
-        //~     - the public polynomial
-        //~     - z
-        //~     - generic selector
-        //~     - poseidon selector
-        //~     - the 15 register/witness
-        //~     - 6 sigmas evaluations (the last one is not evaluated)
+        //~~ - the public polynomial
+        //~~ - z
+        //~~ - generic selector
+        //~~ - poseidon selector
+        //~~ - the 15 register/witness
+        //~~ - 6 sigmas evaluations (the last one is not evaluated)
         for i in 0..2 {
             fr_sponge.absorb_evaluations(&public_evals[i], &chunked_evals[i])
         }
@@ -1013,13 +1010,13 @@ where
             .collect::<Vec<_>>();
 
         //~ 42. Then, include:
-        //~     - the negated public polynomial
-        //~     - the ft polynomial
-        //~     - the permutation aggregation polynomial z polynomial
-        //~     - the generic selector
-        //~     - the poseidon selector
-        //~     - the 15 registers/witness columns
-        //~     - the 6 sigmas
+        //~~ - the negated public polynomial
+        //~~ - the ft polynomial
+        //~~ - the permutation aggregation polynomial z polynomial
+        //~~ - the generic selector
+        //~~ - the poseidon selector
+        //~~ - the 15 registers/witness columns
+        //~~ - the 6 sigmas
         polynomials.extend(vec![(&public_poly, None, non_hiding(1))]);
         polynomials.extend(vec![(&ft, None, blinding_ft)]);
         polynomials.extend(vec![(&z_poly, None, z_comm.1)]);
