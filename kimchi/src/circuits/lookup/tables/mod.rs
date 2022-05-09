@@ -3,7 +3,7 @@ use crate::circuits::{
     lookup::lookups::{JointLookupSpec, LocalPosition},
     wires::COLUMNS,
 };
-use ark_ff::{FftField, Field, One, Zero};
+use ark_ff::{FftField, One, Zero};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use CurrOrNext::{Curr, Next};

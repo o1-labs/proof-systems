@@ -77,14 +77,18 @@ pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
 //~
 
 /// Computes the sorted lookup tables required by the lookup argument.
-pub fn sorted<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
+pub fn sorted<F, I>(
     dummy_lookup_value: F,
-    lookup_table: G,
+    lookup_table: I,
     d1: D<F>,
     gates: &[CircuitGate<F>],
     witness: &[Vec<F>; COLUMNS],
     params: (F, F), // join_combiner, table_id_combiner
-) -> Result<Vec<Vec<F>>, ProverError> {
+) -> Result<Vec<Vec<F>>, ProverError>
+where
+    F: FftField,
+    I: Iterator<Item = F> + Clone,
+{
     // We pad the lookups so that it is as if we lookup exactly
     // `max_lookups_per_row` in every row.
 
@@ -96,7 +100,7 @@ pub fn sorted<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
     let by_row = lookup_info.by_row(gates);
     let max_lookups_per_row = lookup_info.max_per_row;
 
-    for t in lookup_table().take(lookup_rows) {
+    for t in lookup_table.clone().take(lookup_rows) {
         // Don't multiply-count duplicate values in the table, or they'll be duplicated for each
         // duplicate!
         // E.g. A value duplicated in the table 3 times would be entered into the sorted array 3
@@ -123,7 +127,7 @@ pub fn sorted<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
             vec![Vec::with_capacity(lookup_rows + 1); max_lookups_per_row + 1];
 
         let mut i = 0;
-        for t in lookup_table().take(lookup_rows) {
+        for t in lookup_table.take(lookup_rows) {
             let t_count = match counts.get_mut(&t) {
                 None => panic!("Value has disappeared from count table"),
                 Some(x) => {

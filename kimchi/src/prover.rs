@@ -235,21 +235,19 @@ where
             lookup_context.dummy_lookup_value = Some(dummy_lookup_value);
 
             //~      - Compute the sorted evaluations.
-            let iter_lookup_table = || {
-                (0..d1_size).map(|i| {
-                    let row = lcs.lookup_table8.iter().map(|e| &e.evals[8 * i]);
-                    let table_id = match lcs.table_ids8.as_ref() {
-                        Some(table_ids8) => table_ids8.evals[8 * i],
-                        None =>
-                        // If there is no `table_ids8` in the constraint system,
-                        // every table ID is identically 0.
-                        {
-                            ScalarField::<G>::zero()
-                        }
-                    };
-                    combine_table_entry(&joint_combiner, &table_id_combiner, row, &table_id)
-                })
-            };
+            let iter_lookup_table = (0..d1_size).map(|i| {
+                let row = lcs.lookup_table8.iter().map(|e| &e.evals[8 * i]);
+                let table_id = match lcs.table_ids8.as_ref() {
+                    Some(table_ids8) => table_ids8.evals[8 * i],
+                    None =>
+                    // If there is no `table_ids8` in the constraint system,
+                    // every table ID is identically 0.
+                    {
+                        ScalarField::<G>::zero()
+                    }
+                };
+                combine_table_entry(&joint_combiner, &table_id_combiner, row, &table_id)
+            });
 
             // TODO: Once we switch to committing using lagrange commitments,
             // `witness` will be consumed when we interpolate, so interpolation will
