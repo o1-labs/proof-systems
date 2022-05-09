@@ -6,6 +6,9 @@ use oracle::sponge::ScalarChallenge;
 /// Enforces gate constraints (rows checks)
 mod gates;
 
+/// Verifier logic
+mod verifier;
+
 /// Witness columns in Turbo-PlonK argument
 const COLUMNS: usize = 15;
 
