@@ -37,7 +37,7 @@ use oracle::{sponge::ScalarChallenge, FqSponge};
 use rayon::iter::{
     IndexedParallelIterator, IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator,
 };
-use std::collections::HashMap;
+use std::{collections::HashMap, iter};
 
 /// The result of a proof creation or verification.
 type Result<T> = std::result::Result<T, ProverError>;
@@ -60,7 +60,7 @@ where
     dummy_lookup_value: Option<F>,
 
     /// The combined lookup table
-    combined_table: Option<Evaluations<F, D<F>>>,
+    joint_lookup_table_d8: Option<Evaluations<F, D<F>>>,
 
     /// The sorted polynomials `s` in different forms
     sorted: Option<Vec<Evaluations<F, D<F>>>>,
@@ -234,27 +234,41 @@ where
                 .evaluate(&joint_combiner, &table_id_combiner);
             lookup_context.dummy_lookup_value = Some(dummy_lookup_value);
 
-            //~      - Compute the sorted evaluations.
-            let iter_lookup_table = (0..d1_size).map(|i| {
-                let row = lcs.lookup_table8.iter().map(|e| &e.evals[8 * i]);
-                let table_id = match lcs.table_ids8.as_ref() {
-                    Some(table_ids8) => table_ids8.evals[8 * i],
-                    None =>
-                    // If there is no `table_ids8` in the constraint system,
-                    // every table ID is identically 0.
-                    {
-                        ScalarField::<G>::zero()
-                    }
-                };
-                combine_table_entry(&joint_combiner, &table_id_combiner, row, &table_id)
-            });
+            //~     - Compute the lookup table values as the combination of the lookup table entries.
+            let joint_lookup_table_d8 = {
+                let mut evals = Vec::with_capacity(d1_size);
 
+                for idx in 0..(d1_size * 8) {
+                    let table_row = lcs.lookup_table8.iter().map(|e| &e.evals[idx]);
+                    let table_id = match lcs.table_ids8.as_ref() {
+                        Some(table_ids8) => table_ids8.evals[idx],
+                        None =>
+                        // If there is no `table_ids8` in the constraint system,
+                        // every table ID is identically 0.
+                        {
+                            ScalarField::<G>::zero()
+                        }
+                    };
+
+                    let combined_entry = combine_table_entry(
+                        &joint_combiner,
+                        &table_id_combiner,
+                        table_row,
+                        &table_id,
+                    );
+                    evals.push(combined_entry);
+                }
+
+                Evaluations::from_vec_and_domain(evals, index.cs.domain.d8)
+            };
+
+            //~      - Compute the sorted evaluations.
             // TODO: Once we switch to committing using lagrange commitments,
             // `witness` will be consumed when we interpolate, so interpolation will
             // have to moved below this.
             let sorted: Vec<_> = lookup::constraints::sorted(
                 dummy_lookup_value,
-                iter_lookup_table,
+                &joint_lookup_table_d8,
                 index.cs.domain.d1,
                 &index.cs.gates,
                 &witness,
@@ -296,6 +310,7 @@ where
             lookup_context.sorted_coeffs = Some(sorted_coeffs);
             lookup_context.sorted_comm = Some(sorted_comm);
             lookup_context.sorted8 = Some(sorted8);
+            lookup_context.joint_lookup_table_d8 = Some(joint_lookup_table_d8);
         }
 
         //~ 11. Sample $\beta$ with the Fq-Sponge.
@@ -305,32 +320,22 @@ where
         let gamma = fq_sponge.challenge();
 
         //~ 13. If using lookup:
-        if let Some(lcs) = &index.cs.lookup_constraint_system {
+        if index.cs.lookup_constraint_system.is_some() {
             //~     - Compute the lookup aggregation polynomial.
-            let iter_lookup_table = || {
-                (0..d1_size).map(|i| {
-                    let row = lcs.lookup_table8.iter().map(|e| &e.evals[8 * i]);
-                    let table_id = match lcs.table_ids8.as_ref() {
-                        Some(table_ids8) => table_ids8.evals[8 * i],
-                        None =>
-                        // If there is no `table_ids8` in the constraint system, every
-                        // table ID is identically 0.
-                        {
-                            ScalarField::<G>::zero()
-                        }
-                    };
-                    combine_table_entry(
-                        &lookup_context.joint_combiner.unwrap(),
-                        &lookup_context.table_id_combiner.unwrap(),
-                        row,
-                        &table_id,
-                    )
-                })
+            let joint_lookup_table_d8 = lookup_context.joint_lookup_table_d8.as_ref().unwrap();
+
+            let joint_lookup_table = {
+                let mut evals = vec![];
+
+                for e in joint_lookup_table_d8.evals.iter().step_by(8) {
+                    evals.push(*e);
+                }
+                Evaluations::from_vec_and_domain(evals, index.cs.domain.d1)
             };
 
             let aggreg = lookup::constraints::aggregation::<_, ScalarField<G>, _>(
                 lookup_context.dummy_lookup_value.unwrap(),
-                iter_lookup_table(),
+                joint_lookup_table.evals.into_iter(),
                 index.cs.domain.d1,
                 &index.cs.gates,
                 &witness,
@@ -382,44 +387,13 @@ where
 
         //~ 20. If using lookup:
         let lookup_env = if let Some(lcs) = &index.cs.lookup_constraint_system {
-            let lookup_table_combined = {
-                //~     - computing the combined lookup table by combining the
-                //~       columns of the lookup table with the joint combiner $j$:
-                //~       $$
-                //~       t[0] + j \cdot t[1] + j^2 \cdot t[2] + \cdots
-                //~       $$
-                //~       where $t$ is the lookup table.
-                let joint_table = &lcs.lookup_table8;
-                let mut res = joint_table[joint_table.len() - 1].clone();
-                for col in joint_table.iter().rev().skip(1) {
-                    res.evals
-                        .par_iter_mut()
-                        .for_each(|e| *e *= lookup_context.joint_combiner.unwrap());
-                    res += col;
-                }
-
-                //~     - if we are using several lookup tables, add the table id vector
-                //~       as the last column of the concatenated lookup tables
-                //~       (including padding via the `table_id_combiner`).
-                if let Some(table_ids8) = &lcs.table_ids8 {
-                    let table_id_combiner = lookup_context.table_id_combiner.unwrap();
-                    res.evals
-                        .par_iter_mut()
-                        .zip(table_ids8.evals.par_iter())
-                        .for_each(|(x, table_id)| {
-                            *x += table_id_combiner * table_id;
-                        })
-                }
-                res
-            };
-
-            lookup_context.combined_table = Some(lookup_table_combined);
+            let joint_lookup_table_d8 = lookup_context.joint_lookup_table_d8.as_ref().unwrap();
 
             Some(LookupEnvironment {
                 aggreg: lookup_context.aggreg8.as_ref().unwrap(),
                 sorted: lookup_context.sorted8.as_ref().unwrap(),
                 selectors: &lcs.lookup_selectors,
-                table: lookup_context.combined_table.as_ref().unwrap(),
+                table: joint_lookup_table_d8,
             })
         } else {
             None

@@ -109,6 +109,7 @@ pub fn combine_table_entry<'a, F, I>(
     joint_combiner: &F,
     table_id_combiner: &F,
     v: I,
+    // TODO: this should be an option?
     table_id: &F,
 ) -> F
 where
