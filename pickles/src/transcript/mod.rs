@@ -1,12 +1,39 @@
 use circuit_construction::{Constants, Cs, Var};
 
-use ark_ff::{FftField, PrimeField};
+use ark_ff::{BigInteger, FftField, FpParameters, PrimeField};
 
 mod sponge;
 
 use super::MutualContext;
 
 use sponge::ZkSponge;
+
+fn need_decompose<Fp: PrimeField, Fr: PrimeField>() -> bool {
+    let fp_mod = Fp::Params::MODULUS.into();
+    let fr_mod = Fr::Params::MODULUS.into();
+    debug_assert!(2u64 * fp_mod.clone() > fr_mod.clone());
+    debug_assert!(2u64 * fr_mod.clone() > fp_mod.clone());
+    fp_mod < fr_mod
+}
+
+// a direct lift is possible
+fn lift<Fp: PrimeField, Fr: PrimeField>(e: Fr) -> Fp {
+    debug_assert!(!need_decompose::<Fp, Fr>());
+    let bits: Vec<bool> = e.into_repr().to_bits_le();
+    Fp::from_repr(Fp::BigInt::from_bits_le(&bits)).unwrap()
+}
+
+// a decomposition is needed
+fn decompose<Fp: PrimeField, Fr: PrimeField>(e: Fr) -> [Fp; 2] {
+    debug_assert!(need_decompose::<Fp, Fr>());
+
+    let bits: Vec<bool> = e.into_repr().to_bits_le();
+
+    [
+        Fp::from_repr(Fp::BigInt::from_bits_le(&bits[1..bits.len()])).unwrap(),
+        if bits[0] { Fp::one() } else { Fp::zero() },
+    ]
+}
 
 /// Defered hash transcript
 ///
@@ -62,10 +89,13 @@ use sponge::ZkSponge;
 ///
 /// In practice: Fp is always going to be the base field of the Plonk proof,
 /// while Fr is the scalar field of the Plonk proof
-struct Transcript<Fp: FftField + PrimeField, Fr: FftField + PrimeField> {
-    fp_vars: Vec<Var<Fp>>,
-    fr_vars: Vec<Var<Fr>>,
-    comm: Option<Var<Fp>>, // Commitment to Sponge value (last value squeezed after absorbind)
+pub(crate) struct Transcript<Fp: FftField + PrimeField, Fr: FftField + PrimeField> {
+    fp_pubs: Vec<Var<Fp>>, // public inputs to Fp proof
+    fr_pubs: Vec<Var<Fr>>, // public inputs to Fr proof
+    fp_vars: Vec<Var<Fp>>, // Fp variables to be hashed (not yet consumed by squeeze)
+    fr_vars: Vec<Var<Fr>>, // Fr variables to be hashed (not yet consumed by squeeze)
+    sponge: ZkSponge<Fp>,  // Native sponge
+    comm: Option<Var<Fp>>, // Commitment to Sponge value (last value squeezed after absorbing)
 }
 
 impl<Fp, Fr> Transcript<Fp, Fr>
@@ -73,12 +103,25 @@ where
     Fp: FftField + PrimeField,
     Fr: FftField + PrimeField,
 {
-    fn absorb_fp(&mut self, var: Var<Fp>) {
+    pub(crate) fn new<CsFp: Cs<Fp>, CsFr: Cs<Fr>>(
+        ctx: &mut MutualContext<Fp, Fr, CsFp, CsFr>,
+    ) -> Self {
+        Self {
+            fp_pubs: vec![],
+            fr_pubs: vec![],
+            fp_vars: vec![],
+            fr_vars: vec![],
+            sponge: ZkSponge::new(ctx.fp.constants.clone()),
+            comm: None,
+        }
+    }
+
+    pub(crate) fn absorb_fp(&mut self, var: Var<Fp>) {
         self.fp_vars.push(var);
         self.comm = None;
     }
 
-    fn absorb_fr(&mut self, var: Var<Fr>) {
+    pub(crate) fn absorb_fr(&mut self, var: Var<Fr>) {
         self.fr_vars.push(var);
         self.comm = None;
     }
@@ -86,33 +129,70 @@ where
     /// Get an Fp challenge from the verifier
     ///
     /// Yields a variable in the native field containing a challenge.
-    fn squeeze<CsFp: Cs<Fp>, CsFr: Cs<Fr>>(
+    pub(crate) fn squeeze<CsFp: Cs<Fp>, CsFr: Cs<Fr>>(
         &mut self,
         ctx: &mut MutualContext<Fp, Fr, CsFp, CsFr>, //
     ) -> Var<Fp> {
-        /*
-        // "Apply" Fp sponge (to "consume" Fp elements)
-        let actual_hash = cs_fp.poseidon(constants, vec![preimage, zero, zero])[0];
-
         // Defer Fr sponge (and include the digest in the statement)
         //  1. Create a fresh Fr sponge
-        //  2. "Consume" Fr elements in the Cr proof system
-        //  3. Add the Fr digest to the statmement
-        //  4.
-
-        let actual_hash = cs_fq.poseidon(constants, vec![preimage, zero, zero])[0];
-        */
+        //  2. "Consume" Fr elements in the Fr proof system
+        //  3. Add the Fr digest to the Fr statmement
+        //  4. Add the lifted Fr digest to the Fq statement
+        //  5. Consume the lifted Fr digest in to the Fp sponge
         if !self.fr_vars.is_empty() {
-            // create fresh sponge
+            // create fresh "foreign sponge"
             let mut fr_zk_sponge: ZkSponge<Fr> = ZkSponge::new(ctx.fr.constants.clone());
 
-            // absorb queued Fr variables
+            // absorb all queued Fr variables in the Fr side
+            fr_zk_sponge.absorb(&mut ctx.fr.cs, self.fr_vars.iter());
 
-            // enforce binding between proofs
+            // compute "foreign" digest
+            let fr_digest = fr_zk_sponge.squeeze(&mut ctx.fr.cs);
+
+            // include in public inputs on the Fr side
+            self.fr_pubs.push(fr_digest);
+
+            // consume "foreign digest"
+            if need_decompose::<Fp, Fr>() {
+                // decompose hash
+                let hash: Option<[Fp; 2]> = fr_digest.value.map(|h| decompose(h));
+                let hash_high = ctx.fp.cs.var(|| hash.unwrap()[0]);
+                let hash_low = ctx.fp.cs.var(|| hash.unwrap()[1]);
+
+                // enforce binding with other side:
+                // include into the public input
+                self.fp_pubs.push(hash_high);
+                self.fp_pubs.push(hash_low);
+
+                // add them to the "native stonge"
+                self.fp_vars.push(hash_high);
+                self.fp_vars.push(hash_low);
+
+                // include into public inputs on Fq-side
+                self.fp_pubs.push(hash_high);
+                self.fp_pubs.push(hash_low);
+            } else {
+                // lift hash
+                let hash = ctx.fp.cs.var(|| lift(fr_digest.val()));
+
+                // absorb lift
+                self.fp_pubs.push(hash);
+                self.fp_vars.push(hash);
+                self.fp_pubs.push(hash);
+            }
         }
 
-        // Squeeeeze!
-        unimplemented!()
+        // consume all queued Fp elements
+        self.sponge.absorb(&mut ctx.fp.cs, self.fp_vars.iter());
+
+        // reset sponge queues
+        self.fp_vars.clear();
+        self.fr_vars.clear();
+
+        // Squeeze "native sponge" (Fp)
+        let out = self.sponge.squeeze(&mut ctx.fp.cs);
+        self.comm = Some(out);
+        out
     }
 
     /// Squeeze a 128-bit (endo-scalar) challenge

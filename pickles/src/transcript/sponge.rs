@@ -1,6 +1,6 @@
 use circuit_construction::{Constants, Cs, Var};
 
-use ark_ff::{FftField, PrimeField};
+use ark_ff::{FftField, FpParameters, PrimeField};
 
 // TODO: these constants are currently hidden behind a trait
 // which prevents their use with const-generics in current rust.
@@ -9,6 +9,9 @@ const SPONGE_WIDTH: usize = 3;
 const SPONGE_RATE: usize = 2;
 
 /// Poseidon Sponge constrained inside a zero-knowledge proof
+/// 
+/// See "oracle" crate for the "plaintext implementation"
+/// 
 pub(super) struct ZkSponge<F: FftField + PrimeField> {
     state: [Var<F>; SPONGE_WIDTH],
     constants: Constants<F>,
@@ -29,6 +32,11 @@ impl<F: FftField + PrimeField> ZkSponge<F> {
     ) {
         for var in vars {
             // TODO: implement
+            unimplemented!();
         }
+    }
+
+    pub fn squeeze<C: Cs<F>>(&mut self, cs: &mut C) -> Var<F> {
+        unimplemented!()
     }
 }
