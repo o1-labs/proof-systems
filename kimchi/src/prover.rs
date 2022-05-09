@@ -565,7 +565,6 @@ where
 
                     if cfg!(test) {
                         let (_, res) = evals
-                            .clone()
                             .interpolate()
                             .divide_by_vanishing_poly(index.cs.domain.d1)
                             .unwrap();
@@ -848,17 +847,6 @@ where
                     .psm
                     .to_chunked_polynomial(index.max_poly_size)
                     .evaluate_chunks(zeta),
-
-                foreign_mul_selector: index
-                    .cs
-                    .foreign_mul_selector_polys
-                    .iter()
-                    .map(|poly| {
-                        poly.coeff
-                            .to_chunked_polynomial(index.max_poly_size)
-                            .evaluate_chunks(zeta)
-                    })
-                    .collect(),
             };
             let chunked_evals_zeta_omega = ProofEvaluations::<Vec<ScalarField<G>>> {
                 s: array_init(|i| {
@@ -890,17 +878,6 @@ where
                     .psm
                     .to_chunked_polynomial(index.max_poly_size)
                     .evaluate_chunks(zeta_omega),
-
-                foreign_mul_selector: index
-                    .cs
-                    .foreign_mul_selector_polys
-                    .iter()
-                    .map(|poly| {
-                        poly.coeff
-                            .to_chunked_polynomial(index.max_poly_size)
-                            .evaluate_chunks(zeta_omega)
-                    })
-                    .collect(),
             };
 
             [chunked_evals_zeta, chunked_evals_zeta_omega]
@@ -935,11 +912,6 @@ where
                     }),
                     generic_selector: DensePolynomial::eval_polynomial(&es.generic_selector, e1),
                     poseidon_selector: DensePolynomial::eval_polynomial(&es.poseidon_selector, e1),
-                    foreign_mul_selector: es
-                        .foreign_mul_selector
-                        .iter()
-                        .map(|poly| DensePolynomial::eval_polynomial(poly, e1))
-                        .collect(),
                 })
                 .collect::<Vec<_>>()
         };

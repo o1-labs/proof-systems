@@ -432,13 +432,6 @@ impl Variable {
             LookupTable => l.map(|l| l.table),
             Index(GateType::Poseidon) => Ok(evals.poseidon_selector),
             Index(GateType::Generic) => Ok(evals.generic_selector),
-            Index(GateType::CairoClaim)
-            | Index(GateType::CairoInstruction)
-            | Index(GateType::CairoFlags)
-            | Index(GateType::CairoTransition) => todo!(),
-            Index(GateType::ForeignMul0) => Ok(evals.foreign_mul_selector[0]),
-            Index(GateType::ForeignMul1) => Ok(evals.foreign_mul_selector[1]),
-            Index(GateType::ForeignMul2) => Ok(evals.foreign_mul_selector[2]),
             Coefficient(_) | LookupKindIndex(_) | Index(_) => {
                 Err(ExprError::MissingIndexEvaluation(self.col))
             }

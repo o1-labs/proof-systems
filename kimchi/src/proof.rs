@@ -1,9 +1,6 @@
 //! This module implements the data structures of a proof.
 
-use crate::circuits::{
-    polynomials::foreign_mul,
-    wires::{COLUMNS, PERMUTS},
-};
+use crate::circuits::wires::{COLUMNS, PERMUTS};
 use ark_ec::AffineCurve;
 use ark_ff::{FftField, Zero};
 use ark_poly::univariate::DensePolynomial;
@@ -39,8 +36,6 @@ pub struct ProofEvaluations<Field> {
     pub generic_selector: Field,
     /// evaluation of the poseidon selector polynomial
     pub poseidon_selector: Field,
-    /// evaluations of the foreign field multiplication circuit gate selector polynomials
-    pub foreign_mul_selector: Vec<Field>,
 }
 
 /// Commitments linked to the lookup feature
@@ -96,7 +91,6 @@ impl<F: Zero> ProofEvaluations<F> {
             lookup: None,
             generic_selector: F::zero(),
             poseidon_selector: F::zero(),
-            foreign_mul_selector: foreign_mul::off(),
         }
     }
 }
@@ -118,11 +112,6 @@ impl<F: FftField> ProofEvaluations<Vec<F>> {
             }),
             generic_selector: DensePolynomial::eval_polynomial(&self.generic_selector, pt),
             poseidon_selector: DensePolynomial::eval_polynomial(&self.poseidon_selector, pt),
-            foreign_mul_selector: self
-                .foreign_mul_selector
-                .iter()
-                .map(|poly| DensePolynomial::eval_polynomial(poly, pt))
-                .collect(),
         }
     }
 }
@@ -215,7 +204,6 @@ pub mod caml {
         ),
         pub generic_selector: Vec<CamlF>,
         pub poseidon_selector: Vec<CamlF>,
-        pub foreign_mul_selector: Option<(Vec<CamlF>, Vec<CamlF>, Vec<CamlF>)>,
     }
 
     //
@@ -254,38 +242,12 @@ pub mod caml {
                 pe.s[5].iter().cloned().map(Into::into).collect(),
             );
 
-            let foreign_mul_selector = {
-                // Array to tuple
-                if !pe.foreign_mul_selector.is_empty() {
-                    Some((
-                        pe.foreign_mul_selector[0]
-                            .iter()
-                            .cloned()
-                            .map(Into::into)
-                            .collect(),
-                        pe.foreign_mul_selector[1]
-                            .iter()
-                            .cloned()
-                            .map(Into::into)
-                            .collect(),
-                        pe.foreign_mul_selector[2]
-                            .iter()
-                            .cloned()
-                            .map(Into::into)
-                            .collect(),
-                    ))
-                } else {
-                    None
-                }
-            };
-
             Self {
                 w,
                 z: pe.z.into_iter().map(Into::into).collect(),
                 s,
                 generic_selector: pe.generic_selector.into_iter().map(Into::into).collect(),
                 poseidon_selector: pe.poseidon_selector.into_iter().map(Into::into).collect(),
-                foreign_mul_selector,
             }
         }
     }
@@ -322,20 +284,6 @@ pub mod caml {
                 cpe.s.5.into_iter().map(Into::into).collect(),
             ];
 
-            let foreign_mul_selector = {
-                // Tuple to array
-                if let Some(v) = cpe.foreign_mul_selector {
-                    [
-                        v.0.into_iter().map(Into::into).collect(),
-                        v.1.into_iter().map(Into::into).collect(),
-                        v.2.into_iter().map(Into::into).collect(),
-                    ]
-                    .into()
-                } else {
-                    vec![]
-                }
-            };
-
             Self {
                 w,
                 z: cpe.z.into_iter().map(Into::into).collect(),
@@ -343,7 +291,6 @@ pub mod caml {
                 lookup: None,
                 generic_selector: cpe.generic_selector.into_iter().map(Into::into).collect(),
                 poseidon_selector: cpe.poseidon_selector.into_iter().map(Into::into).collect(),
-                foreign_mul_selector,
             }
         }
     }

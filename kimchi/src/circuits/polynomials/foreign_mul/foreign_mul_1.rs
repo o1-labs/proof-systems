@@ -25,14 +25,13 @@ use std::marker::PhantomData;
 
 use crate::circuits::{
     argument::{Argument, ArgumentType},
-    expr::{Column, E},
-    gate::{CurrOrNext, GateType},
+    expr::{witness_curr, witness_next, E},
+    gate::GateType,
     polynomial::COLUMNS,
 };
 use ark_ff::{FftField, Zero};
-use CurrOrNext::*;
 
-use super::constraints::{sublimb_crumb_constraint, sublimb_plookup_constraint, two};
+use super::common::{sublimb_crumb_constraint, two};
 
 #[derive(Default)]
 pub struct ForeignMul1<F>(PhantomData<F>);
@@ -42,16 +41,13 @@ where
     F: FftField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignMul1);
-    const CONSTRAINTS: u32 = 25;
+    const CONSTRAINTS: u32 = 21;
 
     // Constraints for ForeignMul1
     //   * Operates on Curr and Next row
-    //   * Range constrain all sublimbs
+    //   * Range constrain all sublimbs (baring plookup constraints, which are done elsewhere)
     //   * Constrain that combining all sublimbs equals the limb stored in row Curr, column 0
     fn constraints() -> Vec<E<F>> {
-        let w_curr = |i| E::cell(Column::Witness(i), Curr);
-        let w_next = |i| E::cell(Column::Witness(i), Next);
-
         // Constraints structure
         //  Column      0    1       ... 4       5     ... 14
         //        Curr  limb plookup ... plookup crumb ... crumb
@@ -59,22 +55,17 @@ where
 
         // 1) Apply range constraints on sublimbs
 
-        // Create 4 12-bit plookup range constraints
-        let mut constraints: Vec<E<F>> = (1..5)
-            .map(|i| sublimb_plookup_constraint(&w_curr(i)))
-            .collect();
+        // Columns 1-4 are 12-bit plookup range constraints (these are specified elsewhere)
 
         // Create 10 2-bit chunk range constraints using Curr row
-        constraints.append(
-            &mut (5..COLUMNS)
-                .map(|i| sublimb_crumb_constraint(&w_curr(i)))
-                .collect::<Vec<E<F>>>(),
-        );
+        let mut constraints = (5..COLUMNS)
+            .map(|i| sublimb_crumb_constraint(&witness_curr(i)))
+            .collect::<Vec<E<F>>>();
 
         // Create 10 more 2-bit chunk range constraints using Next row
         constraints.append(
             &mut (5..COLUMNS)
-                .map(|i| sublimb_crumb_constraint(&w_next(i)))
+                .map(|i| sublimb_crumb_constraint(&witness_next(i)))
                 .collect::<Vec<E<F>>>(),
         );
 
@@ -95,30 +86,22 @@ where
         // (2nd part) + \sum i \in [5,14] 2^{2*(i - 5} + 68)*w_next(i)
 
         // 1st part (Curr row): \sum i \in [1,5] 2^{12*(i - 1)}*w_curr(i) + \sum i \in [6,14] 2^{2*(i - 5) + 4*12}*w_curr(i)
-        let combined_sublimbs = (1..COLUMNS).fold(E::zero(), |acc, i| {
-            match i as usize {
-                1..=4 => {
-                    // 12-bit chunk
-                    acc + two().pow(12 * (i as u64 - 1)) * w_curr(i)
-                }
-                5..=COLUMNS => {
-                    // 2-bit chunk
-                    acc + two().pow(2 * (i as u64 - 5) + 4 * 12) * w_curr(i)
-                }
-                _ => {
-                    panic!("Invalid column index {}", i)
-                }
-            }
+        let combined_sublimbs = (1..5).fold(E::zero(), |acc, i| {
+            // 12-bit chunk
+            acc + two().pow(12 * (i as u64 - 1)) * witness_curr(i)
+        }) + (5..COLUMNS).fold(E::zero(), |acc, i| {
+            // 2-bit chunk
+            acc + two().pow(2 * (i as u64 - 5) + 4 * 12) * witness_curr(i)
         });
 
         // 2nd part (Next row): \sum i \in [5,14] 2^{2*(i - 5) + 68}*w_next(i)
         let combined_sublimbs = (5..COLUMNS).fold(combined_sublimbs, |acc, i| {
             // 2-bit chunk
-            acc + two().pow(2 * (i as u64 - 5) + 68) * w_next(i)
+            acc + two().pow(2 * (i as u64 - 5) + 68) * witness_next(i)
         });
 
         // w(0) = combined_sublimbs
-        constraints.push(combined_sublimbs - w_curr(0));
+        constraints.push(combined_sublimbs - witness_curr(0));
 
         constraints
     }

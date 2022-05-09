@@ -86,7 +86,7 @@ use crate::circuits::expr::{witness_curr, witness_next, Cache, ConstantExpr, Exp
 use crate::circuits::gate::{CircuitGate, GateType};
 use crate::circuits::wires::{GateWires, Wire, COLUMNS};
 use crate::proof::ProofEvaluations;
-use ark_ff::{FftField, Field, One};
+use ark_ff::{FftField, Field, One, SquareRootField};
 use array_init::array_init;
 use cairo::{
     runner::{CairoInstruction, CairoProgram, Pointers},
@@ -101,7 +101,7 @@ pub const CIRCUIT_GATE_COUNT: usize = 4;
 
 // GATE-RELATED
 
-impl<F: FftField> CircuitGate<F> {
+impl<F: FftField + SquareRootField> CircuitGate<F> {
     /// This function creates a CairoClaim gate
     pub fn create_cairo_claim(wires: GateWires) -> Self {
         CircuitGate {

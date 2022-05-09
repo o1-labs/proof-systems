@@ -26,14 +26,13 @@ use std::marker::PhantomData;
 
 use crate::circuits::{
     argument::{Argument, ArgumentType},
-    expr::{Column, E},
-    gate::{CurrOrNext, GateType},
+    expr::{witness_curr, E},
+    gate::GateType,
     polynomial::COLUMNS,
 };
 use ark_ff::{FftField, Zero};
-use CurrOrNext::*;
 
-use super::constraints::{sublimb_crumb_constraint, sublimb_plookup_constraint, two};
+use super::common::{sublimb_crumb_constraint, two};
 
 #[derive(Default)]
 pub struct ForeignMul0<F>(PhantomData<F>);
@@ -43,31 +42,25 @@ where
     F: FftField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignMul0);
-    const CONSTRAINTS: u32 = 13;
+    const CONSTRAINTS: u32 = 9;
 
     // Constraints for ForeignMul0
     //   * Operates on Curr row
-    //   * Range constrain all sublimbs except p4 and p5
+    //   * Range constrain all sublimbs except p4 and p5 (baring plookup constraints, which are done elsewhere)
     //   * Constrain that combining all sublimbs equals the limb stored in column 0
     fn constraints() -> Vec<E<F>> {
-        let w = |i| E::cell(Column::Witness(i), Curr);
-
         // Row structure
         //  Column w(i) 0    1       ... 4       5    6    7     ... 14
         //        Curr  limb plookup ... plookup copy copy crumb ... crumb
 
         // 1) Apply range constraints on sublimbs
 
-        // Create 4 12-bit plookup range constraints
-        let mut constraints: Vec<E<F>> =
-            (1..5).map(|i| sublimb_plookup_constraint(&w(i))).collect();
+        // Columns 1-4 are 12-bit plookup range constraints (these are specified elsewhere)
 
         // Create 8 2-bit chunk range constraints
-        constraints.append(
-            &mut (7..COLUMNS)
-                .map(|i| sublimb_crumb_constraint(&w(i)))
-                .collect::<Vec<E<F>>>(),
-        );
+        let mut constraints = (7..COLUMNS)
+            .map(|i| sublimb_crumb_constraint(&witness_curr(i)))
+            .collect::<Vec<E<F>>>();
 
         // 2) Constrain that the combined sublimbs equals the limb stored in w(0) where
         //    limb = lp0 lp1 lp2 lp3 lp4 lp5 lc0 lc1 lc2 lc3 lc4 lc5 lc6 lc7
@@ -82,24 +75,16 @@ where
         // Check limb =  lp0*2^0 + lp1*2^{12}  + ... + p5*2^{60}   + lc0*2^{72}  + lc1*2^{74}  + ... + lc7*2^{86}
         //       w(0) = w(1)*2^0 + w(2)*2^{12} + ... + w(6)*2^{60} + w(7)*2^{72} + w(8)*2^{74} + ... + w(14)*2^{86}
         //            = \sum i \in [1,7] 2^{12*(i - 1)}*w(i) + \sum i \in [8,14] 2^{2*(i - 7) + 6*12}*w(i)
-        let combined_sublimbs = (1..COLUMNS).fold(E::zero(), |acc, i| {
-            match i {
-                1..=7 => {
-                    // 12-bit chunk offset
-                    acc + two().pow(12 * (i as u64 - 1)) * w(i)
-                }
-                8..=COLUMNS => {
-                    // 2-bit chunk offset
-                    acc + two().pow(2 * (i as u64 - 7) + 6 * 12) * w(i)
-                }
-                _ => {
-                    panic!("Invalid column index {}", i)
-                }
-            }
+        let combined_sublimbs = (1..8).fold(E::zero(), |acc, i| {
+            // 12-bit chunk offset
+            acc + two().pow(12 * (i as u64 - 1)) * witness_curr(i)
+        }) + (8..COLUMNS).fold(E::zero(), |acc, i| {
+            // 2-bit chunk offset
+            acc + two().pow(2 * (i as u64 - 7) + 6 * 12) * witness_curr(i)
         });
 
         // w(0) = combined_sublimbs
-        constraints.push(combined_sublimbs - w(0));
+        constraints.push(combined_sublimbs - witness_curr(0));
 
         constraints
     }

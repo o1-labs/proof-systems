@@ -91,16 +91,14 @@
 ///
 ///  Nb. each CircuitGate type corresponds to a unique polynomial and thus
 ///       is assigned its own unique powers of alpha
-mod constraints;
+mod common;
 mod foreign_mul_0;
 mod foreign_mul_1;
-mod foreign_mul_2;
 
 pub mod gate;
 pub mod witness;
 
 pub use foreign_mul_0::ForeignMul0;
 pub use foreign_mul_1::ForeignMul1;
-pub use foreign_mul_2::ForeignMul2;
 pub use gate::*;
 pub use witness::create_witness;

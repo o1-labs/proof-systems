@@ -1344,8 +1344,6 @@ pub struct ProofEvaluations<Field> {
     pub generic_selector: Field,
     /// evaluation of the poseidon selector polynomial
     pub poseidon_selector: Field,
-    /// evaluations of the foreign field multiplication circuit gate selector polynomials
-    pub foreign_mul_selector: Vec<Field>,
 }
 
 /// Commitments linked to the lookup feature

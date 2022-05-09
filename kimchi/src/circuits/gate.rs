@@ -1,8 +1,8 @@
 //! This module implements Plonk constraint gate primitive.
 
 use crate::circuits::{constraints::ConstraintSystem, wires::*};
-use ark_ff::bytes::ToBytes;
 use ark_ff::FftField;
+use ark_ff::{bytes::ToBytes, SquareRootField};
 use num_traits::cast::ToPrimitive;
 use o1_utils::hasher::CryptoDigest;
 use serde::{Deserialize, Serialize};
@@ -125,7 +125,7 @@ impl<F: FftField> ToBytes for CircuitGate<F> {
     }
 }
 
-impl<F: FftField> CircuitGate<F> {
+impl<F: FftField + SquareRootField> CircuitGate<F> {
     /// this function creates "empty" circuit gate
     pub fn zero(wires: GateWires) -> Self {
         CircuitGate {
