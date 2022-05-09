@@ -1215,46 +1215,6 @@
 <span id="1210">1210</span>
 <span id="1211">1211</span>
 <span id="1212">1212</span>
-<span id="1213">1213</span>
-<span id="1214">1214</span>
-<span id="1215">1215</span>
-<span id="1216">1216</span>
-<span id="1217">1217</span>
-<span id="1218">1218</span>
-<span id="1219">1219</span>
-<span id="1220">1220</span>
-<span id="1221">1221</span>
-<span id="1222">1222</span>
-<span id="1223">1223</span>
-<span id="1224">1224</span>
-<span id="1225">1225</span>
-<span id="1226">1226</span>
-<span id="1227">1227</span>
-<span id="1228">1228</span>
-<span id="1229">1229</span>
-<span id="1230">1230</span>
-<span id="1231">1231</span>
-<span id="1232">1232</span>
-<span id="1233">1233</span>
-<span id="1234">1234</span>
-<span id="1235">1235</span>
-<span id="1236">1236</span>
-<span id="1237">1237</span>
-<span id="1238">1238</span>
-<span id="1239">1239</span>
-<span id="1240">1240</span>
-<span id="1241">1241</span>
-<span id="1242">1242</span>
-<span id="1243">1243</span>
-<span id="1244">1244</span>
-<span id="1245">1245</span>
-<span id="1246">1246</span>
-<span id="1247">1247</span>
-<span id="1248">1248</span>
-<span id="1249">1249</span>
-<span id="1250">1250</span>
-<span id="1251">1251</span>
-<span id="1252">1252</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements prover&#39;s zk-proof primitive.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -1291,9 +1251,6 @@
 <span class="kw">use</span> <span class="ident">itertools::Itertools</span>;
 <span class="kw">use</span> <span class="ident">o1_utils</span>::{<span class="ident">types::fields</span>::<span class="kw-2">*</span>, <span class="ident">ExtendedDensePolynomial</span> <span class="kw">as</span> <span class="kw">_</span>};
 <span class="kw">use</span> <span class="ident">oracle</span>::{<span class="ident">sponge::ScalarChallenge</span>, <span class="ident">FqSponge</span>};
-<span class="kw">use</span> <span class="ident">rayon::iter</span>::{
-    <span class="ident">IndexedParallelIterator</span>, <span class="ident">IntoParallelRefIterator</span>, <span class="ident">IntoParallelRefMutIterator</span>, <span class="ident">ParallelIterator</span>,
-};
 <span class="kw">use</span> <span class="ident">std::collections::HashMap</span>;
 
 <span class="doccomment">/// The result of a proof creation or verification.</span>
@@ -1317,7 +1274,7 @@
     <span class="ident">dummy_lookup_value</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
 
     <span class="doccomment">/// The combined lookup table</span>
-    <span class="ident">combined_table</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">joint_lookup_table_d8</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 
     <span class="doccomment">/// The sorted polynomials `s` in different forms</span>
     <span class="ident">sorted</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -1491,27 +1448,41 @@
                 .<span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="ident">joint_combiner</span>, <span class="kw-2">&amp;</span><span class="ident">table_id_combiner</span>);
             <span class="ident">lookup_context</span>.<span class="ident">dummy_lookup_value</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">dummy_lookup_value</span>);
 
-            <span class="comment">//~      - Compute the sorted evaluations.</span>
-            <span class="kw">let</span> <span class="ident">iter_lookup_table</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">d1_size</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">row</span> <span class="op">=</span> <span class="ident">lcs</span>.<span class="ident">lookup_table8</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">e</span>.<span class="ident">evals</span>[<span class="number">8</span> <span class="op">*</span> <span class="ident">i</span>]);
-                <span class="kw">let</span> <span class="ident">table_id</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">lcs</span>.<span class="ident">table_ids8</span>.<span class="ident">as_ref</span>() {
-                    <span class="prelude-val">Some</span>(<span class="ident">table_ids8</span>) =&gt; <span class="ident">table_ids8</span>.<span class="ident">evals</span>[<span class="number">8</span> <span class="op">*</span> <span class="ident">i</span>],
-                    <span class="prelude-val">None</span> =&gt;
-                    <span class="comment">// If there is no `table_ids8` in the constraint system,</span>
-                    <span class="comment">// every table ID is identically 0.</span>
-                    {
-                        <span class="ident">ScalarField</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::zero</span>()
-                    }
-                };
-                <span class="ident">combine_table_entry</span>(<span class="kw-2">&amp;</span><span class="ident">joint_combiner</span>, <span class="kw-2">&amp;</span><span class="ident">table_id_combiner</span>, <span class="ident">row</span>, <span class="kw-2">&amp;</span><span class="ident">table_id</span>)
-            });
+            <span class="comment">//~     - Compute the lookup table values as the combination of the lookup table entries.</span>
+            <span class="kw">let</span> <span class="ident">joint_lookup_table_d8</span> <span class="op">=</span> {
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">evals</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">d1_size</span>);
 
+                <span class="kw">for</span> <span class="ident">idx</span> <span class="kw">in</span> <span class="number">0</span>..(<span class="ident">d1_size</span> <span class="op">*</span> <span class="number">8</span>) {
+                    <span class="kw">let</span> <span class="ident">table_row</span> <span class="op">=</span> <span class="ident">lcs</span>.<span class="ident">lookup_table8</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">e</span>.<span class="ident">evals</span>[<span class="ident">idx</span>]);
+                    <span class="kw">let</span> <span class="ident">table_id</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">lcs</span>.<span class="ident">table_ids8</span>.<span class="ident">as_ref</span>() {
+                        <span class="prelude-val">Some</span>(<span class="ident">table_ids8</span>) =&gt; <span class="ident">table_ids8</span>.<span class="ident">evals</span>[<span class="ident">idx</span>],
+                        <span class="prelude-val">None</span> =&gt;
+                        <span class="comment">// If there is no `table_ids8` in the constraint system,</span>
+                        <span class="comment">// every table ID is identically 0.</span>
+                        {
+                            <span class="ident">ScalarField</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::zero</span>()
+                        }
+                    };
+
+                    <span class="kw">let</span> <span class="ident">combined_entry</span> <span class="op">=</span> <span class="ident">combine_table_entry</span>(
+                        <span class="kw-2">&amp;</span><span class="ident">joint_combiner</span>,
+                        <span class="kw-2">&amp;</span><span class="ident">table_id_combiner</span>,
+                        <span class="ident">table_row</span>,
+                        <span class="kw-2">&amp;</span><span class="ident">table_id</span>,
+                    );
+                    <span class="ident">evals</span>.<span class="ident">push</span>(<span class="ident">combined_entry</span>);
+                }
+
+                <span class="ident">Evaluations::from_vec_and_domain</span>(<span class="ident">evals</span>, <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d8</span>)
+            };
+
+            <span class="comment">//~      - Compute the sorted evaluations.</span>
             <span class="comment">// TODO: Once we switch to committing using lagrange commitments,</span>
             <span class="comment">// `witness` will be consumed when we interpolate, so interpolation will</span>
             <span class="comment">// have to moved below this.</span>
             <span class="kw">let</span> <span class="ident">sorted</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">lookup::constraints::sorted</span>(
                 <span class="ident">dummy_lookup_value</span>,
-                <span class="ident">iter_lookup_table</span>,
+                <span class="kw-2">&amp;</span><span class="ident">joint_lookup_table_d8</span>,
                 <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>,
                 <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">gates</span>,
                 <span class="kw-2">&amp;</span><span class="ident">witness</span>,
@@ -1553,6 +1524,7 @@
             <span class="ident">lookup_context</span>.<span class="ident">sorted_coeffs</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">sorted_coeffs</span>);
             <span class="ident">lookup_context</span>.<span class="ident">sorted_comm</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">sorted_comm</span>);
             <span class="ident">lookup_context</span>.<span class="ident">sorted8</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">sorted8</span>);
+            <span class="ident">lookup_context</span>.<span class="ident">joint_lookup_table_d8</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">joint_lookup_table_d8</span>);
         }
 
         <span class="comment">//~ 11. Sample $\beta$ with the Fq-Sponge.</span>
@@ -1562,32 +1534,13 @@
         <span class="kw">let</span> <span class="ident">gamma</span> <span class="op">=</span> <span class="ident">fq_sponge</span>.<span class="ident">challenge</span>();
 
         <span class="comment">//~ 13. If using lookup:</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">lcs</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">lookup_constraint_system</span> {
+        <span class="kw">if</span> <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">lookup_constraint_system</span>.<span class="ident">is_some</span>() {
             <span class="comment">//~     - Compute the lookup aggregation polynomial.</span>
-            <span class="kw">let</span> <span class="ident">iter_lookup_table</span> <span class="op">=</span> <span class="op">|</span><span class="op">|</span> {
-                (<span class="number">0</span>..<span class="ident">d1_size</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
-                    <span class="kw">let</span> <span class="ident">row</span> <span class="op">=</span> <span class="ident">lcs</span>.<span class="ident">lookup_table8</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">e</span>.<span class="ident">evals</span>[<span class="number">8</span> <span class="op">*</span> <span class="ident">i</span>]);
-                    <span class="kw">let</span> <span class="ident">table_id</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">lcs</span>.<span class="ident">table_ids8</span>.<span class="ident">as_ref</span>() {
-                        <span class="prelude-val">Some</span>(<span class="ident">table_ids8</span>) =&gt; <span class="ident">table_ids8</span>.<span class="ident">evals</span>[<span class="number">8</span> <span class="op">*</span> <span class="ident">i</span>],
-                        <span class="prelude-val">None</span> =&gt;
-                        <span class="comment">// If there is no `table_ids8` in the constraint system, every</span>
-                        <span class="comment">// table ID is identically 0.</span>
-                        {
-                            <span class="ident">ScalarField</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::zero</span>()
-                        }
-                    };
-                    <span class="ident">combine_table_entry</span>(
-                        <span class="kw-2">&amp;</span><span class="ident">lookup_context</span>.<span class="ident">joint_combiner</span>.<span class="ident">unwrap</span>(),
-                        <span class="kw-2">&amp;</span><span class="ident">lookup_context</span>.<span class="ident">table_id_combiner</span>.<span class="ident">unwrap</span>(),
-                        <span class="ident">row</span>,
-                        <span class="kw-2">&amp;</span><span class="ident">table_id</span>,
-                    )
-                })
-            };
+            <span class="kw">let</span> <span class="ident">joint_lookup_table_d8</span> <span class="op">=</span> <span class="ident">lookup_context</span>.<span class="ident">joint_lookup_table_d8</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>();
 
-            <span class="kw">let</span> <span class="ident">aggreg</span> <span class="op">=</span> <span class="ident">lookup::constraints::aggregation</span>::<span class="op">&lt;</span><span class="kw">_</span>, <span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span>(
+            <span class="kw">let</span> <span class="ident">aggreg</span> <span class="op">=</span> <span class="ident">lookup::constraints::aggregation</span>::<span class="op">&lt;</span><span class="kw">_</span>, <span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>(
                 <span class="ident">lookup_context</span>.<span class="ident">dummy_lookup_value</span>.<span class="ident">unwrap</span>(),
-                <span class="ident">iter_lookup_table</span>(),
+                <span class="ident">joint_lookup_table_d8</span>,
                 <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>,
                 <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">gates</span>,
                 <span class="kw-2">&amp;</span><span class="ident">witness</span>,
@@ -1637,52 +1590,7 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">all_alphas</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">powers_of_alpha</span>.<span class="ident">clone</span>();
         <span class="ident">all_alphas</span>.<span class="ident">instantiate</span>(<span class="ident">alpha</span>);
 
-        <span class="comment">//~ 20. If using lookup:</span>
-        <span class="kw">let</span> <span class="ident">lookup_env</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">lcs</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">lookup_constraint_system</span> {
-            <span class="kw">let</span> <span class="ident">lookup_table_combined</span> <span class="op">=</span> {
-                <span class="comment">//~     - computing the combined lookup table by combining the</span>
-                <span class="comment">//~       columns of the lookup table with the joint combiner $j$:</span>
-                <span class="comment">//~       $$</span>
-                <span class="comment">//~       t[0] + j \cdot t[1] + j^2 \cdot t[2] + \cdots</span>
-                <span class="comment">//~       $$</span>
-                <span class="comment">//~       where $t$ is the lookup table.</span>
-                <span class="kw">let</span> <span class="ident">joint_table</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">lcs</span>.<span class="ident">lookup_table8</span>;
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">joint_table</span>[<span class="ident">joint_table</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>].<span class="ident">clone</span>();
-                <span class="kw">for</span> <span class="ident">col</span> <span class="kw">in</span> <span class="ident">joint_table</span>.<span class="ident">iter</span>().<span class="ident">rev</span>().<span class="ident">skip</span>(<span class="number">1</span>) {
-                    <span class="ident">res</span>.<span class="ident">evals</span>
-                        .<span class="ident">par_iter_mut</span>()
-                        .<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="kw-2">*</span><span class="ident">e</span> <span class="kw-2">*</span><span class="op">=</span> <span class="ident">lookup_context</span>.<span class="ident">joint_combiner</span>.<span class="ident">unwrap</span>());
-                    <span class="ident">res</span> <span class="op">+</span><span class="op">=</span> <span class="ident">col</span>;
-                }
-
-                <span class="comment">//~     - if we are using several lookup tables, add the table id vector</span>
-                <span class="comment">//~       as the last column of the concatenated lookup tables</span>
-                <span class="comment">//~       (including padding via the `table_id_combiner`).</span>
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">table_ids8</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">lcs</span>.<span class="ident">table_ids8</span> {
-                    <span class="kw">let</span> <span class="ident">table_id_combiner</span> <span class="op">=</span> <span class="ident">lookup_context</span>.<span class="ident">table_id_combiner</span>.<span class="ident">unwrap</span>();
-                    <span class="ident">res</span>.<span class="ident">evals</span>
-                        .<span class="ident">par_iter_mut</span>()
-                        .<span class="ident">zip</span>(<span class="ident">table_ids8</span>.<span class="ident">evals</span>.<span class="ident">par_iter</span>())
-                        .<span class="ident">for_each</span>(<span class="op">|</span>(<span class="ident">x</span>, <span class="ident">table_id</span>)<span class="op">|</span> {
-                            <span class="kw-2">*</span><span class="ident">x</span> <span class="op">+</span><span class="op">=</span> <span class="ident">table_id_combiner</span> <span class="op">*</span> <span class="ident">table_id</span>;
-                        })
-                }
-                <span class="ident">res</span>
-            };
-
-            <span class="ident">lookup_context</span>.<span class="ident">combined_table</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">lookup_table_combined</span>);
-
-            <span class="prelude-val">Some</span>(<span class="ident">LookupEnvironment</span> {
-                <span class="ident">aggreg</span>: <span class="ident">lookup_context</span>.<span class="ident">aggreg8</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>(),
-                <span class="ident">sorted</span>: <span class="ident">lookup_context</span>.<span class="ident">sorted8</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>(),
-                <span class="ident">selectors</span>: <span class="kw-2">&amp;</span><span class="ident">lcs</span>.<span class="ident">lookup_selectors</span>,
-                <span class="ident">table</span>: <span class="ident">lookup_context</span>.<span class="ident">combined_table</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>(),
-            })
-        } <span class="kw">else</span> {
-            <span class="prelude-val">None</span>
-        };
-
-        <span class="comment">//~ 21. Compute the quotient polynomial (the $t$ in $f = Z_H \cdot t$).</span>
+        <span class="comment">//~ 20. Compute the quotient polynomial (the $t$ in $f = Z_H \cdot t$).</span>
         <span class="comment">//~     The quotient polynomial is computed by adding all these polynomials together:</span>
         <span class="comment">//~     - the combined constraints for all the gates</span>
         <span class="comment">//~     - the combined constraints for the permutation</span>
@@ -1690,6 +1598,18 @@
         <span class="comment">//~     - the negated public polynomial</span>
         <span class="comment">//~     and by then dividing the resulting polynomial with the vanishing polynomial $Z_H$.</span>
         <span class="comment">//~     TODO: specify the split of the permutation polynomial into perm and bnd?</span>
+        <span class="kw">let</span> <span class="ident">lookup_env</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">lcs</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">lookup_constraint_system</span> {
+            <span class="kw">let</span> <span class="ident">joint_lookup_table_d8</span> <span class="op">=</span> <span class="ident">lookup_context</span>.<span class="ident">joint_lookup_table_d8</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>();
+
+            <span class="prelude-val">Some</span>(<span class="ident">LookupEnvironment</span> {
+                <span class="ident">aggreg</span>: <span class="ident">lookup_context</span>.<span class="ident">aggreg8</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>(),
+                <span class="ident">sorted</span>: <span class="ident">lookup_context</span>.<span class="ident">sorted8</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>(),
+                <span class="ident">selectors</span>: <span class="kw-2">&amp;</span><span class="ident">lcs</span>.<span class="ident">lookup_selectors</span>,
+                <span class="ident">table</span>: <span class="ident">joint_lookup_table_d8</span>,
+            })
+        } <span class="kw">else</span> {
+            <span class="prelude-val">None</span>
+        };
 
         <span class="kw">let</span> <span class="ident">lagrange</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="ident">witness_poly</span>, <span class="kw-2">&amp;</span><span class="ident">z_poly</span>);
         <span class="kw">let</span> <span class="ident">env</span> <span class="op">=</span> {
@@ -1921,7 +1841,7 @@
             <span class="ident">quotient</span>
         };
 
-        <span class="comment">//~ 22. commit (hiding) to the quotient polynomial $t$</span>
+        <span class="comment">//~ 21. commit (hiding) to the quotient polynomial $t$</span>
         <span class="comment">//~     TODO: specify the dummies</span>
         <span class="kw">let</span> <span class="ident">t_comm</span> <span class="op">=</span> {
             <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">t_comm</span>, <span class="kw-2">mut</span> <span class="ident">omega_t</span>) <span class="op">=</span> <span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">commit</span>(<span class="kw-2">&amp;</span><span class="ident">quotient_poly</span>, <span class="prelude-val">None</span>, <span class="ident">rng</span>);
@@ -1940,19 +1860,19 @@
             (<span class="ident">t_comm</span>, <span class="ident">omega_t</span>)
         };
 
-        <span class="comment">//~ 23. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.</span>
+        <span class="comment">//~ 22. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.</span>
         <span class="ident">fq_sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span><span class="ident">t_comm</span>.<span class="number">0</span>.<span class="ident">unshifted</span>);
 
-        <span class="comment">//~ 24. Sample $\zeta&#39;$ with the Fq-Sponge.</span>
+        <span class="comment">//~ 23. Sample $\zeta&#39;$ with the Fq-Sponge.</span>
         <span class="kw">let</span> <span class="ident">zeta_chal</span> <span class="op">=</span> <span class="ident">ScalarChallenge</span>(<span class="ident">fq_sponge</span>.<span class="ident">challenge</span>());
 
-        <span class="comment">//~ 25. Derive $\zeta$ from $\zeta&#39;$ using the endomorphism (TODO: specify)</span>
+        <span class="comment">//~ 24. Derive $\zeta$ from $\zeta&#39;$ using the endomorphism (TODO: specify)</span>
         <span class="kw">let</span> <span class="ident">zeta</span> <span class="op">=</span> <span class="ident">zeta_chal</span>.<span class="ident">to_field</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">endo_r</span>);
 
         <span class="kw">let</span> <span class="ident">omega</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">group_gen</span>;
         <span class="kw">let</span> <span class="ident">zeta_omega</span> <span class="op">=</span> <span class="ident">zeta</span> <span class="op">*</span> <span class="ident">omega</span>;
 
-        <span class="comment">//~ 26. If lookup is used, evaluate the following polynomials at $\zeta$ and $\zeta \omega$:</span>
+        <span class="comment">//~ 25. If lookup is used, evaluate the following polynomials at $\zeta$ and $\zeta \omega$:</span>
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">lcs</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">lookup_constraint_system</span> {
             <span class="comment">//     - the aggregation polynomial</span>
             <span class="kw">let</span> <span class="ident">aggreg</span> <span class="op">=</span> <span class="ident">lookup_context</span>
@@ -2012,7 +1932,7 @@
             <span class="ident">lookup_context</span>.<span class="ident">eval_zeta_omega</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">lookup_evals</span>(<span class="ident">zeta_omega</span>));
         }
 
-        <span class="comment">//~ 27. Chunk evaluate the following polynomials at both $\zeta$ and $\zeta \omega$:</span>
+        <span class="comment">//~ 26. Chunk evaluate the following polynomials at both $\zeta$ and $\zeta \omega$:</span>
         <span class="comment">//~     * $s_i$</span>
         <span class="comment">//~     * $w_i$</span>
         <span class="comment">//~     * $z$</span>
@@ -2100,7 +2020,7 @@
         <span class="kw">let</span> <span class="ident">zeta_omega_to_srs_len</span> <span class="op">=</span> <span class="ident">zeta</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="ident">index</span>.<span class="ident">max_poly_size</span> <span class="kw">as</span> <span class="ident">u64</span>]);
         <span class="kw">let</span> <span class="ident">zeta_to_domain_size</span> <span class="op">=</span> <span class="ident">zeta</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="ident">d1_size</span> <span class="kw">as</span> <span class="ident">u64</span>]);
 
-        <span class="comment">//~ 28. Evaluate the same polynomials without chunking them</span>
+        <span class="comment">//~ 27. Evaluate the same polynomials without chunking them</span>
         <span class="comment">//~     (so that each polynomial should correspond to a single value this time).</span>
         <span class="kw">let</span> <span class="ident">evals</span> <span class="op">=</span> {
             <span class="kw">let</span> <span class="ident">power_of_eval_points_for_chunks</span> <span class="op">=</span> [<span class="ident">zeta_to_srs_len</span>, <span class="ident">zeta_omega_to_srs_len</span>];
@@ -2126,7 +2046,7 @@
                 .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>()
         };
 
-        <span class="comment">//~ 29. Compute the ft polynomial.</span>
+        <span class="comment">//~ 28. Compute the ft polynomial.</span>
         <span class="comment">//~     This is to implement [Maller&#39;s optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html).</span>
         <span class="kw">let</span> <span class="ident">ft</span>: <span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> {
             <span class="kw">let</span> <span class="ident">f_chunked</span> <span class="op">=</span> {
@@ -2167,7 +2087,7 @@
             <span class="kw-2">&amp;</span><span class="ident">f_chunked</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">t_chunked</span>.<span class="ident">scale</span>(<span class="ident">zeta_to_domain_size</span> <span class="op">-</span> <span class="ident">ScalarField</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::one</span>())
         };
 
-        <span class="comment">//~ 30. construct the blinding part of the ft polynomial commitment</span>
+        <span class="comment">//~ 29. construct the blinding part of the ft polynomial commitment</span>
         <span class="comment">//~     see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#evaluation-proof-and-blinding-factors</span>
         <span class="kw">let</span> <span class="ident">blinding_ft</span> <span class="op">=</span> {
             <span class="kw">let</span> <span class="ident">blinding_t</span> <span class="op">=</span> <span class="ident">t_comm</span>.<span class="number">1</span>.<span class="ident">chunk_blinding</span>(<span class="ident">zeta_to_srs_len</span>);
@@ -2182,17 +2102,17 @@
             }
         };
 
-        <span class="comment">//~ 31. Evaluate the ft polynomial at $\zeta\omega$ only.</span>
+        <span class="comment">//~ 30. Evaluate the ft polynomial at $\zeta\omega$ only.</span>
         <span class="kw">let</span> <span class="ident">ft_eval1</span> <span class="op">=</span> <span class="ident">ft</span>.<span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="ident">zeta_omega</span>);
 
-        <span class="comment">//~ 32. Setup the Fr-Sponge</span>
+        <span class="comment">//~ 31. Setup the Fr-Sponge</span>
         <span class="kw">let</span> <span class="ident">fq_sponge_before_evaluations</span> <span class="op">=</span> <span class="ident">fq_sponge</span>.<span class="ident">clone</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">fr_sponge</span> <span class="op">=</span> <span class="ident">EFrSponge::new</span>(<span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">fr_sponge_params</span>.<span class="ident">clone</span>());
 
-        <span class="comment">//~ 33. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.</span>
+        <span class="comment">//~ 32. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.</span>
         <span class="ident">fr_sponge</span>.<span class="ident">absorb</span>(<span class="kw-2">&amp;</span><span class="ident">fq_sponge</span>.<span class="ident">digest</span>());
 
-        <span class="comment">//~ 34. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.</span>
+        <span class="comment">//~ 33. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.</span>
         <span class="kw">let</span> <span class="ident">public_evals</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">public_poly</span>.<span class="ident">is_zero</span>() {
             [<span class="ident">Vec::new</span>(), <span class="ident">Vec::new</span>()]
         } <span class="kw">else</span> {
@@ -2202,7 +2122,7 @@
             ]
         };
 
-        <span class="comment">//~ 35. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:</span>
+        <span class="comment">//~ 34. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:</span>
         <span class="comment">//~     - the public polynomial</span>
         <span class="comment">//~     - z</span>
         <span class="comment">//~     - generic selector</span>
@@ -2213,22 +2133,22 @@
             <span class="ident">fr_sponge</span>.<span class="ident">absorb_evaluations</span>(<span class="kw-2">&amp;</span><span class="ident">public_evals</span>[<span class="ident">i</span>], <span class="kw-2">&amp;</span><span class="ident">chunked_evals</span>[<span class="ident">i</span>])
         }
 
-        <span class="comment">//~ 36. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.</span>
+        <span class="comment">//~ 35. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.</span>
         <span class="ident">fr_sponge</span>.<span class="ident">absorb</span>(<span class="kw-2">&amp;</span><span class="ident">ft_eval1</span>);
 
-        <span class="comment">//~ 37. Sample $v&#39;$ with the Fr-Sponge</span>
+        <span class="comment">//~ 36. Sample $v&#39;$ with the Fr-Sponge</span>
         <span class="kw">let</span> <span class="ident">v_chal</span> <span class="op">=</span> <span class="ident">fr_sponge</span>.<span class="ident">challenge</span>();
 
-        <span class="comment">//~ 38. Derive $v$ from $v&#39;$ using the endomorphism (TODO: specify)</span>
+        <span class="comment">//~ 37. Derive $v$ from $v&#39;$ using the endomorphism (TODO: specify)</span>
         <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="ident">v_chal</span>.<span class="ident">to_field</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">endo_r</span>);
 
-        <span class="comment">//~ 39. Sample $u&#39;$ with the Fr-Sponge</span>
+        <span class="comment">//~ 38. Sample $u&#39;$ with the Fr-Sponge</span>
         <span class="kw">let</span> <span class="ident">u_chal</span> <span class="op">=</span> <span class="ident">fr_sponge</span>.<span class="ident">challenge</span>();
 
-        <span class="comment">//~ 40. Derive $u$ from $u&#39;$ using the endomorphism (TODO: specify)</span>
+        <span class="comment">//~ 39. Derive $u$ from $u&#39;$ using the endomorphism (TODO: specify)</span>
         <span class="kw">let</span> <span class="ident">u</span> <span class="op">=</span> <span class="ident">u_chal</span>.<span class="ident">to_field</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">endo_r</span>);
 
-        <span class="comment">//~ 41. Create a list of all polynomials that will require evaluations</span>
+        <span class="comment">//~ 40. Create a list of all polynomials that will require evaluations</span>
         <span class="comment">//~     (and evaluation proofs) in the protocol.</span>
         <span class="comment">//~     First, include the previous challenges, in case we are in a recursive prover.</span>
         <span class="kw">let</span> <span class="ident">non_hiding</span> <span class="op">=</span> <span class="op">|</span><span class="ident">d1_size</span>: <span class="ident">usize</span><span class="op">|</span> <span class="ident">PolyComm</span> {
@@ -2251,7 +2171,7 @@
             .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">p</span>, <span class="ident">d1_size</span>)<span class="op">|</span> (<span class="ident">p</span>, <span class="prelude-val">None</span>, <span class="ident">non_hiding</span>(<span class="kw-2">*</span><span class="ident">d1_size</span>)))
             .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>();
 
-        <span class="comment">//~ 42. Then, include:</span>
+        <span class="comment">//~ 41. Then, include:</span>
         <span class="comment">//~     - the negated public polynomial</span>
         <span class="comment">//~     - the ft polynomial</span>
         <span class="comment">//~     - the permutation aggregation polynomial z polynomial</span>
@@ -2278,7 +2198,7 @@
                 .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>(),
         );
 
-        <span class="comment">//~ 43. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.</span>
+        <span class="comment">//~ 42. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.</span>
         <span class="kw">let</span> <span class="ident">proof</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">open</span>(
             <span class="ident">group_map</span>,
             <span class="kw-2">&amp;</span><span class="ident">polynomials</span>,

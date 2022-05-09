@@ -655,25 +655,6 @@
 <span id="650">650</span>
 <span id="651">651</span>
 <span id="652">652</span>
-<span id="653">653</span>
-<span id="654">654</span>
-<span id="655">655</span>
-<span id="656">656</span>
-<span id="657">657</span>
-<span id="658">658</span>
-<span id="659">659</span>
-<span id="660">660</span>
-<span id="661">661</span>
-<span id="662">662</span>
-<span id="663">663</span>
-<span id="664">664</span>
-<span id="665">665</span>
-<span id="666">666</span>
-<span id="667">667</span>
-<span id="668">668</span>
-<span id="669">669</span>
-<span id="670">670</span>
-<span id="671">671</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections::HashMap</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -689,6 +670,7 @@
 };
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">One</span>, <span class="ident">Zero</span>};
 <span class="kw">use</span> <span class="ident">ark_poly</span>::{<span class="ident">EvaluationDomain</span>, <span class="ident">Evaluations</span>, <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>};
+<span class="kw">use</span> <span class="ident">o1_utils::adjacent_pairs::AdjacentPairs</span>;
 <span class="kw">use</span> <span class="ident">rand::Rng</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">serde_with::serde_as</span>;
@@ -753,9 +735,9 @@
 <span class="comment">//~</span>
 
 <span class="doccomment">/// Computes the sorted lookup tables required by the lookup argument.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sorted</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">I</span><span class="op">&gt;</span>(
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sorted</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(
     <span class="ident">dummy_lookup_value</span>: <span class="ident">F</span>,
-    <span class="ident">lookup_table</span>: <span class="ident">I</span>,
+    <span class="ident">joint_lookup_table_d8</span>: <span class="kw-2">&amp;</span><span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">d1</span>: <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
     <span class="ident">gates</span>: <span class="kw-2">&amp;</span>[<span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>],
     <span class="ident">witness</span>: <span class="kw-2">&amp;</span>[<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
@@ -763,20 +745,24 @@
 ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">ProverError</span><span class="op">&gt;</span>
 <span class="kw">where</span>
     <span class="ident">F</span>: <span class="ident">FftField</span>,
-    <span class="ident">I</span>: <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">F</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">Clone</span>,
 {
     <span class="comment">// We pad the lookups so that it is as if we lookup exactly</span>
     <span class="comment">// `max_lookups_per_row` in every row.</span>
 
     <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">d1</span>.<span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>;
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">counts</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">usize</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">counts</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">F</span>, <span class="ident">usize</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
 
     <span class="kw">let</span> <span class="ident">lookup_rows</span> <span class="op">=</span> <span class="ident">n</span> <span class="op">-</span> <span class="ident">ZK_ROWS</span> <span class="op">-</span> <span class="number">1</span>;
     <span class="kw">let</span> <span class="ident">lookup_info</span> <span class="op">=</span> <span class="ident">LookupInfo</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::create</span>();
     <span class="kw">let</span> <span class="ident">by_row</span> <span class="op">=</span> <span class="ident">lookup_info</span>.<span class="ident">by_row</span>(<span class="ident">gates</span>);
     <span class="kw">let</span> <span class="ident">max_lookups_per_row</span> <span class="op">=</span> <span class="ident">lookup_info</span>.<span class="ident">max_per_row</span>;
 
-    <span class="kw">for</span> <span class="ident">t</span> <span class="kw">in</span> <span class="ident">lookup_table</span>.<span class="ident">clone</span>().<span class="ident">take</span>(<span class="ident">lookup_rows</span>) {
+    <span class="kw">for</span> <span class="ident">t</span> <span class="kw">in</span> <span class="ident">joint_lookup_table_d8</span>
+        .<span class="ident">evals</span>
+        .<span class="ident">iter</span>()
+        .<span class="ident">step_by</span>(<span class="number">8</span>)
+        .<span class="ident">take</span>(<span class="ident">lookup_rows</span>)
+    {
         <span class="comment">// Don&#39;t multiply-count duplicate values in the table, or they&#39;ll be duplicated for each</span>
         <span class="comment">// duplicate!</span>
         <span class="comment">// E.g. A value duplicated in the table 3 times would be entered into the sorted array 3</span>
@@ -785,7 +771,12 @@
     }
 
     <span class="comment">// TODO: shouldn&#39;t we make sure that lookup rows is the same as the number of active gates in the circuit as well? danger: What if we have gates that use lookup but are not counted here?</span>
-    <span class="kw">for</span> (<span class="ident">i</span>, <span class="ident">row</span>) <span class="kw">in</span> <span class="ident">by_row</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>().<span class="ident">take</span>(<span class="ident">lookup_rows</span>) {
+    <span class="kw">for</span> (<span class="ident">i</span>, <span class="ident">row</span>) <span class="kw">in</span> <span class="ident">by_row</span>
+        .<span class="ident">iter</span>()
+        .<span class="ident">enumerate</span>()
+        <span class="comment">// avoid zk rows</span>
+        .<span class="ident">take</span>(<span class="ident">lookup_rows</span>)
+    {
         <span class="kw">let</span> <span class="ident">spec</span> <span class="op">=</span> <span class="ident">row</span>;
         <span class="kw">let</span> <span class="ident">padding</span> <span class="op">=</span> <span class="ident">max_lookups_per_row</span> <span class="op">-</span> <span class="ident">spec</span>.<span class="ident">len</span>();
         <span class="kw">for</span> <span class="ident">joint_lookup</span> <span class="kw">in</span> <span class="ident">spec</span>.<span class="ident">iter</span>() {
@@ -795,7 +786,7 @@
                 <span class="prelude-val">Some</span>(<span class="ident">count</span>) =&gt; <span class="kw-2">*</span><span class="ident">count</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>,
             }
         }
-        <span class="kw-2">*</span><span class="ident">counts</span>.<span class="ident">entry</span>(<span class="ident">dummy_lookup_value</span>).<span class="ident">or_insert</span>(<span class="number">0</span>) <span class="op">+</span><span class="op">=</span> <span class="ident">padding</span>;
+        <span class="kw-2">*</span><span class="ident">counts</span>.<span class="ident">entry</span>(<span class="kw-2">&amp;</span><span class="ident">dummy_lookup_value</span>).<span class="ident">or_insert</span>(<span class="number">0</span>) <span class="op">+</span><span class="op">=</span> <span class="ident">padding</span>;
     }
 
     <span class="kw">let</span> <span class="ident">sorted</span> <span class="op">=</span> {
@@ -803,7 +794,13 @@
             <span class="macro">vec!</span>[<span class="ident">Vec::with_capacity</span>(<span class="ident">lookup_rows</span> <span class="op">+</span> <span class="number">1</span>); <span class="ident">max_lookups_per_row</span> <span class="op">+</span> <span class="number">1</span>];
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">i</span> <span class="op">=</span> <span class="number">0</span>;
-        <span class="kw">for</span> <span class="ident">t</span> <span class="kw">in</span> <span class="ident">lookup_table</span>.<span class="ident">take</span>(<span class="ident">lookup_rows</span>) {
+        <span class="kw">for</span> <span class="ident">t</span> <span class="kw">in</span> <span class="ident">joint_lookup_table_d8</span>
+            .<span class="ident">evals</span>
+            .<span class="ident">iter</span>()
+            .<span class="ident">step_by</span>(<span class="number">8</span>)
+            <span class="comment">// avoid zk rows</span>
+            .<span class="ident">take</span>(<span class="ident">lookup_rows</span>)
+        {
             <span class="kw">let</span> <span class="ident">t_count</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">counts</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">t</span>) {
                 <span class="prelude-val">None</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Value has disappeared from count table&quot;</span>),
                 <span class="prelude-val">Some</span>(<span class="ident">x</span>) =&gt; {
@@ -816,7 +813,7 @@
             <span class="kw">for</span> <span class="ident">j</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">t_count</span> {
                 <span class="kw">let</span> <span class="ident">idx</span> <span class="op">=</span> <span class="ident">i</span> <span class="op">+</span> <span class="ident">j</span>;
                 <span class="kw">let</span> <span class="ident">col</span> <span class="op">=</span> <span class="ident">idx</span> <span class="op">/</span> <span class="ident">lookup_rows</span>;
-                <span class="ident">sorted</span>[<span class="ident">col</span>].<span class="ident">push</span>(<span class="ident">t</span>);
+                <span class="ident">sorted</span>[<span class="ident">col</span>].<span class="ident">push</span>(<span class="kw-2">*</span><span class="ident">t</span>);
             }
             <span class="ident">i</span> <span class="op">+</span><span class="op">=</span> <span class="ident">t_count</span>;
         }
@@ -844,45 +841,6 @@
     <span class="prelude-val">Ok</span>(<span class="ident">sorted</span>)
 }
 
-<span class="kw">struct</span> <span class="ident">AdjacentPairs</span><span class="op">&lt;</span><span class="ident">A</span>, <span class="ident">I</span>: <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">A</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-    <span class="ident">prev_second_component</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span>,
-    <span class="ident">i</span>: <span class="ident">I</span>,
-}
-
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">A</span>: <span class="ident">Copy</span>, <span class="ident">I</span>: <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">A</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="ident">Iterator</span> <span class="kw">for</span> <span class="ident">AdjacentPairs</span><span class="op">&lt;</span><span class="ident">A</span>, <span class="ident">I</span><span class="op">&gt;</span> {
-    <span class="kw">type</span> <span class="ident">Item</span> <span class="op">=</span> (<span class="ident">A</span>, <span class="ident">A</span>);
-
-    <span class="kw">fn</span> <span class="ident">next</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">A</span>, <span class="ident">A</span>)<span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">prev_second_component</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">x</span>) =&gt; <span class="kw">match</span> <span class="self">self</span>.<span class="ident">i</span>.<span class="ident">next</span>() {
-                <span class="prelude-val">None</span> =&gt; <span class="prelude-val">None</span>,
-                <span class="prelude-val">Some</span>(<span class="ident">y</span>) =&gt; {
-                    <span class="self">self</span>.<span class="ident">prev_second_component</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">y</span>);
-                    <span class="prelude-val">Some</span>((<span class="ident">x</span>, <span class="ident">y</span>))
-                }
-            },
-            <span class="prelude-val">None</span> =&gt; {
-                <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">i</span>.<span class="ident">next</span>();
-                <span class="kw">let</span> <span class="ident">y</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">i</span>.<span class="ident">next</span>();
-                <span class="kw">match</span> (<span class="ident">x</span>, <span class="ident">y</span>) {
-                    (<span class="prelude-val">None</span>, <span class="kw">_</span>) <span class="op">|</span> (<span class="kw">_</span>, <span class="prelude-val">None</span>) =&gt; <span class="prelude-val">None</span>,
-                    (<span class="prelude-val">Some</span>(<span class="ident">x</span>), <span class="prelude-val">Some</span>(<span class="ident">y</span>)) =&gt; {
-                        <span class="self">self</span>.<span class="ident">prev_second_component</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">y</span>);
-                        <span class="prelude-val">Some</span>((<span class="ident">x</span>, <span class="ident">y</span>))
-                    }
-                }
-            }
-        }
-    }
-}
-
-<span class="kw">fn</span> <span class="ident">adjacent_pairs</span><span class="op">&lt;</span><span class="ident">A</span>: <span class="ident">Copy</span>, <span class="ident">I</span>: <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">A</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="ident">i</span>: <span class="ident">I</span>) -&gt; <span class="ident">AdjacentPairs</span><span class="op">&lt;</span><span class="ident">A</span>, <span class="ident">I</span><span class="op">&gt;</span> {
-    <span class="ident">AdjacentPairs</span> {
-        <span class="ident">i</span>,
-        <span class="ident">prev_second_component</span>: <span class="prelude-val">None</span>,
-    }
-}
-
 <span class="doccomment">/// Computes the aggregation polynomial for maximum n lookups per row, whose kth entry is the product of terms</span>
 <span class="doccomment">///</span>
 <span class="doccomment">///  (gamma(1 + beta) + t_i + beta t_{i+1}) \prod_{0 &lt;= j &lt; n} ( (1 + beta) (gamma + f_{i,j}) )</span>
@@ -908,9 +866,9 @@
 <span class="doccomment">/// after multiplying all of the values, all of the terms will have cancelled if s is a sorting of f and t, and the final term will be 1</span>
 <span class="doccomment">/// because of the random choice of beta and gamma, there is negligible probability that the terms will cancel if s is not a sorting of f and t</span>
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::too_many_arguments</span>)]</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">aggregation</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Rng</span> <span class="op">+</span> <span class="question-mark">?</span><span class="ident">Sized</span>, <span class="ident">F</span>: <span class="ident">FftField</span>, <span class="ident">I</span>: <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>(
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">aggregation</span><span class="op">&lt;</span><span class="ident">R</span>, <span class="ident">F</span><span class="op">&gt;</span>(
     <span class="ident">dummy_lookup_value</span>: <span class="ident">F</span>,
-    <span class="ident">lookup_table</span>: <span class="ident">I</span>,
+    <span class="ident">joint_lookup_table_d8</span>: <span class="kw-2">&amp;</span><span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">d1</span>: <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
     <span class="ident">gates</span>: <span class="kw-2">&amp;</span>[<span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>],
     <span class="ident">witness</span>: <span class="kw-2">&amp;</span>[<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
@@ -920,7 +878,11 @@
     <span class="ident">gamma</span>: <span class="ident">F</span>,
     <span class="ident">sorted</span>: <span class="kw-2">&amp;</span>[<span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>],
     <span class="ident">rng</span>: <span class="kw-2">&amp;mut</span> <span class="ident">R</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">ProverError</span><span class="op">&gt;</span> {
+) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">ProverError</span><span class="op">&gt;</span>
+<span class="kw">where</span>
+    <span class="ident">R</span>: <span class="ident">Rng</span> <span class="op">+</span> <span class="question-mark">?</span><span class="ident">Sized</span>,
+    <span class="ident">F</span>: <span class="ident">FftField</span>,
+{
     <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">d1</span>.<span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>;
     <span class="kw">let</span> <span class="ident">lookup_rows</span> <span class="op">=</span> <span class="ident">n</span> <span class="op">-</span> <span class="ident">ZK_ROWS</span> <span class="op">-</span> <span class="number">1</span>;
     <span class="kw">let</span> <span class="ident">beta1</span> <span class="op">=</span> <span class="ident">F::one</span>() <span class="op">+</span> <span class="ident">beta</span>;
@@ -959,7 +921,7 @@
         <span class="ident">v</span>
     };
 
-    <span class="ident">adjacent_pairs</span>(<span class="ident">lookup_table</span>)
+    <span class="ident">AdjacentPairs::from</span>(<span class="ident">joint_lookup_table_d8</span>.<span class="ident">evals</span>.<span class="ident">iter</span>().<span class="ident">step_by</span>(<span class="number">8</span>))
         .<span class="ident">take</span>(<span class="ident">lookup_rows</span>)
         .<span class="ident">zip</span>(<span class="ident">lookup_info</span>.<span class="ident">by_row</span>(<span class="ident">gates</span>))
         .<span class="ident">enumerate</span>()

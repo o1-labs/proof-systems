@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["AdjacentPairs","You can create a new [AdjacentPairs] from an iterator using:"]]});
