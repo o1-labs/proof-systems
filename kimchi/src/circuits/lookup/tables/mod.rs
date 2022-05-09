@@ -1,12 +1,7 @@
-use crate::circuits::{
-    gate::{CurrOrNext, GateType},
-    lookup::lookups::{JointLookupSpec, LocalPosition},
-    wires::COLUMNS,
-};
+use crate::circuits::gate::{CurrOrNext, GateType};
 use ark_ff::{FftField, One, Zero};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-use CurrOrNext::{Curr, Next};
 
 pub mod xor;
 
@@ -37,24 +32,6 @@ pub struct GatesLookupMaps {
     /// Enumerates the fixed tables that should be used for lookups in a particular gate-relative
     /// position.
     pub gate_table_map: HashMap<(GateType, CurrOrNext), GateLookupTable>,
-}
-
-/// Evaluates a joint lookup.
-pub fn evaluate_joint_lookup<F: FftField>(
-    (joint_combiner, table_id_combiner): &(F, F),
-    j: &JointLookupSpec<F>,
-    witness: &[Vec<F>; COLUMNS],
-    row: usize,
-) -> F {
-    let eval = |pos: LocalPosition| -> F {
-        let row = match pos.row {
-            Curr => row,
-            Next => row + 1,
-        };
-        witness[pos.column][row]
-    };
-
-    j.evaluate(joint_combiner, table_id_combiner, &eval)
 }
 
 /// A table of values that can be used for a lookup, along with the ID for the table.

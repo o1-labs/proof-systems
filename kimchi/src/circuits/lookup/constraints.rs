@@ -18,8 +18,6 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use CurrOrNext::{Curr, Next};
 
-use super::tables::evaluate_joint_lookup;
-
 /// Number of constraints produced by the argument.
 pub const CONSTRAINTS: u32 = 7;
 
@@ -83,7 +81,8 @@ pub fn sorted<F, I>(
     d1: D<F>,
     gates: &[CircuitGate<F>],
     witness: &[Vec<F>; COLUMNS],
-    params: (F, F), // join_combiner, table_id_combiner
+    joint_combiner: F,
+    table_id_combiner: F,
 ) -> Result<Vec<Vec<F>>, ProverError>
 where
     F: FftField,
@@ -113,7 +112,15 @@ where
         let spec = row;
         let padding = max_lookups_per_row - spec.len();
         for joint_lookup in spec.iter() {
-            let joint_lookup_evaluation = evaluate_joint_lookup(&params, joint_lookup, witness, i);
+            let eval = |pos: LocalPosition| -> F {
+                let row = match pos.row {
+                    Curr => i,
+                    Next => i + 1,
+                };
+                witness[pos.column][row]
+            };
+            let joint_lookup_evaluation =
+                joint_lookup.evaluate(&joint_combiner, &table_id_combiner, &eval);
             match counts.get_mut(&joint_lookup_evaluation) {
                 None => return Err(ProverError::ValueNotInTable),
                 Some(count) => *count += 1,

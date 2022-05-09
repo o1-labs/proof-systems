@@ -258,7 +258,8 @@ where
                 index.cs.domain.d1,
                 &index.cs.gates,
                 &witness,
-                (joint_combiner, table_id_combiner),
+                joint_combiner,
+                table_id_combiner,
             )?;
 
             //~      - Randomize the last `EVALS` rows in each of the sorted polynomials
