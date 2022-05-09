@@ -1215,6 +1215,7 @@
 <span id="1210">1210</span>
 <span id="1211">1211</span>
 <span id="1212">1212</span>
+<span id="1213">1213</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements prover&#39;s zk-proof primitive.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -1486,7 +1487,8 @@
                 <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>,
                 <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">gates</span>,
                 <span class="kw-2">&amp;</span><span class="ident">witness</span>,
-                (<span class="ident">joint_combiner</span>, <span class="ident">table_id_combiner</span>),
+                <span class="ident">joint_combiner</span>,
+                <span class="ident">table_id_combiner</span>,
             )<span class="question-mark">?</span>;
 
             <span class="comment">//~      - Randomize the last `EVALS` rows in each of the sorted polynomials</span>
