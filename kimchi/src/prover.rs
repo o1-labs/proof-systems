@@ -373,7 +373,14 @@ where
         let mut all_alphas = index.powers_of_alpha.clone();
         all_alphas.instantiate(alpha);
 
-        //~ 20. If using lookup:
+        //~ 20. Compute the quotient polynomial (the $t$ in $f = Z_H \cdot t$).
+        //~     The quotient polynomial is computed by adding all these polynomials together:
+        //~     - the combined constraints for all the gates
+        //~     - the combined constraints for the permutation
+        //~     - TODO: lookup
+        //~     - the negated public polynomial
+        //~     and by then dividing the resulting polynomial with the vanishing polynomial $Z_H$.
+        //~     TODO: specify the split of the permutation polynomial into perm and bnd?
         let lookup_env = if let Some(lcs) = &index.cs.lookup_constraint_system {
             let joint_lookup_table_d8 = lookup_context.joint_lookup_table_d8.as_ref().unwrap();
 
@@ -386,15 +393,6 @@ where
         } else {
             None
         };
-
-        //~ 21. Compute the quotient polynomial (the $t$ in $f = Z_H \cdot t$).
-        //~     The quotient polynomial is computed by adding all these polynomials together:
-        //~     - the combined constraints for all the gates
-        //~     - the combined constraints for the permutation
-        //~     - TODO: lookup
-        //~     - the negated public polynomial
-        //~     and by then dividing the resulting polynomial with the vanishing polynomial $Z_H$.
-        //~     TODO: specify the split of the permutation polynomial into perm and bnd?
 
         let lagrange = index.cs.evaluate(&witness_poly, &z_poly);
         let env = {
@@ -626,7 +624,7 @@ where
             quotient
         };
 
-        //~ 22. commit (hiding) to the quotient polynomial $t$
+        //~ 21. commit (hiding) to the quotient polynomial $t$
         //~     TODO: specify the dummies
         let t_comm = {
             let (mut t_comm, mut omega_t) = index.srs.commit(&quotient_poly, None, rng);
@@ -645,19 +643,19 @@ where
             (t_comm, omega_t)
         };
 
-        //~ 23. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.
+        //~ 22. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.
         fq_sponge.absorb_g(&t_comm.0.unshifted);
 
-        //~ 24. Sample $\zeta'$ with the Fq-Sponge.
+        //~ 23. Sample $\zeta'$ with the Fq-Sponge.
         let zeta_chal = ScalarChallenge(fq_sponge.challenge());
 
-        //~ 25. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
+        //~ 24. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
         let zeta = zeta_chal.to_field(&index.srs.endo_r);
 
         let omega = index.cs.domain.d1.group_gen;
         let zeta_omega = zeta * omega;
 
-        //~ 26. If lookup is used, evaluate the following polynomials at $\zeta$ and $\zeta \omega$:
+        //~ 25. If lookup is used, evaluate the following polynomials at $\zeta$ and $\zeta \omega$:
         if let Some(lcs) = &index.cs.lookup_constraint_system {
             //     - the aggregation polynomial
             let aggreg = lookup_context
@@ -717,7 +715,7 @@ where
             lookup_context.eval_zeta_omega = Some(lookup_evals(zeta_omega));
         }
 
-        //~ 27. Chunk evaluate the following polynomials at both $\zeta$ and $\zeta \omega$:
+        //~ 26. Chunk evaluate the following polynomials at both $\zeta$ and $\zeta \omega$:
         //~     * $s_i$
         //~     * $w_i$
         //~     * $z$
@@ -805,7 +803,7 @@ where
         let zeta_omega_to_srs_len = zeta.pow(&[index.max_poly_size as u64]);
         let zeta_to_domain_size = zeta.pow(&[d1_size as u64]);
 
-        //~ 28. Evaluate the same polynomials without chunking them
+        //~ 27. Evaluate the same polynomials without chunking them
         //~     (so that each polynomial should correspond to a single value this time).
         let evals = {
             let power_of_eval_points_for_chunks = [zeta_to_srs_len, zeta_omega_to_srs_len];
@@ -831,7 +829,7 @@ where
                 .collect::<Vec<_>>()
         };
 
-        //~ 29. Compute the ft polynomial.
+        //~ 28. Compute the ft polynomial.
         //~     This is to implement [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html).
         let ft: DensePolynomial<ScalarField<G>> = {
             let f_chunked = {
@@ -872,7 +870,7 @@ where
             &f_chunked - &t_chunked.scale(zeta_to_domain_size - ScalarField::<G>::one())
         };
 
-        //~ 30. construct the blinding part of the ft polynomial commitment
+        //~ 29. construct the blinding part of the ft polynomial commitment
         //~     see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#evaluation-proof-and-blinding-factors
         let blinding_ft = {
             let blinding_t = t_comm.1.chunk_blinding(zeta_to_srs_len);
@@ -887,17 +885,17 @@ where
             }
         };
 
-        //~ 31. Evaluate the ft polynomial at $\zeta\omega$ only.
+        //~ 30. Evaluate the ft polynomial at $\zeta\omega$ only.
         let ft_eval1 = ft.evaluate(&zeta_omega);
 
-        //~ 32. Setup the Fr-Sponge
+        //~ 31. Setup the Fr-Sponge
         let fq_sponge_before_evaluations = fq_sponge.clone();
         let mut fr_sponge = EFrSponge::new(index.cs.fr_sponge_params.clone());
 
-        //~ 33. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
+        //~ 32. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
         fr_sponge.absorb(&fq_sponge.digest());
 
-        //~ 34. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
+        //~ 33. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
         let public_evals = if public_poly.is_zero() {
             [Vec::new(), Vec::new()]
         } else {
@@ -907,7 +905,7 @@ where
             ]
         };
 
-        //~ 35. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
+        //~ 34. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
         //~     - the public polynomial
         //~     - z
         //~     - generic selector
@@ -918,22 +916,22 @@ where
             fr_sponge.absorb_evaluations(&public_evals[i], &chunked_evals[i])
         }
 
-        //~ 36. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
+        //~ 35. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
         fr_sponge.absorb(&ft_eval1);
 
-        //~ 37. Sample $v'$ with the Fr-Sponge
+        //~ 36. Sample $v'$ with the Fr-Sponge
         let v_chal = fr_sponge.challenge();
 
-        //~ 38. Derive $v$ from $v'$ using the endomorphism (TODO: specify)
+        //~ 37. Derive $v$ from $v'$ using the endomorphism (TODO: specify)
         let v = v_chal.to_field(&index.srs.endo_r);
 
-        //~ 39. Sample $u'$ with the Fr-Sponge
+        //~ 38. Sample $u'$ with the Fr-Sponge
         let u_chal = fr_sponge.challenge();
 
-        //~ 40. Derive $u$ from $u'$ using the endomorphism (TODO: specify)
+        //~ 39. Derive $u$ from $u'$ using the endomorphism (TODO: specify)
         let u = u_chal.to_field(&index.srs.endo_r);
 
-        //~ 41. Create a list of all polynomials that will require evaluations
+        //~ 40. Create a list of all polynomials that will require evaluations
         //~     (and evaluation proofs) in the protocol.
         //~     First, include the previous challenges, in case we are in a recursive prover.
         let non_hiding = |d1_size: usize| PolyComm {
@@ -956,7 +954,7 @@ where
             .map(|(p, d1_size)| (p, None, non_hiding(*d1_size)))
             .collect::<Vec<_>>();
 
-        //~ 42. Then, include:
+        //~ 41. Then, include:
         //~     - the negated public polynomial
         //~     - the ft polynomial
         //~     - the permutation aggregation polynomial z polynomial
@@ -983,7 +981,7 @@ where
                 .collect::<Vec<_>>(),
         );
 
-        //~ 43. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
+        //~ 42. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
         let proof = index.srs.open(
             group_map,
             &polynomials,

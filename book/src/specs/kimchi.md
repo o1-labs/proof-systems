@@ -1498,6 +1498,7 @@ The prover then follows the following steps to create the proof:
      Essentially, this is to add a last column of table ids to the concatenated lookup tables.
     - Compute the dummy lookup value as the combination of the last entry of the XOR table (so `(0, 0, 0)`).
      Warning: This assumes that we always use the XOR table when using lookups.
+    - Compute the lookup table values as the combination of the lookup table entries.
      - Compute the sorted evaluations.
      - Randomize the last `EVALS` rows in each of the sorted polynomials
       in order to add zero-knowledge to the protocol.
@@ -1516,15 +1517,6 @@ The prover then follows the following steps to create the proof:
 18. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details)
 19. TODO: instantiate alpha?
 20. If using lookup:
-    - computing the combined lookup table by combining the
-      columns of the lookup table with the joint combiner $j$:
-      $$
-      t[0] + j \cdot t[1] + j^2 \cdot t[2] + \cdots
-      $$
-      where $t$ is the lookup table.
-    - if we are using several lookup tables, add the table id vector
-      as the last column of the concatenated lookup tables
-      (including padding via the `table_id_combiner`).
 21. Compute the quotient polynomial (the $t$ in $f = Z_H \cdot t$).
     The quotient polynomial is computed by adding all these polynomials together:
     - the combined constraints for all the gates
