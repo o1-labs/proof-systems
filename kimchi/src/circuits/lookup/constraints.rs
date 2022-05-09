@@ -4,12 +4,8 @@ use crate::{
     circuits::{
         expr::{prologue::*, Column, ConstantExpr},
         gate::{CircuitGate, CurrOrNext},
-        lookup::{
-            lookups::{
-                JointLookup, JointLookupSpec, JointLookupValue, LocalPosition, LookupInfo,
-                LookupsUsed,
-            },
-            tables::Entry,
+        lookup::lookups::{
+            JointLookup, JointLookupSpec, JointLookupValue, LocalPosition, LookupInfo, LookupsUsed,
         },
         wires::COLUMNS,
     },
@@ -21,6 +17,8 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use CurrOrNext::{Curr, Next};
+
+use super::tables::evaluate_joint_lookup;
 
 /// Number of constraints produced by the argument.
 pub const CONSTRAINTS: u32 = 7;
@@ -79,31 +77,30 @@ pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
 //~
 
 /// Computes the sorted lookup tables required by the lookup argument.
-pub fn sorted<
-    F: FftField,
-    E: Entry<Field = F> + Eq + std::hash::Hash + Clone,
-    I: Iterator<Item = E>,
-    G: Fn() -> I,
->(
-    dummy_lookup_value: E,
-    lookup_table: G,
+pub fn sorted<F, I>(
+    dummy_lookup_value: F,
+    lookup_table: I,
     d1: D<F>,
     gates: &[CircuitGate<F>],
     witness: &[Vec<F>; COLUMNS],
-    params: E::Params,
-) -> Result<Vec<Vec<E>>, ProverError> {
+    params: (F, F), // join_combiner, table_id_combiner
+) -> Result<Vec<Vec<F>>, ProverError>
+where
+    F: FftField,
+    I: Iterator<Item = F> + Clone,
+{
     // We pad the lookups so that it is as if we lookup exactly
     // `max_lookups_per_row` in every row.
 
     let n = d1.size as usize;
-    let mut counts: HashMap<E, usize> = HashMap::new();
+    let mut counts: HashMap<F, usize> = HashMap::new();
 
     let lookup_rows = n - ZK_ROWS - 1;
     let lookup_info = LookupInfo::<F>::create();
     let by_row = lookup_info.by_row(gates);
     let max_lookups_per_row = lookup_info.max_per_row;
 
-    for t in lookup_table().take(lookup_rows) {
+    for t in lookup_table.clone().take(lookup_rows) {
         // Don't multiply-count duplicate values in the table, or they'll be duplicated for each
         // duplicate!
         // E.g. A value duplicated in the table 3 times would be entered into the sorted array 3
@@ -116,21 +113,21 @@ pub fn sorted<
         let spec = row;
         let padding = max_lookups_per_row - spec.len();
         for joint_lookup in spec.iter() {
-            let joint_lookup_evaluation = E::evaluate(&params, joint_lookup, witness, i);
+            let joint_lookup_evaluation = evaluate_joint_lookup(&params, joint_lookup, witness, i);
             match counts.get_mut(&joint_lookup_evaluation) {
                 None => return Err(ProverError::ValueNotInTable),
                 Some(count) => *count += 1,
             }
         }
-        *counts.entry(dummy_lookup_value.clone()).or_insert(0) += padding;
+        *counts.entry(dummy_lookup_value).or_insert(0) += padding;
     }
 
     let sorted = {
-        let mut sorted: Vec<Vec<E>> =
+        let mut sorted: Vec<Vec<F>> =
             vec![Vec::with_capacity(lookup_rows + 1); max_lookups_per_row + 1];
 
         let mut i = 0;
-        for t in lookup_table().take(lookup_rows) {
+        for t in lookup_table.take(lookup_rows) {
             let t_count = match counts.get_mut(&t) {
                 None => panic!("Value has disappeared from count table"),
                 Some(x) => {
@@ -143,13 +140,13 @@ pub fn sorted<
             for j in 0..t_count {
                 let idx = i + j;
                 let col = idx / lookup_rows;
-                sorted[col].push(t.clone());
+                sorted[col].push(t);
             }
             i += t_count;
         }
 
         for i in 0..max_lookups_per_row {
-            let end_val = sorted[i + 1][0].clone();
+            let end_val = sorted[i + 1][0];
             sorted[i].push(end_val);
         }
 
@@ -158,7 +155,7 @@ pub fn sorted<
         // next column added to their end, but the final sorted column has no subsequent column to
         // pull this value from.
         let final_sorted_col = &mut sorted[max_lookups_per_row];
-        final_sorted_col.push(final_sorted_col[final_sorted_col.len() - 1].clone());
+        final_sorted_col.push(final_sorted_col[final_sorted_col.len() - 1]);
 
         // snake-ify (see top comment)
         for s in sorted.iter_mut().skip(1).step_by(2) {
