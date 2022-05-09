@@ -34,10 +34,7 @@ use commitment_dlog::commitment::{b_poly_coefficients, CommitmentCurve, PolyComm
 use itertools::Itertools;
 use o1_utils::{types::fields::*, ExtendedDensePolynomial as _};
 use oracle::{sponge::ScalarChallenge, FqSponge};
-use rayon::iter::{
-    IndexedParallelIterator, IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator,
-};
-use std::{collections::HashMap, iter};
+use std::collections::HashMap;
 
 /// The result of a proof creation or verification.
 type Result<T> = std::result::Result<T, ProverError>;
