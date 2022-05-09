@@ -76,31 +76,6 @@ impl<F: Field> Entry for CombinedEntry<F> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct UncombinedEntry<F>(pub Vec<F>);
-
-impl<F: Field> Entry for UncombinedEntry<F> {
-    type Field = F;
-    type Params = ();
-
-    fn evaluate(
-        _: &(),
-        j: &JointLookupSpec<F>,
-        witness: &[Vec<F>; COLUMNS],
-        row: usize,
-    ) -> UncombinedEntry<F> {
-        let eval = |pos: LocalPosition| -> F {
-            let row = match pos.row {
-                Curr => row,
-                Next => row + 1,
-            };
-            witness[pos.column][row]
-        };
-
-        UncombinedEntry(j.entry.iter().map(|s| s.evaluate(&eval)).collect())
-    }
-}
-
 /// A table of values that can be used for a lookup, along with the ID for the table.
 #[derive(Debug)]
 pub struct LookupTable<F> {
