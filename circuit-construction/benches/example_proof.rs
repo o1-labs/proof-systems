@@ -41,7 +41,7 @@ pub fn circuit<
 >(
     constants: &Constants<F>,
     // The witness
-    witness: &Option<Witness<G>>,
+    witness: Option<&Witness<G>>,
     sys: &mut Sys,
     public_input: Vec<Var<F>>,
 ) {
@@ -52,6 +52,13 @@ pub fn circuit<
         let y = sys.constant(y);
         (x, y)
     };
+
+    // my test
+    //    let a = sys.constant(5u32.into());
+    //    let b = sys.constant(10u32.into());
+    //    let c = sys.var(|| b / c);
+    //    sys.assert_eq(a * c, b);
+    //    let d = a * b;
 
     let base = constant_curve_pt(sys, G::prime_subgroup_generator().to_coords().unwrap());
     let scalar = sys.scalar(G::ScalarField::size_in_bits(), || {
@@ -82,12 +89,13 @@ fn main() {
     let proof_system_constants = fp_constants();
     let fq_poseidon = oracle::pasta::fq_kimchi::params();
 
+    let mut gates = |sys, p| circuit::<_, Other, _>(&proof_system_constants, None, sys, p);
     let prover_index = generate_prover_index::<FpInner, _>(
         srs,
         &proof_system_constants,
         &fq_poseidon,
         PUBLIC_INPUT_LENGTH,
-        |sys, p| circuit::<_, Other, _>(&proof_system_constants, &None, sys, p),
+        gates,
     );
 
     let group_map = <Affine as CommitmentCurve>::Map::setup();
@@ -114,12 +122,14 @@ fn main() {
         s.squeeze()
     };
 
+    let mut main =
+        |sys, p| circuit::<Fp, Other, _>(&proof_system_constants, Some(&witness), sys, p);
     let proof = prove::<Affine, _, SpongeQ, SpongeR>(
         &prover_index,
         &group_map,
         None,
         vec![public_key.x, public_key.y, hash],
-        |sys, p| circuit::<Fp, Other, _>(&proof_system_constants, &Some(witness), sys, p),
+        main,
     );
 
     let verifier_index = prover_index.verifier_index();

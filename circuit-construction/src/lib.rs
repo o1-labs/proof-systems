@@ -117,6 +117,7 @@ pub struct ShiftedScalar<F>(Var<F>);
 
 pub struct GateSpec<F: FftField> {
     pub typ: GateType,
+    // TODO: we should have `Option<Var<F>>`
     pub row: [Var<F>; COLUMNS],
     pub c: Vec<F>,
 }
@@ -442,6 +443,10 @@ pub trait Cs<F: FftField + PrimeField> {
         res
     }
 
+    //
+    // Gadgets
+    //
+
     fn scalar_mul(
         &mut self,
         zero: Var<F>,
@@ -456,6 +461,8 @@ pub trait Cs<F: FftField + PrimeField> {
 
         let _ = self.var(|| {
             witness = array_init(|_| vec![F::zero(); 2 * num_row_pairs]);
+
+            // to_bits_be[len-num_bits..] of scalar
             let bits_msb: Vec<bool> = scalar
                 .0
                 .val()
@@ -932,10 +939,10 @@ pub fn generate_prover_index<C, H>(
     constants: &Constants<C::InnerField>,
     poseidon_params: &ArithmeticSpongeParams<C::OuterField>,
     public: usize,
-    main: H,
+    mut main: H,
 ) -> ProverIndex<C::Outer>
 where
-    H: FnOnce(&mut System<C::InnerField>, Vec<Var<C::InnerField>>),
+    H: FnMut(&mut System<C::InnerField>, Vec<Var<C::InnerField>>),
     C: Cycle,
 {
     let mut system: System<C::InnerField> = System {
