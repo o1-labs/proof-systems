@@ -57,12 +57,13 @@ where
     dummy_lookup_value: Option<F>,
 
     /// The combined lookup table
+    joint_lookup_table: Option<DensePolynomial<F>>,
     joint_lookup_table_d8: Option<Evaluations<F, D<F>>>,
 
     /// The sorted polynomials `s` in different forms
     sorted: Option<Vec<Evaluations<F, D<F>>>>,
     sorted_coeffs: Option<Vec<DensePolynomial<F>>>,
-    sorted_comm: Option<Vec<(PolyComm<G>, PolyComm<F>)>>,
+    sorted_comms: Option<Vec<(PolyComm<G>, PolyComm<F>)>>,
     sorted8: Option<Vec<Evaluations<F, D<F>>>>,
 
     /// The aggregation polynomial in different forms
@@ -259,6 +260,8 @@ where
                 Evaluations::from_vec_and_domain(evals, index.cs.domain.d8)
             };
 
+            let joint_lookup_table = joint_lookup_table_d8.interpolate_by_ref();
+
             //~      - Compute the sorted evaluations.
             // TODO: Once we switch to committing using lagrange commitments,
             // `witness` will be consumed when we interpolate, so interpolation will
@@ -281,7 +284,7 @@ where
                 .collect();
 
             //~      - Commit each of the sorted polynomials.
-            let sorted_comm: Vec<_> = sorted
+            let sorted_comms: Vec<_> = sorted
                 .iter()
                 .map(|v| {
                     index
@@ -291,7 +294,7 @@ where
                 .collect();
 
             //~      - Absorb each commitments to the sorted polynomials.
-            sorted_comm
+            sorted_comms
                 .iter()
                 .for_each(|c| fq_sponge.absorb_g(&c.0.unshifted));
 
@@ -306,9 +309,10 @@ where
             lookup_context.joint_combiner = Some(joint_combiner);
             lookup_context.sorted = Some(sorted);
             lookup_context.sorted_coeffs = Some(sorted_coeffs);
-            lookup_context.sorted_comm = Some(sorted_comm);
+            lookup_context.sorted_comms = Some(sorted_comms);
             lookup_context.sorted8 = Some(sorted8);
             lookup_context.joint_lookup_table_d8 = Some(joint_lookup_table_d8);
+            lookup_context.joint_lookup_table = Some(joint_lookup_table);
         }
 
         //~ 11. Sample $\beta$ with the Fq-Sponge.
@@ -332,7 +336,7 @@ where
                 &lookup_context.table_id_combiner.unwrap(),
                 beta,
                 gamma,
-                &lookup_context.sorted.unwrap(),
+                lookup_context.sorted.as_ref().unwrap(),
                 rng,
             )?;
 
@@ -661,6 +665,7 @@ where
             //     - the aggregation polynomial
             let aggreg = lookup_context
                 .aggreg_coeffs
+                .as_ref()
                 .unwrap()
                 .to_chunked_polynomial(index.max_poly_size);
 
@@ -751,7 +756,7 @@ where
                     .to_chunked_polynomial(index.max_poly_size)
                     .evaluate_chunks(zeta),
 
-                lookup: lookup_context.eval_zeta,
+                lookup: lookup_context.eval_zeta.take(),
 
                 generic_selector: index
                     .cs
@@ -782,7 +787,7 @@ where
                     .to_chunked_polynomial(index.max_poly_size)
                     .evaluate_chunks(zeta_omega),
 
-                lookup: lookup_context.eval_zeta_omega,
+                lookup: lookup_context.eval_zeta_omega.take(),
 
                 generic_selector: index
                     .cs
@@ -982,6 +987,25 @@ where
                 .collect::<Vec<_>>(),
         );
 
+        // if using lookup
+        if index.cs.lookup_constraint_system.is_some() {
+            // add the sorted polynomials
+            let sorted_poly = lookup_context.sorted_coeffs.as_ref().unwrap();
+            let sorted_comms = lookup_context.sorted_comms.as_ref().unwrap();
+            for (poly, comm) in sorted_poly.iter().zip(sorted_comms) {
+                polynomials.push((poly, None, comm.1.clone()));
+            }
+
+            // add the aggreg polynomial
+            let aggreg_poly = lookup_context.aggreg_coeffs.as_ref().unwrap();
+            let aggreg_comm = lookup_context.aggreg_comm.as_ref().unwrap();
+            polynomials.push((aggreg_poly, None, aggreg_comm.1.clone()));
+
+            // add the combined table polynomial
+            let joint_lookup_table = lookup_context.joint_lookup_table.as_ref().unwrap();
+            polynomials.push((joint_lookup_table, None, non_hiding(1)));
+        }
+
         //~ 42. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
         let proof = index.srs.open(
             group_map,
@@ -995,7 +1019,7 @@ where
 
         let lookup = lookup_context
             .aggreg_comm
-            .zip(lookup_context.sorted_comm)
+            .zip(lookup_context.sorted_comms)
             .map(|(a, s)| LookupCommitments {
                 aggreg: a.0,
                 sorted: s.iter().map(|(x, _)| x.clone()).collect(),

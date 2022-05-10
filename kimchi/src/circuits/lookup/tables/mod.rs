@@ -1,5 +1,7 @@
 use crate::circuits::gate::{CurrOrNext, GateType};
 use ark_ff::{FftField, One, Zero};
+use commitment_dlog::PolyComm;
+use o1_utils::types::ScalarField;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
@@ -97,4 +99,36 @@ where
     v.rev()
         .fold(F::zero(), |acc, x| joint_combiner.clone() * acc + x.clone())
         + table_id_combiner.clone() * table_id.clone()
+}
+
+/// Same as [combine_table_entry], but for an entire table.
+/// The function will panic if given an empty table (0 columns).
+pub fn combine_table<G>(
+    columns: &[&PolyComm<G>],
+    column_combiner: ScalarField<G>,
+    table_id_combiner: ScalarField<G>,
+    table_id_vector: Option<&PolyComm<G>>,
+) -> PolyComm<G>
+where
+    G: commitment_dlog::commitment::CommitmentCurve,
+{
+    assert!(!columns.is_empty());
+
+    // combine the columns
+    let mut j = ScalarField::<G>::one();
+    let mut scalars = vec![j];
+    let mut commitments = vec![columns[0]];
+    for comm in columns.iter().skip(1) {
+        j *= column_combiner;
+        scalars.push(j);
+        commitments.push(comm);
+    }
+
+    // combine the table id
+    if let Some(table_id) = table_id_vector {
+        scalars.push(table_id_combiner);
+        commitments.push(table_id);
+    }
+
+    PolyComm::multi_scalar_mul(&commitments, &scalars)
 }

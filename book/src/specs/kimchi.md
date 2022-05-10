@@ -1664,6 +1664,7 @@ Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
     - index commitments that use the coefficients
     - witness commitments
     - sigma commitments
+    - lookup commitments
 #### Batch verification of proofs
 
 Below, we define the steps to verify a number of proofs
