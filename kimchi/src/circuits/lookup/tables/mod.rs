@@ -112,7 +112,7 @@ pub fn combine_table<G>(
 where
     G: commitment_dlog::commitment::CommitmentCurve,
 {
-    assert!(columns.len() > 0);
+    assert!(!columns.is_empty());
 
     // combine the columns
     let mut j = ScalarField::<G>::one();
