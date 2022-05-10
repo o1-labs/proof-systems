@@ -609,29 +609,7 @@ where
                             commitments.push(&lindex.lookup_selectors[*i]);
                         }
                     },
-                    LookupTable => match index.lookup_index.as_ref() {
-                        None => {
-                            panic!("Attempted to use {:?}, but no lookup index was given", col)
-                        }
-                        Some(lindex) => {
-                            let joint_combiner =
-                                constants.joint_combiner.expect("missing joint combiner");
-                            let mut j = ScalarField::<G>::one();
-                            scalars.push(scalar);
-                            commitments.push(&lindex.lookup_table[0]);
-                            for t in lindex.lookup_table.iter().skip(1) {
-                                j *= joint_combiner;
-                                scalars.push(scalar * j);
-                                commitments.push(t);
-                            }
-                            if let Some(table_ids) = lindex.table_ids.as_ref() {
-                                scalars.push(
-                                    scalar * joint_combiner.pow([lindex.max_joint_size as u64]),
-                                );
-                                commitments.push(table_ids);
-                            }
-                        }
-                    },
+                    LookupTable => panic!("Lookup table is unused in the linearization"),
                     Index(t) => {
                         use GateType::*;
                         let c = match t {
