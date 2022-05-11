@@ -101,7 +101,6 @@
 ///  Nb. each CircuitGate type corresponds to a unique polynomial and thus
 ///       is assigned its own unique powers of alpha
 ///```
-
 mod foreign_mul_0;
 mod foreign_mul_1;
 
