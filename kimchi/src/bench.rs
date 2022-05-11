@@ -66,7 +66,7 @@ impl BenchmarkCtx {
         let group_map = <Affine as CommitmentCurve>::Map::setup();
 
         // create the index
-        let index = new_index_for_test(gates, vec![], 0);
+        let index = new_index_for_test(gates, 0);
 
         // create the verifier index
         let verifier_index = index.verifier_index();

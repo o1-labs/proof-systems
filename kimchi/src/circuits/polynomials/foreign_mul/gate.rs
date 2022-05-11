@@ -275,7 +275,7 @@ mod tests {
             wires::Wire,
         },
         proof::ProverProof,
-        prover_index::testing::new_index_for_test,
+        prover_index::testing::new_index_for_test_with_lookups,
     };
 
     use ark_ec::AffineCurve;
@@ -309,10 +309,11 @@ mod tests {
     ) -> ProverIndex<mina_curves::pasta::vesta::Affine> {
         let wires = array_init(|i| Wire::new(i));
         let gates = CircuitGate::<PallasField>::create_foreign_mul(&wires);
-        new_index_for_test(
+        new_index_for_test_with_lookups(
             gates,
-            packed_modulus::<PallasField>(foreign_modulus),
             public_size,
+            vec![],
+            packed_modulus::<PallasField>(foreign_modulus),
         )
     }
 

@@ -72,7 +72,7 @@ fn chacha_prover() {
         .collect();
 
     // create the index
-    let index = new_index_for_test(gates, vec![], PUBLIC);
+    let index = new_index_for_test(gates, PUBLIC);
 
     let mut rows = vec![];
     for _ in 0..num_chachas {

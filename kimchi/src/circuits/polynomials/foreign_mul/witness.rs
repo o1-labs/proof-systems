@@ -76,6 +76,9 @@ const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 4] = [
         SublimbWitnessCell::create(0, 0, 24, 36),
         SublimbWitnessCell::create(0, 0, 36, 48),
         /* 12-bit copies */
+        // Copy cells are required because we have a limit
+        // of 4 lookups per row.  These two lookups are deferred
+        // until the ForeignMul2 gate, which handles them.
         SublimbWitnessCell::create(0, 0, 48, 60),
         SublimbWitnessCell::create(0, 0, 60, 72),
         /* 2-bit crumbs */
@@ -96,7 +99,7 @@ const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 4] = [
         SublimbWitnessCell::create(1, 0, 12, 24),
         SublimbWitnessCell::create(1, 0, 24, 36),
         SublimbWitnessCell::create(1, 0, 36, 48),
-        /* 12-bit copies */
+        /* 12-bit copies (see note about copies above) */
         SublimbWitnessCell::create(1, 0, 48, 60),
         SublimbWitnessCell::create(1, 0, 60, 72),
         /* 2-bit crumbs */
@@ -132,7 +135,7 @@ const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 4] = [
     /* row 4, ForeignMul2 row */
     [
         ZeroWitnessCell::create(),
-        /* 12-bit plookups */
+        /* 12-bit plookups (see note about copies above) */
         CopyWitnessCell::create(0, 5),
         CopyWitnessCell::create(0, 6),
         CopyWitnessCell::create(1, 5),

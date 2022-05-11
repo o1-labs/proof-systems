@@ -5,6 +5,10 @@
 ///    * This circuit gate is used to fully constrain L2
 ///    * It operates on the Curr and Next rows
 ///
+/// It uses two different types of constraints
+///   * plookup - plookup (12-bits)
+///   * crumb   - degree-4 constraint (2-bits)
+///
 /// Column | Curr         | Next
 ///      0 | L2           | 0 (ignored)
 ///      1 | plookup L2p0 | (ignored)
@@ -21,17 +25,16 @@
 ///     12 | crumb L2c7   | crumb L2c17
 ///     13 | crumb L2c8   | crumb L2c18
 ///     14 | crumb L2c9   | crumb L2c19
+
 use std::marker::PhantomData;
 
 use crate::circuits::{
     argument::{Argument, ArgumentType},
-    expr::{witness_curr, witness_next, E},
+    expr::{constraints::crumb, witness_curr, witness_next, E},
     gate::GateType,
     polynomial::COLUMNS,
 };
 use ark_ff::{FftField, Zero};
-
-use super::common::{sublimb_crumb_constraint, two};
 
 #[derive(Default)]
 pub struct ForeignMul1<F>(PhantomData<F>);
@@ -45,13 +48,13 @@ where
 
     // Constraints for ForeignMul1
     //   * Operates on Curr and Next row
-    //   * Range constrain all sublimbs (baring plookup constraints, which are done elsewhere)
+    //   * Range constrain all sublimbs (barring plookup constraints, which are done elsewhere)
     //   * Constrain that combining all sublimbs equals the limb stored in row Curr, column 0
     fn constraints() -> Vec<E<F>> {
         // Constraints structure
-        //  Column      0    1       ... 4       5     ... 14
-        //        Curr  limb plookup ... plookup crumb ... crumb
-        //        Next                           crumb ... crumb
+        //          0    1       ... 4       5     ... 14
+        //    Curr  limb plookup ... plookup crumb ... crumb
+        //    Next                           crumb ... crumb
 
         // 1) Apply range constraints on sublimbs
 
@@ -59,13 +62,13 @@ where
 
         // Create 10 2-bit chunk range constraints using Curr row
         let mut constraints = (5..COLUMNS)
-            .map(|i| sublimb_crumb_constraint(&witness_curr(i)))
+            .map(|i| crumb(&witness_curr(i)))
             .collect::<Vec<E<F>>>();
 
         // Create 10 more 2-bit chunk range constraints using Next row
         constraints.append(
             &mut (5..COLUMNS)
-                .map(|i| sublimb_crumb_constraint(&witness_next(i)))
+                .map(|i| crumb(&witness_next(i)))
                 .collect::<Vec<E<F>>>(),
         );
 
@@ -73,11 +76,10 @@ where
         //    l2 = lp0 lp1 lp2 lp3 lc0 lc1 lc2 lc3 lc4 lc5 lc6 lc7 lc8 lc9 lc10 lc11 lc12 lc13 lc14 lc15 lc16 lc17 lc18 lc19
         //    in little-endian byte order.
         //
-        //     Columns
-        //    R        0    1   2   3   4   5    6    7    8    9    10   11   12   13   14
-        //    o  Curr  l2   lp0 lp1 lp2 lp3 lc0  lc1  lc2  lc3  lc4  lc5  lc6  lc7  lc8  lc9
-        //    w  Next                       lc10 lc11 lc12 lc13 lc14 lc15 lc16 lc17 lc18 lc19
-        //    s
+        //          Columns
+        //          0    1   2   3   4   5    6    7    8    9    10   11   12   13   14
+        //    Curr  l2   lp0 lp1 lp2 lp3 lc0  lc1  lc2  lc3  lc4  lc5  lc6  lc7  lc8  lc9
+        //    Next                       lc10 lc11 lc12 lc13 lc14 lc15 lc16 lc17 lc18 lc19
         //
         // Check   l2 = lp0*2^0          + lp1*2^{12}       + ... + lp3*2^{36}       + lc0*2^{48}     + lc1*2^{50}     + ... + lc19*2^{66}
         //       w(0) = w_curr(1)*2^0    + w_curr(2)*2^{12} + ... + w_curr(4)*2^{36} + w_curr(5)*2^48 + w_curr(6)*2^50 + ... + w_curr(14)*2^66
@@ -88,16 +90,16 @@ where
         // 1st part (Curr row): \sum i \in [1,5] 2^{12*(i - 1)}*w_curr(i) + \sum i \in [6,14] 2^{2*(i - 5) + 4*12}*w_curr(i)
         let combined_sublimbs = (1..5).fold(E::zero(), |acc, i| {
             // 12-bit chunk
-            acc + two().pow(12 * (i as u64 - 1)) * witness_curr(i)
+            acc + E::<F>::from(2u64).pow(12 * (i as u64 - 1)) * witness_curr(i)
         }) + (5..COLUMNS).fold(E::zero(), |acc, i| {
             // 2-bit chunk
-            acc + two().pow(2 * (i as u64 - 5) + 4 * 12) * witness_curr(i)
+            acc + E::<F>::from(2u64).pow(2 * (i as u64 - 5) + 4 * 12) * witness_curr(i)
         });
 
         // 2nd part (Next row): \sum i \in [5,14] 2^{2*(i - 5) + 68}*w_next(i)
         let combined_sublimbs = (5..COLUMNS).fold(combined_sublimbs, |acc, i| {
             // 2-bit chunk
-            acc + two().pow(2 * (i as u64 - 5) + 68) * witness_next(i)
+            acc + E::<F>::from(2u64).pow(2 * (i as u64 - 5) + 68) * witness_next(i)
         });
 
         // w(0) = combined_sublimbs

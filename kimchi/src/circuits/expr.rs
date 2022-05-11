@@ -2125,6 +2125,12 @@ pub mod constraints {
     pub fn boolean<F: Field>(b: &E<F>) -> E<F> {
         b.clone().square() - b.clone()
     }
+
+    /// Crumb constraint for 2-bit value x
+    pub fn crumb<F: FftField>(x: &E<F>) -> E<F> {
+        // Assert x \in [0,3] i.e. assert x*(x - 1)*(x - 2)*(x - 3) == 0
+        x.clone() * (x.clone() - E::one()) * (x.clone() - 2u64.into()) * (x.clone() - 3u64.into())
+    }
 }
 
 //

@@ -2,9 +2,16 @@
 ///
 ///    Foreign field element F is comprised of three 88-bit limbs L0L1L2
 ///
-///    * This circuit gate is used to partially constrain L0 or L1
+///    * This circuit gate is used to partially constrain L0 and L1
 ///    * The rest of L0 and L1 are constrained by a single ForeignMul2
-///    * It operates on the Curr row
+///    * This gate operates on the Curr row
+///
+/// It uses three different types of constraints
+///   * plookup - plookup (12-bits)
+///   * copy    - copy to another cell (12-bits)
+///   * crumb   - degree-4 constraint (2-bits)
+///
+/// For limb L the layout looks like this
 ///
 /// Column | Curr
 ///      0 | L
@@ -22,17 +29,16 @@
 ///     12 | crumb Lc5
 ///     13 | crumb Lc6
 ///     14 | crumb Lc7
+
 use std::marker::PhantomData;
 
 use crate::circuits::{
     argument::{Argument, ArgumentType},
-    expr::{witness_curr, E},
+    expr::{constraints::crumb, witness_curr, E},
     gate::GateType,
     polynomial::COLUMNS,
 };
 use ark_ff::{FftField, Zero};
-
-use super::common::{sublimb_crumb_constraint, two};
 
 #[derive(Default)]
 pub struct ForeignMul0<F>(PhantomData<F>);
@@ -46,12 +52,12 @@ where
 
     // Constraints for ForeignMul0
     //   * Operates on Curr row
-    //   * Range constrain all sublimbs except p4 and p5 (baring plookup constraints, which are done elsewhere)
+    //   * Range constrain all sublimbs except p4 and p5 (barring plookup constraints, which are done elsewhere)
     //   * Constrain that combining all sublimbs equals the limb stored in column 0
     fn constraints() -> Vec<E<F>> {
         // Row structure
-        //  Column w(i) 0    1       ... 4       5    6    7     ... 14
-        //        Curr  limb plookup ... plookup copy copy crumb ... crumb
+        //       0    1       ... 4       5    6    7     ... 14
+        // Curr  limb plookup ... plookup copy copy crumb ... crumb
 
         // 1) Apply range constraints on sublimbs
 
@@ -59,28 +65,26 @@ where
 
         // Create 8 2-bit chunk range constraints
         let mut constraints = (7..COLUMNS)
-            .map(|i| sublimb_crumb_constraint(&witness_curr(i)))
+            .map(|i| crumb(&witness_curr(i)))
             .collect::<Vec<E<F>>>();
 
         // 2) Constrain that the combined sublimbs equals the limb stored in w(0) where
         //    limb = lp0 lp1 lp2 lp3 lp4 lp5 lc0 lc1 lc2 lc3 lc4 lc5 lc6 lc7
         //    in big-endian byte order.
         //
-        //     Columns
-        //    R        0      1    2    3    4    5    6    7    8    9    10   11   12   13   14
-        //    o  Curr  limb   lp0  lp1  lp2  lp3  lp4  lp5  lc0  lc1  lc2  lc3  lc4  lc5  lc6  lc7  <- LSB
-        //    w               76   64   52   40   28   16   14   12   10    8    6    4    2    0
-        //    s
+        //          Columns
+        //          0      1    2    3    4    5    6    7    8    9    10   11   12   13   14
+        //    Curr  limb   lp0  lp1  lp2  lp3  lp4  lp5  lc0  lc1  lc2  lc3  lc4  lc5  lc6  lc7  <- LSB
         //
         // Check limb =  lp0*2^0 + lp1*2^{12}  + ... + p5*2^{60}   + lc0*2^{72}  + lc1*2^{74}  + ... + lc7*2^{86}
         //       w(0) = w(1)*2^0 + w(2)*2^{12} + ... + w(6)*2^{60} + w(7)*2^{72} + w(8)*2^{74} + ... + w(14)*2^{86}
         //            = \sum i \in [1,7] 2^{12*(i - 1)}*w(i) + \sum i \in [8,14] 2^{2*(i - 7) + 6*12}*w(i)
         let combined_sublimbs = (1..8).fold(E::zero(), |acc, i| {
             // 12-bit chunk offset
-            acc + two().pow(12 * (i as u64 - 1)) * witness_curr(i)
+            acc + E::<F>::from(2u64).pow(12 * (i as u64 - 1)) * witness_curr(i)
         }) + (8..COLUMNS).fold(E::zero(), |acc, i| {
             // 2-bit chunk offset
-            acc + two().pow(2 * (i as u64 - 7) + 6 * 12) * witness_curr(i)
+            acc + E::<F>::from(2u64).pow(2 * (i as u64 - 7) + 6 * 12) * witness_curr(i)
         });
 
         // w(0) = combined_sublimbs

@@ -2,6 +2,7 @@
 
 /// <https://hackmd.io/XZUHHGpDQsSOs0dUGugB5w>
 ///
+/// ```text
 /// Globals:
 ///     * n: native field modulus
 ///     * p: foreign field modulus
@@ -18,13 +19,15 @@
 ///
 ///    Each foreign field element a is decomposed into three 88-bit limbs a0, a1, a2 s.t. a = a0a1a2 in
 ///    little-endian byte order (i.e. a = a2*2^{2b} + a1*2^b + a0)
-///      a0 = a0p0a0p1a0p2a0p3a0p4a0p5a0c0a0c1a0c2a0c3a0c4a0c5a0c6a0c7
-///      a1 = a1p0a1p1a1p2a1p3a1p4a1p5a1c0a1c1a1c2a1c3a1c4a1c5a1c6a1c7
-///      a2 = a2p0a2p1a2p2a2p3a2c0a2c1a2c2a2c3a2c4a2c5a2c6a2c7a2c8a2c9a2c10a2c11a2c12a2c13a2c14a2c15a2c16a2c17a2c18a2c19
 ///
-///    where
-///      * aXpi is a 12-bit sublimb of limb aX
-///      * aXci is a 2-bit "crumb" sublimb of aX
+///    L is a 12-bit lookup,
+///    C is a 2-bit crumb.
+///
+///         <----6----> <------8------>
+///    a0 = L L L L L L C C C C C C C C
+///    a1 = L L L L L L C C C C C C C C
+///         <--4--> <------------------20----------------->
+///    a2 = L L L L C C C C C C C C C C C C C C C C C C C C
 ///
 /// Input structure:
 ///
@@ -40,6 +43,7 @@
 ///
 ///    (*)  Row offsets
 ///    (**) Some part of the limb is contained in this row
+///```
 ///
 /// Constraints:
 ///
@@ -52,6 +56,10 @@
 ///
 ///  This example shows how input a is constrained
 ///
+///   * aXpi is a 12-bit sublimb of limb aX
+///   * aXci is a 2-bit "crumb" sublimb of aX
+///
+/// Gate:   ForeignMul0    ForeignMul0    ForeignMul1    ForeignMul2
 ///   Rows -->
 ///         0              1              2              3
 ///  C  0 | a0           | a1           | a2           | 0
@@ -70,10 +78,11 @@
 ///    13 | crumb a0c6   | crumb a1c6   | crumb a2c8   | crumb a2c18
 ///    14 | crumb a0c7   | crumb a1c7   | crumb a2c9   | crumb a2c19
 ///
-/// Gate:   ForeignMul0    ForeignMul0    ForeignMul1    ForeignMul2
-///
 ///   The 12-bit chunks are constrained with plookups and the 2-bit crumbs constrained with
-///   degree-4 constraints of the form x*(x - 1)*(x - 2)*(x - 3)
+///   degree-4 constraints of the form x*(x - 1)*(x - 2)*(x - 3).
+///
+///   Note that copy denotes a plookup that is deferred to the ForeignMul2 gate.
+///   This is because of the limitation that we have at most 4 lookups per row.
 ///
 /// Gate types:
 ///
@@ -91,7 +100,8 @@
 ///
 ///  Nb. each CircuitGate type corresponds to a unique polynomial and thus
 ///       is assigned its own unique powers of alpha
-mod common;
+///```
+
 mod foreign_mul_0;
 mod foreign_mul_1;
 
