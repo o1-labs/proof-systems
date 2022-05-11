@@ -39,6 +39,24 @@ use std::collections::HashMap;
 /// The result of a proof creation or verification.
 type Result<T> = std::result::Result<T, ProverError>;
 
+/// Helper to quickly test if a witness satisfies a constraint
+macro_rules! check_constraint {
+    ($index:expr, $evaluation:expr) => {{
+        if cfg!(debug_assertions) {
+            let (_, res) = $evaluation
+                .interpolate_by_ref()
+                .divide_by_vanishing_poly($index.cs.domain.d1)
+                .unwrap();
+            if !res.is_zero() {
+                panic!(
+                    "couldn't divide by vanishing polynomial: {}",
+                    stringify!($evaluation)
+                );
+            }
+        }
+    }};
+}
+
 /// Contains variables needed for lookup in the prover algorithm.
 #[derive(Default)]
 struct LookupContext<G, F>
@@ -442,151 +460,88 @@ where
                 all_alphas.get_alphas(ArgumentType::Gate(GateType::Generic), generic::CONSTRAINTS);
             let mut t4 = index.cs.gnrc_quot(alphas, &lagrange.d4.this.w);
 
-            if cfg!(test) {
+            if cfg!(debug_assertions) {
                 let p4 = public_poly.evaluate_over_domain_by_ref(index.cs.domain.d4);
                 let gen_minus_pub = &t4 + &p4;
 
-                let (_, res) = gen_minus_pub
-                    .interpolate()
-                    .divide_by_vanishing_poly(index.cs.domain.d1)
-                    .unwrap();
-                assert!(res.is_zero());
+                check_constraint!(index, gen_minus_pub);
             }
 
             // complete addition
-            let add_constraint = CompleteAdd::combined_constraints(&all_alphas);
-            let add4 = add_constraint.evaluations(&env);
-            t4 += &add4;
+            {
+                let add_constraint = CompleteAdd::combined_constraints(&all_alphas);
+                let add4 = add_constraint.evaluations(&env);
+                t4 += &add4;
 
-            if cfg!(test) {
-                let (_, res) = add4
-                    .clone()
-                    .interpolate()
-                    .divide_by_vanishing_poly(index.cs.domain.d1)
-                    .unwrap();
-                assert!(res.is_zero());
+                check_constraint!(index, add4);
             }
-
-            drop(add4);
 
             // permutation
-            let alphas = all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
-            let (perm, bnd) = index
-                .cs
-                .perm_quot(&lagrange, beta, gamma, &z_poly, alphas)?;
-            let mut t8 = perm;
+            let (mut t8, bnd) = {
+                let alphas =
+                    all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
+                let (perm, bnd) = index
+                    .cs
+                    .perm_quot(&lagrange, beta, gamma, &z_poly, alphas)?;
 
-            if cfg!(test) {
-                let (_, res) = t8
-                    .clone()
-                    .interpolate()
-                    .divide_by_vanishing_poly(index.cs.domain.d1)
-                    .unwrap();
-                assert!(res.is_zero());
-            }
+                check_constraint!(index, perm);
+
+                (perm, bnd)
+            };
 
             // scalar multiplication
-            let mul8 = VarbaseMul::combined_constraints(&all_alphas).evaluations(&env);
-            t8 += &mul8;
+            {
+                let mul8 = VarbaseMul::combined_constraints(&all_alphas).evaluations(&env);
+                t8 += &mul8;
 
-            if cfg!(test) {
-                let (_, res) = mul8
-                    .clone()
-                    .interpolate()
-                    .divide_by_vanishing_poly(index.cs.domain.d1)
-                    .unwrap();
-                assert!(res.is_zero());
+                check_constraint!(index, mul8);
             }
-
-            drop(mul8);
 
             // endoscaling
-            let emul8 = EndosclMul::combined_constraints(&all_alphas).evaluations(&env);
-            t8 += &emul8;
+            {
+                let emul8 = EndosclMul::combined_constraints(&all_alphas).evaluations(&env);
+                t8 += &emul8;
 
-            if cfg!(test) {
-                let (_, res) = emul8
-                    .clone()
-                    .interpolate()
-                    .divide_by_vanishing_poly(index.cs.domain.d1)
-                    .unwrap();
-                assert!(res.is_zero());
+                check_constraint!(index, emul8);
             }
-
-            drop(emul8);
 
             // endoscaling scalar computation
-            let emulscalar8 = EndomulScalar::combined_constraints(&all_alphas).evaluations(&env);
-            t8 += &emulscalar8;
+            {
+                let emulscalar8 =
+                    EndomulScalar::combined_constraints(&all_alphas).evaluations(&env);
+                t8 += &emulscalar8;
 
-            if cfg!(test) {
-                let (_, res) = emulscalar8
-                    .clone()
-                    .interpolate()
-                    .divide_by_vanishing_poly(index.cs.domain.d1)
-                    .unwrap();
-                assert!(res.is_zero());
+                check_constraint!(index, emulscalar8);
             }
-
-            drop(emulscalar8);
 
             // poseidon
-            let pos8 = Poseidon::combined_constraints(&all_alphas).evaluations(&env);
-            t8 += &pos8;
+            {
+                let pos8 = Poseidon::combined_constraints(&all_alphas).evaluations(&env);
+                t8 += &pos8;
 
-            if cfg!(test) {
-                let (_, res) = pos8
-                    .clone()
-                    .interpolate()
-                    .divide_by_vanishing_poly(index.cs.domain.d1)
-                    .unwrap();
-                assert!(res.is_zero());
+                check_constraint!(index, pos8);
             }
 
-            drop(pos8);
-
             // chacha
-            if index.cs.chacha8.as_ref().is_some() {
-                let chacha0 = ChaCha0::combined_constraints(&all_alphas).evaluations(&env);
-                t4 += &chacha0;
+            {
+                if index.cs.chacha8.as_ref().is_some() {
+                    let chacha0 = ChaCha0::combined_constraints(&all_alphas).evaluations(&env);
+                    t4 += &chacha0;
 
-                let chacha1 = ChaCha1::combined_constraints(&all_alphas).evaluations(&env);
-                t4 += &chacha1;
+                    let chacha1 = ChaCha1::combined_constraints(&all_alphas).evaluations(&env);
+                    t4 += &chacha1;
 
-                let chacha2 = ChaCha2::combined_constraints(&all_alphas).evaluations(&env);
-                t4 += &chacha2;
+                    let chacha2 = ChaCha2::combined_constraints(&all_alphas).evaluations(&env);
+                    t4 += &chacha2;
 
-                let chacha_final = ChaChaFinal::combined_constraints(&all_alphas).evaluations(&env);
-                t4 += &chacha_final;
+                    let chacha_final =
+                        ChaChaFinal::combined_constraints(&all_alphas).evaluations(&env);
+                    t4 += &chacha_final;
 
-                if cfg!(test) {
-                    let (_, res) = chacha0
-                        .clone()
-                        .interpolate()
-                        .divide_by_vanishing_poly(index.cs.domain.d1)
-                        .unwrap();
-                    assert!(res.is_zero());
-
-                    let (_, res) = chacha1
-                        .clone()
-                        .interpolate()
-                        .divide_by_vanishing_poly(index.cs.domain.d1)
-                        .unwrap();
-                    assert!(res.is_zero());
-
-                    let (_, res) = chacha2
-                        .clone()
-                        .interpolate()
-                        .divide_by_vanishing_poly(index.cs.domain.d1)
-                        .unwrap();
-                    assert!(res.is_zero());
-
-                    let (_, res) = chacha_final
-                        .clone()
-                        .interpolate()
-                        .divide_by_vanishing_poly(index.cs.domain.d1)
-                        .unwrap();
-                    assert!(res.is_zero());
+                    check_constraint!(index, chacha0);
+                    check_constraint!(index, chacha1);
+                    check_constraint!(index, chacha2);
+                    check_constraint!(index, chacha_final);
                 }
             }
 
