@@ -19,32 +19,50 @@ We assume that you already have:
 
 Then, you can create an URS for your circuit in the following way:
 
-```rust,ignore
-use kimchi::{circuits::constraints, verifier::verify};
+```rust
+use std::sync::Arc;
+
+use kimchi::{circuits::{constraints::ConstraintSystem, polynomials::generic::testing::{create_circuit, fill_in_witness}, polynomial::COLUMNS}, prover_index::ProverIndex, proof::ProverProof, verifier::verify};
+use ark_ff::Zero;
 use mina_curves::pasta::{fp::Fp, vesta::{Affine, VestaParameters}, pallas::Affine as Other};
 use oracle::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use commitment_dlog::commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve};
+use commitment_dlog::{commitment::{CommitmentCurve}, srs::{SRS, endos}};
+use groupmap::GroupMap;
+use array_init::array_init;
+
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 // compile the circuit
+let gates = create_circuit(0, 0);
+
 let fp_sponge_params = oracle::pasta::fp_kimchi::params();
-let cs = ConstraintSystem::<Fp>::create(gates, vec![], fp_sponge_params, public_size).unwrap();
+let public = vec![Fp::from(0); 0];
+let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![Fp::zero(); gates.len()]);
+fill_in_witness(0, &mut witness, &public);
+
+let cs = ConstraintSystem::<Fp>::create(
+    gates, 
+    vec![], 
+    fp_sponge_params, 
+    public.len()
+).unwrap();
 
 // create an URS
-let mut urs = SRS::<Affine>::create(cs.domain.d1.size as usize);
+let mut srs = SRS::<Affine>::create(cs.domain.d1.size as usize);
 srs.add_lagrange_basis(cs.domain.d1);
+let srs = Arc::new(srs);
 
 // obtain a prover index
 let prover_index = {
     let fq_sponge_params = oracle::pasta::fq_kimchi::params();
     let (endo_q, _endo_r) = endos::<Other>();
-    Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs)
+    ProverIndex::<Affine>::create(cs, fq_sponge_params, endo_q, srs)
 };
 
 // obtain a verifier index
@@ -53,10 +71,10 @@ let verifier_index = prover_index.verifier_index();
 // create a proof
 let group_map = <Affine as CommitmentCurve>::Map::setup();
 let proof =  ProverProof::create::<BaseSponge, ScalarSponge>(
-    &group_map, witness, &prover_index);
+    &group_map, witness, &prover_index).unwrap();
 
 // verify a proof
-verify::<Affine, BaseSponge, ScalarSponge>(&group_map, verifier_index, proof).unwrap();
+verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &verifier_index, &proof).unwrap();
 ```
 
 Note that kimchi is specifically designed for use in a recursion proof system, like [pickles](https://medium.com/minaprotocol/meet-pickles-snark-enabling-smart-contract-on-coda-protocol-7ede3b54c250), but can also be used a stand alone for normal proofs.
