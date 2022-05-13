@@ -1,22 +1,4 @@
-use std::time::Instant;
-use std::{io, io::Write};
-
-use ark_ff::{UniformRand, Zero};
-use ark_poly::{univariate::DensePolynomial, UVPolynomial};
-use array_init::array_init;
-use colored::Colorize;
-use commitment_dlog::commitment::{b_poly_coefficients, CommitmentCurve};
-use groupmap::GroupMap;
-use mina_curves::pasta::{
-    fp::Fp,
-    vesta::{Affine, VestaParameters},
-};
-use oracle::{
-    constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
-    sponge::{DefaultFqSponge, DefaultFrSponge},
-};
-use rand::{rngs::StdRng, SeedableRng};
-
+use crate::recursion::testing::new_recursion_for_testing;
 use crate::{
     circuits::{
         gate::CircuitGate,
@@ -28,8 +10,24 @@ use crate::{
     verifier::batch_verify,
 };
 use crate::{proof::ProverProof, prover_index::ProverIndex};
-
+use ark_ff::{UniformRand, Zero};
+use ark_poly::{univariate::DensePolynomial, UVPolynomial};
+use array_init::array_init;
+use colored::Colorize;
+use commitment_dlog::commitment::{b_poly_coefficients, CommitmentCurve};
+use groupmap::GroupMap;
+use mina_curves::pasta::{
+    fp::Fp,
+    vesta::{Affine, VestaParameters},
+};
 use o1_utils::math;
+use oracle::{
+    constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
+    sponge::{DefaultFqSponge, DefaultFrSponge},
+};
+use rand::{rngs::StdRng, SeedableRng};
+use std::time::Instant;
+use std::{io, io::Write};
 
 // aliases
 
@@ -137,17 +135,7 @@ fn positive(index: &ProverIndex<Affine>) {
         index.cs.verify(&witness_cols, &[]).unwrap();
 
         //
-        let prev = {
-            let k = math::ceil_log2(index.srs.g.len());
-            let chals: Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();
-            let comm = {
-                let coeffs = b_poly_coefficients(&chals);
-                let b = DensePolynomial::from_coefficients_vec(coeffs);
-                index.srs.commit_non_hiding(&b, None)
-            };
-
-            (chals, comm)
-        };
+        let recursion = new_recursion_for_testing(&index, rng);
 
         println!("n vs domain: {} {}", max_size, index.cs.domain.d1.size);
 
@@ -158,7 +146,7 @@ fn positive(index: &ProverIndex<Affine>) {
                 &group_map,
                 witness_cols,
                 index,
-                vec![prev],
+                recursion,
             )
             .unwrap(),
         );

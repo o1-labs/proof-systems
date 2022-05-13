@@ -2,6 +2,7 @@ use crate::circuits::polynomials::generic::testing::{create_circuit, fill_in_wit
 use crate::circuits::{gate::CircuitGate, wires::COLUMNS};
 use crate::proof::ProverProof;
 use crate::prover_index::testing::new_index_for_test;
+use crate::recursion::testing::new_recursion_for_testing;
 use crate::verifier::verify;
 use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
@@ -63,23 +64,11 @@ fn verify_proof(gates: Vec<CircuitGate<Fp>>, witness: [Vec<Fp>; COLUMNS], public
     index.cs.verify(&witness, public).unwrap();
 
     // previous opening for recursion
-    let prev = {
-        let k = math::ceil_log2(index.srs.g.len());
-        let chals: Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();
-        let comm = {
-            let coeffs = b_poly_coefficients(&chals);
-            let b = DensePolynomial::from_coefficients_vec(coeffs);
-            index.srs.commit_non_hiding(&b, None)
-        };
-        (chals, comm)
-    };
+    let recursion = new_recursion_for_testing(&index, rng);
 
     // add the proof to the batch
     let proof = ProverProof::create_recursive::<BaseSponge, ScalarSponge>(
-        &group_map,
-        witness,
-        &index,
-        vec![prev],
+        &group_map, witness, &index, recursion,
     )
     .unwrap();
 

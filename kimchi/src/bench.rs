@@ -6,13 +6,12 @@ use crate::{
     },
     proof::ProverProof,
     prover_index::{testing::new_index_for_test, ProverIndex},
+    recursion::testing::new_recursion_for_testing,
     verifier::batch_verify,
     verifier_index::VerifierIndex,
 };
-use ark_ff::UniformRand;
-use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use array_init::array_init;
-use commitment_dlog::commitment::{b_poly_coefficients, CommitmentCurve};
+use commitment_dlog::commitment::CommitmentCurve;
 use groupmap::{BWParameters, GroupMap};
 use mina_curves::pasta::vesta::VestaParameters;
 use mina_curves::pasta::{fp::Fp, vesta::Affine};
@@ -21,8 +20,6 @@ use oracle::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use rand::{rngs::StdRng, SeedableRng};
-
-use o1_utils::math;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
@@ -88,23 +85,14 @@ impl BenchmarkCtx {
         let witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![1u32.into(); CIRCUIT_SIZE]);
 
         // previous opening for recursion
-        let prev = {
-            let k = math::ceil_log2(self.index.srs.g.len());
-            let chals: Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();
-            let comm = {
-                let coeffs = b_poly_coefficients(&chals);
-                let b = DensePolynomial::from_coefficients_vec(coeffs);
-                self.index.srs.commit_non_hiding(&b, None)
-            };
-            (chals, comm)
-        };
+        let recursion = new_recursion_for_testing(&self.index, rng);
 
         // add the proof to the batch
         ProverProof::create_recursive::<BaseSponge, ScalarSponge>(
             &self.group_map,
             witness,
             &self.index,
-            vec![prev],
+            recursion,
         )
         .unwrap()
     }
@@ -136,6 +124,10 @@ mod tests {
         let start = Instant::now();
         let proof = ctx.create_proof();
         println!("proof created in {}", start.elapsed().as_millis());
+
+        // serialization of proof
+        let serialized_proof = rmp_serde::to_vec(&proof).unwrap();
+        println!("proof size: {}", serialized_proof.len());
 
         // proof verified in 1.710 ms
         let start = Instant::now();

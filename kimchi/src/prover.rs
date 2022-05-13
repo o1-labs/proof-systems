@@ -1,5 +1,6 @@
 //! This module implements prover's zk-proof primitive.
 
+use crate::circuits::scalars::ProofChunkedEvaluations;
 use crate::prover::permutation::ZK_ROWS;
 use crate::{
     circuits::{
@@ -30,6 +31,7 @@ use crate::{
         LookupCommitments, LookupEvaluations, ProofEvaluations, ProverCommitments, ProverProof,
     },
     prover_index::ProverIndex,
+    recursion::Recursion,
 };
 use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{
@@ -61,7 +63,7 @@ where
         witness: [Vec<ScalarField<G>>; COLUMNS],
         index: &ProverIndex<G>,
     ) -> Result<Self> {
-        Self::create_recursive::<EFqSponge, EFrSponge>(groupmap, witness, index, Vec::new())
+        Self::create_recursive::<EFqSponge, EFrSponge>(groupmap, witness, index, vec![])
     }
 
     /// This function constructs prover's recursive zk-proof from the witness & the ProverIndex against SRS instance
@@ -72,7 +74,7 @@ where
         group_map: &G::Map,
         mut witness: [Vec<ScalarField<G>>; COLUMNS],
         index: &ProverIndex<G>,
-        prev_challenges: Vec<(Vec<ScalarField<G>>, PolyComm<G>)>,
+        prev_challenges: Vec<Recursion<G>>,
     ) -> Result<Self> {
         let d1_size = index.cs.domain.d1.size as usize;
         // TODO: rng should be passed as arg
@@ -716,7 +718,7 @@ where
                 .as_ref()
                 .zip(lookup_sorted_coeffs.as_ref())
                 .zip(index.cs.lookup_constraint_system.as_ref())
-                .map(|((aggreg, sorted), lcs)| LookupEvaluations {
+                .map(|((aggreg, sorted), lcs)| LookupChunkedEvaluations {
                     aggreg: aggreg
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(e),
@@ -777,7 +779,7 @@ where
         //~
         //~      TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)
         let chunked_evals = {
-            let chunked_evals_zeta = ProofEvaluations::<Vec<ScalarField<G>>> {
+            let chunked_evals_zeta = ProofChunkedEvaluations::<ScalarField<G>> {
                 s: array_init(|i| {
                     index.cs.sigmam[0..PERMUTS - 1][i]
                         .to_chunked_polynomial(index.max_poly_size)
@@ -807,7 +809,7 @@ where
                     .to_chunked_polynomial(index.max_poly_size)
                     .evaluate_chunks(zeta),
             };
-            let chunked_evals_zeta_omega = ProofEvaluations::<Vec<ScalarField<G>>> {
+            let chunked_evals_zeta_omega = ProofChunkedEvaluations::<ScalarField<G>> {
                 s: array_init(|i| {
                     index.cs.sigmam[0..PERMUTS - 1][i]
                         .to_chunked_polynomial(index.max_poly_size)
@@ -988,20 +990,17 @@ where
             shifted: None,
         };
 
-        let polys = prev_challenges
-            .iter()
-            .map(|(chals, comm)| {
-                (
-                    DensePolynomial::from_coefficients_vec(b_poly_coefficients(chals)),
-                    comm.unshifted.len(),
-                )
-            })
-            .collect::<Vec<_>>();
+        let mut polynomials: Vec<(&DensePolynomial<_>, Option<usize>, PolyComm<_>)> = vec![];
 
-        let mut polynomials = polys
-            .iter()
-            .map(|(p, d1_size)| (p, None, non_hiding(*d1_size)))
-            .collect::<Vec<_>>();
+        for Recursion {
+            challenges,
+            commitment,
+        } in prev_challenges
+        {
+            let p = DensePolynomial::from_coefficients_vec(b_poly_coefficients(&challenges));
+            let d1_size = non_hiding(commitment.unshifted.len());
+            polynomials.push((&p, None, d1_size));
+        }
 
         //~ 44. Then, include:
         //~     - the negated public polynomial

@@ -1,15 +1,28 @@
 //! This module implements the data structures of a proof.
 
-use crate::circuits::wires::{COLUMNS, PERMUTS};
+use crate::{
+    circuits::{
+        scalars::ProofChunkedEvaluations,
+        wires::{COLUMNS, PERMUTS},
+    },
+    recursion::Recursion,
+};
 use ark_ec::AffineCurve;
 use ark_ff::{FftField, Zero};
 use ark_poly::univariate::DensePolynomial;
 use array_init::array_init;
 use commitment_dlog::{commitment::PolyComm, evaluation_proof::OpeningProof};
 use o1_utils::{types::fields::*, ExtendedDensePolynomial};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde_with::serde_as;
+
+/// Alias to refer to the scalar field of a curve.
+type Fr<G> = <G as AffineCurve>::ScalarField;
+/// Alias to refer to the base field of a curve.
+type Fq<G> = <G as AffineCurve>::BaseField;
 
 //~ spec:startcode
-#[derive(Clone)]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct LookupEvaluations<Field> {
     /// sorted lookup table polynomial
     pub sorted: Vec<Field>,
@@ -21,7 +34,7 @@ pub struct LookupEvaluations<Field> {
 }
 
 // TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
-#[derive(Clone)]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct ProofEvaluations<Field> {
     /// witness polynomials
     pub w: [Field; COLUMNS],
@@ -39,46 +52,64 @@ pub struct ProofEvaluations<Field> {
 }
 
 /// Commitments linked to the lookup feature
-#[derive(Clone)]
+#[serde_as]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct LookupCommitments<G: AffineCurve> {
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub sorted: Vec<PolyComm<G>>,
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub aggreg: PolyComm<G>,
 }
 
 /// All the commitments that the prover creates as part of the proof.
-#[derive(Clone)]
+#[serde_as]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct ProverCommitments<G: AffineCurve> {
     /// The commitments to the witness (execution trace)
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub w_comm: [PolyComm<G>; COLUMNS],
     /// The commitment to the permutation polynomial
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub z_comm: PolyComm<G>,
     /// The commitment to the quotient polynomial
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub t_comm: PolyComm<G>,
     /// Commitments related to the lookup argument
+    #[serde(bound = "LookupCommitments<G>: Serialize + DeserializeOwned")]
     pub lookup: Option<LookupCommitments<G>>,
 }
 
 /// The proof that the prover creates from a [ProverIndex] and a `witness`.
-#[derive(Clone)]
-pub struct ProverProof<G: AffineCurve> {
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize)]
+pub struct ProverProof<G>
+where
+    G: AffineCurve,
+{
     /// All the polynomial commitments required in the proof
+    #[serde(bound = "ProverCommitments<G>: Serialize + DeserializeOwned")]
     pub commitments: ProverCommitments<G>,
 
     /// batched commitment opening proof
+    #[serde(bound = "OpeningProof<G>: Serialize + DeserializeOwned")]
     pub proof: OpeningProof<G>,
 
     /// Two evaluations over a number of committed polynomials
     // TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }
-    pub evals: [ProofEvaluations<Vec<ScalarField<G>>>; 2],
+    #[serde(bound = "ProofChunkedEvaluations<Fr<G>>: Serialize + DeserializeOwned")]
+    pub evals: [ProofChunkedEvaluations<Fr<G>>; 2],
 
     /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub ft_eval1: ScalarField<G>,
 
     /// The public input
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub public: Vec<ScalarField<G>>,
 
     /// The challenges underlying the optional polynomials folded into the proof
-    pub prev_challenges: Vec<(Vec<ScalarField<G>>, PolyComm<G>)>,
+    #[serde(bound = "Recursion<G>: Serialize + DeserializeOwned")]
+    pub prev_challenges: Vec<Recursion<G>>,
 }
 //~ spec:endcode
 

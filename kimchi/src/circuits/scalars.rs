@@ -2,6 +2,19 @@
 
 use ark_ff::Field;
 use oracle::sponge::ScalarChallenge;
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde_with::serde_as;
+
+use super::{polynomial::COLUMNS, wires::PERMUTS};
+
+#[serde_as]
+#[derive(Clone, Deserialize, Serialize)]
+pub enum Evaluation<F> {
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    Chunked(Vec<F>),
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    NotChunked(F),
+}
 
 #[derive(Clone, Debug)]
 pub struct RandomOracles<F: Field> {
@@ -35,6 +48,45 @@ impl<F: Field> Default for RandomOracles<F> {
             joint_combiner: (c, F::zero()),
         }
     }
+}
+
+#[serde_as]
+#[derive(Clone, Deserialize, Serialize)]
+pub struct LookupChunkedEvaluations<F> {
+    #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
+    /// sorted lookup table polynomial
+    pub sorted: Vec<Vec<F>>,
+    /// lookup aggregation polynomial
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    pub aggreg: Vec<F>,
+    // TODO: May be possible to optimize this away?
+    /// lookup table polynomial
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    pub table: Vec<F>,
+}
+
+#[serde_as]
+#[derive(Clone, Deserialize, Serialize)]
+pub struct ProofChunkedEvaluations<F> {
+    /// witness polynomials
+    #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; COLUMNS]")]
+    pub w: [Vec<F>; COLUMNS],
+    /// permutation polynomial
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    pub z: Vec<F>,
+    /// permutation polynomials
+    /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
+    #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; PERMUTS - 1]")]
+    pub s: [Vec<F>; PERMUTS - 1],
+    /// lookup-related evaluations
+    #[serde(bound = "LookupChunkedEvaluations<F>: Serialize + DeserializeOwned")]
+    pub lookup: Option<LookupChunkedEvaluations<F>>,
+    /// evaluation of the generic selector polynomial
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    pub generic_selector: Vec<F>,
+    /// evaluation of the poseidon selector polynomial
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    pub poseidon_selector: Vec<F>,
 }
 
 //

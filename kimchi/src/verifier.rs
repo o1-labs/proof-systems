@@ -63,51 +63,6 @@ impl<G: CommitmentCurve> ProverProof<G>
 where
     G::BaseField: PrimeField,
 {
-    pub fn prev_chal_evals(
-        &self,
-        index: &VerifierIndex<G>,
-        evaluation_points: &[ScalarField<G>],
-        powers_of_eval_points_for_chunks: &[ScalarField<G>],
-    ) -> Vec<Vec<Vec<ScalarField<G>>>> {
-        self.prev_challenges
-            .iter()
-            .map(|(chals, _poly)| {
-                // No need to check the correctness of poly explicitly. Its correctness is assured by the
-                // checking of the inner product argument.
-                let b_len = 1 << chals.len();
-                let mut b: Option<Vec<ScalarField<G>>> = None;
-
-                (0..2)
-                    .map(|i| {
-                        let full = b_poly(chals, evaluation_points[i]);
-                        if index.max_poly_size == b_len {
-                            return vec![full];
-                        }
-                        let mut betaacc = ScalarField::<G>::one();
-                        let diff = (index.max_poly_size..b_len)
-                            .map(|j| {
-                                let b_j = match &b {
-                                    None => {
-                                        let t = b_poly_coefficients(chals);
-                                        let res = t[j];
-                                        b = Some(t);
-                                        res
-                                    }
-                                    Some(b) => b[j],
-                                };
-
-                                let ret = betaacc * b_j;
-                                betaacc *= &evaluation_points[i];
-                                ret
-                            })
-                            .fold(ScalarField::<G>::zero(), |x, y| x + y);
-                        vec![full - (diff * powers_of_eval_points_for_chunks[i]), diff]
-                    })
-                    .collect()
-            })
-            .collect()
-    }
-
     /// This function runs the random oracle argument
     pub fn oracles<
         EFqSponge: Clone + FqSponge<BaseField<G>, G, ScalarField<G>>,
@@ -286,12 +241,22 @@ where
             zetaw.pow(&[index.max_poly_size as u64]),
         ];
 
+        /*
         let polys: Vec<(PolyComm<G>, _)> = self
-            .prev_challenges
-            .iter()
-            .zip(self.prev_chal_evals(index, &evaluation_points, &powers_of_eval_points_for_chunks))
-            .map(|(c, e)| (c.1.clone(), e))
-            .collect();
+        .prev_challenges
+        .iter()
+        .zip(self.prev_chal_evals(index, &evaluation_points, &powers_of_eval_points_for_chunks))
+        .map(|(c, e)| (c.1.clone(), e))
+        .collect();
+        */
+
+        let polys: Vec<(PolyComm<G>, _)> = vec![];
+        for r in self.prev_challenges {
+            polys.push((
+                r.commitment.clone(),
+                r.prev_chal_evals(index, &evaluation_points, &powers_of_eval_points_for_chunks),
+            ));
+        }
 
         let evals = vec![
             self.evals[0].combine(powers_of_eval_points_for_chunks[0]),
