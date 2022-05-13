@@ -101,13 +101,11 @@
 ///  Nb. each CircuitGate type corresponds to a unique polynomial and thus
 ///       is assigned its own unique powers of alpha
 ///```
-mod foreign_mul_0;
-mod foreign_mul_1;
+mod circuitgates;
 
 pub mod gate;
 pub mod witness;
 
-pub use foreign_mul_0::ForeignMul0;
-pub use foreign_mul_1::ForeignMul1;
+pub use circuitgates::{ForeignMul0, ForeignMul1};
 pub use gate::*;
 pub use witness::create_witness;
