@@ -33,7 +33,7 @@ use crate::circuits::{
     gate::GateType,
     polynomial::COLUMNS,
 };
-use ark_ff::{FftField, Zero};
+use ark_ff::{FftField, One, Zero};
 
 #[derive(Default)]
 pub struct ForeignMul1<F>(PhantomData<F>);
@@ -50,13 +50,7 @@ where
     //   * Range constrain all sublimbs (barring plookup constraints, which are done elsewhere)
     //   * Constrain that combining all sublimbs equals the limb stored in row Curr, column 0
     fn constraints() -> Vec<E<F>> {
-        // Constraints structure
-        //          0    1       ... 4       5     ... 14
-        //    Curr  limb plookup ... plookup crumb ... crumb
-        //    Next                           crumb ... crumb
-
         // 1) Apply range constraints on sublimbs
-
         // Columns 1-4 are 12-bit plookup range constraints (these are specified elsewhere)
 
         // Create 10 2-bit chunk range constraints using Curr row
@@ -86,23 +80,29 @@ where
         // (1st part) = \sum i \in [1,5] 2^{12*(i - 1)}*w_curr(i) + \sum i \in [6,14] 2^{2*(i - 5) + 4*12}*w_curr(i)
         // (2nd part) + \sum i \in [5,14] 2^{2*(i - 5} + 68)*w_next(i)
 
-        // 1st part (Curr row): \sum i \in [1,5] 2^{12*(i - 1)}*w_curr(i) + \sum i \in [6,14] 2^{2*(i - 5) + 4*12}*w_curr(i)
-        let combined_sublimbs = (1..5).fold(E::zero(), |acc, i| {
-            // 12-bit chunk
-            acc + E::<F>::from(2u64).pow(12 * (i as u64 - 1)) * witness_curr(i)
-        }) + (5..COLUMNS).fold(E::zero(), |acc, i| {
-            // 2-bit chunk
-            acc + E::<F>::from(2u64).pow(2 * (i as u64 - 5) + 4 * 12) * witness_curr(i)
-        });
+        let mut power_of_2 = E::one();
+        let mut sum_of_sublimbs = E::zero();
 
-        // 2nd part (Next row): \sum i \in [5,14] 2^{2*(i - 5) + 68}*w_next(i)
-        let combined_sublimbs = (5..COLUMNS).fold(combined_sublimbs, |acc, i| {
-            // 2-bit chunk
-            acc + E::<F>::from(2u64).pow(2 * (i as u64 - 5) + 68) * witness_next(i)
-        });
+        // 1st part: Sum 12-bit sublimbs (row Curr)
+        for i in 1..5 {
+            sum_of_sublimbs += power_of_2.clone() * witness_curr(i);
+            power_of_2 *= 4096u64.into(); // 12 bits
+        }
 
-        // w(0) = combined_sublimbs
-        constraints.push(combined_sublimbs - witness_curr(0));
+        // 1st part:  Sum 2-bit sublimbs (row Curr)
+        for i in 5..COLUMNS {
+            sum_of_sublimbs += power_of_2.clone() * witness_curr(i);
+            power_of_2 *= 4u64.into(); // 2 bits
+        }
+
+        // 2nd part: Sum 2-bit sublimbs
+        for i in 5..COLUMNS {
+            sum_of_sublimbs += power_of_2.clone() * witness_next(i);
+            power_of_2 *= 4u64.into(); // 2 bits
+        }
+
+        // Check limb against the sum of sublimbs
+        constraints.push(sum_of_sublimbs - witness_curr(0));
 
         constraints
     }

@@ -5,14 +5,14 @@
 /// ```text
 /// Globals:
 ///     * n: native field modulus
-///     * p: foreign field modulus
+///     * f: foreign field modulus
 ///
 /// Inputs:
-///     * a: left foreign field element operand a \in Fp
-///     * b: right foreign field element operand b \in Fp
+///     * a: left foreign field element operand a \in Ff
+///     * b: right foreign field element operand b \in Ff
 ///
 /// Witness:
-///     * q: \in Fp
+///     * q: \in Ff
 ///     * r: such that a*b = q*p +r
 ///
 /// Foreign field element structure:
@@ -43,7 +43,7 @@
 ///
 ///    (*)  Row offsets
 ///    (**) Some part of the limb is contained in this row
-///```
+///
 ///
 /// Constraints:
 ///
