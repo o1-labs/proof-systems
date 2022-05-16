@@ -114,16 +114,16 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     pub lookup_index: Option<LookupVerifierIndex<G>>,
 
     #[serde(skip)]
-    pub(crate) linearization: Linearization<Vec<PolishToken<ScalarField<G>>>>,
+    pub linearization: Linearization<Vec<PolishToken<ScalarField<G>>>>,
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
-    pub(crate) powers_of_alpha: Alphas<ScalarField<G>>,
+    pub powers_of_alpha: Alphas<ScalarField<G>>,
 
     // random oracle argument parameters
     #[serde(skip)]
-    pub(crate) fr_sponge_params: ArithmeticSpongeParams<ScalarField<G>>,
+    pub fr_sponge_params: ArithmeticSpongeParams<ScalarField<G>>,
     #[serde(skip)]
-    pub(crate) fq_sponge_params: ArithmeticSpongeParams<BaseField<G>>,
+    pub fq_sponge_params: ArithmeticSpongeParams<BaseField<G>>,
 }
 //~spec:endcode
 
