@@ -1,6 +1,6 @@
 //! This module implements prover's zk-proof primitive.
 
-use crate::circuits::scalars::ProofChunkedEvaluations;
+use crate::circuits::scalars::{LookupChunkedEvaluations, ProofChunkedEvaluations};
 use crate::prover::permutation::ZK_ROWS;
 use crate::{
     circuits::{
@@ -40,6 +40,7 @@ use ark_poly::{
 use array_init::array_init;
 use commitment_dlog::commitment::{b_poly_coefficients, CommitmentCurve, PolyComm};
 use itertools::Itertools;
+use o1_utils::chunked_polynomial::ToChunk;
 use o1_utils::{types::fields::*, ExtendedDensePolynomial as _};
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use rayon::iter::{
@@ -745,16 +746,18 @@ where
                                     .collect()
                             });
                         match lcs.table_ids.as_ref() {
-                            None => base_table,
+                            None => base_table.to_chunk(),
                             Some(table_ids) => base_table
                                 .into_iter()
                                 .zip(
                                     table_ids
                                         .to_chunked_polynomial(index.max_poly_size)
-                                        .evaluate_chunks(e),
+                                        .evaluate_chunks(e)
+                                        .iter(),
                                 )
                                 .map(|(x, table_id)| x + (table_id_combiner * table_id))
-                                .collect(),
+                                .collect()
+                                .to_chunk(),
                         }
                     },
                 })

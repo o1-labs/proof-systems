@@ -11,7 +11,7 @@ use mina_curves::pasta::{
     vesta::{Affine, VestaParameters},
     Fp,
 };
-use o1_utils::ExtendedDensePolynomial as _;
+use o1_utils::{chunked_polynomial::ChunkedEvals, ExtendedDensePolynomial as _};
 use oracle::constants::PlonkSpongeConstantsKimchi as SC;
 use oracle::sponge::DefaultFqSponge;
 use oracle::FqSponge as _;
@@ -39,7 +39,7 @@ pub struct EvaluatedCommitment {
 }
 
 /// A polynomial commitment evaluated at a point. Since a commitment can be chunked, the evaluations can also be chunked.
-pub type ChunkedCommitmentEvaluation = Vec<Fp>;
+pub type ChunkedCommitmentEvaluation = ChunkedEvals<Fp>;
 
 mod prover {
     use super::*;

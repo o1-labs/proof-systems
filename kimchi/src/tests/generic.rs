@@ -7,7 +7,7 @@ use crate::verifier::verify;
 use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use array_init::array_init;
-use commitment_dlog::commitment::{b_poly_coefficients, CommitmentCurve};
+use commitment_dlog::commitment::CommitmentCurve;
 use groupmap::GroupMap;
 use mina_curves::pasta::{
     fp::Fp,
@@ -18,8 +18,6 @@ use oracle::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use rand::{rngs::StdRng, SeedableRng};
-
-use o1_utils::math;
 
 // aliases
 

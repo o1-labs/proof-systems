@@ -1,5 +1,77 @@
+use crate::serialization::SerdeAs;
 use ark_ff::Field;
 use ark_poly::polynomial::{univariate::DensePolynomial, Polynomial};
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde_with::serde_as;
+use std::ops::{Deref, Index};
+
+#[serde_as]
+#[derive(Clone, Serialize)]
+pub struct ChunkedEvals<'a, F: CanonicalSerialize> {
+    #[serde_as(as = "Vec<SerdeAs>")]
+    pub chunk: &'a Vec<F>,
+    index: usize,
+}
+
+impl<F: Field> Index<usize> for ChunkedEvals<'_, F> {
+    type Output = F;
+
+    /// Returns the field element at `pos` position
+    fn index(&self, pos: usize) -> &Self::Output {
+        &self.chunk[pos]
+    }
+}
+
+// Used to iterate over the chunk
+impl<F: Field> Deref for ChunkedEvals<'_, F> {
+    type Target = Vec<F>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.chunk
+    }
+}
+
+impl<'a, F: CanonicalSerialize> Iterator for ChunkedEvals<'a, F> {
+    type Item = &'a F;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= self.chunk.len() {
+            return None;
+        }
+
+        self.index += 1;
+        Some(&self.chunk[self.index - 1])
+    }
+}
+
+impl<F: Field> ChunkedEvals<'_, F> {
+    /// Returns the length of the chunk
+    pub fn len(&self) -> usize {
+        self.chunk.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.chunk.is_empty()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &F> + '_ {
+        self.chunk.iter()
+    }
+}
+
+pub trait ToChunk<F: ark_serialize::CanonicalSerialize> {
+    fn to_chunk(&self) -> ChunkedEvals<F>;
+}
+
+impl<F: Field> ToChunk<F> for Vec<F> {
+    fn to_chunk(&self) -> ChunkedEvals<F> {
+        ChunkedEvals {
+            chunk: &self,
+            index: 0,
+        }
+    }
+}
 
 /// This struct contains multiple chunk polynomials with degree `size-1`.
 pub struct ChunkedPolynomial<F: Field> {
@@ -12,13 +84,16 @@ pub struct ChunkedPolynomial<F: Field> {
 
 impl<F: Field> ChunkedPolynomial<F> {
     /// This function evaluates polynomial in chunks.
-    pub fn evaluate_chunks(&self, elm: F) -> Vec<F> {
+    pub fn evaluate_chunks(&self, elm: F) -> ChunkedEvals<F> {
         let mut res: Vec<F> = vec![];
         for poly in self.polys.iter() {
             let eval = poly.evaluate(&elm);
             res.push(eval);
         }
-        res
+        ChunkedEvals {
+            chunk: &res,
+            index: 0,
+        }
     }
 
     /// Multiplies the chunks of a polynomial with powers of zeta^n to make it of degree n-1.

@@ -20,9 +20,9 @@ use ark_poly::{
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use core::ops::{Add, Sub};
 use groupmap::{BWParameters, GroupMap};
-use o1_utils::math;
 use o1_utils::types::fields::*;
 use o1_utils::ExtendedDensePolynomial as _;
+use o1_utils::{chunked_polynomial::ChunkedEvals, math};
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand_core::{CryptoRng, RngCore};
 use rayon::prelude::*;
@@ -383,7 +383,7 @@ pub fn combined_inner_product<G: CommitmentCurve>(
     xi: &ScalarField<G>,
     r: &ScalarField<G>,
     // TODO(mimoo): needs a type that can get you evaluations or segments
-    polys: &[(Vec<Vec<ScalarField<G>>>, Option<usize>)],
+    polys: &[(Vec<ChunkedEvals<ScalarField<G>>>, Option<usize>)],
     srs_length: usize,
 ) -> ScalarField<G> {
     let mut res = ScalarField::<G>::zero();
@@ -432,7 +432,7 @@ where
     pub commitment: PolyComm<G>,
 
     /// Contains an evaluation table
-    pub evaluations: Vec<Vec<ScalarField<G>>>,
+    pub evaluations: Vec<ChunkedEvals<ScalarField<G>>>,
 
     /// optional degree bound
     pub degree_bound: Option<usize>,
@@ -920,8 +920,8 @@ mod tests {
             c.iter().fold(Fp::zero(), |a, &b| a + b)
         }
 
-        assert_eq!(sum(&poly1_chunked_evals[0]), poly1.evaluate(&elm[0]));
-        assert_eq!(sum(&poly1_chunked_evals[1]), poly1.evaluate(&elm[1]));
+        assert_eq!(sum(&poly1_chunked_evals[0].chunk), poly1.evaluate(&elm[0]));
+        assert_eq!(sum(&poly1_chunked_evals[1].chunk), poly1.evaluate(&elm[1]));
 
         let poly2_chunked_evals = vec![
             poly2
@@ -932,8 +932,8 @@ mod tests {
                 .evaluate_chunks(elm[1]),
         ];
 
-        assert_eq!(sum(&poly2_chunked_evals[0]), poly2.evaluate(&elm[0]));
-        assert_eq!(sum(&poly2_chunked_evals[1]), poly2.evaluate(&elm[1]));
+        assert_eq!(sum(&poly2_chunked_evals[0].chunk), poly2.evaluate(&elm[0]));
+        assert_eq!(sum(&poly2_chunked_evals[1].chunk), poly2.evaluate(&elm[1]));
 
         // verify the proof
         let mut batch = vec![BatchEvaluationProof {

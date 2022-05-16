@@ -1,4 +1,5 @@
 use ark_ff::{Field, PrimeField};
+use o1_utils::chunked_polynomial::ChunkedEvals;
 use oracle::sponge::{DefaultFrSponge, ScalarChallenge};
 use oracle::{
     constants::PlonkSpongeConstantsKimchi as SC,
@@ -19,7 +20,7 @@ pub trait FrSponge<Fr: Field> {
 
     /// Absorbs the given evaluations into the sponge.
     // TODO: IMO this function should be inlined in prover/verifier
-    fn absorb_evaluations(&mut self, p: &[Fr], e: &ProofEvaluations<Vec<Fr>>);
+    fn absorb_evaluations(&mut self, p: &[Fr], e: &ProofEvaluations<ChunkedEvals<Fr>>);
 }
 
 impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
@@ -40,7 +41,7 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
         ScalarChallenge(self.squeeze(oracle::sponge::CHALLENGE_LENGTH_IN_LIMBS))
     }
 
-    fn absorb_evaluations(&mut self, p: &[Fr], e: &ProofEvaluations<Vec<Fr>>) {
+    fn absorb_evaluations(&mut self, p: &[Fr], e: &ProofEvaluations<ChunkedEvals<Fr>>) {
         self.last_squeezed = vec![];
         self.sponge.absorb(p);
 
