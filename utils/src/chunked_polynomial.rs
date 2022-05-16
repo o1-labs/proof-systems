@@ -8,13 +8,18 @@ use std::ops::{Deref, Index};
 
 #[serde_as]
 #[derive(Clone, Serialize)]
-pub struct ChunkedEvals<'a, F: CanonicalSerialize> {
+pub struct ChunkedEvals<F: CanonicalSerialize> {
     #[serde_as(as = "Vec<SerdeAs>")]
-    pub chunk: &'a Vec<F>,
+    pub chunk: Vec<F>,
     index: usize,
 }
 
-impl<F: Field> Index<usize> for ChunkedEvals<'_, F> {
+pub struct ChunkedEvalsIterator<'a, F: CanonicalSerialize> {
+    chunk: &'a Vec<F>,
+    index: usize,
+}
+
+impl<F: Field> Index<usize> for ChunkedEvals<F> {
     type Output = F;
 
     /// Returns the field element at `pos` position
@@ -24,7 +29,7 @@ impl<F: Field> Index<usize> for ChunkedEvals<'_, F> {
 }
 
 // Used to iterate over the chunk
-impl<F: Field> Deref for ChunkedEvals<'_, F> {
+impl<F: Field> Deref for ChunkedEvals<F> {
     type Target = Vec<F>;
 
     fn deref(&self) -> &Self::Target {
@@ -32,7 +37,7 @@ impl<F: Field> Deref for ChunkedEvals<'_, F> {
     }
 }
 
-impl<'a, F: CanonicalSerialize> Iterator for ChunkedEvals<'a, F> {
+impl<'a, F: CanonicalSerialize> Iterator for ChunkedEvalsIterator<'a, F> {
     type Item = &'a F;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -45,7 +50,7 @@ impl<'a, F: CanonicalSerialize> Iterator for ChunkedEvals<'a, F> {
     }
 }
 
-impl<F: Field> ChunkedEvals<'_, F> {
+impl<F: Field> ChunkedEvals<F> {
     /// Returns the length of the chunk
     pub fn len(&self) -> usize {
         self.chunk.len()
@@ -67,7 +72,7 @@ pub trait ToChunk<F: ark_serialize::CanonicalSerialize> {
 impl<F: Field> ToChunk<F> for Vec<F> {
     fn to_chunk(&self) -> ChunkedEvals<F> {
         ChunkedEvals {
-            chunk: &self,
+            chunk: self.clone(),
             index: 0,
         }
     }
@@ -91,7 +96,7 @@ impl<F: Field> ChunkedPolynomial<F> {
             res.push(eval);
         }
         ChunkedEvals {
-            chunk: &res,
+            chunk: res,
             index: 0,
         }
     }
