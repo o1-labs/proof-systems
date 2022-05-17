@@ -14,6 +14,7 @@ use crate::{
             generic, permutation,
             permutation::ZK_ROWS,
             poseidon::Poseidon,
+            range_check,
             varbasemul::VarbaseMul,
         },
         wires::{COLUMNS, PERMUTS},
@@ -434,6 +435,12 @@ where
                         index_evals.insert(*g, &c[i]);
                     }
                 });
+            if !index.cs.range_check_selector_polys.is_empty() {
+                index_evals.extend(range_check::circuit_gates().iter().enumerate().map(
+                    |(i, gate_type)| (*gate_type, &index.cs.range_check_selector_polys[i].eval8),
+                ));
+            }
+
             Environment {
                 constants: Constants {
                     alpha,
@@ -488,6 +495,37 @@ where
 
                 (perm, bnd)
             };
+
+            if !index.cs.range_check_selector_polys.is_empty() {
+                // Range check gate
+                for gate_type in range_check::circuit_gates() {
+                    let expr = range_check::circuit_gate_constraints(gate_type, &all_alphas);
+
+                    let evals = expr.evaluations(&env);
+
+                    if evals.domain().size == t4.domain().size {
+                        t4 += &evals;
+                    } else if evals.domain().size == t8.domain().size {
+                        t8 += &evals;
+                    } else {
+                        panic!(
+                            "Bad evaluation domain size {} for {:?}",
+                            evals.domain().size,
+                            gate_type
+                        );
+                    }
+
+                    if cfg!(test) {
+                        let (_, res) = evals
+                            .interpolate()
+                            .divide_by_vanishing_poly(index.cs.domain.d1)
+                            .unwrap();
+                        if !res.is_zero() {
+                            panic!("Nonzero vanishing polynomial division for {:?}", gate_type);
+                        }
+                    }
+                }
+            }
 
             // scalar multiplication
             {

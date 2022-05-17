@@ -1,4 +1,4 @@
-//! This contains the [DomainConstantEvaluations] which is used to provide precomputations to a [ConstraintSystem].
+//! This contains the [DomainConstantEvaluations] which is used to provide precomputations to a [ConstraintSystem](super::constraints::ConstraintSystem).
 
 use crate::circuits::domains::EvaluationDomains;
 use crate::circuits::polynomials::permutation::zk_polynomial;

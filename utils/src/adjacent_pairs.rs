@@ -1,4 +1,4 @@
-//! This module hosts the [AdjancentPairs] type,
+//! This module hosts the [AdjacentPairs] type,
 //! which can be used to list all the adjacent pairs of a list.
 //! For example, if you have a list of integers `[1, 2, 3]`,
 //! you can use it to obtain the list of tuples `[(1, 2), (2, 3)]`.
