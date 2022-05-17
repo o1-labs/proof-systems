@@ -11,9 +11,10 @@ use crate::{
             complete_add::CompleteAdd,
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
-            foreign_mul, generic, permutation,
+            generic, permutation,
             permutation::ZK_ROWS,
             poseidon::Poseidon,
+            range_check,
             varbasemul::VarbaseMul,
         },
         wires::{COLUMNS, PERMUTS},
@@ -411,9 +412,9 @@ where
                         index_evals.insert(*g, &c[i]);
                     }
                 });
-            if !index.cs.foreign_mul_selector_polys.is_empty() {
-                index_evals.extend(foreign_mul::circuit_gates().iter().enumerate().map(
-                    |(i, gate_type)| (*gate_type, &index.cs.foreign_mul_selector_polys[i].eval8),
+            if !index.cs.range_check_selector_polys.is_empty() {
+                index_evals.extend(range_check::circuit_gates().iter().enumerate().map(
+                    |(i, gate_type)| (*gate_type, &index.cs.range_check_selector_polys[i].eval8),
                 ));
             }
 
@@ -425,7 +426,6 @@ where
                     joint_combiner: lookup_context.joint_combiner,
                     endo_coefficient: index.cs.endo,
                     mds: index.cs.fr_sponge_params.mds.clone(),
-                    foreign_modulus: index.cs.foreign_modulus.clone(),
                 },
                 witness: &lagrange.d8.this.w,
                 coefficient: &index.cs.coefficients8,
@@ -487,12 +487,10 @@ where
                 assert!(res.is_zero());
             }
 
-            if !index.cs.foreign_mul_selector_polys.is_empty() {
-                assert!(!index.cs.foreign_modulus.is_empty());
-
-                // foreign field multiplication
-                for gate_type in foreign_mul::circuit_gates() {
-                    let expr = foreign_mul::circuit_gate_constraints(gate_type, &all_alphas);
+            if !index.cs.range_check_selector_polys.is_empty() {
+                // Range check gate
+                for gate_type in range_check::circuit_gates() {
+                    let expr = range_check::circuit_gate_constraints(gate_type, &all_alphas);
 
                     let evals = expr.evaluations(&env);
 
@@ -762,7 +760,6 @@ where
         //~     * lookup (TODO)
         //~     * generic selector
         //~     * poseidon selector
-        //~     * foreign mul selector
         //~
         //~     By "chunk evaluate" we mean that the evaluation of each polynomial can potentially be a vector of values.
         //~     This is because the index's `max_poly_size` parameter dictates the maximum size of a polynomial in the protocol.

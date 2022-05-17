@@ -6,8 +6,8 @@ use crate::{
         gate::{CircuitGate, GateType},
         lookup::{index::LookupConstraintSystem, tables::LookupTable},
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
-        polynomials::foreign_mul,
         polynomials::permutation::ZK_ROWS,
+        polynomials::range_check,
         wires::*,
     },
     error::SetupError,
@@ -110,9 +110,9 @@ pub struct ConstraintSystem<F: FftField> {
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub endomul_scalar8: E<F, D<F>>,
 
-    /// Foreign field multiplication gate selector polynomials
-    #[serde(bound = "Vec<foreign_mul::SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
-    pub foreign_mul_selector_polys: Vec<foreign_mul::SelectorPolynomial<F>>,
+    /// Range check gate selector polynomials
+    #[serde(bound = "Vec<range_check::SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
+    pub range_check_selector_polys: Vec<range_check::SelectorPolynomial<F>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -124,10 +124,6 @@ pub struct ConstraintSystem<F: FftField> {
     /// random oracle argument parameters
     #[serde(skip)]
     pub fr_sponge_params: ArithmeticSpongeParams<F>,
-
-    /// Foreign field modulus parameter
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub foreign_modulus: Vec<F>,
 
     /// lookup constraint system
     #[serde(bound = "LookupConstraintSystem<F>: Serialize + DeserializeOwned")]
@@ -225,22 +221,17 @@ pub enum GateError {
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// Creates a constraint system from a vector of gates ([CircuitGate]),
-    ///   some sponge parameters ([ArithmeticSpongeParams]),
-    ///   an optional foreign modulus, and the number of public inputs.
-    ///   Note that passing an empty vector for the foreign modulus parameter
-    ///   disables the foreign field multiplication gate.
+    ///   some sponge parameters ([ArithmeticSpongeParams])
     pub fn create(
         gates: Vec<CircuitGate<F>>,
         lookup_tables: Vec<LookupTable<F>>,
         fr_sponge_params: ArithmeticSpongeParams<F>,
-        foreign_modulus: Vec<F>,
         public: usize,
     ) -> Result<Self, SetupError> {
         ConstraintSystem::<F>::create_with_shared_precomputations(
             gates,
             lookup_tables,
             fr_sponge_params,
-            foreign_modulus,
             public,
             None,
         )
@@ -251,7 +242,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         mut gates: Vec<CircuitGate<F>>,
         lookup_tables: Vec<LookupTable<F>>,
         fr_sponge_params: ArithmeticSpongeParams<F>,
-        foreign_modulus: Vec<F>,
         public: usize,
         precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
     ) -> Result<Self, SetupError> {
@@ -421,11 +411,11 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             }
         };
 
-        // Foreign field multiplication constraint selector polynomials
-        let foreign_mul_selector_polys = {
-            if !circuit_gates_used.is_disjoint(&foreign_mul::circuit_gates().into_iter().collect())
+        // Range check constraint selector polynomials
+        let range_check_selector_polys = {
+            if !circuit_gates_used.is_disjoint(&range_check::circuit_gates().into_iter().collect())
             {
-                foreign_mul::selector_polynomials(&gates, &domain)
+                range_check::selector_polynomials(&gates, &domain)
             } else {
                 vec![]
             }
@@ -479,12 +469,11 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             complete_addl4,
             mull8,
             emull,
-            foreign_mul_selector_polys,
+            range_check_selector_polys,
             gates,
             shift: shifts.shifts,
             endo,
             fr_sponge_params,
-            foreign_modulus,
             lookup_constraint_system,
             precomputations: domain_constant_evaluation,
         };
@@ -619,7 +608,7 @@ pub mod tests {
         ) -> Self {
             let public = 0;
             // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
-            ConstraintSystem::<F>::create(gates, vec![], sponge_params, vec![], public).unwrap()
+            ConstraintSystem::<F>::create(gates, vec![], sponge_params, public).unwrap()
         }
     }
 

@@ -1,23 +1,9 @@
-//! Foreign field multiplication gate
+//! Range check gate
 
-/// <https://hackmd.io/XZUHHGpDQsSOs0dUGugB5w>
+///```text
+/// Range check field element structure:
 ///
-/// ```text
-/// Globals:
-///     * n: native field modulus
-///     * f: foreign field modulus
-///
-/// Inputs:
-///     * a: left foreign field element operand a \in Ff
-///     * b: right foreign field element operand b \in Ff
-///
-/// Witness:
-///     * q: \in Ff
-///     * r: such that a*b = q*p +r
-///
-/// Foreign field element structure:
-///
-///    Each foreign field element a is decomposed into three 88-bit limbs a0, a1, a2 s.t. a = a0a1a2 in
+///    Each field element a is decomposed into three 88-bit limbs a0, a1, a2 s.t. a = a0a1a2 in
 ///    little-endian byte order (i.e. a = a2*2^{2b} + a1*2^b + a0)
 ///
 ///    L is a 12-bit lookup,
@@ -47,7 +33,7 @@
 ///
 /// Constraints:
 ///
-///   For efficiency, the foreign field element inputs are constrained
+///   For efficiency, the field element inputs are constrained
 ///   by their sublimbs according to their type.
 ///    * 12-bit sublimbs are constrained with plookups
 ///    * 2-bit crumbs are constrained with degree-4 constraints
@@ -59,7 +45,7 @@
 ///   * aXpi is a 12-bit sublimb of limb aX
 ///   * aXci is a 2-bit "crumb" sublimb of aX
 ///
-/// Gate:   ForeignMul0    ForeignMul0    ForeignMul1    ForeignMul2
+/// Gate:   RangeCheck0    RangeCheck0    RangeCheck1    RangeCheck2
 ///   Rows -->
 ///         0              1              2              3
 ///  C  0 | a0           | a1           | a2           | 0
@@ -81,7 +67,7 @@
 ///   The 12-bit chunks are constrained with plookups and the 2-bit crumbs constrained with
 ///   degree-4 constraints of the form x*(x - 1)*(x - 2)*(x - 3).
 ///
-///   Note that copy denotes a plookup that is deferred to the ForeignMul2 gate.
+///   Note that copy denotes a plookup that is deferred to the RangeCheck2 gate.
 ///   This is because of the limitation that we have at most 4 lookups per row.
 ///
 /// Gate types:
@@ -89,14 +75,14 @@
 ///   Different rows are constrained differently using different CircuitGate types
 ///
 ///   Row   CircuitGate   Purpose
-///     0   ForeignMul0   Constrain a
-///     1   ForeignMul0       "
-///     2   ForeignMul1       "
-///     3   ForeignMul2       "
-///     4   ForeignMul0   Constrain b
-///     5   ForeignMul0       "
-///     6   ForeignMul1       "
-///     7   ForeignMul2       "
+///     0   RangeCheck0   Constrain a
+///     1   RangeCheck0       "
+///     2   RangeCheck1       "
+///     3   RangeCheck2       "
+///     4   RangeCheck0   Constrain b
+///     5   RangeCheck0       "
+///     6   RangeCheck1       "
+///     7   RangeCheck2       "
 ///
 ///  Nb. each CircuitGate type corresponds to a unique polynomial and thus
 ///       is assigned its own unique powers of alpha
@@ -106,6 +92,6 @@ mod circuitgates;
 pub mod gate;
 pub mod witness;
 
-pub use circuitgates::{ForeignMul0, ForeignMul1};
+pub use circuitgates::{RangeCheck0, RangeCheck1};
 pub use gate::*;
 pub use witness::create_witness;

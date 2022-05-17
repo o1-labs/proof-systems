@@ -8,12 +8,12 @@ use crate::circuits::{
 };
 use ark_ff::{FftField, One, Zero};
 
-/// ForeignMul0 - Foreign field element constraints
+/// RangeCheck0 - Range check constraints
 ///
-///    Foreign field element F is comprised of three 88-bit limbs L0L1L2
+///    Field element F is comprised of three 88-bit limbs L0L1L2
 ///
 ///    * This circuit gate is used to partially constrain L0 and L1
-///    * The rest of L0 and L1 are constrained by a single ForeignMul2
+///    * The rest of L0 and L1 are constrained by a single RangeCheck2
 ///    * This gate operates on the Curr row
 ///
 /// It uses three different types of constraints
@@ -41,16 +41,16 @@ use ark_ff::{FftField, One, Zero};
 ///     14 | crumb Lc7
 
 #[derive(Default)]
-pub struct ForeignMul0<F>(PhantomData<F>);
+pub struct RangeCheck0<F>(PhantomData<F>);
 
-impl<F> Argument<F> for ForeignMul0<F>
+impl<F> Argument<F> for RangeCheck0<F>
 where
     F: FftField,
 {
-    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignMul0);
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::RangeCheck0);
     const CONSTRAINTS: u32 = 9;
 
-    // Constraints for ForeignMul0
+    // Constraints for RangeCheck0
     //   * Operates on Curr row
     //   * Range constrain all sublimbs except p4 and p5 (barring plookup constraints, which are done elsewhere)
     //   * Constrain that combining all sublimbs equals the limb stored in column 0
@@ -96,9 +96,9 @@ where
     }
 }
 
-/// ForeignMul1 - Foreign field element constraints
+/// RangeCheck1 - Range check constraints
 ///
-///    Foreign field element F is comprised of three 88-bit limbs L0L1L2
+///    Field element F is comprised of three 88-bit limbs L0L1L2
 ///
 ///    * This circuit gate is used to fully constrain L2
 ///    * It operates on the Curr and Next rows
@@ -125,16 +125,16 @@ where
 ///     14 | crumb L2c9   | crumb L2c19
 
 #[derive(Default)]
-pub struct ForeignMul1<F>(PhantomData<F>);
+pub struct RangeCheck1<F>(PhantomData<F>);
 
-impl<F> Argument<F> for ForeignMul1<F>
+impl<F> Argument<F> for RangeCheck1<F>
 where
     F: FftField,
 {
-    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignMul1);
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::RangeCheck1);
     const CONSTRAINTS: u32 = 21;
 
-    // Constraints for ForeignMul1
+    // Constraints for RangeCheck1
     //   * Operates on Curr and Next row
     //   * Range constrain all sublimbs (barring plookup constraints, which are done elsewhere)
     //   * Constrain that combining all sublimbs equals the limb stored in row Curr, column 0

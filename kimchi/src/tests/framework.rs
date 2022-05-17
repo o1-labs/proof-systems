@@ -115,7 +115,7 @@ impl TestFramework {
     ) {
         // create the index
         let start = Instant::now();
-        let index = new_index_for_test_with_lookups(gates, public.len(), lookup_tables, vec![]);
+        let index = new_index_for_test_with_lookups(gates, public.len(), lookup_tables);
         let verifier_index = index.verifier_index();
         println!("- time to create index: {:?}s", start.elapsed().as_secs());
 

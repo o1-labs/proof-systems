@@ -562,7 +562,6 @@ mod tests {
             joint_combiner: None,
             endo_coefficient: F::zero(),
             mds: vec![],
-            foreign_modulus: vec![],
         };
 
         assert_eq!(

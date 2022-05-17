@@ -1266,9 +1266,9 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub chacha_comm: Option<[PolyComm<G>; 4]>,
 
-    // Pasta pallas foreign field multiplication polynomial commitment
+    // Range check gates polynomial commitments
     #[serde(bound = "Vec<PolyComm<G>>: Serialize + DeserializeOwned")]
-    pub foreign_mul_comm: Vec<PolyComm<G>>,
+    pub range_check_comm: Vec<PolyComm<G>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -1298,10 +1298,6 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     pub fr_sponge_params: ArithmeticSpongeParams<ScalarField<G>>,
     #[serde(skip)]
     pub fq_sponge_params: ArithmeticSpongeParams<BaseField<G>>,
-
-    // Foreign field modulus
-    #[serde(skip)]
-    pub foreign_modulus: Vec<ScalarField<G>>,
 }
 ```
 
@@ -1545,7 +1541,6 @@ The prover then follows the following steps to create the proof:
     * lookup (TODO)
     * generic selector
     * poseidon selector
-    * foreign mul selector
 
     By "chunk evaluate" we mean that the evaluation of each polynomial can potentially be a vector of values.
     This is because the index's `max_poly_size` parameter dictates the maximum size of a polynomial in the protocol.

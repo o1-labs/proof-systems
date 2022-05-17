@@ -72,7 +72,7 @@ where
         let (linearization, powers_of_alpha) = expr_linearization(
             cs.domain.d1,
             cs.chacha8.is_some(),
-            !cs.foreign_mul_selector_polys.is_empty(),
+            !cs.range_check_selector_polys.is_empty(),
             cs.lookup_constraint_system
                 .as_ref()
                 .map(|lcs| &lcs.configuration),
@@ -106,19 +106,12 @@ pub mod testing {
         gates: Vec<CircuitGate<Fp>>,
         public: usize,
         lookup_tables: Vec<LookupTable<Fp>>,
-        foreign_modulus: Vec<Fp>,
     ) -> ProverIndex<Affine> {
         let fp_sponge_params = oracle::pasta::fp_kimchi::params();
 
         // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
-        let cs = ConstraintSystem::<Fp>::create(
-            gates,
-            lookup_tables,
-            fp_sponge_params,
-            foreign_modulus,
-            public,
-        )
-        .unwrap();
+        let cs =
+            ConstraintSystem::<Fp>::create(gates, lookup_tables, fp_sponge_params, public).unwrap();
         let mut srs = SRS::<Affine>::create(cs.domain.d1.size as usize);
         srs.add_lagrange_basis(cs.domain.d1);
         let srs = Arc::new(srs);
@@ -128,6 +121,6 @@ pub mod testing {
         ProverIndex::<Affine>::create(cs, fq_sponge_params, endo_q, srs)
     }
     pub fn new_index_for_test(gates: Vec<CircuitGate<Fp>>, public: usize) -> ProverIndex<Affine> {
-        new_index_for_test_with_lookups(gates, public, vec![], vec![])
+        new_index_for_test_with_lookups(gates, public, vec![])
     }
 }

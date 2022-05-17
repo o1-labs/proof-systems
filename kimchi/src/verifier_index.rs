@@ -96,9 +96,9 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub chacha_comm: Option<[PolyComm<G>; 4]>,
 
-    // Pasta pallas foreign field multiplication polynomial commitment
+    // Range check gates polynomial commitments
     #[serde(bound = "Vec<PolyComm<G>>: Serialize + DeserializeOwned")]
-    pub foreign_mul_comm: Vec<PolyComm<G>>,
+    pub range_check_comm: Vec<PolyComm<G>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -128,10 +128,6 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     pub fr_sponge_params: ArithmeticSpongeParams<ScalarField<G>>,
     #[serde(skip)]
     pub fq_sponge_params: ArithmeticSpongeParams<BaseField<G>>,
-
-    // Foreign field modulus
-    #[serde(skip)]
-    pub foreign_modulus: Vec<ScalarField<G>>,
 }
 //~spec:endcode
 
@@ -205,9 +201,9 @@ where
                 array_init(|i| self.srs.commit_evaluations_non_hiding(domain, &c[i], None))
             }),
 
-            foreign_mul_comm: self
+            range_check_comm: self
                 .cs
-                .foreign_mul_selector_polys
+                .range_check_selector_polys
                 .iter()
                 .map(|poly| {
                     self.srs
@@ -223,7 +219,6 @@ where
             linearization: self.linearization.clone(),
             fr_sponge_params: self.cs.fr_sponge_params.clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),
-            foreign_modulus: self.cs.foreign_modulus.clone(),
         }
     }
 }

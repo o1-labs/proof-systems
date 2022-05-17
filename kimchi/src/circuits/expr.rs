@@ -56,8 +56,6 @@ pub struct Constants<F> {
     pub endo_coefficient: F,
     /// The MDS matrix
     pub mds: Vec<Vec<F>>,
-    /// Foreign field modulus
-    pub foreign_modulus: Vec<F>,
 }
 
 /// The polynomials specific to the lookup argument.
@@ -2235,7 +2233,6 @@ pub mod test {
                 joint_combiner: None,
                 endo_coefficient: one,
                 mds: vec![vec![]],
-                foreign_modulus: vec![],
             },
             witness: &domain_evals.d8.this.w,
             coefficient: &constraint_system.coefficients8,

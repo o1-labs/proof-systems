@@ -8,7 +8,7 @@ use o1_utils::FieldHelpers;
 
 use crate::circuits::polynomial::COLUMNS;
 
-// The maximum supported foreign field element size is 264-bits
+// The maximum supported range check element size is 264-bits
 const MAX_LIMBS: usize = 3;
 const LIMB_SIZE: usize = 88;
 
@@ -30,7 +30,7 @@ impl CopyWitnessCell {
     }
 }
 
-// Witness cell for a foreign field element limb
+// Witness cell for a range check field element limb
 struct LimbWitnessCell;
 impl LimbWitnessCell {
     const fn create() -> WitnessCell {
@@ -38,7 +38,7 @@ impl LimbWitnessCell {
     }
 }
 
-// Witness cell for a foreign field element sub-limb
+// Witness cell for a range check field element sub-limb
 struct SublimbWitnessCell {
     row: usize,   // Cell row
     col: usize,   // Cell col
@@ -67,7 +67,7 @@ impl ZeroWitnessCell {
 
 // Generate witness in shape that constraints expect (TODO: static for now, make dynamic)
 const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 4] = [
-    /* row 1, ForeignMul0 row */
+    /* row 1, RangeCheck0 row */
     [
         LimbWitnessCell::create(),
         /* 12-bit plookups */
@@ -78,7 +78,7 @@ const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 4] = [
         /* 12-bit copies */
         // Copy cells are required because we have a limit
         // of 4 lookups per row.  These two lookups are deferred
-        // until the ForeignMul2 gate, which handles them.
+        // until the RangeCheck2 gate, which handles them.
         SublimbWitnessCell::create(0, 0, 48, 60),
         SublimbWitnessCell::create(0, 0, 60, 72),
         /* 2-bit crumbs */
@@ -91,7 +91,7 @@ const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 4] = [
         SublimbWitnessCell::create(0, 0, 84, 86),
         SublimbWitnessCell::create(0, 0, 86, 88),
     ],
-    /* row 2, ForeignMul0 row */
+    /* row 2, RangeCheck0 row */
     [
         LimbWitnessCell::create(),
         /* 12-bit plookups */
@@ -112,7 +112,7 @@ const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 4] = [
         SublimbWitnessCell::create(1, 0, 84, 86),
         SublimbWitnessCell::create(1, 0, 86, 88),
     ],
-    /* row 3, ForeignMul1 row */
+    /* row 3, RangeCheck1 row */
     [
         LimbWitnessCell::create(),
         /* 12-bit plookups */
@@ -132,7 +132,7 @@ const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 4] = [
         SublimbWitnessCell::create(2, 0, 64, 66),
         SublimbWitnessCell::create(2, 0, 66, 68),
     ],
-    /* row 4, ForeignMul2 row */
+    /* row 4, RangeCheck2 row */
     [
         ZeroWitnessCell::create(),
         /* 12-bit plookups (see note about copies above) */
@@ -158,7 +158,7 @@ fn limb_to_sublimb<F: PrimeField>(fe: F, start: usize, end: usize) -> F {
     F::from_bits(&fe.to_bits()[start..end]).expect("failed to deserialize field bits")
 }
 
-fn init_foreign_mul_row<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], row: usize, limb: F) {
+fn init_range_check_row<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], row: usize, limb: F) {
     for col in 0..COLUMNS {
         match &WITNESS_SHAPE[row][col] {
             WitnessCell::Copy(copy_cell) => {
@@ -181,7 +181,10 @@ fn init_foreign_mul_row<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], row: usi
     }
 }
 
-fn append_foreign_field_element_rows<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], fe: BigUint) {
+fn append_range_check_field_element_rows<F: PrimeField>(
+    witness: &mut [Vec<F>; COLUMNS],
+    fe: BigUint,
+) {
     assert!(fe.bits() <= (MAX_LIMBS * LIMB_SIZE) as u64);
     let mut last_row_number = 0;
 
@@ -196,19 +199,19 @@ fn append_foreign_field_element_rows<F: PrimeField>(witness: &mut [Vec<F>; COLUM
         let limb_fe = F::from_bytes(&limb_bytes).expect("failed to deserialize limb field bytes");
 
         // Initialize the row based on the limb and public input shape
-        init_foreign_mul_row(witness, row, limb_fe);
+        init_range_check_row(witness, row, limb_fe);
         last_row_number += 1;
     }
 
     // Initialize last row
-    init_foreign_mul_row(witness, last_row_number, F::zero());
+    init_range_check_row(witness, last_row_number, F::zero());
 }
 
-/// Create a foreign field multiplication witness
+/// Create a range check witness
 pub fn create_witness<F: PrimeField>(a: BigUint, b: BigUint) -> [Vec<F>; COLUMNS] {
     assert!(a.bits() <= (MAX_LIMBS * LIMB_SIZE) as u64);
     let mut witness: [Vec<F>; COLUMNS] = array_init(|_| vec![F::zero(); 8]);
-    append_foreign_field_element_rows(&mut witness, a);
-    append_foreign_field_element_rows(&mut witness, b);
+    append_range_check_field_element_rows(&mut witness, a);
+    append_range_check_field_element_rows(&mut witness, b);
     witness
 }
