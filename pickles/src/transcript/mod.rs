@@ -61,7 +61,7 @@ use utils::{decompose, lift, need_decompose, transfer_hash};
 struct Side<F: FftField + PrimeField, C: Cs<F>> {
     cs: C,
     constants: Constants<F>,
-    passthrough: Var<F>, // passthough fields from this side (to the complement)
+    passthrough: Vec<Var<F>>, // passthough fields from this side (to the complement)
     sponge: ZkSponge<F>, // sponge constrained inside the proof system
     bridge: Vec<Var<F>>, // "exported sponge states", used to merge transcripts across proofs
                          // QUESTION: can this be combined with "passthough"
@@ -186,14 +186,19 @@ impl <Fp, Fr, CsFp, CsFr> Merlin<Fp, Fr, CsFp, CsFr>
     /// Pass through a variable
     /// 
     /// QUESTION: is the untruncated version used anywhere?
-    pub fn pass(&self, val: Var<Fp>) -> (Var<Fr>, Option<Var<Fr>>) {
+    pub fn pass(&mut self, val: Var<Fp>) -> (Var<Fr>, Option<Var<Fr>>) {
+        let fp: &mut Side<Fp, CsFp> = self.fp.as_mut().unwrap();
+        let fr: &mut Side<Fr, CsFr> = self.fr.as_mut().unwrap();
+
         // adds variables to the Fr side for the decomposition
+        let fr_val = fp.cs.var(|| unimplemented!());
 
         // adds the variables to the Fr "passthough" sponge
 
         // adds the Fp variable to the passthough vector
+        fp.passthrough.push(val);
 
-        // verifier then:
+        // at verification time the verifier:
         //
         // 1. recomputes the decomposition into Fr (outside the proof)
         // 2. recomputes the "passthrough hash"
@@ -201,6 +206,8 @@ impl <Fp, Fr, CsFp, CsFr> Merlin<Fp, Fr, CsFp, CsFr>
         //
         // This provides binding between the two proofs and (trivially) 
         // verifies that the decomposition was computed currectly.
+        //
+        // QUESTION: is this sufficient for soundness?
      
         unimplemented!()
     }
@@ -234,7 +241,6 @@ impl <Fp, Fr, CsFp, CsFr> Merlin<Fp, Fr, CsFp, CsFr>
     pub fn challenge<C: Challenge<Fp>>(&mut self) -> C {
         let mut fr: &mut Side<Fr, CsFr> = &mut self.fr.as_mut().unwrap();
         let fp: &mut Side<Fp, CsFp> = &mut self.fp.as_mut().unwrap();
-
 
         // check if we need to merge the states
         if !fr.merged {

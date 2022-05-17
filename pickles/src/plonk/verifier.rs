@@ -73,6 +73,7 @@ impl<F: FftField + PrimeField> Challenge<F> for ScalarChallenge<F> {
         let scalar: Var<F> = Var::generate(cs, sponge);
 
         // create endoscalar (bit decompose)
+        // QUESTION: what does the length refer to here?
         let challenge = cs.endo_scalar(CHALLENGE_LEN, || {
             let s: F = scalar.val();
             s.into_repr()
@@ -87,20 +88,16 @@ impl<F: FftField + PrimeField> Challenge<F> for ScalarChallenge<F> {
 }
 
 impl <F: FftField + PrimeField> ScalarChallenge<F> {
-    fn to_field<Fr: FftField + PrimeField>(&self, constants: &Constants<F>) -> Var<Fr> {
-        
+    fn to_field(&self, constants: &Constants<F>) -> Var<F> {
         unimplemented!()
-    }
-
-  
+    }  
 }
 
-///
 /// Takes a mutual context with the base-field of the Plonk proof as the "native field"
 /// and generates Fp (base field) and Fr (scalar field)
 /// constraints for the verification of the proof.
 /// 
-/// Question: why are Oracle outputs included in the proof (in Kimchi?)
+/// QUESTION: why are Oracle outputs included in the proof (in Kimchi?)
 fn verify<A, CsFp, CsFr, C, T>(
     // ctx: &mut MutualContext<A::BaseField, A::ScalarField, CsFp, CsFr>,
     tx: &mut Merlin<A::BaseField, A::ScalarField, CsFp, CsFr>,
@@ -128,15 +125,16 @@ fn verify<A, CsFp, CsFr, C, T>(
     //~ 7. Sample $\gamma$ with the Fq-Sponge.
     let gamma: Var<A::BaseField> = tx.challenge();
 
-    //~ 14. Sample $\zeta'$ with the Fq-Sponge.
+    //~ 14. Sample $\zeta'$ (GLV decomposition of $\zeta$) with the Fq-Sponge.
     let zeta_chal: ScalarChallenge<A::BaseField> = tx.challenge();
 
     //~ 15. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
-    // TODO: add zeta to Fr witness (bind using hash)
-    let zeta: Var<A::ScalarField> = zeta_chal.to_field(tx.constants());
+    let zeta: Var<A::ScalarField> = tx.pass_truncate( // pass though
+        zeta_chal.to_field(tx.constants()),
+    );
 
     //~ 8. If using lookup, absorb the commitment to the aggregation lookup polynomial.
-    // Question: why is done after (beta/gamma) challenge?
+    // QUESTION: why is done after (beta/gamma) challenge?
     /*
     self.commitments.lookup.iter().for_each(|l| {
         fq_sponge.absorb_g(&l.aggreg.unshifted);
