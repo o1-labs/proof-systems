@@ -7,9 +7,9 @@ mod utils;
 
 use super::MutualContext;
 
-use sponge::ZkSponge;
+pub use sponge::ZkSponge;
 
-use utils::{lift, decompose, need_decompose};
+use utils::{decompose, lift, need_decompose, transfer_hash};
 
 /// Defered hash transcript
 ///
@@ -42,7 +42,7 @@ use utils::{lift, decompose, need_decompose};
 ///
 /// On complement side:
 ///
-///                        h1 
+///                        h1
 ///                         ^
 ///     a, b, c -> H        |
 ///                |        |
@@ -56,126 +56,185 @@ use utils::{lift, decompose, need_decompose};
 ///
 /// Include the final hash state in the statement of the
 
-/// An efficient transcript hash
-///
-///
-/// Assumes (for soundness) that there is no ambiguity
-/// in the order between native and foreign field elements
-///
-/// In practice: Fp is always going to be the base field of the Plonk proof,
-/// while Fr is the scalar field of the Plonk proof
-pub(crate) struct Transcript<Fp: FftField + PrimeField, Fr: FftField + PrimeField> {
-    fp_pubs: Vec<Var<Fp>>, // public inputs to Fp proof
-    fr_pubs: Vec<Var<Fr>>, // public inputs to Fr proof
-    fp_vars: Vec<Var<Fp>>, // Fp variables to be hashed (not yet consumed by squeeze)
-    fr_vars: Vec<Var<Fr>>, // Fr variables to be hashed (not yet consumed by squeeze)
-    sponge: ZkSponge<Fp>,  // Native sponge
-    comm: Option<Var<Fp>>, // Commitment to Sponge value (last value squeezed after absorbing)
+
+// A "container type"
+struct Side<F: FftField + PrimeField, C: Cs<F>> {
+    cs: C,
+    constants: Constants<F>,
+    sponge: ZkSponge<F>, // sponge constrained inside the proof system
+    bridge: Vec<Var<F>>, // "exported sponge states", used to merge transcripts across proofs
+    merged: bool,        // has the current state been merged with the other side?
 }
 
-impl<Fp, Fr> Transcript<Fp, Fr>
-where
+impl<F: FftField + PrimeField, C: Cs<F>> Side<F, C> {
+    fn new(cs: C, constants: Constants<F>) -> Self {
+        Self {
+            cs,
+            sponge: ZkSponge::new(constants.clone()),
+            constants,
+            bridge: vec![],
+            merged: true,
+        }
+    }
+}
+
+pub struct Merlin<Fp, Fr, CsFp, CsFr> 
+    where
+        Fp: FftField + PrimeField,
+        Fr: FftField + PrimeField,
+        CsFp: Cs<Fp>, 
+        CsFr: Cs<Fr>
+{
+    fp: Option<Side<Fp, CsFp>>,
+    fr: Option<Side<Fr, CsFr>>,
+}
+
+pub trait Absorb<F: FftField + PrimeField> {
+    fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut ZkSponge<F>);
+}
+
+// Can absorb a slice of absorbable elements
+impl <F: FftField + PrimeField, T: Absorb<F>> Absorb<F> for [T] {
+    fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut ZkSponge<F>) {
+        self.iter().for_each(|c| c.absorb(cs, sponge))
+    }
+}
+
+// Can absorb a fixed length array of absorbable elements
+impl <F: FftField + PrimeField, T: Absorb<F>, const N: usize> Absorb<F> for [T; N] {
+    fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut ZkSponge<F>) {
+        let slice: &[T] = &self[..];
+        slice.absorb(cs, sponge)
+    }
+}
+
+impl <F: FftField + PrimeField> Absorb<F> for Var<F> {
+    fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut ZkSponge<F>) {
+        sponge.absorb(cs, self);
+    }
+}
+
+pub trait Challenge<F: FftField + PrimeField> {
+    fn generate<C: Cs<F>>(cs: &mut C, sponge: &mut ZkSponge<F>) -> Self;
+    
+}
+
+impl <F: FftField + PrimeField> Challenge<F> for Var<F> {
+    fn generate<C: Cs<F>>(cs: &mut C, sponge: &mut ZkSponge<F>) -> Self {
+        sponge.squeeze(cs)
+    }
+}
+
+pub struct Msg<T> {
+    value: T,
+}
+
+impl <T> From<T> for Msg<T> {
+    fn from(value: T) -> Self {
+        Self{ value }
+    }
+}
+
+impl <Fp, Fr, CsFp, CsFr> AsMut<CsFp> for Merlin<Fp, Fr, CsFp, CsFr> 
+    where
     Fp: FftField + PrimeField,
     Fr: FftField + PrimeField,
+    CsFp: Cs<Fp>, 
+    CsFr: Cs<Fr> {
+        fn as_mut(&mut self) -> &mut CsFp {
+            &mut self.fp.as_mut().unwrap().cs
+        }
+}
+
+impl <Fp, Fr, CsFp, CsFr> AsRef<Constants<Fp>> for Merlin<Fp, Fr, CsFp, CsFr> 
+    where
+    Fp: FftField + PrimeField,
+    Fr: FftField + PrimeField,
+    CsFp: Cs<Fp>, 
+    CsFr: Cs<Fr> {
+        fn as_ref(&self) -> &Constants<Fp> {
+            &self.fp.as_ref().unwrap().constants
+        }
+}
+
+impl <Fp, Fr, CsFp, CsFr> Merlin<Fp, Fr, CsFp, CsFr> 
+    where
+        Fp: FftField + PrimeField,
+        Fr: FftField + PrimeField,
+        CsFp: Cs<Fp>, 
+        CsFr: Cs<Fr>
 {
-    pub(crate) fn new<CsFp: Cs<Fp>, CsFr: Cs<Fr>>(
-        ctx: &mut MutualContext<Fp, Fr, CsFp, CsFr>,
+    pub fn new(
+        cs_fp: CsFp,
+        cs_fr: CsFr,
+        consts_fp: Constants::<Fp>, 
+        consts_fr: Constants::<Fr>,
     ) -> Self {
         Self {
-            fp_pubs: vec![],
-            fr_pubs: vec![],
-            fp_vars: vec![],
-            fr_vars: vec![],
-            sponge: ZkSponge::new(ctx.fp.constants.clone()),
-            comm: None,
+            fp: Some(Side::new(cs_fp, consts_fp)),
+            fr: Some(Side::new(cs_fr, consts_fr)),
         }
     }
 
-    pub(crate) fn absorb_fp(&mut self, var: Var<Fp>) {
-        self.fp_vars.push(var);
-        self.comm = None;
+    pub fn cs(&mut self) -> &mut CsFp {
+        self.as_mut()
     }
 
-    pub(crate) fn absorb_fr(&mut self, var: Var<Fr>) {
-        self.fr_vars.push(var);
-        self.comm = None;
+    /// Receive a message from the prover
+    pub fn recv<H: Absorb<Fp>>(&mut self, msg: Msg<H>) -> H {
+        let mut fp: &mut Side<Fp, CsFp> = &mut self.fp.as_mut().unwrap();
+        fp.merged = false; // state updated since last squeeze
+        msg.value.absorb(&mut fp.cs, &mut fp.sponge);
+        msg.value
     }
 
-    /// Get an Fp challenge from the verifier
-    ///
-    /// Yields a variable in the native field containing a challenge.
-    pub(crate) fn squeeze<CsFp: Cs<Fp>, CsFr: Cs<Fr>>(
-        &mut self,
-        ctx: &mut MutualContext<Fp, Fr, CsFp, CsFr>, //
-    ) -> Var<Fp> {
-        // Defer Fr sponge (and include the digest in the statement)
-        //  1. Create a fresh Fr sponge
-        //  2. "Consume" Fr elements in the Fr proof system
-        //  3. Add the Fr digest to the Fr statmement
-        //  4. Add the lifted Fr digest to the Fq statement
-        //  5. Consume the lifted Fr digest in to the Fp sponge
-        if !self.fr_vars.is_empty() {
-            // create fresh "foreign sponge"
-            let mut fr_zk_sponge: ZkSponge<Fr> = ZkSponge::new(ctx.fr.constants.clone());
+    /// Generate a challenge over the current field
+    pub fn challenge<C: Challenge<Fp>>(&mut self) -> C {
+        let mut fr: &mut Side<Fr, CsFr> = &mut self.fr.as_mut().unwrap();
+        let fp: &mut Side<Fp, CsFp> = &mut self.fp.as_mut().unwrap();
 
-            // absorb all queued Fr variables in the Fr side
-            fr_zk_sponge.absorb(&mut ctx.fr.cs, self.fr_vars.iter());
 
-            // compute "foreign" digest
-            let fr_digest = fr_zk_sponge.squeeze(&mut ctx.fr.cs);
+        // check if we need to merge the states
+        if !fr.merged {
+            // merge the "foreign sponge" by adding the current state to the statement
+            let st_fr: Var<Fr> = fr.sponge.squeeze(&mut fr.cs);
+            let st_fp: Var<Fp> = fp.cs.var(|| transfer_hash(st_fr.value.unwrap()));
+            fr.bridge.push(st_fr);
 
-            // include in public inputs on the Fr side
-            self.fr_pubs.push(fr_digest);
-
-            // consume "foreign digest"
-            if need_decompose::<Fp, Fr>() {
-                // decompose hash
-                let hash: Option<[Fp; 2]> = fr_digest.value.map(|h| decompose(h));
-                let hash_high = ctx.fp.cs.var(|| hash.unwrap()[0]);
-                let hash_low = ctx.fp.cs.var(|| hash.unwrap()[1]);
-
-                // enforce binding with other side:
-                // include into the public input
-                self.fp_pubs.push(hash_high);
-                self.fp_pubs.push(hash_low);
-
-                // add them to the "native stonge"
-                self.fp_vars.push(hash_high);
-                self.fp_vars.push(hash_low);
-
-                // include into public inputs on Fq-side
-                self.fp_pubs.push(hash_high);
-                self.fp_pubs.push(hash_low);
-            } else {
-                // lift hash
-                let hash = ctx.fp.cs.var(|| lift(fr_digest.val()));
-
-                // absorb lift
-                self.fp_pubs.push(hash);
-                self.fp_vars.push(hash);
-                self.fp_pubs.push(hash);
-            }
+            // absorb commitment to "foreign sponge"
+            st_fp.absorb(&mut fp.cs, &mut fp.sponge);
+            fr.merged = true;
         }
 
-        // consume all queued Fp elements
-        self.sponge.absorb(&mut ctx.fp.cs, self.fp_vars.iter());
-
-        // reset sponge queues
-        self.fp_vars.clear();
-        self.fr_vars.clear();
-
-        // Squeeze "native sponge" (Fp)
-        let out = self.sponge.squeeze(&mut ctx.fp.cs);
-        self.comm = Some(out);
-        out
+        // squeeze "native sponge" (Fp)
+        C::generate(&mut fp.cs, &mut fp.sponge)
     }
 
-    /// Squeeze a 128-bit (endo-scalar) challenge
-    fn squeeze_chal() {}
+    /// Syntactic sugar around: `tx.flip(|tx| tx.recv(val))`
+    pub fn recv_fr<H: Absorb<Fr>>(&mut self, msg: Msg<H>) -> H {
+        self.flip(|tx| tx.recv(msg))
+    }
 
-    // Commits to the current transcripts and
-    // flips the fields in the transcript for on the complement side
-    fn flip(self) -> Transcript<Fr, Fp> {
-        unimplemented!()
+    /// Syntactic sugar around: `tx.flip(|tx| tx.challenge())`
+    pub fn challenge_fr<C: Challenge<Fr>>(mut self) -> C {
+        self.flip(|tx| tx.challenge())
+    }
+
+    /// Note: this is a "zero cost" operation, which adds no constraints to the proof system
+    pub fn flip<T, F: FnOnce(&mut Merlin<Fr, Fp, CsFr, CsFp>) -> T>(&mut self, scope: F) -> T {
+        // create flipped instance
+        let mut flipped = Merlin{
+            fp: self.fr.take(),
+            fr: self.fp.take(),
+        };
+
+        // invoke scope with other side
+        let res = scope(&mut flipped);
+
+        // return to original
+        self.fp = flipped.fr;
+        self.fr = flipped.fp;
+
+        res
     }
 }

@@ -8,6 +8,12 @@ pub(super) fn need_decompose<Fp: PrimeField, Fr: PrimeField>() -> bool {
     fp_mod < fr_mod
 }
 
+pub(super) fn transfer_hash<Fp: PrimeField, Fr: PrimeField>(e: Fr) -> Fp {
+    debug_assert!(!need_decompose::<Fp, Fr>());
+    let bits: Vec<bool> = e.into_repr().to_bits_le();
+    Fp::from_repr(Fp::BigInt::from_bits_le(&bits)).unwrap()
+}
+
 // a direct lift is possible
 pub(super) fn lift<Fp: PrimeField, Fr: PrimeField>(e: Fr) -> Fp {
     debug_assert!(!need_decompose::<Fp, Fr>());

@@ -12,6 +12,11 @@ mod verifier;
 /// Witness columns in Turbo-PlonK argument
 const COLUMNS: usize = 15;
 
+const CHALLENGE_LEN: usize = 128;
+
+///
+const SELECTORS: usize = 15;
+
 /// Number of columns in permutation argument
 /// (remaining columns are gate-hints)
 ///
@@ -67,7 +72,7 @@ pub struct Openings<F: FftField + PrimeField> {
 ///
 /// Note: PlonK proofs are always recursively verified over A::BaseField,
 /// defering the scalar field operations to the complement proof by committing to the field elements.
-pub struct Plonk<A: AffineCurve> {
+pub struct Proof<A: AffineCurve> {
     comm: Commits<A>,
     open: Openings<A::ScalarField>,
 
@@ -88,3 +93,9 @@ pub struct Plonk<A: AffineCurve> {
     v: A::ScalarField,
     u: A::ScalarField,
 }
+
+/*
+struct Index<A: AffineCurve> {
+
+}
+*/

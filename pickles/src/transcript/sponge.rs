@@ -9,10 +9,10 @@ const SPONGE_WIDTH: usize = 3;
 const SPONGE_RATE: usize = 2;
 
 /// Poseidon Sponge constrained inside a zero-knowledge proof
-/// 
+///
 /// See "oracle" crate for the "plaintext implementation"
-/// 
-pub(super) struct ZkSponge<F: FftField + PrimeField> {
+///
+pub struct ZkSponge<F: FftField + PrimeField> {
     state: [Var<F>; SPONGE_WIDTH],
     constants: Constants<F>,
 }
@@ -25,7 +25,15 @@ impl<F: FftField + PrimeField> ZkSponge<F> {
         }
     }
 
-    pub fn absorb<'b, C: Cs<F>, I: Iterator<Item = &'b Var<F>>>(
+    pub fn absorb<'b, C: Cs<F>>(
+        &mut self,
+        cs: &mut C,
+        var: &Var<F>,
+    ) {
+        unimplemented!()
+    }
+
+    pub fn absorb_iter<'b, C: Cs<F>, I: Iterator<Item = &'b Var<F>>>(
         &mut self,
         cs: &mut C,
         mut vars: I,

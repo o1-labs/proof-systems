@@ -21,7 +21,7 @@ pub struct Ctx<C: Cs<F>, F: FftField + PrimeField> {
 /// the full set of constraints for both sides.
 ///
 /// This avoids writing the verifier twice: once for each side.
-pub(super) struct MutualContext<Fp, Fr, CsFp, CsFr>
+pub(crate) struct MutualContext<Fp, Fr, CsFp, CsFr>
 where
     Fp: FftField + PrimeField,
     Fr: FftField + PrimeField,
@@ -45,4 +45,18 @@ where
             fr: self.fp,
         }
     }
+
 }
+
+impl <Fp, Fr, CsFp, CsFr> AsMut<CsFp> for MutualContext<Fp, Fr, CsFp, CsFr>
+where
+    Fp: FftField + PrimeField,
+    Fr: FftField + PrimeField,
+    CsFp: Cs<Fp>,
+    CsFr: Cs<Fr>,
+{
+    fn as_mut(&mut self) -> &mut CsFp {
+        &mut self.fp.cs
+    }
+}
+
