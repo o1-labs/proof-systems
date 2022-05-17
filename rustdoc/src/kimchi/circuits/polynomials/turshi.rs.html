@@ -3,7 +3,9 @@
         </a><h2 class="location"></h2>
     </nav>
     <nav class="sidebar"><a class="sidebar-logo" href="../../../../kimchi/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../kimchi/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../kimchi/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><div id="settings-menu" tabindex="-1">
+                                <a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div>
+                        </div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -1034,11 +1036,6 @@
 <span id="1029">1029</span>
 <span id="1030">1030</span>
 <span id="1031">1031</span>
-<span id="1032">1032</span>
-<span id="1033">1033</span>
-<span id="1034">1034</span>
-<span id="1035">1035</span>
-<span id="1036">1036</span>
 </pre><pre class="rust"><code><span class="doccomment">//!This implements the constraints of the Cairo gates</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Cairo programs can have the following assembly-like instructions:</span>
@@ -1127,7 +1124,7 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">GateType</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::wires</span>::{<span class="ident">GateWires</span>, <span class="ident">Wire</span>, <span class="ident">COLUMNS</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::proof::ProofEvaluations</span>;
-<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">Field</span>, <span class="ident">One</span>};
+<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">Field</span>, <span class="ident">One</span>, <span class="ident">SquareRootField</span>};
 <span class="kw">use</span> <span class="ident">array_init::array_init</span>;
 <span class="kw">use</span> <span class="ident">cairo</span>::{
     <span class="ident">runner</span>::{<span class="ident">CairoInstruction</span>, <span class="ident">CairoProgram</span>, <span class="ident">Pointers</span>},
@@ -1142,7 +1139,7 @@
 
 <span class="comment">// GATE-RELATED</span>
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">SquareRootField</span><span class="op">&gt;</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="doccomment">/// This function creates a CairoClaim gate</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_cairo_claim</span>(<span class="ident">wires</span>: <span class="ident">GateWires</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">CircuitGate</span> {
@@ -1261,15 +1258,10 @@
 
         <span class="comment">// Setup proof evaluations</span>
         <span class="kw">let</span> <span class="ident">rng</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">StdRng::from_seed</span>([<span class="number">0u8</span>; <span class="number">32</span>]);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">eval</span> <span class="op">=</span> <span class="op">|</span><span class="ident">witness</span><span class="op">|</span> <span class="ident">ProofEvaluations</span> {
-            <span class="ident">w</span>: <span class="ident">witness</span>,
-            <span class="ident">z</span>: <span class="ident">F::rand</span>(<span class="ident">rng</span>),
-            <span class="ident">s</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">F::rand</span>(<span class="ident">rng</span>)),
-            <span class="ident">generic_selector</span>: <span class="ident">F::zero</span>(),
-            <span class="ident">poseidon_selector</span>: <span class="ident">F::zero</span>(),
-            <span class="ident">lookup</span>: <span class="prelude-val">None</span>,
-        };
-        <span class="kw">let</span> <span class="ident">evals</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">eval</span>(<span class="ident">curr</span>), <span class="ident">eval</span>(<span class="ident">next</span>)];
+        <span class="kw">let</span> <span class="ident">evals</span> <span class="op">=</span> <span class="macro">vec!</span>[
+            <span class="ident">ProofEvaluations::dummy_with_witness_evaluations</span>(<span class="ident">curr</span>),
+            <span class="ident">ProofEvaluations::dummy_with_witness_evaluations</span>(<span class="ident">next</span>),
+        ];
 
         <span class="comment">// Setup circuit constants</span>
         <span class="kw">let</span> <span class="ident">constants</span> <span class="op">=</span> <span class="ident">expr::Constants</span> {
@@ -2076,5 +2068,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (6dd68402c 2022-05-11)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (c52b9c10b 2022-05-16)" ></div>
 </body></html>

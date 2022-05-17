@@ -3,7 +3,9 @@
         </a><h2 class="location"></h2>
     </nav>
     <nav class="sidebar"><a class="sidebar-logo" href="../../../kimchi/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kimchi/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kimchi/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><div id="settings-menu" tabindex="-1">
+                                <a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div>
+                        </div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -600,6 +602,30 @@
 <span id="595">595</span>
 <span id="596">596</span>
 <span id="597">597</span>
+<span id="598">598</span>
+<span id="599">599</span>
+<span id="600">600</span>
+<span id="601">601</span>
+<span id="602">602</span>
+<span id="603">603</span>
+<span id="604">604</span>
+<span id="605">605</span>
+<span id="606">606</span>
+<span id="607">607</span>
+<span id="608">608</span>
+<span id="609">609</span>
+<span id="610">610</span>
+<span id="611">611</span>
+<span id="612">612</span>
+<span id="613">613</span>
+<span id="614">614</span>
+<span id="615">615</span>
+<span id="616">616</span>
+<span id="617">617</span>
+<span id="618">618</span>
+<span id="619">619</span>
+<span id="620">620</span>
+<span id="621">621</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk circuit constraint primitive.</span>
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">circuits</span>::{
@@ -609,6 +635,7 @@
         <span class="ident">lookup</span>::{<span class="ident">index::LookupConstraintSystem</span>, <span class="ident">tables::LookupTable</span>},
         <span class="ident">polynomial</span>::{<span class="ident">WitnessEvals</span>, <span class="ident">WitnessOverDomains</span>, <span class="ident">WitnessShifts</span>},
         <span class="ident">polynomials::permutation::ZK_ROWS</span>,
+        <span class="ident">polynomials::range_check</span>,
         <span class="ident">wires</span>::<span class="kw-2">*</span>,
     },
     <span class="ident">error::SetupError</span>,
@@ -625,6 +652,7 @@
 <span class="kw">use</span> <span class="ident">oracle::poseidon::ArithmeticSpongeParams</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">de::DeserializeOwned</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">serde_with::serde_as</span>;
+<span class="kw">use</span> <span class="ident">std::collections::HashSet</span>;
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
 
 <span class="comment">//</span>
@@ -709,6 +737,10 @@
     <span class="doccomment">/// EC point addition selector evaluations w over domain.d8</span>
     <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">endomul_scalar8</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+
+    <span class="doccomment">/// Range check gate selector polynomials</span>
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">bound</span> <span class="op">=</span> <span class="string">&quot;Vec&lt;range_check::SelectorPolynomial&lt;F&gt;&gt;: Serialize + DeserializeOwned&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">range_check_selector_polys</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">range_check::SelectorPolynomial</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 
     <span class="doccomment">/// wire coordinate shifts</span>
     <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;[o1_utils::serialization::SerdeAs; PERMUTS]&quot;</span>)]</span>
@@ -816,7 +848,8 @@
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">SquareRootField</span><span class="op">&gt;</span> <span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// creates a constraint system from a vector of gates ([CircuitGate]), some sponge parameters ([ArithmeticSpongeParams]), and the number of public inputs.</span>
+    <span class="doccomment">/// Creates a constraint system from a vector of gates ([CircuitGate]),</span>
+    <span class="doccomment">///   some sponge parameters ([ArithmeticSpongeParams])</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create</span>(
         <span class="ident">gates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">lookup_tables</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">LookupTable</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -862,6 +895,12 @@
             })
             .<span class="ident">collect</span>();
         <span class="ident">gates</span>.<span class="ident">append</span>(<span class="kw-2">&amp;mut</span> <span class="ident">padding</span>);
+
+        <span class="comment">// Record which gates are used by this constraint system</span>
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">circuit_gates_used</span> <span class="op">=</span> <span class="ident">HashSet</span>::<span class="op">&lt;</span><span class="ident">GateType</span><span class="op">&gt;</span><span class="ident">::default</span>();
+        <span class="ident">gates</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">gate</span><span class="op">|</span> {
+            <span class="ident">circuit_gates_used</span>.<span class="ident">insert</span>(<span class="ident">gate</span>.<span class="ident">typ</span>);
+        });
 
         <span class="comment">//~ 4. sample the `PERMUTS` shifts.</span>
         <span class="kw">let</span> <span class="ident">shifts</span> <span class="op">=</span> <span class="ident">Shifts::new</span>(<span class="kw-2">&amp;</span><span class="ident">domain</span>.<span class="ident">d1</span>);
@@ -1000,6 +1039,16 @@
             }
         };
 
+        <span class="comment">// Range check constraint selector polynomials</span>
+        <span class="kw">let</span> <span class="ident">range_check_selector_polys</span> <span class="op">=</span> {
+            <span class="kw">if</span> <span class="op">!</span><span class="ident">circuit_gates_used</span>.<span class="ident">is_disjoint</span>(<span class="kw-2">&amp;</span><span class="ident">range_check::circuit_gates</span>().<span class="ident">into_iter</span>().<span class="ident">collect</span>())
+            {
+                <span class="ident">range_check::selector_polynomials</span>(<span class="kw-2">&amp;</span><span class="ident">gates</span>, <span class="kw-2">&amp;</span><span class="ident">domain</span>)
+            } <span class="kw">else</span> {
+                <span class="macro">vec!</span>[]
+            }
+        };
+
         <span class="comment">//</span>
         <span class="comment">// Coefficient</span>
         <span class="comment">// -----------</span>
@@ -1048,6 +1097,7 @@
             <span class="ident">complete_addl4</span>,
             <span class="ident">mull8</span>,
             <span class="ident">emull</span>,
+            <span class="ident">range_check_selector_polys</span>,
             <span class="ident">gates</span>,
             <span class="ident">shift</span>: <span class="ident">shifts</span>.<span class="ident">shifts</span>,
             <span class="ident">endo</span>,
@@ -1198,5 +1248,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (6dd68402c 2022-05-11)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (c52b9c10b 2022-05-16)" ></div>
 </body></html>

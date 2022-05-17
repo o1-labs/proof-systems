@@ -3298,24 +3298,24 @@ But in our code, because of the cycles:</p>
 <p>As part of these algorithms, a number of tables are created (and then converted into polynomials) to create a proof.</p>
 <h3 id="tables-used-to-describe-a-circuit"><a class="header" href="#tables-used-to-describe-a-circuit">Tables used to describe a circuit</a></h3>
 <p>The following tables are created to describe the circuit:</p>
-<p><strong>Gates</strong>. A circuit is described by a series of gates, that we list in a table. 
-The columns of the tables list the gates, while the rows are the length of the circuit. 
+<p><strong>Gates</strong>. A circuit is described by a series of gates, that we list in a table.
+The columns of the tables list the gates, while the rows are the length of the circuit.
 For each row, only a single gate can take a value <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">1</span></span></span></span> while all other gates take the value <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">0</span></span></span></span>.</p>
 <table><thead><tr><th style="text-align: center">row</th><th style="text-align: center">Generic</th><th style="text-align: center">Poseidon</th><th style="text-align: center">CompleteAdd</th><th style="text-align: center">VarBaseMul</th><th style="text-align: center">EndoMul</th><th style="text-align: center">EndoMulScalar</th><th style="text-align: center">ChaCha0</th><th style="text-align: center">ChaCha1</th><th style="text-align: center">ChaCha2</th><th style="text-align: center">ChaChaFinal</th></tr></thead><tbody>
 <tr><td style="text-align: center">0</td><td style="text-align: center">1</td><td style="text-align: center">0</td><td style="text-align: center">0</td><td style="text-align: center">0</td><td style="text-align: center">0</td><td style="text-align: center">0</td><td style="text-align: center">0</td><td style="text-align: center">0</td><td style="text-align: center">0</td><td style="text-align: center">0</td></tr>
 <tr><td style="text-align: center">1</td><td style="text-align: center">0</td><td style="text-align: center">1</td><td style="text-align: center">0</td><td style="text-align: center">0</td><td style="text-align: center">0</td><td style="text-align: center">0</td><td style="text-align: center">0</td><td style="text-align: center">0</td><td style="text-align: center">0</td><td style="text-align: center">0</td></tr>
 </tbody></table>
-<p><strong>Coefficients</strong>. The coefficient table has 15 columns, and is used to tweak the gates. 
-Currently, only the <a href="specs/kimchi.html#double-generic-gate">Generic</a> and the <a href="specs/kimchi.html#poseidon">Poseidon</a> gates use it (refer to their own sections to see how). 
+<p><strong>Coefficients</strong>. The coefficient table has 15 columns, and is used to tweak the gates.
+Currently, only the <a href="specs/kimchi.html#double-generic-gate">Generic</a> and the <a href="specs/kimchi.html#poseidon">Poseidon</a> gates use it (refer to their own sections to see how).
 All other gates set their values to <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">0</span></span></span></span>.</p>
 <table><thead><tr><th style="text-align: center">row</th><th style="text-align: center">0</th><th style="text-align: center">1</th><th style="text-align: center">2</th><th style="text-align: center">3</th><th style="text-align: center">4</th><th style="text-align: center">5</th><th style="text-align: center">6</th><th style="text-align: center">7</th><th style="text-align: center">8</th><th style="text-align: center">9</th><th style="text-align: center">10</th><th style="text-align: center">11</th><th style="text-align: center">12</th><th style="text-align: center">13</th><th style="text-align: center">14</th></tr></thead><tbody>
 <tr><td style="text-align: center">0</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td></tr>
 </tbody></table>
-<p><strong>Wiring (or Permutation, or sigmas)</strong>. For gates to take the outputs of other gates as inputs, we use a wiring table to wire registers together. 
+<p><strong>Wiring (or Permutation, or sigmas)</strong>. For gates to take the outputs of other gates as inputs, we use a wiring table to wire registers together.
 To learn about registers, see the next section.
-It is defined at every row, but only for the first <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">7</span></span></span></span> registers. 
+It is defined at every row, but only for the first <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">7</span></span></span></span> registers.
 Each cell specifies a <code>(row, column)</code> tuple that it should be wired to.  Cells that are not connected to another cell are wired to themselves.
-Note that if three or more registers are wired together, they must form a cycle. 
+Note that if three or more registers are wired together, they must form a cycle.
 For example, if register <code>(0, 4)</code> is wired to both registers <code>(80, 6)</code> and <code>(90, 0)</code> then you would have the following table:</p>
 <table><thead><tr><th style="text-align: center">row</th><th style="text-align: center">0</th><th style="text-align: center">1</th><th style="text-align: center">2</th><th style="text-align: center">3</th><th style="text-align: center">4</th><th style="text-align: center">5</th><th style="text-align: center">6</th></tr></thead><tbody>
 <tr><td style="text-align: center">0</td><td style="text-align: center">0,0</td><td style="text-align: center">0,1</td><td style="text-align: center">0,2</td><td style="text-align: center">0,3</td><td style="text-align: center"><strong>80,6</strong></td><td style="text-align: center">0,5</td><td style="text-align: center">0,6</td></tr>
@@ -3339,21 +3339,21 @@ In the case where you would want to use lookups, the following tables would be n
 <tr><td style="text-align: center">0</td><td style="text-align: center">0</td><td style="text-align: center">0</td></tr>
 <tr><td style="text-align: center">1</td><td style="text-align: center">1</td><td style="text-align: center">0</td></tr>
 </tbody></table>
-<p>Where each apply 4 queries. A query is a table describing which lookup table it queries, and the linear combination of the witness to use in the query. 
+<p>Where each apply 4 queries. A query is a table describing which lookup table it queries, and the linear combination of the witness to use in the query.
 For example, the following table describes a query into the XOR table made out of linear combinations of registers (checking that <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.73333em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.02778em;">r</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.30110799999999993em;"><span style="top:-2.5500000000000003em;margin-left:-0.02778em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">0</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">⊕</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.58056em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.02778em;">r</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.30110799999999993em;"><span style="top:-2.5500000000000003em;margin-left:-0.02778em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">2</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">⋅</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.58056em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.02778em;">r</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.30110799999999993em;"><span style="top:-2.5500000000000003em;margin-left:-0.02778em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span>):</p>
 <table><thead><tr><th style="text-align: center">table_id</th><th style="text-align: center">l</th><th style="text-align: center">r</th><th style="text-align: center">o</th></tr></thead><tbody>
 <tr><td style="text-align: center">XOR</td><td style="text-align: center">1, r0</td><td style="text-align: center">1, r2</td><td style="text-align: center">2, r1</td></tr>
 </tbody></table>
 <h3 id="tables-produced-during-proof-creation"><a class="header" href="#tables-produced-during-proof-creation">Tables produced during proof creation</a></h3>
 <p>The following tables are created by the prover at runtime:</p>
-<p><strong>Registers (or Witness)</strong>. Registers are also defined at every row, and are split into two types: the <em>IO registers</em> from <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">0</span></span></span></span> to <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">6</span></span></span></span> usually contain input or output of the gates (note that a gate can output a value on the next row as well). 
-I/O registers can be wired to each other (they’ll be forced to have the same value), no matter what row they’re on (for example, the register at <code>row:0, col:4</code> can be wired to the register at <code>row:80, col:6</code>). 
-The rest of the registers, <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">7</span></span></span></span> through <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">14</span></span></span></span>, are called <em>advice registers</em> as they can store values that useful only for the row’s active gate. 
+<p><strong>Registers (or Witness)</strong>. Registers are also defined at every row, and are split into two types: the <em>IO registers</em> from <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">0</span></span></span></span> to <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">6</span></span></span></span> usually contain input or output of the gates (note that a gate can output a value on the next row as well).
+I/O registers can be wired to each other (they’ll be forced to have the same value), no matter what row they’re on (for example, the register at <code>row:0, col:4</code> can be wired to the register at <code>row:80, col:6</code>).
+The rest of the registers, <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">7</span></span></span></span> through <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">14</span></span></span></span>, are called <em>advice registers</em> as they can store values that useful only for the row’s active gate.
 Think of them as intermediary or temporary values needed in the computation when the prover executes a circuit.</p>
 <table><thead><tr><th style="text-align: center">row</th><th style="text-align: center">0</th><th style="text-align: center">1</th><th style="text-align: center">2</th><th style="text-align: center">3</th><th style="text-align: center">4</th><th style="text-align: center">5</th><th style="text-align: center">6</th><th style="text-align: center">7</th><th style="text-align: center">8</th><th style="text-align: center">9</th><th style="text-align: center">10</th><th style="text-align: center">11</th><th style="text-align: center">12</th><th style="text-align: center">13</th><th style="text-align: center">14</th></tr></thead><tbody>
 <tr><td style="text-align: center">0</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td></tr>
 </tbody></table>
-<p><strong>Wiring (Permutation) trace</strong>. You can think of the permutation trace as an extra register that is used to enforce the wiring specified in the wiring table. 
+<p><strong>Wiring (Permutation) trace</strong>. You can think of the permutation trace as an extra register that is used to enforce the wiring specified in the wiring table.
 It is a single column that applies on all the rows as well, which the prover computes as part of a proof.</p>
 <table><thead><tr><th style="text-align: center">row</th><th style="text-align: center">pt</th></tr></thead><tbody>
 <tr><td style="text-align: center">0</td><td style="text-align: center">/</td></tr>
@@ -3366,7 +3366,7 @@ It is a single column that applies on all the rows as well, which the prover com
 <p>To specify kimchi, we rely on a number of primitives that are specified outside of this specification.
 In this section we list these specifications, as well as the interfaces we make use of in this specification.</p>
 <h3 id="polynomial-commitments-2"><a class="header" href="#polynomial-commitments-2">Polynomial Commitments</a></h3>
-<p>Refer to the <a href="specs/./poly-commitment.html">specification on polynomial commitments</a>. 
+<p>Refer to the <a href="specs/./poly-commitment.html">specification on polynomial commitments</a>.
 We make use of the following functions from that specification:</p>
 <ul>
 <li><code>PolyCom.non_hiding_commit(poly) -&gt; PolyCom::NonHidingCommitment</code></li>
@@ -3375,7 +3375,7 @@ We make use of the following functions from that specification:</p>
 <li><code>PolyCom.verify(commitment, point, evaluation, evaluation_proof) -&gt; bool</code></li>
 </ul>
 <h3 id="poseidon-hash-function"><a class="header" href="#poseidon-hash-function">Poseidon hash function</a></h3>
-<p>Refer to the <a href="specs/./poseidon.html">specification on Poseidon</a>. 
+<p>Refer to the <a href="specs/./poseidon.html">specification on Poseidon</a>.
 We make use of the following functions from that specification:</p>
 <ul>
 <li><code>Poseidon.init(params) -&gt; FqSponge</code></li>
@@ -3404,8 +3404,8 @@ We make use of the following functions from that specification:</p>
 In this section, we describe all the constraints that make up the main polynomial <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.10764em;">f</span></span></span></span> once combined.</p>
 <p>We define the following functions:</p>
 <ul>
-<li><code>combine_constraints(range_alpha, constraints)</code>, which takes a range of contiguous powers of alpha and a number of constraints. 
-It returns the sum of all the constraints, where each constraint has been multiplied by a power of alpha. 
+<li><code>combine_constraints(range_alpha, constraints)</code>, which takes a range of contiguous powers of alpha and a number of constraints.
+It returns the sum of all the constraints, where each constraint has been multiplied by a power of alpha.
 In other words it returns:
 <span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:2.327674em;vertical-align:-1.277669em;"></span><span class="mop op-limits"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.0500050000000003em;"><span style="top:-1.872331em;margin-left:0em;"><span class="pstrut" style="height:3.05em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">i</span></span></span><span style="top:-3.050005em;"><span class="pstrut" style="height:3.05em;"></span><span><span class="mop op-symbol large-op">∑</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.277669em;"><span></span></span></span></span></span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0037em;">α</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8746639999999999em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">i</span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">⋅</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.81786em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord text"><span class="mord">constraint</span></span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.31166399999999994em;"><span style="top:-2.5500000000000003em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">i</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span></span></li>
 </ul>
@@ -3488,7 +3488,7 @@ From the user’s perspective, not using any gates that make use of lookups mean
 <p>Refer to the <a href="specs/../rfcs/3-lookup.html">lookup RFC</a> for an overview of the lookup feature.</p>
 <p>In this section, we describe the tables kimchi supports, as well as the different lookup selectors (and their associated queries)</p>
 <h4 id="the-lookup-tables"><a class="header" href="#the-lookup-tables">The Lookup Tables</a></h4>
-<p>Kimchi currently supports a single lookup table: </p>
+<p>Kimchi currently supports a single lookup table:</p>
 <pre><code class="language-rs">/// The table ID associated with the XOR lookup table.
 pub const XOR_TABLE_ID: i32 = 0;
 </code></pre>
@@ -4099,7 +4099,7 @@ This equation is translated as the constraint:</p>
 <p>As such, the transformation of a circuit into these two indexes can be seen as a compilation step. Note that the prover still needs access to the original circuit to create proofs, as they need to execute it to create the witness (register table).</p>
 <h3 id="common-index"><a class="header" href="#common-index">Common Index</a></h3>
 <p>In this section we describe data that both the prover and the verifier index share.</p>
-<p><strong><code>URS</code> (Uniform Reference String)</strong> The URS is a set of parameters that is generated once, and shared between the prover and the verifier. 
+<p><strong><code>URS</code> (Uniform Reference String)</strong> The URS is a set of parameters that is generated once, and shared between the prover and the verifier.
 It is used for polynomial commitments, so refer to the <a href="specs/./poly-commitment.html">poly-commitment specification</a> for more details.</p>
 <div id="admonition-note-5" class="admonition note">
 <div class="admonition-title">
@@ -4111,7 +4111,7 @@ It is used for polynomial commitments, so refer to the <a href="specs/./poly-com
 <p>Kimchi currently generates the URS based on the circuit, and attach it to the index. So each circuit can potentially be accompanied with a different URS. On the other hand, Mina reuses the same URS for multiple circuits (<a href="https://minaprotocol.com/blog/what-are-zkapps">see zkapps for more details</a>).</p>
 </div>
 </div>
-<p><strong><code>Domain</code></strong>. A domain large enough to contain the circuit and the zero-knowledge rows (used to provide zero-knowledge to the protocol). Specifically, the smallest subgroup in our field that has order greater or equal to <code>n + ZK_ROWS</code>, with <code>n</code> is the number of gates in the circuit. 
+<p><strong><code>Domain</code></strong>. A domain large enough to contain the circuit and the zero-knowledge rows (used to provide zero-knowledge to the protocol). Specifically, the smallest subgroup in our field that has order greater or equal to <code>n + ZK_ROWS</code>, with <code>n</code> is the number of gates in the circuit.
 TODO: what if the domain is larger than the URS?</p>
 <div id="admonition-ordering-of-elements-in-the-domain" class="admonition warning">
 <div class="admonition-title">
@@ -4325,6 +4325,10 @@ pub struct VerifierIndex&lt;G: CommitmentCurve&gt; {
     #[serde(bound = &quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;)]
     pub chacha_comm: Option&lt;[PolyComm&lt;G&gt;; 4]&gt;,
 
+    // Range check gates polynomial commitments
+    #[serde(bound = &quot;Vec&lt;PolyComm&lt;G&gt;&gt;: Serialize + DeserializeOwned&quot;)]
+    pub range_check_comm: Vec&lt;PolyComm&lt;G&gt;&gt;,
+
     /// wire coordinate shifts
     #[serde_as(as = &quot;[o1_utils::serialization::SerdeAs; PERMUTS]&quot;)]
     pub shift: [ScalarField&lt;G&gt;; PERMUTS],
@@ -4466,7 +4470,7 @@ pub struct ProverCommitments&lt;G: AffineCurve&gt; {
     pub lookup: Option&lt;LookupCommitments&lt;G&gt;&gt;,
 }
 
-/// The proof that the prover creates from a [ProverIndex] and a `witness`.
+/// The proof that the prover creates from a [ProverIndex](super::prover_index::ProverIndex) and a `witness`.
 #[derive(Clone)]
 pub struct ProverProof&lt;G: AffineCurve&gt; {
     /// All the polynomial commitments required in the proof
@@ -4508,11 +4512,11 @@ pub struct ProverProof&lt;G: AffineCurve&gt; {
 </div>
 <p>The following constants are set:</p>
 <ul>
-<li><code>EVAL_POINTS = 2</code>. This is the number of points that the prover has to evaluate their polynomials at. 
+<li><code>EVAL_POINTS = 2</code>. This is the number of points that the prover has to evaluate their polynomials at.
 (<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span></span></span></span> and <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span><span class="mord mathnormal" style="margin-right:0.03588em;">ω</span></span></span></span> where <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span></span></span></span> will be deterministically generated.)</li>
-<li><code>ZK_ROWS = 3</code>. This is the number of rows that will be randomized to provide zero-knowledgeness. 
-Note that it only needs to be greater or equal to the number of evaluations (2) in the protocol. 
-Yet, it contains one extra row to take into account the last constraint (final value of the permutation accumulator). 
+<li><code>ZK_ROWS = 3</code>. This is the number of rows that will be randomized to provide zero-knowledgeness.
+Note that it only needs to be greater or equal to the number of evaluations (2) in the protocol.
+Yet, it contains one extra row to take into account the last constraint (final value of the permutation accumulator).
 (TODO: treat the final constraint separately so that ZK_ROWS = 2)</li>
 </ul>
 <p>The prover then follows the following steps to create the proof:</p>
@@ -4728,7 +4732,7 @@ First, include the previous challenges, in case we are in a recursive prover.</p
 </ol>
 <h3 id="proof-verification"><a class="header" href="#proof-verification">Proof Verification</a></h3>
 <p>TODO: we talk about batch verification, but is there an actual batch operation? It seems like we’re just verifying an aggregated opening proof</p>
-<p>We define two helper algorithms below, used in the batch verification of proofs. </p>
+<p>We define two helper algorithms below, used in the batch verification of proofs.</p>
 <h4 id="fiat-shamir-argument"><a class="header" href="#fiat-shamir-argument">Fiat-Shamir argument</a></h4>
 <p>We run the following algorithm:</p>
 <ol>

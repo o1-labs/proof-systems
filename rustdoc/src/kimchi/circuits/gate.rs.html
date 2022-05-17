@@ -3,7 +3,9 @@
         </a><h2 class="location"></h2>
     </nav>
     <nav class="sidebar"><a class="sidebar-logo" href="../../../kimchi/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kimchi/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kimchi/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><div id="settings-menu" tabindex="-1">
+                                <a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div>
+                        </div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -321,11 +323,16 @@
 <span id="316">316</span>
 <span id="317">317</span>
 <span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk constraint gate primitive.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{<span class="ident">constraints::ConstraintSystem</span>, <span class="ident">wires</span>::<span class="kw-2">*</span>};
-<span class="kw">use</span> <span class="ident">ark_ff::bytes::ToBytes</span>;
 <span class="kw">use</span> <span class="ident">ark_ff::FftField</span>;
+<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">bytes::ToBytes</span>, <span class="ident">SquareRootField</span>};
 <span class="kw">use</span> <span class="ident">num_traits::cast::ToPrimitive</span>;
 <span class="kw">use</span> <span class="ident">o1_utils::hasher::CryptoDigest</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
@@ -412,6 +419,10 @@
     <span class="ident">CairoInstruction</span> <span class="op">=</span> <span class="number">13</span>,
     <span class="ident">CairoFlags</span> <span class="op">=</span> <span class="number">14</span>,
     <span class="ident">CairoTransition</span> <span class="op">=</span> <span class="number">15</span>,
+    <span class="comment">// Range check (16-24)</span>
+    <span class="ident">RangeCheck0</span> <span class="op">=</span> <span class="number">16</span>,
+    <span class="ident">RangeCheck1</span> <span class="op">=</span> <span class="number">17</span>,
+    <span class="ident">RangeCheck2</span> <span class="op">=</span> <span class="number">18</span>,
 }
 
 <span class="attribute">#[<span class="ident">serde_as</span>]</span>
@@ -444,7 +455,7 @@
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">SquareRootField</span><span class="op">&gt;</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="doccomment">/// this function creates &quot;empty&quot; circuit gate</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">zero</span>(<span class="ident">wires</span>: <span class="ident">GateWires</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">CircuitGate</span> {
@@ -479,6 +490,7 @@
             <span class="ident">CairoClaim</span> <span class="op">|</span> <span class="ident">CairoInstruction</span> <span class="op">|</span> <span class="ident">CairoFlags</span> <span class="op">|</span> <span class="ident">CairoTransition</span> =&gt; {
                 <span class="self">self</span>.<span class="ident">verify_cairo_gate</span>(<span class="ident">row</span>, <span class="ident">witness</span>, <span class="ident">cs</span>)
             }
+            <span class="ident">RangeCheck0</span> <span class="op">|</span> <span class="ident">RangeCheck1</span> <span class="op">|</span> <span class="ident">RangeCheck2</span> =&gt; <span class="self">self</span>.<span class="ident">verify_range_check</span>(<span class="ident">row</span>, <span class="ident">witness</span>, <span class="ident">cs</span>),
         }
     }
 }
@@ -640,5 +652,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (6dd68402c 2022-05-11)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (c52b9c10b 2022-05-16)" ></div>
 </body></html>
