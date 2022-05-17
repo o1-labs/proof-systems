@@ -61,8 +61,10 @@ use utils::{decompose, lift, need_decompose, transfer_hash};
 struct Side<F: FftField + PrimeField, C: Cs<F>> {
     cs: C,
     constants: Constants<F>,
+    passthrough: Var<F>, // passthough fields from this side (to the complement)
     sponge: ZkSponge<F>, // sponge constrained inside the proof system
     bridge: Vec<Var<F>>, // "exported sponge states", used to merge transcripts across proofs
+                         // QUESTION: can this be combined with "passthough"
     merged: bool,        // has the current state been merged with the other side?
 }
 
@@ -71,6 +73,7 @@ impl<F: FftField + PrimeField, C: Cs<F>> Side<F, C> {
         Self {
             cs,
             sponge: ZkSponge::new(constants.clone()),
+            passthrough: vec![],
             constants,
             bridge: vec![],
             merged: true,
@@ -89,6 +92,7 @@ pub struct Merlin<Fp, Fr, CsFp, CsFr>
     fr: Option<Side<Fr, CsFr>>,
 }
 
+/// Describes a type which can be "absorbed" into a sponge over a given field
 pub trait Absorb<F: FftField + PrimeField> {
     fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut ZkSponge<F>);
 }
@@ -108,17 +112,20 @@ impl <F: FftField + PrimeField, T: Absorb<F>, const N: usize> Absorb<F> for [T; 
     }
 }
 
+// Can absorb a variable from the same field
 impl <F: FftField + PrimeField> Absorb<F> for Var<F> {
     fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut ZkSponge<F>) {
         sponge.absorb(cs, self);
     }
 }
 
+/// Describes a type which can be "squeezed" (generated) from the sponge
 pub trait Challenge<F: FftField + PrimeField> {
     fn generate<C: Cs<F>>(cs: &mut C, sponge: &mut ZkSponge<F>) -> Self;
     
 }
 
+// Can generate a variable from the same field
 impl <F: FftField + PrimeField> Challenge<F> for Var<F> {
     fn generate<C: Cs<F>>(cs: &mut C, sponge: &mut ZkSponge<F>) -> Self {
         sponge.squeeze(cs)
@@ -176,8 +183,43 @@ impl <Fp, Fr, CsFp, CsFr> Merlin<Fp, Fr, CsFp, CsFr>
         }
     }
 
+    /// Pass through a variable
+    /// 
+    /// QUESTION: is the untruncated version used anywhere?
+    pub fn pass(&self, val: Var<Fp>) -> (Var<Fr>, Option<Var<Fr>>) {
+        // adds variables to the Fr side for the decomposition
+
+        // adds the variables to the Fr "passthough" sponge
+
+        // adds the Fp variable to the passthough vector
+
+        // verifier then:
+        //
+        // 1. recomputes the decomposition into Fr (outside the proof)
+        // 2. recomputes the "passthrough hash"
+        // 3. provides the "passthorugh hash" as part of the statement
+        //
+        // This provides binding between the two proofs and (trivially) 
+        // verifies that the decomposition was computed currectly.
+     
+        unimplemented!()
+    }
+
+    /// Pass though a hash / challenge
+    /// 
+    /// Note that if Fr is smaller than Fp using this method 
+    /// can result in a proof which no longer verifies;
+    /// but does not violate soundness, since the verifier (trivially) checks for overflow.
+    pub fn pass_truncate(&self, val: Var<Fp>) -> Var<Fr> {
+        unimplemented!()
+    }
+
     pub fn cs(&mut self) -> &mut CsFp {
         self.as_mut()
+    }
+
+    pub fn constants(&self) -> &Constants<Fp> {
+        self.as_ref()
     }
 
     /// Receive a message from the prover

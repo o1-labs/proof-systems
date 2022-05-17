@@ -3,7 +3,7 @@ use crate::transcript::{Merlin, Challenge, Absorb, Msg, ZkSponge};
 
 use super::{Proof, COLUMNS, CHALLENGE_LEN, SELECTORS};
 
-use circuit_construction::{Cs, Var};
+use circuit_construction::{Cs, Constants, Var};
 
 use ark_ec::AffineCurve;
 use ark_ff::{FftField, PrimeField};
@@ -64,23 +64,35 @@ where
 }
 
 struct ScalarChallenge<F: FftField + PrimeField> {
-    chal: Var<F>,
+    challenge: Var<F>,
 }
 
 impl<F: FftField + PrimeField> Challenge<F> for ScalarChallenge<F> {
     fn generate<C: Cs<F>>(cs: &mut C, sponge: &mut ZkSponge<F>) -> Self {
-        // QUESTION: how do I enforce equality between endoscalar and truncated oracle output using the CS api?
         // generate challenge using sponge
-        let s: Var<F> = Var::generate(cs, sponge);
+        let scalar: Var<F> = Var::generate(cs, sponge);
+
+        // create endoscalar (bit decompose)
+        let challenge = cs.endo_scalar(CHALLENGE_LEN, || {
+            let s: F = scalar.val();
+            s.into_repr()
+        });
+
+        // enforce equality
+        cs.assert_eq(challenge, scalar);
 
         // bit decompose challenge
-        ScalarChallenge{
-            chal: cs.endo_scalar(CHALLENGE_LEN, || {
-                let s: F = s.val();
-                s.into_repr()
-            })
-        }
+        ScalarChallenge{ challenge }
     }
+}
+
+impl <F: FftField + PrimeField> ScalarChallenge<F> {
+    fn to_field<Fr: FftField + PrimeField>(&self, constants: &Constants<F>) -> Var<Fr> {
+        
+        unimplemented!()
+    }
+
+  
 }
 
 ///
@@ -120,8 +132,8 @@ fn verify<A, CsFp, CsFr, C, T>(
     let zeta_chal: ScalarChallenge<A::BaseField> = tx.challenge();
 
     //~ 15. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
-    // let zeta = zeta_chal.to_field(&index.srs.endo_r);
-
+    // TODO: add zeta to Fr witness (bind using hash)
+    let zeta: Var<A::ScalarField> = zeta_chal.to_field(tx.constants());
 
     //~ 8. If using lookup, absorb the commitment to the aggregation lookup polynomial.
     // Question: why is done after (beta/gamma) challenge?
