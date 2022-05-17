@@ -2,11 +2,54 @@
 
 use crate::circuits::wires::{COLUMNS, PERMUTS};
 use ark_ec::AffineCurve;
-use ark_ff::{FftField, Zero};
+use ark_ff::{FftField, Field, Zero};
 use ark_poly::univariate::DensePolynomial;
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use array_init::array_init;
 use commitment_dlog::{commitment::PolyComm, evaluation_proof::OpeningProof};
 use o1_utils::{types::fields::*, ExtendedDensePolynomial};
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
+
+#[serde_as]
+#[derive(Clone, Deserialize, Serialize)]
+pub enum EvalEnum<F: CanonicalSerialize + CanonicalDeserialize> {
+    #[serde(bound = "ChunkEvals<F>: Serialize")]
+    Chunk(ChunkEvals<F>),
+    #[serde(bound = "OneEval<F>: Serialize")]
+    One(OneEval<F>),
+}
+
+#[serde_as]
+#[derive(Clone, Deserialize, Serialize)]
+pub struct ChunkEvals<F: CanonicalSerialize + CanonicalDeserialize> {
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    chunk: Vec<F>,
+}
+
+#[serde_as]
+#[derive(Clone, Deserialize, Serialize)]
+pub struct OneEval<F: CanonicalSerialize + CanonicalDeserialize> {
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    chunk: F,
+}
+
+impl<F: Field> EvalEnum<F> {}
+
+#[test]
+fn my_test() {
+    use ark_ff::One;
+    use mina_curves::pasta::fp::Fp as F;
+
+    let chunk = ChunkEvals {
+        chunk: vec![-F::one(), F::zero(), F::one(), F::one().double()],
+    };
+    let eval = EvalEnum::Chunk(chunk);
+
+    let ser_eval = rmp_serde::to_vec(&eval).unwrap();
+    println!("eval size: {}", ser_eval.len());
+    println!("eval: {:?}", ser_eval);
+}
 
 //~ spec:startcode
 #[derive(Clone)]
@@ -20,12 +63,29 @@ pub struct LookupEvaluations<Field> {
     pub table: Field,
 }
 
+/*
+#[derive(Clone)]
+pub struct LookupChunkedEvals<Field> {
+    /// sorted lookup table polynomial
+    pub sorted: Vec<Vec<Field>>,
+    /// lookup aggregation polynomial
+    pub aggreg: Vec<Field>,
+    // TODO: May be possible to optimize this away?
+    /// lookup table polynomial
+    pub table: Vec<Field>,
+}
+*/
+
 // TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
+//#[serde_as]
+//#[derive(Clone, Deserialize, Serialize)]
 #[derive(Clone)]
 pub struct ProofEvaluations<Field> {
+    //: CanonicalDeserialize + CanonicalSerialize> {
     /// witness polynomials
     pub w: [Field; COLUMNS],
     /// permutation polynomial
+    //#[serde(bound = "EvalEnum<Field>: Serialize")]
     pub z: Field,
     /// permutation polynomials
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
@@ -37,6 +97,25 @@ pub struct ProofEvaluations<Field> {
     /// evaluation of the poseidon selector polynomial
     pub poseidon_selector: Field,
 }
+
+/*
+#[derive(Clone)]
+pub struct ProofChunkedEvals<Field> {
+    /// witness polynomials
+    pub w: [Vec<Field>; COLUMNS],
+    /// permutation polynomial
+    pub z: Vec<Field>,
+    /// permutation polynomials
+    /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
+    pub s: [Vec<Field>; PERMUTS - 1],
+    /// lookup-related evaluations
+    pub lookup: Option<LookupChunkedEvals<Field>>,
+    /// evaluation of the generic selector polynomial
+    pub generic_selector: Vec<Field>,
+    /// evaluation of the poseidon selector polynomial
+    pub poseidon_selector: Vec<Field>,
+}
+*/
 
 /// Commitments linked to the lookup feature
 #[derive(Clone)]
