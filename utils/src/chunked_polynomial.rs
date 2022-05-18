@@ -11,15 +11,9 @@ use std::ops::{Deref, Index};
 pub struct ChunkedEvals<F: CanonicalSerialize> {
     #[serde_as(as = "Vec<SerdeAs>")]
     pub chunk: Vec<F>,
-    index: usize,
 }
 
-pub struct ChunkedEvalsIterator<'a, F: CanonicalSerialize> {
-    chunk: &'a Vec<F>,
-    index: usize,
-}
-
-impl<F: Field> Index<usize> for ChunkedEvals<F> {
+impl<F: CanonicalSerialize> Index<usize> for ChunkedEvals<F> {
     type Output = F;
 
     /// Returns the field element at `pos` position
@@ -28,6 +22,7 @@ impl<F: Field> Index<usize> for ChunkedEvals<F> {
     }
 }
 
+/*
 // Used to iterate over the chunk
 impl<F: Field> Deref for ChunkedEvals<F> {
     type Target = Vec<F>;
@@ -36,9 +31,15 @@ impl<F: Field> Deref for ChunkedEvals<F> {
         &self.chunk
     }
 }
+*/
 
-impl<'a, F: CanonicalSerialize> Iterator for ChunkedEvalsIterator<'a, F> {
-    type Item = &'a F;
+pub struct ChunkedEvalsIterator<'a, F: CanonicalSerialize> {
+    chunk: &'a ChunkedEvals<F>,
+    index: usize,
+}
+
+impl<'a, F: CanonicalSerialize + Clone> Iterator for ChunkedEvalsIterator<'a, F> {
+    type Item = F;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.index >= self.chunk.len() {
@@ -46,11 +47,41 @@ impl<'a, F: CanonicalSerialize> Iterator for ChunkedEvalsIterator<'a, F> {
         }
 
         self.index += 1;
-        Some(&self.chunk[self.index - 1])
+        Some(self.chunk[self.index - 1].clone())
     }
 }
 
-impl<F: Field> ChunkedEvals<F> {
+impl<'a, F: CanonicalSerialize + Clone> IntoIterator for &'a ChunkedEvals<F> {
+    type Item = F;
+    type IntoIter = ChunkedEvalsIterator<'a, F>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        ChunkedEvalsIterator {
+            chunk: self,
+            index: 0,
+        }
+    }
+}
+
+/*
+impl<F: CanonicalSerialize> FromIterator<F> for ChunkedEvals<F> {
+    fn from_iter<I: IntoIterator<Item = F>>(iter: I) -> Self {
+        let mut c = vec![];
+
+        for i in iter {
+            c.push(i);
+        }
+
+        ChunkedEvals { chunk: c }
+    }
+}
+*/
+
+impl<F: CanonicalSerialize> ChunkedEvals<F> {
+    pub fn new() -> ChunkedEvals<F> {
+        ChunkedEvals { chunk: vec![] }
+    }
+
     /// Returns the length of the chunk
     pub fn len(&self) -> usize {
         self.chunk.len()
@@ -73,7 +104,6 @@ impl<F: Field> ToChunk<F> for Vec<F> {
     fn to_chunk(&self) -> ChunkedEvals<F> {
         ChunkedEvals {
             chunk: self.clone(),
-            index: 0,
         }
     }
 }
@@ -95,10 +125,7 @@ impl<F: Field> ChunkedPolynomial<F> {
             let eval = poly.evaluate(&elm);
             res.push(eval);
         }
-        ChunkedEvals {
-            chunk: res,
-            index: 0,
-        }
+        ChunkedEvals { chunk: res }
     }
 
     /// Multiplies the chunks of a polynomial with powers of zeta^n to make it of degree n-1.

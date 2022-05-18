@@ -4,6 +4,7 @@ use crate::verifier_index::VerifierIndex;
 use ark_ec::AffineCurve;
 use ark_ff::{One, Zero};
 use commitment_dlog::commitment::{b_poly, b_poly_coefficients, CommitmentCurve, PolyComm};
+use o1_utils::chunked_polynomial::ChunkedEvals;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 
@@ -36,7 +37,7 @@ where
         index: &VerifierIndex<G>,
         evaluation_points: &[Fr<G>],
         powers_of_eval_points_for_chunks: &[Fr<G>],
-    ) -> Vec<Vec<Fr<G>>> {
+    ) -> Vec<ChunkedEvals<Fr<G>>> {
         // No need to check the correctness of poly explicitly. Its correctness is assured by the
         // checking of the inner product argument.
         let b_len = 1 << self.challenges.len();

@@ -6,6 +6,7 @@ use oracle::{
     poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge},
 };
 
+use crate::circuits::scalars::ProofChunkedEvaluations;
 use crate::proof::ProofEvaluations;
 
 pub trait FrSponge<Fr: Field> {
@@ -20,7 +21,7 @@ pub trait FrSponge<Fr: Field> {
 
     /// Absorbs the given evaluations into the sponge.
     // TODO: IMO this function should be inlined in prover/verifier
-    fn absorb_evaluations(&mut self, p: &[Fr], e: &ProofEvaluations<ChunkedEvals<Fr>>);
+    fn absorb_evaluations(&mut self, p: &[Fr], e: &ProofChunkedEvaluations<Fr>);
 }
 
 impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
@@ -41,7 +42,7 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
         ScalarChallenge(self.squeeze(oracle::sponge::CHALLENGE_LENGTH_IN_LIMBS))
     }
 
-    fn absorb_evaluations(&mut self, p: &[Fr], e: &ProofEvaluations<ChunkedEvals<Fr>>) {
+    fn absorb_evaluations(&mut self, p: &[Fr], e: &ProofChunkedEvaluations<Fr>) {
         self.last_squeezed = vec![];
         self.sponge.absorb(p);
 

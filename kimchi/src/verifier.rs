@@ -23,7 +23,7 @@ use commitment_dlog::commitment::{
     b_poly, b_poly_coefficients, combined_inner_product, BatchEvaluationProof, CommitmentCurve,
     Evaluation, PolyComm,
 };
-use o1_utils::types::fields::*;
+use o1_utils::{chunked_polynomial::ChunkedEvals, types::fields::*};
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand::thread_rng;
 
@@ -335,7 +335,7 @@ where
             let ft_eval1 = vec![self.ft_eval1];
 
             #[allow(clippy::type_complexity)]
-            let mut es: Vec<(Vec<Vec<ScalarField<G>>>, Option<usize>)> =
+            let mut es: Vec<(Vec<ChunkedEvals<ScalarField<G>>>, Option<usize>)> =
                 polys.iter().map(|(_, e)| (e.clone(), None)).collect();
             es.push((p_eval.clone(), None));
             es.push((vec![ft_eval0, ft_eval1], None));
