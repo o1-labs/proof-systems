@@ -1100,6 +1100,65 @@ If lookup is used, the following values are added to the common index:
 
 **`MaxJointSize`**. This is the maximum number of columns appearing in the lookup tables used by the lookup selectors. For example, the XOR lookup has 3 columns.
 
+To create the index, follow these steps:
+
+1. If no lookup is used in the circuit, do not create a lookup index
+2. Get the lookup selectors and lookup tables (TODO: how?)
+3. Concatenate runtime lookup tables with the ones used by gates
+4. Get the highest number of columns `max_table_width`
+   that a lookup table can have.
+5. Create the concatenated table of all the fixed lookup tables.
+   It will be of height the size of the domain,
+   and of width the maximum width of any of the lookup tables.
+   In addition, create an additional column to store all the tables' table IDs.
+
+   For example, if you have a table with ID 0
+
+   |       |       |       |
+   | :---: | :---: | :---: |
+   |   1   |   2   |   3   |
+   |   5   |   6   |   7   |
+   |   0   |   0   |   0   |
+
+   and another table with ID 1
+
+   |       |       |
+   | :---: | :---: |
+   |   8   |   9   |
+
+   the concatenated table in a domain of size 5 looks like this:
+
+   |       |       |       |
+   | :---: | :---: | :---: |
+   |   1   |   2   |   3   |
+   |   5   |   6   |   7   |
+   |   0   |   0   |   0   |
+   |   8   |   9   |   0   |
+   |   0   |   0   |   0   |
+
+   with the table id vector:
+
+   | table id |
+   | :------: |
+   |    0     |
+   |    0     |
+   |    0     |
+   |    1     |
+   |    0     |
+
+   To do this, for each table:
+
+      - Update the corresponding entries in a table id vector (of size the domain as well)
+        with the table ID of the table.
+      - Copy the entries from the table to new rows in the corresponding columns of the concatenated table.
+      - Fill in any unused columns with 0 (to match the dummy value)
+6. Pad the end of the concatened table with the dummy value.
+7. Pad the end of the table id vector with 0s.
+8. pre-compute polynomial and evaluation form for the look up tables
+9. pre-compute polynomial and evaluation form for the table IDs,
+   only if a table with an ID different from zero was used.
+
+
 ### Prover Index
 
 Both the prover and the verifier index, besides the common parts described above, are made out of pre-computations which can be used to speed up the protocol.
@@ -1429,27 +1488,35 @@ The prover then follows the following steps to create the proof:
 8. Absorb the witness commitments with the Fq-Sponge.
 9. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
    TODO: why not do this first, and then commit? Why commit from evaluation directly?
-10. If there's a joint lookup being used in the circuit (TODO: define joint lookup vs single lookup):
-    - Sample the joint combinator (lookup challenge) $j$ with the Fq-Sponge.
-    - derive the scalar joint combinator $j$ from $j'$ using the endomorphism (TODO: details, explicitly say that we change the field).
-12. If using lookup:
-    - Compute the sorted table.
-    - Compute the sorted coefficients.
-    - Commit to each of the sorted table columns.
-      (See section on lookup to see how to compute it.)
+10. If using lookup:
+    - If queries involve a lookup table with multiple columns
+    then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
+    otherwise set the joint combiner challenge $j'$ to $0$.
+    - Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TOOD: specify)
+    - If multiple lookup tables are involved,
+     set the `table_id_combiner` as the $j^i$ with $i$ the maximum width of any used table.
+     Essentially, this is to add a last column of table ids to the concatenated lookup tables.
+    - Compute the dummy lookup value as the combination of the last entry of the XOR table (so `(0, 0, 0)`).
+     Warning: This assumes that we always use the XOR table when using lookups.
+    - Compute the lookup table values as the combination of the lookup table entries.
+     - Compute the sorted evaluations.
+     - Randomize the last `EVALS` rows in each of the sorted polynomials
+      in order to add zero-knowledge to the protocol.
+     - Commit each of the sorted polynomials.
+     - Absorb each commitments to the sorted polynomials.
 11. Sample $\beta$ with the Fq-Sponge.
 12. Sample $\gamma$ with the Fq-Sponge.
-13. TODO: lookup
+13. If using lookup:
+    - Compute the lookup aggregation polynomial.
+    - Commit to the aggregation polynomial.
+    - Absorb the commitment to the aggregation polynomial with the Fq-Sponge.
 14. Compute the permutation aggregation polynomial $z$.
 15. Commit (hidding) to the permutation aggregation polynomial $z$.
 16. Absorb the permutation aggregation polynomial $z$ with the Fq-Sponge.
 17. Sample $\alpha'$ with the Fq-Sponge.
 18. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details)
 19. TODO: instantiate alpha?
-20. TODO: this is just an optimization, ignore?
-21. TODO: lookup
-22. TODO: setup the env
-23. Compute the quotient polynomial (the $t$ in $f = Z_H \cdot t$).
+20. Compute the quotient polynomial (the $t$ in $f = Z_H \cdot t$).
     The quotient polynomial is computed by adding all these polynomials together:
     - the combined constraints for all the gates
     - the combined constraints for the permutation
@@ -1457,13 +1524,13 @@ The prover then follows the following steps to create the proof:
     - the negated public polynomial
     and by then dividing the resulting polynomial with the vanishing polynomial $Z_H$.
     TODO: specify the split of the permutation polynomial into perm and bnd?
-24. commit (hiding) to the quotient polynomial $t$
+21. commit (hiding) to the quotient polynomial $t$
     TODO: specify the dummies
-25. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.
-26. Sample $\zeta'$ with the Fq-Sponge.
-27. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
-28. TODO: lookup
-29. Chunk evaluate the following polynomials at both $\zeta$ and $\zeta \omega$:
+22. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.
+23. Sample $\zeta'$ with the Fq-Sponge.
+24. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
+25. If lookup is used, evaluate the following polynomials at $\zeta$ and $\zeta \omega$:
+26. Chunk evaluate the following polynomials at both $\zeta$ and $\zeta \omega$:
     * $s_i$
     * $w_i$
     * $z$
@@ -1481,32 +1548,32 @@ The prover then follows the following steps to create the proof:
     $$(f_0(x), f_1(x), f_2(x), \ldots)$$
 
      TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)
-30. Evaluate the same polynomials without chunking them
+27. Evaluate the same polynomials without chunking them
     (so that each polynomial should correspond to a single value this time).
-31. Compute the ft polynomial.
+28. Compute the ft polynomial.
     This is to implement [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html).
-32. construct the blinding part of the ft polynomial commitment
+29. construct the blinding part of the ft polynomial commitment
     see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#evaluation-proof-and-blinding-factors
-33. Evaluate the ft polynomial at $\zeta\omega$ only.
-34. Setup the Fr-Sponge
-35. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
-36. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
-37. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
+30. Evaluate the ft polynomial at $\zeta\omega$ only.
+31. Setup the Fr-Sponge
+32. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
+33. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
+34. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
     - the public polynomial
     - z
     - generic selector
     - poseidon selector
     - the 15 register/witness
     - 6 sigmas evaluations (the last one is not evaluated)
-38. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
-39. Sample $v'$ with the Fr-Sponge
-40. Derive $v$ from $v'$ using the endomorphism (TODO: specify)
-41. Sample $u'$ with the Fr-Sponge
-42. Derive $u$ from $u'$ using the endomorphism (TODO: specify)
-43. Create a list of all polynomials that will require evaluations
+35. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
+36. Sample $v'$ with the Fr-Sponge
+37. Derive $v$ from $v'$ using the endomorphism (TODO: specify)
+38. Sample $u'$ with the Fr-Sponge
+39. Derive $u$ from $u'$ using the endomorphism (TODO: specify)
+40. Create a list of all polynomials that will require evaluations
     (and evaluation proofs) in the protocol.
     First, include the previous challenges, in case we are in a recursive prover.
-44. Then, include:
+41. Then, include:
     - the negated public polynomial
     - the ft polynomial
     - the permutation aggregation polynomial z polynomial
@@ -1514,7 +1581,7 @@ The prover then follows the following steps to create the proof:
     - the poseidon selector
     - the 15 registers/witness columns
     - the 6 sigmas
-44. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
+42. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
 
 
 ### Proof Verification
@@ -1531,39 +1598,41 @@ We run the following algorithm:
 1. Setup the Fq-Sponge.
 2. Absorb the commitment of the public input polynomial with the Fq-Sponge.
 3. Absorb the commitments to the registers / witness columns with the Fq-Sponge.
-4. If lookup is not used,
-   or is used with queries to single-column lookup tables only,
-   then set the joint combiner challenge $j$ to $0$.
-   Otherwise, squeeze the Fq-Sponge to obtain the joint combiner challenge $j$.
-5. If using lookup, absorb the commitments to the sorted polynomials.
-6. Sample $\beta$ with the Fq-Sponge.
-7. Sample $\gamma$ with the Fq-Sponge.
-8. If using lookup, absorb the commitment to the aggregation lookup polynomial.
-9. Absorb the commitment to the permutation trace with the Fq-Sponge.
-10. Sample $\alpha'$ with the Fq-Sponge.
-11. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
-12. Enforce that the length of the $t$ commitment is of size `PERMUTS`.
-13. Absorb the commitment to the quotient polynomial $t$ into the argument.
-14. Sample $\zeta'$ with the Fq-Sponge.
-15. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
-16. Setup the Fr-Sponge.
-17. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
-18. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
+4. If lookup is used:
+   - If it involves queries to a multiple-column lookup table,
+     then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
+     otherwise set the joint combiner challenge $j'$ to $0$.
+   - Derive the scalar joint combiner challenge $j$ from $j'$ using the endomorphism.
+   (TODO: specify endomorphism)
+   - absorb the commitments to the sorted polynomials.
+5. Sample $\beta$ with the Fq-Sponge.
+6. Sample $\gamma$ with the Fq-Sponge.
+7. If using lookup, absorb the commitment to the aggregation lookup polynomial.
+8. Absorb the commitment to the permutation trace with the Fq-Sponge.
+9. Sample $\alpha'$ with the Fq-Sponge.
+10. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
+11. Enforce that the length of the $t$ commitment is of size `PERMUTS`.
+12. Absorb the commitment to the quotient polynomial $t$ into the argument.
+13. Sample $\zeta'$ with the Fq-Sponge.
+14. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
+15. Setup the Fr-Sponge.
+16. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
+17. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
     NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
-19. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
+18. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
     - the public polynomial
     - z
     - generic selector
     - poseidon selector
     - the 15 register/witness
     - 6 sigmas evaluations (the last one is not evaluated)
-20. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
-21. Sample $v'$ with the Fr-Sponge.
-22. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
-23. Sample $u'$ with the Fr-Sponge.
-24. Derive $u$ from $u'$ using the endomorphism (TODO: specify).
-25. Create a list of all polynomials that have an evaluation proof.
-26. Compute the evaluation of $ft(\zeta)$.
+19. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
+20. Sample $v'$ with the Fr-Sponge.
+21. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
+22. Sample $u'$ with the Fr-Sponge.
+23. Derive $u$ from $u'$ using the endomorphism (TODO: specify).
+24. Create a list of all polynomials that have an evaluation proof.
+25. Compute the evaluation of $ft(\zeta)$.
 
 #### Partial verification
 
@@ -1595,6 +1664,7 @@ Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
     - index commitments that use the coefficients
     - witness commitments
     - sigma commitments
+    - lookup commitments
 #### Batch verification of proofs
 
 Below, we define the steps to verify a number of proofs
