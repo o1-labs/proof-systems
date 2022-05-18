@@ -63,18 +63,16 @@ pub struct LookupEvaluations<Field> {
     pub table: Field,
 }
 
-/*
 #[derive(Clone)]
-pub struct LookupChunkedEvals<Field> {
+pub struct LookupChunkedEvals<F> {
     /// sorted lookup table polynomial
-    pub sorted: Vec<Vec<Field>>,
+    pub sorted: Vec<Vec<F>>,
     /// lookup aggregation polynomial
-    pub aggreg: Vec<Field>,
+    pub aggreg: Vec<F>,
     // TODO: May be possible to optimize this away?
     /// lookup table polynomial
-    pub table: Vec<Field>,
+    pub table: Vec<F>,
 }
-*/
 
 // TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
 //#[serde_as]
@@ -98,24 +96,22 @@ pub struct ProofEvaluations<Field> {
     pub poseidon_selector: Field,
 }
 
-/*
 #[derive(Clone)]
-pub struct ProofChunkedEvals<Field> {
+pub struct ProofChunkedEvals<F> {
     /// witness polynomials
-    pub w: [Vec<Field>; COLUMNS],
+    pub w: [Vec<F>; COLUMNS],
     /// permutation polynomial
-    pub z: Vec<Field>,
+    pub z: Vec<F>,
     /// permutation polynomials
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
-    pub s: [Vec<Field>; PERMUTS - 1],
+    pub s: [Vec<F>; PERMUTS - 1],
     /// lookup-related evaluations
-    pub lookup: Option<LookupChunkedEvals<Field>>,
+    pub lookup: Option<LookupChunkedEvals<F>>,
     /// evaluation of the generic selector polynomial
-    pub generic_selector: Vec<Field>,
+    pub generic_selector: Vec<F>,
     /// evaluation of the poseidon selector polynomial
-    pub poseidon_selector: Vec<Field>,
+    pub poseidon_selector: Vec<F>,
 }
-*/
 
 /// Commitments linked to the lookup feature
 #[derive(Clone)]
@@ -170,6 +166,27 @@ impl<F: Zero> ProofEvaluations<F> {
             lookup: None,
             generic_selector: F::zero(),
             poseidon_selector: F::zero(),
+        }
+    }
+}
+
+impl<F: FftField> ProofChunkedEvals<F> {
+    pub fn combine(&self, pt: F) -> ProofEvaluations<F> {
+        ProofEvaluations::<F> {
+            s: array_init(|i| DensePolynomial::eval_polynomial(&self.s[i], pt)),
+            w: array_init(|i| DensePolynomial::eval_polynomial(&self.w[i], pt)),
+            z: DensePolynomial::eval_polynomial(&self.z, pt),
+            lookup: self.lookup.as_ref().map(|l| LookupEvaluations {
+                table: DensePolynomial::eval_polynomial(&l.table, pt),
+                aggreg: DensePolynomial::eval_polynomial(&l.aggreg, pt),
+                sorted: l
+                    .sorted
+                    .iter()
+                    .map(|x| DensePolynomial::eval_polynomial(x, pt))
+                    .collect(),
+            }),
+            generic_selector: DensePolynomial::eval_polynomial(&self.generic_selector, pt),
+            poseidon_selector: DensePolynomial::eval_polynomial(&self.poseidon_selector, pt),
         }
     }
 }

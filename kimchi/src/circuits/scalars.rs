@@ -1,6 +1,7 @@
 //! This module implements Plonk prover polynomial evaluations primitive.
 
 use ark_ff::Field;
+use ark_serialize::CanonicalSerialize;
 use oracle::sponge::ScalarChallenge;
 
 #[derive(Clone, Debug)]
