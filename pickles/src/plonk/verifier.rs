@@ -1,12 +1,12 @@
 use crate::context::MutualContext;
-use crate::transcript::{Merlin, Challenge, Absorb, Msg, ZkSponge};
+use crate::transcript::{Merlin, Passable, Challenge, Absorb, Msg, ZkSponge};
 
 use super::{Proof, COLUMNS, CHALLENGE_LEN, SELECTORS};
 
 use circuit_construction::{Cs, Constants, Var};
 
 use ark_ec::AffineCurve;
-use ark_ff::{FftField, PrimeField};
+use ark_ff::{FftField, FpParameters, PrimeField};
 
 use std::marker::PhantomData;
 
@@ -67,6 +67,20 @@ struct ScalarChallenge<F: FftField + PrimeField> {
     challenge: Var<F>,
 }
 
+impl<F: FftField + PrimeField> Passable<F> for ScalarChallenge<F> {
+    const SIZE: usize = CHALLENGE_LEN;
+}
+
+impl<F: FftField + PrimeField> Passable<F> for Var<F> {
+    const SIZE: usize = F::Params::MODULUS_BITS as usize;
+}
+
+impl<F: FftField + PrimeField> Into<Var<F>> for ScalarChallenge<F> {
+    fn into(self) -> Var<F> {
+        self.challenge
+    }
+}
+
 impl<F: FftField + PrimeField> Challenge<F> for ScalarChallenge<F> {
     fn generate<C: Cs<F>>(cs: &mut C, sponge: &mut ZkSponge<F>) -> Self {
         // generate challenge using sponge
@@ -97,7 +111,7 @@ impl <F: FftField + PrimeField> ScalarChallenge<F> {
 /// and generates Fp (base field) and Fr (scalar field)
 /// constraints for the verification of the proof.
 /// 
-/// QUESTION: why are Oracle outputs included in the proof (in Kimchi?)
+/// 
 fn verify<A, CsFp, CsFr, C, T>(
     // ctx: &mut MutualContext<A::BaseField, A::ScalarField, CsFp, CsFr>,
     tx: &mut Merlin<A::BaseField, A::ScalarField, CsFp, CsFr>,
@@ -129,12 +143,12 @@ fn verify<A, CsFp, CsFr, C, T>(
     let zeta_chal: ScalarChallenge<A::BaseField> = tx.challenge();
 
     //~ 15. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
-    let zeta: Var<A::ScalarField> = tx.pass_truncate( // pass though
+    let zeta: Var<A::ScalarField> = tx.pass_fits( // pass though
         zeta_chal.to_field(tx.constants()),
     );
 
     //~ 8. If using lookup, absorb the commitment to the aggregation lookup polynomial.
-    // QUESTION: why is done after (beta/gamma) challenge?
+    // Question: why is done after (beta/gamma) challenge?
     /*
     self.commitments.lookup.iter().for_each(|l| {
         fq_sponge.absorb_g(&l.aggreg.unshifted);

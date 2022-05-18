@@ -33,17 +33,6 @@ impl<F: FftField + PrimeField> ZkSponge<F> {
         unimplemented!()
     }
 
-    pub fn absorb_iter<'b, C: Cs<F>, I: Iterator<Item = &'b Var<F>>>(
-        &mut self,
-        cs: &mut C,
-        mut vars: I,
-    ) {
-        for var in vars {
-            // TODO: implement
-            unimplemented!();
-        }
-    }
-
     pub fn squeeze<C: Cs<F>>(&mut self, cs: &mut C) -> Var<F> {
         unimplemented!()
     }

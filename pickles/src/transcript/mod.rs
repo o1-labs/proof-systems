@@ -56,11 +56,16 @@ use utils::{decompose, lift, need_decompose, transfer_hash};
 ///
 /// Include the final hash state in the statement of the
 
+struct Public<F: FftField + PrimeField> {
+    var: Var<F>,
+    size: usize,
+}
 
 // A "container type"
 struct Side<F: FftField + PrimeField, C: Cs<F>> {
     cs: C,
     constants: Constants<F>,
+    public: Vec<Public<F>>, // "export / pass"
     passthrough: Vec<Var<F>>, // passthough fields from this side (to the complement)
     sponge: ZkSponge<F>, // sponge constrained inside the proof system
     bridge: Vec<Var<F>>, // "exported sponge states", used to merge transcripts across proofs
@@ -73,6 +78,7 @@ impl<F: FftField + PrimeField, C: Cs<F>> Side<F, C> {
         Self {
             cs,
             sponge: ZkSponge::new(constants.clone()),
+            public: vec![],
             passthrough: vec![],
             constants,
             bridge: vec![],
@@ -136,6 +142,10 @@ pub struct Msg<T> {
     value: T,
 }
 
+pub trait Passable<F: FftField+PrimeField>: Into<Var<F>> {
+    const SIZE: usize; // default is full field size
+}
+
 impl <T> From<T> for Msg<T> {
     fn from(value: T) -> Self {
         Self{ value }
@@ -186,39 +196,55 @@ impl <Fp, Fr, CsFp, CsFr> Merlin<Fp, Fr, CsFp, CsFr>
     /// Pass through a variable
     /// 
     /// QUESTION: is the untruncated version used anywhere?
-    pub fn pass(&mut self, val: Var<Fp>) -> (Var<Fr>, Option<Var<Fr>>) {
+    pub fn pass<P: Passable<Fp>>(&mut self, val: P) -> (Var<Fr>, Option<Var<Fr>>) {
         let fp: &mut Side<Fp, CsFp> = self.fp.as_mut().unwrap();
         let fr: &mut Side<Fr, CsFr> = self.fr.as_mut().unwrap();
 
-        // adds variables to the Fr side for the decomposition
-        let fr_val = fp.cs.var(|| unimplemented!());
+        let var: Var<Fp> = val.into();
 
-        // adds the variables to the Fr "passthough" sponge
+        // add to public inputs
+        fp.public.push(Public {
+            size: P::SIZE,
+            var,
+        });
 
-        // adds the Fp variable to the passthough vector
-        fp.passthrough.push(val);
+        // converts a slice of bits (minimal representative) to a field element
+        fn from_bits<F: FftField + PrimeField>(bits: &[bool]) -> F {
+            F::from_repr(<F as PrimeField>::BigInt::from_bits_le(bits)).unwrap()
+        }
 
-        // at verification time the verifier:
+        // needs split if:
+        // 1. the modulus of Fr is smaller
+        // AND
+        // 2. the Fp size is greater/equal than Fr
+        let mut split = true;
+        split &= Fr::Params::MODULUS.into() < Fp::Params::MODULUS.into();
+        split &= Fp::Params::MODULUS_BITS < (P::SIZE as u32);
+
+        // convert the witness to a vec of bits
+        let bits = var.value.map(|v| v.into_repr().to_bits_le());
+
         //
-        // 1. recomputes the decomposition into Fr (outside the proof)
-        // 2. recomputes the "passthrough hash"
-        // 3. provides the "passthorugh hash" as part of the statement
-        //
-        // This provides binding between the two proofs and (trivially) 
-        // verifies that the decomposition was computed currectly.
-        //
-        // QUESTION: is this sufficient for soundness?
-     
-        unimplemented!()
+        if split {
+            // split into high/low(bit)
+            let decm = bits.as_ref().map(|b| {
+                let h = from_bits(&b[1..b.len()]);
+                let l = if b[0] { Fr::one() } else { Fr::zero() };
+                (h, l)
+            });
+
+            // split and assign
+            (fr.cs.var(|| decm.unwrap().0), Some(fr.cs.var(|| decm.unwrap().1)))
+        } else {
+            // fit everything in high
+            (fr.cs.var(|| from_bits(&bits.unwrap()[..])), None)
+        }
     }
 
-    /// Pass though a hash / challenge
-    /// 
-    /// Note that if Fr is smaller than Fp using this method 
-    /// can result in a proof which no longer verifies;
-    /// but does not violate soundness, since the verifier (trivially) checks for overflow.
-    pub fn pass_truncate(&self, val: Var<Fp>) -> Var<Fr> {
-        unimplemented!()
+    pub fn pass_fits<P: Passable<Fp>>(&mut self, val: P) -> Var<Fr> {
+        let (high, low) = self.pass(val);
+        assert!(low.is_none(), "does not fit, use '.pass' instead");
+        high
     }
 
     pub fn cs(&mut self) -> &mut CsFp {
