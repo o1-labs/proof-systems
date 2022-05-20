@@ -7,6 +7,7 @@ use crate::{
         lookup::{index::LookupConstraintSystem, tables::LookupTable},
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
         polynomials::permutation::ZK_ROWS,
+        polynomials::range_check,
         wires::*,
     },
     error::SetupError,
@@ -23,6 +24,7 @@ use once_cell::sync::OnceCell;
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
+use std::collections::HashSet;
 use std::sync::Arc;
 
 //
@@ -107,6 +109,10 @@ pub struct ConstraintSystem<F: FftField> {
     /// EC point addition selector evaluations w over domain.d8
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub endomul_scalar8: E<F, D<F>>,
+
+    /// Range check gate selector polynomials
+    #[serde(bound = "Vec<range_check::SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
+    pub range_check_selector_polys: Vec<range_check::SelectorPolynomial<F>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -214,7 +220,8 @@ pub enum GateError {
 }
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
-    /// creates a constraint system from a vector of gates ([CircuitGate]), some sponge parameters ([ArithmeticSpongeParams]), and the number of public inputs.
+    /// Creates a constraint system from a vector of gates ([CircuitGate]),
+    ///   some sponge parameters ([ArithmeticSpongeParams])
     pub fn create(
         gates: Vec<CircuitGate<F>>,
         lookup_tables: Vec<LookupTable<F>>,
@@ -260,6 +267,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             })
             .collect();
         gates.append(&mut padding);
+
+        // Record which gates are used by this constraint system
+        let mut circuit_gates_used = HashSet::<GateType>::default();
+        gates.iter().for_each(|gate| {
+            circuit_gates_used.insert(gate.typ);
+        });
 
         //~ 4. sample the `PERMUTS` shifts.
         let shifts = Shifts::new(&domain.d1);
@@ -398,6 +411,16 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             }
         };
 
+        // Range check constraint selector polynomials
+        let range_check_selector_polys = {
+            if !circuit_gates_used.is_disjoint(&range_check::circuit_gates().into_iter().collect())
+            {
+                range_check::selector_polynomials(&gates, &domain)
+            } else {
+                vec![]
+            }
+        };
+
         //
         // Coefficient
         // -----------
@@ -446,6 +469,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             complete_addl4,
             mull8,
             emull,
+            range_check_selector_polys,
             gates,
             shift: shifts.shifts,
             endo,

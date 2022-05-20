@@ -20,7 +20,26 @@ use std::{
     collections::{HashMap, HashSet},
     ops::MulAssign,
 };
+use thiserror::Error;
 use CurrOrNext::{Curr, Next};
+
+#[derive(Debug, Error)]
+pub enum ExprError {
+    #[error("Empty stack")]
+    EmptyStack,
+
+    #[error("Lookup should not have been used")]
+    LookupShouldNotBeUsed,
+
+    #[error("Linearization failed (needed {0:?} evaluated at the {1:?} row")]
+    MissingEvaluation(Column, CurrOrNext),
+
+    #[error("Cannot get index evaluation {0:?} (should have been linearized away)")]
+    MissingIndexEvaluation(Column),
+
+    #[error("Linearization failed")]
+    FailedLinearization,
+}
 
 /// The collection of constants required to evaluate an `Expr`.
 pub struct Constants<F> {
@@ -396,13 +415,13 @@ pub enum PolishToken<F> {
 }
 
 impl Variable {
-    fn evaluate<'a, 'b, F: Field>(&self, evals: &'a [ProofEvaluations<F>]) -> Result<F, &'b str> {
+    fn evaluate<F: Field>(&self, evals: &[ProofEvaluations<F>]) -> Result<F, ExprError> {
         let evals = &evals[self.row.shift()];
         use Column::*;
         let l = evals
             .lookup
             .as_ref()
-            .ok_or("Lookup should not have been used");
+            .ok_or(ExprError::LookupShouldNotBeUsed);
         match self.col {
             Witness(i) => Ok(evals.w[i]),
             Z => Ok(evals.z),
@@ -411,12 +430,8 @@ impl Variable {
             LookupTable => l.map(|l| l.table),
             Index(GateType::Poseidon) => Ok(evals.poseidon_selector),
             Index(GateType::Generic) => Ok(evals.generic_selector),
-            Index(GateType::CairoClaim)
-            | Index(GateType::CairoInstruction)
-            | Index(GateType::CairoFlags)
-            | Index(GateType::CairoTransition) => todo!(),
             Coefficient(_) | LookupKindIndex(_) | Index(_) => {
-                Err("Cannot get index evaluation (should have been linearized away)")
+                Err(ExprError::MissingIndexEvaluation(self.col))
             }
         }
     }
@@ -424,13 +439,13 @@ impl Variable {
 
 impl<F: FftField> PolishToken<F> {
     /// Evaluate an RPN expression to a field element.
-    pub fn evaluate<'c>(
+    pub fn evaluate(
         toks: &[PolishToken<F>],
         d: D<F>,
         pt: F,
         evals: &[ProofEvaluations<F>],
         c: &Constants<F>,
-    ) -> Result<F, &'c str> {
+    ) -> Result<F, ExprError> {
         let mut stack = vec![];
         let mut cache: Vec<F> = vec![];
 
@@ -460,18 +475,18 @@ impl<F: FftField> PolishToken<F> {
                     stack[i] = stack[i].pow(&[*n as u64]);
                 }
                 Add => {
-                    let y = stack.pop().ok_or("Empty stack")?;
-                    let x = stack.pop().ok_or("Empty stack")?;
+                    let y = stack.pop().ok_or(ExprError::EmptyStack)?;
+                    let x = stack.pop().ok_or(ExprError::EmptyStack)?;
                     stack.push(x + y);
                 }
                 Mul => {
-                    let y = stack.pop().ok_or("Empty stack")?;
-                    let x = stack.pop().ok_or("Empty stack")?;
+                    let y = stack.pop().ok_or(ExprError::EmptyStack)?;
+                    let x = stack.pop().ok_or(ExprError::EmptyStack)?;
                     stack.push(x * y);
                 }
                 Sub => {
-                    let y = stack.pop().ok_or("Empty stack")?;
-                    let x = stack.pop().ok_or("Empty stack")?;
+                    let y = stack.pop().ok_or(ExprError::EmptyStack)?;
+                    let x = stack.pop().ok_or(ExprError::EmptyStack)?;
                     stack.push(x - y);
                 }
                 Store => {
@@ -1184,7 +1199,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
         pt: F,
         evals: &[ProofEvaluations<F>],
         env: &Environment<F>,
-    ) -> Result<F, &str> {
+    ) -> Result<F, ExprError> {
         self.evaluate_(d, pt, evals, &env.constants)
     }
 
@@ -1195,7 +1210,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
         pt: F,
         evals: &[ProofEvaluations<F>],
         c: &Constants<F>,
-    ) -> Result<F, &str> {
+    ) -> Result<F, ExprError> {
         use Expr::*;
         match self {
             Double(x) => x.evaluate_(d, pt, evals, c).map(|x| x.double()),
@@ -1244,7 +1259,7 @@ enum Either<A, B> {
 
 impl<F: FftField> Expr<F> {
     /// Evaluate an expression into a field element.
-    pub fn evaluate(&self, d: D<F>, pt: F, evals: &[ProofEvaluations<F>]) -> Result<F, &str> {
+    pub fn evaluate(&self, d: D<F>, pt: F, evals: &[ProofEvaluations<F>]) -> Result<F, ExprError> {
         use Expr::*;
         match self {
             Constant(x) => Ok(*x),
@@ -1692,7 +1707,10 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
     /// this function computes `lin_or_err(factor_{V_0}(e))`, although it does not
     /// compute it in that way. Instead, it computes it by reducing the expression into
     /// a sum of monomials with `F` coefficients, and then factors the monomials.
-    pub fn linearize(&self, evaluated: HashSet<Column>) -> Result<Linearization<Expr<F>>, &str> {
+    pub fn linearize(
+        &self,
+        evaluated: HashSet<Column>,
+    ) -> Result<Linearization<Expr<F>>, ExprError> {
         let mut res: HashMap<Column, Expr<F>> = HashMap::new();
         let mut constant_term: Expr<F> = Self::zero();
         let monomials = self.monomials(&evaluated);
@@ -1707,9 +1725,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
                 let var = unevaluated.remove(0);
                 match var.row {
                     Next => {
-                        return Err(
-                            "Linearization failed (needed polynomial value at \"next\" row)",
-                        )
+                        return Err(ExprError::MissingEvaluation(var.col, var.row));
                     }
                     Curr => {
                         let e = match res.remove(&var.col) {
@@ -1731,7 +1747,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
                     }
                 }
             } else {
-                return Err("Linearization failed");
+                return Err(ExprError::FailedLinearization);
             }
         }
         Ok(Linearization {
@@ -2106,6 +2122,12 @@ pub mod constraints {
     /// Creates a constraint to enforce that b is either 0 or 1.
     pub fn boolean<F: Field>(b: &E<F>) -> E<F> {
         b.clone().square() - b.clone()
+    }
+
+    /// Crumb constraint for 2-bit value x
+    pub fn crumb<F: FftField>(x: &E<F>) -> E<F> {
+        // Assert x \in [0,3] i.e. assert x*(x - 1)*(x - 2)*(x - 3) == 0
+        x.clone() * (x.clone() - E::one()) * (x.clone() - 2u64.into()) * (x.clone() - 3u64.into())
     }
 }
 

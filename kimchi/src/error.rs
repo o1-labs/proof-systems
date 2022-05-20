@@ -33,6 +33,12 @@ pub enum VerifyError {
 
     #[error("lookup used in circuit, but proof is missing lookup commitments")]
     LookupCommitmentMissing,
+
+    #[error("lookup used in circuit, but proof is missing lookup evaluations")]
+    LookupEvalsMissing,
+
+    #[error("lookup used in circuit, but proof has inconsistent number of lookup evaluations and commitments")]
+    ProofInconsistentLookup,
 }
 
 /// Errors that can arise when preparing the setup
