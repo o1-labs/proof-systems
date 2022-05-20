@@ -75,10 +75,10 @@
 ///   Different rows are constrained differently using different CircuitGate types
 ///
 ///   Row   CircuitGate   Purpose
-///     0   RangeCheck0   Constrain a
-///     1   RangeCheck0       "
-///     2   RangeCheck1       "
-///     3   RangeCheck2       "
+///     0   RangeCheck0   Partially constrain a0
+///     1   RangeCheck0   Partially constrain a1
+///     2   RangeCheck1   Fully constrain a2
+///     3   RangeCheck2   Complete the constraining of a0 and a1
 ///
 ///  Nb. each CircuitGate type corresponds to a unique polynomial and thus
 ///       is assigned its own unique powers of alpha
