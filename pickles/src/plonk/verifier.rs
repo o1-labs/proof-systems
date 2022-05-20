@@ -1,7 +1,8 @@
 use crate::context::MutualContext;
 use crate::transcript::{Merlin, Passable, Challenge, Absorb, Msg, ZkSponge};
+use std::iter;
 
-use super::{Proof, COLUMNS, CHALLENGE_LEN, SELECTORS};
+use super::{Proof, COLUMNS, PERMUTS, CHALLENGE_LEN, SELECTORS};
 
 use circuit_construction::{Cs, Constants, Var};
 
@@ -40,15 +41,68 @@ where
     }
 }
 
+struct VarCommitments<A>
+    where
+A: AffineCurve,
+A::BaseField: FftField + PrimeField {
+    w_comm: Msg<[VarPoint<A>; COLUMNS]>,
+    t_comm: Msg<VarPoint<A>>,
+    z_comm: Msg<VarPoint<A>>
+}
+
+struct VarEvaluation<F: FftField + PrimeField> {
+    /// witness polynomials
+    pub w: [Var<F>; COLUMNS],
+    
+    /// permutation polynomial
+    pub z: Var<F>,
+
+    /// permutation polynomials
+    /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
+    pub s: [Var<F>; PERMUTS - 1],
+
+    /// lookup-related evaluations
+    //pub lookup: Option<LookupEvaluations<Field>>,
+
+    /// evaluation of the generic selector polynomial
+    pub generic_selector: Var<F>,
+
+    /// evaluation of the poseidon selector polynomial
+    pub poseidon_selector: Var<F>,
+}
+
+// TODO: I would really like to derieve this, 
+// but it means settling on an order which is the same as in the struct!
+impl <F: FftField + PrimeField> Absorb<F> for VarEvaluation<F> {
+    fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut ZkSponge<F>) {
+        // concatenate
+        let points = iter::empty()
+            .chain(iter::once(&self.z))
+            .chain(iter::once(&self.generic_selector))
+            .chain(iter::once( &self.poseidon_selector))
+            .chain(self.w.iter())
+            .chain(self.s.iter());
+
+        // absorb in order
+        points.for_each(|p| sponge.absorb(cs, p));
+    }
+}
+
+struct VarEvaluations<F: FftField + PrimeField> {
+    z: VarEvaluation<F>,  // evaluation at z
+    zw: VarEvaluation<F>, // evaluation at z * \omega (2^k root of unity, next step)
+}
+
 struct VarProof<A> 
     where
     A: AffineCurve,
     A::BaseField: FftField + PrimeField,
 {
     _ph: PhantomData<A>,
-    commitments: Msg<[VarPoint<A>; COLUMNS]>,
+    commitments: VarCommitments<A>,
     ft_eval1: Msg<Var<A::ScalarField>>,
-    p_eval: Msg<[Var<A::ScalarField>; 6]>
+    p_eval: Msg<[Var<A::ScalarField>; 6]>,
+
 }
 
 impl <A> VarProof<A> 
@@ -115,9 +169,9 @@ impl <F: FftField + PrimeField> ScalarChallenge<F> {
 fn verify<A, CsFp, CsFr, C, T>(
     // ctx: &mut MutualContext<A::BaseField, A::ScalarField, CsFp, CsFr>,
     tx: &mut Merlin<A::BaseField, A::ScalarField, CsFp, CsFr>,
-    index: VarIndex<A>,
-    p_comm: Msg<VarPoint<A>>,
-    witness: Option<Proof<A>>,
+    index: VarIndex<A>,        // verifier index
+    p_comm: Msg<VarPoint<A>>,  // commitment to public input
+    witness: Option<Proof<A>>, // witness (a PlonK proof)
 ) where
     A: AffineCurve,
     A::BaseField: FftField + PrimeField,
@@ -131,7 +185,7 @@ fn verify<A, CsFp, CsFr, C, T>(
     let p_comm = tx.recv(p_comm);
 
     //~ 3. Absorb the commitments to the registers / witness columns with the Fq-Sponge.
-    let commitments = tx.recv(pf.commitments);
+    let w_comm = tx.recv(pf.commitments.w_comm);
 
     //~ 6. Sample $\beta$ with the Fq-Sponge.
     let beta: Var<A::BaseField> = tx.challenge();
@@ -139,21 +193,28 @@ fn verify<A, CsFp, CsFr, C, T>(
     //~ 7. Sample $\gamma$ with the Fq-Sponge.
     let gamma: Var<A::BaseField> = tx.challenge();
 
+    //~ 10. Sample $\alpha'$ with the Fq-Sponge.
+    let alpha_chal: ScalarChallenge<A::BaseField> = tx.challenge();
+
+    //~ 11. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
+    let alpha: Var<A::ScalarField> = tx.pass_fits( // pass to other side
+        alpha_chal.to_field(tx.constants()),
+    );
+
+    //~ 13. Absorb the commitment to the quotient polynomial $t$ into the argument.
+    let t_comm = tx.recv(pf.commitments.t_comm);
+
     //~ 14. Sample $\zeta'$ (GLV decomposition of $\zeta$) with the Fq-Sponge.
     let zeta_chal: ScalarChallenge<A::BaseField> = tx.challenge();
 
     //~ 15. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
-    let zeta: Var<A::ScalarField> = tx.pass_fits( // pass though
+    let zeta: Var<A::ScalarField> = tx.pass_fits( // pass to other side
         zeta_chal.to_field(tx.constants()),
     );
 
-    //~ 8. If using lookup, absorb the commitment to the aggregation lookup polynomial.
-    // Question: why is done after (beta/gamma) challenge?
-    /*
-    self.commitments.lookup.iter().for_each(|l| {
-        fq_sponge.absorb_g(&l.aggreg.unshifted);
-    });
-    */
+    
+
+   
 
     let ft_eval = tx.recv_fr(pf.ft_eval1);
     let p_eval = tx.recv_fr(pf.p_eval);

@@ -89,6 +89,9 @@ pub struct Proof<A: AffineCurve> {
     // soundness by Swartz-Zippel.
     zetta: A::ScalarField,
 
+    // commitment to quotient polynomial $t$
+    t_comm: A,
+
     // round 5: opening challenge
     v: A::ScalarField,
     u: A::ScalarField,

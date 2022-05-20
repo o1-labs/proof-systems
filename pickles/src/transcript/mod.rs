@@ -196,6 +196,7 @@ impl <Fp, Fr, CsFp, CsFr> Merlin<Fp, Fr, CsFp, CsFr>
     /// Pass through a variable
     /// 
     /// QUESTION: is the untruncated version used anywhere?
+    #[must_use]
     pub fn pass<P: Passable<Fp>>(&mut self, val: P) -> (Var<Fr>, Option<Var<Fr>>) {
         let fp: &mut Side<Fp, CsFp> = self.fp.as_mut().unwrap();
         let fr: &mut Side<Fr, CsFr> = self.fr.as_mut().unwrap();
@@ -256,6 +257,7 @@ impl <Fp, Fr, CsFp, CsFr> Merlin<Fp, Fr, CsFp, CsFr>
     }
 
     /// Receive a message from the prover
+    #[must_use]
     pub fn recv<H: Absorb<Fp>>(&mut self, msg: Msg<H>) -> H {
         let mut fp: &mut Side<Fp, CsFp> = &mut self.fp.as_mut().unwrap();
         fp.merged = false; // state updated since last squeeze

@@ -17,6 +17,7 @@ pub struct ZkSponge<F: FftField + PrimeField> {
     constants: Constants<F>,
 }
 
+
 impl<F: FftField + PrimeField> ZkSponge<F> {
     pub fn new(constants: Constants<F>) -> Self {
         ZkSponge {
