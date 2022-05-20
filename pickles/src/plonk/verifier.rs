@@ -1,5 +1,5 @@
 use crate::context::MutualContext;
-use crate::transcript::{Merlin, Passable, Challenge, Absorb, Msg, ZkSponge};
+use crate::transcript::{Merlin, Passable, Challenge, Absorb, Msg, VarSponge};
 use std::iter;
 
 use super::{Proof, COLUMNS, PERMUTS, CHALLENGE_LEN, SELECTORS};
@@ -35,7 +35,7 @@ where
     A: AffineCurve,
     A::BaseField: FftField + PrimeField,
 { 
-    fn absorb<C: Cs<A::BaseField>>(&self, cs: &mut C, sponge: &mut ZkSponge<A::BaseField>) {
+    fn absorb<C: Cs<A::BaseField>>(&self, cs: &mut C, sponge: &mut VarSponge<A::BaseField>) {
         sponge.absorb(cs, &self.x);
         sponge.absorb(cs, &self.y);
     }
@@ -74,7 +74,7 @@ struct VarEvaluation<F: FftField + PrimeField> {
 // DISCUSS: I would really like to #[derieve(Absorb)] this, 
 // but it means settling on an order which is the same as in the struct!
 impl <F: FftField + PrimeField> Absorb<F> for VarEvaluation<F> {
-    fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut ZkSponge<F>) {
+    fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut VarSponge<F>) {
         // concatenate
         let points = iter::empty()
             .chain(iter::once(&self.z))
@@ -95,7 +95,7 @@ struct VarEvaluations<F: FftField + PrimeField> {
 
 
 impl <F: FftField + PrimeField> Absorb<F> for VarEvaluations<F> {
-    fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut ZkSponge<F>) {
+    fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut VarSponge<F>) {
         sponge.absorb(cs, &self.z);
         sponge.absorb(cs, &self.zw);
     }
@@ -147,7 +147,7 @@ impl<F: FftField + PrimeField> Into<Var<F>> for ScalarChallenge<F> {
 }
 
 impl<F: FftField + PrimeField> Challenge<F> for ScalarChallenge<F> {
-    fn generate<C: Cs<F>>(cs: &mut C, sponge: &mut ZkSponge<F>) -> Self {
+    fn generate<C: Cs<F>>(cs: &mut C, sponge: &mut VarSponge<F>) -> Self {
         // generate challenge using sponge
         let scalar: Var<F> = Var::generate(cs, sponge);
 

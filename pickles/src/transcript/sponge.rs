@@ -2,7 +2,7 @@ use circuit_construction::{Constants, Cs, Var};
 
 use ark_ff::{FftField, FpParameters, PrimeField};
 
-// TODO: these constants are currently hidden behind a trait
+// DISCUSS: these constants are currently hidden behind a trait
 // which prevents their use with const-generics in current rust.
 // We should change that...
 const SPONGE_WIDTH: usize = 3;
@@ -12,15 +12,15 @@ const SPONGE_RATE: usize = 2;
 ///
 /// See "oracle" crate for the "plaintext implementation"
 ///
-pub struct ZkSponge<F: FftField + PrimeField> {
+pub struct VarSponge<F: FftField + PrimeField> {
     state: [Var<F>; SPONGE_WIDTH],
     constants: Constants<F>,
 }
 
 
-impl<F: FftField + PrimeField> ZkSponge<F> {
+impl<F: FftField + PrimeField> VarSponge<F> {
     pub fn new(constants: Constants<F>) -> Self {
-        ZkSponge {
+        VarSponge {
             state: unimplemented!(),
             constants,
         }
@@ -41,19 +41,19 @@ impl<F: FftField + PrimeField> ZkSponge<F> {
 
 /// Describes a type which can be "absorbed" into a sponge over a given field
 pub trait Absorb<F: FftField + PrimeField> {
-    fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut ZkSponge<F>);
+    fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut VarSponge<F>);
 }
 
 // Can absorb a slice of absorbable elements
 impl <F: FftField + PrimeField, T: Absorb<F>> Absorb<F> for [T] {
-    fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut ZkSponge<F>) {
+    fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut VarSponge<F>) {
         self.iter().for_each(|c| c.absorb(cs, sponge))
     }
 }
 
 // Can absorb a fixed length array of absorbable elements
 impl <F: FftField + PrimeField, T: Absorb<F>, const N: usize> Absorb<F> for [T; N] {
-    fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut ZkSponge<F>) {
+    fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut VarSponge<F>) {
         let slice: &[T] = &self[..];
         slice.absorb(cs, sponge)
     }
@@ -61,7 +61,7 @@ impl <F: FftField + PrimeField, T: Absorb<F>, const N: usize> Absorb<F> for [T; 
 
 // Can absorb a variable from the same field
 impl <F: FftField + PrimeField> Absorb<F> for Var<F> {
-    fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut ZkSponge<F>) {
+    fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut VarSponge<F>) {
         unimplemented!()
     }
 }

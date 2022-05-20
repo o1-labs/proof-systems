@@ -7,7 +7,7 @@ mod utils;
 
 use super::MutualContext;
 
-pub use sponge::{ZkSponge, Absorb};
+pub use sponge::{VarSponge, Absorb};
 
 use utils::{decompose, lift, need_decompose, transfer_hash};
 
@@ -67,7 +67,7 @@ struct Side<F: FftField + PrimeField, C: Cs<F>> {
     constants: Constants<F>,
     public: Vec<Public<F>>, // "export / pass"
     passthrough: Vec<Var<F>>, // passthough fields from this side (to the complement)
-    sponge: ZkSponge<F>, // sponge constrained inside the proof system
+    sponge: VarSponge<F>, // sponge constrained inside the proof system
     bridge: Vec<Var<F>>, // "exported sponge states", used to merge transcripts across proofs
                          // QUESTION: can this be combined with "passthough"
     merged: bool,        // has the current state been merged with the other side?
@@ -77,7 +77,7 @@ impl<F: FftField + PrimeField, C: Cs<F>> Side<F, C> {
     fn new(cs: C, constants: Constants<F>) -> Self {
         Self {
             cs,
-            sponge: ZkSponge::new(constants.clone()),
+            sponge: VarSponge::new(constants.clone()),
             public: vec![],
             passthrough: vec![],
             constants,
@@ -100,13 +100,13 @@ pub struct Merlin<Fp, Fr, CsFp, CsFr>
 
 /// Describes a type which can be "squeezed" (generated) from the sponge
 pub trait Challenge<F: FftField + PrimeField> {
-    fn generate<C: Cs<F>>(cs: &mut C, sponge: &mut ZkSponge<F>) -> Self;
+    fn generate<C: Cs<F>>(cs: &mut C, sponge: &mut VarSponge<F>) -> Self;
     
 }
 
 // Can generate a variable from the same field
 impl <F: FftField + PrimeField> Challenge<F> for Var<F> {
-    fn generate<C: Cs<F>>(cs: &mut C, sponge: &mut ZkSponge<F>) -> Self {
+    fn generate<C: Cs<F>>(cs: &mut C, sponge: &mut VarSponge<F>) -> Self {
         sponge.squeeze(cs)
     }
 }
