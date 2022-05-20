@@ -208,10 +208,9 @@ fn append_range_check_field_element_rows<F: PrimeField>(
 }
 
 /// Create a range check witness
-pub fn create_witness<F: PrimeField>(a: BigUint, b: BigUint) -> [Vec<F>; COLUMNS] {
-    assert!(a.bits() <= (MAX_LIMBS * LIMB_SIZE) as u64);
-    let mut witness: [Vec<F>; COLUMNS] = array_init(|_| vec![F::zero(); 8]);
-    append_range_check_field_element_rows(&mut witness, a);
-    append_range_check_field_element_rows(&mut witness, b);
+pub fn create_witness<F: PrimeField>(fe: BigUint) -> [Vec<F>; COLUMNS] {
+    assert!(fe.bits() <= (MAX_LIMBS * LIMB_SIZE) as u64);
+    let mut witness: [Vec<F>; COLUMNS] = array_init(|_| vec![F::zero(); 4]);
+    append_range_check_field_element_rows(&mut witness, fe);
     witness
 }
