@@ -479,6 +479,9 @@
 <span id="472">472</span>
 <span id="473">473</span>
 <span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Range check gate</span>
 
 <span class="kw">use</span> <span class="ident">std::collections::HashMap</span>;
@@ -499,17 +502,46 @@
         <span class="ident">expr</span>::{<span class="self">self</span>, <span class="ident">l0_1</span>, <span class="ident">Environment</span>, <span class="ident">E</span>},
         <span class="ident">gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">GateType</span>},
         <span class="ident">polynomial::COLUMNS</span>,
-        <span class="ident">wires::GateWires</span>,
+        <span class="ident">wires</span>::{<span class="ident">GateWires</span>, <span class="ident">Wire</span>},
     },
 };
 
 <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">RangeCheck0</span>, <span class="ident">RangeCheck1</span>};
 
+<span class="comment">// Connect the pair of cells specified by the cell1 and cell2 parameters</span>
+<span class="comment">// cell1 --&gt; cell2 &amp;&amp; cell2 --&gt; cell1</span>
+<span class="comment">//</span>
+<span class="comment">// Note: This function assumes that the targeted cells are freshly instantiated</span>
+<span class="comment">//       with self-connections.  If the two cells are transitively already part</span>
+<span class="comment">//       of the same permutation then this would split it.</span>
+<span class="kw">fn</span> <span class="ident">connect_cell_pair</span>(<span class="ident">wires</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">GateWires</span>], <span class="ident">cell1</span>: (<span class="ident">usize</span>, <span class="ident">usize</span>), <span class="ident">cell2</span>: (<span class="ident">usize</span>, <span class="ident">usize</span>)) {
+    <span class="kw">let</span> <span class="ident">tmp</span> <span class="op">=</span> <span class="ident">wires</span>[<span class="ident">cell1</span>.<span class="number">0</span>][<span class="ident">cell1</span>.<span class="number">1</span>];
+    <span class="ident">wires</span>[<span class="ident">cell1</span>.<span class="number">0</span>][<span class="ident">cell1</span>.<span class="number">1</span>] <span class="op">=</span> <span class="ident">wires</span>[<span class="ident">cell2</span>.<span class="number">0</span>][<span class="ident">cell2</span>.<span class="number">1</span>];
+    <span class="ident">wires</span>[<span class="ident">cell2</span>.<span class="number">0</span>][<span class="ident">cell2</span>.<span class="number">1</span>] <span class="op">=</span> <span class="ident">tmp</span>;
+}
+
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">SquareRootField</span><span class="op">&gt;</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Create range check gate</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_range_check</span>(<span class="ident">wires</span>: <span class="kw-2">&amp;</span>[<span class="ident">GateWires</span>; <span class="number">8</span>]) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
-        <span class="macro">vec!</span>[
-            <span class="comment">/* Input: a */</span>
+    <span class="doccomment">///     Inputs the starting row</span>
+    <span class="doccomment">///     Outputs tuple (next_row, circuit_gates) where</span>
+    <span class="doccomment">///       next_row      - next row after this gate</span>
+    <span class="doccomment">///       circuit_gates - vector of circuit gates comprising this gate</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_range_check</span>(<span class="ident">start_row</span>: <span class="ident">usize</span>) -&gt; (<span class="ident">usize</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wires</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">GateWires</span><span class="op">&gt;</span> <span class="op">=</span> (<span class="number">0</span>..<span class="number">4</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">Wire::new</span>(<span class="ident">start_row</span> <span class="op">+</span> <span class="ident">i</span>)).<span class="ident">collect</span>();
+
+        <span class="comment">// copy a0p4</span>
+        <span class="ident">connect_cell_pair</span>(<span class="kw-2">&amp;mut</span> <span class="ident">wires</span>, (<span class="number">0</span>, <span class="number">5</span>), (<span class="number">3</span>, <span class="number">1</span>));
+
+        <span class="comment">// copy a0p5</span>
+        <span class="ident">connect_cell_pair</span>(<span class="kw-2">&amp;mut</span> <span class="ident">wires</span>, (<span class="number">0</span>, <span class="number">6</span>), (<span class="number">3</span>, <span class="number">2</span>));
+
+        <span class="comment">// copy a1p4</span>
+        <span class="ident">connect_cell_pair</span>(<span class="kw-2">&amp;mut</span> <span class="ident">wires</span>, (<span class="number">1</span>, <span class="number">5</span>), (<span class="number">3</span>, <span class="number">3</span>));
+
+        <span class="comment">// copy a1p5</span>
+        <span class="ident">connect_cell_pair</span>(<span class="kw-2">&amp;mut</span> <span class="ident">wires</span>, (<span class="number">1</span>, <span class="number">6</span>), (<span class="number">3</span>, <span class="number">4</span>));
+
+        <span class="kw">let</span> <span class="ident">circuit_gates</span> <span class="op">=</span> <span class="macro">vec!</span>[
             <span class="ident">CircuitGate</span> {
                 <span class="ident">typ</span>: <span class="ident">GateType::RangeCheck0</span>,
                 <span class="ident">wires</span>: <span class="ident">wires</span>[<span class="number">0</span>],
@@ -530,31 +562,12 @@
                 <span class="ident">wires</span>: <span class="ident">wires</span>[<span class="number">3</span>],
                 <span class="ident">coeffs</span>: <span class="macro">vec!</span>[],
             },
-            <span class="comment">/* Input: b */</span>
-            <span class="ident">CircuitGate</span> {
-                <span class="ident">typ</span>: <span class="ident">GateType::RangeCheck0</span>,
-                <span class="ident">wires</span>: <span class="ident">wires</span>[<span class="number">4</span>],
-                <span class="ident">coeffs</span>: <span class="macro">vec!</span>[],
-            },
-            <span class="ident">CircuitGate</span> {
-                <span class="ident">typ</span>: <span class="ident">GateType::RangeCheck0</span>,
-                <span class="ident">wires</span>: <span class="ident">wires</span>[<span class="number">5</span>],
-                <span class="ident">coeffs</span>: <span class="macro">vec!</span>[],
-            },
-            <span class="ident">CircuitGate</span> {
-                <span class="ident">typ</span>: <span class="ident">GateType::RangeCheck1</span>,
-                <span class="ident">wires</span>: <span class="ident">wires</span>[<span class="number">6</span>],
-                <span class="ident">coeffs</span>: <span class="macro">vec!</span>[],
-            },
-            <span class="ident">CircuitGate</span> {
-                <span class="ident">typ</span>: <span class="ident">GateType::RangeCheck2</span>,
-                <span class="ident">wires</span>: <span class="ident">wires</span>[<span class="number">7</span>],
-                <span class="ident">coeffs</span>: <span class="macro">vec!</span>[],
-            },
-        ]
+        ];
+
+        (<span class="ident">start_row</span> <span class="op">+</span> <span class="ident">circuit_gates</span>.<span class="ident">len</span>(), <span class="ident">circuit_gates</span>)
     }
 
-    <span class="comment">// Verify the range check circuit gate on a given row</span>
+    <span class="doccomment">/// Verify the range check circuit gate on a given row</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_range_check</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="kw">_</span>: <span class="ident">usize</span>,
@@ -595,7 +608,9 @@
         <span class="kw">let</span> <span class="ident">rng</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">StdRng::from_seed</span>([<span class="number">0u8</span>; <span class="number">32</span>]);
         <span class="kw">let</span> <span class="ident">beta</span> <span class="op">=</span> <span class="ident">F::rand</span>(<span class="ident">rng</span>);
         <span class="kw">let</span> <span class="ident">gamma</span> <span class="op">=</span> <span class="ident">F::rand</span>(<span class="ident">rng</span>);
-        <span class="kw">let</span> <span class="ident">z_poly</span> <span class="op">=</span> <span class="ident">cs</span>.<span class="ident">perm_aggreg</span>(<span class="kw-2">&amp;</span><span class="ident">witness</span>, <span class="kw-2">&amp;</span><span class="ident">beta</span>, <span class="kw-2">&amp;</span><span class="ident">gamma</span>, <span class="ident">rng</span>).<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">z_poly</span> <span class="op">=</span> <span class="ident">cs</span>
+            .<span class="ident">perm_aggreg</span>(<span class="kw-2">&amp;</span><span class="ident">witness</span>, <span class="kw-2">&amp;</span><span class="ident">beta</span>, <span class="kw-2">&amp;</span><span class="ident">gamma</span>, <span class="ident">rng</span>)
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">format!</span>(<span class="string">&quot;Invalid {:?} constraint - permutation failed&quot;</span>, <span class="self">self</span>.<span class="ident">typ</span>))<span class="question-mark">?</span>;
 
         <span class="comment">// Compute witness polynomial evaluations</span>
         <span class="kw">let</span> <span class="ident">witness_evals</span> <span class="op">=</span> <span class="ident">cs</span>.<span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="ident">witness_poly</span>, <span class="kw-2">&amp;</span><span class="ident">z_poly</span>);
@@ -736,7 +751,7 @@
     <span class="kw">use</span> <span class="kw">crate</span>::{
         <span class="ident">circuits</span>::{
             <span class="ident">constraints::ConstraintSystem</span>, <span class="ident">gate::CircuitGate</span>, <span class="ident">polynomial::COLUMNS</span>,
-            <span class="ident">polynomials::range_check</span>, <span class="ident">wires::Wire</span>,
+            <span class="ident">polynomials::range_check</span>,
         },
         <span class="ident">proof::ProverProof</span>,
         <span class="ident">prover_index::testing::new_index_for_test_with_lookups</span>,
@@ -752,8 +767,7 @@
     <span class="kw">type</span> <span class="ident">PallasField</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">pallas::Affine</span> <span class="kw">as</span> <span class="ident">AffineCurve</span><span class="op">&gt;</span><span class="ident">::BaseField</span>;
 
     <span class="kw">fn</span> <span class="ident">create_test_constraint_system</span>() -&gt; <span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">PallasField</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">wires</span> <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">Wire::new</span>(<span class="ident">i</span>));
-        <span class="kw">let</span> <span class="ident">gates</span> <span class="op">=</span> <span class="ident">CircuitGate</span>::<span class="op">&lt;</span><span class="ident">PallasField</span><span class="op">&gt;</span><span class="ident">::create_range_check</span>(<span class="kw-2">&amp;</span><span class="ident">wires</span>);
+        <span class="kw">let</span> (<span class="kw">_</span>, <span class="ident">gates</span>) <span class="op">=</span> <span class="ident">CircuitGate</span>::<span class="op">&lt;</span><span class="ident">PallasField</span><span class="op">&gt;</span><span class="ident">::create_range_check</span>(<span class="number">0</span>);
 
         <span class="ident">ConstraintSystem::create</span>(<span class="ident">gates</span>, <span class="macro">vec!</span>[], <span class="ident">oracle::pasta::fp_kimchi::params</span>(), <span class="number">0</span>).<span class="ident">unwrap</span>()
     }
@@ -761,8 +775,7 @@
     <span class="kw">fn</span> <span class="ident">create_test_prover_index</span>(
         <span class="ident">public_size</span>: <span class="ident">usize</span>,
     ) -&gt; <span class="ident">ProverIndex</span><span class="op">&lt;</span><span class="ident">mina_curves::pasta::vesta::Affine</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">wires</span> <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">Wire::new</span>(<span class="ident">i</span>));
-        <span class="kw">let</span> <span class="ident">gates</span> <span class="op">=</span> <span class="ident">CircuitGate</span>::<span class="op">&lt;</span><span class="ident">PallasField</span><span class="op">&gt;</span><span class="ident">::create_range_check</span>(<span class="kw-2">&amp;</span><span class="ident">wires</span>);
+        <span class="kw">let</span> (<span class="kw">_</span>, <span class="ident">gates</span>) <span class="op">=</span> <span class="ident">CircuitGate</span>::<span class="op">&lt;</span><span class="ident">PallasField</span><span class="op">&gt;</span><span class="ident">::create_range_check</span>(<span class="number">0</span>);
         <span class="ident">new_index_for_test_with_lookups</span>(<span class="ident">gates</span>, <span class="ident">public_size</span>, <span class="macro">vec!</span>[])
     }
 
@@ -775,7 +788,7 @@
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">verify_range_check0_zero_valid_witness</span>() {
         <span class="kw">let</span> <span class="ident">cs</span> <span class="op">=</span> <span class="ident">create_test_constraint_system</span>();
-        <span class="kw">let</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PallasField</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">vec!</span>[<span class="ident">PallasField::from</span>(<span class="number">0</span>); <span class="number">2</span>]);
+        <span class="kw">let</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PallasField</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">vec!</span>[<span class="ident">PallasField::from</span>(<span class="number">0</span>); <span class="number">4</span>]);
 
         <span class="comment">// gates[0] is RangeCheck0</span>
         <span class="macro">assert_eq!</span>(<span class="ident">cs</span>.<span class="ident">gates</span>[<span class="number">0</span>].<span class="ident">verify_range_check</span>(<span class="number">0</span>, <span class="kw-2">&amp;</span><span class="ident">witness</span>, <span class="kw-2">&amp;</span><span class="ident">cs</span>), <span class="prelude-val">Ok</span>(()));
@@ -784,7 +797,7 @@
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">verify_range_check0_one_invalid_witness</span>() {
         <span class="kw">let</span> <span class="ident">cs</span> <span class="op">=</span> <span class="ident">create_test_constraint_system</span>();
-        <span class="kw">let</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PallasField</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">vec!</span>[<span class="ident">PallasField::from</span>(<span class="number">1</span>); <span class="number">2</span>]);
+        <span class="kw">let</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PallasField</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">vec!</span>[<span class="ident">PallasField::from</span>(<span class="number">1</span>); <span class="number">4</span>]);
 
         <span class="comment">// gates[0] is RangeCheck0</span>
         <span class="macro">assert_eq!</span>(
@@ -797,10 +810,9 @@
     <span class="kw">fn</span> <span class="ident">verify_range_check0_valid_witness</span>() {
         <span class="kw">let</span> <span class="ident">cs</span> <span class="op">=</span> <span class="ident">create_test_constraint_system</span>();
 
-        <span class="kw">let</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PallasField</span><span class="op">&gt;</span>; <span class="number">15</span>] <span class="op">=</span> <span class="ident">range_check::create_witness</span>(
-            <span class="ident">biguint_from_hex_le</span>(<span class="string">&quot;1112223334445556667777888999aaabbbcccdddeeefff111222333444555611&quot;</span>),
-            <span class="ident">biguint_from_hex_le</span>(<span class="string">&quot;1112223334445556667777888999aaabbbcccdddeeefff111222333444555611&quot;</span>),
-        );
+        <span class="kw">let</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PallasField</span><span class="op">&gt;</span>; <span class="number">15</span>] <span class="op">=</span> <span class="ident">range_check::create_witness</span>(<span class="ident">biguint_from_hex_le</span>(
+            <span class="string">&quot;1112223334445556667777888999aaabbbcccdddeeefff111222333444555611&quot;</span>,
+        ));
 
         <span class="comment">// gates[0] is RangeCheck0</span>
         <span class="macro">assert_eq!</span>(<span class="ident">cs</span>.<span class="ident">gates</span>[<span class="number">0</span>].<span class="ident">verify_range_check</span>(<span class="number">0</span>, <span class="kw-2">&amp;</span><span class="ident">witness</span>, <span class="kw-2">&amp;</span><span class="ident">cs</span>), <span class="prelude-val">Ok</span>(()));
@@ -808,10 +820,9 @@
         <span class="comment">// gates[1] is RangeCheck0</span>
         <span class="macro">assert_eq!</span>(<span class="ident">cs</span>.<span class="ident">gates</span>[<span class="number">1</span>].<span class="ident">verify_range_check</span>(<span class="number">1</span>, <span class="kw-2">&amp;</span><span class="ident">witness</span>, <span class="kw-2">&amp;</span><span class="ident">cs</span>), <span class="prelude-val">Ok</span>(()));
 
-        <span class="kw">let</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PallasField</span><span class="op">&gt;</span>; <span class="number">15</span>] <span class="op">=</span> <span class="ident">range_check::create_witness</span>(
-            <span class="ident">biguint_from_hex_le</span>(<span class="string">&quot;f59abe33f5d808f8df3e63984621b01e375585fea8dd4030f71a0d80ac06d423&quot;</span>),
-            <span class="ident">biguint_from_hex_le</span>(<span class="string">&quot;f59abe33f5d808f8df3e63984621b01e375585fea8dd4030f71a0d80ac06d423&quot;</span>),
-        );
+        <span class="kw">let</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PallasField</span><span class="op">&gt;</span>; <span class="number">15</span>] <span class="op">=</span> <span class="ident">range_check::create_witness</span>(<span class="ident">biguint_from_hex_le</span>(
+            <span class="string">&quot;f59abe33f5d808f8df3e63984621b01e375585fea8dd4030f71a0d80ac06d423&quot;</span>,
+        ));
 
         <span class="comment">// gates[0] is RangeCheck0</span>
         <span class="macro">assert_eq!</span>(<span class="ident">cs</span>.<span class="ident">gates</span>[<span class="number">0</span>].<span class="ident">verify_range_check</span>(<span class="number">0</span>, <span class="kw-2">&amp;</span><span class="ident">witness</span>, <span class="kw-2">&amp;</span><span class="ident">cs</span>), <span class="prelude-val">Ok</span>(()));
@@ -824,8 +835,7 @@
     <span class="kw">fn</span> <span class="ident">verify_range_check0_invalid_witness</span>() {
         <span class="kw">let</span> <span class="ident">cs</span> <span class="op">=</span> <span class="ident">create_test_constraint_system</span>();
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PallasField</span><span class="op">&gt;</span>; <span class="number">15</span>] <span class="op">=</span> <span class="ident">range_check::create_witness</span>(
-            <span class="ident">biguint_from_hex_le</span>(<span class="string">&quot;bca91cf9df6cfd8bd225fd3f46ba2f3f33809d0ee2e7ad338448b4ece7b4f622&quot;</span>),
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PallasField</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">range_check::create_witness</span>(
             <span class="ident">biguint_from_hex_le</span>(<span class="string">&quot;bca91cf9df6cfd8bd225fd3f46ba2f3f33809d0ee2e7ad338448b4ece7b4f622&quot;</span>),
         );
 
@@ -835,13 +845,14 @@
         <span class="comment">// gates[0] is RangeCheck0</span>
         <span class="macro">assert_eq!</span>(
             <span class="ident">cs</span>.<span class="ident">gates</span>[<span class="number">0</span>].<span class="ident">verify_range_check</span>(<span class="number">0</span>, <span class="kw-2">&amp;</span><span class="ident">witness</span>, <span class="kw-2">&amp;</span><span class="ident">cs</span>),
-            <span class="prelude-val">Err</span>(<span class="ident">String::from</span>(<span class="string">&quot;Invalid RangeCheck0 constraint&quot;</span>))
+            <span class="prelude-val">Err</span>(<span class="ident">String::from</span>(
+                <span class="string">&quot;Invalid RangeCheck0 constraint - permutation failed&quot;</span>
+            ))
         );
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PallasField</span><span class="op">&gt;</span>; <span class="number">15</span>] <span class="op">=</span> <span class="ident">range_check::create_witness</span>(
-            <span class="ident">biguint_from_hex_le</span>(<span class="string">&quot;301a091e9f74cd459a448c311ae47fe2f4311db61ae1cbd2afee0171e2b5ca22&quot;</span>),
-            <span class="ident">biguint_from_hex_le</span>(<span class="string">&quot;301a091e9f74cd459a448c311ae47fe2f4311db61ae1cbd2afee0171e2b5ca22&quot;</span>),
-        );
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PallasField</span><span class="op">&gt;</span>; <span class="number">15</span>] <span class="op">=</span> <span class="ident">range_check::create_witness</span>(<span class="ident">biguint_from_hex_le</span>(
+            <span class="string">&quot;301a091e9f74cd459a448c311ae47fe2f4311db61ae1cbd2afee0171e2b5ca22&quot;</span>,
+        ));
 
         <span class="comment">// Invalidate witness</span>
         <span class="ident">witness</span>[<span class="number">8</span>][<span class="number">0</span>] <span class="op">=</span> <span class="ident">witness</span>[<span class="number">0</span>][<span class="number">0</span>] <span class="op">+</span> <span class="ident">PallasField::one</span>();
@@ -857,18 +868,16 @@
     <span class="kw">fn</span> <span class="ident">verify_range_check1_valid_witness</span>() {
         <span class="kw">let</span> <span class="ident">cs</span> <span class="op">=</span> <span class="ident">create_test_constraint_system</span>();
 
-        <span class="kw">let</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PallasField</span><span class="op">&gt;</span>; <span class="number">15</span>] <span class="op">=</span> <span class="ident">range_check::create_witness</span>(
-            <span class="ident">biguint_from_hex_le</span>(<span class="string">&quot;72de0b593fbd97e172ddfb1d7c1f7488948c622a7ff6bffa0279e35a7c148733&quot;</span>),
-            <span class="ident">biguint_from_hex_le</span>(<span class="string">&quot;72de0b593fbd97e172ddfb1d7c1f7488948c622a7ff6bffa0279e35a7c148733&quot;</span>),
-        );
+        <span class="kw">let</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PallasField</span><span class="op">&gt;</span>; <span class="number">15</span>] <span class="op">=</span> <span class="ident">range_check::create_witness</span>(<span class="ident">biguint_from_hex_le</span>(
+            <span class="string">&quot;72de0b593fbd97e172ddfb1d7c1f7488948c622a7ff6bffa0279e35a7c148733&quot;</span>,
+        ));
 
         <span class="comment">// gates[2] is RangeCheck1</span>
         <span class="macro">assert_eq!</span>(<span class="ident">cs</span>.<span class="ident">gates</span>[<span class="number">2</span>].<span class="ident">verify_range_check</span>(<span class="number">2</span>, <span class="kw-2">&amp;</span><span class="ident">witness</span>, <span class="kw-2">&amp;</span><span class="ident">cs</span>), <span class="prelude-val">Ok</span>(()));
 
-        <span class="kw">let</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PallasField</span><span class="op">&gt;</span>; <span class="number">15</span>] <span class="op">=</span> <span class="ident">range_check::create_witness</span>(
-            <span class="ident">biguint_from_hex_le</span>(<span class="string">&quot;58372fb93039e7106c68488dceb6cab3ffb0e7c8594dcc3bc7160321fcf6960d&quot;</span>),
-            <span class="ident">biguint_from_hex_le</span>(<span class="string">&quot;58372fb93039e7106c68488dceb6cab3ffb0e7c8594dcc3bc7160321fcf6960d&quot;</span>),
-        );
+        <span class="kw">let</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PallasField</span><span class="op">&gt;</span>; <span class="number">15</span>] <span class="op">=</span> <span class="ident">range_check::create_witness</span>(<span class="ident">biguint_from_hex_le</span>(
+            <span class="string">&quot;58372fb93039e7106c68488dceb6cab3ffb0e7c8594dcc3bc7160321fcf6960d&quot;</span>,
+        ));
 
         <span class="comment">// gates[2] is RangeCheck1</span>
         <span class="macro">assert_eq!</span>(<span class="ident">cs</span>.<span class="ident">gates</span>[<span class="number">2</span>].<span class="ident">verify_range_check</span>(<span class="number">2</span>, <span class="kw-2">&amp;</span><span class="ident">witness</span>, <span class="kw-2">&amp;</span><span class="ident">cs</span>), <span class="prelude-val">Ok</span>(()));
@@ -878,10 +887,9 @@
     <span class="kw">fn</span> <span class="ident">verify_range_check1_invalid_witness</span>() {
         <span class="kw">let</span> <span class="ident">cs</span> <span class="op">=</span> <span class="ident">create_test_constraint_system</span>();
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PallasField</span><span class="op">&gt;</span>; <span class="number">15</span>] <span class="op">=</span> <span class="ident">range_check::create_witness</span>(
-            <span class="ident">biguint_from_hex_le</span>(<span class="string">&quot;260efa1879427b08ca608d455d9f39954b5243dd52117e9ed5982f94acd3e22c&quot;</span>),
-            <span class="ident">biguint_from_hex_le</span>(<span class="string">&quot;260efa1879427b08ca608d455d9f39954b5243dd52117e9ed5982f94acd3e22c&quot;</span>),
-        );
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PallasField</span><span class="op">&gt;</span>; <span class="number">15</span>] <span class="op">=</span> <span class="ident">range_check::create_witness</span>(<span class="ident">biguint_from_hex_le</span>(
+            <span class="string">&quot;260efa1879427b08ca608d455d9f39954b5243dd52117e9ed5982f94acd3e22c&quot;</span>,
+        ));
 
         <span class="comment">// Corrupt witness</span>
         <span class="ident">witness</span>[<span class="number">0</span>][<span class="number">2</span>] <span class="op">=</span> <span class="ident">witness</span>[<span class="number">7</span>][<span class="number">2</span>];
@@ -892,10 +900,9 @@
             <span class="prelude-val">Err</span>(<span class="ident">String::from</span>(<span class="string">&quot;Invalid RangeCheck1 constraint&quot;</span>))
         );
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PallasField</span><span class="op">&gt;</span>; <span class="number">15</span>] <span class="op">=</span> <span class="ident">range_check::create_witness</span>(
-            <span class="ident">biguint_from_hex_le</span>(<span class="string">&quot;afd209d02c77546022ea860f9340e4289ecdd783e9c0012fd383dcd2940cd51b&quot;</span>),
-            <span class="ident">biguint_from_hex_le</span>(<span class="string">&quot;afd209d02c77546022ea860f9340e4289ecdd783e9c0012fd383dcd2940cd51b&quot;</span>),
-        );
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PallasField</span><span class="op">&gt;</span>; <span class="number">15</span>] <span class="op">=</span> <span class="ident">range_check::create_witness</span>(<span class="ident">biguint_from_hex_le</span>(
+            <span class="string">&quot;afd209d02c77546022ea860f9340e4289ecdd783e9c0012fd383dcd2940cd51b&quot;</span>,
+        ));
 
         <span class="comment">// Corrupt witness</span>
         <span class="ident">witness</span>[<span class="number">13</span>][<span class="number">2</span>] <span class="op">=</span> <span class="ident">witness</span>[<span class="number">1</span>][<span class="number">2</span>];
@@ -926,10 +933,9 @@
         <span class="kw">let</span> <span class="ident">prover_index</span> <span class="op">=</span> <span class="ident">create_test_prover_index</span>(<span class="number">0</span>);
 
         <span class="comment">// Create witness</span>
-        <span class="kw">let</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PallasField</span><span class="op">&gt;</span>; <span class="number">15</span>] <span class="op">=</span> <span class="ident">range_check::create_witness</span>(
-            <span class="ident">biguint_from_hex_le</span>(<span class="string">&quot;56acede83576c45ec8c11a85ac97e2393a9f88308b4b42d1b1506f2faaafc02b&quot;</span>),
-            <span class="ident">biguint_from_hex_le</span>(<span class="string">&quot;56acede83576c45ec8c11a85ac97e2393a9f88308b4b42d1b1506f2faaafc02b&quot;</span>),
-        );
+        <span class="kw">let</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PallasField</span><span class="op">&gt;</span>; <span class="number">15</span>] <span class="op">=</span> <span class="ident">range_check::create_witness</span>(<span class="ident">biguint_from_hex_le</span>(
+            <span class="string">&quot;56acede83576c45ec8c11a85ac97e2393a9f88308b4b42d1b1506f2faaafc02b&quot;</span>,
+        ));
 
         <span class="comment">// Verify computed witness satisfies the circuit</span>
         <span class="ident">prover_index</span>.<span class="ident">cs</span>.<span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="ident">witness</span>, <span class="kw-2">&amp;</span>[]).<span class="ident">unwrap</span>();
@@ -954,5 +960,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (c52b9c10b 2022-05-16)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (c06728704 2022-05-19)" ></div>
 </body></html>

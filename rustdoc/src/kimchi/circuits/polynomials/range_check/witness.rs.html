@@ -221,7 +221,6 @@
 <span id="214">214</span>
 <span id="215">215</span>
 <span id="216">216</span>
-<span id="217">217</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Witness computation</span>
 
 <span class="doccomment">/// TODO: make dynamic</span>
@@ -432,13 +431,12 @@
 }
 
 <span class="doccomment">/// Create a range check witness</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_witness</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span>(<span class="ident">a</span>: <span class="ident">BigUint</span>, <span class="ident">b</span>: <span class="ident">BigUint</span>) -&gt; [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] {
-    <span class="macro">assert!</span>(<span class="ident">a</span>.<span class="ident">bits</span>() <span class="op">&lt;</span><span class="op">=</span> (<span class="ident">MAX_LIMBS</span> <span class="op">*</span> <span class="ident">LIMB_SIZE</span>) <span class="kw">as</span> <span class="ident">u64</span>);
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="number">8</span>]);
-    <span class="ident">append_range_check_field_element_rows</span>(<span class="kw-2">&amp;mut</span> <span class="ident">witness</span>, <span class="ident">a</span>);
-    <span class="ident">append_range_check_field_element_rows</span>(<span class="kw-2">&amp;mut</span> <span class="ident">witness</span>, <span class="ident">b</span>);
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_witness</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span>(<span class="ident">fe</span>: <span class="ident">BigUint</span>) -&gt; [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] {
+    <span class="macro">assert!</span>(<span class="ident">fe</span>.<span class="ident">bits</span>() <span class="op">&lt;</span><span class="op">=</span> (<span class="ident">MAX_LIMBS</span> <span class="op">*</span> <span class="ident">LIMB_SIZE</span>) <span class="kw">as</span> <span class="ident">u64</span>);
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="number">4</span>]);
+    <span class="ident">append_range_check_field_element_rows</span>(<span class="kw-2">&amp;mut</span> <span class="ident">witness</span>, <span class="ident">fe</span>);
     <span class="ident">witness</span>
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (c52b9c10b 2022-05-16)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (c06728704 2022-05-19)" ></div>
 </body></html>

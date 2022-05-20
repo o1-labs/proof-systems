@@ -143,7 +143,6 @@
 <span id="136">136</span>
 <span id="137">137</span>
 <span id="138">138</span>
-<span id="139">139</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module represents the Cairo memory, containing the</span>
 <span class="doccomment">//! compiled Cairo program that occupies the first few entries</span>
 
@@ -186,11 +185,10 @@
         <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">1</span>..<span class="self">self</span>.<span class="ident">len</span>() {
             <span class="comment">// Visualize content of memory excluding the 0th dummy entry</span>
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">elem</span>) <span class="op">=</span> <span class="self">self</span>[<span class="ident">F::from</span>(<span class="ident">i</span>)] {
-                <span class="kw">if</span> <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;{0:&gt;6}: 0x{1:}&quot;</span>, <span class="ident">i</span>, <span class="ident">elem</span>.<span class="ident">word</span>().<span class="ident">to_hex_be</span>()).<span class="ident">is_err</span>() {
-                    <span class="macro">println!</span>(<span class="string">&quot;Error while writing&quot;</span>)
-                }
-            } <span class="kw">else</span> <span class="kw">if</span> <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;{0:&gt;6}: None&quot;</span>, <span class="ident">i</span>).<span class="ident">is_err</span>() {
-                <span class="macro">println!</span>(<span class="string">&quot;Error while writing&quot;</span>)
+                <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;{0:&gt;6}: 0x{1:}&quot;</span>, <span class="ident">i</span>, <span class="ident">elem</span>.<span class="ident">word</span>().<span class="ident">to_hex_be</span>())
+                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">core::fmt::Error</span>)<span class="question-mark">?</span>;
+            } <span class="kw">else</span> {
+                <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;{0:&gt;6}: None&quot;</span>, <span class="ident">i</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">core::fmt::Error</span>)<span class="question-mark">?</span>;
             }
         }
         <span class="prelude-val">Ok</span>(())
@@ -284,5 +282,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="cairo" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (c52b9c10b 2022-05-16)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="cairo" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (c06728704 2022-05-19)" ></div>
 </body></html>
