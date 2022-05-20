@@ -26,7 +26,7 @@ use super::{RangeCheck0, RangeCheck1};
 
 // Connect the pair of cells of the witness specified by the cell1 and cell2 parameters
 // cell1 --> cell2 && cell2 --> cell1
-fn connect_cell_pair(wires: &mut Vec<GateWires>, cell1: (usize, usize), cell2: (usize, usize)) {
+fn connect_cell_pair(wires: &mut [GateWires], cell1: (usize, usize), cell2: (usize, usize)) {
     let tmp = wires[cell1.0][cell1.1];
     wires[cell1.0][cell1.1] = wires[cell2.0][cell2.1];
     wires[cell2.0][cell2.1] = tmp;
