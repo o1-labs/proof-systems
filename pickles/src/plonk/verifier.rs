@@ -46,7 +46,7 @@ struct VarCommitments<A>
 A: AffineCurve,
 A::BaseField: FftField + PrimeField {
     w_comm: Msg<[VarPoint<A>; COLUMNS]>,
-    t_comm: Msg<VarPoint<A>>,
+    t_comm: Msg<[VarPoint<A>; PERMUTS]>,
     z_comm: Msg<VarPoint<A>>
 }
 
@@ -71,7 +71,7 @@ struct VarEvaluation<F: FftField + PrimeField> {
     pub poseidon_selector: Var<F>,
 }
 
-// TODO: I would really like to derieve this, 
+// DISCUSS: I would really like to #[derieve(Absorb)] this, 
 // but it means settling on an order which is the same as in the struct!
 impl <F: FftField + PrimeField> Absorb<F> for VarEvaluation<F> {
     fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut ZkSponge<F>) {
@@ -93,6 +93,18 @@ struct VarEvaluations<F: FftField + PrimeField> {
     zw: VarEvaluation<F>, // evaluation at z * \omega (2^k root of unity, next step)
 }
 
+
+impl <F: FftField + PrimeField> Absorb<F> for VarEvaluations<F> {
+    fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut ZkSponge<F>) {
+        sponge.absorb(cs, &self.z);
+        sponge.absorb(cs, &self.zw);
+    }
+}
+
+///
+/// 
+/// WARNING: Make sure this only contains Msg types 
+/// (or structs of Msg types)
 struct VarProof<A> 
     where
     A: AffineCurve,
@@ -101,8 +113,7 @@ struct VarProof<A>
     _ph: PhantomData<A>,
     commitments: VarCommitments<A>,
     ft_eval1: Msg<Var<A::ScalarField>>,
-    p_eval: Msg<[Var<A::ScalarField>; 6]>,
-
+    evals: Msg<VarEvaluations<A::ScalarField>>,
 }
 
 impl <A> VarProof<A> 
@@ -141,7 +152,6 @@ impl<F: FftField + PrimeField> Challenge<F> for ScalarChallenge<F> {
         let scalar: Var<F> = Var::generate(cs, sponge);
 
         // create endoscalar (bit decompose)
-        // QUESTION: what does the length refer to here?
         let challenge = cs.endo_scalar(CHALLENGE_LEN, || {
             let s: F = scalar.val();
             s.into_repr()
@@ -179,21 +189,21 @@ fn verify<A, CsFp, CsFr, C, T>(
     CsFr: Cs<A::ScalarField>,
 {
     // create proof instance (with/without witness)
-    let pf = VarProof::new(witness);
+    let proof = VarProof::new(witness);
 
-    //~ 2. Absorb the commitment of the public input polynomial with the Fq-Sponge.
+    //~ 2. Absorb commitment to the public input polynomial
     let p_comm = tx.recv(p_comm);
 
-    //~ 3. Absorb the commitments to the registers / witness columns with the Fq-Sponge.
-    let w_comm = tx.recv(pf.commitments.w_comm);
+    //~ 3. Absorb commitments to the registers / witness columns
+    let w_comm = tx.recv(proof.commitments.w_comm);
 
-    //~ 6. Sample $\beta$ with the Fq-Sponge.
+    //~ 6. Sample $\beta$
     let beta: Var<A::BaseField> = tx.challenge();
 
-    //~ 7. Sample $\gamma$ with the Fq-Sponge.
+    //~ 7. Sample $\gamma$
     let gamma: Var<A::BaseField> = tx.challenge();
 
-    //~ 10. Sample $\alpha'$ with the Fq-Sponge.
+    //~ 10. Sample $\alpha'$
     let alpha_chal: ScalarChallenge<A::BaseField> = tx.challenge();
 
     //~ 11. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
@@ -201,10 +211,13 @@ fn verify<A, CsFp, CsFr, C, T>(
         alpha_chal.to_field(tx.constants()),
     );
 
-    //~ 13. Absorb the commitment to the quotient polynomial $t$ into the argument.
-    let t_comm = tx.recv(pf.commitments.t_comm);
+    //~ 12. Enforce that the length of the $t$ commitment is of size `PERMUTS`.
+    // CHANGE: Happens at deserialization time (it is an array).
 
-    //~ 14. Sample $\zeta'$ (GLV decomposition of $\zeta$) with the Fq-Sponge.
+    //~ 13. Absorb the commitment to the quotient polynomial $t$ into the argument.
+    let t_comm = tx.recv(proof.commitments.t_comm);
+
+    //~ 14. Sample $\zeta'$ (GLV decomposition of $\zeta$)
     let zeta_chal: ScalarChallenge<A::BaseField> = tx.challenge();
 
     //~ 15. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
@@ -212,10 +225,17 @@ fn verify<A, CsFp, CsFr, C, T>(
         zeta_chal.to_field(tx.constants()),
     );
 
-    
+    //~ 16. Setup the Fr-Sponge.
+    // CHANGE: Automatic
+        
+    //~ 17. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
+    // CHANGE: Automatic
 
-   
+    //~ 18. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
+    //~     NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
+    //~     Absorb over the foreign field
+    let evals = tx.recv_fr(proof.evals);
 
-    let ft_eval = tx.recv_fr(pf.ft_eval1);
-    let p_eval = tx.recv_fr(pf.p_eval);
+    let ft_eval = tx.recv_fr(proof.ft_eval1);
+    //let p_eval = tx.recv_fr(pf.p_eval);
 }

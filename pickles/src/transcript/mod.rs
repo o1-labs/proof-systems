@@ -7,7 +7,7 @@ mod utils;
 
 use super::MutualContext;
 
-pub use sponge::ZkSponge;
+pub use sponge::{ZkSponge, Absorb};
 
 use utils::{decompose, lift, need_decompose, transfer_hash};
 
@@ -96,33 +96,6 @@ pub struct Merlin<Fp, Fr, CsFp, CsFr>
 {
     fp: Option<Side<Fp, CsFp>>,
     fr: Option<Side<Fr, CsFr>>,
-}
-
-/// Describes a type which can be "absorbed" into a sponge over a given field
-pub trait Absorb<F: FftField + PrimeField> {
-    fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut ZkSponge<F>);
-}
-
-// Can absorb a slice of absorbable elements
-impl <F: FftField + PrimeField, T: Absorb<F>> Absorb<F> for [T] {
-    fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut ZkSponge<F>) {
-        self.iter().for_each(|c| c.absorb(cs, sponge))
-    }
-}
-
-// Can absorb a fixed length array of absorbable elements
-impl <F: FftField + PrimeField, T: Absorb<F>, const N: usize> Absorb<F> for [T; N] {
-    fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut ZkSponge<F>) {
-        let slice: &[T] = &self[..];
-        slice.absorb(cs, sponge)
-    }
-}
-
-// Can absorb a variable from the same field
-impl <F: FftField + PrimeField> Absorb<F> for Var<F> {
-    fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut ZkSponge<F>) {
-        sponge.absorb(cs, self);
-    }
 }
 
 /// Describes a type which can be "squeezed" (generated) from the sponge
