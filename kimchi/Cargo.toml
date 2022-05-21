@@ -44,6 +44,7 @@ wasm-bindgen = { version = "0.2", optional = true }
 proptest = "1.0.0"
 proptest-derive = "0.3.0"
 colored = "2.0.0"
+serde_json = { version = "1.0" }
 
 # benchmarks
 criterion = "0.3"
