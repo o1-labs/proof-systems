@@ -1,2 +1,4 @@
 [toolchain]
 channel = "1.58.0"
+# The "Set up cargo/rust" action of .github/workflows/rust.yml
+# should have its "toolchain" argument set to the same version.
