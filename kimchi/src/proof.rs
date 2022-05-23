@@ -64,7 +64,7 @@ pub struct ProverCommitments<G: AffineCurve> {
     pub lookup: Option<LookupCommitments<G>>,
 }
 
-/// The proof that the prover creates from a [ProverIndex] and a `witness`.
+/// The proof that the prover creates from a [ProverIndex](super::prover_index::ProverIndex) and a `witness`.
 #[derive(Clone)]
 pub struct ProverProof<G: AffineCurve> {
     /// All the polynomial commitments required in the proof

@@ -5,5 +5,6 @@ pub mod endosclmul;
 pub mod generic;
 pub mod permutation;
 pub mod poseidon;
+pub mod range_check;
 pub mod turshi;
 pub mod varbasemul;

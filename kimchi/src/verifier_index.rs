@@ -100,6 +100,10 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub chacha_comm: Option<[PolyComm<G>; 4]>,
 
+    // Range check gates polynomial commitments
+    #[serde(bound = "Vec<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub range_check_comm: Vec<PolyComm<G>>,
+
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub shift: [ScalarField<G>; PERMUTS],
@@ -205,6 +209,16 @@ where
             chacha_comm: self.cs.chacha8.as_ref().map(|c| {
                 array_init(|i| self.srs.commit_evaluations_non_hiding(domain, &c[i], None))
             }),
+
+            range_check_comm: self
+                .cs
+                .range_check_selector_polys
+                .iter()
+                .map(|poly| {
+                    self.srs
+                        .commit_evaluations_non_hiding(domain, &poly.eval8, None)
+                })
+                .collect(),
 
             shift: self.cs.shift,
             zkpm: self.cs.precomputations().zkpm.clone(),

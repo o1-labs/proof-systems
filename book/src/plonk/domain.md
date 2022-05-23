@@ -27,7 +27,7 @@ impl FftParameters for FqParameters {
 ```
 
 The 2-adicity of 32 means that there's a multiplicative subgroup of size $2^{32}$ that exists in the field.
-The code above also defines a generator $g$ for it, such that $g^{2^{32}} = 1$ and $g^i \neq 1$ for $i \in [[1, 2^{32}]]$ (so it's a **primitive** $2^{32}$-th root of unity).
+The code above also defines a generator $g$ for it, such that $g^{2^{32}} = 1$ and $g^i \neq 1$ for $i \in [[1, 2^{32}-1]]$ (so it's a **primitive** $2^{32}$-th root of unity).
 
 [Lagrange's theorem](https://en.wikipedia.org/wiki/Lagrange%27s_theorem_(group_theory\)) tells us that if we have a group of order $n$, then we'll have subgroups with orders dividing $n$. So in our case, we have subgroups with all the powers of 2, up to the 32-th power of 2.
 
