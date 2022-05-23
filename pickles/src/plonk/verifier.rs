@@ -1,5 +1,5 @@
-use crate::context::MutualContext;
-use crate::transcript::{Merlin, Passable, Challenge, Absorb, Msg, VarSponge};
+use crate::context::{Context, Passable};
+use crate::transcript::{Merlin, Challenge, Absorb, Msg, VarSponge};
 use std::iter;
 
 use super::{Proof, COLUMNS, PERMUTS, CHALLENGE_LEN, SELECTORS};
@@ -165,8 +165,12 @@ impl<F: FftField + PrimeField> Challenge<F> for ScalarChallenge<F> {
     }
 }
 
-impl <F: FftField + PrimeField> ScalarChallenge<F> {
-    fn to_field(&self, constants: &Constants<F>) -> Var<F> {
+impl <Fp: FftField + PrimeField> ScalarChallenge<Fp> {
+    fn to_field<Fr, CsFp, CsFr>(&self, ctx: &mut Context<Fp, Fr, CsFp, CsFr>) -> Var<Fp> where
+        Fp: FftField + PrimeField,
+        Fr: FftField + PrimeField,
+        CsFp: Cs<Fp>, 
+        CsFr: Cs<Fr> {
         unimplemented!()
     }  
 }
@@ -178,7 +182,7 @@ impl <F: FftField + PrimeField> ScalarChallenge<F> {
 /// 
 fn verify<A, CsFp, CsFr, C, T>(
     // ctx: &mut MutualContext<A::BaseField, A::ScalarField, CsFp, CsFr>,
-    tx: &mut Merlin<A::BaseField, A::ScalarField, CsFp, CsFr>,
+    ctx: &mut Context<A::BaseField, A::ScalarField, CsFp, CsFr>,
     index: VarIndex<A>,        // verifier index
     p_comm: Msg<VarPoint<A>>,  // commitment to public input
     witness: Option<Proof<A>>, // witness (a PlonK proof)
@@ -188,42 +192,43 @@ fn verify<A, CsFp, CsFr, C, T>(
     CsFp: Cs<A::BaseField>,
     CsFr: Cs<A::ScalarField>,
 {
+    // start new transcript
+    let mut tx = Merlin::new(ctx);
+
     // create proof instance (with/without witness)
     let proof = VarProof::new(witness);
 
     //~ 2. Absorb commitment to the public input polynomial
-    let p_comm = tx.recv(p_comm);
+    let p_comm = tx.recv(ctx, p_comm);
 
     //~ 3. Absorb commitments to the registers / witness columns
-    let w_comm = tx.recv(proof.commitments.w_comm);
+    let w_comm = tx.recv(ctx, proof.commitments.w_comm);
 
     //~ 6. Sample $\beta$
-    let beta: Var<A::BaseField> = tx.challenge();
+    let beta: Var<A::BaseField> = tx.challenge(ctx);
 
     //~ 7. Sample $\gamma$
-    let gamma: Var<A::BaseField> = tx.challenge();
+    let gamma: Var<A::BaseField> = tx.challenge(ctx);
 
     //~ 10. Sample $\alpha'$
-    let alpha_chal: ScalarChallenge<A::BaseField> = tx.challenge();
+    let alpha_chal: ScalarChallenge<A::BaseField> = tx.challenge(ctx);
 
     //~ 11. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
-    let alpha: Var<A::ScalarField> = tx.pass_fits( // pass to other side
-        alpha_chal.to_field(tx.constants()),
-    );
+    let alpha: Var<A::BaseField> = alpha_chal.to_field(ctx);
+    let alpha = ctx.pass(alpha);
 
     //~ 12. Enforce that the length of the $t$ commitment is of size `PERMUTS`.
     // CHANGE: Happens at deserialization time (it is an array).
 
     //~ 13. Absorb the commitment to the quotient polynomial $t$ into the argument.
-    let t_comm = tx.recv(proof.commitments.t_comm);
+    let t_comm = tx.recv(ctx, proof.commitments.t_comm);
 
     //~ 14. Sample $\zeta'$ (GLV decomposition of $\zeta$)
-    let zeta_chal: ScalarChallenge<A::BaseField> = tx.challenge();
+    let zeta_chal: ScalarChallenge<A::BaseField> = tx.challenge(ctx);
 
     //~ 15. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
-    let zeta: Var<A::ScalarField> = tx.pass_fits( // pass to other side
-        zeta_chal.to_field(tx.constants()),
-    );
+    let zeta: Var<A::BaseField> = zeta_chal.to_field(ctx);
+    let zeta = ctx.pass(zeta);
 
     //~ 16. Setup the Fr-Sponge.
     // CHANGE: Automatic
@@ -234,8 +239,11 @@ fn verify<A, CsFp, CsFr, C, T>(
     //~ 18. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
     //~     NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
     //~     Absorb over the foreign field
-    let evals = tx.recv_fr(proof.evals);
+    let evals = tx.recv_fr(ctx, proof.evals);
 
-    let ft_eval = tx.recv_fr(proof.ft_eval1);
+    let ft_eval = tx.recv_fr(ctx, proof.ft_eval1);
     //let p_eval = tx.recv_fr(pf.p_eval);
+
+    // ctx can be used as a Cs<Fp>
+    ctx.var(|| {unimplemented!() });
 }

@@ -20,7 +20,7 @@ mod ipa;
 
 mod context;
 
-use context::MutualContext;
+use context::Context;
 
 mod transcript;
 
