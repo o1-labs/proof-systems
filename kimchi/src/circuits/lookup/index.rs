@@ -119,7 +119,7 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                         let runtime_selector = {
                             let mut evals = Vec::with_capacity(d1_size);
 
-                            // it's 0 everywhere, except at the entries where
+                            // it's 1 everywhere, except at the entries where
                             // the runtime table applies
                             evals.extend(iter::repeat(F::one()).take(runtime_table_offset));
                             evals.extend(iter::repeat(F::zero()).take(runtime_len));
