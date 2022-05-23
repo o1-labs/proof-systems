@@ -73,7 +73,7 @@ where
 pub fn get_table<F: FftField>(table_name: GateLookupTable) -> LookupTable<F> {
     match table_name {
         GateLookupTable::Xor => xor::xor_table(),
-        GateLookupTable::RangeCheck => range_check::range_table(),
+        GateLookupTable::RangeCheck => range_check::range_check_table(),
     }
 }
 
