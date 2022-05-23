@@ -43,6 +43,9 @@ pub enum VerifyError {
     #[error("lookup used in circuit, but proof has inconsistent number of lookup evaluations and commitments")]
     ProofInconsistentLookup,
 
+    #[error("kimchi does not support batching verification of proofs of different SRS")]
+    DifferentSRS,
+
     #[error("kimchi does not support SRS of size smaller than the domain")]
     SRSTooSmall,
 }
