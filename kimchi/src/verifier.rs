@@ -319,12 +319,12 @@ where
                 .next()
                 .expect("missing power of alpha for permutation");
 
-            let init = (evals[0].w[PERMUTS - 1] + gamma) * evals[1].z * alpha0 * zkp;
+            let init = (evals[0].w[PERMUTS - 1][0] + gamma) * evals[1].z[0] * alpha0 * zkp;
             let mut ft_eval0 = evals[0]
                 .w
                 .iter()
                 .zip(evals[0].s.iter())
-                .map(|(w, s)| (beta * s) + w + gamma)
+                .map(|(w, s)| (beta * s[0]) + w[0] + gamma)
                 .fold(init, |x, y| x * y);
 
             ft_eval0 -= if !p_eval[0].is_empty() {
@@ -337,12 +337,12 @@ where
                 .w
                 .iter()
                 .zip(index.shift.iter())
-                .map(|(w, s)| gamma + (beta * zeta * s) + w)
-                .fold(alpha0 * zkp * evals[0].z, |x, y| x * y);
+                .map(|(w, s)| gamma + (beta * zeta * s) + w[0])
+                .fold(alpha0 * zkp * evals[0].z[0], |x, y| x * y);
 
             let numerator = ((zeta1m1 * alpha1 * (zeta - index.w))
                 + (zeta1m1 * alpha2 * (zeta - ScalarField::<G>::one())))
-                * (ScalarField::<G>::one() - evals[0].z);
+                * (ScalarField::<G>::one() - evals[0].z[0]);
 
             let denominator = (zeta - index.w) * (zeta - ScalarField::<G>::one());
             let denominator = denominator.inverse().expect("negligible probability");
@@ -540,8 +540,11 @@ where
             let alphas =
                 all_alphas.get_alphas(ArgumentType::Gate(GateType::Generic), generic::CONSTRAINTS);
 
-            let generic_scalars =
-                &ConstraintSystem::gnrc_scalars(alphas, &evals[0].w, evals[0].generic_selector);
+            let generic_scalars = &ConstraintSystem::gnrc_scalars(
+                alphas,
+                &evals[0].get_w(),
+                evals[0].generic_selector[0],
+            );
 
             let generic_com = index.coefficients_comm.iter().take(generic_scalars.len());
 

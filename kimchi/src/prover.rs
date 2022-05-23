@@ -91,8 +91,8 @@ where
     aggreg8: Option<Evaluations<F, D<F>>>,
 
     /// The evaluations of the aggregation polynomial for the proof
-    eval_zeta: Option<LookupEvaluations<Vec<F>>>,
-    eval_zeta_omega: Option<LookupEvaluations<Vec<F>>>,
+    eval_zeta: Option<LookupEvaluations<F>>,
+    eval_zeta_omega: Option<LookupEvaluations<F>>,
 }
 
 impl<G: CommitmentCurve> ProverProof<G>
@@ -733,7 +733,8 @@ where
         //~
         //~      TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)
         let chunked_evals = {
-            let chunked_evals_zeta = ProofEvaluations::<Vec<ScalarField<G>>> {
+            //[ProofEvaluations<<G as ark_ec::AffineCurve>::ScalarField>; 2] = {
+            let chunked_evals_zeta = ProofEvaluations::<ScalarField<G>> {
                 s: array_init(|i| {
                     index.cs.sigmam[0..PERMUTS - 1][i]
                         .to_chunked_polynomial(index.max_poly_size)
@@ -763,7 +764,7 @@ where
                     .to_chunked_polynomial(index.max_poly_size)
                     .evaluate_chunks(zeta),
             };
-            let chunked_evals_zeta_omega = ProofEvaluations::<Vec<ScalarField<G>>> {
+            let chunked_evals_zeta_omega = ProofEvaluations::<ScalarField<G>> {
                 s: array_init(|i| {
                     index.cs.sigmam[0..PERMUTS - 1][i]
                         .to_chunked_polynomial(index.max_poly_size)
@@ -804,26 +805,34 @@ where
 
         //~ 27. Evaluate the same polynomials without chunking them
         //~     (so that each polynomial should correspond to a single value this time).
+        //~     (each ProofEvaluation will correspond to single-sized vectors)
         let evals = {
             let power_of_eval_points_for_chunks = [zeta_to_srs_len, zeta_omega_to_srs_len];
             &chunked_evals
-                .iter()
-                .zip(power_of_eval_points_for_chunks.iter())
+                .iter() // first for zeta, then for zeta omega
+                .zip(power_of_eval_points_for_chunks.iter()) // (zeta , zeta_omega)
                 .map(|(es, &e1)| ProofEvaluations::<ScalarField<G>> {
-                    s: array_init(|i| DensePolynomial::eval_polynomial(&es.s[i], e1)),
-                    w: array_init(|i| DensePolynomial::eval_polynomial(&es.w[i], e1)),
-                    z: DensePolynomial::eval_polynomial(&es.z, e1),
-                    lookup: es.lookup.as_ref().map(|l| LookupEvaluations {
-                        table: DensePolynomial::eval_polynomial(&l.table, e1),
-                        aggreg: DensePolynomial::eval_polynomial(&l.aggreg, e1),
-                        sorted: l
-                            .sorted
-                            .iter()
-                            .map(|p| DensePolynomial::eval_polynomial(p, e1))
-                            .collect(),
+                    s: array_init(|i| vec![DensePolynomial::eval_polynomial(&es.s[i], e1)]),
+                    w: array_init(|i| vec![DensePolynomial::eval_polynomial(&es.w[i], e1)]),
+                    z: vec![DensePolynomial::eval_polynomial(&es.z, e1)],
+                    lookup: es.lookup.as_ref().map(|l| {
+                        LookupEvaluations::new(
+                            l.sorted
+                                .iter()
+                                .map(|p| DensePolynomial::eval_polynomial(p, e1))
+                                .collect(),
+                            DensePolynomial::eval_polynomial(&l.aggreg, e1),
+                            DensePolynomial::eval_polynomial(&l.table, e1),
+                        )
                     }),
-                    generic_selector: DensePolynomial::eval_polynomial(&es.generic_selector, e1),
-                    poseidon_selector: DensePolynomial::eval_polynomial(&es.poseidon_selector, e1),
+                    generic_selector: vec![DensePolynomial::eval_polynomial(
+                        &es.generic_selector,
+                        e1,
+                    )],
+                    poseidon_selector: vec![DensePolynomial::eval_polynomial(
+                        &es.poseidon_selector,
+                        e1,
+                    )],
                 })
                 .collect::<Vec<_>>()
         };
@@ -841,7 +850,7 @@ where
                     .get_alphas(ArgumentType::Gate(GateType::Generic), generic::CONSTRAINTS);
                 let mut f = index
                     .cs
-                    .gnrc_lnrz(alphas, &evals[0].w, evals[0].generic_selector)
+                    .gnrc_lnrz(alphas, &evals[0].get_w(), evals[0].generic_selector[0])
                     .interpolate();
 
                 // permutation (not part of linearization yet)

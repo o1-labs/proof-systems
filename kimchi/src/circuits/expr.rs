@@ -423,13 +423,13 @@ impl Variable {
             .as_ref()
             .ok_or(ExprError::LookupShouldNotBeUsed);
         match self.col {
-            Witness(i) => Ok(evals.w[i]),
-            Z => Ok(evals.z),
-            LookupSorted(i) => l.map(|l| l.sorted[i]),
-            LookupAggreg => l.map(|l| l.aggreg),
-            LookupTable => l.map(|l| l.table),
-            Index(GateType::Poseidon) => Ok(evals.poseidon_selector),
-            Index(GateType::Generic) => Ok(evals.generic_selector),
+            Witness(i) => Ok(evals.w[i][0]),
+            Z => Ok(evals.z[0]),
+            LookupSorted(i) => l.map(|l| l.sorted[i][0]),
+            LookupAggreg => l.map(|l| l.aggreg[0]),
+            LookupTable => l.map(|l| l.table[0]),
+            Index(GateType::Poseidon) => Ok(evals.poseidon_selector[0]),
+            Index(GateType::Generic) => Ok(evals.generic_selector[0]),
             Coefficient(_) | LookupKindIndex(_) | Index(_) => {
                 Err(ExprError::MissingIndexEvaluation(self.col))
             }

@@ -53,18 +53,7 @@ fn my_test() {
 
 //~ spec:startcode
 #[derive(Clone)]
-pub struct LookupEvaluations<Field> {
-    /// sorted lookup table polynomial
-    pub sorted: Vec<Field>,
-    /// lookup aggregation polynomial
-    pub aggreg: Field,
-    // TODO: May be possible to optimize this away?
-    /// lookup table polynomial
-    pub table: Field,
-}
-
-#[derive(Clone)]
-pub struct LookupChunkedEvals<F> {
+pub struct LookupEvaluations<F> {
     /// sorted lookup table polynomial
     pub sorted: Vec<Vec<F>>,
     /// lookup aggregation polynomial
@@ -78,35 +67,18 @@ pub struct LookupChunkedEvals<F> {
 //#[serde_as]
 //#[derive(Clone, Deserialize, Serialize)]
 #[derive(Clone)]
-pub struct ProofEvaluations<Field> {
+pub struct ProofEvaluations<F> {
     //: CanonicalDeserialize + CanonicalSerialize> {
-    /// witness polynomials
-    pub w: [Field; COLUMNS],
-    /// permutation polynomial
-    //#[serde(bound = "EvalEnum<Field>: Serialize")]
-    pub z: Field,
-    /// permutation polynomials
-    /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
-    pub s: [Field; PERMUTS - 1],
-    /// lookup-related evaluations
-    pub lookup: Option<LookupEvaluations<Field>>,
-    /// evaluation of the generic selector polynomial
-    pub generic_selector: Field,
-    /// evaluation of the poseidon selector polynomial
-    pub poseidon_selector: Field,
-}
-
-#[derive(Clone)]
-pub struct ProofChunkedEvals<F> {
     /// witness polynomials
     pub w: [Vec<F>; COLUMNS],
     /// permutation polynomial
+    //#[serde(bound = "EvalEnum<Field>: Serialize")]
     pub z: Vec<F>,
     /// permutation polynomials
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
     pub s: [Vec<F>; PERMUTS - 1],
     /// lookup-related evaluations
-    pub lookup: Option<LookupChunkedEvals<F>>,
+    pub lookup: Option<LookupEvaluations<F>>,
     /// evaluation of the generic selector polynomial
     pub generic_selector: Vec<F>,
     /// evaluation of the poseidon selector polynomial
@@ -144,7 +116,7 @@ pub struct ProverProof<G: AffineCurve> {
 
     /// Two evaluations over a number of committed polynomials
     // TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }
-    pub evals: [ProofEvaluations<Vec<ScalarField<G>>>; 2],
+    pub evals: [ProofEvaluations<ScalarField<G>>; 2],
 
     /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
     pub ft_eval1: ScalarField<G>,
@@ -157,57 +129,86 @@ pub struct ProverProof<G: AffineCurve> {
 }
 //~ spec:endcode
 
+impl<F: Field> LookupEvaluations<F> {
+    pub fn new(sorted: Vec<F>, aggreg: F, table: F) -> LookupEvaluations<F> {
+        LookupEvaluations {
+            sorted: vec![sorted],
+            aggreg: vec![aggreg],
+            table: vec![table],
+        }
+    }
+}
+
 impl<F: Zero> ProofEvaluations<F> {
-    pub fn dummy_with_witness_evaluations(w: [F; COLUMNS]) -> ProofEvaluations<F> {
+    pub fn dummy_with_witness_evaluations(w: [F; COLUMNS]) -> ProofEvaluations<F>
+    where
+        F: Clone,
+    {
         ProofEvaluations {
-            w,
-            z: F::zero(),
-            s: array_init(|_| F::zero()),
+            w: array_init(|i| vec![w[i].clone()]),
+            z: vec![F::zero()],
+            s: array_init(|_| vec![F::zero()]),
             lookup: None,
-            generic_selector: F::zero(),
-            poseidon_selector: F::zero(),
+            generic_selector: vec![F::zero()],
+            poseidon_selector: vec![F::zero()],
+        }
+    }
+
+    pub fn get_w(&self) -> [F; COLUMNS]
+    where
+        F: Clone,
+    {
+        array_init(|i| self.w[i][0].clone())
+    }
+
+    pub fn new(
+        w: [F; COLUMNS],
+        z: F,
+        s: [F; PERMUTS - 1],
+        lookup: Option<LookupEvaluations<F>>,
+        generic_selector: F,
+        poseidon_selector: F,
+    ) -> ProofEvaluations<F>
+    where
+        F: Clone,
+    {
+        ProofEvaluations {
+            w: array_init(|i| vec![w[i].clone()]),
+            z: vec![z],
+            s: array_init(|i| vec![s[i].clone()]),
+            lookup,
+            generic_selector: vec![generic_selector],
+            poseidon_selector: vec![poseidon_selector],
         }
     }
 }
 
-impl<F: FftField> ProofChunkedEvals<F> {
-    pub fn combine(&self, pt: F) -> ProofEvaluations<F> {
-        ProofEvaluations::<F> {
-            s: array_init(|i| DensePolynomial::eval_polynomial(&self.s[i], pt)),
-            w: array_init(|i| DensePolynomial::eval_polynomial(&self.w[i], pt)),
-            z: DensePolynomial::eval_polynomial(&self.z, pt),
-            lookup: self.lookup.as_ref().map(|l| LookupEvaluations {
-                table: DensePolynomial::eval_polynomial(&l.table, pt),
-                aggreg: DensePolynomial::eval_polynomial(&l.aggreg, pt),
-                sorted: l
-                    .sorted
-                    .iter()
-                    .map(|x| DensePolynomial::eval_polynomial(x, pt))
-                    .collect(),
-            }),
-            generic_selector: DensePolynomial::eval_polynomial(&self.generic_selector, pt),
-            poseidon_selector: DensePolynomial::eval_polynomial(&self.poseidon_selector, pt),
-        }
-    }
-}
+impl<F: FftField> ProofEvaluations<F> {
+    //pub fn is_chunk(&self) -> bool {
+    //    if
+    //}
 
-impl<F: FftField> ProofEvaluations<Vec<F>> {
+    /// Combines the chunked proof evaluations into single evaluations
+    /// at an evaluation point `pt` as vectors of length 1
     pub fn combine(&self, pt: F) -> ProofEvaluations<F> {
-        ProofEvaluations::<F> {
-            s: array_init(|i| DensePolynomial::eval_polynomial(&self.s[i], pt)),
-            w: array_init(|i| DensePolynomial::eval_polynomial(&self.w[i], pt)),
-            z: DensePolynomial::eval_polynomial(&self.z, pt),
+        ProofEvaluations {
+            w: array_init(|i| vec![DensePolynomial::eval_polynomial(&self.w[i], pt)]),
+            s: array_init(|i| vec![DensePolynomial::eval_polynomial(&self.s[i], pt)]),
+            z: vec![DensePolynomial::eval_polynomial(&self.z, pt)],
             lookup: self.lookup.as_ref().map(|l| LookupEvaluations {
-                table: DensePolynomial::eval_polynomial(&l.table, pt),
-                aggreg: DensePolynomial::eval_polynomial(&l.aggreg, pt),
+                table: vec![DensePolynomial::eval_polynomial(&l.table, pt)],
+                aggreg: vec![DensePolynomial::eval_polynomial(&l.aggreg, pt)],
                 sorted: l
                     .sorted
                     .iter()
-                    .map(|x| DensePolynomial::eval_polynomial(x, pt))
+                    .map(|x| vec![DensePolynomial::eval_polynomial(x, pt)])
                     .collect(),
             }),
-            generic_selector: DensePolynomial::eval_polynomial(&self.generic_selector, pt),
-            poseidon_selector: DensePolynomial::eval_polynomial(&self.poseidon_selector, pt),
+            generic_selector: vec![DensePolynomial::eval_polynomial(&self.generic_selector, pt)],
+            poseidon_selector: vec![DensePolynomial::eval_polynomial(
+                &self.poseidon_selector,
+                pt,
+            )],
         }
     }
 }

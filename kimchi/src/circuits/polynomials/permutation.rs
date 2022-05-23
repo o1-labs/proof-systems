@@ -279,12 +279,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         //~ \end{align}
         //~$$
         //~
-        let init = e[1].z * beta * alpha0 * zkp_zeta;
+        let init = e[1].z[0] * beta * alpha0 * zkp_zeta;
         let res = e[0]
             .w
             .iter()
             .zip(e[0].s.iter())
-            .map(|(w, s)| gamma + (beta * s) + w)
+            .map(|(w, s)| gamma + (beta * s[0]) + w[0])
             .fold(init, |x, y| x * y);
         -res
     }

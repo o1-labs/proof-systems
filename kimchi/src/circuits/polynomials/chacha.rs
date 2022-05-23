@@ -539,20 +539,23 @@ mod tests {
         let d = D::new(1024).unwrap();
 
         let pt = F::rand(rng);
-        let mut eval = || ProofEvaluations {
-            w: array_init(|_| F::rand(rng)),
-            z: F::rand(rng),
-            s: array_init(|_| F::rand(rng)),
-            generic_selector: F::zero(),
-            poseidon_selector: F::zero(),
-            lookup: Some(LookupEvaluations {
-                sorted: (0..(lookup_info.max_per_row + 1))
-                    .map(|_| F::rand(rng))
-                    .collect(),
-                aggreg: F::rand(rng),
-                table: F::rand(rng),
-            }),
+        let mut eval = || {
+            ProofEvaluations::new(
+                array_init(|_| F::rand(rng)),
+                F::rand(rng),
+                array_init(|_| F::rand(rng)),
+                Some(LookupEvaluations::new(
+                    (0..(lookup_info.max_per_row + 1))
+                        .map(|_| F::rand(rng))
+                        .collect(),
+                    F::rand(rng),
+                    F::rand(rng),
+                )),
+                F::zero(),
+                F::zero(),
+            )
         };
+
         let evals = vec![eval(), eval()];
 
         let constants = Constants {
