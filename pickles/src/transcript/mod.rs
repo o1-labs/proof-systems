@@ -203,6 +203,15 @@ impl <Fp, Fr, CsFp, CsFr> Merlin<Fp, Fr, CsFp, CsFr>
     }
 
 
+    #[must_use]
+    pub fn challenge_fr<C: Challenge<Fr>>(&mut self, ctx: &mut Context<Fp, Fr, CsFp, CsFr>) -> C {
+        ctx.flip(|ctx| {
+            self.flip(|m| { // flip the transcript
+                m.challenge(ctx)
+            })
+        })
+    }
+
 }
 
 impl <Fp, Fr, CsFp, CsFr> Inner<Fp, Fr, CsFp, CsFr>

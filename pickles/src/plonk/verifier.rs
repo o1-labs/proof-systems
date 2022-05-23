@@ -230,20 +230,35 @@ fn verify<A, CsFp, CsFr, C, T>(
     let zeta: Var<A::BaseField> = zeta_chal.to_field(ctx);
     let zeta = ctx.pass(zeta);
 
-    //~ 16. Setup the Fr-Sponge.
-    // CHANGE: Automatic
-        
-    //~ 17. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
-    // CHANGE: Automatic
-
     //~ 18. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
     //~     NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
     //~     Absorb over the foreign field
-    let evals = tx.recv_fr(ctx, proof.evals);
 
-    let ft_eval = tx.recv_fr(ctx, proof.ft_eval1);
-    //let p_eval = tx.recv_fr(pf.p_eval);
+    // go to the other side
+    let (evals, ft_eval, v_chal, v) = ctx.flip(|ctx| tx.flip(|tx| {
+        //~ 19. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
+        //~     - the public polynomial
+        //~     - z
+        //~     - generic selector
+        //~     - poseidon selector
+        //~     - the 15 register/witness
+        //~     - 6 sigmas evaluations (the last one is not evaluated)
+        let evals = tx.recv(ctx, proof.evals);
+
+        //~ 20. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
+        let ft_eval = tx.recv(ctx, proof.ft_eval1);
+
+        //~ 21. Sample $v'$ with the Fr-Sponge.
+        let v_chal: ScalarChallenge<A::ScalarField> = tx.challenge(ctx);
+
+        //~ 22. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
+        let v: Var<A::ScalarField> = v_chal.to_field(ctx);
+
+        (evals, ft_eval, v_chal, v)
+    }));
+
 
     // ctx can be used as a Cs<Fp>
     ctx.var(|| {unimplemented!() });
+    ctx.fp.cs.var(|| unimplemented!());
 }
