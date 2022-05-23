@@ -10,6 +10,8 @@ use o1_utils::{
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand_core::{CryptoRng, RngCore};
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use std::iter::Iterator;
 
 enum OptShiftedPolynomial<P> {
@@ -310,13 +312,19 @@ impl<G: CommitmentCurve> SRS<G> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[serde_as]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OpeningProof<G: AffineCurve> {
     /// vector of rounds of L & R commitments
+    #[serde_as(as = "Vec<(o1_utils::serialization::SerdeAs, o1_utils::serialization::SerdeAs)>")]
     pub lr: Vec<(G, G)>,
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub delta: G,
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub z1: G::ScalarField,
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub z2: G::ScalarField,
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub sg: G,
 }
 

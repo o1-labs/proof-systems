@@ -1373,32 +1373,36 @@ A proof consists of the following data structures:
 
 ```rs
 #[derive(Clone)]
-pub struct LookupEvaluations<Field> {
+pub struct LookupEvaluations<F> {
     /// sorted lookup table polynomial
-    pub sorted: Vec<Field>,
+    pub sorted: Vec<Vec<F>>,
     /// lookup aggregation polynomial
-    pub aggreg: Field,
+    pub aggreg: Vec<F>,
     // TODO: May be possible to optimize this away?
     /// lookup table polynomial
-    pub table: Field,
+    pub table: Vec<F>,
 }
 
 // TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
+//#[serde_as]
+//#[derive(Clone, Deserialize, Serialize)]
 #[derive(Clone)]
-pub struct ProofEvaluations<Field> {
+pub struct ProofEvaluations<F> {
+    //: CanonicalDeserialize + CanonicalSerialize> {
     /// witness polynomials
-    pub w: [Field; COLUMNS],
+    pub w: [Vec<F>; COLUMNS],
     /// permutation polynomial
-    pub z: Field,
+    //#[serde(bound = "EvalEnum<Field>: Serialize")]
+    pub z: Vec<F>,
     /// permutation polynomials
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
-    pub s: [Field; PERMUTS - 1],
+    pub s: [Vec<F>; PERMUTS - 1],
     /// lookup-related evaluations
-    pub lookup: Option<LookupEvaluations<Field>>,
+    pub lookup: Option<LookupEvaluations<F>>,
     /// evaluation of the generic selector polynomial
-    pub generic_selector: Field,
+    pub generic_selector: Vec<F>,
     /// evaluation of the poseidon selector polynomial
-    pub poseidon_selector: Field,
+    pub poseidon_selector: Vec<F>,
 }
 
 /// Commitments linked to the lookup feature
@@ -1432,7 +1436,7 @@ pub struct ProverProof<G: AffineCurve> {
 
     /// Two evaluations over a number of committed polynomials
     // TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }
-    pub evals: [ProofEvaluations<Vec<ScalarField<G>>>; 2],
+    pub evals: [ProofEvaluations<ScalarField<G>>; 2],
 
     /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
     pub ft_eval1: ScalarField<G>,
@@ -1554,6 +1558,7 @@ The prover then follows the following steps to create the proof:
      TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)
 27. Evaluate the same polynomials without chunking them
     (so that each polynomial should correspond to a single value this time).
+    (each ProofEvaluation will correspond to single-sized vectors)
 28. Compute the ft polynomial.
     This is to implement [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html).
 29. construct the blinding part of the ft polynomial commitment

@@ -8,7 +8,7 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use array_init::array_init;
 use commitment_dlog::{commitment::PolyComm, evaluation_proof::OpeningProof};
 use o1_utils::{types::fields::*, ExtendedDensePolynomial};
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 
 #[serde_as]
@@ -49,82 +49,128 @@ fn my_test() {
     let ser_eval = rmp_serde::to_vec(&eval).unwrap();
     println!("eval size: {}", ser_eval.len());
     println!("eval: {:?}", ser_eval);
+
+    let proof = ProofEvaluations::dummy_with_witness_evaluations([
+        -F::one(),
+        F::zero(),
+        F::one(),
+        F::one().double(),
+        F::zero(),
+        F::one(),
+        F::zero(),
+        F::zero(),
+        F::one().double().double(),
+        F::one(),
+        F::zero(),
+        F::zero(),
+        F::one().double().double(),
+        F::one().double().double(),
+        F::one().double().double(),
+    ]);
+    let ser_pf = rmp_serde::to_vec(&proof).unwrap();
+    println!("eval size: {}", ser_pf.len());
+    println!("eval: {:?}", ser_pf);
 }
 
 //~ spec:startcode
-#[derive(Clone)]
-pub struct LookupEvaluations<F> {
+#[serde_as]
+#[derive(Clone, Deserialize, Serialize)]
+pub struct LookupEvaluations<F: CanonicalSerialize + CanonicalDeserialize> {
     /// sorted lookup table polynomial
+    #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
     pub sorted: Vec<Vec<F>>,
     /// lookup aggregation polynomial
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub aggreg: Vec<F>,
     // TODO: May be possible to optimize this away?
     /// lookup table polynomial
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub table: Vec<F>,
 }
 
 // TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
-//#[serde_as]
-//#[derive(Clone, Deserialize, Serialize)]
-#[derive(Clone)]
-pub struct ProofEvaluations<F> {
-    //: CanonicalDeserialize + CanonicalSerialize> {
+#[serde_as]
+#[derive(Clone, Deserialize, Serialize)]
+pub struct ProofEvaluations<F: CanonicalSerialize + CanonicalDeserialize> {
     /// witness polynomials
+    #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; COLUMNS]")]
     pub w: [Vec<F>; COLUMNS],
     /// permutation polynomial
-    //#[serde(bound = "EvalEnum<Field>: Serialize")]
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub z: Vec<F>,
     /// permutation polynomials
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
+    #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; PERMUTS - 1]")]
     pub s: [Vec<F>; PERMUTS - 1],
     /// lookup-related evaluations
+    #[serde(bound = "LookupEvaluations<F>: Serialize")]
     pub lookup: Option<LookupEvaluations<F>>,
     /// evaluation of the generic selector polynomial
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub generic_selector: Vec<F>,
     /// evaluation of the poseidon selector polynomial
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub poseidon_selector: Vec<F>,
 }
 
 /// Commitments linked to the lookup feature
-#[derive(Clone)]
+#[serde_as]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct LookupCommitments<G: AffineCurve> {
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub sorted: Vec<PolyComm<G>>,
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub aggreg: PolyComm<G>,
 }
 
 /// All the commitments that the prover creates as part of the proof.
-#[derive(Clone)]
+#[serde_as]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct ProverCommitments<G: AffineCurve> {
     /// The commitments to the witness (execution trace)
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub w_comm: [PolyComm<G>; COLUMNS],
     /// The commitment to the permutation polynomial
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub z_comm: PolyComm<G>,
     /// The commitment to the quotient polynomial
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub t_comm: PolyComm<G>,
     /// Commitments related to the lookup argument
+    #[serde(bound = "LookupCommitments<G>: Serialize + DeserializeOwned")]
     pub lookup: Option<LookupCommitments<G>>,
 }
 
 /// The proof that the prover creates from a [ProverIndex](super::prover_index::ProverIndex) and a `witness`.
-#[derive(Clone)]
-pub struct ProverProof<G: AffineCurve> {
+#[serde_as]
+#[derive(Clone, Deserialize, Serialize)]
+pub struct ProverProof<G>
+where
+    G: AffineCurve,
+{
     /// All the polynomial commitments required in the proof
+    #[serde(bound = "ProverCommitments<G>: Serialize + DeserializeOwned")]
     pub commitments: ProverCommitments<G>,
 
     /// batched commitment opening proof
+    #[serde(bound = "OpeningProof<G>: Serialize + DeserializeOwned")]
     pub proof: OpeningProof<G>,
 
     /// Two evaluations over a number of committed polynomials
     // TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }
+    #[serde(bound = "ProofEvaluations<ScalarField<G>>: Serialize + DeserializeOwned")]
     pub evals: [ProofEvaluations<ScalarField<G>>; 2],
 
     /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub ft_eval1: ScalarField<G>,
 
     /// The public input
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub public: Vec<ScalarField<G>>,
 
     /// The challenges underlying the optional polynomials folded into the proof
+    #[serde(bound = "Vec<(Vec<ScalarField<G>>, PolyComm<G>)>: Serialize + DeserializeOwned")]
     pub prev_challenges: Vec<(Vec<ScalarField<G>>, PolyComm<G>)>,
 }
 //~ spec:endcode
@@ -132,14 +178,14 @@ pub struct ProverProof<G: AffineCurve> {
 impl<F: Field> LookupEvaluations<F> {
     pub fn new(sorted: Vec<F>, aggreg: F, table: F) -> LookupEvaluations<F> {
         LookupEvaluations {
-            sorted: vec![sorted],
+            sorted: sorted.iter().map(|&s| vec![s]).collect::<Vec<_>>(),
             aggreg: vec![aggreg],
             table: vec![table],
         }
     }
 }
 
-impl<F: Zero> ProofEvaluations<F> {
+impl<F: Zero + CanonicalDeserialize + CanonicalSerialize> ProofEvaluations<F> {
     pub fn dummy_with_witness_evaluations(w: [F; COLUMNS]) -> ProofEvaluations<F>
     where
         F: Clone,
