@@ -3,7 +3,7 @@ use crate::circuits::{
     gate::{CircuitGate, CurrOrNext, GateType},
     lookup::tables::{
         combine_table_entry, get_table, GateLookupTable, GatesLookupMaps, GatesLookupSpec,
-        LookupTable, XOR_TABLE_ID,
+        LookupTable, RANGE_CHECK_TABLE_ID, XOR_TABLE_ID,
     },
 };
 use ark_ff::{FftField, Field, One, Zero};
@@ -275,6 +275,9 @@ impl GateType {
             row: CurrOrNext::Curr,
             column,
         };
+
+        // Chacha patterns
+
         let chacha_pattern = (0..4)
             .map(|i| {
                 // each row represents an XOR operation
@@ -331,6 +334,8 @@ impl GateType {
             chacha_final_where.insert((ChaChaFinal, *r));
         }
 
+        // Lookup pattern
+
         let lookup_gate_pattern = (0..3)
             .map(|i| {
                 // 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
@@ -350,6 +355,33 @@ impl GateType {
             .collect();
         let lookup_gate_where = HashSet::from([(Lookup, Curr)]);
 
+        // Range pattern
+
+        // RangeCheck0
+
+        let mut range_pattern = vec![];
+        for ii in 1..=4 {
+            // we do four range lookups:
+            // 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
+            // - l l l l - - - - - -  -  -  -  -
+            let index = curr_row(ii);
+
+            range_pattern.push(JointLookup {
+                table_id: LookupTableID::Constant(RANGE_CHECK_TABLE_ID),
+                entry: vec![SingleLookup {
+                    value: vec![(F::one(), index)],
+                }],
+            });
+        }
+
+        let range_where = HashSet::from([
+            (RangeCheck0, Curr),
+            (RangeCheck1, Curr),
+            (RangeCheck1, Next),
+        ]);
+
+        // list lookups
+
         let lookups = [
             (chacha_pattern, chacha_where, Some(GateLookupTable::Xor)),
             (
@@ -358,6 +390,11 @@ impl GateType {
                 Some(GateLookupTable::Xor),
             ),
             (lookup_gate_pattern, lookup_gate_where, None),
+            (
+                range_pattern,
+                range_where,
+                Some(GateLookupTable::RangeCheck),
+            ),
         ];
 
         // Convert from an array of tuples to a tuple of vectors

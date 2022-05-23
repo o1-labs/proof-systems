@@ -44,7 +44,7 @@
 ///   * aXpi is a 12-bit sublimb of limb aX
 ///   * aXci is a 2-bit "crumb" sublimb of aX
 ///
-/// Gate:   RangeCheck0    RangeCheck0    RangeCheck1    RangeCheck2
+/// Gate:   RangeCheck0    RangeCheck0    RangeCheck1    Zero
 ///   Rows -->
 ///         0              1              2              3
 ///  C  0 | a0           | a1           | a2           | 0
