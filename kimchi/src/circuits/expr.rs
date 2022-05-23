@@ -39,6 +39,9 @@ pub enum ExprError {
 
     #[error("Linearization failed")]
     FailedLinearization,
+
+    #[error("runtime table not available")]
+    MissingRuntime,
 }
 
 /// The collection of constants required to evaluate an `Expr`.
@@ -438,7 +441,7 @@ impl Variable {
             LookupSorted(i) => l.map(|l| l.sorted[i]),
             LookupAggreg => l.map(|l| l.aggreg),
             LookupTable => l.map(|l| l.table),
-            LookupRuntimeTable => l.and_then(|l| l.runtime.ok_or("runtime table not available")),
+            LookupRuntimeTable => l.and_then(|l| l.runtime.ok_or(ExprError::MissingRuntime)),
             Index(GateType::Poseidon) => Ok(evals.poseidon_selector),
             Index(GateType::Generic) => Ok(evals.generic_selector),
             Coefficient(_) | LookupKindIndex(_) | LookupRuntimeSelector | Index(_) => {
