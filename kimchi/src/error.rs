@@ -20,6 +20,9 @@ pub enum ProverError {
 
     #[error("the lookup failed to find a match in the table")]
     ValueNotInTable,
+
+    #[error("kimchi does not support SRS of size smaller than the domain")]
+    SRSTooSmall,
 }
 
 /// Errors that can arise when verifying a proof
@@ -39,6 +42,9 @@ pub enum VerifyError {
 
     #[error("lookup used in circuit, but proof has inconsistent number of lookup evaluations and commitments")]
     ProofInconsistentLookup,
+
+    #[error("kimchi does not support SRS of size smaller than the domain")]
+    SRSTooSmall,
 }
 
 /// Errors that can arise when preparing the setup

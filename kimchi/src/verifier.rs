@@ -874,6 +874,10 @@ where
     let srs = &proofs[0].0.srs;
     for (index, _) in proofs.iter() {
         assert_eq!(index.srs.g.len(), srs.g.len());
+        // also make sure that the SRS is not smaller than the domain size
+        if index.srs.max_degree() < index.domain.size() {
+            return Err(VerifyError::SRSTooSmall);
+        }
     }
 
     //~ 3. Validate each proof separately following the [partial verification](#partial-verification) steps.
