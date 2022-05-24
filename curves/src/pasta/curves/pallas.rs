@@ -4,8 +4,9 @@ use ark_ec::{
     ModelParameters, SWModelParameters,
 };
 use ark_ff::{field_new, Zero};
+use serde::{Deserialize, Serialize};
 
-#[derive(Copy, Clone, Default, PartialEq, Eq)]
+#[derive(Copy, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PallasParameters;
 
 impl ModelParameters for PallasParameters {

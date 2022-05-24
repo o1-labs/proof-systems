@@ -50,27 +50,22 @@ fn my_test() {
     println!("eval size: {}", ser_eval.len());
     println!("eval: {:?}", ser_eval);
 
-    let proof = ProofEvaluations::dummy_with_witness_evaluations([
-        -F::one(),
-        F::zero(),
-        F::one(),
-        F::one().double(),
-        F::zero(),
-        F::one(),
-        F::zero(),
-        F::zero(),
-        F::one().double().double(),
-        F::one(),
-        F::zero(),
-        F::zero(),
-        F::one().double().double(),
-        F::one().double().double(),
-        F::one().double().double(),
-    ]);
-    let ser_pf = rmp_serde::to_vec(&proof).unwrap();
-    println!("eval size: {}", ser_pf.len());
-    println!("eval: {:?}", ser_pf);
+    let elem: ark_ff::Fp256<mina_curves::pasta::fp::FpParameters>;
+    let ser_eval = rmp_serde::to_vec(&elem).unwrap();
+    println!("eval: {:?}", ser_eval);
 }
+
+//#[derive(Serialize, Deserialize)]
+//#[serde(remote="AffineCurve")]
+/*struct SF(ScalarField);
+
+impl Serialize for SF {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+    }
+}*/
 
 //~ spec:startcode
 #[serde_as]
@@ -162,7 +157,10 @@ where
     pub evals: [ProofEvaluations<ScalarField<G>>; 2],
 
     /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    //#[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    //#[serde(serialize_with = "o1_utils::serialization::ser::serialize")]
+    //#[serde(with = "o1_utils::serialization::ser")]
+    //#[serde(bound = "ScalarField<G>: CanonicalSerialize")]
     pub ft_eval1: ScalarField<G>,
 
     /// The public input
