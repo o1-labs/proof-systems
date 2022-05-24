@@ -1,12 +1,7 @@
 use ark_ff::{biginteger::BigInteger256 as BigInteger, FftParameters, Fp256, Fp256Parameters};
-use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write};
-use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
 
 pub type Fp = Fp256<FpParameters>;
 
-#[serde_as]
-#[derive(CanonicalSerialize, CanonicalDeserialize, Serialize, Deserialize)]
 pub struct FpParameters;
 
 impl Fp256Parameters for FpParameters {}

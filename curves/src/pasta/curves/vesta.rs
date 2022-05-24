@@ -4,11 +4,8 @@ use ark_ec::{
     ModelParameters, SWModelParameters,
 };
 use ark_ff::{field_new, Zero};
-use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
 
-#[serde_as]
-#[derive(Copy, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Default, PartialEq, Eq)]
 pub struct VestaParameters;
 
 impl ModelParameters for VestaParameters {
