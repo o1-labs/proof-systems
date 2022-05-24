@@ -1376,86 +1376,128 @@ You can find these operations under the [proof creation](#proof-creation) and [p
 A proof consists of the following data structures:
 
 ```rs
-#[derive(Clone)]
-pub struct LookupEvaluations<F> {
+#[serde_as]
+#[derive(Clone, Deserialize, Serialize)]
+pub struct LookupEvaluations<F: CanonicalSerialize + CanonicalDeserialize> {
     /// sorted lookup table polynomial
+    #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
     pub sorted: Vec<Vec<F>>,
     /// lookup aggregation polynomial
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub aggreg: Vec<F>,
     // TODO: May be possible to optimize this away?
     /// lookup table polynomial
-    pub table: Field,
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    pub table: Vec<F>,
     /// Optionally, a runtime table polynomial.
-    pub runtime: Option<Field>,
+    #[serde_as(as = "Option<Vec<o1_utils::serialization::SerdeAs>>")]
+    pub runtime: Option<Vec<F>>,
 }
 
 // TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
-//#[serde_as]
-//#[derive(Clone, Deserialize, Serialize)]
-#[derive(Clone)]
-pub struct ProofEvaluations<F> {
-    //: CanonicalDeserialize + CanonicalSerialize> {
+#[serde_as]
+#[derive(Clone, Deserialize, Serialize)]
+pub struct ProofEvaluations<F: CanonicalSerialize + CanonicalDeserialize> {
     /// witness polynomials
+    #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; COLUMNS]")]
     pub w: [Vec<F>; COLUMNS],
     /// permutation polynomial
-    //#[serde(bound = "EvalEnum<Field>: Serialize")]
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub z: Vec<F>,
     /// permutation polynomials
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
+    #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; PERMUTS - 1]")]
     pub s: [Vec<F>; PERMUTS - 1],
     /// lookup-related evaluations
+    #[serde(bound = "LookupEvaluations<F>: Serialize")]
     pub lookup: Option<LookupEvaluations<F>>,
     /// evaluation of the generic selector polynomial
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub generic_selector: Vec<F>,
     /// evaluation of the poseidon selector polynomial
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub poseidon_selector: Vec<F>,
 }
 
 /// Commitments linked to the lookup feature
-#[derive(Clone)]
+#[serde_as]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct LookupCommitments<G: AffineCurve> {
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub sorted: Vec<PolyComm<G>>,
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub aggreg: PolyComm<G>,
 
     /// Optional commitment to concatenated runtime tables
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub runtime: Option<PolyComm<G>>,
 }
 
 /// All the commitments that the prover creates as part of the proof.
-#[derive(Clone)]
+#[serde_as]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct ProverCommitments<G: AffineCurve> {
     /// The commitments to the witness (execution trace)
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub w_comm: [PolyComm<G>; COLUMNS],
     /// The commitment to the permutation polynomial
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub z_comm: PolyComm<G>,
     /// The commitment to the quotient polynomial
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub t_comm: PolyComm<G>,
     /// Commitments related to the lookup argument
+    #[serde(bound = "LookupCommitments<G>: Serialize + DeserializeOwned")]
     pub lookup: Option<LookupCommitments<G>>,
 }
 
 /// The proof that the prover creates from a [ProverIndex](super::prover_index::ProverIndex) and a `witness`.
-#[derive(Clone)]
-pub struct ProverProof<G: AffineCurve> {
+#[serde_as]
+#[derive(Clone, Deserialize, Serialize)]
+pub struct ProverProof<G>
+where
+    G: AffineCurve,
+{
     /// All the polynomial commitments required in the proof
+    #[serde(bound = "ProverCommitments<G>: Serialize + DeserializeOwned")]
     pub commitments: ProverCommitments<G>,
 
     /// batched commitment opening proof
+    #[serde(bound = "OpeningProof<G>: Serialize + DeserializeOwned")]
     pub proof: OpeningProof<G>,
 
     /// Two evaluations over a number of committed polynomials
     // TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }
+    #[serde(bound = "ProofEvaluations<ScalarField<G>>: Serialize + DeserializeOwned")]
     pub evals: [ProofEvaluations<ScalarField<G>>; 2],
 
     /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub ft_eval1: ScalarField<G>,
 
     /// The public input
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub public: Vec<ScalarField<G>>,
 
     /// The challenges underlying the optional polynomials folded into the proof
-    pub prev_challenges: Vec<(Vec<ScalarField<G>>, PolyComm<G>)>,
+    #[serde(bound = "Challenge<G>: Serialize + DeserializeOwned")]
+    pub prev_challenges: Vec<Challenge<G>>,
 }
+
+#[serde_as]
+#[derive(Clone, Deserialize, Serialize)]
+pub struct Challenge<G>
+where
+    G: AffineCurve,
+{
+    /// Vector of scalar field elements
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    pub chals: Vec<ScalarField<G>>,
+    /// Polynomial commitment
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub comm: PolyComm<G>,
+}
+
 ```
 
 

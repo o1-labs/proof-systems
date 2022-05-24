@@ -441,7 +441,7 @@ impl Variable {
             LookupSorted(i) => l.map(|l| l.sorted[i][0]),
             LookupAggreg => l.map(|l| l.aggreg[0]),
             LookupTable => l.map(|l| l.table[0]),
-            LookupRuntimeTable => todo!(), //l.and_then(|l| l.runtime.ok_or(ExprError::MissingRuntime)),
+            LookupRuntimeTable => l.and_then(|l| l.get_runtime().ok_or(ExprError::MissingRuntime)),
             Index(GateType::Poseidon) => Ok(evals.poseidon_selector[0]),
             Index(GateType::Generic) => Ok(evals.generic_selector[0]),
             Coefficient(_) | LookupKindIndex(_) | LookupRuntimeSelector | Index(_) => {

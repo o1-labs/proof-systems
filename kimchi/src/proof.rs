@@ -145,6 +145,10 @@ impl<F: Field> LookupEvaluations<F> {
             runtime: runtime.map(|r| vec![r]),
         }
     }
+
+    pub fn get_runtime(&self) -> Option<F> {
+        self.runtime.clone().map(|r| r[0])
+    }
 }
 
 impl<F: Zero + CanonicalDeserialize + CanonicalSerialize> ProofEvaluations<F> {
