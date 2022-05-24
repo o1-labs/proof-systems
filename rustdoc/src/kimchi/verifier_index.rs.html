@@ -283,6 +283,15 @@
 <span id="276">276</span>
 <span id="277">277</span>
 <span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the verifier index as [VerifierIndex].</span>
 <span class="doccomment">//! You can derive this struct from the [ProverIndex] struct.</span>
 
@@ -331,6 +340,10 @@
 
     <span class="doccomment">/// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.</span>
     <span class="kw">pub</span> <span class="ident">max_joint_size</span>: <span class="ident">u32</span>,
+
+    <span class="doccomment">/// An optional selector polynomial for runtime tables</span>
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">bound</span> <span class="op">=</span> <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">runtime_tables_selector</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 }
 
 <span class="attribute">#[<span class="ident">serde_as</span>]</span>
@@ -423,6 +436,7 @@
     <span class="doccomment">/// Produces the [VerifierIndex] from the prover&#39;s [ProverIndex].</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verifier_index</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">VerifierIndex</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">domain</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>;
+
         <span class="kw">let</span> <span class="ident">lookup_index</span> <span class="op">=</span> {
             <span class="self">self</span>.<span class="ident">cs</span>
                 .<span class="ident">lookup_constraint_system</span>
@@ -444,6 +458,10 @@
                             .<span class="ident">commit_evaluations_non_hiding</span>(<span class="ident">domain</span>, <span class="ident">table_ids8</span>, <span class="prelude-val">None</span>)
                     }),
                     <span class="ident">max_joint_size</span>: <span class="ident">cs</span>.<span class="ident">configuration</span>.<span class="ident">max_joint_size</span>,
+                    <span class="ident">runtime_tables_selector</span>: <span class="ident">cs</span>
+                        .<span class="ident">runtime_selector</span>
+                        .<span class="ident">as_ref</span>()
+                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">srs</span>.<span class="ident">commit_evaluations_non_hiding</span>(<span class="ident">domain</span>, <span class="ident">e</span>, <span class="prelude-val">None</span>)),
                 })
         };
 
@@ -562,5 +580,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (b2eed72a6 2022-05-22)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (ee160f2f5 2022-05-23)" ></div>
 </body></html>

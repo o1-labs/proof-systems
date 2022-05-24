@@ -626,6 +626,20 @@
 <span id="619">619</span>
 <span id="620">620</span>
 <span id="621">621</span>
+<span id="622">622</span>
+<span id="623">623</span>
+<span id="624">624</span>
+<span id="625">625</span>
+<span id="626">626</span>
+<span id="627">627</span>
+<span id="628">628</span>
+<span id="629">629</span>
+<span id="630">630</span>
+<span id="631">631</span>
+<span id="632">632</span>
+<span id="633">633</span>
+<span id="634">634</span>
+<span id="635">635</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk circuit constraint primitive.</span>
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">circuits</span>::{
@@ -654,6 +668,8 @@
 <span class="kw">use</span> <span class="ident">serde_with::serde_as</span>;
 <span class="kw">use</span> <span class="ident">std::collections::HashSet</span>;
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
+
+<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::lookup::runtime_tables::RuntimeTableConfiguration</span>;
 
 <span class="comment">//</span>
 <span class="comment">// ConstraintSystem</span>
@@ -848,17 +864,23 @@
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">SquareRootField</span><span class="op">&gt;</span> <span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Creates a constraint system from a vector of gates ([CircuitGate]),</span>
-    <span class="doccomment">///   some sponge parameters ([ArithmeticSpongeParams])</span>
+    <span class="doccomment">/// creates a constraint system from a vector of gates ([CircuitGate]), some sponge parameters ([ArithmeticSpongeParams]), and the number of public inputs.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Warning: you have to make sure that the IDs of the lookup tables,</span>
+    <span class="doccomment">/// and runtime lookup tables, are unique and</span>
+    <span class="doccomment">/// not colliding with IDs of built-in lookup tables</span>
+    <span class="doccomment">/// (see [crate::circuits::lookup::tables]).</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create</span>(
         <span class="ident">gates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">lookup_tables</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">LookupTable</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">runtime_tables</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RuntimeTableConfiguration</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">fr_sponge_params</span>: <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
         <span class="ident">public</span>: <span class="ident">usize</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">SetupError</span><span class="op">&gt;</span> {
         <span class="ident">ConstraintSystem</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::create_with_shared_precomputations</span>(
             <span class="ident">gates</span>,
             <span class="ident">lookup_tables</span>,
+            <span class="ident">runtime_tables</span>,
             <span class="ident">fr_sponge_params</span>,
             <span class="ident">public</span>,
             <span class="prelude-val">None</span>,
@@ -866,9 +888,15 @@
     }
 
     <span class="doccomment">/// similar to create. but this fn creates a constraint system with a shared precomputation previously created elsewhere</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Warning: you have to make sure that the IDs of the lookup tables,</span>
+    <span class="doccomment">/// and runtime lookup tables, are unique and</span>
+    <span class="doccomment">/// not colliding with IDs of built-in lookup tables</span>
+    <span class="doccomment">/// (see [crate::circuits::lookup::tables]).</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_with_shared_precomputations</span>(
         <span class="kw-2">mut</span> <span class="ident">gates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">lookup_tables</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">LookupTable</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">runtime_tables</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RuntimeTableConfiguration</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">fr_sponge_params</span>: <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
         <span class="ident">public</span>: <span class="ident">usize</span>,
         <span class="ident">precomputations</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">DomainConstantEvaluations</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -1070,7 +1098,7 @@
         <span class="comment">// Lookup</span>
         <span class="comment">// ------</span>
         <span class="kw">let</span> <span class="ident">lookup_constraint_system</span> <span class="op">=</span>
-            <span class="ident">LookupConstraintSystem::create</span>(<span class="kw-2">&amp;</span><span class="ident">gates</span>, <span class="ident">lookup_tables</span>, <span class="kw-2">&amp;</span><span class="ident">domain</span>)
+            <span class="ident">LookupConstraintSystem::create</span>(<span class="kw-2">&amp;</span><span class="ident">gates</span>, <span class="ident">lookup_tables</span>, <span class="ident">runtime_tables</span>, <span class="kw-2">&amp;</span><span class="ident">domain</span>)
                 .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">SetupError::ConstraintSystem</span>(<span class="ident">e</span>.<span class="ident">to_string</span>()))<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">sid</span> <span class="op">=</span> <span class="ident">shifts</span>.<span class="ident">map</span>[<span class="number">0</span>].<span class="ident">clone</span>();
@@ -1236,7 +1264,7 @@
         ) -&gt; <span class="self">Self</span> {
             <span class="kw">let</span> <span class="ident">public</span> <span class="op">=</span> <span class="number">0</span>;
             <span class="comment">// not sure if theres a smarter way instead of the double unwrap, but should be fine in the test</span>
-            <span class="ident">ConstraintSystem</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">gates</span>, <span class="macro">vec!</span>[], <span class="ident">sponge_params</span>, <span class="ident">public</span>).<span class="ident">unwrap</span>()
+            <span class="ident">ConstraintSystem</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">gates</span>, <span class="macro">vec!</span>[], <span class="prelude-val">None</span>, <span class="ident">sponge_params</span>, <span class="ident">public</span>).<span class="ident">unwrap</span>()
         }
     }
 
@@ -1248,5 +1276,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (b2eed72a6 2022-05-22)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (ee160f2f5 2022-05-23)" ></div>
 </body></html>

@@ -664,6 +664,23 @@
 <span id="657">657</span>
 <span id="658">658</span>
 <span id="659">659</span>
+<span id="660">660</span>
+<span id="661">661</span>
+<span id="662">662</span>
+<span id="663">663</span>
+<span id="664">664</span>
+<span id="665">665</span>
+<span id="666">666</span>
+<span id="667">667</span>
+<span id="668">668</span>
+<span id="669">669</span>
+<span id="670">670</span>
+<span id="671">671</span>
+<span id="672">672</span>
+<span id="673">673</span>
+<span id="674">674</span>
+<span id="675">675</span>
+<span id="676">676</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections::HashMap</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -684,6 +701,8 @@
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">serde_with::serde_as</span>;
 <span class="kw">use</span> <span class="ident">CurrOrNext</span>::{<span class="ident">Curr</span>, <span class="ident">Next</span>};
+
+<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::runtime_tables</span>::{<span class="self">self</span>, <span class="ident">RuntimeTableConfiguration</span>};
 
 <span class="doccomment">/// Number of constraints produced by the argument.</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">7</span>;
@@ -988,6 +1007,7 @@
 
 <span class="doccomment">/// Configuration for the lookup constraint.</span>
 <span class="doccomment">/// These values are independent of the choice of lookup values.</span>
+<span class="comment">// TODO: move to lookup::index</span>
 <span class="attribute">#[<span class="ident">serde_as</span>]</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LookupConfiguration</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> {
@@ -996,8 +1016,15 @@
 
     <span class="doccomment">/// The maximum number of lookups per row</span>
     <span class="kw">pub</span> <span class="ident">max_lookups_per_row</span>: <span class="ident">usize</span>,
+
     <span class="doccomment">/// The maximum number of elements in a vector lookup</span>
     <span class="kw">pub</span> <span class="ident">max_joint_size</span>: <span class="ident">u32</span>,
+
+    <span class="doccomment">/// Optional runtime tables, listed as tuples `(length, id)`.</span>
+    <span class="kw">pub</span> <span class="ident">runtime_tables</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RuntimeTableConfiguration</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+
+    <span class="doccomment">/// The offset of the runtime table within the concatenated table</span>
+    <span class="kw">pub</span> <span class="ident">runtime_table_offset</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>,
 
     <span class="doccomment">/// A placeholder value that is known to appear in the lookup table.</span>
     <span class="doccomment">/// This is used to pad the lookups to `max_lookups_per_row` when fewer lookups are used in a</span>
@@ -1212,6 +1239,13 @@
         .<span class="ident">collect</span>();
     <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">compatibility_checks</span>);
 
+    <span class="comment">// if we are using runtime tables, we add:</span>
+    <span class="comment">// $RT(x) (1 - \text{selector}_{RT}(x)) = 0$</span>
+    <span class="kw">if</span> <span class="ident">configuration</span>.<span class="ident">runtime_tables</span>.<span class="ident">is_some</span>() {
+        <span class="kw">let</span> <span class="ident">rt_constraints</span> <span class="op">=</span> <span class="ident">runtime_tables::constraints</span>();
+        <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">rt_constraints</span>);
+    }
+
     <span class="ident">res</span>
 }
 
@@ -1324,5 +1358,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (b2eed72a6 2022-05-22)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (ee160f2f5 2022-05-23)" ></div>
 </body></html>

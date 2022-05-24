@@ -1201,6 +1201,10 @@ pub struct LookupVerifierIndex&lt;G: CommitmentCurve&gt; {
 
     /// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
     pub max_joint_size: u32,
+
+    /// An optional selector polynomial for runtime tables
+    #[serde(bound = &quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;)]
+    pub runtime_tables_selector: Option&lt;PolyComm&lt;G&gt;&gt;,
 }
 
 #[serde_as]
@@ -1356,6 +1360,9 @@ pub struct LookupEvaluations&lt;Field&gt; {
     // TODO: May be possible to optimize this away?
     /// lookup table polynomial
     pub table: Field,
+
+    /// Optionally, a runtime table polynomial.
+    pub runtime: Option&lt;Field&gt;,
 }
 
 // TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
@@ -1381,6 +1388,9 @@ pub struct ProofEvaluations&lt;Field&gt; {
 pub struct LookupCommitments&lt;G: AffineCurve&gt; {
     pub sorted: Vec&lt;PolyComm&lt;G&gt;&gt;,
     pub aggreg: PolyComm&lt;G&gt;,
+
+    /// Optional commitment to concatenated runtime tables
+    pub runtime: Option&lt;PolyComm&lt;G&gt;&gt;,
 }
 
 /// All the commitments that the prover creates as part of the proof.
@@ -1566,6 +1576,10 @@ TODO: specify the dummies</p>
 </li>
 <li>
 <p>If lookup is used, evaluate the following polynomials at <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span></span></span></span> and <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span><span class="mord mathnormal" style="margin-right:0.03588em;">ω</span></span></span></span>:</p>
+<ul>
+<li>the aggregation polynomial</li>
+<li>the sorted polynomials</li>
+</ul>
 </li>
 <li>
 <p>Chunk evaluate the following polynomials at both <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span></span></span></span> and <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span><span class="mord mathnormal" style="margin-right:0.03588em;">ω</span></span></span></span>:</p>
@@ -1650,6 +1664,7 @@ First, include the previous challenges, in case we are in a recursive prover.</p
 <li>the poseidon selector</li>
 <li>the 15 registers/witness columns</li>
 <li>the 6 sigmas</li>
+<li>optionally, the runtime table</li>
 </ul>
 </li>
 <li>

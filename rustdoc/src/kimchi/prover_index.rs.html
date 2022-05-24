@@ -131,6 +131,16 @@
 <span id="124">124</span>
 <span id="125">125</span>
 <span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
+<span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the prover index as [ProverIndex].</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::alphas::Alphas</span>;
@@ -231,7 +241,10 @@
 
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">testing</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{<span class="ident">gate::CircuitGate</span>, <span class="ident">lookup::tables::LookupTable</span>};
+    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
+        <span class="ident">gate::CircuitGate</span>,
+        <span class="ident">lookup</span>::{<span class="ident">runtime_tables::RuntimeTableConfiguration</span>, <span class="ident">tables::LookupTable</span>},
+    };
     <span class="kw">use</span> <span class="ident">commitment_dlog::srs::endos</span>;
     <span class="kw">use</span> <span class="ident">mina_curves::pasta</span>::{<span class="ident">pallas::Affine</span> <span class="kw">as</span> <span class="ident">Other</span>, <span class="ident">vesta::Affine</span>, <span class="ident">Fp</span>};
 
@@ -239,12 +252,19 @@
         <span class="ident">gates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">public</span>: <span class="ident">usize</span>,
         <span class="ident">lookup_tables</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">LookupTable</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">runtime_tables</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RuntimeTableConfiguration</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     ) -&gt; <span class="ident">ProverIndex</span><span class="op">&lt;</span><span class="ident">Affine</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">fp_sponge_params</span> <span class="op">=</span> <span class="ident">oracle::pasta::fp_kimchi::params</span>();
 
         <span class="comment">// not sure if theres a smarter way instead of the double unwrap, but should be fine in the test</span>
-        <span class="kw">let</span> <span class="ident">cs</span> <span class="op">=</span>
-            <span class="ident">ConstraintSystem</span>::<span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">gates</span>, <span class="ident">lookup_tables</span>, <span class="ident">fp_sponge_params</span>, <span class="ident">public</span>).<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">cs</span> <span class="op">=</span> <span class="ident">ConstraintSystem</span>::<span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="ident">::create</span>(
+            <span class="ident">gates</span>,
+            <span class="ident">lookup_tables</span>,
+            <span class="ident">runtime_tables</span>,
+            <span class="ident">fp_sponge_params</span>,
+            <span class="ident">public</span>,
+        )
+        .<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">srs</span> <span class="op">=</span> <span class="ident">SRS</span>::<span class="op">&lt;</span><span class="ident">Affine</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>);
         <span class="ident">srs</span>.<span class="ident">add_lagrange_basis</span>(<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>);
         <span class="kw">let</span> <span class="ident">srs</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">srs</span>);
@@ -254,9 +274,9 @@
         <span class="ident">ProverIndex</span>::<span class="op">&lt;</span><span class="ident">Affine</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">cs</span>, <span class="ident">fq_sponge_params</span>, <span class="ident">endo_q</span>, <span class="ident">srs</span>)
     }
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_index_for_test</span>(<span class="ident">gates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">public</span>: <span class="ident">usize</span>) -&gt; <span class="ident">ProverIndex</span><span class="op">&lt;</span><span class="ident">Affine</span><span class="op">&gt;</span> {
-        <span class="ident">new_index_for_test_with_lookups</span>(<span class="ident">gates</span>, <span class="ident">public</span>, <span class="macro">vec!</span>[])
+        <span class="ident">new_index_for_test_with_lookups</span>(<span class="ident">gates</span>, <span class="ident">public</span>, <span class="macro">vec!</span>[], <span class="prelude-val">None</span>)
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (b2eed72a6 2022-05-22)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (ee160f2f5 2022-05-23)" ></div>
 </body></html>

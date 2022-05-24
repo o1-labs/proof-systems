@@ -605,6 +605,7 @@
 <span id="598">598</span>
 <span id="599">599</span>
 <span id="600">600</span>
+<span id="601">601</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the ChaCha constraints.</span>
 
 <span class="comment">//~ There are four chacha constraint types, corresponding to the four lines in each quarter round.</span>
@@ -1158,6 +1159,7 @@
                     .<span class="ident">collect</span>(),
                 <span class="ident">aggreg</span>: <span class="ident">F::rand</span>(<span class="ident">rng</span>),
                 <span class="ident">table</span>: <span class="ident">F::rand</span>(<span class="ident">rng</span>),
+                <span class="ident">runtime</span>: <span class="prelude-val">None</span>,
             }),
         };
         <span class="kw">let</span> <span class="ident">evals</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">eval</span>(), <span class="ident">eval</span>()];
@@ -1206,5 +1208,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (b2eed72a6 2022-05-22)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (ee160f2f5 2022-05-23)" ></div>
 </body></html>

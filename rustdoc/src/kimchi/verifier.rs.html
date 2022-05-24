@@ -895,6 +895,62 @@
 <span id="888">888</span>
 <span id="889">889</span>
 <span id="890">890</span>
+<span id="891">891</span>
+<span id="892">892</span>
+<span id="893">893</span>
+<span id="894">894</span>
+<span id="895">895</span>
+<span id="896">896</span>
+<span id="897">897</span>
+<span id="898">898</span>
+<span id="899">899</span>
+<span id="900">900</span>
+<span id="901">901</span>
+<span id="902">902</span>
+<span id="903">903</span>
+<span id="904">904</span>
+<span id="905">905</span>
+<span id="906">906</span>
+<span id="907">907</span>
+<span id="908">908</span>
+<span id="909">909</span>
+<span id="910">910</span>
+<span id="911">911</span>
+<span id="912">912</span>
+<span id="913">913</span>
+<span id="914">914</span>
+<span id="915">915</span>
+<span id="916">916</span>
+<span id="917">917</span>
+<span id="918">918</span>
+<span id="919">919</span>
+<span id="920">920</span>
+<span id="921">921</span>
+<span id="922">922</span>
+<span id="923">923</span>
+<span id="924">924</span>
+<span id="925">925</span>
+<span id="926">926</span>
+<span id="927">927</span>
+<span id="928">928</span>
+<span id="929">929</span>
+<span id="930">930</span>
+<span id="931">931</span>
+<span id="932">932</span>
+<span id="933">933</span>
+<span id="934">934</span>
+<span id="935">935</span>
+<span id="936">936</span>
+<span id="937">937</span>
+<span id="938">938</span>
+<span id="939">939</span>
+<span id="940">940</span>
+<span id="941">941</span>
+<span id="942">942</span>
+<span id="943">943</span>
+<span id="944">944</span>
+<span id="945">945</span>
+<span id="946">946</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements zk-proof batch verifier functionality.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -1036,6 +1092,21 @@
 
         <span class="comment">//~ 4. If lookup is used:</span>
         <span class="kw">let</span> <span class="ident">joint_combiner</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">l</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">lookup_index</span> {
+            <span class="kw">let</span> <span class="ident">lookup_commits</span> <span class="op">=</span> <span class="self">self</span>
+                .<span class="ident">commitments</span>
+                .<span class="ident">lookup</span>
+                .<span class="ident">as_ref</span>()
+                .<span class="ident">ok_or</span>(<span class="ident">VerifyError::LookupCommitmentMissing</span>)<span class="question-mark">?</span>;
+
+            <span class="comment">// if runtime is used, absorb the commitment</span>
+            <span class="kw">if</span> <span class="ident">l</span>.<span class="ident">runtime_tables_selector</span>.<span class="ident">is_some</span>() {
+                <span class="kw">let</span> <span class="ident">runtime_commit</span> <span class="op">=</span> <span class="ident">lookup_commits</span>
+                    .<span class="ident">runtime</span>
+                    .<span class="ident">as_ref</span>()
+                    .<span class="ident">ok_or</span>(<span class="ident">VerifyError::IncorrectRuntimeProof</span>)<span class="question-mark">?</span>;
+                <span class="ident">fq_sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span><span class="ident">runtime_commit</span>.<span class="ident">unshifted</span>);
+            }
+
             <span class="comment">//~    - If it involves queries to a multiple-column lookup table,</span>
             <span class="comment">//~      then squeeze the Fq-Sponge to obtain the joint combiner challenge $j&#39;$,</span>
             <span class="comment">//~      otherwise set the joint combiner challenge $j&#39;$ to $0$.</span>
@@ -1052,11 +1123,9 @@
             <span class="kw">let</span> <span class="ident">joint_combiner</span> <span class="op">=</span> (<span class="ident">joint_combiner</span>, <span class="ident">joint_combiner</span>.<span class="ident">to_field</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">endo_r</span>));
 
             <span class="comment">//~    - absorb the commitments to the sorted polynomials.</span>
-            <span class="self">self</span>.<span class="ident">commitments</span>.<span class="ident">lookup</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">l</span><span class="op">|</span> {
-                <span class="ident">l</span>.<span class="ident">sorted</span>
-                    .<span class="ident">iter</span>()
-                    .<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">fq_sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span><span class="ident">c</span>.<span class="ident">unshifted</span>));
-            });
+            <span class="kw">for</span> <span class="ident">com</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">lookup_commits</span>.<span class="ident">sorted</span> {
+                <span class="ident">fq_sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span><span class="ident">com</span>.<span class="ident">unshifted</span>);
+            }
 
             <span class="prelude-val">Some</span>(<span class="ident">joint_combiner</span>)
         } <span class="kw">else</span> {
@@ -1507,6 +1576,21 @@
                         }
                     },
                     <span class="ident">LookupTable</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Lookup table is unused in the linearization&quot;</span>),
+                    <span class="ident">LookupRuntimeSelector</span> =&gt; <span class="kw">match</span> <span class="ident">index</span>.<span class="ident">lookup_index</span>.<span class="ident">as_ref</span>() {
+                        <span class="prelude-val">None</span> =&gt; {
+                            <span class="macro">panic!</span>(<span class="string">&quot;Attempted to use {:?}, but no lookup index was given&quot;</span>, <span class="ident">col</span>)
+                        }
+                        <span class="prelude-val">Some</span>(<span class="ident">lindex</span>) =&gt; <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">lindex</span>.<span class="ident">runtime_tables_selector</span> {
+                            <span class="prelude-val">None</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;No runtime selector was given&quot;</span>),
+                            <span class="prelude-val">Some</span>(<span class="ident">comm</span>) =&gt; {
+                                <span class="ident">scalars</span>.<span class="ident">push</span>(<span class="ident">scalar</span>);
+                                <span class="ident">commitments</span>.<span class="ident">push</span>(<span class="ident">comm</span>);
+                            }
+                        },
+                    },
+                    <span class="ident">LookupRuntimeTable</span> =&gt; {
+                        <span class="macro">panic!</span>(<span class="string">&quot;runtime lookup table is unused in the linearization&quot;</span>)
+                    }
                     <span class="ident">Index</span>(<span class="ident">t</span>) =&gt; {
                         <span class="kw">use</span> <span class="ident">GateType</span>::<span class="kw-2">*</span>;
                         <span class="kw">let</span> <span class="ident">c</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">t</span> {
@@ -1692,15 +1776,19 @@
 
         <span class="comment">// compute table commitment</span>
         <span class="kw">let</span> <span class="ident">table_comm</span> <span class="op">=</span> {
-            <span class="comment">// TODO: should we return an error instead?</span>
-            <span class="kw">let</span> <span class="ident">joint_combiner</span> <span class="op">=</span> <span class="ident">oracles</span>.<span class="ident">joint_combiner</span>.<span class="ident">expect</span>(<span class="string">&quot;????&quot;</span>);
+            <span class="kw">let</span> <span class="ident">joint_combiner</span> <span class="op">=</span> <span class="ident">oracles</span>
+                .<span class="ident">joint_combiner</span>
+                .<span class="ident">expect</span>(<span class="string">&quot;joint_combiner should be present if lookups are used&quot;</span>);
             <span class="kw">let</span> <span class="ident">table_id_combiner</span> <span class="op">=</span> <span class="ident">joint_combiner</span>.<span class="number">1</span>.<span class="ident">pow</span>([<span class="ident">li</span>.<span class="ident">max_joint_size</span> <span class="kw">as</span> <span class="ident">u64</span>]);
             <span class="kw">let</span> <span class="ident">lookup_table</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">li</span>.<span class="ident">lookup_table</span>.<span class="ident">iter</span>().<span class="ident">collect</span>();
+            <span class="kw">let</span> <span class="ident">runtime</span> <span class="op">=</span> <span class="ident">lookup_comms</span>.<span class="ident">runtime</span>.<span class="ident">as_ref</span>();
+
             <span class="ident">combine_table</span>(
                 <span class="kw-2">&amp;</span><span class="ident">lookup_table</span>,
                 <span class="ident">joint_combiner</span>.<span class="number">1</span>,
                 <span class="ident">table_id_combiner</span>,
                 <span class="ident">li</span>.<span class="ident">table_ids</span>.<span class="ident">as_ref</span>(),
+                <span class="ident">runtime</span>,
             )
         };
 
@@ -1710,6 +1798,30 @@
             <span class="ident">evaluations</span>: <span class="macro">vec!</span>[<span class="ident">lookup_eval0</span>.<span class="ident">table</span>.<span class="ident">clone</span>(), <span class="ident">lookup_eval1</span>.<span class="ident">table</span>.<span class="ident">clone</span>()],
             <span class="ident">degree_bound</span>: <span class="prelude-val">None</span>,
         });
+
+        <span class="comment">// add evaluation of the runtime table polynomial</span>
+        <span class="kw">if</span> <span class="ident">li</span>.<span class="ident">runtime_tables_selector</span>.<span class="ident">is_some</span>() {
+            <span class="kw">let</span> <span class="ident">runtime</span> <span class="op">=</span> <span class="ident">lookup_comms</span>
+                .<span class="ident">runtime</span>
+                .<span class="ident">as_ref</span>()
+                .<span class="ident">ok_or</span>(<span class="ident">VerifyError::IncorrectRuntimeProof</span>)<span class="question-mark">?</span>;
+            <span class="kw">let</span> <span class="ident">runtime_eval0</span> <span class="op">=</span> <span class="ident">lookup_eval0</span>
+                .<span class="ident">runtime</span>
+                .<span class="ident">as_ref</span>()
+                .<span class="ident">cloned</span>()
+                .<span class="ident">ok_or</span>(<span class="ident">VerifyError::IncorrectRuntimeProof</span>)<span class="question-mark">?</span>;
+            <span class="kw">let</span> <span class="ident">runtime_eval1</span> <span class="op">=</span> <span class="ident">lookup_eval1</span>
+                .<span class="ident">runtime</span>
+                .<span class="ident">as_ref</span>()
+                .<span class="ident">cloned</span>()
+                .<span class="ident">ok_or</span>(<span class="ident">VerifyError::IncorrectRuntimeProof</span>)<span class="question-mark">?</span>;
+
+            <span class="ident">evaluations</span>.<span class="ident">push</span>(<span class="ident">Evaluation</span> {
+                <span class="ident">commitment</span>: <span class="ident">runtime</span>.<span class="ident">clone</span>(),
+                <span class="ident">evaluations</span>: <span class="macro">vec!</span>[<span class="ident">runtime_eval0</span>, <span class="ident">runtime_eval1</span>],
+                <span class="ident">degree_bound</span>: <span class="prelude-val">None</span>,
+            });
+        }
     }
 
     <span class="comment">// prepare for the opening proof verification</span>
@@ -1786,5 +1898,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (b2eed72a6 2022-05-22)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (ee160f2f5 2022-05-23)" ></div>
 </body></html>
