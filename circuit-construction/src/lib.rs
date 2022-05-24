@@ -207,6 +207,74 @@ pub trait Cs<F: FftField + PrimeField> {
         });
     }
 
+    fn add(&mut self, m0: Var<F>, m1: Var<F>) -> Var<F> {
+        let m2 = self.var(|| m0.val() + m1.val());
+
+        //
+        let row = array_init(|i| {
+            if i == 0 {
+                m0
+            } else if i == 1 {
+                m1
+            } else if i == 2 {
+                m2
+            } else {
+                self.var(|| F::zero())
+            }
+        });
+
+        // c0 =  1 :     (1) * m0
+        // c1 =  1 :  +  (1) * m1
+        // c2 = -1 :  + (-1) * m2
+        let mut c = vec![F::zero(); GENERIC_ROW_COEFFS];
+        c[0] = F::one();
+        c[1] = F::one();
+        c[2] = -F::one();
+        self.gate(GateSpec {
+            typ: GateType::Generic,
+            row,
+            c,
+        });
+
+        m2
+    }
+
+    // Constraints:
+    //
+    // out = m1 * m2
+    fn mul(&mut self, m0: Var<F>, m1: Var<F>) -> Var<F> {
+        let m2 = self.var(|| m0.val() * m1.val());
+
+        //
+        let row = array_init(|i| {
+            if i == 0 {
+                m0
+            } else if i == 1 {
+                m1
+            } else if i == 2 {
+                m2
+            } else {
+                self.var(|| F::zero())
+            }
+        });
+
+        // c0 =  0 :     (0) * m0
+        // c1 =  0 :  +  (0) * m1
+        // c2 = -1 :  + (-1) * m2
+        // c3 =  1 :  +  (1) * m0*m1
+        // c4 =  0 :         = 0
+        let mut c = vec![F::zero(); GENERIC_ROW_COEFFS];
+        c[2] = -F::one();
+        c[3] = F::one();
+        self.gate(GateSpec {
+            typ: GateType::Generic,
+            row,
+            c,
+        });
+
+        m2
+    }
+
     fn constant(&mut self, x: F) -> Var<F> {
         let v = self.var(|| x);
 
