@@ -21,7 +21,7 @@ pub enum ProverError {
     #[error("the lookup failed to find a match in the table")]
     ValueNotInTable,
 
-    #[error("kimchi does not support SRS of size smaller than the domain")]
+    #[error("SRS size is smaller than the domain size required by the circuit")]
     SRSTooSmall,
 }
 
@@ -43,10 +43,10 @@ pub enum VerifyError {
     #[error("lookup used in circuit, but proof has inconsistent number of lookup evaluations and commitments")]
     ProofInconsistentLookup,
 
-    #[error("kimchi does not support batching verification of proofs of different SRS")]
+    #[error("cannot batch proofs using different SRSes")]
     DifferentSRS,
 
-    #[error("kimchi does not support SRS of size smaller than the domain")]
+    #[error("SRS size is smaller than the domain size required by the circuit")]
     SRSTooSmall,
 }
 
