@@ -266,8 +266,12 @@ pub fn selector_polynomials<F: FftField>(
 mod tests {
     use crate::{
         circuits::{
-            constraints::ConstraintSystem, gate::CircuitGate, polynomial::COLUMNS,
+            constraints::ConstraintSystem,
+            gate::CircuitGate,
+            lookup::{self, tables::GateLookupTable},
+            polynomial::COLUMNS,
             polynomials::range_check,
+            wires::Wire,
         },
         proof::ProverProof,
         prover_index::testing::new_index_for_test_with_lookups,
@@ -283,15 +287,36 @@ mod tests {
     type PallasField = <pallas::Affine as AffineCurve>::BaseField;
 
     fn create_test_constraint_system() -> ConstraintSystem<PallasField> {
-        let (_, gates) = CircuitGate::<PallasField>::create_range_check(0);
+        let (mut next_row, mut gates) = CircuitGate::<PallasField>::create_range_check(0);
 
-        ConstraintSystem::create(gates, vec![], oracle::pasta::fp_kimchi::params(), 0).unwrap()
+        // Temporary workaround for lookup-table/domain-size issue
+        for _ in 0..(1 << 13) {
+            gates.push(CircuitGate::zero(Wire::new(next_row)));
+            next_row += 1;
+        }
+
+        ConstraintSystem::create(
+            gates,
+            vec![lookup::tables::get_table::<PallasField>(
+                GateLookupTable::RangeCheck,
+            )],
+            oracle::pasta::fp_kimchi::params(),
+            0,
+        )
+        .unwrap()
     }
 
     fn create_test_prover_index(
         public_size: usize,
     ) -> ProverIndex<mina_curves::pasta::vesta::Affine> {
-        let (_, gates) = CircuitGate::<PallasField>::create_range_check(0);
+        let (mut next_row, mut gates) = CircuitGate::<PallasField>::create_range_check(0);
+
+        // Temporary workaround for lookup-table/domain-size issue
+        for _ in 0..(1 << 13) {
+            gates.push(CircuitGate::zero(Wire::new(next_row)));
+            next_row += 1;
+        }
+
         new_index_for_test_with_lookups(gates, public_size, vec![])
     }
 

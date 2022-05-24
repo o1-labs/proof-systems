@@ -1,11 +1,10 @@
 ///```text
-/// Range check field element structure:
+/// Range check circuit gates:
 ///
-///    Each field element a should be decomposed into three 88-bit limbs a0, a1, a2 s.t. a = a0a1a2 in
-///    little-endian byte order (i.e. a = a2*2^{2b} + a1*2^b + a0).
+///    The rang check gate is comprised of three circuit gates (RangeCheck0, RangeCheck1
+///    and RangeCheck2) and can perform range checks on up to three 88-bit values: a0, a1 and a2.
 ///
-///    This gate only performs 3 88-bit range checks on a0, a1 and a2, but does not constrain that
-///    the sum of those is equal to a.
+///    The values are decomposed as follows.
 ///
 ///    L is a 12-bit lookup,
 ///    C is a 2-bit crumb.
@@ -18,33 +17,31 @@
 ///
 /// Input structure:
 ///
-///   Each of the first 3 gates checks most of a different range-check input.
-///   The final gate performs the remaining checks for all 3 inputs.
+///   The first 2 rows contain the values and decompositions of a0 and a1.
+///   The third row contains the value and part of the decomposition of a2.
+///   The final row contains the remaining parts a2's decomposition, as well
+///   as some copies of parts of a0 and a1 that need to be constrained here.
 ///
-///   Row*  Contents**
+///   Row  Contents
 ///     0   a0
 ///     1   a1
 ///     2   a2
 ///     3   a0,a1,a2
 ///
-///    (*)  Row offsets
-///    (**) Some part of the limb is contained in this row
-///
 /// Constraints:
 ///
-///   For efficiency, the field element inputs are constrained
-///   by their sublimbs according to their type.
+///   For efficiency, the values are constrained differently according to their type.
 ///    * 12-bit sublimbs are constrained with plookups
 ///    * 2-bit crumbs are constrained with degree-4 constraints
 ///
-/// Example:
+/// Layout:
 ///
-///  This example shows how input a is constrained
+///  This is how three 88-bit inputs a0, a1 and a2 are constrained
 ///
 ///   * aXpi is a 12-bit sublimb of limb aX
 ///   * aXci is a 2-bit "crumb" sublimb of aX
 ///
-/// Gate:   RangeCheck0    RangeCheck0    RangeCheck1    Zero
+/// Gate:   RangeCheck0    RangeCheck0    RangeCheck1    RangeCheck2
 ///   Rows -->
 ///         0              1              2              3
 ///  C  0 | a0           | a1           | a2           | 0
@@ -72,7 +69,7 @@
 ///
 /// Gate types:
 ///
-///   Different rows are constrained differently using different CircuitGate types
+///   Different rows are constrained using different CircuitGate types
 ///
 ///   Row   CircuitGate   Purpose
 ///     0   RangeCheck0   Partially constrain a0
