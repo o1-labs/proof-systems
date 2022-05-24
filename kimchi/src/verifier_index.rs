@@ -46,6 +46,10 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 
     /// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
     pub max_joint_size: u32,
+
+    /// An optional selector polynomial for runtime tables
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub runtime_tables_selector: Option<PolyComm<G>>,
 }
 
 #[serde_as]
@@ -138,6 +142,7 @@ where
     /// Produces the [VerifierIndex] from the prover's [ProverIndex].
     pub fn verifier_index(&self) -> VerifierIndex<G> {
         let domain = self.cs.domain.d1;
+
         let lookup_index = {
             self.cs
                 .lookup_constraint_system
@@ -159,6 +164,10 @@ where
                             .commit_evaluations_non_hiding(domain, table_ids8, None)
                     }),
                     max_joint_size: cs.configuration.max_joint_size,
+                    runtime_tables_selector: cs
+                        .runtime_selector
+                        .as_ref()
+                        .map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None)),
                 })
         };
 

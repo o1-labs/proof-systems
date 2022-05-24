@@ -39,6 +39,9 @@ pub enum ExprError {
 
     #[error("Linearization failed")]
     FailedLinearization,
+
+    #[error("runtime table not available")]
+    MissingRuntime,
 }
 
 /// The collection of constants required to evaluate an `Expr`.
@@ -70,6 +73,10 @@ pub struct LookupEnvironment<'a, F: FftField> {
     pub selectors: &'a Vec<Evaluations<F, D<F>>>,
     /// The evaluations of the combined lookup table polynomial.
     pub table: &'a Evaluations<F, D<F>>,
+    /// The evaluations of the optional runtime selector polynomial.
+    pub runtime_selector: Option<&'a Evaluations<F, D<F>>>,
+    /// The evaluations of the optional runtime table.
+    pub runtime_table: Option<&'a Evaluations<F, D<F>>>,
 }
 
 /// The collection of polynomials (all in evaluation form) and constants
@@ -110,6 +117,8 @@ impl<'a, F: FftField> Environment<'a, F> {
             LookupSorted(i) => lookup.map(|l| &l.sorted[*i]),
             LookupAggreg => lookup.map(|l| l.aggreg),
             LookupTable => lookup.map(|l| l.table),
+            LookupRuntimeSelector => lookup.and_then(|l| l.runtime_selector),
+            LookupRuntimeTable => lookup.and_then(|l| l.runtime_table),
             Index(t) => match self.index.get(t) {
                 None => None,
                 Some(e) => Some(e),
@@ -145,6 +154,8 @@ pub enum Column {
     LookupAggreg,
     LookupTable,
     LookupKindIndex(usize),
+    LookupRuntimeSelector,
+    LookupRuntimeTable,
     Index(GateType),
     Coefficient(usize),
 }
@@ -165,6 +176,8 @@ impl Column {
             Column::LookupAggreg => "a".to_string(),
             Column::LookupTable => "t".to_string(),
             Column::LookupKindIndex(i) => format!("k_{{{}}}", i),
+            Column::LookupRuntimeSelector => "rts".to_string(),
+            Column::LookupRuntimeTable => "rt".to_string(),
             Column::Index(gate) => {
                 format!("{:?}", gate)
             }
@@ -428,9 +441,10 @@ impl Variable {
             LookupSorted(i) => l.map(|l| l.sorted[i][0]),
             LookupAggreg => l.map(|l| l.aggreg[0]),
             LookupTable => l.map(|l| l.table[0]),
+            LookupRuntimeTable => todo!(), //l.and_then(|l| l.runtime.ok_or(ExprError::MissingRuntime)),
             Index(GateType::Poseidon) => Ok(evals.poseidon_selector[0]),
             Index(GateType::Generic) => Ok(evals.generic_selector[0]),
-            Coefficient(_) | LookupKindIndex(_) | Index(_) => {
+            Coefficient(_) | LookupKindIndex(_) | LookupRuntimeSelector | Index(_) => {
                 Err(ExprError::MissingIndexEvaluation(self.col))
             }
         }

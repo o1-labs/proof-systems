@@ -550,6 +550,7 @@ mod tests {
                         .collect(),
                     F::rand(rng),
                     F::rand(rng),
+                    None,
                 )),
                 F::zero(),
                 F::zero(),

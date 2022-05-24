@@ -25,6 +25,9 @@ pub struct LookupEvaluations<F: CanonicalSerialize + CanonicalDeserialize> {
     /// lookup table polynomial
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub table: Vec<F>,
+    /// Optionally, a runtime table polynomial.
+    #[serde_as(as = "Option<Vec<o1_utils::serialization::SerdeAs>>")]
+    pub runtime: Option<Vec<F>>,
 }
 
 // TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
@@ -60,6 +63,10 @@ pub struct LookupCommitments<G: AffineCurve> {
     pub sorted: Vec<PolyComm<G>>,
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub aggreg: PolyComm<G>,
+
+    /// Optional commitment to concatenated runtime tables
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub runtime: Option<PolyComm<G>>,
 }
 
 /// All the commitments that the prover creates as part of the proof.
@@ -101,26 +108,14 @@ where
     pub evals: [ProofEvaluations<ScalarField<G>>; 2],
 
     /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
-    //#[serde(serialize_with = "o1_utils::serialization::ser::serialize")]
-    //#[serde(with = "o1_utils::serialization::ser")]
-    //#[serde(bound = "ScalarField<G>: CanonicalSerialize")]
-    //#[serde(bound = "ScalarField<G>: Serialize + DeserializeOwned")]
-    //#[serde(bound = "ScalarField<G>: Serialize + DeserializeOwned")]
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    //#[serde(skip)]
     pub ft_eval1: ScalarField<G>,
 
     /// The public input
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    //#[serde(skip)]
     pub public: Vec<ScalarField<G>>,
 
     /// The challenges underlying the optional polynomials folded into the proof
-    //#[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    //#[serde_as(as = "Vec<(Vec<ScalarField<o1_utils::serialization::SerdeAs>>, PolyComm<G>)>")]
-    //#[serde_as(as = "Vec<(Vec<o1_utils::serialization::SerdeAs>, PolyComm<G>)>")]
-    //#[serde_as(as = "Vec<(Vec<o1_utils::serialization::SerdeAs>, PolyComm<G>)>")]
-    //#[serde(skip)]
     #[serde(bound = "Challenge<G>: Serialize + DeserializeOwned")]
     pub prev_challenges: Vec<Challenge<G>>,
 }
@@ -142,11 +137,12 @@ where
 //~ spec:endcode
 
 impl<F: Field> LookupEvaluations<F> {
-    pub fn new(sorted: Vec<F>, aggreg: F, table: F) -> LookupEvaluations<F> {
+    pub fn new(sorted: Vec<F>, aggreg: F, table: F, runtime: Option<F>) -> LookupEvaluations<F> {
         LookupEvaluations {
             sorted: sorted.iter().map(|&s| vec![s]).collect::<Vec<_>>(),
             aggreg: vec![aggreg],
             table: vec![table],
+            runtime: runtime.map(|r| vec![r]),
         }
     }
 }
@@ -196,10 +192,6 @@ impl<F: Zero + CanonicalDeserialize + CanonicalSerialize> ProofEvaluations<F> {
 }
 
 impl<F: FftField> ProofEvaluations<F> {
-    //pub fn is_chunk(&self) -> bool {
-    //    if
-    //}
-
     /// Combines the chunked proof evaluations into single evaluations
     /// at an evaluation point `pt` as vectors of length 1
     pub fn combine(&self, pt: F) -> ProofEvaluations<F> {
@@ -215,6 +207,10 @@ impl<F: FftField> ProofEvaluations<F> {
                     .iter()
                     .map(|x| vec![DensePolynomial::eval_polynomial(x, pt)])
                     .collect(),
+                runtime: l
+                    .runtime
+                    .as_ref()
+                    .map(|rt| vec![DensePolynomial::eval_polynomial(rt, pt)]),
             }),
             generic_selector: vec![DensePolynomial::eval_polynomial(&self.generic_selector, pt)],
             poseidon_selector: vec![DensePolynomial::eval_polynomial(
@@ -242,6 +238,7 @@ pub mod caml {
         pub sorted: Vec<Vec<CamlF>>,
         pub aggreg: Vec<CamlF>,
         pub table: Vec<CamlF>,
+        pub runtime: Option<Vec<CamlF>>,
     }
 
     impl<F, CamlF> From<LookupEvaluations<Vec<F>>> for CamlLookupEvaluations<CamlF>
@@ -258,6 +255,7 @@ pub mod caml {
                     .collect(),
                 aggreg: le.aggreg.into_iter().map(Into::into).collect(),
                 table: le.table.into_iter().map(Into::into).collect(),
+                runtime: le.runtime.map(|r| r.into_iter().map(Into::into).collect()),
             }
         }
     }
@@ -275,6 +273,7 @@ pub mod caml {
                     .collect(),
                 aggreg: pe.aggreg.into_iter().map(Into::into).collect(),
                 table: pe.table.into_iter().map(Into::into).collect(),
+                runtime: pe.runtime.map(|r| r.into_iter().map(Into::into).collect()),
             }
         }
     }

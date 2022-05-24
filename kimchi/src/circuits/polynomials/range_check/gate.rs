@@ -18,17 +18,46 @@ use crate::{
         expr::{self, l0_1, Environment, E},
         gate::{CircuitGate, GateType},
         polynomial::COLUMNS,
-        wires::GateWires,
+        wires::{GateWires, Wire},
     },
 };
 
 use super::{RangeCheck0, RangeCheck1};
 
+// Connect the pair of cells specified by the cell1 and cell2 parameters
+// cell1 --> cell2 && cell2 --> cell1
+//
+// Note: This function assumes that the targeted cells are freshly instantiated
+//       with self-connections.  If the two cells are transitively already part
+//       of the same permutation then this would split it.
+fn connect_cell_pair(wires: &mut [GateWires], cell1: (usize, usize), cell2: (usize, usize)) {
+    let tmp = wires[cell1.0][cell1.1];
+    wires[cell1.0][cell1.1] = wires[cell2.0][cell2.1];
+    wires[cell2.0][cell2.1] = tmp;
+}
+
 impl<F: FftField + SquareRootField> CircuitGate<F> {
     /// Create range check gate
-    pub fn create_range_check(wires: &[GateWires; 8]) -> Vec<Self> {
-        vec![
-            /* Input: a */
+    ///     Inputs the starting row
+    ///     Outputs tuple (next_row, circuit_gates) where
+    ///       next_row      - next row after this gate
+    ///       circuit_gates - vector of circuit gates comprising this gate
+    pub fn create_range_check(start_row: usize) -> (usize, Vec<Self>) {
+        let mut wires: Vec<GateWires> = (0..4).map(|i| Wire::new(start_row + i)).collect();
+
+        // copy a0p4
+        connect_cell_pair(&mut wires, (0, 5), (3, 1));
+
+        // copy a0p5
+        connect_cell_pair(&mut wires, (0, 6), (3, 2));
+
+        // copy a1p4
+        connect_cell_pair(&mut wires, (1, 5), (3, 3));
+
+        // copy a1p5
+        connect_cell_pair(&mut wires, (1, 6), (3, 4));
+
+        let circuit_gates = vec![
             CircuitGate {
                 typ: GateType::RangeCheck0,
                 wires: wires[0],
@@ -49,31 +78,12 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
                 wires: wires[3],
                 coeffs: vec![],
             },
-            /* Input: b */
-            CircuitGate {
-                typ: GateType::RangeCheck0,
-                wires: wires[4],
-                coeffs: vec![],
-            },
-            CircuitGate {
-                typ: GateType::RangeCheck0,
-                wires: wires[5],
-                coeffs: vec![],
-            },
-            CircuitGate {
-                typ: GateType::RangeCheck1,
-                wires: wires[6],
-                coeffs: vec![],
-            },
-            CircuitGate {
-                typ: GateType::RangeCheck2,
-                wires: wires[7],
-                coeffs: vec![],
-            },
-        ]
+        ];
+
+        (start_row + circuit_gates.len(), circuit_gates)
     }
 
-    // Verify the range check circuit gate on a given row
+    /// Verify the range check circuit gate on a given row
     pub fn verify_range_check(
         &self,
         _: usize,
@@ -114,7 +124,9 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
         let rng = &mut StdRng::from_seed([0u8; 32]);
         let beta = F::rand(rng);
         let gamma = F::rand(rng);
-        let z_poly = cs.perm_aggreg(&witness, &beta, &gamma, rng).unwrap();
+        let z_poly = cs
+            .perm_aggreg(&witness, &beta, &gamma, rng)
+            .map_err(|_| format!("Invalid {:?} constraint - permutation failed", self.typ))?;
 
         // Compute witness polynomial evaluations
         let witness_evals = cs.evaluate(&witness_poly, &z_poly);
@@ -255,7 +267,7 @@ mod tests {
     use crate::{
         circuits::{
             constraints::ConstraintSystem, gate::CircuitGate, polynomial::COLUMNS,
-            polynomials::range_check, wires::Wire,
+            polynomials::range_check,
         },
         proof::ProverProof,
         prover_index::testing::new_index_for_test_with_lookups,
@@ -271,18 +283,17 @@ mod tests {
     type PallasField = <pallas::Affine as AffineCurve>::BaseField;
 
     fn create_test_constraint_system() -> ConstraintSystem<PallasField> {
-        let wires = array_init(|i| Wire::new(i));
-        let gates = CircuitGate::<PallasField>::create_range_check(&wires);
+        let (_, gates) = CircuitGate::<PallasField>::create_range_check(0);
 
-        ConstraintSystem::create(gates, vec![], oracle::pasta::fp_kimchi::params(), 0).unwrap()
+        ConstraintSystem::create(gates, vec![], None, oracle::pasta::fp_kimchi::params(), 0)
+            .unwrap()
     }
 
     fn create_test_prover_index(
         public_size: usize,
     ) -> ProverIndex<mina_curves::pasta::vesta::Affine> {
-        let wires = array_init(|i| Wire::new(i));
-        let gates = CircuitGate::<PallasField>::create_range_check(&wires);
-        new_index_for_test_with_lookups(gates, public_size, vec![])
+        let (_, gates) = CircuitGate::<PallasField>::create_range_check(0);
+        new_index_for_test_with_lookups(gates, public_size, vec![], None)
     }
 
     fn biguint_from_hex_le(hex: &str) -> BigUint {
@@ -294,7 +305,7 @@ mod tests {
     #[test]
     fn verify_range_check0_zero_valid_witness() {
         let cs = create_test_constraint_system();
-        let witness: [Vec<PallasField>; COLUMNS] = array_init(|_| vec![PallasField::from(0); 2]);
+        let witness: [Vec<PallasField>; COLUMNS] = array_init(|_| vec![PallasField::from(0); 4]);
 
         // gates[0] is RangeCheck0
         assert_eq!(cs.gates[0].verify_range_check(0, &witness, &cs), Ok(()));
@@ -303,7 +314,7 @@ mod tests {
     #[test]
     fn verify_range_check0_one_invalid_witness() {
         let cs = create_test_constraint_system();
-        let witness: [Vec<PallasField>; COLUMNS] = array_init(|_| vec![PallasField::from(1); 2]);
+        let witness: [Vec<PallasField>; COLUMNS] = array_init(|_| vec![PallasField::from(1); 4]);
 
         // gates[0] is RangeCheck0
         assert_eq!(
@@ -316,10 +327,9 @@ mod tests {
     fn verify_range_check0_valid_witness() {
         let cs = create_test_constraint_system();
 
-        let witness: [Vec<PallasField>; 15] = range_check::create_witness(
-            biguint_from_hex_le("1112223334445556667777888999aaabbbcccdddeeefff111222333444555611"),
-            biguint_from_hex_le("1112223334445556667777888999aaabbbcccdddeeefff111222333444555611"),
-        );
+        let witness: [Vec<PallasField>; 15] = range_check::create_witness(biguint_from_hex_le(
+            "1112223334445556667777888999aaabbbcccdddeeefff111222333444555611",
+        ));
 
         // gates[0] is RangeCheck0
         assert_eq!(cs.gates[0].verify_range_check(0, &witness, &cs), Ok(()));
@@ -327,10 +337,9 @@ mod tests {
         // gates[1] is RangeCheck0
         assert_eq!(cs.gates[1].verify_range_check(1, &witness, &cs), Ok(()));
 
-        let witness: [Vec<PallasField>; 15] = range_check::create_witness(
-            biguint_from_hex_le("f59abe33f5d808f8df3e63984621b01e375585fea8dd4030f71a0d80ac06d423"),
-            biguint_from_hex_le("f59abe33f5d808f8df3e63984621b01e375585fea8dd4030f71a0d80ac06d423"),
-        );
+        let witness: [Vec<PallasField>; 15] = range_check::create_witness(biguint_from_hex_le(
+            "f59abe33f5d808f8df3e63984621b01e375585fea8dd4030f71a0d80ac06d423",
+        ));
 
         // gates[0] is RangeCheck0
         assert_eq!(cs.gates[0].verify_range_check(0, &witness, &cs), Ok(()));
@@ -343,8 +352,7 @@ mod tests {
     fn verify_range_check0_invalid_witness() {
         let cs = create_test_constraint_system();
 
-        let mut witness: [Vec<PallasField>; 15] = range_check::create_witness(
-            biguint_from_hex_le("bca91cf9df6cfd8bd225fd3f46ba2f3f33809d0ee2e7ad338448b4ece7b4f622"),
+        let mut witness: [Vec<PallasField>; COLUMNS] = range_check::create_witness(
             biguint_from_hex_le("bca91cf9df6cfd8bd225fd3f46ba2f3f33809d0ee2e7ad338448b4ece7b4f622"),
         );
 
@@ -354,13 +362,14 @@ mod tests {
         // gates[0] is RangeCheck0
         assert_eq!(
             cs.gates[0].verify_range_check(0, &witness, &cs),
-            Err(String::from("Invalid RangeCheck0 constraint"))
+            Err(String::from(
+                "Invalid RangeCheck0 constraint - permutation failed"
+            ))
         );
 
-        let mut witness: [Vec<PallasField>; 15] = range_check::create_witness(
-            biguint_from_hex_le("301a091e9f74cd459a448c311ae47fe2f4311db61ae1cbd2afee0171e2b5ca22"),
-            biguint_from_hex_le("301a091e9f74cd459a448c311ae47fe2f4311db61ae1cbd2afee0171e2b5ca22"),
-        );
+        let mut witness: [Vec<PallasField>; 15] = range_check::create_witness(biguint_from_hex_le(
+            "301a091e9f74cd459a448c311ae47fe2f4311db61ae1cbd2afee0171e2b5ca22",
+        ));
 
         // Invalidate witness
         witness[8][0] = witness[0][0] + PallasField::one();
@@ -376,18 +385,16 @@ mod tests {
     fn verify_range_check1_valid_witness() {
         let cs = create_test_constraint_system();
 
-        let witness: [Vec<PallasField>; 15] = range_check::create_witness(
-            biguint_from_hex_le("72de0b593fbd97e172ddfb1d7c1f7488948c622a7ff6bffa0279e35a7c148733"),
-            biguint_from_hex_le("72de0b593fbd97e172ddfb1d7c1f7488948c622a7ff6bffa0279e35a7c148733"),
-        );
+        let witness: [Vec<PallasField>; 15] = range_check::create_witness(biguint_from_hex_le(
+            "72de0b593fbd97e172ddfb1d7c1f7488948c622a7ff6bffa0279e35a7c148733",
+        ));
 
         // gates[2] is RangeCheck1
         assert_eq!(cs.gates[2].verify_range_check(2, &witness, &cs), Ok(()));
 
-        let witness: [Vec<PallasField>; 15] = range_check::create_witness(
-            biguint_from_hex_le("58372fb93039e7106c68488dceb6cab3ffb0e7c8594dcc3bc7160321fcf6960d"),
-            biguint_from_hex_le("58372fb93039e7106c68488dceb6cab3ffb0e7c8594dcc3bc7160321fcf6960d"),
-        );
+        let witness: [Vec<PallasField>; 15] = range_check::create_witness(biguint_from_hex_le(
+            "58372fb93039e7106c68488dceb6cab3ffb0e7c8594dcc3bc7160321fcf6960d",
+        ));
 
         // gates[2] is RangeCheck1
         assert_eq!(cs.gates[2].verify_range_check(2, &witness, &cs), Ok(()));
@@ -397,10 +404,9 @@ mod tests {
     fn verify_range_check1_invalid_witness() {
         let cs = create_test_constraint_system();
 
-        let mut witness: [Vec<PallasField>; 15] = range_check::create_witness(
-            biguint_from_hex_le("260efa1879427b08ca608d455d9f39954b5243dd52117e9ed5982f94acd3e22c"),
-            biguint_from_hex_le("260efa1879427b08ca608d455d9f39954b5243dd52117e9ed5982f94acd3e22c"),
-        );
+        let mut witness: [Vec<PallasField>; 15] = range_check::create_witness(biguint_from_hex_le(
+            "260efa1879427b08ca608d455d9f39954b5243dd52117e9ed5982f94acd3e22c",
+        ));
 
         // Corrupt witness
         witness[0][2] = witness[7][2];
@@ -411,10 +417,9 @@ mod tests {
             Err(String::from("Invalid RangeCheck1 constraint"))
         );
 
-        let mut witness: [Vec<PallasField>; 15] = range_check::create_witness(
-            biguint_from_hex_le("afd209d02c77546022ea860f9340e4289ecdd783e9c0012fd383dcd2940cd51b"),
-            biguint_from_hex_le("afd209d02c77546022ea860f9340e4289ecdd783e9c0012fd383dcd2940cd51b"),
-        );
+        let mut witness: [Vec<PallasField>; 15] = range_check::create_witness(biguint_from_hex_le(
+            "afd209d02c77546022ea860f9340e4289ecdd783e9c0012fd383dcd2940cd51b",
+        ));
 
         // Corrupt witness
         witness[13][2] = witness[1][2];
@@ -445,19 +450,22 @@ mod tests {
         let prover_index = create_test_prover_index(0);
 
         // Create witness
-        let witness: [Vec<PallasField>; 15] = range_check::create_witness(
-            biguint_from_hex_le("56acede83576c45ec8c11a85ac97e2393a9f88308b4b42d1b1506f2faaafc02b"),
-            biguint_from_hex_le("56acede83576c45ec8c11a85ac97e2393a9f88308b4b42d1b1506f2faaafc02b"),
-        );
+        let witness: [Vec<PallasField>; 15] = range_check::create_witness(biguint_from_hex_le(
+            "56acede83576c45ec8c11a85ac97e2393a9f88308b4b42d1b1506f2faaafc02b",
+        ));
 
         // Verify computed witness satisfies the circuit
         prover_index.cs.verify(&witness, &[]).unwrap();
 
         // Generate proof
         let group_map = <pasta_curves::vesta::Affine as CommitmentCurve>::Map::setup();
-        let proof =
-            ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &prover_index)
-                .expect("failed to generate proof");
+        let proof = ProverProof::create::<BaseSponge, ScalarSponge>(
+            &group_map,
+            witness,
+            &[],
+            &prover_index,
+        )
+        .expect("failed to generate proof");
 
         // Get the verifier index
         let verifier_index = prover_index.verifier_index();

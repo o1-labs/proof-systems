@@ -74,5 +74,17 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
         for p in &points {
             self.sponge.absorb(p);
         }
+
+        if let Some(lookup) = &e.lookup {
+            for s in &lookup.sorted {
+                self.sponge.absorb(s);
+            }
+            self.sponge.absorb(&lookup.aggreg);
+            self.sponge.absorb(&lookup.table);
+
+            if let Some(runtime_table) = &lookup.runtime {
+                self.sponge.absorb(runtime_table);
+            }
+        }
     }
 }

@@ -58,12 +58,18 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
 
     // lookup
     if let Some(lcs) = lookup_constraint_system.as_ref() {
-        powers_of_alpha.register(ArgumentType::Lookup, lookup::constraints::CONSTRAINTS);
-        let alphas =
-            powers_of_alpha.get_exponents(ArgumentType::Lookup, lookup::constraints::CONSTRAINTS);
-
         let constraints = lookup::constraints::constraints(lcs, domain);
+
+        // note: the number of constraints depends on the lookup configuration,
+        // specifically the presence of runtime tables.
+        let constraints_len = u32::try_from(constraints.len())
+            .expect("we always expect a relatively low amount of constraints");
+
+        powers_of_alpha.register(ArgumentType::Lookup, constraints_len);
+
+        let alphas = powers_of_alpha.get_exponents(ArgumentType::Lookup, constraints_len);
         let combined = Expr::combine_constraints(alphas, constraints);
+
         expr += combined;
     }
 
@@ -71,27 +77,42 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
     (expr, powers_of_alpha)
 }
 
+/// Adds the polynomials that are evaluated as part of the proof
+/// for the linearization to work.
 pub fn linearization_columns<F: FftField + SquareRootField>(
     lookup_constraint_system: Option<&LookupConfiguration<F>>,
 ) -> std::collections::HashSet<Column> {
     let mut h = std::collections::HashSet::new();
     use Column::*;
+
+    // the witness polynomials
     for i in 0..COLUMNS {
         h.insert(Witness(i));
     }
-    match lookup_constraint_system.as_ref() {
-        None => (),
-        Some(lcs) => {
-            for i in 0..(lcs.max_lookups_per_row + 1) {
-                h.insert(LookupSorted(i));
-            }
+
+    // the lookup polynomials
+    if let Some(lcs) = &lookup_constraint_system {
+        for i in 0..(lcs.max_lookups_per_row + 1) {
+            h.insert(LookupSorted(i));
+        }
+        h.insert(LookupAggreg);
+        h.insert(LookupTable);
+
+        // the runtime lookup polynomials
+        if lcs.runtime_tables.is_some() {
+            h.insert(LookupRuntimeTable);
         }
     }
+
+    // the permutation polynomial
     h.insert(Z);
-    h.insert(LookupAggreg);
-    h.insert(LookupTable);
+
+    // the poseidon selector polynomial
     h.insert(Index(GateType::Poseidon));
+
+    // the generic selector polynomial
     h.insert(Index(GateType::Generic));
+
     h
 }
 
