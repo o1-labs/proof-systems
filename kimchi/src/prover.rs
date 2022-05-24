@@ -30,7 +30,8 @@ use crate::{
 };
 use ark_ff::{FftField, Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{
-    univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D, UVPolynomial,
+    univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
+    Radix2EvaluationDomain as D, UVPolynomial,
 };
 use array_init::array_init;
 use commitment_dlog::commitment::{b_poly_coefficients, CommitmentCurve, PolyComm};
@@ -137,7 +138,12 @@ where
         index: &ProverIndex<G>,
         prev_challenges: Vec<(Vec<ScalarField<G>>, PolyComm<G>)>,
     ) -> Result<Self> {
-        let d1_size = index.cs.domain.d1.size as usize;
+        // make sure that the SRS is not smaller than the domain size
+        let d1_size = index.cs.domain.d1.size();
+        if index.srs.max_degree() < d1_size {
+            return Err(ProverError::SRSTooSmall);
+        }
+
         // TODO: rng should be passed as arg
         let rng = &mut rand::rngs::OsRng;
 

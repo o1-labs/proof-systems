@@ -21,6 +21,9 @@ pub enum ProverError {
     #[error("the lookup failed to find a match in the table")]
     ValueNotInTable,
 
+    #[error("SRS size is smaller than the domain size required by the circuit")]
+    SRSTooSmall,
+
     #[error("the runtime tables provided did not match the index's configuration")]
     RuntimeTablesInconsistent,
 }
@@ -42,6 +45,12 @@ pub enum VerifyError {
 
     #[error("lookup used in circuit, but proof has inconsistent number of lookup evaluations and commitments")]
     ProofInconsistentLookup,
+
+    #[error("cannot batch proofs using different SRSes")]
+    DifferentSRS,
+
+    #[error("SRS size is smaller than the domain size required by the circuit")]
+    SRSTooSmall,
 
     #[error("runtime tables are used, but missing from the proof")]
     IncorrectRuntimeProof,
