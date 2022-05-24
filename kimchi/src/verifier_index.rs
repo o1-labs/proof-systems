@@ -237,14 +237,11 @@ where
             .map_err(|e| e.to_string())?;
 
         // fill in the rest
-        verifier_index.srs = match srs {
-            Some(t) => t,
-            None => {
-                let mut srs = SRS::<G>::create(verifier_index.max_poly_size);
-                srs.add_lagrange_basis(verifier_index.domain);
-                Arc::new(srs)
-            }
-        };
+        verifier_index.srs = srs.unwrap_or_else(|| {
+            let mut srs = SRS::<G>::create(verifier_index.max_poly_size);
+            srs.add_lagrange_basis(verifier_index.domain);
+            Arc::new(srs)
+        });
 
         verifier_index.endo = endo;
         verifier_index.fq_sponge_params = fq_sponge_params;
