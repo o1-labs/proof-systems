@@ -23,6 +23,9 @@ pub enum ProverError {
 
     #[error("SRS size is smaller than the domain size required by the circuit")]
     SRSTooSmall,
+
+    #[error("the runtime tables provided did not match the index's configuration")]
+    RuntimeTablesInconsistent,
 }
 
 /// Errors that can arise when verifying a proof
@@ -48,6 +51,9 @@ pub enum VerifyError {
 
     #[error("SRS size is smaller than the domain size required by the circuit")]
     SRSTooSmall,
+
+    #[error("runtime tables are used, but missing from the proof")]
+    IncorrectRuntimeProof,
 }
 
 /// Errors that can arise when preparing the setup

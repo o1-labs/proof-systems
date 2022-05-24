@@ -27,6 +27,8 @@ use serde_with::serde_as;
 use std::collections::HashSet;
 use std::sync::Arc;
 
+use super::lookup::runtime_tables::RuntimeTableConfiguration;
+
 //
 // ConstraintSystem
 //
@@ -220,17 +222,23 @@ pub enum GateError {
 }
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
-    /// Creates a constraint system from a vector of gates ([CircuitGate]),
-    ///   some sponge parameters ([ArithmeticSpongeParams])
+    /// creates a constraint system from a vector of gates ([CircuitGate]), some sponge parameters ([ArithmeticSpongeParams]), and the number of public inputs.
+    ///
+    /// Warning: you have to make sure that the IDs of the lookup tables,
+    /// and runtime lookup tables, are unique and
+    /// not colliding with IDs of built-in lookup tables
+    /// (see [crate::circuits::lookup::tables]).
     pub fn create(
         gates: Vec<CircuitGate<F>>,
         lookup_tables: Vec<LookupTable<F>>,
+        runtime_tables: Option<Vec<RuntimeTableConfiguration>>,
         fr_sponge_params: ArithmeticSpongeParams<F>,
         public: usize,
     ) -> Result<Self, SetupError> {
         ConstraintSystem::<F>::create_with_shared_precomputations(
             gates,
             lookup_tables,
+            runtime_tables,
             fr_sponge_params,
             public,
             None,
@@ -238,9 +246,15 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     }
 
     /// similar to create. but this fn creates a constraint system with a shared precomputation previously created elsewhere
+    ///
+    /// Warning: you have to make sure that the IDs of the lookup tables,
+    /// and runtime lookup tables, are unique and
+    /// not colliding with IDs of built-in lookup tables
+    /// (see [crate::circuits::lookup::tables]).
     pub fn create_with_shared_precomputations(
         mut gates: Vec<CircuitGate<F>>,
         lookup_tables: Vec<LookupTable<F>>,
+        runtime_tables: Option<Vec<RuntimeTableConfiguration>>,
         fr_sponge_params: ArithmeticSpongeParams<F>,
         public: usize,
         precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
@@ -442,7 +456,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // Lookup
         // ------
         let lookup_constraint_system =
-            LookupConstraintSystem::create(&gates, lookup_tables, &domain)
+            LookupConstraintSystem::create(&gates, lookup_tables, runtime_tables, &domain)
                 .map_err(|e| SetupError::ConstraintSystem(e.to_string()))?;
 
         let sid = shifts.map[0].clone();
@@ -608,7 +622,7 @@ pub mod tests {
         ) -> Self {
             let public = 0;
             // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
-            ConstraintSystem::<F>::create(gates, vec![], sponge_params, public).unwrap()
+            ConstraintSystem::<F>::create(gates, vec![], None, sponge_params, public).unwrap()
         }
     }
 

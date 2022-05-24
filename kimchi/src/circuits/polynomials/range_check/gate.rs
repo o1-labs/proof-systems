@@ -285,14 +285,15 @@ mod tests {
     fn create_test_constraint_system() -> ConstraintSystem<PallasField> {
         let (_, gates) = CircuitGate::<PallasField>::create_range_check(0);
 
-        ConstraintSystem::create(gates, vec![], oracle::pasta::fp_kimchi::params(), 0).unwrap()
+        ConstraintSystem::create(gates, vec![], None, oracle::pasta::fp_kimchi::params(), 0)
+            .unwrap()
     }
 
     fn create_test_prover_index(
         public_size: usize,
     ) -> ProverIndex<mina_curves::pasta::vesta::Affine> {
         let (_, gates) = CircuitGate::<PallasField>::create_range_check(0);
-        new_index_for_test_with_lookups(gates, public_size, vec![])
+        new_index_for_test_with_lookups(gates, public_size, vec![], None)
     }
 
     fn biguint_from_hex_le(hex: &str) -> BigUint {
@@ -458,9 +459,13 @@ mod tests {
 
         // Generate proof
         let group_map = <pasta_curves::vesta::Affine as CommitmentCurve>::Map::setup();
-        let proof =
-            ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &prover_index)
-                .expect("failed to generate proof");
+        let proof = ProverProof::create::<BaseSponge, ScalarSponge>(
+            &group_map,
+            witness,
+            &[],
+            &prover_index,
+        )
+        .expect("failed to generate proof");
 
         // Get the verifier index
         let verifier_index = prover_index.verifier_index();

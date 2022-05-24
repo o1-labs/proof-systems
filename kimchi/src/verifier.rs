@@ -139,6 +139,21 @@ where
 
         //~ 4. If lookup is used:
         let joint_combiner = if let Some(l) = &index.lookup_index {
+            let lookup_commits = self
+                .commitments
+                .lookup
+                .as_ref()
+                .ok_or(VerifyError::LookupCommitmentMissing)?;
+
+            // if runtime is used, absorb the commitment
+            if l.runtime_tables_selector.is_some() {
+                let runtime_commit = lookup_commits
+                    .runtime
+                    .as_ref()
+                    .ok_or(VerifyError::IncorrectRuntimeProof)?;
+                fq_sponge.absorb_g(&runtime_commit.unshifted);
+            }
+
             //~    - If it involves queries to a multiple-column lookup table,
             //~      then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
             //~      otherwise set the joint combiner challenge $j'$ to $0$.
@@ -155,11 +170,9 @@ where
             let joint_combiner = (joint_combiner, joint_combiner.to_field(&index.srs.endo_r));
 
             //~    - absorb the commitments to the sorted polynomials.
-            self.commitments.lookup.iter().for_each(|l| {
-                l.sorted
-                    .iter()
-                    .for_each(|c| fq_sponge.absorb_g(&c.unshifted));
-            });
+            for com in &lookup_commits.sorted {
+                fq_sponge.absorb_g(&com.unshifted);
+            }
 
             Some(joint_combiner)
         } else {
@@ -610,6 +623,21 @@ where
                         }
                     },
                     LookupTable => panic!("Lookup table is unused in the linearization"),
+                    LookupRuntimeSelector => match index.lookup_index.as_ref() {
+                        None => {
+                            panic!("Attempted to use {:?}, but no lookup index was given", col)
+                        }
+                        Some(lindex) => match &lindex.runtime_tables_selector {
+                            None => panic!("No runtime selector was given"),
+                            Some(comm) => {
+                                scalars.push(scalar);
+                                commitments.push(comm);
+                            }
+                        },
+                    },
+                    LookupRuntimeTable => {
+                        panic!("runtime lookup table is unused in the linearization")
+                    }
                     Index(t) => {
                         use GateType::*;
                         let c = match t {
@@ -795,15 +823,19 @@ where
 
         // compute table commitment
         let table_comm = {
-            // TODO: should we return an error instead?
-            let joint_combiner = oracles.joint_combiner.expect("????");
+            let joint_combiner = oracles
+                .joint_combiner
+                .expect("joint_combiner should be present if lookups are used");
             let table_id_combiner = joint_combiner.1.pow([li.max_joint_size as u64]);
             let lookup_table: Vec<_> = li.lookup_table.iter().collect();
+            let runtime = lookup_comms.runtime.as_ref();
+
             combine_table(
                 &lookup_table,
                 joint_combiner.1,
                 table_id_combiner,
                 li.table_ids.as_ref(),
+                runtime,
             )
         };
 
@@ -813,6 +845,30 @@ where
             evaluations: vec![lookup_eval0.table.clone(), lookup_eval1.table.clone()],
             degree_bound: None,
         });
+
+        // add evaluation of the runtime table polynomial
+        if li.runtime_tables_selector.is_some() {
+            let runtime = lookup_comms
+                .runtime
+                .as_ref()
+                .ok_or(VerifyError::IncorrectRuntimeProof)?;
+            let runtime_eval0 = lookup_eval0
+                .runtime
+                .as_ref()
+                .cloned()
+                .ok_or(VerifyError::IncorrectRuntimeProof)?;
+            let runtime_eval1 = lookup_eval1
+                .runtime
+                .as_ref()
+                .cloned()
+                .ok_or(VerifyError::IncorrectRuntimeProof)?;
+
+            evaluations.push(Evaluation {
+                commitment: runtime.clone(),
+                evaluations: vec![runtime_eval0, runtime_eval1],
+                degree_bound: None,
+            });
+        }
     }
 
     // prepare for the opening proof verification

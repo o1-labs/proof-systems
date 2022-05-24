@@ -551,6 +551,7 @@ mod tests {
                     .collect(),
                 aggreg: F::rand(rng),
                 table: F::rand(rng),
+                runtime: None,
             }),
         };
         let evals = vec![eval(), eval()];

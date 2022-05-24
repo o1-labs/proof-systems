@@ -98,7 +98,10 @@ where
 
 pub mod testing {
     use super::*;
-    use crate::circuits::{gate::CircuitGate, lookup::tables::LookupTable};
+    use crate::circuits::{
+        gate::CircuitGate,
+        lookup::{runtime_tables::RuntimeTableConfiguration, tables::LookupTable},
+    };
     use commitment_dlog::srs::endos;
     use mina_curves::pasta::{pallas::Affine as Other, vesta::Affine, Fp};
 
@@ -106,12 +109,19 @@ pub mod testing {
         gates: Vec<CircuitGate<Fp>>,
         public: usize,
         lookup_tables: Vec<LookupTable<Fp>>,
+        runtime_tables: Option<Vec<RuntimeTableConfiguration>>,
     ) -> ProverIndex<Affine> {
         let fp_sponge_params = oracle::pasta::fp_kimchi::params();
 
         // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
-        let cs =
-            ConstraintSystem::<Fp>::create(gates, lookup_tables, fp_sponge_params, public).unwrap();
+        let cs = ConstraintSystem::<Fp>::create(
+            gates,
+            lookup_tables,
+            runtime_tables,
+            fp_sponge_params,
+            public,
+        )
+        .unwrap();
         let mut srs = SRS::<Affine>::create(cs.domain.d1.size as usize);
         srs.add_lagrange_basis(cs.domain.d1);
         let srs = Arc::new(srs);
@@ -121,6 +131,6 @@ pub mod testing {
         ProverIndex::<Affine>::create(cs, fq_sponge_params, endo_q, srs)
     }
     pub fn new_index_for_test(gates: Vec<CircuitGate<Fp>>, public: usize) -> ProverIndex<Affine> {
-        new_index_for_test_with_lookups(gates, public, vec![])
+        new_index_for_test_with_lookups(gates, public, vec![], None)
     }
 }
