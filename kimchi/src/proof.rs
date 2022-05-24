@@ -11,62 +11,6 @@ use o1_utils::{types::fields::*, ExtendedDensePolynomial};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 
-#[serde_as]
-#[derive(Clone, Deserialize, Serialize)]
-pub enum EvalEnum<F: CanonicalSerialize + CanonicalDeserialize> {
-    #[serde(bound = "ChunkEvals<F>: Serialize")]
-    Chunk(ChunkEvals<F>),
-    #[serde(bound = "OneEval<F>: Serialize")]
-    One(OneEval<F>),
-}
-
-#[serde_as]
-#[derive(Clone, Deserialize, Serialize)]
-pub struct ChunkEvals<F: CanonicalSerialize + CanonicalDeserialize> {
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    chunk: Vec<F>,
-}
-
-#[serde_as]
-#[derive(Clone, Deserialize, Serialize)]
-pub struct OneEval<F: CanonicalSerialize + CanonicalDeserialize> {
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    chunk: F,
-}
-
-impl<F: Field> EvalEnum<F> {}
-
-#[test]
-fn my_test() {
-    use ark_ff::One;
-    use mina_curves::pasta::fp::Fp as F;
-
-    let chunk = ChunkEvals {
-        chunk: vec![-F::one(), F::zero(), F::one(), F::one().double()],
-    };
-    let eval = EvalEnum::Chunk(chunk);
-
-    let ser_eval = rmp_serde::to_vec(&eval).unwrap();
-    println!("eval size: {}", ser_eval.len());
-    println!("eval: {:?}", ser_eval);
-
-    //let elem: ark_ff::Fp256<mina_curves::pasta::fp::FpParameters>;
-    //let ser_eval = rmp_serde::to_vec(&elem).unwrap();
-    //println!("eval: {:?}", ser_eval);
-}
-
-//#[derive(Serialize, Deserialize)]
-//#[serde(remote="AffineCurve")]
-/*struct SF(ScalarField);
-
-impl Serialize for SF {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-    }
-}*/
-
 //~ spec:startcode
 #[serde_as]
 #[derive(Clone, Deserialize, Serialize)]
@@ -138,7 +82,7 @@ pub struct ProverCommitments<G: AffineCurve> {
 
 /// The proof that the prover creates from a [ProverIndex](super::prover_index::ProverIndex) and a `witness`.
 #[serde_as]
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, serde::Serialize)]
 pub struct ProverProof<G>
 where
     G: AffineCurve,
@@ -157,11 +101,12 @@ where
     pub evals: [ProofEvaluations<ScalarField<G>>; 2],
 
     /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
-    //#[serde_as(as = "o1_utils::serialization::SerdeAs")]
     //#[serde(serialize_with = "o1_utils::serialization::ser::serialize")]
     //#[serde(with = "o1_utils::serialization::ser")]
     //#[serde(bound = "ScalarField<G>: CanonicalSerialize")]
-    #[serde(bound = "ScalarField<G>: Serialize + DeserializeOwned")]
+    //#[serde(bound = "ScalarField<G>: Serialize + DeserializeOwned")]
+    //#[serde(bound = "ScalarField<G>: Serialize + DeserializeOwned")]
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub ft_eval1: ScalarField<G>,
 
     /// The public input
@@ -170,6 +115,8 @@ where
 
     /// The challenges underlying the optional polynomials folded into the proof
     #[serde(bound = "Vec<(Vec<ScalarField<G>>, PolyComm<G>)>: Serialize + DeserializeOwned")]
+    //#[serde_as(as = "Vec<(Vec<ScalarField<o1_utils::serialization::SerdeAs>>, PolyComm<G>)>")]
+    #[serde_as(as = "Vec<(Vec<o1_utils::serialization::SerdeAs>, PolyComm<G>)>")]
     pub prev_challenges: Vec<(Vec<ScalarField<G>>, PolyComm<G>)>,
 }
 //~ spec:endcode
