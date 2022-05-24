@@ -82,7 +82,7 @@ pub struct ProverCommitments<G: AffineCurve> {
 
 /// The proof that the prover creates from a [ProverIndex](super::prover_index::ProverIndex) and a `witness`.
 #[serde_as]
-#[derive(Clone, Deserialize, serde::Serialize)]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct ProverProof<G>
 where
     G: AffineCurve,
@@ -107,18 +107,38 @@ where
     //#[serde(bound = "ScalarField<G>: Serialize + DeserializeOwned")]
     //#[serde(bound = "ScalarField<G>: Serialize + DeserializeOwned")]
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    //#[serde(skip)]
     pub ft_eval1: ScalarField<G>,
 
     /// The public input
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    //#[serde(skip)]
     pub public: Vec<ScalarField<G>>,
 
     /// The challenges underlying the optional polynomials folded into the proof
-    #[serde(bound = "Vec<(Vec<ScalarField<G>>, PolyComm<G>)>: Serialize + DeserializeOwned")]
+    //#[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     //#[serde_as(as = "Vec<(Vec<ScalarField<o1_utils::serialization::SerdeAs>>, PolyComm<G>)>")]
-    #[serde_as(as = "Vec<(Vec<o1_utils::serialization::SerdeAs>, PolyComm<G>)>")]
-    pub prev_challenges: Vec<(Vec<ScalarField<G>>, PolyComm<G>)>,
+    //#[serde_as(as = "Vec<(Vec<o1_utils::serialization::SerdeAs>, PolyComm<G>)>")]
+    //#[serde_as(as = "Vec<(Vec<o1_utils::serialization::SerdeAs>, PolyComm<G>)>")]
+    //#[serde(skip)]
+    #[serde(bound = "Challenge<G>: Serialize + DeserializeOwned")]
+    pub prev_challenges: Vec<Challenge<G>>,
 }
+
+#[serde_as]
+#[derive(Clone, Deserialize, Serialize)]
+pub struct Challenge<G>
+where
+    G: AffineCurve,
+{
+    /// Vector of scalar field elements
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    pub chals: Vec<ScalarField<G>>,
+    /// Polynomial commitment
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub comm: PolyComm<G>,
+}
+
 //~ spec:endcode
 
 impl<F: Field> LookupEvaluations<F> {

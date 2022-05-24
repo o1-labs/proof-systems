@@ -22,7 +22,8 @@ use crate::{
     error::ProverError,
     plonk_sponge::FrSponge,
     proof::{
-        LookupCommitments, LookupEvaluations, ProofEvaluations, ProverCommitments, ProverProof,
+        Challenge, LookupCommitments, LookupEvaluations, ProofEvaluations, ProverCommitments,
+        ProverProof,
     },
     prover_index::ProverIndex,
 };
@@ -119,7 +120,7 @@ where
         group_map: &G::Map,
         mut witness: [Vec<ScalarField<G>>; COLUMNS],
         index: &ProverIndex<G>,
-        prev_challenges: Vec<(Vec<ScalarField<G>>, PolyComm<G>)>,
+        prev_challenges: Vec<Challenge<G>>,
     ) -> Result<Self> {
         let d1_size = index.cs.domain.d1.size as usize;
         // TODO: rng should be passed as arg
@@ -949,7 +950,8 @@ where
 
         let polys = prev_challenges
             .iter()
-            .map(|(chals, comm)| {
+            .map(|c| {
+                let Challenge { chals, comm } = c;
                 (
                     DensePolynomial::from_coefficients_vec(b_poly_coefficients(chals)),
                     comm.unshifted.len(),

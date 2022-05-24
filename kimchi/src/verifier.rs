@@ -14,7 +14,7 @@ use crate::{
     },
     error::VerifyError,
     plonk_sponge::FrSponge,
-    proof::ProverProof,
+    proof::{Challenge, ProverProof},
     verifier_index::VerifierIndex,
 };
 use ark_ff::{Field, One, PrimeField, Zero};
@@ -72,9 +72,10 @@ where
     ) -> Vec<Vec<Vec<ScalarField<G>>>> {
         self.prev_challenges
             .iter()
-            .map(|(chals, _poly)| {
+            .map(|c| {
                 // No need to check the correctness of poly explicitly. Its correctness is assured by the
                 // checking of the inner product argument.
+                let Challenge { chals, comm: _ } = c;
                 let b_len = 1 << chals.len();
                 let mut b: Option<Vec<ScalarField<G>>> = None;
 
@@ -294,7 +295,10 @@ where
             .prev_challenges
             .iter()
             .zip(self.prev_chal_evals(index, &evaluation_points, &powers_of_eval_points_for_chunks))
-            .map(|(c, e)| (c.1.clone(), e))
+            .map(|(c, e)| {
+                let Challenge { chals: _, comm } = c;
+                (comm.clone(), e)
+            })
             .collect();
 
         let evals = vec![

@@ -2,7 +2,7 @@
 
 use crate::circuits::lookup::tables::LookupTable;
 use crate::circuits::{gate::CircuitGate, wires::COLUMNS};
-use crate::proof::ProverProof;
+use crate::proof::{Challenge, ProverProof};
 use crate::prover_index::testing::{new_index_for_test, new_index_for_test_with_lookups};
 use crate::verifier::verify;
 use ark_ff::UniformRand;
@@ -85,7 +85,7 @@ impl TestFramework {
                 let b = DensePolynomial::from_coefficients_vec(coeffs);
                 index.srs.commit_non_hiding(&b, None)
             };
-            (chals, comm)
+            Challenge { chals, comm }
         };
 
         // add the proof to the batch

@@ -4,7 +4,7 @@ use crate::{
         polynomials::generic::GenericGateSpec,
         wires::{Wire, COLUMNS},
     },
-    proof::ProverProof,
+    proof::{Challenge, ProverProof},
     prover_index::{testing::new_index_for_test, ProverIndex},
     verifier::batch_verify,
     verifier_index::VerifierIndex,
@@ -96,7 +96,7 @@ impl BenchmarkCtx {
                 let b = DensePolynomial::from_coefficients_vec(coeffs);
                 self.index.srs.commit_non_hiding(&b, None)
             };
-            (chals, comm)
+            Challenge { chals, comm }
         };
 
         // add the proof to the batch
@@ -138,7 +138,7 @@ mod tests {
         println!("proof created in {}", start.elapsed().as_millis());
 
         // small check of proof being serializable
-        let ser_pf = rmp_serde::to_vec(&proof.ft_eval1).unwrap();
+        let ser_pf = rmp_serde::to_vec(&proof).unwrap();
         println!("proof size: {} bytes", ser_pf.len());
 
         // proof verified in 1.710 ms
