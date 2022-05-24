@@ -138,8 +138,8 @@ mod tests {
         println!("proof created in {}", start.elapsed().as_millis());
 
         // small check of proof being serializable
-        //let ser_pf = rmp_serde::to_vec(&proof.public).unwrap();
-        //println!("proof size: {} bytes", ser_pf.len());
+        let ser_pf = rmp_serde::to_vec(&proof.ft_eval1).unwrap();
+        println!("proof size: {} bytes", ser_pf.len());
 
         // proof verified in 1.710 ms
         let start = Instant::now();

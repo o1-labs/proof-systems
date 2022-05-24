@@ -50,9 +50,9 @@ fn my_test() {
     println!("eval size: {}", ser_eval.len());
     println!("eval: {:?}", ser_eval);
 
-    let elem: ark_ff::Fp256<mina_curves::pasta::fp::FpParameters>;
-    let ser_eval = rmp_serde::to_vec(&elem).unwrap();
-    println!("eval: {:?}", ser_eval);
+    //let elem: ark_ff::Fp256<mina_curves::pasta::fp::FpParameters>;
+    //let ser_eval = rmp_serde::to_vec(&elem).unwrap();
+    //println!("eval: {:?}", ser_eval);
 }
 
 //#[derive(Serialize, Deserialize)]
@@ -161,6 +161,7 @@ where
     //#[serde(serialize_with = "o1_utils::serialization::ser::serialize")]
     //#[serde(with = "o1_utils::serialization::ser")]
     //#[serde(bound = "ScalarField<G>: CanonicalSerialize")]
+    #[serde(bound = "ScalarField<G>: Serialize + DeserializeOwned")]
     pub ft_eval1: ScalarField<G>,
 
     /// The public input
