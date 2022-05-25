@@ -1,11 +1,16 @@
 //! This module implements Plonk circuit constraint primitive.
-
-use crate::circuits::domain_constant_evaluation::DomainConstantEvaluations;
-use crate::circuits::{
-    domains::EvaluationDomains,
-    gate::{CircuitGate, GateType},
-    polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
-    wires::*,
+use crate::{
+    circuits::{
+        domain_constant_evaluation::DomainConstantEvaluations,
+        domains::EvaluationDomains,
+        gate::{CircuitGate, GateType},
+        lookup::{index::LookupConstraintSystem, tables::LookupTable},
+        polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
+        polynomials::permutation::ZK_ROWS,
+        polynomials::range_check,
+        wires::*,
+    },
+    error::SetupError,
 };
 use ark_ff::{FftField, SquareRootField, Zero};
 use ark_poly::{
@@ -14,54 +19,19 @@ use ark_poly::{
 };
 use array_init::array_init;
 use blake2::{Blake2b512, Digest};
-use itertools::repeat_n;
-use o1_utils::{field_helpers::i32_to_field, ExtendedEvaluations};
+use o1_utils::ExtendedEvaluations;
 use once_cell::sync::OnceCell;
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
+use std::collections::HashSet;
 use std::sync::Arc;
 
-use super::{
-    lookup::{
-        constraints::LookupConfiguration,
-        lookups::{JointLookup, LookupInfo},
-        tables::LookupTable,
-    },
-    polynomials::permutation::ZK_ROWS,
-};
+use super::lookup::runtime_tables::RuntimeTableConfiguration;
 
 //
 // ConstraintSystem
 //
-
-#[serde_as]
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct LookupConstraintSystem<F: FftField> {
-    /// Lookup tables
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub lookup_table: Vec<DP<F>>,
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub lookup_table8: Vec<E<F, D<F>>>,
-
-    /// Table IDs for the lookup values.
-    /// This may be `None` if all lookups originate from table 0.
-    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
-    pub table_ids: Option<DP<F>>,
-    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
-    pub table_ids8: Option<E<F, D<F>>>,
-
-    /// Lookup selectors:
-    /// For each kind of lookup-pattern, we have a selector that's
-    /// 1 at the rows where that pattern should be enforced, and 0 at
-    /// all other rows.
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub lookup_selectors: Vec<E<F, D<F>>>,
-
-    /// Configuration for the lookup constraint.
-    #[serde(bound = "LookupConfiguration<F>: Serialize + DeserializeOwned")]
-    pub configuration: LookupConfiguration<F>,
-}
 
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -141,6 +111,10 @@ pub struct ConstraintSystem<F: FftField> {
     /// EC point addition selector evaluations w over domain.d8
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub endomul_scalar8: E<F, D<F>>,
+
+    /// Range check gate selector polynomials
+    #[serde(bound = "Vec<range_check::SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
+    pub range_check_selector_polys: Vec<range_check::SelectorPolynomial<F>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -247,149 +221,24 @@ pub enum GateError {
     Custom { row: usize, err: String },
 }
 
-/// Represents an error found when computing the lookup constraint system
-#[derive(Debug)]
-pub enum LookupError {
-    /// One of the lookup tables has columns of different lengths
-    InconsistentTableLength,
-    /// The combined lookup table is larger than allowed by the domain size
-    LookupTableTooLong {
-        length: usize,
-        maximum_allowed: usize,
-    },
-}
-
-impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
-    pub fn create(
-        gates: &[CircuitGate<F>],
-        lookup_tables: Vec<LookupTable<F>>,
-        domain: &EvaluationDomains<F>,
-    ) -> Result<Option<Self>, LookupError> {
-        let lookup_info = LookupInfo::<F>::create();
-        match lookup_info.lookup_used(gates) {
-            None => Ok(None),
-            Some(lookup_used) => {
-                let d1_size = domain.d1.size();
-
-                let (lookup_selectors, gate_lookup_tables) =
-                    lookup_info.selector_polynomials_and_tables(domain, gates);
-
-                let lookup_tables: Vec<_> = gate_lookup_tables
-                    .into_iter()
-                    .chain(lookup_tables.into_iter())
-                    .collect();
-
-                // Get the max width of all lookup tables
-                let max_table_width = lookup_tables
-                    .iter()
-                    .map(|table| table.data.len())
-                    .max()
-                    .unwrap_or(0);
-
-                // The maximum number of entries that can be provided across all tables.
-                // Since we do not assert the lookup constraint on the final `ZK_ROWS` rows, and
-                // because the row before is used to assert that the lookup argument's final
-                // product is 1, we cannot use those rows to store any values.
-                let max_num_entries = d1_size - (ZK_ROWS as usize) - 1;
-
-                let mut lookup_table = vec![Vec::with_capacity(d1_size); max_table_width];
-                let mut table_ids: Vec<F> = Vec::with_capacity(d1_size);
-                let mut non_zero_table_id = false;
-                for table in lookup_tables.iter() {
-                    let table_len = table.data[0].len();
-
-                    // Update table IDs
-                    if table.id != 0 {
-                        non_zero_table_id = true;
-                    }
-                    let table_id: F = i32_to_field(table.id);
-                    table_ids.extend(repeat_n(table_id, table_len));
-
-                    // Update lookup_table values
-                    for (i, col) in table.data.iter().enumerate() {
-                        if col.len() != table_len {
-                            return Err(LookupError::InconsistentTableLength);
-                        }
-                        lookup_table[i].extend(col);
-                    }
-
-                    // Fill in any unused columns with 0 to match the dummy value
-                    for lookup_table in lookup_table.iter_mut().skip(table.data.len()) {
-                        lookup_table.extend(repeat_n(F::zero(), table_len))
-                    }
-                }
-
-                // Note: we use `>=` here to leave space for the dummy value.
-                if lookup_table[0].len() >= max_num_entries {
-                    return Err(LookupError::LookupTableTooLong {
-                        length: lookup_table[0].len(),
-                        maximum_allowed: max_num_entries - 1,
-                    });
-                }
-
-                // For computational efficiency, we choose the dummy lookup value to be all 0s in
-                // table 0.
-                let dummy_lookup = JointLookup {
-                    entry: vec![],
-                    table_id: F::zero(),
-                };
-
-                // Pad up to the end of the table with the dummy value.
-                lookup_table
-                    .iter_mut()
-                    .for_each(|col| col.extend(repeat_n(F::zero(), max_num_entries - col.len())));
-                table_ids.extend(repeat_n(F::zero(), max_num_entries - table_ids.len()));
-
-                // pre-compute polynomial and evaluation form for the look up tables
-                let mut lookup_table_polys: Vec<DP<F>> = vec![];
-                let mut lookup_table8: Vec<E<F, D<F>>> = vec![];
-                for col in lookup_table.into_iter() {
-                    let poly = E::<F, D<F>>::from_vec_and_domain(col, domain.d1).interpolate();
-                    let eval = poly.evaluate_over_domain_by_ref(domain.d8);
-                    lookup_table_polys.push(poly);
-                    lookup_table8.push(eval);
-                }
-
-                // pre-compute polynomial and evaluation form for the table IDs, if needed
-                let (table_ids, table_ids8) = if non_zero_table_id {
-                    let table_ids: DP<F> =
-                        E::<F, D<F>>::from_vec_and_domain(table_ids, domain.d1).interpolate();
-                    let table_ids8: E<F, D<F>> = table_ids.evaluate_over_domain_by_ref(domain.d8);
-                    (Some(table_ids), Some(table_ids8))
-                } else {
-                    (None, None)
-                };
-
-                // generate the look up selector polynomials
-                Ok(Some(Self {
-                    lookup_selectors,
-                    lookup_table8,
-                    lookup_table: lookup_table_polys,
-                    table_ids,
-                    table_ids8,
-                    configuration: LookupConfiguration {
-                        lookup_used,
-                        max_lookups_per_row: lookup_info.max_per_row as usize,
-                        max_joint_size: lookup_info.max_joint_size,
-                        dummy_lookup,
-                    },
-                }))
-            }
-        }
-    }
-}
-
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// creates a constraint system from a vector of gates ([CircuitGate]), some sponge parameters ([ArithmeticSpongeParams]), and the number of public inputs.
+    ///
+    /// Warning: you have to make sure that the IDs of the lookup tables,
+    /// and runtime lookup tables, are unique and
+    /// not colliding with IDs of built-in lookup tables
+    /// (see [crate::circuits::lookup::tables]).
     pub fn create(
         gates: Vec<CircuitGate<F>>,
         lookup_tables: Vec<LookupTable<F>>,
+        runtime_tables: Option<Vec<RuntimeTableConfiguration>>,
         fr_sponge_params: ArithmeticSpongeParams<F>,
         public: usize,
-    ) -> Option<Self> {
+    ) -> Result<Self, SetupError> {
         ConstraintSystem::<F>::create_with_shared_precomputations(
             gates,
             lookup_tables,
+            runtime_tables,
             fr_sponge_params,
             public,
             None,
@@ -397,13 +246,19 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     }
 
     /// similar to create. but this fn creates a constraint system with a shared precomputation previously created elsewhere
+    ///
+    /// Warning: you have to make sure that the IDs of the lookup tables,
+    /// and runtime lookup tables, are unique and
+    /// not colliding with IDs of built-in lookup tables
+    /// (see [crate::circuits::lookup::tables]).
     pub fn create_with_shared_precomputations(
         mut gates: Vec<CircuitGate<F>>,
         lookup_tables: Vec<LookupTable<F>>,
+        runtime_tables: Option<Vec<RuntimeTableConfiguration>>,
         fr_sponge_params: ArithmeticSpongeParams<F>,
         public: usize,
         precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
-    ) -> Option<Self> {
+    ) -> Result<Self, SetupError> {
         //~ 1. If the circuit is less than 2 gates, abort.
         // for some reason we need more than 1 gate for the circuit to work, see TODO below
         assert!(gates.len() > 1);
@@ -412,6 +267,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         //~    compute the smallest subgroup of the field that
         //~    has order greater or equal to `n + ZK_ROWS` elements.
         let domain = EvaluationDomains::<F>::create(gates.len() + ZK_ROWS as usize)?;
+
         assert!(domain.d1.size > ZK_ROWS);
 
         //~ 3. Pad the circuit: add zero gates to reach the domain size.
@@ -426,6 +282,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             .collect();
         gates.append(&mut padding);
 
+        // Record which gates are used by this constraint system
+        let mut circuit_gates_used = HashSet::<GateType>::default();
+        gates.iter().for_each(|gate| {
+            circuit_gates_used.insert(gate.typ);
+        });
+
         //~ 4. sample the `PERMUTS` shifts.
         let shifts = Shifts::new(&domain.d1);
 
@@ -438,8 +300,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // -----------
 
         // compute permutation polynomials
-        let mut sigmal1: [Vec<F>; PERMUTS] =
-            array_init(|_| vec![F::zero(); domain.d1.size as usize]);
+        let mut sigmal1: [Vec<F>; PERMUTS] = array_init(|_| vec![F::zero(); domain.d1.size()]);
 
         for (row, gate) in gates.iter().enumerate() {
             for (cell, sigma) in gate.wires.iter().zip(sigmal1.iter_mut()) {
@@ -563,6 +424,16 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             }
         };
 
+        // Range check constraint selector polynomials
+        let range_check_selector_polys = {
+            if !circuit_gates_used.is_disjoint(&range_check::circuit_gates().into_iter().collect())
+            {
+                range_check::selector_polynomials(&gates, &domain)
+            } else {
+                vec![]
+            }
+        };
+
         //
         // Coefficient
         // -----------
@@ -583,9 +454,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         //
         // Lookup
         // ------
-
         let lookup_constraint_system =
-            LookupConstraintSystem::create(&gates, lookup_tables, &domain).ok()?;
+            LookupConstraintSystem::create(&gates, lookup_tables, runtime_tables, &domain)
+                .map_err(|e| SetupError::ConstraintSystem(e.to_string()))?;
 
         let sid = shifts.map[0].clone();
 
@@ -611,6 +482,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             complete_addl4,
             mull8,
             emull,
+            range_check_selector_polys,
             gates,
             shift: shifts.shifts,
             endo,
@@ -628,7 +500,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             }
         }
 
-        Some(constraints)
+        Ok(constraints)
     }
 
     pub fn precomputations(&self) -> &Arc<DomainConstantEvaluations<F>> {
@@ -648,7 +520,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     ///     RETURN: verification status
     pub fn verify(&self, witness: &[Vec<F>; COLUMNS], public: &[F]) -> Result<(), GateError> {
         // pad the witness
-        let pad = vec![F::zero(); self.domain.d1.size as usize - witness[0].len()];
+        let pad = vec![F::zero(); self.domain.d1.size() - witness[0].len()];
         let witness: [Vec<F>; COLUMNS] = array_init(|i| {
             let mut w = witness[i].to_vec();
             w.extend_from_slice(&pad);
@@ -748,7 +620,8 @@ pub mod tests {
             gates: Vec<CircuitGate<F>>,
         ) -> Self {
             let public = 0;
-            ConstraintSystem::<F>::create(gates, vec![], sponge_params, public).unwrap()
+            // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
+            ConstraintSystem::<F>::create(gates, vec![], None, sponge_params, public).unwrap()
         }
     }
 

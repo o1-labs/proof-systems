@@ -1,4 +1,5 @@
-use ark_ff::{Field, PrimeField};
+use ark_ff::{BigInteger, Field, FpParameters, PrimeField};
+use num_bigint::BigUint;
 use std::ops::Neg;
 use thiserror::Error;
 
@@ -38,6 +39,14 @@ pub trait FieldHelpers<F> {
         F: PrimeField,
     {
         F::size_in_bits() / 8 + (F::size_in_bits() % 8 != 0) as usize
+    }
+
+    /// Get the modulus as `BigUint`
+    fn modulus_biguint() -> BigUint
+    where
+        F: PrimeField,
+    {
+        BigUint::from_bytes_le(&F::Params::MODULUS.to_bytes_le())
     }
 }
 

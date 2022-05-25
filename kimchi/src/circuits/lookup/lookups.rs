@@ -7,7 +7,7 @@ use crate::circuits::{
     },
 };
 use ark_ff::{FftField, Field, One, Zero};
-use ark_poly::{Evaluations as E, Radix2EvaluationDomain as D};
+use ark_poly::{EvaluationDomain, Evaluations as E, Radix2EvaluationDomain as D};
 use o1_utils::field_helpers::i32_to_field;
 use serde::{Deserialize, Serialize};
 use std::collections::{hash_map::Entry, HashMap, HashSet};
@@ -99,7 +99,7 @@ impl<F: FftField> LookupInfo<F> {
         domain: &EvaluationDomains<F>,
         gates: &[CircuitGate<F>],
     ) -> (Vec<Evaluations<F>>, Vec<LookupTable<F>>) {
-        let n = domain.d1.size as usize;
+        let n = domain.d1.size();
         let mut selector_values: Vec<_> = self.kinds.iter().map(|_| vec![F::zero(); n]).collect();
         let mut gate_tables = HashSet::new();
 

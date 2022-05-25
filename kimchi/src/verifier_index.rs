@@ -46,6 +46,10 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 
     /// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
     pub max_joint_size: u32,
+
+    /// An optional selector polynomial for runtime tables
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub runtime_tables_selector: Option<PolyComm<G>>,
 }
 
 #[serde_as]
@@ -96,6 +100,10 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub chacha_comm: Option<[PolyComm<G>; 4]>,
 
+    // Range check gates polynomial commitments
+    #[serde(bound = "Vec<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub range_check_comm: Vec<PolyComm<G>>,
+
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub shift: [ScalarField<G>; PERMUTS],
@@ -134,6 +142,7 @@ where
     /// Produces the [VerifierIndex] from the prover's [ProverIndex].
     pub fn verifier_index(&self) -> VerifierIndex<G> {
         let domain = self.cs.domain.d1;
+
         let lookup_index = {
             self.cs
                 .lookup_constraint_system
@@ -155,6 +164,10 @@ where
                             .commit_evaluations_non_hiding(domain, table_ids8, None)
                     }),
                     max_joint_size: cs.configuration.max_joint_size,
+                    runtime_tables_selector: cs
+                        .runtime_selector
+                        .as_ref()
+                        .map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None)),
                 })
         };
 
@@ -196,6 +209,16 @@ where
             chacha_comm: self.cs.chacha8.as_ref().map(|c| {
                 array_init(|i| self.srs.commit_evaluations_non_hiding(domain, &c[i], None))
             }),
+
+            range_check_comm: self
+                .cs
+                .range_check_selector_polys
+                .iter()
+                .map(|poly| {
+                    self.srs
+                        .commit_evaluations_non_hiding(domain, &poly.eval8, None)
+                })
+                .collect(),
 
             shift: self.cs.shift,
             zkpm: self.cs.precomputations().zkpm.clone(),
