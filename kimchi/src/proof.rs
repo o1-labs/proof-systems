@@ -245,12 +245,12 @@ pub mod caml {
         pub runtime: Option<Vec<CamlF>>,
     }
 
-    impl<F, CamlF> From<LookupEvaluations<Vec<F>>> for CamlLookupEvaluations<CamlF>
+    impl<F, CamlF> From<LookupEvaluations<F>> for CamlLookupEvaluations<CamlF>
     where
-        F: Clone,
+        F: Clone + CanonicalSerialize + CanonicalDeserialize,
         CamlF: From<F>,
     {
-        fn from(le: LookupEvaluations<Vec<F>>) -> Self {
+        fn from(le: LookupEvaluations<F>) -> Self {
             Self {
                 sorted: le
                     .sorted
@@ -264,9 +264,9 @@ pub mod caml {
         }
     }
 
-    impl<F, CamlF> From<CamlLookupEvaluations<CamlF>> for LookupEvaluations<Vec<F>>
+    impl<F, CamlF> From<CamlLookupEvaluations<CamlF>> for LookupEvaluations<F>
     where
-        F: From<CamlF> + Clone,
+        F: From<CamlF> + Clone + CanonicalSerialize + CanonicalDeserialize,
     {
         fn from(pe: CamlLookupEvaluations<CamlF>) -> Self {
             Self {
@@ -322,12 +322,12 @@ pub mod caml {
     // ProofEvaluations<Vec<F>> <-> CamlProofEvaluations<CamlF>
     //
 
-    impl<F, CamlF> From<ProofEvaluations<Vec<F>>> for CamlProofEvaluations<CamlF>
+    impl<F, CamlF> From<ProofEvaluations<F>> for CamlProofEvaluations<CamlF>
     where
-        F: Clone,
+        F: Clone + CanonicalSerialize + CanonicalDeserialize,
         CamlF: From<F>,
     {
-        fn from(pe: ProofEvaluations<Vec<F>>) -> Self {
+        fn from(pe: ProofEvaluations<F>) -> Self {
             let w = (
                 pe.w[0].iter().cloned().map(Into::into).collect(),
                 pe.w[1].iter().cloned().map(Into::into).collect(),
@@ -364,9 +364,9 @@ pub mod caml {
         }
     }
 
-    impl<F, CamlF> From<CamlProofEvaluations<CamlF>> for ProofEvaluations<Vec<F>>
+    impl<F, CamlF> From<CamlProofEvaluations<CamlF>> for ProofEvaluations<F>
     where
-        F: Clone,
+        F: Clone + CanonicalSerialize + CanonicalDeserialize,
         F: From<CamlF>,
     {
         fn from(cpe: CamlProofEvaluations<CamlF>) -> Self {

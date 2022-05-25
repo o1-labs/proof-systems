@@ -1186,6 +1186,47 @@ pub mod caml {
     use ark_ec::AffineCurve;
     use commitment_dlog::commitment::caml::{CamlOpeningProof, CamlPolyComm};
 
+    //
+    // CamlChallenge<CamlF>
+    //
+
+    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlChallenge<CamlG, CamlF> {
+        pub chals: Vec<CamlF>,
+        pub comm: CamlPolyComm<CamlG>,
+    }
+
+    impl<G, CamlG, CamlF> From<Challenge<G>> for CamlChallenge<CamlG, CamlF>
+    where
+        G: AffineCurve,
+        CamlG: From<G>,
+        CamlF: From<G::ScalarField>,
+    {
+        fn from(ch: Challenge<G>) -> Self {
+            Self {
+                chals: ch.chals.into_iter().map(Into::into).collect(),
+                comm: ch.comm.into(),
+            }
+        }
+    }
+
+    impl<G, CamlG, CamlF> From<CamlChallenge<CamlG, CamlF>> for Challenge<G>
+    where
+        G: AffineCurve + From<CamlG>,
+        G::ScalarField: From<CamlF>,
+    {
+        fn from(caml_ch: CamlChallenge<CamlG, CamlF>) -> Challenge<G> {
+            Challenge {
+                chals: caml_ch.chals.into_iter().map(Into::into).collect(),
+                comm: caml_ch.comm.into(),
+            }
+        }
+    }
+
+    //
+    // CamlProverProof<CamlG, CamlF>
+    //
+
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlProverProof<CamlG, CamlF> {
         pub commitments: CamlProverCommitments<CamlG>,
@@ -1194,8 +1235,12 @@ pub mod caml {
         pub evals: (CamlProofEvaluations<CamlF>, CamlProofEvaluations<CamlF>),
         pub ft_eval1: CamlF,
         pub public: Vec<CamlF>,
-        pub prev_challenges: Vec<(Vec<CamlF>, CamlPolyComm<CamlG>)>,
+        pub prev_challenges: Vec<CamlChallenge<CamlG, CamlF>>, //Vec<(Vec<CamlF>, CamlPolyComm<CamlG>)>,
     }
+
+    //
+    // CamlProverCommitments<CamlG>
+    //
 
     #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlProverCommitments<CamlG> {
@@ -1337,14 +1382,7 @@ pub mod caml {
                 evals: (pp.evals[0].clone().into(), pp.evals[1].clone().into()),
                 ft_eval1: pp.ft_eval1.into(),
                 public: pp.public.into_iter().map(Into::into).collect(),
-                prev_challenges: pp
-                    .prev_challenges
-                    .into_iter()
-                    .map(|(v, c)| {
-                        let v = v.into_iter().map(Into::into).collect();
-                        (v, c.into())
-                    })
-                    .collect(),
+                prev_challenges: pp.prev_challenges.into_iter().map(Into::into).collect(),
             }
         }
     }
@@ -1364,10 +1402,7 @@ pub mod caml {
                 prev_challenges: caml_pp
                     .prev_challenges
                     .into_iter()
-                    .map(|(v, c)| {
-                        let v = v.into_iter().map(Into::into).collect();
-                        (v, c.into())
-                    })
+                    .map(Into::into)
                     .collect(),
             }
         }
