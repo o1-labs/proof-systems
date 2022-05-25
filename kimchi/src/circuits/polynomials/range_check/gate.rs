@@ -483,9 +483,13 @@ mod tests {
 
         // Generate proof
         let group_map = <pasta_curves::vesta::Affine as CommitmentCurve>::Map::setup();
-        let proof =
-            ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &prover_index)
-                .expect("failed to generate proof");
+        let proof = ProverProof::create::<BaseSponge, ScalarSponge>(
+            &group_map,
+            witness,
+            &[],
+            &prover_index,
+        )
+        .expect("failed to generate proof");
 
         // Get the verifier index
         let verifier_index = prover_index.verifier_index();
