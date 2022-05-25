@@ -30,7 +30,6 @@ type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
-/// TKTK
 #[derive(Default)]
 pub(crate) struct TestFramework {
     gates: Option<Vec<CircuitGate<Fp>>>,
