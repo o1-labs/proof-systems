@@ -141,6 +141,14 @@
 <span id="134">134</span>
 <span id="135">135</span>
 <span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the linearization.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::alphas::Alphas</span>;
@@ -172,7 +180,7 @@
     <span class="comment">// register powers of alpha so that we don&#39;t reuse them across mutually inclusive constraints</span>
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">powers_of_alpha</span> <span class="op">=</span> <span class="ident">Alphas</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::default</span>();
 
-    <span class="comment">// Set up powers of alpha.  Only the max number of constraints matters.</span>
+    <span class="comment">// Set up powers of alpha. Only the max number of constraints matters.</span>
     <span class="comment">// The gate type argument can just be the zero gate.</span>
     <span class="ident">powers_of_alpha</span>.<span class="ident">register</span>(
         <span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::Zero</span>),
@@ -214,6 +222,14 @@
         <span class="kw">let</span> <span class="ident">combined</span> <span class="op">=</span> <span class="ident">Expr::combine_constraints</span>(<span class="ident">alphas</span>, <span class="ident">constraints</span>);
 
         <span class="ident">expr</span> <span class="op">+</span><span class="op">=</span> <span class="ident">combined</span>;
+    }
+
+    <span class="comment">// the generic gate must be associated with alpha^0</span>
+    <span class="comment">// to make the later addition with the public input work</span>
+    <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">debug_assertions</span>) {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">generic_alphas</span> <span class="op">=</span>
+            <span class="ident">powers_of_alpha</span>.<span class="ident">get_exponents</span>(<span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::Generic</span>), <span class="number">1</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">generic_alphas</span>.<span class="ident">next</span>(), <span class="prelude-val">Some</span>(<span class="number">0</span>));
     }
 
     <span class="comment">// return the expression</span>
