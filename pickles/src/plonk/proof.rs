@@ -129,7 +129,7 @@ pub struct LookupEvaluations<Field> {
 ///
 ///
 /// Note: the number of chunks is always 1 for the polynomials covered below.
-struct VarEvaluation<F: FftField + PrimeField> {
+pub struct VarEvaluation<F: FftField + PrimeField> {
     /// witness polynomials
     pub w: [VarOpen<F, 1>; COLUMNS],
 
@@ -167,9 +167,9 @@ impl<F: FftField + PrimeField> Absorb<F> for VarEvaluation<F> {
     }
 }
 
-struct VarEvaluations<F: FftField + PrimeField> {
-    z: VarEvaluation<F>,  // evaluation at z
-    zw: VarEvaluation<F>, // evaluation at z * \omega (2^k root of unity, next step)
+pub struct VarEvaluations<F: FftField + PrimeField> {
+    pub z: VarEvaluation<F>,  // evaluation at z
+    pub zw: VarEvaluation<F>, // evaluation at z * \omega (2^k root of unity, next step)
 }
 
 impl<F: FftField + PrimeField> Absorb<F> for VarEvaluations<F> {
