@@ -51,6 +51,15 @@ impl<F> RuntimeTableCfg<F> {
             Custom { first_column, .. } => first_column.len(),
         }
     }
+
+    /// Returns `true` if the runtime table is empty.
+    pub fn is_empty(&self) -> bool {
+        use RuntimeTableCfg::*;
+        match self {
+            Indexed(cfg) => cfg.len == 0,
+            Custom { first_column, .. } => first_column.is_empty(),
+        }
+    }
 }
 
 impl<F> From<RuntimeTableCfg<F>> for RuntimeTableSpec {
@@ -59,7 +68,7 @@ impl<F> From<RuntimeTableCfg<F>> for RuntimeTableSpec {
         match from {
             Indexed(cfg) => cfg,
             Custom { id, first_column } => RuntimeTableSpec {
-                id: id,
+                id,
                 len: first_column.len(),
             },
         }
