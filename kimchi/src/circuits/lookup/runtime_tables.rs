@@ -24,7 +24,7 @@ pub struct RuntimeTableSpec {
 pub enum RuntimeTableCfg<F> {
     /// An indexed runtime table has a counter (starting at zero) in its first column.
     Indexed(RuntimeTableSpec),
-    /// A custom runtime table has its first column fixed at setup time.
+    /// A custom runtime table can contain arbitrary values in its first column.
     Custom {
         /// The table ID.
         id: i32,
