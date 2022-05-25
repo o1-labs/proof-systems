@@ -300,6 +300,7 @@ mod tests {
             vec![lookup::tables::get_table::<PallasField>(
                 GateLookupTable::RangeCheck,
             )],
+            None,
             oracle::pasta::fp_kimchi::params(),
             0,
         )
@@ -317,7 +318,7 @@ mod tests {
             next_row += 1;
         }
 
-        new_index_for_test_with_lookups(gates, public_size, vec![])
+        new_index_for_test_with_lookups(gates, public_size, vec![], None)
     }
 
     fn biguint_from_hex_le(hex: &str) -> BigUint {
