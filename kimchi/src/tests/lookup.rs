@@ -2,7 +2,7 @@ use super::framework::{print_witness, TestFramework};
 use crate::circuits::{
     gate::{CircuitGate, GateType},
     lookup::{
-        runtime_tables::{RuntimeTable, RuntimeTableConfiguration},
+        runtime_tables::{RuntimeTable, RuntimeTableCfg, RuntimeTableSpec},
         tables::LookupTable,
     },
     polynomial::COLUMNS,
@@ -120,21 +120,29 @@ fn lookup_gate_rejects_bad_lookups_multiple_tables() {
     setup_lookup_proof(false, 500, vec![100, 50, 50, 2, 2])
 }
 
-fn runtime(num: usize) {
+fn runtime_table(num: usize, indexed: bool) {
     // runtime
-    let mut runtime_tables_cfg = vec![];
+    let mut runtime_tables_setup = vec![];
     for table_id in 0..num {
-        runtime_tables_cfg.push(RuntimeTableConfiguration {
-            id: table_id as i32,
-            len: 5,
-        });
+        let cfg = if indexed {
+            RuntimeTableCfg::Indexed(RuntimeTableSpec {
+                id: table_id as i32,
+                len: 5,
+            })
+        } else {
+            RuntimeTableCfg::Custom {
+                id: table_id as i32,
+                first_column: [8u32, 9, 8, 7, 1].into_iter().map(Into::into).collect(),
+            }
+        };
+        runtime_tables_setup.push(cfg);
     }
 
     let data: Vec<Fp> = [0u32, 2, 3, 4, 5].into_iter().map(Into::into).collect();
-    let runtime_tables: Vec<RuntimeTable<Fp>> = runtime_tables_cfg
+    let runtime_tables: Vec<RuntimeTable<Fp>> = runtime_tables_setup
         .iter()
         .map(|cfg| RuntimeTable {
-            id: cfg.id,
+            id: cfg.id(),
             data: data.clone(),
         })
         .collect();
@@ -163,7 +171,7 @@ fn runtime(num: usize) {
             // create queries into our runtime lookup table
             let lookup_cols = &mut lookup_cols[1..];
             for chunk in lookup_cols.chunks_mut(2) {
-                chunk[0][row] = 1u32.into(); // index
+                chunk[0][row] = if indexed { 1u32.into() } else { 9u32.into() }; // index
                 chunk[1][row] = 2u32.into(); // value
             }
         }
@@ -176,7 +184,7 @@ fn runtime(num: usize) {
     TestFramework::default()
         .gates(gates)
         .witness(witness)
-        .runtime_tables_cfg(runtime_tables_cfg)
+        .runtime_tables_setup(runtime_tables_setup)
         .runtime_tables(runtime_tables)
         .setup()
         .prove_and_verify();
@@ -184,5 +192,12 @@ fn runtime(num: usize) {
 
 #[test]
 fn test_indexed_runtime_table() {
-    runtime(5);
+    runtime_table(5, true);
 }
+
+#[test]
+fn test_custom_runtime_table() {
+    runtime_table(5, false);
+}
+
+// TODO: add a test with a runtime table with ID 0 (it should panic)

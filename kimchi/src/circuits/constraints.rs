@@ -27,7 +27,7 @@ use serde_with::serde_as;
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use super::lookup::runtime_tables::RuntimeTableConfiguration;
+use super::lookup::runtime_tables::RuntimeTableCfg;
 
 //
 // ConstraintSystem
@@ -231,7 +231,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     pub fn create(
         gates: Vec<CircuitGate<F>>,
         lookup_tables: Vec<LookupTable<F>>,
-        runtime_tables: Option<Vec<RuntimeTableConfiguration>>,
+        runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
         fr_sponge_params: ArithmeticSpongeParams<F>,
         public: usize,
     ) -> Result<Self, SetupError> {
@@ -254,7 +254,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     pub fn create_with_shared_precomputations(
         mut gates: Vec<CircuitGate<F>>,
         lookup_tables: Vec<LookupTable<F>>,
-        runtime_tables: Option<Vec<RuntimeTableConfiguration>>,
+        runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
         fr_sponge_params: ArithmeticSpongeParams<F>,
         public: usize,
         precomputations: Option<Arc<DomainConstantEvaluations<F>>>,

@@ -101,7 +101,7 @@ pub mod testing {
     use super::*;
     use crate::circuits::{
         gate::CircuitGate,
-        lookup::{runtime_tables::RuntimeTableConfiguration, tables::LookupTable},
+        lookup::{runtime_tables::RuntimeTableCfg, tables::LookupTable},
     };
     use ark_poly::EvaluationDomain;
     use commitment_dlog::srs::endos;
@@ -111,7 +111,7 @@ pub mod testing {
         gates: Vec<CircuitGate<Fp>>,
         public: usize,
         lookup_tables: Vec<LookupTable<Fp>>,
-        runtime_tables: Option<Vec<RuntimeTableConfiguration>>,
+        runtime_tables: Option<Vec<RuntimeTableCfg<Fp>>>,
     ) -> ProverIndex<Affine> {
         let fp_sponge_params = oracle::pasta::fp_kimchi::params();
 

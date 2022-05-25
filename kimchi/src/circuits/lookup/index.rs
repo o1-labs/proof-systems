@@ -20,7 +20,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use thiserror::Error;
 
-use super::runtime_tables::RuntimeTableConfiguration;
+use super::runtime_tables::{RuntimeTableCfg, RuntimeTableSpec};
 
 /// Represents an error found when computing the lookup constraint system
 #[derive(Debug, Error)]
@@ -73,7 +73,7 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
     pub fn create(
         gates: &[CircuitGate<F>],
         lookup_tables: Vec<LookupTable<F>>,
-        runtime_tables: Option<Vec<RuntimeTableConfiguration>>,
+        runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
         domain: &EvaluationDomains<F>,
     ) -> Result<Option<Self>, LookupError> {
         let lookup_info = LookupInfo::<F>::create();
@@ -114,7 +114,7 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                         // compute the length of the runtime table
                         let mut runtime_len = 0;
                         for t in runtime_tables {
-                            runtime_len += t.len;
+                            runtime_len += t.len();
                         }
 
                         // compute the runtime selector
@@ -141,16 +141,27 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                         };
 
                         // create fixed tables for indexing the runtime tables
-                        for &RuntimeTableConfiguration { id, len } in runtime_tables {
+                        for runtime_table in runtime_tables {
+                            use RuntimeTableCfg::*;
+                            let (id, first_column) = match runtime_table {
+                                &Indexed(RuntimeTableSpec { id, len }) => {
+                                    let indexes = (0..(len as u32)).map(F::from).collect();
+                                    (id, indexes)
+                                }
+                                Custom { id, first_column } => (*id, first_column.clone()),
+                            };
+
                             // record if table ID 0 is used in one of the runtime tables
                             // note: the check later will still force you to have a fixed table with ID 0
                             if id == 0 {
                                 has_table_id_0 = true;
                             }
 
-                            let indexes = (0..(len as u32)).map(F::from).collect();
-                            let placeholders = vec![F::zero(); len];
-                            let data = vec![indexes, placeholders];
+                            // important: we still need a placeholder column to make sure that
+                            // if all other tables have a single column
+                            // we don't use the second table as table ID column.
+                            let placeholders = vec![F::zero(); first_column.len()];
+                            let data = vec![first_column, placeholders];
                             let table = LookupTable { id, data };
                             lookup_tables.push(table);
                         }
@@ -295,6 +306,10 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                 } else {
                     (None, None)
                 };
+
+                // store only the length of custom runtime tables in the index
+                let runtime_tables =
+                    runtime_tables.map(|rt| rt.into_iter().map(Into::into).collect());
 
                 Ok(Some(Self {
                     lookup_selectors,
