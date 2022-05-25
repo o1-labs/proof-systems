@@ -19,13 +19,13 @@ fn test_recursion() {
     fill_in_witness(0, &mut witness, &[]);
 
     // setup
-    let ctx = TestFramework::default()
+    let test_runner = TestFramework::default()
         .gates(gates)
         .witness(witness)
         .setup();
 
     // previous opening for recursion
-    let index = ctx.prover_index.as_ref().unwrap();
+    let index = test_runner.prover_index();
     let rng = &mut StdRng::from_seed([0u8; 32]);
     let prev_challenges = {
         let k = math::ceil_log2(index.srs.g.len());
@@ -38,5 +38,7 @@ fn test_recursion() {
         (chals, comm)
     };
 
-    ctx.recursion(vec![prev_challenges]).prove_and_verify();
+    test_runner
+        .recursion(vec![prev_challenges])
+        .prove_and_verify();
 }

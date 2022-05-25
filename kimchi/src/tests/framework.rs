@@ -30,7 +30,6 @@ type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
-/// TKTK
 #[derive(Default)]
 pub(crate) struct TestFramework {
     gates: Option<Vec<CircuitGate<Fp>>>,
@@ -41,9 +40,11 @@ pub(crate) struct TestFramework {
     runtime_tables: Vec<RuntimeTable<Fp>>,
     recursion: Vec<(Vec<Fp>, PolyComm<Affine>)>,
 
-    pub prover_index: Option<ProverIndex<Affine>>,
+    prover_index: Option<ProverIndex<Affine>>,
     verifier_index: Option<VerifierIndex<Affine>>,
 }
+
+pub(crate) struct TestRunner(TestFramework);
 
 impl TestFramework {
     #[must_use]
@@ -79,21 +80,9 @@ impl TestFramework {
         self
     }
 
-    #[must_use]
-    pub(crate) fn runtime_tables(mut self, runtime_tables: Vec<RuntimeTable<Fp>>) -> Self {
-        self.runtime_tables = runtime_tables;
-        self
-    }
-
-    #[must_use]
-    pub(crate) fn recursion(mut self, recursion: Vec<(Vec<Fp>, PolyComm<Affine>)>) -> Self {
-        self.recursion = recursion;
-        self
-    }
-
     /// creates the indexes
     #[must_use]
-    pub(crate) fn setup(mut self) -> Self {
+    pub(crate) fn setup(mut self) -> TestRunner {
         let start = Instant::now();
 
         let lookup_tables = mem::replace(&mut self.lookup_tables, vec![]);
@@ -113,16 +102,34 @@ impl TestFramework {
         self.verifier_index = Some(index.verifier_index());
         self.prover_index = Some(index);
 
+        TestRunner(self)
+    }
+}
+
+impl TestRunner {
+    #[must_use]
+    pub(crate) fn runtime_tables(mut self, runtime_tables: Vec<RuntimeTable<Fp>>) -> Self {
+        self.0.runtime_tables = runtime_tables;
         self
+    }
+
+    #[must_use]
+    pub(crate) fn recursion(mut self, recursion: Vec<(Vec<Fp>, PolyComm<Affine>)>) -> Self {
+        self.0.recursion = recursion;
+        self
+    }
+
+    pub(crate) fn prover_index(&self) -> &ProverIndex<Affine> {
+        self.0.prover_index.as_ref().unwrap()
     }
 
     /// Create and verify a proof
     pub(crate) fn prove_and_verify(self) {
-        let prover = self.prover_index.unwrap();
-        let witness = self.witness.unwrap();
+        let prover = self.0.prover_index.unwrap();
+        let witness = self.0.witness.unwrap();
 
         // verify the circuit satisfiability by the computed witness
-        prover.cs.verify(&witness, &self.public_inputs).unwrap();
+        prover.cs.verify(&witness, &self.0.public_inputs).unwrap();
 
         // add the proof to the batch
         let start = Instant::now();
@@ -132,9 +139,9 @@ impl TestFramework {
         let proof = ProverProof::create_recursive::<BaseSponge, ScalarSponge>(
             &group_map,
             witness,
-            &self.runtime_tables,
+            &self.0.runtime_tables,
             &prover,
-            self.recursion,
+            self.0.recursion,
         )
         .unwrap();
         println!("- time to create proof: {:?}s", start.elapsed().as_secs());
@@ -143,7 +150,7 @@ impl TestFramework {
         let start = Instant::now();
         verify::<Affine, BaseSponge, ScalarSponge>(
             &group_map,
-            &self.verifier_index.unwrap(),
+            &self.0.verifier_index.unwrap(),
             &proof,
         )
         .unwrap();
