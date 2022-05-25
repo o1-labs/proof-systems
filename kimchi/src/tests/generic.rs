@@ -14,7 +14,11 @@ fn test_generic_gate() {
     fill_in_witness(0, &mut witness, &[]);
 
     // create and verify proof based on the witness
-    TestFramework::run_test(gates, witness, &[]);
+    TestFramework::default()
+        .gates(gates)
+        .witness(witness)
+        .setup()
+        .prove_and_verify();
 }
 
 #[test]
@@ -27,5 +31,10 @@ fn test_generic_gate_pub() {
     fill_in_witness(0, &mut witness, &public);
 
     // create and verify proof based on the witness
-    TestFramework::run_test(gates, witness, &public);
+    TestFramework::default()
+        .gates(gates)
+        .witness(witness)
+        .public_inputs(public)
+        .setup()
+        .prove_and_verify();
 }

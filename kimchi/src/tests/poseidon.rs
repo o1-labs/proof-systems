@@ -72,5 +72,9 @@ fn test_poseidon() {
         );
     }
 
-    TestFramework::run_test(gates, witness, &[]);
+    TestFramework::default()
+        .gates(gates)
+        .witness(witness)
+        .setup()
+        .prove_and_verify();
 }
