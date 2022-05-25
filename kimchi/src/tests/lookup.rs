@@ -171,7 +171,7 @@ fn runtime_table(num: usize, indexed: bool) {
             // create queries into our runtime lookup table
             let lookup_cols = &mut lookup_cols[1..];
             for chunk in lookup_cols.chunks_mut(2) {
-                chunk[0][row] = 1u32.into(); // index
+                chunk[0][row] = if indexed { 1u32.into() } else { 9u32.into() }; // index
                 chunk[1][row] = 2u32.into(); // value
             }
         }
