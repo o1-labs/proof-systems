@@ -100,6 +100,8 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                     .chain(lookup_tables.into_iter())
                     .collect();
 
+                let mut has_table_id_0 = false;
+
                 // if we are using runtime tables
                 let (runtime_table_offset, runtime_selector) =
                     if let Some(runtime_tables) = &runtime_tables {
@@ -140,6 +142,12 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
 
                         // create fixed tables for indexing the runtime tables
                         for &RuntimeTableConfiguration { id, len } in runtime_tables {
+                            // record if table ID 0 is used in one of the runtime tables
+                            // note: the check later will still force you to have a fixed table with ID 0
+                            if id == 0 {
+                                has_table_id_0 = true;
+                            }
+
                             let indexes = (0..(len as u32)).map(F::from).collect();
                             let placeholders = vec![F::zero(); len];
                             let data = vec![indexes, placeholders];
@@ -205,12 +213,18 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                 let mut table_ids: Vec<F> = Vec::with_capacity(d1_size);
 
                 let mut non_zero_table_id = false;
+                let mut has_table_id_0_with_zero_entry = false;
 
                 for table in lookup_tables.iter() {
                     let table_len = table.data[0].len();
 
                     if table.id != 0 {
                         non_zero_table_id = true;
+                    } else {
+                        has_table_id_0 = true;
+                        if table.has_zero_entry() {
+                            has_table_id_0_with_zero_entry = true;
+                        }
                     }
 
                     //~       - Update the corresponding entries in a table id vector (of size the domain as well)
@@ -230,6 +244,12 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                     for lookup_table in lookup_table.iter_mut().skip(table.data.len()) {
                         lookup_table.extend(repeat_n(F::zero(), table_len))
                     }
+                }
+
+                // If a table has ID 0, then it must have a zero entry.
+                // This is for the dummy lookups to work.
+                if has_table_id_0 && !has_table_id_0_with_zero_entry {
+                    return Err(LookupError::TableIDZeroMustHaveZeroEntry);
                 }
 
                 // Note: we use `>=` here to leave space for the dummy value.
