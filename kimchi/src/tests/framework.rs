@@ -9,6 +9,7 @@ use crate::verifier::verify;
 use ark_ff::{PrimeField, UniformRand};
 use ark_poly::univariate::DensePolynomial;
 use ark_poly::UVPolynomial;
+use array_init::array_init;
 use commitment_dlog::commitment::{b_poly_coefficients, CommitmentCurve};
 use groupmap::GroupMap;
 use mina_curves::pasta::{
@@ -100,6 +101,7 @@ impl TestFramework {
             &[],
             &index,
             vec![prev_challenges],
+            array_init(|_| None),
         )
         .unwrap();
         println!("- time to create proof: {:?}s", start.elapsed().as_secs());

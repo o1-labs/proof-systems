@@ -160,7 +160,7 @@ pub trait Cs<F: FftField + PrimeField> {
     where
         G: FnOnce() -> F;
 
-    fn len(&self) -> usize;
+    fn curr_gate_count(&self) -> usize;
 
     fn endo_scalar<G, N: BigInteger>(&mut self, length: usize, g: G) -> Var<F>
     where
@@ -797,7 +797,7 @@ impl<F: FftField + PrimeField> Cs<F> for WitnessGenerator<F> {
         }
     }
 
-    fn len(&self) -> usize {
+    fn curr_gate_count(&self) -> usize {
         self.rows.len()
     }
 
@@ -823,7 +823,7 @@ impl<F: FftField + PrimeField> Cs<F> for System<F> {
         }
     }
 
-    fn len(&self) -> usize {
+    fn curr_gate_count(&self) -> usize {
         self.gates.len()
     }
 
@@ -927,6 +927,7 @@ where
     ProverProof::create_recursive::<EFqSponge, EFrSponge>(
         group_map,
         columns,
+        &[],
         index,
         vec![],
         blinders,
@@ -982,6 +983,7 @@ where
         ConstraintSystem::<C::InnerField>::create(
             gates,
             vec![],
+            None,
             constants.poseidon.clone(),
             public,
         )

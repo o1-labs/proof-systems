@@ -177,7 +177,7 @@ where
         let length_witness = witness[0].len();
         let length_padding = d1_size
             .checked_sub(length_witness)
-            .ok_or(ProofError::NoRoomForZkInWitness)?;
+            .ok_or(ProverError::NoRoomForZkInWitness)?;
         /*
         if length_padding < ZK_ROWS as usize {
             return Err(ProverError::NoRoomForZkInWitness);
@@ -227,22 +227,25 @@ where
         //~ 7. Commit to the witness columns by creating `COLUMNS` hidding commitments.
         //~    Note: since the witness is in evaluation form,
         //~    we can use the `commit_evaluation` optimization.
-        let w_comm: [(PolyComm<G>, PolyComm<ScalarField<G>>); COLUMNS] = array_init(|i| {
-            let e = Evaluations::<ScalarField<G>, D<ScalarField<G>>>::from_vec_and_domain(
-                witness[i].clone(),
-                index.cs.domain.d1,
-            );
+        let w_comm: [(PolyComm<G>, PolyComm<ScalarField<G>>); COLUMNS] = array_init(|col| {
+            let witness_eval =
+                Evaluations::<ScalarField<G>, D<ScalarField<G>>>::from_vec_and_domain(
+                    witness[col].clone(),
+                    index.cs.domain.d1,
+                );
 
-            match &blinders[i] {
+            match &blinders[col] {
                 None => index
                     .srs
-                    .commit_evaluations(index.cs.domain.d1, &e, None, rng),
-                Some(b) => {
-                    let c = index
-                        .srs
-                        .commit_evaluations_non_hiding(index.cs.domain.d1, &e, None);
+                    .commit_evaluations(index.cs.domain.d1, &witness_eval, None, rng),
+                Some(blinder) => {
+                    let witness_com = index.srs.commit_evaluations_non_hiding(
+                        index.cs.domain.d1,
+                        &witness_eval,
+                        None,
+                    );
                     (
-                        c.zip(b).unwrap().map(|(g, b)| {
+                        witness_com.zip(blinder).unwrap().map(|(g, b)| {
                             if g.is_zero() {
                                 // TODO: This leaks information when g is the identity!
                                 // We should change this so that we still mask in this case
@@ -253,7 +256,7 @@ where
                                 g_masked.into_affine()
                             }
                         }),
-                        b.clone(),
+                        blinder.clone(),
                     )
                 }
             }
