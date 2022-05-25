@@ -356,18 +356,15 @@ impl GateType {
         let lookup_gate_where = HashSet::from([(Lookup, Curr)]);
 
         // Range check pattern
-
+        //   We do four range lookups:
+        //   0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
+        //   - L L L L - - - - - -  -  -  -  -
         let mut range_check_pattern = vec![];
-        for ii in 1..=4 {
-            // We do four range lookups:
-            // 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
-            // - l l l l - - - - - -  -  -  -  -
-            let index = curr_row(ii);
-
+        for column in 1..=4 {
             range_check_pattern.push(JointLookup {
                 table_id: LookupTableID::Constant(RANGE_CHECK_TABLE_ID),
                 entry: vec![SingleLookup {
-                    value: vec![(F::one(), index)],
+                    value: vec![(F::one(), curr_row(column))],
                 }],
             });
         }
