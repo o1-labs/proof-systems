@@ -300,8 +300,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // -----------
 
         // compute permutation polynomials
-        let mut sigmal1: [Vec<F>; PERMUTS] =
-            array_init(|_| vec![F::zero(); domain.d1.size as usize]);
+        let mut sigmal1: [Vec<F>; PERMUTS] = array_init(|_| vec![F::zero(); domain.d1.size()]);
 
         for (row, gate) in gates.iter().enumerate() {
             for (cell, sigma) in gate.wires.iter().zip(sigmal1.iter_mut()) {
@@ -521,7 +520,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     ///     RETURN: verification status
     pub fn verify(&self, witness: &[Vec<F>; COLUMNS], public: &[F]) -> Result<(), GateError> {
         // pad the witness
-        let pad = vec![F::zero(); self.domain.d1.size as usize - witness[0].len()];
+        let pad = vec![F::zero(); self.domain.d1.size() - witness[0].len()];
         let witness: [Vec<F>; COLUMNS] = array_init(|i| {
             let mut w = witness[i].to_vec();
             w.extend_from_slice(&pad);

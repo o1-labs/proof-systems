@@ -210,7 +210,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 
             // accumulator end := (z(x) - 1) / (x - sid[n-3])
             let denominator = DensePolynomial::from_coefficients_slice(&[
-                -self.sid[self.domain.d1.size as usize - 3],
+                -self.sid[self.domain.d1.size() - 3],
                 F::one(),
             ]);
             let (bnd2, res) = DenseOrSparsePolynomial::divide_with_q_and_r(
@@ -297,7 +297,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         gamma: &F,
         rng: &mut (impl RngCore + CryptoRng),
     ) -> Result<DensePolynomial<F>, ProverError> {
-        let n = self.domain.d1.size as usize;
+        let n = self.domain.d1.size();
 
         // only works if first element is 1
         assert_eq!(self.domain.d1.elements().next(), Some(F::one()));

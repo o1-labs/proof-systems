@@ -34,7 +34,7 @@ pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
     d: D<F>,
     rng: &mut R,
 ) -> Evaluations<F, D<F>> {
-    let n = d.size as usize;
+    let n = d.size();
     let k = e.len();
     assert!(k <= n - ZK_ROWS);
     e.extend((0..((n - ZK_ROWS) - k)).map(|_| F::zero()));
@@ -93,7 +93,7 @@ where
     // We pad the lookups so that it is as if we lookup exactly
     // `max_lookups_per_row` in every row.
 
-    let n = d1.size as usize;
+    let n = d1.size();
     let mut counts: HashMap<&F, usize> = HashMap::new();
 
     let lookup_rows = n - ZK_ROWS - 1;
@@ -235,7 +235,7 @@ where
     R: Rng + ?Sized,
     F: FftField,
 {
-    let n = d1.size as usize;
+    let n = d1.size();
     let lookup_rows = n - ZK_ROWS - 1;
     let beta1 = F::one() + beta;
     let gammabeta1 = gamma * beta1;
@@ -582,7 +582,7 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
     sorted
         .iter()
         .for_each(|s| assert_eq!(d1.size, s.domain().size));
-    let n = d1.size as usize;
+    let n = d1.size();
     let lookup_rows = n - ZK_ROWS - 1;
 
     // Check that the (desnakified) sorted table is
