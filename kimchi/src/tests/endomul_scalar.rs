@@ -57,5 +57,9 @@ fn endomul_scalar_test() {
         );
     }
 
-    TestFramework::run_test(gates, witness, &[]);
+    TestFramework::default()
+        .gates(gates)
+        .witness(witness)
+        .setup()
+        .prove_and_verify();
 }

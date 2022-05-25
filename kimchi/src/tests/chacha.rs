@@ -222,7 +222,12 @@ fn chacha_setup_bad_lookup(table_id: i32) {
         }
     }
 
-    TestFramework::run_test_lookups(gates, witness, &[], lookup_tables, None);
+    TestFramework::default()
+        .gates(gates)
+        .witness(witness)
+        .lookup_tables(lookup_tables)
+        .setup()
+        .prove_and_verify();
 }
 
 // Test lookup domain separation: if a different table ID is used, we shouldn't be able to use a

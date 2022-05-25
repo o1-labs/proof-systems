@@ -1,7 +1,10 @@
 use super::framework::{print_witness, TestFramework};
 use crate::circuits::{
     gate::{CircuitGate, GateType},
-    lookup::{runtime_tables::RuntimeTable, tables::LookupTable},
+    lookup::{
+        runtime_tables::{RuntimeTable, RuntimeTableConfiguration},
+        tables::LookupTable,
+    },
     polynomial::COLUMNS,
     wires::Wire,
 };
@@ -87,7 +90,12 @@ fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_siz
         ]
     };
 
-    TestFramework::run_test_lookups(gates, witness, &[], lookup_tables, None);
+    TestFramework::default()
+        .gates(gates)
+        .witness(witness)
+        .lookup_tables(lookup_tables)
+        .setup()
+        .prove_and_verify();
 }
 
 #[test]
@@ -112,16 +120,24 @@ fn lookup_gate_rejects_bad_lookups_multiple_tables() {
     setup_lookup_proof(false, 500, vec![100, 50, 50, 2, 2])
 }
 
-#[test]
-fn test_runtime_table() {
+fn runtime(num: usize) {
     // runtime
-    let mut runtime_tables = vec![];
-    for table_id in 0i32..2 {
-        runtime_tables.push(RuntimeTable {
-            id: table_id,
-            data: [0u32, 2, 3, 4, 5].into_iter().map(Into::into).collect(),
+    let mut runtime_tables_cfg = vec![];
+    for table_id in 0..num {
+        runtime_tables_cfg.push(RuntimeTableConfiguration {
+            id: table_id as i32,
+            len: 5,
         });
     }
+
+    let data: Vec<Fp> = [0u32, 2, 3, 4, 5].into_iter().map(Into::into).collect();
+    let runtime_tables: Vec<RuntimeTable<Fp>> = runtime_tables_cfg
+        .iter()
+        .map(|cfg| RuntimeTable {
+            id: cfg.id,
+            data: data.clone(),
+        })
+        .collect();
 
     // circuit
     let mut gates = vec![];
@@ -157,5 +173,16 @@ fn test_runtime_table() {
     print_witness(&witness, 0, 20);
 
     // run test
-    TestFramework::run_test_lookups(gates, witness, &[], vec![], Some(runtime_tables));
+    TestFramework::default()
+        .gates(gates)
+        .witness(witness)
+        .runtime_tables_cfg(runtime_tables_cfg)
+        .runtime_tables(runtime_tables)
+        .setup()
+        .prove_and_verify();
+}
+
+#[test]
+fn test_indexed_runtime_table() {
+    runtime(5);
 }

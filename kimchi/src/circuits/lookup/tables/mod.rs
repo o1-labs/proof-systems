@@ -37,7 +37,7 @@ pub struct GatesLookupMaps {
 }
 
 /// A table of values that can be used for a lookup, along with the ID for the table.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LookupTable<F> {
     pub id: i32,
     pub data: Vec<Vec<F>>,
