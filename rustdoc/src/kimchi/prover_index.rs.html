@@ -141,6 +141,8 @@
 <span id="134">134</span>
 <span id="135">135</span>
 <span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the prover index as [ProverIndex].</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::alphas::Alphas</span>;
@@ -151,6 +153,7 @@
 };
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::linearization::expr_linearization</span>;
 <span class="kw">use</span> <span class="ident">ark_ff::PrimeField</span>;
+<span class="kw">use</span> <span class="ident">ark_poly::EvaluationDomain</span>;
 <span class="kw">use</span> <span class="ident">commitment_dlog</span>::{<span class="ident">commitment::CommitmentCurve</span>, <span class="ident">srs::SRS</span>};
 <span class="kw">use</span> <span class="ident">o1_utils::types::fields</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">oracle::poseidon::ArithmeticSpongeParams</span>;
@@ -205,7 +208,7 @@
         <span class="kw">let</span> <span class="ident">max_poly_size</span> <span class="op">=</span> <span class="ident">srs</span>.<span class="ident">g</span>.<span class="ident">len</span>();
         <span class="kw">if</span> <span class="ident">cs</span>.<span class="ident">public</span> <span class="op">&gt;</span> <span class="number">0</span> {
             <span class="macro">assert!</span>(
-                <span class="ident">max_poly_size</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>,
+                <span class="ident">max_poly_size</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span>(),
                 <span class="string">&quot;polynomial segment size has to be not smaller that that of the circuit!&quot;</span>
             );
         }
@@ -225,7 +228,7 @@
         <span class="comment">// which is obtained by looking at the highest monomial in the sum</span>
         <span class="comment">// $$\sum_{i=0}^{PERMUTS} (w_i(x) + \beta k_i x + \gamma)$$</span>
         <span class="comment">// where the $w_i(x)$ are of degree the size of the domain.</span>
-        <span class="kw">let</span> <span class="ident">max_quot_size</span> <span class="op">=</span> <span class="ident">PERMUTS</span> <span class="op">*</span> <span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>;
+        <span class="kw">let</span> <span class="ident">max_quot_size</span> <span class="op">=</span> <span class="ident">PERMUTS</span> <span class="op">*</span> <span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span>();
 
         <span class="ident">ProverIndex</span> {
             <span class="ident">cs</span>,
@@ -245,6 +248,7 @@
         <span class="ident">gate::CircuitGate</span>,
         <span class="ident">lookup</span>::{<span class="ident">runtime_tables::RuntimeTableConfiguration</span>, <span class="ident">tables::LookupTable</span>},
     };
+    <span class="kw">use</span> <span class="ident">ark_poly::EvaluationDomain</span>;
     <span class="kw">use</span> <span class="ident">commitment_dlog::srs::endos</span>;
     <span class="kw">use</span> <span class="ident">mina_curves::pasta</span>::{<span class="ident">pallas::Affine</span> <span class="kw">as</span> <span class="ident">Other</span>, <span class="ident">vesta::Affine</span>, <span class="ident">Fp</span>};
 
@@ -265,7 +269,7 @@
             <span class="ident">public</span>,
         )
         .<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">srs</span> <span class="op">=</span> <span class="ident">SRS</span>::<span class="op">&lt;</span><span class="ident">Affine</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>);
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">srs</span> <span class="op">=</span> <span class="ident">SRS</span>::<span class="op">&lt;</span><span class="ident">Affine</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span>());
         <span class="ident">srs</span>.<span class="ident">add_lagrange_basis</span>(<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>);
         <span class="kw">let</span> <span class="ident">srs</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">srs</span>);
 
@@ -278,5 +282,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (ee160f2f5 2022-05-23)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (76761db59 2022-05-24)" ></div>
 </body></html>

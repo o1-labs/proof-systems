@@ -559,6 +559,8 @@
 <span id="552">552</span>
 <span id="553">553</span>
 <span id="554">554</span>
+<span id="555">555</span>
+<span id="556">556</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the double generic gate.</span>
 
 <span class="comment">//~ The double generic gate contains two generic gates.</span>
@@ -601,7 +603,9 @@
     <span class="ident">wires::GateWires</span>,
 };
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">SquareRootField</span>, <span class="ident">Zero</span>};
-<span class="kw">use</span> <span class="ident">ark_poly</span>::{<span class="ident">univariate::DensePolynomial</span>, <span class="ident">Evaluations</span>, <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>};
+<span class="kw">use</span> <span class="ident">ark_poly</span>::{
+    <span class="ident">univariate::DensePolynomial</span>, <span class="ident">EvaluationDomain</span>, <span class="ident">Evaluations</span>, <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>,
+};
 <span class="kw">use</span> <span class="ident">array_init::array_init</span>;
 <span class="kw">use</span> <span class="ident">rayon::prelude</span>::<span class="kw-2">*</span>;
 
@@ -733,7 +737,7 @@
     ) -&gt; <span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">generic_gate</span> <span class="op">=</span> <span class="op">|</span><span class="ident">alpha_pow</span>, <span class="ident">coeff_offset</span>, <span class="ident">register_offset</span><span class="op">|</span> {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">Evaluations::from_vec_and_domain</span>(
-                <span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="self">self</span>.<span class="ident">domain</span>.<span class="ident">d4</span>.<span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>],
+                <span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="self">self</span>.<span class="ident">domain</span>.<span class="ident">d4</span>.<span class="ident">size</span>()],
                 <span class="self">self</span>.<span class="ident">domain</span>.<span class="ident">d4</span>,
             );
 
@@ -842,7 +846,7 @@
         <span class="ident">generic_zeta</span>: <span class="ident">F</span>,
     ) -&gt; <span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">d1</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">domain</span>.<span class="ident">d1</span>;
-        <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">d1</span>.<span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>;
+        <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">d1</span>.<span class="ident">size</span>();
 
         <span class="comment">// get scalars</span>
         <span class="kw">let</span> <span class="ident">scalars</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::gnrc_scalars</span>(<span class="ident">alphas</span>, <span class="ident">w_zeta</span>, <span class="ident">generic_zeta</span>);
@@ -1114,5 +1118,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (ee160f2f5 2022-05-23)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (76761db59 2022-05-24)" ></div>
 </body></html>
