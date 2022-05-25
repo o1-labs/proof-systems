@@ -181,13 +181,11 @@ fn runtime_table(num: usize, indexed: bool) {
     print_witness(&witness, 0, 20);
 
     // run test
-    let test_runner = TestFramework::default()
+    TestFramework::default()
         .gates(gates)
         .witness(witness)
         .runtime_tables_setup(runtime_tables_setup)
-        .setup();
-
-    test_runner
+        .setup()
         .runtime_tables(runtime_tables)
         .prove_and_verify();
 }
