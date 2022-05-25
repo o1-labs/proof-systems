@@ -1,3 +1,5 @@
+use std::iter;
+
 use crate::circuits::{domains::EvaluationDomains, gate::CircuitGate};
 use crate::circuits::{
     lookup::{
@@ -17,6 +19,8 @@ use o1_utils::field_helpers::i32_to_field;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use thiserror::Error;
+
+use super::runtime_tables::RuntimeTableConfiguration;
 
 /// Represents an error found when computing the lookup constraint system
 #[derive(Debug, Error)]
@@ -55,6 +59,11 @@ pub struct LookupConstraintSystem<F: FftField> {
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub lookup_selectors: Vec<E<F, D<F>>>,
 
+    /// An optional runtime table selector. It is 0 everywhere,
+    /// except at the rows where the runtime tables apply.
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    pub runtime_selector: Option<E<F, D<F>>>,
+
     /// Configuration for the lookup constraint.
     #[serde(bound = "LookupConfiguration<F>: Serialize + DeserializeOwned")]
     pub configuration: LookupConfiguration<F>,
@@ -64,6 +73,7 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
     pub fn create(
         gates: &[CircuitGate<F>],
         lookup_tables: Vec<LookupTable<F>>,
+        runtime_tables: Option<Vec<RuntimeTableConfiguration>>,
         domain: &EvaluationDomains<F>,
     ) -> Result<Option<Self>, LookupError> {
         let lookup_info = LookupInfo::<F>::create();
@@ -85,10 +95,62 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                     lookup_info.selector_polynomials_and_tables(domain, gates);
 
                 //~ 3. Concatenate runtime lookup tables with the ones used by gates
-                let lookup_tables: Vec<_> = gate_lookup_tables
+                let mut lookup_tables: Vec<_> = gate_lookup_tables
                     .into_iter()
                     .chain(lookup_tables.into_iter())
                     .collect();
+
+                // if we are using runtime tables
+                let (runtime_table_offset, runtime_selector) =
+                    if let Some(runtime_tables) = &runtime_tables {
+                        // save the offset of the end of the table
+                        let mut runtime_table_offset = 0;
+                        for table in &lookup_tables {
+                            runtime_table_offset += table.len();
+                        }
+
+                        // compute the length of the runtime table
+                        let mut runtime_len = 0;
+                        for t in runtime_tables {
+                            runtime_len += t.len;
+                        }
+
+                        // compute the runtime selector
+                        let runtime_selector = {
+                            let mut evals = Vec::with_capacity(d1_size);
+
+                            // it's 1 everywhere, except at the entries where
+                            // the runtime table applies
+                            evals.extend(iter::repeat(F::one()).take(runtime_table_offset));
+                            evals.extend(iter::repeat(F::zero()).take(runtime_len));
+                            evals.extend(
+                                iter::repeat(F::one())
+                                    .take(d1_size - runtime_table_offset - runtime_len),
+                            );
+
+                            // although the last ZK_ROWS are fine
+                            for e in evals.iter_mut().rev().take(ZK_ROWS as usize) {
+                                *e = F::zero();
+                            }
+
+                            E::<F, D<F>>::from_vec_and_domain(evals, domain.d1)
+                                .interpolate()
+                                .evaluate_over_domain(domain.d8)
+                        };
+
+                        // create fixed tables for indexing the runtime tables
+                        for &RuntimeTableConfiguration { id, len } in runtime_tables {
+                            let indexes = (0..(len as u32)).map(F::from).collect();
+                            let placeholders = vec![F::zero(); len];
+                            let data = vec![indexes, placeholders];
+                            let table = LookupTable { id, data };
+                            lookup_tables.push(table);
+                        }
+
+                        (Some(runtime_table_offset), Some(runtime_selector))
+                    } else {
+                        (None, None)
+                    };
 
                 //~ 4. Get the highest number of columns `max_table_width`
                 //~    that a lookup table can have.
@@ -220,10 +282,13 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                     lookup_table: lookup_table_polys,
                     table_ids,
                     table_ids8,
+                    runtime_selector,
                     configuration: LookupConfiguration {
                         lookup_used,
                         max_lookups_per_row: lookup_info.max_per_row as usize,
                         max_joint_size: lookup_info.max_joint_size,
+                        runtime_tables,
+                        runtime_table_offset,
                         dummy_lookup,
                     },
                 }))

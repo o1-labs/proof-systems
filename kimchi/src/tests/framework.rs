@@ -1,5 +1,6 @@
 //! Test Framework
 
+use crate::circuits::lookup::runtime_tables::{RuntimeTable, RuntimeTableConfiguration};
 use crate::circuits::lookup::tables::LookupTable;
 use crate::circuits::polynomials::permutation::{zk_polynomial, zk_w3};
 use crate::circuits::{gate::CircuitGate, wires::COLUMNS};
@@ -8,7 +9,7 @@ use crate::prover_index::testing::{new_index_for_test, new_index_for_test_with_l
 use crate::verifier::verify;
 use crate::verifier_index::VerifierIndex;
 use ark_ec::short_weierstrass_jacobian::GroupAffine;
-use ark_ff::UniformRand;
+use ark_ff::{PrimeField, UniformRand};
 use ark_poly::univariate::DensePolynomial;
 use ark_poly::UVPolynomial;
 use commitment_dlog::commitment::{b_poly_coefficients, CommitmentCurve};
@@ -18,6 +19,7 @@ use mina_curves::pasta::{
     fp::Fp,
     vesta::{Affine, VestaParameters},
 };
+use num_bigint::BigUint;
 use o1_utils::math;
 use oracle::{
     constants::PlonkSpongeConstantsKimchi,
@@ -56,7 +58,8 @@ impl TestFramework {
         let start = Instant::now();
         let group_map = <Affine as CommitmentCurve>::Map::setup();
         let proof =
-            ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &index).unwrap();
+            ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &[], &index)
+                .unwrap();
         println!("- time to create proof: {:?}s", start.elapsed().as_secs());
 
         // verify the proof
@@ -99,6 +102,7 @@ impl TestFramework {
         let proof = ProverProof::create_recursive::<BaseSponge, ScalarSponge>(
             &group_map,
             witness,
+            &[],
             &index,
             vec![prev_challenges],
         )
@@ -117,10 +121,21 @@ impl TestFramework {
         witness: [Vec<Fp>; COLUMNS],
         public: &[Fp],
         lookup_tables: Vec<LookupTable<Fp>>,
+        runtime_tables: Option<Vec<RuntimeTable<Fp>>>,
     ) {
         // create the index
         let start = Instant::now();
-        let index = new_index_for_test_with_lookups(gates, public.len(), lookup_tables);
+        let runtime_tables_cfg = runtime_tables.as_ref().map(|tables| {
+            tables
+                .iter()
+                .map(|table| RuntimeTableConfiguration {
+                    id: table.id,
+                    len: table.data.len(),
+                })
+                .collect()
+        });
+        let index =
+            new_index_for_test_with_lookups(gates, public.len(), lookup_tables, runtime_tables_cfg);
         let verifier_index = index.verifier_index();
         println!("- time to create index: {:?}s", start.elapsed().as_secs());
 
@@ -130,8 +145,14 @@ impl TestFramework {
         // add the proof to the batch
         let start = Instant::now();
         let group_map = <Affine as CommitmentCurve>::Map::setup();
-        let proof =
-            ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &index).unwrap();
+        let runtime_tables = runtime_tables.unwrap_or(vec![]);
+        let proof = ProverProof::create::<BaseSponge, ScalarSponge>(
+            &group_map,
+            witness,
+            &runtime_tables,
+            &index,
+        )
+        .unwrap();
         println!("- time to create proof: {:?}s", start.elapsed().as_secs());
 
         // verify the proof
@@ -162,7 +183,8 @@ impl TestFramework {
         let start = Instant::now();
         let group_map = <Affine as CommitmentCurve>::Map::setup();
         let proof =
-            ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &index).unwrap();
+            ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &[], &index)
+                .unwrap();
         println!("- time to create proof: {:?}s", start.elapsed().as_secs());
 
         // deserialize the verifier index
@@ -185,5 +207,24 @@ impl TestFramework {
         verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &verifier_index_deserialize, &proof)
             .unwrap();
         println!("- time to verify: {}ms", start.elapsed().as_millis());
+    }
+}
+
+pub fn print_witness<F>(cols: &[Vec<F>; COLUMNS], start_row: usize, end_row: usize)
+where
+    F: PrimeField,
+{
+    let rows = cols[0].len();
+    if start_row > rows || end_row > rows {
+        panic!("start_row and end_row are supposed to be in [0, {rows}]");
+    }
+
+    for row in start_row..end_row {
+        let mut line = "| ".to_string();
+        for col in cols {
+            let bigint: BigUint = col[row].into();
+            line.push_str(&format!("{} | ", bigint));
+        }
+        println!("{line}");
     }
 }
