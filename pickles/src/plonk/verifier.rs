@@ -1,264 +1,111 @@
-use crate::context::{Context, Passable};
-use crate::transcript::{Merlin, Challenge, Absorb, Msg, VarSponge};
-use std::iter;
+use super::{Proof};
 
-use super::{Proof, COLUMNS, PERMUTS, CHALLENGE_LEN, SELECTORS};
-
-use circuit_construction::{Cs, Constants, Var};
+use circuit_construction::{Constants, Cs, Var};
 
 use ark_ec::AffineCurve;
-use ark_ff::{FftField, FpParameters, PrimeField};
+use ark_ff::{FftField, PrimeField};
 
-use std::marker::PhantomData;
+use crate::context::{Context};
+use crate::transcript::{Arthur, Msg};
+use crate::plonk::proof::{VarProof, ScalarChallenge, VarPolyComm, VarIndex};
 
-struct VarIndex<A>
-where
+impl <A> VarIndex<A> where
     A: AffineCurve,
-    A::BaseField: FftField + PrimeField,
-{
-    _ph: PhantomData<A>,
-    q: [VarPoint<A>; SELECTORS], // commits to selector polynomials
-}
+    A::BaseField: FftField + PrimeField {
 
-struct VarPoint<A>
-where 
-    A: AffineCurve,
-    A::BaseField: FftField + PrimeField,
-{
-    _ph: PhantomData<A>,
-    x: Var<A::BaseField>,
-    y: Var<A::BaseField>
-}
-
-impl <A> Absorb<A::BaseField> for VarPoint<A>
-where 
-    A: AffineCurve,
-    A::BaseField: FftField + PrimeField,
-{ 
-    fn absorb<C: Cs<A::BaseField>>(&self, cs: &mut C, sponge: &mut VarSponge<A::BaseField>) {
-        sponge.absorb(cs, &self.x);
-        sponge.absorb(cs, &self.y);
-    }
-}
-
-struct VarCommitments<A>
-    where
-A: AffineCurve,
-A::BaseField: FftField + PrimeField {
-    w_comm: Msg<[VarPoint<A>; COLUMNS]>,
-    t_comm: Msg<[VarPoint<A>; PERMUTS]>,
-    z_comm: Msg<VarPoint<A>>
-}
-
-struct VarEvaluation<F: FftField + PrimeField> {
-    /// witness polynomials
-    pub w: [Var<F>; COLUMNS],
-    
-    /// permutation polynomial
-    pub z: Var<F>,
-
-    /// permutation polynomials
-    /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
-    pub s: [Var<F>; PERMUTS - 1],
-
-    /// lookup-related evaluations
-    //pub lookup: Option<LookupEvaluations<Field>>,
-
-    /// evaluation of the generic selector polynomial
-    pub generic_selector: Var<F>,
-
-    /// evaluation of the poseidon selector polynomial
-    pub poseidon_selector: Var<F>,
-}
-
-// DISCUSS: I would really like to #[derieve(Absorb)] this, 
-// but it means settling on an order which is the same as in the struct!
-impl <F: FftField + PrimeField> Absorb<F> for VarEvaluation<F> {
-    fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut VarSponge<F>) {
-        // concatenate
-        let points = iter::empty()
-            .chain(iter::once(&self.z))
-            .chain(iter::once(&self.generic_selector))
-            .chain(iter::once( &self.poseidon_selector))
-            .chain(self.w.iter())
-            .chain(self.s.iter());
-
-        // absorb in order
-        points.for_each(|p| sponge.absorb(cs, p));
-    }
-}
-
-struct VarEvaluations<F: FftField + PrimeField> {
-    z: VarEvaluation<F>,  // evaluation at z
-    zw: VarEvaluation<F>, // evaluation at z * \omega (2^k root of unity, next step)
-}
-
-
-impl <F: FftField + PrimeField> Absorb<F> for VarEvaluations<F> {
-    fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut VarSponge<F>) {
-        sponge.absorb(cs, &self.z);
-        sponge.absorb(cs, &self.zw);
-    }
-}
-
-///
-/// 
-/// WARNING: Make sure this only contains Msg types 
-/// (or structs of Msg types)
-struct VarProof<A> 
-    where
-    A: AffineCurve,
-    A::BaseField: FftField + PrimeField,
-{
-    _ph: PhantomData<A>,
-    commitments: VarCommitments<A>,
-    ft_eval1: Msg<Var<A::ScalarField>>,
-    evals: Msg<VarEvaluations<A::ScalarField>>,
-}
-
-impl <A> VarProof<A> 
-where
-    A: AffineCurve,
-    A::BaseField: FftField + PrimeField
+    /// Takes a mutual context with the base-field of the Plonk proof as the "native field"
+    /// and generates Fp (base field) and Fr (scalar field)
+    /// constraints for the verification of the proof.
+    ///
+    ///
+    fn verify<CsFp, CsFr, C, T>(
+        &self,
+        // ctx: &mut MutualContext<A::BaseField, A::ScalarField, CsFp, CsFr>,
+        ctx: &mut Context<A::BaseField, A::ScalarField, CsFp, CsFr>,
+        p_comm: Msg<VarPolyComm<A, 1>>,  // commitment to public input
+        witness: Option<Proof<A>>, // witness (a PlonK proof)
+    ) where
+        CsFp: Cs<A::BaseField>,
+        CsFr: Cs<A::ScalarField>,
     {
+        // start a new transcript
+        let mut tx = Arthur::new(ctx);
 
-    
-    fn new(witness: Option<Proof<A>>) -> Self {
-        unimplemented!()
-    }
-}
+        // create proof instance (with/without witness)
+        let proof = VarProof::new(witness);
 
-struct ScalarChallenge<F: FftField + PrimeField> {
-    challenge: Var<F>,
-}
+        //~ 2. Absorb commitment to the public input polynomial
+        let p_comm = tx.recv(ctx, p_comm);
 
-impl<F: FftField + PrimeField> Passable<F> for ScalarChallenge<F> {
-    const SIZE: usize = CHALLENGE_LEN;
-}
+        //~ 3. Absorb commitments to the registers / witness columns
+        let w_comm = tx.recv(ctx, proof.commitments.w_comm);
 
-impl<F: FftField + PrimeField> Passable<F> for Var<F> {
-    const SIZE: usize = F::Params::MODULUS_BITS as usize;
-}
+        //~ 6. Sample $\beta$
+        let beta: Var<A::BaseField> = tx.challenge(ctx);
 
-impl<F: FftField + PrimeField> Into<Var<F>> for ScalarChallenge<F> {
-    fn into(self) -> Var<F> {
-        self.challenge
-    }
-}
+        //~ 7. Sample $\gamma$
+        let gamma: Var<A::BaseField> = tx.challenge(ctx);
 
-impl<F: FftField + PrimeField> Challenge<F> for ScalarChallenge<F> {
-    fn generate<C: Cs<F>>(cs: &mut C, sponge: &mut VarSponge<F>) -> Self {
-        // generate challenge using sponge
-        let scalar: Var<F> = Var::generate(cs, sponge);
+        //~ 10. Sample $\alpha'$
+        let alpha_chal: ScalarChallenge<A::BaseField> = tx.challenge(ctx);
 
-        // create endoscalar (bit decompose)
-        let challenge = cs.endo_scalar(CHALLENGE_LEN, || {
-            let s: F = scalar.val();
-            s.into_repr()
+        //~ 11. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
+        let alpha: Var<A::BaseField> = alpha_chal.to_field(ctx);
+        let alpha = ctx.pass(alpha);
+
+        //~ 12. Enforce that the length of the $t$ commitment is of size `PERMUTS`.
+        // CHANGE: Happens at deserialization time (it is an array).
+
+        //~ 13. Absorb the commitment to the quotient polynomial $t$ into the argument.
+        let t_comm = tx.recv(ctx, proof.commitments.t_comm);
+
+        //~ 14. Sample $\zeta'$ (GLV decomposition of $\zeta$)
+        let zeta_chal: ScalarChallenge<A::BaseField> = tx.challenge(ctx);
+
+        //~ 15. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
+        let zeta: Var<A::BaseField> = zeta_chal.to_field(ctx);
+        let zeta = ctx.pass(zeta);
+
+        //~ 18. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
+        //~     NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
+        //~     Absorb over the foreign field
+
+        // On the other side
+        let (evals, ft_eval, v_chal, v) = ctx.flip(|ctx| {
+            tx.flip(|tx| {
+                //~ 19. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
+                //~     - the public polynomial
+                //~     - z
+                //~     - generic selector
+                //~     - poseidon selector
+                //~     - the 15 register/witness
+                //~     - 6 sigmas evaluations (the last one is not evaluated)
+                let evals = tx.recv(ctx, proof.evals);
+
+                //~ 20. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
+                let ft_eval = tx.recv(ctx, proof.ft_eval1);
+
+                //~ 21. Sample $v'$ with the Fr-Sponge.
+                let v_chal: ScalarChallenge<A::ScalarField> = tx.challenge(ctx);
+
+                //~ 22. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
+                let v: Var<A::ScalarField> = v_chal.to_field(ctx);
+
+                //~ 23. Sample $u'$ with the Fr-Sponge.
+                let u_chal: ScalarChallenge<A::ScalarField> = tx.challenge(ctx);
+
+                //~ 24. Derive $u$ from $u'$ using the endomorphism (TODO: specify).
+                let u = u_chal.to_field(ctx);
+
+                //~ 25. Create a list of all polynomials that have an evaluation proof.
+
+                (evals, ft_eval, v_chal, v)
+            })
         });
 
-        // enforce equality
-        cs.assert_eq(challenge, scalar);
-
-        // bit decompose challenge
-        ScalarChallenge{ challenge }
+        // ctx can be used as a Cs<Fp>
+        ctx.var(|| unimplemented!());
+        ctx.fp.cs.var(|| unimplemented!());
     }
 }
 
-impl <Fp: FftField + PrimeField> ScalarChallenge<Fp> {
-    fn to_field<Fr, CsFp, CsFr>(&self, ctx: &mut Context<Fp, Fr, CsFp, CsFr>) -> Var<Fp> where
-        Fp: FftField + PrimeField,
-        Fr: FftField + PrimeField,
-        CsFp: Cs<Fp>, 
-        CsFr: Cs<Fr> {
-        unimplemented!()
-    }  
-}
-
-/// Takes a mutual context with the base-field of the Plonk proof as the "native field"
-/// and generates Fp (base field) and Fr (scalar field)
-/// constraints for the verification of the proof.
-/// 
-/// 
-fn verify<A, CsFp, CsFr, C, T>(
-    // ctx: &mut MutualContext<A::BaseField, A::ScalarField, CsFp, CsFr>,
-    ctx: &mut Context<A::BaseField, A::ScalarField, CsFp, CsFr>,
-    index: VarIndex<A>,        // verifier index
-    p_comm: Msg<VarPoint<A>>,  // commitment to public input
-    witness: Option<Proof<A>>, // witness (a PlonK proof)
-) where
-    A: AffineCurve,
-    A::BaseField: FftField + PrimeField,
-    CsFp: Cs<A::BaseField>,
-    CsFr: Cs<A::ScalarField>,
-{
-    // start new transcript
-    let mut tx = Merlin::new(ctx);
-
-    // create proof instance (with/without witness)
-    let proof = VarProof::new(witness);
-
-    //~ 2. Absorb commitment to the public input polynomial
-    let p_comm = tx.recv(ctx, p_comm);
-
-    //~ 3. Absorb commitments to the registers / witness columns
-    let w_comm = tx.recv(ctx, proof.commitments.w_comm);
-
-    //~ 6. Sample $\beta$
-    let beta: Var<A::BaseField> = tx.challenge(ctx);
-
-    //~ 7. Sample $\gamma$
-    let gamma: Var<A::BaseField> = tx.challenge(ctx);
-
-    //~ 10. Sample $\alpha'$
-    let alpha_chal: ScalarChallenge<A::BaseField> = tx.challenge(ctx);
-
-    //~ 11. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
-    let alpha: Var<A::BaseField> = alpha_chal.to_field(ctx);
-    let alpha = ctx.pass(alpha);
-
-    //~ 12. Enforce that the length of the $t$ commitment is of size `PERMUTS`.
-    // CHANGE: Happens at deserialization time (it is an array).
-
-    //~ 13. Absorb the commitment to the quotient polynomial $t$ into the argument.
-    let t_comm = tx.recv(ctx, proof.commitments.t_comm);
-
-    //~ 14. Sample $\zeta'$ (GLV decomposition of $\zeta$)
-    let zeta_chal: ScalarChallenge<A::BaseField> = tx.challenge(ctx);
-
-    //~ 15. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
-    let zeta: Var<A::BaseField> = zeta_chal.to_field(ctx);
-    let zeta = ctx.pass(zeta);
-
-    //~ 18. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
-    //~     NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
-    //~     Absorb over the foreign field
-
-    // go to the other side
-    let (evals, ft_eval, v_chal, v) = ctx.flip(|ctx| tx.flip(|tx| {
-        //~ 19. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
-        //~     - the public polynomial
-        //~     - z
-        //~     - generic selector
-        //~     - poseidon selector
-        //~     - the 15 register/witness
-        //~     - 6 sigmas evaluations (the last one is not evaluated)
-        let evals = tx.recv(ctx, proof.evals);
-
-        //~ 20. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
-        let ft_eval = tx.recv(ctx, proof.ft_eval1);
-
-        //~ 21. Sample $v'$ with the Fr-Sponge.
-        let v_chal: ScalarChallenge<A::ScalarField> = tx.challenge(ctx);
-
-        //~ 22. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
-        let v: Var<A::ScalarField> = v_chal.to_field(ctx);
-
-        (evals, ft_eval, v_chal, v)
-    }));
-
-
-    // ctx can be used as a Cs<Fp>
-    ctx.var(|| {unimplemented!() });
-    ctx.fp.cs.var(|| unimplemented!());
-}

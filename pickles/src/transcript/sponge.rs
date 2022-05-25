@@ -17,7 +17,6 @@ pub struct VarSponge<F: FftField + PrimeField> {
     constants: Constants<F>,
 }
 
-
 impl<F: FftField + PrimeField> VarSponge<F> {
     pub fn new(constants: Constants<F>) -> Self {
         VarSponge {
@@ -26,11 +25,7 @@ impl<F: FftField + PrimeField> VarSponge<F> {
         }
     }
 
-    pub fn absorb<'b, C: Cs<F>, T: Absorb<F>>(
-        &mut self,
-        cs: &mut C,
-        val: &T
-    ) {
+    pub fn absorb<'b, C: Cs<F>, T: Absorb<F>>(&mut self, cs: &mut C, val: &T) {
         val.absorb(cs, self);
     }
 
@@ -45,14 +40,14 @@ pub trait Absorb<F: FftField + PrimeField> {
 }
 
 // Can absorb a slice of absorbable elements
-impl <F: FftField + PrimeField, T: Absorb<F>> Absorb<F> for [T] {
+impl<F: FftField + PrimeField, T: Absorb<F>> Absorb<F> for [T] {
     fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut VarSponge<F>) {
         self.iter().for_each(|c| c.absorb(cs, sponge))
     }
 }
 
 // Can absorb a fixed length array of absorbable elements
-impl <F: FftField + PrimeField, T: Absorb<F>, const N: usize> Absorb<F> for [T; N] {
+impl<F: FftField + PrimeField, T: Absorb<F>, const N: usize> Absorb<F> for [T; N] {
     fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut VarSponge<F>) {
         let slice: &[T] = &self[..];
         slice.absorb(cs, sponge)
@@ -60,7 +55,7 @@ impl <F: FftField + PrimeField, T: Absorb<F>, const N: usize> Absorb<F> for [T; 
 }
 
 // Can absorb a variable from the same field
-impl <F: FftField + PrimeField> Absorb<F> for Var<F> {
+impl<F: FftField + PrimeField> Absorb<F> for Var<F> {
     fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut VarSponge<F>) {
         unimplemented!()
     }

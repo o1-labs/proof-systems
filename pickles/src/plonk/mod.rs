@@ -3,6 +3,8 @@ use ark_ff::{FftField, PrimeField};
 
 use oracle::sponge::ScalarChallenge;
 
+mod proof;
+
 /// Enforces gate constraints (rows checks)
 mod gates;
 

@@ -7,10 +7,10 @@ mod utils;
 
 use super::Context;
 
-pub use sponge::{VarSponge, Absorb};
+pub use sponge::{Absorb, VarSponge};
 
-use std::ops::{Deref, DerefMut};
 use std::mem;
+use std::ops::{Deref, DerefMut};
 
 use std::marker::PhantomData;
 
@@ -69,44 +69,44 @@ struct Public<F: FftField + PrimeField> {
 // A "container type"
 struct Side<F: FftField + PrimeField> {
     sponge: VarSponge<F>, // sponge constrained inside the proof system
-    merged: bool,        // has the current state been merged with the other side?
+    merged: bool,         // has the current state been merged with the other side?
 }
 
 impl<F: FftField + PrimeField> Side<F> {
     fn new(constants: Constants<F>) -> Self {
         Self {
             sponge: VarSponge::new(constants.clone()),
-            merged: true, // sponges start "syncronized": 
+            merged: true, // sponges start "syncronized":
                           // the empty Fr transcript has been absorbed into the Fp sponge by definition
         }
     }
 }
 
-struct Inner<Fp, Fr, CsFp, CsFr>  
-    where
-        Fp: FftField + PrimeField,
-        Fr: FftField + PrimeField 
+struct Inner<Fp, Fr, CsFp, CsFr>
+where
+    Fp: FftField + PrimeField,
+    Fr: FftField + PrimeField,
 {
-        fp: Side<Fp>,
-        fr: Side<Fr>,
-        _ph: PhantomData<(CsFp, CsFr)>,
+    fp: Side<Fp>,
+    fr: Side<Fr>,
+    _ph: PhantomData<(CsFp, CsFr)>,
 }
 
-pub struct Merlin<Fp, Fr, CsFp, CsFr> 
-    where
-        Fp: FftField + PrimeField,
-        Fr: FftField + PrimeField,
+pub struct Arthur<Fp, Fr, CsFp, CsFr>
+where
+    Fp: FftField + PrimeField,
+    Fr: FftField + PrimeField,
 {
-    inner: Option<Inner<Fp, Fr, CsFp, CsFr>>
+    inner: Option<Inner<Fp, Fr, CsFp, CsFr>>,
 }
 
 /// Describes a type which can be "squeezed" (generated) from the sponge
 pub trait Challenge<F: FftField + PrimeField> {
-    fn generate<C: Cs<F>>(cs: &mut C, sponge: &mut VarSponge<F>) -> Self;   
+    fn generate<C: Cs<F>>(cs: &mut C, sponge: &mut VarSponge<F>) -> Self;
 }
 
 // Can generate a variable from the same field
-impl <F: FftField + PrimeField> Challenge<F> for Var<F> {
+impl<F: FftField + PrimeField> Challenge<F> for Var<F> {
     fn generate<C: Cs<F>>(cs: &mut C, sponge: &mut VarSponge<F>) -> Self {
         sponge.squeeze(cs)
     }
@@ -116,54 +116,27 @@ pub struct Msg<T> {
     value: T,
 }
 
-impl <T> From<T> for Msg<T> {
+impl<T> From<T> for Msg<T> {
     fn from(value: T) -> Self {
-        Self{ value }
+        Self { value }
     }
 }
 
-/*
-impl <Fp, Fr, CsFp, CsFr> AsMut<CsFp> for Merlin<Fp, Fr, CsFp, CsFr> 
-    where
+impl<Fp, Fr, CsFp, CsFr> Arthur<Fp, Fr, CsFp, CsFr>
+where
     Fp: FftField + PrimeField,
     Fr: FftField + PrimeField,
-    CsFp: Cs<Fp>, 
-    CsFr: Cs<Fr> {
-        fn as_mut(&mut self) -> &mut CsFp {
-            &mut self.fp.as_mut().unwrap().cs
-        }
-}
-
-impl <Fp, Fr, CsFp, CsFr> AsRef<Constants<Fp>> for Merlin<Fp, Fr, CsFp, CsFr> 
-    where
-    Fp: FftField + PrimeField,
-    Fr: FftField + PrimeField,
-    CsFp: Cs<Fp>, 
-    CsFr: Cs<Fr> {
-        fn as_ref(&self) -> &Constants<Fp> {
-            &self.fp.as_ref().unwrap().constants
-        }
-}
-*/
-
-
-impl <Fp, Fr, CsFp, CsFr> Merlin<Fp, Fr, CsFp, CsFr>
-    where
-        Fp: FftField + PrimeField,
-        Fr: FftField + PrimeField,
-        CsFp: Cs<Fp>,
-        CsFr: Cs<Fr>
+    CsFp: Cs<Fp>,
+    CsFr: Cs<Fr>,
 {
     pub fn new(ctx: &Context<Fp, Fr, CsFp, CsFr>) -> Self {
-        Self {inner: Some(Inner::new(ctx)) }
+        Self {
+            inner: Some(Inner::new(ctx)),
+        }
     }
 
     #[must_use]
-    pub fn recv<H: Absorb<Fp>>(
-        &mut self, 
-        ctx: &mut Context<Fp, Fr, CsFp, CsFr>, 
-        msg: Msg<H>
-    ) -> H {
+    pub fn recv<H: Absorb<Fp>>(&mut self, ctx: &mut Context<Fp, Fr, CsFp, CsFr>, msg: Msg<H>) -> H {
         self.inner.as_mut().unwrap().recv(ctx, msg)
     }
 
@@ -174,12 +147,11 @@ impl <Fp, Fr, CsFp, CsFr> Merlin<Fp, Fr, CsFp, CsFr>
     }
 
     #[must_use]
-    pub fn flip<T, F: FnOnce(&mut Merlin<Fr, Fp, CsFr, CsFp>) -> T>(
-        &mut self, 
-        scope: F,
-    ) -> T {
-        // flip the Merlin
-        let mut merlin = Merlin{ inner: self.inner.take().map(|m| m.flipped()) };
+    pub fn flip<T, F: FnOnce(&mut Arthur<Fr, Fp, CsFr, CsFp>) -> T>(&mut self, scope: F) -> T {
+        // flip the Arthur
+        let mut merlin = Arthur {
+            inner: self.inner.take().map(|m| m.flipped()),
+        };
 
         // invoke scope
         let msg = scope(&mut merlin);
@@ -191,51 +163,48 @@ impl <Fp, Fr, CsFp, CsFr> Merlin<Fp, Fr, CsFp, CsFr>
 
     #[must_use]
     pub fn recv_fr<H: Absorb<Fr>>(
-        &mut self, 
-        ctx: &mut Context<Fp, Fr, CsFp, CsFr>, 
-        msg: Msg<H>
+        &mut self,
+        ctx: &mut Context<Fp, Fr, CsFp, CsFr>,
+        msg: Msg<H>,
     ) -> H {
-        ctx.flip(|ctx| { // flip the context
-            self.flip(|m| { // flip the transcript
+        ctx.flip(|ctx| {
+            // flip the context
+            self.flip(|m| {
+                // flip the transcript
                 m.recv(ctx, msg) // receive
             })
         })
     }
 
-
     #[must_use]
     pub fn challenge_fr<C: Challenge<Fr>>(&mut self, ctx: &mut Context<Fp, Fr, CsFp, CsFr>) -> C {
         ctx.flip(|ctx| {
-            self.flip(|m| { // flip the transcript
+            self.flip(|m| {
+                // flip the transcript
                 m.challenge(ctx)
             })
         })
     }
-
 }
 
-impl <Fp, Fr, CsFp, CsFr> Inner<Fp, Fr, CsFp, CsFr>
-    where
-        Fp: FftField + PrimeField,
-        Fr: FftField + PrimeField,
-        CsFp: Cs<Fp>,
-        CsFr: Cs<Fr>
+impl<Fp, Fr, CsFp, CsFr> Inner<Fp, Fr, CsFp, CsFr>
+where
+    Fp: FftField + PrimeField,
+    Fr: FftField + PrimeField,
+    CsFp: Cs<Fp>,
+    CsFr: Cs<Fr>,
 {
     fn new(ctx: &Context<Fp, Fr, CsFp, CsFr>) -> Self {
         Self {
             fp: Side::new(ctx.fp.constants.clone()),
             fr: Side::new(ctx.fr.constants.clone()),
-            _ph: PhantomData
+            _ph: PhantomData,
         }
     }
 
     /// Receive a message from the prover
     #[must_use]
-    fn recv<H: Absorb<Fp>>(
-        &mut self, 
-        ctx: &mut Context<Fp, Fr, CsFp, CsFr>, 
-        msg: Msg<H>
-    ) -> H {
+    fn recv<H: Absorb<Fp>>(&mut self, ctx: &mut Context<Fp, Fr, CsFp, CsFr>, msg: Msg<H>) -> H {
         self.fp.merged = false; // state updated since last squeeze
         msg.value.absorb(&mut ctx.fp.cs, &mut self.fp.sponge);
         msg.value
@@ -249,7 +218,7 @@ impl <Fp, Fr, CsFp, CsFr> Inner<Fp, Fr, CsFp, CsFr>
             // merge the "foreign sponge" by adding the current state to the statement
             let st_fr: Var<Fr> = self.fr.sponge.squeeze(&mut ctx.fr.cs);
             let st_fp: Var<Fp> = ctx.fp.cs.var(|| transfer_hash(st_fr.value.unwrap()));
-            
+
             // absorb commitment to "foreign sponge"
             st_fp.absorb(&mut ctx.fp.cs, &mut self.fp.sponge);
             self.fr.merged = true;
@@ -260,10 +229,10 @@ impl <Fp, Fr, CsFp, CsFr> Inner<Fp, Fr, CsFp, CsFr>
     }
 
     fn flipped(self) -> Inner<Fr, Fp, CsFr, CsFp> {
-        Inner{
+        Inner {
             fp: self.fr,
             fr: self.fp,
-            _ph: PhantomData
+            _ph: PhantomData,
         }
     }
 }
