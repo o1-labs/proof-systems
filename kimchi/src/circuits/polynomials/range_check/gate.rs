@@ -17,6 +17,10 @@ use crate::{
         domains::EvaluationDomains,
         expr::{self, l0_1, Environment, E},
         gate::{CircuitGate, GateType},
+        lookup::{
+            self,
+            tables::{GateLookupTable, LookupTable},
+        },
         polynomial::COLUMNS,
         wires::{GateWires, Wire},
     },
@@ -262,16 +266,17 @@ pub fn selector_polynomials<F: FftField>(
     }))
 }
 
+/// Get the range check lookup table
+pub fn lookup_table<F: FftField>() -> LookupTable<F> {
+    lookup::tables::get_table::<F>(GateLookupTable::RangeCheck)
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
         circuits::{
-            constraints::ConstraintSystem,
-            gate::CircuitGate,
-            lookup::{self, tables::GateLookupTable},
-            polynomial::COLUMNS,
-            polynomials::range_check,
-            wires::Wire,
+            constraints::ConstraintSystem, gate::CircuitGate, polynomial::COLUMNS,
+            polynomials::range_check, wires::Wire,
         },
         proof::ProverProof,
         prover_index::testing::new_index_for_test_with_lookups,
@@ -297,9 +302,7 @@ mod tests {
 
         ConstraintSystem::create(
             gates,
-            vec![lookup::tables::get_table::<PallasField>(
-                GateLookupTable::RangeCheck,
-            )],
+            vec![range_check::lookup_table()],
             None,
             oracle::pasta::fp_kimchi::params(),
             0,
@@ -318,7 +321,7 @@ mod tests {
             next_row += 1;
         }
 
-        new_index_for_test_with_lookups(gates, public_size, vec![], None)
+        new_index_for_test_with_lookups(gates, public_size, vec![range_check::lookup_table()], None)
     }
 
     fn biguint_from_hex_le(hex: &str) -> BigUint {
