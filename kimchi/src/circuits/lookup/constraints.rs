@@ -3,7 +3,10 @@ use std::collections::HashMap;
 use crate::{
     circuits::{
         expr::{prologue::*, Column, ConstantExpr},
-        gate::{CircuitGate, CurrOrNext},
+        gate::{CircuitGate, CurrOrNext, GateType, WhichRows},
+        polynomials::chacha::{
+            chacha0_lookup, chacha1_lookup, chacha2_lookup, chacha_final_lookup,
+        },
         wires::COLUMNS,
     },
     error::ProofError,
@@ -16,8 +19,8 @@ use serde_with::serde_as;
 use CurrOrNext::{Curr, Next};
 
 use super::{
-    lookups::{JointLookupSpec, LocalPosition, LookupInfo, LookupsUsed},
-    tables::Entry,
+    lookups::{JointLookupSpec, LocalPosition, LookupInfo, LookupPattern, LookupsUsed},
+    tables::{Entry, GateLookupTable},
 };
 
 /// Number of constraints produced by the argument.
@@ -25,6 +28,22 @@ pub const CONSTRAINTS: u32 = 7;
 
 /// The number of random values to append to columns for zero-knowledge.
 pub const ZK_ROWS: usize = 3;
+
+impl<F> CircuitGate<F>
+where
+    F: FftField,
+{
+    /// The GateType dispatches to the relevant function for each gate
+    pub fn lookup(&self) -> LookupPattern<F> {
+        match self.typ {
+            GateType::ChaCha0 => chacha0_lookup::<F>(),
+            GateType::ChaCha1 => chacha1_lookup::<F>(),
+            GateType::ChaCha2 => chacha2_lookup::<F>(),
+            GateType::ChaChaFinal => chacha_final_lookup::<F>(),
+            _ => vec![],
+        }
+    }
+}
 
 /// Pad with zeroes and then add 3 random elements in the last two
 /// rows for zero knowledge.

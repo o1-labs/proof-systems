@@ -2,7 +2,7 @@ use super::tables::{
     combine_table_entry, get_table, GateLookupTable, GatesLookupMaps, GatesLookupSpec, LookupTable,
 };
 use crate::circuits::domains::EvaluationDomains;
-use crate::circuits::gate::{CircuitGate, CurrOrNext, GateType};
+use crate::circuits::gate::{CircuitGate, CurrOrNext, GateType, WhichRows};
 use ark_ff::{FftField, Field, One, Zero};
 use ark_poly::{Evaluations as E, Radix2EvaluationDomain as D};
 use serde::{Deserialize, Serialize};
@@ -216,6 +216,12 @@ impl<F: Copy> JointLookup<SingleLookup<F>> {
     {
         self.reduce(eval).evaluate(joint_combiner)
     }
+}
+
+pub struct LookupPattern<F> {
+    pub lookup_table: GateLookupTable,
+    pub which_rows: WhichRows,
+    pub pattern: Vec<JointLookupSpec<F>>,
 }
 
 impl GateType {

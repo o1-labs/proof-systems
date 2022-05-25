@@ -149,9 +149,16 @@ use std::marker::PhantomData;
 use crate::circuits::{
     argument::{Argument, ArgumentType},
     expr::{constraints::boolean, prologue::*, ConstantExpr as C},
-    gate::{CurrOrNext, GateType},
+    gate::{CurrOrNext, GateType, WhichRows},
+    lookup::{
+        lookups::{JointLookup, LocalPosition, LookupPattern, SingleLookup},
+        tables::GateLookupTable,
+    },
 };
 use ark_ff::{FftField, Field, Zero};
+
+/// A lookup table can be represented as a list of columns of field elements.
+pub type LookupTable<F> = Vec<Vec<F>>;
 
 /// The lookup table for 4-bit xor.
 /// Note that it is constructed so that (0, 0, 0) is the last position in the table.
@@ -164,7 +171,7 @@ use ark_ff::{FftField, Field, Zero};
 /// 0 = 0 + joint_combiner * 0 + joint_combiner^2 * 0
 ///
 /// will translate into a scalar multiplication by 0, which is free.
-pub fn xor_table<F: Field>() -> Vec<Vec<F>> {
+pub fn xor_table<F: Field>() -> LookupTable<F> {
     let mut res = vec![vec![]; 3];
 
     // XOR for all possible four-bit arguments.
@@ -244,6 +251,52 @@ fn line<F: Field>(nybble_rotation: usize) -> Vec<E<F>> {
 }
 
 //
+// Lookup patterns
+//
+
+fn triple_xor_pattern<F>() -> LookupPattern<F>
+where
+    F: Field,
+{
+    let curr_row = |column| LocalPosition {
+        row: CurrOrNext::Curr,
+        column,
+    };
+
+    let l = |loc: LocalPosition| SingleLookup {
+        value: vec![(F::one(), loc)],
+    };
+
+    // each row represents an XOR operation
+    // where l XOR r = o
+    //
+    // 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
+    // - - - l - - - r - - -  o  -  -  -
+    // - - - - l - - - r - -  -  o  -  -
+    // - - - - - l - - - r -  -  -  o  -
+    // - - - - - - l - - - r  -  -  -  o
+    let mut pattern = vec![];
+    for i in 0..4 {
+        let left = curr_row(3 + i);
+        let right = curr_row(7 + i);
+        let output = curr_row(11 + i);
+        pattern.push(JointLookup {
+            table_id: 0, // why do have a table id in addition to the gatelookuptable::XOR?
+            entry: vec![l(left), l(right), l(output)],
+        });
+    }
+
+    LookupPattern {
+        lookup_table: GateLookupTable::Xor,
+        which_rows: WhichRows {
+            current: true,
+            next: true,
+        },
+        pattern,
+    }
+}
+
+//
 // Gates
 //
 
@@ -263,6 +316,14 @@ where
     }
 }
 
+/// Returns the lookup table used by [ChaCha0], as well as on which rows
+pub fn chacha0_lookup<F>() -> LookupPattern<F>
+where
+    F: Field,
+{
+    triple_xor_pattern()
+}
+
 /// Implementation of the ChaCha1 gate
 pub struct ChaCha1<F>(PhantomData<F>);
 
@@ -279,6 +340,14 @@ where
     }
 }
 
+/// Returns the lookup table used by [ChaCha1], as well as on which rows
+pub fn chacha1_lookup<F>() -> LookupPattern<F>
+where
+    F: Field,
+{
+    triple_xor_pattern()
+}
+
 /// Implementation of the ChaCha2 gate
 pub struct ChaCha2<F>(PhantomData<F>);
 
@@ -293,6 +362,14 @@ where
         // a += b; d ^= a; d <<<= 8  (=2*4)
         line(2)
     }
+}
+
+/// Returns the lookup table used by [ChaCha2], as well as on which rows
+pub fn chacha2_lookup<F>() -> LookupPattern<F>
+where
+    F: Field,
+{
+    triple_xor_pattern()
 }
 
 /// Implementation of the ChaChaFinal gate
@@ -335,6 +412,17 @@ where
         constraints.push(combine_nybbles(y_xor_xprime_rotated) - yprime);
         constraints
     }
+}
+
+/// Returns the lookup table used by [ChaChaFinal], as well as on which rows
+pub fn chacha_final_lookup() -> LookupPattern<F> {
+    vec![(
+        GateLookupTable::Xor,
+        WhichRows {
+            current: true,
+            next: true,
+        },
+    )]
 }
 
 // TODO: move this to test file

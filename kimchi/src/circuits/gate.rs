@@ -36,6 +36,12 @@ impl CurrOrNext {
     }
 }
 
+/// Indicates if something applies to the current and/or the next row.
+pub struct WhichRows {
+    pub current: bool,
+    pub next: bool,
+}
+
 /// The different types of gates the system supports.
 /// Note that all the gates are mutually exclusive:
 /// they cannot be used at the same time on single row.
