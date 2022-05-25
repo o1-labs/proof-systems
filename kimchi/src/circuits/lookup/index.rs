@@ -100,6 +100,8 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                     .chain(lookup_tables.into_iter())
                     .collect();
 
+                let mut has_table_id_0 = false;
+
                 // if we are using runtime tables
                 let (runtime_table_offset, runtime_selector) =
                     if let Some(runtime_tables) = &runtime_tables {
@@ -140,6 +142,12 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
 
                         // create fixed tables for indexing the runtime tables
                         for &RuntimeTableConfiguration { id, len } in runtime_tables {
+                            // record if table ID 0 is used in one of the runtime tables
+                            // note: the check later will still force you to have a fixed table with ID 0
+                            if id == 0 {
+                                has_table_id_0 = true;
+                            }
+
                             let indexes = (0..(len as u32)).map(F::from).collect();
                             let placeholders = vec![F::zero(); len];
                             let data = vec![indexes, placeholders];
@@ -205,7 +213,6 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                 let mut table_ids: Vec<F> = Vec::with_capacity(d1_size);
 
                 let mut non_zero_table_id = false;
-                let mut has_table_id_0 = false;
                 let mut has_table_id_0_with_zero_entry = false;
 
                 for table in lookup_tables.iter() {
