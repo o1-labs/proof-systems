@@ -1,6 +1,6 @@
 //! Test Framework
 
-use crate::circuits::lookup::runtime_tables::{RuntimeTable, RuntimeTableConfiguration};
+use crate::circuits::lookup::runtime_tables::{RuntimeTable, RuntimeTableCfg};
 use crate::circuits::lookup::tables::LookupTable;
 use crate::circuits::{gate::CircuitGate, wires::COLUMNS};
 use crate::proof::ProverProof;
@@ -37,7 +37,7 @@ pub(crate) struct TestFramework {
     witness: Option<[Vec<Fp>; COLUMNS]>,
     public_inputs: Vec<Fp>,
     lookup_tables: Vec<LookupTable<Fp>>,
-    runtime_tables_cfg: Option<Vec<RuntimeTableConfiguration>>,
+    runtime_tables_setup: Option<Vec<RuntimeTableCfg<Fp>>>,
     runtime_tables: Vec<RuntimeTable<Fp>>,
     recursion: Vec<(Vec<Fp>, PolyComm<Affine>)>,
 
@@ -71,11 +71,11 @@ impl TestFramework {
     }
 
     #[must_use]
-    pub(crate) fn runtime_tables_cfg(
+    pub(crate) fn runtime_tables_setup(
         mut self,
-        runtime_tables_cfg: Vec<RuntimeTableConfiguration>,
+        runtime_tables_setup: Vec<RuntimeTableCfg<Fp>>,
     ) -> Self {
-        self.runtime_tables_cfg = Some(runtime_tables_cfg);
+        self.runtime_tables_setup = Some(runtime_tables_setup);
         self
     }
 
@@ -97,13 +97,13 @@ impl TestFramework {
         let start = Instant::now();
 
         let lookup_tables = mem::replace(&mut self.lookup_tables, vec![]);
-        let runtime_tables_cfg = mem::replace(&mut self.runtime_tables_cfg, None);
+        let runtime_tables_setup = mem::replace(&mut self.runtime_tables_setup, None);
 
         let index = new_index_for_test_with_lookups(
             self.gates.take().unwrap(),
             self.public_inputs.len(),
             lookup_tables,
-            runtime_tables_cfg,
+            runtime_tables_setup,
         );
         println!(
             "- time to create prover index: {:?}s",

@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use CurrOrNext::{Curr, Next};
 
-use super::runtime_tables::{self, RuntimeTableConfiguration};
+use super::runtime_tables::{self, RuntimeTableSpec};
 
 /// Number of constraints produced by the argument.
 pub const CONSTRAINTS: u32 = 7;
@@ -338,7 +338,7 @@ pub struct LookupConfiguration<F: FftField> {
     pub max_joint_size: u32,
 
     /// Optional runtime tables, listed as tuples `(length, id)`.
-    pub runtime_tables: Option<Vec<RuntimeTableConfiguration>>,
+    pub runtime_tables: Option<Vec<RuntimeTableSpec>>,
 
     /// The offset of the runtime table within the concatenated table
     pub runtime_table_offset: Option<usize>,
