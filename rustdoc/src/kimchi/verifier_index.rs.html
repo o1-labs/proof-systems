@@ -292,6 +292,11 @@
 <span id="285">285</span>
 <span id="286">286</span>
 <span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the verifier index as [VerifierIndex].</span>
 <span class="doccomment">//! You can derive this struct from the [ProverIndex] struct.</span>
 
@@ -526,13 +531,13 @@
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> <span class="ident">VerifierIndex</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">CommitmentCurve</span><span class="op">&gt;</span> <span class="ident">VerifierIndex</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
 <span class="kw">where</span>
-    <span class="ident">G</span>: <span class="ident">CommitmentCurve</span>,
+    <span class="ident">G::BaseField</span>: <span class="ident">PrimeField</span>,
 {
     <span class="doccomment">/// Deserializes a [VerifierIndex] from a file, given a pointer to an SRS and an optional offset in the file.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_file</span>(
-        <span class="ident">srs</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">SRS</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">srs</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">SRS</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">path</span>: <span class="kw-2">&amp;</span><span class="ident">Path</span>,
         <span class="ident">offset</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>,
         <span class="comment">// TODO: we shouldn&#39;t have to pass these</span>
@@ -554,7 +559,12 @@
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">to_string</span>())<span class="question-mark">?</span>;
 
         <span class="comment">// fill in the rest</span>
-        <span class="ident">verifier_index</span>.<span class="ident">srs</span> <span class="op">=</span> <span class="ident">srs</span>;
+        <span class="ident">verifier_index</span>.<span class="ident">srs</span> <span class="op">=</span> <span class="ident">srs</span>.<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">srs</span> <span class="op">=</span> <span class="ident">SRS</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">verifier_index</span>.<span class="ident">max_poly_size</span>);
+            <span class="ident">srs</span>.<span class="ident">add_lagrange_basis</span>(<span class="ident">verifier_index</span>.<span class="ident">domain</span>);
+            <span class="ident">Arc::new</span>(<span class="ident">srs</span>)
+        });
+
         <span class="ident">verifier_index</span>.<span class="ident">endo</span> <span class="op">=</span> <span class="ident">endo</span>;
         <span class="ident">verifier_index</span>.<span class="ident">fq_sponge_params</span> <span class="op">=</span> <span class="ident">fq_sponge_params</span>;
         <span class="ident">verifier_index</span>.<span class="ident">fr_sponge_params</span> <span class="op">=</span> <span class="ident">fr_sponge_params</span>;
@@ -580,5 +590,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (76761db59 2022-05-24)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (4cbaac699 2022-05-25)" ></div>
 </body></html>
