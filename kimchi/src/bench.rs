@@ -4,7 +4,7 @@ use crate::{
         polynomials::generic::GenericGateSpec,
         wires::{Wire, COLUMNS},
     },
-    proof::{Challenge, ProverProof},
+    proof::{ProverProof, RecursionChallenge},
     prover_index::{testing::new_index_for_test, ProverIndex},
     verifier::batch_verify,
     verifier_index::VerifierIndex,
@@ -96,7 +96,7 @@ impl BenchmarkCtx {
                 let b = DensePolynomial::from_coefficients_vec(coeffs);
                 self.index.srs.commit_non_hiding(&b, None)
             };
-            Challenge::new(chals, comm)
+            RecursionChallenge::new(chals, comm)
         };
 
         // add the proof to the batch

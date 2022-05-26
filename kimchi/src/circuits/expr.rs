@@ -695,7 +695,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
         res_domain: (Domain, D<F>),
         g: G,
     ) -> Evaluations<F, D<F>> {
-        let n = res_domain.1.size as usize;
+        let n = res_domain.1.size();
         Evaluations::<F, D<F>>::from_vec_and_domain(
             (0..n).into_par_iter().map(g).collect(),
             res_domain.1,
@@ -738,7 +738,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                     shift,
                 },
             ) => {
-                let n = res_domain.1.size as usize;
+                let n = res_domain.1.size();
                 let scale = (domain as usize) / (res_domain.0 as usize);
                 assert!(scale != 0);
                 let v: Vec<_> = (0..n)
@@ -815,7 +815,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 let scale2 = (d2 as usize) / (res_domain.0 as usize);
                 assert!(scale2 != 0);
 
-                let n = res_domain.1.size as usize;
+                let n = res_domain.1.size();
                 let v: Vec<_> = (0..n)
                     .into_par_iter()
                     .map(|i| {
@@ -1515,7 +1515,7 @@ impl<F: FftField> Linearization<Vec<PolishToken<F>>> {
         evals: &[ProofEvaluations<F>],
     ) -> (F, DensePolynomial<F>) {
         let cs = &env.constants;
-        let n = env.domain.d1.size as usize;
+        let n = env.domain.d1.size();
         let mut res = vec![F::zero(); n];
         self.index_terms.iter().for_each(|(idx, c)| {
             let c = PolishToken::evaluate(c, env.domain.d1, pt, evals, cs).unwrap();
@@ -1545,7 +1545,7 @@ impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
         evals: &[ProofEvaluations<F>],
     ) -> (F, DensePolynomial<F>) {
         let cs = &env.constants;
-        let n = env.domain.d1.size as usize;
+        let n = env.domain.d1.size();
         let mut res = vec![F::zero(); n];
         self.index_terms.iter().for_each(|(idx, c)| {
             let c = c.evaluate_(env.domain.d1, pt, evals, cs).unwrap();

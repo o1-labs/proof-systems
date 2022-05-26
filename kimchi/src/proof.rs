@@ -119,14 +119,14 @@ where
     pub public: Vec<ScalarField<G>>,
 
     /// The challenges underlying the optional polynomials folded into the proof
-    #[serde(bound = "Challenge<G>: Serialize + DeserializeOwned")]
-    pub prev_challenges: Vec<Challenge<G>>,
+    #[serde(bound = "RecursionChallenge<G>: Serialize + DeserializeOwned")]
+    pub prev_challenges: Vec<RecursionChallenge<G>>,
 }
 
 /// A struct to store the challenges inside a `ProverProof`
 #[serde_as]
 #[derive(Clone, Deserialize, Serialize)]
-pub struct Challenge<G>
+pub struct RecursionChallenge<G>
 where
     G: AffineCurve,
 {
@@ -140,9 +140,9 @@ where
 
 //~ spec:endcode
 
-impl<G: AffineCurve> Challenge<G> {
-    pub fn new(chals: Vec<ScalarField<G>>, comm: PolyComm<G>) -> Challenge<G> {
-        Challenge { chals, comm }
+impl<G: AffineCurve> RecursionChallenge<G> {
+    pub fn new(chals: Vec<ScalarField<G>>, comm: PolyComm<G>) -> RecursionChallenge<G> {
+        RecursionChallenge { chals, comm }
     }
 }
 
@@ -245,11 +245,11 @@ pub mod caml {
     use commitment_dlog::commitment::caml::CamlPolyComm;
 
     //
-    // CamlChallenge<CamlG, CamlF>
+    // CamlRecursionChallenge<CamlG, CamlF>
     //
 
     #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct CamlChallenge<CamlG, CamlF> {
+    pub struct CamlRecursionChallenge<CamlG, CamlF> {
         pub chals: Vec<CamlF>,
         pub comm: CamlPolyComm<CamlG>,
     }
@@ -258,13 +258,13 @@ pub mod caml {
     // CamlChallenge<CamlG, CamlF> <-> Challenge<G>
     //
 
-    impl<G, CamlG, CamlF> From<Challenge<G>> for CamlChallenge<CamlG, CamlF>
+    impl<G, CamlG, CamlF> From<RecursionChallenge<G>> for CamlRecursionChallenge<CamlG, CamlF>
     where
         G: AffineCurve,
         CamlG: From<G>,
         CamlF: From<G::ScalarField>,
     {
-        fn from(ch: Challenge<G>) -> Self {
+        fn from(ch: RecursionChallenge<G>) -> Self {
             Self {
                 chals: ch.chals.into_iter().map(Into::into).collect(),
                 comm: ch.comm.into(),
@@ -272,13 +272,13 @@ pub mod caml {
         }
     }
 
-    impl<G, CamlG, CamlF> From<CamlChallenge<CamlG, CamlF>> for Challenge<G>
+    impl<G, CamlG, CamlF> From<CamlRecursionChallenge<CamlG, CamlF>> for RecursionChallenge<G>
     where
         G: AffineCurve + From<CamlG>,
         G::ScalarField: From<CamlF>,
     {
-        fn from(caml_ch: CamlChallenge<CamlG, CamlF>) -> Challenge<G> {
-            Challenge {
+        fn from(caml_ch: CamlRecursionChallenge<CamlG, CamlF>) -> RecursionChallenge<G> {
+            RecursionChallenge {
                 chals: caml_ch.chals.into_iter().map(Into::into).collect(),
                 comm: caml_ch.comm.into(),
             }

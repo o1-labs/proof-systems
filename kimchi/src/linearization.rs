@@ -29,7 +29,7 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
     // register powers of alpha so that we don't reuse them across mutually inclusive constraints
     let mut powers_of_alpha = Alphas::<F>::default();
 
-    // Set up powers of alpha.  Only the max number of constraints matters.
+    // Set up powers of alpha. Only the max number of constraints matters.
     // The gate type argument can just be the zero gate.
     powers_of_alpha.register(
         ArgumentType::Gate(GateType::Zero),
@@ -71,6 +71,14 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
         let combined = Expr::combine_constraints(alphas, constraints);
 
         expr += combined;
+    }
+
+    // the generic gate must be associated with alpha^0
+    // to make the later addition with the public input work
+    if cfg!(debug_assertions) {
+        let mut generic_alphas =
+            powers_of_alpha.get_exponents(ArgumentType::Gate(GateType::Generic), 1);
+        assert_eq!(generic_alphas.next(), Some(0));
     }
 
     // return the expression

@@ -9,6 +9,7 @@
   ; ocaml-gen
   (source_tree ../../ocaml-gen))
  (targets libocamlgen_test_stubs.a dllocamlgen_test_stubs.so)
+ (locks /cargo-lock)
  (action
   (progn
    (run rm -rf ./target)
@@ -30,6 +31,7 @@
   main.rs
   ; ocaml-gen
   (source_tree ../../ocaml-gen))
+ (locks /cargo-lock)
  (action
   (progn
    (run rm -rf ./target)

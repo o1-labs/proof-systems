@@ -8,6 +8,7 @@ use crate::circuits::{
 };
 use crate::linearization::expr_linearization;
 use ark_ff::PrimeField;
+use ark_poly::EvaluationDomain;
 use commitment_dlog::{commitment::CommitmentCurve, srs::SRS};
 use o1_utils::types::fields::*;
 use oracle::poseidon::ArithmeticSpongeParams;
@@ -62,7 +63,7 @@ where
         let max_poly_size = srs.g.len();
         if cs.public > 0 {
             assert!(
-                max_poly_size >= cs.domain.d1.size as usize,
+                max_poly_size >= cs.domain.d1.size(),
                 "polynomial segment size has to be not smaller that that of the circuit!"
             );
         }
@@ -82,7 +83,7 @@ where
         // which is obtained by looking at the highest monomial in the sum
         // $$\sum_{i=0}^{PERMUTS} (w_i(x) + \beta k_i x + \gamma)$$
         // where the $w_i(x)$ are of degree the size of the domain.
-        let max_quot_size = PERMUTS * cs.domain.d1.size as usize;
+        let max_quot_size = PERMUTS * cs.domain.d1.size();
 
         ProverIndex {
             cs,
@@ -100,8 +101,9 @@ pub mod testing {
     use super::*;
     use crate::circuits::{
         gate::CircuitGate,
-        lookup::{runtime_tables::RuntimeTableConfiguration, tables::LookupTable},
+        lookup::{runtime_tables::RuntimeTableCfg, tables::LookupTable},
     };
+    use ark_poly::EvaluationDomain;
     use commitment_dlog::srs::endos;
     use mina_curves::pasta::{pallas::Affine as Other, vesta::Affine, Fp};
 
@@ -109,7 +111,7 @@ pub mod testing {
         gates: Vec<CircuitGate<Fp>>,
         public: usize,
         lookup_tables: Vec<LookupTable<Fp>>,
-        runtime_tables: Option<Vec<RuntimeTableConfiguration>>,
+        runtime_tables: Option<Vec<RuntimeTableCfg<Fp>>>,
     ) -> ProverIndex<Affine> {
         let fp_sponge_params = oracle::pasta::fp_kimchi::params();
 
@@ -122,7 +124,7 @@ pub mod testing {
             public,
         )
         .unwrap();
-        let mut srs = SRS::<Affine>::create(cs.domain.d1.size as usize);
+        let mut srs = SRS::<Affine>::create(cs.domain.d1.size());
         srs.add_lagrange_basis(cs.domain.d1);
         let srs = Arc::new(srs);
 

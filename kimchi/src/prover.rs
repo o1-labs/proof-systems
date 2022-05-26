@@ -24,8 +24,8 @@ use crate::{
     error::ProverError,
     plonk_sponge::FrSponge,
     proof::{
-        Challenge, LookupCommitments, LookupEvaluations, ProofEvaluations, ProverCommitments,
-        ProverProof,
+        LookupCommitments, LookupEvaluations, ProofEvaluations, ProverCommitments, ProverProof,
+        RecursionChallenge,
     },
     prover_index::ProverIndex,
 };
@@ -137,7 +137,7 @@ where
         mut witness: [Vec<ScalarField<G>>; COLUMNS],
         runtime_tables: &[RuntimeTable<ScalarField<G>>],
         index: &ProverIndex<G>,
-        prev_challenges: Vec<Challenge<G>>,
+        prev_challenges: Vec<RecursionChallenge<G>>,
     ) -> Result<Self> {
         // make sure that the SRS is not smaller than the domain size
         let d1_size = index.cs.domain.d1.size();
@@ -1058,7 +1058,7 @@ where
         let polys = prev_challenges
             .iter()
             .map(|c| {
-                let Challenge { chals, comm } = c;
+                let RecursionChallenge { chals, comm } = c;
                 (
                     DensePolynomial::from_coefficients_vec(b_poly_coefficients(chals)),
                     comm.unshifted.len(),
@@ -1182,7 +1182,7 @@ where
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
-    use crate::proof::caml::{CamlChallenge, CamlProofEvaluations};
+    use crate::proof::caml::{CamlProofEvaluations, CamlRecursionChallenge};
     use ark_ec::AffineCurve;
     use commitment_dlog::commitment::caml::{CamlOpeningProof, CamlPolyComm};
 
@@ -1198,7 +1198,7 @@ pub mod caml {
         pub evals: (CamlProofEvaluations<CamlF>, CamlProofEvaluations<CamlF>),
         pub ft_eval1: CamlF,
         pub public: Vec<CamlF>,
-        pub prev_challenges: Vec<CamlChallenge<CamlG, CamlF>>, //Vec<(Vec<CamlF>, CamlPolyComm<CamlG>)>,
+        pub prev_challenges: Vec<CamlRecursionChallenge<CamlG, CamlF>>, //Vec<(Vec<CamlF>, CamlPolyComm<CamlG>)>,
     }
 
     //

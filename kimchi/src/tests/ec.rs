@@ -140,5 +140,9 @@ fn ec_test() {
         witness[14].push(F::zero());
     }
 
-    TestFramework::run_test(gates, witness, &[]);
+    TestFramework::default()
+        .gates(gates)
+        .witness(witness)
+        .setup()
+        .prove_and_verify();
 }
