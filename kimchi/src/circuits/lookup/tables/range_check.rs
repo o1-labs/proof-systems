@@ -11,7 +11,7 @@ pub fn range_check_table<F>() -> LookupTable<F>
 where
     F: Field,
 {
-    let table = vec![(0..=RANGE_CHECK_UPPERBOUND).map(F::from).collect()];
+    let table = vec![(0..RANGE_CHECK_UPPERBOUND).map(F::from).collect()];
     LookupTable {
         id: RANGE_CHECK_TABLE_ID,
         data: table,
