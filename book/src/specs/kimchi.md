@@ -1376,6 +1376,8 @@ You can find these operations under the [proof creation](#proof-creation) and [p
 A proof consists of the following data structures:
 
 ```rs
+
+/// Evaluations of lookup polynomials
 #[serde_as]
 #[derive(Clone, Deserialize, Serialize)]
 pub struct LookupEvaluations<F: CanonicalSerialize + CanonicalDeserialize> {
@@ -1403,7 +1405,7 @@ pub struct ProofEvaluations<F: CanonicalSerialize + CanonicalDeserialize> {
     /// witness polynomials
     #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; COLUMNS]")]
     pub w: [Vec<F>; COLUMNS],
-    /// permutation polynomial
+    /// permutation polynomial evaluation (one per chunk)
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub z: Vec<F>,
     /// permutation polynomials
