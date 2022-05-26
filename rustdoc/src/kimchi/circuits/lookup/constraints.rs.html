@@ -702,7 +702,7 @@
 <span class="kw">use</span> <span class="ident">serde_with::serde_as</span>;
 <span class="kw">use</span> <span class="ident">CurrOrNext</span>::{<span class="ident">Curr</span>, <span class="ident">Next</span>};
 
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::runtime_tables</span>::{<span class="self">self</span>, <span class="ident">RuntimeTableConfiguration</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::runtime_tables</span>::{<span class="self">self</span>, <span class="ident">RuntimeTableSpec</span>};
 
 <span class="doccomment">/// Number of constraints produced by the argument.</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">7</span>;
@@ -1021,7 +1021,7 @@
     <span class="kw">pub</span> <span class="ident">max_joint_size</span>: <span class="ident">u32</span>,
 
     <span class="doccomment">/// Optional runtime tables, listed as tuples `(length, id)`.</span>
-    <span class="kw">pub</span> <span class="ident">runtime_tables</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RuntimeTableConfiguration</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">runtime_tables</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RuntimeTableSpec</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 
     <span class="doccomment">/// The offset of the runtime table within the concatenated table</span>
     <span class="kw">pub</span> <span class="ident">runtime_table_offset</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>,

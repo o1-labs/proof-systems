@@ -246,7 +246,7 @@
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
         <span class="ident">gate::CircuitGate</span>,
-        <span class="ident">lookup</span>::{<span class="ident">runtime_tables::RuntimeTableConfiguration</span>, <span class="ident">tables::LookupTable</span>},
+        <span class="ident">lookup</span>::{<span class="ident">runtime_tables::RuntimeTableCfg</span>, <span class="ident">tables::LookupTable</span>},
     };
     <span class="kw">use</span> <span class="ident">ark_poly::EvaluationDomain</span>;
     <span class="kw">use</span> <span class="ident">commitment_dlog::srs::endos</span>;
@@ -256,7 +256,7 @@
         <span class="ident">gates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">public</span>: <span class="ident">usize</span>,
         <span class="ident">lookup_tables</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">LookupTable</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">runtime_tables</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RuntimeTableConfiguration</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">runtime_tables</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RuntimeTableCfg</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     ) -&gt; <span class="ident">ProverIndex</span><span class="op">&lt;</span><span class="ident">Affine</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">fp_sponge_params</span> <span class="op">=</span> <span class="ident">oracle::pasta::fp_kimchi::params</span>();
 
