@@ -308,9 +308,9 @@ where
             .prev_challenges
             .iter()
             .zip(self.prev_chal_evals(index, &evaluation_points, &powers_of_eval_points_for_chunks))
-            .map(|(c, e)| {
-                let Challenge { chals: _, comm } = c;
-                (comm.clone(), e)
+            .map(|(challenge, evals)| {
+                let Challenge { chals: _, comm } = challenge;
+                (comm.clone(), evals)
             })
             .collect();
 

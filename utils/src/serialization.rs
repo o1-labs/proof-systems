@@ -79,38 +79,3 @@ where
         T::deserialize(&mut &bytes[..]).map_err(serde::de::Error::custom)
     }
 }
-
-/*
-impl<T> serde_with::SerializeAs<T> for crate::types::ScalarField<T>
-where
-    T: CanonicalSerialize,
-{
-    fn serialize_as<S>(val: &T, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let mut bytes = vec![];
-        val.serialize(&mut bytes)
-            .map_err(serde::ser::Error::custom)?;
-
-        serde_with::Bytes::serialize_as(&bytes, serializer)
-    }
-}
-
-
-#[derive(serde::Serialize, serde::Deserialize)]
-#[serde(remote = "crate::types::ScalarField<G>")]
-pub struct SFdata;
-
-impl serde_with::SerializeAs<crate::types::ScalarField<G>> for SFdata {
-    fn serialize_as<S>(val: &crate::types::ScalarField<G>>, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        SFdata::serialize(val, serializer)
-    }
-}
-
-
-
-*/

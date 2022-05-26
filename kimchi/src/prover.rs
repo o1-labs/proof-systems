@@ -1182,46 +1182,9 @@ where
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
-    use crate::proof::caml::CamlProofEvaluations;
+    use crate::proof::caml::{CamlChallenge, CamlProofEvaluations};
     use ark_ec::AffineCurve;
     use commitment_dlog::commitment::caml::{CamlOpeningProof, CamlPolyComm};
-
-    //
-    // CamlChallenge<CamlF>
-    //
-
-    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct CamlChallenge<CamlG, CamlF> {
-        pub chals: Vec<CamlF>,
-        pub comm: CamlPolyComm<CamlG>,
-    }
-
-    impl<G, CamlG, CamlF> From<Challenge<G>> for CamlChallenge<CamlG, CamlF>
-    where
-        G: AffineCurve,
-        CamlG: From<G>,
-        CamlF: From<G::ScalarField>,
-    {
-        fn from(ch: Challenge<G>) -> Self {
-            Self {
-                chals: ch.chals.into_iter().map(Into::into).collect(),
-                comm: ch.comm.into(),
-            }
-        }
-    }
-
-    impl<G, CamlG, CamlF> From<CamlChallenge<CamlG, CamlF>> for Challenge<G>
-    where
-        G: AffineCurve + From<CamlG>,
-        G::ScalarField: From<CamlF>,
-    {
-        fn from(caml_ch: CamlChallenge<CamlG, CamlF>) -> Challenge<G> {
-            Challenge {
-                chals: caml_ch.chals.into_iter().map(Into::into).collect(),
-                comm: caml_ch.comm.into(),
-            }
-        }
-    }
 
     //
     // CamlProverProof<CamlG, CamlF>

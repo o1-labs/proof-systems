@@ -96,7 +96,7 @@ impl BenchmarkCtx {
                 let b = DensePolynomial::from_coefficients_vec(coeffs);
                 self.index.srs.commit_non_hiding(&b, None)
             };
-            Challenge { chals, comm }
+            Challenge::new(chals, comm)
         };
 
         // add the proof to the batch

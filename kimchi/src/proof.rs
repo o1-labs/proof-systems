@@ -30,7 +30,9 @@ pub struct LookupEvaluations<F: CanonicalSerialize + CanonicalDeserialize> {
     pub runtime: Option<Vec<F>>,
 }
 
-// TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
+/// Polynomial evaluations contained in a `ProverProof`.
+/// - **Chunked evaluations** use vectors with a length that equals the length of the chunk
+/// - **Non chunked evaluations** use single-sized vectors, so the single evaluation appears in the first position of each field of the struct
 #[serde_as]
 #[derive(Clone, Deserialize, Serialize)]
 pub struct ProofEvaluations<F: CanonicalSerialize + CanonicalDeserialize> {
@@ -59,11 +61,12 @@ pub struct ProofEvaluations<F: CanonicalSerialize + CanonicalDeserialize> {
 #[serde_as]
 #[derive(Clone, Deserialize, Serialize)]
 pub struct LookupCommitments<G: AffineCurve> {
+    /// Commitments to the sorted lookup table polynomial (may have chunks)
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub sorted: Vec<PolyComm<G>>,
+    /// Commitment to the lookup aggregation polynomial
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub aggreg: PolyComm<G>,
-
     /// Optional commitment to concatenated runtime tables
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub runtime: Option<PolyComm<G>>,
@@ -120,6 +123,7 @@ where
     pub prev_challenges: Vec<Challenge<G>>,
 }
 
+/// A struct to store the challenges inside a `ProverProof`
 #[serde_as]
 #[derive(Clone, Deserialize, Serialize)]
 pub struct Challenge<G>
@@ -135,6 +139,12 @@ where
 }
 
 //~ spec:endcode
+
+impl<G: AffineCurve> Challenge<G> {
+    pub fn new(chals: Vec<ScalarField<G>>, comm: PolyComm<G>) -> Challenge<G> {
+        Challenge { chals, comm }
+    }
+}
 
 impl<F: Field> LookupEvaluations<F> {
     pub fn new(sorted: Vec<F>, aggreg: F, table: F, runtime: Option<F>) -> LookupEvaluations<F> {
@@ -232,6 +242,48 @@ impl<F: FftField> ProofEvaluations<F> {
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
+    use commitment_dlog::commitment::caml::CamlPolyComm;
+
+    //
+    // CamlChallenge<CamlG, CamlF>
+    //
+
+    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlChallenge<CamlG, CamlF> {
+        pub chals: Vec<CamlF>,
+        pub comm: CamlPolyComm<CamlG>,
+    }
+
+    //
+    // CamlChallenge<CamlG, CamlF> <-> Challenge<G>
+    //
+
+    impl<G, CamlG, CamlF> From<Challenge<G>> for CamlChallenge<CamlG, CamlF>
+    where
+        G: AffineCurve,
+        CamlG: From<G>,
+        CamlF: From<G::ScalarField>,
+    {
+        fn from(ch: Challenge<G>) -> Self {
+            Self {
+                chals: ch.chals.into_iter().map(Into::into).collect(),
+                comm: ch.comm.into(),
+            }
+        }
+    }
+
+    impl<G, CamlG, CamlF> From<CamlChallenge<CamlG, CamlF>> for Challenge<G>
+    where
+        G: AffineCurve + From<CamlG>,
+        G::ScalarField: From<CamlF>,
+    {
+        fn from(caml_ch: CamlChallenge<CamlG, CamlF>) -> Challenge<G> {
+            Challenge {
+                chals: caml_ch.chals.into_iter().map(Into::into).collect(),
+                comm: caml_ch.comm.into(),
+            }
+        }
+    }
 
     //
     // CamlLookupEvaluations<CamlF>
