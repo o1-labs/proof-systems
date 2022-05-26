@@ -77,6 +77,7 @@ where
             cs.lookup_constraint_system
                 .as_ref()
                 .map(|lcs| &lcs.configuration),
+            cs.foreign_field_add_selector8.is_some(),
         );
 
         // set `max_quot_size` to the degree of the quotient polynomial,

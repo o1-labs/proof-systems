@@ -13,6 +13,7 @@ use crate::{
             complete_add::CompleteAdd,
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
+            ffadd::FFAdd,
             generic, permutation,
             permutation::ZK_ROWS,
             poseidon::Poseidon,
@@ -722,6 +723,15 @@ where
 
                         check_constraint!(index, format!("lookup constraint #{ii}"), eval);
                     }
+                }
+            }
+
+            // foreign field addition
+            {
+                if index.cs.foreign_field_add_selector8.as_ref().is_some() {
+                    let foreign_add = FFAdd::combined_constraints(&all_alphas).evaluations(&env);
+                    t4 += &foreign_add;
+                    check_constraint!(index, foreign_add);
                 }
             }
 

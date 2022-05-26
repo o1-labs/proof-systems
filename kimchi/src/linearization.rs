@@ -8,6 +8,7 @@ use crate::circuits::polynomials::chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFina
 use crate::circuits::polynomials::complete_add::CompleteAdd;
 use crate::circuits::polynomials::endomul_scalar::EndomulScalar;
 use crate::circuits::polynomials::endosclmul::EndosclMul;
+use crate::circuits::polynomials::ffadd::FFAdd;
 use crate::circuits::polynomials::permutation;
 use crate::circuits::polynomials::poseidon::Poseidon;
 use crate::circuits::polynomials::range_check;
@@ -25,6 +26,7 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
     chacha: bool,
     range_check: bool,
     lookup_constraint_system: Option<&LookupConfiguration<F>>,
+    foreign_field_addition: bool,
 ) -> (Expr<ConstantExpr<F>>, Alphas<F>) {
     // register powers of alpha so that we don't reuse them across mutually inclusive constraints
     let mut powers_of_alpha = Alphas::<F>::default();
@@ -51,6 +53,10 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
 
     if range_check {
         expr += range_check::combined_constraints(&powers_of_alpha);
+    }
+
+    if foreign_field_addition {
+        expr += FFAdd::combined_constraints(&powers_of_alpha);
     }
 
     // permutation
@@ -129,11 +135,17 @@ pub fn expr_linearization<F: FftField + SquareRootField>(
     chacha: bool,
     range_check: bool,
     lookup_constraint_system: Option<&LookupConfiguration<F>>,
+    foreign_field_addition: bool,
 ) -> (Linearization<Vec<PolishToken<F>>>, Alphas<F>) {
     let evaluated_cols = linearization_columns::<F>(lookup_constraint_system);
 
-    let (expr, powers_of_alpha) =
-        constraints_expr(domain, chacha, range_check, lookup_constraint_system);
+    let (expr, powers_of_alpha) = constraints_expr(
+        domain,
+        chacha,
+        range_check,
+        lookup_constraint_system,
+        foreign_field_addition,
+    );
 
     let linearization = expr
         .linearize(evaluated_cols)
