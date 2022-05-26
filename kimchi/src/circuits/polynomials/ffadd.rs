@@ -85,8 +85,8 @@ where
         let result_carry_0 = witness_curr::<F>(7);
         let result_carry_1 = witness_curr::<F>(8);
 
-        let upper_bound_check_carry_0 = witness_curr::<F>(10);
-        let upper_bound_check_carry_1 = witness_curr::<F>(11);
+        let upper_bound_check_carry_0 = witness_curr::<F>(9);
+        let upper_bound_check_carry_1 = witness_curr::<F>(10);
 
         let result_0 = witness_next::<F>(0);
         let result_1 = witness_next::<F>(1);
