@@ -116,6 +116,10 @@ pub struct ConstraintSystem<F: FftField> {
     #[serde(bound = "Vec<range_check::SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
     pub range_check_selector_polys: Vec<range_check::SelectorPolynomial<F>>,
 
+    /// Foreign field addition gate selector polynomial
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    pub foreign_field_add_selector8: Option<E<F, D<F>>>,
+
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub shift: [F; PERMUTS],
@@ -434,6 +438,30 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             }
         };
 
+        let foreign_field_add_selector8 = {
+            if circuit_gates_used.contains(&GateType::ForeignFieldAdd) {
+                Some(
+                    E::<F, D<F>>::from_vec_and_domain(
+                        gates
+                            .iter()
+                            .map(|gate| {
+                                if gate.typ == GateType::ForeignFieldAdd {
+                                    F::one()
+                                } else {
+                                    F::zero()
+                                }
+                            })
+                            .collect(),
+                        domain.d1,
+                    )
+                    .interpolate()
+                    .evaluate_over_domain(domain.d8),
+                )
+            } else {
+                None
+            }
+        };
+
         //
         // Coefficient
         // -----------
@@ -483,6 +511,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             mull8,
             emull,
             range_check_selector_polys,
+            foreign_field_add_selector8,
             gates,
             shift: shifts.shifts,
             endo,

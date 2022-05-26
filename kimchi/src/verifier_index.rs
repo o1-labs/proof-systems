@@ -104,6 +104,10 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     #[serde(bound = "Vec<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub range_check_comm: Vec<PolyComm<G>>,
 
+    // Foreign field addition gates polynomial commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub foreign_field_add_comm: Option<PolyComm<G>>,
+
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub shift: [ScalarField<G>; PERMUTS],
@@ -219,6 +223,12 @@ where
                         .commit_evaluations_non_hiding(domain, &poly.eval8, None)
                 })
                 .collect(),
+
+            foreign_field_add_comm: self
+                .cs
+                .foreign_field_add_selector8
+                .as_ref()
+                .map(|poly| self.srs.commit_evaluations_non_hiding(domain, poly, None)),
 
             shift: self.cs.shift,
             zkpm: self.cs.precomputations().zkpm.clone(),
