@@ -355,7 +355,7 @@ impl GateType {
             .collect();
         let lookup_gate_where = HashSet::from([(Lookup, Curr)]);
 
-        // Range check pattern
+        // Range check gate pattern
         //   We do four range lookups:
         //   0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
         //   - L L L L - - - - - -  -  -  -  -
@@ -375,7 +375,7 @@ impl GateType {
             (RangeCheck2, Curr),
         ]);
 
-        // list lookups
+        // List of defined lookups
 
         let lookups = [
             (chacha_pattern, chacha_where, Some(GateLookupTable::Xor)),

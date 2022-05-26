@@ -285,7 +285,7 @@ mod tests {
     use ark_ec::AffineCurve;
     use ark_ff::One;
     use mina_curves::pasta::pallas;
-    use num_bigint::BigUint;
+    use o1_utils::FieldHelpers;
 
     use array_init::array_init;
 
@@ -324,12 +324,6 @@ mod tests {
         new_index_for_test_with_lookups(gates, public_size, vec![range_check::lookup_table()], None)
     }
 
-    fn biguint_from_hex_le(hex: &str) -> BigUint {
-        let mut bytes = hex::decode(hex).expect("invalid hex");
-        bytes.reverse();
-        BigUint::from_bytes_le(&bytes)
-    }
-
     #[test]
     fn verify_range_check0_zero_valid_witness() {
         let cs = create_test_constraint_system();
@@ -355,9 +349,20 @@ mod tests {
     fn verify_range_check0_valid_witness() {
         let cs = create_test_constraint_system();
 
-        let witness: [Vec<PallasField>; 15] = range_check::create_witness(biguint_from_hex_le(
-            "1112223334445556667777888999aaabbbcccdddeeefff111222333444555611",
-        ));
+        let witness = range_check::create_witness::<PallasField>(
+            PallasField::from_hex(
+                "115655443433221211ffef000000000000000000000000000000000000000000",
+            )
+            .unwrap(),
+            PallasField::from_hex(
+                "eeddcdccbbabaa99898877000000000000000000000000000000000000000000",
+            )
+            .unwrap(),
+            PallasField::from_hex(
+                "7766565544343322121100000000000000000000000000000000000000000000",
+            )
+            .unwrap(),
+        );
 
         // gates[0] is RangeCheck0
         assert_eq!(cs.gates[0].verify_range_check(0, &witness, &cs), Ok(()));
@@ -365,9 +370,20 @@ mod tests {
         // gates[1] is RangeCheck0
         assert_eq!(cs.gates[1].verify_range_check(1, &witness, &cs), Ok(()));
 
-        let witness: [Vec<PallasField>; 15] = range_check::create_witness(biguint_from_hex_le(
-            "f59abe33f5d808f8df3e63984621b01e375585fea8dd4030f71a0d80ac06d423",
-        ));
+        let witness = range_check::create_witness::<PallasField>(
+            PallasField::from_hex(
+                "23d406ac800d1af73040dd000000000000000000000000000000000000000000",
+            )
+            .unwrap(),
+            PallasField::from_hex(
+                "a8fe8555371eb021469863000000000000000000000000000000000000000000",
+            )
+            .unwrap(),
+            PallasField::from_hex(
+                "3edff808d8f533be9af500000000000000000000000000000000000000000000",
+            )
+            .unwrap(),
+        );
 
         // gates[0] is RangeCheck0
         assert_eq!(cs.gates[0].verify_range_check(0, &witness, &cs), Ok(()));
@@ -380,8 +396,19 @@ mod tests {
     fn verify_range_check0_invalid_witness() {
         let cs = create_test_constraint_system();
 
-        let mut witness: [Vec<PallasField>; COLUMNS] = range_check::create_witness(
-            biguint_from_hex_le("bca91cf9df6cfd8bd225fd3f46ba2f3f33809d0ee2e7ad338448b4ece7b4f622"),
+        let mut witness = range_check::create_witness::<PallasField>(
+            PallasField::from_hex(
+                "22f6b4e7ecb4488433ade7000000000000000000000000000000000000000000",
+            )
+            .unwrap(),
+            PallasField::from_hex(
+                "e20e9d80333f2fba463ffd000000000000000000000000000000000000000000",
+            )
+            .unwrap(),
+            PallasField::from_hex(
+                "25d28bfd6cdff91ca9bc00000000000000000000000000000000000000000000",
+            )
+            .unwrap(),
         );
 
         // Invalidate witness
@@ -395,9 +422,20 @@ mod tests {
             ))
         );
 
-        let mut witness: [Vec<PallasField>; 15] = range_check::create_witness(biguint_from_hex_le(
-            "301a091e9f74cd459a448c311ae47fe2f4311db61ae1cbd2afee0171e2b5ca22",
-        ));
+        let mut witness = range_check::create_witness::<PallasField>(
+            PallasField::from_hex(
+                "22cab5e27101eeafd2cbe1000000000000000000000000000000000000000000",
+            )
+            .unwrap(),
+            PallasField::from_hex(
+                "1ab61d31f4e27fe41a318c000000000000000000000000000000000000000000",
+            )
+            .unwrap(),
+            PallasField::from_hex(
+                "449a45cd749f1e091a3000000000000000000000000000000000000000000000",
+            )
+            .unwrap(),
+        );
 
         // Invalidate witness
         witness[8][0] = witness[0][0] + PallasField::one();
@@ -413,16 +451,38 @@ mod tests {
     fn verify_range_check1_valid_witness() {
         let cs = create_test_constraint_system();
 
-        let witness: [Vec<PallasField>; 15] = range_check::create_witness(biguint_from_hex_le(
-            "72de0b593fbd97e172ddfb1d7c1f7488948c622a7ff6bffa0279e35a7c148733",
-        ));
+        let witness = range_check::create_witness::<PallasField>(
+            PallasField::from_hex(
+                "22cab5e27101eeafd2cbe1000000000000000000000000000000000000000000",
+            )
+            .unwrap(),
+            PallasField::from_hex(
+                "1ab61d31f4e27fe41a318c000000000000000000000000000000000000000000",
+            )
+            .unwrap(),
+            PallasField::from_hex(
+                "449a45cd749f1e091a3000000000000000000000000000000000000000000000",
+            )
+            .unwrap(),
+        );
 
         // gates[2] is RangeCheck1
         assert_eq!(cs.gates[2].verify_range_check(2, &witness, &cs), Ok(()));
 
-        let witness: [Vec<PallasField>; 15] = range_check::create_witness(biguint_from_hex_le(
-            "58372fb93039e7106c68488dceb6cab3ffb0e7c8594dcc3bc7160321fcf6960d",
-        ));
+        let witness = range_check::create_witness::<PallasField>(
+            PallasField::from_hex(
+                "0d96f6fc210316c73bcc4d000000000000000000000000000000000000000000",
+            )
+            .unwrap(),
+            PallasField::from_hex(
+                "59c8e7b0ffb3cab6ce8d48000000000000000000000000000000000000000000",
+            )
+            .unwrap(),
+            PallasField::from_hex(
+                "686c10e73930b92f375800000000000000000000000000000000000000000000",
+            )
+            .unwrap(),
+        );
 
         // gates[2] is RangeCheck1
         assert_eq!(cs.gates[2].verify_range_check(2, &witness, &cs), Ok(()));
@@ -432,9 +492,20 @@ mod tests {
     fn verify_range_check1_invalid_witness() {
         let cs = create_test_constraint_system();
 
-        let mut witness: [Vec<PallasField>; 15] = range_check::create_witness(biguint_from_hex_le(
-            "260efa1879427b08ca608d455d9f39954b5243dd52117e9ed5982f94acd3e22c",
-        ));
+        let mut witness = range_check::create_witness::<PallasField>(
+            PallasField::from_hex(
+                "2ce2d3ac942f98d59e7e11000000000000000000000000000000000000000000",
+            )
+            .unwrap(),
+            PallasField::from_hex(
+                "52dd43524b95399f5d458d000000000000000000000000000000000000000000",
+            )
+            .unwrap(),
+            PallasField::from_hex(
+                "60ca087b427918fa0e2600000000000000000000000000000000000000000000",
+            )
+            .unwrap(),
+        );
 
         // Corrupt witness
         witness[0][2] = witness[7][2];
@@ -445,9 +516,20 @@ mod tests {
             Err(String::from("Invalid RangeCheck1 constraint"))
         );
 
-        let mut witness: [Vec<PallasField>; 15] = range_check::create_witness(biguint_from_hex_le(
-            "afd209d02c77546022ea860f9340e4289ecdd783e9c0012fd383dcd2940cd51b",
-        ));
+        let mut witness = range_check::create_witness::<PallasField>(
+            PallasField::from_hex(
+                "1bd50c94d2dc83d32f01c0000000000000000000000000000000000000000000",
+            )
+            .unwrap(),
+            PallasField::from_hex(
+                "e983d7cd9e28e440930f86000000000000000000000000000000000000000000",
+            )
+            .unwrap(),
+            PallasField::from_hex(
+                "ea226054772cd009d2af00000000000000000000000000000000000000000000",
+            )
+            .unwrap(),
+        );
 
         // Corrupt witness
         witness[13][2] = witness[1][2];
@@ -478,9 +560,20 @@ mod tests {
         let prover_index = create_test_prover_index(0);
 
         // Create witness
-        let witness: [Vec<PallasField>; 15] = range_check::create_witness(biguint_from_hex_le(
-            "56acede83576c45ec8c11a85ac97e2393a9f88308b4b42d1b1506f2faaafc02b",
-        ));
+        let witness = range_check::create_witness::<PallasField>(
+            PallasField::from_hex(
+                "2bc0afaa2f6f50b1d1424b000000000000000000000000000000000000000000",
+            )
+            .unwrap(),
+            PallasField::from_hex(
+                "8b30889f3a39e297ac851a000000000000000000000000000000000000000000",
+            )
+            .unwrap(),
+            PallasField::from_hex(
+                "c1c85ec47635e8edac5600000000000000000000000000000000000000000000",
+            )
+            .unwrap(),
+        );
 
         // Verify computed witness satisfies the circuit
         prover_index.cs.verify(&witness, &[]).unwrap();
