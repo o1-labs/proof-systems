@@ -136,6 +136,10 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     pub fr_sponge_params: ArithmeticSpongeParams<ScalarField<G>>,
     #[serde(skip)]
     pub fq_sponge_params: ArithmeticSpongeParams<BaseField<G>>,
+
+    // foreign field modulus
+    #[serde(skip)]
+    pub foreign_field_modulus: Vec<ScalarField<G>>,
 }
 //~spec:endcode
 
@@ -230,6 +234,7 @@ where
                 .as_ref()
                 .map(|poly| self.srs.commit_evaluations_non_hiding(domain, poly, None)),
 
+            foreign_field_modulus: self.cs.foreign_field_modulus.clone(),
             shift: self.cs.shift,
             zkpm: self.cs.precomputations().zkpm.clone(),
             w: zk_w3(self.cs.domain.d1),

@@ -369,6 +369,7 @@ where
                 joint_combiner: joint_combiner.map(|j| j.1),
                 endo_coefficient: index.endo,
                 mds: index.fr_sponge_params.mds.clone(),
+                foreign_field_modulus: index.foreign_field_modulus.clone(),
             };
             ft_eval0 -= PolishToken::evaluate(
                 &index.linearization.constant_term,
@@ -574,6 +575,7 @@ where
                 joint_combiner: oracles.joint_combiner.map(|j| j.1),
                 endo_coefficient: index.endo,
                 mds: index.fr_sponge_params.mds.clone(),
+                foreign_field_modulus: index.foreign_field_modulus.clone(),
             };
 
             for (col, tokens) in &index.linearization.index_terms {

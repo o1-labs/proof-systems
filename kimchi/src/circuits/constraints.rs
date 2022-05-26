@@ -120,6 +120,10 @@ pub struct ConstraintSystem<F: FftField> {
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
     pub foreign_field_add_selector8: Option<E<F, D<F>>>,
 
+    /// Foreign field modulus
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    pub foreign_field_modulus: Vec<F>,
+
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub shift: [F; PERMUTS],
@@ -244,6 +248,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             lookup_tables,
             runtime_tables,
             fr_sponge_params,
+            vec![],
             public,
             None,
         )
@@ -260,6 +265,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         lookup_tables: Vec<LookupTable<F>>,
         runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
         fr_sponge_params: ArithmeticSpongeParams<F>,
+        foreign_field_modulus: Vec<F>,
         public: usize,
         precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
     ) -> Result<Self, SetupError> {
@@ -513,6 +519,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             range_check_selector_polys,
             foreign_field_add_selector8,
             gates,
+            foreign_field_modulus,
             shift: shifts.shifts,
             endo,
             fr_sponge_params,

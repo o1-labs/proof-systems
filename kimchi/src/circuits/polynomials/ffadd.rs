@@ -38,7 +38,7 @@ use ark_ff::FftField;
 
 use crate::circuits::{
     argument::{Argument, ArgumentType},
-    expr::prologue::*,
+    expr::{prologue::*, ConstantExpr::ForeignFieldModulus},
     gate::GateType,
 };
 
@@ -53,9 +53,9 @@ where
     const CONSTRAINTS: u32 = 21;
 
     fn constraints() -> Vec<E<F>> {
-        let foreign_modulus_0: E<F> = todo!();
-        let foreign_modulus_1: E<F> = todo!();
-        let foreign_modulus_2: E<F> = todo!();
+        let foreign_modulus_0 = E::constant(ForeignFieldModulus(0));
+        let foreign_modulus_1 = E::constant(ForeignFieldModulus(1));
+        let foreign_modulus_2 = E::constant(ForeignFieldModulus(2));
 
         let two_to_88 = constant(F::from(2u64).pow([88]));
 

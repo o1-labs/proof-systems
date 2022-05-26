@@ -147,6 +147,7 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
                     joint_combiner: Some(F::rand(rng)),
                     endo_coefficient: cs.endo,
                     mds: vec![], // TODO: maybe cs.fr_sponge_params.mds.clone()
+                    foreign_field_modulus: vec![],
                 },
                 witness: &witness_evals.d8.this.w,
                 coefficient: &cs.coefficients8,
