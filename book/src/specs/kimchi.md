@@ -1394,7 +1394,9 @@ pub struct LookupEvaluations<F: CanonicalSerialize + CanonicalDeserialize> {
     pub runtime: Option<Vec<F>>,
 }
 
-// TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
+/// Polynomial evaluations contained in a `ProverProof`.
+/// - **Chunked evaluations** use vectors with a length that equals the length of the chunk
+/// - **Non chunked evaluations** use single-sized vectors, so the single evaluation appears in the first position of each field of the struct
 #[serde_as]
 #[derive(Clone, Deserialize, Serialize)]
 pub struct ProofEvaluations<F: CanonicalSerialize + CanonicalDeserialize> {
@@ -1423,11 +1425,12 @@ pub struct ProofEvaluations<F: CanonicalSerialize + CanonicalDeserialize> {
 #[serde_as]
 #[derive(Clone, Deserialize, Serialize)]
 pub struct LookupCommitments<G: AffineCurve> {
+    /// Commitments to the sorted lookup table polynomial (may have chunks)
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub sorted: Vec<PolyComm<G>>,
+    /// Commitment to the lookup aggregation polynomial
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub aggreg: PolyComm<G>,
-
     /// Optional commitment to concatenated runtime tables
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub runtime: Option<PolyComm<G>>,
@@ -1480,13 +1483,14 @@ where
     pub public: Vec<ScalarField<G>>,
 
     /// The challenges underlying the optional polynomials folded into the proof
-    #[serde(bound = "Challenge<G>: Serialize + DeserializeOwned")]
-    pub prev_challenges: Vec<Challenge<G>>,
+    #[serde(bound = "RecursionChallenge<G>: Serialize + DeserializeOwned")]
+    pub prev_challenges: Vec<RecursionChallenge<G>>,
 }
 
+/// A struct to store the challenges inside a `ProverProof`
 #[serde_as]
 #[derive(Clone, Deserialize, Serialize)]
-pub struct Challenge<G>
+pub struct RecursionChallenge<G>
 where
     G: AffineCurve,
 {
