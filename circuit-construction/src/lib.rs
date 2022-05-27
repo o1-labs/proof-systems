@@ -118,7 +118,7 @@ pub struct ShiftedScalar<F>(Var<F>);
 pub struct GateSpec<F: FftField> {
     pub typ: GateType,
     pub row: [Var<F>; COLUMNS],
-    pub c: Vec<F>,
+    pub coeffs: Vec<F>,
 }
 
 #[derive(Clone)]
@@ -215,17 +215,248 @@ pub trait Cs<F: FftField + PrimeField> {
         });
 
         // constrain `x1 - x2 = 0`
-        let mut c = vec![F::zero(); GENERIC_ROW_COEFFS];
-        c[0] = F::one();
-        c[1] = -F::one();
+        let mut coeffs = vec![F::zero(); GENERIC_ROW_COEFFS];
+        coeffs[0] = F::one();
+        coeffs[1] = -F::one();
 
         self.gate(GateSpec {
             typ: GateType::Generic,
             row,
-            c,
+            coeffs,
         });
     }
 
+    ///
+    fn add(&mut self, x1: Var<F>, x2: Var<F>) -> Var<F> {
+        let res = self.var(|| x1.val() + x2.val());
+        let row = array_init(|i| {
+            if i == 0 {
+                x1
+            } else if i == 1 {
+                x2
+            } else if i == 2 {
+                res
+            } else {
+                self.var(|| F::zero())
+            }
+        });
+
+        let mut coeffs = vec![F::zero(); GENERIC_ROW_COEFFS];
+        coeffs[0] = F::one();
+        coeffs[1] = F::one();
+        coeffs[2] = -F::one();
+        self.gate(GateSpec {
+            typ: GateType::Generic,
+            row,
+            coeffs,
+        });
+        res
+    }
+
+    ///
+    fn sub(&mut self, x1: Var<F>, x2: Var<F>) -> Var<F> {
+        let res = self.var(|| x1.val() - x2.val());
+        let row = array_init(|i| {
+            if i == 0 {
+                x1
+            } else if i == 1 {
+                x2
+            } else if i == 2 {
+                res
+            } else {
+                self.var(|| F::zero())
+            }
+        });
+
+        let mut coeffs = vec![F::zero(); GENERIC_ROW_COEFFS];
+        coeffs[0] = F::one();
+        coeffs[1] = F::one();
+        coeffs[2] = -F::one();
+        self.gate(GateSpec {
+            typ: GateType::Generic,
+            row,
+            coeffs,
+        });
+        res
+    }
+
+    ///
+    /// diff = x1 - x2 = 0 if x1 == x2, something else otherwise
+    /// res = 1 - diff (1 or something)
+    /// diff = 1 how to force?
+    /// diff = (x1 - x2) * (x1 - x2)^-1
+    /// but have to make sure inverse is not 0
+    /// - inv = (x1 - x2)^-1 or 1 (if x1 == x2)
+    /// - inv * (inv2) == 1 (if inv = 1, then inv2 = 1)
+    /// - res = (x1 - x2) * inv
+    ///
+    fn equals_old(&mut self, x1: Var<F>, x2: Var<F>) -> Var<F> {
+        let diff = self.sub(x2, x1);
+        let inv = self.var(|| diff.val().inverse().unwrap_or(F::one()));
+        let inv2 = self.var(|| inv.val().inverse().unwrap_or(F::one()));
+        let res = self.var(|| {
+            if x1.val() == x2.val() {
+                F::one()
+            } else {
+                F::zero()
+            }
+        });
+
+        // inv * inv2 = 1
+        let row = array_init(|i| {
+            if i == 0 {
+                inv
+            } else if i == 1 {
+                inv2
+            } else {
+                self.var(|| F::zero())
+            }
+        });
+
+        let mut coeffs = vec![F::zero(); GENERIC_ROW_COEFFS];
+        coeffs[1] = -F::one();
+        coeffs[2] = F::one();
+        self.gate(GateSpec {
+            typ: GateType::Generic,
+            row,
+            coeffs,
+        });
+
+        // diff = x1 - x2
+        let row = array_init(|i| {
+            if i == 0 {
+                x1
+            } else if i == 1 {
+                x2
+            } else if i == 2 {
+                diff
+            } else {
+                self.var(|| F::zero())
+            }
+        });
+
+        let mut coeffs = vec![F::zero(); GENERIC_ROW_COEFFS];
+        coeffs[0] = F::one();
+        coeffs[1] = -F::one();
+        coeffs[2] = F::one();
+        self.gate(GateSpec {
+            typ: GateType::Generic,
+            row,
+            coeffs: vec![F::one(), -F::one(), F::one()],
+        });
+
+        // res = diff * inv
+        let row = array_init(|i| {
+            if i == 0 {
+                diff
+            } else if i == 1 {
+                inv
+            } else if i == 2 {
+                res
+            } else {
+                self.var(|| F::zero())
+            }
+        });
+
+        let mut coeffs = vec![F::zero(); GENERIC_ROW_COEFFS];
+        coeffs[2] = F::one();
+        coeffs[3] = -F::one();
+        self.gate(GateSpec {
+            typ: GateType::Generic,
+            row,
+            coeffs,
+        });
+
+        res
+    }
+
+    /// ok other way of doing it (from the ocaml code):
+    /// z = x1 - x2
+    /// z_inv = z^-1 (or 0 if z = 0)
+    /// the two constraints:
+    /// z_inv * z = 1 - res
+    /// res * z = 0
+    fn equals(&mut self, x1: Var<F>, x2: Var<F>) -> Var<F> {
+        // compute values we need
+        let diff = self.sub(x2, x1);
+        let inv = self.var(|| diff.val().inverse().unwrap_or(F::zero()));
+        let res = self.var(|| {
+            if x1.val() == x2.val() {
+                F::one()
+            } else {
+                F::zero()
+            }
+        });
+
+        // 1 - res
+        // TODO: none of this is taking advantage of the double generic gate...
+        let one_minus_res = self.var(|| F::one() - res.val());
+        let row = array_init(|i| {
+            if i == 0 {
+                self.constant(F::one())
+            } else if i == 1 {
+                res
+            } else if i == 2 {
+                one_minus_res
+            } else {
+                self.var(|| F::zero())
+            }
+        });
+        let mut coeffs = vec![F::zero(); GENERIC_ROW_COEFFS];
+        coeffs[0] = F::one(); // 1
+        coeffs[1] = -F::one(); // 1 - res
+        coeffs[2] = -F::one(); // 1 - res - one_minus_res = 0
+        self.gate(GateSpec {
+            typ: GateType::Generic,
+            row,
+            coeffs,
+        });
+
+        // z_inv * z = 1 - res
+        let row = array_init(|i| {
+            if i == 0 {
+                inv
+            } else if i == 1 {
+                diff
+            } else if i == 2 {
+                one_minus_res
+            } else {
+                self.var(|| F::zero())
+            }
+        });
+
+        let mut coeffs = vec![F::zero(); GENERIC_ROW_COEFFS];
+        coeffs[2] = -F::one(); // - one_minus_res
+        coeffs[3] = F::one(); // inv * diff - one_minus_res = 0
+        self.gate(GateSpec {
+            typ: GateType::Generic,
+            row,
+            coeffs,
+        });
+
+        // res * z = 0
+        let row = array_init(|i| {
+            if i == 0 {
+                res
+            } else if i == 1 {
+                diff
+            } else {
+                self.var(|| F::zero())
+            }
+        });
+
+        let mut coeffs = vec![F::zero(); GENERIC_ROW_COEFFS];
+        coeffs[3] = F::one(); // res * diff = 0
+        self.gate(GateSpec {
+            typ: GateType::Generic,
+            row,
+            coeffs: vec![F::one(), -F::one(), F::one()],
+        });
+
+        res
+    }
+
+    // TODO: optimize this to not create X gates for the same constant (using permutation)
     fn constant(&mut self, x: F) -> Var<F> {
         let v = self.var(|| x);
 
@@ -238,7 +469,7 @@ pub trait Cs<F: FftField + PrimeField> {
         self.gate(GateSpec {
             typ: GateType::Generic,
             row,
-            c,
+            coeffs: c,
         });
         v
     }
@@ -259,7 +490,7 @@ pub trait Cs<F: FftField + PrimeField> {
         self.gate(GateSpec {
             typ: GateType::Generic,
             row,
-            c,
+            coeffs: c,
         });
         xv
     }
@@ -314,7 +545,7 @@ pub trait Cs<F: FftField + PrimeField> {
             row: [
                 x1, y1, x2, y2, x3, y3, inf, same_x, s, inf_z, x21_inv, zero, zero, zero, zero,
             ],
-            c: vec![],
+            coeffs: vec![],
         });
         (x3, y3)
     }
@@ -370,7 +601,7 @@ pub trait Cs<F: FftField + PrimeField> {
             row: [
                 x1, y1, x2, y2, x3, y3, inf, same_x, s, inf_z, x21_inv, zero, zero, zero, zero,
             ],
-            c: vec![],
+            coeffs: vec![],
         });
     }
 
@@ -399,7 +630,7 @@ pub trait Cs<F: FftField + PrimeField> {
         self.gate(GateSpec {
             typ: GateType::Generic,
             row: row1,
-            c: c1,
+            coeffs: c1,
         });
 
         let row2 = {
@@ -418,7 +649,7 @@ pub trait Cs<F: FftField + PrimeField> {
         self.gate(GateSpec {
             typ: GateType::Generic,
             row: row2,
-            c: c2,
+            coeffs: c2,
         });
 
         let row3 = {
@@ -436,7 +667,7 @@ pub trait Cs<F: FftField + PrimeField> {
         self.gate(GateSpec {
             typ: GateType::Generic,
             row: row3,
-            c: c3,
+            coeffs: c3,
         });
 
         res
@@ -496,13 +727,13 @@ pub trait Cs<F: FftField + PrimeField> {
             self.gate(GateSpec {
                 row: row1,
                 typ: GateType::VarBaseMul,
-                c: vec![],
+                coeffs: vec![],
             });
 
             self.gate(GateSpec {
                 row: row2,
                 typ: GateType::Zero,
-                c: vec![],
+                coeffs: vec![],
             })
         }
 
@@ -601,7 +832,7 @@ pub trait Cs<F: FftField + PrimeField> {
                 row: [
                     xt, yt, zero, zero, xp, yp, n_acc, xr, yr, s1, s3, b1, b2, b3, b4,
                 ],
-                c: vec![],
+                coeffs: vec![],
             });
 
             acc = (xs, ys);
@@ -625,7 +856,7 @@ pub trait Cs<F: FftField + PrimeField> {
                 zero, zero, zero, zero, acc.0, acc.1, scalar, zero, zero, zero, zero, zero, zero,
                 zero, zero,
             ],
-            c: vec![],
+            coeffs: vec![],
         });
         acc
     }
@@ -692,7 +923,7 @@ pub trait Cs<F: FftField + PrimeField> {
             let row = array_init(|_| self.var(|| F::rand(&mut rand::thread_rng())));
             self.gate(GateSpec {
                 typ: GateType::Zero,
-                c: vec![],
+                coeffs: vec![],
                 row,
             });
         }
@@ -742,7 +973,7 @@ pub trait Cs<F: FftField + PrimeField> {
 
             self.gate(GateSpec {
                 typ: kimchi::circuits::gate::GateType::Poseidon,
-                c: (0..15)
+                coeffs: (0..15)
                     .map(|i| rc[offset + (i / width)][i % width])
                     .collect(),
                 row: [
@@ -771,7 +1002,7 @@ pub trait Cs<F: FftField + PrimeField> {
         final_row[2] = states[states.len() - 1][2];
         self.gate(GateSpec {
             typ: kimchi::circuits::gate::GateType::Zero,
-            c: vec![],
+            coeffs: vec![],
             row: final_row,
         });
 
@@ -854,7 +1085,7 @@ impl<F: FftField> System<F> {
 
             let g = CircuitGate {
                 typ: gate.typ,
-                coeffs: gate.c.clone(),
+                coeffs: gate.coeffs.clone(),
                 wires,
             };
             gates.push(g);
@@ -959,7 +1190,7 @@ where
             });
             system.gate(GateSpec {
                 typ: GateType::Generic,
-                c: public_input_row.clone(),
+                coeffs: public_input_row.clone(),
                 row,
             });
             v
@@ -972,19 +1203,15 @@ where
     println!("gates: {}", gates.len());
     // Other base field = self scalar field
     let (endo_q, _endo_r) = endos::<C::Inner>();
-    ProverIndex::<C::Outer>::create(
-        ConstraintSystem::<C::InnerField>::create(
-            gates,
-            vec![],
-            None,
-            constants.poseidon.clone(),
-            public,
-        )
-        .unwrap(),
-        poseidon_params.clone(),
-        endo_q,
-        srs,
+    let cs = ConstraintSystem::<C::InnerField>::create(
+        gates,
+        vec![],
+        None,
+        constants.poseidon.clone(),
+        public,
     )
+    .unwrap();
+    ProverIndex::<C::Outer>::create(cs, poseidon_params.clone(), endo_q, srs)
 }
 
 pub fn fp_constants() -> Constants<Fp> {

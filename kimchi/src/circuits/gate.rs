@@ -98,6 +98,25 @@ pub enum GateType {
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 /// A single gate in a circuit.
+// TODO: can we get rid of this type down the line? Perhaps have a circuit be specified as a type
+// ```
+// pub struct Circuit {
+//   gates: Vec<[GateSpec]>,
+//   public_input_size: u32,
+//   wiring: Vec<Cycle>, // permutation
+// }
+// ```
+//
+// with
+//
+// ```
+// pub struct Cycle(Vec<Cell>);
+//
+// pub struct Cell {
+//   row: u64,
+//   col: u64,
+// }
+// ```
 pub struct CircuitGate<F: FftField> {
     /// type of the gate
     pub typ: GateType,
