@@ -41,7 +41,7 @@ pub fn circuit<
 >(
     constants: &Constants<F>,
     // The witness
-    witness: &Option<Witness<G>>,
+    witness: Option<&Witness<G>>,
     sys: &mut Sys,
     public_input: Vec<Var<F>>,
 ) {
@@ -87,7 +87,7 @@ fn main() {
         &proof_system_constants,
         &fq_poseidon,
         PUBLIC_INPUT_LENGTH,
-        |sys, p| circuit::<_, Other, _>(&proof_system_constants, &None, sys, p),
+        |sys, p| circuit::<_, Other, _>(&proof_system_constants, None, sys, p),
     );
 
     let group_map = <Affine as CommitmentCurve>::Map::setup();
@@ -119,7 +119,7 @@ fn main() {
         &group_map,
         None,
         vec![public_key.x, public_key.y, hash],
-        |sys, p| circuit::<Fp, Other, _>(&proof_system_constants, &Some(witness), sys, p),
+        |sys, p| circuit::<Fp, Other, _>(&proof_system_constants, Some(&witness), sys, p),
     );
 
     let verifier_index = prover_index.verifier_index();
