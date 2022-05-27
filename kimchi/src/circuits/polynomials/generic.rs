@@ -341,6 +341,26 @@ pub mod testing {
                 } else {
                     F::zero()
                 };
+
+                {
+                    let els: std::collections::HashMap<_, _> =
+                        (0..=9u32).map(|i| (F::from(i), i)).collect();
+                    let p = |f| {
+                        els.get(&f)
+                            .map(|i| format!("{i}"))
+                            .unwrap_or(format!("{f}"))
+                    };
+                    println!(
+                        "#{row} - {c1} * {l} + {c2} * {r} + {c3} * {o} = 0",
+                        c1 = p(self.coeffs[coeffs_offset]),
+                        l = p(this[register_offset]),
+                        c2 = p(self.coeffs[coeffs_offset + 1]),
+                        r = p(this[register_offset + 1]),
+                        c3 = self.coeffs[coeffs_offset + 2],
+                        o = p(this[register_offset + 2]),
+                    );
+                }
+
                 ensure_eq!(
                     zero,
                     sum + mul + self.coeffs[coeffs_offset + 4] - public,
