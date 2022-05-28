@@ -15,8 +15,10 @@ use std::ops::{Mul, Neg};
 
 type Evaluations<Field> = E<Field, D<Field>>;
 
-fn max_lookups_per_row<F>(kinds: &[Vec<JointLookupSpec<F>>]) -> usize {
-    kinds.iter().fold(0, |acc, x| std::cmp::max(x.len(), acc))
+fn max_lookups_per_row(kinds: &[LookupPattern]) -> usize {
+    kinds
+        .iter()
+        .fold(0, |acc, x| std::cmp::max(x.max_lookups_per_row(), acc))
 }
 
 /// Specifies whether a constraint system uses joint lookups. Used to make sure we
@@ -29,10 +31,10 @@ pub enum LookupsUsed {
 
 /// Describes the desired lookup configuration.
 #[derive(Clone, Serialize, Deserialize)]
-pub struct LookupInfo<F> {
+pub struct LookupInfo {
     /// A single lookup constraint is a vector of lookup constraints to be applied at a row.
     /// This is a vector of all the kinds of lookup constraints in this configuration.
-    pub kinds: Vec<Vec<JointLookupSpec<F>>>,
+    pub kinds: Vec<LookupPattern>,
     /// A map from the kind of gate (and whether it is the current row or next row) to the lookup
     /// constraint (given as an index into `kinds`) that should be applied there, if any.
     pub kinds_map: HashMap<(GateType, CurrOrNext), usize>,
@@ -43,13 +45,11 @@ pub struct LookupInfo<F> {
     pub max_per_row: usize,
     /// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
     pub max_joint_size: u32,
-    /// An empty vector.
-    empty: Vec<JointLookupSpec<F>>,
 }
 
-impl<F: FftField> LookupInfo<F> {
+impl LookupInfo {
     /// Create the default lookup configuration.
-    pub fn create() -> Self {
+    pub fn create<F: FftField>() -> Self {
         let (kinds, locations_with_tables): (Vec<_>, Vec<_>) = GateType::lookup_kinds::<F>();
 
         let GatesLookupMaps {
@@ -60,28 +60,26 @@ impl<F: FftField> LookupInfo<F> {
         let max_per_row = max_lookups_per_row(&kinds);
 
         LookupInfo {
-            max_joint_size: kinds.iter().fold(0, |acc0, v| {
-                v.iter()
-                    .fold(acc0, |acc, j| std::cmp::max(acc, j.entry.len() as u32))
-            }),
+            max_joint_size: kinds
+                .iter()
+                .fold(0, |acc, v| std::cmp::max(acc, v.max_joint_size())),
 
             kinds_map,
             kinds_tables,
             kinds,
             max_per_row,
-            empty: vec![],
         }
     }
 
     /// Check what kind of lookups, if any, are used by this circuit.
-    pub fn lookup_used(&self, gates: &[CircuitGate<F>]) -> Option<LookupsUsed> {
+    pub fn lookup_used<F: FftField>(&self, gates: &[CircuitGate<F>]) -> Option<LookupsUsed> {
         let mut lookups_used = None;
         for g in gates.iter() {
             let typ = g.typ;
 
             for r in &[CurrOrNext::Curr, CurrOrNext::Next] {
                 if let Some(v) = self.kinds_map.get(&(typ, *r)) {
-                    if !self.kinds[*v].is_empty() {
+                    if self.kinds[*v].max_joint_size() > 1 {
                         return Some(LookupsUsed::Joint);
                     } else {
                         lookups_used = Some(LookupsUsed::Single);
@@ -94,7 +92,7 @@ impl<F: FftField> LookupInfo<F> {
 
     /// Each entry in `kinds` has a corresponding selector polynomial that controls whether that
     /// lookup kind should be enforced at a given row. This computes those selector polynomials.
-    pub fn selector_polynomials_and_tables(
+    pub fn selector_polynomials_and_tables<F: FftField>(
         &self,
         domain: &EvaluationDomains<F>,
         gates: &[CircuitGate<F>],
@@ -137,16 +135,16 @@ impl<F: FftField> LookupInfo<F> {
     }
 
     /// For each row in the circuit, which lookup-constraints should be enforced at that row.
-    pub fn by_row<'a>(&'a self, gates: &[CircuitGate<F>]) -> Vec<&'a Vec<JointLookupSpec<F>>> {
-        let mut kinds = vec![&self.empty; gates.len() + 1];
+    pub fn by_row<F: FftField>(&self, gates: &[CircuitGate<F>]) -> Vec<Vec<JointLookupSpec<F>>> {
+        let mut kinds = vec![vec![]; gates.len() + 1];
         for i in 0..gates.len() {
             let typ = gates[i].typ;
 
             if let Some(v) = self.kinds_map.get(&(typ, CurrOrNext::Curr)) {
-                kinds[i] = &self.kinds[*v];
+                kinds[i] = self.kinds[*v].lookups();
             }
             if let Some(v) = self.kinds_map.get(&(typ, CurrOrNext::Next)) {
-                kinds[i + 1] = &self.kinds[*v];
+                kinds[i + 1] = self.kinds[*v].lookups();
             }
         }
         kinds
@@ -263,6 +261,7 @@ impl<F: Copy> JointLookup<SingleLookup<F>, LookupTableID> {
     }
 }
 
+#[derive(Clone, Serialize, Deserialize)]
 pub enum LookupPattern {
     ChaCha,
     ChaChaFinal,
@@ -270,6 +269,22 @@ pub enum LookupPattern {
 }
 
 impl LookupPattern {
+    pub fn max_lookups_per_row(&self) -> usize {
+        match self {
+            LookupPattern::ChaCha => 4,
+            LookupPattern::ChaChaFinal => 4,
+            LookupPattern::LookupGate => 3,
+        }
+    }
+
+    pub fn max_joint_size(&self) -> u32 {
+        match self {
+            LookupPattern::ChaCha => 3,
+            LookupPattern::ChaChaFinal => 3,
+            LookupPattern::LookupGate => 2,
+        }
+    }
+
     pub fn lookups<F: Field>(&self) -> Vec<JointLookupSpec<F>> {
         let curr_row = |column| LocalPosition {
             row: CurrOrNext::Curr,
@@ -367,8 +382,8 @@ impl GateType {
     ///
     /// See circuits/kimchi/src/polynomials/chacha.rs for an explanation of
     /// how these work.
-    pub fn lookup_kinds<F: Field>() -> (Vec<Vec<JointLookupSpec<F>>>, Vec<GatesLookupSpec>) {
-        let chacha_pattern = LookupPattern::ChaCha.lookups();
+    pub fn lookup_kinds<F: Field>() -> (Vec<LookupPattern>, Vec<GatesLookupSpec>) {
+        let chacha_pattern = LookupPattern::ChaCha;
 
         let mut chacha_where = HashSet::new();
         use CurrOrNext::*;
@@ -380,14 +395,14 @@ impl GateType {
             }
         }
 
-        let chacha_final_pattern = LookupPattern::ChaChaFinal.lookups();
+        let chacha_final_pattern = LookupPattern::ChaChaFinal;
 
         let mut chacha_final_where = HashSet::new();
         for r in &[Curr, Next] {
             chacha_final_where.insert((ChaChaFinal, *r));
         }
 
-        let lookup_gate_pattern = LookupPattern::LookupGate.lookups();
+        let lookup_gate_pattern = LookupPattern::LookupGate;
         let lookup_gate_where = HashSet::from([(Lookup, Curr)]);
 
         let lookups = [
