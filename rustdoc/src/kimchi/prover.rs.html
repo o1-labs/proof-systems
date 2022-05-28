@@ -1370,6 +1370,8 @@
 <span id="1363">1363</span>
 <span id="1364">1364</span>
 <span id="1365">1365</span>
+<span id="1366">1366</span>
+<span id="1367">1367</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements prover&#39;s zk-proof primitive.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -1541,7 +1543,7 @@
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProverError::NoRoomForZkInWitness</span>);
         }
 
-        <span class="comment">//~ 2. Pad the witness columns with Zero gates to make them the same length as the domain.</span>
+        <span class="comment">//~ 1. Pad the witness columns with Zero gates to make them the same length as the domain.</span>
         <span class="comment">//~    Then, randomize the last `ZK_ROWS` of each columns.</span>
         <span class="kw">for</span> <span class="ident">w</span> <span class="kw">in</span> <span class="kw-2">&amp;mut</span> <span class="ident">witness</span> {
             <span class="kw">if</span> <span class="ident">w</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">length_witness</span> {
@@ -1557,10 +1559,10 @@
             }
         }
 
-        <span class="comment">//~ 3. Setup the Fq-Sponge.</span>
+        <span class="comment">//~ 1. Setup the Fq-Sponge.</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">fq_sponge</span> <span class="op">=</span> <span class="ident">EFqSponge::new</span>(<span class="ident">index</span>.<span class="ident">fq_sponge_params</span>.<span class="ident">clone</span>());
 
-        <span class="comment">//~ 4. Compute the negated public input polynomial as</span>
+        <span class="comment">//~ 1. Compute the negated public input polynomial as</span>
         <span class="comment">//~    the polynomial that evaluates to $-p_i$ for the first `public_input_size` values of the domain,</span>
         <span class="comment">//~    and $0$ for the rest.</span>
         <span class="kw">let</span> <span class="ident">public</span> <span class="op">=</span> <span class="ident">witness</span>[<span class="number">0</span>][<span class="number">0</span>..<span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">public</span>].<span class="ident">to_vec</span>();
@@ -1570,16 +1572,18 @@
         )
         .<span class="ident">interpolate</span>();
 
-        <span class="comment">//~ 5. Commit (non-hiding) to the negated public input polynomial.</span>
+        <span class="comment">//~ 1. Commit (non-hiding) to the negated public input polynomial.</span>
         <span class="kw">let</span> <span class="ident">public_comm</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="ident">public_poly</span>, <span class="prelude-val">None</span>);
 
-        <span class="comment">//~ 6. Absorb the commitment to the public polynomial with the Fq-Sponge.</span>
+        <span class="comment">//~ 1. Absorb the commitment to the public polynomial with the Fq-Sponge.</span>
+        <span class="comment">//~</span>
         <span class="comment">//~    Note: unlike the original PLONK protocol,</span>
         <span class="comment">//~    the prover also provides evaluations of the public polynomial to help the verifier circuit.</span>
         <span class="comment">//~    This is why we need to absorb the commitment to the public polynomial at this point.</span>
         <span class="ident">fq_sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span><span class="ident">public_comm</span>.<span class="ident">unshifted</span>);
 
-        <span class="comment">//~ 7. Commit to the witness columns by creating `COLUMNS` hidding commitments.</span>
+        <span class="comment">//~ 1. Commit to the witness columns by creating `COLUMNS` hidding commitments.</span>
+        <span class="comment">//~</span>
         <span class="comment">//~    Note: since the witness is in evaluation form,</span>
         <span class="comment">//~    we can use the `commit_evaluation` optimization.</span>
         <span class="kw">let</span> <span class="ident">w_comm</span>: [(<span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>); <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
@@ -1592,12 +1596,12 @@
                 .<span class="ident">commit_evaluations</span>(<span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>, <span class="kw-2">&amp;</span><span class="ident">e</span>, <span class="prelude-val">None</span>, <span class="ident">rng</span>)
         });
 
-        <span class="comment">//~ 8. Absorb the witness commitments with the Fq-Sponge.</span>
+        <span class="comment">//~ 1. Absorb the witness commitments with the Fq-Sponge.</span>
         <span class="ident">w_comm</span>
             .<span class="ident">iter</span>()
             .<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">fq_sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span><span class="ident">c</span>.<span class="number">0</span>.<span class="ident">unshifted</span>));
 
-        <span class="comment">//~ 9. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.</span>
+        <span class="comment">//~ 1. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.</span>
         <span class="comment">//~    TODO: why not do this first, and then commit? Why commit from evaluation directly?</span>
         <span class="kw">let</span> <span class="ident">witness_poly</span>: [<span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
             <span class="ident">Evaluations</span>::<span class="op">&lt;</span><span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::from_vec_and_domain</span>(
@@ -1609,7 +1613,7 @@
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">lookup_context</span> <span class="op">=</span> <span class="ident">LookupContext::default</span>();
 
-        <span class="comment">//~ 10. If using lookup:</span>
+        <span class="comment">//~ 1. If using lookup:</span>
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">lcs</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">lookup_constraint_system</span> {
             <span class="comment">// if using runtime table</span>
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">cfg_runtime_tables</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">lcs</span>.<span class="ident">configuration</span>.<span class="ident">runtime_tables</span> {
@@ -1676,9 +1680,9 @@
                 <span class="ident">lookup_context</span>.<span class="ident">runtime_second_col_d8</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">second_column_d8</span>);
             }
 
-            <span class="comment">//~     - If queries involve a lookup table with multiple columns</span>
-            <span class="comment">//~     then squeeze the Fq-Sponge to obtain the joint combiner challenge $j&#39;$,</span>
-            <span class="comment">//~     otherwise set the joint combiner challenge $j&#39;$ to $0$.</span>
+            <span class="comment">//~~ - If queries involve a lookup table with multiple columns</span>
+            <span class="comment">//~~   then squeeze the Fq-Sponge to obtain the joint combiner challenge $j&#39;$,</span>
+            <span class="comment">//~~   otherwise set the joint combiner challenge $j&#39;$ to $0$.</span>
             <span class="kw">let</span> <span class="ident">joint_lookup_used</span> <span class="op">=</span> <span class="macro">matches!</span>(<span class="ident">lcs</span>.<span class="ident">configuration</span>.<span class="ident">lookup_used</span>, <span class="ident">LookupsUsed::Joint</span>);
 
             <span class="kw">let</span> <span class="ident">joint_combiner</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">joint_lookup_used</span> {
@@ -1687,13 +1691,13 @@
                 <span class="ident">ScalarField</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::zero</span>()
             };
 
-            <span class="comment">//~     - Derive the scalar joint combiner $j$ from $j&#39;$ using the endomorphism (TOOD: specify)</span>
+            <span class="comment">//~~ - Derive the scalar joint combiner $j$ from $j&#39;$ using the endomorphism (TOOD: specify)</span>
             <span class="kw">let</span> <span class="ident">joint_combiner</span>: <span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> <span class="op">=</span>
                 <span class="ident">ScalarChallenge</span>(<span class="ident">joint_combiner</span>).<span class="ident">to_field</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">endo_r</span>);
 
-            <span class="comment">//~     - If multiple lookup tables are involved,</span>
-            <span class="comment">//~      set the `table_id_combiner` as the $j^i$ with $i$ the maximum width of any used table.</span>
-            <span class="comment">//~      Essentially, this is to add a last column of table ids to the concatenated lookup tables.</span>
+            <span class="comment">//~~ - If multiple lookup tables are involved,</span>
+            <span class="comment">//~~   set the `table_id_combiner` as the $j^i$ with $i$ the maximum width of any used table.</span>
+            <span class="comment">//~~   Essentially, this is to add a last column of table ids to the concatenated lookup tables.</span>
             <span class="kw">let</span> <span class="ident">table_id_combiner</span>: <span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">lcs</span>.<span class="ident">table_ids8</span>.<span class="ident">as_ref</span>().<span class="ident">is_some</span>() {
                 <span class="ident">joint_combiner</span>.<span class="ident">pow</span>([<span class="ident">lcs</span>.<span class="ident">configuration</span>.<span class="ident">max_joint_size</span> <span class="kw">as</span> <span class="ident">u64</span>])
             } <span class="kw">else</span> {
@@ -1702,15 +1706,15 @@
             };
             <span class="ident">lookup_context</span>.<span class="ident">table_id_combiner</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">table_id_combiner</span>);
 
-            <span class="comment">//~     - Compute the dummy lookup value as the combination of the last entry of the XOR table (so `(0, 0, 0)`).</span>
-            <span class="comment">//~      Warning: This assumes that we always use the XOR table when using lookups.</span>
+            <span class="comment">//~~ - Compute the dummy lookup value as the combination of the last entry of the XOR table (so `(0, 0, 0)`).</span>
+            <span class="comment">//~~   Warning: This assumes that we always use the XOR table when using lookups.</span>
             <span class="kw">let</span> <span class="ident">dummy_lookup_value</span> <span class="op">=</span> <span class="ident">lcs</span>
                 .<span class="ident">configuration</span>
                 .<span class="ident">dummy_lookup</span>
                 .<span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="ident">joint_combiner</span>, <span class="kw-2">&amp;</span><span class="ident">table_id_combiner</span>);
             <span class="ident">lookup_context</span>.<span class="ident">dummy_lookup_value</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">dummy_lookup_value</span>);
 
-            <span class="comment">//~     - Compute the lookup table values as the combination of the lookup table entries.</span>
+            <span class="comment">//~~ - Compute the lookup table values as the combination of the lookup table entries.</span>
             <span class="kw">let</span> <span class="ident">joint_lookup_table_d8</span> <span class="op">=</span> {
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">evals</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">d1_size</span>);
 
@@ -1761,7 +1765,7 @@
 
             <span class="kw">let</span> <span class="ident">joint_lookup_table</span> <span class="op">=</span> <span class="ident">joint_lookup_table_d8</span>.<span class="ident">interpolate_by_ref</span>();
 
-            <span class="comment">//~      - Compute the sorted evaluations.</span>
+            <span class="comment">//~~ - Compute the sorted evaluations.</span>
             <span class="comment">// TODO: Once we switch to committing using lagrange commitments,</span>
             <span class="comment">// `witness` will be consumed when we interpolate, so interpolation will</span>
             <span class="comment">// have to moved below this.</span>
@@ -1775,14 +1779,14 @@
                 <span class="ident">table_id_combiner</span>,
             )<span class="question-mark">?</span>;
 
-            <span class="comment">//~      - Randomize the last `EVALS` rows in each of the sorted polynomials</span>
-            <span class="comment">//~       in order to add zero-knowledge to the protocol.</span>
+            <span class="comment">//~~ - Randomize the last `EVALS` rows in each of the sorted polynomials</span>
+            <span class="comment">//~~   in order to add zero-knowledge to the protocol.</span>
             <span class="kw">let</span> <span class="ident">sorted</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">sorted</span>
                 .<span class="ident">into_iter</span>()
                 .<span class="ident">map</span>(<span class="op">|</span><span class="ident">chunk</span><span class="op">|</span> <span class="ident">lookup::constraints::zk_patch</span>(<span class="ident">chunk</span>, <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>, <span class="ident">rng</span>))
                 .<span class="ident">collect</span>();
 
-            <span class="comment">//~      - Commit each of the sorted polynomials.</span>
+            <span class="comment">//~~ - Commit each of the sorted polynomials.</span>
             <span class="kw">let</span> <span class="ident">sorted_comms</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">sorted</span>
                 .<span class="ident">iter</span>()
                 .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> {
@@ -1792,7 +1796,7 @@
                 })
                 .<span class="ident">collect</span>();
 
-            <span class="comment">//~      - Absorb each commitments to the sorted polynomials.</span>
+            <span class="comment">//~~ - Absorb each commitments to the sorted polynomials.</span>
             <span class="ident">sorted_comms</span>
                 .<span class="ident">iter</span>()
                 .<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">fq_sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span><span class="ident">c</span>.<span class="number">0</span>.<span class="ident">unshifted</span>));
@@ -1814,15 +1818,15 @@
             <span class="ident">lookup_context</span>.<span class="ident">joint_lookup_table</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">joint_lookup_table</span>);
         }
 
-        <span class="comment">//~ 11. Sample $\beta$ with the Fq-Sponge.</span>
+        <span class="comment">//~ 1. Sample $\beta$ with the Fq-Sponge.</span>
         <span class="kw">let</span> <span class="ident">beta</span> <span class="op">=</span> <span class="ident">fq_sponge</span>.<span class="ident">challenge</span>();
 
-        <span class="comment">//~ 12. Sample $\gamma$ with the Fq-Sponge.</span>
+        <span class="comment">//~ 1. Sample $\gamma$ with the Fq-Sponge.</span>
         <span class="kw">let</span> <span class="ident">gamma</span> <span class="op">=</span> <span class="ident">fq_sponge</span>.<span class="ident">challenge</span>();
 
-        <span class="comment">//~ 13. If using lookup:</span>
+        <span class="comment">//~ 1. If using lookup:</span>
         <span class="kw">if</span> <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">lookup_constraint_system</span>.<span class="ident">is_some</span>() {
-            <span class="comment">//~     - Compute the lookup aggregation polynomial.</span>
+            <span class="comment">//~~ - Compute the lookup aggregation polynomial.</span>
             <span class="kw">let</span> <span class="ident">joint_lookup_table_d8</span> <span class="op">=</span> <span class="ident">lookup_context</span>.<span class="ident">joint_lookup_table_d8</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>();
 
             <span class="kw">let</span> <span class="ident">aggreg</span> <span class="op">=</span> <span class="ident">lookup::constraints::aggregation</span>::<span class="op">&lt;</span><span class="kw">_</span>, <span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>(
@@ -1839,12 +1843,12 @@
                 <span class="ident">rng</span>,
             )<span class="question-mark">?</span>;
 
-            <span class="comment">//~     - Commit to the aggregation polynomial.</span>
+            <span class="comment">//~~ - Commit to the aggregation polynomial.</span>
             <span class="kw">let</span> <span class="ident">aggreg_comm</span> <span class="op">=</span> <span class="ident">index</span>
                 .<span class="ident">srs</span>
                 .<span class="ident">commit_evaluations</span>(<span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>, <span class="kw-2">&amp;</span><span class="ident">aggreg</span>, <span class="prelude-val">None</span>, <span class="ident">rng</span>);
 
-            <span class="comment">//~     - Absorb the commitment to the aggregation polynomial with the Fq-Sponge.</span>
+            <span class="comment">//~~ - Absorb the commitment to the aggregation polynomial with the Fq-Sponge.</span>
             <span class="ident">fq_sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span><span class="ident">aggreg_comm</span>.<span class="number">0</span>.<span class="ident">unshifted</span>);
 
             <span class="comment">// precompute different forms of the aggregation polynomial for later</span>
@@ -1858,33 +1862,33 @@
             <span class="ident">lookup_context</span>.<span class="ident">aggreg8</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">aggreg8</span>);
         }
 
-        <span class="comment">//~ 14. Compute the permutation aggregation polynomial $z$.</span>
+        <span class="comment">//~ 1. Compute the permutation aggregation polynomial $z$.</span>
         <span class="kw">let</span> <span class="ident">z_poly</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">perm_aggreg</span>(<span class="kw-2">&amp;</span><span class="ident">witness</span>, <span class="kw-2">&amp;</span><span class="ident">beta</span>, <span class="kw-2">&amp;</span><span class="ident">gamma</span>, <span class="ident">rng</span>)<span class="question-mark">?</span>;
 
-        <span class="comment">//~ 15. Commit (hidding) to the permutation aggregation polynomial $z$.</span>
+        <span class="comment">//~ 1. Commit (hidding) to the permutation aggregation polynomial $z$.</span>
         <span class="kw">let</span> <span class="ident">z_comm</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">commit</span>(<span class="kw-2">&amp;</span><span class="ident">z_poly</span>, <span class="prelude-val">None</span>, <span class="ident">rng</span>);
 
-        <span class="comment">//~ 16. Absorb the permutation aggregation polynomial $z$ with the Fq-Sponge.</span>
+        <span class="comment">//~ 1. Absorb the permutation aggregation polynomial $z$ with the Fq-Sponge.</span>
         <span class="ident">fq_sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span><span class="ident">z_comm</span>.<span class="number">0</span>.<span class="ident">unshifted</span>);
 
-        <span class="comment">//~ 17. Sample $\alpha&#39;$ with the Fq-Sponge.</span>
+        <span class="comment">//~ 1. Sample $\alpha&#39;$ with the Fq-Sponge.</span>
         <span class="kw">let</span> <span class="ident">alpha_chal</span> <span class="op">=</span> <span class="ident">ScalarChallenge</span>(<span class="ident">fq_sponge</span>.<span class="ident">challenge</span>());
 
-        <span class="comment">//~ 18. Derive $\alpha$ from $\alpha&#39;$ using the endomorphism (TODO: details)</span>
+        <span class="comment">//~ 1. Derive $\alpha$ from $\alpha&#39;$ using the endomorphism (TODO: details)</span>
         <span class="kw">let</span> <span class="ident">alpha</span>: <span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">alpha_chal</span>.<span class="ident">to_field</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">endo_r</span>);
 
-        <span class="comment">//~ 19. TODO: instantiate alpha?</span>
+        <span class="comment">//~ 1. TODO: instantiate alpha?</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">all_alphas</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">powers_of_alpha</span>.<span class="ident">clone</span>();
         <span class="ident">all_alphas</span>.<span class="ident">instantiate</span>(<span class="ident">alpha</span>);
 
-        <span class="comment">//~ 20. Compute the quotient polynomial (the $t$ in $f = Z_H \cdot t$).</span>
-        <span class="comment">//~     The quotient polynomial is computed by adding all these polynomials together:</span>
-        <span class="comment">//~     - the combined constraints for all the gates</span>
-        <span class="comment">//~     - the combined constraints for the permutation</span>
-        <span class="comment">//~     - TODO: lookup</span>
-        <span class="comment">//~     - the negated public polynomial</span>
-        <span class="comment">//~     and by then dividing the resulting polynomial with the vanishing polynomial $Z_H$.</span>
-        <span class="comment">//~     TODO: specify the split of the permutation polynomial into perm and bnd?</span>
+        <span class="comment">//~ 1. Compute the quotient polynomial (the $t$ in $f = Z_H \cdot t$).</span>
+        <span class="comment">//~    The quotient polynomial is computed by adding all these polynomials together:</span>
+        <span class="comment">//~~ - the combined constraints for all the gates</span>
+        <span class="comment">//~~ - the combined constraints for the permutation</span>
+        <span class="comment">//~~ - TODO: lookup</span>
+        <span class="comment">//~~ - the negated public polynomial</span>
+        <span class="comment">//~    and by then dividing the resulting polynomial with the vanishing polynomial $Z_H$.</span>
+        <span class="comment">//~    TODO: specify the split of the permutation polynomial into perm and bnd?</span>
         <span class="kw">let</span> <span class="ident">lookup_env</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">lcs</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">lookup_constraint_system</span> {
             <span class="kw">let</span> <span class="ident">joint_lookup_table_d8</span> <span class="op">=</span> <span class="ident">lookup_context</span>.<span class="ident">joint_lookup_table_d8</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>();
 
@@ -2114,8 +2118,8 @@
             <span class="ident">quotient</span>
         };
 
-        <span class="comment">//~ 21. commit (hiding) to the quotient polynomial $t$</span>
-        <span class="comment">//~     TODO: specify the dummies</span>
+        <span class="comment">//~ 1. commit (hiding) to the quotient polynomial $t$</span>
+        <span class="comment">//~    TODO: specify the dummies</span>
         <span class="kw">let</span> <span class="ident">t_comm</span> <span class="op">=</span> {
             <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">t_comm</span>, <span class="kw-2">mut</span> <span class="ident">omega_t</span>) <span class="op">=</span> <span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">commit</span>(<span class="kw-2">&amp;</span><span class="ident">quotient_poly</span>, <span class="prelude-val">None</span>, <span class="ident">rng</span>);
 
@@ -2133,28 +2137,28 @@
             (<span class="ident">t_comm</span>, <span class="ident">omega_t</span>)
         };
 
-        <span class="comment">//~ 22. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.</span>
+        <span class="comment">//~ 1. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.</span>
         <span class="ident">fq_sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span><span class="ident">t_comm</span>.<span class="number">0</span>.<span class="ident">unshifted</span>);
 
-        <span class="comment">//~ 23. Sample $\zeta&#39;$ with the Fq-Sponge.</span>
+        <span class="comment">//~ 1. Sample $\zeta&#39;$ with the Fq-Sponge.</span>
         <span class="kw">let</span> <span class="ident">zeta_chal</span> <span class="op">=</span> <span class="ident">ScalarChallenge</span>(<span class="ident">fq_sponge</span>.<span class="ident">challenge</span>());
 
-        <span class="comment">//~ 24. Derive $\zeta$ from $\zeta&#39;$ using the endomorphism (TODO: specify)</span>
+        <span class="comment">//~ 1. Derive $\zeta$ from $\zeta&#39;$ using the endomorphism (TODO: specify)</span>
         <span class="kw">let</span> <span class="ident">zeta</span> <span class="op">=</span> <span class="ident">zeta_chal</span>.<span class="ident">to_field</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">endo_r</span>);
 
         <span class="kw">let</span> <span class="ident">omega</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">group_gen</span>;
         <span class="kw">let</span> <span class="ident">zeta_omega</span> <span class="op">=</span> <span class="ident">zeta</span> <span class="op">*</span> <span class="ident">omega</span>;
 
-        <span class="comment">//~ 25. If lookup is used, evaluate the following polynomials at $\zeta$ and $\zeta \omega$:</span>
+        <span class="comment">//~ 1. If lookup is used, evaluate the following polynomials at $\zeta$ and $\zeta \omega$:</span>
         <span class="kw">if</span> <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">lookup_constraint_system</span>.<span class="ident">is_some</span>() {
-            <span class="comment">//~     - the aggregation polynomial</span>
+            <span class="comment">//~~ - the aggregation polynomial</span>
             <span class="kw">let</span> <span class="ident">aggreg</span> <span class="op">=</span> <span class="ident">lookup_context</span>
                 .<span class="ident">aggreg_coeffs</span>
                 .<span class="ident">as_ref</span>()
                 .<span class="ident">unwrap</span>()
                 .<span class="ident">to_chunked_polynomial</span>(<span class="ident">index</span>.<span class="ident">max_poly_size</span>);
 
-            <span class="comment">//~     - the sorted polynomials</span>
+            <span class="comment">//~~ - the sorted polynomials</span>
             <span class="kw">let</span> <span class="ident">sorted</span> <span class="op">=</span> <span class="ident">lookup_context</span>
                 .<span class="ident">sorted_coeffs</span>
                 .<span class="ident">as_ref</span>()
@@ -2162,7 +2166,7 @@
                 .<span class="ident">iter</span>()
                 .<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">c</span>.<span class="ident">to_chunked_polynomial</span>(<span class="ident">index</span>.<span class="ident">max_poly_size</span>));
 
-            <span class="comment">// ~     - the table polynonial</span>
+            <span class="comment">//~~ - the table polynonial</span>
             <span class="kw">let</span> <span class="ident">joint_table</span> <span class="op">=</span> <span class="ident">lookup_context</span>.<span class="ident">joint_lookup_table</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>();
             <span class="kw">let</span> <span class="ident">joint_table</span> <span class="op">=</span> <span class="ident">joint_table</span>.<span class="ident">to_chunked_polynomial</span>(<span class="ident">index</span>.<span class="ident">max_poly_size</span>);
 
@@ -2190,24 +2194,24 @@
             <span class="ident">lookup_context</span>.<span class="ident">eval_zeta_omega</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">lookup_evals</span>(<span class="ident">zeta_omega</span>));
         }
 
-        <span class="comment">//~ 26. Chunk evaluate the following polynomials at both $\zeta$ and $\zeta \omega$:</span>
-        <span class="comment">//~     * $s_i$</span>
-        <span class="comment">//~     * $w_i$</span>
-        <span class="comment">//~     * $z$</span>
-        <span class="comment">//~     * lookup (TODO)</span>
-        <span class="comment">//~     * generic selector</span>
-        <span class="comment">//~     * poseidon selector</span>
+        <span class="comment">//~ 1. Chunk evaluate the following polynomials at both $\zeta$ and $\zeta \omega$:</span>
+        <span class="comment">//~~ - $s_i$</span>
+        <span class="comment">//~~ - $w_i$</span>
+        <span class="comment">//~~ - $z$</span>
+        <span class="comment">//~~ - lookup (TODO)</span>
+        <span class="comment">//~~ - generic selector</span>
+        <span class="comment">//~~ - poseidon selector</span>
         <span class="comment">//~</span>
-        <span class="comment">//~     By &quot;chunk evaluate&quot; we mean that the evaluation of each polynomial can potentially be a vector of values.</span>
-        <span class="comment">//~     This is because the index&#39;s `max_poly_size` parameter dictates the maximum size of a polynomial in the protocol.</span>
-        <span class="comment">//~     If a polynomial $f$ exceeds this size, it must be split into several polynomials like so:</span>
-        <span class="comment">//~     $$f(x) = f_0(x) + x^n f_1(x) + x^{2n} f_2(x) + \cdots$$</span>
+        <span class="comment">//~    By &quot;chunk evaluate&quot; we mean that the evaluation of each polynomial can potentially be a vector of values.</span>
+        <span class="comment">//~    This is because the index&#39;s `max_poly_size` parameter dictates the maximum size of a polynomial in the protocol.</span>
+        <span class="comment">//~    If a polynomial $f$ exceeds this size, it must be split into several polynomials like so:</span>
+        <span class="comment">//~    $$f(x) = f_0(x) + x^n f_1(x) + x^{2n} f_2(x) + \cdots$$</span>
         <span class="comment">//~</span>
-        <span class="comment">//~     And the evaluation of such a polynomial is the following list for $x \in {\zeta, \zeta\omega}$:</span>
+        <span class="comment">//~    And the evaluation of such a polynomial is the following list for $x \in {\zeta, \zeta\omega}$:</span>
         <span class="comment">//~</span>
-        <span class="comment">//~     $$(f_0(x), f_1(x), f_2(x), \ldots)$$</span>
+        <span class="comment">//~    $$(f_0(x), f_1(x), f_2(x), \ldots)$$</span>
         <span class="comment">//~</span>
-        <span class="comment">//~      TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)</span>
+        <span class="comment">//~    TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)</span>
         <span class="kw">let</span> <span class="ident">chunked_evals</span> <span class="op">=</span> {
             <span class="kw">let</span> <span class="ident">chunked_evals_zeta</span> <span class="op">=</span> <span class="ident">ProofEvaluations</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> {
                 <span class="ident">s</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
@@ -2278,8 +2282,8 @@
         <span class="kw">let</span> <span class="ident">zeta_omega_to_srs_len</span> <span class="op">=</span> <span class="ident">zeta</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="ident">index</span>.<span class="ident">max_poly_size</span> <span class="kw">as</span> <span class="ident">u64</span>]);
         <span class="kw">let</span> <span class="ident">zeta_to_domain_size</span> <span class="op">=</span> <span class="ident">zeta</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="ident">d1_size</span> <span class="kw">as</span> <span class="ident">u64</span>]);
 
-        <span class="comment">//~ 27. Evaluate the same polynomials without chunking them</span>
-        <span class="comment">//~     (so that each polynomial should correspond to a single value this time).</span>
+        <span class="comment">//~ 1. Evaluate the same polynomials without chunking them</span>
+        <span class="comment">//~    (so that each polynomial should correspond to a single value this time).</span>
         <span class="kw">let</span> <span class="ident">evals</span> <span class="op">=</span> {
             <span class="kw">let</span> <span class="ident">power_of_eval_points_for_chunks</span> <span class="op">=</span> [<span class="ident">zeta_to_srs_len</span>, <span class="ident">zeta_omega_to_srs_len</span>];
             <span class="kw-2">&amp;</span><span class="ident">chunked_evals</span>
@@ -2308,8 +2312,8 @@
                 .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>()
         };
 
-        <span class="comment">//~ 28. Compute the ft polynomial.</span>
-        <span class="comment">//~     This is to implement [Maller&#39;s optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html).</span>
+        <span class="comment">//~ 1. Compute the ft polynomial.</span>
+        <span class="comment">//~    This is to implement [Maller&#39;s optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html).</span>
         <span class="kw">let</span> <span class="ident">ft</span>: <span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> {
             <span class="kw">let</span> <span class="ident">f_chunked</span> <span class="op">=</span> {
                 <span class="comment">// TODO: compute the linearization polynomial in evaluation form so</span>
@@ -2349,8 +2353,8 @@
             <span class="kw-2">&amp;</span><span class="ident">f_chunked</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">t_chunked</span>.<span class="ident">scale</span>(<span class="ident">zeta_to_domain_size</span> <span class="op">-</span> <span class="ident">ScalarField</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::one</span>())
         };
 
-        <span class="comment">//~ 29. construct the blinding part of the ft polynomial commitment</span>
-        <span class="comment">//~     see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#evaluation-proof-and-blinding-factors</span>
+        <span class="comment">//~ 1. construct the blinding part of the ft polynomial commitment</span>
+        <span class="comment">//~    see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#evaluation-proof-and-blinding-factors</span>
         <span class="kw">let</span> <span class="ident">blinding_ft</span> <span class="op">=</span> {
             <span class="kw">let</span> <span class="ident">blinding_t</span> <span class="op">=</span> <span class="ident">t_comm</span>.<span class="number">1</span>.<span class="ident">chunk_blinding</span>(<span class="ident">zeta_to_srs_len</span>);
             <span class="kw">let</span> <span class="ident">blinding_f</span> <span class="op">=</span> <span class="ident">ScalarField</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::zero</span>();
@@ -2364,17 +2368,17 @@
             }
         };
 
-        <span class="comment">//~ 30. Evaluate the ft polynomial at $\zeta\omega$ only.</span>
+        <span class="comment">//~ 1. Evaluate the ft polynomial at $\zeta\omega$ only.</span>
         <span class="kw">let</span> <span class="ident">ft_eval1</span> <span class="op">=</span> <span class="ident">ft</span>.<span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="ident">zeta_omega</span>);
 
-        <span class="comment">//~ 31. Setup the Fr-Sponge</span>
+        <span class="comment">//~ 1. Setup the Fr-Sponge</span>
         <span class="kw">let</span> <span class="ident">fq_sponge_before_evaluations</span> <span class="op">=</span> <span class="ident">fq_sponge</span>.<span class="ident">clone</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">fr_sponge</span> <span class="op">=</span> <span class="ident">EFrSponge::new</span>(<span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">fr_sponge_params</span>.<span class="ident">clone</span>());
 
-        <span class="comment">//~ 32. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.</span>
+        <span class="comment">//~ 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.</span>
         <span class="ident">fr_sponge</span>.<span class="ident">absorb</span>(<span class="kw-2">&amp;</span><span class="ident">fq_sponge</span>.<span class="ident">digest</span>());
 
-        <span class="comment">//~ 33. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.</span>
+        <span class="comment">//~ 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.</span>
         <span class="kw">let</span> <span class="ident">public_evals</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">public_poly</span>.<span class="ident">is_zero</span>() {
             [<span class="ident">Vec::new</span>(), <span class="ident">Vec::new</span>()]
         } <span class="kw">else</span> {
@@ -2384,35 +2388,35 @@
             ]
         };
 
-        <span class="comment">//~ 34. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:</span>
-        <span class="comment">//~     - the public polynomial</span>
-        <span class="comment">//~     - z</span>
-        <span class="comment">//~     - generic selector</span>
-        <span class="comment">//~     - poseidon selector</span>
-        <span class="comment">//~     - the 15 register/witness</span>
-        <span class="comment">//~     - 6 sigmas evaluations (the last one is not evaluated)</span>
+        <span class="comment">//~ 1. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:</span>
+        <span class="comment">//~~ - the public polynomial</span>
+        <span class="comment">//~~ - z</span>
+        <span class="comment">//~~ - generic selector</span>
+        <span class="comment">//~~ - poseidon selector</span>
+        <span class="comment">//~~ - the 15 register/witness</span>
+        <span class="comment">//~~ - 6 sigmas evaluations (the last one is not evaluated)</span>
         <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">2</span> {
             <span class="ident">fr_sponge</span>.<span class="ident">absorb_evaluations</span>(<span class="kw-2">&amp;</span><span class="ident">public_evals</span>[<span class="ident">i</span>], <span class="kw-2">&amp;</span><span class="ident">chunked_evals</span>[<span class="ident">i</span>])
         }
 
-        <span class="comment">//~ 35. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.</span>
+        <span class="comment">//~ 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.</span>
         <span class="ident">fr_sponge</span>.<span class="ident">absorb</span>(<span class="kw-2">&amp;</span><span class="ident">ft_eval1</span>);
 
-        <span class="comment">//~ 36. Sample $v&#39;$ with the Fr-Sponge</span>
+        <span class="comment">//~ 1. Sample $v&#39;$ with the Fr-Sponge</span>
         <span class="kw">let</span> <span class="ident">v_chal</span> <span class="op">=</span> <span class="ident">fr_sponge</span>.<span class="ident">challenge</span>();
 
-        <span class="comment">//~ 37. Derive $v$ from $v&#39;$ using the endomorphism (TODO: specify)</span>
+        <span class="comment">//~ 1. Derive $v$ from $v&#39;$ using the endomorphism (TODO: specify)</span>
         <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="ident">v_chal</span>.<span class="ident">to_field</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">endo_r</span>);
 
-        <span class="comment">//~ 38. Sample $u&#39;$ with the Fr-Sponge</span>
+        <span class="comment">//~ 1. Sample $u&#39;$ with the Fr-Sponge</span>
         <span class="kw">let</span> <span class="ident">u_chal</span> <span class="op">=</span> <span class="ident">fr_sponge</span>.<span class="ident">challenge</span>();
 
-        <span class="comment">//~ 39. Derive $u$ from $u&#39;$ using the endomorphism (TODO: specify)</span>
+        <span class="comment">//~ 1. Derive $u$ from $u&#39;$ using the endomorphism (TODO: specify)</span>
         <span class="kw">let</span> <span class="ident">u</span> <span class="op">=</span> <span class="ident">u_chal</span>.<span class="ident">to_field</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">endo_r</span>);
 
-        <span class="comment">//~ 40. Create a list of all polynomials that will require evaluations</span>
-        <span class="comment">//~     (and evaluation proofs) in the protocol.</span>
-        <span class="comment">//~     First, include the previous challenges, in case we are in a recursive prover.</span>
+        <span class="comment">//~ 1. Create a list of all polynomials that will require evaluations</span>
+        <span class="comment">//~    (and evaluation proofs) in the protocol.</span>
+        <span class="comment">//~    First, include the previous challenges, in case we are in a recursive prover.</span>
         <span class="kw">let</span> <span class="ident">non_hiding</span> <span class="op">=</span> <span class="op">|</span><span class="ident">d1_size</span>: <span class="ident">usize</span><span class="op">|</span> <span class="ident">PolyComm</span> {
             <span class="ident">unshifted</span>: <span class="macro">vec!</span>[<span class="ident">ScalarField</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::zero</span>(); <span class="ident">d1_size</span>],
             <span class="ident">shifted</span>: <span class="prelude-val">None</span>,
@@ -2433,15 +2437,15 @@
             .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">p</span>, <span class="ident">d1_size</span>)<span class="op">|</span> (<span class="ident">p</span>, <span class="prelude-val">None</span>, <span class="ident">non_hiding</span>(<span class="kw-2">*</span><span class="ident">d1_size</span>)))
             .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>();
 
-        <span class="comment">//~ 41. Then, include:</span>
-        <span class="comment">//~     - the negated public polynomial</span>
-        <span class="comment">//~     - the ft polynomial</span>
-        <span class="comment">//~     - the permutation aggregation polynomial z polynomial</span>
-        <span class="comment">//~     - the generic selector</span>
-        <span class="comment">//~     - the poseidon selector</span>
-        <span class="comment">//~     - the 15 registers/witness columns</span>
-        <span class="comment">//~     - the 6 sigmas</span>
-        <span class="comment">//~     - optionally, the runtime table</span>
+        <span class="comment">//~ 1. Then, include:</span>
+        <span class="comment">//~~ - the negated public polynomial</span>
+        <span class="comment">//~~ - the ft polynomial</span>
+        <span class="comment">//~~ - the permutation aggregation polynomial z polynomial</span>
+        <span class="comment">//~~ - the generic selector</span>
+        <span class="comment">//~~ - the poseidon selector</span>
+        <span class="comment">//~~ - the 15 registers/witness columns</span>
+        <span class="comment">//~~ - the 6 sigmas</span>
+        <span class="comment">//~~ - optionally, the runtime table</span>
         <span class="ident">polynomials</span>.<span class="ident">extend</span>(<span class="macro">vec!</span>[(<span class="kw-2">&amp;</span><span class="ident">public_poly</span>, <span class="prelude-val">None</span>, <span class="ident">non_hiding</span>(<span class="number">1</span>))]);
         <span class="ident">polynomials</span>.<span class="ident">extend</span>(<span class="macro">vec!</span>[(<span class="kw-2">&amp;</span><span class="ident">ft</span>, <span class="prelude-val">None</span>, <span class="ident">blinding_ft</span>)]);
         <span class="ident">polynomials</span>.<span class="ident">extend</span>(<span class="macro">vec!</span>[(<span class="kw-2">&amp;</span><span class="ident">z_poly</span>, <span class="prelude-val">None</span>, <span class="ident">z_comm</span>.<span class="number">1</span>)]);
@@ -2505,7 +2509,7 @@
             }
         }
 
-        <span class="comment">//~ 42. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.</span>
+        <span class="comment">//~ 1. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.</span>
         <span class="kw">let</span> <span class="ident">proof</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">open</span>(
             <span class="ident">group_map</span>,
             <span class="kw-2">&amp;</span><span class="ident">polynomials</span>,
@@ -2736,5 +2740,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (4cbaac699 2022-05-25)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (ebbcbfc23 2022-05-27)" ></div>
 </body></html>

@@ -4554,14 +4554,14 @@ and <span class="katex"><span class="katex-html" aria-hidden="true"><span class=
 <p>Commit (non-hiding) to the negated public input polynomial.</p>
 </li>
 <li>
-<p>Absorb the commitment to the public polynomial with the Fq-Sponge.
-Note: unlike the original PLONK protocol,
+<p>Absorb the commitment to the public polynomial with the Fq-Sponge.</p>
+<p>Note: unlike the original PLONK protocol,
 the prover also provides evaluations of the public polynomial to help the verifier circuit.
 This is why we need to absorb the commitment to the public polynomial at this point.</p>
 </li>
 <li>
-<p>Commit to the witness columns by creating <code>COLUMNS</code> hidding commitments.
-Note: since the witness is in evaluation form,
+<p>Commit to the witness columns by creating <code>COLUMNS</code> hidding commitments.</p>
+<p>Note: since the witness is in evaluation form,
 we can use the <code>commit_evaluation</code> optimization.</p>
 </li>
 <li>
@@ -4653,6 +4653,7 @@ TODO: specify the dummies</p>
 <ul>
 <li>the aggregation polynomial</li>
 <li>the sorted polynomials</li>
+<li>the table polynonial</li>
 </ul>
 </li>
 <li>
@@ -4751,10 +4752,17 @@ First, include the previous challenges, in case we are in a recursive prover.</p
 <h4 id="fiat-shamir-argument"><a class="header" href="#fiat-shamir-argument">Fiat-Shamir argument</a></h4>
 <p>We run the following algorithm:</p>
 <ol>
-<li>Setup the Fq-Sponge.</li>
-<li>Absorb the commitment of the public input polynomial with the Fq-Sponge.</li>
-<li>Absorb the commitments to the registers / witness columns with the Fq-Sponge.</li>
-<li>If lookup is used:
+<li>
+<p>Setup the Fq-Sponge.</p>
+</li>
+<li>
+<p>Absorb the commitment of the public input polynomial with the Fq-Sponge.</p>
+</li>
+<li>
+<p>Absorb the commitments to the registers / witness columns with the Fq-Sponge.</p>
+</li>
+<li>
+<p>If lookup is used:</p>
 <ul>
 <li>If it involves queries to a multiple-column lookup table,
 then squeeze the Fq-Sponge to obtain the joint combiner challenge <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.946332em;vertical-align:-0.19444em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.05724em;">j</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span>,
@@ -4764,21 +4772,48 @@ otherwise set the joint combiner challenge <span class="katex"><span class="kate
 <li>absorb the commitments to the sorted polynomials.</li>
 </ul>
 </li>
-<li>Sample <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.05278em;">β</span></span></span></span> with the Fq-Sponge.</li>
-<li>Sample <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.625em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.05556em;">γ</span></span></span></span> with the Fq-Sponge.</li>
-<li>If using lookup, absorb the commitment to the aggregation lookup polynomial.</li>
-<li>Absorb the commitment to the permutation trace with the Fq-Sponge.</li>
-<li>Sample <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.751892em;vertical-align:0em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0037em;">α</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span> with the Fq-Sponge.</li>
-<li>Derive <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.43056em;vertical-align:0em;"></span><span class="mord mathnormal" style="margin-right:0.0037em;">α</span></span></span></span> from <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.751892em;vertical-align:0em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0037em;">α</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span> using the endomorphism (TODO: details).</li>
-<li>Enforce that the length of the <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.61508em;vertical-align:0em;"></span><span class="mord mathnormal">t</span></span></span></span> commitment is of size <code>PERMUTS</code>.</li>
-<li>Absorb the commitment to the quotient polynomial <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.61508em;vertical-align:0em;"></span><span class="mord mathnormal">t</span></span></span></span> into the argument.</li>
-<li>Sample <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.946332em;vertical-align:-0.19444em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span> with the Fq-Sponge.</li>
-<li>Derive <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span></span></span></span> from <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.946332em;vertical-align:-0.19444em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span> using the endomorphism (TODO: specify).</li>
-<li>Setup the Fr-Sponge.</li>
-<li>Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.</li>
-<li>Evaluate the negated public polynomial (if present) at <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span></span></span></span> and <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span><span class="mord mathnormal" style="margin-right:0.03588em;">ω</span></span></span></span>.
-NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.</li>
-<li>Absorb all the polynomial evaluations in <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span></span></span></span> and <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span><span class="mord mathnormal" style="margin-right:0.03588em;">ω</span></span></span></span>:
+<li>
+<p>Sample <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.05278em;">β</span></span></span></span> with the Fq-Sponge.</p>
+</li>
+<li>
+<p>Sample <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.625em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.05556em;">γ</span></span></span></span> with the Fq-Sponge.</p>
+</li>
+<li>
+<p>If using lookup, absorb the commitment to the aggregation lookup polynomial.</p>
+</li>
+<li>
+<p>Absorb the commitment to the permutation trace with the Fq-Sponge.</p>
+</li>
+<li>
+<p>Sample <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.751892em;vertical-align:0em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0037em;">α</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span> with the Fq-Sponge.</p>
+</li>
+<li>
+<p>Derive <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.43056em;vertical-align:0em;"></span><span class="mord mathnormal" style="margin-right:0.0037em;">α</span></span></span></span> from <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.751892em;vertical-align:0em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0037em;">α</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span> using the endomorphism (TODO: details).</p>
+</li>
+<li>
+<p>Enforce that the length of the <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.61508em;vertical-align:0em;"></span><span class="mord mathnormal">t</span></span></span></span> commitment is of size <code>PERMUTS</code>.</p>
+</li>
+<li>
+<p>Absorb the commitment to the quotient polynomial <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.61508em;vertical-align:0em;"></span><span class="mord mathnormal">t</span></span></span></span> into the argument.</p>
+</li>
+<li>
+<p>Sample <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.946332em;vertical-align:-0.19444em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span> with the Fq-Sponge.</p>
+</li>
+<li>
+<p>Derive <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span></span></span></span> from <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.946332em;vertical-align:-0.19444em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span> using the endomorphism (TODO: specify).</p>
+</li>
+<li>
+<p>Setup the Fr-Sponge.</p>
+</li>
+<li>
+<p>Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.</p>
+</li>
+<li>
+<p>Evaluate the negated public polynomial (if present) at <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span></span></span></span> and <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span><span class="mord mathnormal" style="margin-right:0.03588em;">ω</span></span></span></span>.</p>
+<p>NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.</p>
+</li>
+<li>
+<p>Absorb all the polynomial evaluations in <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span></span></span></span> and <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span><span class="mord mathnormal" style="margin-right:0.03588em;">ω</span></span></span></span>:</p>
 <ul>
 <li>the public polynomial</li>
 <li>z</li>
@@ -4788,13 +4823,27 @@ NOTE: this works only in the case when the poly segment size is not smaller than
 <li>6 sigmas evaluations (the last one is not evaluated)</li>
 </ul>
 </li>
-<li>Absorb the unique evaluation of ft: <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.10764em;">f</span><span class="mord mathnormal">t</span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span><span class="mord mathnormal" style="margin-right:0.03588em;">ω</span><span class="mclose">)</span></span></span></span>.</li>
-<li>Sample <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.751892em;vertical-align:0em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span> with the Fr-Sponge.</li>
-<li>Derive <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.43056em;vertical-align:0em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">v</span></span></span></span> from <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.751892em;vertical-align:0em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span> using the endomorphism (TODO: specify).</li>
-<li>Sample <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.751892em;vertical-align:0em;"></span><span class="mord"><span class="mord mathnormal">u</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span> with the Fr-Sponge.</li>
-<li>Derive <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.43056em;vertical-align:0em;"></span><span class="mord mathnormal">u</span></span></span></span> from <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.751892em;vertical-align:0em;"></span><span class="mord"><span class="mord mathnormal">u</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span> using the endomorphism (TODO: specify).</li>
-<li>Create a list of all polynomials that have an evaluation proof.</li>
-<li>Compute the evaluation of <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.10764em;">f</span><span class="mord mathnormal">t</span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span><span class="mclose">)</span></span></span></span>.</li>
+<li>
+<p>Absorb the unique evaluation of ft: <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.10764em;">f</span><span class="mord mathnormal">t</span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span><span class="mord mathnormal" style="margin-right:0.03588em;">ω</span><span class="mclose">)</span></span></span></span>.</p>
+</li>
+<li>
+<p>Sample <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.751892em;vertical-align:0em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span> with the Fr-Sponge.</p>
+</li>
+<li>
+<p>Derive <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.43056em;vertical-align:0em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">v</span></span></span></span> from <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.751892em;vertical-align:0em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span> using the endomorphism (TODO: specify).</p>
+</li>
+<li>
+<p>Sample <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.751892em;vertical-align:0em;"></span><span class="mord"><span class="mord mathnormal">u</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span> with the Fr-Sponge.</p>
+</li>
+<li>
+<p>Derive <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.43056em;vertical-align:0em;"></span><span class="mord mathnormal">u</span></span></span></span> from <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.751892em;vertical-align:0em;"></span><span class="mord"><span class="mord mathnormal">u</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span> using the endomorphism (TODO: specify).</p>
+</li>
+<li>
+<p>Create a list of all polynomials that have an evaluation proof.</p>
+</li>
+<li>
+<p>Compute the evaluation of <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.10764em;">f</span><span class="mord mathnormal">t</span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span><span class="mclose">)</span></span></span></span>.</p>
+</li>
 </ol>
 <h4 id="partial-verification"><a class="header" href="#partial-verification">Partial verification</a></h4>
 <p>For every proof we want to verify, we defer the proof opening to the very end.

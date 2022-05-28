@@ -578,12 +578,12 @@
                         }
                     }
 
-                    <span class="comment">//~       - Update the corresponding entries in a table id vector (of size the domain as well)</span>
-                    <span class="comment">//~         with the table ID of the table.</span>
+                    <span class="comment">//~~ - Update the corresponding entries in a table id vector (of size the domain as well)</span>
+                    <span class="comment">//~    with the table ID of the table.</span>
                     <span class="kw">let</span> <span class="ident">table_id</span>: <span class="ident">F</span> <span class="op">=</span> <span class="ident">i32_to_field</span>(<span class="ident">table</span>.<span class="ident">id</span>);
                     <span class="ident">table_ids</span>.<span class="ident">extend</span>(<span class="ident">repeat_n</span>(<span class="ident">table_id</span>, <span class="ident">table_len</span>));
 
-                    <span class="comment">//~       - Copy the entries from the table to new rows in the corresponding columns of the concatenated table.</span>
+                    <span class="comment">//~~ - Copy the entries from the table to new rows in the corresponding columns of the concatenated table.</span>
                     <span class="kw">for</span> (<span class="ident">i</span>, <span class="ident">col</span>) <span class="kw">in</span> <span class="ident">table</span>.<span class="ident">data</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
                         <span class="kw">if</span> <span class="ident">col</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">table_len</span> {
                             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">LookupError::InconsistentTableLength</span>);
@@ -591,7 +591,7 @@
                         <span class="ident">lookup_table</span>[<span class="ident">i</span>].<span class="ident">extend</span>(<span class="ident">col</span>);
                     }
 
-                    <span class="comment">//~       - Fill in any unused columns with 0 (to match the dummy value)</span>
+                    <span class="comment">//~~ - Fill in any unused columns with 0 (to match the dummy value)</span>
                     <span class="kw">for</span> <span class="ident">lookup_table</span> <span class="kw">in</span> <span class="ident">lookup_table</span>.<span class="ident">iter_mut</span>().<span class="ident">skip</span>(<span class="ident">table</span>.<span class="ident">data</span>.<span class="ident">len</span>()) {
                         <span class="ident">lookup_table</span>.<span class="ident">extend</span>(<span class="ident">repeat_n</span>(<span class="ident">F::zero</span>(), <span class="ident">table_len</span>))
                     }
@@ -672,5 +672,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (4cbaac699 2022-05-25)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (ebbcbfc23 2022-05-27)" ></div>
 </body></html>
