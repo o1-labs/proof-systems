@@ -263,6 +263,85 @@ impl<F: Copy> JointLookup<SingleLookup<F>, LookupTableID> {
     }
 }
 
+pub enum LookupPattern {
+    ChaCha,
+    ChaChaFinal,
+    LookupGate,
+}
+
+impl LookupPattern {
+    pub fn lookups<F: Field>(&self) -> Vec<JointLookupSpec<F>> {
+        let curr_row = |column| LocalPosition {
+            row: CurrOrNext::Curr,
+            column,
+        };
+        match self {
+            LookupPattern::ChaCha => {
+                (0..4)
+                    .map(|i| {
+                        // each row represents an XOR operation
+                        // where l XOR r = o
+                        //
+                        // 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
+                        // - - - l - - - r - - -  o  -  -  -
+                        // - - - - l - - - r - -  -  o  -  -
+                        // - - - - - l - - - r -  -  -  o  -
+                        // - - - - - - l - - - r  -  -  -  o
+                        let left = curr_row(3 + i);
+                        let right = curr_row(7 + i);
+                        let output = curr_row(11 + i);
+                        let l = |loc: LocalPosition| SingleLookup {
+                            value: vec![(F::one(), loc)],
+                        };
+                        JointLookup {
+                            table_id: LookupTableID::Constant(XOR_TABLE_ID),
+                            entry: vec![l(left), l(right), l(output)],
+                        }
+                    })
+                    .collect()
+            }
+            LookupPattern::ChaChaFinal => {
+                let one_half = F::from(2u64).inverse().unwrap();
+                let neg_one_half = -one_half;
+                (0..4)
+                    .map(|i| {
+                        let nybble = curr_row(1 + i);
+                        let low_bit = curr_row(5 + i);
+                        // Check
+                        // XOR((nybble - low_bit)/2, (nybble - low_bit)/2) = 0.
+                        let x = SingleLookup {
+                            value: vec![(one_half, nybble), (neg_one_half, low_bit)],
+                        };
+                        JointLookup {
+                            table_id: LookupTableID::Constant(XOR_TABLE_ID),
+                            entry: vec![x.clone(), x, SingleLookup { value: vec![] }],
+                        }
+                    })
+                    .collect()
+            }
+            LookupPattern::LookupGate => {
+                (0..3)
+                    .map(|i| {
+                        // 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
+                        // - i v - - - - - - - -  -  -  -  -
+                        // - - - i v - - - - - -  -  -  -  -
+                        // - - - - - i v - - - -  -  -  -  -
+                        let index = curr_row(2 * i + 1);
+                        let value = curr_row(2 * i + 2);
+                        let l = |loc: LocalPosition| SingleLookup {
+                            value: vec![(F::one(), loc)],
+                        };
+                        JointLookup {
+                            table_id: LookupTableID::WitnessColumn(0),
+                            entry: vec![l(index), l(value)],
+                        }
+                    })
+                    .collect()
+            }
+        }
+    }
+}
+
 impl GateType {
     /// Which lookup-patterns should be applied on which rows.
     /// Currently there is only the lookup pattern used in the ChaCha rows, and it
@@ -271,32 +350,7 @@ impl GateType {
     /// See circuits/kimchi/src/polynomials/chacha.rs for an explanation of
     /// how these work.
     pub fn lookup_kinds<F: Field>() -> (Vec<Vec<JointLookupSpec<F>>>, Vec<GatesLookupSpec>) {
-        let curr_row = |column| LocalPosition {
-            row: CurrOrNext::Curr,
-            column,
-        };
-        let chacha_pattern = (0..4)
-            .map(|i| {
-                // each row represents an XOR operation
-                // where l XOR r = o
-                //
-                // 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
-                // - - - l - - - r - - -  o  -  -  -
-                // - - - - l - - - r - -  -  o  -  -
-                // - - - - - l - - - r -  -  -  o  -
-                // - - - - - - l - - - r  -  -  -  o
-                let left = curr_row(3 + i);
-                let right = curr_row(7 + i);
-                let output = curr_row(11 + i);
-                let l = |loc: LocalPosition| SingleLookup {
-                    value: vec![(F::one(), loc)],
-                };
-                JointLookup {
-                    table_id: LookupTableID::Constant(XOR_TABLE_ID),
-                    entry: vec![l(left), l(right), l(output)],
-                }
-            })
-            .collect();
+        let chacha_pattern = LookupPattern::ChaCha.lookups();
 
         let mut chacha_where = HashSet::new();
         use CurrOrNext::*;
@@ -308,46 +362,14 @@ impl GateType {
             }
         }
 
-        let one_half = F::from(2u64).inverse().unwrap();
-        let neg_one_half = -one_half;
-        let chacha_final_pattern = (0..4)
-            .map(|i| {
-                let nybble = curr_row(1 + i);
-                let low_bit = curr_row(5 + i);
-                // Check
-                // XOR((nybble - low_bit)/2, (nybble - low_bit)/2) = 0.
-                let x = SingleLookup {
-                    value: vec![(one_half, nybble), (neg_one_half, low_bit)],
-                };
-                JointLookup {
-                    table_id: LookupTableID::Constant(XOR_TABLE_ID),
-                    entry: vec![x.clone(), x, SingleLookup { value: vec![] }],
-                }
-            })
-            .collect();
+        let chacha_final_pattern = LookupPattern::ChaChaFinal.lookups();
 
         let mut chacha_final_where = HashSet::new();
         for r in &[Curr, Next] {
             chacha_final_where.insert((ChaChaFinal, *r));
         }
 
-        let lookup_gate_pattern = (0..3)
-            .map(|i| {
-                // 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
-                // - i v - - - - - - - -  -  -  -  -
-                // - - - i v - - - - - -  -  -  -  -
-                // - - - - - i v - - - -  -  -  -  -
-                let index = curr_row(2 * i + 1);
-                let value = curr_row(2 * i + 2);
-                let l = |loc: LocalPosition| SingleLookup {
-                    value: vec![(F::one(), loc)],
-                };
-                JointLookup {
-                    table_id: LookupTableID::WitnessColumn(0),
-                    entry: vec![l(index), l(value)],
-                }
-            })
-            .collect();
+        let lookup_gate_pattern = LookupPattern::LookupGate.lookups();
         let lookup_gate_where = HashSet::from([(Lookup, Curr)]);
 
         let lookups = [
