@@ -38,9 +38,6 @@ pub struct LookupInfo {
     /// A map from the kind of gate (and whether it is the current row or next row) to the lookup
     /// constraint (given as an index into `kinds`) that should be applied there, if any.
     pub kinds_map: HashMap<(GateType, CurrOrNext), usize>,
-    /// A map from the kind of gate (and whether it is the current row or next row) to the lookup
-    /// table that is used by the gate, if any.
-    pub kinds_tables: HashMap<(GateType, CurrOrNext), GateLookupTable>,
     /// The maximum length of an element of `kinds`. This can be computed from `kinds`.
     pub max_per_row: usize,
     /// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
@@ -54,7 +51,7 @@ impl LookupInfo {
 
         let GatesLookupMaps {
             gate_selector_map: kinds_map,
-            gate_table_map: kinds_tables,
+            gate_table_map: _,
         } = GateType::lookup_kinds_map::<F>(locations_with_tables);
 
         let max_per_row = max_lookups_per_row(&kinds);
@@ -65,7 +62,6 @@ impl LookupInfo {
                 .fold(0, |acc, v| std::cmp::max(acc, v.max_joint_size())),
 
             kinds_map,
-            kinds_tables,
             kinds,
             max_per_row,
         }
@@ -112,11 +108,19 @@ impl LookupInfo {
                 selector_values[*selector_index][i + 1] = F::one();
             }
 
-            if let Some(table_kind) = self.kinds_tables.get(&(typ, CurrOrNext::Curr)) {
-                gate_tables.insert(*table_kind);
+            if let Some(table_kind) = self
+                .kinds_map
+                .get(&(typ, CurrOrNext::Curr))
+                .and_then(|x| self.kinds[*x].table())
+            {
+                gate_tables.insert(table_kind);
             }
-            if let Some(table_kind) = self.kinds_tables.get(&(typ, CurrOrNext::Next)) {
-                gate_tables.insert(*table_kind);
+            if let Some(table_kind) = self
+                .kinds_map
+                .get(&(typ, CurrOrNext::Next))
+                .and_then(|x| self.kinds[*x].table())
+            {
+                gate_tables.insert(table_kind);
             }
         }
 
