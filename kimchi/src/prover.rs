@@ -647,8 +647,7 @@ where
             if let Some(lcs) = index.cs.lookup_constraint_system.as_ref() {
                 let lookup_alphas =
                     all_alphas.get_alphas(ArgumentType::Lookup, lookup::constraints::CONSTRAINTS);
-                let constraints =
-                    lookup::constraints::constraints(&lcs.configuration, index.cs.domain.d1);
+                let constraints = lookup::constraints::constraints(&lcs.configuration);
 
                 for (constraint, alpha_pow) in constraints.into_iter().zip_eq(lookup_alphas) {
                     let mut eval = constraint.evaluations(&env);

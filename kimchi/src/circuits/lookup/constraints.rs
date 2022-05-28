@@ -357,7 +357,7 @@ pub struct LookupConfiguration<F: FftField> {
 }
 
 /// Specifies the lookup constraints as expressions.
-pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>) -> Vec<E<F>> {
+pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>) -> Vec<E<F>> {
     // Something important to keep in mind is that the last 2 rows of
     // all columns will have random values in them to maintain zero-knowledge.
     //
@@ -531,8 +531,7 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>
     let aggreg_equation = E::cell(Column::LookupAggreg, Next) * denominator
         - E::cell(Column::LookupAggreg, Curr) * numerator;
 
-    let num_rows = d1.size();
-    let num_lookup_rows = num_rows - ZK_ROWS - 1;
+    let final_lookup_row: i32 = -(ZK_ROWS as i32) - 1;
 
     let mut res = vec![
         // the accumulator except for the last 4 rows
@@ -541,7 +540,7 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>
         // the initial value of the accumulator
         E::UnnormalizedLagrangeBasis(0) * (E::cell(Column::LookupAggreg, Curr) - E::one()),
         // Check that the final value of the accumulator is 1
-        E::UnnormalizedLagrangeBasis(num_lookup_rows)
+        E::UnnormalizedLagrangeBasis(final_lookup_row)
             * (E::cell(Column::LookupAggreg, Curr) - E::one()),
     ];
 
@@ -550,7 +549,7 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>
         .map(|i| {
             let first_or_last = if i % 2 == 0 {
                 // Check compatibility of the last elements
-                num_lookup_rows
+                final_lookup_row
             } else {
                 // Check compatibility of the first elements
                 0
