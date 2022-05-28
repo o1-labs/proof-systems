@@ -340,6 +340,24 @@ impl LookupPattern {
             }
         }
     }
+
+    pub fn table(&self) -> Option<GateLookupTable> {
+        match self {
+            LookupPattern::ChaCha | LookupPattern::ChaChaFinal => Some(GateLookupTable::Xor),
+            LookupPattern::LookupGate => None,
+        }
+    }
+
+    pub fn from_gate(gate_type: GateType, curr_or_next: CurrOrNext) -> Option<Self> {
+        use CurrOrNext::*;
+        use GateType::*;
+        match (gate_type, curr_or_next) {
+            (ChaCha0 | ChaCha1 | ChaCha2, Curr | Next) => Some(LookupPattern::ChaCha),
+            (ChaChaFinal, Curr | Next) => Some(LookupPattern::ChaChaFinal),
+            (Lookup, Curr) => Some(LookupPattern::LookupGate),
+            _ => None,
+        }
+    }
 }
 
 impl GateType {
