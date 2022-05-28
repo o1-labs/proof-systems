@@ -7,6 +7,7 @@ use crate::{
         lookup::{index::LookupConstraintSystem, tables::LookupTable},
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
         polynomials::permutation::ZK_ROWS,
+        polynomials::range_check,
         wires::*,
     },
     error::SetupError,
@@ -23,7 +24,10 @@ use once_cell::sync::OnceCell;
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
+use std::collections::HashSet;
 use std::sync::Arc;
+
+use super::lookup::runtime_tables::RuntimeTableCfg;
 
 //
 // ConstraintSystem
@@ -107,6 +111,10 @@ pub struct ConstraintSystem<F: FftField> {
     /// EC point addition selector evaluations w over domain.d8
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub endomul_scalar8: E<F, D<F>>,
+
+    /// Range check gate selector polynomials
+    #[serde(bound = "Vec<range_check::SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
+    pub range_check_selector_polys: Vec<range_check::SelectorPolynomial<F>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -215,15 +223,22 @@ pub enum GateError {
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// creates a constraint system from a vector of gates ([CircuitGate]), some sponge parameters ([ArithmeticSpongeParams]), and the number of public inputs.
+    ///
+    /// Warning: you have to make sure that the IDs of the lookup tables,
+    /// and runtime lookup tables, are unique and
+    /// not colliding with IDs of built-in lookup tables
+    /// (see [crate::circuits::lookup::tables]).
     pub fn create(
         gates: Vec<CircuitGate<F>>,
         lookup_tables: Vec<LookupTable<F>>,
+        runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
         fr_sponge_params: ArithmeticSpongeParams<F>,
         public: usize,
     ) -> Result<Self, SetupError> {
         ConstraintSystem::<F>::create_with_shared_precomputations(
             gates,
             lookup_tables,
+            runtime_tables,
             fr_sponge_params,
             public,
             None,
@@ -231,9 +246,15 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     }
 
     /// similar to create. but this fn creates a constraint system with a shared precomputation previously created elsewhere
+    ///
+    /// Warning: you have to make sure that the IDs of the lookup tables,
+    /// and runtime lookup tables, are unique and
+    /// not colliding with IDs of built-in lookup tables
+    /// (see [crate::circuits::lookup::tables]).
     pub fn create_with_shared_precomputations(
         mut gates: Vec<CircuitGate<F>>,
         lookup_tables: Vec<LookupTable<F>>,
+        runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
         fr_sponge_params: ArithmeticSpongeParams<F>,
         public: usize,
         precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
@@ -261,6 +282,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             .collect();
         gates.append(&mut padding);
 
+        // Record which gates are used by this constraint system
+        let mut circuit_gates_used = HashSet::<GateType>::default();
+        gates.iter().for_each(|gate| {
+            circuit_gates_used.insert(gate.typ);
+        });
+
         //~ 4. sample the `PERMUTS` shifts.
         let shifts = Shifts::new(&domain.d1);
 
@@ -273,8 +300,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // -----------
 
         // compute permutation polynomials
-        let mut sigmal1: [Vec<F>; PERMUTS] =
-            array_init(|_| vec![F::zero(); domain.d1.size as usize]);
+        let mut sigmal1: [Vec<F>; PERMUTS] = array_init(|_| vec![F::zero(); domain.d1.size()]);
 
         for (row, gate) in gates.iter().enumerate() {
             for (cell, sigma) in gate.wires.iter().zip(sigmal1.iter_mut()) {
@@ -398,6 +424,16 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             }
         };
 
+        // Range check constraint selector polynomials
+        let range_check_selector_polys = {
+            if !circuit_gates_used.is_disjoint(&range_check::circuit_gates().into_iter().collect())
+            {
+                range_check::selector_polynomials(&gates, &domain)
+            } else {
+                vec![]
+            }
+        };
+
         //
         // Coefficient
         // -----------
@@ -419,7 +455,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // Lookup
         // ------
         let lookup_constraint_system =
-            LookupConstraintSystem::create(&gates, lookup_tables, &domain)
+            LookupConstraintSystem::create(&gates, lookup_tables, runtime_tables, &domain)
                 .map_err(|e| SetupError::ConstraintSystem(e.to_string()))?;
 
         let sid = shifts.map[0].clone();
@@ -446,6 +482,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             complete_addl4,
             mull8,
             emull,
+            range_check_selector_polys,
             gates,
             shift: shifts.shifts,
             endo,
@@ -483,7 +520,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     ///     RETURN: verification status
     pub fn verify(&self, witness: &[Vec<F>; COLUMNS], public: &[F]) -> Result<(), GateError> {
         // pad the witness
-        let pad = vec![F::zero(); self.domain.d1.size as usize - witness[0].len()];
+        let pad = vec![F::zero(); self.domain.d1.size() - witness[0].len()];
         let witness: [Vec<F>; COLUMNS] = array_init(|i| {
             let mut w = witness[i].to_vec();
             w.extend_from_slice(&pad);
@@ -584,7 +621,7 @@ pub mod tests {
         ) -> Self {
             let public = 0;
             // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
-            ConstraintSystem::<F>::create(gates, vec![], sponge_params, public).unwrap()
+            ConstraintSystem::<F>::create(gates, vec![], None, sponge_params, public).unwrap()
         }
     }
 

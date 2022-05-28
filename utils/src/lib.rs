@@ -1,3 +1,4 @@
+pub mod adjacent_pairs;
 pub mod chunked_polynomial;
 pub mod dense_polynomial;
 pub mod evaluations;

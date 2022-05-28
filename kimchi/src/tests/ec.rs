@@ -1,35 +1,14 @@
-use crate::{
-    circuits::{
-        gate::{CircuitGate, GateType},
-        wires::*,
-    },
-    proof::ProverProof,
-    prover_index::testing::new_index_for_test,
-    verifier::verify,
+use crate::circuits::{
+    gate::{CircuitGate, GateType},
+    wires::*,
 };
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
 use array_init::array_init;
-use colored::Colorize;
-use commitment_dlog::commitment::CommitmentCurve;
-use groupmap::GroupMap;
-use mina_curves::pasta::{
-    fp::Fp as F,
-    pallas::Affine as Other,
-    vesta::{Affine, VestaParameters},
-};
-use oracle::{
-    constants::PlonkSpongeConstantsKimchi,
-    sponge::{DefaultFqSponge, DefaultFrSponge},
-};
+use mina_curves::pasta::{fp::Fp as F, pallas::Affine as Other};
 use rand::{rngs::StdRng, SeedableRng};
-use std::time::Instant;
 
-const PUBLIC: usize = 0;
-
-type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
-type ScalarSponge = DefaultFrSponge<F, SpongeParams>;
+use super::framework::TestFramework;
 
 // Tests add and double gates
 #[test]
@@ -48,12 +27,7 @@ fn ec_test() {
         });
     }
 
-    let index = new_index_for_test(gates, PUBLIC);
-
     let mut witness: [Vec<F>; COLUMNS] = array_init(|_| vec![]);
-
-    let verifier_index = index.verifier_index();
-    let group_map = <Affine as CommitmentCurve>::Map::setup();
 
     let rng = &mut StdRng::from_seed([0; 32]);
 
@@ -166,18 +140,9 @@ fn ec_test() {
         witness[14].push(F::zero());
     }
 
-    index.cs.verify(&witness, &[]).unwrap();
-
-    let start = Instant::now();
-    let proof =
-        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &index).unwrap();
-    println!("{}{:?}", "Prover time: ".yellow(), start.elapsed());
-
-    let start = Instant::now();
-    match verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &verifier_index, &proof) {
-        Err(error) => panic!("Failure verifying the prover's proofs in batch: {}", error),
-        Ok(_) => {
-            println!("{}{:?}", "Verifier time: ".yellow(), start.elapsed());
-        }
-    }
+    TestFramework::default()
+        .gates(gates)
+        .witness(witness)
+        .setup()
+        .prove_and_verify();
 }

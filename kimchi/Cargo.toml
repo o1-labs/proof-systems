@@ -15,6 +15,7 @@ ark-poly = { version = "0.3.0", features = [ "parallel" ] }
 ark-serialize = "0.3.0"
 array-init = "2.0.0"
 blake2 = "0.10.0"
+num-bigint = "0.4.0"
 num-derive = "0.3"
 num-traits = "0.2"
 itertools = "0.10.3"
@@ -44,6 +45,8 @@ wasm-bindgen = { version = "0.2", optional = true }
 proptest = "1.0.0"
 proptest-derive = "0.3.0"
 colored = "2.0.0"
+serde_json = { version = "1.0" }
+num-bigint = "0.4.3"
 
 # benchmarks
 criterion = "0.3"

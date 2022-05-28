@@ -4,12 +4,8 @@ use crate::{
     circuits::{
         expr::{prologue::*, Column, ConstantExpr},
         gate::{CircuitGate, CurrOrNext},
-        lookup::{
-            lookups::{
-                JointLookup, JointLookupSpec, JointLookupValue, LocalPosition, LookupInfo,
-                LookupsUsed,
-            },
-            tables::Entry,
+        lookup::lookups::{
+            JointLookup, JointLookupSpec, JointLookupValue, LocalPosition, LookupInfo, LookupsUsed,
         },
         wires::COLUMNS,
     },
@@ -17,10 +13,13 @@ use crate::{
 };
 use ark_ff::{FftField, One, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
+use o1_utils::adjacent_pairs::AdjacentPairs;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use CurrOrNext::{Curr, Next};
+
+use super::runtime_tables::{self, RuntimeTableSpec};
 
 /// Number of constraints produced by the argument.
 pub const CONSTRAINTS: u32 = 7;
@@ -35,7 +34,7 @@ pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
     d: D<F>,
     rng: &mut R,
 ) -> Evaluations<F, D<F>> {
-    let n = d.size as usize;
+    let n = d.size();
     let k = e.len();
     assert!(k <= n - ZK_ROWS);
     e.extend((0..((n - ZK_ROWS) - k)).map(|_| F::zero()));
@@ -79,31 +78,35 @@ pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
 //~
 
 /// Computes the sorted lookup tables required by the lookup argument.
-pub fn sorted<
-    F: FftField,
-    E: Entry<Field = F> + Eq + std::hash::Hash + Clone,
-    I: Iterator<Item = E>,
-    G: Fn() -> I,
->(
-    dummy_lookup_value: E,
-    lookup_table: G,
+pub fn sorted<F>(
+    dummy_lookup_value: F,
+    joint_lookup_table_d8: &Evaluations<F, D<F>>,
     d1: D<F>,
     gates: &[CircuitGate<F>],
     witness: &[Vec<F>; COLUMNS],
-    params: E::Params,
-) -> Result<Vec<Vec<E>>, ProverError> {
+    joint_combiner: F,
+    table_id_combiner: F,
+) -> Result<Vec<Vec<F>>, ProverError>
+where
+    F: FftField,
+{
     // We pad the lookups so that it is as if we lookup exactly
     // `max_lookups_per_row` in every row.
 
-    let n = d1.size as usize;
-    let mut counts: HashMap<E, usize> = HashMap::new();
+    let n = d1.size();
+    let mut counts: HashMap<&F, usize> = HashMap::new();
 
     let lookup_rows = n - ZK_ROWS - 1;
     let lookup_info = LookupInfo::<F>::create();
     let by_row = lookup_info.by_row(gates);
     let max_lookups_per_row = lookup_info.max_per_row;
 
-    for t in lookup_table().take(lookup_rows) {
+    for t in joint_lookup_table_d8
+        .evals
+        .iter()
+        .step_by(8)
+        .take(lookup_rows)
+    {
         // Don't multiply-count duplicate values in the table, or they'll be duplicated for each
         // duplicate!
         // E.g. A value duplicated in the table 3 times would be entered into the sorted array 3
@@ -112,25 +115,44 @@ pub fn sorted<
     }
 
     // TODO: shouldn't we make sure that lookup rows is the same as the number of active gates in the circuit as well? danger: What if we have gates that use lookup but are not counted here?
-    for (i, row) in by_row.iter().enumerate().take(lookup_rows) {
+    for (i, row) in by_row
+        .iter()
+        .enumerate()
+        // avoid zk rows
+        .take(lookup_rows)
+    {
         let spec = row;
         let padding = max_lookups_per_row - spec.len();
         for joint_lookup in spec.iter() {
-            let joint_lookup_evaluation = E::evaluate(&params, joint_lookup, witness, i);
+            let eval = |pos: LocalPosition| -> F {
+                let row = match pos.row {
+                    Curr => i,
+                    Next => i + 1,
+                };
+                witness[pos.column][row]
+            };
+            let joint_lookup_evaluation =
+                joint_lookup.evaluate(&joint_combiner, &table_id_combiner, &eval);
             match counts.get_mut(&joint_lookup_evaluation) {
                 None => return Err(ProverError::ValueNotInTable),
                 Some(count) => *count += 1,
             }
         }
-        *counts.entry(dummy_lookup_value.clone()).or_insert(0) += padding;
+        *counts.entry(&dummy_lookup_value).or_insert(0) += padding;
     }
 
     let sorted = {
-        let mut sorted: Vec<Vec<E>> =
+        let mut sorted: Vec<Vec<F>> =
             vec![Vec::with_capacity(lookup_rows + 1); max_lookups_per_row + 1];
 
         let mut i = 0;
-        for t in lookup_table().take(lookup_rows) {
+        for t in joint_lookup_table_d8
+            .evals
+            .iter()
+            .step_by(8)
+            // avoid zk rows
+            .take(lookup_rows)
+        {
             let t_count = match counts.get_mut(&t) {
                 None => panic!("Value has disappeared from count table"),
                 Some(x) => {
@@ -143,13 +165,13 @@ pub fn sorted<
             for j in 0..t_count {
                 let idx = i + j;
                 let col = idx / lookup_rows;
-                sorted[col].push(t.clone());
+                sorted[col].push(*t);
             }
             i += t_count;
         }
 
         for i in 0..max_lookups_per_row {
-            let end_val = sorted[i + 1][0].clone();
+            let end_val = sorted[i + 1][0];
             sorted[i].push(end_val);
         }
 
@@ -158,7 +180,7 @@ pub fn sorted<
         // next column added to their end, but the final sorted column has no subsequent column to
         // pull this value from.
         let final_sorted_col = &mut sorted[max_lookups_per_row];
-        final_sorted_col.push(final_sorted_col[final_sorted_col.len() - 1].clone());
+        final_sorted_col.push(final_sorted_col[final_sorted_col.len() - 1]);
 
         // snake-ify (see top comment)
         for s in sorted.iter_mut().skip(1).step_by(2) {
@@ -169,45 +191,6 @@ pub fn sorted<
     };
 
     Ok(sorted)
-}
-
-struct AdjacentPairs<A, I: Iterator<Item = A>> {
-    prev_second_component: Option<A>,
-    i: I,
-}
-
-impl<A: Copy, I: Iterator<Item = A>> Iterator for AdjacentPairs<A, I> {
-    type Item = (A, A);
-
-    fn next(&mut self) -> Option<(A, A)> {
-        match self.prev_second_component {
-            Some(x) => match self.i.next() {
-                None => None,
-                Some(y) => {
-                    self.prev_second_component = Some(y);
-                    Some((x, y))
-                }
-            },
-            None => {
-                let x = self.i.next();
-                let y = self.i.next();
-                match (x, y) {
-                    (None, _) | (_, None) => None,
-                    (Some(x), Some(y)) => {
-                        self.prev_second_component = Some(y);
-                        Some((x, y))
-                    }
-                }
-            }
-        }
-    }
-}
-
-fn adjacent_pairs<A: Copy, I: Iterator<Item = A>>(i: I) -> AdjacentPairs<A, I> {
-    AdjacentPairs {
-        i,
-        prev_second_component: None,
-    }
 }
 
 /// Computes the aggregation polynomial for maximum n lookups per row, whose kth entry is the product of terms
@@ -235,9 +218,9 @@ fn adjacent_pairs<A: Copy, I: Iterator<Item = A>>(i: I) -> AdjacentPairs<A, I> {
 /// after multiplying all of the values, all of the terms will have cancelled if s is a sorting of f and t, and the final term will be 1
 /// because of the random choice of beta and gamma, there is negligible probability that the terms will cancel if s is not a sorting of f and t
 #[allow(clippy::too_many_arguments)]
-pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
+pub fn aggregation<R, F>(
     dummy_lookup_value: F,
-    lookup_table: I,
+    joint_lookup_table_d8: &Evaluations<F, D<F>>,
     d1: D<F>,
     gates: &[CircuitGate<F>],
     witness: &[Vec<F>; COLUMNS],
@@ -247,8 +230,12 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
     gamma: F,
     sorted: &[Evaluations<F, D<F>>],
     rng: &mut R,
-) -> Result<Evaluations<F, D<F>>, ProverError> {
-    let n = d1.size as usize;
+) -> Result<Evaluations<F, D<F>>, ProverError>
+where
+    R: Rng + ?Sized,
+    F: FftField,
+{
+    let n = d1.size();
     let lookup_rows = n - ZK_ROWS - 1;
     let beta1 = F::one() + beta;
     let gammabeta1 = gamma * beta1;
@@ -286,7 +273,7 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
         v
     };
 
-    adjacent_pairs(lookup_table)
+    AdjacentPairs::from(joint_lookup_table_d8.evals.iter().step_by(8))
         .take(lookup_rows)
         .zip(lookup_info.by_row(gates))
         .enumerate()
@@ -337,6 +324,7 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
 
 /// Configuration for the lookup constraint.
 /// These values are independent of the choice of lookup values.
+// TODO: move to lookup::index
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct LookupConfiguration<F: FftField> {
@@ -345,8 +333,15 @@ pub struct LookupConfiguration<F: FftField> {
 
     /// The maximum number of lookups per row
     pub max_lookups_per_row: usize,
+
     /// The maximum number of elements in a vector lookup
     pub max_joint_size: u32,
+
+    /// Optional runtime tables, listed as tuples `(length, id)`.
+    pub runtime_tables: Option<Vec<RuntimeTableSpec>>,
+
+    /// The offset of the runtime table within the concatenated table
+    pub runtime_table_offset: Option<usize>,
 
     /// A placeholder value that is known to appear in the lookup table.
     /// This is used to pad the lookups to `max_lookups_per_row` when fewer lookups are used in a
@@ -560,6 +555,13 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>) -> Vec<E
         .collect();
     res.extend(compatibility_checks);
 
+    // if we are using runtime tables, we add:
+    // $RT(x) (1 - \text{selector}_{RT}(x)) = 0$
+    if configuration.runtime_tables.is_some() {
+        let rt_constraints = runtime_tables::constraints();
+        res.extend(rt_constraints);
+    }
+
     res
 }
 
@@ -579,7 +581,7 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
     sorted
         .iter()
         .for_each(|s| assert_eq!(d1.size, s.domain().size));
-    let n = d1.size as usize;
+    let n = d1.size();
     let lookup_rows = n - ZK_ROWS - 1;
 
     // Check that the (desnakified) sorted table is

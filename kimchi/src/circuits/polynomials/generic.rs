@@ -40,7 +40,9 @@ use crate::circuits::{
     wires::GateWires,
 };
 use ark_ff::{FftField, SquareRootField, Zero};
-use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
+use ark_poly::{
+    univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
+};
 use array_init::array_init;
 use rayon::prelude::*;
 
@@ -172,7 +174,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     ) -> Evaluations<F, D<F>> {
         let generic_gate = |alpha_pow, coeff_offset, register_offset| {
             let mut res = Evaluations::from_vec_and_domain(
-                vec![F::zero(); self.domain.d4.size as usize],
+                vec![F::zero(); self.domain.d4.size()],
                 self.domain.d4,
             );
 
@@ -281,7 +283,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         generic_zeta: F,
     ) -> Evaluations<F, D<F>> {
         let d1 = self.domain.d1;
-        let n = d1.size as usize;
+        let n = d1.size();
 
         // get scalars
         let scalars = Self::gnrc_scalars(alphas, w_zeta, generic_zeta);

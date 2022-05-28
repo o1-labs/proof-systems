@@ -1,46 +1,20 @@
-use std::time::Instant;
-use std::{io, io::Write};
-
-use ark_ff::{UniformRand, Zero};
-use ark_poly::{univariate::DensePolynomial, UVPolynomial};
+use crate::circuits::{
+    gate::CircuitGate,
+    polynomials,
+    polynomials::poseidon::ROUNDS_PER_ROW,
+    wires::{Wire, COLUMNS},
+};
+use crate::tests::framework::TestFramework;
+use ark_ff::Zero;
 use array_init::array_init;
-use colored::Colorize;
-use commitment_dlog::commitment::{b_poly_coefficients, CommitmentCurve};
-use groupmap::GroupMap;
-use mina_curves::pasta::{
-    fp::Fp,
-    vesta::{Affine, VestaParameters},
-};
-use oracle::{
-    constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
-    sponge::{DefaultFqSponge, DefaultFrSponge},
-};
-use rand::{rngs::StdRng, SeedableRng};
-
-use crate::{
-    circuits::{
-        gate::CircuitGate,
-        polynomials,
-        polynomials::poseidon::ROUNDS_PER_ROW,
-        wires::{Wire, COLUMNS},
-    },
-    prover_index::testing::new_index_for_test,
-    verifier::batch_verify,
-};
-use crate::{proof::ProverProof, prover_index::ProverIndex};
-
+use mina_curves::pasta::fp::Fp;
 use o1_utils::math;
+use oracle::constants::{PlonkSpongeConstantsKimchi, SpongeConstants};
 
 // aliases
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
-type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
-// const PERIOD: usize = SpongeParams::ROUNDS_FULL + 1;
-// const M: usize = PERIOD * (NUM_POS-1);
-// const MAX_SIZE: usize = N; // max size of poly chunks
-const PUBLIC: usize = 0;
 const NUM_POS: usize = 1; // 1360; // number of Poseidon hashes in the circuit
 const ROUNDS_PER_HASH: usize = SpongeParams::PERM_ROUNDS_FULL;
 const POS_ROWS_PER_HASH: usize = ROUNDS_PER_HASH / ROUNDS_PER_ROW;
@@ -78,110 +52,29 @@ fn test_poseidon() {
         abs_row = row;
     }
 
-    // create the index
-    let index = new_index_for_test(gates, PUBLIC);
+    // witness for Poseidon permutation custom constraints
+    let mut witness: [Vec<Fp>; COLUMNS] =
+        array_init(|_| vec![Fp::zero(); POS_ROWS_PER_HASH * NUM_POS + 1 /* last output row */]);
 
-    positive(&index);
-}
+    // creates a random input
+    let input = [Fp::from(1u32), Fp::from(2u32), Fp::from(3u32)];
 
-/// creates a proof and verifies it
-fn positive(index: &ProverIndex<Affine>) {
-    // constant
-    let max_size = 1 << math::ceil_log2(N_LOWER_BOUND);
+    // number of poseidon instances in the circuit
+    for h in 0..NUM_POS {
+        // index
+        let first_row = h * (POS_ROWS_PER_HASH + 1);
 
-    // set up
-    let rng = &mut StdRng::from_seed([0u8; 32]);
-    let group_map = <Affine as CommitmentCurve>::Map::setup();
-    let mut batch = Vec::new();
-
-    // debug
-    println!("{}{:?}", "Circuit size: ".yellow(), max_size);
-    println!("{}{:?}", "Polycommitment chunk size: ".yellow(), max_size);
-    println!(
-        "{}{:?}",
-        "Number oh Poseidon hashes in the circuit: ".yellow(),
-        NUM_POS
-    );
-    println!(
-        "{}{:?}",
-        "Full rounds: ".yellow(),
-        SpongeParams::PERM_ROUNDS_FULL
-    );
-    println!("{}{:?}", "Sbox alpha: ".yellow(), SpongeParams::PERM_SBOX);
-    println!("{}", "Base curve: vesta\n".green());
-    println!("{}", "Prover zk-proof computation".green());
-
-    let mut start = Instant::now();
-    for test in 0..1 {
-        // witness for Poseidon permutation custom constraints
-        let mut witness_cols: [Vec<Fp>; COLUMNS] =
-            array_init(|_| vec![Fp::zero(); POS_ROWS_PER_HASH * NUM_POS + 1 /* last output row */]);
-
-        // creates a random input
-        let input = [Fp::rand(rng), Fp::rand(rng), Fp::rand(rng)];
-
-        // number of poseidon instances in the circuit
-        for h in 0..NUM_POS {
-            // index
-            let first_row = h * (POS_ROWS_PER_HASH + 1);
-
-            polynomials::poseidon::generate_witness(
-                first_row,
-                oracle::pasta::fp_kimchi::params(),
-                &mut witness_cols,
-                input,
-            );
-        }
-
-        // verify the circuit satisfiability by the computed witness
-        index.cs.verify(&witness_cols, &[]).unwrap();
-
-        //
-        let prev = {
-            let k = math::ceil_log2(index.srs.g.len());
-            let chals: Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();
-            let comm = {
-                let coeffs = b_poly_coefficients(&chals);
-                let b = DensePolynomial::from_coefficients_vec(coeffs);
-                index.srs.commit_non_hiding(&b, None)
-            };
-
-            (chals, comm)
-        };
-
-        println!("n vs domain: {} {}", max_size, index.cs.domain.d1.size);
-
-        // add the proof to the batch
-        // TODO: create and verify should not take group_map, that should be during an init phase
-        batch.push(
-            ProverProof::create_recursive::<BaseSponge, ScalarSponge>(
-                &group_map,
-                witness_cols,
-                index,
-                vec![prev],
-            )
-            .unwrap(),
+        polynomials::poseidon::generate_witness(
+            first_row,
+            oracle::pasta::fp_kimchi::params(),
+            &mut witness,
+            input,
         );
-
-        print!("{:?}\r", test);
-        io::stdout().flush().unwrap();
     }
 
-    // TODO: this should move to a bench
-    println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
-
-    // TODO: shouldn't verifier_index be part of ProverProof, not being passed in verify?
-    let verifier_index = index.verifier_index();
-
-    let batch: Vec<_> = batch.iter().map(|proof| (&verifier_index, proof)).collect();
-
-    // verify the proofs in batch
-    println!("{}", "Verifier zk-proofs verification".green());
-    start = Instant::now();
-    match batch_verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &batch) {
-        Err(error) => panic!("Failure verifying the prover's proofs in batch: {}", error),
-        Ok(_) => {
-            println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
-        }
-    }
+    TestFramework::default()
+        .gates(gates)
+        .witness(witness)
+        .setup()
+        .prove_and_verify();
 }

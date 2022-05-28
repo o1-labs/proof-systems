@@ -28,7 +28,7 @@
 use crate::circuits::argument::{Argument, ArgumentType};
 use crate::circuits::expr::{prologue::*, Cache, ConstantExpr};
 use crate::circuits::gate::{CircuitGate, CurrOrNext, GateType};
-use ark_ff::{FftField, Field};
+use ark_ff::{FftField, Field, SquareRootField};
 use oracle::constants::{PlonkSpongeConstantsKimchi, SpongeConstants};
 use oracle::poseidon::{sbox, ArithmeticSponge, ArithmeticSpongeParams, Sponge};
 use std::marker::PhantomData;
@@ -73,7 +73,7 @@ pub const fn round_to_cols(i: usize) -> Range<usize> {
     start..(start + SPONGE_WIDTH)
 }
 
-impl<F: FftField> CircuitGate<F> {
+impl<F: FftField + SquareRootField> CircuitGate<F> {
     pub fn create_poseidon(
         wires: GateWires,
         // Coefficients are passed in in the logical order

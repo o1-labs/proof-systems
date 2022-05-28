@@ -6,7 +6,7 @@ use crate::{
         wires::{Wire, COLUMNS},
     },
     proof::ProverProof,
-    prover_index::testing::{new_index_for_test, new_index_for_test_with_lookups},
+    prover_index::testing::new_index_for_test,
     verifier::verify,
 };
 use ark_ff::Zero;
@@ -25,6 +25,8 @@ use oracle::{
 use std::time::Instant;
 
 use o1_utils::math;
+
+use super::framework::TestFramework;
 
 // aliases
 
@@ -87,7 +89,7 @@ fn chacha_prover() {
 
     let start = Instant::now();
     let proof =
-        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &index).unwrap();
+        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &[], &index).unwrap();
     println!("{}{:?}", "Prover time: ".yellow(), start.elapsed());
 
     let start = Instant::now();
@@ -213,9 +215,6 @@ fn chacha_setup_bad_lookup(table_id: i32) {
         },
     ];
 
-    // create the index
-    let index = new_index_for_test_with_lookups(gates, PUBLIC, lookup_tables);
-
     let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![]);
     for r in rows.into_iter() {
         for (col, c) in r.into_iter().enumerate() {
@@ -223,24 +222,12 @@ fn chacha_setup_bad_lookup(table_id: i32) {
         }
     }
 
-    let group_map = <Affine as CommitmentCurve>::Map::setup();
-
-    let start = Instant::now();
-    let proof =
-        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &index).unwrap();
-    println!("{}{:?}", "Prover time: ".yellow(), start.elapsed());
-
-    let start = Instant::now();
-    let verifier_index = index.verifier_index();
-    println!("{}{:?}", "Verifier index time: ".yellow(), start.elapsed());
-
-    let start = Instant::now();
-    match verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &verifier_index, &proof) {
-        Err(error) => panic!("Failure verifying the prover's proofs in batch: {}", error),
-        Ok(_) => {
-            println!("{}{:?}", "Verifier time: ".yellow(), start.elapsed());
-        }
-    }
+    TestFramework::default()
+        .gates(gates)
+        .witness(witness)
+        .lookup_tables(lookup_tables)
+        .setup()
+        .prove_and_verify();
 }
 
 // Test lookup domain separation: if a different table ID is used, we shouldn't be able to use a

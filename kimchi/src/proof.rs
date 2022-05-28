@@ -18,6 +18,9 @@ pub struct LookupEvaluations<Field> {
     // TODO: May be possible to optimize this away?
     /// lookup table polynomial
     pub table: Field,
+
+    /// Optionally, a runtime table polynomial.
+    pub runtime: Option<Field>,
 }
 
 // TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
@@ -43,6 +46,9 @@ pub struct ProofEvaluations<Field> {
 pub struct LookupCommitments<G: AffineCurve> {
     pub sorted: Vec<PolyComm<G>>,
     pub aggreg: PolyComm<G>,
+
+    /// Optional commitment to concatenated runtime tables
+    pub runtime: Option<PolyComm<G>>,
 }
 
 /// All the commitments that the prover creates as part of the proof.
@@ -58,7 +64,7 @@ pub struct ProverCommitments<G: AffineCurve> {
     pub lookup: Option<LookupCommitments<G>>,
 }
 
-/// The proof that the prover creates from a [ProverIndex] and a `witness`.
+/// The proof that the prover creates from a [ProverIndex](super::prover_index::ProverIndex) and a `witness`.
 #[derive(Clone)]
 pub struct ProverProof<G: AffineCurve> {
     /// All the polynomial commitments required in the proof
@@ -109,6 +115,10 @@ impl<F: FftField> ProofEvaluations<Vec<F>> {
                     .iter()
                     .map(|x| DensePolynomial::eval_polynomial(x, pt))
                     .collect(),
+                runtime: l
+                    .runtime
+                    .as_ref()
+                    .map(|rt| DensePolynomial::eval_polynomial(rt, pt)),
             }),
             generic_selector: DensePolynomial::eval_polynomial(&self.generic_selector, pt),
             poseidon_selector: DensePolynomial::eval_polynomial(&self.poseidon_selector, pt),
@@ -133,6 +143,7 @@ pub mod caml {
         pub sorted: Vec<Vec<CamlF>>,
         pub aggreg: Vec<CamlF>,
         pub table: Vec<CamlF>,
+        pub runtime: Option<Vec<CamlF>>,
     }
 
     impl<F, CamlF> From<LookupEvaluations<Vec<F>>> for CamlLookupEvaluations<CamlF>
@@ -149,6 +160,7 @@ pub mod caml {
                     .collect(),
                 aggreg: le.aggreg.into_iter().map(Into::into).collect(),
                 table: le.table.into_iter().map(Into::into).collect(),
+                runtime: le.runtime.map(|r| r.into_iter().map(Into::into).collect()),
             }
         }
     }
@@ -166,6 +178,7 @@ pub mod caml {
                     .collect(),
                 aggreg: pe.aggreg.into_iter().map(Into::into).collect(),
                 table: pe.table.into_iter().map(Into::into).collect(),
+                runtime: pe.runtime.map(|r| r.into_iter().map(Into::into).collect()),
             }
         }
     }

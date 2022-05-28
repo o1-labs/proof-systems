@@ -103,6 +103,7 @@ impl BenchmarkCtx {
         ProverProof::create_recursive::<BaseSponge, ScalarSponge>(
             &self.group_map,
             witness,
+            &[],
             &self.index,
             vec![prev],
         )

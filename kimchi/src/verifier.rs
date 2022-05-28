@@ -7,7 +7,7 @@ use crate::{
         constraints::ConstraintSystem,
         expr::{Column, Constants, PolishToken},
         gate::GateType,
-        lookup::lookups::LookupsUsed,
+        lookup::{lookups::LookupsUsed, tables::combine_table},
         polynomials::{generic, permutation},
         scalars::RandomOracles,
         wires::*,
@@ -23,6 +23,7 @@ use commitment_dlog::commitment::{
     b_poly, b_poly_coefficients, combined_inner_product, BatchEvaluationProof, CommitmentCurve,
     Evaluation, PolyComm,
 };
+use itertools::izip;
 use o1_utils::types::fields::*;
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand::thread_rng;
@@ -138,6 +139,21 @@ where
 
         //~ 4. If lookup is used:
         let joint_combiner = if let Some(l) = &index.lookup_index {
+            let lookup_commits = self
+                .commitments
+                .lookup
+                .as_ref()
+                .ok_or(VerifyError::LookupCommitmentMissing)?;
+
+            // if runtime is used, absorb the commitment
+            if l.runtime_tables_selector.is_some() {
+                let runtime_commit = lookup_commits
+                    .runtime
+                    .as_ref()
+                    .ok_or(VerifyError::IncorrectRuntimeProof)?;
+                fq_sponge.absorb_g(&runtime_commit.unshifted);
+            }
+
             //~    - If it involves queries to a multiple-column lookup table,
             //~      then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
             //~      otherwise set the joint combiner challenge $j'$ to $0$.
@@ -154,11 +170,9 @@ where
             let joint_combiner = (joint_combiner, joint_combiner.to_field(&index.srs.endo_r));
 
             //~    - absorb the commitments to the sorted polynomials.
-            self.commitments.lookup.iter().for_each(|l| {
-                l.sorted
-                    .iter()
-                    .for_each(|c| fq_sponge.absorb_g(&c.unshifted));
-            });
+            for com in &lookup_commits.sorted {
+                fq_sponge.absorb_g(&com.unshifted);
+            }
 
             Some(joint_combiner)
         } else {
@@ -608,29 +622,22 @@ where
                             commitments.push(&lindex.lookup_selectors[*i]);
                         }
                     },
-                    LookupTable => match index.lookup_index.as_ref() {
+                    LookupTable => panic!("Lookup table is unused in the linearization"),
+                    LookupRuntimeSelector => match index.lookup_index.as_ref() {
                         None => {
                             panic!("Attempted to use {:?}, but no lookup index was given", col)
                         }
-                        Some(lindex) => {
-                            let joint_combiner =
-                                constants.joint_combiner.expect("missing joint combiner");
-                            let mut j = ScalarField::<G>::one();
-                            scalars.push(scalar);
-                            commitments.push(&lindex.lookup_table[0]);
-                            for t in lindex.lookup_table.iter().skip(1) {
-                                j *= joint_combiner;
-                                scalars.push(scalar * j);
-                                commitments.push(t);
+                        Some(lindex) => match &lindex.runtime_tables_selector {
+                            None => panic!("No runtime selector was given"),
+                            Some(comm) => {
+                                scalars.push(scalar);
+                                commitments.push(comm);
                             }
-                            if let Some(table_ids) = lindex.table_ids.as_ref() {
-                                scalars.push(
-                                    scalar * joint_combiner.pow([lindex.max_joint_size as u64]),
-                                );
-                                commitments.push(table_ids);
-                            }
-                        }
+                        },
                     },
+                    LookupRuntimeTable => {
+                        panic!("runtime lookup table is unused in the linearization")
+                    }
                     Index(t) => {
                         use GateType::*;
                         let c = match t {
@@ -649,6 +656,9 @@ where
                             CairoClaim | CairoInstruction | CairoFlags | CairoTransition => {
                                 unimplemented!()
                             }
+                            RangeCheck0 => &index.range_check_comm[0],
+                            RangeCheck1 => &index.range_check_comm[1],
+                            RangeCheck2 => &index.range_check_comm[2],
                         };
                         scalars.push(scalar);
                         commitments.push(c);
@@ -769,6 +779,98 @@ where
             }),
     );
 
+    //~     - lookup commitments
+    if let Some(li) = &index.lookup_index {
+        let lookup_comms = proof
+            .commitments
+            .lookup
+            .as_ref()
+            .ok_or(VerifyError::LookupCommitmentMissing)?;
+        let lookup_eval0 = proof.evals[0]
+            .lookup
+            .as_ref()
+            .ok_or(VerifyError::LookupEvalsMissing)?;
+        let lookup_eval1 = proof.evals[1]
+            .lookup
+            .as_ref()
+            .ok_or(VerifyError::LookupEvalsMissing)?;
+
+        // check that the there's as many evals as commitments for sorted polynomials
+        let sorted_len = lookup_comms.sorted.len();
+        if sorted_len != lookup_eval0.sorted.len() || sorted_len != lookup_eval1.sorted.len() {
+            return Err(VerifyError::ProofInconsistentLookup);
+        }
+
+        // add evaluations of sorted polynomials
+        for (comm, evals0, evals1) in izip!(
+            &lookup_comms.sorted,
+            lookup_eval0.sorted.clone(),
+            lookup_eval1.sorted.clone()
+        ) {
+            evaluations.push(Evaluation {
+                commitment: comm.clone(),
+                evaluations: vec![evals0, evals1],
+                degree_bound: None,
+            });
+        }
+
+        // add evaluations of the aggreg polynomial
+        evaluations.push(Evaluation {
+            commitment: lookup_comms.aggreg.clone(),
+            evaluations: vec![lookup_eval0.aggreg.clone(), lookup_eval1.aggreg.clone()],
+            degree_bound: None,
+        });
+
+        // compute table commitment
+        let table_comm = {
+            let joint_combiner = oracles
+                .joint_combiner
+                .expect("joint_combiner should be present if lookups are used");
+            let table_id_combiner = joint_combiner.1.pow([li.max_joint_size as u64]);
+            let lookup_table: Vec<_> = li.lookup_table.iter().collect();
+            let runtime = lookup_comms.runtime.as_ref();
+
+            combine_table(
+                &lookup_table,
+                joint_combiner.1,
+                table_id_combiner,
+                li.table_ids.as_ref(),
+                runtime,
+            )
+        };
+
+        // add evaluation of the table polynomial
+        evaluations.push(Evaluation {
+            commitment: table_comm,
+            evaluations: vec![lookup_eval0.table.clone(), lookup_eval1.table.clone()],
+            degree_bound: None,
+        });
+
+        // add evaluation of the runtime table polynomial
+        if li.runtime_tables_selector.is_some() {
+            let runtime = lookup_comms
+                .runtime
+                .as_ref()
+                .ok_or(VerifyError::IncorrectRuntimeProof)?;
+            let runtime_eval0 = lookup_eval0
+                .runtime
+                .as_ref()
+                .cloned()
+                .ok_or(VerifyError::IncorrectRuntimeProof)?;
+            let runtime_eval1 = lookup_eval1
+                .runtime
+                .as_ref()
+                .cloned()
+                .ok_or(VerifyError::IncorrectRuntimeProof)?;
+
+            evaluations.push(Evaluation {
+                commitment: runtime.clone(),
+                evaluations: vec![runtime_eval0, runtime_eval1],
+                degree_bound: None,
+            });
+        }
+    }
+
     // prepare for the opening proof verification
     let evaluation_points = vec![oracles.zeta, oracles.zeta * index.domain.group_gen];
     Ok(BatchEvaluationProof {
@@ -827,7 +929,14 @@ where
     // TODO: Account for the different SRS lengths
     let srs = &proofs[0].0.srs;
     for (index, _) in proofs.iter() {
-        assert_eq!(index.srs.g.len(), srs.g.len());
+        if index.srs.g.len() != srs.g.len() {
+            return Err(VerifyError::DifferentSRS);
+        }
+
+        // also make sure that the SRS is not smaller than the domain size
+        if index.srs.max_degree() < index.domain.size() {
+            return Err(VerifyError::SRSTooSmall);
+        }
     }
 
     //~ 3. Validate each proof separately following the [partial verification](#partial-verification) steps.
