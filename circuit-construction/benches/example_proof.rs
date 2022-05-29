@@ -2,16 +2,12 @@ use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{FftField, PrimeField, UniformRand};
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
 use circuit_construction::*;
-use commitment_dlog::{
-    commitment::{CommitmentCurve, PolyComm},
-    srs::{endos, SRS},
-};
+use commitment_dlog::{commitment::CommitmentCurve, srs::SRS};
 use groupmap::GroupMap;
 use kimchi::verifier::verify;
 use mina_curves::pasta::{
     fp::Fp,
-    fq::Fq,
-    pallas::{Affine as Other, PallasParameters},
+    pallas::Affine as Other,
     vesta::{Affine, VestaParameters},
 };
 use o1_utils::types::fields::*;
@@ -24,9 +20,6 @@ use std::sync::Arc;
 
 type SpongeQ = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
 type SpongeR = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>;
-
-type PSpongeQ = DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi>;
-type PSpongeR = DefaultFrSponge<Fq, PlonkSpongeConstantsKimchi>;
 
 pub struct Witness<G: AffineCurve> {
     pub s: ScalarField<G>,
@@ -42,29 +35,29 @@ pub fn circuit<
     constants: &Constants<F>,
     // The witness
     witness: Option<&Witness<G>>,
-    sys: &mut Sys,
-    public_input: Vec<Var<F>>,
+    sys: Sys,
+    public_input: Vec<Var<Sys, F>>,
 ) {
     let zero = sys.constant(F::zero());
 
-    let constant_curve_pt = |sys: &mut Sys, (x, y)| {
+    let constant_curve_pt = |sys: &Sys, (x, y)| {
         let x = sys.constant(x);
         let y = sys.constant(y);
         (x, y)
     };
 
-    let base = constant_curve_pt(sys, G::prime_subgroup_generator().to_coords().unwrap());
+    let base = constant_curve_pt(&sys, G::prime_subgroup_generator().to_coords().unwrap());
     let scalar = sys.scalar(G::ScalarField::size_in_bits(), || {
         witness.as_ref().unwrap().s
     });
-    let actual = sys.scalar_mul(zero, base, scalar);
+    let actual = sys.scalar_mul(zero.clone(), base, scalar);
 
     let preimage = sys.var(|| witness.as_ref().unwrap().preimage);
-    let actual_hash = sys.poseidon(constants, vec![preimage, zero, zero])[0];
+    let actual_hash = sys.poseidon(constants, vec![preimage, zero.clone(), zero])[0].clone();
 
-    sys.assert_eq(actual.0, public_input[0]);
-    sys.assert_eq(actual.1, public_input[1]);
-    sys.assert_eq(actual_hash, public_input[2]);
+    sys.assert_eq(actual.0, public_input[0].clone());
+    sys.assert_eq(actual.1, public_input[1].clone());
+    sys.assert_eq(actual_hash, public_input[2].clone());
 
     sys.zk()
 }

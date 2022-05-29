@@ -13,7 +13,7 @@ use kimchi::circuits::{
 use kimchi::{plonk_sponge::FrSponge, proof::ProverProof, prover_index::ProverIndex};
 use mina_curves::pasta::{fp::Fp, fq::Fq, pallas::Affine as Other, vesta::Affine};
 use oracle::{constants::*, permutation::full_round, poseidon::ArithmeticSpongeParams, FqSponge};
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 pub const GENERICS: usize = 3;
 pub const ZK_ROWS: usize = kimchi::circuits::polynomials::permutation::ZK_ROWS as usize;
@@ -22,6 +22,7 @@ pub const SINGLE_GENERIC_COEFFS: usize = 5;
 pub const GENERIC_ROW_COEFFS: usize = 2 * SINGLE_GENERIC_COEFFS;
 
 pub trait Cycle {
+    // TODO: I think PrimeField + SquareRootField is enough
     type InnerField: FftField
         + PrimeField
         + SquareRootField
@@ -101,24 +102,47 @@ impl Cycle for FqInner {
     type OuterProj = <Other as AffineCurve>::Projective;
 }
 
-#[derive(Hash, Eq, PartialEq, Debug, Clone, Copy)]
-pub struct Var<F> {
+type Ref<Sys> = Rc<RefCell<Sys>>;
+
+/// A variable in the circuit,
+#[derive(Hash, Eq, PartialEq, Debug, Clone)]
+pub struct Var<Sys, F>
+where
+    Sys: Clone,
+{
+    /// A unique identifier for this variable.
     pub index: usize,
+    /// ends up holding a value when generating the witness.
     pub value: Option<F>,
+    /// A pointer to the system.
+    pub sys: Sys,
 }
 
-impl<F: Copy> Var<F> {
+impl<Sys, F> Var<Sys, F>
+where
+    F: Copy,
+    Sys: Clone,
+{
     pub fn val(&self) -> F {
         self.value.unwrap()
     }
 }
 
-pub struct ShiftedScalar<F>(Var<F>);
+/// ?
+pub struct ShiftedScalar<Sys: Clone, F>(Var<Sys, F>);
 
-pub struct GateSpec<F: FftField> {
+/// Represents a gate before compilation.
+/// It is identical to the [CircuitGate] type,
+/// except that the row contains [Var]s instead of values.
+#[derive(Clone)]
+pub struct GateSpec<Sys, F>
+where
+    F: FftField,
+    Sys: Clone,
+{
     pub typ: GateType,
-    pub row: [Var<F>; COLUMNS],
-    pub c: Vec<F>,
+    pub row: [Var<Sys, F>; COLUMNS],
+    pub coeffs: Vec<F>,
 }
 
 #[derive(Clone)]
@@ -128,10 +152,23 @@ pub struct Constants<F: Field> {
     pub base: (F, F),
 }
 
+#[derive(Clone)]
 pub struct System<F: FftField> {
     pub next_variable: usize,
     // pub equivalence_classes: HashMap<Var, Vec<Position>>,
-    pub gates: Vec<GateSpec<F>>,
+    pub gates: Vec<GateSpec<Ref<Self>, F>>,
+}
+
+impl<F> System<F>
+where
+    F: FftField,
+{
+    pub fn new() -> Ref<Self> {
+        Rc::new(RefCell::new(Self {
+            next_variable: 0,
+            gates: vec![],
+        }))
+    }
 }
 
 pub struct WitnessGenerator<F> {
@@ -140,7 +177,7 @@ pub struct WitnessGenerator<F> {
 
 type Row<V> = [V; COLUMNS];
 
-pub trait Cs<F: FftField + PrimeField> {
+pub trait Cs<F: PrimeField>: Sized + Clone {
     /// In cases where you want to create a free variable in the circuit,
     /// as in the variable is not constrained _yet_
     /// and can be anything that the prover wants.
@@ -155,13 +192,13 @@ pub trait Cs<F: FftField + PrimeField> {
     /// sys.assert_eq(a * c, b);
     /// ```
     ///
-    fn var<G>(&mut self, g: G) -> Var<F>
+    fn var<G>(&self, g: G) -> Var<Self, F>
     where
         G: FnOnce() -> F;
 
     fn curr_gate_count(&self) -> usize;
 
-    fn endo_scalar<G, N: BigInteger>(&mut self, length: usize, g: G) -> Var<F>
+    fn endo_scalar<G, N: BigInteger>(&self, length: usize, g: G) -> Var<Self, F>
     where
         G: FnOnce() -> N,
     {
@@ -174,7 +211,7 @@ pub trait Cs<F: FftField + PrimeField> {
         })
     }
 
-    fn scalar<G, Fr: PrimeField>(&mut self, length: usize, g: G) -> ShiftedScalar<F>
+    fn scalar<G, Fr: PrimeField>(&self, length: usize, g: G) -> ShiftedScalar<Self, F>
     where
         G: FnOnce() -> Fr,
     {
@@ -198,17 +235,17 @@ pub trait Cs<F: FftField + PrimeField> {
 
     /// In circuit mode, adds a gate to the circuit.
     /// In witness generation mode, adds the corresponding row to the witness.
-    fn gate(&mut self, g: GateSpec<F>);
+    fn gate(&self, g: GateSpec<Self, F>);
 
     // TODO: Optimize to use permutation argument.
-    fn assert_eq(&mut self, x1: Var<F>, x2: Var<F>) {
+    fn assert_eq(&self, x1: Var<Self, F>, x2: Var<Self, F>) {
         // | 0  | 1  | 2 | ...
         // | x1 | x2 | 0 | ...
         let row = array_init(|i| {
             if i == 0 {
-                x1
+                x1.clone()
             } else if i == 1 {
-                x2
+                x2.clone()
             } else {
                 self.var(|| F::zero())
             }
@@ -222,34 +259,40 @@ pub trait Cs<F: FftField + PrimeField> {
         self.gate(GateSpec {
             typ: GateType::Generic,
             row,
-            c,
+            coeffs: c,
         });
     }
 
-    fn constant(&mut self, x: F) -> Var<F> {
+    fn constant(&self, x: F) -> Var<Self, F> {
         let v = self.var(|| x);
 
         let mut c = vec![F::zero(); GENERIC_ROW_COEFFS];
         c[0] = F::one();
         c[GENERICS + 1] = -x;
 
-        let row = array_init(|i| if i == 0 { v } else { self.var(|| F::zero()) });
+        let row = array_init(|i| {
+            if i == 0 {
+                v.clone()
+            } else {
+                self.var(|| F::zero())
+            }
+        });
 
         self.gate(GateSpec {
             typ: GateType::Generic,
             row,
-            c,
+            coeffs: c,
         });
         v
     }
 
     // TODO
-    fn scale(&mut self, x: F, v: Var<F>) -> Var<F> {
+    fn scale(&self, x: F, v: Var<Self, F>) -> Var<Self, F> {
         let xv = self.var(|| v.val() * x);
         let row = {
             let mut row: [_; COLUMNS] = array_init(|_| self.var(|| F::zero()));
             row[0] = v;
-            row[1] = xv;
+            row[1] = xv.clone();
             row
         };
 
@@ -259,17 +302,17 @@ pub trait Cs<F: FftField + PrimeField> {
         self.gate(GateSpec {
             typ: GateType::Generic,
             row,
-            c,
+            coeffs: c,
         });
         xv
     }
 
     fn add_group(
-        &mut self,
-        zero: Var<F>,
-        (x1, y1): (Var<F>, Var<F>),
-        (x2, y2): (Var<F>, Var<F>),
-    ) -> (Var<F>, Var<F>) {
+        &self,
+        zero: Var<Self, F>,
+        (x1, y1): (Var<Self, F>, Var<Self, F>),
+        (x2, y2): (Var<Self, F>, Var<Self, F>),
+    ) -> (Var<Self, F>, Var<Self, F>) {
         let mut same_x_bool = false;
         let same_x = self.var(|| {
             let same_x = x1.val() == x2.val();
@@ -277,7 +320,7 @@ pub trait Cs<F: FftField + PrimeField> {
             F::from(same_x as u64)
         });
 
-        let inf = zero;
+        let inf = zero.clone();
         let x21_inv = self.var(|| {
             if x1.val() == x2.val() {
                 F::zero()
@@ -312,23 +355,41 @@ pub trait Cs<F: FftField + PrimeField> {
         self.gate(GateSpec {
             typ: GateType::CompleteAdd,
             row: [
-                x1, y1, x2, y2, x3, y3, inf, same_x, s, inf_z, x21_inv, zero, zero, zero, zero,
+                x1,
+                y1,
+                x2,
+                y2,
+                x3.clone(),
+                y3.clone(),
+                inf,
+                same_x,
+                s,
+                inf_z,
+                x21_inv,
+                zero.clone(),
+                zero.clone(),
+                zero.clone(),
+                zero,
             ],
-            c: vec![],
+            coeffs: vec![],
         });
         (x3, y3)
     }
 
-    fn double(&mut self, zero: Var<F>, (x1, y1): (Var<F>, Var<F>)) -> (Var<F>, Var<F>) {
-        self.add_group(zero, (x1, y1), (x1, y1))
+    fn double(
+        &self,
+        zero: Var<Self, F>,
+        (x1, y1): (Var<Self, F>, Var<Self, F>),
+    ) -> (Var<Self, F>, Var<Self, F>) {
+        self.add_group(zero, (x1.clone(), y1.clone()), (x1, y1))
     }
 
     fn assert_add_group(
-        &mut self,
-        zero: Var<F>,
-        (x1, y1): (Var<F>, Var<F>),
-        (x2, y2): (Var<F>, Var<F>),
-        (x3, y3): (Var<F>, Var<F>),
+        &self,
+        zero: Var<Self, F>,
+        (x1, y1): (Var<Self, F>, Var<Self, F>),
+        (x2, y2): (Var<Self, F>, Var<Self, F>),
+        (x3, y3): (Var<Self, F>, Var<Self, F>),
     ) {
         let mut same_x_bool = false;
         let same_x = self.var(|| {
@@ -337,7 +398,7 @@ pub trait Cs<F: FftField + PrimeField> {
             F::from(same_x as u64)
         });
 
-        let inf = zero;
+        let inf = zero.clone();
         let x21_inv = self.var(|| {
             if x1.val() == x2.val() {
                 F::zero()
@@ -368,14 +429,28 @@ pub trait Cs<F: FftField + PrimeField> {
         self.gate(GateSpec {
             typ: GateType::CompleteAdd,
             row: [
-                x1, y1, x2, y2, x3, y3, inf, same_x, s, inf_z, x21_inv, zero, zero, zero, zero,
+                x1,
+                y1,
+                x2,
+                y2,
+                x3,
+                y3,
+                inf,
+                same_x,
+                s,
+                inf_z,
+                x21_inv,
+                zero.clone(),
+                zero.clone(),
+                zero.clone(),
+                zero,
             ],
-            c: vec![],
+            coeffs: vec![],
         });
     }
 
     // TODO
-    fn cond_select(&mut self, b: Var<F>, t: Var<F>, f: Var<F>) -> Var<F> {
+    fn cond_select(&self, b: Var<Self, F>, t: Var<Self, F>, f: Var<Self, F>) -> Var<Self, F> {
         // Could be more efficient. Currently uses three constraints :(
         // delta = t - f
         // res1 = b * delta
@@ -388,8 +463,8 @@ pub trait Cs<F: FftField + PrimeField> {
         let row1 = {
             let mut r = array_init(|_| self.var(|| F::zero()));
             r[0] = t;
-            r[1] = f;
-            r[2] = delta;
+            r[1] = f.clone();
+            r[2] = delta.clone();
             r
         };
         let mut c1 = vec![F::zero(); GENERIC_ROW_COEFFS];
@@ -399,14 +474,14 @@ pub trait Cs<F: FftField + PrimeField> {
         self.gate(GateSpec {
             typ: GateType::Generic,
             row: row1,
-            c: c1,
+            coeffs: c1,
         });
 
         let row2 = {
             let mut r = array_init(|_| self.var(|| F::zero()));
             r[0] = b;
             r[1] = delta;
-            r[2] = res1;
+            r[2] = res1.clone();
             r
         };
         let mut c2 = vec![F::zero(); GENERIC_ROW_COEFFS];
@@ -418,14 +493,14 @@ pub trait Cs<F: FftField + PrimeField> {
         self.gate(GateSpec {
             typ: GateType::Generic,
             row: row2,
-            c: c2,
+            coeffs: c2,
         });
 
         let row3 = {
             let mut r = array_init(|_| self.var(|| F::zero()));
             r[0] = res1;
             r[1] = f;
-            r[2] = res;
+            r[2] = res.clone();
             r
         };
         let mut c3 = vec![F::zero(); GENERIC_ROW_COEFFS];
@@ -436,23 +511,27 @@ pub trait Cs<F: FftField + PrimeField> {
         self.gate(GateSpec {
             typ: GateType::Generic,
             row: row3,
-            c: c3,
+            coeffs: c3,
         });
 
         res
     }
 
     fn scalar_mul(
-        &mut self,
-        zero: Var<F>,
-        (xt, yt): (Var<F>, Var<F>),
-        scalar: ShiftedScalar<F>,
-    ) -> (Var<F>, Var<F>) {
+        &self,
+        zero: Var<Self, F>,
+        (xt, yt): (Var<Self, F>, Var<Self, F>),
+        scalar: ShiftedScalar<Self, F>,
+    ) -> (Var<Self, F>, Var<Self, F>) {
         let num_bits = 255;
         let num_row_pairs = num_bits / 5;
         let mut witness: [Vec<F>; COLUMNS] = array_init(|_| vec![]);
 
-        let acc0 = self.add_group(zero, (xt, yt), (xt, yt));
+        let acc0 = self.add_group(
+            zero.clone(),
+            (xt.clone(), yt.clone()),
+            (xt.clone(), yt.clone()),
+        );
 
         let _ = self.var(|| {
             witness = array_init(|_| vec![F::zero(); 2 * num_row_pairs]);
@@ -481,28 +560,28 @@ pub trait Cs<F: FftField + PrimeField> {
             let mut row1 = array_init(|j| self.var(|| witness[j][2 * i]));
             let row2 = array_init(|j| self.var(|| witness[j][2 * i + 1]));
 
-            row1[0] = xt;
-            row1[1] = yt;
+            row1[0] = xt.clone();
+            row1[1] = yt.clone();
             if i == 0 {
-                row1[2] = acc0.0;
-                row1[3] = acc0.1;
-                row1[4] = zero;
+                row1[2] = acc0.0.clone();
+                row1[3] = acc0.1.clone();
+                row1[4] = zero.clone();
             }
             if i == num_row_pairs - 1 {
-                row1[5] = scalar.0;
-                res = Some((row2[0], row2[1]));
+                row1[5] = scalar.0.clone();
+                res = Some((row2[0].clone(), row2[1].clone()));
             }
 
             self.gate(GateSpec {
                 row: row1,
                 typ: GateType::VarBaseMul,
-                c: vec![],
+                coeffs: vec![],
             });
 
             self.gate(GateSpec {
                 row: row2,
                 typ: GateType::Zero,
-                c: vec![],
+                coeffs: vec![],
             })
         }
 
@@ -510,13 +589,13 @@ pub trait Cs<F: FftField + PrimeField> {
     }
 
     fn endo(
-        &mut self,
-        zero: Var<F>,
+        &self,
+        zero: Var<Self, F>,
         constants: &Constants<F>,
-        (xt, yt): (Var<F>, Var<F>),
-        scalar: Var<F>,
+        (xt, yt): (Var<Self, F>, Var<Self, F>),
+        scalar: Var<Self, F>,
         length_in_bits: usize,
-    ) -> (Var<F>, Var<F>) {
+    ) -> (Var<Self, F>, Var<Self, F>) {
         let bits_per_row = 4;
         let rows = length_in_bits / 4;
         assert_eq!(0, length_in_bits % 4);
@@ -545,19 +624,19 @@ pub trait Cs<F: FftField + PrimeField> {
 
         let endo = constants.endo;
         let mut acc = {
-            let phip = (self.scale(endo, xt), yt);
-            let phip_p = self.add_group(zero, phip, (xt, yt));
-            self.double(zero, phip_p)
+            let phip = (self.scale(endo, xt.clone()), yt.clone());
+            let phip_p = self.add_group(zero.clone(), phip, (xt.clone(), yt.clone()));
+            self.double(zero.clone(), phip_p)
         };
 
-        let mut n_acc = zero;
+        let mut n_acc = zero.clone();
 
         // TODO: Could be more efficient
         for i in 0..rows {
-            let b1 = bits[i * bits_per_row];
-            let b2 = bits[i * bits_per_row + 1];
-            let b3 = bits[i * bits_per_row + 2];
-            let b4 = bits[i * bits_per_row + 3];
+            let b1 = bits[i * bits_per_row].clone();
+            let b2 = bits[i * bits_per_row + 1].clone();
+            let b3 = bits[i * bits_per_row + 2].clone();
+            let b4 = bits[i * bits_per_row + 3].clone();
 
             let (xp, yp) = acc;
 
@@ -599,9 +678,23 @@ pub trait Cs<F: FftField + PrimeField> {
             self.gate(GateSpec {
                 typ: GateType::EndoMul,
                 row: [
-                    xt, yt, zero, zero, xp, yp, n_acc, xr, yr, s1, s3, b1, b2, b3, b4,
+                    xt.clone(),
+                    yt.clone(),
+                    zero.clone(),
+                    zero.clone(),
+                    xp,
+                    yp,
+                    n_acc.clone(),
+                    xr,
+                    yr,
+                    s1,
+                    s3,
+                    b1.clone(),
+                    b2.clone(),
+                    b3.clone(),
+                    b4.clone(),
                 ],
-                c: vec![],
+                coeffs: vec![],
             });
 
             acc = (xs, ys);
@@ -622,15 +715,28 @@ pub trait Cs<F: FftField + PrimeField> {
         self.gate(GateSpec {
             typ: GateType::Zero,
             row: [
-                zero, zero, zero, zero, acc.0, acc.1, scalar, zero, zero, zero, zero, zero, zero,
-                zero, zero,
+                zero.clone(),
+                zero.clone(),
+                zero.clone(),
+                zero.clone(),
+                acc.0.clone(),
+                acc.1.clone(),
+                scalar,
+                zero.clone(),
+                zero.clone(),
+                zero.clone(),
+                zero.clone(),
+                zero.clone(),
+                zero.clone(),
+                zero.clone(),
+                zero,
             ],
-            c: vec![],
+            coeffs: vec![],
         });
         acc
     }
 
-    fn assert_pack(&mut self, zero: Var<F>, x: Var<F>, bits_lsb: &[Var<F>]) {
+    fn assert_pack(&self, zero: Var<Self, F>, x: Var<Self, F>, bits_lsb: &[Var<Self, F>]) {
         let crumbs_per_row = 8;
         let bits_per_row = 2 * crumbs_per_row;
         assert_eq!(bits_lsb.len() % bits_per_row, 0);
@@ -646,17 +752,17 @@ pub trait Cs<F: FftField + PrimeField> {
         let neg_one = -one;
 
         for (i, row_bits) in bits_msb[..].chunks(bits_per_row).enumerate() {
-            let mut row: [Var<F>; COLUMNS] = array_init(|_| self.var(|| F::zero()));
-            row[0] = n;
-            row[2] = a;
-            row[3] = b;
+            let mut row: [Var<Self, F>; COLUMNS] = array_init(|_| self.var(|| F::zero()));
+            row[0] = n.clone();
+            row[2] = a.clone();
+            row[3] = b.clone();
 
             for (j, crumb_bits) in row_bits.chunks(2).enumerate() {
                 let b0 = crumb_bits[1];
                 let b1 = crumb_bits[0];
 
                 let crumb = self.var(|| b0.val() + b1.val().double());
-                row[6 + j] = crumb;
+                row[6 + j] = crumb.clone();
 
                 a = self.var(|| {
                     let x = a.val().double();
@@ -670,35 +776,39 @@ pub trait Cs<F: FftField + PrimeField> {
                 b = self.var(|| {
                     let x = b.val().double();
                     if b1.val().is_zero() {
-                        x + if b0.val().is_one() { one } else { neg_one }
+                        x.clone() + if b0.val().is_one() { one } else { neg_one }
                     } else {
-                        x
+                        x.clone()
                     }
                 });
 
                 n = self.var(|| n.val().double().double() + crumb.val());
             }
 
-            row[1] = if i == num_rows - 1 { x } else { n };
-            row[4] = a;
-            row[5] = b;
+            row[1] = if i == num_rows - 1 {
+                x.clone()
+            } else {
+                n.clone()
+            };
+            row[4] = a.clone();
+            row[5] = b.clone();
 
             row[14] = self.var(|| F::zero());
         }
     }
 
-    fn zk(&mut self) {
+    fn zk(&self) {
         for _ in 0..ZK_ROWS {
             let row = array_init(|_| self.var(|| F::rand(&mut rand::thread_rng())));
             self.gate(GateSpec {
                 typ: GateType::Zero,
-                c: vec![],
+                coeffs: vec![],
                 row,
             });
         }
     }
 
-    fn poseidon(&mut self, constants: &Constants<F>, input: Vec<Var<F>>) -> Vec<Var<F>> {
+    fn poseidon(&self, constants: &Constants<F>, input: Vec<Var<Self, F>>) -> Vec<Var<Self, F>> {
         use kimchi::circuits::polynomials::poseidon::*;
 
         let params = &constants.poseidon;
@@ -742,36 +852,36 @@ pub trait Cs<F: FftField + PrimeField> {
 
             self.gate(GateSpec {
                 typ: kimchi::circuits::gate::GateType::Poseidon,
-                c: (0..15)
+                coeffs: (0..15)
                     .map(|i| rc[offset + (i / width)][i % width])
                     .collect(),
                 row: [
-                    states[offset][0],
-                    states[offset][1],
-                    states[offset][2],
-                    states[offset + 4][0],
-                    states[offset + 4][1],
-                    states[offset + 4][2],
-                    states[offset + 1][0],
-                    states[offset + 1][1],
-                    states[offset + 1][2],
-                    states[offset + 2][0],
-                    states[offset + 2][1],
-                    states[offset + 2][2],
-                    states[offset + 3][0],
-                    states[offset + 3][1],
-                    states[offset + 3][2],
+                    states[offset][0].clone(),
+                    states[offset][1].clone(),
+                    states[offset][2].clone(),
+                    states[offset + 4][0].clone(),
+                    states[offset + 4][1].clone(),
+                    states[offset + 4][2].clone(),
+                    states[offset + 1][0].clone(),
+                    states[offset + 1][1].clone(),
+                    states[offset + 1][2].clone(),
+                    states[offset + 2][0].clone(),
+                    states[offset + 2][1].clone(),
+                    states[offset + 2][2].clone(),
+                    states[offset + 3][0].clone(),
+                    states[offset + 3][1].clone(),
+                    states[offset + 3][2].clone(),
                 ],
             });
         }
 
         let mut final_row = array_init(|_| self.var(|| F::zero()));
-        final_row[0] = states[states.len() - 1][0];
-        final_row[1] = states[states.len() - 1][1];
-        final_row[2] = states[states.len() - 1][2];
+        final_row[0] = states[states.len() - 1][0].clone();
+        final_row[1] = states[states.len() - 1][1].clone();
+        final_row[2] = states[states.len() - 1][2].clone();
         self.gate(GateSpec {
             typ: kimchi::circuits::gate::GateType::Zero,
-            c: vec![],
+            coeffs: vec![],
             row: final_row,
         });
 
@@ -779,49 +889,62 @@ pub trait Cs<F: FftField + PrimeField> {
     }
 }
 
-impl<F: FftField + PrimeField> Cs<F> for WitnessGenerator<F> {
-    fn var<G>(&mut self, g: G) -> Var<F>
+impl<F: FftField + PrimeField> Cs<F> for Ref<WitnessGenerator<F>> {
+    fn var<G>(&self, g: G) -> Var<Self, F>
     where
         G: FnOnce() -> F,
     {
         Var {
             index: 0,
             value: Some(g()),
+            sys: Rc::clone(self),
         }
     }
 
     fn curr_gate_count(&self) -> usize {
-        self.rows.len()
+        self.borrow().rows.len()
     }
 
-    fn gate(&mut self, g: GateSpec<F>) {
-        self.rows.push(array_init(|i| g.row[i].value.unwrap()))
+    fn gate(&self, g: GateSpec<Self, F>) {
+        self.borrow_mut()
+            .rows
+            .push(array_init(|i| g.row[i].value.unwrap()))
     }
 }
 
 impl<F: FftField> WitnessGenerator<F> {
+    fn new(public_input: &[F]) -> Ref<Self> {
+        Rc::new(RefCell::new(Self {
+            rows: public_input
+                .iter()
+                .map(|x| array_init(|i| if i == 0 { *x } else { F::zero() }))
+                .collect(),
+        }))
+    }
+
     /// Returns the columns of the witness.
     fn columns(&self) -> [Vec<F>; COLUMNS] {
         array_init(|col| self.rows.iter().map(|row| row[col]).collect())
     }
 }
 
-impl<F: FftField + PrimeField> Cs<F> for System<F> {
-    fn var<G>(&mut self, _: G) -> Var<F> {
-        let v = self.next_variable;
-        self.next_variable += 1;
+impl<F: PrimeField> Cs<F> for Ref<System<F>> {
+    fn var<G>(&self, _: G) -> Var<Self, F> {
+        let v = self.borrow().next_variable;
+        self.borrow_mut().next_variable += 1;
         Var {
             index: v,
             value: None,
+            sys: Rc::clone(self),
         }
     }
 
     fn curr_gate_count(&self) -> usize {
-        self.gates.len()
+        self.borrow().gates.len()
     }
 
-    fn gate(&mut self, g: GateSpec<F>) {
-        self.gates.push(g);
+    fn gate(&self, g: GateSpec<Self, F>) {
+        self.borrow_mut().gates.push(g);
     }
 }
 
@@ -854,7 +977,7 @@ impl<F: FftField> System<F> {
 
             let g = CircuitGate {
                 typ: gate.typ,
-                coeffs: gate.c.clone(),
+                coeffs: gate.coeffs.clone(),
                 wires,
             };
             gates.push(g);
@@ -878,19 +1001,17 @@ pub fn prove<G, H, EFqSponge, EFrSponge>(
     mut main: H,
 ) -> ProverProof<G>
 where
-    H: FnMut(&mut WitnessGenerator<G::ScalarField>, Vec<Var<G::ScalarField>>),
+    H: FnMut(
+        Ref<WitnessGenerator<G::ScalarField>>,
+        Vec<Var<Ref<WitnessGenerator<G::ScalarField>>, G::ScalarField>>,
+    ),
     G::BaseField: PrimeField,
     G: CommitmentCurve,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
 {
     // create the public rows
-    let mut gen: WitnessGenerator<G::ScalarField> = WitnessGenerator {
-        rows: public_input
-            .iter()
-            .map(|x| array_init(|i| if i == 0 { *x } else { G::ScalarField::zero() }))
-            .collect(),
-    };
+    let gen: Ref<WitnessGenerator<G::ScalarField>> = WitnessGenerator::new(&public_input);
 
     // run the witness generation
     let public_vars = public_input
@@ -898,12 +1019,13 @@ where
         .map(|x| Var {
             index: 0,
             value: Some(*x),
+            sys: Rc::clone(&gen),
         })
         .collect();
-    main(&mut gen, public_vars);
+    main(gen.clone(), public_vars);
 
     // get the witness columns
-    let columns = gen.columns();
+    let columns = gen.borrow().columns();
 
     // TODO: woot??
     let blinders: [Option<PolyComm<G::ScalarField>>; COLUMNS] = match blinders {
@@ -936,13 +1058,10 @@ pub fn generate_prover_index<C, H>(
     main: H,
 ) -> ProverIndex<C::Outer>
 where
-    H: FnOnce(&mut System<C::InnerField>, Vec<Var<C::InnerField>>),
+    H: FnOnce(Ref<System<C::InnerField>>, Vec<Var<Ref<System<C::InnerField>>, C::InnerField>>),
     C: Cycle,
 {
-    let mut system: System<C::InnerField> = System {
-        next_variable: 0,
-        gates: vec![],
-    };
+    let system: Ref<System<C::InnerField>> = System::new();
     let z = C::InnerField::zero();
 
     // create public input variables
@@ -952,23 +1071,23 @@ where
             let v = system.var(|| panic!("fail"));
             let row = array_init(|i| {
                 if i == 0 {
-                    v
+                    v.clone()
                 } else {
                     system.var(|| panic!("fail"))
                 }
             });
             system.gate(GateSpec {
                 typ: GateType::Generic,
-                c: public_input_row.clone(),
+                coeffs: public_input_row.clone(),
                 row,
             });
             v
         })
         .collect();
 
-    main(&mut system, public_input);
+    main(system.clone(), public_input);
 
-    let gates = system.gates();
+    let gates = system.borrow().gates();
     println!("gates: {}", gates.len());
     // Other base field = self scalar field
     let (endo_q, _endo_r) = endos::<C::Inner>();
