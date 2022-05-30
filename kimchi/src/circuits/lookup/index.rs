@@ -76,7 +76,7 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
         runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
         domain: &EvaluationDomains<F>,
     ) -> Result<Option<Self>, LookupError> {
-        let lookup_info = LookupInfo::create();
+        let lookup_info = LookupInfo::create(runtime_tables.is_some());
 
         //~ 1. If no lookup is used in the circuit, do not create a lookup index
         match lookup_info.lookup_used(gates) {
