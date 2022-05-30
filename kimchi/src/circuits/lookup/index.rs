@@ -320,8 +320,7 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                     runtime_selector,
                     configuration: LookupConfiguration {
                         lookup_used,
-                        max_lookups_per_row: lookup_info.max_per_row as usize,
-                        max_joint_size: lookup_info.max_joint_size,
+                        lookup_info,
                         runtime_tables,
                         runtime_table_offset,
                         dummy_lookup,

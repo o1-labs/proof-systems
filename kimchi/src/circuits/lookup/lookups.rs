@@ -1,9 +1,7 @@
 use crate::circuits::{
     domains::EvaluationDomains,
     gate::{CircuitGate, CurrOrNext, GateType},
-    lookup::tables::{
-        combine_table_entry, get_table, GateLookupTable, LookupTable, XOR_TABLE_ID,
-    },
+    lookup::tables::{combine_table_entry, get_table, GateLookupTable, LookupTable, XOR_TABLE_ID},
 };
 use ark_ff::{FftField, Field, One, Zero};
 use ark_poly::{EvaluationDomain, Evaluations as E, Radix2EvaluationDomain as D};
@@ -29,7 +27,7 @@ pub enum LookupsUsed {
 }
 
 /// Describes the desired lookup configuration.
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct LookupInfo {
     /// A single lookup constraint is a vector of lookup constraints to be applied at a row.
     /// This is a vector of all the kinds of lookup constraints in this configuration.
@@ -246,7 +244,7 @@ impl<F: Copy> JointLookup<SingleLookup<F>, LookupTableID> {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub enum LookupPattern {
     ChaCha,
     ChaChaFinal,

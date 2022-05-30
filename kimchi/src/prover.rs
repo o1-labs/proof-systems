@@ -323,7 +323,7 @@ where
             //~      set the `table_id_combiner` as the $j^i$ with $i$ the maximum width of any used table.
             //~      Essentially, this is to add a last column of table ids to the concatenated lookup tables.
             let table_id_combiner: ScalarField<G> = if lcs.table_ids8.as_ref().is_some() {
-                joint_combiner.pow([lcs.configuration.max_joint_size as u64])
+                joint_combiner.pow([lcs.configuration.lookup_info.max_joint_size as u64])
             } else {
                 // TODO: just set this to None in case multiple tables are not used
                 ScalarField::<G>::zero()
@@ -401,6 +401,7 @@ where
                 &witness,
                 joint_combiner,
                 table_id_combiner,
+                &lcs.configuration.lookup_info,
             )?;
 
             //~      - Randomize the last `EVALS` rows in each of the sorted polynomials
@@ -449,7 +450,7 @@ where
         let gamma = fq_sponge.challenge();
 
         //~ 13. If using lookup:
-        if index.cs.lookup_constraint_system.is_some() {
+        if let Some(lcs) = &index.cs.lookup_constraint_system {
             //~     - Compute the lookup aggregation polynomial.
             let joint_lookup_table_d8 = lookup_context.joint_lookup_table_d8.as_ref().unwrap();
 
@@ -465,6 +466,7 @@ where
                 gamma,
                 lookup_context.sorted.as_ref().unwrap(),
                 rng,
+                &lcs.configuration.lookup_info,
             )?;
 
             //~     - Commit to the aggregation polynomial.
