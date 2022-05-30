@@ -78,6 +78,7 @@ pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
 //~
 
 /// Computes the sorted lookup tables required by the lookup argument.
+#[allow(clippy::too_many_arguments)]
 pub fn sorted<F>(
     dummy_lookup_value: F,
     joint_lookup_table_d8: &Evaluations<F, D<F>>,
