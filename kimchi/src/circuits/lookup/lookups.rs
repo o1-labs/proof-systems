@@ -2,15 +2,14 @@ use crate::circuits::{
     domains::EvaluationDomains,
     gate::{CircuitGate, CurrOrNext, GateType},
     lookup::tables::{
-        combine_table_entry, get_table, GateLookupTable, GatesLookupMaps, GatesLookupSpec,
-        LookupTable, XOR_TABLE_ID,
+        combine_table_entry, get_table, GateLookupTable, LookupTable, XOR_TABLE_ID,
     },
 };
 use ark_ff::{FftField, Field, One, Zero};
 use ark_poly::{EvaluationDomain, Evaluations as E, Radix2EvaluationDomain as D};
 use o1_utils::field_helpers::i32_to_field;
 use serde::{Deserialize, Serialize};
-use std::collections::{hash_map::Entry, HashMap, HashSet};
+use std::collections::HashSet;
 use std::ops::{Mul, Neg};
 
 type Evaluations<Field> = E<Field, D<Field>>;
@@ -35,9 +34,6 @@ pub struct LookupInfo {
     /// A single lookup constraint is a vector of lookup constraints to be applied at a row.
     /// This is a vector of all the kinds of lookup constraints in this configuration.
     pub kinds: Vec<LookupPattern>,
-    /// A map from the kind of gate (and whether it is the current row or next row) to the lookup
-    /// constraint (given as an index into `kinds`) that should be applied there, if any.
-    pub kinds_map: HashMap<(GateType, CurrOrNext), usize>,
     /// The maximum length of an element of `kinds`. This can be computed from `kinds`.
     pub max_per_row: usize,
     /// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
@@ -47,12 +43,7 @@ pub struct LookupInfo {
 impl LookupInfo {
     /// Create the default lookup configuration.
     pub fn create<F: FftField>() -> Self {
-        let (kinds, locations_with_tables): (Vec<_>, Vec<_>) = GateType::lookup_kinds::<F>();
-
-        let GatesLookupMaps {
-            gate_selector_map: kinds_map,
-            gate_table_map: _,
-        } = GateType::lookup_kinds_map::<F>(locations_with_tables);
+        let kinds: Vec<_> = GateType::lookup_kinds::<F>();
 
         let max_per_row = max_lookups_per_row(&kinds);
 
@@ -61,7 +52,6 @@ impl LookupInfo {
                 .iter()
                 .fold(0, |acc, v| std::cmp::max(acc, v.max_joint_size())),
 
-            kinds_map,
             kinds,
             max_per_row,
         }
@@ -74,8 +64,8 @@ impl LookupInfo {
             let typ = g.typ;
 
             for r in &[CurrOrNext::Curr, CurrOrNext::Next] {
-                if let Some(v) = self.kinds_map.get(&(typ, *r)) {
-                    if self.kinds[*v].max_joint_size() > 1 {
+                if let Some(lookup_pattern) = LookupPattern::from_gate(typ, *r) {
+                    if lookup_pattern.max_joint_size() > 1 {
                         return Some(LookupsUsed::Joint);
                     } else {
                         lookups_used = Some(LookupsUsed::Single);
@@ -101,26 +91,17 @@ impl LookupInfo {
         for (i, gate) in gates.iter().enumerate().take(n) {
             let typ = gate.typ;
 
-            if let Some(selector_index) = self.kinds_map.get(&(typ, CurrOrNext::Curr)) {
-                selector_values[*selector_index][i] = F::one();
+            if let Some(lookup_pattern) = LookupPattern::from_gate(typ, CurrOrNext::Curr) {
+                selector_values[lookup_pattern.to_index()][i] = F::one();
+                if let Some(table_kind) = lookup_pattern.table() {
+                    gate_tables.insert(table_kind);
+                }
             }
-            if let Some(selector_index) = self.kinds_map.get(&(typ, CurrOrNext::Next)) {
-                selector_values[*selector_index][i + 1] = F::one();
-            }
-
-            if let Some(table_kind) = self
-                .kinds_map
-                .get(&(typ, CurrOrNext::Curr))
-                .and_then(|x| self.kinds[*x].table())
-            {
-                gate_tables.insert(table_kind);
-            }
-            if let Some(table_kind) = self
-                .kinds_map
-                .get(&(typ, CurrOrNext::Next))
-                .and_then(|x| self.kinds[*x].table())
-            {
-                gate_tables.insert(table_kind);
+            if let Some(lookup_pattern) = LookupPattern::from_gate(typ, CurrOrNext::Next) {
+                selector_values[lookup_pattern.to_index()][i + 1] = F::one();
+                if let Some(table_kind) = lookup_pattern.table() {
+                    gate_tables.insert(table_kind);
+                }
             }
         }
 
@@ -144,11 +125,11 @@ impl LookupInfo {
         for i in 0..gates.len() {
             let typ = gates[i].typ;
 
-            if let Some(v) = self.kinds_map.get(&(typ, CurrOrNext::Curr)) {
-                kinds[i] = self.kinds[*v].lookups();
+            if let Some(lookup_pattern) = LookupPattern::from_gate(typ, CurrOrNext::Curr) {
+                kinds[i] = lookup_pattern.lookups();
             }
-            if let Some(v) = self.kinds_map.get(&(typ, CurrOrNext::Next)) {
-                kinds[i + 1] = self.kinds[*v].lookups();
+            if let Some(lookup_pattern) = LookupPattern::from_gate(typ, CurrOrNext::Next) {
+                kinds[i + 1] = lookup_pattern.lookups();
             }
         }
         kinds
@@ -367,6 +348,14 @@ impl LookupPattern {
         }
     }
 
+    fn to_index(&self) -> usize {
+        match self {
+            LookupPattern::ChaCha => 0,
+            LookupPattern::ChaChaFinal => 1,
+            LookupPattern::LookupGate => 2,
+        }
+    }
+
     pub fn from_gate(gate_type: GateType, curr_or_next: CurrOrNext) -> Option<Self> {
         use CurrOrNext::*;
         use GateType::*;
@@ -386,83 +375,11 @@ impl GateType {
     ///
     /// See circuits/kimchi/src/polynomials/chacha.rs for an explanation of
     /// how these work.
-    pub fn lookup_kinds<F: Field>() -> (Vec<LookupPattern>, Vec<GatesLookupSpec>) {
-        let chacha_pattern = LookupPattern::ChaCha;
-
-        let mut chacha_where = HashSet::new();
-        use CurrOrNext::*;
-        use GateType::*;
-
-        for g in &[ChaCha0, ChaCha1, ChaCha2] {
-            for r in &[Curr, Next] {
-                chacha_where.insert((*g, *r));
-            }
-        }
-
-        let chacha_final_pattern = LookupPattern::ChaChaFinal;
-
-        let mut chacha_final_where = HashSet::new();
-        for r in &[Curr, Next] {
-            chacha_final_where.insert((ChaChaFinal, *r));
-        }
-
-        let lookup_gate_pattern = LookupPattern::LookupGate;
-        let lookup_gate_where = HashSet::from([(Lookup, Curr)]);
-
-        let lookups = [
-            (chacha_pattern, chacha_where, Some(GateLookupTable::Xor)),
-            (
-                chacha_final_pattern,
-                chacha_final_where,
-                Some(GateLookupTable::Xor),
-            ),
-            (lookup_gate_pattern, lookup_gate_where, None),
-        ];
-
-        // Convert from an array of tuples to a tuple of vectors
-        {
-            let mut patterns = Vec::with_capacity(lookups.len());
-            let mut locations_with_tables = Vec::with_capacity(lookups.len());
-            for (pattern, locations, table) in lookups {
-                patterns.push(pattern);
-                locations_with_tables.push(GatesLookupSpec {
-                    gate_positions: locations,
-                    gate_lookup_table: table,
-                });
-            }
-            (patterns, locations_with_tables)
-        }
-    }
-
-    pub fn lookup_kinds_map<F: Field>(
-        locations_with_tables: Vec<GatesLookupSpec>,
-    ) -> GatesLookupMaps {
-        let mut index_map = HashMap::with_capacity(locations_with_tables.len());
-        let mut table_map = HashMap::with_capacity(locations_with_tables.len());
-        for (
-            i,
-            GatesLookupSpec {
-                gate_positions: locs,
-                gate_lookup_table: table_kind,
-            },
-        ) in locations_with_tables.into_iter().enumerate()
-        {
-            for location in locs {
-                if let Entry::Vacant(e) = index_map.entry(location) {
-                    e.insert(i);
-                } else {
-                    panic!("Multiple lookup patterns asserted on same row.")
-                }
-                if let Some(table_kind) = table_kind {
-                    if let Entry::Vacant(e) = table_map.entry(location) {
-                        e.insert(table_kind);
-                    }
-                }
-            }
-        }
-        GatesLookupMaps {
-            gate_selector_map: index_map,
-            gate_table_map: table_map,
-        }
+    pub fn lookup_kinds<F: Field>() -> Vec<LookupPattern> {
+        vec![
+            LookupPattern::ChaCha,
+            LookupPattern::ChaChaFinal,
+            LookupPattern::LookupGate,
+        ]
     }
 }
