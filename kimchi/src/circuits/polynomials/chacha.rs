@@ -503,7 +503,7 @@ mod tests {
 
     #[test]
     fn chacha_linearization() {
-        let lookup_info = LookupInfo::create::<F>();
+        let lookup_info = LookupInfo::create();
 
         let evaluated_cols = {
             let mut h = std::collections::HashSet::new();

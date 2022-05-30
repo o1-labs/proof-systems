@@ -97,7 +97,7 @@ where
     let mut counts: HashMap<&F, usize> = HashMap::new();
 
     let lookup_rows = n - ZK_ROWS - 1;
-    let lookup_info = LookupInfo::create::<F>();
+    let lookup_info = LookupInfo::create();
     let by_row = lookup_info.by_row(gates);
     let max_lookups_per_row = lookup_info.max_per_row;
 
@@ -257,7 +257,7 @@ where
     }));
     ark_ff::fields::batch_inversion::<F>(&mut lookup_aggreg[1..]);
 
-    let lookup_info = LookupInfo::create::<F>();
+    let lookup_info = LookupInfo::create();
     let max_lookups_per_row = lookup_info.max_per_row;
 
     let complements_with_beta_term = {
@@ -366,7 +366,7 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>) -> Vec<E
     // values) and thus
     //
     // num_lookup_rows = n - 3
-    let lookup_info = LookupInfo::create::<F>();
+    let lookup_info = LookupInfo::create();
 
     let column = |col: Column| E::cell(col, Curr);
 
@@ -614,7 +614,7 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
     }
     assert_eq!(s_index, sorted_joined.len());
 
-    let lookup_info = LookupInfo::create::<F>();
+    let lookup_info = LookupInfo::create();
     let by_row = lookup_info.by_row(gates);
 
     // Compute lookups||table and check multiset equality

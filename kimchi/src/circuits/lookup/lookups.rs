@@ -42,8 +42,8 @@ pub struct LookupInfo {
 
 impl LookupInfo {
     /// Create the default lookup configuration.
-    pub fn create<F: FftField>() -> Self {
-        let kinds: Vec<_> = GateType::lookup_kinds::<F>();
+    pub fn create() -> Self {
+        let kinds: Vec<_> = GateType::lookup_kinds();
 
         let max_per_row = max_lookups_per_row(&kinds);
 
@@ -375,7 +375,7 @@ impl GateType {
     ///
     /// See circuits/kimchi/src/polynomials/chacha.rs for an explanation of
     /// how these work.
-    pub fn lookup_kinds<F: Field>() -> Vec<LookupPattern> {
+    pub fn lookup_kinds() -> Vec<LookupPattern> {
         vec![
             LookupPattern::ChaCha,
             LookupPattern::ChaChaFinal,
