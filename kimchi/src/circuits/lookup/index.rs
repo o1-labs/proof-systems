@@ -64,6 +64,12 @@ pub struct LookupConstraintSystem<F: FftField> {
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
     pub runtime_selector: Option<E<F, D<F>>>,
 
+    /// Optional runtime tables, listed as tuples `(length, id)`.
+    pub runtime_tables: Option<Vec<RuntimeTableSpec>>,
+
+    /// The offset of the runtime table within the concatenated table
+    pub runtime_table_offset: Option<usize>,
+
     /// Configuration for the lookup constraint.
     #[serde(bound = "LookupConfiguration<F>: Serialize + DeserializeOwned")]
     pub configuration: LookupConfiguration<F>,
@@ -318,11 +324,11 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                     table_ids,
                     table_ids8,
                     runtime_selector,
+                    runtime_tables,
+                    runtime_table_offset,
                     configuration: LookupConfiguration {
                         lookup_used,
                         lookup_info,
-                        runtime_tables,
-                        runtime_table_offset,
                         dummy_lookup,
                     },
                 }))
