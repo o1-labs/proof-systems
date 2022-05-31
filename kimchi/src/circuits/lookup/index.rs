@@ -91,13 +91,13 @@ impl<'de, F: FftField> serde_with::DeserializeAs<'de, LookupSelectors<E<F, D<F>>
 }
 
 impl<T> std::ops::Index<LookupPattern> for LookupSelectors<T> {
-    type Output = T;
+    type Output = Option<T>;
 
     fn index(&self, index: LookupPattern) -> &Self::Output {
         match index {
-            LookupPattern::ChaCha => self.chacha.as_ref().expect("has chacha"),
-            LookupPattern::ChaChaFinal => self.chacha_final.as_ref().expect("has chacha_final"),
-            LookupPattern::LookupGate => self.lookup_gate.as_ref().expect("has lookup_gate"),
+            LookupPattern::ChaCha => &self.chacha,
+            LookupPattern::ChaChaFinal => &self.chacha_final,
+            LookupPattern::LookupGate => &self.lookup_gate,
         }
     }
 }
@@ -105,9 +105,9 @@ impl<T> std::ops::Index<LookupPattern> for LookupSelectors<T> {
 impl<T> std::ops::IndexMut<LookupPattern> for LookupSelectors<T> {
     fn index_mut(&mut self, index: LookupPattern) -> &mut Self::Output {
         match index {
-            LookupPattern::ChaCha => self.chacha.as_mut().expect("has chacha"),
-            LookupPattern::ChaChaFinal => self.chacha_final.as_mut().expect("has chacha_final"),
-            LookupPattern::LookupGate => self.lookup_gate.as_mut().expect("has lookup_gate"),
+            LookupPattern::ChaCha => &mut self.chacha,
+            LookupPattern::ChaChaFinal => &mut self.chacha_final,
+            LookupPattern::LookupGate => &mut self.lookup_gate,
         }
     }
 }

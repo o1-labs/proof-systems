@@ -114,7 +114,7 @@ impl<'a, F: FftField> Environment<'a, F> {
             Witness(i) => Some(&self.witness[*i]),
             Coefficient(i) => Some(&self.coefficient[*i]),
             Z => Some(self.z),
-            LookupKindIndex(i) => lookup.map(|l| &l.selectors[*i]),
+            LookupKindIndex(i) => lookup.and_then(|l| l.selectors[*i].as_ref()),
             LookupSorted(i) => lookup.map(|l| &l.sorted[*i]),
             LookupAggreg => lookup.map(|l| l.aggreg),
             LookupTable => lookup.map(|l| l.table),
