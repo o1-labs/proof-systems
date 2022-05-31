@@ -257,7 +257,7 @@ pub mod caml {
     }
 
     //
-    // CamlChallenge<CamlG, CamlF> <-> Challenge<G>
+    // CamlRecursionChallenge<CamlG, CamlF> <-> RecursionChallenge<G>
     //
 
     impl<G, CamlG, CamlF> From<RecursionChallenge<G>> for CamlRecursionChallenge<CamlG, CamlF>
