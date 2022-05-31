@@ -354,7 +354,7 @@ where
                         }
                     };
 
-                    let combined_entry = if lcs.configuration.lookup_info.uses_runtime_tables {
+                    let combined_entry = if !lcs.configuration.lookup_info.uses_runtime_tables {
                         let table_row = lcs.lookup_table8.iter().map(|e| &e.evals[idx]);
 
                         combine_table_entry(
