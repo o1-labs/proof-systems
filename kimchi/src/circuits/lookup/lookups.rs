@@ -43,8 +43,9 @@ pub struct LookupInfo {
 
 impl LookupInfo {
     /// Create the default lookup configuration.
-    pub fn create(uses_runtime_tables: bool) -> Self {
-        let kinds: Vec<_> = GateType::lookup_kinds();
+    pub fn create(patterns: HashSet<LookupPattern>, uses_runtime_tables: bool) -> Self {
+        let mut kinds: Vec<LookupPattern> = patterns.into_iter().collect();
+        kinds.sort();
 
         let max_per_row = max_lookups_per_row(&kinds);
 
@@ -59,20 +60,33 @@ impl LookupInfo {
         }
     }
 
-    /// Check what kind of lookups, if any, are used by this circuit.
-    pub fn lookup_used<F: FftField>(&self, gates: &[CircuitGate<F>]) -> Option<LookupsUsed> {
-        let mut lookups_used = None;
+    pub fn create_from_gates<F: FftField>(
+        gates: &[CircuitGate<F>],
+        uses_runtime_tables: bool,
+    ) -> Option<Self> {
+        let mut kinds = HashSet::new();
         for g in gates.iter() {
-            let typ = g.typ;
-
             for r in &[CurrOrNext::Curr, CurrOrNext::Next] {
-                if let Some(lookup_pattern) = LookupPattern::from_gate(typ, *r) {
-                    if lookup_pattern.max_joint_size() > 1 {
-                        return Some(LookupsUsed::Joint);
-                    } else {
-                        lookups_used = Some(LookupsUsed::Single);
-                    }
+                if let Some(lookup_pattern) = LookupPattern::from_gate(g.typ, *r) {
+                    kinds.insert(lookup_pattern);
                 }
+            }
+        }
+        if kinds.is_empty() {
+            None
+        } else {
+            Some(Self::create(kinds, uses_runtime_tables))
+        }
+    }
+
+    /// Check what kind of lookups, if any, are used by this circuit.
+    pub fn lookup_used(&self) -> Option<LookupsUsed> {
+        let mut lookups_used = None;
+        for lookup_pattern in self.kinds.iter() {
+            if lookup_pattern.max_joint_size() > 1 {
+                return Some(LookupsUsed::Joint);
+            } else {
+                lookups_used = Some(LookupsUsed::Single);
             }
         }
         lookups_used

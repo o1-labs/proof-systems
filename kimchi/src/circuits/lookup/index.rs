@@ -182,12 +182,14 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
         runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
         domain: &EvaluationDomains<F>,
     ) -> Result<Option<Self>, LookupError> {
-        let lookup_info = LookupInfo::create(runtime_tables.is_some());
-
         //~ 1. If no lookup is used in the circuit, do not create a lookup index
-        match lookup_info.lookup_used(gates) {
+        match LookupInfo::create_from_gates(gates, runtime_tables.is_some()) {
             None => Ok(None),
-            Some(lookup_used) => {
+            Some(lookup_info) => {
+                let lookup_used = match lookup_info.lookup_used() {
+                    Some(lookup_used) => lookup_used,
+                    None => return Ok(None),
+                };
                 let d1_size = domain.d1.size();
 
                 // The maximum number of entries that can be provided across all tables.
