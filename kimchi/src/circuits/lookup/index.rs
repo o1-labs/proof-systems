@@ -119,6 +119,9 @@ impl<T> LookupSelectors<T> {
             chacha_final,
             lookup_gate,
         } = self;
+        // This closure isn't really redundant -- it shields the parameter from a copy -- but
+        // clippy isn't smart enough to figure that out..
+        #[allow(clippy::redundant_closure)]
         let f = |x| f(x);
         LookupSelectors {
             chacha: chacha.map(f),
