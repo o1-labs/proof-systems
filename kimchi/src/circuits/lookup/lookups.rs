@@ -1,6 +1,7 @@
 use crate::circuits::{
     domains::EvaluationDomains,
     gate::{CircuitGate, CurrOrNext, GateType},
+    lookup::index::LookupSelectors,
     lookup::tables::{combine_table_entry, get_table, GateLookupTable, LookupTable, XOR_TABLE_ID},
 };
 use ark_ff::{FftField, Field, One, Zero};
@@ -83,9 +84,14 @@ impl LookupInfo {
         &self,
         domain: &EvaluationDomains<F>,
         gates: &[CircuitGate<F>],
-    ) -> (Vec<Evaluations<F>>, Vec<LookupTable<F>>) {
+    ) -> (LookupSelectors<Evaluations<F>>, Vec<LookupTable<F>>) {
         let n = domain.d1.size();
-        let mut selector_values: Vec<_> = self.kinds.iter().map(|_| vec![F::zero(); n]).collect();
+
+        let mut selector_values: LookupSelectors<_> = Default::default();
+        for kind in self.kinds.iter() {
+            selector_values[kind.to_index()] = vec![F::zero(); n];
+        }
+
         let mut gate_tables = HashSet::new();
 
         // TODO: is take(n) useful here? I don't see why we need this
@@ -108,14 +114,11 @@ impl LookupInfo {
 
         // Actually, don't need to evaluate over domain 8 here.
         // TODO: so why do it :D?
-        let selector_values8: Vec<_> = selector_values
-            .into_iter()
-            .map(|v| {
-                E::<F, D<F>>::from_vec_and_domain(v, domain.d1)
-                    .interpolate()
-                    .evaluate_over_domain(domain.d8)
-            })
-            .collect();
+        let selector_values8: LookupSelectors<_> = selector_values.map(|v| {
+            E::<F, D<F>>::from_vec_and_domain(v, domain.d1)
+                .interpolate()
+                .evaluate_over_domain(domain.d8)
+        });
         let res_tables: Vec<_> = gate_tables.into_iter().map(get_table).collect();
         (selector_values8, res_tables)
     }

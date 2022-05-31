@@ -2,6 +2,7 @@ use crate::{
     circuits::{
         domains::EvaluationDomains,
         gate::{CurrOrNext, GateType},
+        lookup::index::LookupSelectors,
         polynomials::permutation::eval_vanishes_on_last_4_rows,
         wires::COLUMNS,
     },
@@ -70,7 +71,7 @@ pub struct LookupEnvironment<'a, F: FftField> {
     /// The lookup aggregation polynomials.
     pub aggreg: &'a Evaluations<F, D<F>>,
     /// The lookup-type selector polynomials.
-    pub selectors: &'a Vec<Evaluations<F, D<F>>>,
+    pub selectors: &'a LookupSelectors<Evaluations<F, D<F>>>,
     /// The evaluations of the combined lookup table polynomial.
     pub table: &'a Evaluations<F, D<F>>,
     /// The evaluations of the optional runtime selector polynomial.

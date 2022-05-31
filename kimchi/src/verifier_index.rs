@@ -2,7 +2,7 @@
 //! You can derive this struct from the [ProverIndex] struct.
 
 use crate::alphas::Alphas;
-use crate::circuits::lookup::lookups::LookupsUsed;
+use crate::circuits::lookup::{index::LookupSelectors, lookups::LookupsUsed};
 use crate::circuits::polynomials::permutation::zk_polynomial;
 use crate::circuits::polynomials::permutation::zk_w3;
 use crate::circuits::{
@@ -37,7 +37,7 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub lookup_table: Vec<PolyComm<G>>,
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub lookup_selectors: Vec<PolyComm<G>>,
+    pub lookup_selectors: LookupSelectors<PolyComm<G>>,
 
     /// Table IDs for the lookup values.
     /// This may be `None` if all lookups originate from table 0.
@@ -151,9 +151,8 @@ where
                     lookup_used: cs.configuration.lookup_used,
                     lookup_selectors: cs
                         .lookup_selectors
-                        .iter()
-                        .map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None))
-                        .collect(),
+                        .as_ref()
+                        .map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None)),
                     lookup_table: cs
                         .lookup_table8
                         .iter()

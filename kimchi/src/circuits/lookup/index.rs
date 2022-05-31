@@ -36,6 +36,108 @@ pub enum LookupError {
     TableIDZeroMustHaveZeroEntry,
 }
 
+#[derive(Clone, Serialize, Deserialize, Debug, Default)]
+pub struct LookupSelectors<T> {
+    pub chacha: Option<T>,
+    pub chacha_final: Option<T>,
+    pub lookup_gate: Option<T>,
+}
+
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize, Debug, Default)]
+struct LookupSelectorsSerdeAs<F: FftField> {
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    pub chacha: Option<E<F, D<F>>>,
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    pub chacha_final: Option<E<F, D<F>>>,
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    pub lookup_gate: Option<E<F, D<F>>>,
+}
+
+impl<F: FftField> serde_with::SerializeAs<LookupSelectors<E<F, D<F>>>>
+    for LookupSelectorsSerdeAs<F>
+{
+    fn serialize_as<S>(val: &LookupSelectors<E<F, D<F>>>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let repr = LookupSelectorsSerdeAs {
+            chacha: val.chacha.clone(),
+            chacha_final: val.chacha_final.clone(),
+            lookup_gate: val.lookup_gate.clone(),
+        };
+        repr.serialize(serializer)
+    }
+}
+
+impl<'de, F: FftField> serde_with::DeserializeAs<'de, LookupSelectors<E<F, D<F>>>>
+    for LookupSelectorsSerdeAs<F>
+{
+    fn deserialize_as<Dz>(deserializer: Dz) -> Result<LookupSelectors<E<F, D<F>>>, Dz::Error>
+    where
+        Dz: serde::Deserializer<'de>,
+    {
+        let LookupSelectorsSerdeAs {
+            chacha,
+            chacha_final,
+            lookup_gate,
+        } = LookupSelectorsSerdeAs::deserialize(deserializer)?;
+        Ok(LookupSelectors {
+            chacha,
+            chacha_final,
+            lookup_gate,
+        })
+    }
+}
+
+impl<T> std::ops::Index<usize> for LookupSelectors<T> {
+    type Output = T;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        match index {
+            0 => self.chacha.as_ref().expect("has chacha"),
+            1 => self.chacha_final.as_ref().expect("has chacha_final"),
+            2 => self.lookup_gate.as_ref().expect("has lookup_gate"),
+            _ => panic!("Lookup selector index out of bounds"),
+        }
+    }
+}
+
+impl<T> std::ops::IndexMut<usize> for LookupSelectors<T> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        match index {
+            0 => self.chacha.as_mut().expect("has chacha"),
+            1 => self.chacha_final.as_mut().expect("has chacha_final"),
+            2 => self.lookup_gate.as_mut().expect("has lookup_gate"),
+            _ => panic!("Lookup selector index out of bounds"),
+        }
+    }
+}
+
+impl<T> LookupSelectors<T> {
+    pub fn map<U, F: Fn(T) -> U>(self, f: F) -> LookupSelectors<U> {
+        let LookupSelectors {
+            chacha,
+            chacha_final,
+            lookup_gate,
+        } = self;
+        let f = |x| f(x);
+        LookupSelectors {
+            chacha: chacha.map(f),
+            chacha_final: chacha_final.map(f),
+            lookup_gate: lookup_gate.map(f),
+        }
+    }
+
+    pub fn as_ref(&self) -> LookupSelectors<&T> {
+        LookupSelectors {
+            chacha: self.chacha.as_ref(),
+            chacha_final: self.chacha_final.as_ref(),
+            lookup_gate: self.lookup_gate.as_ref(),
+        }
+    }
+}
+
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct LookupConstraintSystem<F: FftField> {
@@ -56,8 +158,8 @@ pub struct LookupConstraintSystem<F: FftField> {
     /// For each kind of lookup-pattern, we have a selector that's
     /// 1 at the rows where that pattern should be enforced, and 0 at
     /// all other rows.
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub lookup_selectors: Vec<E<F, D<F>>>,
+    #[serde_as(as = "LookupSelectorsSerdeAs<F>")]
+    pub lookup_selectors: LookupSelectors<E<F, D<F>>>,
 
     /// An optional runtime table selector. It is 0 everywhere,
     /// except at the rows where the runtime tables apply.
