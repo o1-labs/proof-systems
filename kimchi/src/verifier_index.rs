@@ -18,6 +18,7 @@ use commitment_dlog::{
     srs::SRS,
 };
 use o1_utils::types::fields::*;
+use once_cell::sync::OnceCell;
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
@@ -113,7 +114,7 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     // TODO(mimoo): isn't this redundant with domain.d1.group_gen ?
     /// domain offset for zero-knowledge
     #[serde(skip)]
-    pub w: ScalarField<G>,
+    w: OnceCell<ScalarField<G>>,
     /// endoscalar coefficient
     #[serde(skip)]
     pub endo: ScalarField<G>,
@@ -222,7 +223,7 @@ where
 
             shift: self.cs.shift,
             zkpm: self.cs.precomputations().zkpm.clone(),
-            w: zk_w3(self.cs.domain.d1),
+            w: OnceCell::new(),
             endo: self.cs.endo,
             lookup_index,
             linearization: self.linearization.clone(),
@@ -236,6 +237,11 @@ impl<G: CommitmentCurve> VerifierIndex<G>
 where
     G::BaseField: PrimeField,
 {
+    /// Gets w from [VerifierIndex] lazily
+    pub fn w(&self) -> &ScalarField<G> {
+        self.w.get_or_init(|| zk_w3(self.domain))
+    }
+
     /// Deserializes a [VerifierIndex] from a file, given a pointer to an SRS and an optional offset in the file.
     pub fn from_file(
         srs: Option<Arc<SRS<G>>>,
@@ -269,7 +275,6 @@ where
         verifier_index.endo = endo;
         verifier_index.fq_sponge_params = fq_sponge_params;
         verifier_index.fr_sponge_params = fr_sponge_params;
-        verifier_index.w = zk_w3(verifier_index.domain);
         verifier_index.zkpm = zk_polynomial(verifier_index.domain);
 
         Ok(verifier_index)

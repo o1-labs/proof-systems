@@ -354,11 +354,11 @@ where
                 .map(|(w, s)| gamma + (beta * zeta * s) + w)
                 .fold(alpha0 * zkp * evals[0].z, |x, y| x * y);
 
-            let numerator = ((zeta1m1 * alpha1 * (zeta - index.w))
+            let numerator = ((zeta1m1 * alpha1 * (zeta - index.w()))
                 + (zeta1m1 * alpha2 * (zeta - ScalarField::<G>::one())))
                 * (ScalarField::<G>::one() - evals[0].z);
 
-            let denominator = (zeta - index.w) * (zeta - ScalarField::<G>::one());
+            let denominator = (zeta - index.w()) * (zeta - ScalarField::<G>::one());
             let denominator = denominator.inverse().expect("negligible probability");
 
             ft_eval0 += numerator * denominator;
