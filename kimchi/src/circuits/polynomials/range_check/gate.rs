@@ -3,7 +3,9 @@
 use std::collections::HashMap;
 
 use ark_ff::{FftField, SquareRootField, Zero};
-use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
+use ark_poly::{
+    univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
+};
 use array_init::array_init;
 use rand::{prelude::StdRng, SeedableRng};
 use serde::{Deserialize, Serialize};
@@ -15,10 +17,11 @@ use crate::{
         argument::{Argument, ArgumentType},
         constraints::ConstraintSystem,
         domains::EvaluationDomains,
-        expr::{self, l0_1, Environment, E},
+        expr::{self, l0_1, Environment, LookupEnvironment, E},
         gate::{CircuitGate, GateType},
         lookup::{
             self,
+            lookups::LookupsUsed,
             tables::{GateLookupTable, LookupTable},
         },
         polynomial::COLUMNS,
@@ -135,14 +138,30 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
         // Compute witness polynomial evaluations
         let witness_evals = cs.evaluate(&witness_poly, &z_poly);
 
+        let mut index_evals = HashMap::new();
+        index_evals.insert(
+            self.typ,
+            &cs.range_check_selector_polys[circuit_gate_selector_index(self.typ)].eval8,
+        );
+
+        // Set up lookup environment
+        let lcs = cs
+            .lookup_constraint_system
+            .as_ref()
+            .ok_or("Failed to get lookup constraint system")?;
+
+        let lookup_env_data = set_up_lookup_env_data(cs, &witness, &beta, &gamma);
+        let lookup_env = Some(LookupEnvironment {
+            aggreg: &lookup_env_data.aggreg8,
+            sorted: &lookup_env_data.sorted8,
+            selectors: &lcs.lookup_selectors,
+            table: &lookup_env_data.joint_lookup_table_d8,
+            runtime_selector: None,
+            runtime_table: None,
+        });
+
         // Set up the environment
         let env = {
-            let mut index_evals = HashMap::new();
-            index_evals.insert(
-                self.typ,
-                &cs.range_check_selector_polys[circuit_gate_selector_index(self.typ)].eval8,
-            );
-
             Environment {
                 constants: expr::Constants {
                     alpha: F::rand(rng),
@@ -159,7 +178,7 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
                 l0_1: l0_1(cs.domain.d1),
                 domain: cs.domain,
                 index: index_evals,
-                lookup: None,
+                lookup: lookup_env,
             }
         };
 
@@ -186,6 +205,139 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
         } else {
             Err(format!("Invalid {:?} constraint", self.typ))
         }
+    }
+}
+
+// Data required by the lookup environment
+struct LookupEnvironmentData<F: FftField> {
+    // Aggregation evaluations
+    aggreg8: Evaluations<F, D<F>>,
+    // Sorted evaluations
+    sorted8: Vec<Evaluations<F, D<F>>>,
+    // Combined lookup table
+    joint_lookup_table_d8: Evaluations<F, D<F>>,
+}
+
+// Helper to create the lookup environment data by setting up the joint- and table-id- combiners,
+// computing the dummy lookup value, creating the combined lookup table, computing the sorted plookup
+// evaluations and the plookup aggregation evaluations.  It outputs
+// Note: This function assumes the cs contains a lookup constraint system.
+fn set_up_lookup_env_data<'a, F: FftField>(
+    cs: &ConstraintSystem<F>,
+    witness: &[Vec<F>; COLUMNS],
+    beta: &F,
+    gamma: &F,
+) -> LookupEnvironmentData<F> {
+    let lcs = cs
+        .lookup_constraint_system
+        .as_ref()
+        .expect("Failed to get lookup constraint system");
+
+    let rng = &mut StdRng::from_seed([1u8; 32]);
+
+    // Set up joint-combiner and table-id-combiner
+    let joint_lookup_used = matches!(lcs.configuration.lookup_used, LookupsUsed::Joint);
+    let joint_combiner = if joint_lookup_used {
+        F::rand(rng)
+    } else {
+        F::zero()
+    };
+    let table_id_combiner: F = if lcs.table_ids8.as_ref().is_some() {
+        joint_combiner.pow([lcs.configuration.max_joint_size as u64])
+    } else {
+        // TODO: just set this to None in case multiple tables are not used
+        F::zero()
+    };
+
+    // Compute the dummy lookup value as the combination of the last entry of the XOR table (so `(0, 0, 0)`).
+    // Warning: This assumes that we always use the XOR table when using lookups.
+    let dummy_lookup_value = lcs
+        .configuration
+        .dummy_lookup
+        .evaluate(&joint_combiner, &table_id_combiner);
+
+    // Compute the lookup table values as the combination of the lookup table entries.
+    let joint_lookup_table_d8 = {
+        let mut evals = Vec::with_capacity(cs.domain.d1.size());
+
+        for idx in 0..(cs.domain.d1.size() * 8) {
+            let table_id = match lcs.table_ids8.as_ref() {
+                Some(table_ids8) => table_ids8.evals[idx],
+                None =>
+                // If there is no `table_ids8` in the constraint system,
+                // every table ID is identically 0.
+                {
+                    F::zero()
+                }
+            };
+
+            let combined_entry = {
+                let table_row = lcs.lookup_table8.iter().map(|e| &e.evals[idx]);
+
+                lookup::tables::combine_table_entry(
+                    &joint_combiner,
+                    &table_id_combiner,
+                    table_row,
+                    &table_id,
+                )
+            };
+            evals.push(combined_entry);
+        }
+
+        Evaluations::from_vec_and_domain(evals, cs.domain.d8)
+    };
+
+    // Compute the sorted plookup evaluations
+    // TODO: Once we switch to committing using lagrange commitments, `witness` will be consumed when we interpolate,
+    //       so interpolation will have to moved below this.
+    let sorted: Vec<_> = lookup::constraints::sorted(
+        dummy_lookup_value,
+        &joint_lookup_table_d8,
+        cs.domain.d1,
+        &cs.gates,
+        &witness,
+        joint_combiner,
+        table_id_combiner,
+    )
+    .expect("Failed to compute sorted lookup table");
+
+    // Randomize the last `EVALS` rows in each of the sorted polynomials in order to add zero-knowledge to the protocol.
+    let sorted: Vec<_> = sorted
+        .into_iter()
+        .map(|chunk| lookup::constraints::zk_patch(chunk, cs.domain.d1, rng))
+        .collect();
+
+    let sorted_coeffs: Vec<_> = sorted.iter().map(|e| e.clone().interpolate()).collect();
+    let sorted8 = sorted_coeffs
+        .iter()
+        .map(|v| v.evaluate_over_domain_by_ref(cs.domain.d8))
+        .collect::<Vec<_>>();
+
+    // Compute the plookup aggregation evaluations
+    let aggreg = lookup::constraints::aggregation::<_, F>(
+        dummy_lookup_value,
+        &joint_lookup_table_d8,
+        cs.domain.d1,
+        &cs.gates,
+        witness,
+        &joint_combiner,
+        &table_id_combiner,
+        *beta,
+        *gamma,
+        &sorted,
+        rng,
+    )
+    .expect("Failed to compute aggregation polynomial");
+
+    // Precompute different forms of the aggregation polynomial for later
+    let aggreg_coeffs = aggreg.interpolate();
+    // TODO: There's probably a clever way to expand the domain without interpolating
+    let aggreg8 = aggreg_coeffs.evaluate_over_domain_by_ref(cs.domain.d8);
+
+    LookupEnvironmentData {
+        aggreg8,
+        sorted8,
+        joint_lookup_table_d8,
     }
 }
 
@@ -283,7 +435,7 @@ mod tests {
     };
 
     use ark_ec::AffineCurve;
-    use ark_ff::One;
+    use ark_ff::{Field, One, Zero};
     use mina_curves::pasta::pallas;
     use o1_utils::FieldHelpers;
 
@@ -538,6 +690,76 @@ mod tests {
         assert_eq!(
             cs.gates[2].verify_range_check(2, &witness, &cs),
             Err(String::from("Invalid RangeCheck1 constraint"))
+        );
+    }
+
+    #[test]
+    fn verify_range_check0_valid_single_in_range() {
+        let cs = create_test_constraint_system();
+
+        let witness = range_check::create_witness::<PallasField>(
+            PallasField::from(PallasField::from(2u64).pow([88]) - PallasField::one()),
+            PallasField::zero(),
+            PallasField::zero(),
+        );
+
+        // gates[0] is RangeCheck0 and contains val1
+        assert_eq!(cs.gates[0].verify_range_check(0, &witness, &cs), Ok(()));
+
+        let witness = range_check::create_witness::<PallasField>(
+            PallasField::from(PallasField::from(2u64).pow([64])),
+            PallasField::zero(),
+            PallasField::zero(),
+        );
+
+        // gates[0] is RangeCheck0 and contains val1
+        assert_eq!(cs.gates[0].verify_range_check(0, &witness, &cs), Ok(()));
+
+        let witness = range_check::create_witness::<PallasField>(
+            PallasField::from(42u64),
+            PallasField::zero(),
+            PallasField::zero(),
+        );
+
+        // gates[0] is RangeCheck0 and contains val1
+        assert_eq!(cs.gates[0].verify_range_check(0, &witness, &cs), Ok(()));
+
+        let witness = range_check::create_witness::<PallasField>(
+            PallasField::one(),
+            PallasField::zero(),
+            PallasField::zero(),
+        );
+
+        // gates[0] is RangeCheck0 and contains val1
+        assert_eq!(cs.gates[0].verify_range_check(0, &witness, &cs), Ok(()));
+    }
+
+    #[test]
+    fn verify_range_check0_invalid_single_not_in_range() {
+        let cs = create_test_constraint_system();
+
+        let witness = range_check::create_witness::<PallasField>(
+            PallasField::from(2u64).pow([88]), // out of range
+            PallasField::zero(),
+            PallasField::zero(),
+        );
+
+        // gates[0] is RangeCheck0 and contains val1
+        assert_eq!(
+            cs.gates[0].verify_range_check(0, &witness, &cs),
+            Err(String::from("Invalid RangeCheck0 constraint"))
+        );
+
+        let witness = range_check::create_witness::<PallasField>(
+            PallasField::from(2u64).pow([96]), // out of range
+            PallasField::zero(),
+            PallasField::zero(),
+        );
+
+        // gates[0] is RangeCheck0 and contains val1
+        assert_eq!(
+            cs.gates[0].verify_range_check(0, &witness, &cs),
+            Err(String::from("Invalid RangeCheck0 constraint"))
         );
     }
 
