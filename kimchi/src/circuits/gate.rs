@@ -1,8 +1,8 @@
 //! This module implements Plonk constraint gate primitive.
 
 use crate::circuits::{constraints::ConstraintSystem, wires::*};
-use ark_ff::bytes::ToBytes;
 use ark_ff::FftField;
+use ark_ff::{bytes::ToBytes, SquareRootField};
 use num_traits::cast::ToPrimitive;
 use o1_utils::hasher::CryptoDigest;
 use serde::{Deserialize, Serialize};
@@ -89,6 +89,10 @@ pub enum GateType {
     CairoInstruction = 13,
     CairoFlags = 14,
     CairoTransition = 15,
+    // Range check (16-24)
+    RangeCheck0 = 16,
+    RangeCheck1 = 17,
+    RangeCheck2 = 18,
 }
 
 #[serde_as]
@@ -121,7 +125,7 @@ impl<F: FftField> ToBytes for CircuitGate<F> {
     }
 }
 
-impl<F: FftField> CircuitGate<F> {
+impl<F: FftField + SquareRootField> CircuitGate<F> {
     /// this function creates "empty" circuit gate
     pub fn zero(wires: GateWires) -> Self {
         CircuitGate {
@@ -156,6 +160,7 @@ impl<F: FftField> CircuitGate<F> {
             CairoClaim | CairoInstruction | CairoFlags | CairoTransition => {
                 self.verify_cairo_gate(row, witness, cs)
             }
+            RangeCheck0 | RangeCheck1 | RangeCheck2 => self.verify_range_check(row, witness, cs),
         }
     }
 }
@@ -307,7 +312,7 @@ mod tests {
         #[test]
         fn test_gate_serialization(cg in arb_circuit_gate()) {
             let encoded = rmp_serde::to_vec(&cg).unwrap();
-            let decoded: CircuitGate<Fp> = rmp_serde::from_read_ref(&encoded).unwrap();
+            let decoded: CircuitGate<Fp> = rmp_serde::from_slice(&encoded).unwrap();
             prop_assert_eq!(cg.typ, decoded.typ);
             for i in 0..PERMUTS {
                 prop_assert_eq!(cg.wires[i], decoded.wires[i]);

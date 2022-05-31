@@ -1,9 +1,10 @@
-//! This contains the [DomainConstantEvaluations] which is used to provide precomputations to a [ConstraintSystem].
+//! This contains the [DomainConstantEvaluations] which is used to provide precomputations to a [ConstraintSystem](super::constraints::ConstraintSystem).
 
 use crate::circuits::domains::EvaluationDomains;
 use crate::circuits::polynomials::permutation::zk_polynomial;
 use crate::circuits::polynomials::permutation::ZK_ROWS;
 use ark_ff::FftField;
+use ark_poly::EvaluationDomain;
 use ark_poly::UVPolynomial;
 use ark_poly::{univariate::DensePolynomial as DP, Evaluations as E, Radix2EvaluationDomain as D};
 use serde::{Deserialize, Serialize};
@@ -40,9 +41,9 @@ impl<F: FftField> DomainConstantEvaluations<F> {
         let poly_x_d1 = DP::from_coefficients_slice(&[F::zero(), F::one()])
             .evaluate_over_domain_by_ref(domain.d8);
         let constant_1_d4 =
-            E::<F, D<F>>::from_vec_and_domain(vec![F::one(); domain.d4.size as usize], domain.d4);
+            E::<F, D<F>>::from_vec_and_domain(vec![F::one(); domain.d4.size()], domain.d4);
         let constant_1_d8 =
-            E::<F, D<F>>::from_vec_and_domain(vec![F::one(); domain.d8.size as usize], domain.d8);
+            E::<F, D<F>>::from_vec_and_domain(vec![F::one(); domain.d8.size()], domain.d8);
 
         let vanishes_on_last_4_rows =
             vanishes_on_last_4_rows(domain.d1).evaluate_over_domain(domain.d8);

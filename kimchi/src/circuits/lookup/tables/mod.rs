@@ -37,7 +37,7 @@ pub struct GatesLookupMaps {
 }
 
 /// A table of values that can be used for a lookup, along with the ID for the table.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LookupTable<F> {
     pub id: i32,
     pub data: Vec<Vec<F>>,
@@ -61,6 +61,16 @@ where
         }
 
         false
+    }
+
+    /// Returns the length of the table.
+    pub fn len(&self) -> usize {
+        self.data[0].len()
+    }
+
+    /// Returns `true` if the lookup table is empty, `false` otherwise.
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
     }
 }
 
@@ -108,6 +118,7 @@ pub fn combine_table<G>(
     column_combiner: ScalarField<G>,
     table_id_combiner: ScalarField<G>,
     table_id_vector: Option<&PolyComm<G>>,
+    runtime_vector: Option<&PolyComm<G>>,
 ) -> PolyComm<G>
 where
     G: commitment_dlog::commitment::CommitmentCurve,
@@ -128,6 +139,12 @@ where
     if let Some(table_id) = table_id_vector {
         scalars.push(table_id_combiner);
         commitments.push(table_id);
+    }
+
+    // combine the runtime vector
+    if let Some(runtime) = runtime_vector {
+        scalars.push(column_combiner); // 2nd column idx is j^1
+        commitments.push(runtime);
     }
 
     PolyComm::multi_scalar_mul(&commitments, &scalars)

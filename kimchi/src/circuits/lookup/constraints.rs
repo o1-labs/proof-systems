@@ -19,6 +19,8 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use CurrOrNext::{Curr, Next};
 
+use super::runtime_tables::{self, RuntimeTableSpec};
+
 /// Number of constraints produced by the argument.
 pub const CONSTRAINTS: u32 = 7;
 
@@ -32,7 +34,7 @@ pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
     d: D<F>,
     rng: &mut R,
 ) -> Evaluations<F, D<F>> {
-    let n = d.size as usize;
+    let n = d.size();
     let k = e.len();
     assert!(k <= n - ZK_ROWS);
     e.extend((0..((n - ZK_ROWS) - k)).map(|_| F::zero()));
@@ -91,7 +93,7 @@ where
     // We pad the lookups so that it is as if we lookup exactly
     // `max_lookups_per_row` in every row.
 
-    let n = d1.size as usize;
+    let n = d1.size();
     let mut counts: HashMap<&F, usize> = HashMap::new();
 
     let lookup_rows = n - ZK_ROWS - 1;
@@ -233,7 +235,7 @@ where
     R: Rng + ?Sized,
     F: FftField,
 {
-    let n = d1.size as usize;
+    let n = d1.size();
     let lookup_rows = n - ZK_ROWS - 1;
     let beta1 = F::one() + beta;
     let gammabeta1 = gamma * beta1;
@@ -322,6 +324,7 @@ where
 
 /// Configuration for the lookup constraint.
 /// These values are independent of the choice of lookup values.
+// TODO: move to lookup::index
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct LookupConfiguration<F: FftField> {
@@ -330,8 +333,15 @@ pub struct LookupConfiguration<F: FftField> {
 
     /// The maximum number of lookups per row
     pub(crate) max_lookups_per_row: usize,
+
     /// The maximum number of elements in a vector lookup
     pub(crate) max_joint_size: u32,
+
+    /// Optional runtime tables, listed as tuples `(length, id)`.
+    pub runtime_tables: Option<Vec<RuntimeTableSpec>>,
+
+    /// The offset of the runtime table within the concatenated table
+    pub runtime_table_offset: Option<usize>,
 
     /// A placeholder value that is known to appear in the lookup table.
     /// This is used to pad the lookups to `max_lookups_per_row` when fewer lookups are used in a
@@ -546,6 +556,13 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>
         .collect();
     res.extend(compatibility_checks);
 
+    // if we are using runtime tables, we add:
+    // $RT(x) (1 - \text{selector}_{RT}(x)) = 0$
+    if configuration.runtime_tables.is_some() {
+        let rt_constraints = runtime_tables::constraints();
+        res.extend(rt_constraints);
+    }
+
     res
 }
 
@@ -565,7 +582,7 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
     sorted
         .iter()
         .for_each(|s| assert_eq!(d1.size, s.domain().size));
-    let n = d1.size as usize;
+    let n = d1.size();
     let lookup_rows = n - ZK_ROWS - 1;
 
     // Check that the (desnakified) sorted table is
