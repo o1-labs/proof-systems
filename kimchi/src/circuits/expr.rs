@@ -181,7 +181,7 @@ impl Column {
 
     fn latex(&self) -> String {
         match self {
-            Column::Witness(i) => format!("w_{{{i}}}"),
+            Column::Witness(i) => format!("w_{{{}}}", i),
             Column::Z => "Z".to_string(),
             Column::LookupSorted(i) => format!("s_{{{}}}", i),
             Column::LookupAggreg => "a".to_string(),
@@ -216,7 +216,7 @@ impl Variable {
         let col = self.col.latex();
         match self.row {
             Curr => col,
-            Next => format!("\\tilde{{{col}}}"),
+            Next => format!("\\tilde{{{}}}", col),
         }
     }
 }
@@ -1328,7 +1328,7 @@ impl<F: FftField> Expr<F> {
         } else if deg <= 8 * d1_size {
             Domain::D8
         } else {
-            panic!("constraint had degree {deg} > d8 ({})", 8 * d1_size);
+            panic!("constraint had degree {} > d8 ({})", deg, 8 * d1_size);
         };
 
         let mut cache = HashMap::new();
@@ -2016,11 +2016,11 @@ impl<F: PrimeField> ConstantExpr<F> {
             Gamma => "gamma".to_string(),
             JointCombiner => "joint_combiner".to_string(),
             EndoCoefficient => "endo_coefficient".to_string(),
-            Mds { row, col } => format!("mds({row}, {col})"),
+            Mds { row, col } => format!("mds({}, {})", row, col),
             Literal(x) => format!("field(\"0x{}\")", x.into_repr()),
             Pow(x, n) => match x.as_ref() {
-                Alpha => format!("alpha_pow({n})"),
-                x => format!("pow({}, {n})", x.ocaml()),
+                Alpha => format!("alpha_pow({})", n),
+                x => format!("pow({}, {})", x.ocaml(), n),
             },
             Add(x, y) => format!("({} + {})", x.ocaml(), y.ocaml()),
             Mul(x, y) => format!("({} * {})", x.ocaml(), y.ocaml()),
@@ -2036,11 +2036,11 @@ impl<F: PrimeField> ConstantExpr<F> {
             Gamma => "\\gamma".to_string(),
             JointCombiner => "joint\\_combiner".to_string(),
             EndoCoefficient => "endo\\_coefficient".to_string(),
-            Mds { row, col } => format!("mds({row}, {col})"),
+            Mds { row, col } => format!("mds({}, {})", row, col),
             Literal(x) => format!("\\mathbb{{F}}({})", x.into_repr().into()),
             Pow(x, n) => match x.as_ref() {
-                Alpha => format!("\\alpha^{{{n}}}"),
-                x => format!("{}^{n}", x.ocaml()),
+                Alpha => format!("\\alpha^{{{}}}", n),
+                x => format!("{}^{}", x.ocaml(), n),
             },
             Add(x, y) => format!("({} + {})", x.ocaml(), y.ocaml()),
             Mul(x, y) => format!("({} \\cdot {})", x.ocaml(), y.ocaml()),
@@ -2066,7 +2066,7 @@ where
         let mut res = String::new();
         for (k, v) in env.into_iter() {
             let rhs = v.ocaml_str();
-            let cached = format!("let {} = {rhs} in ", k.var_name());
+            let cached = format!("let {} = {} in ", k.var_name(), rhs);
             res.push_str(&cached);
         }
 
@@ -2087,7 +2087,7 @@ where
             BinOp(Op2::Add, x, y) => format!("({} + {})", x.ocaml(cache), y.ocaml(cache)),
             BinOp(Op2::Mul, x, y) => format!("({} * {})", x.ocaml(cache), y.ocaml(cache)),
             BinOp(Op2::Sub, x, y) => format!("({} - {})", x.ocaml(cache), y.ocaml(cache)),
-            Pow(x, d) => format!("pow({}, {d})", x.ocaml(cache)),
+            Pow(x, d) => format!("pow({}, {})", x.ocaml(cache), d),
             Square(x) => format!("square({})", x.ocaml(cache)),
             Cache(id, e) => {
                 cache.insert(*id, e.as_ref().clone());
@@ -2110,7 +2110,7 @@ where
         for (k, v) in env.into_iter() {
             let mut rhs = v.latex_str();
             let last = rhs.pop().expect("returned an empty expression");
-            res.push(format!("{} = {last}", k.latex_name()));
+            res.push(format!("{} = {}", k.latex_name(), last));
             res.extend(rhs);
         }
         res.push(e);
@@ -2128,7 +2128,7 @@ where
             BinOp(Op2::Add, x, y) => format!("({} + {})", x.latex(cache), y.latex(cache)),
             BinOp(Op2::Mul, x, y) => format!("({} \\cdot {})", x.latex(cache), y.latex(cache)),
             BinOp(Op2::Sub, x, y) => format!("({} - {})", x.latex(cache), y.latex(cache)),
-            Pow(x, d) => format!("{}^{{{d}}}", x.latex(cache)),
+            Pow(x, d) => format!("{}^{{{}}}", x.latex(cache), d),
             Square(x) => format!("({})^2", x.latex(cache)),
             Cache(id, e) => {
                 cache.insert(*id, e.as_ref().clone());

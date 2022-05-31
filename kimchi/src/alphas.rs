@@ -98,8 +98,8 @@ impl<F: Field> Alphas<F> {
 
         if num > range.1 {
             panic!(
-                "you asked for {num} exponents, but only registered {} for {:?}",
-                range.1, ty
+                "you asked for {} exponents, but only registered {} for {:?}",
+                num, range.1, ty
             );
         }
 
@@ -144,8 +144,8 @@ impl<F: Field> Alphas<F> {
 
         if num > range.1 {
             panic!(
-                "you asked for {num} alphas, but only {} are available for {:?}",
-                range.1, ty
+                "you asked for {} alphas, but only {} are available for {:?}",
+                num, range.1, ty
             );
         }
 

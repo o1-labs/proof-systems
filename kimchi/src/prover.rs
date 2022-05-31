@@ -721,7 +721,7 @@ where
                             panic!("Bad evaluation")
                         }
 
-                        check_constraint!(index, format!("lookup constraint #{ii}"), eval);
+                        check_constraint!(index, format!("lookup constraint #{}", ii), eval);
                     }
                 }
             }
