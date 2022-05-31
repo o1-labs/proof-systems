@@ -2,7 +2,7 @@ use crate::{
     circuits::{
         domains::EvaluationDomains,
         gate::{CurrOrNext, GateType},
-        lookup::index::LookupSelectors,
+        lookup::{index::LookupSelectors, lookups::LookupPattern},
         polynomials::permutation::eval_vanishes_on_last_4_rows,
         wires::COLUMNS,
     },
@@ -154,7 +154,7 @@ pub enum Column {
     LookupSorted(usize),
     LookupAggreg,
     LookupTable,
-    LookupKindIndex(usize),
+    LookupKindIndex(LookupPattern),
     LookupRuntimeSelector,
     LookupRuntimeTable,
     Index(GateType),
@@ -176,7 +176,7 @@ impl Column {
             Column::LookupSorted(i) => format!("s_{{{}}}", i),
             Column::LookupAggreg => "a".to_string(),
             Column::LookupTable => "t".to_string(),
-            Column::LookupKindIndex(i) => format!("k_{{{}}}", i),
+            Column::LookupKindIndex(i) => format!("k_{{{:?}}}", i),
             Column::LookupRuntimeSelector => "rts".to_string(),
             Column::LookupRuntimeTable => "rt".to_string(),
             Column::Index(gate) => {

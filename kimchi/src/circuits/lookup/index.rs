@@ -4,7 +4,7 @@ use crate::circuits::{domains::EvaluationDomains, gate::CircuitGate};
 use crate::circuits::{
     lookup::{
         constraints::LookupConfiguration,
-        lookups::{JointLookup, LookupInfo},
+        lookups::{JointLookup, LookupInfo, LookupPattern},
         tables::LookupTable,
     },
     polynomials::permutation::ZK_ROWS,
@@ -90,26 +90,24 @@ impl<'de, F: FftField> serde_with::DeserializeAs<'de, LookupSelectors<E<F, D<F>>
     }
 }
 
-impl<T> std::ops::Index<usize> for LookupSelectors<T> {
+impl<T> std::ops::Index<LookupPattern> for LookupSelectors<T> {
     type Output = T;
 
-    fn index(&self, index: usize) -> &Self::Output {
+    fn index(&self, index: LookupPattern) -> &Self::Output {
         match index {
-            0 => self.chacha.as_ref().expect("has chacha"),
-            1 => self.chacha_final.as_ref().expect("has chacha_final"),
-            2 => self.lookup_gate.as_ref().expect("has lookup_gate"),
-            _ => panic!("Lookup selector index out of bounds"),
+            LookupPattern::ChaCha => self.chacha.as_ref().expect("has chacha"),
+            LookupPattern::ChaChaFinal => self.chacha_final.as_ref().expect("has chacha_final"),
+            LookupPattern::LookupGate => self.lookup_gate.as_ref().expect("has lookup_gate"),
         }
     }
 }
 
-impl<T> std::ops::IndexMut<usize> for LookupSelectors<T> {
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+impl<T> std::ops::IndexMut<LookupPattern> for LookupSelectors<T> {
+    fn index_mut(&mut self, index: LookupPattern) -> &mut Self::Output {
         match index {
-            0 => self.chacha.as_mut().expect("has chacha"),
-            1 => self.chacha_final.as_mut().expect("has chacha_final"),
-            2 => self.lookup_gate.as_mut().expect("has lookup_gate"),
-            _ => panic!("Lookup selector index out of bounds"),
+            LookupPattern::ChaCha => self.chacha.as_mut().expect("has chacha"),
+            LookupPattern::ChaChaFinal => self.chacha_final.as_mut().expect("has chacha_final"),
+            LookupPattern::LookupGate => self.lookup_gate.as_mut().expect("has lookup_gate"),
         }
     }
 }

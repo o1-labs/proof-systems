@@ -374,8 +374,7 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>) -> Vec<E
             let lookup_indicator = lookup_info
                 .kinds
                 .iter()
-                .enumerate()
-                .map(|(i, _)| column(Column::LookupKindIndex(i)))
+                .map(|spec| column(Column::LookupKindIndex(*spec)))
                 .fold(E::zero(), |acc: E<F>, x| acc + x);
 
             E::one() - lookup_indicator
@@ -455,8 +454,7 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>) -> Vec<E
             lookup_info
                 .kinds
                 .iter()
-                .enumerate()
-                .map(|(i, spec)| column(Column::LookupKindIndex(i)) * f_term(&spec.lookups::<F>()))
+                .map(|spec| column(Column::LookupKindIndex(*spec)) * f_term(&spec.lookups::<F>()))
                 .fold(dummy_rows, |acc, x| acc + x)
         };
 

@@ -89,7 +89,7 @@ impl LookupInfo {
 
         let mut selector_values: LookupSelectors<_> = Default::default();
         for kind in self.kinds.iter() {
-            selector_values[kind.to_index()] = vec![F::zero(); n];
+            selector_values[*kind] = vec![F::zero(); n];
         }
 
         let mut gate_tables = HashSet::new();
@@ -99,13 +99,13 @@ impl LookupInfo {
             let typ = gate.typ;
 
             if let Some(lookup_pattern) = LookupPattern::from_gate(typ, CurrOrNext::Curr) {
-                selector_values[lookup_pattern.to_index()][i] = F::one();
+                selector_values[lookup_pattern][i] = F::one();
                 if let Some(table_kind) = lookup_pattern.table() {
                     gate_tables.insert(table_kind);
                 }
             }
             if let Some(lookup_pattern) = LookupPattern::from_gate(typ, CurrOrNext::Next) {
-                selector_values[lookup_pattern.to_index()][i + 1] = F::one();
+                selector_values[lookup_pattern][i + 1] = F::one();
                 if let Some(table_kind) = lookup_pattern.table() {
                     gate_tables.insert(table_kind);
                 }
@@ -250,7 +250,7 @@ impl<F: Copy> JointLookup<SingleLookup<F>, LookupTableID> {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Copy, Clone, Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum LookupPattern {
     ChaCha,
     ChaChaFinal,
@@ -349,14 +349,6 @@ impl LookupPattern {
         match self {
             LookupPattern::ChaCha | LookupPattern::ChaChaFinal => Some(GateLookupTable::Xor),
             LookupPattern::LookupGate => None,
-        }
-    }
-
-    fn to_index(&self) -> usize {
-        match self {
-            LookupPattern::ChaCha => 0,
-            LookupPattern::ChaChaFinal => 1,
-            LookupPattern::LookupGate => 2,
         }
     }
 
