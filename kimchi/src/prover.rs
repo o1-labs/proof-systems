@@ -451,7 +451,6 @@ where
         let gamma = fq_sponge.challenge();
 
         //~ 1. If using lookup:
-        //~ 13. If using lookup:
         if let Some(lcs) = &index.cs.lookup_constraint_system {
             //~~ - Compute the lookup aggregation polynomial.
             let joint_lookup_table_d8 = lookup_context.joint_lookup_table_d8.as_ref().unwrap();
