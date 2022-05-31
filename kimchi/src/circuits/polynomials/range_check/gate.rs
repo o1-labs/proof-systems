@@ -10,6 +10,7 @@ use array_init::array_init;
 use rand::{prelude::StdRng, SeedableRng};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
+use thiserror::Error;
 
 use crate::{
     alphas::Alphas,
@@ -30,6 +31,28 @@ use crate::{
 };
 
 use super::{RangeCheck0, RangeCheck1};
+
+/// Gate error
+#[derive(Error, Debug, Clone, Copy, PartialEq)]
+pub enum GateError {
+    /// Invalid constraint
+    #[error("Invalid {0:?} constraint")]
+    InvalidConstraint(GateType),
+    /// Invalid copy constraint
+    #[error("Invalid {0:?} copy constraint")]
+    InvalidCopyConstraint(GateType),
+    /// Invalid lookup constraint - sorted evaluations
+    #[error("Invalid {0:?} lookup constraint - sorted evaluations")]
+    InvalidLookupConstraintSorted(GateType),
+    /// Invalid lookup constraint - sorted evaluations
+    #[error("Invalid {0:?} lookup constraint - aggregation polynomial")]
+    InvalidLookupConstraintAggregation(GateType),
+    /// Missing lookup constraint system
+    #[error("Failed to get lookup constraint system for {0:?}")]
+    MissingLookupConstraintSystem(GateType),
+}
+/// Keypair result
+pub type Result<T> = std::result::Result<T, GateError>;
 
 // Connect the pair of cells specified by the cell1 and cell2 parameters
 // cell1 --> cell2 && cell2 --> cell1
@@ -96,7 +119,7 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
         _: usize,
         witness: &[Vec<F>; COLUMNS],
         cs: &ConstraintSystem<F>,
-    ) -> Result<(), String> {
+    ) -> Result<()> {
         if self.typ == GateType::RangeCheck2 {
             // Not yet implemented
             // (Allow this to pass so that proof & verification test can function.)
@@ -133,7 +156,7 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
         let gamma = F::rand(rng);
         let z_poly = cs
             .perm_aggreg(&witness, &beta, &gamma, rng)
-            .map_err(|_| format!("Invalid {:?} constraint - permutation failed", self.typ))?;
+            .map_err(|_| GateError::InvalidCopyConstraint(self.typ))?;
 
         // Compute witness polynomial evaluations
         let witness_evals = cs.evaluate(&witness_poly, &z_poly);
@@ -148,9 +171,10 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
         let lcs = cs
             .lookup_constraint_system
             .as_ref()
-            .ok_or("Failed to get lookup constraint system")?;
+            .ok_or(GateError::MissingLookupConstraintSystem(self.typ))?;
 
-        let lookup_env_data = set_up_lookup_env_data(cs, &witness, &beta, &gamma);
+        let lookup_env_data =
+            set_up_lookup_env_data(self.typ, cs, &witness, &beta, &gamma).map_err(|e| e)?;
         let lookup_env = Some(LookupEnvironment {
             aggreg: &lookup_env_data.aggreg8,
             sorted: &lookup_env_data.sorted8,
@@ -203,7 +227,7 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
         {
             Ok(())
         } else {
-            Err(format!("Invalid {:?} constraint", self.typ))
+            Err(GateError::InvalidConstraint(self.typ))
         }
     }
 }
@@ -220,18 +244,19 @@ struct LookupEnvironmentData<F: FftField> {
 
 // Helper to create the lookup environment data by setting up the joint- and table-id- combiners,
 // computing the dummy lookup value, creating the combined lookup table, computing the sorted plookup
-// evaluations and the plookup aggregation evaluations.  It outputs
+// evaluations and the plookup aggregation evaluations.
 // Note: This function assumes the cs contains a lookup constraint system.
-fn set_up_lookup_env_data<'a, F: FftField>(
+fn set_up_lookup_env_data<F: FftField>(
+    gate_type: GateType,
     cs: &ConstraintSystem<F>,
     witness: &[Vec<F>; COLUMNS],
     beta: &F,
     gamma: &F,
-) -> LookupEnvironmentData<F> {
+) -> Result<LookupEnvironmentData<F>> {
     let lcs = cs
         .lookup_constraint_system
         .as_ref()
-        .expect("Failed to get lookup constraint system");
+        .ok_or(GateError::MissingLookupConstraintSystem(gate_type))?;
 
     let rng = &mut StdRng::from_seed([1u8; 32]);
 
@@ -295,11 +320,11 @@ fn set_up_lookup_env_data<'a, F: FftField>(
         &joint_lookup_table_d8,
         cs.domain.d1,
         &cs.gates,
-        &witness,
+        witness,
         joint_combiner,
         table_id_combiner,
     )
-    .expect("Failed to compute sorted lookup table");
+    .map_err(|_| GateError::InvalidLookupConstraintSorted(gate_type))?;
 
     // Randomize the last `EVALS` rows in each of the sorted polynomials in order to add zero-knowledge to the protocol.
     let sorted: Vec<_> = sorted
@@ -327,18 +352,18 @@ fn set_up_lookup_env_data<'a, F: FftField>(
         &sorted,
         rng,
     )
-    .expect("Failed to compute aggregation polynomial");
+    .map_err(|_| GateError::InvalidLookupConstraintAggregation(gate_type))?;
 
     // Precompute different forms of the aggregation polynomial for later
     let aggreg_coeffs = aggreg.interpolate();
     // TODO: There's probably a clever way to expand the domain without interpolating
     let aggreg8 = aggreg_coeffs.evaluate_over_domain_by_ref(cs.domain.d8);
 
-    LookupEnvironmentData {
+    Ok(LookupEnvironmentData {
         aggreg8,
         sorted8,
         joint_lookup_table_d8,
-    }
+    })
 }
 
 fn circuit_gate_selector_index(typ: GateType) -> usize {
@@ -427,8 +452,11 @@ pub fn lookup_table<F: FftField>() -> LookupTable<F> {
 mod tests {
     use crate::{
         circuits::{
-            constraints::ConstraintSystem, gate::CircuitGate, polynomial::COLUMNS,
-            polynomials::range_check, wires::Wire,
+            constraints::ConstraintSystem,
+            gate::{CircuitGate, GateType},
+            polynomial::COLUMNS,
+            polynomials::range_check::{self, GateError},
+            wires::Wire,
         },
         proof::ProverProof,
         prover_index::testing::new_index_for_test_with_lookups,
@@ -483,6 +511,9 @@ mod tests {
 
         // gates[0] is RangeCheck0
         assert_eq!(cs.gates[0].verify_range_check(0, &witness, &cs), Ok(()));
+
+        // gates[1] is RangeCheck0
+        assert_eq!(cs.gates[1].verify_range_check(1, &witness, &cs), Ok(()));
     }
 
     #[test]
@@ -493,7 +524,13 @@ mod tests {
         // gates[0] is RangeCheck0
         assert_eq!(
             cs.gates[0].verify_range_check(0, &witness, &cs),
-            Err("Invalid RangeCheck0 constraint".to_string())
+            Err(GateError::InvalidConstraint(GateType::RangeCheck0))
+        );
+
+        // gates[1] is RangeCheck0
+        assert_eq!(
+            cs.gates[1].verify_range_check(1, &witness, &cs),
+            Err(GateError::InvalidConstraint(GateType::RangeCheck0))
         );
     }
 
@@ -563,15 +600,22 @@ mod tests {
             .unwrap(),
         );
 
-        // Invalidate witness
+        // Invalidate witness copy constraint
         witness[5][0] += PallasField::one();
 
         // gates[0] is RangeCheck0
         assert_eq!(
             cs.gates[0].verify_range_check(0, &witness, &cs),
-            Err(String::from(
-                "Invalid RangeCheck0 constraint - permutation failed"
-            ))
+            Err(GateError::InvalidCopyConstraint(GateType::RangeCheck0))
+        );
+
+        // Invalidate witness copy constraint
+        witness[6][1] += PallasField::one();
+
+        // gates[1] is RangeCheck0
+        assert_eq!(
+            cs.gates[1].verify_range_check(1, &witness, &cs),
+            Err(GateError::InvalidCopyConstraint(GateType::RangeCheck0))
         );
 
         let mut witness = range_check::create_witness::<PallasField>(
@@ -595,7 +639,237 @@ mod tests {
         // gates[0] is RangeCheck0
         assert_eq!(
             cs.gates[0].verify_range_check(0, &witness, &cs),
-            Err(String::from("Invalid RangeCheck0 constraint"))
+            Err(GateError::InvalidConstraint(GateType::RangeCheck0))
+        );
+
+        // Invalidate witness
+        witness[8][1] = witness[0][1] + PallasField::one();
+
+        // gates[1] is RangeCheck0
+        assert_eq!(
+            cs.gates[1].verify_range_check(1, &witness, &cs),
+            Err(GateError::InvalidConstraint(GateType::RangeCheck0))
+        );
+    }
+
+    #[test]
+    fn verify_range_check0_valid_v0_in_range() {
+        let cs = create_test_constraint_system();
+
+        let witness = range_check::create_witness::<PallasField>(
+            PallasField::from(PallasField::from(2u64).pow([88]) - PallasField::one()),
+            PallasField::zero(),
+            PallasField::zero(),
+        );
+
+        // gates[0] is RangeCheck0 and contains v0
+        assert_eq!(cs.gates[0].verify_range_check(0, &witness, &cs), Ok(()));
+
+        let witness = range_check::create_witness::<PallasField>(
+            PallasField::from(PallasField::from(2u64).pow([64])),
+            PallasField::zero(),
+            PallasField::zero(),
+        );
+
+        // gates[0] is RangeCheck0 and contains v0
+        assert_eq!(cs.gates[0].verify_range_check(0, &witness, &cs), Ok(()));
+
+        let witness = range_check::create_witness::<PallasField>(
+            PallasField::from(42u64),
+            PallasField::zero(),
+            PallasField::zero(),
+        );
+
+        // gates[0] is RangeCheck0 and contains v0
+        assert_eq!(cs.gates[0].verify_range_check(0, &witness, &cs), Ok(()));
+
+        let witness = range_check::create_witness::<PallasField>(
+            PallasField::one(),
+            PallasField::zero(),
+            PallasField::zero(),
+        );
+
+        // gates[0] is RangeCheck0 and contains v0
+        assert_eq!(cs.gates[0].verify_range_check(0, &witness, &cs), Ok(()));
+    }
+
+    #[test]
+    fn verify_range_check0_valid_v1_in_range() {
+        let cs = create_test_constraint_system();
+
+        let witness = range_check::create_witness::<PallasField>(
+            PallasField::zero(),
+            PallasField::from(PallasField::from(2u64).pow([88]) - PallasField::one()),
+            PallasField::zero(),
+        );
+
+        // gates[1] is RangeCheck0 and contains v1
+        assert_eq!(cs.gates[1].verify_range_check(1, &witness, &cs), Ok(()));
+
+        let witness = range_check::create_witness::<PallasField>(
+            PallasField::zero(),
+            PallasField::from(PallasField::from(2u64).pow([63])),
+            PallasField::zero(),
+        );
+
+        // gates[1] is RangeCheck0 and contains v1
+        assert_eq!(cs.gates[1].verify_range_check(1, &witness, &cs), Ok(()));
+
+        let witness = range_check::create_witness::<PallasField>(
+            PallasField::zero(),
+            PallasField::from(48u64),
+            PallasField::zero(),
+        );
+
+        // gates[1] is RangeCheck0 and contains v1
+        assert_eq!(cs.gates[1].verify_range_check(1, &witness, &cs), Ok(()));
+
+        let witness = range_check::create_witness::<PallasField>(
+            PallasField::zero(),
+            PallasField::one() + PallasField::one(),
+            PallasField::zero(),
+        );
+
+        // gates[1] is RangeCheck0 and contains v1
+        assert_eq!(cs.gates[1].verify_range_check(1, &witness, &cs), Ok(()));
+    }
+
+    #[test]
+    fn verify_range_check0_invalid_v0_not_in_range() {
+        let cs = create_test_constraint_system();
+
+        let witness = range_check::create_witness::<PallasField>(
+            PallasField::from(2u64).pow([88]), // out of range
+            PallasField::zero(),
+            PallasField::zero(),
+        );
+
+        // gates[0] is RangeCheck0 and contains v0
+        assert_eq!(
+            cs.gates[0].verify_range_check(0, &witness, &cs),
+            Err(GateError::InvalidConstraint(GateType::RangeCheck0))
+        );
+
+        let witness = range_check::create_witness::<PallasField>(
+            PallasField::from(2u64).pow([96]), // out of range
+            PallasField::zero(),
+            PallasField::zero(),
+        );
+
+        // gates[0] is RangeCheck0 and contains v0
+        assert_eq!(
+            cs.gates[0].verify_range_check(0, &witness, &cs),
+            Err(GateError::InvalidConstraint(GateType::RangeCheck0))
+        );
+    }
+
+    #[test]
+    fn verify_range_check0_invalid_v1_not_in_range() {
+        let cs = create_test_constraint_system();
+
+        let witness = range_check::create_witness::<PallasField>(
+            PallasField::zero(),
+            PallasField::from(2u64).pow([88]), // out of range
+            PallasField::zero(),
+        );
+
+        // gates[1] is RangeCheck0 and contains v1
+        assert_eq!(
+            cs.gates[1].verify_range_check(1, &witness, &cs),
+            Err(GateError::InvalidConstraint(GateType::RangeCheck0))
+        );
+
+        let witness = range_check::create_witness::<PallasField>(
+            PallasField::zero(),
+            PallasField::from(2u64).pow([96]), // out of range
+            PallasField::zero(),
+        );
+
+        // gates[1] is RangeCheck0 and contains v1
+        assert_eq!(
+            cs.gates[1].verify_range_check(1, &witness, &cs),
+            Err(GateError::InvalidConstraint(GateType::RangeCheck0))
+        );
+    }
+
+    #[test]
+    fn verify_range_check0_v0_test_lookups() {
+        let cs = create_test_constraint_system();
+
+        for i in 1..=4 {
+            // Test ith lookup
+            let mut witness = range_check::create_witness::<PallasField>(
+                PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
+                PallasField::zero(),
+                PallasField::zero(),
+            );
+
+            // Positive test
+            // gates[0] is RangeCheck0 and constrains some of v0
+            assert_eq!(cs.gates[0].verify_range_check(0, &witness, &cs), Ok(()));
+
+            // Negative test
+            // make ith plookup limb out of range
+            witness[i][0] = PallasField::from(2u64.pow(12));
+
+            // gates[0] is RangeCheck0 and constrains some of v0
+            assert_eq!(
+                cs.gates[0].verify_range_check(0, &witness, &cs),
+                Err(GateError::InvalidLookupConstraintSorted(
+                    GateType::RangeCheck0
+                ))
+            );
+        }
+    }
+
+    #[test]
+    fn verify_range_check0_v1_test_lookups() {
+        let cs = create_test_constraint_system();
+
+        for i in 1..=4 {
+            // Test ith lookup
+            let mut witness = range_check::create_witness::<PallasField>(
+                PallasField::zero(),
+                PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
+                PallasField::zero(),
+            );
+
+            // Positive test
+            // gates[1] is RangeCheck0 and constrains some of v1
+            assert_eq!(cs.gates[1].verify_range_check(1, &witness, &cs), Ok(()));
+
+            // Negative test
+            // make ith plookup limb out of range
+            witness[i][1] = PallasField::from(2u64.pow(12));
+
+            // gates[1] is RangeCheck0 and constrains some of v1
+            assert_eq!(
+                cs.gates[1].verify_range_check(1, &witness, &cs),
+                Err(GateError::InvalidLookupConstraintSorted(
+                    GateType::RangeCheck0
+                ))
+            );
+        }
+    }
+
+    #[test]
+    fn verify_range_check1_zero_valid_witness() {
+        let cs = create_test_constraint_system();
+        let witness: [Vec<PallasField>; COLUMNS] = array_init(|_| vec![PallasField::from(0); 4]);
+
+        // gates[2] is RangeCheck1
+        assert_eq!(cs.gates[2].verify_range_check(2, &witness, &cs), Ok(()));
+    }
+
+    #[test]
+    fn verify_range_check1_one_invalid_witness() {
+        let cs = create_test_constraint_system();
+        let witness: [Vec<PallasField>; COLUMNS] = array_init(|_| vec![PallasField::from(1); 4]);
+
+        // gates[2] is RangeCheck1
+        assert_eq!(
+            cs.gates[2].verify_range_check(2, &witness, &cs),
+            Err(GateError::InvalidConstraint(GateType::RangeCheck1))
         );
     }
 
@@ -665,7 +939,7 @@ mod tests {
         // gates[2] is RangeCheck1
         assert_eq!(
             cs.gates[2].verify_range_check(2, &witness, &cs),
-            Err(String::from("Invalid RangeCheck1 constraint"))
+            Err(GateError::InvalidConstraint(GateType::RangeCheck1))
         );
 
         let mut witness = range_check::create_witness::<PallasField>(
@@ -689,78 +963,108 @@ mod tests {
         // gates[2] is RangeCheck1
         assert_eq!(
             cs.gates[2].verify_range_check(2, &witness, &cs),
-            Err(String::from("Invalid RangeCheck1 constraint"))
+            Err(GateError::InvalidConstraint(GateType::RangeCheck1))
         );
     }
 
     #[test]
-    fn verify_range_check0_valid_single_in_range() {
+    fn verify_range_check1_valid_v2_in_range() {
         let cs = create_test_constraint_system();
 
         let witness = range_check::create_witness::<PallasField>(
+            PallasField::zero(),
+            PallasField::zero(),
             PallasField::from(PallasField::from(2u64).pow([88]) - PallasField::one()),
-            PallasField::zero(),
-            PallasField::zero(),
         );
 
-        // gates[0] is RangeCheck0 and contains val1
-        assert_eq!(cs.gates[0].verify_range_check(0, &witness, &cs), Ok(()));
+        // gates[2] is RangeCheck1 and constrains v2
+        assert_eq!(cs.gates[2].verify_range_check(2, &witness, &cs), Ok(()));
 
         let witness = range_check::create_witness::<PallasField>(
+            PallasField::zero(),
+            PallasField::zero(),
             PallasField::from(PallasField::from(2u64).pow([64])),
-            PallasField::zero(),
-            PallasField::zero(),
         );
 
-        // gates[0] is RangeCheck0 and contains val1
-        assert_eq!(cs.gates[0].verify_range_check(0, &witness, &cs), Ok(()));
+        // gates[2] is RangeCheck1 and constrains v2
+        assert_eq!(cs.gates[2].verify_range_check(2, &witness, &cs), Ok(()));
 
         let witness = range_check::create_witness::<PallasField>(
+            PallasField::zero(),
+            PallasField::zero(),
             PallasField::from(42u64),
-            PallasField::zero(),
-            PallasField::zero(),
         );
 
-        // gates[0] is RangeCheck0 and contains val1
-        assert_eq!(cs.gates[0].verify_range_check(0, &witness, &cs), Ok(()));
+        // gates[2] is RangeCheck1 and constrains v2
+        assert_eq!(cs.gates[2].verify_range_check(2, &witness, &cs), Ok(()));
 
         let witness = range_check::create_witness::<PallasField>(
+            PallasField::zero(),
+            PallasField::zero(),
             PallasField::one(),
-            PallasField::zero(),
-            PallasField::zero(),
         );
 
-        // gates[0] is RangeCheck0 and contains val1
-        assert_eq!(cs.gates[0].verify_range_check(0, &witness, &cs), Ok(()));
+        // gates[2] is RangeCheck1 and constrains v2
+        assert_eq!(cs.gates[2].verify_range_check(2, &witness, &cs), Ok(()));
     }
 
     #[test]
-    fn verify_range_check0_invalid_single_not_in_range() {
+    fn verify_range_check1_invalid_v2_not_in_range() {
         let cs = create_test_constraint_system();
 
         let witness = range_check::create_witness::<PallasField>(
+            PallasField::zero(),
+            PallasField::zero(),
             PallasField::from(2u64).pow([88]), // out of range
-            PallasField::zero(),
-            PallasField::zero(),
         );
 
-        // gates[0] is RangeCheck0 and contains val1
+        // gates[2] is RangeCheck1 and constrains v2
         assert_eq!(
-            cs.gates[0].verify_range_check(0, &witness, &cs),
-            Err(String::from("Invalid RangeCheck0 constraint"))
+            cs.gates[2].verify_range_check(2, &witness, &cs),
+            Err(GateError::InvalidConstraint(GateType::RangeCheck1))
         );
 
         let witness = range_check::create_witness::<PallasField>(
+            PallasField::zero(),
+            PallasField::zero(),
             PallasField::from(2u64).pow([96]), // out of range
-            PallasField::zero(),
-            PallasField::zero(),
         );
 
-        // gates[0] is RangeCheck0 and contains val1
+        // gates[2] is RangeCheck1 and constrains v2
         assert_eq!(
-            cs.gates[0].verify_range_check(0, &witness, &cs),
-            Err(String::from("Invalid RangeCheck0 constraint"))
+            cs.gates[2].verify_range_check(2, &witness, &cs),
+            Err(GateError::InvalidConstraint(GateType::RangeCheck1))
         );
+    }
+
+    #[test]
+    fn verify_range_check1_test_lookups() {
+        let cs = create_test_constraint_system();
+
+        for i in 1..=4 {
+            // Test ith lookup
+            let mut witness = range_check::create_witness::<PallasField>(
+                PallasField::zero(),
+                PallasField::zero(),
+                PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
+            );
+
+            // Positive test
+            // gates[2] is RangeCheck0 and constrains v2
+            assert_eq!(cs.gates[2].verify_range_check(2, &witness, &cs), Ok(()));
+
+            // Negative test
+            // make ith plookup limb out of range
+            witness[i][2] = PallasField::from(2u64.pow(12));
+
+            // gates[2] is RangeCheck0 and constrains v2
+            assert_eq!(
+                cs.gates[2].verify_range_check(2, &witness, &cs),
+                Err(GateError::InvalidLookupConstraintSorted(
+                    GateType::RangeCheck1
+                ))
+            );
+        }
     }
 
     use crate::{prover_index::ProverIndex, verifier::verify};

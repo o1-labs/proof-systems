@@ -160,7 +160,9 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
             CairoClaim | CairoInstruction | CairoFlags | CairoTransition => {
                 self.verify_cairo_gate(row, witness, cs)
             }
-            RangeCheck0 | RangeCheck1 | RangeCheck2 => self.verify_range_check(row, witness, cs),
+            RangeCheck0 | RangeCheck1 | RangeCheck2 => self
+                .verify_range_check(row, witness, cs)
+                .map_err(|e| e.to_string()),
         }
     }
 }
