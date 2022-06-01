@@ -287,10 +287,10 @@ mod tests {
 
         ConstraintSystem::create2(gates, oracle::pasta::fp_kimchi::params())?
             .public(0)
-            .lookup_tables(vec![], None)
+            .lookup_tables(vec![], None)?
             .shared_precomputations(None)
             .build()
-            .unwrap();
+            .unwrap()
 
         //ConstraintSystem::create(gates, vec![], None, oracle::pasta::fp_kimchi::params(), 0)
         //    .unwrap()

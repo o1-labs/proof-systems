@@ -19,7 +19,6 @@ use ark_poly::{
 };
 use array_init::array_init;
 use blake2::{Blake2b512, Digest};
-use derivative::Derivative;
 use o1_utils::ExtendedEvaluations;
 use once_cell::sync::OnceCell;
 use oracle::poseidon::ArithmeticSpongeParams;
@@ -35,8 +34,7 @@ use super::lookup::runtime_tables::RuntimeTableCfg;
 //
 
 #[serde_as]
-#[derive(Clone, Serialize, Deserialize, Debug, Derivative)]
-#[derivative(Default)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct ConstraintSystem<F: FftField> {
     // Basics
     // ------
@@ -59,9 +57,6 @@ pub struct ConstraintSystem<F: FftField> {
     // ---------------------------------------
     /// coefficients polynomials in evaluation form
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
-    #[derivative(Default(
-        value = "[ark_poly::Evaluations::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap()); COLUMNS]"
-    ))]
     pub coefficients8: [E<F, D<F>>; COLUMNS],
 
     // Generic constraint selector polynomials
@@ -78,24 +73,15 @@ pub struct ConstraintSystem<F: FftField> {
     // Generic constraint selector polynomials
     // ---------------------------------------
     /// multiplication evaluations over domain.d4
-    #[derivative(Default(
-        value = "ark_poly::Evaluations::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap())"
-    ))]
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub generic4: E<F, D<F>>,
 
     // permutation polynomials
     // -----------------------
     /// permutation polynomial array evaluations over domain d1
-    #[derivative(Default(
-        value = "[ark_poly::Evaluations::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap()); PERMUTS]"
-    ))]
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub sigmal1: [E<F, D<F>>; PERMUTS],
     /// permutation polynomial array evaluations over domain d8
-    #[derivative(Default(
-        value = "[ark_poly::Evaluations::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap()); PERMUTS]"
-    ))]
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub sigmal8: [E<F, D<F>>; PERMUTS],
     /// SID polynomial
@@ -105,42 +91,24 @@ pub struct ConstraintSystem<F: FftField> {
     // Poseidon selector polynomials
     // -----------------------------
     /// poseidon selector over domain.d8
-    #[derivative(Default(
-        value = "ark_poly::Evaluations::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap())"
-    ))]
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub ps8: E<F, D<F>>,
 
     // ECC arithmetic selector polynomials
     // -----------------------------------
     /// EC point addition selector evaluations w over domain.d4
-    #[derivative(Default(
-        value = "ark_poly::Evaluations::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap())"
-    ))]
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub complete_addl4: E<F, D<F>>,
     /// scalar multiplication selector evaluations over domain.d8
-    #[derivative(Default(
-        value = "ark_poly::Evaluations::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap())"
-    ))]
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub mull8: E<F, D<F>>,
     /// endoscalar multiplication selector evaluations over domain.d8
-    #[derivative(Default(
-        value = "ark_poly::Evaluations::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap())"
-    ))]
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub emull: E<F, D<F>>,
     /// ChaCha indexes
-    #[derivative(Default(
-        value = "Some([ark_poly::Evaluations::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap()); 4])"
-    ))]
     #[serde_as(as = "Option<[o1_utils::serialization::SerdeAs; 4]>")]
     pub chacha8: Option<[E<F, D<F>>; 4]>,
     /// EC point addition selector evaluations w over domain.d8
-    #[derivative(Default(
-        value = "ark_poly::Evaluations::from_vec_and_domain(vec![], EvaluationDomain::new(0).unwrap())"
-    ))]
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub endomul_scalar8: E<F, D<F>>,
 
@@ -253,25 +221,11 @@ pub enum GateError {
     Custom { row: usize, err: String },
 }
 
-pub(crate) enum BuilderStep {
-    Create = 0,
-    Public = 1,
-    Lookup = 2,
-    Precom = 3,
-    Build = 4,
-}
-
-pub(crate) struct Builder<F: FftField> {
-    pub(crate) typ: BuilderStep,
-    pub(crate) consys: Result<ConstraintSystem<F>, SetupError>,
-}
-
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// Initializes the constraint system on input `gates` and `fr_sponge_params`.
     /// It sets the domain accordingly, padding the circuit for zero knowledge.
     #[must_use]
     pub fn create2(
-        mut self,
         mut gates: Vec<CircuitGate<F>>,
         fr_sponge_params: ArithmeticSpongeParams<F>,
     ) -> Result<Self, SetupError> {
@@ -300,12 +254,32 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // Initialize precomputations
         let domain_constant_evaluation = OnceCell::new();
 
-        self.gates = gates;
-        self.domain = domain;
-        self.fr_sponge_params = fr_sponge_params;
-        self.precomputations = domain_constant_evaluation;
-
-        Ok(self)
+        let cs = ConstraintSystem {
+            domain,
+            gates,
+            fr_sponge_params,
+            precomputations: domain_constant_evaluation,
+            public: todo!(),
+            sigmam: todo!(),
+            coefficients8: todo!(),
+            genericm: todo!(),
+            psm: todo!(),
+            generic4: todo!(),
+            sigmal1: todo!(),
+            sigmal8: todo!(),
+            sid: todo!(),
+            ps8: todo!(),
+            complete_addl4: todo!(),
+            mull8: todo!(),
+            emull: todo!(),
+            chacha8: todo!(),
+            endomul_scalar8: todo!(),
+            range_check_selector_polys: todo!(),
+            shift: todo!(),
+            endo: todo!(),
+            lookup_constraint_system: todo!(),
+        };
+        Ok(cs)
     }
 
     #[must_use]

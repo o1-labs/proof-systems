@@ -1,25 +1,19 @@
 use ark_ff::FftField;
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as Domain};
-use derivative::Derivative;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
 use crate::error::SetupError;
 
 #[serde_as]
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Derivative)]
-#[derivative(Default)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct EvaluationDomains<F: FftField> {
-    #[derivative(Default(value = "ark_poly::EvaluationDomain::new(0).unwrap()"))]
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub d1: Domain<F>, // size n
-    #[derivative(Default(value = "ark_poly::EvaluationDomain::new(0).unwrap()"))]
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub d2: Domain<F>, // size 2n
-    #[derivative(Default(value = "ark_poly::EvaluationDomain::new(0).unwrap()"))]
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub d4: Domain<F>, // size 4n
-    #[derivative(Default(value = "ark_poly::EvaluationDomain::new(0).unwrap()"))]
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub d8: Domain<F>, // size 8n
 }
