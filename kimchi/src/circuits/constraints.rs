@@ -221,359 +221,62 @@ pub enum GateError {
     Custom { row: usize, err: String },
 }
 
-impl<F: FftField + SquareRootField> ConstraintSystem<F> {
-    /// Initializes the constraint system on input `gates` and `fr_sponge_params`.
-    /// It sets the domain accordingly, padding the circuit for zero knowledge.
-    #[must_use]
-    pub fn create2(
-        mut gates: Vec<CircuitGate<F>>,
-        fr_sponge_params: ArithmeticSpongeParams<F>,
-    ) -> Result<Self, SetupError> {
-        //~ 1. If the circuit is less than 2 gates, abort.
-        // for some reason we need more than 1 gate for the circuit to work, see TODO below
-        assert!(gates.len() > 1);
+pub struct BuilderCS<F: FftField> {
+    gates: Vec<CircuitGate<F>>,
+    fr_sponge_params: ArithmeticSpongeParams<F>,
+    public: usize,
+    lookup_tables: Vec<LookupTable<F>>,
+    runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
+    precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
+}
 
-        //~ 2. Create a domain for the circuit. That is,
-        //~    compute the smallest subgroup of the field that
-        //~    has order greater or equal to `n + ZK_ROWS` elements.
-        let domain = EvaluationDomains::<F>::create(gates.len() + ZK_ROWS as usize)?;
-        assert!(domain.d1.size > ZK_ROWS);
-
-        //~ 3. Pad the circuit: add zero gates to reach the domain size.
-        let d1_size = domain.d1.size();
-        let mut padding = (gates.len()..d1_size)
-            .map(|i| {
-                CircuitGate::<F>::zero(array_init(|j| Wire {
-                    col: WIRES[j],
-                    row: i,
-                }))
-            })
-            .collect();
-        gates.append(&mut padding);
-
-        // Initialize precomputations
-        let domain_constant_evaluation = OnceCell::new();
-
-        let cs = ConstraintSystem {
-            domain,
-            gates,
-            fr_sponge_params,
-            precomputations: domain_constant_evaluation,
-            public: todo!(),
-            sigmam: todo!(),
-            coefficients8: todo!(),
-            genericm: todo!(),
-            psm: todo!(),
-            generic4: todo!(),
-            sigmal1: todo!(),
-            sigmal8: todo!(),
-            sid: todo!(),
-            ps8: todo!(),
-            complete_addl4: todo!(),
-            mull8: todo!(),
-            emull: todo!(),
-            chacha8: todo!(),
-            endomul_scalar8: todo!(),
-            range_check_selector_polys: todo!(),
-            shift: todo!(),
-            endo: todo!(),
-            lookup_constraint_system: todo!(),
-        };
-        Ok(cs)
-    }
-
-    #[must_use]
+impl<F: FftField + SquareRootField> BuilderCS<F> {
+    /// Set up the number of public inputs.
+    /// If not invoked, it equals `0` by default.
     pub fn public(mut self, public: usize) -> Self {
         self.public = public;
         self
     }
 
-    #[must_use]
-    pub fn lookup_tables(
-        mut self,
-        lookup_tables: Vec<LookupTable<F>>,
-        runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
-    ) -> Result<Self, SetupError> {
-        //
-        // Lookup
-        // ------
-        let lookup_constraint_system = LookupConstraintSystem::create(
-            &self.gates,
-            lookup_tables,
-            runtime_tables,
-            &self.domain,
-        )
-        .map_err(|e| SetupError::ConstraintSystem(e.to_string()))?;
-
-        self.lookup_constraint_system = lookup_constraint_system;
-        Ok(self)
-    }
-
-    #[must_use]
-    pub fn shared_precomputations(
-        mut self,
-        precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
-    ) -> Self {
-        match precomputations {
-            Some(t) => {
-                self.set_precomputations(t);
-            }
-            None => {
-                self.precomputations();
-            }
-        }
+    /// Set up the lookup tables.
+    /// If not invoked, it is `vec![]` by default.
+    ///
+    /// **Warning:** you have to make sure that the IDs of the lookup tables,
+    /// are unique and  not colliding with IDs of built-in lookup tables
+    /// (see [crate::circuits::lookup::tables]).
+    pub fn lookup(mut self, lookup_tables: Vec<LookupTable<F>>) -> Self {
+        self.lookup_tables = lookup_tables;
         self
     }
 
+    /// Set up the runtime tables.
+    /// If not invoked, it is `None` by default.
+    ///
+    /// **Warning:** you have to make sure that the IDs of the runtime lookup tables,
+    /// are unique and not colliding with IDs of built-in lookup tables
+    /// (see [crate::circuits::lookup::tables]).
+    pub fn runtime(mut self, runtime_tables: Option<Vec<RuntimeTableCfg<F>>>) -> Self {
+        self.runtime_tables = runtime_tables;
+        self
+    }
+
+    /// Set up the shared precomputations.
+    /// If not invoked, it is `None` by default.
+    pub fn precomputations(
+        mut self,
+        shared_precomputations: Arc<DomainConstantEvaluations<F>>,
+    ) -> Self {
+        self.precomputations = Some(shared_precomputations);
+        self
+    }
+
+    /// Build the [ConstraintSystem] from a [BuilderCS].
     #[must_use]
-    pub fn build(mut self) -> Result<Self, SetupError> {
-        //~ 3. Pad the circuit: add zero gates to reach the domain size.
-        let d1_size = self.domain.d1.size();
-        let mut padding = (self.gates.len()..d1_size)
-            .map(|i| {
-                CircuitGate::<F>::zero(array_init(|j| Wire {
-                    col: WIRES[j],
-                    row: i,
-                }))
-            })
-            .collect();
-        self.gates.append(&mut padding);
+    pub fn build(self) -> Result<ConstraintSystem<F>, SetupError> {
+        let mut gates = self.gates;
+        let lookup_tables = self.lookup_tables;
+        let runtime_tables = self.runtime_tables;
 
-        // Record which gates are used by this constraint system
-        let mut circuit_gates_used = HashSet::<GateType>::default();
-        self.gates.iter().for_each(|gate| {
-            circuit_gates_used.insert(gate.typ);
-        });
-
-        //~ 4. sample the `PERMUTS` shifts.
-        let shifts = Shifts::new(&self.domain.d1);
-
-        // Precomputations
-        // ===============
-        // what follows are pre-computations.
-
-        //
-        // Permutation
-        // -----------
-
-        // compute permutation polynomials
-        let mut sigmal1: [Vec<F>; PERMUTS] = array_init(|_| vec![F::zero(); self.domain.d1.size()]);
-
-        for (row, gate) in self.gates.iter().enumerate() {
-            for (cell, sigma) in gate.wires.iter().zip(sigmal1.iter_mut()) {
-                sigma[row] = shifts.cell_to_field(cell);
-            }
-        }
-
-        let sigmal1: [_; PERMUTS] = {
-            let [s0, s1, s2, s3, s4, s5, s6] = sigmal1;
-            [
-                E::<F, D<F>>::from_vec_and_domain(s0, self.domain.d1),
-                E::<F, D<F>>::from_vec_and_domain(s1, self.domain.d1),
-                E::<F, D<F>>::from_vec_and_domain(s2, self.domain.d1),
-                E::<F, D<F>>::from_vec_and_domain(s3, self.domain.d1),
-                E::<F, D<F>>::from_vec_and_domain(s4, self.domain.d1),
-                E::<F, D<F>>::from_vec_and_domain(s5, self.domain.d1),
-                E::<F, D<F>>::from_vec_and_domain(s6, self.domain.d1),
-            ]
-        };
-
-        let sigmam: [DP<F>; PERMUTS] = array_init(|i| sigmal1[i].clone().interpolate());
-
-        let sigmal8 = array_init(|i| sigmam[i].evaluate_over_domain_by_ref(self.domain.d8));
-
-        // Gates
-        // -----
-        //
-        // Compute each gate's polynomial as
-        // the polynomial that evaluates to 1 at $g^i$
-        // where $i$ is the row where a gate is active.
-        // Note: gates must be mutually exclusive.
-
-        // poseidon gate
-        let psm = E::<F, D<F>>::from_vec_and_domain(
-            self.gates.iter().map(|gate| gate.ps()).collect(),
-            self.domain.d1,
-        )
-        .interpolate();
-        let ps8 = psm.evaluate_over_domain_by_ref(self.domain.d8);
-
-        // ECC gates
-        let complete_addm = E::<F, D<F>>::from_vec_and_domain(
-            self.gates
-                .iter()
-                .map(|gate| F::from((gate.typ == GateType::CompleteAdd) as u64))
-                .collect(),
-            self.domain.d1,
-        )
-        .interpolate();
-        let complete_addl4 = complete_addm.evaluate_over_domain_by_ref(self.domain.d4);
-
-        let mulm = E::<F, D<F>>::from_vec_and_domain(
-            self.gates.iter().map(|gate| gate.vbmul()).collect(),
-            self.domain.d1,
-        )
-        .interpolate();
-        let mull8 = mulm.evaluate_over_domain_by_ref(self.domain.d8);
-
-        let emulm = E::<F, D<F>>::from_vec_and_domain(
-            self.gates.iter().map(|gate| gate.endomul()).collect(),
-            self.domain.d1,
-        )
-        .interpolate();
-        let emull = emulm.evaluate_over_domain_by_ref(self.domain.d8);
-
-        let endomul_scalarm = E::<F, D<F>>::from_vec_and_domain(
-            self.gates
-                .iter()
-                .map(|gate| F::from((gate.typ == GateType::EndoMulScalar) as u64))
-                .collect(),
-            self.domain.d1,
-        )
-        .interpolate();
-        let endomul_scalar8 = endomul_scalarm.evaluate_over_domain_by_ref(self.domain.d8);
-
-        // double generic gate
-        let genericm = E::<F, D<F>>::from_vec_and_domain(
-            self.gates
-                .iter()
-                .map(|gate| {
-                    if matches!(gate.typ, GateType::Generic) {
-                        F::one()
-                    } else {
-                        F::zero()
-                    }
-                })
-                .collect(),
-            self.domain.d1,
-        )
-        .interpolate();
-        let generic4 = genericm.evaluate_over_domain_by_ref(self.domain.d4);
-
-        // chacha gate
-        let chacha8 = {
-            use GateType::*;
-            let has_chacha_gate = self
-                .gates
-                .iter()
-                .any(|gate| matches!(gate.typ, ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal));
-            if !has_chacha_gate {
-                None
-            } else {
-                let a: [_; 4] = array_init(|i| {
-                    let g = match i {
-                        0 => ChaCha0,
-                        1 => ChaCha1,
-                        2 => ChaCha2,
-                        3 => ChaChaFinal,
-                        _ => panic!("Invalid index"),
-                    };
-                    E::<F, D<F>>::from_vec_and_domain(
-                        self.gates
-                            .iter()
-                            .map(|gate| if gate.typ == g { F::one() } else { F::zero() })
-                            .collect(),
-                        self.domain.d1,
-                    )
-                    .interpolate()
-                    .evaluate_over_domain(self.domain.d8)
-                });
-                Some(a)
-            }
-        };
-
-        // Range check constraint selector polynomials
-        let range_check_selector_polys = {
-            if !circuit_gates_used.is_disjoint(&range_check::circuit_gates().into_iter().collect())
-            {
-                range_check::selector_polynomials(&self.gates, &self.domain)
-            } else {
-                vec![]
-            }
-        };
-
-        //
-        // Coefficient
-        // -----------
-        //
-
-        // coefficient polynomial
-        let coefficientsm: [_; COLUMNS] = array_init(|i| {
-            let padded = self
-                .gates
-                .iter()
-                .map(|gate| gate.coeffs.get(i).cloned().unwrap_or_else(F::zero))
-                .collect();
-            let eval = E::from_vec_and_domain(padded, self.domain.d1);
-            eval.interpolate()
-        });
-        // TODO: This doesn't need to be degree 8 but that would require some changes in expr
-        let coefficients8 =
-            array_init(|i| coefficientsm[i].evaluate_over_domain_by_ref(self.domain.d8));
-
-        let sid = shifts.map[0].clone();
-
-        // TODO: remove endo as a field
-        let endo = F::zero();
-
-        self.chacha8 = chacha8;
-        self.endomul_scalar8 = endomul_scalar8;
-        self.sid = sid;
-        self.sigmal1 = sigmal1;
-        self.sigmal8 = sigmal8;
-        self.sigmam = sigmam;
-        self.genericm = genericm;
-        self.generic4 = generic4;
-        self.coefficients8 = coefficients8;
-        self.ps8 = ps8;
-        self.psm = psm;
-        self.complete_addl4 = complete_addl4;
-        self.mull8 = mull8;
-        self.emull = emull;
-        self.range_check_selector_polys = range_check_selector_polys;
-        self.shift = shifts.shifts;
-        self.endo = endo;
-
-        Ok(self)
-    }
-
-    /// creates a constraint system from a vector of gates ([CircuitGate]), some sponge parameters ([ArithmeticSpongeParams]), and the number of public inputs.
-    ///
-    /// Warning: you have to make sure that the IDs of the lookup tables,
-    /// and runtime lookup tables, are unique and
-    /// not colliding with IDs of built-in lookup tables
-    /// (see [crate::circuits::lookup::tables]).
-    pub fn create(
-        gates: Vec<CircuitGate<F>>,
-        lookup_tables: Vec<LookupTable<F>>,
-        runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
-        fr_sponge_params: ArithmeticSpongeParams<F>,
-        public: usize,
-    ) -> Result<Self, SetupError> {
-        ConstraintSystem::<F>::create_with_shared_precomputations(
-            gates,
-            lookup_tables,
-            runtime_tables,
-            fr_sponge_params,
-            public,
-            None,
-        )
-    }
-
-    /// similar to create. but this fn creates a constraint system with a shared precomputation previously created elsewhere
-    ///
-    /// Warning: you have to make sure that the IDs of the lookup tables,
-    /// and runtime lookup tables, are unique and
-    /// not colliding with IDs of built-in lookup tables
-    /// (see [crate::circuits::lookup::tables]).
-    pub fn create_with_shared_precomputations(
-        mut gates: Vec<CircuitGate<F>>,
-        lookup_tables: Vec<LookupTable<F>>,
-        runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
-        fr_sponge_params: ArithmeticSpongeParams<F>,
-        public: usize,
-        precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
-    ) -> Result<Self, SetupError> {
         //~ 1. If the circuit is less than 2 gates, abort.
         // for some reason we need more than 1 gate for the circuit to work, see TODO below
         assert!(gates.len() > 1);
@@ -784,7 +487,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             chacha8,
             endomul_scalar8,
             domain,
-            public,
+            public: self.public,
             sid,
             sigmal1,
             sigmal8,
@@ -801,12 +504,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             gates,
             shift: shifts.shifts,
             endo,
-            fr_sponge_params,
+            fr_sponge_params: self.fr_sponge_params,
             lookup_constraint_system,
             precomputations: domain_constant_evaluation,
         };
 
-        match precomputations {
+        match self.precomputations {
             Some(t) => {
                 constraints.set_precomputations(t);
             }
@@ -816,6 +519,30 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         }
 
         Ok(constraints)
+    }
+}
+
+impl<F: FftField + SquareRootField> ConstraintSystem<F> {
+    /// Initializes the [ConstraintSystem<F>] on input `gates` and `fr_sponge_params`.
+    /// Returns a [BuilderCS<F>]
+    /// It also defaults to the following values of the builder:
+    /// - `public: 0`
+    /// - `lookup_tables: vec![]`,
+    /// - `runtime_tables: None`,
+    /// - `precomputations: None`,
+    #[must_use]
+    pub fn create(
+        gates: Vec<CircuitGate<F>>,
+        fr_sponge_params: ArithmeticSpongeParams<F>,
+    ) -> BuilderCS<F> {
+        BuilderCS {
+            gates,
+            fr_sponge_params,
+            public: 0,
+            lookup_tables: vec![],
+            runtime_tables: None,
+            precomputations: None,
+        }
     }
 
     pub fn precomputations(&self) -> &Arc<DomainConstantEvaluations<F>> {
@@ -936,7 +663,10 @@ pub mod tests {
         ) -> Self {
             let public = 0;
             // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
-            ConstraintSystem::<F>::create(gates, vec![], None, sponge_params, public).unwrap()
+            ConstraintSystem::<F>::create(gates, sponge_params)
+                .public(public)
+                .build()
+                .unwrap()
         }
     }
 

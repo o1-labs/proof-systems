@@ -285,10 +285,7 @@ mod tests {
     fn create_test_constraint_system() -> ConstraintSystem<PallasField> {
         let (_, gates) = CircuitGate::<PallasField>::create_range_check(0);
 
-        ConstraintSystem::create2(gates, oracle::pasta::fp_kimchi::params())?
-            .public(0)
-            .lookup_tables(vec![], None)?
-            .shared_precomputations(None)
+        ConstraintSystem::create(gates, oracle::pasta::fp_kimchi::params())
             .build()
             .unwrap()
 
