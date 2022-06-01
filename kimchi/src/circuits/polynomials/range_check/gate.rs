@@ -288,9 +288,6 @@ mod tests {
         ConstraintSystem::create(gates, oracle::pasta::fp_kimchi::params())
             .build()
             .unwrap()
-
-        //ConstraintSystem::create(gates, vec![], None, oracle::pasta::fp_kimchi::params(), 0)
-        //    .unwrap()
     }
 
     fn create_test_prover_index(
