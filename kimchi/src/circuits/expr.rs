@@ -383,7 +383,7 @@ impl Op2 {
 ///
 /// - `Cell(v)` for `v : Variable`
 /// - VanishesOnLast4Rows
-/// - UnnormalizedLagrangeBasis(i) for `i : usize`
+/// - UnnormalizedLagrangeBasis(i) for `i : i32`
 ///
 /// This represents a PLONK "custom constraint", which enforces that
 /// the corresponding combination of the polynomials corresponding to
@@ -398,7 +398,7 @@ pub enum Expr<C> {
     VanishesOnLast4Rows,
     /// UnnormalizedLagrangeBasis(i) is
     /// (x^n - 1) / (x - omega^i)
-    UnnormalizedLagrangeBasis(usize),
+    UnnormalizedLagrangeBasis(i32),
     Pow(Box<Expr<C>>, u64),
     Cache(CacheId, Box<Expr<C>>),
 }
@@ -422,7 +422,7 @@ pub enum PolishToken<F> {
     Mul,
     Sub,
     VanishesOnLast4Rows,
-    UnnormalizedLagrangeBasis(usize),
+    UnnormalizedLagrangeBasis(i32),
     Store,
     Load(usize),
 }
@@ -475,9 +475,15 @@ impl<F: FftField> PolishToken<F> {
                 EndoCoefficient => stack.push(c.endo_coefficient),
                 Mds { row, col } => stack.push(c.mds[*row][*col]),
                 VanishesOnLast4Rows => stack.push(eval_vanishes_on_last_4_rows(d, pt)),
-                UnnormalizedLagrangeBasis(i) => stack.push(
-                    d.evaluate_vanishing_polynomial(pt) / (pt - d.group_gen.pow(&[*i as u64])),
-                ),
+                UnnormalizedLagrangeBasis(i) => {
+                    // Renormalize negative values to wrap around at domain size
+                    let i = if *i < 0 {
+                        ((*i as i64) + (d.size as i64)) as u64
+                    } else {
+                        *i as u64
+                    };
+                    stack.push(d.evaluate_vanishing_polynomial(pt) / (pt - d.group_gen.pow(&[i])))
+                }
                 Literal(x) => stack.push(*x),
                 Dup => stack.push(stack[stack.len() - 1]),
                 Cell(v) => match v.evaluate(evals) {
@@ -630,7 +636,7 @@ pub fn pows<F: Field>(x: F, n: usize) -> Vec<F> {
 /// = ((omega_8^n)^r - 1) / (omega^q omega_8^r - omega^i)
 fn unnormalized_lagrange_evals<F: FftField>(
     l0_1: F,
-    i: usize,
+    i: i32,
     res_domain: Domain,
     env: &Environment<F>,
 ) -> Evaluations<F, D<F>> {
@@ -644,6 +650,12 @@ fn unnormalized_lagrange_evals<F: FftField>(
 
     let d1 = env.domain.d1;
     let n = d1.size;
+    // Renormalize negative values to wrap around at domain size
+    let i = if i < 0 {
+        ((i as isize) + (n as isize)) as usize
+    } else {
+        i as usize
+    };
     let ii = i as u64;
     assert!(ii < n);
     let omega = d1.group_gen;

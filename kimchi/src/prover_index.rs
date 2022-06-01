@@ -71,7 +71,6 @@ where
 
         // pre-compute the linearization
         let (linearization, powers_of_alpha) = expr_linearization(
-            cs.domain.d1,
             cs.chacha8.is_some(),
             !cs.range_check_selector_polys.is_empty(),
             cs.lookup_constraint_system
