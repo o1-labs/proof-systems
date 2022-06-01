@@ -157,7 +157,7 @@ pub struct Builder<F: FftField> {
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// Initializes the [ConstraintSystem<F>] on input `gates` and `fr_sponge_params`.
-    /// Returns a [BuilderCS<F>]
+    /// Returns a [Builder<F>]
     /// It also defaults to the following values of the builder:
     /// - `public: 0`
     /// - `lookup_tables: vec![]`,
@@ -327,7 +327,7 @@ impl<F: FftField + SquareRootField> Builder<F> {
         self
     }
 
-    /// Build the [ConstraintSystem] from a [BuilderCS].
+    /// Build the [ConstraintSystem] from a [Builder].
     #[must_use]
     pub fn build(self) -> Result<ConstraintSystem<F>, SetupError> {
         let mut gates = self.gates;
