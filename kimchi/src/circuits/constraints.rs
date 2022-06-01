@@ -328,7 +328,6 @@ impl<F: FftField + SquareRootField> Builder<F> {
     }
 
     /// Build the [ConstraintSystem] from a [Builder].
-    #[must_use]
     pub fn build(self) -> Result<ConstraintSystem<F>, SetupError> {
         let mut gates = self.gates;
         let lookup_tables = self.lookup_tables;
