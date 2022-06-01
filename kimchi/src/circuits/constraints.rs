@@ -262,7 +262,7 @@ impl<F: FftField + SquareRootField> BuilderCS<F> {
 
     /// Set up the shared precomputations.
     /// If not invoked, it is `None` by default.
-    pub fn precomputations(
+    pub fn shared_precomputations(
         mut self,
         shared_precomputations: Arc<DomainConstantEvaluations<F>>,
     ) -> Self {
