@@ -36,6 +36,9 @@ use super::{RangeCheck0, RangeCheck1};
 #[derive(Error, Debug, Clone, Copy, PartialEq)]
 pub enum GateError {
     /// Invalid constraint
+    #[error("Invalid circuit gate type {0:?}")]
+    InvalidCircuitGateType(GateType),
+    /// Invalid constraint
     #[error("Invalid {0:?} constraint")]
     InvalidConstraint(GateType),
     /// Invalid copy constraint
@@ -104,7 +107,7 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
                 coeffs: vec![],
             },
             CircuitGate {
-                typ: GateType::RangeCheck2,
+                typ: GateType::Zero,
                 wires: wires[3],
                 coeffs: vec![],
             },
@@ -113,18 +116,22 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
         (start_row + circuit_gates.len(), circuit_gates)
     }
 
-    /// Verify the range check circuit gate on a given row
+    /// Verify the witness against a range check (related) circuit gate
+    ///
+    /// The following verification checks are performed
+    ///   * Constraint checks for circuit gates matching the self.typ kind
+    ///     Circuit gates used by the range check gate are: RangeChange0 and RangeCheck1
+    ///   * Permutation argument checks for copied cells / wiring
+    ///   * Plookup checks for any lookups defined
     pub fn verify_range_check(
         &self,
         _: usize,
         witness: &[Vec<F>; COLUMNS],
         cs: &ConstraintSystem<F>,
     ) -> Result<()> {
-        // TODO: We should refactor some of this code into a
-        // new Expr helper that can just evaluate a single row
-        // and perform a lot of the common setup below so that
-        // each CircuitGate's verify function doesn't need to
-        // implement it separately.
+        if !circuit_gates().contains(&self.typ) {
+            return Err(GateError::InvalidCircuitGateType(self.typ));
+        }
 
         // Pad the witness to domain d1 size
         let padding_length = cs
@@ -156,12 +163,10 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
         let witness_evals = cs.evaluate(&witness_poly, &z_poly);
 
         let mut index_evals = HashMap::new();
-        if self.typ != GateType::RangeCheck2 {
-            index_evals.insert(
-                self.typ,
-                &cs.range_check_selector_polys[circuit_gate_selector_index(self.typ)].eval8,
-            );
-        }
+        index_evals.insert(
+            self.typ,
+            &cs.range_check_selector_polys[circuit_gate_selector_index(self.typ)].eval8,
+        );
 
         // Set up lookup environment
         let lcs = cs
@@ -204,20 +209,13 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
 
         // Setup powers of alpha
         let mut alphas = Alphas::<F>::default();
-        if self.typ != GateType::RangeCheck2 {
-            alphas.register(
-                ArgumentType::Gate(self.typ),
-                circuit_gate_constraint_count::<F>(self.typ),
-            );
-        }
+        alphas.register(
+            ArgumentType::Gate(self.typ),
+            circuit_gate_constraint_count::<F>(self.typ),
+        );
 
         // Get constraints for this circuit gate
-        // let constraints = circuit_gate_constraints(self.typ, &alphas);;
-        let constraints = if self.typ != GateType::RangeCheck2 {
-            circuit_gate_constraints(self.typ, &alphas)
-        } else {
-            E::zero()
-        };
+        let constraints = circuit_gate_constraints(self.typ, &alphas);
 
         // Verify it against the environment
         if constraints
@@ -1041,7 +1039,32 @@ mod tests {
     }
 
     #[test]
-    fn verify_range_check1_test_lookups() {
+    fn verify_range_check1_test_copy_constraints() {
+        let cs = create_test_constraint_system();
+
+        for row in 0..=1 {
+            for col in 5..=6 {
+                let mut witness = range_check::create_witness::<PallasField>(
+                    PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
+                    PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
+                    PallasField::zero(),
+                );
+
+                // Positive test case (gates[2] is a RangeCheck1 circuit gate)
+                assert_eq!(cs.gates[2].verify_range_check(2, &witness, &cs), Ok(()));
+
+                // Negative test case by breaking a copy constraint
+                witness[col][row] = PallasField::zero();
+                assert_eq!(
+                    cs.gates[2].verify_range_check(2, &witness, &cs),
+                    Err(GateError::InvalidCopyConstraint(GateType::RangeCheck1))
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn verify_range_check1_test_curr_row_lookups() {
         let cs = create_test_constraint_system();
 
         for i in 1..=4 {
@@ -1053,14 +1076,14 @@ mod tests {
             );
 
             // Positive test
-            // gates[2] is RangeCheck0 and constrains v2
+            // gates[2] is RangeCheck1 and constrains v2
             assert_eq!(cs.gates[2].verify_range_check(2, &witness, &cs), Ok(()));
 
             // Negative test
             // make ith plookup limb out of range
             witness[i][2] = PallasField::from(2u64.pow(12));
 
-            // gates[2] is RangeCheck0 and constrains v2
+            // gates[2] is RangeCheck1 and constrains v2
             assert_eq!(
                 cs.gates[2].verify_range_check(2, &witness, &cs),
                 Err(GateError::InvalidLookupConstraintSorted(
@@ -1071,69 +1094,30 @@ mod tests {
     }
 
     #[test]
-    fn verify_range_check2_zero_valid_witness() {
-        let cs = create_test_constraint_system();
-        let witness: [Vec<PallasField>; COLUMNS] = array_init(|_| vec![PallasField::from(0); 4]);
-
-        // gates[3] is RangeCheck2
-        assert_eq!(cs.gates[3].verify_range_check(3, &witness, &cs), Ok(()));
-    }
-
-    #[test]
-    fn verify_range_check2_test_copy_constraints() {
+    fn verify_range_check1_test_next_row_lookups() {
+        // TODO
         let cs = create_test_constraint_system();
 
         for row in 0..=1 {
             for col in 5..=6 {
-                let mut witness: [Vec<PallasField>; COLUMNS] =
-                    array_init(|_| vec![PallasField::from(1); 4]);
-
-                // Positive test case
-                // gates[3] is RangeCheck2
-                assert_eq!(cs.gates[3].verify_range_check(3, &witness, &cs), Ok(()));
-
-                // Negative test case
-                // Since RangeCheck2 only checks copy constraints and plookups,
-                // and since 1 is in the range, we must make something fail, so
-                // we break one of the copy constraints.
-                witness[col][row] = PallasField::zero();
-
-                // gates[3] is RangeCheck2
-                assert_eq!(
-                    cs.gates[3].verify_range_check(3, &witness, &cs),
-                    Err(GateError::InvalidCopyConstraint(GateType::RangeCheck2))
-                );
-            }
-        }
-    }
-
-    #[test]
-    fn verify_range_check2_test_lookups() {
-        let cs = create_test_constraint_system();
-
-        for row in 0..=1 {
-            for col in 5..=6 {
-                // Testing RangeCheck2 requires v0 and v1
                 let mut witness = range_check::create_witness::<PallasField>(
                     PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
                     PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
                     PallasField::zero(),
                 );
 
-                // Positive test
-                // gates[3] is RangeCheck2 and constrains part of v0 and v1
-                assert_eq!(cs.gates[3].verify_range_check(3, &witness, &cs), Ok(()));
+                // Positive test case (gates[2] is RangeCheck1 and constrains
+                // both v0's and v1's deferred lookups)
+                assert_eq!(cs.gates[2].verify_range_check(2, &witness, &cs), Ok(()));
 
-                // Negative test
-                // make plookup limb out of range and make sure copy constraint is valid
+                // Negative test by making plookup limb out of range
+                // and making sure copy constraint is valid
                 witness[col][row] = PallasField::from(2u64.pow(12));
                 witness[col - 5 + 2 * row + 1][3] = PallasField::from(2u64.pow(12));
-
-                // gates[3] is RangeCheck2 and constrains part of v0 and v1
                 assert_eq!(
-                    cs.gates[3].verify_range_check(3, &witness, &cs),
+                    cs.gates[2].verify_range_check(2, &witness, &cs),
                     Err(GateError::InvalidLookupConstraintSorted(
-                        GateType::RangeCheck2
+                        GateType::RangeCheck1
                     ))
                 );
             }

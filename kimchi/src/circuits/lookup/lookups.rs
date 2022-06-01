@@ -372,7 +372,7 @@ impl GateType {
         let range_check_where = HashSet::from([
             (RangeCheck0, Curr),
             (RangeCheck1, Curr),
-            (RangeCheck2, Curr),
+            (RangeCheck1, Next),
         ]);
 
         // List of defined lookups

@@ -2,7 +2,7 @@
 /// Range check circuit gates:
 ///
 ///    The range check gate is comprised of three circuit gates (RangeCheck0, RangeCheck1
-///    and RangeCheck2) and can perform range checks on up to three 88-bit values: v0, v1 and v2.
+///    and Zero) and can perform range checks on up to three 88-bit values: v0, v1 and v2.
 ///
 ///    The values are decomposed into limbs follows.
 ///
@@ -40,7 +40,7 @@
 ///   * vipj is the jth 12-bit limb of vi
 ///   * vicj is the jth 2-bit crumb limb of vi
 ///
-/// Gate:   RangeCheck0    RangeCheck0    RangeCheck1    RangeCheck2
+/// Gate:   RangeCheck0    RangeCheck0    RangeCheck1    Zero
 ///   Rows -->
 ///         0              1              2              3
 ///  C  0 | v0           | v1           | v2           | 0
@@ -62,7 +62,7 @@
 ///   The 12-bit chunks are constrained with plookups and the 2-bit crumbs constrained with
 ///   degree-4 constraints of the form x*(x - 1)*(x - 2)*(x - 3).
 ///
-///   Note that copy denotes a plookup that is deferred to the RangeCheck2 gate.
+///   Note that copy denotes a plookup that is deferred to the 4th gate (i.e. Zero).
 ///   This is because of the limitation that we have at most 4 lookups per row.
 ///   The copies are constrained using the permutation argument.
 ///
@@ -73,8 +73,8 @@
 ///   Row   CircuitGate   Purpose
 ///     0   RangeCheck0   Partially constrain v0
 ///     1   RangeCheck0   Partially constrain v1
-///     2   RangeCheck1   Fully constrain v2
-///     3   RangeCheck2   Complete the constraining of v0 and v1
+///     2   RangeCheck1   Fully constrain v2 (and trigger plookups constraints on row 3)
+///     3   Zero          Complete the constraining of v0 and v1
 ///
 ///  Nb. each CircuitGate type corresponds to a unique polynomial and thus
 ///       is assigned its own unique powers of alpha
@@ -92,7 +92,7 @@ use ark_ff::{FftField, One, Zero};
 /// RangeCheck0 - Range check constraints
 ///
 ///   * This circuit gate is used to partially constrain values v0 and v1
-///   * The rest of v0 and v1 are constrained by a single RangeCheck2
+///   * The rest of v0 and v1 are constrained by the lookups in the Zero gate row
 ///   * This gate operates on the Curr row
 ///
 /// It uses three different types of constraints

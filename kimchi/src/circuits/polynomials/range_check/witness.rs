@@ -71,8 +71,9 @@ const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 4] = [
         LimbWitnessCell::create(0, 0, 36, 48),
         /* 12-bit copies */
         // Copy cells are required because we have a limit
-        // of 4 lookups per row.  These two lookups are deferred
-        // until the RangeCheck2 gate, which handles them.
+        // of 4 lookups per row.  These two lookups are moved to
+        // the 4th row (i.e. Zero circuit gate) and the RangeCheck1
+        // circuit gate triggers the lookup constraints.
         LimbWitnessCell::create(0, 0, 48, 60),
         LimbWitnessCell::create(0, 0, 60, 72),
         /* 2-bit crumbs */
@@ -126,7 +127,7 @@ const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 4] = [
         LimbWitnessCell::create(2, 0, 64, 66),
         LimbWitnessCell::create(2, 0, 66, 68),
     ],
-    /* row 4, RangeCheck2 row */
+    /* row 4, Zero row */
     [
         ZeroWitnessCell::create(),
         /* 12-bit plookups (see note about copies above) */
