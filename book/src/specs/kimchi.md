@@ -1283,7 +1283,7 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     // TODO(mimoo): isn't this redundant with domain.d1.group_gen ?
     /// domain offset for zero-knowledge
     #[serde(skip)]
-    pub w: ScalarField<G>,
+    w: OnceCell<ScalarField<G>>,
     /// endoscalar coefficient
     #[serde(skip)]
     pub endo: ScalarField<G>,
