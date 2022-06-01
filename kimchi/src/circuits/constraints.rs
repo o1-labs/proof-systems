@@ -223,7 +223,7 @@ pub enum GateError {
 
 pub struct BuilderCS<F: FftField> {
     gates: Vec<CircuitGate<F>>,
-    fr_sponge_params: ArithmeticSpongeParams<F>,
+    sponge_params: ArithmeticSpongeParams<F>,
     public: usize,
     lookup_tables: Vec<LookupTable<F>>,
     runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
@@ -504,7 +504,7 @@ impl<F: FftField + SquareRootField> BuilderCS<F> {
             gates,
             shift: shifts.shifts,
             endo,
-            fr_sponge_params: self.fr_sponge_params,
+            fr_sponge_params: self.sponge_params,
             lookup_constraint_system,
             precomputations: domain_constant_evaluation,
         };
@@ -530,14 +530,19 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// - `lookup_tables: vec![]`,
     /// - `runtime_tables: None`,
     /// - `precomputations: None`,
+    ///
+    /// How to use it:
+    /// 1. Create your instance of your builder for the constraint system using `crate(gates, sponge params)`
+    /// 2. Iterativelly invoke any desired number of steps: `public(), lookup(), runtime(), precomputations()``
+    /// 3. Finally call the `build()` method and unwrap the `Result` to obtain your `ConstraintSystem`
     #[must_use]
     pub fn create(
         gates: Vec<CircuitGate<F>>,
-        fr_sponge_params: ArithmeticSpongeParams<F>,
+        sponge_params: ArithmeticSpongeParams<F>,
     ) -> BuilderCS<F> {
         BuilderCS {
             gates,
-            fr_sponge_params,
+            sponge_params,
             public: 0,
             lookup_tables: vec![],
             runtime_tables: None,
