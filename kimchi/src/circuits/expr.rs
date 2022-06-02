@@ -145,6 +145,16 @@ pub fn l0_1<F: FftField>(d: D<F>) -> F {
         .fold(F::one(), |acc, omega_j| acc * (F::one() - omega_j))
 }
 
+// Compute the ith unnormalized lagrange basis
+fn unnormalized_lagrange_basis<F: FftField>(domain: &D<F>, i: i32, pt: &F) -> F {
+    let omega_i = if i < 0 {
+        domain.group_gen.pow(&[-i as u64]).inverse().unwrap()
+    } else {
+        domain.group_gen.pow(&[i as u64])
+    };
+    domain.evaluate_vanishing_polynomial(*pt) / (*pt - omega_i)
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 /// A type representing one of the polynomials involved in the PLONK IOP.
 pub enum Column {
@@ -476,13 +486,7 @@ impl<F: FftField> PolishToken<F> {
                 Mds { row, col } => stack.push(c.mds[*row][*col]),
                 VanishesOnLast4Rows => stack.push(eval_vanishes_on_last_4_rows(d, pt)),
                 UnnormalizedLagrangeBasis(i) => {
-                    // Renormalize negative values to wrap around at domain size
-                    let i = if *i < 0 {
-                        ((*i as i64) + (d.size as i64)) as u64
-                    } else {
-                        *i as u64
-                    };
-                    stack.push(d.evaluate_vanishing_polynomial(pt) / (pt - d.group_gen.pow(&[i])))
+                    stack.push(unnormalized_lagrange_basis(&d, *i, &pt))
                 }
                 Literal(x) => stack.push(*x),
                 Dup => stack.push(stack[stack.len() - 1]),
@@ -1259,9 +1263,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
                 Ok(x - y)
             }
             VanishesOnLast4Rows => Ok(eval_vanishes_on_last_4_rows(d, pt)),
-            UnnormalizedLagrangeBasis(i) => {
-                Ok(d.evaluate_vanishing_polynomial(pt) / (pt - d.group_gen.pow(&[*i as u64])))
-            }
+            UnnormalizedLagrangeBasis(i) => Ok(unnormalized_lagrange_basis(&d, *i, &pt)),
             Cell(v) => v.evaluate(evals),
             Cache(_, e) => e.evaluate_(d, pt, evals, c),
         }
@@ -1308,9 +1310,7 @@ impl<F: FftField> Expr<F> {
                 Ok(x - y)
             }
             VanishesOnLast4Rows => Ok(eval_vanishes_on_last_4_rows(d, pt)),
-            UnnormalizedLagrangeBasis(i) => {
-                Ok(d.evaluate_vanishing_polynomial(pt) / (pt - d.group_gen.pow(&[*i as u64])))
-            }
+            UnnormalizedLagrangeBasis(i) => Ok(unnormalized_lagrange_basis(&d, *i, &pt)),
             Cell(v) => v.evaluate(evals),
             Cache(_, e) => e.evaluate(d, pt, evals),
         }
