@@ -65,3 +65,10 @@ pub enum SetupError {
     #[error("the domain could not be constructed: {0}")]
     DomainCreation(&'static str),
 }
+
+/// Errors that can arise when creating a verifier index
+#[derive(Error, Debug, Clone)]
+pub enum VerifierIndexError {
+    #[error("unable to set srs")]
+    UnableToSetSRS,
+}

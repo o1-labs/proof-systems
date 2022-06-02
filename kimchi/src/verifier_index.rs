@@ -9,6 +9,7 @@ use crate::circuits::{
     expr::{Linearization, PolishToken},
     wires::*,
 };
+use crate::error::VerifierIndexError;
 use crate::prover_index::ProverIndex;
 use ark_ff::PrimeField;
 use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D};
@@ -65,7 +66,7 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     pub max_quot_size: usize,
     /// polynomial commitment keys
     #[serde(skip)]
-    pub srs: Arc<SRS<G>>,
+    srs: OnceCell<Arc<SRS<G>>>,
 
     // index polynomial commitments
     /// permutation commitment array
@@ -178,7 +179,7 @@ where
             max_poly_size: self.max_poly_size,
             max_quot_size: self.max_quot_size,
             powers_of_alpha: self.powers_of_alpha.clone(),
-            srs: Arc::clone(&self.srs),
+            srs: OnceCell::new(),
 
             sigma_comm: array_init(|i| self.srs.commit_non_hiding(&self.cs.sigmam[i], None)),
             coefficients_comm: array_init(|i| {
@@ -237,6 +238,14 @@ impl<G: CommitmentCurve> VerifierIndex<G>
 where
     G::BaseField: PrimeField,
 {
+    pub fn srs(&self) -> &Arc<SRS<G>> {
+        self.srs.get_or_init(|| {
+            let mut srs = SRS::<G>::create(self.max_poly_size);
+            srs.add_lagrange_basis(self.domain);
+            Arc::new(srs)
+        })
+    }
+
     /// Gets zkpm from [VerifierIndex] lazily
     pub fn zkpm(&self) -> &DensePolynomial<ScalarField<G>> {
         self.zkpm.get_or_init(|| zk_polynomial(self.domain))
@@ -271,11 +280,12 @@ where
             .map_err(|e| e.to_string())?;
 
         // fill in the rest
-        verifier_index.srs = srs.unwrap_or_else(|| {
-            let mut srs = SRS::<G>::create(verifier_index.max_poly_size);
-            srs.add_lagrange_basis(verifier_index.domain);
-            Arc::new(srs)
-        });
+        if srs.is_some() {
+            verifier_index
+                .srs
+                .set(srs.unwrap())
+                .map_err(|_| VerifierIndexError::UnableToSetSRS.to_string())?;
+        };
 
         verifier_index.endo = endo;
         verifier_index.fq_sponge_params = fq_sponge_params;

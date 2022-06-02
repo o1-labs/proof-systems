@@ -8,13 +8,11 @@ use ark_ec::short_weierstrass_jacobian::GroupAffine;
 use ark_ff::Zero;
 use array_init::array_init;
 use commitment_dlog::commitment::CommitmentCurve;
-use commitment_dlog::srs::SRS;
 use groupmap::GroupMap;
 use mina_curves::pasta::fp::Fp;
 use mina_curves::pasta::vesta::{Affine, VestaParameters};
 use oracle::constants::PlonkSpongeConstantsKimchi;
 use oracle::sponge::{DefaultFqSponge, DefaultFrSponge};
-use std::sync::Arc;
 use std::time::Instant;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
@@ -48,10 +46,6 @@ pub fn test_serialization() {
     let mut verifier_index_deserialize: VerifierIndex<GroupAffine<VestaParameters>> =
         serde_json::from_str(&verifier_index_serialize).unwrap();
 
-    // add srs with lagrange bases
-    let mut srs = SRS::<GroupAffine<VestaParameters>>::create(verifier_index.max_poly_size);
-    srs.add_lagrange_basis(verifier_index.domain);
-    verifier_index_deserialize.srs = Arc::new(srs);
     verifier_index_deserialize.fq_sponge_params = oracle::pasta::fq_kimchi::params();
     verifier_index_deserialize.fr_sponge_params = oracle::pasta::fp_kimchi::params();
     verifier_index_deserialize.powers_of_alpha = index.powers_of_alpha;
