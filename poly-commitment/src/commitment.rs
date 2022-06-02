@@ -575,9 +575,7 @@ impl<G: CommitmentCurve> SRS<G> {
         match domain.size.cmp(&plnm.domain().size) {
             std::cmp::Ordering::Less => {
                 let s = (plnm.domain().size / domain.size) as usize;
-                let v: Vec<_> = (0..(domain.size as usize))
-                    .map(|i| plnm.evals[s * i])
-                    .collect();
+                let v: Vec<_> = (0..(domain.size())).map(|i| plnm.evals[s * i]).collect();
                 Self::commit_helper(&v[..], basis, None, is_zero, max)
             }
             std::cmp::Ordering::Equal => {

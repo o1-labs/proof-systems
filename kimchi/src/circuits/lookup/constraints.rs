@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use CurrOrNext::{Curr, Next};
 
-use super::runtime_tables::{self, RuntimeTableConfiguration};
+use super::runtime_tables::{self, RuntimeTableSpec};
 
 /// Number of constraints produced by the argument.
 pub const CONSTRAINTS: u32 = 7;
@@ -34,7 +34,7 @@ pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
     d: D<F>,
     rng: &mut R,
 ) -> Evaluations<F, D<F>> {
-    let n = d.size as usize;
+    let n = d.size();
     let k = e.len();
     assert!(k <= n - ZK_ROWS);
     e.extend((0..((n - ZK_ROWS) - k)).map(|_| F::zero()));
@@ -93,7 +93,7 @@ where
     // We pad the lookups so that it is as if we lookup exactly
     // `max_lookups_per_row` in every row.
 
-    let n = d1.size as usize;
+    let n = d1.size();
     let mut counts: HashMap<&F, usize> = HashMap::new();
 
     let lookup_rows = n - ZK_ROWS - 1;
@@ -235,7 +235,7 @@ where
     R: Rng + ?Sized,
     F: FftField,
 {
-    let n = d1.size as usize;
+    let n = d1.size();
     let lookup_rows = n - ZK_ROWS - 1;
     let beta1 = F::one() + beta;
     let gammabeta1 = gamma * beta1;
@@ -338,7 +338,7 @@ pub struct LookupConfiguration<F: FftField> {
     pub max_joint_size: u32,
 
     /// Optional runtime tables, listed as tuples `(length, id)`.
-    pub runtime_tables: Option<Vec<RuntimeTableConfiguration>>,
+    pub runtime_tables: Option<Vec<RuntimeTableSpec>>,
 
     /// The offset of the runtime table within the concatenated table
     pub runtime_table_offset: Option<usize>,
@@ -352,7 +352,7 @@ pub struct LookupConfiguration<F: FftField> {
 }
 
 /// Specifies the lookup constraints as expressions.
-pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>) -> Vec<E<F>> {
+pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>) -> Vec<E<F>> {
     // Something important to keep in mind is that the last 2 rows of
     // all columns will have random values in them to maintain zero-knowledge.
     //
@@ -526,8 +526,7 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>
     let aggreg_equation = E::cell(Column::LookupAggreg, Next) * denominator
         - E::cell(Column::LookupAggreg, Curr) * numerator;
 
-    let num_rows = d1.size();
-    let num_lookup_rows = num_rows - ZK_ROWS - 1;
+    let final_lookup_row: i32 = -(ZK_ROWS as i32) - 1;
 
     let mut res = vec![
         // the accumulator except for the last 4 rows
@@ -536,7 +535,7 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>
         // the initial value of the accumulator
         E::UnnormalizedLagrangeBasis(0) * (E::cell(Column::LookupAggreg, Curr) - E::one()),
         // Check that the final value of the accumulator is 1
-        E::UnnormalizedLagrangeBasis(num_lookup_rows)
+        E::UnnormalizedLagrangeBasis(final_lookup_row)
             * (E::cell(Column::LookupAggreg, Curr) - E::one()),
     ];
 
@@ -545,7 +544,7 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>
         .map(|i| {
             let first_or_last = if i % 2 == 0 {
                 // Check compatibility of the last elements
-                num_lookup_rows
+                final_lookup_row
             } else {
                 // Check compatibility of the first elements
                 0
@@ -582,7 +581,7 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
     sorted
         .iter()
         .for_each(|s| assert_eq!(d1.size, s.domain().size));
-    let n = d1.size as usize;
+    let n = d1.size();
     let lookup_rows = n - ZK_ROWS - 1;
 
     // Check that the (desnakified) sorted table is

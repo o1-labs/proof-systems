@@ -18,10 +18,8 @@ use crate::circuits::{
     wires::*,
 };
 use ark_ff::{FftField, SquareRootField};
-use ark_poly::Radix2EvaluationDomain as D;
 
 pub fn constraints_expr<F: FftField + SquareRootField>(
-    domain: D<F>,
     chacha: bool,
     range_check: bool,
     lookup_constraint_system: Option<&LookupConfiguration<F>>,
@@ -29,7 +27,7 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
     // register powers of alpha so that we don't reuse them across mutually inclusive constraints
     let mut powers_of_alpha = Alphas::<F>::default();
 
-    // Set up powers of alpha.  Only the max number of constraints matters.
+    // Set up powers of alpha. Only the max number of constraints matters.
     // The gate type argument can just be the zero gate.
     powers_of_alpha.register(
         ArgumentType::Gate(GateType::Zero),
@@ -58,7 +56,7 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
 
     // lookup
     if let Some(lcs) = lookup_constraint_system.as_ref() {
-        let constraints = lookup::constraints::constraints(lcs, domain);
+        let constraints = lookup::constraints::constraints(lcs);
 
         // note: the number of constraints depends on the lookup configuration,
         // specifically the presence of runtime tables.
@@ -71,6 +69,14 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
         let combined = Expr::combine_constraints(alphas, constraints);
 
         expr += combined;
+    }
+
+    // the generic gate must be associated with alpha^0
+    // to make the later addition with the public input work
+    if cfg!(debug_assertions) {
+        let mut generic_alphas =
+            powers_of_alpha.get_exponents(ArgumentType::Gate(GateType::Generic), 1);
+        assert_eq!(generic_alphas.next(), Some(0));
     }
 
     // return the expression
@@ -117,15 +123,13 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
 }
 
 pub fn expr_linearization<F: FftField + SquareRootField>(
-    domain: D<F>,
     chacha: bool,
     range_check: bool,
     lookup_constraint_system: Option<&LookupConfiguration<F>>,
 ) -> (Linearization<Vec<PolishToken<F>>>, Alphas<F>) {
     let evaluated_cols = linearization_columns::<F>(lookup_constraint_system);
 
-    let (expr, powers_of_alpha) =
-        constraints_expr(domain, chacha, range_check, lookup_constraint_system);
+    let (expr, powers_of_alpha) = constraints_expr(chacha, range_check, lookup_constraint_system);
 
     let linearization = expr
         .linearize(evaluated_cols)
