@@ -9,6 +9,7 @@ use o1_utils::field_helpers::i32_to_field;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::ops::{Mul, Neg};
+use strum_macros::EnumIter;
 
 type Evaluations<Field> = E<Field, D<Field>>;
 
@@ -244,7 +245,7 @@ impl<F: Copy> JointLookup<SingleLookup<F>, LookupTableID> {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Copy, Clone, Serialize, Deserialize, Debug, EnumIter, PartialEq, Eq)]
 pub enum LookupPattern {
     ChaCha,
     ChaChaFinal,
@@ -386,5 +387,22 @@ impl GateType {
             LookupPattern::ChaChaFinal,
             LookupPattern::LookupGate,
         ]
+    }
+}
+
+#[test]
+fn lookup_pattern_constants_correct() {
+    use strum::IntoEnumIterator;
+
+    for pat in LookupPattern::iter() {
+        let lookups = pat.lookups::<mina_curves::pasta::fp::Fp>();
+        let max_joint_size = lookups
+            .iter()
+            .map(|lookup| lookup.entry.len())
+            .max()
+            .unwrap_or(0);
+        // NB: We include pat in the assertions so that the test will print out which pattern failed
+        assert_eq!((pat, pat.max_lookups_per_row()), (pat, lookups.len()));
+        assert_eq!((pat, pat.max_joint_size()), (pat, max_joint_size as u32));
     }
 }
