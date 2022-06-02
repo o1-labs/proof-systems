@@ -487,6 +487,7 @@
 <span id="480">480</span>
 <span id="481">481</span>
 <span id="482">482</span>
+<span id="483">483</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Range check gate</span>
 
 <span class="kw">use</span> <span class="ident">std::collections::HashMap</span>;
@@ -774,7 +775,8 @@
     <span class="kw">fn</span> <span class="ident">create_test_constraint_system</span>() -&gt; <span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">PallasField</span><span class="op">&gt;</span> {
         <span class="kw">let</span> (<span class="kw">_</span>, <span class="ident">gates</span>) <span class="op">=</span> <span class="ident">CircuitGate</span>::<span class="op">&lt;</span><span class="ident">PallasField</span><span class="op">&gt;</span><span class="ident">::create_range_check</span>(<span class="number">0</span>);
 
-        <span class="ident">ConstraintSystem::create</span>(<span class="ident">gates</span>, <span class="macro">vec!</span>[], <span class="prelude-val">None</span>, <span class="ident">oracle::pasta::fp_kimchi::params</span>(), <span class="number">0</span>)
+        <span class="ident">ConstraintSystem::create</span>(<span class="ident">gates</span>, <span class="ident">oracle::pasta::fp_kimchi::params</span>())
+            .<span class="ident">build</span>()
             .<span class="ident">unwrap</span>()
     }
 

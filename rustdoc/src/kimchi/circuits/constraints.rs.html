@@ -611,34 +611,6 @@
 <span id="604">604</span>
 <span id="605">605</span>
 <span id="606">606</span>
-<span id="607">607</span>
-<span id="608">608</span>
-<span id="609">609</span>
-<span id="610">610</span>
-<span id="611">611</span>
-<span id="612">612</span>
-<span id="613">613</span>
-<span id="614">614</span>
-<span id="615">615</span>
-<span id="616">616</span>
-<span id="617">617</span>
-<span id="618">618</span>
-<span id="619">619</span>
-<span id="620">620</span>
-<span id="621">621</span>
-<span id="622">622</span>
-<span id="623">623</span>
-<span id="624">624</span>
-<span id="625">625</span>
-<span id="626">626</span>
-<span id="627">627</span>
-<span id="628">628</span>
-<span id="629">629</span>
-<span id="630">630</span>
-<span id="631">631</span>
-<span id="632">632</span>
-<span id="633">633</span>
-<span id="634">634</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk circuit constraint primitive.</span>
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">circuits</span>::{
@@ -647,7 +619,7 @@
         <span class="ident">gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">GateType</span>},
         <span class="ident">lookup</span>::{<span class="ident">index::LookupConstraintSystem</span>, <span class="ident">tables::LookupTable</span>},
         <span class="ident">polynomial</span>::{<span class="ident">WitnessEvals</span>, <span class="ident">WitnessOverDomains</span>, <span class="ident">WitnessShifts</span>},
-        <span class="ident">polynomials::permutation::ZK_ROWS</span>,
+        <span class="ident">polynomials::permutation</span>::{<span class="ident">Shifts</span>, <span class="ident">ZK_ROWS</span>},
         <span class="ident">polynomials::range_check</span>,
         <span class="ident">wires</span>::<span class="kw-2">*</span>,
     },
@@ -659,7 +631,6 @@
     <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>,
 };
 <span class="kw">use</span> <span class="ident">array_init::array_init</span>;
-<span class="kw">use</span> <span class="ident">blake2</span>::{<span class="ident">Blake2b512</span>, <span class="ident">Digest</span>};
 <span class="kw">use</span> <span class="ident">o1_utils::ExtendedEvaluations</span>;
 <span class="kw">use</span> <span class="ident">once_cell::sync::OnceCell</span>;
 <span class="kw">use</span> <span class="ident">oracle::poseidon::ArithmeticSpongeParams</span>;
@@ -777,80 +748,6 @@
     <span class="ident">precomputations</span>: <span class="ident">OnceCell</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">DomainConstantEvaluations</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 }
 
-<span class="comment">// TODO: move Shifts, and permutation-related functions to the permutation module</span>
-
-<span class="doccomment">/// Shifts represent the shifts required in the permutation argument of PLONK.</span>
-<span class="doccomment">/// It also caches the shifted powers of omega for optimization purposes.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Shifts</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// The coefficients `k` (in the Plonk paper) that create a coset when multiplied with the generator of our domain.</span>
-    <span class="ident">shifts</span>: [<span class="ident">F</span>; <span class="ident">PERMUTS</span>],
-    <span class="doccomment">/// A matrix that maps all cells coordinates `{col, row}` to their shifted field element.</span>
-    <span class="doccomment">/// For example the cell `{col:2, row:1}` will map to `omega * k2`,</span>
-    <span class="doccomment">/// which lives in `map[2][1]`</span>
-    <span class="ident">map</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">PERMUTS</span>],
-}
-
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="ident">Shifts</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">SquareRootField</span>,
-{
-    <span class="doccomment">/// Generates the shifts for a given domain</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">domain</span>: <span class="kw-2">&amp;</span><span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">shifts</span> <span class="op">=</span> [<span class="ident">F::zero</span>(); <span class="ident">PERMUTS</span>];
-
-        <span class="comment">// first shift is the identity</span>
-        <span class="ident">shifts</span>[<span class="number">0</span>] <span class="op">=</span> <span class="ident">F::one</span>();
-
-        <span class="comment">// sample the other shifts</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">i</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">7</span>;
-        <span class="kw">for</span> <span class="ident">idx</span> <span class="kw">in</span> <span class="number">1</span>..(<span class="ident">PERMUTS</span>) {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">shift</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::sample</span>(<span class="ident">domain</span>, <span class="kw-2">&amp;mut</span> <span class="ident">i</span>);
-            <span class="comment">// they have to be distincts</span>
-            <span class="kw">while</span> <span class="ident">shifts</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">shift</span>) {
-                <span class="ident">shift</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::sample</span>(<span class="ident">domain</span>, <span class="kw-2">&amp;mut</span> <span class="ident">i</span>);
-            }
-            <span class="ident">shifts</span>[<span class="ident">idx</span>] <span class="op">=</span> <span class="ident">shift</span>;
-        }
-
-        <span class="comment">// create a map of cells to their shifted value</span>
-        <span class="kw">let</span> <span class="ident">map</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">PERMUTS</span>] <span class="op">=</span>
-            <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">domain</span>.<span class="ident">elements</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">elm</span><span class="op">|</span> <span class="ident">shifts</span>[<span class="ident">i</span>] <span class="op">*</span> <span class="ident">elm</span>).<span class="ident">collect</span>());
-
-        <span class="comment">//</span>
-        <span class="self">Self</span> { <span class="ident">shifts</span>, <span class="ident">map</span> }
-    }
-
-    <span class="doccomment">/// retrieve the shifts</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">shifts</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">F</span>; <span class="ident">PERMUTS</span>] {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">shifts</span>
-    }
-
-    <span class="doccomment">/// sample coordinate shifts deterministically</span>
-    <span class="kw">fn</span> <span class="ident">sample</span>(<span class="ident">domain</span>: <span class="kw-2">&amp;</span><span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">input</span>: <span class="kw-2">&amp;mut</span> <span class="ident">u32</span>) -&gt; <span class="ident">F</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">h</span> <span class="op">=</span> <span class="ident">Blake2b512::new</span>();
-
-        <span class="kw-2">*</span><span class="ident">input</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-        <span class="ident">h</span>.<span class="ident">update</span>(<span class="kw-2">&amp;</span><span class="ident">input</span>.<span class="ident">to_be_bytes</span>());
-
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">shift</span> <span class="op">=</span> <span class="ident">F::from_random_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">h</span>.<span class="ident">finalize</span>()[..<span class="number">31</span>])
-            .<span class="ident">expect</span>(<span class="string">&quot;our field elements fit in more than 31 bytes&quot;</span>);
-
-        <span class="kw">while</span> <span class="op">!</span><span class="ident">shift</span>.<span class="ident">legendre</span>().<span class="ident">is_qnr</span>() <span class="op">|</span><span class="op">|</span> <span class="ident">domain</span>.<span class="ident">evaluate_vanishing_polynomial</span>(<span class="ident">shift</span>).<span class="ident">is_zero</span>() {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">h</span> <span class="op">=</span> <span class="ident">Blake2b512::new</span>();
-            <span class="kw-2">*</span><span class="ident">input</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-            <span class="ident">h</span>.<span class="ident">update</span>(<span class="kw-2">&amp;</span><span class="ident">input</span>.<span class="ident">to_be_bytes</span>());
-            <span class="ident">shift</span> <span class="op">=</span> <span class="ident">F::from_random_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">h</span>.<span class="ident">finalize</span>()[..<span class="number">31</span>])
-                .<span class="ident">expect</span>(<span class="string">&quot;our field elements fit in more than 31 bytes&quot;</span>);
-        }
-        <span class="ident">shift</span>
-    }
-
-    <span class="doccomment">/// Returns the field element that represents a position</span>
-    <span class="kw">fn</span> <span class="ident">cell_to_field</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">&amp;</span><span class="ident">Wire</span> { <span class="ident">row</span>, <span class="ident">col</span> }: <span class="kw-2">&amp;</span><span class="ident">Wire</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">map</span>[<span class="ident">col</span>][<span class="ident">row</span>]
-    }
-}
-
 <span class="doccomment">/// Represents an error found when verifying a witness with a gate</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">GateError</span> {
@@ -862,44 +759,193 @@
     <span class="ident">Custom</span> { <span class="ident">row</span>: <span class="ident">usize</span>, <span class="ident">err</span>: <span class="ident">String</span> },
 }
 
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Builder</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> {
+    <span class="ident">gates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">sponge_params</span>: <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
+    <span class="ident">public</span>: <span class="ident">usize</span>,
+    <span class="ident">lookup_tables</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">LookupTable</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">runtime_tables</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RuntimeTableCfg</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">precomputations</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">DomainConstantEvaluations</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+}
+
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">SquareRootField</span><span class="op">&gt;</span> <span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// creates a constraint system from a vector of gates ([CircuitGate]), some sponge parameters ([ArithmeticSpongeParams]), and the number of public inputs.</span>
+    <span class="doccomment">/// Initializes the [ConstraintSystem&lt;F&gt;] on input `gates` and `fr_sponge_params`.</span>
+    <span class="doccomment">/// Returns a [Builder&lt;F&gt;]</span>
+    <span class="doccomment">/// It also defaults to the following values of the builder:</span>
+    <span class="doccomment">/// - `public: 0`</span>
+    <span class="doccomment">/// - `lookup_tables: vec![]`,</span>
+    <span class="doccomment">/// - `runtime_tables: None`,</span>
+    <span class="doccomment">/// - `precomputations: None`,</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// Warning: you have to make sure that the IDs of the lookup tables,</span>
-    <span class="doccomment">/// and runtime lookup tables, are unique and</span>
-    <span class="doccomment">/// not colliding with IDs of built-in lookup tables</span>
-    <span class="doccomment">/// (see [crate::circuits::lookup::tables]).</span>
+    <span class="doccomment">/// How to use it:</span>
+    <span class="doccomment">/// 1. Create your instance of your builder for the constraint system using `crate(gates, sponge params)`</span>
+    <span class="doccomment">/// 2. Iterativelly invoke any desired number of steps: `public(), lookup(), runtime(), precomputations()``</span>
+    <span class="doccomment">/// 3. Finally call the `build()` method and unwrap the `Result` to obtain your `ConstraintSystem`</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create</span>(
         <span class="ident">gates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">lookup_tables</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">LookupTable</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">runtime_tables</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RuntimeTableCfg</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">fr_sponge_params</span>: <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-        <span class="ident">public</span>: <span class="ident">usize</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">SetupError</span><span class="op">&gt;</span> {
-        <span class="ident">ConstraintSystem</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::create_with_shared_precomputations</span>(
+        <span class="ident">sponge_params</span>: <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
+    ) -&gt; <span class="ident">Builder</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+        <span class="ident">Builder</span> {
             <span class="ident">gates</span>,
-            <span class="ident">lookup_tables</span>,
-            <span class="ident">runtime_tables</span>,
-            <span class="ident">fr_sponge_params</span>,
-            <span class="ident">public</span>,
-            <span class="prelude-val">None</span>,
-        )
+            <span class="ident">sponge_params</span>,
+            <span class="ident">public</span>: <span class="number">0</span>,
+            <span class="ident">lookup_tables</span>: <span class="macro">vec!</span>[],
+            <span class="ident">runtime_tables</span>: <span class="prelude-val">None</span>,
+            <span class="ident">precomputations</span>: <span class="prelude-val">None</span>,
+        }
     }
 
-    <span class="doccomment">/// similar to create. but this fn creates a constraint system with a shared precomputation previously created elsewhere</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">precomputations</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">DomainConstantEvaluations</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">precomputations</span>
+            .<span class="ident">get_or_init</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">Arc::new</span>(<span class="ident">DomainConstantEvaluations::create</span>(<span class="self">self</span>.<span class="ident">domain</span>).<span class="ident">unwrap</span>()))
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_precomputations</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">precomputations</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">DomainConstantEvaluations</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>) {
+        <span class="self">self</span>.<span class="ident">precomputations</span>
+            .<span class="ident">set</span>(<span class="ident">precomputations</span>)
+            .<span class="ident">expect</span>(<span class="string">&quot;Precomputation has been set before&quot;</span>);
+    }
+
+    <span class="doccomment">/// This function verifies the consistency of the wire</span>
+    <span class="doccomment">/// assignements (witness) against the constraints</span>
+    <span class="doccomment">///     witness: wire assignement witness</span>
+    <span class="doccomment">///     RETURN: verification status</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">witness</span>: <span class="kw-2">&amp;</span>[<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>], <span class="ident">public</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">GateError</span><span class="op">&gt;</span> {
+        <span class="comment">// pad the witness</span>
+        <span class="kw">let</span> <span class="ident">pad</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="self">self</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span>() <span class="op">-</span> <span class="ident">witness</span>[<span class="number">0</span>].<span class="ident">len</span>()];
+        <span class="kw">let</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">w</span> <span class="op">=</span> <span class="ident">witness</span>[<span class="ident">i</span>].<span class="ident">to_vec</span>();
+            <span class="ident">w</span>.<span class="ident">extend_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">pad</span>);
+            <span class="ident">w</span>
+        });
+
+        <span class="comment">// check each rows&#39; wiring</span>
+        <span class="kw">for</span> (<span class="ident">row</span>, <span class="ident">gate</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">gates</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
+            <span class="comment">// check if wires are connected</span>
+            <span class="kw">for</span> <span class="ident">col</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">PERMUTS</span> {
+                <span class="kw">let</span> <span class="ident">wire</span> <span class="op">=</span> <span class="ident">gate</span>.<span class="ident">wires</span>[<span class="ident">col</span>];
+
+                <span class="kw">if</span> <span class="ident">wire</span>.<span class="ident">col</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">PERMUTS</span> {
+                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">GateError::Custom</span> {
+                        <span class="ident">row</span>,
+                        <span class="ident">err</span>: <span class="macro">format!</span>(
+                            <span class="string">&quot;a wire can only be connected to the first {} columns&quot;</span>,
+                            <span class="ident">PERMUTS</span>
+                        ),
+                    });
+                }
+
+                <span class="kw">if</span> <span class="ident">witness</span>[<span class="ident">col</span>][<span class="ident">row</span>] <span class="op">!</span><span class="op">=</span> <span class="ident">witness</span>[<span class="ident">wire</span>.<span class="ident">col</span>][<span class="ident">wire</span>.<span class="ident">row</span>] {
+                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">GateError::DisconnectedWires</span>(
+                        <span class="ident">Wire</span> { <span class="ident">col</span>, <span class="ident">row</span> },
+                        <span class="ident">Wire</span> {
+                            <span class="ident">col</span>: <span class="ident">wire</span>.<span class="ident">col</span>,
+                            <span class="ident">row</span>: <span class="ident">wire</span>.<span class="ident">row</span>,
+                        },
+                    ));
+                }
+            }
+
+            <span class="comment">// for public gates, only the left wire is toggled</span>
+            <span class="kw">if</span> <span class="ident">row</span> <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">public</span> <span class="op">&amp;&amp;</span> <span class="ident">gate</span>.<span class="ident">coeffs</span>[<span class="number">0</span>] <span class="op">!</span><span class="op">=</span> <span class="ident">F::one</span>() {
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">GateError::IncorrectPublic</span>(<span class="ident">row</span>));
+            }
+
+            <span class="comment">// check the gate&#39;s satisfiability</span>
+            <span class="ident">gate</span>.<span class="ident">verify</span>(<span class="ident">row</span>, <span class="kw-2">&amp;</span><span class="ident">witness</span>, <span class="self">self</span>, <span class="ident">public</span>)
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> <span class="ident">GateError::Custom</span> { <span class="ident">row</span>, <span class="ident">err</span> })<span class="question-mark">?</span>;
+        }
+
+        <span class="comment">// all good!</span>
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="doccomment">/// evaluate witness polynomials over domains</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">w</span>: <span class="kw-2">&amp;</span>[<span class="ident">DP</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>], <span class="ident">z</span>: <span class="kw-2">&amp;</span><span class="ident">DP</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="ident">WitnessOverDomains</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+        <span class="comment">// compute shifted witness polynomials</span>
+        <span class="kw">let</span> <span class="ident">w8</span>: [<span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span>
+            <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">w</span>[<span class="ident">i</span>].<span class="ident">evaluate_over_domain_by_ref</span>(<span class="self">self</span>.<span class="ident">domain</span>.<span class="ident">d8</span>));
+        <span class="kw">let</span> <span class="ident">z8</span> <span class="op">=</span> <span class="ident">z</span>.<span class="ident">evaluate_over_domain_by_ref</span>(<span class="self">self</span>.<span class="ident">domain</span>.<span class="ident">d8</span>);
+
+        <span class="kw">let</span> <span class="ident">w4</span>: [<span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
+            <span class="ident">E</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::from_vec_and_domain</span>(
+                (<span class="number">0</span>..<span class="self">self</span>.<span class="ident">domain</span>.<span class="ident">d4</span>.<span class="ident">size</span>)
+                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">j</span><span class="op">|</span> <span class="ident">w8</span>[<span class="ident">i</span>].<span class="ident">evals</span>[<span class="number">2</span> <span class="op">*</span> <span class="ident">j</span> <span class="kw">as</span> <span class="ident">usize</span>])
+                    .<span class="ident">collect</span>(),
+                <span class="self">self</span>.<span class="ident">domain</span>.<span class="ident">d4</span>,
+            )
+        });
+        <span class="kw">let</span> <span class="ident">z4</span> <span class="op">=</span> <span class="ident">DP</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::zero</span>().<span class="ident">evaluate_over_domain_by_ref</span>(<span class="ident">D</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="number">1</span>).<span class="ident">unwrap</span>());
+
+        <span class="ident">WitnessOverDomains</span> {
+            <span class="ident">d4</span>: <span class="ident">WitnessShifts</span> {
+                <span class="ident">next</span>: <span class="ident">WitnessEvals</span> {
+                    <span class="ident">w</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">w4</span>[<span class="ident">i</span>].<span class="ident">shift</span>(<span class="number">4</span>)),
+                    <span class="comment">// TODO(mimoo): change z to an Option? Or maybe not, we might actually need this dummy evaluation in the aggregated evaluation proof</span>
+                    <span class="ident">z</span>: <span class="ident">z4</span>.<span class="ident">clone</span>(), <span class="comment">// dummy evaluation</span>
+                },
+                <span class="ident">this</span>: <span class="ident">WitnessEvals</span> {
+                    <span class="ident">w</span>: <span class="ident">w4</span>,
+                    <span class="ident">z</span>: <span class="ident">z4</span>, <span class="comment">// dummy evaluation</span>
+                },
+            },
+            <span class="ident">d8</span>: <span class="ident">WitnessShifts</span> {
+                <span class="ident">next</span>: <span class="ident">WitnessEvals</span> {
+                    <span class="ident">w</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">w8</span>[<span class="ident">i</span>].<span class="ident">shift</span>(<span class="number">8</span>)),
+                    <span class="ident">z</span>: <span class="ident">z8</span>.<span class="ident">shift</span>(<span class="number">8</span>),
+                },
+                <span class="ident">this</span>: <span class="ident">WitnessEvals</span> { <span class="ident">w</span>: <span class="ident">w8</span>, <span class="ident">z</span>: <span class="ident">z8</span> },
+            },
+        }
+    }
+}
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">SquareRootField</span><span class="op">&gt;</span> <span class="ident">Builder</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+    <span class="doccomment">/// Set up the number of public inputs.</span>
+    <span class="doccomment">/// If not invoked, it equals `0` by default.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">public</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">public</span>: <span class="ident">usize</span>) -&gt; <span class="self">Self</span> {
+        <span class="self">self</span>.<span class="ident">public</span> <span class="op">=</span> <span class="ident">public</span>;
+        <span class="self">self</span>
+    }
+
+    <span class="doccomment">/// Set up the lookup tables.</span>
+    <span class="doccomment">/// If not invoked, it is `vec![]` by default.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// Warning: you have to make sure that the IDs of the lookup tables,</span>
-    <span class="doccomment">/// and runtime lookup tables, are unique and</span>
-    <span class="doccomment">/// not colliding with IDs of built-in lookup tables</span>
+    <span class="doccomment">/// **Warning:** you have to make sure that the IDs of the lookup tables,</span>
+    <span class="doccomment">/// are unique and  not colliding with IDs of built-in lookup tables</span>
     <span class="doccomment">/// (see [crate::circuits::lookup::tables]).</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_with_shared_precomputations</span>(
-        <span class="kw-2">mut</span> <span class="ident">gates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">lookup_tables</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">LookupTable</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">runtime_tables</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RuntimeTableCfg</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">fr_sponge_params</span>: <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-        <span class="ident">public</span>: <span class="ident">usize</span>,
-        <span class="ident">precomputations</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">DomainConstantEvaluations</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">SetupError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">lookup</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">lookup_tables</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">LookupTable</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
+        <span class="self">self</span>.<span class="ident">lookup_tables</span> <span class="op">=</span> <span class="ident">lookup_tables</span>;
+        <span class="self">self</span>
+    }
+
+    <span class="doccomment">/// Set up the runtime tables.</span>
+    <span class="doccomment">/// If not invoked, it is `None` by default.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// **Warning:** you have to make sure that the IDs of the runtime lookup tables,</span>
+    <span class="doccomment">/// are unique and not colliding with IDs of built-in lookup tables</span>
+    <span class="doccomment">/// (see [crate::circuits::lookup::tables]).</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">runtime</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">runtime_tables</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RuntimeTableCfg</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
+        <span class="self">self</span>.<span class="ident">runtime_tables</span> <span class="op">=</span> <span class="ident">runtime_tables</span>;
+        <span class="self">self</span>
+    }
+
+    <span class="doccomment">/// Set up the shared precomputations.</span>
+    <span class="doccomment">/// If not invoked, it is `None` by default.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">shared_precomputations</span>(
+        <span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">shared_precomputations</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">DomainConstantEvaluations</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    ) -&gt; <span class="self">Self</span> {
+        <span class="self">self</span>.<span class="ident">precomputations</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">shared_precomputations</span>);
+        <span class="self">self</span>
+    }
+
+    <span class="doccomment">/// Build the [ConstraintSystem] from a [Builder].</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">build</span>(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">SetupError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">gates</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">gates</span>;
+        <span class="kw">let</span> <span class="ident">lookup_tables</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">lookup_tables</span>;
+        <span class="kw">let</span> <span class="ident">runtime_tables</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">runtime_tables</span>;
+
         <span class="comment">//~ 1. If the circuit is less than 2 gates, abort.</span>
         <span class="comment">// for some reason we need more than 1 gate for the circuit to work, see TODO below</span>
         <span class="macro">assert!</span>(<span class="ident">gates</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="number">1</span>);
@@ -1110,7 +1156,7 @@
             <span class="ident">chacha8</span>,
             <span class="ident">endomul_scalar8</span>,
             <span class="ident">domain</span>,
-            <span class="ident">public</span>,
+            <span class="ident">public</span>: <span class="self">self</span>.<span class="ident">public</span>,
             <span class="ident">sid</span>,
             <span class="ident">sigmal1</span>,
             <span class="ident">sigmal8</span>,
@@ -1127,12 +1173,12 @@
             <span class="ident">gates</span>,
             <span class="ident">shift</span>: <span class="ident">shifts</span>.<span class="ident">shifts</span>,
             <span class="ident">endo</span>,
-            <span class="ident">fr_sponge_params</span>,
+            <span class="ident">fr_sponge_params</span>: <span class="self">self</span>.<span class="ident">sponge_params</span>,
             <span class="ident">lookup_constraint_system</span>,
             <span class="ident">precomputations</span>: <span class="ident">domain_constant_evaluation</span>,
         };
 
-        <span class="kw">match</span> <span class="ident">precomputations</span> {
+        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">precomputations</span> {
             <span class="prelude-val">Some</span>(<span class="ident">t</span>) =&gt; {
                 <span class="ident">constraints</span>.<span class="ident">set_precomputations</span>(<span class="ident">t</span>);
             }
@@ -1140,112 +1186,7 @@
                 <span class="ident">constraints</span>.<span class="ident">precomputations</span>();
             }
         }
-
         <span class="prelude-val">Ok</span>(<span class="ident">constraints</span>)
-    }
-
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">precomputations</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">DomainConstantEvaluations</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">precomputations</span>
-            .<span class="ident">get_or_init</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">Arc::new</span>(<span class="ident">DomainConstantEvaluations::create</span>(<span class="self">self</span>.<span class="ident">domain</span>).<span class="ident">unwrap</span>()))
-    }
-
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_precomputations</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">precomputations</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">DomainConstantEvaluations</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="ident">precomputations</span>
-            .<span class="ident">set</span>(<span class="ident">precomputations</span>)
-            .<span class="ident">expect</span>(<span class="string">&quot;Precomputation has been set before&quot;</span>);
-    }
-
-    <span class="doccomment">/// This function verifies the consistency of the wire</span>
-    <span class="doccomment">/// assignements (witness) against the constraints</span>
-    <span class="doccomment">///     witness: wire assignement witness</span>
-    <span class="doccomment">///     RETURN: verification status</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">witness</span>: <span class="kw-2">&amp;</span>[<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>], <span class="ident">public</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">GateError</span><span class="op">&gt;</span> {
-        <span class="comment">// pad the witness</span>
-        <span class="kw">let</span> <span class="ident">pad</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="self">self</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span>() <span class="op">-</span> <span class="ident">witness</span>[<span class="number">0</span>].<span class="ident">len</span>()];
-        <span class="kw">let</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">w</span> <span class="op">=</span> <span class="ident">witness</span>[<span class="ident">i</span>].<span class="ident">to_vec</span>();
-            <span class="ident">w</span>.<span class="ident">extend_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">pad</span>);
-            <span class="ident">w</span>
-        });
-
-        <span class="comment">// check each rows&#39; wiring</span>
-        <span class="kw">for</span> (<span class="ident">row</span>, <span class="ident">gate</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">gates</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-            <span class="comment">// check if wires are connected</span>
-            <span class="kw">for</span> <span class="ident">col</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">PERMUTS</span> {
-                <span class="kw">let</span> <span class="ident">wire</span> <span class="op">=</span> <span class="ident">gate</span>.<span class="ident">wires</span>[<span class="ident">col</span>];
-
-                <span class="kw">if</span> <span class="ident">wire</span>.<span class="ident">col</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">PERMUTS</span> {
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">GateError::Custom</span> {
-                        <span class="ident">row</span>,
-                        <span class="ident">err</span>: <span class="macro">format!</span>(
-                            <span class="string">&quot;a wire can only be connected to the first {} columns&quot;</span>,
-                            <span class="ident">PERMUTS</span>
-                        ),
-                    });
-                }
-
-                <span class="kw">if</span> <span class="ident">witness</span>[<span class="ident">col</span>][<span class="ident">row</span>] <span class="op">!</span><span class="op">=</span> <span class="ident">witness</span>[<span class="ident">wire</span>.<span class="ident">col</span>][<span class="ident">wire</span>.<span class="ident">row</span>] {
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">GateError::DisconnectedWires</span>(
-                        <span class="ident">Wire</span> { <span class="ident">col</span>, <span class="ident">row</span> },
-                        <span class="ident">Wire</span> {
-                            <span class="ident">col</span>: <span class="ident">wire</span>.<span class="ident">col</span>,
-                            <span class="ident">row</span>: <span class="ident">wire</span>.<span class="ident">row</span>,
-                        },
-                    ));
-                }
-            }
-
-            <span class="comment">// for public gates, only the left wire is toggled</span>
-            <span class="kw">if</span> <span class="ident">row</span> <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">public</span> <span class="op">&amp;&amp;</span> <span class="ident">gate</span>.<span class="ident">coeffs</span>[<span class="number">0</span>] <span class="op">!</span><span class="op">=</span> <span class="ident">F::one</span>() {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">GateError::IncorrectPublic</span>(<span class="ident">row</span>));
-            }
-
-            <span class="comment">// check the gate&#39;s satisfiability</span>
-            <span class="ident">gate</span>.<span class="ident">verify</span>(<span class="ident">row</span>, <span class="kw-2">&amp;</span><span class="ident">witness</span>, <span class="self">self</span>, <span class="ident">public</span>)
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> <span class="ident">GateError::Custom</span> { <span class="ident">row</span>, <span class="ident">err</span> })<span class="question-mark">?</span>;
-        }
-
-        <span class="comment">// all good!</span>
-        <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="doccomment">/// evaluate witness polynomials over domains</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">w</span>: <span class="kw-2">&amp;</span>[<span class="ident">DP</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>], <span class="ident">z</span>: <span class="kw-2">&amp;</span><span class="ident">DP</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="ident">WitnessOverDomains</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-        <span class="comment">// compute shifted witness polynomials</span>
-        <span class="kw">let</span> <span class="ident">w8</span>: [<span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span>
-            <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">w</span>[<span class="ident">i</span>].<span class="ident">evaluate_over_domain_by_ref</span>(<span class="self">self</span>.<span class="ident">domain</span>.<span class="ident">d8</span>));
-        <span class="kw">let</span> <span class="ident">z8</span> <span class="op">=</span> <span class="ident">z</span>.<span class="ident">evaluate_over_domain_by_ref</span>(<span class="self">self</span>.<span class="ident">domain</span>.<span class="ident">d8</span>);
-
-        <span class="kw">let</span> <span class="ident">w4</span>: [<span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
-            <span class="ident">E</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::from_vec_and_domain</span>(
-                (<span class="number">0</span>..<span class="self">self</span>.<span class="ident">domain</span>.<span class="ident">d4</span>.<span class="ident">size</span>)
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">j</span><span class="op">|</span> <span class="ident">w8</span>[<span class="ident">i</span>].<span class="ident">evals</span>[<span class="number">2</span> <span class="op">*</span> <span class="ident">j</span> <span class="kw">as</span> <span class="ident">usize</span>])
-                    .<span class="ident">collect</span>(),
-                <span class="self">self</span>.<span class="ident">domain</span>.<span class="ident">d4</span>,
-            )
-        });
-        <span class="kw">let</span> <span class="ident">z4</span> <span class="op">=</span> <span class="ident">DP</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::zero</span>().<span class="ident">evaluate_over_domain_by_ref</span>(<span class="ident">D</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="number">1</span>).<span class="ident">unwrap</span>());
-
-        <span class="ident">WitnessOverDomains</span> {
-            <span class="ident">d4</span>: <span class="ident">WitnessShifts</span> {
-                <span class="ident">next</span>: <span class="ident">WitnessEvals</span> {
-                    <span class="ident">w</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">w4</span>[<span class="ident">i</span>].<span class="ident">shift</span>(<span class="number">4</span>)),
-                    <span class="comment">// TODO(mimoo): change z to an Option? Or maybe not, we might actually need this dummy evaluation in the aggregated evaluation proof</span>
-                    <span class="ident">z</span>: <span class="ident">z4</span>.<span class="ident">clone</span>(), <span class="comment">// dummy evaluation</span>
-                },
-                <span class="ident">this</span>: <span class="ident">WitnessEvals</span> {
-                    <span class="ident">w</span>: <span class="ident">w4</span>,
-                    <span class="ident">z</span>: <span class="ident">z4</span>, <span class="comment">// dummy evaluation</span>
-                },
-            },
-            <span class="ident">d8</span>: <span class="ident">WitnessShifts</span> {
-                <span class="ident">next</span>: <span class="ident">WitnessEvals</span> {
-                    <span class="ident">w</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">w8</span>[<span class="ident">i</span>].<span class="ident">shift</span>(<span class="number">8</span>)),
-                    <span class="ident">z</span>: <span class="ident">z8</span>.<span class="ident">shift</span>(<span class="number">8</span>),
-                },
-                <span class="ident">this</span>: <span class="ident">WitnessEvals</span> { <span class="ident">w</span>: <span class="ident">w8</span>, <span class="ident">z</span>: <span class="ident">z8</span> },
-            },
-        }
     }
 }
 
@@ -1262,7 +1203,10 @@
         ) -&gt; <span class="self">Self</span> {
             <span class="kw">let</span> <span class="ident">public</span> <span class="op">=</span> <span class="number">0</span>;
             <span class="comment">// not sure if theres a smarter way instead of the double unwrap, but should be fine in the test</span>
-            <span class="ident">ConstraintSystem</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">gates</span>, <span class="macro">vec!</span>[], <span class="prelude-val">None</span>, <span class="ident">sponge_params</span>, <span class="ident">public</span>).<span class="ident">unwrap</span>()
+            <span class="ident">ConstraintSystem</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">gates</span>, <span class="ident">sponge_params</span>)
+                .<span class="ident">public</span>(<span class="ident">public</span>)
+                .<span class="ident">build</span>()
+                .<span class="ident">unwrap</span>()
         }
     }
 
