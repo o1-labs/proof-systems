@@ -481,14 +481,9 @@ mod tests {
             next_row += 1;
         }
 
-        ConstraintSystem::create(
-            gates,
-            vec![range_check::lookup_table()],
-            None,
-            oracle::pasta::fp_kimchi::params(),
-            0,
-        )
-        .unwrap()
+        ConstraintSystem::create(gates, oracle::pasta::fp_kimchi::params())
+            .build()
+            .unwrap()
     }
 
     fn create_test_prover_index(
