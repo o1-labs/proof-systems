@@ -252,6 +252,7 @@ pub enum LookupPattern {
 }
 
 impl LookupPattern {
+    /// Returns the maximum number of lookups per row that are used by the pattern.
     pub fn max_lookups_per_row(&self) -> usize {
         match self {
             LookupPattern::ChaCha => 4,
@@ -260,6 +261,7 @@ impl LookupPattern {
         }
     }
 
+    /// Returns the maximum number of values that are used in any vector lookup in this pattern.
     pub fn max_joint_size(&self) -> u32 {
         match self {
             LookupPattern::ChaCha => 3,
@@ -268,6 +270,7 @@ impl LookupPattern {
         }
     }
 
+    /// Returns the layout of the lookups used by this pattern.
     pub fn lookups<F: Field>(&self) -> Vec<JointLookupSpec<F>> {
         let curr_row = |column| LocalPosition {
             row: CurrOrNext::Curr,
@@ -339,6 +342,7 @@ impl LookupPattern {
         }
     }
 
+    /// Returns the lookup table used by the pattern, or `None` if no specific table is rqeuired.
     pub fn table(&self) -> Option<GateLookupTable> {
         match self {
             LookupPattern::ChaCha | LookupPattern::ChaChaFinal => Some(GateLookupTable::Xor),
@@ -346,6 +350,8 @@ impl LookupPattern {
         }
     }
 
+    /// Returns the index of the lookup pattern in the vector of all lookup patterns.
+    // TODO: Delete this (done in dependent PR #584).
     fn to_index(&self) -> usize {
         match self {
             LookupPattern::ChaCha => 0,
@@ -354,6 +360,7 @@ impl LookupPattern {
         }
     }
 
+    /// Returns the lookup pattern used by a [GateType] on a given row (current or next).
     pub fn from_gate(gate_type: GateType, curr_or_next: CurrOrNext) -> Option<Self> {
         use CurrOrNext::*;
         use GateType::*;
