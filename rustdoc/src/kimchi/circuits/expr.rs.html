@@ -2428,6 +2428,16 @@
         .<span class="ident">fold</span>(<span class="ident">F::one</span>(), <span class="op">|</span><span class="ident">acc</span>, <span class="ident">omega_j</span><span class="op">|</span> <span class="ident">acc</span> <span class="op">*</span> (<span class="ident">F::one</span>() <span class="op">-</span> <span class="ident">omega_j</span>))
 }
 
+<span class="comment">// Compute the ith unnormalized lagrange basis</span>
+<span class="kw">fn</span> <span class="ident">unnormalized_lagrange_basis</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">domain</span>: <span class="kw-2">&amp;</span><span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">i</span>: <span class="ident">i32</span>, <span class="ident">pt</span>: <span class="kw-2">&amp;</span><span class="ident">F</span>) -&gt; <span class="ident">F</span> {
+    <span class="kw">let</span> <span class="ident">omega_i</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">i</span> <span class="op">&lt;</span> <span class="number">0</span> {
+        <span class="ident">domain</span>.<span class="ident">group_gen</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="op">-</span><span class="ident">i</span> <span class="kw">as</span> <span class="ident">u64</span>]).<span class="ident">inverse</span>().<span class="ident">unwrap</span>()
+    } <span class="kw">else</span> {
+        <span class="ident">domain</span>.<span class="ident">group_gen</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="ident">i</span> <span class="kw">as</span> <span class="ident">u64</span>])
+    };
+    <span class="ident">domain</span>.<span class="ident">evaluate_vanishing_polynomial</span>(<span class="kw-2">*</span><span class="ident">pt</span>) <span class="op">/</span> (<span class="kw-2">*</span><span class="ident">pt</span> <span class="op">-</span> <span class="ident">omega_i</span>)
+}
+
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>, <span class="ident">PartialOrd</span>, <span class="ident">Ord</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="doccomment">/// A type representing one of the polynomials involved in the PLONK IOP.</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Column</span> {
@@ -2759,13 +2769,7 @@
                 <span class="ident">Mds</span> { <span class="ident">row</span>, <span class="ident">col</span> } =&gt; <span class="ident">stack</span>.<span class="ident">push</span>(<span class="ident">c</span>.<span class="ident">mds</span>[<span class="kw-2">*</span><span class="ident">row</span>][<span class="kw-2">*</span><span class="ident">col</span>]),
                 <span class="ident">VanishesOnLast4Rows</span> =&gt; <span class="ident">stack</span>.<span class="ident">push</span>(<span class="ident">eval_vanishes_on_last_4_rows</span>(<span class="ident">d</span>, <span class="ident">pt</span>)),
                 <span class="ident">UnnormalizedLagrangeBasis</span>(<span class="ident">i</span>) =&gt; {
-                    <span class="comment">// Renormalize negative values to wrap around at domain size</span>
-                    <span class="kw">let</span> <span class="ident">i</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw-2">*</span><span class="ident">i</span> <span class="op">&lt;</span> <span class="number">0</span> {
-                        ((<span class="kw-2">*</span><span class="ident">i</span> <span class="kw">as</span> <span class="ident">i64</span>) <span class="op">+</span> (<span class="ident">d</span>.<span class="ident">size</span> <span class="kw">as</span> <span class="ident">i64</span>)) <span class="kw">as</span> <span class="ident">u64</span>
-                    } <span class="kw">else</span> {
-                        <span class="kw-2">*</span><span class="ident">i</span> <span class="kw">as</span> <span class="ident">u64</span>
-                    };
-                    <span class="ident">stack</span>.<span class="ident">push</span>(<span class="ident">d</span>.<span class="ident">evaluate_vanishing_polynomial</span>(<span class="ident">pt</span>) <span class="op">/</span> (<span class="ident">pt</span> <span class="op">-</span> <span class="ident">d</span>.<span class="ident">group_gen</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="ident">i</span>])))
+                    <span class="ident">stack</span>.<span class="ident">push</span>(<span class="ident">unnormalized_lagrange_basis</span>(<span class="kw-2">&amp;</span><span class="ident">d</span>, <span class="kw-2">*</span><span class="ident">i</span>, <span class="kw-2">&amp;</span><span class="ident">pt</span>))
                 }
                 <span class="ident">Literal</span>(<span class="ident">x</span>) =&gt; <span class="ident">stack</span>.<span class="ident">push</span>(<span class="kw-2">*</span><span class="ident">x</span>),
                 <span class="ident">Dup</span> =&gt; <span class="ident">stack</span>.<span class="ident">push</span>(<span class="ident">stack</span>[<span class="ident">stack</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>]),
@@ -3542,9 +3546,7 @@
                 <span class="prelude-val">Ok</span>(<span class="ident">x</span> <span class="op">-</span> <span class="ident">y</span>)
             }
             <span class="ident">VanishesOnLast4Rows</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">eval_vanishes_on_last_4_rows</span>(<span class="ident">d</span>, <span class="ident">pt</span>)),
-            <span class="ident">UnnormalizedLagrangeBasis</span>(<span class="ident">i</span>) =&gt; {
-                <span class="prelude-val">Ok</span>(<span class="ident">d</span>.<span class="ident">evaluate_vanishing_polynomial</span>(<span class="ident">pt</span>) <span class="op">/</span> (<span class="ident">pt</span> <span class="op">-</span> <span class="ident">d</span>.<span class="ident">group_gen</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="kw-2">*</span><span class="ident">i</span> <span class="kw">as</span> <span class="ident">u64</span>])))
-            }
+            <span class="ident">UnnormalizedLagrangeBasis</span>(<span class="ident">i</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">unnormalized_lagrange_basis</span>(<span class="kw-2">&amp;</span><span class="ident">d</span>, <span class="kw-2">*</span><span class="ident">i</span>, <span class="kw-2">&amp;</span><span class="ident">pt</span>)),
             <span class="ident">Cell</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>.<span class="ident">evaluate</span>(<span class="ident">evals</span>),
             <span class="ident">Cache</span>(<span class="kw">_</span>, <span class="ident">e</span>) =&gt; <span class="ident">e</span>.<span class="ident">evaluate_</span>(<span class="ident">d</span>, <span class="ident">pt</span>, <span class="ident">evals</span>, <span class="ident">c</span>),
         }
@@ -3591,9 +3593,7 @@
                 <span class="prelude-val">Ok</span>(<span class="ident">x</span> <span class="op">-</span> <span class="ident">y</span>)
             }
             <span class="ident">VanishesOnLast4Rows</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">eval_vanishes_on_last_4_rows</span>(<span class="ident">d</span>, <span class="ident">pt</span>)),
-            <span class="ident">UnnormalizedLagrangeBasis</span>(<span class="ident">i</span>) =&gt; {
-                <span class="prelude-val">Ok</span>(<span class="ident">d</span>.<span class="ident">evaluate_vanishing_polynomial</span>(<span class="ident">pt</span>) <span class="op">/</span> (<span class="ident">pt</span> <span class="op">-</span> <span class="ident">d</span>.<span class="ident">group_gen</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="kw-2">*</span><span class="ident">i</span> <span class="kw">as</span> <span class="ident">u64</span>])))
-            }
+            <span class="ident">UnnormalizedLagrangeBasis</span>(<span class="ident">i</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">unnormalized_lagrange_basis</span>(<span class="kw-2">&amp;</span><span class="ident">d</span>, <span class="kw-2">*</span><span class="ident">i</span>, <span class="kw-2">&amp;</span><span class="ident">pt</span>)),
             <span class="ident">Cell</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>.<span class="ident">evaluate</span>(<span class="ident">evals</span>),
             <span class="ident">Cache</span>(<span class="kw">_</span>, <span class="ident">e</span>) =&gt; <span class="ident">e</span>.<span class="ident">evaluate</span>(<span class="ident">d</span>, <span class="ident">pt</span>, <span class="ident">evals</span>),
         }
