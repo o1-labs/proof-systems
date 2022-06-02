@@ -356,7 +356,7 @@ impl LookupPattern {
 
     /// Returns the index of the lookup pattern in the vector of all lookup patterns.
     // TODO: Delete this (done in dependent PR #584).
-    fn to_index(&self) -> usize {
+    fn to_index(self) -> usize {
         match self {
             LookupPattern::ChaCha => 0,
             LookupPattern::ChaChaFinal => 1,
