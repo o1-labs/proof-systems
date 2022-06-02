@@ -315,6 +315,9 @@
 <span id="308">308</span>
 <span id="309">309</span>
 <span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the data structures of a proof.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::wires</span>::{<span class="ident">COLUMNS</span>, <span class="ident">PERMUTS</span>};
@@ -534,6 +537,8 @@
         ),
         <span class="kw">pub</span> <span class="ident">generic_selector</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
         <span class="kw">pub</span> <span class="ident">poseidon_selector</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
+
+        <span class="kw">pub</span> <span class="ident">lookup</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">CamlLookupEvaluations</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     }
 
     <span class="comment">//</span>
@@ -578,6 +583,7 @@
                 <span class="ident">s</span>,
                 <span class="ident">generic_selector</span>: <span class="ident">pe</span>.<span class="ident">generic_selector</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
                 <span class="ident">poseidon_selector</span>: <span class="ident">pe</span>.<span class="ident">poseidon_selector</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
+                <span class="ident">lookup</span>: <span class="ident">pe</span>.<span class="ident">lookup</span>.<span class="ident">map</span>(<span class="ident">Into::into</span>),
             }
         }
     }
@@ -618,13 +624,13 @@
                 <span class="ident">w</span>,
                 <span class="ident">z</span>: <span class="ident">cpe</span>.<span class="ident">z</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
                 <span class="ident">s</span>,
-                <span class="ident">lookup</span>: <span class="prelude-val">None</span>,
                 <span class="ident">generic_selector</span>: <span class="ident">cpe</span>.<span class="ident">generic_selector</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
                 <span class="ident">poseidon_selector</span>: <span class="ident">cpe</span>.<span class="ident">poseidon_selector</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
+                <span class="ident">lookup</span>: <span class="ident">cpe</span>.<span class="ident">lookup</span>.<span class="ident">map</span>(<span class="ident">Into::into</span>),
             }
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (e09449220 2022-05-31)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (12cd71f4d 2022-06-01)" ></div>
 </body></html>
