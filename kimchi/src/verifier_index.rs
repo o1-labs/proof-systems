@@ -110,7 +110,7 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     pub shift: [ScalarField<G>; PERMUTS],
     /// zero-knowledge polynomial
     #[serde(skip)]
-    pub zkpm: DensePolynomial<ScalarField<G>>,
+    zkpm: OnceCell<DensePolynomial<ScalarField<G>>>,
     // TODO(mimoo): isn't this redundant with domain.d1.group_gen ?
     /// domain offset for zero-knowledge
     #[serde(skip)]
@@ -222,7 +222,7 @@ where
                 .collect(),
 
             shift: self.cs.shift,
-            zkpm: self.cs.precomputations().zkpm.clone(),
+            zkpm: OnceCell::new(),
             w: OnceCell::new(),
             endo: self.cs.endo,
             lookup_index,
@@ -237,6 +237,11 @@ impl<G: CommitmentCurve> VerifierIndex<G>
 where
     G::BaseField: PrimeField,
 {
+    /// Gets zkpm from [VerifierIndex] lazily
+    pub fn zkpm(&self) -> &DensePolynomial<ScalarField<G>> {
+        self.zkpm.get_or_init(|| zk_polynomial(self.domain))
+    }
+
     /// Gets w from [VerifierIndex] lazily
     pub fn w(&self) -> &ScalarField<G> {
         self.w.get_or_init(|| zk_w3(self.domain))
@@ -275,7 +280,6 @@ where
         verifier_index.endo = endo;
         verifier_index.fq_sponge_params = fq_sponge_params;
         verifier_index.fr_sponge_params = fr_sponge_params;
-        verifier_index.zkpm = zk_polynomial(verifier_index.domain);
 
         Ok(verifier_index)
     }

@@ -1279,7 +1279,7 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     pub shift: [ScalarField<G>; PERMUTS],
     /// zero-knowledge polynomial
     #[serde(skip)]
-    pub zkpm: DensePolynomial<ScalarField<G>>,
+    zkpm: OnceCell<DensePolynomial<ScalarField<G>>>,
     // TODO(mimoo): isn't this redundant with domain.d1.group_gen ?
     /// domain offset for zero-knowledge
     #[serde(skip)]

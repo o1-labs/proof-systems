@@ -318,7 +318,7 @@ where
 
         //~ 1. Compute the evaluation of $ft(\zeta)$.
         let ft_eval0 = {
-            let zkp = index.zkpm.evaluate(&zeta);
+            let zkp = index.zkpm().evaluate(&zeta);
             let zeta1m1 = zeta1 - ScalarField::<G>::one();
 
             let mut alpha_powers =
@@ -536,7 +536,7 @@ where
     //~    in which case the evaluation should be used in place of the commitment.
     let f_comm = {
         // the permutation is written manually (not using the expr framework)
-        let zkp = index.zkpm.evaluate(&oracles.zeta);
+        let zkp = index.zkpm().evaluate(&oracles.zeta);
 
         let alphas = all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
 

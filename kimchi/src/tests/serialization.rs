@@ -1,5 +1,4 @@
 use crate::circuits::polynomials::generic::testing::{create_circuit, fill_in_witness};
-use crate::circuits::polynomials::permutation::zk_polynomial;
 use crate::circuits::wires::COLUMNS;
 use crate::proof::ProverProof;
 use crate::prover_index::testing::new_index_for_test;
@@ -55,7 +54,6 @@ pub fn test_serialization() {
     verifier_index_deserialize.srs = Arc::new(srs);
     verifier_index_deserialize.fq_sponge_params = oracle::pasta::fq_kimchi::params();
     verifier_index_deserialize.fr_sponge_params = oracle::pasta::fp_kimchi::params();
-    verifier_index_deserialize.zkpm = zk_polynomial(verifier_index_deserialize.domain);
     verifier_index_deserialize.powers_of_alpha = index.powers_of_alpha;
     verifier_index_deserialize.linearization = index.linearization;
 
