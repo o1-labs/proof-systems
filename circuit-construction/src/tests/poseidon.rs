@@ -62,6 +62,13 @@ pub fn circuit<
     sys.assert_eq(actual.1, public_input[1].clone());
     sys.assert_eq(actual_hash, public_input[2].clone());
 
+    // test addition of vars
+    let x1 = sys.var(|| F::one());
+    let x2 = sys.var(|| F::one());
+    let x3 = x1 + x2;
+    let two = sys.constant(F::from(2u32));
+    sys.assert_eq(x3, two);
+
     sys.zk()
 }
 
