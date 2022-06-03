@@ -1,5 +1,5 @@
 //! Runtime tables are tables (or arrays) that can be produced during proof creation.
-//! The setup has to prepare for their presence using [RuntimeTableConfiguration].
+//! The setup has to prepare for their presence using [RuntimeTableCfg].
 //! At proving time, the prover can use [RuntimeTable] to specify the actual tables.
 
 use crate::circuits::{

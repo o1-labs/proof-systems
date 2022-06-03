@@ -343,6 +343,9 @@ Kimchi currently supports a single lookup table:
 ```rs
 /// The table ID associated with the XOR lookup table.
 pub const XOR_TABLE_ID: i32 = 0;
+
+/// The range check table ID.
+pub const RANGE_CHECK_TABLE_ID: i32 = 1;
 ```
 
 

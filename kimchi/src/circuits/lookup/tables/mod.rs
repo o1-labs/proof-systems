@@ -5,17 +5,22 @@ use o1_utils::types::ScalarField;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
+pub mod range_check;
 pub mod xor;
 
 //~ spec:startcode
 /// The table ID associated with the XOR lookup table.
 pub const XOR_TABLE_ID: i32 = 0;
+
+/// The range check table ID.
+pub const RANGE_CHECK_TABLE_ID: i32 = 1;
 //~ spec:endcode
 
 /// Enumerates the different 'fixed' lookup tables used by individual gates
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum GateLookupTable {
     Xor,
+    RangeCheck,
 }
 
 /// Specifies the relative position of gates and the fixed lookup table (if applicable) that a
@@ -78,6 +83,7 @@ where
 pub fn get_table<F: FftField>(table_name: GateLookupTable) -> LookupTable<F> {
     match table_name {
         GateLookupTable::Xor => xor::xor_table(),
+        GateLookupTable::RangeCheck => range_check::range_check_table(),
     }
 }
 
