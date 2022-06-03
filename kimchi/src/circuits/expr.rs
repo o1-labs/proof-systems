@@ -2202,11 +2202,15 @@ pub mod prologue {
 pub mod test {
     use super::*;
     use crate::circuits::{
-        constraints::ConstraintSystem, gate::CircuitGate, polynomials::generic::GenericGateSpec,
+        constraints::ConstraintSystem,
+        gate::CircuitGate,
+        polynomials::{generic::GenericGateSpec, permutation::ZK_ROWS},
         wires::Wire,
     };
+    use ark_ff::UniformRand;
     use array_init::array_init;
     use mina_curves::pasta::fp::Fp;
+    use rand::{prelude::StdRng, SeedableRng};
 
     #[test]
     #[should_panic]
@@ -2272,5 +2276,22 @@ pub mod test {
 
         // this should panic as we don't have a domain large enough
         expr.evaluations(&env);
+    }
+
+    #[test]
+    fn test_unnormalized_lagrange_basis() {
+        let domain = EvaluationDomains::<Fp>::create(2usize.pow(10) + ZK_ROWS as usize)
+            .expect("failed to create evaluation domain");
+        let rng = &mut StdRng::from_seed([17u8; 32]);
+
+        // Check that both ways of computing lagrange basis give the same result
+        let d1_size: i32 = domain.d1.size().try_into().expect("domain size too big");
+        for i in 1..d1_size {
+            let pt = Fp::rand(rng);
+            assert_eq!(
+                unnormalized_lagrange_basis(&domain.d1, d1_size - i, &pt),
+                unnormalized_lagrange_basis(&domain.d1, -i, &pt)
+            );
+        }
     }
 }
