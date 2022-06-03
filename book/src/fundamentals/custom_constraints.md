@@ -11,7 +11,7 @@ A "PLONK configuration" specifies
 
 Under such configuration, a circuit is specified by
 - A number of rows `n`
-- A vector `cs of constraint-types of length `n`. I.e., a vector that specifies, for each row, which types of constraints should be enforced on that row.
+- A vector `cs` of constraint-types of length `n`. I.e., a vector that specifies, for each row, which types of constraints should be enforced on that row.
 - A vector `eqs : Vec<(Position, Position)>` of equalities to enforce, where `struct Position { row: usize, column: usize }`. E.g., if the pair `(Position { row: 0, col: 8 }, Position { row: 10, col: 2 })` is in `eqs`, then the circuit is saying the entries in those two positions should be equal, or in other words that they refer to the same value. This is where the distinction between "eq-able" and "advice" columns comes in. The `column` field of a position in the `eqs` array can only refer to one of the first `W` columns. Equalities cannot be enforced on entries in the `A` columns after that.
 
 Then, given such a circuit, PLONK lets you produce proofs for the statement

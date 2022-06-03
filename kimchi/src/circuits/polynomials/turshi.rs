@@ -86,7 +86,7 @@ use crate::circuits::expr::{witness_curr, witness_next, Cache, ConstantExpr, Exp
 use crate::circuits::gate::{CircuitGate, GateType};
 use crate::circuits::wires::{GateWires, Wire, COLUMNS};
 use crate::proof::ProofEvaluations;
-use ark_ff::{FftField, Field, One};
+use ark_ff::{FftField, Field, One, SquareRootField};
 use array_init::array_init;
 use cairo::{
     runner::{CairoInstruction, CairoProgram, Pointers},
@@ -101,7 +101,7 @@ pub const CIRCUIT_GATE_COUNT: usize = 4;
 
 // GATE-RELATED
 
-impl<F: FftField> CircuitGate<F> {
+impl<F: FftField + SquareRootField> CircuitGate<F> {
     /// This function creates a CairoClaim gate
     pub fn create_cairo_claim(wires: GateWires) -> Self {
         CircuitGate {
@@ -220,22 +220,17 @@ impl<F: FftField> CircuitGate<F> {
 
         // Setup proof evaluations
         let rng = &mut StdRng::from_seed([0u8; 32]);
-        let mut eval = |witness| ProofEvaluations {
-            w: witness,
-            z: F::rand(rng),
-            s: array_init(|_| F::rand(rng)),
-            generic_selector: F::zero(),
-            poseidon_selector: F::zero(),
-            lookup: None,
-        };
-        let evals = vec![eval(curr), eval(next)];
+        let evals = vec![
+            ProofEvaluations::dummy_with_witness_evaluations(curr),
+            ProofEvaluations::dummy_with_witness_evaluations(next),
+        ];
 
         // Setup circuit constants
         let constants = expr::Constants {
             alpha: F::rand(rng),
             beta: F::rand(rng),
             gamma: F::rand(rng),
-            joint_combiner: F::rand(rng),
+            joint_combiner: None,
             endo_coefficient: cs.endo,
             mds: vec![],
         };

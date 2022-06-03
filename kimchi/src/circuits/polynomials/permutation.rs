@@ -42,7 +42,7 @@
 
 use crate::{
     circuits::{constraints::ConstraintSystem, polynomial::WitnessOverDomains, wires::*},
-    error::ProofError,
+    error::ProverError,
     proof::ProofEvaluations,
 };
 use ark_ff::{FftField, SquareRootField, Zero};
@@ -51,6 +51,8 @@ use ark_poly::{
     EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
 use ark_poly::{Polynomial, UVPolynomial};
+use array_init::array_init;
+use blake2::{Blake2b512, Digest};
 use o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
 use rand::{CryptoRng, RngCore};
 
@@ -112,6 +114,78 @@ pub fn zk_polynomial<F: FftField>(domain: D<F>) -> DensePolynomial<F> {
     ])
 }
 
+/// Shifts represent the shifts required in the permutation argument of PLONK.
+/// It also caches the shifted powers of omega for optimization purposes.
+pub struct Shifts<F> {
+    /// The coefficients `k` (in the Plonk paper) that create a coset when multiplied with the generator of our domain.
+    pub(crate) shifts: [F; PERMUTS],
+    /// A matrix that maps all cells coordinates `{col, row}` to their shifted field element.
+    /// For example the cell `{col:2, row:1}` will map to `omega * k2`,
+    /// which lives in `map[2][1]`
+    pub(crate) map: [Vec<F>; PERMUTS],
+}
+
+impl<F> Shifts<F>
+where
+    F: FftField + SquareRootField,
+{
+    /// Generates the shifts for a given domain
+    pub fn new(domain: &D<F>) -> Self {
+        let mut shifts = [F::zero(); PERMUTS];
+
+        // first shift is the identity
+        shifts[0] = F::one();
+
+        // sample the other shifts
+        let mut i: u32 = 7;
+        for idx in 1..(PERMUTS) {
+            let mut shift = Self::sample(domain, &mut i);
+            // they have to be distincts
+            while shifts.contains(&shift) {
+                shift = Self::sample(domain, &mut i);
+            }
+            shifts[idx] = shift;
+        }
+
+        // create a map of cells to their shifted value
+        let map: [Vec<F>; PERMUTS] =
+            array_init(|i| domain.elements().map(|elm| shifts[i] * elm).collect());
+
+        //
+        Self { shifts, map }
+    }
+
+    /// retrieve the shifts
+    pub fn shifts(&self) -> &[F; PERMUTS] {
+        &self.shifts
+    }
+
+    /// sample coordinate shifts deterministically
+    fn sample(domain: &D<F>, input: &mut u32) -> F {
+        let mut h = Blake2b512::new();
+
+        *input += 1;
+        h.update(&input.to_be_bytes());
+
+        let mut shift = F::from_random_bytes(&h.finalize()[..31])
+            .expect("our field elements fit in more than 31 bytes");
+
+        while !shift.legendre().is_qnr() || domain.evaluate_vanishing_polynomial(shift).is_zero() {
+            let mut h = Blake2b512::new();
+            *input += 1;
+            h.update(&input.to_be_bytes());
+            shift = F::from_random_bytes(&h.finalize()[..31])
+                .expect("our field elements fit in more than 31 bytes");
+        }
+        shift
+    }
+
+    /// Returns the field element that represents a position
+    pub(crate) fn cell_to_field(&self, &Wire { row, col }: &Wire) -> F {
+        self.map[col][row]
+    }
+}
+
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// permutation quotient poly contribution computation
     #[allow(clippy::type_complexity)]
@@ -122,7 +196,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         gamma: F,
         z: &DensePolynomial<F>,
         mut alphas: impl Iterator<Item = F>,
-    ) -> Result<(Evaluations<F, D<F>>, DensePolynomial<F>), ProofError> {
+    ) -> Result<(Evaluations<F, D<F>>, DensePolynomial<F>), ProverError> {
         let alpha0 = alphas.next().expect("missing power of alpha");
         let alpha1 = alphas.next().expect("missing power of alpha");
         let alpha2 = alphas.next().expect("missing power of alpha");
@@ -203,23 +277,23 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                 &z_minus_1.clone().into(),
                 &x_minus_1.into(),
             )
-            .map_or(Err(ProofError::Permutation("first division")), Ok)?;
+            .map_or(Err(ProverError::Permutation("first division")), Ok)?;
             if !res.is_zero() {
-                return Err(ProofError::Permutation("first division rest"));
+                return Err(ProverError::Permutation("first division rest"));
             }
 
             // accumulator end := (z(x) - 1) / (x - sid[n-3])
             let denominator = DensePolynomial::from_coefficients_slice(&[
-                -self.sid[self.domain.d1.size as usize - 3],
+                -self.sid[self.domain.d1.size() - 3],
                 F::one(),
             ]);
             let (bnd2, res) = DenseOrSparsePolynomial::divide_with_q_and_r(
                 &z_minus_1.into(),
                 &denominator.into(),
             )
-            .map_or(Err(ProofError::Permutation("second division")), Ok)?;
+            .map_or(Err(ProverError::Permutation("second division")), Ok)?;
             if !res.is_zero() {
-                return Err(ProofError::Permutation("second division rest"));
+                return Err(ProverError::Permutation("second division rest"));
             }
 
             &bnd1.scale(alpha1) + &bnd2.scale(alpha2)
@@ -296,8 +370,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         beta: &F,
         gamma: &F,
         rng: &mut (impl RngCore + CryptoRng),
-    ) -> Result<DensePolynomial<F>, ProofError> {
-        let n = self.domain.d1.size as usize;
+    ) -> Result<DensePolynomial<F>, ProverError> {
+        let n = self.domain.d1.size();
 
         // only works if first element is 1
         assert_eq!(self.domain.d1.elements().next(), Some(F::one()));
@@ -366,7 +440,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         //~ If computed correctly, we should have $z(g^{n-3}) = 1$.
         //~
         if z[n - 3] != F::one() {
-            return Err(ProofError::Permutation("final value"));
+            return Err(ProverError::Permutation("final value"));
         };
 
         //~ Finally, randomize the last `EVAL_POINTS` evaluations $z(g^{n-2})$ and $z(g^{n-1})$,

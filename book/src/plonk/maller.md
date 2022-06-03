@@ -21,7 +21,7 @@ $$\forall x \in \mathbb{F}, \; h_1(x)h_2(x) - h_3(x) = 0$$
 
 given commitments of $h_1, h_2, h_3$, 
 
-![maller 1](../../img/maller_1.png)
+![maller 1](../img/maller_1.png)
 
 <!--
 //replace -\- with --:
@@ -43,7 +43,7 @@ $$ \forall x \in \mathbb{F}, \; L(x) = h_1(s)h_2(x) - h_3(x) = 0$$
 
 given commitments of $h_1, h_2, h_3$ and evaluation of $h1$ at a point $s$.
 
-![maller 2](../../img/maller_2.png)
+![maller 2](../img/maller_2.png)
 
 <!--
 //replace -\- with --:
@@ -68,7 +68,7 @@ $$L'(x) = h_1(x)h_2(x) - h_3(x)$$
 
 By doing
 
-![maller 3](../../img/maller_3.png)
+![maller 3](../img/maller_3.png)
 
 <!--
 ```sequence

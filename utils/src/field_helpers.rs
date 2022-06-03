@@ -1,4 +1,5 @@
-use ark_ff::{Field, PrimeField};
+use ark_ff::{BigInteger, Field, FpParameters, PrimeField};
+use num_bigint::BigUint;
 use std::ops::Neg;
 use thiserror::Error;
 
@@ -13,11 +14,12 @@ pub enum FieldHelpersError {
 pub type Result<T> = std::result::Result<T, FieldHelpersError>;
 
 /// Field element helpers
+///   Unless otherwise stated everything is in little-endian byte order.
 pub trait FieldHelpers<F> {
     /// Deserialize from bytes
     fn from_bytes(bytes: &[u8]) -> Result<F>;
 
-    /// Deserialize from hex
+    /// Deserialize from little-endian hex
     fn from_hex(hex: &str) -> Result<F>;
 
     /// Deserialize from bits
@@ -38,6 +40,14 @@ pub trait FieldHelpers<F> {
         F: PrimeField,
     {
         F::size_in_bits() / 8 + (F::size_in_bits() % 8 != 0) as usize
+    }
+
+    /// Get the modulus as `BigUint`
+    fn modulus_biguint() -> BigUint
+    where
+        F: PrimeField,
+    {
+        BigUint::from_bytes_le(&F::Params::MODULUS.to_bytes_le())
     }
 }
 

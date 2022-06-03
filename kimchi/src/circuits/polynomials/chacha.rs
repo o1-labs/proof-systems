@@ -551,6 +551,7 @@ mod tests {
                     .collect(),
                 aggreg: F::rand(rng),
                 table: F::rand(rng),
+                runtime: None,
             }),
         };
         let evals = vec![eval(), eval()];
@@ -559,7 +560,7 @@ mod tests {
             alpha: F::rand(rng),
             beta: F::rand(rng),
             gamma: F::rand(rng),
-            joint_combiner: F::rand(rng),
+            joint_combiner: None,
             endo_coefficient: F::zero(),
             mds: vec![],
         };
