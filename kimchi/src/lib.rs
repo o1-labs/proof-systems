@@ -3,6 +3,12 @@
 #[macro_use]
 extern crate num_derive;
 
+pub use crate::circuits::{
+    constraints::ConstraintSystem,
+    gate::{CircuitGate, GateType},
+    polynomials::generic::GenericGateSpec,
+    wires::Wire,
+};
 pub use cairo::{CairoInstruction, CairoMemory, CairoProgram, FlagBits, Offsets, Pointers};
 pub use commitment_dlog::{
     commitment::{
@@ -24,6 +30,7 @@ pub use o1_utils::{
 };
 pub use oracle::{
     constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
+    pasta::fp_kimchi::*,
     poseidon::{sbox, ArithmeticSponge, ArithmeticSpongeParams, Sponge},
     sponge::{DefaultFqSponge, DefaultFrSponge, FqSponge, ScalarChallenge},
 };
