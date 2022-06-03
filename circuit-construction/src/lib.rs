@@ -13,7 +13,7 @@ use kimchi::circuits::{
 use kimchi::{plonk_sponge::FrSponge, proof::ProverProof, prover_index::ProverIndex};
 use mina_curves::pasta::{fp::Fp, fq::Fq, pallas::Affine as Other, vesta::Affine};
 use oracle::{constants::*, permutation::full_round, poseidon::ArithmeticSpongeParams, FqSponge};
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, ops::Add, rc::Rc};
 
 pub const GENERICS: usize = 3;
 pub const ZK_ROWS: usize = kimchi::circuits::polynomials::permutation::ZK_ROWS as usize;
@@ -1138,5 +1138,39 @@ pub trait CoordinateCurve: AffineCurve {
 impl<G: CommitmentCurve> CoordinateCurve for G {
     fn to_coords(&self) -> Option<(Self::BaseField, Self::BaseField)> {
         CommitmentCurve::to_coordinates(self)
+    }
+}
+
+impl<Sys, F> Add<Var<Sys, F>> for Var<Sys, F>
+where
+    Sys: Cs<F>,
+    F: PrimeField,
+{
+    type Output = Self;
+
+    fn add(self, rhs: Var<Sys, F>) -> Self::Output {
+        let res = self.sys.var(|| self.val() + rhs.val());
+        let row = array_init(|i| {
+            if i == 0 {
+                self.clone()
+            } else if i == 1 {
+                rhs.clone()
+            } else if i == 2 {
+                res.clone()
+            } else {
+                self.sys.var(|| F::zero())
+            }
+        });
+
+        let mut coeffs = vec![F::zero(); GENERIC_ROW_COEFFS];
+        coeffs[0] = F::one();
+        coeffs[1] = F::one();
+        coeffs[2] = -F::one();
+        self.sys.gate(GateSpec {
+            typ: GateType::Generic,
+            row,
+            coeffs,
+        });
+        res
     }
 }
