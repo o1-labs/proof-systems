@@ -10,6 +10,6 @@ pub mod memory;
 pub mod runner;
 pub mod word;
 
-pub use memory::CairoMemory;
-pub use runner::{CairoInstruction, CairoProgram, Pointers};
-pub use word::{FlagBits, Offsets};
+pub use crate::memory::CairoMemory;
+pub use crate::runner::{CairoInstruction, CairoProgram, Pointers};
+pub use crate::word::{FlagBits, Offsets};
