@@ -238,6 +238,7 @@ impl<G: CommitmentCurve> VerifierIndex<G>
 where
     G::BaseField: PrimeField,
 {
+    /// Gets srs from [VerifierIndex] lazily
     pub fn srs(&self) -> &Arc<SRS<G>> {
         self.srs.get_or_init(|| {
             let mut srs = SRS::<G>::create(self.max_poly_size);
