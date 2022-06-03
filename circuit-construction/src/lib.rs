@@ -15,6 +15,9 @@ use mina_curves::pasta::{fp::Fp, fq::Fq, pallas::Affine as Other, vesta::Affine}
 use oracle::{constants::*, permutation::full_round, poseidon::ArithmeticSpongeParams, FqSponge};
 use std::{cell::RefCell, collections::HashMap, ops::Add, rc::Rc};
 
+#[cfg(test)]
+mod tests;
+
 pub const GENERICS: usize = 3;
 pub const ZK_ROWS: usize = kimchi::circuits::polynomials::permutation::ZK_ROWS as usize;
 
