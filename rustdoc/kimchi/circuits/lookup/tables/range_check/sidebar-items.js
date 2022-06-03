@@ -1,0 +1,1 @@
+initSidebarItems({"constant":[["RANGE_CHECK_UPPERBOUND","The range check will be performed on 12-bit values, i.e. those in `[0, 2^12]`"]],"fn":[["range_check_table","A single-column table containing the numbers from 0 to [RANGE_CHECK_UPPERBOUND] (inclusive)"]]});

@@ -3491,6 +3491,9 @@ From the user’s perspective, not using any gates that make use of lookups mean
 <p>Kimchi currently supports a single lookup table:</p>
 <pre><code class="language-rs">/// The table ID associated with the XOR lookup table.
 pub const XOR_TABLE_ID: i32 = 0;
+
+/// The range check table ID.
+pub const RANGE_CHECK_TABLE_ID: i32 = 1;
 </code></pre>
 <p><strong>XOR</strong>. The lookup table for 4-bit xor.
 Note that it is constructed so that <code>(0, 0, 0)</code> is the last position in the table.</p>

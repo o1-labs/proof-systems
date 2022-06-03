@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["FieldHelpersError",""]],"fn":[["i32_to_field",""]],"trait":[["FieldHelpers","Field element helpers"]],"type":[["Result",""]]});
+initSidebarItems({"enum":[["FieldHelpersError",""]],"fn":[["i32_to_field",""]],"trait":[["FieldHelpers","Field element helpers Unless otherwise stated everything is in little-endian byte order."]],"type":[["Result",""]]});

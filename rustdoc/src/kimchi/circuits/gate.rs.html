@@ -328,6 +328,7 @@
 <span id="321">321</span>
 <span id="322">322</span>
 <span id="323">323</span>
+<span id="324">324</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk constraint gate primitive.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{<span class="ident">constraints::ConstraintSystem</span>, <span class="ident">wires</span>::<span class="kw-2">*</span>};
@@ -422,7 +423,6 @@
     <span class="comment">// Range check (16-24)</span>
     <span class="ident">RangeCheck0</span> <span class="op">=</span> <span class="number">16</span>,
     <span class="ident">RangeCheck1</span> <span class="op">=</span> <span class="number">17</span>,
-    <span class="ident">RangeCheck2</span> <span class="op">=</span> <span class="number">18</span>,
 }
 
 <span class="attribute">#[<span class="ident">serde_as</span>]</span>
@@ -490,7 +490,9 @@
             <span class="ident">CairoClaim</span> <span class="op">|</span> <span class="ident">CairoInstruction</span> <span class="op">|</span> <span class="ident">CairoFlags</span> <span class="op">|</span> <span class="ident">CairoTransition</span> =&gt; {
                 <span class="self">self</span>.<span class="ident">verify_cairo_gate</span>(<span class="ident">row</span>, <span class="ident">witness</span>, <span class="ident">cs</span>)
             }
-            <span class="ident">RangeCheck0</span> <span class="op">|</span> <span class="ident">RangeCheck1</span> <span class="op">|</span> <span class="ident">RangeCheck2</span> =&gt; <span class="self">self</span>.<span class="ident">verify_range_check</span>(<span class="ident">row</span>, <span class="ident">witness</span>, <span class="ident">cs</span>),
+            <span class="ident">RangeCheck0</span> <span class="op">|</span> <span class="ident">RangeCheck1</span> =&gt; <span class="self">self</span>
+                .<span class="ident">verify_range_check</span>(<span class="ident">row</span>, <span class="ident">witness</span>, <span class="ident">cs</span>)
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">to_string</span>()),
         }
     }
 }
@@ -652,5 +654,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (12cd71f4d 2022-06-01)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (e71440575 2022-06-02)" ></div>
 </body></html>
