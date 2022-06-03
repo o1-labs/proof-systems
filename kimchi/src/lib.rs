@@ -3,13 +3,13 @@
 #[macro_use]
 extern crate num_derive;
 
-pub use crate::circuits::{
+pub use cairo::{CairoInstruction, CairoMemory, CairoProgram, FlagBits, Offsets, Pointers};
+pub use circuits::{
     constraints::ConstraintSystem,
     gate::{CircuitGate, GateType},
     polynomials::generic::GenericGateSpec,
     wires::Wire,
 };
-pub use cairo::{CairoInstruction, CairoMemory, CairoProgram, FlagBits, Offsets, Pointers};
 pub use commitment_dlog::{
     commitment::{
         b_poly, b_poly_coefficients, combined_inner_product, BatchEvaluationProof, CommitmentCurve,
