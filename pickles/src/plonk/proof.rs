@@ -9,7 +9,7 @@ use circuit_construction::{Cs, Var};
 
 use super::{Proof, CHALLENGE_LEN, COLUMNS, PERMUTS, SELECTORS};
 
-use crate::context::{Context, Passable};
+use crate::context::{Context, Bounded};
 use crate::transcript::{Absorb, Challenge, Msg, VarSponge};
 
 pub struct VarPoint<A>
@@ -43,12 +43,22 @@ where
     chunks: [VarPoint<A>; N],
 }
 
+pub struct Domain<A> 
+where
+    A: AffineCurve,
+    A::BaseField: FftField + PrimeField,
+{
+    pub group_gen: Var<A::ScalarField>, // change
+}
 
 pub struct VarIndex<A>
 where
     A: AffineCurve,
     A::BaseField: FftField + PrimeField,
 {
+    pub domain: Domain<A>,
+    pub max_poly_size: usize,
+
     _ph: PhantomData<A>,
     pub q: [VarPolyComm<A, 1>; SELECTORS], // commits to selector polynomials
 }
@@ -63,32 +73,74 @@ where
     }
 }
 
+/// All the commitments included in a PlonK/Kimchi proof.
+/// 
+/// D: the max degree of any row constraint.
 pub struct VarCommitments<A>
 where
     A: AffineCurve,
     A::BaseField: FftField + PrimeField,
 {
     /// The commitments to the witness (execution trace)
-    /// (1 chunk)
+    /// (always 1 chunk)
     pub w_comm: Msg<[VarPolyComm<A, 1>; COLUMNS]>,
 
     /// The commitment to the permutation polynomial
-    /// (1 chunk)
+    /// (always 1 chunk)
     pub z_comm: Msg<VarPolyComm<A, 1>>,
 
     /// The commitment to the quotient polynomial
-    /// (3 chunks; see PlonK paper for details)
-    pub t_comm: Msg<VarPolyComm<A, 3>>,
+    /// (is the max degree of any row constraint; 3 for vanilla PlonK)
+    pub t_comm: Msg<VarPolyComm<A, PERMUTS>>,
 }
 
 /// A opening of a chunked polynomial
 ///
 /// The least significant chunk is first.
 pub struct VarOpen<F: FftField + PrimeField, const C: usize> {
-    chunks: [Var<F>; C],
+    pub(super) chunks: [Var<F>; C],
+}
+
+impl <F: FftField + PrimeField, const C: usize> AsRef<[Var<F>]> for VarOpen<F, C>{
+    fn as_ref(&self) -> &[Var<F>] {
+        &self.chunks
+    }
+}
+
+trait VarO<F: FftField + PrimeField> {
+    fn chunks(&self) -> &[Var<F>];
+
+}
+
+/// Add constraints for evaluating a polynomial
+/// 
+/// coeffs are the coefficients from least significant to most significant
+/// (e.g. starting with the constant term)
+pub fn eval_polynomial<F: FftField + PrimeField, C: Cs<F>>(
+    cs: &mut C, 
+    coeffs: &[Var<F>],
+    x: Var<F>,
+) -> Var<F> {
+    // iterate over coefficients:
+    // most-to-least significant
+    let mut chk = coeffs.iter().rev().cloned();
+
+    // the initial sum is the most significant term
+    let mut sum = chk.next().expect("zero chunks in poly.");
+
+    // shift by pt and add next chunk
+    for c in chk {
+        sum = cs.mul(sum, x.clone());
+        sum = cs.add(sum, c);
+    }
+
+    sum
 }
 
 impl<F: FftField + PrimeField, const N: usize> VarOpen<F, N> {
+    /// Combines the evaluation chunks f_0(x), f_1(m), ..., f_m(x) to a single evaluation
+    /// f(x) = f_0(x) + x^N f_1(x) + ... + x^{m N} f_m(x)
+    /// 
     /// pt is zeta^max_degree
     fn combine<C: Cs<F>>(&self, cs: &mut C, pt: Var<F>) -> Var<F> {
         // iterate over coefficients:
@@ -150,11 +202,8 @@ pub struct VarEvaluation<F: FftField + PrimeField> {
     pub poseidon_selector: VarOpen<F, 1>,
 }
 
-// DISCUSS: I would really like to #[derieve(Absorb)] this,
-// but it means settling on an order which is the same as in the struct!
-impl<F: FftField + PrimeField> Absorb<F> for VarEvaluation<F> {
-    fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut VarSponge<F>) {
-        // concatenate
+impl<F: FftField + PrimeField> VarEvaluation<F> {
+    pub fn iter(&self) -> impl Iterator<Item = &VarOpen<F, 1>> {
         let points = iter::empty()
             .chain(iter::once(&self.z))
             .chain(iter::once(&self.generic_selector))
@@ -162,8 +211,13 @@ impl<F: FftField + PrimeField> Absorb<F> for VarEvaluation<F> {
             .chain(self.w.iter())
             .chain(self.s.iter());
 
-        // absorb in order
-        points.for_each(|p| sponge.absorb(cs, p));
+        points
+    }
+}
+
+impl<F: FftField + PrimeField> Absorb<F> for VarEvaluation<F> {
+    fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut VarSponge<F>) {
+        self.iter().for_each(|p| sponge.absorb(cs, p));
     }
 }
 
@@ -204,16 +258,31 @@ where
     }
 }
 
+/// A collection of CHALLENGE_LEN bits 
+/// (represented over the given field)
 pub struct ScalarChallenge<F: FftField + PrimeField> {
     challenge: Var<F>,
 }
 
-impl<F: FftField + PrimeField> Passable<F> for ScalarChallenge<F> {
+impl <F: FftField + PrimeField> From<Var<F>> for ScalarChallenge<F> {
+    fn from(v: Var<F>) -> Self {
+        Self {
+            challenge: v
+        }
+    }
+}
+
+impl<F: FftField + PrimeField> Bounded<F> for ScalarChallenge<F> {
     const SIZE: usize = CHALLENGE_LEN;
 }
 
-impl<F: FftField + PrimeField> Passable<F> for Var<F> {
-    const SIZE: usize = F::Params::MODULUS_BITS as usize;
+impl<F: FftField + PrimeField> From<(Var<F>, Option<Var<F>>)> for ScalarChallenge<F> {
+    fn from(t: (Var<F>, Option<Var<F>>)) -> Self {
+        assert!(t.1.is_none());
+        Self {
+            challenge: t.0
+        }
+    }
 }
 
 impl<F: FftField + PrimeField> Into<Var<F>> for ScalarChallenge<F> {
@@ -240,6 +309,7 @@ impl<F: FftField + PrimeField> Challenge<F> for ScalarChallenge<F> {
         ScalarChallenge { challenge }
     }
 }
+
 
 impl<Fp: FftField + PrimeField> ScalarChallenge<Fp> {
     pub fn to_field<Fr, CsFp, CsFr>(&self, ctx: &mut Context<Fp, Fr, CsFp, CsFr>) -> Var<Fp>

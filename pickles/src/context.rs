@@ -101,8 +101,10 @@ where
     }
 }
 
-pub trait Passable<F: FftField + PrimeField>: Into<Var<F>> {
-    const SIZE: usize; // default is full field size
+/// A variable of bounded size
+/// 
+pub trait Bounded<F: FftField + PrimeField>: Into<Var<F>> + From<(Var<F>, Option<Var<F>>)> {
+    const SIZE: usize;
 }
 
 impl<Fp, CsFp> AsRef<Side<Fp, CsFp>> for Option<Side<Fp, CsFp>>
@@ -158,15 +160,18 @@ where
         }
     }
 
-    /// Pass through a variable
-    ///
-    /// QUESTION: is the untruncated version used anywhere?
+    /// Pass through a type (representable as a variable) of bounded size
+    /// (adding it to the statement on both sides)
     #[must_use]
-    pub fn pass<P: Passable<Fp>>(&mut self, val: P) -> (Var<Fr>, Option<Var<Fr>>) {
+    pub fn pass<F: Bounded<Fp>, T: Bounded<Fr>>(&mut self, val: F) -> T {
+        // idearly we would be able to check this at compile time!
+        assert!(T::SIZE >= F::SIZE, "we can only pass to a looser/equal bound!");
+
+        // covert to variable
         let var: Var<Fp> = val.into();
 
         // add to public inputs
-        self.fp.public.push(Public { size: P::SIZE, var });
+        self.fp.public.push(Public { size: F::SIZE, var });
 
         // converts a slice of bits (minimal representative) to a field element
         fn from_bits<F: FftField + PrimeField>(bits: &[bool]) -> F {
@@ -179,7 +184,7 @@ where
         // 2. the Fp size is greater/equal than Fr
         let mut split = true;
         split &= Fr::Params::MODULUS.into() < Fp::Params::MODULUS.into();
-        split &= Fp::Params::MODULUS_BITS < (P::SIZE as u32);
+        split &= Fp::Params::MODULUS_BITS < (F::SIZE as u32);
 
         // convert the witness to a vec of bits
         let bits = var.value.map(|v| v.into_repr().to_bits_le());
@@ -197,17 +202,11 @@ where
             (
                 self.fr.cs.var(|| decm.unwrap().0),
                 Some(self.fr.cs.var(|| decm.unwrap().1)),
-            )
+            ).into()
         } else {
             // fit everything in high
-            (self.fr.cs.var(|| from_bits(&bits.unwrap()[..])), None)
+            (self.fr.cs.var(|| from_bits(&bits.unwrap()[..])), None).into()
         }
-    }
-
-    pub fn pass_fits<P: Passable<Fp>>(&mut self, val: P) -> Var<Fr> {
-        let (high, low) = self.pass(val);
-        assert!(low.is_none(), "does not fit, use '.pass' instead");
-        high
     }
 
     pub fn cs(&mut self) -> &mut CsFp {
@@ -247,5 +246,11 @@ where
         // return to original
         self.inner = Some(flipped.inner.unwrap().flipped());
         res
+    }
+
+    pub fn flipped(self) -> Context<Fr, Fp, CsFr, CsFp> {
+        Context{
+            inner: Some(self.inner.unwrap().flipped())
+        }
     }
 }

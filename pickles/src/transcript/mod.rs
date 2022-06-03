@@ -16,51 +16,6 @@ use std::marker::PhantomData;
 
 use utils::{decompose, lift, need_decompose, transfer_hash};
 
-/// Defered hash transcript
-///
-///
-/// # Dealing with Fr elements
-///
-/// A fresh sponge is initialized on the complement side:
-///
-/// The intermediate digest value is then
-/// provided as part of the statement on the current side:
-///  
-/// Schematically it looks something like this:
-///
-/// ```
-/// On current side:
-///
-///   transcript, h1, h2, transcript_new (statement)
-///       |       |   |        |
-/// m1 -> H       |   |        |
-///       |       |   |        |
-///       H <-----/   |        |
-///       |           |        |
-/// c1 <- H (squeeze) |        |
-///       |           |        |
-/// m2 -> H           |        |
-///       |           |        |
-///       H <---------/        |
-///       |                    |
-///       \---------------------
-///
-/// On complement side:
-///
-///                        h1
-///                         ^
-///     a, b, c -> H        |
-///                |        |
-///     a * b = c  |        |
-///                \--------/
-///     
-///
-///
-/// ```
-///
-///
-/// Include the final hash state in the statement of the
-
 struct Public<F: FftField + PrimeField> {
     var: Var<F>,
     size: usize,
