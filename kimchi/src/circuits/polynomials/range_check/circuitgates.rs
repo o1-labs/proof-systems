@@ -3,8 +3,9 @@
 ///
 ///    The range check gate is comprised of three circuit gates (RangeCheck0, RangeCheck1
 ///    and Zero) and can perform range checks on up to three 88-bit values: v0, v1 and v2.
+///    Each value is in little-endian byte order.
 ///
-///    The values are decomposed into limbs follows.
+///    The values are decomposed into limbs as follows.
 ///
 ///    L is a 12-bit lookup limb,
 ///    C is a 2-bit "crumb" limb.
