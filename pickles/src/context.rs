@@ -102,7 +102,7 @@ where
 }
 
 /// A variable of bounded size
-/// 
+///
 pub trait Bounded<F: FftField + PrimeField>: Into<Var<F>> + From<(Var<F>, Option<Var<F>>)> {
     const SIZE: usize;
 }
@@ -165,7 +165,10 @@ where
     #[must_use]
     pub fn pass<F: Bounded<Fp>, T: Bounded<Fr>>(&mut self, val: F) -> T {
         // idearly we would be able to check this at compile time!
-        assert!(T::SIZE >= F::SIZE, "we can only pass to a looser/equal bound!");
+        assert!(
+            T::SIZE >= F::SIZE,
+            "we can only pass to a looser/equal bound!"
+        );
 
         // covert to variable
         let var: Var<Fp> = val.into();
@@ -202,7 +205,8 @@ where
             (
                 self.fr.cs.var(|| decm.unwrap().0),
                 Some(self.fr.cs.var(|| decm.unwrap().1)),
-            ).into()
+            )
+                .into()
         } else {
             // fit everything in high
             (self.fr.cs.var(|| from_bits(&bits.unwrap()[..])), None).into()
@@ -249,8 +253,8 @@ where
     }
 
     pub fn flipped(self) -> Context<Fr, Fp, CsFr, CsFp> {
-        Context{
-            inner: Some(self.inner.unwrap().flipped())
+        Context {
+            inner: Some(self.inner.unwrap().flipped()),
         }
     }
 }

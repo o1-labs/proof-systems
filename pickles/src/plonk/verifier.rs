@@ -1,28 +1,30 @@
-use super::{Proof};
+use super::Proof;
 
 use std::iter;
 
 use circuit_construction::{Constants, Cs, Var};
 
 use ark_ec::AffineCurve;
-use ark_ff::{FftField, Zero, One, PrimeField};
+use ark_ff::{FftField, One, PrimeField, Zero};
 
-use crate::context::{Context};
+use crate::context::Context;
+use crate::plonk::proof::{
+    eval_polynomial, ScalarChallenge, VarIndex, VarOpen, VarPolyComm, VarProof,
+};
 use crate::transcript::{Arthur, Msg};
-use crate::plonk::proof::{VarProof, VarOpen, eval_polynomial, ScalarChallenge, VarPolyComm, VarIndex};
 
 ///
 /// N: number of chunks in polynomial
-/// 
+///
 /// - evaluations: (x, () )
-fn combined_inner_product<'a, F, C: Cs<F>, I, const N: usize>(
+fn combined_inner_product<'a, F, C: Cs<F>, const N: usize>(
     cs: &mut C,
-    evaluations: I, // evaluation point and openings
-    xi: Var<F>, // combinations at powers of x
-    r: Var<F>, // new evaluation point
-) -> Var<F> where
+    evaluations: &[(Var<F>, Vec<VarOpen<F, N>>)], // evaluation point and openings
+    xi: Var<F>,                                   // combinations at powers of x
+    r: Var<F>,                                    // new evaluation point
+) -> Var<F>
+where
     F: FftField + PrimeField,
-    I: Iterator<Item = (Var<F>, Vec<VarOpen<F, N>>)>,
 {
     // accumulated sum: \sum_{j=0} xi^j * term_j
     let mut res = cs.constant(F::zero());
@@ -35,7 +37,7 @@ fn combined_inner_product<'a, F, C: Cs<F>, I, const N: usize>(
         for i in 0..N {
             // take the i'th chunk from each polynomial
             let chunks: Vec<Var<F>> = polys.iter().map(|p| p.chunks[i]).collect();
-            
+
             // evaluate the polynomial with the chunks as coefficients
             let term: Var<F> = eval_polynomial(cs, &chunks, r);
 
@@ -47,7 +49,7 @@ fn combined_inner_product<'a, F, C: Cs<F>, I, const N: usize>(
             xi_i = cs.mul(xi_i, xi);
 
             // QUESTION: the shifting does not seem to be used
-            // do we need it? It adds complexity and constraints particularly 
+            // do we need it? It adds complexity and constraints particularly
             // in the circuit where we need to add a circuit for computing the shift
         }
     }
@@ -55,23 +57,23 @@ fn combined_inner_product<'a, F, C: Cs<F>, I, const N: usize>(
     res
 }
 
-
-
-impl <G> VarIndex<G> where
+impl<G> VarIndex<G>
+where
     G: AffineCurve,
-    G::BaseField: FftField + PrimeField {
-
+    G::BaseField: FftField + PrimeField,
+{
     /// Takes a mutual context with the base-field of the Plonk proof as the "native field"
     /// and generates Fp (base field) and Fr (scalar field)
     /// constraints for the verification of the proof.
     ///
+    /// The goal is for this method to look as much as the "clear verifier" in Kimchi.
     ///
     fn verify<CsFp, CsFr, C, T>(
         &self,
         // ctx: &mut MutualContext<A::BaseField, A::ScalarField, CsFp, CsFr>,
         ctx: &mut Context<G::BaseField, G::ScalarField, CsFp, CsFr>,
-        p_comm: Msg<VarPolyComm<G, 1>>,  // commitment to public input
-        witness: Option<Proof<G>>, // witness (a PlonK proof)
+        p_comm: Msg<VarPolyComm<G, 1>>, // commitment to public input
+        witness: Option<Proof<G>>,      // witness (a PlonK proof)
     ) where
         CsFp: Cs<G::BaseField>,
         CsFr: Cs<G::ScalarField>,
@@ -122,11 +124,11 @@ impl <G> VarIndex<G> where
         //~ 15. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
         let zeta: ScalarChallenge<G::ScalarField> = ctx.pass(zeta_chal);
         let zeta: Var<G::ScalarField> = ctx.flip(|ctx| zeta.to_field(ctx));
-        
+
         //~ 18. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
         //~     NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
         //~     Absorb over the foreign field
-      
+
         // Enforce constraints on other side
         let (evals, ft_eval, v_chal, v) = ctx.flip(|ctx| {
             tx.flip(|tx| {
@@ -140,7 +142,7 @@ impl <G> VarIndex<G> where
                 let evals = tx.recv(ctx, proof.evals);
 
                 //~ 20. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
-                let ft_eval = tx.recv(ctx, proof.ft_eval1);
+                let ft_eval1 = tx.recv(ctx, proof.ft_eval1);
 
                 //~ 21. Sample $v'$ with the Fr-Sponge.
                 let v_chal: ScalarChallenge<G::ScalarField> = tx.challenge(ctx);
@@ -152,41 +154,49 @@ impl <G> VarIndex<G> where
                 let u_chal: ScalarChallenge<G::ScalarField> = tx.challenge(ctx);
 
                 //~ 24. Derive $u$ from $u'$ using the endomorphism (TODO: specify).
-                let u = u_chal.to_field(ctx);    
-                
+                let u = u_chal.to_field(ctx);
+
                 // prepare some often used values
                 let zetaw = ctx.mul(zeta, self.domain.group_gen);
-                
+
                 //~ 25. Create a list of all polynomials that have an evaluation proof.
                 let powers_of_eval_points_for_chunks = [
                     ctx.pow(zeta, self.max_poly_size as u64),
                     ctx.pow(zetaw, self.max_poly_size as u64),
                 ];
 
+                // compute ft_eval0 (from gate/row constraints)
+                let ft_eval0 = unimplemented!();
+
+                // compute the combined inner product:
+                // the batching of all the openings
                 let combined_inner_product = {
+                    // evaluations at \zeta
+                    let polys_z = iter::empty()
+                        .chain(unimplemented!()) // prev_challenges
+                        .chain(iter::once(&ft_eval0)) // ft_eval0
+                        .chain(evals.z.iter());
 
-                    // first the evaluations from the accumulator
-                    let polys = iter::empty();
+                    // evaluations at \zeta \omega
+                    let polys_zw = iter::empty()
+                        .chain(unimplemented!()) // prev_challenges
+                        .chain(iter::once(&ft_eval1)) // ft_eval1
+                        .chain(evals.zw.iter());
 
-                    // then the ft evaluations
-                    let polys = polys.chain(iter::empty());
-
-                    // lastly evaluations from the proof
-                    let polys = polys.chain(evals.z.iter());
-                   
-                    
-
-                    
-
-                    // combined_inner_product(ctx.cs(), unimplemented!(), v, u)
+                    // combine with xi = v, r = u
+                    combined_inner_product(
+                        ctx.cs(),
+                        vec![
+                            (zeta, polys_z.cloned().collect()),
+                            (zetaw, polys_zw.cloned().collect()),
+                        ],
+                        v, // xi
+                        u, // r
+                    )
                 };
 
-
-                // aggregate_inner_product::<G>(v_chal, u);
-
-                (evals, ft_eval, v_chal, v)
+                (evals, ft_eval0, v_chal, v)
             })
         });
     }
 }
-

@@ -9,7 +9,7 @@ use circuit_construction::{Cs, Var};
 
 use super::{Proof, CHALLENGE_LEN, COLUMNS, PERMUTS, SELECTORS};
 
-use crate::context::{Context, Bounded};
+use crate::context::{Bounded, Context};
 use crate::transcript::{Absorb, Challenge, Msg, VarSponge};
 
 pub struct VarPoint<A>
@@ -33,7 +33,7 @@ where
     }
 }
 
-/// A commitment to a polynomial 
+/// A commitment to a polynomial
 /// with a given number of chunks
 pub struct VarPolyComm<A, const N: usize>
 where
@@ -43,7 +43,7 @@ where
     chunks: [VarPoint<A>; N],
 }
 
-pub struct Domain<A> 
+pub struct Domain<A>
 where
     A: AffineCurve,
     A::BaseField: FftField + PrimeField,
@@ -74,7 +74,7 @@ where
 }
 
 /// All the commitments included in a PlonK/Kimchi proof.
-/// 
+///
 /// D: the max degree of any row constraint.
 pub struct VarCommitments<A>
 where
@@ -97,27 +97,23 @@ where
 /// A opening of a chunked polynomial
 ///
 /// The least significant chunk is first.
+#[derive(Clone)]
 pub struct VarOpen<F: FftField + PrimeField, const C: usize> {
     pub(super) chunks: [Var<F>; C],
 }
 
-impl <F: FftField + PrimeField, const C: usize> AsRef<[Var<F>]> for VarOpen<F, C>{
+impl<F: FftField + PrimeField, const C: usize> AsRef<[Var<F>]> for VarOpen<F, C> {
     fn as_ref(&self) -> &[Var<F>] {
         &self.chunks
     }
 }
 
-trait VarO<F: FftField + PrimeField> {
-    fn chunks(&self) -> &[Var<F>];
-
-}
-
 /// Add constraints for evaluating a polynomial
-/// 
+///
 /// coeffs are the coefficients from least significant to most significant
 /// (e.g. starting with the constant term)
 pub fn eval_polynomial<F: FftField + PrimeField, C: Cs<F>>(
-    cs: &mut C, 
+    cs: &mut C,
     coeffs: &[Var<F>],
     x: Var<F>,
 ) -> Var<F> {
@@ -140,7 +136,7 @@ pub fn eval_polynomial<F: FftField + PrimeField, C: Cs<F>>(
 impl<F: FftField + PrimeField, const N: usize> VarOpen<F, N> {
     /// Combines the evaluation chunks f_0(x), f_1(m), ..., f_m(x) to a single evaluation
     /// f(x) = f_0(x) + x^N f_1(x) + ... + x^{m N} f_m(x)
-    /// 
+    ///
     /// pt is zeta^max_degree
     fn combine<C: Cs<F>>(&self, cs: &mut C, pt: Var<F>) -> Var<F> {
         // iterate over coefficients:
@@ -203,15 +199,16 @@ pub struct VarEvaluation<F: FftField + PrimeField> {
 }
 
 impl<F: FftField + PrimeField> VarEvaluation<F> {
+    /// Iterate over the evaluations in the order used by both:
+    /// - The combined inner product
+    /// - When absorbing the evaluations in the transcript.
     pub fn iter(&self) -> impl Iterator<Item = &VarOpen<F, 1>> {
-        let points = iter::empty()
+        iter::empty()
             .chain(iter::once(&self.z))
             .chain(iter::once(&self.generic_selector))
             .chain(iter::once(&self.poseidon_selector))
             .chain(self.w.iter())
-            .chain(self.s.iter());
-
-        points
+            .chain(self.s.iter())
     }
 }
 
@@ -244,7 +241,7 @@ where
 {
     _ph: PhantomData<A>,
     pub commitments: VarCommitments<A>,
-    pub ft_eval1: Msg<Var<A::ScalarField>>,
+    pub ft_eval1: Msg<VarOpen<A::ScalarField, 1>>, // THIS MUST BE INCLUDED IN PUBLIC INPUT!
     pub evals: Msg<VarEvaluations<A::ScalarField>>,
 }
 
@@ -258,17 +255,15 @@ where
     }
 }
 
-/// A collection of CHALLENGE_LEN bits 
+/// A collection of CHALLENGE_LEN bits
 /// (represented over the given field)
 pub struct ScalarChallenge<F: FftField + PrimeField> {
     challenge: Var<F>,
 }
 
-impl <F: FftField + PrimeField> From<Var<F>> for ScalarChallenge<F> {
+impl<F: FftField + PrimeField> From<Var<F>> for ScalarChallenge<F> {
     fn from(v: Var<F>) -> Self {
-        Self {
-            challenge: v
-        }
+        Self { challenge: v }
     }
 }
 
@@ -279,9 +274,7 @@ impl<F: FftField + PrimeField> Bounded<F> for ScalarChallenge<F> {
 impl<F: FftField + PrimeField> From<(Var<F>, Option<Var<F>>)> for ScalarChallenge<F> {
     fn from(t: (Var<F>, Option<Var<F>>)) -> Self {
         assert!(t.1.is_none());
-        Self {
-            challenge: t.0
-        }
+        Self { challenge: t.0 }
     }
 }
 
@@ -309,7 +302,6 @@ impl<F: FftField + PrimeField> Challenge<F> for ScalarChallenge<F> {
         ScalarChallenge { challenge }
     }
 }
-
 
 impl<Fp: FftField + PrimeField> ScalarChallenge<Fp> {
     pub fn to_field<Fr, CsFp, CsFr>(&self, ctx: &mut Context<Fp, Fr, CsFp, CsFr>) -> Var<Fp>
