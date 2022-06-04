@@ -60,5 +60,6 @@
 - [Polynomial commitment](./specs/poly-commitment.md)
 - [Pasta curves](./specs/pasta.md)
 - [Kimchi](./specs/kimchi.md)
+- [Universal Reference String (URS)](./specs/urs.md)
 - [Pickles](./specs/pickles.md)
 - [Consensus](./specs/consensus.md)
