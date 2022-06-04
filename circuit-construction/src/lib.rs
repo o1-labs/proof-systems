@@ -186,7 +186,7 @@ pub trait Cs<F: PrimeField>: Sized + Clone {
     /// and can be anything that the prover wants.
     /// For example, division can be implemented as:
     ///
-    /// ```
+    /// ```ignore
     /// let a = sys.constant(5u32.into());
     /// let b = sys.constant(10u32.into());
     /// let c = sys.var(|| {
@@ -892,7 +892,7 @@ pub trait Cs<F: PrimeField>: Sized + Clone {
     }
 }
 
-impl<F: FftField + PrimeField> Cs<F> for Ref<WitnessGenerator<F>> {
+impl<F: PrimeField> Cs<F> for Ref<WitnessGenerator<F>> {
     fn var<G>(&self, g: G) -> Var<Self, F>
     where
         G: FnOnce() -> F,
