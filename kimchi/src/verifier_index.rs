@@ -66,7 +66,7 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     pub max_quot_size: usize,
     /// polynomial commitment keys
     #[serde(skip)]
-    srs: OnceCell<Arc<SRS<G>>>,
+    pub srs: OnceCell<Arc<SRS<G>>>,
 
     // index polynomial commitments
     /// permutation commitment array
@@ -111,11 +111,11 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     pub shift: [ScalarField<G>; PERMUTS],
     /// zero-knowledge polynomial
     #[serde(skip)]
-    zkpm: OnceCell<DensePolynomial<ScalarField<G>>>,
+    pub zkpm: OnceCell<DensePolynomial<ScalarField<G>>>,
     // TODO(mimoo): isn't this redundant with domain.d1.group_gen ?
     /// domain offset for zero-knowledge
     #[serde(skip)]
-    w: OnceCell<ScalarField<G>>,
+    pub w: OnceCell<ScalarField<G>>,
     /// endoscalar coefficient
     #[serde(skip)]
     pub endo: ScalarField<G>,
@@ -179,7 +179,11 @@ where
             max_poly_size: self.max_poly_size,
             max_quot_size: self.max_quot_size,
             powers_of_alpha: self.powers_of_alpha.clone(),
-            srs: OnceCell::new(),
+            srs: {
+                let cell = OnceCell::new();
+                cell.set(Arc::clone(&self.srs)).unwrap();
+                cell
+            },
 
             sigma_comm: array_init(|i| self.srs.commit_non_hiding(&self.cs.sigmam[i], None)),
             coefficients_comm: array_init(|i| {
@@ -223,8 +227,16 @@ where
                 .collect(),
 
             shift: self.cs.shift,
-            zkpm: OnceCell::new(),
-            w: OnceCell::new(),
+            zkpm: {
+                let cell = OnceCell::new();
+                cell.set(self.cs.precomputations().zkpm.clone()).unwrap();
+                cell
+            },
+            w: {
+                let cell = OnceCell::new();
+                cell.set(zk_w3(self.cs.domain.d1)).unwrap();
+                cell
+            },
             endo: self.cs.endo,
             lookup_index,
             linearization: self.linearization.clone(),
