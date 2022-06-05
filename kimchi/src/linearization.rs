@@ -98,7 +98,7 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
 
     // the lookup polynomials
     if let Some(lcs) = &lookup_constraint_system {
-        for i in 0..(lcs.max_lookups_per_row + 1) {
+        for i in 0..(lcs.lookup_info.max_per_row + 1) {
             h.insert(LookupSorted(i));
         }
         h.insert(LookupAggreg);

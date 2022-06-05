@@ -163,7 +163,7 @@ where
                         self.srs
                             .commit_evaluations_non_hiding(domain, table_ids8, None)
                     }),
-                    max_joint_size: cs.configuration.max_joint_size,
+                    max_joint_size: cs.configuration.lookup_info.max_joint_size,
                     runtime_tables_selector: cs
                         .runtime_selector
                         .as_ref()
