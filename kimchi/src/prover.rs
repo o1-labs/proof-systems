@@ -242,7 +242,7 @@ where
         //~ 1. If using lookup:
         if let Some(lcs) = &index.cs.lookup_constraint_system {
             // if using runtime table
-            if let Some(cfg_runtime_tables) = &lcs.configuration.runtime_tables {
+            if let Some(cfg_runtime_tables) = &lcs.runtime_tables {
                 // check that all the provided runtime tables have length and IDs that match the runtime table configuration of the index
                 // we expect the given runtime tables to be sorted as configured, this makes it easier afterwards
                 let expected_runtime: Vec<_> = cfg_runtime_tables
@@ -261,7 +261,6 @@ where
                 // (the runtime vector)
                 let (runtime_table_contribution, runtime_table_contribution_d8) = {
                     let mut offset = lcs
-                        .configuration
                         .runtime_table_offset
                         .expect("runtime configuration missing offset");
 
@@ -355,7 +354,7 @@ where
                         }
                     };
 
-                    let combined_entry = if lcs.configuration.runtime_tables.is_none() {
+                    let combined_entry = if !lcs.configuration.lookup_info.uses_runtime_tables {
                         let table_row = lcs.lookup_table8.iter().map(|e| &e.evals[idx]);
 
                         combine_table_entry(

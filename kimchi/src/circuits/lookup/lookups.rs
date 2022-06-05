@@ -40,11 +40,13 @@ pub struct LookupInfo {
     pub max_per_row: usize,
     /// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
     pub max_joint_size: u32,
+    /// True if runtime lookup tables are used.
+    pub uses_runtime_tables: bool,
 }
 
 impl LookupInfo {
     /// Create the default lookup configuration.
-    pub fn create() -> Self {
+    pub fn create(uses_runtime_tables: bool) -> Self {
         let kinds: Vec<_> = GateType::lookup_kinds();
 
         let max_per_row = max_lookups_per_row(&kinds);
@@ -56,6 +58,7 @@ impl LookupInfo {
 
             kinds,
             max_per_row,
+            uses_runtime_tables,
         }
     }
 
