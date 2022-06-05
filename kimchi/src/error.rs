@@ -69,6 +69,6 @@ pub enum SetupError {
 /// Errors that can arise when creating a verifier index
 #[derive(Error, Debug, Clone)]
 pub enum VerifierIndexError {
-    #[error("unable to set srs")]
-    UnableToSetSRS,
+    #[error("srs has already been set")]
+    SRSHasBeenSet,
 }

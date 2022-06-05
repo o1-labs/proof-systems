@@ -297,7 +297,7 @@ where
             verifier_index
                 .srs
                 .set(srs.unwrap())
-                .map_err(|_| VerifierIndexError::UnableToSetSRS.to_string())?;
+                .map_err(|_| VerifierIndexError::SRSHasBeenSet.to_string())?;
         };
 
         verifier_index.endo = endo;
