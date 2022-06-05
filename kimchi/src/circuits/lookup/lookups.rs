@@ -1,6 +1,7 @@
 use crate::circuits::{
     domains::EvaluationDomains,
     gate::{CircuitGate, CurrOrNext, GateType},
+    lookup::index::LookupSelectors,
     lookup::tables::{
         combine_table_entry, get_table, GateLookupTable, LookupTable, RANGE_CHECK_TABLE_ID,
         XOR_TABLE_ID,
@@ -87,23 +88,35 @@ impl LookupInfo {
         &self,
         domain: &EvaluationDomains<F>,
         gates: &[CircuitGate<F>],
-    ) -> (Vec<Evaluations<F>>, Vec<LookupTable<F>>) {
+    ) -> (LookupSelectors<Evaluations<F>>, Vec<LookupTable<F>>) {
         let n = domain.d1.size();
-        let mut selector_values: Vec<_> = self.kinds.iter().map(|_| vec![F::zero(); n]).collect();
+
+        let mut selector_values = LookupSelectors::default();
+        for kind in &self.kinds {
+            selector_values[*kind] = Some(vec![F::zero(); n]);
+        }
+
         let mut gate_tables = HashSet::new();
+
+        let mut update_selector = |lookup_pattern, i| {
+            let selector = selector_values[lookup_pattern]
+                .as_mut()
+                .expect(&*format!("has selector for {:?}", lookup_pattern));
+            selector[i] = F::one();
+        };
 
         // TODO: is take(n) useful here? I don't see why we need this
         for (i, gate) in gates.iter().enumerate().take(n) {
             let typ = gate.typ;
 
             if let Some(lookup_pattern) = LookupPattern::from_gate(typ, CurrOrNext::Curr) {
-                selector_values[lookup_pattern.to_index()][i] = F::one();
+                update_selector(lookup_pattern, i);
                 if let Some(table_kind) = lookup_pattern.table() {
                     gate_tables.insert(table_kind);
                 }
             }
             if let Some(lookup_pattern) = LookupPattern::from_gate(typ, CurrOrNext::Next) {
-                selector_values[lookup_pattern.to_index()][i + 1] = F::one();
+                update_selector(lookup_pattern, i + 1);
                 if let Some(table_kind) = lookup_pattern.table() {
                     gate_tables.insert(table_kind);
                 }
@@ -112,14 +125,11 @@ impl LookupInfo {
 
         // Actually, don't need to evaluate over domain 8 here.
         // TODO: so why do it :D?
-        let selector_values8: Vec<_> = selector_values
-            .into_iter()
-            .map(|v| {
-                E::<F, D<F>>::from_vec_and_domain(v, domain.d1)
-                    .interpolate()
-                    .evaluate_over_domain(domain.d8)
-            })
-            .collect();
+        let selector_values8: LookupSelectors<_> = selector_values.map(|v| {
+            E::<F, D<F>>::from_vec_and_domain(v, domain.d1)
+                .interpolate()
+                .evaluate_over_domain(domain.d8)
+        });
         let res_tables: Vec<_> = gate_tables.into_iter().map(get_table).collect();
         (selector_values8, res_tables)
     }
@@ -251,7 +261,9 @@ impl<F: Copy> JointLookup<SingleLookup<F>, LookupTableID> {
     }
 }
 
-#[derive(Copy, Clone, Serialize, Deserialize, Debug, EnumIter, PartialEq, Eq)]
+#[derive(
+    Copy, Clone, Serialize, Deserialize, Debug, EnumIter, PartialEq, Eq, PartialOrd, Ord, Hash,
+)]
 pub enum LookupPattern {
     ChaCha,
     ChaChaFinal,
@@ -372,17 +384,6 @@ impl LookupPattern {
             LookupPattern::ChaCha | LookupPattern::ChaChaFinal => Some(GateLookupTable::Xor),
             LookupPattern::LookupGate => None,
             LookupPattern::RangeCheckGate => Some(GateLookupTable::RangeCheck),
-        }
-    }
-
-    /// Returns the index of the lookup pattern in the vector of all lookup patterns.
-    // TODO: Delete this (done in dependent PR #584).
-    fn to_index(self) -> usize {
-        match self {
-            LookupPattern::ChaCha => 0,
-            LookupPattern::ChaChaFinal => 1,
-            LookupPattern::LookupGate => 2,
-            LookupPattern::RangeCheckGate => 3,
         }
     }
 

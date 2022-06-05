@@ -4,7 +4,7 @@ use crate::circuits::{domains::EvaluationDomains, gate::CircuitGate};
 use crate::circuits::{
     lookup::{
         constraints::LookupConfiguration,
-        lookups::{JointLookup, LookupInfo},
+        lookups::{JointLookup, LookupInfo, LookupPattern},
         tables::LookupTable,
     },
     polynomials::permutation::ZK_ROWS,
@@ -36,6 +36,125 @@ pub enum LookupError {
     TableIDZeroMustHaveZeroEntry,
 }
 
+/// Lookup selectors
+#[derive(Clone, Serialize, Deserialize, Debug, Default)]
+pub struct LookupSelectors<T> {
+    /// Chacha pattern lookup selector
+    pub chacha: Option<T>,
+    /// ChachaFinal pattern lookup selector
+    pub chacha_final: Option<T>,
+    /// LookupGate pattern lookup selector
+    pub lookup_gate: Option<T>,
+    /// RangeCheckGate pattern lookup selector
+    pub range_check_gate: Option<T>,
+}
+
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize, Debug, Default)]
+struct LookupSelectorsSerdeAs<F: FftField> {
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    pub chacha: Option<E<F, D<F>>>,
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    pub chacha_final: Option<E<F, D<F>>>,
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    pub lookup_gate: Option<E<F, D<F>>>,
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    pub range_check_gate: Option<E<F, D<F>>>,
+}
+
+impl<F: FftField> serde_with::SerializeAs<LookupSelectors<E<F, D<F>>>>
+    for LookupSelectorsSerdeAs<F>
+{
+    fn serialize_as<S>(val: &LookupSelectors<E<F, D<F>>>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let repr = LookupSelectorsSerdeAs {
+            chacha: val.chacha.clone(),
+            chacha_final: val.chacha_final.clone(),
+            lookup_gate: val.lookup_gate.clone(),
+            range_check_gate: val.range_check_gate.clone(),
+        };
+        repr.serialize(serializer)
+    }
+}
+
+impl<'de, F: FftField> serde_with::DeserializeAs<'de, LookupSelectors<E<F, D<F>>>>
+    for LookupSelectorsSerdeAs<F>
+{
+    fn deserialize_as<Dz>(deserializer: Dz) -> Result<LookupSelectors<E<F, D<F>>>, Dz::Error>
+    where
+        Dz: serde::Deserializer<'de>,
+    {
+        let LookupSelectorsSerdeAs {
+            chacha,
+            chacha_final,
+            lookup_gate,
+            range_check_gate,
+        } = LookupSelectorsSerdeAs::deserialize(deserializer)?;
+        Ok(LookupSelectors {
+            chacha,
+            chacha_final,
+            lookup_gate,
+            range_check_gate,
+        })
+    }
+}
+
+impl<T> std::ops::Index<LookupPattern> for LookupSelectors<T> {
+    type Output = Option<T>;
+
+    fn index(&self, index: LookupPattern) -> &Self::Output {
+        match index {
+            LookupPattern::ChaCha => &self.chacha,
+            LookupPattern::ChaChaFinal => &self.chacha_final,
+            LookupPattern::LookupGate => &self.lookup_gate,
+            LookupPattern::RangeCheckGate => &self.range_check_gate,
+        }
+    }
+}
+
+impl<T> std::ops::IndexMut<LookupPattern> for LookupSelectors<T> {
+    fn index_mut(&mut self, index: LookupPattern) -> &mut Self::Output {
+        match index {
+            LookupPattern::ChaCha => &mut self.chacha,
+            LookupPattern::ChaChaFinal => &mut self.chacha_final,
+            LookupPattern::LookupGate => &mut self.lookup_gate,
+            LookupPattern::RangeCheckGate => &mut self.range_check_gate,
+        }
+    }
+}
+
+impl<T> LookupSelectors<T> {
+    pub fn map<U, F: Fn(T) -> U>(self, f: F) -> LookupSelectors<U> {
+        let LookupSelectors {
+            chacha,
+            chacha_final,
+            lookup_gate,
+            range_check_gate,
+        } = self;
+        // This closure isn't really redundant -- it shields the parameter from a copy -- but
+        // clippy isn't smart enough to figure that out..
+        #[allow(clippy::redundant_closure)]
+        let f = |x| f(x);
+        LookupSelectors {
+            chacha: chacha.map(f),
+            chacha_final: chacha_final.map(f),
+            lookup_gate: lookup_gate.map(f),
+            range_check_gate: range_check_gate.map(f),
+        }
+    }
+
+    pub fn as_ref(&self) -> LookupSelectors<&T> {
+        LookupSelectors {
+            chacha: self.chacha.as_ref(),
+            chacha_final: self.chacha_final.as_ref(),
+            lookup_gate: self.lookup_gate.as_ref(),
+            range_check_gate: self.range_check_gate.as_ref(),
+        }
+    }
+}
+
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct LookupConstraintSystem<F: FftField> {
@@ -56,8 +175,8 @@ pub struct LookupConstraintSystem<F: FftField> {
     /// For each kind of lookup-pattern, we have a selector that's
     /// 1 at the rows where that pattern should be enforced, and 0 at
     /// all other rows.
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub lookup_selectors: Vec<E<F, D<F>>>,
+    #[serde_as(as = "LookupSelectorsSerdeAs<F>")]
+    pub lookup_selectors: LookupSelectors<E<F, D<F>>>,
 
     /// An optional runtime table selector. It is 0 everywhere,
     /// except at the rows where the runtime tables apply.

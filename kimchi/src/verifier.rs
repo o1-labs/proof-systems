@@ -620,7 +620,12 @@ where
                         }
                         Some(lindex) => {
                             scalars.push(scalar);
-                            commitments.push(&lindex.lookup_selectors[*i]);
+                            commitments.push(lindex.lookup_selectors[*i].as_ref().expect(
+                                &*format!(
+                                "Attempted to use {:?}, but it was not found in the verifier index",
+                                col
+                            ),
+                            ));
                         }
                     },
                     LookupTable => panic!("Lookup table is unused in the linearization"),
