@@ -4296,7 +4296,7 @@ pub struct VerifierIndex&lt;G: CommitmentCurve&gt; {
     pub max_quot_size: usize,
     /// polynomial commitment keys
     #[serde(skip)]
-    pub srs: Arc&lt;SRS&lt;G&gt;&gt;,
+    pub srs: OnceCell&lt;Arc&lt;SRS&lt;G&gt;&gt;&gt;,
 
     // index polynomial commitments
     /// permutation commitment array
@@ -4341,11 +4341,11 @@ pub struct VerifierIndex&lt;G: CommitmentCurve&gt; {
     pub shift: [ScalarField&lt;G&gt;; PERMUTS],
     /// zero-knowledge polynomial
     #[serde(skip)]
-    pub zkpm: DensePolynomial&lt;ScalarField&lt;G&gt;&gt;,
+    pub zkpm: OnceCell&lt;DensePolynomial&lt;ScalarField&lt;G&gt;&gt;&gt;,
     // TODO(mimoo): isn't this redundant with domain.d1.group_gen ?
     /// domain offset for zero-knowledge
     #[serde(skip)]
-    pub w: ScalarField&lt;G&gt;,
+    pub w: OnceCell&lt;ScalarField&lt;G&gt;&gt;,
     /// endoscalar coefficient
     #[serde(skip)]
     pub endo: ScalarField&lt;G&gt;,
