@@ -142,32 +142,10 @@
 <span id="135">135</span>
 <span id="136">136</span>
 <span id="137">137</span>
-<span id="138">138</span>
-<span id="139">139</span>
-<span id="140">140</span>
-<span id="141">141</span>
-<span id="142">142</span>
-<span id="143">143</span>
-<span id="144">144</span>
-<span id="145">145</span>
-<span id="146">146</span>
-<span id="147">147</span>
-<span id="148">148</span>
-<span id="149">149</span>
-<span id="150">150</span>
-<span id="151">151</span>
-<span id="152">152</span>
-<span id="153">153</span>
-<span id="154">154</span>
-<span id="155">155</span>
-<span id="156">156</span>
-<span id="157">157</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::gate</span>::{<span class="ident">CurrOrNext</span>, <span class="ident">GateType</span>};
-<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">One</span>, <span class="ident">Zero</span>};
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">One</span>, <span class="ident">Zero</span>};
 <span class="kw">use</span> <span class="ident">commitment_dlog::PolyComm</span>;
 <span class="kw">use</span> <span class="ident">o1_utils::types::ScalarField</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">HashMap</span>, <span class="ident">HashSet</span>};
 
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">range_check</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">xor</span>;
@@ -185,24 +163,6 @@
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">GateLookupTable</span> {
     <span class="ident">Xor</span>,
     <span class="ident">RangeCheck</span>,
-}
-
-<span class="doccomment">/// Specifies the relative position of gates and the fixed lookup table (if applicable) that a</span>
-<span class="doccomment">/// given lookup configuration should apply to.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">GatesLookupSpec</span> {
-    <span class="doccomment">/// The set of positions relative to an active gate where a lookup configuration applies.</span>
-    <span class="kw">pub</span> <span class="ident">gate_positions</span>: <span class="ident">HashSet</span><span class="op">&lt;</span>(<span class="ident">GateType</span>, <span class="ident">CurrOrNext</span>)<span class="op">&gt;</span>,
-    <span class="doccomment">/// The fixed lookup table that should be used for these lookups, if applicable.</span>
-    <span class="kw">pub</span> <span class="ident">gate_lookup_table</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">GateLookupTable</span><span class="op">&gt;</span>,
-}
-
-<span class="doccomment">/// Specifies mapping from positions defined relative to gates into lookup data.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">GatesLookupMaps</span> {
-    <span class="doccomment">/// Enumerates the selector that should be active for a particular gate-relative position.</span>
-    <span class="kw">pub</span> <span class="ident">gate_selector_map</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">GateType</span>, <span class="ident">CurrOrNext</span>), <span class="ident">usize</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Enumerates the fixed tables that should be used for lookups in a particular gate-relative</span>
-    <span class="doccomment">/// position.</span>
-    <span class="kw">pub</span> <span class="ident">gate_table_map</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">GateType</span>, <span class="ident">CurrOrNext</span>), <span class="ident">GateLookupTable</span><span class="op">&gt;</span>,
 }
 
 <span class="doccomment">/// A table of values that can be used for a lookup, along with the ID for the table.</span>
@@ -320,5 +280,5 @@
     <span class="ident">PolyComm::multi_scalar_mul</span>(<span class="kw-2">&amp;</span><span class="ident">commitments</span>, <span class="kw-2">&amp;</span><span class="ident">scalars</span>)
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (e71440575 2022-06-02)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (4e725bad7 2022-06-04)" ></div>
 </body></html>

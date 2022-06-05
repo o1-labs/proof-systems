@@ -439,51 +439,28 @@
 <span id="432">432</span>
 <span id="433">433</span>
 <span id="434">434</span>
-<span id="435">435</span>
-<span id="436">436</span>
-<span id="437">437</span>
-<span id="438">438</span>
-<span id="439">439</span>
-<span id="440">440</span>
-<span id="441">441</span>
-<span id="442">442</span>
-<span id="443">443</span>
-<span id="444">444</span>
-<span id="445">445</span>
-<span id="446">446</span>
-<span id="447">447</span>
-<span id="448">448</span>
-<span id="449">449</span>
-<span id="450">450</span>
-<span id="451">451</span>
-<span id="452">452</span>
-<span id="453">453</span>
-<span id="454">454</span>
-<span id="455">455</span>
-<span id="456">456</span>
-<span id="457">457</span>
-<span id="458">458</span>
-<span id="459">459</span>
-<span id="460">460</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
     <span class="ident">domains::EvaluationDomains</span>,
     <span class="ident">gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">CurrOrNext</span>, <span class="ident">GateType</span>},
     <span class="ident">lookup::tables</span>::{
-        <span class="ident">combine_table_entry</span>, <span class="ident">get_table</span>, <span class="ident">GateLookupTable</span>, <span class="ident">GatesLookupMaps</span>, <span class="ident">GatesLookupSpec</span>,
-        <span class="ident">LookupTable</span>, <span class="ident">RANGE_CHECK_TABLE_ID</span>, <span class="ident">XOR_TABLE_ID</span>,
+        <span class="ident">combine_table_entry</span>, <span class="ident">get_table</span>, <span class="ident">GateLookupTable</span>, <span class="ident">LookupTable</span>, <span class="ident">RANGE_CHECK_TABLE_ID</span>,
+        <span class="ident">XOR_TABLE_ID</span>,
     },
 };
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">Field</span>, <span class="ident">One</span>, <span class="ident">Zero</span>};
 <span class="kw">use</span> <span class="ident">ark_poly</span>::{<span class="ident">EvaluationDomain</span>, <span class="ident">Evaluations</span> <span class="kw">as</span> <span class="ident">E</span>, <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>};
 <span class="kw">use</span> <span class="ident">o1_utils::field_helpers::i32_to_field</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">hash_map::Entry</span>, <span class="ident">HashMap</span>, <span class="ident">HashSet</span>};
+<span class="kw">use</span> <span class="ident">std::collections::HashSet</span>;
 <span class="kw">use</span> <span class="ident">std::ops</span>::{<span class="ident">Mul</span>, <span class="ident">Neg</span>};
+<span class="kw">use</span> <span class="ident">strum_macros::EnumIter</span>;
 
 <span class="kw">type</span> <span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">Field</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">E</span><span class="op">&lt;</span><span class="ident">Field</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">Field</span><span class="op">&gt;</span><span class="op">&gt;</span>;
 
-<span class="kw">fn</span> <span class="ident">max_lookups_per_row</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">kinds</span>: <span class="kw-2">&amp;</span>[<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">JointLookupSpec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>]) -&gt; <span class="ident">usize</span> {
-    <span class="ident">kinds</span>.<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="number">0</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="ident">x</span><span class="op">|</span> <span class="ident">std::cmp::max</span>(<span class="ident">x</span>.<span class="ident">len</span>(), <span class="ident">acc</span>))
+<span class="kw">fn</span> <span class="ident">max_lookups_per_row</span>(<span class="ident">kinds</span>: <span class="kw-2">&amp;</span>[<span class="ident">LookupPattern</span>]) -&gt; <span class="ident">usize</span> {
+    <span class="ident">kinds</span>
+        .<span class="ident">iter</span>()
+        .<span class="ident">fold</span>(<span class="number">0</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="ident">x</span><span class="op">|</span> <span class="ident">std::cmp::max</span>(<span class="ident">x</span>.<span class="ident">max_lookups_per_row</span>(), <span class="ident">acc</span>))
 }
 
 <span class="doccomment">/// Specifies whether a constraint system uses joint lookups. Used to make sure we</span>
@@ -495,60 +472,43 @@
 }
 
 <span class="doccomment">/// Describes the desired lookup configuration.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LookupInfo</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LookupInfo</span> {
     <span class="doccomment">/// A single lookup constraint is a vector of lookup constraints to be applied at a row.</span>
     <span class="doccomment">/// This is a vector of all the kinds of lookup constraints in this configuration.</span>
-    <span class="kw">pub</span> <span class="ident">kinds</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">JointLookupSpec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// A map from the kind of gate (and whether it is the current row or next row) to the lookup</span>
-    <span class="doccomment">/// constraint (given as an index into `kinds`) that should be applied there, if any.</span>
-    <span class="kw">pub</span> <span class="ident">kinds_map</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">GateType</span>, <span class="ident">CurrOrNext</span>), <span class="ident">usize</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// A map from the kind of gate (and whether it is the current row or next row) to the lookup</span>
-    <span class="doccomment">/// table that is used by the gate, if any.</span>
-    <span class="kw">pub</span> <span class="ident">kinds_tables</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">GateType</span>, <span class="ident">CurrOrNext</span>), <span class="ident">GateLookupTable</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">kinds</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">LookupPattern</span><span class="op">&gt;</span>,
     <span class="doccomment">/// The maximum length of an element of `kinds`. This can be computed from `kinds`.</span>
     <span class="kw">pub</span> <span class="ident">max_per_row</span>: <span class="ident">usize</span>,
     <span class="doccomment">/// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.</span>
     <span class="kw">pub</span> <span class="ident">max_joint_size</span>: <span class="ident">u32</span>,
-    <span class="doccomment">/// An empty vector.</span>
-    <span class="ident">empty</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">JointLookupSpec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> <span class="ident">LookupInfo</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+<span class="kw">impl</span> <span class="ident">LookupInfo</span> {
     <span class="doccomment">/// Create the default lookup configuration.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create</span>() -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> (<span class="ident">kinds</span>, <span class="ident">locations_with_tables</span>): (<span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>) <span class="op">=</span> <span class="ident">GateType::lookup_kinds</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>();
-
-        <span class="kw">let</span> <span class="ident">GatesLookupMaps</span> {
-            <span class="ident">gate_selector_map</span>: <span class="ident">kinds_map</span>,
-            <span class="ident">gate_table_map</span>: <span class="ident">kinds_tables</span>,
-        } <span class="op">=</span> <span class="ident">GateType::lookup_kinds_map</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">locations_with_tables</span>);
+        <span class="kw">let</span> <span class="ident">kinds</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">GateType::lookup_kinds</span>();
 
         <span class="kw">let</span> <span class="ident">max_per_row</span> <span class="op">=</span> <span class="ident">max_lookups_per_row</span>(<span class="kw-2">&amp;</span><span class="ident">kinds</span>);
 
         <span class="ident">LookupInfo</span> {
-            <span class="ident">max_joint_size</span>: <span class="ident">kinds</span>.<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="number">0</span>, <span class="op">|</span><span class="ident">acc0</span>, <span class="ident">v</span><span class="op">|</span> {
-                <span class="ident">v</span>.<span class="ident">iter</span>()
-                    .<span class="ident">fold</span>(<span class="ident">acc0</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="ident">j</span><span class="op">|</span> <span class="ident">std::cmp::max</span>(<span class="ident">acc</span>, <span class="ident">j</span>.<span class="ident">entry</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u32</span>))
-            }),
+            <span class="ident">max_joint_size</span>: <span class="ident">kinds</span>
+                .<span class="ident">iter</span>()
+                .<span class="ident">fold</span>(<span class="number">0</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="ident">v</span><span class="op">|</span> <span class="ident">std::cmp::max</span>(<span class="ident">acc</span>, <span class="ident">v</span>.<span class="ident">max_joint_size</span>())),
 
-            <span class="ident">kinds_map</span>,
-            <span class="ident">kinds_tables</span>,
             <span class="ident">kinds</span>,
             <span class="ident">max_per_row</span>,
-            <span class="ident">empty</span>: <span class="macro">vec!</span>[],
         }
     }
 
     <span class="doccomment">/// Check what kind of lookups, if any, are used by this circuit.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">lookup_used</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">gates</span>: <span class="kw-2">&amp;</span>[<span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>]) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LookupsUsed</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">lookup_used</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">gates</span>: <span class="kw-2">&amp;</span>[<span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>]) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LookupsUsed</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">lookups_used</span> <span class="op">=</span> <span class="prelude-val">None</span>;
         <span class="kw">for</span> <span class="ident">g</span> <span class="kw">in</span> <span class="ident">gates</span>.<span class="ident">iter</span>() {
             <span class="kw">let</span> <span class="ident">typ</span> <span class="op">=</span> <span class="ident">g</span>.<span class="ident">typ</span>;
 
             <span class="kw">for</span> <span class="ident">r</span> <span class="kw">in</span> <span class="kw-2">&amp;</span>[<span class="ident">CurrOrNext::Curr</span>, <span class="ident">CurrOrNext::Next</span>] {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">v</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">kinds_map</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span>(<span class="ident">typ</span>, <span class="kw-2">*</span><span class="ident">r</span>)) {
-                    <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">kinds</span>[<span class="kw-2">*</span><span class="ident">v</span>].<span class="ident">is_empty</span>() {
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">lookup_pattern</span>) <span class="op">=</span> <span class="ident">LookupPattern::from_gate</span>(<span class="ident">typ</span>, <span class="kw-2">*</span><span class="ident">r</span>) {
+                    <span class="kw">if</span> <span class="ident">lookup_pattern</span>.<span class="ident">max_joint_size</span>() <span class="op">&gt;</span> <span class="number">1</span> {
                         <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">LookupsUsed::Joint</span>);
                     } <span class="kw">else</span> {
                         <span class="ident">lookups_used</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">LookupsUsed::Single</span>);
@@ -561,7 +521,7 @@
 
     <span class="doccomment">/// Each entry in `kinds` has a corresponding selector polynomial that controls whether that</span>
     <span class="doccomment">/// lookup kind should be enforced at a given row. This computes those selector polynomials.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">selector_polynomials_and_tables</span>(
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">selector_polynomials_and_tables</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">domain</span>: <span class="kw-2">&amp;</span><span class="ident">EvaluationDomains</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
         <span class="ident">gates</span>: <span class="kw-2">&amp;</span>[<span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>],
@@ -574,18 +534,17 @@
         <span class="kw">for</span> (<span class="ident">i</span>, <span class="ident">gate</span>) <span class="kw">in</span> <span class="ident">gates</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>().<span class="ident">take</span>(<span class="ident">n</span>) {
             <span class="kw">let</span> <span class="ident">typ</span> <span class="op">=</span> <span class="ident">gate</span>.<span class="ident">typ</span>;
 
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">selector_index</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">kinds_map</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span>(<span class="ident">typ</span>, <span class="ident">CurrOrNext::Curr</span>)) {
-                <span class="ident">selector_values</span>[<span class="kw-2">*</span><span class="ident">selector_index</span>][<span class="ident">i</span>] <span class="op">=</span> <span class="ident">F::one</span>();
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">lookup_pattern</span>) <span class="op">=</span> <span class="ident">LookupPattern::from_gate</span>(<span class="ident">typ</span>, <span class="ident">CurrOrNext::Curr</span>) {
+                <span class="ident">selector_values</span>[<span class="ident">lookup_pattern</span>.<span class="ident">to_index</span>()][<span class="ident">i</span>] <span class="op">=</span> <span class="ident">F::one</span>();
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">table_kind</span>) <span class="op">=</span> <span class="ident">lookup_pattern</span>.<span class="ident">table</span>() {
+                    <span class="ident">gate_tables</span>.<span class="ident">insert</span>(<span class="ident">table_kind</span>);
+                }
             }
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">selector_index</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">kinds_map</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span>(<span class="ident">typ</span>, <span class="ident">CurrOrNext::Next</span>)) {
-                <span class="ident">selector_values</span>[<span class="kw-2">*</span><span class="ident">selector_index</span>][<span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>] <span class="op">=</span> <span class="ident">F::one</span>();
-            }
-
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">table_kind</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">kinds_tables</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span>(<span class="ident">typ</span>, <span class="ident">CurrOrNext::Curr</span>)) {
-                <span class="ident">gate_tables</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">table_kind</span>);
-            }
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">table_kind</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">kinds_tables</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span>(<span class="ident">typ</span>, <span class="ident">CurrOrNext::Next</span>)) {
-                <span class="ident">gate_tables</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">table_kind</span>);
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">lookup_pattern</span>) <span class="op">=</span> <span class="ident">LookupPattern::from_gate</span>(<span class="ident">typ</span>, <span class="ident">CurrOrNext::Next</span>) {
+                <span class="ident">selector_values</span>[<span class="ident">lookup_pattern</span>.<span class="ident">to_index</span>()][<span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>] <span class="op">=</span> <span class="ident">F::one</span>();
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">table_kind</span>) <span class="op">=</span> <span class="ident">lookup_pattern</span>.<span class="ident">table</span>() {
+                    <span class="ident">gate_tables</span>.<span class="ident">insert</span>(<span class="ident">table_kind</span>);
+                }
             }
         }
 
@@ -604,16 +563,16 @@
     }
 
     <span class="doccomment">/// For each row in the circuit, which lookup-constraints should be enforced at that row.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">by_row</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>, <span class="ident">gates</span>: <span class="kw-2">&amp;</span>[<span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>]) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">JointLookupSpec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">kinds</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">empty</span>; <span class="ident">gates</span>.<span class="ident">len</span>() <span class="op">+</span> <span class="number">1</span>];
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">by_row</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">gates</span>: <span class="kw-2">&amp;</span>[<span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>]) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">JointLookupSpec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">kinds</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="macro">vec!</span>[]; <span class="ident">gates</span>.<span class="ident">len</span>() <span class="op">+</span> <span class="number">1</span>];
         <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">gates</span>.<span class="ident">len</span>() {
             <span class="kw">let</span> <span class="ident">typ</span> <span class="op">=</span> <span class="ident">gates</span>[<span class="ident">i</span>].<span class="ident">typ</span>;
 
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">v</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">kinds_map</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span>(<span class="ident">typ</span>, <span class="ident">CurrOrNext::Curr</span>)) {
-                <span class="ident">kinds</span>[<span class="ident">i</span>] <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">kinds</span>[<span class="kw-2">*</span><span class="ident">v</span>];
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">lookup_pattern</span>) <span class="op">=</span> <span class="ident">LookupPattern::from_gate</span>(<span class="ident">typ</span>, <span class="ident">CurrOrNext::Curr</span>) {
+                <span class="ident">kinds</span>[<span class="ident">i</span>] <span class="op">=</span> <span class="ident">lookup_pattern</span>.<span class="ident">lookups</span>();
             }
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">v</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">kinds_map</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span>(<span class="ident">typ</span>, <span class="ident">CurrOrNext::Next</span>)) {
-                <span class="ident">kinds</span>[<span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>] <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">kinds</span>[<span class="kw-2">*</span><span class="ident">v</span>];
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">lookup_pattern</span>) <span class="op">=</span> <span class="ident">LookupPattern::from_gate</span>(<span class="ident">typ</span>, <span class="ident">CurrOrNext::Next</span>) {
+                <span class="ident">kinds</span>[<span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>] <span class="op">=</span> <span class="ident">lookup_pattern</span>.<span class="ident">lookups</span>();
             }
         }
         <span class="ident">kinds</span>
@@ -730,6 +689,7 @@
     }
 }
 
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">EnumIter</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">LookupPattern</span> {
     <span class="ident">ChaCha</span>,
     <span class="ident">ChaChaFinal</span>,
@@ -738,6 +698,27 @@
 }
 
 <span class="kw">impl</span> <span class="ident">LookupPattern</span> {
+    <span class="doccomment">/// Returns the maximum number of lookups per row that are used by the pattern.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">max_lookups_per_row</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
+        <span class="kw">match</span> <span class="self">self</span> {
+            <span class="ident">LookupPattern::ChaCha</span> =&gt; <span class="number">4</span>,
+            <span class="ident">LookupPattern::ChaChaFinal</span> =&gt; <span class="number">4</span>,
+            <span class="ident">LookupPattern::LookupGate</span> =&gt; <span class="number">3</span>,
+            <span class="ident">LookupPattern::RangeCheckGate</span> =&gt; <span class="number">4</span>,
+        }
+    }
+
+    <span class="doccomment">/// Returns the maximum number of values that are used in any vector lookup in this pattern.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">max_joint_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u32</span> {
+        <span class="kw">match</span> <span class="self">self</span> {
+            <span class="ident">LookupPattern::ChaCha</span> =&gt; <span class="number">3</span>,
+            <span class="ident">LookupPattern::ChaChaFinal</span> =&gt; <span class="number">3</span>,
+            <span class="ident">LookupPattern::LookupGate</span> =&gt; <span class="number">2</span>,
+            <span class="ident">LookupPattern::RangeCheckGate</span> =&gt; <span class="number">1</span>,
+        }
+    }
+
+    <span class="doccomment">/// Returns the layout of the lookups used by this pattern.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">lookups</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">JointLookupSpec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">curr_row</span> <span class="op">=</span> <span class="op">|</span><span class="ident">column</span><span class="op">|</span> <span class="ident">LocalPosition</span> {
             <span class="ident">row</span>: <span class="ident">CurrOrNext::Curr</span>,
@@ -822,6 +803,41 @@
             }
         }
     }
+
+    <span class="doccomment">/// Returns the lookup table used by the pattern, or `None` if no specific table is rqeuired.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">table</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">GateLookupTable</span><span class="op">&gt;</span> {
+        <span class="kw">match</span> <span class="self">self</span> {
+            <span class="ident">LookupPattern::ChaCha</span> <span class="op">|</span> <span class="ident">LookupPattern::ChaChaFinal</span> =&gt; <span class="prelude-val">Some</span>(<span class="ident">GateLookupTable::Xor</span>),
+            <span class="ident">LookupPattern::LookupGate</span> =&gt; <span class="prelude-val">None</span>,
+            <span class="ident">LookupPattern::RangeCheckGate</span> =&gt; <span class="prelude-val">Some</span>(<span class="ident">GateLookupTable::RangeCheck</span>),
+        }
+    }
+
+    <span class="doccomment">/// Returns the index of the lookup pattern in the vector of all lookup patterns.</span>
+    <span class="comment">// TODO: Delete this (done in dependent PR #584).</span>
+    <span class="kw">fn</span> <span class="ident">to_index</span>(<span class="self">self</span>) -&gt; <span class="ident">usize</span> {
+        <span class="kw">match</span> <span class="self">self</span> {
+            <span class="ident">LookupPattern::ChaCha</span> =&gt; <span class="number">0</span>,
+            <span class="ident">LookupPattern::ChaChaFinal</span> =&gt; <span class="number">1</span>,
+            <span class="ident">LookupPattern::LookupGate</span> =&gt; <span class="number">2</span>,
+            <span class="ident">LookupPattern::RangeCheckGate</span> =&gt; <span class="number">3</span>,
+        }
+    }
+
+    <span class="doccomment">/// Returns the lookup pattern used by a [GateType] on a given row (current or next).</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_gate</span>(<span class="ident">gate_type</span>: <span class="ident">GateType</span>, <span class="ident">curr_or_next</span>: <span class="ident">CurrOrNext</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
+        <span class="kw">use</span> <span class="ident">CurrOrNext</span>::<span class="kw-2">*</span>;
+        <span class="kw">use</span> <span class="ident">GateType</span>::<span class="kw-2">*</span>;
+        <span class="kw">match</span> (<span class="ident">gate_type</span>, <span class="ident">curr_or_next</span>) {
+            (<span class="ident">ChaCha0</span> <span class="op">|</span> <span class="ident">ChaCha1</span> <span class="op">|</span> <span class="ident">ChaCha2</span>, <span class="ident">Curr</span> <span class="op">|</span> <span class="ident">Next</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">LookupPattern::ChaCha</span>),
+            (<span class="ident">ChaChaFinal</span>, <span class="ident">Curr</span> <span class="op">|</span> <span class="ident">Next</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">LookupPattern::ChaChaFinal</span>),
+            (<span class="ident">Lookup</span>, <span class="ident">Curr</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">LookupPattern::LookupGate</span>),
+            (<span class="ident">RangeCheck0</span>, <span class="ident">Curr</span>) <span class="op">|</span> (<span class="ident">RangeCheck1</span>, <span class="ident">Curr</span>) <span class="op">|</span> (<span class="ident">RangeCheck1</span>, <span class="ident">Next</span>) =&gt; {
+                <span class="prelude-val">Some</span>(<span class="ident">LookupPattern::RangeCheckGate</span>)
+            }
+            <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
+        }
+    }
 }
 
 <span class="kw">impl</span> <span class="ident">GateType</span> {
@@ -831,100 +847,32 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// See circuits/kimchi/src/polynomials/chacha.rs for an explanation of</span>
     <span class="doccomment">/// how these work.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">lookup_kinds</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>() -&gt; (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">JointLookupSpec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">GatesLookupSpec</span><span class="op">&gt;</span>) {
-        <span class="kw">let</span> <span class="ident">chacha_pattern</span> <span class="op">=</span> <span class="ident">LookupPattern::ChaCha</span>.<span class="ident">lookups</span>();
-
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">chacha_where</span> <span class="op">=</span> <span class="ident">HashSet::new</span>();
-        <span class="kw">use</span> <span class="ident">CurrOrNext</span>::<span class="kw-2">*</span>;
-        <span class="kw">use</span> <span class="ident">GateType</span>::<span class="kw-2">*</span>;
-
-        <span class="kw">for</span> <span class="ident">g</span> <span class="kw">in</span> <span class="kw-2">&amp;</span>[<span class="ident">ChaCha0</span>, <span class="ident">ChaCha1</span>, <span class="ident">ChaCha2</span>] {
-            <span class="kw">for</span> <span class="ident">r</span> <span class="kw">in</span> <span class="kw-2">&amp;</span>[<span class="ident">Curr</span>, <span class="ident">Next</span>] {
-                <span class="ident">chacha_where</span>.<span class="ident">insert</span>((<span class="kw-2">*</span><span class="ident">g</span>, <span class="kw-2">*</span><span class="ident">r</span>));
-            }
-        }
-
-        <span class="kw">let</span> <span class="ident">chacha_final_pattern</span> <span class="op">=</span> <span class="ident">LookupPattern::ChaChaFinal</span>.<span class="ident">lookups</span>();
-
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">chacha_final_where</span> <span class="op">=</span> <span class="ident">HashSet::new</span>();
-        <span class="kw">for</span> <span class="ident">r</span> <span class="kw">in</span> <span class="kw-2">&amp;</span>[<span class="ident">Curr</span>, <span class="ident">Next</span>] {
-            <span class="ident">chacha_final_where</span>.<span class="ident">insert</span>((<span class="ident">ChaChaFinal</span>, <span class="kw-2">*</span><span class="ident">r</span>));
-        }
-
-        <span class="kw">let</span> <span class="ident">lookup_gate_pattern</span> <span class="op">=</span> <span class="ident">LookupPattern::LookupGate</span>.<span class="ident">lookups</span>();
-        <span class="kw">let</span> <span class="ident">lookup_gate_where</span> <span class="op">=</span> <span class="ident">HashSet::from</span>([(<span class="ident">Lookup</span>, <span class="ident">Curr</span>)]);
-
-        <span class="kw">let</span> <span class="ident">range_check_gate_pattern</span> <span class="op">=</span> <span class="ident">LookupPattern::RangeCheckGate</span>.<span class="ident">lookups</span>();
-        <span class="kw">let</span> <span class="ident">range_check_gate_where</span> <span class="op">=</span> <span class="ident">HashSet::from</span>([
-            (<span class="ident">RangeCheck0</span>, <span class="ident">Curr</span>),
-            (<span class="ident">RangeCheck1</span>, <span class="ident">Curr</span>),
-            (<span class="ident">RangeCheck1</span>, <span class="ident">Next</span>),
-        ]);
-
-        <span class="comment">// List of defined lookups</span>
-
-        <span class="kw">let</span> <span class="ident">lookups</span> <span class="op">=</span> [
-            (<span class="ident">chacha_pattern</span>, <span class="ident">chacha_where</span>, <span class="prelude-val">Some</span>(<span class="ident">GateLookupTable::Xor</span>)),
-            (
-                <span class="ident">chacha_final_pattern</span>,
-                <span class="ident">chacha_final_where</span>,
-                <span class="prelude-val">Some</span>(<span class="ident">GateLookupTable::Xor</span>),
-            ),
-            (<span class="ident">lookup_gate_pattern</span>, <span class="ident">lookup_gate_where</span>, <span class="prelude-val">None</span>),
-            (
-                <span class="ident">range_check_gate_pattern</span>,
-                <span class="ident">range_check_gate_where</span>,
-                <span class="prelude-val">Some</span>(<span class="ident">GateLookupTable::RangeCheck</span>),
-            ),
-        ];
-
-        <span class="comment">// Convert from an array of tuples to a tuple of vectors</span>
-        {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">patterns</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">lookups</span>.<span class="ident">len</span>());
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">locations_with_tables</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">lookups</span>.<span class="ident">len</span>());
-            <span class="kw">for</span> (<span class="ident">pattern</span>, <span class="ident">locations</span>, <span class="ident">table</span>) <span class="kw">in</span> <span class="ident">lookups</span> {
-                <span class="ident">patterns</span>.<span class="ident">push</span>(<span class="ident">pattern</span>);
-                <span class="ident">locations_with_tables</span>.<span class="ident">push</span>(<span class="ident">GatesLookupSpec</span> {
-                    <span class="ident">gate_positions</span>: <span class="ident">locations</span>,
-                    <span class="ident">gate_lookup_table</span>: <span class="ident">table</span>,
-                });
-            }
-            (<span class="ident">patterns</span>, <span class="ident">locations_with_tables</span>)
-        }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">lookup_kinds</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">LookupPattern</span><span class="op">&gt;</span> {
+        <span class="macro">vec!</span>[
+            <span class="ident">LookupPattern::ChaCha</span>,
+            <span class="ident">LookupPattern::ChaChaFinal</span>,
+            <span class="ident">LookupPattern::LookupGate</span>,
+            <span class="ident">LookupPattern::RangeCheckGate</span>,
+        ]
     }
+}
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">lookup_kinds_map</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(
-        <span class="ident">locations_with_tables</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">GatesLookupSpec</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">GatesLookupMaps</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">index_map</span> <span class="op">=</span> <span class="ident">HashMap::with_capacity</span>(<span class="ident">locations_with_tables</span>.<span class="ident">len</span>());
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">table_map</span> <span class="op">=</span> <span class="ident">HashMap::with_capacity</span>(<span class="ident">locations_with_tables</span>.<span class="ident">len</span>());
-        <span class="kw">for</span> (
-            <span class="ident">i</span>,
-            <span class="ident">GatesLookupSpec</span> {
-                <span class="ident">gate_positions</span>: <span class="ident">locs</span>,
-                <span class="ident">gate_lookup_table</span>: <span class="ident">table_kind</span>,
-            },
-        ) <span class="kw">in</span> <span class="ident">locations_with_tables</span>.<span class="ident">into_iter</span>().<span class="ident">enumerate</span>()
-        {
-            <span class="kw">for</span> <span class="ident">location</span> <span class="kw">in</span> <span class="ident">locs</span> {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Entry::Vacant</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">index_map</span>.<span class="ident">entry</span>(<span class="ident">location</span>) {
-                    <span class="ident">e</span>.<span class="ident">insert</span>(<span class="ident">i</span>);
-                } <span class="kw">else</span> {
-                    <span class="macro">panic!</span>(<span class="string">&quot;Multiple lookup patterns asserted on same row.&quot;</span>)
-                }
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">table_kind</span>) <span class="op">=</span> <span class="ident">table_kind</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Entry::Vacant</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">table_map</span>.<span class="ident">entry</span>(<span class="ident">location</span>) {
-                        <span class="ident">e</span>.<span class="ident">insert</span>(<span class="ident">table_kind</span>);
-                    }
-                }
-            }
-        }
-        <span class="ident">GatesLookupMaps</span> {
-            <span class="ident">gate_selector_map</span>: <span class="ident">index_map</span>,
-            <span class="ident">gate_table_map</span>: <span class="ident">table_map</span>,
-        }
+<span class="attribute">#[<span class="ident">test</span>]</span>
+<span class="kw">fn</span> <span class="ident">lookup_pattern_constants_correct</span>() {
+    <span class="kw">use</span> <span class="ident">strum::IntoEnumIterator</span>;
+
+    <span class="kw">for</span> <span class="ident">pat</span> <span class="kw">in</span> <span class="ident">LookupPattern::iter</span>() {
+        <span class="kw">let</span> <span class="ident">lookups</span> <span class="op">=</span> <span class="ident">pat</span>.<span class="ident">lookups</span>::<span class="op">&lt;</span><span class="ident">mina_curves::pasta::fp::Fp</span><span class="op">&gt;</span>();
+        <span class="kw">let</span> <span class="ident">max_joint_size</span> <span class="op">=</span> <span class="ident">lookups</span>
+            .<span class="ident">iter</span>()
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">lookup</span><span class="op">|</span> <span class="ident">lookup</span>.<span class="ident">entry</span>.<span class="ident">len</span>())
+            .<span class="ident">max</span>()
+            .<span class="ident">unwrap_or</span>(<span class="number">0</span>);
+        <span class="comment">// NB: We include pat in the assertions so that the test will print out which pattern failed</span>
+        <span class="macro">assert_eq!</span>((<span class="ident">pat</span>, <span class="ident">pat</span>.<span class="ident">max_lookups_per_row</span>()), (<span class="ident">pat</span>, <span class="ident">lookups</span>.<span class="ident">len</span>()));
+        <span class="macro">assert_eq!</span>((<span class="ident">pat</span>, <span class="ident">pat</span>.<span class="ident">max_joint_size</span>()), (<span class="ident">pat</span>, <span class="ident">max_joint_size</span> <span class="kw">as</span> <span class="ident">u32</span>));
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (e71440575 2022-06-02)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (4e725bad7 2022-06-04)" ></div>
 </body></html>
