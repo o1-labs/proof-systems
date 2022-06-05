@@ -13,12 +13,12 @@ use serde_with::serde_as;
 //~ spec:startcode
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize)]
+#[serde(bound(
+    serialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::SerializeAs<Field>",
+    deserialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::DeserializeAs<'de, Field>"
+))]
 pub struct LookupEvaluations<Field> {
     /// sorted lookup table polynomial
-    #[serde(bound(
-        serialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::SerializeAs<Field>",
-        deserialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::DeserializeAs<'de, Field>"
-    ))]
     #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
     pub sorted: Vec<Field>,
     /// lookup aggregation polynomial
