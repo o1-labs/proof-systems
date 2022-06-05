@@ -1,7 +1,10 @@
 use crate::circuits::{
     domains::EvaluationDomains,
     gate::{CircuitGate, CurrOrNext, GateType},
-    lookup::tables::{combine_table_entry, get_table, GateLookupTable, LookupTable, XOR_TABLE_ID},
+    lookup::tables::{
+        combine_table_entry, get_table, GateLookupTable, LookupTable, RANGE_CHECK_TABLE_ID,
+        XOR_TABLE_ID,
+    },
 };
 use ark_ff::{FftField, Field, One, Zero};
 use ark_poly::{EvaluationDomain, Evaluations as E, Radix2EvaluationDomain as D};
@@ -250,6 +253,7 @@ pub enum LookupPattern {
     ChaCha,
     ChaChaFinal,
     LookupGate,
+    RangeCheckGate,
 }
 
 impl LookupPattern {
@@ -259,6 +263,7 @@ impl LookupPattern {
             LookupPattern::ChaCha => 4,
             LookupPattern::ChaChaFinal => 4,
             LookupPattern::LookupGate => 3,
+            LookupPattern::RangeCheckGate => 4,
         }
     }
 
@@ -268,6 +273,7 @@ impl LookupPattern {
             LookupPattern::ChaCha => 3,
             LookupPattern::ChaChaFinal => 3,
             LookupPattern::LookupGate => 2,
+            LookupPattern::RangeCheckGate => 1,
         }
     }
 
@@ -340,6 +346,20 @@ impl LookupPattern {
                     })
                     .collect()
             }
+            LookupPattern::RangeCheckGate => {
+                (1..=4)
+                    .map(|column| {
+                        //   0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
+                        //   - L L L L - - - - - -  -  -  -  -
+                        JointLookup {
+                            table_id: LookupTableID::Constant(RANGE_CHECK_TABLE_ID),
+                            entry: vec![SingleLookup {
+                                value: vec![(F::one(), curr_row(column))],
+                            }],
+                        }
+                    })
+                    .collect()
+            }
         }
     }
 
@@ -348,6 +368,7 @@ impl LookupPattern {
         match self {
             LookupPattern::ChaCha | LookupPattern::ChaChaFinal => Some(GateLookupTable::Xor),
             LookupPattern::LookupGate => None,
+            LookupPattern::RangeCheckGate => Some(GateLookupTable::RangeCheck),
         }
     }
 
@@ -358,6 +379,7 @@ impl LookupPattern {
             LookupPattern::ChaCha => 0,
             LookupPattern::ChaChaFinal => 1,
             LookupPattern::LookupGate => 2,
+            LookupPattern::RangeCheckGate => 3,
         }
     }
 
@@ -369,6 +391,9 @@ impl LookupPattern {
             (ChaCha0 | ChaCha1 | ChaCha2, Curr | Next) => Some(LookupPattern::ChaCha),
             (ChaChaFinal, Curr | Next) => Some(LookupPattern::ChaChaFinal),
             (Lookup, Curr) => Some(LookupPattern::LookupGate),
+            (RangeCheck0, Curr) | (RangeCheck1, Curr) | (RangeCheck1, Next) => {
+                Some(LookupPattern::RangeCheckGate)
+            }
             _ => None,
         }
     }
@@ -386,6 +411,7 @@ impl GateType {
             LookupPattern::ChaCha,
             LookupPattern::ChaChaFinal,
             LookupPattern::LookupGate,
+            LookupPattern::RangeCheckGate,
         ]
     }
 }

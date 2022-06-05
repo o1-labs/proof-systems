@@ -14,11 +14,12 @@ pub enum FieldHelpersError {
 pub type Result<T> = std::result::Result<T, FieldHelpersError>;
 
 /// Field element helpers
+///   Unless otherwise stated everything is in little-endian byte order.
 pub trait FieldHelpers<F> {
     /// Deserialize from bytes
     fn from_bytes(bytes: &[u8]) -> Result<F>;
 
-    /// Deserialize from hex
+    /// Deserialize from little-endian hex
     fn from_hex(hex: &str) -> Result<F>;
 
     /// Deserialize from bits

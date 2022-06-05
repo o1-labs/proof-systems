@@ -217,6 +217,8 @@ pub mod caml {
         ),
         pub generic_selector: Vec<CamlF>,
         pub poseidon_selector: Vec<CamlF>,
+
+        pub lookup: Option<CamlLookupEvaluations<CamlF>>,
     }
 
     //
@@ -261,6 +263,7 @@ pub mod caml {
                 s,
                 generic_selector: pe.generic_selector.into_iter().map(Into::into).collect(),
                 poseidon_selector: pe.poseidon_selector.into_iter().map(Into::into).collect(),
+                lookup: pe.lookup.map(Into::into),
             }
         }
     }
@@ -301,9 +304,9 @@ pub mod caml {
                 w,
                 z: cpe.z.into_iter().map(Into::into).collect(),
                 s,
-                lookup: None,
                 generic_selector: cpe.generic_selector.into_iter().map(Into::into).collect(),
                 poseidon_selector: cpe.poseidon_selector.into_iter().map(Into::into).collect(),
+                lookup: cpe.lookup.map(Into::into),
             }
         }
     }
