@@ -606,6 +606,11 @@
 <span id="599">599</span>
 <span id="600">600</span>
 <span id="601">601</span>
+<span id="602">602</span>
+<span id="603">603</span>
+<span id="604">604</span>
+<span id="605">605</span>
+<span id="606">606</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the ChaCha constraints.</span>
 
 <span class="comment">//~ There are four chacha constraint types, corresponding to the four lines in each quarter round.</span>
@@ -1079,7 +1084,7 @@
         <span class="ident">alphas::Alphas</span>,
         <span class="ident">circuits</span>::{
             <span class="ident">expr</span>::{<span class="ident">Column</span>, <span class="ident">Constants</span>, <span class="ident">PolishToken</span>},
-            <span class="ident">lookup::lookups::LookupInfo</span>,
+            <span class="ident">lookup::lookups</span>::{<span class="ident">LookupInfo</span>, <span class="ident">LookupPattern</span>},
             <span class="ident">wires</span>::<span class="kw-2">*</span>,
         },
         <span class="ident">proof</span>::{<span class="ident">LookupEvaluations</span>, <span class="ident">ProofEvaluations</span>},
@@ -1111,7 +1116,12 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">chacha_linearization</span>() {
-        <span class="kw">let</span> <span class="ident">lookup_info</span> <span class="op">=</span> <span class="ident">LookupInfo::create</span>(<span class="bool-val">false</span>);
+        <span class="kw">let</span> <span class="ident">lookup_info</span> <span class="op">=</span> <span class="ident">LookupInfo::create</span>(
+            [<span class="ident">LookupPattern::ChaCha</span>, <span class="ident">LookupPattern::ChaChaFinal</span>]
+                .<span class="ident">into_iter</span>()
+                .<span class="ident">collect</span>(),
+            <span class="bool-val">false</span>,
+        );
 
         <span class="kw">let</span> <span class="ident">evaluated_cols</span> <span class="op">=</span> {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">h</span> <span class="op">=</span> <span class="ident">std::collections::HashSet::new</span>();

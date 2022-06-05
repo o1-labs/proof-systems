@@ -443,6 +443,20 @@
 <span id="436">436</span>
 <span id="437">437</span>
 <span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
     <span class="ident">domains::EvaluationDomains</span>,
     <span class="ident">gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">CurrOrNext</span>, <span class="ident">GateType</span>},
@@ -492,8 +506,9 @@
 
 <span class="kw">impl</span> <span class="ident">LookupInfo</span> {
     <span class="doccomment">/// Create the default lookup configuration.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create</span>(<span class="ident">uses_runtime_tables</span>: <span class="ident">bool</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">kinds</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">GateType::lookup_kinds</span>();
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create</span>(<span class="ident">patterns</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">LookupPattern</span><span class="op">&gt;</span>, <span class="ident">uses_runtime_tables</span>: <span class="ident">bool</span>) -&gt; <span class="self">Self</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">kinds</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">LookupPattern</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">patterns</span>.<span class="ident">into_iter</span>().<span class="ident">collect</span>();
+        <span class="ident">kinds</span>.<span class="ident">sort</span>();
 
         <span class="kw">let</span> <span class="ident">max_per_row</span> <span class="op">=</span> <span class="ident">max_lookups_per_row</span>(<span class="kw-2">&amp;</span><span class="ident">kinds</span>);
 
@@ -508,20 +523,33 @@
         }
     }
 
-    <span class="doccomment">/// Check what kind of lookups, if any, are used by this circuit.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">lookup_used</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">gates</span>: <span class="kw-2">&amp;</span>[<span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>]) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LookupsUsed</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">lookups_used</span> <span class="op">=</span> <span class="prelude-val">None</span>;
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_from_gates</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(
+        <span class="ident">gates</span>: <span class="kw-2">&amp;</span>[<span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>],
+        <span class="ident">uses_runtime_tables</span>: <span class="ident">bool</span>,
+    ) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">kinds</span> <span class="op">=</span> <span class="ident">HashSet::new</span>();
         <span class="kw">for</span> <span class="ident">g</span> <span class="kw">in</span> <span class="ident">gates</span>.<span class="ident">iter</span>() {
-            <span class="kw">let</span> <span class="ident">typ</span> <span class="op">=</span> <span class="ident">g</span>.<span class="ident">typ</span>;
-
             <span class="kw">for</span> <span class="ident">r</span> <span class="kw">in</span> <span class="kw-2">&amp;</span>[<span class="ident">CurrOrNext::Curr</span>, <span class="ident">CurrOrNext::Next</span>] {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">lookup_pattern</span>) <span class="op">=</span> <span class="ident">LookupPattern::from_gate</span>(<span class="ident">typ</span>, <span class="kw-2">*</span><span class="ident">r</span>) {
-                    <span class="kw">if</span> <span class="ident">lookup_pattern</span>.<span class="ident">max_joint_size</span>() <span class="op">&gt;</span> <span class="number">1</span> {
-                        <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">LookupsUsed::Joint</span>);
-                    } <span class="kw">else</span> {
-                        <span class="ident">lookups_used</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">LookupsUsed::Single</span>);
-                    }
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">lookup_pattern</span>) <span class="op">=</span> <span class="ident">LookupPattern::from_gate</span>(<span class="ident">g</span>.<span class="ident">typ</span>, <span class="kw-2">*</span><span class="ident">r</span>) {
+                    <span class="ident">kinds</span>.<span class="ident">insert</span>(<span class="ident">lookup_pattern</span>);
                 }
+            }
+        }
+        <span class="kw">if</span> <span class="ident">kinds</span>.<span class="ident">is_empty</span>() {
+            <span class="prelude-val">None</span>
+        } <span class="kw">else</span> {
+            <span class="prelude-val">Some</span>(<span class="ident"><span class="self">Self</span>::create</span>(<span class="ident">kinds</span>, <span class="ident">uses_runtime_tables</span>))
+        }
+    }
+
+    <span class="doccomment">/// Check what kind of lookups, if any, are used by this circuit.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">lookup_used</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LookupsUsed</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">lookups_used</span> <span class="op">=</span> <span class="prelude-val">None</span>;
+        <span class="kw">for</span> <span class="ident">lookup_pattern</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">kinds</span> {
+            <span class="kw">if</span> <span class="ident">lookup_pattern</span>.<span class="ident">max_joint_size</span>() <span class="op">&gt;</span> <span class="number">1</span> {
+                <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">LookupsUsed::Joint</span>);
+            } <span class="kw">else</span> {
+                <span class="ident">lookups_used</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">LookupsUsed::Single</span>);
             }
         }
         <span class="ident">lookups_used</span>
