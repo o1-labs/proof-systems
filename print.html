@@ -4269,7 +4269,7 @@ pub struct LookupVerifierIndex&lt;G: CommitmentCurve&gt; {
     #[serde(bound = &quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;)]
     pub lookup_table: Vec&lt;PolyComm&lt;G&gt;&gt;,
     #[serde(bound = &quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;)]
-    pub lookup_selectors: Vec&lt;PolyComm&lt;G&gt;&gt;,
+    pub lookup_selectors: LookupSelectors&lt;PolyComm&lt;G&gt;&gt;,
 
     /// Table IDs for the lookup values.
     /// This may be `None` if all lookups originate from table 0.

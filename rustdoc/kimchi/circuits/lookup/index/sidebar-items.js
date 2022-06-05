@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["LookupError","Represents an error found when computing the lookup constraint system"]],"struct":[["LookupConstraintSystem",""]]});
+initSidebarItems({"enum":[["LookupError","Represents an error found when computing the lookup constraint system"]],"struct":[["LookupConstraintSystem",""],["LookupSelectors","Lookup selectors"]]});

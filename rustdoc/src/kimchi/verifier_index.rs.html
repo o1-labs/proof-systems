@@ -296,12 +296,11 @@
 <span id="289">289</span>
 <span id="290">290</span>
 <span id="291">291</span>
-<span id="292">292</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the verifier index as [VerifierIndex].</span>
 <span class="doccomment">//! You can derive this struct from the [ProverIndex] struct.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::alphas::Alphas</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::lookup::lookups::LookupsUsed</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::lookup</span>::{<span class="ident">index::LookupSelectors</span>, <span class="ident">lookups::LookupsUsed</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::polynomials::permutation::zk_polynomial</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::polynomials::permutation::zk_w3</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
@@ -336,7 +335,7 @@
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">bound</span> <span class="op">=</span> <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">lookup_table</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">bound</span> <span class="op">=</span> <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">lookup_selectors</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">lookup_selectors</span>: <span class="ident">LookupSelectors</span><span class="op">&lt;</span><span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 
     <span class="doccomment">/// Table IDs for the lookup values.</span>
     <span class="doccomment">/// This may be `None` if all lookups originate from table 0.</span>
@@ -450,9 +449,8 @@
                     <span class="ident">lookup_used</span>: <span class="ident">cs</span>.<span class="ident">configuration</span>.<span class="ident">lookup_used</span>,
                     <span class="ident">lookup_selectors</span>: <span class="ident">cs</span>
                         .<span class="ident">lookup_selectors</span>
-                        .<span class="ident">iter</span>()
-                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">srs</span>.<span class="ident">commit_evaluations_non_hiding</span>(<span class="ident">domain</span>, <span class="ident">e</span>, <span class="prelude-val">None</span>))
-                        .<span class="ident">collect</span>(),
+                        .<span class="ident">as_ref</span>()
+                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">srs</span>.<span class="ident">commit_evaluations_non_hiding</span>(<span class="ident">domain</span>, <span class="ident">e</span>, <span class="prelude-val">None</span>)),
                     <span class="ident">lookup_table</span>: <span class="ident">cs</span>
                         .<span class="ident">lookup_table8</span>
                         .<span class="ident">iter</span>()
