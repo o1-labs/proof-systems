@@ -91,7 +91,7 @@ impl LookupInfo {
     ) -> (LookupSelectors<Evaluations<F>>, Vec<LookupTable<F>>) {
         let n = domain.d1.size();
 
-        let mut selector_values: LookupSelectors<_> = Default::default();
+        let mut selector_values = LookupSelectors::default();
         for kind in self.kinds.iter() {
             selector_values[*kind] = Some(vec![F::zero(); n]);
         }
