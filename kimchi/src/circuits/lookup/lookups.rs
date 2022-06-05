@@ -92,7 +92,7 @@ impl LookupInfo {
         let n = domain.d1.size();
 
         let mut selector_values = LookupSelectors::default();
-        for kind in self.kinds.iter() {
+        for kind in &self.kinds {
             selector_values[*kind] = Some(vec![F::zero(); n]);
         }
 
