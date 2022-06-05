@@ -252,7 +252,7 @@
         <span class="ident">h</span>.<span class="ident">insert</span>(<span class="ident">LookupTable</span>);
 
         <span class="comment">// the runtime lookup polynomials</span>
-        <span class="kw">if</span> <span class="ident">lcs</span>.<span class="ident">runtime_tables</span>.<span class="ident">is_some</span>() {
+        <span class="kw">if</span> <span class="ident">lcs</span>.<span class="ident">lookup_info</span>.<span class="ident">uses_runtime_tables</span> {
             <span class="ident">h</span>.<span class="ident">insert</span>(<span class="ident">LookupRuntimeTable</span>);
         }
     }

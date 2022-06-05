@@ -672,12 +672,6 @@
 <span id="665">665</span>
 <span id="666">666</span>
 <span id="667">667</span>
-<span id="668">668</span>
-<span id="669">669</span>
-<span id="670">670</span>
-<span id="671">671</span>
-<span id="672">672</span>
-<span id="673">673</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections::HashMap</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -699,7 +693,7 @@
 <span class="kw">use</span> <span class="ident">serde_with::serde_as</span>;
 <span class="kw">use</span> <span class="ident">CurrOrNext</span>::{<span class="ident">Curr</span>, <span class="ident">Next</span>};
 
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::runtime_tables</span>::{<span class="self">self</span>, <span class="ident">RuntimeTableSpec</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::runtime_tables</span>;
 
 <span class="doccomment">/// Number of constraints produced by the argument.</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">7</span>;
@@ -1015,12 +1009,6 @@
     <span class="doccomment">/// Information about the specific lookups used</span>
     <span class="kw">pub</span> <span class="ident">lookup_info</span>: <span class="ident">LookupInfo</span>,
 
-    <span class="doccomment">/// Optional runtime tables, listed as tuples `(length, id)`.</span>
-    <span class="kw">pub</span> <span class="ident">runtime_tables</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RuntimeTableSpec</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-
-    <span class="doccomment">/// The offset of the runtime table within the concatenated table</span>
-    <span class="kw">pub</span> <span class="ident">runtime_table_offset</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>,
-
     <span class="doccomment">/// A placeholder value that is known to appear in the lookup table.</span>
     <span class="doccomment">/// This is used to pad the lookups to `max_lookups_per_row` when fewer lookups are used in a</span>
     <span class="doccomment">/// particular row, so that we can treat each row uniformly as having the same number of</span>
@@ -1235,7 +1223,7 @@
 
     <span class="comment">// if we are using runtime tables, we add:</span>
     <span class="comment">// $RT(x) (1 - \text{selector}_{RT}(x)) = 0$</span>
-    <span class="kw">if</span> <span class="ident">configuration</span>.<span class="ident">runtime_tables</span>.<span class="ident">is_some</span>() {
+    <span class="kw">if</span> <span class="ident">configuration</span>.<span class="ident">lookup_info</span>.<span class="ident">uses_runtime_tables</span> {
         <span class="kw">let</span> <span class="ident">rt_constraints</span> <span class="op">=</span> <span class="ident">runtime_tables::constraints</span>();
         <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">rt_constraints</span>);
     }

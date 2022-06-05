@@ -337,6 +337,12 @@
 <span id="330">330</span>
 <span id="331">331</span>
 <span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::iter</span>;
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{<span class="ident">domains::EvaluationDomains</span>, <span class="ident">gate::CircuitGate</span>};
@@ -403,6 +409,12 @@
     <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">runtime_selector</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 
+    <span class="doccomment">/// Optional runtime tables, listed as tuples `(length, id)`.</span>
+    <span class="kw">pub</span> <span class="ident">runtime_tables</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RuntimeTableSpec</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+
+    <span class="doccomment">/// The offset of the runtime table within the concatenated table</span>
+    <span class="kw">pub</span> <span class="ident">runtime_table_offset</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>,
+
     <span class="doccomment">/// Configuration for the lookup constraint.</span>
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">bound</span> <span class="op">=</span> <span class="string">&quot;LookupConfiguration&lt;F&gt;: Serialize + DeserializeOwned&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">configuration</span>: <span class="ident">LookupConfiguration</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
@@ -415,7 +427,7 @@
         <span class="ident">runtime_tables</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RuntimeTableCfg</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">domain</span>: <span class="kw-2">&amp;</span><span class="ident">EvaluationDomains</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">LookupError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">lookup_info</span> <span class="op">=</span> <span class="ident">LookupInfo::create</span>();
+        <span class="kw">let</span> <span class="ident">lookup_info</span> <span class="op">=</span> <span class="ident">LookupInfo::create</span>(<span class="ident">runtime_tables</span>.<span class="ident">is_some</span>());
 
         <span class="comment">//~ 1. If no lookup is used in the circuit, do not create a lookup index</span>
         <span class="kw">match</span> <span class="ident">lookup_info</span>.<span class="ident">lookup_used</span>(<span class="ident">gates</span>) {
@@ -657,11 +669,11 @@
                     <span class="ident">table_ids</span>,
                     <span class="ident">table_ids8</span>,
                     <span class="ident">runtime_selector</span>,
+                    <span class="ident">runtime_tables</span>,
+                    <span class="ident">runtime_table_offset</span>,
                     <span class="ident">configuration</span>: <span class="ident">LookupConfiguration</span> {
                         <span class="ident">lookup_used</span>,
                         <span class="ident">lookup_info</span>,
-                        <span class="ident">runtime_tables</span>,
-                        <span class="ident">runtime_table_offset</span>,
                         <span class="ident">dummy_lookup</span>,
                     },
                 }))

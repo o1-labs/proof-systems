@@ -439,6 +439,9 @@
 <span id="432">432</span>
 <span id="433">433</span>
 <span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
     <span class="ident">domains::EvaluationDomains</span>,
     <span class="ident">gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">CurrOrNext</span>, <span class="ident">GateType</span>},
@@ -481,11 +484,13 @@
     <span class="kw">pub</span> <span class="ident">max_per_row</span>: <span class="ident">usize</span>,
     <span class="doccomment">/// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.</span>
     <span class="kw">pub</span> <span class="ident">max_joint_size</span>: <span class="ident">u32</span>,
+    <span class="doccomment">/// True if runtime lookup tables are used.</span>
+    <span class="kw">pub</span> <span class="ident">uses_runtime_tables</span>: <span class="ident">bool</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">LookupInfo</span> {
     <span class="doccomment">/// Create the default lookup configuration.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create</span>() -&gt; <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create</span>(<span class="ident">uses_runtime_tables</span>: <span class="ident">bool</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">kinds</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">GateType::lookup_kinds</span>();
 
         <span class="kw">let</span> <span class="ident">max_per_row</span> <span class="op">=</span> <span class="ident">max_lookups_per_row</span>(<span class="kw-2">&amp;</span><span class="ident">kinds</span>);
@@ -497,6 +502,7 @@
 
             <span class="ident">kinds</span>,
             <span class="ident">max_per_row</span>,
+            <span class="ident">uses_runtime_tables</span>,
         }
     }
 
