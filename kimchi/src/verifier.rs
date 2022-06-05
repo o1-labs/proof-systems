@@ -167,7 +167,7 @@ where
             //~~ - Derive the scalar joint combiner challenge $j$ from $j'$ using the endomorphism.
             //~~   (TODO: specify endomorphism)
             let joint_combiner = ScalarChallenge(joint_combiner);
-            let joint_combiner = (joint_combiner, joint_combiner.to_field(&index.srs.endo_r));
+            let joint_combiner = (joint_combiner, joint_combiner.to_field(&index.srs().endo_r));
 
             //~~ - absorb the commitments to the sorted polynomials.
             for com in &lookup_commits.sorted {
@@ -197,7 +197,7 @@ where
         let alpha_chal = ScalarChallenge(fq_sponge.challenge());
 
         //~ 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
-        let alpha = alpha_chal.to_field(&index.srs.endo_r);
+        let alpha = alpha_chal.to_field(&index.srs().endo_r);
 
         //~ 1. Enforce that the length of the $t$ commitment is of size `PERMUTS`.
         if self.commitments.t_comm.unshifted.len() != PERMUTS {
@@ -211,7 +211,7 @@ where
         let zeta_chal = ScalarChallenge(fq_sponge.challenge());
 
         //~ 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
-        let zeta = zeta_chal.to_field(&index.srs.endo_r);
+        let zeta = zeta_chal.to_field(&index.srs().endo_r);
 
         //~ 1. Setup the Fr-Sponge.
         let digest = fq_sponge.clone().digest();
@@ -289,13 +289,13 @@ where
         let v_chal = fr_sponge.challenge();
 
         //~ 1. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
-        let v = v_chal.to_field(&index.srs.endo_r);
+        let v = v_chal.to_field(&index.srs().endo_r);
 
         //~ 1. Sample $u'$ with the Fr-Sponge.
         let u_chal = fr_sponge.challenge();
 
         //~ 1. Derive $u$ from $u'$ using the endomorphism (TODO: specify).
-        let u = u_chal.to_field(&index.srs.endo_r);
+        let u = u_chal.to_field(&index.srs().endo_r);
 
         //~ 1. Create a list of all polynomials that have an evaluation proof.
         let evaluation_points = [zeta, zetaw];
@@ -318,7 +318,7 @@ where
 
         //~ 1. Compute the evaluation of $ft(\zeta)$.
         let ft_eval0 = {
-            let zkp = index.zkpm.evaluate(&zeta);
+            let zkp = index.zkpm().evaluate(&zeta);
             let zeta1m1 = zeta1 - ScalarField::<G>::one();
 
             let mut alpha_powers =
@@ -354,11 +354,11 @@ where
                 .map(|(w, s)| gamma + (beta * zeta * s) + w)
                 .fold(alpha0 * zkp * evals[0].z, |x, y| x * y);
 
-            let numerator = ((zeta1m1 * alpha1 * (zeta - index.w))
+            let numerator = ((zeta1m1 * alpha1 * (zeta - index.w()))
                 + (zeta1m1 * alpha2 * (zeta - ScalarField::<G>::one())))
                 * (ScalarField::<G>::one() - evals[0].z);
 
-            let denominator = (zeta - index.w) * (zeta - ScalarField::<G>::one());
+            let denominator = (zeta - index.w()) * (zeta - ScalarField::<G>::one());
             let denominator = denominator.inverse().expect("negligible probability");
 
             ft_eval0 += numerator * denominator;
@@ -437,7 +437,7 @@ where
                     .collect::<Vec<_>>(),
             );
 
-            combined_inner_product::<G>(&evaluation_points, &v, &u, &es, index.srs.g.len())
+            combined_inner_product::<G>(&evaluation_points, &v, &u, &es, index.srs().g.len())
         };
 
         let oracles = RandomOracles {
@@ -489,7 +489,7 @@ where
 
     //~ 1. Commit to the negated public input polynomial.
     let lgr_comm = index
-        .srs
+        .srs()
         .lagrange_bases
         .get(&index.domain.size())
         .expect("pre-computed committed lagrange bases not found");
@@ -536,7 +536,7 @@ where
     //~    in which case the evaluation should be used in place of the commitment.
     let f_comm = {
         // the permutation is written manually (not using the expr framework)
-        let zkp = index.zkpm.evaluate(&oracles.zeta);
+        let zkp = index.zkpm().evaluate(&oracles.zeta);
 
         let alphas = all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
 
@@ -932,14 +932,14 @@ where
 
     //~ 1. Ensure that all the proof's verifier index have a URS of the same length. (TODO: do they have to be the same URS though? should we check for that?)
     // TODO: Account for the different SRS lengths
-    let srs = &proofs[0].0.srs;
+    let srs = &proofs[0].0.srs();
     for (index, _) in proofs.iter() {
-        if index.srs.g.len() != srs.g.len() {
+        if index.srs().g.len() != srs.g.len() {
             return Err(VerifyError::DifferentSRS);
         }
 
         // also make sure that the SRS is not smaller than the domain size
-        if index.srs.max_degree() < index.domain.size() {
+        if index.srs().max_degree() < index.domain.size() {
             return Err(VerifyError::SRSTooSmall);
         }
     }

@@ -9,6 +9,7 @@ use crate::circuits::{
     expr::{Linearization, PolishToken},
     wires::*,
 };
+use crate::error::VerifierIndexError;
 use crate::prover_index::ProverIndex;
 use ark_ff::PrimeField;
 use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D};
@@ -18,6 +19,7 @@ use commitment_dlog::{
     srs::SRS,
 };
 use o1_utils::types::fields::*;
+use once_cell::sync::OnceCell;
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
@@ -64,7 +66,7 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     pub max_quot_size: usize,
     /// polynomial commitment keys
     #[serde(skip)]
-    pub srs: Arc<SRS<G>>,
+    pub srs: OnceCell<Arc<SRS<G>>>,
 
     // index polynomial commitments
     /// permutation commitment array
@@ -109,11 +111,11 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     pub shift: [ScalarField<G>; PERMUTS],
     /// zero-knowledge polynomial
     #[serde(skip)]
-    pub zkpm: DensePolynomial<ScalarField<G>>,
+    pub zkpm: OnceCell<DensePolynomial<ScalarField<G>>>,
     // TODO(mimoo): isn't this redundant with domain.d1.group_gen ?
     /// domain offset for zero-knowledge
     #[serde(skip)]
-    pub w: ScalarField<G>,
+    pub w: OnceCell<ScalarField<G>>,
     /// endoscalar coefficient
     #[serde(skip)]
     pub endo: ScalarField<G>,
@@ -176,7 +178,11 @@ where
             max_poly_size: self.max_poly_size,
             max_quot_size: self.max_quot_size,
             powers_of_alpha: self.powers_of_alpha.clone(),
-            srs: Arc::clone(&self.srs),
+            srs: {
+                let cell = OnceCell::new();
+                cell.set(Arc::clone(&self.srs)).unwrap();
+                cell
+            },
 
             sigma_comm: array_init(|i| self.srs.commit_non_hiding(&self.cs.sigmam[i], None)),
             coefficients_comm: array_init(|i| {
@@ -220,8 +226,16 @@ where
                 .collect(),
 
             shift: self.cs.shift,
-            zkpm: self.cs.precomputations().zkpm.clone(),
-            w: zk_w3(self.cs.domain.d1),
+            zkpm: {
+                let cell = OnceCell::new();
+                cell.set(self.cs.precomputations().zkpm.clone()).unwrap();
+                cell
+            },
+            w: {
+                let cell = OnceCell::new();
+                cell.set(zk_w3(self.cs.domain.d1)).unwrap();
+                cell
+            },
             endo: self.cs.endo,
             lookup_index,
             linearization: self.linearization.clone(),
@@ -235,6 +249,25 @@ impl<G: CommitmentCurve> VerifierIndex<G>
 where
     G::BaseField: PrimeField,
 {
+    /// Gets srs from [VerifierIndex] lazily
+    pub fn srs(&self) -> &Arc<SRS<G>> {
+        self.srs.get_or_init(|| {
+            let mut srs = SRS::<G>::create(self.max_poly_size);
+            srs.add_lagrange_basis(self.domain);
+            Arc::new(srs)
+        })
+    }
+
+    /// Gets zkpm from [VerifierIndex] lazily
+    pub fn zkpm(&self) -> &DensePolynomial<ScalarField<G>> {
+        self.zkpm.get_or_init(|| zk_polynomial(self.domain))
+    }
+
+    /// Gets w from [VerifierIndex] lazily
+    pub fn w(&self) -> &ScalarField<G> {
+        self.w.get_or_init(|| zk_w3(self.domain))
+    }
+
     /// Deserializes a [VerifierIndex] from a file, given a pointer to an SRS and an optional offset in the file.
     pub fn from_file(
         srs: Option<Arc<SRS<G>>>,
@@ -259,17 +292,16 @@ where
             .map_err(|e| e.to_string())?;
 
         // fill in the rest
-        verifier_index.srs = srs.unwrap_or_else(|| {
-            let mut srs = SRS::<G>::create(verifier_index.max_poly_size);
-            srs.add_lagrange_basis(verifier_index.domain);
-            Arc::new(srs)
-        });
+        if srs.is_some() {
+            verifier_index
+                .srs
+                .set(srs.unwrap())
+                .map_err(|_| VerifierIndexError::SRSHasBeenSet.to_string())?;
+        };
 
         verifier_index.endo = endo;
         verifier_index.fq_sponge_params = fq_sponge_params;
         verifier_index.fr_sponge_params = fr_sponge_params;
-        verifier_index.w = zk_w3(verifier_index.domain);
-        verifier_index.zkpm = zk_polynomial(verifier_index.domain);
 
         Ok(verifier_index)
     }
