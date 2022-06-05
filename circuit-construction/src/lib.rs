@@ -19,7 +19,7 @@ use kimchi::circuits::{
     wires::{Wire, COLUMNS},
 };
 use kimchi::{plonk_sponge::FrSponge, proof::ProverProof, prover_index::ProverIndex};
-use mina_curves::pasta::{fp::Fp, fq::Fq, pallas::Affine as Other, vesta::Affine};
+use mina_curves::pasta::{fp::Fp, fq::Fq, pallas::Affine as Other, vesta::{Affine}};
 use oracle::{constants::*, permutation::full_round, poseidon::ArithmeticSpongeParams, FqSponge};
 use std::collections::HashMap;
 
@@ -231,6 +231,33 @@ pub trait Cs<F: FftField + PrimeField> {
             row,
             c,
         });
+    }
+
+    fn and(&mut self, x1: Var<F>, x2: Var<F>) -> Var<F> {
+        let res = self.var(|| x1.val() * x2.val());
+        let row = array_init(|i| {
+            if i == 0 {
+                x1
+            } else if i == 1 {
+                x2
+            } else if i == 2 {
+                res
+            } else {
+                self.var(|| F::zero())
+            }
+        });
+
+        let mut c = vec![F::zero(); GENERIC_ROW_COEFFS];
+        c[0] = F::one();
+        c[1] = F::one();
+        c[2] = -F::from(2u8);
+        self.gate(GateSpec {
+            typ: GateType::Generic,
+            row,
+            c,
+        });
+
+        res
     }
 
     fn constant(&mut self, x: F) -> Var<F> {
@@ -448,6 +475,18 @@ pub trait Cs<F: FftField + PrimeField> {
 
         res
     }
+
+    //and
+
+    //or
+
+    //sub
+
+    //invert
+
+    //is_zero
+
+    //is_equal
 
     fn scalar_mul(
         &mut self,
@@ -1014,3 +1053,98 @@ impl<G: CommitmentCurve> CoordinateCurve for G {
         CommitmentCurve::to_coordinates(self)
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use ark_ff::{Fp256, PrimeField, FftField};
+    use kimchi::circuits::{constraints::ConstraintSystem, polynomial::COLUMNS, gate::CircuitGate};
+    use mina_curves::pasta::{FpParameters};
+
+    use crate::{System, Cs, WitnessGenerator, fp_constants, Var, FpInner, Cycle};
+
+    fn and_circuit_template<
+        F: PrimeField + FftField,
+        Sys: Cs<F>,
+    >(sys: &mut Sys, b1: bool, b2: bool) -> Var<F> {
+        sys.constant(1u8.into());
+        let x1 = sys.var(|| b1.into());
+        let x2 = sys.var(|| b2.into());
+        sys.and(x1, x2)
+    }
+
+    fn generate_gates<H>(
+        mut circuit: H
+    ) -> Vec<CircuitGate<Fp256<FpParameters>>>     
+    where
+    H: FnMut(&mut System::<Fp256<FpParameters>>)
+    {
+        let mut circuit_writer_system: System::<Fp256<FpParameters>> = System {
+            next_variable: 0,
+            gates: vec![],
+        };
+        circuit(&mut circuit_writer_system);
+        circuit_writer_system.gates()
+    }
+
+    fn generate_witness<H>(
+        mut circuit: H
+    ) -> [Vec<Fp256<FpParameters>>; COLUMNS] 
+    where
+    H: FnMut(&mut WitnessGenerator<Fp256<FpParameters>>)
+    {
+        let mut witness_generator: WitnessGenerator<Fp256<FpParameters>> = WitnessGenerator {
+            rows: vec![]
+        };
+        circuit(&mut witness_generator);
+        witness_generator.columns()
+    }
+
+    fn create_constraint_system(
+        gates: Vec<CircuitGate<Fp256<FpParameters>>>
+    ) -> ConstraintSystem<Fp256<FpParameters>> {
+        let constants = fp_constants();
+        ConstraintSystem::<<FpInner as Cycle>::InnerField>::create(gates, constants.poseidon.clone())
+            .public(0)
+            .build()
+            .unwrap()
+    }
+
+    #[test]
+    fn test_verify_and_gate() {
+        let gates = generate_gates(|sys| {and_circuit_template(sys, true, true);});
+        let witness = generate_witness(|sys| {and_circuit_template(sys, true, true);});
+        let constraint_system = create_constraint_system(gates);
+    
+        constraint_system.verify(&witness, &[]).unwrap();
+    }
+
+    #[test]
+    fn test_true_true_result_and_gate() {
+        let mut witness_generator: WitnessGenerator<Fp256<FpParameters>> = WitnessGenerator {
+            rows: vec![]
+        };
+        let result = and_circuit_template(&mut witness_generator, true, true);
+        assert_eq!(result.val(), true.into());
+    }
+
+    #[test]
+    fn test_false_true_result_and_gate() {
+        let mut witness_generator: WitnessGenerator<Fp256<FpParameters>> = WitnessGenerator {
+            rows: vec![]
+        };
+        let result = and_circuit_template(&mut witness_generator, false, true);
+        assert_eq!(result.val(), false.into());
+    }
+
+    #[test]
+    fn test_false_false_result_and_gate() {
+        let mut witness_generator: WitnessGenerator<Fp256<FpParameters>> = WitnessGenerator {
+            rows: vec![]
+        };
+        let result = and_circuit_template(&mut witness_generator, false, false);
+        assert_eq!(result.val(), false.into());
+    }
+}
+
+
