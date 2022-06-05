@@ -36,11 +36,17 @@ pub enum LookupError {
     TableIDZeroMustHaveZeroEntry,
 }
 
+/// Lookup selectors
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
 pub struct LookupSelectors<T> {
+    /// Chacha pattern lookup selector
     pub chacha: Option<T>,
+    /// ChachaFinal pattern lookup selector
     pub chacha_final: Option<T>,
+    /// LookupGate pattern lookup selector
     pub lookup_gate: Option<T>,
+    /// RangeCheckGate pattern lookup selector
+    pub range_check_gate: Option<T>,
 }
 
 #[serde_as]
@@ -52,6 +58,8 @@ struct LookupSelectorsSerdeAs<F: FftField> {
     pub chacha_final: Option<E<F, D<F>>>,
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
     pub lookup_gate: Option<E<F, D<F>>>,
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    pub range_check_gate: Option<E<F, D<F>>>,
 }
 
 impl<F: FftField> serde_with::SerializeAs<LookupSelectors<E<F, D<F>>>>
@@ -65,6 +73,7 @@ impl<F: FftField> serde_with::SerializeAs<LookupSelectors<E<F, D<F>>>>
             chacha: val.chacha.clone(),
             chacha_final: val.chacha_final.clone(),
             lookup_gate: val.lookup_gate.clone(),
+            range_check_gate: val.range_check_gate.clone(),
         };
         repr.serialize(serializer)
     }
@@ -81,11 +90,13 @@ impl<'de, F: FftField> serde_with::DeserializeAs<'de, LookupSelectors<E<F, D<F>>
             chacha,
             chacha_final,
             lookup_gate,
+            range_check_gate,
         } = LookupSelectorsSerdeAs::deserialize(deserializer)?;
         Ok(LookupSelectors {
             chacha,
             chacha_final,
             lookup_gate,
+            range_check_gate,
         })
     }
 }
@@ -98,6 +109,7 @@ impl<T> std::ops::Index<LookupPattern> for LookupSelectors<T> {
             LookupPattern::ChaCha => &self.chacha,
             LookupPattern::ChaChaFinal => &self.chacha_final,
             LookupPattern::LookupGate => &self.lookup_gate,
+            LookupPattern::RangeCheckGate => &self.range_check_gate,
         }
     }
 }
@@ -108,6 +120,7 @@ impl<T> std::ops::IndexMut<LookupPattern> for LookupSelectors<T> {
             LookupPattern::ChaCha => &mut self.chacha,
             LookupPattern::ChaChaFinal => &mut self.chacha_final,
             LookupPattern::LookupGate => &mut self.lookup_gate,
+            LookupPattern::RangeCheckGate => &mut self.range_check_gate,
         }
     }
 }
@@ -118,6 +131,7 @@ impl<T> LookupSelectors<T> {
             chacha,
             chacha_final,
             lookup_gate,
+            range_check_gate,
         } = self;
         // This closure isn't really redundant -- it shields the parameter from a copy -- but
         // clippy isn't smart enough to figure that out..
@@ -127,6 +141,7 @@ impl<T> LookupSelectors<T> {
             chacha: chacha.map(f),
             chacha_final: chacha_final.map(f),
             lookup_gate: lookup_gate.map(f),
+            range_check_gate: range_check_gate.map(f),
         }
     }
 
@@ -135,6 +150,7 @@ impl<T> LookupSelectors<T> {
             chacha: self.chacha.as_ref(),
             chacha_final: self.chacha_final.as_ref(),
             lookup_gate: self.lookup_gate.as_ref(),
+            range_check_gate: self.range_check_gate.as_ref(),
         }
     }
 }
