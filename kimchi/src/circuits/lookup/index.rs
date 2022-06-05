@@ -36,11 +36,16 @@ pub enum LookupError {
     TableIDZeroMustHaveZeroEntry,
 }
 
+/// Lookup selectors
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
 pub struct LookupSelectors<T> {
+    /// Chacha pattern lookup selector
     pub chacha: Option<T>,
+    /// ChachaFinal pattern lookup selector
     pub chacha_final: Option<T>,
+    /// LookupGate pattern lookup selector
     pub lookup_gate: Option<T>,
+    /// RangeCheckGate pattern lookup selector
     pub range_check_gate: Option<T>,
 }
 
