@@ -86,7 +86,7 @@ impl LookupInfo {
     /// Check what kind of lookups, if any, are used by this circuit.
     pub fn lookup_used(&self) -> Option<LookupsUsed> {
         let mut lookups_used = None;
-        for lookup_pattern in self.kinds.iter() {
+        for lookup_pattern in &self.kinds {
             if lookup_pattern.max_joint_size() > 1 {
                 return Some(LookupsUsed::Joint);
             } else {
