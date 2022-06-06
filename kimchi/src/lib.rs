@@ -28,7 +28,7 @@ pub use o1_utils::{
     field_helpers, hasher::CryptoDigest, math, types::fields, ExtendedDensePolynomial,
     ExtendedEvaluations,
 };
-pub use oracle::{constants, pasta::fp_kimchi, poseidon, sponge};
+pub use oracle::{constants, pasta::fp_kimchi::params, poseidon, sponge};
 
 pub mod alphas;
 pub mod bench;
