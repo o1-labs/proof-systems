@@ -25,12 +25,12 @@ pub use mina_curves::pasta::{
     vesta::{Affine, VestaParameters},
 };
 pub use o1_utils::{
-    field_helpers::i32_to_field, hasher::CryptoDigest, math, types::fields::*,
-    ExtendedDensePolynomial, ExtendedEvaluations,
+    field_helpers::*, hasher::CryptoDigest, math, types::fields::*, ExtendedDensePolynomial,
+    ExtendedEvaluations,
 };
 pub use oracle::{
     constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
-    pasta::fp_kimchi::params,
+    pasta::fp_kimchi::*,
     poseidon::{sbox, ArithmeticSponge, ArithmeticSpongeParams, Sponge},
     sponge::{DefaultFqSponge, DefaultFrSponge, FqSponge, ScalarChallenge},
 };
