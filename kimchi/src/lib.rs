@@ -9,7 +9,7 @@ pub use crate::circuits::{
     polynomials::generic::GenericGateSpec,
     wires::Wire,
 };
-pub use cairo;
+pub use cairo::{CairoInstruction, CairoMemory, CairoProgram, FlagBits, Offsets, Pointers};
 pub use commitment_dlog::{
     commitment::{
         b_poly, b_poly_coefficients, combined_inner_product, BatchEvaluationProof, CommitmentCurve,
