@@ -1,0 +1,298 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Universal Reference String (URS) - Mina book</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href=".././assets/css/mdbook-admonish.css">
+
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="../introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded affix "><li class="part-title">Foundations</li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_foundations.html"><strong aria-hidden="true">2.</strong> Terminology</a></li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_groups.html"><strong aria-hidden="true">3.</strong> Groups</a></li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_rings.html"><strong aria-hidden="true">4.</strong> Rings</a></li><li class="chapter-item expanded "><a href="../fundamentals/zkbook.html"><strong aria-hidden="true">5.</strong> Fields</a></li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_polynomials.html"><strong aria-hidden="true">6.</strong> Polynomials</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../fundamentals/zkbook_multiplying_polynomials.html"><strong aria-hidden="true">6.1.</strong> Multiplying polynomials</a></li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_fft.html"><strong aria-hidden="true">6.2.</strong> Fast Fourier transform</a></li></ol></li><li class="chapter-item expanded "><li class="part-title">Cryptographic tools</li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_commitment.html"><strong aria-hidden="true">7.</strong> Commitments</a></li><li class="chapter-item expanded "><a href="../plonk/polynomial_commitments.html"><strong aria-hidden="true">8.</strong> Polynomial commitments</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../plonk/inner_product.html"><strong aria-hidden="true">8.1.</strong> Inner product argument</a></li><li class="chapter-item expanded "><a href="../plonk/inner_product_api.html"><strong aria-hidden="true">8.2.</strong> Different functionnalities</a></li></ol></li><li class="chapter-item expanded "><li class="part-title">Proof systems</li><li class="chapter-item expanded "><a href="../fundamentals/proof_systems.html"><strong aria-hidden="true">9.</strong> Overview</a></li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_plonk.html"><strong aria-hidden="true">10.</strong> zk-SNARKs</a></li><li class="chapter-item expanded "><a href="../fundamentals/custom_constraints.html"><strong aria-hidden="true">11.</strong> Custom constraints</a></li><li class="chapter-item expanded affix "><li class="part-title">Background on PLONK</li><li class="chapter-item expanded "><a href="../plonk/overview.html"><strong aria-hidden="true">12.</strong> Overview</a></li><li class="chapter-item expanded "><a href="../plonk/glossary.html"><strong aria-hidden="true">13.</strong> Glossary</a></li><li class="chapter-item expanded "><a href="../plonk/domain.html"><strong aria-hidden="true">14.</strong> Domain</a></li><li class="chapter-item expanded "><a href="../plonk/lagrange.html"><strong aria-hidden="true">15.</strong> Lagrange basis in multiplicative subgroups</a></li><li class="chapter-item expanded "><a href="../plonk/fiat_shamir.html"><strong aria-hidden="true">16.</strong> Non-interaction with fiat-shamir</a></li><li class="chapter-item expanded "><a href="../plonk/plookup.html"><strong aria-hidden="true">17.</strong> Plookup</a></li><li class="chapter-item expanded "><a href="../plonk/maller.html"><strong aria-hidden="true">18.</strong> Maller's optimization</a></li><li class="chapter-item expanded affix "><li class="part-title">Kimchi</li><li class="chapter-item expanded "><a href="../kimchi/overview.html"><strong aria-hidden="true">19.</strong> Overview</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../kimchi/arguments.html"><strong aria-hidden="true">19.1.</strong> Arguments</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../kimchi/gates.html"><strong aria-hidden="true">19.1.1.</strong> Custom gates</a></li><li class="chapter-item expanded "><a href="../kimchi/permut.html"><strong aria-hidden="true">19.1.2.</strong> Permutation</a></li><li class="chapter-item expanded "><a href="../kimchi/lookup.html"><strong aria-hidden="true">19.1.3.</strong> Lookup</a></li></ol></li></ol></li><li class="chapter-item expanded "><li class="part-title">Pickles & Inductive proof systems</li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_ips.html"><strong aria-hidden="true">20.</strong> Overview</a></li><li class="chapter-item expanded affix "><li class="part-title">RFCs</li><li class="chapter-item expanded "><a href="../plonk/zkpm.html"><strong aria-hidden="true">21.</strong> RFC 0: Alternative zero-knowledge</a></li><li class="chapter-item expanded "><a href="../plonk/final_check.html"><strong aria-hidden="true">22.</strong> RFC 1: Final check</a></li><li class="chapter-item expanded "><a href="../plonk/maller_15.html"><strong aria-hidden="true">23.</strong> RFC 2: Maller's optimization for kimchi</a></li><li class="chapter-item expanded "><a href="../rfcs/3-lookup.html"><strong aria-hidden="true">24.</strong> RFC 3: Plookup integration in kimchi</a></li><li class="chapter-item expanded affix "><li class="part-title">Specifications</li><li class="chapter-item expanded "><a href="../specs/poseidon.html"><strong aria-hidden="true">25.</strong> Poseidon hash</a></li><li class="chapter-item expanded "><a href="../specs/poly-commitment.html"><strong aria-hidden="true">26.</strong> Polynomial commitment</a></li><li class="chapter-item expanded "><a href="../specs/pasta.html"><strong aria-hidden="true">27.</strong> Pasta curves</a></li><li class="chapter-item expanded "><a href="../specs/kimchi.html"><strong aria-hidden="true">28.</strong> Kimchi</a></li><li class="chapter-item expanded "><a href="../specs/urs.html" class="active"><strong aria-hidden="true">29.</strong> Universal Reference String (URS)</a></li><li class="chapter-item expanded "><a href="../specs/pickles.html"><strong aria-hidden="true">30.</strong> Pickles</a></li><li class="chapter-item expanded "><a href="../specs/consensus.html"><strong aria-hidden="true">31.</strong> Consensus</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Mina book</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://www.github.com/o1-labs/proof-systems" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+<h1 id="universal-reference-string-urs"><a class="header" href="#universal-reference-string-urs">Universal Reference String (URS)</a></h1>
+<div id="admonition-note" class="admonition note">
+<div class="admonition-title">
+<a class="admonition-anchor-link" href="#admonition-note">
+<p>Note</p>
+</a>
+</div>
+<div>
+<p>Note that the URS is called SRS in our codebase at the moment.
+SRS is incorrect, as it is used in the presence of a trusted setup (which kimchi does not have). 
+This needs to be fixed.</p>
+</div>
+</div>
+<p>The URS comprises of:</p>
+<ul>
+<li><code>Gs</code>: an arbitrary ordered list of curve points that can be used to commit to a polynomial in a non-hiding way.</li>
+<li><code>H</code>: a blinding curve point that can be used to add hidding to a polynomial commitment scheme.</li>
+<li><code>endo_q, endo_r</code>: TODO</li>
+</ul>
+<p>The URS is generated deterministically, and thus can be rederived if not stored.</p>
+<p>As different circuits of different size do not share the same domain, and the size of the domain is directly equal to the number of <code>Gs</code> curve points we use to commit to polynomials, we often want to share the same URS of maximum size across many circuits (constraint systems).
+Circuit associated with smaller domains will simply use a truncation of the shared URS.</p>
+<div id="admonition-note-1" class="admonition note">
+<div class="admonition-title">
+<a class="admonition-anchor-link" href="#admonition-note-1">
+<p>Note</p>
+</a>
+</div>
+<div>
+<p>A circuit’s domain is generated as the first power of 2 that is equal, or larger, to the number of gates used in the circuit (including zero-knowledge gates).</p>
+</div>
+</div>
+<h2 id="group-map"><a class="header" href="#group-map">Group map</a></h2>
+<p>TODO: specify this part</p>
+<h2 id="curve-points-to-commit-to-a-polynomial"><a class="header" href="#curve-points-to-commit-to-a-polynomial">Curve points to commit to a polynomial</a></h2>
+<p>The following pseudo-code specifies how the <code>Gs</code> curve points, as well as the <code>H</code> curve point, are generated.</p>
+<pre><code class="language-python">def create(depth):
+    # generators
+    Gs = []
+    for i in range(0, depth):
+        digest = Blake2b512.hash(be_encode(i))
+        Gs.push(point_of_random_bytes(digest))
+
+    # blinding point
+    digest = (b&quot;srs_misc&quot; || be_encode(0))
+    H = point_of_random_bytes(digest)
+
+    #
+    return (Gs, H)
+
+def point_of_random_bytes(random_bytes):
+    # packing in bit-representation
+    const N: usize = 31
+    let mut bits = [false; 8 * N]
+    for i in range(0, N) {
+        for j in range(0, 8) {
+            bits[8 * i + j] = (random_bytes[i] &gt;&gt; j) &amp; 1 == 1;
+        }
+    }
+
+    let n = BigInt::from_bits_be(&amp;bits);
+    let t = G::BaseField::from_repr(n)
+    return map.to_group(t)
+</code></pre>
+<p>TODO: specify <code>map.to_group</code> in the previous section.</p>
+<h2 id="endo-stuff"><a class="header" href="#endo-stuff">Endo stuff</a></h2>
+<p>TODO: specify endo_r, endo_q</p>
+<h2 id="urs-values-in-practice"><a class="header" href="#urs-values-in-practice">URS values in practice</a></h2>
+<p>As there is no limit to the number of commitment curve points you can generate, we only provide the first three ones to serve as test vectors.</p>
+<p>TODO: specify the encoding</p>
+<h3 id="vesta"><a class="header" href="#vesta">Vesta</a></h3>
+<p><strong><code>Gs</code></strong>. </p>
+<pre><code>G0 = (x=121C4426885FD5A9701385AAF8D43E52E7660F1FC5AFC5F6468CC55312FC60F8, y=21B439C01247EA3518C5DDEB324E4CB108AF617780DDF766D96D3FD8AB028B70)
+G1 = (x=26C9349FF7FB4AB230A6F6AEF045F451FBBE9B37C43C3274E2AA4B82D131FD26, y=1996274D67EC0464C51F79CCFA1F511C2AABB666ABE67733EE8185B71B27A504)
+G2 = (x=26985F27306586711466C5B2C28754AA62FE33516D75CEF1F7751F1A169713FD, y=2E8930092FE6A18B331CE0E6E27B413AA18E76394F18A2835DA9FAE10AA3229D)
+</code></pre>
+<p><strong><code>H</code></strong>:</p>
+<pre><code>H = (x=092060386301C999AAB4F263757836369CA27975E28BC7A8E5B2CE5B26262201, y=314FC4D83AE66A509F9D41BE6165F2606A209A9B5805EE85CE20249C5EBCBE26)
+</code></pre>
+<p><strong>endo</strong>:</p>
+<pre><code>endo_q = 06819A58283E528E511DB4D81CF70F5A0FED467D47C033AF2AA9D2E050AA0E4F
+endo_r = 12CCCA834ACDBA712CAAD5DC57AAB1B01D1F8BD237AD31491DAD5EBDFDFE4AB9
+</code></pre>
+<h3 id="pallas"><a class="header" href="#pallas">Pallas</a></h3>
+<pre><code>G0 = (x363D83141FD1E0540718FADBA7278ABAEEDB46D7A3F050F2CFF1DF4F300C9C30, y=034C68F4079B4F338A19BE2D7BFA44B395C65B9790DD273F361327446C778764)
+G1 = (x2CC40B77D87665244AE5EB5304E8744004C80061AD08476A0F0656C13134EA45, y=28146EC860159DB55CB5EA5B14F0AA2F8751DEDFE0DDAFD1C313B15575C4B4AC)
+G2 = (x2808BC21BEB90314377BF6130285FABE6CE4B8A4457FB25BC95EBA0083DF27E3, y=1E04E53DD6395FAB8018D7FE98F9C7FAB39C40BFBE48589626A7B8532728B002)
+</code></pre>
+<p><strong><code>H</code></strong>:</p>
+<pre><code>H = (x221B959DACD2052AAE26193FCA36B53279866A4FBBAB0D5A2F828B5FD7778201, y=058C8F1105CAE57F4891EADC9B85C8954E5067190E155E61D66855ACE69C16C0)
+</code></pre>
+<p><strong>endo</strong>:</p>
+<pre><code>
+endo_q = 2D33357CB532458ED3552A23A8554E5005270D29D19FC7D27B7FD22F0201B547
+endo_r = 397E65A7D7C1AD71AEE24B27E308F0A61259527EC1D4752E619D1840AF55F1B1
+</code></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../specs/kimchi.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next" href="../specs/pickles.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../specs/kimchi.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next" href="../specs/pickles.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../searcher.js" type="text/javascript" charset="utf-8"></script>
+
+        <script src="../clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+        <script type="text/javascript" src="../mermaid.min.js"></script>
+        <script type="text/javascript" src="../mermaid-init.js"></script>
+
+
+    </body>
+</html>
