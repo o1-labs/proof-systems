@@ -9,7 +9,7 @@ pub use crate::circuits::{
     polynomials::generic::GenericGateSpec,
     wires::Wire,
 };
-pub use cairo::{CairoInstruction, CairoMemory, CairoProgram, FlagBits, Offsets, Pointers};
+pub use cairo;
 pub use commitment_dlog::{
     commitment::{
         b_poly, b_poly_coefficients, combined_inner_product, BatchEvaluationProof, CommitmentCurve,
@@ -28,12 +28,7 @@ pub use o1_utils::{
     field_helpers, hasher::CryptoDigest, math, types::fields, ExtendedDensePolynomial,
     ExtendedEvaluations,
 };
-pub use oracle::{
-    constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
-    pasta::fp_kimchi,
-    poseidon::{sbox, ArithmeticSponge, ArithmeticSpongeParams, Sponge},
-    sponge::{DefaultFqSponge, DefaultFrSponge, FqSponge, ScalarChallenge},
-};
+pub use oracle::{constants, pasta, poseidon, sponge};
 
 pub mod alphas;
 pub mod bench;
