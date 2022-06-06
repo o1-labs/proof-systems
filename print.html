@@ -4428,40 +4428,61 @@ For this reason, it can be useful to visualize the high-level interactive protoc
 You can find these operations under the <a href="specs/kimchi.html#proof-creation">proof creation</a> and <a href="specs/kimchi.html#proof-verification">proof verification</a> algorithms as absorption and squeezing of values with the sponge.</p>
 <h3 id="proof-structure"><a class="header" href="#proof-structure">Proof Structure</a></h3>
 <p>A proof consists of the following data structures:</p>
-<pre><code class="language-rs">#[derive(Clone)]
+<pre><code class="language-rs">#[serde_as]
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(bound(
+    serialize = &quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;: serde_with::SerializeAs&lt;Field&gt;&quot;,
+    deserialize = &quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;: serde_with::DeserializeAs&lt;'de, Field&gt;&quot;
+))]
 pub struct LookupEvaluations&lt;Field&gt; {
     /// sorted lookup table polynomial
+    #[serde_as(as = &quot;Vec&lt;Vec&lt;o1_utils::serialization::SerdeAs&gt;&gt;&quot;)]
     pub sorted: Vec&lt;Field&gt;,
     /// lookup aggregation polynomial
+    #[serde_as(as = &quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;)]
     pub aggreg: Field,
     // TODO: May be possible to optimize this away?
     /// lookup table polynomial
+    #[serde_as(as = &quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;)]
     pub table: Field,
 
     /// Optionally, a runtime table polynomial.
+    #[serde_as(as = &quot;Option&lt;Vec&lt;o1_utils::serialization::SerdeAs&gt;&gt;&quot;)]
     pub runtime: Option&lt;Field&gt;,
 }
 
 // TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
-#[derive(Clone)]
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(bound(
+    serialize = &quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;: serde_with::SerializeAs&lt;Field&gt;&quot;,
+    deserialize = &quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;: serde_with::DeserializeAs&lt;'de, Field&gt;&quot;
+))]
 pub struct ProofEvaluations&lt;Field&gt; {
     /// witness polynomials
+    #[serde_as(as = &quot;[Vec&lt;o1_utils::serialization::SerdeAs&gt;; COLUMNS]&quot;)]
     pub w: [Field; COLUMNS],
     /// permutation polynomial
+    #[serde_as(as = &quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;)]
     pub z: Field,
     /// permutation polynomials
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
+    #[serde_as(as = &quot;[Vec&lt;o1_utils::serialization::SerdeAs&gt;; PERMUTS - 1]&quot;)]
     pub s: [Field; PERMUTS - 1],
     /// lookup-related evaluations
     pub lookup: Option&lt;LookupEvaluations&lt;Field&gt;&gt;,
     /// evaluation of the generic selector polynomial
+    #[serde_as(as = &quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;)]
     pub generic_selector: Field,
     /// evaluation of the poseidon selector polynomial
+    #[serde_as(as = &quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;)]
     pub poseidon_selector: Field,
 }
 
 /// Commitments linked to the lookup feature
-#[derive(Clone)]
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(bound = &quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;)]
 pub struct LookupCommitments&lt;G: AffineCurve&gt; {
     pub sorted: Vec&lt;PolyComm&lt;G&gt;&gt;,
     pub aggreg: PolyComm&lt;G&gt;,
@@ -4471,7 +4492,9 @@ pub struct LookupCommitments&lt;G: AffineCurve&gt; {
 }
 
 /// All the commitments that the prover creates as part of the proof.
-#[derive(Clone)]
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(bound = &quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;)]
 pub struct ProverCommitments&lt;G: AffineCurve&gt; {
     /// The commitments to the witness (execution trace)
     pub w_comm: [PolyComm&lt;G&gt;; COLUMNS],
@@ -4484,7 +4507,9 @@ pub struct ProverCommitments&lt;G: AffineCurve&gt; {
 }
 
 /// The proof that the prover creates from a [ProverIndex](super::prover_index::ProverIndex) and a `witness`.
-#[derive(Clone)]
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(bound = &quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;)]
 pub struct ProverProof&lt;G: AffineCurve&gt; {
     /// All the polynomial commitments required in the proof
     pub commitments: ProverCommitments&lt;G&gt;,
@@ -4497,12 +4522,15 @@ pub struct ProverProof&lt;G: AffineCurve&gt; {
     pub evals: [ProofEvaluations&lt;Vec&lt;ScalarField&lt;G&gt;&gt;&gt;; 2],
 
     /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
+    #[serde_as(as = &quot;o1_utils::serialization::SerdeAs&quot;)]
     pub ft_eval1: ScalarField&lt;G&gt;,
 
     /// The public input
+    #[serde_as(as = &quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;)]
     pub public: Vec&lt;ScalarField&lt;G&gt;&gt;,
 
     /// The challenges underlying the optional polynomials folded into the proof
+    #[serde_as(as = &quot;Vec&lt;(Vec&lt;o1_utils::serialization::SerdeAs&gt;, serde_with::Same)&gt;&quot;)]
     pub prev_challenges: Vec&lt;(Vec&lt;ScalarField&lt;G&gt;&gt;, PolyComm&lt;G&gt;)&gt;,
 }
 </code></pre>

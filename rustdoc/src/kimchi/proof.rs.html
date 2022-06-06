@@ -318,6 +318,36 @@
 <span id="311">311</span>
 <span id="312">312</span>
 <span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
+<span id="343">343</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the data structures of a proof.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::wires</span>::{<span class="ident">COLUMNS</span>, <span class="ident">PERMUTS</span>};
@@ -327,42 +357,65 @@
 <span class="kw">use</span> <span class="ident">array_init::array_init</span>;
 <span class="kw">use</span> <span class="ident">commitment_dlog</span>::{<span class="ident">commitment::PolyComm</span>, <span class="ident">evaluation_proof::OpeningProof</span>};
 <span class="kw">use</span> <span class="ident">o1_utils</span>::{<span class="ident">types::fields</span>::<span class="kw-2">*</span>, <span class="ident">ExtendedDensePolynomial</span>};
+<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+<span class="kw">use</span> <span class="ident">serde_with::serde_as</span>;
 
 <span class="comment">//~ spec:startcode</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">serde_as</span>]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">bound</span>(
+    <span class="ident">serialize</span> <span class="op">=</span> <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;: serde_with::SerializeAs&lt;Field&gt;&quot;</span>,
+    <span class="ident">deserialize</span> <span class="op">=</span> <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;: serde_with::DeserializeAs&lt;&#39;de, Field&gt;&quot;</span>
+))]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LookupEvaluations</span><span class="op">&lt;</span><span class="ident">Field</span><span class="op">&gt;</span> {
     <span class="doccomment">/// sorted lookup table polynomial</span>
+    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;Vec&lt;Vec&lt;o1_utils::serialization::SerdeAs&gt;&gt;&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">sorted</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Field</span><span class="op">&gt;</span>,
     <span class="doccomment">/// lookup aggregation polynomial</span>
+    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">aggreg</span>: <span class="ident">Field</span>,
     <span class="comment">// TODO: May be possible to optimize this away?</span>
     <span class="doccomment">/// lookup table polynomial</span>
+    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">table</span>: <span class="ident">Field</span>,
 
     <span class="doccomment">/// Optionally, a runtime table polynomial.</span>
+    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;Option&lt;Vec&lt;o1_utils::serialization::SerdeAs&gt;&gt;&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">runtime</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Field</span><span class="op">&gt;</span>,
 }
 
 <span class="comment">// TODO: this should really be vectors here, perhaps create another type for chunked evaluations?</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">serde_as</span>]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">bound</span>(
+    <span class="ident">serialize</span> <span class="op">=</span> <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;: serde_with::SerializeAs&lt;Field&gt;&quot;</span>,
+    <span class="ident">deserialize</span> <span class="op">=</span> <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;: serde_with::DeserializeAs&lt;&#39;de, Field&gt;&quot;</span>
+))]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProofEvaluations</span><span class="op">&lt;</span><span class="ident">Field</span><span class="op">&gt;</span> {
     <span class="doccomment">/// witness polynomials</span>
+    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;[Vec&lt;o1_utils::serialization::SerdeAs&gt;; COLUMNS]&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">w</span>: [<span class="ident">Field</span>; <span class="ident">COLUMNS</span>],
     <span class="doccomment">/// permutation polynomial</span>
+    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">z</span>: <span class="ident">Field</span>,
     <span class="doccomment">/// permutation polynomials</span>
     <span class="doccomment">/// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)</span>
+    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;[Vec&lt;o1_utils::serialization::SerdeAs&gt;; PERMUTS - 1]&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">s</span>: [<span class="ident">Field</span>; <span class="ident">PERMUTS</span> <span class="op">-</span> <span class="number">1</span>],
     <span class="doccomment">/// lookup-related evaluations</span>
     <span class="kw">pub</span> <span class="ident">lookup</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LookupEvaluations</span><span class="op">&lt;</span><span class="ident">Field</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="doccomment">/// evaluation of the generic selector polynomial</span>
+    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">generic_selector</span>: <span class="ident">Field</span>,
     <span class="doccomment">/// evaluation of the poseidon selector polynomial</span>
+    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">poseidon_selector</span>: <span class="ident">Field</span>,
 }
 
 <span class="doccomment">/// Commitments linked to the lookup feature</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">serde_as</span>]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">bound</span> <span class="op">=</span> <span class="string">&quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LookupCommitments</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">AffineCurve</span><span class="op">&gt;</span> {
     <span class="kw">pub</span> <span class="ident">sorted</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">aggreg</span>: <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
@@ -372,7 +425,9 @@
 }
 
 <span class="doccomment">/// All the commitments that the prover creates as part of the proof.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">serde_as</span>]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">bound</span> <span class="op">=</span> <span class="string">&quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProverCommitments</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">AffineCurve</span><span class="op">&gt;</span> {
     <span class="doccomment">/// The commitments to the witness (execution trace)</span>
     <span class="kw">pub</span> <span class="ident">w_comm</span>: [<span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
@@ -385,7 +440,9 @@
 }
 
 <span class="doccomment">/// The proof that the prover creates from a [ProverIndex](super::prover_index::ProverIndex) and a `witness`.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">serde_as</span>]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">bound</span> <span class="op">=</span> <span class="string">&quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">AffineCurve</span><span class="op">&gt;</span> {
     <span class="doccomment">/// All the polynomial commitments required in the proof</span>
     <span class="kw">pub</span> <span class="ident">commitments</span>: <span class="ident">ProverCommitments</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
@@ -398,12 +455,15 @@
     <span class="kw">pub</span> <span class="ident">evals</span>: [<span class="ident">ProofEvaluations</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>; <span class="number">2</span>],
 
     <span class="doccomment">/// Required evaluation for [Maller&#39;s optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)</span>
+    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">ft_eval1</span>: <span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
 
     <span class="doccomment">/// The public input</span>
+    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">public</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 
     <span class="doccomment">/// The challenges underlying the optional polynomials folded into the proof</span>
+    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;Vec&lt;(Vec&lt;o1_utils::serialization::SerdeAs&gt;, serde_with::Same)&gt;&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">prev_challenges</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
 }
 <span class="comment">//~ spec:endcode</span>
