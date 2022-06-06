@@ -13,10 +13,46 @@ use crate::plonk::proof::{
 };
 use crate::transcript::{Arthur, Msg};
 
-///
-/// N: number of chunks in polynomial
-///
-/// - evaluations: (x, () )
+struct IPAChallenges<F: FftField + PrimeField> {
+    c: Vec<Var<F>>
+}
+
+impl <F> IPAChallenges<F> where F: FftField + PrimeField {
+    /// PC_DL.SuccinctCheck, Step 8
+    /// Evaluate the h(X) polynomial (defined by the challenges )
+    /// 
+    /// h(X) = \prod_{i = 0}^{n} (1 + c_{n-i} X^{2^i})
+    /// 
+    /// Evalute h(X) at x.
+    fn evaluate_h<C: Cs<F>>(&self, cs: &mut C, x: Var<F>) -> Var<F> {    
+        assert_ne!(self.c.len(), 0, "h is undefined for the empty challenge list");
+
+        let one = cs.constant(F::one());
+
+        let mut xpow = one; // junk (value does not matter)
+        let mut prod = one; // junk (value does not matter)
+
+        // enumrate the challenges c in reverse order: c_{n - i}
+        for (i, ci) in self.c.iter().rev().cloned().enumerate() {
+
+            // compute X^{2^i}
+            xpow = if i <= 1 { x } else { cs.mul(xpow, xpow)};
+
+            // compute 1 + ci * X^{2^i} 
+            let term = cs.add(one, if i == 0 { ci } else { cs.mul(ci, xpow) });
+
+            // multiply into running product
+            prod = if i == 0 { term } else { cs.mul(prod, term) };
+        }
+
+        prod
+    }
+}
+
+/// Combine multiple openings using a linear combination
+/// 
+/// QUESTION: why can this not just be one large linear combination,
+/// why do we need both xi and r?
 fn combined_inner_product<'a, F, C: Cs<F>, const N: usize>(
     cs: &mut C,
     evaluations: &[(Var<F>, Vec<VarOpen<F, N>>)], // evaluation point and openings
