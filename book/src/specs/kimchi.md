@@ -1441,13 +1441,10 @@ pub struct ProofEvaluations<Field> {
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
 pub struct LookupCommitments<G: AffineCurve> {
     /// Commitments to the sorted lookup table polynomial (may have chunks)
-    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub sorted: Vec<PolyComm<G>>,
     /// Commitment to the lookup aggregation polynomial
-    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub aggreg: PolyComm<G>,
     /// Optional commitment to concatenated runtime tables
-    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub runtime: Option<PolyComm<G>>,
 }
 
@@ -1457,16 +1454,12 @@ pub struct LookupCommitments<G: AffineCurve> {
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
 pub struct ProverCommitments<G: AffineCurve> {
     /// The commitments to the witness (execution trace)
-    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub w_comm: [PolyComm<G>; COLUMNS],
     /// The commitment to the permutation polynomial
-    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub z_comm: PolyComm<G>,
     /// The commitment to the quotient polynomial
-    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub t_comm: PolyComm<G>,
     /// Commitments related to the lookup argument
-    #[serde(bound = "LookupCommitments<G>: Serialize + DeserializeOwned")]
     pub lookup: Option<LookupCommitments<G>>,
 }
 
@@ -1476,11 +1469,9 @@ pub struct ProverCommitments<G: AffineCurve> {
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
 pub struct ProverProof<G: AffineCurve> {
     /// All the polynomial commitments required in the proof
-    #[serde(bound = "ProverCommitments<G>: Serialize + DeserializeOwned")]
     pub commitments: ProverCommitments<G>,
 
     /// batched commitment opening proof
-    #[serde(bound = "OpeningProof<G>: Serialize + DeserializeOwned")]
     pub proof: OpeningProof<G>,
 
     /// Two evaluations over a number of committed polynomials
@@ -1497,13 +1488,13 @@ pub struct ProverProof<G: AffineCurve> {
     pub public: Vec<ScalarField<G>>,
 
     /// The challenges underlying the optional polynomials folded into the proof
-    #[serde(bound = "RecursionChallenge<G>: Serialize + DeserializeOwned")]
     pub prev_challenges: Vec<RecursionChallenge<G>>,
 }
 
 /// A struct to store the challenges inside a `ProverProof`
 #[serde_as]
 #[derive(Clone, Deserialize, Serialize)]
+#[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
 pub struct RecursionChallenge<G>
 where
     G: AffineCurve,
@@ -1512,7 +1503,6 @@ where
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub chals: Vec<ScalarField<G>>,
     /// Polynomial commitment
-    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub comm: PolyComm<G>,
 }
 
