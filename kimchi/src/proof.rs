@@ -7,7 +7,7 @@ use ark_poly::univariate::DensePolynomial;
 use array_init::array_init;
 use commitment_dlog::{commitment::PolyComm, evaluation_proof::OpeningProof};
 use o1_utils::{types::fields::*, ExtendedDensePolynomial};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
 //~ spec:startcode
