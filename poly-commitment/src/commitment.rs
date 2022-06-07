@@ -59,8 +59,14 @@ where
         PolyComm { unshifted, shifted }
     }
 
+    /// Returns the length of the unshifted commitment.
     pub fn len(&self) -> usize {
         self.unshifted.len()
+    }
+
+    /// Returns `true` if the commitment is empty.
+    pub fn is_empty(&self) -> bool {
+        self.unshifted.is_empty() && self.shifted.is_none()
     }
 }
 
@@ -525,10 +531,7 @@ impl<G: CommitmentCurve> SRS<G> {
     ) -> Result<(PolyComm<G>, PolyComm<G::ScalarField>), CommitmentError> {
         let commitment = com
             .zip(blinders)
-            .ok_or(CommitmentError::BlindersDontMatch(
-                blinders.len(),
-                com.len(),
-            ))?
+            .ok_or_else(|| CommitmentError::BlindersDontMatch(blinders.len(), com.len()))?
             .map(|(g, b)| {
                 if g.is_zero() {
                     // TODO: This leaks information when g is the identity!

@@ -240,7 +240,7 @@ where
                     index
                         .srs
                         .mask_custom(witness_com, blinder)
-                        .map_err(|e| ProverError::WrongBlinders(e))?
+                        .map_err(ProverError::WrongBlinders)?
                 }
             };
 
