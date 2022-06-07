@@ -12,7 +12,7 @@ use super::{Proof, CHALLENGE_LEN, COLUMNS, PERMUTS, SELECTORS};
 use crate::context::{Bounded, Context};
 use crate::transcript::{Absorb, Challenge, Msg, VarSponge};
 
-struct VarIPAChallenges<F: FftField + PrimeField> {
+pub struct VarIPAChallenges<F: FftField + PrimeField> {
     c: Vec<Var<F>>
 }
 
@@ -23,7 +23,7 @@ impl <F> VarIPAChallenges<F> where F: FftField + PrimeField {
     /// h(X) = \prod_{i = 0}^{n} (1 + c_{n-i} X^{2^i})
     /// 
     /// Evalute h(X) at x.
-    fn evaluate_h<C: Cs<F>>(&self, cs: &mut C, x: Var<F>) -> Var<F> {    
+    pub fn eval_h<C: Cs<F>>(&self, cs: &mut C, x: Var<F>) -> Var<F> {    
         assert_ne!(self.c.len(), 0, "h is undefined for the empty challenge list");
 
         let one = cs.constant(F::one());
@@ -35,13 +35,13 @@ impl <F> VarIPAChallenges<F> where F: FftField + PrimeField {
         for (i, ci) in self.c.iter().rev().cloned().enumerate() {
 
             // compute X^{2^i}
-            xpow = if i <= 1 { x } else { cs.mul(xpow, xpow)};
+            xpow = if i == 0 { x } else { cs.mul(xpow, xpow)};
 
             // compute 1 + ci * X^{2^i} 
             let term = cs.add(one, if i == 0 { ci } else { cs.mul(ci, xpow) });
 
             // multiply into running product
-            prod = if i == 0 { term } else { cs.mul(prod, term) };
+            prod = cs.mul(prod, term);
         }
 
         prod
