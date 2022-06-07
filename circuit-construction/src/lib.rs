@@ -878,6 +878,38 @@ impl<F: FftField> System<F> {
     }
 }
 
+/// The trait to implement on your circuit
+pub trait Circuit<G>
+where
+    G: AffineCurve,
+{
+    type PrivateInput;
+
+    fn run(
+        &self,
+        sys: &mut Sys<G::ScalarField>,
+        public_input: Vec<Var<G::ScalarField>>,
+        private_input: Option<Self::PrivateInput>,
+    );
+
+    fn run_for_circuit_generation(
+        &self,
+        sys: &mut Sys<G::ScalarField>,
+        public_input: Vec<Var<G::ScalarField>>,
+    ) {
+        Self::run(self, sys, public_input, None)
+    }
+
+    fn run_for_proof_creation(
+        &self,
+        sys: &mut Sys<G::ScalarField>,
+        public_input: Vec<Var<G::ScalarField>>,
+        private_input: Option<Self::PrivateInput>,
+    ) {
+        Self::run(self, sys, public_input, private_input)
+    }
+}
+
 /// Given a circuit, a public input,
 pub fn prove<G, H, EFqSponge, EFrSponge>(
     index: &ProverIndex<G>,

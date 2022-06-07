@@ -27,20 +27,23 @@ pub struct Witness<G: AffineCurve> {
     pub preimage: G::BaseField,
 }
 
-pub struct ExampleCircuit<G>;
+pub struct ExampleCircuit<G>(Constants<G::ScalarField>)
+where
+    G: AffineCurve;
 
-impl<G> ExampleCircuit<G>
+impl<G> Circuit<G> for ExampleCircuit<G>
 where
     G: AffineCurve,
 {
     type PrivateInput = Witness<G>;
 
     fn run(
+        &self,
         sys: &mut Sys<G::ScalarField>,
         public_input: Vec<Var<G::ScalarField>>,
         private_input: Option<Self::PrivateInput>,
     ) {
-        circuit(c, private_input, sys, public_input)
+        circuit(&self.0, private_input, sys, public_input)
     }
 }
 
@@ -48,7 +51,7 @@ where
 pub fn circuit<F: PrimeField + FftField, G: AffineCurve<BaseField = F> + CoordinateCurve>(
     constants: &Constants<F>,
     // The witness
-    witness: Option<&Witness<G>>,
+    witness: Option<Witness<G>>,
     sys: &mut Sys<F>,
     public_input: Vec<Var<F>>,
 ) {
@@ -128,7 +131,7 @@ fn main() {
         &group_map,
         None,
         vec![public_key.x, public_key.y, hash],
-        |sys, p| circuit::<Fp, Other>(&proof_system_constants, Some(&witness), sys, p),
+        |sys, p| circuit::<Fp, Other>(&proof_system_constants, Some(witness), sys, p),
     );
 
     // verify proof
