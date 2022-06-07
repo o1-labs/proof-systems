@@ -24,7 +24,8 @@ use crate::{
     error::ProverError,
     plonk_sponge::FrSponge,
     proof::{
-        LookupCommitments, LookupEvaluations, ProofEvaluations, ProverCommitments, ProverProof,
+        ConsecutiveEvals, LookupCommitments, LookupEvaluations, ProofEvaluations,
+        ProverCommitments, ProverProof,
     },
     prover_index::ProverIndex,
 };
@@ -901,7 +902,10 @@ where
                     .evaluate_chunks(zeta_omega),
             };
 
-            [chunked_evals_zeta, chunked_evals_zeta_omega]
+            ConsecutiveEvals {
+                z: chunked_evals_zeta,
+                zw: chunked_evals_zeta_omega,
+            }
         };
 
         let zeta_to_srs_len = zeta.pow(&[index.max_poly_size as u64]);
