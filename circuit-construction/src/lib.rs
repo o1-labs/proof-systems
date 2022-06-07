@@ -114,7 +114,7 @@ impl<F: Copy> Var<F> {
 
 pub struct ShiftedScalar<F>(Var<F>);
 
-pub struct GateSpec<F: FftField> {
+pub struct GateSpec<F> {
     pub typ: GateType,
     pub row: [Var<F>; COLUMNS],
     pub c: Vec<F>,
@@ -127,7 +127,7 @@ pub struct Constants<F: Field> {
     pub base: (F, F),
 }
 
-pub struct System<F: FftField> {
+pub struct System<F> {
     pub next_variable: usize,
     // pub equivalence_classes: HashMap<Var, Vec<Position>>,
     pub gates: Vec<GateSpec<F>>,
@@ -137,9 +137,20 @@ pub struct WitnessGenerator<F> {
     pub rows: Vec<Row<F>>,
 }
 
+pub enum Sys<F>
+where
+    F: PrimeField,
+{
+    CircuitGenerator(System<F>),
+    WitnessGenerator(WitnessGenerator<F>),
+}
+
 type Row<V> = [V; COLUMNS];
 
-pub trait Cs<F: FftField + PrimeField> {
+impl<F> Sys<F>
+where
+    F: PrimeField,
+{
     /// In cases where you want to create a free variable in the circuit,
     /// as in the variable is not constrained _yet_
     /// and can be anything that the prover wants.
@@ -154,13 +165,51 @@ pub trait Cs<F: FftField + PrimeField> {
     /// sys.assert_eq(a * c, b);
     /// ```
     ///
-    fn var<G>(&mut self, g: G) -> Var<F>
+    pub fn var<G>(&mut self, g: G) -> Var<F>
     where
-        G: FnOnce() -> F;
+        G: FnOnce() -> F,
+    {
+        match self {
+            Sys::CircuitGenerator(gen) => {
+                let v = gen.next_variable;
+                gen.next_variable += 1;
+                Var {
+                    index: v,
+                    value: None,
+                }
+            }
+            Sys::WitnessGenerator(_) => Var {
+                index: 0,
+                value: Some(g()),
+            },
+        }
+    }
 
-    fn curr_gate_count(&self) -> usize;
+    pub fn curr_gate_count(&self) -> usize {
+        match self {
+            Sys::CircuitGenerator(gen) => gen.gates.len(),
+            Sys::WitnessGenerator(gen) => gen.rows.len(),
+        }
+    }
 
-    fn endo_scalar<G, N: BigInteger>(&mut self, length: usize, g: G) -> Var<F>
+    pub fn gates(&self) -> Vec<CircuitGate<F>> {
+        match self {
+            Sys::CircuitGenerator(gen) => gen.gates(),
+            Sys::WitnessGenerator(_) => panic!("cannot call gates() on a witness generator"),
+        }
+    }
+
+    /// Returns the columns of the witness.
+    pub fn columns(&self) -> [Vec<F>; COLUMNS] {
+        match self {
+            Sys::CircuitGenerator(_) => panic!("cannot call columns() on a circuit generator"),
+            Sys::WitnessGenerator(gen) => {
+                array_init(|col| gen.rows.iter().map(|row| row[col]).collect())
+            }
+        }
+    }
+
+    pub fn endo_scalar<G, N: BigInteger>(&mut self, length: usize, g: G) -> Var<F>
     where
         G: FnOnce() -> N,
     {
@@ -173,7 +222,7 @@ pub trait Cs<F: FftField + PrimeField> {
         })
     }
 
-    fn scalar<G, Fr: PrimeField>(&mut self, length: usize, g: G) -> ShiftedScalar<F>
+    pub fn scalar<G, Fr: PrimeField>(&mut self, length: usize, g: G) -> ShiftedScalar<F>
     where
         G: FnOnce() -> Fr,
     {
@@ -197,10 +246,15 @@ pub trait Cs<F: FftField + PrimeField> {
 
     /// In circuit mode, adds a gate to the circuit.
     /// In witness generation mode, adds the corresponding row to the witness.
-    fn gate(&mut self, g: GateSpec<F>);
+    pub fn gate(&mut self, g: GateSpec<F>) {
+        match self {
+            Sys::CircuitGenerator(gen) => gen.gates.push(g),
+            Sys::WitnessGenerator(gen) => gen.rows.push(array_init(|i| g.row[i].value.unwrap())),
+        }
+    }
 
     // TODO: Optimize to use permutation argument.
-    fn assert_eq(&mut self, x1: Var<F>, x2: Var<F>) {
+    pub fn assert_eq(&mut self, x1: Var<F>, x2: Var<F>) {
         // | 0  | 1  | 2 | ...
         // | x1 | x2 | 0 | ...
         let row = array_init(|i| {
@@ -225,7 +279,7 @@ pub trait Cs<F: FftField + PrimeField> {
         });
     }
 
-    fn constant(&mut self, x: F) -> Var<F> {
+    pub fn constant(&mut self, x: F) -> Var<F> {
         let v = self.var(|| x);
 
         let mut c = vec![F::zero(); GENERIC_ROW_COEFFS];
@@ -243,7 +297,7 @@ pub trait Cs<F: FftField + PrimeField> {
     }
 
     // TODO
-    fn scale(&mut self, x: F, v: Var<F>) -> Var<F> {
+    pub fn scale(&mut self, x: F, v: Var<F>) -> Var<F> {
         let xv = self.var(|| v.val() * x);
         let row = {
             let mut row: [_; COLUMNS] = array_init(|_| self.var(|| F::zero()));
@@ -263,7 +317,7 @@ pub trait Cs<F: FftField + PrimeField> {
         xv
     }
 
-    fn add_group(
+    pub fn add_group(
         &mut self,
         zero: Var<F>,
         (x1, y1): (Var<F>, Var<F>),
@@ -318,11 +372,11 @@ pub trait Cs<F: FftField + PrimeField> {
         (x3, y3)
     }
 
-    fn double(&mut self, zero: Var<F>, (x1, y1): (Var<F>, Var<F>)) -> (Var<F>, Var<F>) {
+    pub fn double(&mut self, zero: Var<F>, (x1, y1): (Var<F>, Var<F>)) -> (Var<F>, Var<F>) {
         self.add_group(zero, (x1, y1), (x1, y1))
     }
 
-    fn assert_add_group(
+    pub fn assert_add_group(
         &mut self,
         zero: Var<F>,
         (x1, y1): (Var<F>, Var<F>),
@@ -374,7 +428,7 @@ pub trait Cs<F: FftField + PrimeField> {
     }
 
     // TODO
-    fn cond_select(&mut self, b: Var<F>, t: Var<F>, f: Var<F>) -> Var<F> {
+    pub fn cond_select(&mut self, b: Var<F>, t: Var<F>, f: Var<F>) -> Var<F> {
         // Could be more efficient. Currently uses three constraints :(
         // delta = t - f
         // res1 = b * delta
@@ -441,7 +495,7 @@ pub trait Cs<F: FftField + PrimeField> {
         res
     }
 
-    fn scalar_mul(
+    pub fn scalar_mul(
         &mut self,
         zero: Var<F>,
         (xt, yt): (Var<F>, Var<F>),
@@ -508,7 +562,7 @@ pub trait Cs<F: FftField + PrimeField> {
         res.unwrap()
     }
 
-    fn endo(
+    pub fn endo(
         &mut self,
         zero: Var<F>,
         constants: &Constants<F>,
@@ -629,7 +683,7 @@ pub trait Cs<F: FftField + PrimeField> {
         acc
     }
 
-    fn assert_pack(&mut self, zero: Var<F>, x: Var<F>, bits_lsb: &[Var<F>]) {
+    pub fn assert_pack(&mut self, zero: Var<F>, x: Var<F>, bits_lsb: &[Var<F>]) {
         let crumbs_per_row = 8;
         let bits_per_row = 2 * crumbs_per_row;
         assert_eq!(bits_lsb.len() % bits_per_row, 0);
@@ -686,7 +740,7 @@ pub trait Cs<F: FftField + PrimeField> {
         }
     }
 
-    fn poseidon(&mut self, constants: &Constants<F>, input: Vec<Var<F>>) -> Vec<Var<F>> {
+    pub fn poseidon(&mut self, constants: &Constants<F>, input: Vec<Var<F>>) -> Vec<Var<F>> {
         use kimchi::circuits::polynomials::poseidon::*;
 
         let params = &constants.poseidon;
@@ -767,52 +821,6 @@ pub trait Cs<F: FftField + PrimeField> {
     }
 }
 
-impl<F: FftField + PrimeField> Cs<F> for WitnessGenerator<F> {
-    fn var<G>(&mut self, g: G) -> Var<F>
-    where
-        G: FnOnce() -> F,
-    {
-        Var {
-            index: 0,
-            value: Some(g()),
-        }
-    }
-
-    fn curr_gate_count(&self) -> usize {
-        self.rows.len()
-    }
-
-    fn gate(&mut self, g: GateSpec<F>) {
-        self.rows.push(array_init(|i| g.row[i].value.unwrap()))
-    }
-}
-
-impl<F: FftField> WitnessGenerator<F> {
-    /// Returns the columns of the witness.
-    fn columns(&self) -> [Vec<F>; COLUMNS] {
-        array_init(|col| self.rows.iter().map(|row| row[col]).collect())
-    }
-}
-
-impl<F: FftField + PrimeField> Cs<F> for System<F> {
-    fn var<G>(&mut self, _: G) -> Var<F> {
-        let v = self.next_variable;
-        self.next_variable += 1;
-        Var {
-            index: v,
-            value: None,
-        }
-    }
-
-    fn curr_gate_count(&self) -> usize {
-        self.gates.len()
-    }
-
-    fn gate(&mut self, g: GateSpec<F>) {
-        self.gates.push(g);
-    }
-}
-
 impl<F: FftField> System<F> {
     /// Compiles our intermediate representation into a circuit.
     pub fn gates(&self) -> Vec<CircuitGate<F>> {
@@ -867,19 +875,19 @@ pub fn prove<G, H, EFqSponge, EFrSponge>(
     mut main: H,
 ) -> ProverProof<G>
 where
-    H: FnMut(&mut WitnessGenerator<G::ScalarField>, Vec<Var<G::ScalarField>>),
+    H: FnMut(&mut Sys<G::ScalarField>, Vec<Var<G::ScalarField>>),
     G::BaseField: PrimeField,
     G: CommitmentCurve,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
 {
     // create the public rows
-    let mut gen: WitnessGenerator<G::ScalarField> = WitnessGenerator {
+    let mut gen: Sys<G::ScalarField> = Sys::WitnessGenerator(WitnessGenerator {
         rows: public_input
             .iter()
             .map(|x| array_init(|i| if i == 0 { *x } else { G::ScalarField::zero() }))
             .collect(),
-    };
+    });
 
     // run the witness generation
     let public_vars = public_input
@@ -925,13 +933,13 @@ pub fn generate_prover_index<C, H>(
     main: H,
 ) -> ProverIndex<C::Outer>
 where
-    H: FnOnce(&mut System<C::InnerField>, Vec<Var<C::InnerField>>),
+    H: FnOnce(&mut Sys<C::InnerField>, Vec<Var<C::InnerField>>),
     C: Cycle,
 {
-    let mut system: System<C::InnerField> = System {
+    let mut system: Sys<C::InnerField> = Sys::CircuitGenerator(System {
         next_variable: 0,
         gates: vec![],
-    };
+    });
     let z = C::InnerField::zero();
 
     // create public input variables
