@@ -505,7 +505,7 @@ pub trait Cs<F: FftField + PrimeField> {
         self.gate(GateSpec {
             typ: GateType::Generic,
             row,
-            coeffs: vec![F::one(), -F::one(), F::one()],
+            coeffs,
         });
 
         res
