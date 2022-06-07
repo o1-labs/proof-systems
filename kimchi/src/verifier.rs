@@ -14,7 +14,7 @@ use crate::{
     },
     error::VerifyError,
     plonk_sponge::FrSponge,
-    proof::ProverProof,
+    proof::{ProverProof, RecursionChallenge},
     verifier_index::VerifierIndex,
 };
 use ark_ff::{Field, One, PrimeField, Zero};
@@ -72,7 +72,7 @@ where
     ) -> Vec<Vec<Vec<ScalarField<G>>>> {
         self.prev_challenges
             .iter()
-            .map(|(chals, _poly)| {
+            .map(|RecursionChallenge { chals, comm: _ }| {
                 // No need to check the correctness of poly explicitly. Its correctness is assured by the
                 // checking of the inner product argument.
                 let b_len = 1 << chals.len();
@@ -308,7 +308,10 @@ where
             .prev_challenges
             .iter()
             .zip(self.prev_chal_evals(index, &evaluation_points, &powers_of_eval_points_for_chunks))
-            .map(|(c, e)| (c.1.clone(), e))
+            .map(|(challenge, evals)| {
+                let RecursionChallenge { chals: _, comm } = challenge;
+                (comm.clone(), evals)
+            })
             .collect();
 
         let evals = vec![

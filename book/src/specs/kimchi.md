@@ -1379,6 +1379,7 @@ You can find these operations under the [proof creation](#proof-creation) and [p
 A proof consists of the following data structures:
 
 ```rs
+/// Evaluations of lookup polynomials
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(bound(
@@ -1403,6 +1404,9 @@ pub struct LookupEvaluations<Field> {
 }
 
 // TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
+/// Polynomial evaluations contained in a `ProverProof`.
+/// - **Chunked evaluations** `Field` is instantiated with vectors with a length that equals the length of the chunk
+/// - **Non chunked evaluations** `Field` is instantiated with a field, so they are single-sized#[serde_as]
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(bound(
@@ -1435,9 +1439,10 @@ pub struct ProofEvaluations<Field> {
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
 pub struct LookupCommitments<G: AffineCurve> {
+    /// Commitments to the sorted lookup table polynomial (may have chunks)
     pub sorted: Vec<PolyComm<G>>,
+    /// Commitment to the lookup aggregation polynomial
     pub aggreg: PolyComm<G>,
-
     /// Optional commitment to concatenated runtime tables
     pub runtime: Option<PolyComm<G>>,
 }
@@ -1481,9 +1486,24 @@ pub struct ProverProof<G: AffineCurve> {
     pub public: Vec<ScalarField<G>>,
 
     /// The challenges underlying the optional polynomials folded into the proof
-    #[serde_as(as = "Vec<(Vec<o1_utils::serialization::SerdeAs>, serde_with::Same)>")]
-    pub prev_challenges: Vec<(Vec<ScalarField<G>>, PolyComm<G>)>,
+    pub prev_challenges: Vec<RecursionChallenge<G>>,
 }
+
+/// A struct to store the challenges inside a `ProverProof`
+#[serde_as]
+#[derive(Clone, Deserialize, Serialize)]
+#[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
+pub struct RecursionChallenge<G>
+where
+    G: AffineCurve,
+{
+    /// Vector of scalar field elements
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    pub chals: Vec<ScalarField<G>>,
+    /// Polynomial commitment
+    pub comm: PolyComm<G>,
+}
+
 ```
 
 
