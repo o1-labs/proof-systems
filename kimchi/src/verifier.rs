@@ -72,10 +72,9 @@ where
     ) -> Vec<Vec<Vec<ScalarField<G>>>> {
         self.prev_challenges
             .iter()
-            .map(|c| {
+            .map(|RecursionChallenge { chals, comm: _ }| {
                 // No need to check the correctness of poly explicitly. Its correctness is assured by the
                 // checking of the inner product argument.
-                let RecursionChallenge { chals, comm: _ } = c;
                 let b_len = 1 << chals.len();
                 let mut b: Option<Vec<ScalarField<G>>> = None;
 

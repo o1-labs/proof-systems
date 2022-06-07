@@ -1051,8 +1051,7 @@ where
 
         let polys = prev_challenges
             .iter()
-            .map(|c| {
-                let RecursionChallenge { chals, comm } = c;
+            .map(|RecursionChallenge { chals, comm }| {
                 (
                     DensePolynomial::from_coefficients_vec(b_poly_coefficients(chals)),
                     comm.unshifted.len(),
