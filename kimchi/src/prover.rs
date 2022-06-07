@@ -141,14 +141,6 @@ where
         prev_challenges: Vec<(Vec<ScalarField<G>>, PolyComm<G>)>,
         blinders: [Option<PolyComm<ScalarField<G>>>; COLUMNS],
     ) -> Result<Self> {
-        let start = std::time::Instant::now();
-        let mut prev = start;
-        let mut time = |l: u32| {
-            let now = std::time::Instant::now();
-            println!("{}: {:?}", l, prev.elapsed());
-            prev = now;
-        };
-
         // make sure that the SRS is not smaller than the domain size
         let d1_size = index.cs.domain.d1.size();
         if index.srs.max_degree() < d1_size {
@@ -159,9 +151,7 @@ where
         let rng = &mut rand::rngs::OsRng;
 
         // double-check the witness
-        if true
-        /* cfg!(test) */
-        {
+        if cfg!(debug_assertions) {
             let public = witness[0][0..index.cs.public].to_vec();
             index
                 .cs
@@ -199,7 +189,6 @@ where
                 *row = <ScalarField<G> as UniformRand>::rand(rng);
             } */
         }
-        time(line!());
 
         //~ 3. Setup the Fq-Sponge.
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
@@ -213,7 +202,6 @@ where
             index.cs.domain.d1,
         )
         .interpolate();
-        time(line!());
 
         //~ 5. Commit (non-hiding) to the negated public input polynomial.
         let public_comm = index.srs.commit_non_hiding(&public_poly, None);
@@ -261,7 +249,6 @@ where
                 }
             }
         });
-        time(line!());
 
         //~ 8. Absorb the witness commitments with the Fq-Sponge.
         w_comm
@@ -430,7 +417,6 @@ where
                 Evaluations::from_vec_and_domain(evals, index.cs.domain.d8)
             };
 
-            time(line!());
             let joint_lookup_table = joint_lookup_table_d8.interpolate_by_ref();
 
             //~      - Compute the sorted evaluations.
@@ -530,14 +516,12 @@ where
             lookup_context.aggreg8 = Some(aggreg8);
         }
 
-        time(line!());
         //~ 14. Compute the permutation aggregation polynomial $z$.
         let z_poly = index.cs.perm_aggreg(&witness, &beta, &gamma, rng)?;
 
         //~ 15. Commit (hidding) to the permutation aggregation polynomial $z$.
         let z_comm = index.srs.commit(&z_poly, None, rng);
 
-        time(line!());
         //~ 16. Absorb the permutation aggregation polynomial $z$ with the Fq-Sponge.
         fq_sponge.absorb_g(&z_comm.0.unshifted);
 
@@ -792,7 +776,6 @@ where
         //~     TODO: specify the dummies
         let t_comm = {
             let (mut t_comm, mut omega_t) = index.srs.commit(&quotient_poly, None, rng);
-            time(line!());
 
             let expected_t_size = PERMUTS;
             let dummies = expected_t_size - t_comm.unshifted.len();
@@ -1134,10 +1117,8 @@ where
                 .map(|w| (w, None, non_hiding(1)))
                 .collect::<Vec<_>>(),
         );
-        println!("pre opening: {:?}", start.elapsed());
 
         // if using lookup
-
         if let Some(lcs) = &index.cs.lookup_constraint_system {
             // add the sorted polynomials
             let sorted_poly = lookup_context.sorted_coeffs.as_ref().unwrap();

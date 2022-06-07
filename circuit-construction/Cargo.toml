@@ -33,11 +33,6 @@ o1-utils = { path = "../utils" }
 oracle = { path = "../oracle" }
 kimchi = { path = "../kimchi" }
 
-ocaml = { version = "0.22.2", optional = true }
-ocaml-gen = { path = "../ocaml/ocaml-gen", optional = true}
-
-wasm-bindgen = { version = "0.2", optional = true }
-
 [dev-dependencies]
 proptest = "1.0.0"
 proptest-derive = "0.3.0"
@@ -50,8 +45,3 @@ iai = "0.1"
 [[bench]]
 name = "example_proof"
 harness = false
-
-[features]
-default = []
-ocaml_types = [ "ocaml", "ocaml-gen", "commitment_dlog/ocaml_types", "oracle/ocaml_types" ]
-wasm_types = [ "wasm-bindgen" ]
