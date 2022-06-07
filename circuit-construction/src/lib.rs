@@ -325,7 +325,7 @@ pub trait Cs<F: FftField + PrimeField> {
 
         let mut coeffs = vec![F::zero(); GENERIC_ROW_COEFFS];
         coeffs[0] = F::one();
-        coeffs[1] = F::one();
+        coeffs[1] = -F::one();
         coeffs[2] = -F::one();
         self.gate(GateSpec {
             typ: GateType::Generic,
@@ -1464,6 +1464,46 @@ mod tests {
             };
             let result = or_circuit_template(&mut witness_generator, false, false);
             assert_eq!(result.val(), false.into());
+        }
+    }
+
+    mod sub_gate_tests {
+        use super::*;
+
+        fn sub_circuit_template<
+            F: PrimeField + FftField,
+            Sys: Cs<F>,
+        >(sys: &mut Sys, a1: F, a2: F) -> Var<F> {
+            let x1 = sys.constant(a1);
+            let x2 = sys.constant(a2);
+            sys.sub(x1, x2)
+        }
+
+        #[test]
+        fn test_sub_verify() {
+            fn parameterized_template<
+                F: PrimeField + FftField,
+                Sys: Cs<F>,
+            >(sys: &mut Sys) {
+                sub_circuit_template(sys, F::one(), F::one());
+
+            }
+    
+            let gates = generate_gates(parameterized_template);
+            let witness = generate_witness(parameterized_template);
+            let constraint_system = create_constraint_system(gates);
+        
+            // println!("{:?}", witness);
+            constraint_system.verify(&witness, &[]).unwrap();
+        }
+
+        #[test]
+        fn test_sub_result_var() {
+            let mut witness_generator: WitnessGenerator<Fp256<FpParameters>> = WitnessGenerator {
+                rows: vec![]
+            };
+            let result = sub_circuit_template(&mut witness_generator, 0i32.into(), 2i32.into());
+            assert_eq!(result.val(), (-2i32).into());
         }
     }
 }
