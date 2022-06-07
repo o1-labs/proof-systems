@@ -6,7 +6,7 @@
 //!     producing the batched opening proof
 //! 3. Verify batch of batched opening proofs
 
-use crate::srs::SRS;
+use crate::{error::CommitmentError, srs::SRS};
 use ark_ec::{
     models::short_weierstrass_jacobian::GroupAffine as SWJAffine, msm::VariableBaseMSM,
     AffineCurve, ProjectiveCurve, SWModelParameters,
@@ -58,6 +58,10 @@ where
         let shifted = self.shifted.map(f);
         PolyComm { unshifted, shifted }
     }
+
+    pub fn len(&self) -> usize {
+        self.unshifted.len()
+    }
 }
 
 impl<A: Copy, B: Copy> PolyComm<(A, B)>
@@ -73,6 +77,7 @@ where
 }
 
 impl<A: Copy + CanonicalDeserialize + CanonicalSerialize> PolyComm<A> {
+    // TODO: if all callers end up calling unwrap, just call this zip_eq and panic here (and document the panic)
     pub fn zip<B: Copy + CanonicalDeserialize + CanonicalSerialize>(
         &self,
         other: &PolyComm<B>,
@@ -510,6 +515,32 @@ impl<G: CommitmentCurve> SRS<G> {
             }
         })
         .unzip()
+    }
+
+    /// Same as [SRS::mask] except that you can pass the blinders manually.
+    pub fn mask_custom(
+        &self,
+        com: PolyComm<G>,
+        blinders: &PolyComm<G::ScalarField>,
+    ) -> Result<(PolyComm<G>, PolyComm<G::ScalarField>), CommitmentError> {
+        let commitment = com
+            .zip(blinders)
+            .ok_or(CommitmentError::BlindersDontMatch(
+                blinders.len(),
+                com.len(),
+            ))?
+            .map(|(g, b)| {
+                if g.is_zero() {
+                    // TODO: This leaks information when g is the identity!
+                    // We should change this so that we still mask in this case
+                    g
+                } else {
+                    let mut g_masked = self.h.mul(b);
+                    g_masked.add_assign_mixed(&g);
+                    g_masked.into_affine()
+                }
+            });
+        Ok((commitment, blinders.clone()))
     }
 
     /// This function commits a polynomial using the SRS' basis of size `n`.

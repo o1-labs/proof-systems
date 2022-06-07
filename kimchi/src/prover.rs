@@ -232,20 +232,10 @@ where
                         &witness_eval,
                         None,
                     );
-                    (
-                        witness_com.zip(blinder).unwrap().map(|(g, b)| {
-                            if g.is_zero() {
-                                // TODO: This leaks information when g is the identity!
-                                // We should change this so that we still mask in this case
-                                g
-                            } else {
-                                let mut g_masked = index.srs.h.mul(b);
-                                g_masked.add_assign_mixed(&g);
-                                g_masked.into_affine()
-                            }
-                        }),
-                        blinder.clone(),
-                    )
+                    index
+                        .srs
+                        .mask_custom(witness_com, blinder)
+                        .map_err(|e| ProverError::WrongBlinders(e))?
                 }
             }
         });
