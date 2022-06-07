@@ -312,24 +312,19 @@ impl<G: CommitmentCurve> SRS<G> {
     }
 }
 
-/// Proof of opening of polynomial commitment (Bootleproof)
-/// The [HALO paper](https://eprint.iacr.org/2019/1021.pdf) contains more details
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
 pub struct OpeningProof<G: AffineCurve> {
     /// vector of rounds of L & R commitments
     #[serde_as(as = "Vec<(o1_utils::serialization::SerdeAs, o1_utils::serialization::SerdeAs)>")]
     pub lr: Vec<(G, G)>,
-    /// In the HALO paper corresponds to R = [d](G + [b]U) + [s] H
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub delta: G,
-    /// In the HALO paper: z_1 := a · c + d
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub z1: G::ScalarField,
-    /// In the HALO paper: z_2 := c · r' + s
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub z2: G::ScalarField,
-    /// In the HALO paper: the inner product <vec_s, vec_G>
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub sg: G,
 }

@@ -71,7 +71,6 @@ where
 
         // pre-compute the linearization
         let (linearization, powers_of_alpha) = expr_linearization(
-            cs.domain.d1,
             cs.chacha8.is_some(),
             !cs.range_check_selector_polys.is_empty(),
             cs.lookup_constraint_system
@@ -116,14 +115,12 @@ pub mod testing {
         let fp_sponge_params = oracle::pasta::fp_kimchi::params();
 
         // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
-        let cs = ConstraintSystem::<Fp>::create(
-            gates,
-            lookup_tables,
-            runtime_tables,
-            fp_sponge_params,
-            public,
-        )
-        .unwrap();
+        let cs = ConstraintSystem::<Fp>::create(gates, fp_sponge_params)
+            .lookup(lookup_tables)
+            .runtime(runtime_tables)
+            .public(public)
+            .build()
+            .unwrap();
         let mut srs = SRS::<Affine>::create(cs.domain.d1.size());
         srs.add_lagrange_basis(cs.domain.d1);
         let srs = Arc::new(srs);

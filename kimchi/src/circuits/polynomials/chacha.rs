@@ -471,7 +471,7 @@ mod tests {
         alphas::Alphas,
         circuits::{
             expr::{Column, Constants, PolishToken},
-            lookup::lookups::LookupInfo,
+            lookup::lookups::{LookupInfo, LookupPattern},
             wires::*,
         },
         proof::{LookupEvaluations, ProofEvaluations},
@@ -503,7 +503,12 @@ mod tests {
 
     #[test]
     fn chacha_linearization() {
-        let lookup_info = LookupInfo::<F>::create();
+        let lookup_info = LookupInfo::create(
+            [LookupPattern::ChaCha, LookupPattern::ChaChaFinal]
+                .into_iter()
+                .collect(),
+            false,
+        );
 
         let evaluated_cols = {
             let mut h = std::collections::HashSet::new();
@@ -539,22 +544,20 @@ mod tests {
         let d = D::new(1024).unwrap();
 
         let pt = F::rand(rng);
-        let mut eval = || {
-            ProofEvaluations::new(
-                array_init(|_| F::rand(rng)),
-                F::rand(rng),
-                array_init(|_| F::rand(rng)),
-                Some(LookupEvaluations::new(
-                    (0..(lookup_info.max_per_row + 1))
-                        .map(|_| F::rand(rng))
-                        .collect(),
-                    F::rand(rng),
-                    F::rand(rng),
-                    None,
-                )),
-                F::zero(),
-                F::zero(),
-            )
+        let mut eval = || ProofEvaluations {
+            w: array_init(|_| F::rand(rng)),
+            z: F::rand(rng),
+            s: array_init(|_| F::rand(rng)),
+            generic_selector: F::zero(),
+            poseidon_selector: F::zero(),
+            lookup: Some(LookupEvaluations {
+                sorted: (0..(lookup_info.max_per_row + 1))
+                    .map(|_| F::rand(rng))
+                    .collect(),
+                aggreg: F::rand(rng),
+                table: F::rand(rng),
+                runtime: None,
+            }),
         };
 
         let evals = vec![eval(), eval()];

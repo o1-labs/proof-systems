@@ -1,6 +1,5 @@
 use crate::bench::BenchmarkCtx;
 use crate::circuits::polynomials::generic::testing::{create_circuit, fill_in_witness};
-use crate::circuits::polynomials::permutation::{zk_polynomial, zk_w3};
 use crate::circuits::wires::COLUMNS;
 use crate::proof::ProverProof;
 use crate::prover_index::testing::new_index_for_test;
@@ -16,7 +15,6 @@ use mina_curves::pasta::fp::Fp;
 use mina_curves::pasta::vesta::{Affine, VestaParameters};
 use oracle::constants::PlonkSpongeConstantsKimchi;
 use oracle::sponge::{DefaultFqSponge, DefaultFrSponge};
-use std::sync::Arc;
 use std::time::Instant;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
@@ -35,11 +33,14 @@ mod tests {
         let proof = ctx.create_proof();
 
         // small check of proof being serializable
+        // serialize a proof
         let ser_pf = rmp_serde::to_vec(&proof).unwrap();
         println!("proof size: {} bytes", ser_pf.len());
 
+        // deserialize the proof
         let de_pf: ProverProof<Affine> = rmp_serde::from_slice(&ser_pf).unwrap();
 
+        // verify the deserialized proof (must accept the proof)
         ctx.batch_verification(vec![de_pf.clone()]);
     }
 
@@ -74,13 +75,10 @@ mod tests {
         // add srs with lagrange bases
         let mut srs = SRS::<GroupAffine<VestaParameters>>::create(verifier_index.max_poly_size);
         srs.add_lagrange_basis(verifier_index.domain);
-        verifier_index_deserialize.srs = Arc::new(srs);
         verifier_index_deserialize.fq_sponge_params = oracle::pasta::fq_kimchi::params();
         verifier_index_deserialize.fr_sponge_params = oracle::pasta::fp_kimchi::params();
-        verifier_index_deserialize.zkpm = zk_polynomial(verifier_index_deserialize.domain);
         verifier_index_deserialize.powers_of_alpha = index.powers_of_alpha;
         verifier_index_deserialize.linearization = index.linearization;
-        verifier_index_deserialize.w = zk_w3(verifier_index_deserialize.domain);
 
         // verify the proof
         let start = Instant::now();
