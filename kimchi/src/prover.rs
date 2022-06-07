@@ -125,7 +125,7 @@ where
             runtime_tables,
             index,
             Vec::new(),
-            array_init(|_| None),
+            None,
         )
     }
 
@@ -139,7 +139,7 @@ where
         runtime_tables: &[RuntimeTable<ScalarField<G>>],
         index: &ProverIndex<G>,
         prev_challenges: Vec<(Vec<ScalarField<G>>, PolyComm<G>)>,
-        blinders: [Option<PolyComm<ScalarField<G>>>; COLUMNS],
+        blinders: Option<[Option<PolyComm<ScalarField<G>>>; COLUMNS]>,
     ) -> Result<Self> {
         // make sure that the SRS is not smaller than the domain size
         let d1_size = index.cs.domain.d1.size();
@@ -224,7 +224,7 @@ where
                     index.cs.domain.d1,
                 );
 
-            let com = match &blinders[col] {
+            let com = match blinders.as_ref().and_then(|b| b[col].as_ref()) {
                 // no blinders: blind the witness
                 None => index
                     .srs

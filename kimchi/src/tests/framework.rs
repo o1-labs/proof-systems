@@ -101,7 +101,7 @@ impl TestFramework {
             &[],
             &index,
             vec![prev_challenges],
-            array_init(|_| None),
+            None,
         )
         .unwrap();
         println!("- time to create proof: {:?}s", start.elapsed().as_secs());

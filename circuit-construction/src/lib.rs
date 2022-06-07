@@ -870,6 +870,7 @@ impl<F: FftField> System<F> {
     }
 }
 
+/// Given a circuit, a public input,
 pub fn prove<G, H, EFqSponge, EFrSponge>(
     index: &ProverIndex<G>,
     group_map: &G::Map,
@@ -923,7 +924,7 @@ where
         &[],
         index,
         vec![],
-        blinders,
+        Some(blinders),
     )
     .unwrap()
 }
