@@ -1372,6 +1372,11 @@
 <span id="1365">1365</span>
 <span id="1366">1366</span>
 <span id="1367">1367</span>
+<span id="1368">1368</span>
+<span id="1369">1369</span>
+<span id="1370">1370</span>
+<span id="1371">1371</span>
+<span id="1372">1372</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements prover&#39;s zk-proof primitive.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -1408,7 +1413,9 @@
     <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>, <span class="ident">UVPolynomial</span>,
 };
 <span class="kw">use</span> <span class="ident">array_init::array_init</span>;
-<span class="kw">use</span> <span class="ident">commitment_dlog::commitment</span>::{<span class="ident">b_poly_coefficients</span>, <span class="ident">CommitmentCurve</span>, <span class="ident">PolyComm</span>};
+<span class="kw">use</span> <span class="ident">commitment_dlog::commitment</span>::{
+    <span class="ident">b_poly_coefficients</span>, <span class="ident">BlindedCommitment</span>, <span class="ident">CommitmentCurve</span>, <span class="ident">PolyComm</span>,
+};
 <span class="kw">use</span> <span class="ident">itertools::Itertools</span>;
 <span class="kw">use</span> <span class="ident">o1_utils</span>::{<span class="ident">types::fields</span>::<span class="kw-2">*</span>, <span class="ident">ExtendedDensePolynomial</span> <span class="kw">as</span> <span class="kw">_</span>};
 <span class="kw">use</span> <span class="ident">oracle</span>::{<span class="ident">sponge::ScalarChallenge</span>, <span class="ident">FqSponge</span>};
@@ -1459,12 +1466,12 @@
     <span class="doccomment">/// The sorted polynomials `s` in different forms</span>
     <span class="ident">sorted</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">sorted_coeffs</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">sorted_comms</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>)<span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">sorted_comms</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlindedCommitment</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">sorted8</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 
     <span class="doccomment">/// The aggregation polynomial in different forms</span>
     <span class="ident">aggreg_coeffs</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">aggreg_comm</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
+    <span class="ident">aggreg_comm</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BlindedCommitment</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">aggreg8</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 
     <span class="doccomment">/// The evaluations of the aggregation polynomial for the proof</span>
@@ -1474,7 +1481,7 @@
     <span class="doccomment">/// Runtime table</span>
     <span class="ident">runtime_table</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">runtime_table_d8</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">runtime_table_comm</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
+    <span class="ident">runtime_table_comm</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BlindedCommitment</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">runtime_second_col_d8</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 }
 
@@ -1586,7 +1593,7 @@
         <span class="comment">//~</span>
         <span class="comment">//~    Note: since the witness is in evaluation form,</span>
         <span class="comment">//~    we can use the `commit_evaluation` optimization.</span>
-        <span class="kw">let</span> <span class="ident">w_comm</span>: [(<span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>); <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
+        <span class="kw">let</span> <span class="ident">w_comm</span>: [<span class="ident">BlindedCommitment</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
             <span class="kw">let</span> <span class="ident">e</span> <span class="op">=</span> <span class="ident">Evaluations</span>::<span class="op">&lt;</span><span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::from_vec_and_domain</span>(
                 <span class="ident">witness</span>[<span class="ident">i</span>].<span class="ident">clone</span>(),
                 <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>,
@@ -1599,7 +1606,7 @@
         <span class="comment">//~ 1. Absorb the witness commitments with the Fq-Sponge.</span>
         <span class="ident">w_comm</span>
             .<span class="ident">iter</span>()
-            .<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">fq_sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span><span class="ident">c</span>.<span class="number">0</span>.<span class="ident">unshifted</span>));
+            .<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">fq_sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span><span class="ident">c</span>.<span class="ident">commitment</span>.<span class="ident">unshifted</span>));
 
         <span class="comment">//~ 1. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.</span>
         <span class="comment">//~    TODO: why not do this first, and then commit? Why commit from evaluation directly?</span>
@@ -1665,7 +1672,7 @@
                 <span class="kw">let</span> <span class="ident">runtime_table_comm</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">commit</span>(<span class="kw-2">&amp;</span><span class="ident">runtime_table_contribution</span>, <span class="prelude-val">None</span>, <span class="ident">rng</span>);
 
                 <span class="comment">// absorb the commitment</span>
-                <span class="ident">fq_sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span><span class="ident">runtime_table_comm</span>.<span class="number">0</span>.<span class="ident">unshifted</span>);
+                <span class="ident">fq_sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span><span class="ident">runtime_table_comm</span>.<span class="ident">commitment</span>.<span class="ident">unshifted</span>);
 
                 <span class="comment">// pre-compute the updated second column of the lookup table</span>
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">second_column_d8</span> <span class="op">=</span> <span class="ident">runtime_table_contribution_d8</span>.<span class="ident">clone</span>();
@@ -1799,7 +1806,7 @@
             <span class="comment">//~~ - Absorb each commitments to the sorted polynomials.</span>
             <span class="ident">sorted_comms</span>
                 .<span class="ident">iter</span>()
-                .<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">fq_sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span><span class="ident">c</span>.<span class="number">0</span>.<span class="ident">unshifted</span>));
+                .<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">fq_sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span><span class="ident">c</span>.<span class="ident">commitment</span>.<span class="ident">unshifted</span>));
 
             <span class="comment">// precompute different forms of the sorted polynomials for later</span>
             <span class="comment">// TODO: We can avoid storing these coefficients.</span>
@@ -1850,7 +1857,7 @@
                 .<span class="ident">commit_evaluations</span>(<span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>, <span class="kw-2">&amp;</span><span class="ident">aggreg</span>, <span class="prelude-val">None</span>, <span class="ident">rng</span>);
 
             <span class="comment">//~~ - Absorb the commitment to the aggregation polynomial with the Fq-Sponge.</span>
-            <span class="ident">fq_sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span><span class="ident">aggreg_comm</span>.<span class="number">0</span>.<span class="ident">unshifted</span>);
+            <span class="ident">fq_sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span><span class="ident">aggreg_comm</span>.<span class="ident">commitment</span>.<span class="ident">unshifted</span>);
 
             <span class="comment">// precompute different forms of the aggregation polynomial for later</span>
             <span class="kw">let</span> <span class="ident">aggreg_coeffs</span> <span class="op">=</span> <span class="ident">aggreg</span>.<span class="ident">interpolate</span>();
@@ -1870,7 +1877,7 @@
         <span class="kw">let</span> <span class="ident">z_comm</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">commit</span>(<span class="kw-2">&amp;</span><span class="ident">z_poly</span>, <span class="prelude-val">None</span>, <span class="ident">rng</span>);
 
         <span class="comment">//~ 1. Absorb the permutation aggregation polynomial $z$ with the Fq-Sponge.</span>
-        <span class="ident">fq_sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span><span class="ident">z_comm</span>.<span class="number">0</span>.<span class="ident">unshifted</span>);
+        <span class="ident">fq_sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span><span class="ident">z_comm</span>.<span class="ident">commitment</span>.<span class="ident">unshifted</span>);
 
         <span class="comment">//~ 1. Sample $\alpha&#39;$ with the Fq-Sponge.</span>
         <span class="kw">let</span> <span class="ident">alpha_chal</span> <span class="op">=</span> <span class="ident">ScalarChallenge</span>(<span class="ident">fq_sponge</span>.<span class="ident">challenge</span>());
@@ -2121,24 +2128,27 @@
         <span class="comment">//~ 1. commit (hiding) to the quotient polynomial $t$</span>
         <span class="comment">//~    TODO: specify the dummies</span>
         <span class="kw">let</span> <span class="ident">t_comm</span> <span class="op">=</span> {
-            <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">t_comm</span>, <span class="kw-2">mut</span> <span class="ident">omega_t</span>) <span class="op">=</span> <span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">commit</span>(<span class="kw-2">&amp;</span><span class="ident">quotient_poly</span>, <span class="prelude-val">None</span>, <span class="ident">rng</span>);
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">t_comm</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">commit</span>(<span class="kw-2">&amp;</span><span class="ident">quotient_poly</span>, <span class="prelude-val">None</span>, <span class="ident">rng</span>);
 
             <span class="kw">let</span> <span class="ident">expected_t_size</span> <span class="op">=</span> <span class="ident">PERMUTS</span>;
-            <span class="kw">let</span> <span class="ident">dummies</span> <span class="op">=</span> <span class="ident">expected_t_size</span> <span class="op">-</span> <span class="ident">t_comm</span>.<span class="ident">unshifted</span>.<span class="ident">len</span>();
+            <span class="kw">let</span> <span class="ident">dummies</span> <span class="op">=</span> <span class="ident">expected_t_size</span> <span class="op">-</span> <span class="ident">t_comm</span>.<span class="ident">commitment</span>.<span class="ident">unshifted</span>.<span class="ident">len</span>();
             <span class="comment">// Add `dummies` many hiding commitments to the 0 polynomial, since if the</span>
             <span class="comment">// number of commitments in `t_comm` is less than the max size, it means that</span>
             <span class="comment">// the higher degree coefficients of `t` are 0.</span>
             <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">dummies</span> {
                 <span class="kw">use</span> <span class="ident">ark_ec::ProjectiveCurve</span>;
                 <span class="kw">let</span> <span class="ident">w</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> <span class="kw">as</span> <span class="ident">UniformRand</span><span class="op">&gt;</span><span class="ident">::rand</span>(<span class="ident">rng</span>);
-                <span class="ident">t_comm</span>.<span class="ident">unshifted</span>.<span class="ident">push</span>(<span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">h</span>.<span class="ident">mul</span>(<span class="ident">w</span>).<span class="ident">into_affine</span>());
-                <span class="ident">omega_t</span>.<span class="ident">unshifted</span>.<span class="ident">push</span>(<span class="ident">w</span>);
+                <span class="ident">t_comm</span>
+                    .<span class="ident">commitment</span>
+                    .<span class="ident">unshifted</span>
+                    .<span class="ident">push</span>(<span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">h</span>.<span class="ident">mul</span>(<span class="ident">w</span>).<span class="ident">into_affine</span>());
+                <span class="ident">t_comm</span>.<span class="ident">blinders</span>.<span class="ident">unshifted</span>.<span class="ident">push</span>(<span class="ident">w</span>);
             }
-            (<span class="ident">t_comm</span>, <span class="ident">omega_t</span>)
+            <span class="ident">t_comm</span>
         };
 
         <span class="comment">//~ 1. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.</span>
-        <span class="ident">fq_sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span><span class="ident">t_comm</span>.<span class="number">0</span>.<span class="ident">unshifted</span>);
+        <span class="ident">fq_sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span><span class="ident">t_comm</span>.<span class="ident">commitment</span>.<span class="ident">unshifted</span>);
 
         <span class="comment">//~ 1. Sample $\zeta&#39;$ with the Fq-Sponge.</span>
         <span class="kw">let</span> <span class="ident">zeta_chal</span> <span class="op">=</span> <span class="ident">ScalarChallenge</span>(<span class="ident">fq_sponge</span>.<span class="ident">challenge</span>());
@@ -2356,7 +2366,7 @@
         <span class="comment">//~ 1. construct the blinding part of the ft polynomial commitment</span>
         <span class="comment">//~    see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#evaluation-proof-and-blinding-factors</span>
         <span class="kw">let</span> <span class="ident">blinding_ft</span> <span class="op">=</span> {
-            <span class="kw">let</span> <span class="ident">blinding_t</span> <span class="op">=</span> <span class="ident">t_comm</span>.<span class="number">1</span>.<span class="ident">chunk_blinding</span>(<span class="ident">zeta_to_srs_len</span>);
+            <span class="kw">let</span> <span class="ident">blinding_t</span> <span class="op">=</span> <span class="ident">t_comm</span>.<span class="ident">blinders</span>.<span class="ident">chunk_blinding</span>(<span class="ident">zeta_to_srs_len</span>);
             <span class="kw">let</span> <span class="ident">blinding_f</span> <span class="op">=</span> <span class="ident">ScalarField</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::zero</span>();
 
             <span class="ident">PolyComm</span> {
@@ -2448,14 +2458,14 @@
         <span class="comment">//~~ - optionally, the runtime table</span>
         <span class="ident">polynomials</span>.<span class="ident">extend</span>(<span class="macro">vec!</span>[(<span class="kw-2">&amp;</span><span class="ident">public_poly</span>, <span class="prelude-val">None</span>, <span class="ident">non_hiding</span>(<span class="number">1</span>))]);
         <span class="ident">polynomials</span>.<span class="ident">extend</span>(<span class="macro">vec!</span>[(<span class="kw-2">&amp;</span><span class="ident">ft</span>, <span class="prelude-val">None</span>, <span class="ident">blinding_ft</span>)]);
-        <span class="ident">polynomials</span>.<span class="ident">extend</span>(<span class="macro">vec!</span>[(<span class="kw-2">&amp;</span><span class="ident">z_poly</span>, <span class="prelude-val">None</span>, <span class="ident">z_comm</span>.<span class="number">1</span>)]);
+        <span class="ident">polynomials</span>.<span class="ident">extend</span>(<span class="macro">vec!</span>[(<span class="kw-2">&amp;</span><span class="ident">z_poly</span>, <span class="prelude-val">None</span>, <span class="ident">z_comm</span>.<span class="ident">blinders</span>)]);
         <span class="ident">polynomials</span>.<span class="ident">extend</span>(<span class="macro">vec!</span>[(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">genericm</span>, <span class="prelude-val">None</span>, <span class="ident">non_hiding</span>(<span class="number">1</span>))]);
         <span class="ident">polynomials</span>.<span class="ident">extend</span>(<span class="macro">vec!</span>[(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">psm</span>, <span class="prelude-val">None</span>, <span class="ident">non_hiding</span>(<span class="number">1</span>))]);
         <span class="ident">polynomials</span>.<span class="ident">extend</span>(
             <span class="ident">witness_poly</span>
                 .<span class="ident">iter</span>()
                 .<span class="ident">zip</span>(<span class="ident">w_comm</span>.<span class="ident">iter</span>())
-                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">w</span>, <span class="ident">c</span>)<span class="op">|</span> (<span class="ident">w</span>, <span class="prelude-val">None</span>, <span class="ident">c</span>.<span class="number">1</span>.<span class="ident">clone</span>()))
+                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">w</span>, <span class="ident">c</span>)<span class="op">|</span> (<span class="ident">w</span>, <span class="prelude-val">None</span>, <span class="ident">c</span>.<span class="ident">blinders</span>.<span class="ident">clone</span>()))
                 .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>(),
         );
         <span class="ident">polynomials</span>.<span class="ident">extend</span>(
@@ -2473,20 +2483,20 @@
             <span class="kw">let</span> <span class="ident">sorted_comms</span> <span class="op">=</span> <span class="ident">lookup_context</span>.<span class="ident">sorted_comms</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>();
 
             <span class="kw">for</span> (<span class="ident">poly</span>, <span class="ident">comm</span>) <span class="kw">in</span> <span class="ident">sorted_poly</span>.<span class="ident">iter</span>().<span class="ident">zip</span>(<span class="ident">sorted_comms</span>) {
-                <span class="ident">polynomials</span>.<span class="ident">push</span>((<span class="ident">poly</span>, <span class="prelude-val">None</span>, <span class="ident">comm</span>.<span class="number">1</span>.<span class="ident">clone</span>()));
+                <span class="ident">polynomials</span>.<span class="ident">push</span>((<span class="ident">poly</span>, <span class="prelude-val">None</span>, <span class="ident">comm</span>.<span class="ident">blinders</span>.<span class="ident">clone</span>()));
             }
 
             <span class="comment">// add the aggreg polynomial</span>
             <span class="kw">let</span> <span class="ident">aggreg_poly</span> <span class="op">=</span> <span class="ident">lookup_context</span>.<span class="ident">aggreg_coeffs</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>();
             <span class="kw">let</span> <span class="ident">aggreg_comm</span> <span class="op">=</span> <span class="ident">lookup_context</span>.<span class="ident">aggreg_comm</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>();
-            <span class="ident">polynomials</span>.<span class="ident">push</span>((<span class="ident">aggreg_poly</span>, <span class="prelude-val">None</span>, <span class="ident">aggreg_comm</span>.<span class="number">1</span>.<span class="ident">clone</span>()));
+            <span class="ident">polynomials</span>.<span class="ident">push</span>((<span class="ident">aggreg_poly</span>, <span class="prelude-val">None</span>, <span class="ident">aggreg_comm</span>.<span class="ident">blinders</span>.<span class="ident">clone</span>()));
 
             <span class="comment">// add the combined table polynomial</span>
             <span class="kw">let</span> <span class="ident">table_blinding</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">lcs</span>.<span class="ident">runtime_selector</span>.<span class="ident">is_some</span>() {
                 <span class="kw">let</span> <span class="ident">runtime_comm</span> <span class="op">=</span> <span class="ident">lookup_context</span>.<span class="ident">runtime_table_comm</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>();
                 <span class="kw">let</span> <span class="ident">joint_combiner</span> <span class="op">=</span> <span class="ident">lookup_context</span>.<span class="ident">joint_combiner</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>();
 
-                <span class="kw">let</span> <span class="ident">blinding</span> <span class="op">=</span> <span class="ident">runtime_comm</span>.<span class="number">1</span>.<span class="ident">unshifted</span>[<span class="number">0</span>];
+                <span class="kw">let</span> <span class="ident">blinding</span> <span class="op">=</span> <span class="ident">runtime_comm</span>.<span class="ident">blinders</span>.<span class="ident">unshifted</span>[<span class="number">0</span>];
 
                 <span class="ident">PolyComm</span> {
                     <span class="ident">unshifted</span>: <span class="macro">vec!</span>[<span class="kw-2">*</span><span class="ident">joint_combiner</span> <span class="op">*</span> <span class="ident">blinding</span>],
@@ -2505,7 +2515,7 @@
                 <span class="kw">let</span> <span class="ident">runtime_table_comm</span> <span class="op">=</span> <span class="ident">lookup_context</span>.<span class="ident">runtime_table_comm</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>();
                 <span class="kw">let</span> <span class="ident">runtime_table</span> <span class="op">=</span> <span class="ident">lookup_context</span>.<span class="ident">runtime_table</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>();
 
-                <span class="ident">polynomials</span>.<span class="ident">push</span>((<span class="ident">runtime_table</span>, <span class="prelude-val">None</span>, <span class="ident">runtime_table_comm</span>.<span class="number">1</span>.<span class="ident">clone</span>()));
+                <span class="ident">polynomials</span>.<span class="ident">push</span>((<span class="ident">runtime_table</span>, <span class="prelude-val">None</span>, <span class="ident">runtime_table_comm</span>.<span class="ident">blinders</span>.<span class="ident">clone</span>()));
             }
         }
 
@@ -2524,16 +2534,16 @@
             .<span class="ident">aggreg_comm</span>
             .<span class="ident">zip</span>(<span class="ident">lookup_context</span>.<span class="ident">sorted_comms</span>)
             .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">a</span>, <span class="ident">s</span>)<span class="op">|</span> <span class="ident">LookupCommitments</span> {
-                <span class="ident">aggreg</span>: <span class="ident">a</span>.<span class="number">0</span>,
-                <span class="ident">sorted</span>: <span class="ident">s</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">x</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">x</span>.<span class="ident">clone</span>()).<span class="ident">collect</span>(),
-                <span class="ident">runtime</span>: <span class="ident">lookup_context</span>.<span class="ident">runtime_table_comm</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="number">0</span>),
+                <span class="ident">aggreg</span>: <span class="ident">a</span>.<span class="ident">commitment</span>,
+                <span class="ident">sorted</span>: <span class="ident">s</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">c</span>.<span class="ident">commitment</span>.<span class="ident">clone</span>()).<span class="ident">collect</span>(),
+                <span class="ident">runtime</span>: <span class="ident">lookup_context</span>.<span class="ident">runtime_table_comm</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">commitment</span>),
             });
 
         <span class="prelude-val">Ok</span>(<span class="self">Self</span> {
             <span class="ident">commitments</span>: <span class="ident">ProverCommitments</span> {
-                <span class="ident">w_comm</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">w_comm</span>[<span class="ident">i</span>].<span class="number">0</span>.<span class="ident">clone</span>()),
-                <span class="ident">z_comm</span>: <span class="ident">z_comm</span>.<span class="number">0</span>,
-                <span class="ident">t_comm</span>: <span class="ident">t_comm</span>.<span class="number">0</span>,
+                <span class="ident">w_comm</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">w_comm</span>[<span class="ident">i</span>].<span class="ident">commitment</span>.<span class="ident">clone</span>()),
+                <span class="ident">z_comm</span>: <span class="ident">z_comm</span>.<span class="ident">commitment</span>,
+                <span class="ident">t_comm</span>: <span class="ident">t_comm</span>.<span class="ident">commitment</span>,
                 <span class="ident">lookup</span>,
             },
             <span class="ident">proof</span>,
@@ -2740,5 +2750,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (fee3a459d 2022-06-05)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (50b00252a 2022-06-06)" ></div>
 </body></html>
