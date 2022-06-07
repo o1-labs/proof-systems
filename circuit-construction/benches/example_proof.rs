@@ -28,20 +28,16 @@ pub struct Witness<G: AffineCurve> {
 }
 
 // Prove knowledge of discrete log and poseidon preimage of a hash
-pub fn circuit<
-    F: PrimeField + FftField,
-    G: AffineCurve<BaseField = F> + CoordinateCurve,
-    Sys: Cs<F>,
->(
+pub fn circuit<F: PrimeField + FftField, G: AffineCurve<BaseField = F> + CoordinateCurve>(
     constants: &Constants<F>,
     // The witness
     witness: Option<&Witness<G>>,
-    sys: &mut Sys,
+    sys: &mut Sys<F>,
     public_input: Vec<Var<F>>,
 ) {
     let zero = sys.constant(F::zero());
 
-    let constant_curve_pt = |sys: &mut Sys, (x, y)| {
+    let constant_curve_pt = |sys: &mut Sys<F>, (x, y)| {
         let x = sys.constant(x);
         let y = sys.constant(y);
         (x, y)
@@ -82,7 +78,7 @@ fn main() {
         &proof_system_constants,
         &fq_poseidon,
         PUBLIC_INPUT_LENGTH,
-        |sys, p| circuit::<_, Other, _>(&proof_system_constants, None, sys, p),
+        |sys, p| circuit::<_, Other>(&proof_system_constants, None, sys, p),
     );
 
     let group_map = <Affine as CommitmentCurve>::Map::setup();
@@ -115,7 +111,7 @@ fn main() {
         &group_map,
         None,
         vec![public_key.x, public_key.y, hash],
-        |sys, p| circuit::<Fp, Other, _>(&proof_system_constants, Some(&witness), sys, p),
+        |sys, p| circuit::<Fp, Other>(&proof_system_constants, Some(&witness), sys, p),
     );
 
     // verify proof
