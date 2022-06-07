@@ -25,4 +25,9 @@ impl SecKey {
     pub fn into_scalar(self) -> ScalarField {
         self.0
     }
+
+    /// Borrows the scalar field element of the secret key
+    pub fn scalar(&self) -> &ScalarField {
+        &self.0
+    }
 }

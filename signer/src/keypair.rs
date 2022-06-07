@@ -47,9 +47,7 @@ impl Keypair {
     /// Generate a random keypair
     pub fn rand(rng: &mut (impl RngCore + CryptoRng)) -> Self {
         let sec_key: SecKey = SecKey::rand(rng);
-        let public: CurvePoint = CurvePoint::prime_subgroup_generator()
-            .mul(sec_key.into_scalar())
-            .into_affine();
+        let public = Self::derive_pubkey_curve_point(sec_key.into_scalar());
 
         // Safe in this case b/c point must be on curve
         Self::from_parts_unsafe(sec_key.into_scalar(), public)
@@ -61,9 +59,7 @@ impl Keypair {
         bytes.reverse(); // mina scalars hex format is in big-endian order
 
         let secret = ScalarField::from_bytes(&bytes).map_err(|_| KeypairError::SecretKeyBytes)?;
-        let public: CurvePoint = CurvePoint::prime_subgroup_generator()
-            .mul(secret)
-            .into_affine();
+        let public = Self::derive_pubkey_curve_point(secret);
 
         if !public.is_on_curve() {
             return Err(KeypairError::NonCurvePoint);
@@ -73,9 +69,37 @@ impl Keypair {
         Ok(Keypair::from_parts_unsafe(secret, public))
     }
 
+    /// Deserialize a keypair from secret key scalar
+    pub fn from_secret(secret: ScalarField) -> Result<Self> {
+        let public = Self::derive_pubkey_curve_point(secret);
+        if !public.is_on_curve() {
+            return Err(KeypairError::NonCurvePoint);
+        }
+        // Safe now because we checked point is on the curve
+        Ok(Keypair::from_parts_unsafe(secret, public))
+    }
+
     /// Obtain the Mina address corresponding to the keypair's public key
     pub fn get_address(self) -> String {
         self.public.into_address()
+    }
+
+    /// Validates the keypair
+    pub fn validate(&self) -> bool {
+        let public = Self::derive_pubkey_curve_point(self.secret.clone().into_scalar());
+        &public == self.public.point()
+    }
+
+    /// Borrows the secret
+    pub fn secret(&self) -> &SecKey {
+        &self.secret
+    }
+
+    /// Derive public key curve point from the secret
+    fn derive_pubkey_curve_point(secret: ScalarField) -> CurvePoint {
+        CurvePoint::prime_subgroup_generator()
+            .mul(secret)
+            .into_affine()
     }
 }
 
@@ -127,6 +151,7 @@ mod tests {
             ($sec_key_hex:expr, $target_address:expr) => {
                 let kp = Keypair::from_hex($sec_key_hex).expect("failed to create keypair");
                 assert_eq!(kp.get_address(), $target_address);
+                assert!(kp.validate());
             };
         }
 

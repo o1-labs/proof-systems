@@ -107,6 +107,11 @@ impl PubKey {
         self.0
     }
 
+    /// Borrows curve point of the public key
+    pub fn point(&self) -> &CurvePoint {
+        &self.0
+    }
+
     /// Convert public key into compressed public key
     pub fn into_compressed(self) -> CompressedPubKey {
         let point = self.into_point();
