@@ -215,18 +215,23 @@ where
         //~ 7. Commit to the witness columns by creating `COLUMNS` hidding commitments.
         //~    Note: since the witness is in evaluation form,
         //~    we can use the `commit_evaluation` optimization.
-        let w_comm: [(PolyComm<G>, PolyComm<ScalarField<G>>); COLUMNS] = array_init(|col| {
+        let mut w_comm = vec![];
+        for col in 0..COLUMNS {
+            // witness coeff -> witness eval
             let witness_eval =
                 Evaluations::<ScalarField<G>, D<ScalarField<G>>>::from_vec_and_domain(
                     witness[col].clone(),
                     index.cs.domain.d1,
                 );
 
-            match &blinders[col] {
+            let com = match &blinders[col] {
+                // no blinders: blind the witness
                 None => index
                     .srs
                     .commit_evaluations(index.cs.domain.d1, &witness_eval, None, rng),
+                // blinders: blind the witness with them
                 Some(blinder) => {
+                    // TODO: make this a function rather no? mask_with_custom()
                     let witness_com = index.srs.commit_evaluations_non_hiding(
                         index.cs.domain.d1,
                         &witness_eval,
@@ -237,8 +242,14 @@ where
                         .mask_custom(witness_com, blinder)
                         .map_err(|e| ProverError::WrongBlinders(e))?
                 }
-            }
-        });
+            };
+
+            w_comm.push(com);
+        }
+
+        let w_comm: [(PolyComm<G>, PolyComm<ScalarField<G>>); COLUMNS] = w_comm
+            .try_into()
+            .expect("previous loop is of the correct length");
 
         //~ 8. Absorb the witness commitments with the Fq-Sponge.
         w_comm
