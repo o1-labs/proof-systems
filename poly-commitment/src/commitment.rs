@@ -45,6 +45,15 @@ where
     pub shifted: Option<C>,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct BlindedCommitment<G>
+where
+    G: CommitmentCurve,
+{
+    pub commitment: PolyComm<G>,
+    pub blinders: PolyComm<G::ScalarField>,
+}
+
 impl<A: Copy> PolyComm<A>
 where
     A: CanonicalDeserialize + CanonicalSerialize,
@@ -464,7 +473,7 @@ impl<G: CommitmentCurve> SRS<G> {
         plnm: &DensePolynomial<ScalarField<G>>,
         max: Option<usize>,
         rng: &mut (impl RngCore + CryptoRng),
-    ) -> (PolyComm<G>, PolyComm<ScalarField<G>>) {
+    ) -> BlindedCommitment<G> {
         self.mask(self.commit_non_hiding(plnm, max), rng)
     }
 
@@ -473,20 +482,25 @@ impl<G: CommitmentCurve> SRS<G> {
         &self,
         c: PolyComm<G>,
         rng: &mut (impl RngCore + CryptoRng),
-    ) -> (PolyComm<G>, PolyComm<ScalarField<G>>) {
-        c.map(|g: G| {
-            if g.is_zero() {
-                // TODO: This leaks information when g is the identity!
-                // We should change this so that we still mask in this case
-                (g, ScalarField::<G>::zero())
-            } else {
-                let w = ScalarField::<G>::rand(rng);
-                let mut g_masked = self.h.mul(w);
-                g_masked.add_assign_mixed(&g);
-                (g_masked.into_affine(), w)
-            }
-        })
-        .unzip()
+    ) -> BlindedCommitment<G> {
+        let (commitment, blinders) = c
+            .map(|g: G| {
+                if g.is_zero() {
+                    // TODO: This leaks information when g is the identity!
+                    // We should change this so that we still mask in this case
+                    (g, ScalarField::<G>::zero())
+                } else {
+                    let w = ScalarField::<G>::rand(rng);
+                    let mut g_masked = self.h.mul(w);
+                    g_masked.add_assign_mixed(&g);
+                    (g_masked.into_affine(), w)
+                }
+            })
+            .unzip();
+        BlindedCommitment {
+            commitment,
+            blinders,
+        }
     }
 
     /// This function commits a polynomial using the SRS' basis of size `n`.
@@ -593,7 +607,7 @@ impl<G: CommitmentCurve> SRS<G> {
         plnm: &Evaluations<ScalarField<G>, D<ScalarField<G>>>,
         max: Option<usize>,
         rng: &mut (impl RngCore + CryptoRng),
-    ) -> (PolyComm<G>, PolyComm<ScalarField<G>>) {
+    ) -> BlindedCommitment<G> {
         self.mask(self.commit_evaluations_non_hiding(domain, plnm, max), rng)
     }
 
@@ -896,8 +910,8 @@ mod tests {
         let sponge = DefaultFqSponge::<_, SC>::new(spongeFqParams());
 
         let polys = vec![
-            (&poly1, None, commitment.1),
-            (&poly2, Some(upperbound), bounded_commitment.1),
+            (&poly1, None, commitment.blinders),
+            (&poly2, Some(upperbound), bounded_commitment.blinders),
         ];
         let elm = vec![Fp::rand(rng), Fp::rand(rng)];
 
@@ -940,12 +954,12 @@ mod tests {
             r: u,
             evaluations: vec![
                 Evaluation {
-                    commitment: commitment.0,
+                    commitment: commitment.commitment,
                     evaluations: poly1_chunked_evals,
                     degree_bound: None,
                 },
                 Evaluation {
-                    commitment: bounded_commitment.0,
+                    commitment: bounded_commitment.commitment,
                     evaluations: poly2_chunked_evals,
                     degree_bound: Some(upperbound),
                 },
