@@ -6,7 +6,7 @@ use ark_ff::{FftField, Zero};
 use ark_poly::univariate::DensePolynomial;
 use array_init::array_init;
 use commitment_dlog::{commitment::PolyComm, evaluation_proof::OpeningProof};
-use o1_utils::{types::fields::*, ExtendedDensePolynomial};
+use o1_utils::ExtendedDensePolynomial;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
@@ -102,19 +102,19 @@ pub struct ProverProof<G: AffineCurve> {
 
     /// Two evaluations over a number of committed polynomials
     // TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }
-    pub evals: [ProofEvaluations<Vec<ScalarField<G>>>; 2],
+    pub evals: [ProofEvaluations<Vec<G::ScalarField>>; 2],
 
     /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub ft_eval1: ScalarField<G>,
+    pub ft_eval1: G::ScalarField,
 
     /// The public input
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub public: Vec<ScalarField<G>>,
+    pub public: Vec<G::ScalarField>,
 
     /// The challenges underlying the optional polynomials folded into the proof
     #[serde_as(as = "Vec<(Vec<o1_utils::serialization::SerdeAs>, serde_with::Same)>")]
-    pub prev_challenges: Vec<(Vec<ScalarField<G>>, PolyComm<G>)>,
+    pub prev_challenges: Vec<(Vec<G::ScalarField>, PolyComm<G>)>,
 }
 //~ spec:endcode
 

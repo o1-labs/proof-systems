@@ -36,7 +36,7 @@ use ark_poly::{
 use array_init::array_init;
 use commitment_dlog::commitment::{b_poly_coefficients, CommitmentCurve, PolyComm};
 use itertools::Itertools;
-use o1_utils::{types::fields::*, ExtendedDensePolynomial as _};
+use o1_utils::ExtendedDensePolynomial as _;
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use std::collections::HashMap;
 
@@ -100,7 +100,7 @@ where
     /// Runtime table
     runtime_table: Option<DensePolynomial<F>>,
     runtime_table_d8: Option<Evaluations<F, D<F>>>,
-    runtime_table_comm: Option<(PolyComm<G>, PolyComm<ScalarField<G>>)>,
+    runtime_table_comm: Option<(PolyComm<G>, PolyComm<G::ScalarField>)>,
     runtime_second_col_d8: Option<Evaluations<F, D<F>>>,
 }
 
@@ -110,12 +110,12 @@ where
 {
     /// This function constructs prover's zk-proof from the witness & the ProverIndex against SRS instance
     pub fn create<
-        EFqSponge: Clone + FqSponge<BaseField<G>, G, ScalarField<G>>,
-        EFrSponge: FrSponge<ScalarField<G>>,
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+        EFrSponge: FrSponge<G::ScalarField>,
     >(
         groupmap: &G::Map,
-        witness: [Vec<ScalarField<G>>; COLUMNS],
-        runtime_tables: &[RuntimeTable<ScalarField<G>>],
+        witness: [Vec<G::ScalarField>; COLUMNS],
+        runtime_tables: &[RuntimeTable<G::ScalarField>],
         index: &ProverIndex<G>,
     ) -> Result<Self> {
         Self::create_recursive::<EFqSponge, EFrSponge>(
@@ -129,14 +129,14 @@ where
 
     /// This function constructs prover's recursive zk-proof from the witness & the ProverIndex against SRS instance
     pub fn create_recursive<
-        EFqSponge: Clone + FqSponge<BaseField<G>, G, ScalarField<G>>,
-        EFrSponge: FrSponge<ScalarField<G>>,
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+        EFrSponge: FrSponge<G::ScalarField>,
     >(
         group_map: &G::Map,
-        mut witness: [Vec<ScalarField<G>>; COLUMNS],
-        runtime_tables: &[RuntimeTable<ScalarField<G>>],
+        mut witness: [Vec<G::ScalarField>; COLUMNS],
+        runtime_tables: &[RuntimeTable<G::ScalarField>],
         index: &ProverIndex<G>,
-        prev_challenges: Vec<(Vec<ScalarField<G>>, PolyComm<G>)>,
+        prev_challenges: Vec<(Vec<G::ScalarField>, PolyComm<G>)>,
     ) -> Result<Self> {
         // make sure that the SRS is not smaller than the domain size
         let d1_size = index.cs.domain.d1.size();
@@ -177,11 +177,11 @@ where
             }
 
             // padding
-            w.extend(std::iter::repeat(ScalarField::<G>::zero()).take(length_padding));
+            w.extend(std::iter::repeat(G::ScalarField::zero()).take(length_padding));
 
             // zk-rows
             for row in w.iter_mut().rev().take(ZK_ROWS as usize) {
-                *row = <ScalarField<G> as UniformRand>::rand(rng);
+                *row = <G::ScalarField as UniformRand>::rand(rng);
             }
         }
 
@@ -192,7 +192,7 @@ where
         //~    the polynomial that evaluates to $-p_i$ for the first `public_input_size` values of the domain,
         //~    and $0$ for the rest.
         let public = witness[0][0..index.cs.public].to_vec();
-        let public_poly = -Evaluations::<ScalarField<G>, D<ScalarField<G>>>::from_vec_and_domain(
+        let public_poly = -Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
             public.clone(),
             index.cs.domain.d1,
         )
@@ -212,8 +212,8 @@ where
         //~
         //~    Note: since the witness is in evaluation form,
         //~    we can use the `commit_evaluation` optimization.
-        let w_comm: [(PolyComm<G>, PolyComm<ScalarField<G>>); COLUMNS] = array_init(|i| {
-            let e = Evaluations::<ScalarField<G>, D<ScalarField<G>>>::from_vec_and_domain(
+        let w_comm: [(PolyComm<G>, PolyComm<G::ScalarField>); COLUMNS] = array_init(|i| {
+            let e = Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
                 witness[i].clone(),
                 index.cs.domain.d1,
             );
@@ -229,8 +229,8 @@ where
 
         //~ 1. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
         //~    TODO: why not do this first, and then commit? Why commit from evaluation directly?
-        let witness_poly: [DensePolynomial<ScalarField<G>>; COLUMNS] = array_init(|i| {
-            Evaluations::<ScalarField<G>, D<ScalarField<G>>>::from_vec_and_domain(
+        let witness_poly: [DensePolynomial<G::ScalarField>; COLUMNS] = array_init(|i| {
+            Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
                 witness[i].clone(),
                 index.cs.domain.d1,
             )
@@ -264,7 +264,7 @@ where
                         .runtime_table_offset
                         .expect("runtime configuration missing offset");
 
-                    let mut evals = vec![ScalarField::<G>::zero(); d1_size];
+                    let mut evals = vec![G::ScalarField::zero(); d1_size];
                     for rt in runtime_tables {
                         let range = offset..(offset + rt.data.len());
                         evals[range].copy_from_slice(&rt.data);
@@ -273,7 +273,7 @@ where
 
                     // zero-knowledge
                     for e in evals.iter_mut().rev().take(ZK_ROWS as usize) {
-                        *e = <ScalarField<G> as UniformRand>::rand(rng);
+                        *e = <G::ScalarField as UniformRand>::rand(rng);
                     }
 
                     // get coeff and evaluation form
@@ -313,21 +313,21 @@ where
             let joint_combiner = if joint_lookup_used {
                 fq_sponge.challenge()
             } else {
-                ScalarField::<G>::zero()
+                G::ScalarField::zero()
             };
 
             //~~ - Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TOOD: specify)
-            let joint_combiner: ScalarField<G> =
+            let joint_combiner: G::ScalarField =
                 ScalarChallenge(joint_combiner).to_field(&index.srs.endo_r);
 
             //~~ - If multiple lookup tables are involved,
             //~~   set the `table_id_combiner` as the $j^i$ with $i$ the maximum width of any used table.
             //~~   Essentially, this is to add a last column of table ids to the concatenated lookup tables.
-            let table_id_combiner: ScalarField<G> = if lcs.table_ids8.as_ref().is_some() {
+            let table_id_combiner: G::ScalarField = if lcs.table_ids8.as_ref().is_some() {
                 joint_combiner.pow([lcs.configuration.lookup_info.max_joint_size as u64])
             } else {
                 // TODO: just set this to None in case multiple tables are not used
-                ScalarField::<G>::zero()
+                G::ScalarField::zero()
             };
             lookup_context.table_id_combiner = Some(table_id_combiner);
 
@@ -350,7 +350,7 @@ where
                         // If there is no `table_ids8` in the constraint system,
                         // every table ID is identically 0.
                         {
-                            ScalarField::<G>::zero()
+                            G::ScalarField::zero()
                         }
                     };
 
@@ -455,7 +455,7 @@ where
             //~~ - Compute the lookup aggregation polynomial.
             let joint_lookup_table_d8 = lookup_context.joint_lookup_table_d8.as_ref().unwrap();
 
-            let aggreg = lookup::constraints::aggregation::<_, ScalarField<G>>(
+            let aggreg = lookup::constraints::aggregation::<_, G::ScalarField>(
                 lookup_context.dummy_lookup_value.unwrap(),
                 joint_lookup_table_d8,
                 index.cs.domain.d1,
@@ -502,7 +502,7 @@ where
         let alpha_chal = ScalarChallenge(fq_sponge.challenge());
 
         //~ 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details)
-        let alpha: ScalarField<G> = alpha_chal.to_field(&index.srs.endo_r);
+        let alpha: G::ScalarField = alpha_chal.to_field(&index.srs.endo_r);
 
         //~ 1. TODO: instantiate alpha?
         let mut all_alphas = index.powers_of_alpha.clone();
@@ -756,7 +756,7 @@ where
             // the higher degree coefficients of `t` are 0.
             for _ in 0..dummies {
                 use ark_ec::ProjectiveCurve;
-                let w = <ScalarField<G> as UniformRand>::rand(rng);
+                let w = <G::ScalarField as UniformRand>::rand(rng);
                 t_comm.unshifted.push(index.srs.h.mul(w).into_affine());
                 omega_t.unshifted.push(w);
             }
@@ -796,7 +796,7 @@ where
             let joint_table = lookup_context.joint_lookup_table.as_ref().unwrap();
             let joint_table = joint_table.to_chunked_polynomial(index.max_poly_size);
 
-            let lookup_evals = |eval_point: ScalarField<G>| {
+            let lookup_evals = |eval_point: G::ScalarField| {
                 let table = joint_table.evaluate_chunks(eval_point);
 
                 // the runtime table polynomial
@@ -839,7 +839,7 @@ where
         //~
         //~    TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)
         let chunked_evals = {
-            let chunked_evals_zeta = ProofEvaluations::<Vec<ScalarField<G>>> {
+            let chunked_evals_zeta = ProofEvaluations::<Vec<G::ScalarField>> {
                 s: array_init(|i| {
                     index.cs.sigmam[0..PERMUTS - 1][i]
                         .to_chunked_polynomial(index.max_poly_size)
@@ -869,7 +869,7 @@ where
                     .to_chunked_polynomial(index.max_poly_size)
                     .evaluate_chunks(zeta),
             };
-            let chunked_evals_zeta_omega = ProofEvaluations::<Vec<ScalarField<G>>> {
+            let chunked_evals_zeta_omega = ProofEvaluations::<Vec<G::ScalarField>> {
                 s: array_init(|i| {
                     index.cs.sigmam[0..PERMUTS - 1][i]
                         .to_chunked_polynomial(index.max_poly_size)
@@ -915,7 +915,7 @@ where
             &chunked_evals
                 .iter()
                 .zip(power_of_eval_points_for_chunks.iter())
-                .map(|(es, &e1)| ProofEvaluations::<ScalarField<G>> {
+                .map(|(es, &e1)| ProofEvaluations::<G::ScalarField> {
                     s: array_init(|i| DensePolynomial::eval_polynomial(&es.s[i], e1)),
                     w: array_init(|i| DensePolynomial::eval_polynomial(&es.w[i], e1)),
                     z: DensePolynomial::eval_polynomial(&es.z, e1),
@@ -940,7 +940,7 @@ where
 
         //~ 1. Compute the ft polynomial.
         //~    This is to implement [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html).
-        let ft: DensePolynomial<ScalarField<G>> = {
+        let ft: DensePolynomial<G::ScalarField> = {
             let f_chunked = {
                 // TODO: compute the linearization polynomial in evaluation form so
                 // that we can drop the coefficient forms of the index polynomials from
@@ -976,19 +976,19 @@ where
                 .to_chunked_polynomial(index.max_poly_size)
                 .linearize(zeta_to_srs_len);
 
-            &f_chunked - &t_chunked.scale(zeta_to_domain_size - ScalarField::<G>::one())
+            &f_chunked - &t_chunked.scale(zeta_to_domain_size - G::ScalarField::one())
         };
 
         //~ 1. construct the blinding part of the ft polynomial commitment
         //~    see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#evaluation-proof-and-blinding-factors
         let blinding_ft = {
             let blinding_t = t_comm.1.chunk_blinding(zeta_to_srs_len);
-            let blinding_f = ScalarField::<G>::zero();
+            let blinding_f = G::ScalarField::zero();
 
             PolyComm {
                 // blinding_f - Z_H(zeta) * blinding_t
                 unshifted: vec![
-                    blinding_f - (zeta_to_domain_size - ScalarField::<G>::one()) * blinding_t,
+                    blinding_f - (zeta_to_domain_size - G::ScalarField::one()) * blinding_t,
                 ],
                 shifted: None,
             }
@@ -1044,7 +1044,7 @@ where
         //~    (and evaluation proofs) in the protocol.
         //~    First, include the previous challenges, in case we are in a recursive prover.
         let non_hiding = |d1_size: usize| PolyComm {
-            unshifted: vec![ScalarField::<G>::zero(); d1_size],
+            unshifted: vec![G::ScalarField::zero(); d1_size],
             shifted: None,
         };
 
