@@ -1425,7 +1425,6 @@ pub struct ProofEvaluations<Field> {
     #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; PERMUTS - 1]")]
     pub s: [Field; PERMUTS - 1],
     /// lookup-related evaluations
-    #[serde(bound = "LookupEvaluations<Field>: Serialize")]
     pub lookup: Option<LookupEvaluations<Field>>,
     /// evaluation of the generic selector polynomial
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
@@ -1476,7 +1475,6 @@ pub struct ProverProof<G: AffineCurve> {
 
     /// Two evaluations over a number of committed polynomials
     // TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }
-    #[serde(bound = "ProofEvaluations<Vec<ScalarField<G>>>: Serialize + DeserializeOwned")]
     pub evals: [ProofEvaluations<Vec<ScalarField<G>>>; 2],
 
     /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
