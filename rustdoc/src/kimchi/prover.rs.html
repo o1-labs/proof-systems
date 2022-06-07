@@ -1376,7 +1376,6 @@
 <span id="1369">1369</span>
 <span id="1370">1370</span>
 <span id="1371">1371</span>
-<span id="1372">1372</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements prover&#39;s zk-proof primitive.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -1404,6 +1403,7 @@
     <span class="ident">plonk_sponge::FrSponge</span>,
     <span class="ident">proof</span>::{
         <span class="ident">LookupCommitments</span>, <span class="ident">LookupEvaluations</span>, <span class="ident">ProofEvaluations</span>, <span class="ident">ProverCommitments</span>, <span class="ident">ProverProof</span>,
+        <span class="ident">RecursionChallenge</span>,
     },
     <span class="ident">prover_index::ProverIndex</span>,
 };
@@ -1517,7 +1517,7 @@
         <span class="kw-2">mut</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
         <span class="ident">runtime_tables</span>: <span class="kw-2">&amp;</span>[<span class="ident">RuntimeTable</span><span class="op">&lt;</span><span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>],
         <span class="ident">index</span>: <span class="kw-2">&amp;</span><span class="ident">ProverIndex</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
-        <span class="ident">prev_challenges</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
+        <span class="ident">prev_challenges</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RecursionChallenge</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
         <span class="comment">// make sure that the SRS is not smaller than the domain size</span>
         <span class="kw">let</span> <span class="ident">d1_size</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span>();
@@ -2298,7 +2298,7 @@
             <span class="kw">let</span> <span class="ident">power_of_eval_points_for_chunks</span> <span class="op">=</span> [<span class="ident">zeta_to_srs_len</span>, <span class="ident">zeta_omega_to_srs_len</span>];
             <span class="kw-2">&amp;</span><span class="ident">chunked_evals</span>
                 .<span class="ident">iter</span>()
-                .<span class="ident">zip</span>(<span class="ident">power_of_eval_points_for_chunks</span>.<span class="ident">iter</span>())
+                .<span class="ident">zip</span>(<span class="ident">power_of_eval_points_for_chunks</span>.<span class="ident">iter</span>()) <span class="comment">// (zeta , zeta_omega)</span>
                 .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">es</span>, <span class="kw-2">&amp;</span><span class="ident">e1</span>)<span class="op">|</span> <span class="ident">ProofEvaluations</span>::<span class="op">&lt;</span><span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span> {
                     <span class="ident">s</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">DensePolynomial::eval_polynomial</span>(<span class="kw-2">&amp;</span><span class="ident">es</span>.<span class="ident">s</span>[<span class="ident">i</span>], <span class="ident">e1</span>)),
                     <span class="ident">w</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">DensePolynomial::eval_polynomial</span>(<span class="kw-2">&amp;</span><span class="ident">es</span>.<span class="ident">w</span>[<span class="ident">i</span>], <span class="ident">e1</span>)),
@@ -2434,7 +2434,7 @@
 
         <span class="kw">let</span> <span class="ident">polys</span> <span class="op">=</span> <span class="ident">prev_challenges</span>
             .<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">chals</span>, <span class="ident">comm</span>)<span class="op">|</span> {
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">RecursionChallenge</span> { <span class="ident">chals</span>, <span class="ident">comm</span> }<span class="op">|</span> {
                 (
                     <span class="ident">DensePolynomial::from_coefficients_vec</span>(<span class="ident">b_poly_coefficients</span>(<span class="ident">chals</span>)),
                     <span class="ident">comm</span>.<span class="ident">unshifted</span>.<span class="ident">len</span>(),
@@ -2558,9 +2558,13 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;ocaml_types&quot;</span>)]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">caml</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::proof::caml::CamlProofEvaluations</span>;
+    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::proof::caml</span>::{<span class="ident">CamlProofEvaluations</span>, <span class="ident">CamlRecursionChallenge</span>};
     <span class="kw">use</span> <span class="ident">ark_ec::AffineCurve</span>;
     <span class="kw">use</span> <span class="ident">commitment_dlog::commitment::caml</span>::{<span class="ident">CamlOpeningProof</span>, <span class="ident">CamlPolyComm</span>};
+
+    <span class="comment">//</span>
+    <span class="comment">// CamlProverProof&lt;CamlG, CamlF&gt;</span>
+    <span class="comment">//</span>
 
     <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">ocaml_gen::Struct</span>)]</span>
     <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlProverProof</span><span class="op">&lt;</span><span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span> {
@@ -2570,8 +2574,12 @@
         <span class="kw">pub</span> <span class="ident">evals</span>: (<span class="ident">CamlProofEvaluations</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>, <span class="ident">CamlProofEvaluations</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>),
         <span class="kw">pub</span> <span class="ident">ft_eval1</span>: <span class="ident">CamlF</span>,
         <span class="kw">pub</span> <span class="ident">public</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
-        <span class="kw">pub</span> <span class="ident">prev_challenges</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>, <span class="ident">CamlPolyComm</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
+        <span class="kw">pub</span> <span class="ident">prev_challenges</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlRecursionChallenge</span><span class="op">&lt;</span><span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="comment">//Vec&lt;(Vec&lt;CamlF&gt;, CamlPolyComm&lt;CamlG&gt;)&gt;,</span>
     }
+
+    <span class="comment">//</span>
+    <span class="comment">// CamlProverCommitments&lt;CamlG&gt;</span>
+    <span class="comment">//</span>
 
     <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">ocaml_gen::Struct</span>)]</span>
     <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlProverCommitments</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span> {
@@ -2713,14 +2721,7 @@
                 <span class="ident">evals</span>: (<span class="ident">pp</span>.<span class="ident">evals</span>[<span class="number">0</span>].<span class="ident">clone</span>().<span class="ident">into</span>(), <span class="ident">pp</span>.<span class="ident">evals</span>[<span class="number">1</span>].<span class="ident">clone</span>().<span class="ident">into</span>()),
                 <span class="ident">ft_eval1</span>: <span class="ident">pp</span>.<span class="ident">ft_eval1</span>.<span class="ident">into</span>(),
                 <span class="ident">public</span>: <span class="ident">pp</span>.<span class="ident">public</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">prev_challenges</span>: <span class="ident">pp</span>
-                    .<span class="ident">prev_challenges</span>
-                    .<span class="ident">into_iter</span>()
-                    .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">v</span>, <span class="ident">c</span>)<span class="op">|</span> {
-                        <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="ident">v</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>();
-                        (<span class="ident">v</span>, <span class="ident">c</span>.<span class="ident">into</span>())
-                    })
-                    .<span class="ident">collect</span>(),
+                <span class="ident">prev_challenges</span>: <span class="ident">pp</span>.<span class="ident">prev_challenges</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
             }
         }
     }
@@ -2740,10 +2741,7 @@
                 <span class="ident">prev_challenges</span>: <span class="ident">caml_pp</span>
                     .<span class="ident">prev_challenges</span>
                     .<span class="ident">into_iter</span>()
-                    .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">v</span>, <span class="ident">c</span>)<span class="op">|</span> {
-                        <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="ident">v</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>();
-                        (<span class="ident">v</span>, <span class="ident">c</span>.<span class="ident">into</span>())
-                    })
+                    .<span class="ident">map</span>(<span class="ident">Into::into</span>)
                     .<span class="ident">collect</span>(),
             }
         }

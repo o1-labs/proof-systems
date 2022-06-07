@@ -76,6 +76,7 @@
 <span id="69">69</span>
 <span id="70">70</span>
 <span id="71">71</span>
+<span id="72">72</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">biginteger::BigInteger256</span> <span class="kw">as</span> <span class="ident">BigInteger</span>, <span class="ident">FftParameters</span>, <span class="ident">Fp256</span>, <span class="ident">Fp256Parameters</span>};
 
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">Fp</span> <span class="op">=</span> <span class="ident">Fp256</span><span class="op">&lt;</span><span class="ident">FpParameters</span><span class="op">&gt;</span>;
@@ -83,6 +84,7 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">FpParameters</span>;
 
 <span class="kw">impl</span> <span class="ident">Fp256Parameters</span> <span class="kw">for</span> <span class="ident">FpParameters</span> {}
+
 <span class="kw">impl</span> <span class="ident">FftParameters</span> <span class="kw">for</span> <span class="ident">FpParameters</span> {
     <span class="kw">type</span> <span class="ident">BigInt</span> <span class="op">=</span> <span class="ident">BigInteger</span>;
 

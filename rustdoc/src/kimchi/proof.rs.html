@@ -348,6 +348,74 @@
 <span id="341">341</span>
 <span id="342">342</span>
 <span id="343">343</span>
+<span id="344">344</span>
+<span id="345">345</span>
+<span id="346">346</span>
+<span id="347">347</span>
+<span id="348">348</span>
+<span id="349">349</span>
+<span id="350">350</span>
+<span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
+<span id="357">357</span>
+<span id="358">358</span>
+<span id="359">359</span>
+<span id="360">360</span>
+<span id="361">361</span>
+<span id="362">362</span>
+<span id="363">363</span>
+<span id="364">364</span>
+<span id="365">365</span>
+<span id="366">366</span>
+<span id="367">367</span>
+<span id="368">368</span>
+<span id="369">369</span>
+<span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
+<span id="391">391</span>
+<span id="392">392</span>
+<span id="393">393</span>
+<span id="394">394</span>
+<span id="395">395</span>
+<span id="396">396</span>
+<span id="397">397</span>
+<span id="398">398</span>
+<span id="399">399</span>
+<span id="400">400</span>
+<span id="401">401</span>
+<span id="402">402</span>
+<span id="403">403</span>
+<span id="404">404</span>
+<span id="405">405</span>
+<span id="406">406</span>
+<span id="407">407</span>
+<span id="408">408</span>
+<span id="409">409</span>
+<span id="410">410</span>
+<span id="411">411</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the data structures of a proof.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::wires</span>::{<span class="ident">COLUMNS</span>, <span class="ident">PERMUTS</span>};
@@ -361,6 +429,7 @@
 <span class="kw">use</span> <span class="ident">serde_with::serde_as</span>;
 
 <span class="comment">//~ spec:startcode</span>
+<span class="doccomment">/// Evaluations of lookup polynomials</span>
 <span class="attribute">#[<span class="ident">serde_as</span>]</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">bound</span>(
@@ -385,6 +454,9 @@
 }
 
 <span class="comment">// TODO: this should really be vectors here, perhaps create another type for chunked evaluations?</span>
+<span class="doccomment">/// Polynomial evaluations contained in a `ProverProof`.</span>
+<span class="doccomment">/// - **Chunked evaluations** `Field` is instantiated with vectors with a length that equals the length of the chunk</span>
+<span class="doccomment">/// - **Non chunked evaluations** `Field` is instantiated with a field, so they are single-sized#[serde_as]</span>
 <span class="attribute">#[<span class="ident">serde_as</span>]</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">bound</span>(
@@ -417,9 +489,10 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">bound</span> <span class="op">=</span> <span class="string">&quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LookupCommitments</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">AffineCurve</span><span class="op">&gt;</span> {
+    <span class="doccomment">/// Commitments to the sorted lookup table polynomial (may have chunks)</span>
     <span class="kw">pub</span> <span class="ident">sorted</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Commitment to the lookup aggregation polynomial</span>
     <span class="kw">pub</span> <span class="ident">aggreg</span>: <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
-
     <span class="doccomment">/// Optional commitment to concatenated runtime tables</span>
     <span class="kw">pub</span> <span class="ident">runtime</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 }
@@ -463,10 +536,31 @@
     <span class="kw">pub</span> <span class="ident">public</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 
     <span class="doccomment">/// The challenges underlying the optional polynomials folded into the proof</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;Vec&lt;(Vec&lt;o1_utils::serialization::SerdeAs&gt;, serde_with::Same)&gt;&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">prev_challenges</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">prev_challenges</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RecursionChallenge</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 }
+
+<span class="doccomment">/// A struct to store the challenges inside a `ProverProof`</span>
+<span class="attribute">#[<span class="ident">serde_as</span>]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>)]</span>
+<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">bound</span> <span class="op">=</span> <span class="string">&quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RecursionChallenge</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
+<span class="kw">where</span>
+    <span class="ident">G</span>: <span class="ident">AffineCurve</span>,
+{
+    <span class="doccomment">/// Vector of scalar field elements</span>
+    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">chals</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Polynomial commitment</span>
+    <span class="kw">pub</span> <span class="ident">comm</span>: <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
+}
+
 <span class="comment">//~ spec:endcode</span>
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">AffineCurve</span><span class="op">&gt;</span> <span class="ident">RecursionChallenge</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">chals</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">comm</span>: <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>) -&gt; <span class="ident">RecursionChallenge</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
+        <span class="ident">RecursionChallenge</span> { <span class="ident">chals</span>, <span class="ident">comm</span> }
+    }
+}
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Zero</span><span class="op">&gt;</span> <span class="ident">ProofEvaluations</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">dummy_with_witness_evaluations</span>(<span class="ident">w</span>: [<span class="ident">F</span>; <span class="ident">COLUMNS</span>]) -&gt; <span class="ident">ProofEvaluations</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
@@ -513,6 +607,48 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;ocaml_types&quot;</span>)]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">caml</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use</span> <span class="ident">commitment_dlog::commitment::caml::CamlPolyComm</span>;
+
+    <span class="comment">//</span>
+    <span class="comment">// CamlRecursionChallenge&lt;CamlG, CamlF&gt;</span>
+    <span class="comment">//</span>
+
+    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">ocaml_gen::Struct</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlRecursionChallenge</span><span class="op">&lt;</span><span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span> {
+        <span class="kw">pub</span> <span class="ident">chals</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
+        <span class="kw">pub</span> <span class="ident">comm</span>: <span class="ident">CamlPolyComm</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>,
+    }
+
+    <span class="comment">//</span>
+    <span class="comment">// CamlRecursionChallenge&lt;CamlG, CamlF&gt; &lt;-&gt; RecursionChallenge&lt;G&gt;</span>
+    <span class="comment">//</span>
+
+    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>, <span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">RecursionChallenge</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CamlRecursionChallenge</span><span class="op">&lt;</span><span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span>
+    <span class="kw">where</span>
+        <span class="ident">G</span>: <span class="ident">AffineCurve</span>,
+        <span class="ident">CamlG</span>: <span class="ident">From</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
+        <span class="ident">CamlF</span>: <span class="ident">From</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span>,
+    {
+        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">ch</span>: <span class="ident">RecursionChallenge</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
+            <span class="self">Self</span> {
+                <span class="ident">chals</span>: <span class="ident">ch</span>.<span class="ident">chals</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
+                <span class="ident">comm</span>: <span class="ident">ch</span>.<span class="ident">comm</span>.<span class="ident">into</span>(),
+            }
+        }
+    }
+
+    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>, <span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">CamlRecursionChallenge</span><span class="op">&lt;</span><span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">RecursionChallenge</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
+    <span class="kw">where</span>
+        <span class="ident">G</span>: <span class="ident">AffineCurve</span> <span class="op">+</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>,
+        <span class="ident">G::ScalarField</span>: <span class="ident">From</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
+    {
+        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">caml_ch</span>: <span class="ident">CamlRecursionChallenge</span><span class="op">&lt;</span><span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span>) -&gt; <span class="ident">RecursionChallenge</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
+            <span class="ident">RecursionChallenge</span> {
+                <span class="ident">chals</span>: <span class="ident">caml_ch</span>.<span class="ident">chals</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
+                <span class="ident">comm</span>: <span class="ident">caml_ch</span>.<span class="ident">comm</span>.<span class="ident">into</span>(),
+            }
+        }
+    }
 
     <span class="comment">//</span>
     <span class="comment">// CamlLookupEvaluations&lt;CamlF&gt;</span>

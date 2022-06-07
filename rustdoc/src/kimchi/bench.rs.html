@@ -157,7 +157,7 @@
         <span class="ident">polynomials::generic::GenericGateSpec</span>,
         <span class="ident">wires</span>::{<span class="ident">Wire</span>, <span class="ident">COLUMNS</span>},
     },
-    <span class="ident">proof::ProverProof</span>,
+    <span class="ident">proof</span>::{<span class="ident">ProverProof</span>, <span class="ident">RecursionChallenge</span>},
     <span class="ident">prover_index</span>::{<span class="ident">testing::new_index_for_test</span>, <span class="ident">ProverIndex</span>},
     <span class="ident">verifier::batch_verify</span>,
     <span class="ident">verifier_index::VerifierIndex</span>,
@@ -249,7 +249,7 @@
                 <span class="kw">let</span> <span class="ident">b</span> <span class="op">=</span> <span class="ident">DensePolynomial::from_coefficients_vec</span>(<span class="ident">coeffs</span>);
                 <span class="self">self</span>.<span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="ident">b</span>, <span class="prelude-val">None</span>)
             };
-            (<span class="ident">chals</span>, <span class="ident">comm</span>)
+            <span class="ident">RecursionChallenge::new</span>(<span class="ident">chals</span>, <span class="ident">comm</span>)
         };
 
         <span class="comment">// add the proof to the batch</span>

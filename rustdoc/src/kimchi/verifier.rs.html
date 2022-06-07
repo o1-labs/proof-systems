@@ -963,6 +963,9 @@
 <span id="956">956</span>
 <span id="957">957</span>
 <span id="958">958</span>
+<span id="959">959</span>
+<span id="960">960</span>
+<span id="961">961</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements zk-proof batch verifier functionality.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -979,7 +982,7 @@
     },
     <span class="ident">error::VerifyError</span>,
     <span class="ident">plonk_sponge::FrSponge</span>,
-    <span class="ident">proof::ProverProof</span>,
+    <span class="ident">proof</span>::{<span class="ident">ProverProof</span>, <span class="ident">RecursionChallenge</span>},
     <span class="ident">verifier_index::VerifierIndex</span>,
 };
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">Field</span>, <span class="ident">One</span>, <span class="ident">PrimeField</span>, <span class="ident">Zero</span>};
@@ -1037,7 +1040,7 @@
     ) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ScalarField</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">prev_challenges</span>
             .<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">chals</span>, <span class="ident">_poly</span>)<span class="op">|</span> {
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">RecursionChallenge</span> { <span class="ident">chals</span>, <span class="ident">comm</span>: <span class="kw">_</span> }<span class="op">|</span> {
                 <span class="comment">// No need to check the correctness of poly explicitly. Its correctness is assured by the</span>
                 <span class="comment">// checking of the inner product argument.</span>
                 <span class="kw">let</span> <span class="ident">b_len</span> <span class="op">=</span> <span class="number">1</span> <span class="op">&lt;</span><span class="op">&lt;</span> <span class="ident">chals</span>.<span class="ident">len</span>();
@@ -1273,7 +1276,10 @@
             .<span class="ident">prev_challenges</span>
             .<span class="ident">iter</span>()
             .<span class="ident">zip</span>(<span class="self">self</span>.<span class="ident">prev_chal_evals</span>(<span class="ident">index</span>, <span class="kw-2">&amp;</span><span class="ident">evaluation_points</span>, <span class="kw-2">&amp;</span><span class="ident">powers_of_eval_points_for_chunks</span>))
-            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">c</span>, <span class="ident">e</span>)<span class="op">|</span> (<span class="ident">c</span>.<span class="number">1</span>.<span class="ident">clone</span>(), <span class="ident">e</span>))
+            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">challenge</span>, <span class="ident">evals</span>)<span class="op">|</span> {
+                <span class="kw">let</span> <span class="ident">RecursionChallenge</span> { <span class="ident">chals</span>: <span class="kw">_</span>, <span class="ident">comm</span> } <span class="op">=</span> <span class="ident">challenge</span>;
+                (<span class="ident">comm</span>.<span class="ident">clone</span>(), <span class="ident">evals</span>)
+            })
             .<span class="ident">collect</span>();
 
         <span class="kw">let</span> <span class="ident">evals</span> <span class="op">=</span> <span class="macro">vec!</span>[

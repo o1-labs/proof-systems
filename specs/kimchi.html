@@ -1354,7 +1354,8 @@ For this reason, it can be useful to visualize the high-level interactive protoc
 You can find these operations under the <a href="#proof-creation">proof creation</a> and <a href="#proof-verification">proof verification</a> algorithms as absorption and squeezing of values with the sponge.</p>
 <h3 id="proof-structure"><a class="header" href="#proof-structure">Proof Structure</a></h3>
 <p>A proof consists of the following data structures:</p>
-<pre><code class="language-rs">#[serde_as]
+<pre><code class="language-rs">/// Evaluations of lookup polynomials
+#[serde_as]
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(bound(
     serialize = &quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;: serde_with::SerializeAs&lt;Field&gt;&quot;,
@@ -1378,6 +1379,9 @@ pub struct LookupEvaluations&lt;Field&gt; {
 }
 
 // TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
+/// Polynomial evaluations contained in a `ProverProof`.
+/// - **Chunked evaluations** `Field` is instantiated with vectors with a length that equals the length of the chunk
+/// - **Non chunked evaluations** `Field` is instantiated with a field, so they are single-sized#[serde_as]
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(bound(
@@ -1410,9 +1414,10 @@ pub struct ProofEvaluations&lt;Field&gt; {
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(bound = &quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;)]
 pub struct LookupCommitments&lt;G: AffineCurve&gt; {
+    /// Commitments to the sorted lookup table polynomial (may have chunks)
     pub sorted: Vec&lt;PolyComm&lt;G&gt;&gt;,
+    /// Commitment to the lookup aggregation polynomial
     pub aggreg: PolyComm&lt;G&gt;,
-
     /// Optional commitment to concatenated runtime tables
     pub runtime: Option&lt;PolyComm&lt;G&gt;&gt;,
 }
@@ -1456,9 +1461,24 @@ pub struct ProverProof&lt;G: AffineCurve&gt; {
     pub public: Vec&lt;ScalarField&lt;G&gt;&gt;,
 
     /// The challenges underlying the optional polynomials folded into the proof
-    #[serde_as(as = &quot;Vec&lt;(Vec&lt;o1_utils::serialization::SerdeAs&gt;, serde_with::Same)&gt;&quot;)]
-    pub prev_challenges: Vec&lt;(Vec&lt;ScalarField&lt;G&gt;&gt;, PolyComm&lt;G&gt;)&gt;,
+    pub prev_challenges: Vec&lt;RecursionChallenge&lt;G&gt;&gt;,
 }
+
+/// A struct to store the challenges inside a `ProverProof`
+#[serde_as]
+#[derive(Clone, Deserialize, Serialize)]
+#[serde(bound = &quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;)]
+pub struct RecursionChallenge&lt;G&gt;
+where
+    G: AffineCurve,
+{
+    /// Vector of scalar field elements
+    #[serde_as(as = &quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;)]
+    pub chals: Vec&lt;ScalarField&lt;G&gt;&gt;,
+    /// Polynomial commitment
+    pub comm: PolyComm&lt;G&gt;,
+}
+
 </code></pre>
 <p>The following sections specify how a prover creates a proof, and how a verifier validates a number of proofs.</p>
 <h3 id="proof-creation"><a class="header" href="#proof-creation">Proof Creation</a></h3>
