@@ -25,6 +25,7 @@ use crate::{
     plonk_sponge::FrSponge,
     proof::{
         LookupCommitments, LookupEvaluations, ProofEvaluations, ProverCommitments, ProverProof,
+        RecursionChallenge,
     },
     prover_index::ProverIndex,
 };
@@ -138,7 +139,7 @@ where
         mut witness: [Vec<ScalarField<G>>; COLUMNS],
         runtime_tables: &[RuntimeTable<ScalarField<G>>],
         index: &ProverIndex<G>,
-        prev_challenges: Vec<(Vec<ScalarField<G>>, PolyComm<G>)>,
+        prev_challenges: Vec<RecursionChallenge<G>>,
     ) -> Result<Self> {
         // make sure that the SRS is not smaller than the domain size
         let d1_size = index.cs.domain.d1.size();
@@ -919,7 +920,7 @@ where
             let power_of_eval_points_for_chunks = [zeta_to_srs_len, zeta_omega_to_srs_len];
             &chunked_evals
                 .iter()
-                .zip(power_of_eval_points_for_chunks.iter())
+                .zip(power_of_eval_points_for_chunks.iter()) // (zeta , zeta_omega)
                 .map(|(es, &e1)| ProofEvaluations::<ScalarField<G>> {
                     s: array_init(|i| DensePolynomial::eval_polynomial(&es.s[i], e1)),
                     w: array_init(|i| DensePolynomial::eval_polynomial(&es.w[i], e1)),
@@ -1055,7 +1056,7 @@ where
 
         let polys = prev_challenges
             .iter()
-            .map(|(chals, comm)| {
+            .map(|RecursionChallenge { chals, comm }| {
                 (
                     DensePolynomial::from_coefficients_vec(b_poly_coefficients(chals)),
                     comm.unshifted.len(),
@@ -1179,9 +1180,13 @@ where
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
-    use crate::proof::caml::CamlProofEvaluations;
+    use crate::proof::caml::{CamlProofEvaluations, CamlRecursionChallenge};
     use ark_ec::AffineCurve;
     use commitment_dlog::commitment::caml::{CamlOpeningProof, CamlPolyComm};
+
+    //
+    // CamlProverProof<CamlG, CamlF>
+    //
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlProverProof<CamlG, CamlF> {
@@ -1191,8 +1196,12 @@ pub mod caml {
         pub evals: (CamlProofEvaluations<CamlF>, CamlProofEvaluations<CamlF>),
         pub ft_eval1: CamlF,
         pub public: Vec<CamlF>,
-        pub prev_challenges: Vec<(Vec<CamlF>, CamlPolyComm<CamlG>)>,
+        pub prev_challenges: Vec<CamlRecursionChallenge<CamlG, CamlF>>, //Vec<(Vec<CamlF>, CamlPolyComm<CamlG>)>,
     }
+
+    //
+    // CamlProverCommitments<CamlG>
+    //
 
     #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlProverCommitments<CamlG> {
@@ -1334,14 +1343,7 @@ pub mod caml {
                 evals: (pp.evals[0].clone().into(), pp.evals[1].clone().into()),
                 ft_eval1: pp.ft_eval1.into(),
                 public: pp.public.into_iter().map(Into::into).collect(),
-                prev_challenges: pp
-                    .prev_challenges
-                    .into_iter()
-                    .map(|(v, c)| {
-                        let v = v.into_iter().map(Into::into).collect();
-                        (v, c.into())
-                    })
-                    .collect(),
+                prev_challenges: pp.prev_challenges.into_iter().map(Into::into).collect(),
             }
         }
     }
@@ -1361,10 +1363,7 @@ pub mod caml {
                 prev_challenges: caml_pp
                     .prev_challenges
                     .into_iter()
-                    .map(|(v, c)| {
-                        let v = v.into_iter().map(Into::into).collect();
-                        (v, c.into())
-                    })
+                    .map(Into::into)
                     .collect(),
             }
         }

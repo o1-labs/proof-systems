@@ -1,6 +1,7 @@
 use super::framework::TestFramework;
 use crate::circuits::polynomials::generic::testing::{create_circuit, fill_in_witness};
 use crate::circuits::wires::COLUMNS;
+use crate::proof::RecursionChallenge;
 use ark_ff::{UniformRand, Zero};
 use ark_poly::univariate::DensePolynomial;
 use ark_poly::UVPolynomial;
@@ -35,7 +36,7 @@ fn test_recursion() {
             let b = DensePolynomial::from_coefficients_vec(coeffs);
             index.srs.commit_non_hiding(&b, None)
         };
-        (chals, comm)
+        RecursionChallenge::new(chals, comm)
     };
 
     test_runner

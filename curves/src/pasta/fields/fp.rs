@@ -5,6 +5,7 @@ pub type Fp = Fp256<FpParameters>;
 pub struct FpParameters;
 
 impl Fp256Parameters for FpParameters {}
+
 impl FftParameters for FpParameters {
     type BigInt = BigInteger;
 
