@@ -1506,6 +1506,36 @@ mod tests {
             assert_eq!(result.val(), (-2i32).into());
         }
     }
+
+    mod equals_gate_tests {
+        use super::*;
+
+        fn equals_circuit_template<
+            F: PrimeField + FftField,
+            Sys: Cs<F>,
+        >(sys: &mut Sys, a1: F, a2: F) -> Var<F> {
+            let x1 = sys.constant(a1);
+            let x2 = sys.constant(a2);
+            sys.equals(x1, x2)
+        }
+
+        #[test]
+        fn test_equals_verify() {
+            fn parameterized_template<
+                F: PrimeField + FftField,
+                Sys: Cs<F>,
+            >(sys: &mut Sys) {
+                equals_circuit_template(sys, F::one(), F::one());
+            }
+    
+            let gates = generate_gates(parameterized_template);
+            let witness = generate_witness(parameterized_template);
+            let constraint_system = create_constraint_system(gates);
+        
+            // println!("{:?}", witness);
+            constraint_system.verify(&witness, &[]).unwrap();
+        }
+    }
 }
 
 
