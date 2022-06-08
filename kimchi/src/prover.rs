@@ -251,7 +251,7 @@ where
             w_comm.push(com);
         }
 
-        let w_comm: [BlindedCommitment; COLUMNS] = w_comm
+        let w_comm: [BlindedCommitment<G>; COLUMNS] = w_comm
             .try_into()
             .expect("previous loop is of the correct length");
 

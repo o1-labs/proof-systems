@@ -961,19 +961,15 @@ where
     println!("gates: {}", gates.len());
     // Other base field = self scalar field
     let (endo_q, _endo_r) = endos::<C::Inner>();
-    ProverIndex::<C::Outer>::create(
-        ConstraintSystem::<C::InnerField>::create(
-            gates,
-            vec![],
-            None,
-            constants.poseidon.clone(),
-            public,
-        )
-        .unwrap(),
-        poseidon_params.clone(),
-        endo_q,
-        srs,
-    )
+
+    let constraint_system =
+        ConstraintSystem::<C::InnerField>::create(gates, constants.poseidon.clone())
+            .public(public)
+            .build()
+            // TODO: return a Result instead of panicking
+            .expect("couldn't construct constraint system");
+
+    ProverIndex::<C::Outer>::create(constraint_system, poseidon_params.clone(), endo_q, srs)
 }
 
 pub fn fp_constants() -> Constants<Fp> {

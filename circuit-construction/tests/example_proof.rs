@@ -10,7 +10,6 @@ use mina_curves::pasta::{
     pallas::Affine as Other,
     vesta::{Affine, VestaParameters},
 };
-use o1_utils::types::fields::*;
 use oracle::{
     constants::*,
     poseidon::{ArithmeticSponge, Sponge},
@@ -22,7 +21,7 @@ type SpongeQ = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
 type SpongeR = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>;
 
 pub struct Witness<G: AffineCurve> {
-    pub s: ScalarField<G>,
+    pub s: G::ScalarField,
     pub preimage: G::BaseField,
 }
 
@@ -88,8 +87,8 @@ fn test_example_circuit() {
     let mut rng = rand::thread_rng();
 
     // create witness
-    let private_key = ScalarField::<Other>::rand(&mut rng);
-    let preimage = BaseField::<Other>::rand(&mut rng);
+    let private_key = Other::ScalarField::rand(&mut rng);
+    let preimage = Other::BaseField::rand(&mut rng);
 
     let witness = Witness {
         s: private_key,

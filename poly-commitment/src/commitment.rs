@@ -541,7 +541,7 @@ impl<G: CommitmentCurve> SRS<G> {
         &self,
         com: PolyComm<G>,
         blinders: &PolyComm<G::ScalarField>,
-    ) -> Result<(PolyComm<G>, PolyComm<G::ScalarField>), CommitmentError> {
+    ) -> Result<BlindedCommitment<G>, CommitmentError> {
         let commitment = com
             .zip(blinders)
             .ok_or_else(|| CommitmentError::BlindersDontMatch(blinders.len(), com.len()))?
@@ -556,7 +556,10 @@ impl<G: CommitmentCurve> SRS<G> {
                     g_masked.into_affine()
                 }
             });
-        Ok((commitment, blinders.clone()))
+        Ok(BlindedCommitment {
+            commitment,
+            blinders: blinders.clone(),
+        })
     }
 
     /// This function commits a polynomial using the SRS' basis of size `n`.

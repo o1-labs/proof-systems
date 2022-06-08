@@ -141,6 +141,7 @@ impl TestRunner {
             &self.0.runtime_tables,
             &prover,
             self.0.recursion,
+            None,
         )
         .unwrap();
         println!("- time to create proof: {:?}s", start.elapsed().as_secs());
