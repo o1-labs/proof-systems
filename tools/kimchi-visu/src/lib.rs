@@ -16,7 +16,6 @@ use kimchi::{
     },
     prover_index::ProverIndex,
 };
-use o1_utils::types::fields::*;
 use serde::Serialize;
 use std::{
     collections::HashMap,
@@ -62,20 +61,20 @@ where
     G: CommitmentCurve,
 {
     let mut map = HashMap::new();
-    map.insert("Poseidon", Poseidon::<ScalarField<G>>::latex());
-    map.insert("CompleteAdd", CompleteAdd::<ScalarField<G>>::latex());
-    map.insert("VarBaseMul", VarbaseMul::<ScalarField<G>>::latex());
-    map.insert("EndoMul", EndosclMul::<ScalarField<G>>::latex());
-    map.insert("EndoMulScalar", EndomulScalar::<ScalarField<G>>::latex());
-    map.insert("ChaCha0", ChaCha0::<ScalarField<G>>::latex());
-    map.insert("ChaCha1", ChaCha1::<ScalarField<G>>::latex());
-    map.insert("ChaCha2", ChaCha2::<ScalarField<G>>::latex());
-    map.insert("ChaChaFinal", ChaChaFinal::<ScalarField<G>>::latex());
+    map.insert("Poseidon", Poseidon::<G::ScalarField>::latex());
+    map.insert("CompleteAdd", CompleteAdd::<G::ScalarField>::latex());
+    map.insert("VarBaseMul", VarbaseMul::<G::ScalarField>::latex());
+    map.insert("EndoMul", EndosclMul::<G::ScalarField>::latex());
+    map.insert("EndoMulScalar", EndomulScalar::<G::ScalarField>::latex());
+    map.insert("ChaCha0", ChaCha0::<G::ScalarField>::latex());
+    map.insert("ChaCha1", ChaCha1::<G::ScalarField>::latex());
+    map.insert("ChaCha2", ChaCha2::<G::ScalarField>::latex());
+    map.insert("ChaChaFinal", ChaChaFinal::<G::ScalarField>::latex());
     map
 }
 
 /// Produces a `circuit.html` in the current folder.
-pub fn visu<G>(index: &ProverIndex<G>, witness: Option<Witness<ScalarField<G>>>)
+pub fn visu<G>(index: &ProverIndex<G>, witness: Option<Witness<G::ScalarField>>)
 where
     G: CommitmentCurve,
 {
