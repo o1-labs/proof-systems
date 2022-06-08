@@ -6,7 +6,7 @@ use crate::{
         polynomials::permutation::eval_vanishes_on_last_4_rows,
         wires::COLUMNS,
     },
-    proof::ProofEvaluations,
+    proof::ConsecutiveEvals,
 };
 use ark_ff::{FftField, Field, One, PrimeField, Zero};
 use ark_poly::{
@@ -439,7 +439,7 @@ pub enum PolishToken<F> {
 }
 
 impl Variable {
-    fn evaluate<F: Field>(&self, evals: &[ProofEvaluations<F>]) -> Result<F, ExprError> {
+    fn evaluate<F: Field>(&self, evals: &ConsecutiveEvals<F>) -> Result<F, ExprError> {
         let evals = &evals[self.row.shift()];
         use Column::*;
         let l = evals
@@ -468,7 +468,7 @@ impl<F: FftField> PolishToken<F> {
         toks: &[PolishToken<F>],
         d: D<F>,
         pt: F,
-        evals: &[ProofEvaluations<F>],
+        evals: &ConsecutiveEvals<F>,
         c: &Constants<F>,
     ) -> Result<F, ExprError> {
         let mut stack = vec![];
@@ -1228,7 +1228,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
         &self,
         d: D<F>,
         pt: F,
-        evals: &[ProofEvaluations<F>],
+        evals: &ConsecutiveEvals<F>,
         env: &Environment<F>,
     ) -> Result<F, ExprError> {
         self.evaluate_(d, pt, evals, &env.constants)
@@ -1239,7 +1239,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
         &self,
         d: D<F>,
         pt: F,
-        evals: &[ProofEvaluations<F>],
+        evals: &ConsecutiveEvals<F>,
         c: &Constants<F>,
     ) -> Result<F, ExprError> {
         use Expr::*;
@@ -1288,7 +1288,7 @@ enum Either<A, B> {
 
 impl<F: FftField> Expr<F> {
     /// Evaluate an expression into a field element.
-    pub fn evaluate(&self, d: D<F>, pt: F, evals: &[ProofEvaluations<F>]) -> Result<F, ExprError> {
+    pub fn evaluate(&self, d: D<F>, pt: F, evals: &ConsecutiveEvals<F>) -> Result<F, ExprError> {
         use Expr::*;
         match self {
             Constant(x) => Ok(*x),
@@ -1525,7 +1525,7 @@ impl<F: FftField> Linearization<Vec<PolishToken<F>>> {
         &self,
         env: &Environment<F>,
         pt: F,
-        evals: &[ProofEvaluations<F>],
+        evals: &ConsecutiveEvals<F>,
     ) -> (F, DensePolynomial<F>) {
         let cs = &env.constants;
         let n = env.domain.d1.size();
@@ -1555,7 +1555,7 @@ impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
         &self,
         env: &Environment<F>,
         pt: F,
-        evals: &[ProofEvaluations<F>],
+        evals: &ConsecutiveEvals<F>,
     ) -> (F, DensePolynomial<F>) {
         let cs = &env.constants;
         let n = env.domain.d1.size();

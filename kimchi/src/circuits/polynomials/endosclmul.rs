@@ -16,7 +16,7 @@ use crate::circuits::{
     gate::GateType,
     wires::COLUMNS,
 };
-use crate::proof::ProofEvaluations;
+use crate::proof::{ConsecutiveEvals, ProofEvaluations};
 
 //~ We implement custom gate constraints for short Weierstrass curve
 //~ endomorphism optimised variable base scalar multiplication.
@@ -141,10 +141,10 @@ impl<F: FftField> CircuitGate<F> {
             endo_coefficient: cs.endo,
         };
 
-        let evals: [ProofEvaluations<F>; 2] = [
-            ProofEvaluations::dummy_with_witness_evaluations(this),
-            ProofEvaluations::dummy_with_witness_evaluations(next),
-        ];
+        let evals = ConsecutiveEvals {
+            zeta: ProofEvaluations::dummy_with_witness_evaluations(this),
+            zetaw: ProofEvaluations::dummy_with_witness_evaluations(next),
+        };
 
         let constraints = EndosclMul::constraints();
         for (i, c) in constraints.iter().enumerate() {

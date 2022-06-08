@@ -1,5 +1,7 @@
 //! This module implements the data structures of a proof.
 
+use std::ops::Index;
+
 use crate::circuits::wires::{COLUMNS, PERMUTS};
 use ark_ec::AffineCurve;
 use ark_ff::{FftField, Zero};
@@ -11,6 +13,12 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
 //~ spec:startcode
+
+/// Number of evaluations for consecutive steps (now only zeta and zeta*omega)
+pub const Z_IDX: usize = 0;
+pub const ZW_IDX: usize = 1;
+pub const EVALS: usize = 2;
+
 /// Evaluations of lookup polynomials
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize)]
@@ -106,7 +114,7 @@ pub struct ProverProof<G: AffineCurve> {
     pub proof: OpeningProof<G>,
 
     /// Two evaluations over a number of committed polynomials
-    pub evals: ConsecutiveEvals<G::ScalarField>,
+    pub evals: ConsecutiveEvals<Vec<G::ScalarField>>,
 
     /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
@@ -123,12 +131,15 @@ pub struct ProverProof<G: AffineCurve> {
 /// A struct to store the current and next evaluations inside a `ProverProof`
 #[serde_as]
 #[derive(Clone, Deserialize, Serialize)]
-#[serde(bound = "F: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
+#[serde(bound(
+    serialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::SerializeAs<F>",
+    deserialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::DeserializeAs<'de, F>"
+))]
 pub struct ConsecutiveEvals<F> {
     /// evaluations of zeta, correspond to current row
-    pub z: ProofEvaluations<Vec<F>>,
+    pub zeta: ProofEvaluations<F>,
     /// evaluations of omega · zeta, correspond to next row
-    pub zw: ProofEvaluations<Vec<F>>,
+    pub zetaw: ProofEvaluations<F>,
 }
 
 /// A struct to store the challenges inside a `ProverProof`
@@ -154,9 +165,26 @@ impl<G: AffineCurve> RecursionChallenge<G> {
     }
 }
 
-impl<F> ConsecutiveEvals<F> {
-    pub fn array(&self) -> [&ProofEvaluations<Vec<F>>; 2] {
-        [&self.z, &self.zw]
+impl<F: FftField> ConsecutiveEvals<Vec<F>> {
+    pub fn combine(&self, pts: &[F; EVALS]) -> ConsecutiveEvals<F> {
+        ConsecutiveEvals {
+            zeta: self.zeta.combine(pts[Z_IDX]),
+            zetaw: self.zetaw.combine(pts[ZW_IDX]),
+        }
+    }
+}
+
+// returns `zeta` when indexing with `Z_IDX`
+// returns `zetaw` when indexing with `ZW_IDX`
+// returns either `zeta` or `zetaw` with !=idx using modulo `EVALS`
+impl<F> Index<usize> for ConsecutiveEvals<F> {
+    type Output = ProofEvaluations<F>;
+    fn index(&self, idx: usize) -> &Self::Output {
+        match idx {
+            Z_IDX => &self.zeta,
+            ZW_IDX => &self.zetaw,
+            _ => self.index(idx % EVALS as usize),
+        }
     }
 }
 
@@ -254,8 +282,8 @@ pub mod caml {
 
     #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlConsecutiveEvals<CamlF> {
-        pub z: CamlProofEvaluations<CamlF>,
-        pub zw: CamlProofEvaluations<CamlF>,
+        pub zeta: CamlProofEvaluations<CamlF>,
+        pub zetaw: CamlProofEvaluations<CamlF>,
     }
 
     //
@@ -269,8 +297,8 @@ pub mod caml {
     {
         fn from(evals: ConsecutiveEvals<G>) -> Self {
             Self {
-                z: evals.z.into(),
-                zw: evals.zw.into(),
+                zeta: evals.zeta.into(),
+                zetaw: evals.zetaw.into(),
             }
         }
     }
@@ -282,8 +310,8 @@ pub mod caml {
     {
         fn from(caml_evals: CamlConsecutiveEvals<CamlF>) -> ConsecutiveEvals<G> {
             ConsecutiveEvals {
-                z: caml_evals.z.into(),
-                zw: caml_evals.zw.into(),
+                zeta: caml_evals.zeta.into(),
+                zetaw: caml_evals.zetaw.into(),
             }
         }
     }

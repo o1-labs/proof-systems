@@ -85,7 +85,7 @@ use crate::circuits::expr::{self, Column};
 use crate::circuits::expr::{witness_curr, witness_next, Cache, ConstantExpr, Expr, E};
 use crate::circuits::gate::{CircuitGate, GateType};
 use crate::circuits::wires::{GateWires, Wire, COLUMNS};
-use crate::proof::ProofEvaluations;
+use crate::proof::{ConsecutiveEvals, ProofEvaluations};
 use ark_ff::{FftField, Field, One, SquareRootField};
 use array_init::array_init;
 use cairo::{
@@ -220,10 +220,10 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
 
         // Setup proof evaluations
         let rng = &mut StdRng::from_seed([0u8; 32]);
-        let evals = vec![
-            ProofEvaluations::dummy_with_witness_evaluations(curr),
-            ProofEvaluations::dummy_with_witness_evaluations(next),
-        ];
+        let evals = ConsecutiveEvals {
+            zeta: ProofEvaluations::dummy_with_witness_evaluations(curr),
+            zetaw: ProofEvaluations::dummy_with_witness_evaluations(next),
+        };
 
         // Setup circuit constants
         let constants = expr::Constants {

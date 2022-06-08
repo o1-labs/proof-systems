@@ -25,7 +25,7 @@ use crate::{
     plonk_sponge::FrSponge,
     proof::{
         ConsecutiveEvals, LookupCommitments, LookupEvaluations, ProofEvaluations,
-        ProverCommitments, ProverProof, RecursionChallenge,
+        ProverCommitments, ProverProof, RecursionChallenge, ZW_IDX, Z_IDX,
     },
     prover_index::ProverIndex,
 };
@@ -908,8 +908,8 @@ where
             };
 
             ConsecutiveEvals {
-                z: chunked_evals_zeta,
-                zw: chunked_evals_zeta_omega,
+                zeta: chunked_evals_zeta,
+                zetaw: chunked_evals_zeta_omega,
             }
         };
 
@@ -919,34 +919,8 @@ where
 
         //~ 1. Evaluate the same polynomials without chunking them
         //~    (so that each polynomial should correspond to a single value this time).
-        let evals = {
-            let power_of_eval_points_for_chunks = [zeta_to_srs_len, zeta_omega_to_srs_len];
-            &chunked_evals
-                .array()
-                .iter()
-                .zip(power_of_eval_points_for_chunks.iter()) // (zeta , zeta_omega)
-                .map(|(es, &e1)| ProofEvaluations::<G::ScalarField> {
-                    s: array_init(|i| DensePolynomial::eval_polynomial(&es.s[i], e1)),
-                    w: array_init(|i| DensePolynomial::eval_polynomial(&es.w[i], e1)),
-                    z: DensePolynomial::eval_polynomial(&es.z, e1),
-                    lookup: es.lookup.as_ref().map(|l| LookupEvaluations {
-                        table: DensePolynomial::eval_polynomial(&l.table, e1),
-                        aggreg: DensePolynomial::eval_polynomial(&l.aggreg, e1),
-                        sorted: l
-                            .sorted
-                            .iter()
-                            .map(|p| DensePolynomial::eval_polynomial(p, e1))
-                            .collect(),
-                        runtime: l
-                            .runtime
-                            .as_ref()
-                            .map(|p| DensePolynomial::eval_polynomial(p, e1)),
-                    }),
-                    generic_selector: DensePolynomial::eval_polynomial(&es.generic_selector, e1),
-                    poseidon_selector: DensePolynomial::eval_polynomial(&es.poseidon_selector, e1),
-                })
-                .collect::<Vec<_>>()
-        };
+        let power_of_eval_points_for_chunks = [zeta_to_srs_len, zeta_omega_to_srs_len];
+        let evals = chunked_evals.combine(&power_of_eval_points_for_chunks);
 
         //~ 1. Compute the ft polynomial.
         //~    This is to implement [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html).
@@ -961,17 +935,18 @@ where
                     .get_alphas(ArgumentType::Gate(GateType::Generic), generic::CONSTRAINTS);
                 let mut f = index
                     .cs
-                    .gnrc_lnrz(alphas, &evals[0].w, evals[0].generic_selector)
+                    .gnrc_lnrz(alphas, &evals.zeta.w, evals.zeta.generic_selector)
                     .interpolate();
 
                 // permutation (not part of linearization yet)
                 let alphas =
                     all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
-                f += &index.cs.perm_lnrz(evals, zeta, beta, gamma, alphas);
+                f += &index.cs.perm_lnrz(&evals, zeta, beta, gamma, alphas);
 
                 // the circuit polynomial
                 let f = {
-                    let (_lin_constant, lin) = index.linearization.to_polynomial(&env, zeta, evals);
+                    let (_lin_constant, lin) =
+                        index.linearization.to_polynomial(&env, zeta, &evals);
                     f + lin
                 };
 
@@ -1031,8 +1006,8 @@ where
         //~~ - poseidon selector
         //~~ - the 15 register/witness
         //~~ - 6 sigmas evaluations (the last one is not evaluated)
-        fr_sponge.absorb_evaluations(&public_evals[0], &chunked_evals.z);
-        fr_sponge.absorb_evaluations(&public_evals[1], &chunked_evals.zw);
+        fr_sponge.absorb_evaluations(&public_evals[Z_IDX], &chunked_evals.zeta);
+        fr_sponge.absorb_evaluations(&public_evals[ZW_IDX], &chunked_evals.zetaw);
 
         //~ 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
         fr_sponge.absorb(&ft_eval1);

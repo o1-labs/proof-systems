@@ -1379,6 +1379,12 @@ You can find these operations under the [proof creation](#proof-creation) and [p
 A proof consists of the following data structures:
 
 ```rs
+
+/// Number of evaluations for consecutive steps (now only zeta and zeta*omega)
+pub const Z_IDX: usize = 0;
+pub const ZW_IDX: usize = 1;
+pub const EVALS: usize = 2;
+
 /// Evaluations of lookup polynomials
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize)]
@@ -1474,7 +1480,7 @@ pub struct ProverProof<G: AffineCurve> {
     pub proof: OpeningProof<G>,
 
     /// Two evaluations over a number of committed polynomials
-    pub evals: ConsecutiveEvals<G::ScalarField>,
+    pub evals: ConsecutiveEvals<Vec<G::ScalarField>>,
 
     /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
@@ -1491,12 +1497,15 @@ pub struct ProverProof<G: AffineCurve> {
 /// A struct to store the current and next evaluations inside a `ProverProof`
 #[serde_as]
 #[derive(Clone, Deserialize, Serialize)]
-#[serde(bound = "F: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
+#[serde(bound(
+    serialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::SerializeAs<F>",
+    deserialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::DeserializeAs<'de, F>"
+))]
 pub struct ConsecutiveEvals<F> {
     /// evaluations of zeta, correspond to current row
-    pub z: ProofEvaluations<Vec<F>>,
+    pub zeta: ProofEvaluations<F>,
     /// evaluations of omega · zeta, correspond to next row
-    pub zw: ProofEvaluations<Vec<F>>,
+    pub zetaw: ProofEvaluations<F>,
 }
 
 /// A struct to store the challenges inside a `ProverProof`

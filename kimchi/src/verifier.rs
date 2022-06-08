@@ -14,7 +14,7 @@ use crate::{
     },
     error::VerifyError,
     plonk_sponge::FrSponge,
-    proof::{ProverProof, RecursionChallenge},
+    proof::{ConsecutiveEvals, ProverProof, RecursionChallenge, ZW_IDX, Z_IDX},
     verifier_index::VerifierIndex,
 };
 use ark_ff::{Field, One, PrimeField, Zero};
@@ -277,9 +277,8 @@ where
         //~~ - poseidon selector
         //~~ - the 15 register/witness
         //~~ - 6 sigmas evaluations (the last one is not evaluated)
-        for (p, e) in p_eval.iter().zip(&self.evals.array()) {
-            fr_sponge.absorb_evaluations(p, e);
-        }
+        fr_sponge.absorb_evaluations(&p_eval[Z_IDX], &self.evals.zeta);
+        fr_sponge.absorb_evaluations(&p_eval[ZW_IDX], &self.evals.zetaw);
 
         //~ 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
         fr_sponge.absorb(&self.ft_eval1);
@@ -313,10 +312,16 @@ where
             })
             .collect();
 
-        let evals = vec![
-            self.evals.z.combine(powers_of_eval_points_for_chunks[0]),
-            self.evals.zw.combine(powers_of_eval_points_for_chunks[1]),
-        ];
+        let evals = ConsecutiveEvals {
+            zeta: self
+                .evals
+                .zeta
+                .combine(powers_of_eval_points_for_chunks[Z_IDX]),
+            zetaw: self
+                .evals
+                .zetaw
+                .combine(powers_of_eval_points_for_chunks[ZW_IDX]),
+        };
 
         //~ 1. Compute the evaluation of $ft(\zeta)$.
         let ft_eval0 = {
@@ -389,30 +394,29 @@ where
             let ft_eval0 = vec![ft_eval0];
             let ft_eval1 = vec![self.ft_eval1];
 
+            let ConsecutiveEvals { zeta, zetaw } = &self.evals;
+
             #[allow(clippy::type_complexity)]
             let mut es: Vec<(Vec<Vec<G::ScalarField>>, Option<usize>)> =
                 polys.iter().map(|(_, e)| (e.clone(), None)).collect();
             es.push((p_eval.clone(), None));
             es.push((vec![ft_eval0, ft_eval1], None));
             es.push((
-                self.evals
-                    .array()
+                [zeta, zetaw]
                     .iter()
                     .map(|e| e.z.clone())
                     .collect::<Vec<_>>(),
                 None,
             ));
             es.push((
-                self.evals
-                    .array()
+                [zeta, zetaw]
                     .iter()
                     .map(|e| e.generic_selector.clone())
                     .collect::<Vec<_>>(),
                 None,
             ));
             es.push((
-                self.evals
-                    .array()
+                [zeta, zetaw]
                     .iter()
                     .map(|e| e.poseidon_selector.clone())
                     .collect::<Vec<_>>(),
@@ -422,8 +426,7 @@ where
                 (0..COLUMNS)
                     .map(|c| {
                         (
-                            self.evals
-                                .array()
+                            [zeta, zetaw]
                                 .iter()
                                 .map(|e| e.w[c].clone())
                                 .collect::<Vec<_>>(),
@@ -436,8 +439,7 @@ where
                 (0..PERMUTS - 1)
                     .map(|c| {
                         (
-                            self.evals
-                                .array()
+                            [zeta, zetaw]
                                 .iter()
                                 .map(|e| e.s[c].clone())
                                 .collect::<Vec<_>>(),
@@ -531,10 +533,16 @@ where
     //~ 1. Combine the chunked polynomials' evaluations
     //~    (TODO: most likely only the quotient polynomial is chunked)
     //~    with the right powers of $\zeta^n$ and $(\zeta * \omega)^n$.
-    let evals = vec![
-        proof.evals.z.combine(powers_of_eval_points_for_chunks[0]),
-        proof.evals.zw.combine(powers_of_eval_points_for_chunks[1]),
-    ];
+    let evals = ConsecutiveEvals {
+        zeta: proof
+            .evals
+            .zeta
+            .combine(powers_of_eval_points_for_chunks[Z_IDX]),
+        zetaw: proof
+            .evals
+            .zetaw
+            .combine(powers_of_eval_points_for_chunks[ZW_IDX]),
+    };
 
     //~ 4. Compute the commitment to the linearized polynomial $f$.
     //~    To do this, add the constraints of all of the gates, of the permutation,
@@ -699,6 +707,8 @@ where
     //~    that are associated to the aggregated evaluation proof in the proof:
     let mut evaluations = vec![];
 
+    let ConsecutiveEvals { zeta, zetaw } = &proof.evals;
+
     //~~ - recursion
     evaluations.extend(polys.into_iter().map(|(c, e)| Evaluation {
         commitment: c,
@@ -723,16 +733,14 @@ where
     //~~ - permutation commitment
     evaluations.push(Evaluation {
         commitment: proof.commitments.z_comm.clone(),
-        evaluations: proof.evals.array().iter().map(|e| e.z.clone()).collect(),
+        evaluations: [zeta, zetaw].iter().map(|e| e.z.clone()).collect(),
         degree_bound: None,
     });
 
     //~~ - index commitments that use the coefficients
     evaluations.push(Evaluation {
         commitment: index.generic_comm.clone(),
-        evaluations: proof
-            .evals
-            .array()
+        evaluations: [zeta, zetaw]
             .iter()
             .map(|e| e.generic_selector.clone())
             .collect(),
@@ -740,9 +748,7 @@ where
     });
     evaluations.push(Evaluation {
         commitment: index.psm_comm.clone(),
-        evaluations: proof
-            .evals
-            .array()
+        evaluations: [zeta, zetaw]
             .iter()
             .map(|e| e.poseidon_selector.clone())
             .collect(),
@@ -758,9 +764,7 @@ where
             .zip(
                 (0..COLUMNS)
                     .map(|i| {
-                        proof
-                            .evals
-                            .array()
+                        [zeta, zetaw]
                             .iter()
                             .map(|e| e.w[i].clone())
                             .collect::<Vec<_>>()
@@ -782,9 +786,7 @@ where
             .zip(
                 (0..PERMUTS - 1)
                     .map(|i| {
-                        proof
-                            .evals
-                            .array()
+                        [zeta, zetaw]
                             .iter()
                             .map(|e| e.s[i].clone())
                             .collect::<Vec<_>>()
@@ -807,13 +809,13 @@ where
             .ok_or(VerifyError::LookupCommitmentMissing)?;
         let lookup_eval_z = proof
             .evals
-            .z
+            .zeta
             .lookup
             .as_ref()
             .ok_or(VerifyError::LookupEvalsMissing)?;
         let lookup_eval_zw = proof
             .evals
-            .zw
+            .zetaw
             .lookup
             .as_ref()
             .ok_or(VerifyError::LookupEvalsMissing)?;

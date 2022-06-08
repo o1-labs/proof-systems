@@ -43,7 +43,7 @@
 use crate::{
     circuits::{constraints::ConstraintSystem, polynomial::WitnessOverDomains, wires::*},
     error::ProverError,
-    proof::ProofEvaluations,
+    proof::ConsecutiveEvals,
 };
 use ark_ff::{FftField, SquareRootField, Zero};
 use ark_poly::{
@@ -306,7 +306,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// permutation linearization poly contribution computation
     pub fn perm_lnrz(
         &self,
-        e: &[ProofEvaluations<F>],
+        e: &ConsecutiveEvals<F>,
         zeta: F,
         beta: F,
         gamma: F,
@@ -323,7 +323,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     }
 
     pub fn perm_scalars(
-        e: &[ProofEvaluations<F>],
+        e: &ConsecutiveEvals<F>,
         beta: F,
         gamma: F,
         mut alphas: impl Iterator<Item = F>,
@@ -353,11 +353,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         //~ \end{align}
         //~$$
         //~
-        let init = e[1].z * beta * alpha0 * zkp_zeta;
-        let res = e[0]
+        let init = e.zetaw.z * beta * alpha0 * zkp_zeta;
+        let res = e
+            .zeta
             .w
             .iter()
-            .zip(e[0].s.iter())
+            .zip(e.zeta.s.iter())
             .map(|(w, s)| gamma + (beta * s) + w)
             .fold(init, |x, y| x * y);
         -res

@@ -474,7 +474,7 @@ mod tests {
             lookup::lookups::{LookupInfo, LookupPattern},
             wires::*,
         },
-        proof::{LookupEvaluations, ProofEvaluations},
+        proof::{ConsecutiveEvals, LookupEvaluations, ProofEvaluations},
     };
     use ark_ff::UniformRand;
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
@@ -560,7 +560,10 @@ mod tests {
             }),
         };
 
-        let evals = vec![eval(), eval()];
+        let evals = ConsecutiveEvals {
+            zeta: eval(),
+            zetaw: eval(),
+        };
 
         let constants = Constants {
             alpha: F::rand(rng),
