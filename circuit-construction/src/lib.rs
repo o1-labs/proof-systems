@@ -858,7 +858,7 @@ impl<F: FftField> System<F> {
     }
 }
 
-/// Given a circuit, a public input,
+/// Given an index, a group map, custom blinders for the witness, a public input vector, and a circuit `main`, create a proof.
 pub fn prove<G, H, EFqSponge, EFrSponge>(
     index: &ProverIndex<G>,
     group_map: &G::Map,
@@ -894,7 +894,7 @@ where
     // get the witness columns
     let columns = gen.columns();
 
-    // TODO: woot??
+    // custom blinders for the witness commitment
     let blinders: [Option<PolyComm<G::ScalarField>>; COLUMNS] = match blinders {
         None => array_init(|_| None),
         Some(bs) => array_init(|i| {
