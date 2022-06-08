@@ -145,7 +145,7 @@ pub trait Cs<F: FftField + PrimeField> {
     /// and can be anything that the prover wants.
     /// For example, division can be implemented as:
     ///
-    /// ```
+    /// ```ignore
     /// let a = sys.constant(5u32.into());
     /// let b = sys.constant(10u32.into());
     /// let c = sys.var(|| {
