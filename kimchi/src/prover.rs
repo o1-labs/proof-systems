@@ -1032,7 +1032,7 @@ where
         //~~ - the 15 register/witness
         //~~ - 6 sigmas evaluations (the last one is not evaluated)
         for i in 0..2 {
-            fr_sponge.absorb_evaluations(&public_evals[i], &chunked_evals.array()[i])
+            fr_sponge.absorb_evaluations(&public_evals[i], chunked_evals.array()[i])
         }
 
         //~ 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
