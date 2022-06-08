@@ -278,7 +278,7 @@ where
         //~~ - poseidon selector
         //~~ - the 15 register/witness
         //~~ - 6 sigmas evaluations (the last one is not evaluated)
-        for (p, e) in p_eval.iter().zip(&self.evals) {
+        for (p, e) in p_eval.iter().zip(&self.evals.array()) {
             fr_sponge.absorb_evaluations(p, e);
         }
 
@@ -315,8 +315,8 @@ where
             .collect();
 
         let evals = vec![
-            self.evals[0].combine(powers_of_eval_points_for_chunks[0]),
-            self.evals[1].combine(powers_of_eval_points_for_chunks[1]),
+            self.evals.z.combine(powers_of_eval_points_for_chunks[0]),
+            self.evals.zw.combine(powers_of_eval_points_for_chunks[1]),
         ];
 
         //~ 1. Compute the evaluation of $ft(\zeta)$.
@@ -396,11 +396,16 @@ where
             es.push((p_eval.clone(), None));
             es.push((vec![ft_eval0, ft_eval1], None));
             es.push((
-                self.evals.iter().map(|e| e.z.clone()).collect::<Vec<_>>(),
+                self.evals
+                    .array()
+                    .iter()
+                    .map(|e| e.z.clone())
+                    .collect::<Vec<_>>(),
                 None,
             ));
             es.push((
                 self.evals
+                    .array()
                     .iter()
                     .map(|e| e.generic_selector.clone())
                     .collect::<Vec<_>>(),
@@ -408,6 +413,7 @@ where
             ));
             es.push((
                 self.evals
+                    .array()
                     .iter()
                     .map(|e| e.poseidon_selector.clone())
                     .collect::<Vec<_>>(),
@@ -418,6 +424,7 @@ where
                     .map(|c| {
                         (
                             self.evals
+                                .array()
                                 .iter()
                                 .map(|e| e.w[c].clone())
                                 .collect::<Vec<_>>(),
@@ -431,6 +438,7 @@ where
                     .map(|c| {
                         (
                             self.evals
+                                .array()
                                 .iter()
                                 .map(|e| e.s[c].clone())
                                 .collect::<Vec<_>>(),
@@ -525,8 +533,8 @@ where
     //~    (TODO: most likely only the quotient polynomial is chunked)
     //~    with the right powers of $\zeta^n$ and $(\zeta * \omega)^n$.
     let evals = vec![
-        proof.evals[0].combine(powers_of_eval_points_for_chunks[0]),
-        proof.evals[1].combine(powers_of_eval_points_for_chunks[1]),
+        proof.evals.z.combine(powers_of_eval_points_for_chunks[0]),
+        proof.evals.zw.combine(powers_of_eval_points_for_chunks[1]),
     ];
 
     //~ 4. Compute the commitment to the linearized polynomial $f$.
@@ -716,7 +724,7 @@ where
     //~~ - permutation commitment
     evaluations.push(Evaluation {
         commitment: proof.commitments.z_comm.clone(),
-        evaluations: proof.evals.iter().map(|e| e.z.clone()).collect(),
+        evaluations: proof.evals.array().iter().map(|e| e.z.clone()).collect(),
         degree_bound: None,
     });
 
@@ -725,6 +733,7 @@ where
         commitment: index.generic_comm.clone(),
         evaluations: proof
             .evals
+            .array()
             .iter()
             .map(|e| e.generic_selector.clone())
             .collect(),
@@ -734,6 +743,7 @@ where
         commitment: index.psm_comm.clone(),
         evaluations: proof
             .evals
+            .array()
             .iter()
             .map(|e| e.poseidon_selector.clone())
             .collect(),
@@ -751,6 +761,7 @@ where
                     .map(|i| {
                         proof
                             .evals
+                            .array()
                             .iter()
                             .map(|e| e.w[i].clone())
                             .collect::<Vec<_>>()
@@ -774,6 +785,7 @@ where
                     .map(|i| {
                         proof
                             .evals
+                            .array()
                             .iter()
                             .map(|e| e.s[i].clone())
                             .collect::<Vec<_>>()
@@ -794,26 +806,30 @@ where
             .lookup
             .as_ref()
             .ok_or(VerifyError::LookupCommitmentMissing)?;
-        let lookup_eval0 = proof.evals[0]
+        let lookup_eval_z = proof
+            .evals
+            .z
             .lookup
             .as_ref()
             .ok_or(VerifyError::LookupEvalsMissing)?;
-        let lookup_eval1 = proof.evals[1]
+        let lookup_eval_zw = proof
+            .evals
+            .zw
             .lookup
             .as_ref()
             .ok_or(VerifyError::LookupEvalsMissing)?;
 
         // check that the there's as many evals as commitments for sorted polynomials
         let sorted_len = lookup_comms.sorted.len();
-        if sorted_len != lookup_eval0.sorted.len() || sorted_len != lookup_eval1.sorted.len() {
+        if sorted_len != lookup_eval_z.sorted.len() || sorted_len != lookup_eval_zw.sorted.len() {
             return Err(VerifyError::ProofInconsistentLookup);
         }
 
         // add evaluations of sorted polynomials
         for (comm, evals0, evals1) in izip!(
             &lookup_comms.sorted,
-            lookup_eval0.sorted.clone(),
-            lookup_eval1.sorted.clone()
+            lookup_eval_z.sorted.clone(),
+            lookup_eval_zw.sorted.clone()
         ) {
             evaluations.push(Evaluation {
                 commitment: comm.clone(),
@@ -825,7 +841,7 @@ where
         // add evaluations of the aggreg polynomial
         evaluations.push(Evaluation {
             commitment: lookup_comms.aggreg.clone(),
-            evaluations: vec![lookup_eval0.aggreg.clone(), lookup_eval1.aggreg.clone()],
+            evaluations: vec![lookup_eval_z.aggreg.clone(), lookup_eval_zw.aggreg.clone()],
             degree_bound: None,
         });
 
@@ -850,7 +866,7 @@ where
         // add evaluation of the table polynomial
         evaluations.push(Evaluation {
             commitment: table_comm,
-            evaluations: vec![lookup_eval0.table.clone(), lookup_eval1.table.clone()],
+            evaluations: vec![lookup_eval_z.table.clone(), lookup_eval_zw.table.clone()],
             degree_bound: None,
         });
 
@@ -860,12 +876,12 @@ where
                 .runtime
                 .as_ref()
                 .ok_or(VerifyError::IncorrectRuntimeProof)?;
-            let runtime_eval0 = lookup_eval0
+            let runtime_eval0 = lookup_eval_z
                 .runtime
                 .as_ref()
                 .cloned()
                 .ok_or(VerifyError::IncorrectRuntimeProof)?;
-            let runtime_eval1 = lookup_eval1
+            let runtime_eval1 = lookup_eval_zw
                 .runtime
                 .as_ref()
                 .cloned()

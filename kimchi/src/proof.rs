@@ -158,6 +158,12 @@ impl<G: AffineCurve> RecursionChallenge<G> {
     }
 }
 
+impl<G: AffineCurve> ConsecutiveEvals<G> {
+    pub fn array(&self) -> [&ProofEvaluations<Vec<ScalarField<G>>>; 2] {
+        [&self.z, &self.zw]
+    }
+}
+
 impl<F: Zero> ProofEvaluations<F> {
     pub fn dummy_with_witness_evaluations(w: [F; COLUMNS]) -> ProofEvaluations<F> {
         ProofEvaluations {

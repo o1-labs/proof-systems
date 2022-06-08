@@ -922,8 +922,9 @@ where
         let evals = {
             let power_of_eval_points_for_chunks = [zeta_to_srs_len, zeta_omega_to_srs_len];
             &chunked_evals
+                .array()
                 .iter()
-                .zip(power_of_eval_points_for_chunks.iter()) // (zeta , zeta_omega)
+                .zip(power_of_eval_points_for_chunks.iter())
                 .map(|(es, &e1)| ProofEvaluations::<ScalarField<G>> {
                     s: array_init(|i| DensePolynomial::eval_polynomial(&es.s[i], e1)),
                     w: array_init(|i| DensePolynomial::eval_polynomial(&es.w[i], e1)),
@@ -1031,7 +1032,7 @@ where
         //~~ - the 15 register/witness
         //~~ - 6 sigmas evaluations (the last one is not evaluated)
         for i in 0..2 {
-            fr_sponge.absorb_evaluations(&public_evals[i], &chunked_evals[i])
+            fr_sponge.absorb_evaluations(&public_evals[i], &chunked_evals.array()[i])
         }
 
         //~ 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
