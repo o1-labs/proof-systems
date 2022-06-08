@@ -57,11 +57,27 @@ where
     res
 }
 
+
 impl<G> VarIndex<G>
 where
     G: AffineCurve,
     G::BaseField: FftField + PrimeField,
 {
+    ///
+    /// Note: we do not care about the evaluation of ft(\zeta \omega),
+    /// however we need it for aggregation, therefore we simply allow the prover to provide it.
+    fn compute_ft_eval0<F: FftField + PrimeField>(&self, zeta: Var<F>) -> VarOpen<F, 1> {
+        // evaluate the (constant) ZKP polynomial at \zeta
+        let zkp: VarOpen<F, 1> = unimplemented!(); // self.zkpm.evaluate(&zeta);
+
+        //
+        // let zeta1m1 = zeta1 - ScalarField::<G>::one();
+
+
+        unimplemented!()
+    }
+
+
     /// Takes a mutual context with the base-field of the Plonk proof as the "native field"
     /// and generates Fp (base field) and Fr (scalar field)
     /// constraints for the verification of the proof.
@@ -156,43 +172,47 @@ where
                 //~ 24. Derive $u$ from $u'$ using the endomorphism (TODO: specify).
                 let u = u_chal.to_field(ctx);
 
-                // prepare some often used values
+                // compute \zeta\omega = \zeta * \omega
                 let zetaw = ctx.mul(zeta, self.domain.group_gen);
 
+                // evaluate the prev_challenges at h
                 // TODO: this should be included in transcript!
                 let prev_zeta = proof.prev_challenges.eval_h(ctx.cs(), zeta);
                 let prev_zetaw = proof.prev_challenges.eval_h(ctx.cs(), zetaw);
 
                 //~ 25. Create a list of all polynomials that have an evaluation proof.
+                /*
                 let powers_of_eval_points_for_chunks = [
                     ctx.pow(zeta, self.max_poly_size as u64),
                     ctx.pow(zetaw, self.max_poly_size as u64),
                 ];
+                */
 
                 // compute ft_eval0 (from gate/row constraints)
-                let ft_eval0 = unimplemented!();
+                let ft_eval0 = compute_ft_eval0(); // how to do this using Var<F>, PolishToken does not support it
 
                 // compute the combined inner product:
                 // the batching of all the openings
                 let combined_inner_product = {
                     // evaluations at \zeta
                     let polys_z = iter::empty()
-                        .chain(unimplemented!()) // prev_challenges
+                        .chain(iter::once(&prev_zeta)) // h(\zeta)
                         .chain(iter::once(&ft_eval0)) // ft_eval0
-                        .chain(evals.z.iter());
+                        .chain(evals.z.iter()); // openings from proof
 
                     // evaluations at \zeta \omega
                     let polys_zw = iter::empty()
-                        .chain(unimplemented!()) // prev_challenges
+                        .chain(iter::once(&prev_zetaw)) // h(\zeta\omega)
                         .chain(iter::once(&ft_eval1)) // ft_eval1
-                        .chain(evals.zw.iter());
+                        .chain(evals.zw.iter()); // openings from proof
 
-                    // combine with xi = v, r = u
+                    // compute a randomized combinations of all the openings
+                    // with xi = v, r = u
                     combined_inner_product(
                         ctx.cs(),
                         vec![
-                            (zeta, polys_z.cloned().collect()),
-                            (zetaw, polys_zw.cloned().collect()),
+                            (zeta, polys_z.cloned().collect()), // (eval point, openings)
+                            (zetaw, polys_zw.cloned().collect()), // (eval point, openings)
                         ],
                         v, // xi
                         u, // r

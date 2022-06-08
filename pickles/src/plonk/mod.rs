@@ -3,6 +3,10 @@ use ark_ff::{FftField, PrimeField};
 
 use oracle::sponge::ScalarChallenge;
 
+/// "Symbolic" Interpreter for Expr/PolishToken types
+mod expr;
+
+/// Proof types
 mod proof;
 
 /// Enforces gate constraints (rows checks)
@@ -11,16 +15,17 @@ mod gates;
 /// Verifier logic
 mod verifier;
 
-/// Witness columns in Turbo-PlonK argument
+/// Witness columns
 const COLUMNS: usize = 15;
 
+/// Size of challenges in bits
 const CHALLENGE_LEN: usize = 128;
 
 ///
 const SELECTORS: usize = 15;
 
 /// Number of columns in permutation argument
-/// (remaining columns are gate-hints)
+/// (remaining columns are gate-hints for non-deterministic computation)
 ///
 ///
 const PERMUTS: usize = 7;

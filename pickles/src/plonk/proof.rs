@@ -23,7 +23,7 @@ impl <F> VarIPAChallenges<F> where F: FftField + PrimeField {
     /// h(X) = \prod_{i = 0}^{n} (1 + c_{n-i} X^{2^i})
     /// 
     /// Evalute h(X) at x.
-    pub fn eval_h<C: Cs<F>>(&self, cs: &mut C, x: Var<F>) -> Var<F> {    
+    pub fn eval_h<C: Cs<F>>(&self, cs: &mut C, x: Var<F>) -> VarOpen<F, 1> {    
         assert_ne!(self.c.len(), 0, "h is undefined for the empty challenge list");
 
         let one = cs.constant(F::one());
@@ -44,7 +44,7 @@ impl <F> VarIPAChallenges<F> where F: FftField + PrimeField {
             prod = cs.mul(prod, term);
         }
 
-        prod
+        VarOpen{ chunks: [prod] }
     }
 }
 
@@ -130,19 +130,35 @@ where
     pub t_comm: Msg<VarPolyComm<A, PERMUTS>>,
 }
 
-/// A opening of a chunked polynomial
-///
+/// The evaluation of a (possibly chunked) polynomial.
 /// The least significant chunk is first.
 #[derive(Clone)]
 pub struct VarOpen<F: FftField + PrimeField, const C: usize> {
     pub(super) chunks: [Var<F>; C],
 }
 
+// For exactly one chunk, we can use a polynomial opening as a variable
+impl <F> AsRef<Var<F>> for VarOpen<F, 1> where F: FftField + PrimeField {
+    fn as_ref(&self) -> &Var<F> {
+        &self.chunks[1]
+    }
+}
+
+// In general a polynomial opening is a slice of variables
 impl<F: FftField + PrimeField, const C: usize> AsRef<[Var<F>]> for VarOpen<F, C> {
     fn as_ref(&self) -> &[Var<F>] {
         &self.chunks
     }
 }
+
+impl <F> Into<VarOpen<F, 1>> for Var<F> where F: FftField + PrimeField {
+    fn into(self) -> VarOpen<F, 1> {
+        VarOpen {
+            chunks: [self]
+        }
+    }
+}
+
 
 /// Add constraints for evaluating a polynomial
 ///
