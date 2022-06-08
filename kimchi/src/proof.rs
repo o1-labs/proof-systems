@@ -106,7 +106,6 @@ pub struct ProverProof<G: AffineCurve> {
     pub proof: OpeningProof<G>,
 
     /// Two evaluations over a number of committed polynomials
-    // TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }
     pub evals: ConsecutiveEvals<G>,
 
     /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
@@ -248,6 +247,46 @@ pub mod caml {
             RecursionChallenge {
                 chals: caml_ch.chals.into_iter().map(Into::into).collect(),
                 comm: caml_ch.comm.into(),
+            }
+        }
+    }
+
+    //
+    // CamlConsecutiveEvals<CamlF>
+    //
+
+    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlConsecutiveEvals<CamlF> {
+        pub z: CamlProofEvaluations<CamlF>,
+        pub zw: CamlProofEvaluations<CamlF>,
+    }
+
+    //
+    // CamlConsecutiveEvals<CamlF> <-> ConsecutiveEvals<G>
+    //
+
+    impl<G, CamlF> From<ConsecutiveEvals<G>> for CamlConsecutiveEvals<CamlF>
+    where
+        G: AffineCurve,
+        CamlF: From<G::ScalarField>,
+    {
+        fn from(evals: ConsecutiveEvals<G>) -> Self {
+            Self {
+                z: evals.z.into(),
+                zw: evals.zw.into(),
+            }
+        }
+    }
+
+    impl<G, CamlF> From<CamlConsecutiveEvals<CamlF>> for ConsecutiveEvals<G>
+    where
+        G: AffineCurve,
+        G::ScalarField: From<CamlF>,
+    {
+        fn from(caml_evals: CamlConsecutiveEvals<CamlF>) -> ConsecutiveEvals<G> {
+            ConsecutiveEvals {
+                z: caml_evals.z.into(),
+                zw: caml_evals.zw.into(),
             }
         }
     }

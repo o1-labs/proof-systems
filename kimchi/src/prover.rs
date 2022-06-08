@@ -1184,7 +1184,7 @@ where
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
-    use crate::proof::caml::{CamlProofEvaluations, CamlRecursionChallenge};
+    use crate::proof::caml::{CamlConsecutiveEvals, CamlRecursionChallenge};
     use ark_ec::AffineCurve;
     use commitment_dlog::commitment::caml::{CamlOpeningProof, CamlPolyComm};
 
@@ -1196,11 +1196,10 @@ pub mod caml {
     pub struct CamlProverProof<CamlG, CamlF> {
         pub commitments: CamlProverCommitments<CamlG>,
         pub proof: CamlOpeningProof<CamlG, CamlF>,
-        // OCaml doesn't have sized arrays, so we have to convert to a tuple..
-        pub evals: (CamlProofEvaluations<CamlF>, CamlProofEvaluations<CamlF>),
+        pub evals: CamlConsecutiveEvals<CamlF>,
         pub ft_eval1: CamlF,
         pub public: Vec<CamlF>,
-        pub prev_challenges: Vec<CamlRecursionChallenge<CamlG, CamlF>>, //Vec<(Vec<CamlF>, CamlPolyComm<CamlG>)>,
+        pub prev_challenges: Vec<CamlRecursionChallenge<CamlG, CamlF>>,
     }
 
     //
@@ -1344,7 +1343,7 @@ pub mod caml {
             Self {
                 commitments: pp.commitments.into(),
                 proof: pp.proof.into(),
-                evals: (pp.evals[0].clone().into(), pp.evals[1].clone().into()),
+                evals: pp.evals.into(),
                 ft_eval1: pp.ft_eval1.into(),
                 public: pp.public.into_iter().map(Into::into).collect(),
                 prev_challenges: pp.prev_challenges.into_iter().map(Into::into).collect(),
@@ -1361,7 +1360,7 @@ pub mod caml {
             ProverProof {
                 commitments: caml_pp.commitments.into(),
                 proof: caml_pp.proof.into(),
-                evals: [caml_pp.evals.0.into(), caml_pp.evals.1.into()],
+                evals: caml_pp.evals.into(),
                 ft_eval1: caml_pp.ft_eval1.into(),
                 public: caml_pp.public.into_iter().map(Into::into).collect(),
                 prev_challenges: caml_pp
