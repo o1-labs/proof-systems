@@ -33,11 +33,14 @@ mod tests {
         let proof = ctx.create_proof();
 
         // small check of proof being serializable
+        // serialize a proof
         let ser_pf = rmp_serde::to_vec(&proof).unwrap();
         println!("proof size: {} bytes", ser_pf.len());
 
+        // deserialize the proof
         let de_pf: ProverProof<Affine> = rmp_serde::from_slice(&ser_pf).unwrap();
 
+        // verify the deserialized proof (must accept the proof)
         ctx.batch_verification(vec![de_pf.clone()]);
     }
 

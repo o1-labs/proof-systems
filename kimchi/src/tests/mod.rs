@@ -8,6 +8,5 @@ mod lookup;
 mod poseidon;
 mod recursion;
 mod serde;
-mod serialization;
 mod turshi;
 mod varbasemul;
