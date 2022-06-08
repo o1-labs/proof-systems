@@ -87,8 +87,8 @@ fn test_example_circuit() {
     let mut rng = rand::thread_rng();
 
     // create witness
-    let private_key = Other::ScalarField::rand(&mut rng);
-    let preimage = Other::BaseField::rand(&mut rng);
+    let private_key = <Other as AffineCurve>::ScalarField::rand(&mut rng);
+    let preimage = <Other as AffineCurve>::BaseField::rand(&mut rng);
 
     let witness = Witness {
         s: private_key,
