@@ -106,7 +106,7 @@ pub struct ProverProof<G: AffineCurve> {
     pub proof: OpeningProof<G>,
 
     /// Two evaluations over a number of committed polynomials
-    pub evals: ConsecutiveEvals<G>,
+    pub evals: ConsecutiveEvals<G::ScalarField>,
 
     /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
@@ -123,15 +123,12 @@ pub struct ProverProof<G: AffineCurve> {
 /// A struct to store the current and next evaluations inside a `ProverProof`
 #[serde_as]
 #[derive(Clone, Deserialize, Serialize)]
-#[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
-pub struct ConsecutiveEvals<G>
-where
-    G: AffineCurve,
-{
+#[serde(bound = "F: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
+pub struct ConsecutiveEvals<F> {
     /// evaluations of zeta, correspond to current row
-    pub z: ProofEvaluations<Vec<ScalarField<G>>>,
+    pub z: ProofEvaluations<Vec<F>>,
     /// evaluations of omega · zeta, correspond to next row
-    pub zw: ProofEvaluations<Vec<ScalarField<G>>>,
+    pub zw: ProofEvaluations<Vec<F>>,
 }
 
 /// A struct to store the challenges inside a `ProverProof`
@@ -157,8 +154,8 @@ impl<G: AffineCurve> RecursionChallenge<G> {
     }
 }
 
-impl<G: AffineCurve> ConsecutiveEvals<G> {
-    pub fn array(&self) -> [&ProofEvaluations<Vec<ScalarField<G>>>; 2] {
+impl<F> ConsecutiveEvals<F> {
+    pub fn array(&self) -> [&ProofEvaluations<Vec<F>>; 2] {
         [&self.z, &self.zw]
     }
 }
