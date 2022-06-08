@@ -31,57 +31,67 @@ pub struct ExampleCircuit<G>(Constants<G::ScalarField>)
 where
     G: AffineCurve;
 
-impl<G> Circuit<G> for ExampleCircuit<G>
+impl<G> ExampleCircuit<G>
 where
     G: AffineCurve,
 {
-    type PrivateInput = Witness<G>;
+    // Prove knowledge of discrete log and poseidon preimage of a hash
+    pub fn circuit<F>(
+        constants: &Constants<F>,
+        // The witness
+        witness: Option<Witness<G>>,
+        sys: &mut Sys<F>,
+        public_input: Vec<Var<F>>,
+    ) where
+        F: PrimeField + FftField,
+        G: AffineCurve<BaseField = F> + CoordinateCurve,
+    {
+        let zero = sys.constant(F::zero());
 
-    fn run(
-        &self,
-        sys: &mut Sys<G::ScalarField>,
-        public_input: Vec<Var<G::ScalarField>>,
-        private_input: Option<Self::PrivateInput>,
-    ) {
-        circuit(&self.0, private_input, sys, public_input)
+        let constant_curve_pt = |sys: &mut Sys<F>, (x, y)| {
+            let x = sys.constant(x);
+            let y = sys.constant(y);
+            (x, y)
+        };
+
+        let base = constant_curve_pt(sys, G::prime_subgroup_generator().to_coords().unwrap());
+        let scalar = sys.scalar(G::ScalarField::size_in_bits(), || {
+            witness.as_ref().unwrap().s
+        });
+        let actual = sys.scalar_mul(zero, base, scalar);
+
+        let preimage = sys.var(|| witness.as_ref().unwrap().preimage);
+        let actual_hash = sys.poseidon(constants, vec![preimage, zero, zero])[0];
+
+        sys.assert_eq(actual.0, public_input[0]);
+        sys.assert_eq(actual.1, public_input[1]);
+        sys.assert_eq(actual_hash, public_input[2]);
+
+        sys.zk()
     }
 }
 
-// Prove knowledge of discrete log and poseidon preimage of a hash
-pub fn circuit<F: PrimeField + FftField, G: AffineCurve<BaseField = F> + CoordinateCurve>(
-    constants: &Constants<F>,
-    // The witness
-    witness: Option<Witness<G>>,
-    sys: &mut Sys<F>,
-    public_input: Vec<Var<F>>,
-) {
-    let zero = sys.constant(F::zero());
+impl<G, F> Circuit<F> for ExampleCircuit<G>
+where
+    G: AffineCurve,
+    F: G::ScalarField,
+{
+    type PrivateInput = Witness<G>;
 
-    let constant_curve_pt = |sys: &mut Sys<F>, (x, y)| {
-        let x = sys.constant(x);
-        let y = sys.constant(y);
-        (x, y)
-    };
+    const PUBLIC_INPUT_LENGTH: usize = 3;
 
-    let base = constant_curve_pt(sys, G::prime_subgroup_generator().to_coords().unwrap());
-    let scalar = sys.scalar(G::ScalarField::size_in_bits(), || {
-        witness.as_ref().unwrap().s
-    });
-    let actual = sys.scalar_mul(zero, base, scalar);
-
-    let preimage = sys.var(|| witness.as_ref().unwrap().preimage);
-    let actual_hash = sys.poseidon(constants, vec![preimage, zero, zero])[0];
-
-    sys.assert_eq(actual.0, public_input[0]);
-    sys.assert_eq(actual.1, public_input[1]);
-    sys.assert_eq(actual_hash, public_input[2]);
-
-    sys.zk()
+    fn run(
+        &self,
+        sys: &mut Sys<F>,
+        public_input: Vec<Var<F>>,
+        private_input: Option<Self::PrivateInput>,
+    ) {
+        Self::circuit(&self.0, private_input, sys, public_input)
+    }
 }
 
-const PUBLIC_INPUT_LENGTH: usize = 3;
-
-fn main() {
+#[test]
+fn run_poseidon_circuit() {
     // create SRS
     let srs = {
         let mut srs = SRS::<Affine>::create(1 << 8); // 2^8 = 256
@@ -97,8 +107,9 @@ fn main() {
         srs,
         &proof_system_constants,
         &fq_poseidon,
-        PUBLIC_INPUT_LENGTH,
-        |sys, p| circuit::<_, Other>(&proof_system_constants, None, sys, p),
+        ExampleCircuit::PUBLIC_INPUT_LENGTH,
+        |sys, p| ExampleCircuit::run < _,
+        Other > (&proof_system_constants, None, sys, p),
     );
 
     let group_map = <Affine as CommitmentCurve>::Map::setup();

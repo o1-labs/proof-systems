@@ -11,9 +11,9 @@ use kimchi::circuits::{
     wires::{Wire, COLUMNS},
 };
 use kimchi::{plonk_sponge::FrSponge, proof::ProverProof, prover_index::ProverIndex};
-use mina_curves::pasta::{fp::Fp, fq::Fq, pallas::Affine as Other, vesta::Affine};
+use mina_curves::pasta::{fp::Fp, fq::Fq, pallas::Affine as Pallas, vesta::Affine as Vesta};
 use oracle::{constants::*, permutation::full_round, poseidon::ArithmeticSpongeParams, FqSponge};
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 pub const GENERICS: usize = 3;
 pub const ZK_ROWS: usize = kimchi::circuits::polynomials::permutation::ZK_ROWS as usize;
@@ -21,7 +21,10 @@ pub const ZK_ROWS: usize = kimchi::circuits::polynomials::permutation::ZK_ROWS a
 pub const SINGLE_GENERIC_COEFFS: usize = 5;
 pub const GENERIC_ROW_COEFFS: usize = 2 * SINGLE_GENERIC_COEFFS;
 
+// TODO: move to mina-curve? define Inner/Outer
+/// Contains the metadata that links two curves and their fields
 pub trait Cycle {
+    /// The base field of the Inner curve
     type InnerField: FftField
         + PrimeField
         + SquareRootField
@@ -30,6 +33,8 @@ pub trait Cycle {
         + From<u32>
         + From<u16>
         + From<u8>;
+
+    /// The base field of the Outer curve
     type OuterField: FftField
         + PrimeField
         + SquareRootField
@@ -39,17 +44,13 @@ pub trait Cycle {
         + From<u16>
         + From<u8>;
 
+    /// The hash-to-curve algorithm for the Inner curve.
     type InnerMap: groupmap::GroupMap<Self::InnerField>;
+
+    /// The hash-to-curve algorithm for the Outer curve.
     type OuterMap: groupmap::GroupMap<Self::OuterField>;
 
-    type InnerProj: ProjectiveCurve<
-            Affine = Self::Inner,
-            ScalarField = Self::OuterField,
-            BaseField = Self::InnerField,
-        > + From<Self::Inner>
-        + Into<Self::Inner>
-        + std::ops::MulAssign<Self::OuterField>;
-
+    /// The Inner curve.
     type Inner: CommitmentCurve<
             Projective = Self::InnerProj,
             Map = Self::InnerMap,
@@ -58,6 +59,24 @@ pub trait Cycle {
         > + From<Self::InnerProj>
         + Into<Self::InnerProj>;
 
+    /// The Outer curve.
+    type Outer: CommitmentCurve<
+        Projective = Self::OuterProj,
+        Map = Self::OuterMap,
+        ScalarField = Self::InnerField,
+        BaseField = Self::OuterField,
+    >;
+
+    /// The projective form of the Inner curve.
+    type InnerProj: ProjectiveCurve<
+            Affine = Self::Inner,
+            ScalarField = Self::OuterField,
+            BaseField = Self::InnerField,
+        > + From<Self::Inner>
+        + Into<Self::Inner>
+        + std::ops::MulAssign<Self::OuterField>;
+
+    /// The projective form of the Outer curve.
     type OuterProj: ProjectiveCurve<
             Affine = Self::Outer,
             ScalarField = Self::InnerField,
@@ -65,41 +84,51 @@ pub trait Cycle {
         > + From<Self::Outer>
         + Into<Self::Outer>
         + std::ops::MulAssign<Self::InnerField>;
-
-    type Outer: CommitmentCurve<
-        Projective = Self::OuterProj,
-        Map = Self::OuterMap,
-        ScalarField = Self::InnerField,
-        BaseField = Self::OuterField,
-    >;
 }
 
+/// The cycle where Fp is the Inner field.
 pub struct FpInner;
+
+/// The cycle where Fq is the Inner field.
 pub struct FqInner;
 
 impl Cycle for FpInner {
-    type InnerMap = <Other as CommitmentCurve>::Map;
-    type OuterMap = <Affine as CommitmentCurve>::Map;
+    type InnerMap = <Pallas as CommitmentCurve>::Map;
+    type OuterMap = <Vesta as CommitmentCurve>::Map;
 
     type InnerField = Fp;
     type OuterField = Fq;
-    type Inner = Other;
-    type Outer = Affine;
-    type InnerProj = <Other as AffineCurve>::Projective;
-    type OuterProj = <Affine as AffineCurve>::Projective;
+    type Inner = Pallas;
+    type Outer = Vesta;
+    type InnerProj = <Pallas as AffineCurve>::Projective;
+    type OuterProj = <Vesta as AffineCurve>::Projective;
 }
 
 impl Cycle for FqInner {
-    type InnerMap = <Affine as CommitmentCurve>::Map;
-    type OuterMap = <Other as CommitmentCurve>::Map;
+    type InnerMap = <Vesta as CommitmentCurve>::Map;
+    type OuterMap = <Pallas as CommitmentCurve>::Map;
 
     type InnerField = Fq;
     type OuterField = Fp;
-    type Inner = Affine;
-    type Outer = Other;
-    type InnerProj = <Affine as AffineCurve>::Projective;
-    type OuterProj = <Other as AffineCurve>::Projective;
+    type Inner = Vesta;
+    type Outer = Pallas;
+    type InnerProj = <Vesta as AffineCurve>::Projective;
+    type OuterProj = <Pallas as AffineCurve>::Projective;
 }
+
+pub trait CoordinateCurve: AffineCurve {
+    fn to_coords(&self) -> Option<(Self::BaseField, Self::BaseField)>;
+}
+
+impl<G: CommitmentCurve> CoordinateCurve for G {
+    fn to_coords(&self) -> Option<(Self::BaseField, Self::BaseField)> {
+        CommitmentCurve::to_coordinates(self)
+    }
+}
+
+//
+// Data structures
+//
 
 #[derive(Hash, Eq, PartialEq, Debug, Clone, Copy)]
 pub struct Var<F> {
@@ -147,6 +176,10 @@ where
 }
 
 type Row<V> = [V; COLUMNS];
+
+//
+// Logic
+//
 
 impl<F> Sys<F>
 where
@@ -878,159 +911,161 @@ impl<F: FftField> System<F> {
     }
 }
 
+//
+// Circuit stuff
+//
+
 /// The trait to implement on your circuit
-pub trait Circuit<G>
+pub trait Circuit<C>
 where
-    G: AffineCurve,
+    C: Cycle,
 {
     type PrivateInput;
 
+    const PUBLIC_INPUT_LENGTH: usize;
+
     fn run(
         &self,
-        sys: &mut Sys<G::ScalarField>,
-        public_input: Vec<Var<G::ScalarField>>,
+        sys: &mut Sys<C::InnerField>,
+        public_input: Vec<Var<C::InnerField>>,
         private_input: Option<Self::PrivateInput>,
     );
 
-    fn run_for_circuit_generation(
+    fn generate_prover_index(
         &self,
-        sys: &mut Sys<G::ScalarField>,
-        public_input: Vec<Var<G::ScalarField>>,
-    ) {
-        Self::run(self, sys, public_input, None)
-    }
+        srs: std::sync::Arc<SRS<C::Outer>>,
+        constants: &Constants<C::InnerField>,
+        poseidon_params: &ArithmeticSpongeParams<C::OuterField>,
+    ) -> ProverIndex<C::Outer> {
+        let mut system: Sys<C::InnerField> = Sys::CircuitGenerator(System {
+            next_variable: 0,
+            gates: vec![],
+        });
+        let z = C::InnerField::zero();
 
-    fn run_for_proof_creation(
-        &self,
-        sys: &mut Sys<G::ScalarField>,
-        public_input: Vec<Var<G::ScalarField>>,
-        private_input: Option<Self::PrivateInput>,
-    ) {
-        Self::run(self, sys, public_input, private_input)
-    }
-}
-
-/// Given a circuit, a public input,
-pub fn prove<G, H, EFqSponge, EFrSponge>(
-    index: &ProverIndex<G>,
-    group_map: &G::Map,
-    blinders: Option<[Option<G::ScalarField>; COLUMNS]>,
-    public_input: Vec<G::ScalarField>,
-    mut main: H,
-) -> ProverProof<G>
-where
-    H: FnMut(&mut Sys<G::ScalarField>, Vec<Var<G::ScalarField>>),
-    G::BaseField: PrimeField,
-    G: CommitmentCurve,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-    EFrSponge: FrSponge<G::ScalarField>,
-{
-    // create the public rows
-    let mut gen: Sys<G::ScalarField> = Sys::WitnessGenerator(WitnessGenerator {
-        rows: public_input
-            .iter()
-            .map(|x| array_init(|i| if i == 0 { *x } else { G::ScalarField::zero() }))
-            .collect(),
-    });
-
-    // run the witness generation
-    let public_vars = public_input
-        .iter()
-        .map(|x| Var {
-            index: 0,
-            value: Some(*x),
-        })
-        .collect();
-    main(&mut gen, public_vars);
-
-    // get the witness columns
-    let columns = gen.columns();
-
-    // TODO: woot??
-    let blinders: [Option<PolyComm<G::ScalarField>>; COLUMNS] = match blinders {
-        None => array_init(|_| None),
-        Some(bs) => array_init(|i| {
-            bs[i].map(|b| PolyComm {
-                unshifted: vec![b],
-                shifted: None,
+        // create public input variables
+        let public_input_row = vec![C::InnerField::one(), z, z, z, z, z, z, z, z, z];
+        let public_input: Vec<_> = (0..Self::PUBLIC_INPUT_LENGTH)
+            .map(|_| {
+                let v = system.var(|| panic!("fail"));
+                let row = array_init(|i| {
+                    if i == 0 {
+                        v
+                    } else {
+                        system.var(|| panic!("fail"))
+                    }
+                });
+                system.gate(GateSpec {
+                    typ: GateType::Generic,
+                    c: public_input_row.clone(),
+                    row,
+                });
+                v
             })
-        }),
-    };
+            .collect();
 
-    // create the proof
-    ProverProof::create_recursive::<EFqSponge, EFrSponge>(
-        group_map,
-        columns,
-        &[],
-        index,
-        vec![],
-        Some(blinders),
-    )
-    .unwrap()
-}
+        // generate circuit
+        Self::run(self, &mut system, public_input, None);
 
-pub fn generate_prover_index<C, H>(
-    srs: std::sync::Arc<SRS<C::Outer>>,
-    constants: &Constants<C::InnerField>,
-    poseidon_params: &ArithmeticSpongeParams<C::OuterField>,
-    public: usize,
-    main: H,
-) -> ProverIndex<C::Outer>
-where
-    H: FnOnce(&mut Sys<C::InnerField>, Vec<Var<C::InnerField>>),
-    C: Cycle,
-{
-    let mut system: Sys<C::InnerField> = Sys::CircuitGenerator(System {
-        next_variable: 0,
-        gates: vec![],
-    });
-    let z = C::InnerField::zero();
+        // compile
+        let gates = system.gates();
 
-    // create public input variables
-    let public_input_row = vec![C::InnerField::one(), z, z, z, z, z, z, z, z, z];
-    let public_input: Vec<_> = (0..public)
-        .map(|_| {
-            let v = system.var(|| panic!("fail"));
-            let row = array_init(|i| {
-                if i == 0 {
-                    v
-                } else {
-                    system.var(|| panic!("fail"))
-                }
-            });
-            system.gate(GateSpec {
-                typ: GateType::Generic,
-                c: public_input_row.clone(),
-                row,
-            });
-            v
-        })
-        .collect();
+        println!("gates: {}", gates.len());
 
-    main(&mut system, public_input);
-
-    let gates = system.gates();
-    println!("gates: {}", gates.len());
-    // Other base field = self scalar field
-    let (endo_q, _endo_r) = endos::<C::Inner>();
-    ProverIndex::<C::Outer>::create(
-        ConstraintSystem::<C::InnerField>::create(
-            gates,
-            vec![],
-            None,
-            constants.poseidon.clone(),
-            public,
+        // Pallas base field = self scalar field
+        let (endo_q, _endo_r) = endos::<C::Inner>();
+        ProverIndex::<C::Outer>::create(
+            ConstraintSystem::<C::InnerField>::create(
+                gates,
+                vec![],
+                None,
+                constants.poseidon.clone(),
+                Self::PUBLIC_INPUT_LENGTH,
+            )
+            .unwrap(),
+            poseidon_params.clone(),
+            endo_q,
+            srs,
         )
-        .unwrap(),
-        poseidon_params.clone(),
-        endo_q,
-        srs,
-    )
+    }
+
+    /// Given a circuit, a public input,
+    fn prove<BaseSponge, ScalarSponge>(
+        &self,
+        index: &ProverIndex<C::Outer>,
+        group_map: &C::Outer::Map,
+        blinders: Option<[Option<C::Outer::ScalarField>; COLUMNS]>,
+        public_input: Vec<C::Outer::ScalarField>,
+    ) -> ProverProof<C::Outer>
+    where
+        C::Outer::BaseField: PrimeField,
+        C::Outer: CommitmentCurve,
+        BaseSponge: Clone + FqSponge<C::Outer::BaseField, C::Outer, C::Outer::ScalarField>,
+        ScalarSponge: FrSponge<C::Outer::ScalarField>,
+    {
+        // create the public rows
+        let mut gen: Sys<C::Outer::ScalarField> = Sys::WitnessGenerator(WitnessGenerator {
+            rows: public_input
+                .iter()
+                .map(|x| {
+                    array_init(|i| {
+                        if i == 0 {
+                            *x
+                        } else {
+                            C::Outer::ScalarField::zero()
+                        }
+                    })
+                })
+                .collect(),
+        });
+
+        // run the witness generation
+        let public_vars = public_input
+            .iter()
+            .map(|x| Var {
+                index: 0,
+                value: Some(*x),
+            })
+            .collect();
+
+        // run through the circuit
+        Self::run(self, &mut gen, public_vars, None);
+
+        // get the witness columns
+        let columns = gen.columns();
+
+        // create blinders
+        // TODO: change to None
+        let blinders: [Option<PolyComm<G::ScalarField>>; COLUMNS] = match blinders {
+            None => array_init(|_| None),
+            Some(bs) => array_init(|i| {
+                bs[i].map(|b| PolyComm {
+                    unshifted: vec![b],
+                    shifted: None,
+                })
+            }),
+        };
+
+        // create the proof
+        ProverProof::create_recursive::<BaseSponge, ScalarSponge>(
+            group_map,
+            columns,
+            &[],
+            index,
+            vec![],
+            Some(blinders),
+        )
+        .unwrap()
+    }
 }
+
+//
+// Helpers
+//
 
 pub fn fp_constants() -> Constants<Fp> {
-    let (endo_q, _endo_r) = endos::<Other>();
-    let base = Other::prime_subgroup_generator().to_coordinates().unwrap();
+    let (endo_q, _endo_r) = endos::<Pallas>();
+    let base = Pallas::prime_subgroup_generator().to_coordinates().unwrap();
     Constants {
         poseidon: oracle::pasta::fp_kimchi::params(),
         endo: endo_q,
@@ -1039,8 +1074,8 @@ pub fn fp_constants() -> Constants<Fp> {
 }
 
 pub fn fq_constants() -> Constants<Fq> {
-    let (endo_q, _endo_r) = endos::<Affine>();
-    let base = Affine::prime_subgroup_generator().to_coordinates().unwrap();
+    let (endo_q, _endo_r) = endos::<Vesta>();
+    let base = Vesta::prime_subgroup_generator().to_coordinates().unwrap();
     Constants {
         poseidon: oracle::pasta::fq_kimchi::params(),
         endo: endo_q,
@@ -1051,14 +1086,4 @@ pub fn fq_constants() -> Constants<Fq> {
 pub fn shift<F: PrimeField>(size: usize) -> F {
     let two: F = 2_u64.into();
     two.pow(&[size as u64])
-}
-
-pub trait CoordinateCurve: AffineCurve {
-    fn to_coords(&self) -> Option<(Self::BaseField, Self::BaseField)>;
-}
-
-impl<G: CommitmentCurve> CoordinateCurve for G {
-    fn to_coords(&self) -> Option<(Self::BaseField, Self::BaseField)> {
-        CommitmentCurve::to_coordinates(self)
-    }
 }

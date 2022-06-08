@@ -45,3 +45,7 @@ iai = "0.1"
 [[bench]]
 name = "example_proof"
 harness = false
+
+[[test]]
+name = "examples"
+path = "examples"
