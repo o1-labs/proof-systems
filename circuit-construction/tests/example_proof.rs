@@ -61,8 +61,7 @@ pub fn circuit<
 
 const PUBLIC_INPUT_LENGTH: usize = 3;
 
-#[test]
-fn test_example_circuit() {
+fn run_example_circuit() {
     // create SRS
     let srs = {
         let mut srs = SRS::<Affine>::create(1 << 7); // 2^7 = 128
@@ -120,3 +119,21 @@ fn test_example_circuit() {
 
     verify::<_, SpongeQ, SpongeR>(&group_map, &verifier_index, &proof).unwrap();
 }
+
+#[test]
+fn test_example_circuit() {
+    run_example_circuit();
+}
+
+//
+// Bench
+//
+
+use criterion::{criterion_group, criterion_main, Criterion};
+
+pub fn criterion_benchmark(c: &mut Criterion) {
+    c.bench_function("run example circuit", |b| b.iter(|| run_example_circuit()));
+}
+
+criterion_group!(benches, criterion_benchmark);
+criterion_main!(benches);

@@ -41,3 +41,8 @@ colored = "2.0.0"
 # benchmarks
 criterion = "0.3"
 iai = "0.1"
+
+[[bench]]
+name = "my_benchmark"
+path = "tests/example_proof.rs"
+harness = false
