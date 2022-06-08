@@ -2,13 +2,14 @@
 //! You can derive this struct from the [ProverIndex] struct.
 
 use crate::alphas::Alphas;
-use crate::circuits::lookup::lookups::LookupsUsed;
+use crate::circuits::lookup::{index::LookupSelectors, lookups::LookupsUsed};
 use crate::circuits::polynomials::permutation::zk_polynomial;
 use crate::circuits::polynomials::permutation::zk_w3;
 use crate::circuits::{
     expr::{Linearization, PolishToken},
     wires::*,
 };
+use crate::error::VerifierIndexError;
 use crate::prover_index::ProverIndex;
 use ark_ff::PrimeField;
 use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D};
@@ -17,7 +18,7 @@ use commitment_dlog::{
     commitment::{CommitmentCurve, PolyComm},
     srs::SRS,
 };
-use o1_utils::types::fields::*;
+use once_cell::sync::OnceCell;
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
@@ -37,7 +38,7 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub lookup_table: Vec<PolyComm<G>>,
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub lookup_selectors: Vec<PolyComm<G>>,
+    pub lookup_selectors: LookupSelectors<PolyComm<G>>,
 
     /// Table IDs for the lookup values.
     /// This may be `None` if all lookups originate from table 0.
@@ -57,14 +58,14 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 pub struct VerifierIndex<G: CommitmentCurve> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub domain: D<ScalarField<G>>,
+    pub domain: D<G::ScalarField>,
     /// maximal size of polynomial section
     pub max_poly_size: usize,
     /// maximal size of the quotient polynomial according to the supported constraints
     pub max_quot_size: usize,
     /// polynomial commitment keys
     #[serde(skip)]
-    pub srs: Arc<SRS<G>>,
+    pub srs: OnceCell<Arc<SRS<G>>>,
 
     // index polynomial commitments
     /// permutation commitment array
@@ -106,32 +107,32 @@ pub struct VerifierIndex<G: CommitmentCurve> {
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
-    pub shift: [ScalarField<G>; PERMUTS],
+    pub shift: [G::ScalarField; PERMUTS],
     /// zero-knowledge polynomial
     #[serde(skip)]
-    pub zkpm: DensePolynomial<ScalarField<G>>,
+    pub zkpm: OnceCell<DensePolynomial<G::ScalarField>>,
     // TODO(mimoo): isn't this redundant with domain.d1.group_gen ?
     /// domain offset for zero-knowledge
     #[serde(skip)]
-    pub w: ScalarField<G>,
+    pub w: OnceCell<G::ScalarField>,
     /// endoscalar coefficient
     #[serde(skip)]
-    pub endo: ScalarField<G>,
+    pub endo: G::ScalarField,
 
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub lookup_index: Option<LookupVerifierIndex<G>>,
 
     #[serde(skip)]
-    pub linearization: Linearization<Vec<PolishToken<ScalarField<G>>>>,
+    pub linearization: Linearization<Vec<PolishToken<G::ScalarField>>>,
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
-    pub powers_of_alpha: Alphas<ScalarField<G>>,
+    pub powers_of_alpha: Alphas<G::ScalarField>,
 
     // random oracle argument parameters
     #[serde(skip)]
-    pub fr_sponge_params: ArithmeticSpongeParams<ScalarField<G>>,
+    pub fr_sponge_params: ArithmeticSpongeParams<G::ScalarField>,
     #[serde(skip)]
-    pub fq_sponge_params: ArithmeticSpongeParams<BaseField<G>>,
+    pub fq_sponge_params: ArithmeticSpongeParams<G::BaseField>,
 }
 //~spec:endcode
 
@@ -151,9 +152,8 @@ where
                     lookup_used: cs.configuration.lookup_used,
                     lookup_selectors: cs
                         .lookup_selectors
-                        .iter()
-                        .map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None))
-                        .collect(),
+                        .as_ref()
+                        .map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None)),
                     lookup_table: cs
                         .lookup_table8
                         .iter()
@@ -163,7 +163,7 @@ where
                         self.srs
                             .commit_evaluations_non_hiding(domain, table_ids8, None)
                     }),
-                    max_joint_size: cs.configuration.max_joint_size,
+                    max_joint_size: cs.configuration.lookup_info.max_joint_size,
                     runtime_tables_selector: cs
                         .runtime_selector
                         .as_ref()
@@ -177,7 +177,11 @@ where
             max_poly_size: self.max_poly_size,
             max_quot_size: self.max_quot_size,
             powers_of_alpha: self.powers_of_alpha.clone(),
-            srs: Arc::clone(&self.srs),
+            srs: {
+                let cell = OnceCell::new();
+                cell.set(Arc::clone(&self.srs)).unwrap();
+                cell
+            },
 
             sigma_comm: array_init(|i| self.srs.commit_non_hiding(&self.cs.sigmam[i], None)),
             coefficients_comm: array_init(|i| {
@@ -221,8 +225,16 @@ where
                 .collect(),
 
             shift: self.cs.shift,
-            zkpm: self.cs.precomputations().zkpm.clone(),
-            w: zk_w3(self.cs.domain.d1),
+            zkpm: {
+                let cell = OnceCell::new();
+                cell.set(self.cs.precomputations().zkpm.clone()).unwrap();
+                cell
+            },
+            w: {
+                let cell = OnceCell::new();
+                cell.set(zk_w3(self.cs.domain.d1)).unwrap();
+                cell
+            },
             endo: self.cs.endo,
             lookup_index,
             linearization: self.linearization.clone(),
@@ -232,19 +244,38 @@ where
     }
 }
 
-impl<G> VerifierIndex<G>
+impl<G: CommitmentCurve> VerifierIndex<G>
 where
-    G: CommitmentCurve,
+    G::BaseField: PrimeField,
 {
+    /// Gets srs from [VerifierIndex] lazily
+    pub fn srs(&self) -> &Arc<SRS<G>> {
+        self.srs.get_or_init(|| {
+            let mut srs = SRS::<G>::create(self.max_poly_size);
+            srs.add_lagrange_basis(self.domain);
+            Arc::new(srs)
+        })
+    }
+
+    /// Gets zkpm from [VerifierIndex] lazily
+    pub fn zkpm(&self) -> &DensePolynomial<G::ScalarField> {
+        self.zkpm.get_or_init(|| zk_polynomial(self.domain))
+    }
+
+    /// Gets w from [VerifierIndex] lazily
+    pub fn w(&self) -> &G::ScalarField {
+        self.w.get_or_init(|| zk_w3(self.domain))
+    }
+
     /// Deserializes a [VerifierIndex] from a file, given a pointer to an SRS and an optional offset in the file.
     pub fn from_file(
-        srs: Arc<SRS<G>>,
+        srs: Option<Arc<SRS<G>>>,
         path: &Path,
         offset: Option<u64>,
         // TODO: we shouldn't have to pass these
         endo: G::ScalarField,
-        fq_sponge_params: ArithmeticSpongeParams<BaseField<G>>,
-        fr_sponge_params: ArithmeticSpongeParams<ScalarField<G>>,
+        fq_sponge_params: ArithmeticSpongeParams<G::BaseField>,
+        fr_sponge_params: ArithmeticSpongeParams<G::ScalarField>,
     ) -> Result<Self, String> {
         // open file
         let file = File::open(path).map_err(|e| e.to_string())?;
@@ -260,12 +291,16 @@ where
             .map_err(|e| e.to_string())?;
 
         // fill in the rest
-        verifier_index.srs = srs;
+        if srs.is_some() {
+            verifier_index
+                .srs
+                .set(srs.unwrap())
+                .map_err(|_| VerifierIndexError::SRSHasBeenSet.to_string())?;
+        };
+
         verifier_index.endo = endo;
         verifier_index.fq_sponge_params = fq_sponge_params;
         verifier_index.fr_sponge_params = fr_sponge_params;
-        verifier_index.w = zk_w3(verifier_index.domain);
-        verifier_index.zkpm = zk_polynomial(verifier_index.domain);
 
         Ok(verifier_index)
     }

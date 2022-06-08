@@ -2,6 +2,7 @@ use crate::{
     circuits::{
         domains::EvaluationDomains,
         gate::{CurrOrNext, GateType},
+        lookup::{index::LookupSelectors, lookups::LookupPattern},
         polynomials::permutation::eval_vanishes_on_last_4_rows,
         wires::COLUMNS,
     },
@@ -70,7 +71,7 @@ pub struct LookupEnvironment<'a, F: FftField> {
     /// The lookup aggregation polynomials.
     pub aggreg: &'a Evaluations<F, D<F>>,
     /// The lookup-type selector polynomials.
-    pub selectors: &'a Vec<Evaluations<F, D<F>>>,
+    pub selectors: &'a LookupSelectors<Evaluations<F, D<F>>>,
     /// The evaluations of the combined lookup table polynomial.
     pub table: &'a Evaluations<F, D<F>>,
     /// The evaluations of the optional runtime selector polynomial.
@@ -113,7 +114,7 @@ impl<'a, F: FftField> Environment<'a, F> {
             Witness(i) => Some(&self.witness[*i]),
             Coefficient(i) => Some(&self.coefficient[*i]),
             Z => Some(self.z),
-            LookupKindIndex(i) => lookup.map(|l| &l.selectors[*i]),
+            LookupKindIndex(i) => lookup.and_then(|l| l.selectors[*i].as_ref()),
             LookupSorted(i) => lookup.map(|l| &l.sorted[*i]),
             LookupAggreg => lookup.map(|l| l.aggreg),
             LookupTable => lookup.map(|l| l.table),
@@ -145,6 +146,16 @@ pub fn l0_1<F: FftField>(d: D<F>) -> F {
         .fold(F::one(), |acc, omega_j| acc * (F::one() - omega_j))
 }
 
+// Compute the ith unnormalized lagrange basis
+fn unnormalized_lagrange_basis<F: FftField>(domain: &D<F>, i: i32, pt: &F) -> F {
+    let omega_i = if i < 0 {
+        domain.group_gen.pow(&[-i as u64]).inverse().unwrap()
+    } else {
+        domain.group_gen.pow(&[i as u64])
+    };
+    domain.evaluate_vanishing_polynomial(*pt) / (*pt - omega_i)
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 /// A type representing one of the polynomials involved in the PLONK IOP.
 pub enum Column {
@@ -153,7 +164,7 @@ pub enum Column {
     LookupSorted(usize),
     LookupAggreg,
     LookupTable,
-    LookupKindIndex(usize),
+    LookupKindIndex(LookupPattern),
     LookupRuntimeSelector,
     LookupRuntimeTable,
     Index(GateType),
@@ -175,7 +186,7 @@ impl Column {
             Column::LookupSorted(i) => format!("s_{{{}}}", i),
             Column::LookupAggreg => "a".to_string(),
             Column::LookupTable => "t".to_string(),
-            Column::LookupKindIndex(i) => format!("k_{{{}}}", i),
+            Column::LookupKindIndex(i) => format!("k_{{{:?}}}", i),
             Column::LookupRuntimeSelector => "rts".to_string(),
             Column::LookupRuntimeTable => "rt".to_string(),
             Column::Index(gate) => {
@@ -383,7 +394,7 @@ impl Op2 {
 ///
 /// - `Cell(v)` for `v : Variable`
 /// - VanishesOnLast4Rows
-/// - UnnormalizedLagrangeBasis(i) for `i : usize`
+/// - UnnormalizedLagrangeBasis(i) for `i : i32`
 ///
 /// This represents a PLONK "custom constraint", which enforces that
 /// the corresponding combination of the polynomials corresponding to
@@ -398,7 +409,7 @@ pub enum Expr<C> {
     VanishesOnLast4Rows,
     /// UnnormalizedLagrangeBasis(i) is
     /// (x^n - 1) / (x - omega^i)
-    UnnormalizedLagrangeBasis(usize),
+    UnnormalizedLagrangeBasis(i32),
     Pow(Box<Expr<C>>, u64),
     Cache(CacheId, Box<Expr<C>>),
 }
@@ -422,7 +433,7 @@ pub enum PolishToken<F> {
     Mul,
     Sub,
     VanishesOnLast4Rows,
-    UnnormalizedLagrangeBasis(usize),
+    UnnormalizedLagrangeBasis(i32),
     Store,
     Load(usize),
 }
@@ -475,9 +486,9 @@ impl<F: FftField> PolishToken<F> {
                 EndoCoefficient => stack.push(c.endo_coefficient),
                 Mds { row, col } => stack.push(c.mds[*row][*col]),
                 VanishesOnLast4Rows => stack.push(eval_vanishes_on_last_4_rows(d, pt)),
-                UnnormalizedLagrangeBasis(i) => stack.push(
-                    d.evaluate_vanishing_polynomial(pt) / (pt - d.group_gen.pow(&[*i as u64])),
-                ),
+                UnnormalizedLagrangeBasis(i) => {
+                    stack.push(unnormalized_lagrange_basis(&d, *i, &pt))
+                }
                 Literal(x) => stack.push(*x),
                 Dup => stack.push(stack[stack.len() - 1]),
                 Cell(v) => match v.evaluate(evals) {
@@ -630,7 +641,7 @@ pub fn pows<F: Field>(x: F, n: usize) -> Vec<F> {
 /// = ((omega_8^n)^r - 1) / (omega^q omega_8^r - omega^i)
 fn unnormalized_lagrange_evals<F: FftField>(
     l0_1: F,
-    i: usize,
+    i: i32,
     res_domain: Domain,
     env: &Environment<F>,
 ) -> Evaluations<F, D<F>> {
@@ -644,6 +655,12 @@ fn unnormalized_lagrange_evals<F: FftField>(
 
     let d1 = env.domain.d1;
     let n = d1.size;
+    // Renormalize negative values to wrap around at domain size
+    let i = if i < 0 {
+        ((i as isize) + (n as isize)) as usize
+    } else {
+        i as usize
+    };
     let ii = i as u64;
     assert!(ii < n);
     let omega = d1.group_gen;
@@ -1247,9 +1264,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
                 Ok(x - y)
             }
             VanishesOnLast4Rows => Ok(eval_vanishes_on_last_4_rows(d, pt)),
-            UnnormalizedLagrangeBasis(i) => {
-                Ok(d.evaluate_vanishing_polynomial(pt) / (pt - d.group_gen.pow(&[*i as u64])))
-            }
+            UnnormalizedLagrangeBasis(i) => Ok(unnormalized_lagrange_basis(&d, *i, &pt)),
             Cell(v) => v.evaluate(evals),
             Cache(_, e) => e.evaluate_(d, pt, evals, c),
         }
@@ -1296,9 +1311,7 @@ impl<F: FftField> Expr<F> {
                 Ok(x - y)
             }
             VanishesOnLast4Rows => Ok(eval_vanishes_on_last_4_rows(d, pt)),
-            UnnormalizedLagrangeBasis(i) => {
-                Ok(d.evaluate_vanishing_polynomial(pt) / (pt - d.group_gen.pow(&[*i as u64])))
-            }
+            UnnormalizedLagrangeBasis(i) => Ok(unnormalized_lagrange_basis(&d, *i, &pt)),
             Cell(v) => v.evaluate(evals),
             Cache(_, e) => e.evaluate(d, pt, evals),
         }
@@ -2190,11 +2203,15 @@ pub mod prologue {
 pub mod test {
     use super::*;
     use crate::circuits::{
-        constraints::ConstraintSystem, gate::CircuitGate, polynomials::generic::GenericGateSpec,
+        constraints::ConstraintSystem,
+        gate::CircuitGate,
+        polynomials::{generic::GenericGateSpec, permutation::ZK_ROWS},
         wires::Wire,
     };
+    use ark_ff::UniformRand;
     use array_init::array_init;
     use mina_curves::pasta::fp::Fp;
+    use rand::{prelude::StdRng, SeedableRng};
 
     #[test]
     #[should_panic]
@@ -2260,5 +2277,22 @@ pub mod test {
 
         // this should panic as we don't have a domain large enough
         expr.evaluations(&env);
+    }
+
+    #[test]
+    fn test_unnormalized_lagrange_basis() {
+        let domain = EvaluationDomains::<Fp>::create(2usize.pow(10) + ZK_ROWS as usize)
+            .expect("failed to create evaluation domain");
+        let rng = &mut StdRng::from_seed([17u8; 32]);
+
+        // Check that both ways of computing lagrange basis give the same result
+        let d1_size: i32 = domain.d1.size().try_into().expect("domain size too big");
+        for i in 1..d1_size {
+            let pt = Fp::rand(rng);
+            assert_eq!(
+                unnormalized_lagrange_basis(&domain.d1, d1_size - i, &pt),
+                unnormalized_lagrange_basis(&domain.d1, -i, &pt)
+            );
+        }
     }
 }

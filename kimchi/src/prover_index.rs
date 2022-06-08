@@ -10,7 +10,6 @@ use crate::linearization::expr_linearization;
 use ark_ff::PrimeField;
 use ark_poly::EvaluationDomain;
 use commitment_dlog::{commitment::CommitmentCurve, srs::SRS};
-use o1_utils::types::fields::*;
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
@@ -22,16 +21,16 @@ use std::sync::Arc;
 //~spec:startcode
 pub struct ProverIndex<G: CommitmentCurve> {
     /// constraints system polynomials
-    #[serde(bound = "ConstraintSystem<ScalarField<G>>: Serialize + DeserializeOwned")]
-    pub cs: ConstraintSystem<ScalarField<G>>,
+    #[serde(bound = "ConstraintSystem<G::ScalarField>: Serialize + DeserializeOwned")]
+    pub cs: ConstraintSystem<G::ScalarField>,
 
     /// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
     #[serde(skip)]
-    pub linearization: Linearization<Vec<PolishToken<ScalarField<G>>>>,
+    pub linearization: Linearization<Vec<PolishToken<G::ScalarField>>>,
 
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
-    pub powers_of_alpha: Alphas<ScalarField<G>>,
+    pub powers_of_alpha: Alphas<G::ScalarField>,
 
     /// polynomial commitment keys
     #[serde(skip)]
@@ -45,7 +44,7 @@ pub struct ProverIndex<G: CommitmentCurve> {
 
     /// random oracle argument parameters
     #[serde(skip)]
-    pub fq_sponge_params: ArithmeticSpongeParams<BaseField<G>>,
+    pub fq_sponge_params: ArithmeticSpongeParams<G::BaseField>,
 }
 //~spec:endcode
 
@@ -55,9 +54,9 @@ where
 {
     /// this function compiles the index from constraints
     pub fn create(
-        mut cs: ConstraintSystem<ScalarField<G>>,
-        fq_sponge_params: ArithmeticSpongeParams<BaseField<G>>,
-        endo_q: ScalarField<G>,
+        mut cs: ConstraintSystem<G::ScalarField>,
+        fq_sponge_params: ArithmeticSpongeParams<G::BaseField>,
+        endo_q: G::ScalarField,
         srs: Arc<SRS<G>>,
     ) -> Self {
         let max_poly_size = srs.g.len();
@@ -71,7 +70,6 @@ where
 
         // pre-compute the linearization
         let (linearization, powers_of_alpha) = expr_linearization(
-            cs.domain.d1,
             cs.chacha8.is_some(),
             !cs.range_check_selector_polys.is_empty(),
             cs.lookup_constraint_system
@@ -101,7 +99,7 @@ pub mod testing {
     use super::*;
     use crate::circuits::{
         gate::CircuitGate,
-        lookup::{runtime_tables::RuntimeTableConfiguration, tables::LookupTable},
+        lookup::{runtime_tables::RuntimeTableCfg, tables::LookupTable},
     };
     use ark_poly::EvaluationDomain;
     use commitment_dlog::srs::endos;
@@ -111,19 +109,17 @@ pub mod testing {
         gates: Vec<CircuitGate<Fp>>,
         public: usize,
         lookup_tables: Vec<LookupTable<Fp>>,
-        runtime_tables: Option<Vec<RuntimeTableConfiguration>>,
+        runtime_tables: Option<Vec<RuntimeTableCfg<Fp>>>,
     ) -> ProverIndex<Affine> {
         let fp_sponge_params = oracle::pasta::fp_kimchi::params();
 
         // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
-        let cs = ConstraintSystem::<Fp>::create(
-            gates,
-            lookup_tables,
-            runtime_tables,
-            fp_sponge_params,
-            public,
-        )
-        .unwrap();
+        let cs = ConstraintSystem::<Fp>::create(gates, fp_sponge_params)
+            .lookup(lookup_tables)
+            .runtime(runtime_tables)
+            .public(public)
+            .build()
+            .unwrap();
         let mut srs = SRS::<Affine>::create(cs.domain.d1.size());
         srs.add_lagrange_basis(cs.domain.d1);
         let srs = Arc::new(srs);

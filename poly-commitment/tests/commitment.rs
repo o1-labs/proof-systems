@@ -2,7 +2,7 @@ use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use colored::Colorize;
 use commitment_dlog::{
-    commitment::{BatchEvaluationProof, CommitmentCurve, Evaluation, PolyComm},
+    commitment::{BatchEvaluationProof, BlindedCommitment, CommitmentCurve, Evaluation, PolyComm},
     evaluation_proof::OpeningProof,
     srs::SRS,
 };
@@ -143,7 +143,10 @@ where
 
             // create commitments for each polynomial, and evaluate each polynomial at the 7 random points
             let timer = Instant::now();
-            let (chunked_commitment, chunked_blinding) = srs.commit(&poly, bound, &mut rng);
+            let BlindedCommitment {
+                commitment: chunked_commitment,
+                blinders: chunked_blinding,
+            } = srs.commit(&poly, bound, &mut rng);
             time_commit += timer.elapsed();
 
             let mut chunked_evals = vec![];

@@ -7,5 +7,6 @@ mod generic;
 mod lookup;
 mod poseidon;
 mod recursion;
+mod serde;
 mod turshi;
 mod varbasemul;
