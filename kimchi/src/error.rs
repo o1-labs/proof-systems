@@ -54,6 +54,12 @@ pub enum VerifyError {
 
     #[error("runtime tables are used, but missing from the proof")]
     IncorrectRuntimeProof,
+
+    #[error("using public input of size {0}, expected of size {1}")]
+    InvalidPublicInputSize(usize, usize),
+
+    #[error("received {0} recursion challenges, expected {1}")]
+    InvalidRecursionChallenges(usize, usize),
 }
 
 /// Errors that can arise when preparing the setup

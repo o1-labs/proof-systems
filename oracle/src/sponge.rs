@@ -152,13 +152,14 @@ where
         }
     }
 
+    /// Absorb a scalar-field element
     fn absorb_fr(&mut self, x: &[P::ScalarField]) {
         self.last_squeezed = vec![];
 
         x.iter().for_each(|x| {
             let bits = x.into_repr().to_bits_le();
 
-            // absorb
+            // if the scalar field is smaller, then we can just absorb the element
             if <P::ScalarField as PrimeField>::Params::MODULUS
                 < <P::BaseField as PrimeField>::Params::MODULUS.into()
             {
@@ -167,6 +168,7 @@ where
                 )
                 .expect("padding code has a bug")]);
             } else {
+                // if the scalar field is bigger, we absorb the low bit separately
                 let low_bit = if bits[0] {
                     P::BaseField::one()
                 } else {

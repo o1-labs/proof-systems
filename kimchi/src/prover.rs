@@ -191,6 +191,15 @@ where
         //~ 1. Setup the Fq-Sponge.
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
 
+        //~ 1. Absorb the verifier index
+        let verifier_index = index.verifier_index();
+        verifier_index.absorb(&mut fq_sponge);
+
+        //~ 1. If recursion commitments are passed, absorb them
+        for RecursionChallenge { comm, .. } in &prev_challenges {
+            fq_sponge.absorb_g(&comm.unshifted);
+        }
+
         //~ 1. Compute the negated public input polynomial as
         //~    the polynomial that evaluates to $-p_i$ for the first `public_input_size` values of the domain,
         //~    and $0$ for the rest.
@@ -1033,6 +1042,13 @@ where
 
         //~ 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
         fr_sponge.absorb(&ft_eval1);
+
+        //~ 1. If recursion challenges are passed, absorb them
+        for RecursionChallenge { chals, .. } in &prev_challenges {
+            for chal in chals {
+                fr_sponge.absorb(chal);
+            }
+        }
 
         //~ 1. Sample $v'$ with the Fr-Sponge
         let v_chal = fr_sponge.challenge();

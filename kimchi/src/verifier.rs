@@ -63,6 +63,7 @@ impl<G: CommitmentCurve> ProverProof<G>
 where
     G::BaseField: PrimeField,
 {
+    /// ?
     pub fn prev_chal_evals(
         &self,
         index: &VerifierIndex<G>,
@@ -116,6 +117,7 @@ where
         &self,
         index: &VerifierIndex<G>,
         p_comm: &PolyComm<G>,
+        proof: &ProverProof<G>,
     ) -> Result<OraclesResult<G, EFqSponge>> {
         //~
         //~ #### Fiat-Shamir argument
@@ -126,6 +128,25 @@ where
 
         //~ 1. Setup the Fq-Sponge.
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
+
+        //~ 1. Absorb the verifier index
+        index.absorb(&mut fq_sponge);
+
+        //~ 1. If recursion challenges are set in the verifier index:
+        if index.recursion_challenges > 0 {
+            //~~ - check that the right number of challenges was passed
+            if proof.prev_challenges.len() != index.recursion_challenges {
+                return Err(VerifyError::InvalidRecursionChallenges(
+                    proof.prev_challenges.len(),
+                    index.recursion_challenges,
+                ));
+            }
+
+            //~~ - absorb the recursion commitments
+            for RecursionChallenge { comm, .. } in &proof.prev_challenges {
+                fq_sponge.absorb_g(&comm.unshifted);
+            }
+        }
 
         //~ 1. Absorb the commitment of the public input polynomial with the Fq-Sponge.
         fq_sponge.absorb_g(&p_comm.unshifted);
@@ -283,6 +304,13 @@ where
 
         //~ 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
         fr_sponge.absorb(&self.ft_eval1);
+
+        //~ 1. If recursion challenges are in the proof, absorb them
+        for RecursionChallenge { chals, .. } in &proof.prev_challenges {
+            for chal in chals {
+                fr_sponge.absorb(chal);
+            }
+        }
 
         //~ 1. Sample $v'$ with the Fr-Sponge.
         let v_chal = fr_sponge.challenge();
@@ -489,6 +517,14 @@ where
     //~ Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
     //~
 
+    //~ 1. Enforce the size of the public input
+    if proof.public.len() != index.public_input_size {
+        return Err(VerifyError::InvalidPublicInputSize(
+            proof.public.len(),
+            index.public_input_size,
+        ));
+    }
+
     //~ 1. Commit to the negated public input polynomial.
     let lgr_comm = index
         .srs()
@@ -518,7 +554,7 @@ where
         zeta1: zeta_to_domain_size,
         ft_eval0,
         ..
-    } = proof.oracles::<EFqSponge, EFrSponge>(index, &p_comm)?;
+    } = proof.oracles::<EFqSponge, EFrSponge>(index, &p_comm, proof)?;
 
     //~ 1. Combine the chunked polynomials' evaluations
     //~    (TODO: most likely only the quotient polynomial is chunked)

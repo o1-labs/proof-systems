@@ -20,6 +20,7 @@ use commitment_dlog::{
 };
 use once_cell::sync::OnceCell;
 use oracle::poseidon::ArithmeticSpongeParams;
+use oracle::FqSponge;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::io::SeekFrom::Start;
@@ -66,6 +67,12 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     /// polynomial commitment keys
     #[serde(skip)]
     pub srs: OnceCell<Arc<SRS<G>>>,
+
+    /// expected size of the public input
+    pub public_input_size: usize,
+
+    /// Recursion challenges from previous proof (if any)
+    pub recursion_challenges: usize,
 
     // index polynomial commitments
     /// permutation commitment array
@@ -183,6 +190,9 @@ where
                 cell
             },
 
+            public_input_size: self.cs.public,
+            recursion_challenges: todo!(),
+
             sigma_comm: array_init(|i| self.srs.commit_non_hiding(&self.cs.sigmam[i], None)),
             coefficients_comm: array_init(|i| {
                 self.srs
@@ -248,6 +258,58 @@ impl<G: CommitmentCurve> VerifierIndex<G>
 where
     G::BaseField: PrimeField,
 {
+    ///
+    // TODO: this is highly error-prone...
+    pub fn absorb<EFqSponge>(&self, sponge: &mut EFqSponge)
+    where
+        EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
+    {
+        // absorb all the commitments
+        let commitments = self
+            .sigma_comm
+            .iter()
+            .chain(&self.coefficients_comm)
+            .chain([&self.generic_comm])
+            .chain([&self.psm_comm])
+            .chain([&self.complete_add_comm])
+            .chain([&self.mul_comm])
+            .chain([&self.emul_comm])
+            .chain([&self.endomul_scalar_comm])
+            .chain(self.chacha_comm.iter().flatten())
+            .chain(&self.range_check_comm);
+
+        for commitment in commitments {
+            sponge.absorb_g(&commitment.unshifted);
+        }
+
+        // absorb all the lookup commitments
+        if let Some(lcs) = &self.lookup_index {
+            let commitments = lcs
+                .lookup_table
+                .iter()
+                .chain(lcs.lookup_selectors.chacha.iter())
+                .chain(lcs.lookup_selectors.chacha_final.iter())
+                .chain(lcs.lookup_selectors.lookup_gate.iter())
+                .chain(lcs.lookup_selectors.range_check_gate.iter())
+                .chain(lcs.table_ids.iter())
+                .chain(lcs.runtime_tables_selector.iter());
+
+            for commitment in commitments {
+                sponge.absorb_g(&commitment.unshifted);
+            }
+
+            // TODO: should we absorb:
+            // - lookup_used
+            // - max_joint_size
+        }
+
+        // TODO: should we absorb:
+        // - self.max_poly_size
+        // - self.recursion_challenges
+        // - self.linearization
+        // - self.powers_of_alpha
+    }
+
     /// Gets srs from [VerifierIndex] lazily
     pub fn srs(&self) -> &Arc<SRS<G>> {
         self.srs.get_or_init(|| {
