@@ -1,1 +1,0 @@
-initSidebarItems({"mod":[["fields","Fields prologue"]],"type":[["BaseField","Alias to refer to the base field of a curve."],["ScalarField","Alias to refer to the scalar field of a curve."]]});

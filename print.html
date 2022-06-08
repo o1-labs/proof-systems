@@ -4234,16 +4234,16 @@ only if a table with an ID different from zero was used.</p>
 These pre-computations are optimizations, in the context of normal proofs, but they are necessary for recursion.</p>
 <pre><code class="language-rs">pub struct ProverIndex&lt;G: CommitmentCurve&gt; {
     /// constraints system polynomials
-    #[serde(bound = &quot;ConstraintSystem&lt;ScalarField&lt;G&gt;&gt;: Serialize + DeserializeOwned&quot;)]
-    pub cs: ConstraintSystem&lt;ScalarField&lt;G&gt;&gt;,
+    #[serde(bound = &quot;ConstraintSystem&lt;G::ScalarField&gt;: Serialize + DeserializeOwned&quot;)]
+    pub cs: ConstraintSystem&lt;G::ScalarField&gt;,
 
     /// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
     #[serde(skip)]
-    pub linearization: Linearization&lt;Vec&lt;PolishToken&lt;ScalarField&lt;G&gt;&gt;&gt;&gt;,
+    pub linearization: Linearization&lt;Vec&lt;PolishToken&lt;G::ScalarField&gt;&gt;&gt;,
 
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
-    pub powers_of_alpha: Alphas&lt;ScalarField&lt;G&gt;&gt;,
+    pub powers_of_alpha: Alphas&lt;G::ScalarField&gt;,
 
     /// polynomial commitment keys
     #[serde(skip)]
@@ -4257,7 +4257,7 @@ These pre-computations are optimizations, in the context of normal proofs, but t
 
     /// random oracle argument parameters
     #[serde(skip)]
-    pub fq_sponge_params: ArithmeticSpongeParams&lt;BaseField&lt;G&gt;&gt;,
+    pub fq_sponge_params: ArithmeticSpongeParams&lt;G::BaseField&gt;,
 }
 </code></pre>
 <h3 id="verifier-index"><a class="header" href="#verifier-index">Verifier Index</a></h3>
@@ -4289,7 +4289,7 @@ pub struct LookupVerifierIndex&lt;G: CommitmentCurve&gt; {
 pub struct VerifierIndex&lt;G: CommitmentCurve&gt; {
     /// evaluation domain
     #[serde_as(as = &quot;o1_utils::serialization::SerdeAs&quot;)]
-    pub domain: D&lt;ScalarField&lt;G&gt;&gt;,
+    pub domain: D&lt;G::ScalarField&gt;,
     /// maximal size of polynomial section
     pub max_poly_size: usize,
     /// maximal size of the quotient polynomial according to the supported constraints
@@ -4338,32 +4338,32 @@ pub struct VerifierIndex&lt;G: CommitmentCurve&gt; {
 
     /// wire coordinate shifts
     #[serde_as(as = &quot;[o1_utils::serialization::SerdeAs; PERMUTS]&quot;)]
-    pub shift: [ScalarField&lt;G&gt;; PERMUTS],
+    pub shift: [G::ScalarField; PERMUTS],
     /// zero-knowledge polynomial
     #[serde(skip)]
-    pub zkpm: OnceCell&lt;DensePolynomial&lt;ScalarField&lt;G&gt;&gt;&gt;,
+    pub zkpm: OnceCell&lt;DensePolynomial&lt;G::ScalarField&gt;&gt;,
     // TODO(mimoo): isn't this redundant with domain.d1.group_gen ?
     /// domain offset for zero-knowledge
     #[serde(skip)]
-    pub w: OnceCell&lt;ScalarField&lt;G&gt;&gt;,
+    pub w: OnceCell&lt;G::ScalarField&gt;,
     /// endoscalar coefficient
     #[serde(skip)]
-    pub endo: ScalarField&lt;G&gt;,
+    pub endo: G::ScalarField,
 
     #[serde(bound = &quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;)]
     pub lookup_index: Option&lt;LookupVerifierIndex&lt;G&gt;&gt;,
 
     #[serde(skip)]
-    pub linearization: Linearization&lt;Vec&lt;PolishToken&lt;ScalarField&lt;G&gt;&gt;&gt;&gt;,
+    pub linearization: Linearization&lt;Vec&lt;PolishToken&lt;G::ScalarField&gt;&gt;&gt;,
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
-    pub powers_of_alpha: Alphas&lt;ScalarField&lt;G&gt;&gt;,
+    pub powers_of_alpha: Alphas&lt;G::ScalarField&gt;,
 
     // random oracle argument parameters
     #[serde(skip)]
-    pub fr_sponge_params: ArithmeticSpongeParams&lt;ScalarField&lt;G&gt;&gt;,
+    pub fr_sponge_params: ArithmeticSpongeParams&lt;G::ScalarField&gt;,
     #[serde(skip)]
-    pub fq_sponge_params: ArithmeticSpongeParams&lt;BaseField&lt;G&gt;&gt;,
+    pub fq_sponge_params: ArithmeticSpongeParams&lt;G::BaseField&gt;,
 }
 </code></pre>
 <h2 id="proof-construction--verification"><a class="header" href="#proof-construction--verification">Proof Construction &amp; Verification</a></h2>
@@ -4524,15 +4524,15 @@ pub struct ProverProof&lt;G: AffineCurve&gt; {
 
     /// Two evaluations over a number of committed polynomials
     // TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }
-    pub evals: [ProofEvaluations&lt;Vec&lt;ScalarField&lt;G&gt;&gt;&gt;; 2],
+    pub evals: [ProofEvaluations&lt;Vec&lt;G::ScalarField&gt;&gt;; 2],
 
     /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
     #[serde_as(as = &quot;o1_utils::serialization::SerdeAs&quot;)]
-    pub ft_eval1: ScalarField&lt;G&gt;,
+    pub ft_eval1: G::ScalarField,
 
     /// The public input
     #[serde_as(as = &quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;)]
-    pub public: Vec&lt;ScalarField&lt;G&gt;&gt;,
+    pub public: Vec&lt;G::ScalarField&gt;,
 
     /// The challenges underlying the optional polynomials folded into the proof
     pub prev_challenges: Vec&lt;RecursionChallenge&lt;G&gt;&gt;,
@@ -4548,7 +4548,7 @@ where
 {
     /// Vector of scalar field elements
     #[serde_as(as = &quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;)]
-    pub chals: Vec&lt;ScalarField&lt;G&gt;&gt;,
+    pub chals: Vec&lt;G::ScalarField&gt;,
     /// Polynomial commitment
     pub comm: PolyComm&lt;G&gt;,
 }
