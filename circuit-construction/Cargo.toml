@@ -41,7 +41,3 @@ colored = "2.0.0"
 # benchmarks
 criterion = "0.3"
 iai = "0.1"
-
-[[bench]]
-name = "example_proof"
-harness = false

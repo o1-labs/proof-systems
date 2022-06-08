@@ -7,8 +7,7 @@ use groupmap::GroupMap;
 use kimchi::verifier::verify;
 use mina_curves::pasta::{
     fp::Fp,
-    fq::Fq,
-    pallas::{Affine as Other, PallasParameters},
+    pallas::Affine as Other,
     vesta::{Affine, VestaParameters},
 };
 use o1_utils::types::fields::*;
@@ -63,10 +62,11 @@ pub fn circuit<
 
 const PUBLIC_INPUT_LENGTH: usize = 3;
 
-fn main() {
+#[test]
+fn test_example_circuit() {
     // create SRS
     let srs = {
-        let mut srs = SRS::<Affine>::create(1 << 8); // 2^8 = 256
+        let mut srs = SRS::<Affine>::create(1 << 7); // 2^7 = 128
         srs.add_lagrange_basis(D::new(srs.g.len()).unwrap());
         Arc::new(srs)
     };
