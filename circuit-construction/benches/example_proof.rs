@@ -59,8 +59,6 @@ pub fn circuit<
     sys.assert_eq(actual.0, public_input[0]);
     sys.assert_eq(actual.1, public_input[1]);
     sys.assert_eq(actual_hash, public_input[2]);
-
-    sys.zk()
 }
 
 const PUBLIC_INPUT_LENGTH: usize = 3;

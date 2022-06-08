@@ -16,7 +16,6 @@ use oracle::{constants::*, permutation::full_round, poseidon::ArithmeticSpongePa
 use std::collections::HashMap;
 
 pub const GENERICS: usize = 3;
-pub const ZK_ROWS: usize = kimchi::circuits::polynomials::permutation::ZK_ROWS as usize;
 
 pub const SINGLE_GENERIC_COEFFS: usize = 5;
 pub const GENERIC_ROW_COEFFS: usize = 2 * SINGLE_GENERIC_COEFFS;
@@ -684,17 +683,6 @@ pub trait Cs<F: FftField + PrimeField> {
             row[5] = b;
 
             row[14] = self.var(|| F::zero());
-        }
-    }
-
-    fn zk(&mut self) {
-        for _ in 0..ZK_ROWS {
-            let row = array_init(|_| self.var(|| F::rand(&mut rand::thread_rng())));
-            self.gate(GateSpec {
-                typ: GateType::Zero,
-                c: vec![],
-                row,
-            });
         }
     }
 

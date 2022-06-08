@@ -168,10 +168,10 @@ where
         let length_padding = d1_size
             .checked_sub(length_witness)
             .ok_or(ProverError::NoRoomForZkInWitness)?;
-        /*
+
         if length_padding < ZK_ROWS as usize {
             return Err(ProverError::NoRoomForZkInWitness);
-        } */
+        }
 
         //~ 2. Pad the witness columns with Zero gates to make them the same length as the domain.
         //~    Then, randomize the last `ZK_ROWS` of each columns.
@@ -183,11 +183,10 @@ where
             // padding
             w.extend(std::iter::repeat(ScalarField::<G>::zero()).take(length_padding));
 
-            /*
             // zk-rows
             for row in w.iter_mut().rev().take(ZK_ROWS as usize) {
                 *row = <ScalarField<G> as UniformRand>::rand(rng);
-            } */
+            }
         }
 
         //~ 3. Setup the Fq-Sponge.
