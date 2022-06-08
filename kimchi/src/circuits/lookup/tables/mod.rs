@@ -1,6 +1,5 @@
 use ark_ff::{FftField, One, Zero};
 use commitment_dlog::PolyComm;
-use o1_utils::types::ScalarField;
 use serde::{Deserialize, Serialize};
 
 pub mod range_check;
@@ -101,8 +100,8 @@ where
 /// The function will panic if given an empty table (0 columns).
 pub fn combine_table<G>(
     columns: &[&PolyComm<G>],
-    column_combiner: ScalarField<G>,
-    table_id_combiner: ScalarField<G>,
+    column_combiner: G::ScalarField,
+    table_id_combiner: G::ScalarField,
     table_id_vector: Option<&PolyComm<G>>,
     runtime_vector: Option<&PolyComm<G>>,
 ) -> PolyComm<G>
@@ -112,7 +111,7 @@ where
     assert!(!columns.is_empty());
 
     // combine the columns
-    let mut j = ScalarField::<G>::one();
+    let mut j = G::ScalarField::one();
     let mut scalars = vec![j];
     let mut commitments = vec![columns[0]];
     for comm in columns.iter().skip(1) {

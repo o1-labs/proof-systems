@@ -6,7 +6,7 @@ use ark_ff::{FftField, Zero};
 use ark_poly::univariate::DensePolynomial;
 use array_init::array_init;
 use commitment_dlog::{commitment::PolyComm, evaluation_proof::OpeningProof};
-use o1_utils::{types::fields::*, ExtendedDensePolynomial};
+use o1_utils::ExtendedDensePolynomial;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
@@ -110,11 +110,11 @@ pub struct ProverProof<G: AffineCurve> {
 
     /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub ft_eval1: ScalarField<G>,
+    pub ft_eval1: G::ScalarField,
 
     /// The public input
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub public: Vec<ScalarField<G>>,
+    pub public: Vec<G::ScalarField>,
 
     /// The challenges underlying the optional polynomials folded into the proof
     pub prev_challenges: Vec<RecursionChallenge<G>>,
@@ -141,7 +141,7 @@ where
 {
     /// Vector of scalar field elements
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub chals: Vec<ScalarField<G>>,
+    pub chals: Vec<G::ScalarField>,
     /// Polynomial commitment
     pub comm: PolyComm<G>,
 }
@@ -149,7 +149,7 @@ where
 //~ spec:endcode
 
 impl<G: AffineCurve> RecursionChallenge<G> {
-    pub fn new(chals: Vec<ScalarField<G>>, comm: PolyComm<G>) -> RecursionChallenge<G> {
+    pub fn new(chals: Vec<G::ScalarField>, comm: PolyComm<G>) -> RecursionChallenge<G> {
         RecursionChallenge { chals, comm }
     }
 }
