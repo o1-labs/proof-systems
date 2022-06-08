@@ -12,19 +12,44 @@ use super::{Proof, CHALLENGE_LEN, COLUMNS, PERMUTS, SELECTORS};
 use crate::context::{Bounded, Context};
 use crate::transcript::{Absorb, Challenge, Msg, VarSponge};
 
-pub struct VarIPAChallenges<F: FftField + PrimeField> {
-    c: Vec<Var<F>>
+///
+pub struct VarAccumulator<G, const N: usize>
+where
+    G: AffineCurve,
+    G::BaseField: FftField + PrimeField,
+{
+    // These are split message to enable absorbing over different fields
+    pub chal: Msg<VarAccumulatorChallenges<G::ScalarField, N>>,
+    pub comm: Msg<[VarPoint<G>; N]>,
 }
 
-impl <F> VarIPAChallenges<F> where F: FftField + PrimeField {
+pub struct VarAccumulatorChallenges<F: FftField + PrimeField, const N: usize>([Var<F>; N]);
+
+impl<F, const N: usize> Absorb<F> for VarAccumulatorChallenges<F, N>
+where
+    F: FftField + PrimeField,
+{
+    fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut VarSponge<F>) {
+        sponge.absorb(cs, &self.0);
+    }
+}
+
+impl<F, const N: usize> VarAccumulatorChallenges<F, N>
+where
+    F: FftField + PrimeField,
+{
     /// PC_DL.SuccinctCheck, Step 8
     /// Evaluate the h(X) polynomial (defined by the challenges )
-    /// 
+    ///
     /// h(X) = \prod_{i = 0}^{n} (1 + c_{n-i} X^{2^i})
-    /// 
+    ///
     /// Evalute h(X) at x.
-    pub fn eval_h<C: Cs<F>>(&self, cs: &mut C, x: Var<F>) -> VarOpen<F, 1> {    
-        assert_ne!(self.c.len(), 0, "h is undefined for the empty challenge list");
+    pub fn eval_h<C: Cs<F>>(&self, cs: &mut C, x: Var<F>) -> VarOpen<F, 1> {
+        assert_ne!(
+            self.0.len(),
+            0,
+            "h is undefined for the empty challenge list"
+        );
 
         let one = cs.constant(F::one());
 
@@ -32,19 +57,19 @@ impl <F> VarIPAChallenges<F> where F: FftField + PrimeField {
         let mut prod = one; // junk (value does not matter)
 
         // enumrate the challenges c in reverse order: c_{n - i}
-        for (i, ci) in self.c.iter().rev().cloned().enumerate() {
-
+        for (i, ci) in self.0.iter().rev().cloned().enumerate() {
             // compute X^{2^i}
-            xpow = if i == 0 { x } else { cs.mul(xpow, xpow)};
+            xpow = if i == 0 { x } else { cs.mul(xpow, xpow) };
 
-            // compute 1 + ci * X^{2^i} 
-            let term = cs.add(one, if i == 0 { ci } else { cs.mul(ci, xpow) });
+            // compute 1 + ci * X^{2^i}
+            let term = if i == 0 { ci } else { cs.mul(ci, xpow) };
+            let term = cs.add(one, term);
 
             // multiply into running product
             prod = cs.mul(prod, term);
         }
 
-        VarOpen{ chunks: [prod] }
+        VarOpen { chunks: [prod] }
     }
 }
 
@@ -138,9 +163,12 @@ pub struct VarOpen<F: FftField + PrimeField, const C: usize> {
 }
 
 // For exactly one chunk, we can use a polynomial opening as a variable
-impl <F> AsRef<Var<F>> for VarOpen<F, 1> where F: FftField + PrimeField {
+impl<F> AsRef<Var<F>> for VarOpen<F, 1>
+where
+    F: FftField + PrimeField,
+{
     fn as_ref(&self) -> &Var<F> {
-        &self.chunks[1]
+        &self.chunks[0]
     }
 }
 
@@ -151,14 +179,14 @@ impl<F: FftField + PrimeField, const C: usize> AsRef<[Var<F>]> for VarOpen<F, C>
     }
 }
 
-impl <F> Into<VarOpen<F, 1>> for Var<F> where F: FftField + PrimeField {
+impl<F> Into<VarOpen<F, 1>> for Var<F>
+where
+    F: FftField + PrimeField,
+{
     fn into(self) -> VarOpen<F, 1> {
-        VarOpen {
-            chunks: [self]
-        }
+        VarOpen { chunks: [self] }
     }
 }
-
 
 /// Add constraints for evaluating a polynomial
 ///
@@ -282,24 +310,33 @@ impl<F: FftField + PrimeField> Absorb<F> for VarEvaluations<F> {
     }
 }
 
-///
-///
-/// WARNING: Make sure this only contains Msg types
-/// (or structs of Msg types)
-pub struct VarProof<A>
+pub struct Accumulator<G, const B: usize, const N: usize>
 where
-    A: AffineCurve,
-    A::BaseField: FftField + PrimeField,
+    G: AffineCurve,
+    G::BaseField: FftField + PrimeField,
 {
-    _ph: PhantomData<A>,
-    pub commitments: VarCommitments<A>,
-    pub ft_eval1: Msg<VarOpen<A::ScalarField, 1>>, // THIS MUST BE INCLUDED IN PUBLIC INPUT!
-    pub evals: Msg<VarEvaluations<A::ScalarField>>,
-    pub prev_challenges: VarIPAChallenges<A::ScalarField>,
-    
+    // all the challenges
+    pub chal: Msg<[VarAccumulatorChallenges<G::ScalarField, N>; B]>,
+
+    // all the commitments
+    pub comm: Msg<[[VarPoint<G>; N]; B]>,
 }
 
-impl<A> VarProof<A>
+/// WARNING: Make sure this only contains Msg types
+/// (or structs of Msg types)
+pub struct VarProof<G, const B: usize>
+where
+    G: AffineCurve,
+    G::BaseField: FftField + PrimeField,
+{
+    _ph: PhantomData<G>,
+    pub commitments: VarCommitments<G>,
+    pub ft_eval1: Msg<VarOpen<G::ScalarField, 1>>, // THIS MUST BE INCLUDED IN PUBLIC INPUT!
+    pub evals: Msg<VarEvaluations<G::ScalarField>>,
+    pub prev_challenges: Accumulator<G, B, 16>, // maybe change the name of this field?
+}
+
+impl<A, const B: usize> VarProof<A, B>
 where
     A: AffineCurve,
     A::BaseField: FftField + PrimeField,

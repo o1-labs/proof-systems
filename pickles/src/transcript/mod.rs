@@ -77,6 +77,38 @@ impl<T> From<T> for Msg<T> {
     }
 }
 
+pub trait Receivable<F: FftField + PrimeField> {
+    type Dst;
+    fn unpack<C: Cs<F>>(self, cs: &mut C, sponge: &mut VarSponge<F>) -> Self::Dst;
+}
+
+impl<F, H> Receivable<F> for Msg<H>
+where
+    F: FftField + PrimeField,
+    H: Absorb<F>,
+{
+    type Dst = H;
+
+    fn unpack<C: Cs<F>>(self, cs: &mut C, sponge: &mut VarSponge<F>) -> Self::Dst {
+        self.value.absorb(cs, sponge);
+        self.value
+    }
+}
+
+/// Convience: allows receiving a Vec of messages, or vec of vec of messages
+/// (you get the point)
+impl<F, T> Receivable<F> for Vec<T>
+where
+    F: FftField + PrimeField,
+    T: Receivable<F>,
+{
+    type Dst = Vec<T::Dst>;
+
+    fn unpack<C: Cs<F>>(self, cs: &mut C, sponge: &mut VarSponge<F>) -> Self::Dst {
+        self.into_iter().map(|m| m.unpack(cs, sponge)).collect()
+    }
+}
+
 impl<Fp, Fr, CsFp, CsFr> Arthur<Fp, Fr, CsFp, CsFr>
 where
     Fp: FftField + PrimeField,
@@ -91,7 +123,11 @@ where
     }
 
     #[must_use]
-    pub fn recv<H: Absorb<Fp>>(&mut self, ctx: &mut Context<Fp, Fr, CsFp, CsFr>, msg: Msg<H>) -> H {
+    pub fn recv<R: Receivable<Fp>>(
+        &mut self,
+        ctx: &mut Context<Fp, Fr, CsFp, CsFr>,
+        msg: R,
+    ) -> R::Dst {
         self.inner.as_mut().unwrap().recv(ctx, msg)
     }
 
@@ -159,10 +195,17 @@ where
 
     /// Receive a message from the prover
     #[must_use]
-    fn recv<H: Absorb<Fp>>(&mut self, ctx: &mut Context<Fp, Fr, CsFp, CsFr>, msg: Msg<H>) -> H {
+    fn recv_old<H: Absorb<Fp>>(&mut self, ctx: &mut Context<Fp, Fr, CsFp, CsFr>, msg: Msg<H>) -> H {
         self.fp.merged = false; // state updated since last squeeze
         msg.value.absorb(&mut ctx.fp.cs, &mut self.fp.sponge);
         msg.value
+    }
+
+    /// Receive a message from the prover
+    #[must_use]
+    fn recv<R: Receivable<Fp>>(&mut self, ctx: &mut Context<Fp, Fr, CsFp, CsFr>, msg: R) -> R::Dst {
+        self.fp.merged = false; // state updated since last squeeze
+        msg.unpack(&mut ctx.fp.cs, &mut self.fp.sponge)
     }
 
     /// Generate a challenge over the current field

@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 ark-ff = { version = "0.3.0", features = [ "parallel", "asm" ] }
 ark-ec = { version = "0.3.0", features = [ "parallel" ] }
+ark-poly = { version = "0.3.0", features = [ "parallel" ] }
 commitment_dlog = { path = "../poly-commitment" }
 groupmap = { path = "../groupmap" }
 mina-curves = { path = "../curves" }
