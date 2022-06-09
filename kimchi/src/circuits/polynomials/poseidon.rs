@@ -35,7 +35,6 @@ use std::marker::PhantomData;
 use std::ops::Range;
 use CurrOrNext::{Curr, Next};
 
-use crate::circuits::constraints::ConstraintSystem;
 use crate::circuits::polynomial::COLUMNS;
 use crate::circuits::wires::{GateWires, Wire};
 
@@ -137,7 +136,7 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
         row: usize,
         // TODO(mimoo): we should just pass two rows instead of the whole witness
         witness: &[Vec<F>; COLUMNS],
-        cs: &ConstraintSystem<F>,
+        scalar_sponge_params: &ArithmeticSpongeParams<F>,
     ) -> Result<(), String> {
         ensure_eq!(
             self.typ,
@@ -163,7 +162,7 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
 
         // for each round, check that the permutation was applied correctly
         for round in 0..ROUNDS_PER_ROW {
-            for (i, mds_row) in cs.fr_sponge_params.mds.iter().enumerate() {
+            for (i, mds_row) in scalar_sponge_params.mds.iter().enumerate() {
                 // i-th(new_state) = i-th(rc) + mds(sbox(state))
                 let state = &states[round];
                 let mut new_state = rc[round][i];

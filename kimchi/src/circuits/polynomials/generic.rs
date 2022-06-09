@@ -491,11 +491,12 @@ pub mod testing {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::circuits::wires::COLUMNS;
+    use crate::{circuits::wires::COLUMNS, prover_index::ProverIndex};
     use ark_ff::{UniformRand, Zero};
     use ark_poly::{EvaluationDomain, Polynomial};
     use array_init::array_init;
-    use mina_curves::pasta::fp::Fp;
+    use commitment_dlog::srs::{endos, SRS};
+    use mina_curves::pasta::{fp::Fp, pallas, vesta::Affine};
     use rand::SeedableRng;
 
     #[test]
@@ -511,8 +512,16 @@ mod tests {
         let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![Fp::zero(); n]);
         testing::fill_in_witness(0, &mut witness, &[]);
 
-        // make sure we're done filling the witness correctly
-        cs.verify(&witness, &[]).unwrap();
+        let cs = {
+            let scalar_sponge_params = oracle::pasta::fp_kimchi::params();
+            let srs = SRS::<Affine>::create(cs.domain.d1.size(), scalar_sponge_params);
+            let fq_sponge_params = oracle::pasta::fq_kimchi::params();
+            let (endo_q, _endo_r) = endos::<pallas::Affine>();
+            let prover = ProverIndex::create(cs, fq_sponge_params, endo_q, srs.into());
+            // make sure we're done filling the witness correctly
+            prover.verify(&witness, &[]).unwrap();
+            prover.cs
+        };
 
         // generate witness polynomials
         let witness_evals: [Evaluations<Fp, D<Fp>>; COLUMNS] =

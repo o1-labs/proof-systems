@@ -122,10 +122,6 @@ pub struct ConstraintSystem<F: FftField> {
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub endo: F,
 
-    /// random oracle argument parameters
-    #[serde(skip)]
-    pub fr_sponge_params: ArithmeticSpongeParams<F>,
-
     /// lookup constraint system
     #[serde(bound = "LookupConstraintSystem<F>: Serialize + DeserializeOwned")]
     pub lookup_constraint_system: Option<LookupConstraintSystem<F>>,
@@ -148,7 +144,6 @@ pub enum GateError {
 
 pub struct Builder<F: FftField> {
     gates: Vec<CircuitGate<F>>,
-    sponge_params: ArithmeticSpongeParams<F>,
     public: usize,
     lookup_tables: Vec<LookupTable<F>>,
     runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
@@ -168,13 +163,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// 1. Create your instance of your builder for the constraint system using `crate(gates, sponge params)`
     /// 2. Iterativelly invoke any desired number of steps: `public(), lookup(), runtime(), precomputations()``
     /// 3. Finally call the `build()` method and unwrap the `Result` to obtain your `ConstraintSystem`
-    pub fn create(
-        gates: Vec<CircuitGate<F>>,
-        sponge_params: ArithmeticSpongeParams<F>,
-    ) -> Builder<F> {
+    pub fn create(gates: Vec<CircuitGate<F>>) -> Builder<F> {
         Builder {
             gates,
-            sponge_params,
             public: 0,
             lookup_tables: vec![],
             runtime_tables: None,
@@ -197,7 +188,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// assignements (witness) against the constraints
     ///     witness: wire assignement witness
     ///     RETURN: verification status
-    pub fn verify(&self, witness: &[Vec<F>; COLUMNS], public: &[F]) -> Result<(), GateError> {
+    pub(crate) fn verify(
+        &self,
+        witness: &[Vec<F>; COLUMNS],
+        public: &[F],
+        scalar_sponge_params: &ArithmeticSpongeParams<F>,
+    ) -> Result<(), GateError> {
         // pad the witness
         let pad = vec![F::zero(); self.domain.d1.size() - witness[0].len()];
         let witness: [Vec<F>; COLUMNS] = array_init(|i| {
@@ -239,7 +235,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             }
 
             // check the gate's satisfiability
-            gate.verify(row, &witness, self, public)
+            gate.verify(row, &witness, self, public, scalar_sponge_params)
                 .map_err(|err| GateError::Custom { row, err })?;
         }
 
@@ -560,7 +556,6 @@ impl<F: FftField + SquareRootField> Builder<F> {
             gates,
             shift: shifts.shifts,
             endo,
-            fr_sponge_params: self.sponge_params,
             lookup_constraint_system,
             precomputations: domain_constant_evaluation,
         };
@@ -584,13 +579,10 @@ pub mod tests {
     use mina_curves::pasta::fp::Fp;
 
     impl<F: FftField + SquareRootField> ConstraintSystem<F> {
-        pub fn for_testing(
-            sponge_params: ArithmeticSpongeParams<F>,
-            gates: Vec<CircuitGate<F>>,
-        ) -> Self {
+        pub fn for_testing(gates: Vec<CircuitGate<F>>) -> Self {
             let public = 0;
             // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
-            ConstraintSystem::<F>::create(gates, sponge_params)
+            ConstraintSystem::<F>::create(gates)
                 .public(public)
                 .build()
                 .unwrap()
@@ -599,8 +591,7 @@ pub mod tests {
 
     impl ConstraintSystem<Fp> {
         pub fn fp_for_testing(gates: Vec<CircuitGate<Fp>>) -> Self {
-            let fp_sponge_params = oracle::pasta::fp_kimchi::params();
-            Self::for_testing(fp_sponge_params, gates)
+            Self::for_testing(gates)
         }
     }
 }

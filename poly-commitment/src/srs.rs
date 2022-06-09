@@ -7,6 +7,7 @@ use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
 use array_init::array_init;
 use blake2::{Blake2b512, Digest};
 use groupmap::GroupMap;
+use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::collections::HashMap;
@@ -31,6 +32,7 @@ pub struct SRS<G: CommitmentCurve> {
     /// Coefficient for the curve endomorphism
     #[serde(skip)]
     pub endo_q: G::BaseField,
+    pub scalar_sponge_params: ArithmeticSpongeParams<G::ScalarField>,
 }
 
 pub fn endos<G: CommitmentCurve>() -> (G::BaseField, G::ScalarField)
@@ -160,7 +162,10 @@ where
     }
 
     /// This function creates SRS instance for circuits with number of rows up to `depth`.
-    pub fn create(depth: usize) -> Self {
+    pub fn create(
+        depth: usize,
+        scalar_sponge_params: ArithmeticSpongeParams<G::ScalarField>,
+    ) -> Self {
         let m = G::Map::setup();
 
         let g: Vec<_> = (0..depth)
@@ -187,6 +192,7 @@ where
             lagrange_bases: HashMap::new(),
             endo_r,
             endo_q,
+            scalar_sponge_params,
         }
     }
 }

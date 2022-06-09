@@ -5,6 +5,7 @@ use ark_ff::FftField;
 use ark_ff::{bytes::ToBytes, SquareRootField};
 use num_traits::cast::ToPrimitive;
 use o1_utils::hasher::CryptoDigest;
+use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::io::{Result as IoResult, Write};
@@ -142,12 +143,13 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
         witness: &[Vec<F>; COLUMNS],
         cs: &ConstraintSystem<F>,
         public: &[F],
+        scalar_sponge_params: &ArithmeticSpongeParams<F>,
     ) -> Result<(), String> {
         use GateType::*;
         match self.typ {
             Zero => Ok(()),
             Generic => self.verify_generic(row, witness, public),
-            Poseidon => self.verify_poseidon(row, witness, cs),
+            Poseidon => self.verify_poseidon(row, witness, scalar_sponge_params),
             CompleteAdd => self.verify_complete_add(row, witness),
             VarBaseMul => self.verify_vbmul(row, witness),
             EndoMul => self.verify_endomul(row, witness, cs),

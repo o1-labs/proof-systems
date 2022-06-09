@@ -64,23 +64,20 @@ const PUBLIC_INPUT_LENGTH: usize = 3;
 #[test]
 fn test_example_circuit() {
     // create SRS
+    let proof_system_constants = fp_constants();
     let srs = {
-        let mut srs = SRS::<Affine>::create(1 << 7); // 2^7 = 128
+        let mut srs = SRS::<Affine>::create(1 << 7, proof_system_constants.poseidon.clone()); // 2^7 = 128
         srs.add_lagrange_basis(D::new(srs.g.len()).unwrap());
         Arc::new(srs)
     };
 
-    let proof_system_constants = fp_constants();
     let fq_poseidon = oracle::pasta::fq_kimchi::params();
 
     // generate circuit and index
-    let prover_index = generate_prover_index::<FpInner, _>(
-        srs,
-        &proof_system_constants,
-        &fq_poseidon,
-        PUBLIC_INPUT_LENGTH,
-        |sys, p| circuit::<_, Other, _>(&proof_system_constants, None, sys, p),
-    );
+    let prover_index =
+        generate_prover_index::<FpInner, _>(srs, &fq_poseidon, PUBLIC_INPUT_LENGTH, |sys, p| {
+            circuit::<_, Other, _>(&proof_system_constants, None, sys, p)
+        });
 
     let group_map = <Affine as CommitmentCurve>::Map::setup();
 

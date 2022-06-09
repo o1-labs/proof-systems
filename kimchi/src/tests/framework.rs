@@ -128,7 +128,7 @@ impl TestRunner {
         let witness = self.0.witness.unwrap();
 
         // verify the circuit satisfiability by the computed witness
-        prover.cs.verify(&witness, &self.0.public_inputs).unwrap();
+        prover.verify(&witness, &self.0.public_inputs).unwrap();
 
         // add the proof to the batch
         let start = Instant::now();

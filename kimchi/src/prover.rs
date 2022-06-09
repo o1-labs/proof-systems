@@ -156,10 +156,7 @@ where
         // double-check the witness
         if cfg!(debug_assertions) {
             let public = witness[0][0..index.cs.public].to_vec();
-            index
-                .cs
-                .verify(&witness, &public)
-                .expect("incorrect witness");
+            index.verify(&witness, &public).expect("incorrect witness");
         }
 
         //~ 1. Ensure we have room in the witness for the zero-knowledge rows.
@@ -594,7 +591,7 @@ where
                     gamma,
                     joint_combiner: lookup_context.joint_combiner,
                     endo_coefficient: index.cs.endo,
-                    mds: index.cs.fr_sponge_params.mds.clone(),
+                    mds: index.srs.scalar_sponge_params.mds.clone(),
                 },
                 witness: &lagrange.d8.this.w,
                 coefficient: &index.cs.coefficients8,
@@ -1034,7 +1031,7 @@ where
 
         //~ 1. Setup the Fr-Sponge
         let fq_sponge_before_evaluations = fq_sponge.clone();
-        let mut fr_sponge = EFrSponge::new(index.cs.fr_sponge_params.clone());
+        let mut fr_sponge = EFrSponge::new(index.srs.scalar_sponge_params.clone());
 
         //~ 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
         fr_sponge.absorb(&fq_sponge.digest());

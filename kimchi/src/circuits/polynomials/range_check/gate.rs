@@ -492,9 +492,7 @@ mod tests {
             next_row += 1;
         }
 
-        ConstraintSystem::create(gates, oracle::pasta::fp_kimchi::params())
-            .build()
-            .unwrap()
+        ConstraintSystem::create(gates).build().unwrap()
     }
 
     fn create_test_prover_index(
@@ -1165,7 +1163,7 @@ mod tests {
         );
 
         // Verify computed witness satisfies the circuit
-        prover_index.cs.verify(&witness, &[]).unwrap();
+        prover_index.verify(&witness, &[]).unwrap();
 
         // Generate proof
         let group_map = <pasta_curves::vesta::Affine as CommitmentCurve>::Map::setup();

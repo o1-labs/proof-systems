@@ -923,7 +923,8 @@ mod tests {
         let n = 64;
         let domain = D::<Fp>::new(n).unwrap();
 
-        let mut srs = SRS::<VestaG>::create(n);
+        let scalar_sponge_params = oracle::pasta::fp_kimchi::params();
+        let mut srs = SRS::<VestaG>::create(n, scalar_sponge_params);
         srs.add_lagrange_basis(domain);
 
         let expected_lagrange_commitments: Vec<_> = (0..n)
@@ -955,7 +956,8 @@ mod tests {
         let poly2 = DensePolynomial::<Fp>::from_coefficients_slice(&coeffs[..5]);
 
         // create an SRS
-        let srs = SRS::<VestaG>::create(20);
+        let scalar_sponge_params = oracle::pasta::fp_kimchi::params();
+        let srs = SRS::<VestaG>::create(20, scalar_sponge_params);
         let rng = &mut StdRng::from_seed([0u8; 32]);
 
         // commit the two polynomials (and upperbound the second one)

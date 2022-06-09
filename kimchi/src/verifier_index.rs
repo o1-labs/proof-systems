@@ -238,7 +238,7 @@ where
             endo: self.cs.endo,
             lookup_index,
             linearization: self.linearization.clone(),
-            fr_sponge_params: self.cs.fr_sponge_params.clone(),
+            fr_sponge_params: self.srs.scalar_sponge_params.clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),
         }
     }
@@ -251,7 +251,7 @@ where
     /// Gets srs from [VerifierIndex] lazily
     pub fn srs(&self) -> &Arc<SRS<G>> {
         self.srs.get_or_init(|| {
-            let mut srs = SRS::<G>::create(self.max_poly_size);
+            let mut srs = SRS::<G>::create(self.max_poly_size, self.fr_sponge_params.clone());
             srs.add_lagrange_basis(self.domain);
             Arc::new(srs)
         })

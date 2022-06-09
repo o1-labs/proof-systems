@@ -1,6 +1,7 @@
 //! This module implements the prover index as [ProverIndex].
 
 use crate::alphas::Alphas;
+use crate::circuits::constraints::GateError;
 use crate::circuits::{
     constraints::ConstraintSystem,
     expr::{Linearization, PolishToken},
@@ -93,6 +94,19 @@ where
             fq_sponge_params,
         }
     }
+
+    /// This function verifies the consistency of the wire
+    /// assignements (witness) against the constraints
+    ///     witness: wire assignement witness
+    ///     RETURN: verification status
+    pub fn verify(
+        &self,
+        witness: &[Vec<G::ScalarField>; COLUMNS],
+        public: &[G::ScalarField],
+    ) -> Result<(), GateError> {
+        let scalar_sponge_params = &self.srs.scalar_sponge_params;
+        self.cs.verify(witness, public, scalar_sponge_params)
+    }
 }
 
 pub mod testing {
@@ -111,16 +125,15 @@ pub mod testing {
         lookup_tables: Vec<LookupTable<Fp>>,
         runtime_tables: Option<Vec<RuntimeTableCfg<Fp>>>,
     ) -> ProverIndex<Affine> {
-        let fp_sponge_params = oracle::pasta::fp_kimchi::params();
-
         // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
-        let cs = ConstraintSystem::<Fp>::create(gates, fp_sponge_params)
+        let cs = ConstraintSystem::<Fp>::create(gates)
             .lookup(lookup_tables)
             .runtime(runtime_tables)
             .public(public)
             .build()
             .unwrap();
-        let mut srs = SRS::<Affine>::create(cs.domain.d1.size());
+        let scalar_sponge_params = oracle::pasta::fp_kimchi::params();
+        let mut srs = SRS::<Affine>::create(cs.domain.d1.size(), scalar_sponge_params);
         srs.add_lagrange_basis(cs.domain.d1);
         let srs = Arc::new(srs);
 

@@ -60,7 +60,7 @@ mod tests {
             serde_json::to_string(&verifier_index).expect("couldn't serialize index");
 
         // verify the circuit satisfiability by the computed witness
-        index.cs.verify(&witness, &public).unwrap();
+        index.verify(&witness, &public).unwrap();
 
         // add the proof to the batch
         let group_map = <Affine as CommitmentCurve>::Map::setup();
@@ -73,7 +73,11 @@ mod tests {
             serde_json::from_str(&verifier_index_serialize).unwrap();
 
         // add srs with lagrange bases
-        let mut srs = SRS::<GroupAffine<VestaParameters>>::create(verifier_index.max_poly_size);
+        let scalar_sponge_params = oracle::pasta::fp_kimchi::params();
+        let mut srs = SRS::<GroupAffine<VestaParameters>>::create(
+            verifier_index.max_poly_size,
+            scalar_sponge_params,
+        );
         srs.add_lagrange_basis(verifier_index.domain);
         verifier_index_deserialize.fq_sponge_params = oracle::pasta::fq_kimchi::params();
         verifier_index_deserialize.fr_sponge_params = oracle::pasta::fp_kimchi::params();

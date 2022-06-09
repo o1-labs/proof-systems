@@ -110,7 +110,8 @@ where
     let fq_sponge = DefaultFqSponge::<VestaParameters, SC>::new(oracle::pasta::fq_kimchi::params());
 
     // create an SRS optimized for polynomials of degree 2^7 - 1
-    let srs = SRS::<Affine>::create(1 << 7);
+    let scalar_sponge_params = oracle::pasta::fp_kimchi::params();
+    let srs = SRS::<Affine>::create(1 << 7, scalar_sponge_params);
 
     // TODO: move to bench
     let mut time_commit = Duration::new(0, 0);

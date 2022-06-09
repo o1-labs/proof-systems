@@ -919,7 +919,6 @@ where
 
 pub fn generate_prover_index<C, H>(
     srs: std::sync::Arc<SRS<C::Outer>>,
-    constants: &Constants<C::InnerField>,
     poseidon_params: &ArithmeticSpongeParams<C::OuterField>,
     public: usize,
     main: H,
@@ -962,12 +961,11 @@ where
     // Other base field = self scalar field
     let (endo_q, _endo_r) = endos::<C::Inner>();
 
-    let constraint_system =
-        ConstraintSystem::<C::InnerField>::create(gates, constants.poseidon.clone())
-            .public(public)
-            .build()
-            // TODO: return a Result instead of panicking
-            .expect("couldn't construct constraint system");
+    let constraint_system = ConstraintSystem::<C::InnerField>::create(gates)
+        .public(public)
+        .build()
+        // TODO: return a Result instead of panicking
+        .expect("couldn't construct constraint system");
 
     ProverIndex::<C::Outer>::create(constraint_system, poseidon_params.clone(), endo_q, srs)
 }
