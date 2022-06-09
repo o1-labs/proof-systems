@@ -297,17 +297,7 @@ where
             for commitment in commitments {
                 sponge.absorb_g(&commitment.unshifted);
             }
-
-            // TODO: should we absorb:
-            // - lookup_used
-            // - max_joint_size
         }
-
-        // TODO: should we absorb:
-        // - self.max_poly_size
-        // - self.recursion_challenges
-        // - self.linearization
-        // - self.powers_of_alpha
     }
 
     /// Gets srs from [VerifierIndex] lazily

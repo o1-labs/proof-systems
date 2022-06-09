@@ -63,7 +63,6 @@ impl<G: CommitmentCurve> ProverProof<G>
 where
     G::BaseField: PrimeField,
 {
-    /// ?
     pub fn prev_chal_evals(
         &self,
         index: &VerifierIndex<G>,
