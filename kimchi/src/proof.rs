@@ -88,6 +88,39 @@ pub struct ProverProof<G: AffineCurve> {
 }
 //~ spec:endcode
 
+impl<F> ProofEvaluations<F> {
+    pub fn transpose<const N: usize>(evals: [&ProofEvaluations<F>; N]) -> ProofEvaluations<[&F; N]> {
+        let has_lookup = evals.iter().all(|e| e.lookup.is_some());
+        let has_runtime = has_lookup && evals.iter().all(|e| e.lookup.as_ref().unwrap().runtime.is_some());
+
+        ProofEvaluations {
+            generic_selector: array_init(|i| &evals[i].generic_selector),
+            poseidon_selector: array_init(|i| &evals[i].poseidon_selector),
+            z: array_init(|i| &evals[i].z),
+            w: array_init(|j| array_init(|i| &evals[i].w[j])),
+            s: array_init(|j| array_init(|i| &evals[i].s[j])),
+            lookup:
+                if has_lookup {
+                    let sorted_length = evals[0].lookup.as_ref().unwrap().sorted.len();
+                    Some(
+                        LookupEvaluations {
+                            aggreg: array_init(|i| &evals[i].lookup.as_ref().unwrap().aggreg),
+                            table: array_init(|i| &evals[i].lookup.as_ref().unwrap().table),
+                            sorted: (0..sorted_length).map(|j| array_init(|i| &evals[i].lookup.as_ref().unwrap().sorted[j])).collect(),
+                            runtime:
+                                if has_runtime {
+                                    Some(array_init(|i| evals[i].lookup.as_ref().unwrap().runtime.as_ref().unwrap()))
+                                } else {
+                                    None
+                                }
+                        })
+                } else {
+                    None
+                }
+        }
+    }
+}
+
 impl<F: Zero> ProofEvaluations<F> {
     pub fn dummy_with_witness_evaluations(w: [F; COLUMNS]) -> ProofEvaluations<F> {
         ProofEvaluations {
