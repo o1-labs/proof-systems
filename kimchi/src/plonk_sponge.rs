@@ -19,7 +19,8 @@ pub trait FrSponge<Fr: Field> {
 
     /// Absorbs the given evaluations into the sponge.
     // TODO: IMO this function should be inlined in prover/verifier
-    fn absorb_evaluations(&mut self, p: &[Fr], e: &ProofEvaluations<Vec<Fr>>);
+    fn absorb_evaluations<const N: usize>(
+        &mut self, p: [&[Fr]; N], e: [&ProofEvaluations<Vec<Fr>>; N]);
 }
 
 impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
@@ -40,11 +41,16 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
         ScalarChallenge(self.squeeze(oracle::sponge::CHALLENGE_LENGTH_IN_LIMBS))
     }
 
-    fn absorb_evaluations(&mut self, p: &[Fr], e: &ProofEvaluations<Vec<Fr>>) {
+    // We absorb all evaluations of the same polynomial at the same time
+    fn absorb_evaluations<const N: usize>(&mut self, p: [&[Fr]; N], e: [&ProofEvaluations<Vec<Fr>>; N]) {
         self.last_squeezed = vec![];
-        self.sponge.absorb(p);
+        for x in p {
+            self.sponge.absorb(x);
+        }
 
-        let points = [
+        let e = ProofEvaluations::transpose(e);
+
+        let mut points = vec![
             &e.z,
             &e.generic_selector,
             &e.poseidon_selector,
@@ -71,19 +77,18 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
             &e.s[5],
         ];
 
-        for p in &points {
-            self.sponge.absorb(p);
+        if let Some(l) = e.lookup.as_ref() {
+            points.push(&l.aggreg);
+            points.push(&l.table);
+            for s in l.sorted.iter() {
+                points.push(s);
+            }
+            l.runtime.iter().for_each(|x| points.push(x));
         }
 
-        if let Some(lookup) = &e.lookup {
-            for s in &lookup.sorted {
-                self.sponge.absorb(s);
-            }
-            self.sponge.absorb(&lookup.aggreg);
-            self.sponge.absorb(&lookup.table);
-
-            if let Some(runtime_table) = &lookup.runtime {
-                self.sponge.absorb(runtime_table);
+        for p in points {
+            for x in p {
+                self.sponge.absorb(x);
             }
         }
     }
