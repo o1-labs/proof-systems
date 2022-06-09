@@ -1014,6 +1014,9 @@ where
             ]
         };
 
+        //~ 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
+        fr_sponge.absorb(&ft_eval1);
+
         //~ 1. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
         //~~ - the public polynomial
         //~~ - z
@@ -1021,12 +1024,7 @@ where
         //~~ - poseidon selector
         //~~ - the 15 register/witness
         //~~ - 6 sigmas evaluations (the last one is not evaluated)
-        for i in 0..2 {
-            fr_sponge.absorb_evaluations(&public_evals[i], &chunked_evals[i])
-        }
-
-        //~ 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
-        fr_sponge.absorb(&ft_eval1);
+        fr_sponge.absorb_evaluations([&public_evals[0], &public_evals[1]], [&chunked_evals[0], &chunked_evals[1]]);
 
         //~ 1. Sample $v'$ with the Fr-Sponge
         let v_chal = fr_sponge.challenge();
