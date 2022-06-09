@@ -72,7 +72,7 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     pub public_input_size: usize,
 
     /// Recursion challenges from previous proof (if any)
-    pub recursion_challenges: usize,
+    pub recursive_proofs: usize,
 
     // index polynomial commitments
     /// permutation commitment array
@@ -191,7 +191,7 @@ where
             },
 
             public_input_size: self.cs.public,
-            recursion_challenges: todo!(),
+            recursive_proofs: self.cs.recursive_proofs,
 
             sigma_comm: array_init(|i| self.srs.commit_non_hiding(&self.cs.sigmam[i], None)),
             coefficients_comm: array_init(|i| {

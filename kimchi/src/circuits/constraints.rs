@@ -133,6 +133,10 @@ pub struct ConstraintSystem<F: FftField> {
     /// precomputes
     #[serde(skip)]
     precomputations: OnceCell<Arc<DomainConstantEvaluations<F>>>,
+
+    /// number of proofs verified in this circuit (in case the circuit is recursive)
+    /// note: you need to make sure that this is indeed what the circuit is doing
+    pub recursive_proofs: usize,
 }
 
 /// Represents an error found when verifying a witness with a gate
@@ -153,6 +157,7 @@ pub struct Builder<F: FftField> {
     lookup_tables: Vec<LookupTable<F>>,
     runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
     precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
+    recursive_proofs: usize,
 }
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
@@ -179,6 +184,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             lookup_tables: vec![],
             runtime_tables: None,
             precomputations: None,
+            recursive_proofs: 0,
         }
     }
 
@@ -324,6 +330,14 @@ impl<F: FftField + SquareRootField> Builder<F> {
         shared_precomputations: Arc<DomainConstantEvaluations<F>>,
     ) -> Self {
         self.precomputations = Some(shared_precomputations);
+        self
+    }
+
+    /// Set up the number of proofs that are verified in this circuit.
+    /// Note that this is just metadata, and you need to make sure it matches what is done in the circuit.
+    /// If not invoked, it is `0` by default.
+    pub fn recursive_proofs(mut self, recursive_proofs: usize) -> Self {
+        self.recursive_proofs = recursive_proofs;
         self
     }
 
@@ -563,6 +577,7 @@ impl<F: FftField + SquareRootField> Builder<F> {
             fr_sponge_params: self.sponge_params,
             lookup_constraint_system,
             precomputations: domain_constant_evaluation,
+            recursive_proofs: self.recursive_proofs,
         };
 
         match self.precomputations {

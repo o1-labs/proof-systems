@@ -131,20 +131,18 @@ where
         //~ 1. Absorb the verifier index
         index.absorb(&mut fq_sponge);
 
-        //~ 1. If recursion challenges are set in the verifier index:
-        if index.recursion_challenges > 0 {
-            //~~ - check that the right number of challenges was passed
-            if proof.prev_challenges.len() != index.recursion_challenges {
-                return Err(VerifyError::InvalidRecursionChallenges(
-                    proof.prev_challenges.len(),
-                    index.recursion_challenges,
-                ));
-            }
+        //~ 1. If the verifier index expects a number of recursion challenges,
+        //~    make sure that the right number of challenges and commitments are passed in the proof,
+        if proof.prev_challenges.len() != index.recursive_proofs {
+            return Err(VerifyError::InvalidRecursionChallenges(
+                proof.prev_challenges.len(),
+                index.recursive_proofs,
+            ));
+        }
 
-            //~~ - absorb the recursion commitments
-            for RecursionChallenge { comm, .. } in &proof.prev_challenges {
-                fq_sponge.absorb_g(&comm.unshifted);
-            }
+        //~ 1. Absorb the recursion commitments.
+        for RecursionChallenge { comm, .. } in &proof.prev_challenges {
+            fq_sponge.absorb_g(&comm.unshifted);
         }
 
         //~ 1. Absorb the commitment of the public input polynomial with the Fq-Sponge.
