@@ -141,9 +141,12 @@ where
         }
 
         //~ 1. Absorb the recursion commitments.
+        let mut temp_fq_sponge = EFqSponge::new(index.fq_sponge_params.clone()); // TODO: no domain separation from the main sponge?
         for RecursionChallenge { comm, .. } in &proof.prev_challenges {
-            fq_sponge.absorb_g(&comm.unshifted);
+            temp_fq_sponge.absorb_g(&comm.unshifted);
         }
+        let digest = temp_fq_sponge.challenge_fq();
+        fq_sponge.absorb(&[digest]);
 
         //~ 1. Absorb the commitment of the public input polynomial with the Fq-Sponge.
         fq_sponge.absorb_g(&p_comm.unshifted);

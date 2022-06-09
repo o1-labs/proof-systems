@@ -138,6 +138,11 @@ where
         }
     }
 
+    fn absorb(&mut self, els: &[P::BaseField]) {
+        self.last_squeezed = vec![];
+        self.sponge.absorb(els);
+    }
+
     fn absorb_g(&mut self, g: &[GroupAffine<P>]) {
         self.last_squeezed = vec![];
         for g in g.iter() {

@@ -196,9 +196,12 @@ where
         verifier_index.absorb(&mut fq_sponge);
 
         //~ 1. If recursion commitments are passed, absorb them
+        let mut temp_fq_sponge = EFqSponge::new(index.fq_sponge_params.clone()); // TODO: no domain separation from the main sponge?
         for RecursionChallenge { comm, .. } in &prev_challenges {
-            fq_sponge.absorb_g(&comm.unshifted);
+            temp_fq_sponge.absorb_g(&comm.unshifted);
         }
+        let digest = temp_fq_sponge.challenge_fq();
+        fq_sponge.absorb(&[digest]);
 
         //~ 1. Compute the negated public input polynomial as
         //~    the polynomial that evaluates to $-p_i$ for the first `public_input_size` values of the domain,

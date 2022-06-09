@@ -8,6 +8,7 @@ use ark_ff::Field;
 
 pub trait FqSponge<Fq: Field, G, Fr> {
     fn new(p: poseidon::ArithmeticSpongeParams<Fq>) -> Self;
+    fn absorb(&mut self, els: &[Fq]);
     fn absorb_g(&mut self, g: &[G]);
     fn absorb_fr(&mut self, x: &[Fr]);
     fn challenge(&mut self) -> Fr;
