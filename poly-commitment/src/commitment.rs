@@ -6,7 +6,7 @@
 //!     producing the batched opening proof
 //! 3. Verify batch of batched opening proofs
 
-use crate::srs::SRS;
+use crate::{error::CommitmentError, srs::SRS};
 use ark_ec::{
     models::short_weierstrass_jacobian::GroupAffine as SWJAffine, msm::VariableBaseMSM,
     AffineCurve, ProjectiveCurve, SWModelParameters,
@@ -66,6 +66,16 @@ where
         let shifted = self.shifted.map(f);
         PolyComm { unshifted, shifted }
     }
+
+    /// Returns the length of the unshifted commitment.
+    pub fn len(&self) -> usize {
+        self.unshifted.len()
+    }
+
+    /// Returns `true` if the commitment is empty.
+    pub fn is_empty(&self) -> bool {
+        self.unshifted.is_empty() && self.shifted.is_none()
+    }
 }
 
 impl<A: Copy, B: Copy> PolyComm<(A, B)>
@@ -77,6 +87,30 @@ where
         let a = self.map(|(x, _)| x);
         let b = self.map(|(_, y)| y);
         (a, b)
+    }
+}
+
+impl<A: Copy + CanonicalDeserialize + CanonicalSerialize> PolyComm<A> {
+    // TODO: if all callers end up calling unwrap, just call this zip_eq and panic here (and document the panic)
+    pub fn zip<B: Copy + CanonicalDeserialize + CanonicalSerialize>(
+        &self,
+        other: &PolyComm<B>,
+    ) -> Option<PolyComm<(A, B)>> {
+        if self.unshifted.len() != other.unshifted.len() {
+            return None;
+        }
+        let unshifted = self
+            .unshifted
+            .iter()
+            .zip(other.unshifted.iter())
+            .map(|(x, y)| (*x, *y))
+            .collect();
+        let shifted = match (self.shifted, other.shifted) {
+            (Some(x), Some(y)) => Some((x, y)),
+            (None, None) => None,
+            (Some(_), None) | (None, Some(_)) => return None,
+        };
+        Some(PolyComm { unshifted, shifted })
     }
 }
 
@@ -500,6 +534,32 @@ impl<G: CommitmentCurve> SRS<G> {
             commitment,
             blinders,
         }
+    }
+
+    /// Same as [SRS::mask] except that you can pass the blinders manually.
+    pub fn mask_custom(
+        &self,
+        com: PolyComm<G>,
+        blinders: &PolyComm<G::ScalarField>,
+    ) -> Result<BlindedCommitment<G>, CommitmentError> {
+        let commitment = com
+            .zip(blinders)
+            .ok_or_else(|| CommitmentError::BlindersDontMatch(blinders.len(), com.len()))?
+            .map(|(g, b)| {
+                if g.is_zero() {
+                    // TODO: This leaks information when g is the identity!
+                    // We should change this so that we still mask in this case
+                    g
+                } else {
+                    let mut g_masked = self.h.mul(b);
+                    g_masked.add_assign_mixed(&g);
+                    g_masked.into_affine()
+                }
+            });
+        Ok(BlindedCommitment {
+            commitment,
+            blinders: blinders.clone(),
+        })
     }
 
     /// This function commits a polynomial using the SRS' basis of size `n`.

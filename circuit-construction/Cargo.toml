@@ -1,35 +1,43 @@
 [package]
-name = "commitment_dlog"
+name = "circuit-construction"
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
+
+[lib]
+path = "src/lib.rs"
+bench = false # needed for criterion (https://bheisler.github.io/criterion.rs/book/faq.html#cargo-bench-gives-unrecognized-option-errors-for-valid-command-line-options)
 
 [dependencies]
 ark-ff = { version = "0.3.0", features = [ "parallel", "asm" ] }
 ark-ec = { version = "0.3.0", features = [ "parallel" ] }
 ark-poly = { version = "0.3.0", features = [ "parallel" ] }
 ark-serialize = "0.3.0"
-
 array-init = "2.0.0"
 blake2 = "0.10.0"
-rand = "0.8.0"
-rand_core = { version = "0.6.0" }
-rayon = { version = "1" }
+num-derive = "0.3"
+num-traits = "0.2"
 itertools = "0.10.3"
+rand = "0.8.0"
+rand_core = "0.6.3"
+rayon = "1.5.0"
+rmp-serde = "1.0.0"
 serde = "1.0.130"
 serde_with = "1.10.0"
-thiserror = "1.0.31"
+thiserror = "1.0.30"
 
+commitment_dlog = { path = "../poly-commitment" }
 groupmap = { path = "../groupmap" }
 mina-curves = { path = "../curves" }
 o1-utils = { path = "../utils" }
 oracle = { path = "../oracle" }
-
-ocaml = { version = "0.22.2", optional = true }
-ocaml-gen = { path = "../ocaml/ocaml-gen", optional = true }
+kimchi = { path = "../kimchi" }
 
 [dev-dependencies]
+proptest = "1.0.0"
+proptest-derive = "0.3.0"
 colored = "2.0.0"
 
-[features]
-ocaml_types = [ "ocaml", "ocaml-gen" ]
+# benchmarks
+criterion = "0.3"
+iai = "0.1"

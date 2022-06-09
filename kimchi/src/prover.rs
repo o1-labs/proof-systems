@@ -29,6 +29,7 @@ use crate::{
     },
     prover_index::ProverIndex,
 };
+use ark_ec::ProjectiveCurve;
 use ark_ff::{FftField, Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
@@ -127,6 +128,7 @@ where
             runtime_tables,
             index,
             Vec::new(),
+            None,
         )
     }
 
@@ -140,6 +142,7 @@ where
         runtime_tables: &[RuntimeTable<G::ScalarField>],
         index: &ProverIndex<G>,
         prev_challenges: Vec<RecursionChallenge<G>>,
+        blinders: Option<[Option<PolyComm<G::ScalarField>>; COLUMNS]>,
     ) -> Result<Self> {
         // make sure that the SRS is not smaller than the domain size
         let d1_size = index.cs.domain.d1.size();
@@ -151,7 +154,7 @@ where
         let rng = &mut rand::rngs::OsRng;
 
         // double-check the witness
-        if cfg!(test) {
+        if cfg!(debug_assertions) {
             let public = witness[0][0..index.cs.public].to_vec();
             index
                 .cs
@@ -168,6 +171,7 @@ where
         let length_padding = d1_size
             .checked_sub(length_witness)
             .ok_or(ProverError::NoRoomForZkInWitness)?;
+
         if length_padding < ZK_ROWS as usize {
             return Err(ProverError::NoRoomForZkInWitness);
         }
@@ -215,15 +219,41 @@ where
         //~
         //~    Note: since the witness is in evaluation form,
         //~    we can use the `commit_evaluation` optimization.
-        let w_comm: [BlindedCommitment<G>; COLUMNS] = array_init(|i| {
-            let e = Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-                witness[i].clone(),
-                index.cs.domain.d1,
-            );
-            index
-                .srs
-                .commit_evaluations(index.cs.domain.d1, &e, None, rng)
-        });
+        let mut w_comm = vec![];
+        for col in 0..COLUMNS {
+            // witness coeff -> witness eval
+            let witness_eval =
+                Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+                    witness[col].clone(),
+                    index.cs.domain.d1,
+                );
+
+            let com = match blinders.as_ref().and_then(|b| b[col].as_ref()) {
+                // no blinders: blind the witness
+                None => index
+                    .srs
+                    .commit_evaluations(index.cs.domain.d1, &witness_eval, None, rng),
+                // blinders: blind the witness with them
+                Some(blinder) => {
+                    // TODO: make this a function rather no? mask_with_custom()
+                    let witness_com = index.srs.commit_evaluations_non_hiding(
+                        index.cs.domain.d1,
+                        &witness_eval,
+                        None,
+                    );
+                    index
+                        .srs
+                        .mask_custom(witness_com, blinder)
+                        .map_err(ProverError::WrongBlinders)?
+                }
+            };
+
+            w_comm.push(com);
+        }
+
+        let w_comm: [BlindedCommitment<G>; COLUMNS] = w_comm
+            .try_into()
+            .expect("previous loop is of the correct length");
 
         //~ 1. Absorb the witness commitments with the Fq-Sponge.
         w_comm
@@ -758,7 +788,6 @@ where
             // number of commitments in `t_comm` is less than the max size, it means that
             // the higher degree coefficients of `t` are 0.
             for _ in 0..dummies {
-                use ark_ec::ProjectiveCurve;
                 let w = <G::ScalarField as UniformRand>::rand(rng);
                 t_comm
                     .commitment
@@ -1098,7 +1127,6 @@ where
         );
 
         // if using lookup
-
         if let Some(lcs) = &index.cs.lookup_constraint_system {
             // add the sorted polynomials
             let sorted_poly = lookup_context.sorted_coeffs.as_ref().unwrap();
