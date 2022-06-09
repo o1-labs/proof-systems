@@ -253,6 +253,46 @@ pub trait Cs<F: FftField + PrimeField> {
         });
     }
 
+    // Completeness is not satisified for m = 0
+    // (the proof always fails)
+    fn inv(&mut self, elm: Var<F>) -> Var<F> {
+        // witness the inverse
+        let inv = self.var(|| match elm.val().inverse() {
+            Some(inv) => inv,
+            None => F::zero(),
+        });
+
+        //
+        let row = array_init(|i| {
+            if i == 0 {
+                elm
+            } else if i == 1 {
+                inv
+            } else {
+                self.var(|| F::zero())
+            }
+        });
+
+        // c0 =  0 :       0 * elm
+        // c1 =  0 :  +    0 * inv
+        // c2 =  0 :  + (-1) * o
+        // c3 =  1 :  +    1 * elm*inv
+        // c4 = -1 :  + (-1) 
+        //                   = 0
+        let mut c = vec![F::zero(); GENERIC_ROW_COEFFS];
+        c[3] = F::one();
+        c[4] = -F::one();
+
+        self.gate(GateSpec {
+            typ: GateType::Generic,
+            row,
+            c,
+        });
+        
+        inv
+    }
+   
+
     fn add(&mut self, m0: Var<F>, m1: Var<F>) -> Var<F> {
         let m2 = self.var(|| m0.val() + m1.val());
 
