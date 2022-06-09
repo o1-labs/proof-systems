@@ -79,8 +79,13 @@
 <span id="72">72</span>
 <span id="73">73</span>
 <span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the [ProverError] type.</span>
 
+<span class="kw">use</span> <span class="ident">commitment_dlog::error::CommitmentError</span>;
 <span class="kw">use</span> <span class="ident">thiserror::Error</span>;
 
 <span class="doccomment">/// Errors that can arise when creating a proof</span>
@@ -107,6 +112,9 @@
 
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;the runtime tables provided did not match the index&#39;s configuration&quot;</span>)]</span>
     <span class="ident">RuntimeTablesInconsistent</span>,
+
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;wrong number of custom blinders given: {0}&quot;</span>)]</span>
+    <span class="ident">WrongBlinders</span>(<span class="ident">CommitmentError</span>),
 }
 
 <span class="doccomment">/// Errors that can arise when verifying a proof</span>
@@ -154,5 +162,5 @@
     <span class="ident">SRSHasBeenSet</span>,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (5435ed691 2022-06-07)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (7466d5492 2022-06-08)" ></div>
 </body></html>

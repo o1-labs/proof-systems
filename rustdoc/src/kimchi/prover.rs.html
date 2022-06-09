@@ -1376,6 +1376,34 @@
 <span id="1369">1369</span>
 <span id="1370">1370</span>
 <span id="1371">1371</span>
+<span id="1372">1372</span>
+<span id="1373">1373</span>
+<span id="1374">1374</span>
+<span id="1375">1375</span>
+<span id="1376">1376</span>
+<span id="1377">1377</span>
+<span id="1378">1378</span>
+<span id="1379">1379</span>
+<span id="1380">1380</span>
+<span id="1381">1381</span>
+<span id="1382">1382</span>
+<span id="1383">1383</span>
+<span id="1384">1384</span>
+<span id="1385">1385</span>
+<span id="1386">1386</span>
+<span id="1387">1387</span>
+<span id="1388">1388</span>
+<span id="1389">1389</span>
+<span id="1390">1390</span>
+<span id="1391">1391</span>
+<span id="1392">1392</span>
+<span id="1393">1393</span>
+<span id="1394">1394</span>
+<span id="1395">1395</span>
+<span id="1396">1396</span>
+<span id="1397">1397</span>
+<span id="1398">1398</span>
+<span id="1399">1399</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements prover&#39;s zk-proof primitive.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -1407,6 +1435,7 @@
     },
     <span class="ident">prover_index::ProverIndex</span>,
 };
+<span class="kw">use</span> <span class="ident">ark_ec::ProjectiveCurve</span>;
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">Field</span>, <span class="ident">One</span>, <span class="ident">PrimeField</span>, <span class="ident">UniformRand</span>, <span class="ident">Zero</span>};
 <span class="kw">use</span> <span class="ident">ark_poly</span>::{
     <span class="ident">univariate::DensePolynomial</span>, <span class="ident">EvaluationDomain</span>, <span class="ident">Evaluations</span>, <span class="ident">Polynomial</span>,
@@ -1505,6 +1534,7 @@
             <span class="ident">runtime_tables</span>,
             <span class="ident">index</span>,
             <span class="ident">Vec::new</span>(),
+            <span class="prelude-val">None</span>,
         )
     }
 
@@ -1518,6 +1548,7 @@
         <span class="ident">runtime_tables</span>: <span class="kw-2">&amp;</span>[<span class="ident">RuntimeTable</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span>],
         <span class="ident">index</span>: <span class="kw-2">&amp;</span><span class="ident">ProverIndex</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
         <span class="ident">prev_challenges</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RecursionChallenge</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">blinders</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span>[<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>]<span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
         <span class="comment">// make sure that the SRS is not smaller than the domain size</span>
         <span class="kw">let</span> <span class="ident">d1_size</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span>();
@@ -1529,7 +1560,7 @@
         <span class="kw">let</span> <span class="ident">rng</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">rand::rngs::OsRng</span>;
 
         <span class="comment">// double-check the witness</span>
-        <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
+        <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">debug_assertions</span>) {
             <span class="kw">let</span> <span class="ident">public</span> <span class="op">=</span> <span class="ident">witness</span>[<span class="number">0</span>][<span class="number">0</span>..<span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">public</span>].<span class="ident">to_vec</span>();
             <span class="ident">index</span>
                 .<span class="ident">cs</span>
@@ -1546,6 +1577,7 @@
         <span class="kw">let</span> <span class="ident">length_padding</span> <span class="op">=</span> <span class="ident">d1_size</span>
             .<span class="ident">checked_sub</span>(<span class="ident">length_witness</span>)
             .<span class="ident">ok_or</span>(<span class="ident">ProverError::NoRoomForZkInWitness</span>)<span class="question-mark">?</span>;
+
         <span class="kw">if</span> <span class="ident">length_padding</span> <span class="op">&lt;</span> <span class="ident">ZK_ROWS</span> <span class="kw">as</span> <span class="ident">usize</span> {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProverError::NoRoomForZkInWitness</span>);
         }
@@ -1593,15 +1625,41 @@
         <span class="comment">//~</span>
         <span class="comment">//~    Note: since the witness is in evaluation form,</span>
         <span class="comment">//~    we can use the `commit_evaluation` optimization.</span>
-        <span class="kw">let</span> <span class="ident">w_comm</span>: [<span class="ident">BlindedCommitment</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">e</span> <span class="op">=</span> <span class="ident">Evaluations</span>::<span class="op">&lt;</span><span class="ident">G::ScalarField</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::from_vec_and_domain</span>(
-                <span class="ident">witness</span>[<span class="ident">i</span>].<span class="ident">clone</span>(),
-                <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>,
-            );
-            <span class="ident">index</span>
-                .<span class="ident">srs</span>
-                .<span class="ident">commit_evaluations</span>(<span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>, <span class="kw-2">&amp;</span><span class="ident">e</span>, <span class="prelude-val">None</span>, <span class="ident">rng</span>)
-        });
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">w_comm</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+        <span class="kw">for</span> <span class="ident">col</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">COLUMNS</span> {
+            <span class="comment">// witness coeff -&gt; witness eval</span>
+            <span class="kw">let</span> <span class="ident">witness_eval</span> <span class="op">=</span>
+                <span class="ident">Evaluations</span>::<span class="op">&lt;</span><span class="ident">G::ScalarField</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::from_vec_and_domain</span>(
+                    <span class="ident">witness</span>[<span class="ident">col</span>].<span class="ident">clone</span>(),
+                    <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>,
+                );
+
+            <span class="kw">let</span> <span class="ident">com</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">blinders</span>.<span class="ident">as_ref</span>().<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">b</span><span class="op">|</span> <span class="ident">b</span>[<span class="ident">col</span>].<span class="ident">as_ref</span>()) {
+                <span class="comment">// no blinders: blind the witness</span>
+                <span class="prelude-val">None</span> =&gt; <span class="ident">index</span>
+                    .<span class="ident">srs</span>
+                    .<span class="ident">commit_evaluations</span>(<span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>, <span class="kw-2">&amp;</span><span class="ident">witness_eval</span>, <span class="prelude-val">None</span>, <span class="ident">rng</span>),
+                <span class="comment">// blinders: blind the witness with them</span>
+                <span class="prelude-val">Some</span>(<span class="ident">blinder</span>) =&gt; {
+                    <span class="comment">// TODO: make this a function rather no? mask_with_custom()</span>
+                    <span class="kw">let</span> <span class="ident">witness_com</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">commit_evaluations_non_hiding</span>(
+                        <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>,
+                        <span class="kw-2">&amp;</span><span class="ident">witness_eval</span>,
+                        <span class="prelude-val">None</span>,
+                    );
+                    <span class="ident">index</span>
+                        .<span class="ident">srs</span>
+                        .<span class="ident">mask_custom</span>(<span class="ident">witness_com</span>, <span class="ident">blinder</span>)
+                        .<span class="ident">map_err</span>(<span class="ident">ProverError::WrongBlinders</span>)<span class="question-mark">?</span>
+                }
+            };
+
+            <span class="ident">w_comm</span>.<span class="ident">push</span>(<span class="ident">com</span>);
+        }
+
+        <span class="kw">let</span> <span class="ident">w_comm</span>: [<span class="ident">BlindedCommitment</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">w_comm</span>
+            .<span class="ident">try_into</span>()
+            .<span class="ident">expect</span>(<span class="string">&quot;previous loop is of the correct length&quot;</span>);
 
         <span class="comment">//~ 1. Absorb the witness commitments with the Fq-Sponge.</span>
         <span class="ident">w_comm</span>
@@ -2136,7 +2194,6 @@
             <span class="comment">// number of commitments in `t_comm` is less than the max size, it means that</span>
             <span class="comment">// the higher degree coefficients of `t` are 0.</span>
             <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">dummies</span> {
-                <span class="kw">use</span> <span class="ident">ark_ec::ProjectiveCurve</span>;
                 <span class="kw">let</span> <span class="ident">w</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">G::ScalarField</span> <span class="kw">as</span> <span class="ident">UniformRand</span><span class="op">&gt;</span><span class="ident">::rand</span>(<span class="ident">rng</span>);
                 <span class="ident">t_comm</span>
                     .<span class="ident">commitment</span>
@@ -2476,7 +2533,6 @@
         );
 
         <span class="comment">// if using lookup</span>
-
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">lcs</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">lookup_constraint_system</span> {
             <span class="comment">// add the sorted polynomials</span>
             <span class="kw">let</span> <span class="ident">sorted_poly</span> <span class="op">=</span> <span class="ident">lookup_context</span>.<span class="ident">sorted_coeffs</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>();
@@ -2748,5 +2804,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (5435ed691 2022-06-07)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (7466d5492 2022-06-08)" ></div>
 </body></html>

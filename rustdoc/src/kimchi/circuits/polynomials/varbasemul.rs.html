@@ -390,7 +390,6 @@
 <span id="383">383</span>
 <span id="384">384</span>
 <span id="385">385</span>
-<span id="386">386</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements short Weierstrass curve variable base scalar multiplication custom Plonk polynomials.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ```ignore</span>
@@ -608,9 +607,8 @@
     <span class="ident">output</span>: <span class="ident">CurveVar</span>,
 ) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="ident">E::Cell</span>;
-    <span class="kw">let</span> <span class="ident">double</span> <span class="op">=</span> <span class="op">|</span><span class="ident">x</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">clone</span>() <span class="op">+</span> <span class="ident">x</span>;
 
-    <span class="kw">let</span> <span class="ident">b_sign</span> <span class="op">=</span> <span class="ident">double</span>(<span class="ident">v</span>(<span class="ident">b</span>)) <span class="op">-</span> <span class="ident">E::one</span>();
+    <span class="kw">let</span> <span class="ident">b_sign</span> <span class="op">=</span> <span class="ident">v</span>(<span class="ident">b</span>).<span class="ident">double</span>() <span class="op">-</span> <span class="ident">E::one</span>();
 
     <span class="kw">let</span> <span class="ident">s1_squared</span> <span class="op">=</span> <span class="ident">cache</span>.<span class="ident">cache</span>(<span class="ident">v</span>(<span class="ident">s1</span>) <span class="op">*</span> <span class="ident">v</span>(<span class="ident">s1</span>));
 
@@ -621,7 +619,7 @@
 
     <span class="kw">let</span> <span class="ident">rx</span> <span class="op">=</span> <span class="ident">s1_squared</span>.<span class="ident">clone</span>() <span class="op">-</span> <span class="ident">v</span>(<span class="ident">input</span>.<span class="number">0</span>) <span class="op">-</span> <span class="ident">v</span>(<span class="ident">base</span>.<span class="number">0</span>);
     <span class="kw">let</span> <span class="ident">t</span> <span class="op">=</span> <span class="ident">cache</span>.<span class="ident">cache</span>(<span class="ident">v</span>(<span class="ident">input</span>.<span class="number">0</span>) <span class="op">-</span> <span class="ident">rx</span>);
-    <span class="kw">let</span> <span class="ident">u</span> <span class="op">=</span> <span class="ident">cache</span>.<span class="ident">cache</span>(<span class="ident">double</span>(<span class="ident">v</span>(<span class="ident">input</span>.<span class="number">1</span>)) <span class="op">-</span> <span class="ident">t</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">v</span>(<span class="ident">s1</span>));
+    <span class="kw">let</span> <span class="ident">u</span> <span class="op">=</span> <span class="ident">cache</span>.<span class="ident">cache</span>(<span class="ident">v</span>(<span class="ident">input</span>.<span class="number">1</span>).<span class="ident">double</span>() <span class="op">-</span> <span class="ident">t</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">v</span>(<span class="ident">s1</span>));
     <span class="comment">// s2 = u / t</span>
 
     <span class="comment">// output.x = base.x + s2^2 - s1^2</span>
@@ -649,7 +647,7 @@
     ]
 }
 
-<span class="kw">struct</span> <span class="ident">Layout</span> {
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Layout</span> {
     <span class="ident">accs</span>: [(<span class="ident">Variable</span>, <span class="ident">Variable</span>); <span class="number">6</span>],
     <span class="ident">bits</span>: [<span class="ident">Variable</span>; <span class="number">5</span>],
     <span class="ident">ss</span>: [<span class="ident">Variable</span>; <span class="number">5</span>],
@@ -778,5 +776,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (5435ed691 2022-06-07)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (7466d5492 2022-06-08)" ></div>
 </body></html>

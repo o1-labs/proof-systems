@@ -190,6 +190,7 @@
 <span id="183">183</span>
 <span id="184">184</span>
 <span id="185">185</span>
+<span id="186">186</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Follows approach of SvdW06 to construct a &quot;near injection&quot; from a field</span>
 <span class="doccomment">//! into an elliptic curve defined over that field. WB19 is also a useful</span>
 <span class="doccomment">//! reference that details several constructions which are more appropriate in other</span>
@@ -220,6 +221,7 @@
     <span class="kw">fn</span> <span class="ident">batch_to_group_x</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ts</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span>[<span class="ident">F</span>; <span class="number">3</span>]<span class="op">&gt;</span>;
 }
 
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BWParameters</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">SWModelParameters</span><span class="op">&gt;</span> {
     <span class="ident">u</span>: <span class="ident">G::BaseField</span>,
     <span class="ident">fu</span>: <span class="ident">G::BaseField</span>,
@@ -376,5 +378,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="groupmap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (5435ed691 2022-06-07)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="groupmap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (7466d5492 2022-06-08)" ></div>
 </body></html>
