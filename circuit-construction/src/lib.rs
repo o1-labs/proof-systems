@@ -184,6 +184,52 @@ pub trait Cs<F: FftField + PrimeField> {
 
     fn gate(&mut self, g: GateSpec<F>);
 
+    // Constrains: out = a_c*a + b_c*b + ab_c*a*b + constant
+    //
+    // This is primarily used together with the procedural macro, 
+    // which derives the coefficients directly from the AST!
+    fn generic_gate(&mut self, a: Var<F>, b: Var<F>, a_c: F, b_c: F, ab_c: F, constant: F) -> Var<F> {
+        let res = self.var(|| {
+            let t1 = a_c * a.val();
+            let t2 = b_c * b.val();
+            let t3 = ab_c * a.val() * b.val();
+            t1 + t2 + t3 + constant
+        });
+
+        //
+        let row = array_init(|i| {
+            if i == 0 {
+                a
+            } else if i == 1 {
+                b
+            } else if i == 2 {
+                res
+            } else {
+                self.var(|| F::zero())
+            }
+        });
+
+        // c0 =  0 :     a_c * a
+        // c1 =  0 :  +  b_c * b
+        // c2 = -1 :  + (-1) * o
+        // c3 =  1 :  + ab_c * a*b
+        // c4 =  0 :         = 0
+        let mut c = vec![F::zero(); GENERIC_ROW_COEFFS];
+        c[0] = a_c;
+        c[1] = b_c;
+        c[2] = -F::one();
+        c[3] = ab_c;
+        c[4] = constant;
+
+        self.gate(GateSpec {
+            typ: GateType::Generic,
+            row,
+            c,
+        });
+        
+        res
+    }
+
     // TODO: Optimize to use permutation argument.
     fn assert_eq(&mut self, x1: Var<F>, x2: Var<F>) {
         let row = array_init(|i| {
@@ -229,6 +275,66 @@ pub trait Cs<F: FftField + PrimeField> {
         let mut c = vec![F::zero(); GENERIC_ROW_COEFFS];
         c[0] = F::one();
         c[1] = F::one();
+        c[2] = -F::one();
+        self.gate(GateSpec {
+            typ: GateType::Generic,
+            row,
+            c,
+        });
+
+        m2
+    }
+
+
+    // Raise to constant power
+    fn pow(&mut self, base: Var<F>, exp: u64) -> Var<F> {
+        // handle special case
+        if exp == 0 {
+            return self.constant(F::one());
+        }
+
+        // compute number of bits in exponents
+        let bits = u64::BITS - exp.leading_zeros();
+        let mut exp = exp.reverse_bits();
+        let mut res = base;
+
+        assert_eq!(exp & 1, 1);
+        exp >>= 1;
+
+        for _ in 1..bits {
+            res = self.mul(res, res); // double
+            if exp & 1 == 1 {
+                res = self.mul(res, base); // mul
+            }
+        }
+
+        res
+    }
+
+    // Enforce out = m0 - m1
+    fn sub(&mut self, m0: Var<F>, m1: Var<F>) -> Var<F> {
+        let m2 = self.var(|| m0.val() + m1.val());
+
+        //
+        let row = array_init(|i| {
+            if i == 0 {
+                m0
+            } else if i == 1 {
+                m1
+            } else if i == 2 {
+                m2
+            } else {
+                self.var(|| F::zero())
+            }
+        });
+
+        // m2 = m0 - m1 => m0 - m1 - m2 = 0
+        // c0 =  1   :     (1) * m0
+        // c1 =  - 1 :  -  (1) * m1
+        // c2 =  - 1 :  -  (1) * m2
+        let mut c = vec![F::zero(); GENERIC_ROW_COEFFS];
+        c[0] = F::one();
+        c[1] = -F::one();
         c[2] = -F::one();
         self.gate(GateSpec {
             typ: GateType::Generic,
