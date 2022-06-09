@@ -559,6 +559,7 @@ mod tests {
                 runtime: None,
             }),
         };
+
         let evals = vec![eval(), eval()];
 
         let constants = Constants {

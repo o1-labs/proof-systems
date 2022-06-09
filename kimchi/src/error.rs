@@ -1,5 +1,6 @@
 //! This module implements the [ProverError] type.
 
+use commitment_dlog::error::CommitmentError;
 use thiserror::Error;
 
 /// Errors that can arise when creating a proof
@@ -26,6 +27,9 @@ pub enum ProverError {
 
     #[error("the runtime tables provided did not match the index's configuration")]
     RuntimeTablesInconsistent,
+
+    #[error("wrong number of custom blinders given: {0}")]
+    WrongBlinders(CommitmentError),
 }
 
 /// Errors that can arise when verifying a proof
