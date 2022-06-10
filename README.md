@@ -21,60 +21,78 @@ Then, you can create an URS for your circuit in the following way:
 
 ```rust
 use std::sync::Arc;
-
-use kimchi::{circuits::{constraints::ConstraintSystem, polynomials::generic::testing::{create_circuit, fill_in_witness}, polynomial::COLUMNS}, prover_index::ProverIndex, proof::ProverProof, verifier::verify};
-use ark_ff::Zero;
-use mina_curves::pasta::{fp::Fp, vesta::{Affine, VestaParameters}, pallas::Affine as Other};
+use ark_ff::{FftField, PrimeField};
+use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
+use circuit_construction::*;
+use commitment_dlog::{commitment::CommitmentCurve, srs::SRS};
+use groupmap::GroupMap;
+use kimchi::verifier::verify;
+use mina_curves::pasta::{
+    fp::Fp,
+    vesta::{Affine, VestaParameters},
+};
 use oracle::{
-    constants::PlonkSpongeConstantsKimchi,
+    constants::*,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use commitment_dlog::{commitment::{CommitmentCurve}, srs::{SRS, endos}};
-use groupmap::GroupMap;
-use array_init::array_init;
+type SpongeQ = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
+type SpongeR = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>;
 
+pub fn circuit<
+    F: PrimeField + FftField,
+    Sys: Cs<F>,
+>(
+    witness: Option<F>,
+    sys: &mut Sys,
+    public_input: Vec<Var<F>>,
+) {
+    let three = sys.constant(3u32.into());
+    let first_public_input = public_input[0];
+    let witness = sys.var(|| witness.unwrap());
 
-type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
-type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
+    //TODO replace the following free variable once the "add" gate constraint is ready to use.
+    let result = sys.var(|| {
+        first_public_input.val() + witness.val()
+    });
+    sys.assert_eq(result, three);
+}
 
-// compile the circuit
-let gates = create_circuit(0, 0);
-
-let fp_sponge_params = oracle::pasta::fp_kimchi::params();
-let public = vec![Fp::from(0); 0];
-let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![Fp::zero(); gates.len()]);
-fill_in_witness(0, &mut witness, &public);
-
-let cs = ConstraintSystem::<Fp>::create(
-    gates, 
-    vec![], 
-    fp_sponge_params, 
-    public.len()
-).unwrap();
-
-// create an URS
-let mut srs = SRS::<Affine>::create(cs.domain.d1.size as usize);
-srs.add_lagrange_basis(cs.domain.d1);
-let srs = Arc::new(srs);
-
-// obtain a prover index
-let prover_index = {
-    let fq_sponge_params = oracle::pasta::fq_kimchi::params();
-    let (endo_q, _endo_r) = endos::<Other>();
-    ProverIndex::<Affine>::create(cs, fq_sponge_params, endo_q, srs)
+// create SRS
+let srs = {
+    //TODO how to determine depth value? it throws error when the depth is too large
+    let mut srs = SRS::<Affine>::create(1 << 3); // 2^3 = 8
+    srs.add_lagrange_basis(D::new(srs.g.len()).unwrap());
+    Arc::new(srs)
 };
-
-// obtain a verifier index
-let verifier_index = prover_index.verifier_index();
-
-// create a proof
+let public_inputs = vec![1i32.into()];
 let group_map = <Affine as CommitmentCurve>::Map::setup();
-let proof =  ProverProof::create::<BaseSponge, ScalarSponge>(
-    &group_map, witness, &prover_index).unwrap();
 
-// verify a proof
-verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &verifier_index, &proof).unwrap();
+// generate circuit and index
+let prover_index = generate_prover_index::<FpInner, _>(
+    //TODO do these arguments have to be provided?
+    srs,
+    &fp_constants(),
+    &oracle::pasta::fq_kimchi::params(),
+    //TODO should this be encapsulated?
+    public_inputs.len(),
+    |sys, p| circuit::<_, _>(None, sys, p),
+);
+
+// create witness
+let witness = 2i32;
+
+// generate proof
+let proof = prove::<Affine, _, SpongeQ, SpongeR>(
+    &prover_index,
+    &group_map,
+    None,
+    public_inputs,
+    |sys, p| circuit::<Fp, _>(Some(witness.into()), sys, p),
+);
+
+// verify proof
+let verifier_index = prover_index.verifier_index();
+verify::<_, SpongeQ, SpongeR>(&group_map, &verifier_index, &proof).unwrap();
 ```
 
 Note that kimchi is specifically designed for use in a recursion proof system, like [pickles](https://medium.com/minaprotocol/meet-pickles-snark-enabling-smart-contract-on-coda-protocol-7ede3b54c250), but can also be used a stand alone for normal proofs.
