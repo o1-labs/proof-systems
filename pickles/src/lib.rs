@@ -7,6 +7,9 @@
 ///
 mod step;
 
+/// Expression framework
+mod expr;
+
 /// Wrap (Tock, over Pallas Curve) proof:
 ///
 /// Proof of correct execution of the "step" verifier

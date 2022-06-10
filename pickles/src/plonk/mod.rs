@@ -3,14 +3,14 @@ use ark_ff::{FftField, PrimeField};
 
 use oracle::sponge::ScalarChallenge;
 
-/// "Symbolic" Interpreter for Expr/PolishToken types
-mod expr;
+mod index;
+
+// General "Var" types
+// (e.g. an evaluation of a polynomial as a variable)
+mod types;
 
 /// Proof types
-mod proof;
-
-/// Enforces gate constraints (rows checks)
-mod gates;
+pub mod proof;
 
 /// Verifier logic
 mod verifier;
@@ -41,28 +41,6 @@ pub struct Commits<A: AffineCurve> {
     t: A,
 }
 
-/// We linearlize by:
-///
-/// 1. Opening the witness columns
-/// 2. Evaluating the rows checks
-/// 3. Convoluting with the selectors (part of the index)
-pub struct Openings<F: FftField + PrimeField> {
-    /// Opening of witness polynomial
-    w: [F; COLUMNS],
-
-    /// Opening of permutation polynomial
-    z: F,
-
-    /// Opening of permutation polynomials
-    s: [F; PERMUTS - 1],
-
-    /// Opening of generic selector
-    generic_selector: F,
-
-    /// Opening of Poseidon selector
-    poseidon_selector: F,
-}
-
 /// Abstracted PlonK proof.
 /// https://eprint.iacr.org/2019/953.pdf
 ///
@@ -81,7 +59,6 @@ pub struct Openings<F: FftField + PrimeField> {
 /// defering the scalar field operations to the complement proof by committing to the field elements.
 pub struct Proof<A: AffineCurve> {
     comm: Commits<A>,
-    open: Openings<A::ScalarField>,
 
     // round 2: permutation challenges
     gamma: ScalarChallenge<A::ScalarField>,
@@ -103,9 +80,3 @@ pub struct Proof<A: AffineCurve> {
     v: A::ScalarField,
     u: A::ScalarField,
 }
-
-/*
-struct Index<A: AffineCurve> {
-
-}
-*/

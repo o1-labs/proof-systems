@@ -8,9 +8,10 @@ use ark_ec::AffineCurve;
 use ark_ff::{FftField, One, PrimeField, Zero};
 
 use crate::context::Context;
-use crate::plonk::proof::{
-    eval_polynomial, ScalarChallenge, VarIndex, VarOpen, VarPolyComm, VarProof,
-};
+use crate::expr::{Assignments, Evaluator};
+use crate::plonk::index::Index;
+use crate::plonk::proof::{eval_polynomial, VarProof};
+use crate::plonk::types::{ScalarChallenge, VarOpen, VarPolyComm};
 use crate::transcript::{Arthur, Msg};
 
 /// Combine multiple openings using a linear combination
@@ -59,12 +60,11 @@ where
 
 // TODO: add unit test for compat with combined_inner_product from Kimchi using Witness Generator
 
-impl<G> VarIndex<G>
+impl<G> Index<G>
 where
     G: AffineCurve,
     G::BaseField: FftField + PrimeField,
 {
-    ///
     /// Note: we do not care about the evaluation of ft(\zeta \omega),
     /// however we need it for aggregation, therefore we simply allow the prover to provide it.
     fn compute_ft_eval0<F: FftField + PrimeField>(&self, zeta: Var<F>) -> VarOpen<F, 1> {
@@ -130,7 +130,7 @@ where
 
         //~ 11. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
         let alpha: ScalarChallenge<G::ScalarField> = ctx.pass(alpha_chal);
-        let alpha: Var<G::ScalarField> = ctx.flip(|ctx| alpha.to_field(ctx));
+        let alpha: Var<G::ScalarField> = ctx.flip(|ctx| alpha.to_field(ctx.cs()));
 
         //~ 12. Enforce that the length of the $t$ commitment is of size `PERMUTS`.
         // CHANGE: Happens at deserialization time (it is an array).
@@ -143,7 +143,7 @@ where
 
         //~ 15. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
         let zeta: ScalarChallenge<G::ScalarField> = ctx.pass(zeta_chal);
-        let zeta: Var<G::ScalarField> = ctx.flip(|ctx| zeta.to_field(ctx));
+        let zeta: Var<G::ScalarField> = ctx.flip(|ctx| zeta.to_field(ctx.cs()));
 
         //~ 18. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
         //~     NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
@@ -171,16 +171,18 @@ where
                 let v_chal: ScalarChallenge<G::ScalarField> = tx.challenge(ctx);
 
                 //~ 22. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
-                let v: Var<G::ScalarField> = v_chal.to_field(ctx);
+                let v: Var<G::ScalarField> = v_chal.to_field(ctx.cs());
 
                 //~ 23. Sample $u'$ with the Fr-Sponge.
                 let u_chal: ScalarChallenge<G::ScalarField> = tx.challenge(ctx);
 
                 //~ 24. Derive $u$ from $u'$ using the endomorphism (TODO: specify).
-                let u = u_chal.to_field(ctx);
+                let u = u_chal.to_field(ctx.cs());
 
                 // compute \zeta\omega = \zeta * \omega
-                let zetaw = ctx.mul(zeta, self.domain.group_gen);
+                // TODO: optimize can be done using a single gate
+                let omega = ctx.constant(self.constant.domain.group_gen);
+                let zetaw = ctx.mul(zeta, omega);
 
                 // evaluate the h(X) polynomials from accumulators at \zeta
                 let hs_z: Vec<_> = acc_chals

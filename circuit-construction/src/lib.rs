@@ -186,9 +186,17 @@ pub trait Cs<F: FftField + PrimeField> {
 
     // Constrains: out = a_c*a + b_c*b + ab_c*a*b + constant
     //
-    // This is primarily used together with the procedural macro, 
+    // This is primarily used together with the procedural macro,
     // which derives the coefficients directly from the AST!
-    fn generic_gate(&mut self, a: Var<F>, b: Var<F>, a_c: F, b_c: F, ab_c: F, constant: F) -> Var<F> {
+    fn generic_gate(
+        &mut self,
+        a: Var<F>,
+        b: Var<F>,
+        a_c: F,
+        b_c: F,
+        ab_c: F,
+        constant: F,
+    ) -> Var<F> {
         let res = self.var(|| {
             let t1 = a_c * a.val();
             let t2 = b_c * b.val();
@@ -226,7 +234,7 @@ pub trait Cs<F: FftField + PrimeField> {
             row,
             c,
         });
-        
+
         res
     }
 
@@ -253,6 +261,54 @@ pub trait Cs<F: FftField + PrimeField> {
         });
     }
 
+    // Enforces:
+    //
+    // res = num / denom
+    //
+    // By constraining: res * denom = num
+    fn div(&mut self, num: Var<F>, denom: Var<F>) -> Var<F> {
+        // witness num * denom^{-1}
+        let res = self.var(|| match denom.val().inverse() {
+            Some(inv) => inv * num.val(),
+            None => F::zero(),
+        });
+
+        //
+        let row = array_init(|i| {
+            if i == 0 {
+                denom
+            } else if i == 1 {
+                res
+            } else if i == 2 {
+                num
+            } else {
+                self.var(|| F::zero())
+            }
+        });
+
+        // Coefficient vector for generic gate
+        //
+        // c[0] =  0 :       0 * denom
+        // c[1] =  0 :  +    0 * res
+        // c[2] = -1 :  + (-1) * num
+        // c[3] =  1 :  +    1 * denom * res
+        // c[4] =  0 :  +    0 (constant)
+        //              =    0
+        //
+        // i.e. denom * res - num = 0
+        let mut c = vec![F::zero(); GENERIC_ROW_COEFFS];
+        c[2] = -F::one();
+        c[3] = F::one();
+
+        self.gate(GateSpec {
+            typ: GateType::Generic,
+            row,
+            c,
+        });
+
+        res
+    }
+
     // Completeness is not satisified for m = 0
     // (the proof always fails)
     fn inv(&mut self, elm: Var<F>) -> Var<F> {
@@ -273,12 +329,14 @@ pub trait Cs<F: FftField + PrimeField> {
             }
         });
 
+        // Coefficient vector
+        //
         // c0 =  0 :       0 * elm
         // c1 =  0 :  +    0 * inv
-        // c2 =  0 :  + (-1) * o
+        // c2 =  0 :  +    0 * 0
         // c3 =  1 :  +    1 * elm*inv
-        // c4 = -1 :  + (-1) 
-        //                   = 0
+        // c4 = -1 :  +  (-1)
+        //            =    0
         let mut c = vec![F::zero(); GENERIC_ROW_COEFFS];
         c[3] = F::one();
         c[4] = -F::one();
@@ -288,10 +346,9 @@ pub trait Cs<F: FftField + PrimeField> {
             row,
             c,
         });
-        
+
         inv
     }
-   
 
     fn add(&mut self, m0: Var<F>, m1: Var<F>) -> Var<F> {
         let m2 = self.var(|| m0.val() + m1.val());
@@ -324,7 +381,6 @@ pub trait Cs<F: FftField + PrimeField> {
 
         m2
     }
-
 
     // Raise to constant power
     fn pow(&mut self, base: Var<F>, exp: u64) -> Var<F> {
@@ -421,6 +477,9 @@ pub trait Cs<F: FftField + PrimeField> {
         m2
     }
 
+    // TODO: optimize by reusing the same variable
+    // whenever the same constant is requested, e.g. 
+    // the constant 1 or -1 is very common.
     fn constant(&mut self, x: F) -> Var<F> {
         let v = self.var(|| x);
 
