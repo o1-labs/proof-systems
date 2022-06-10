@@ -1059,7 +1059,10 @@ where
         //~~ - poseidon selector
         //~~ - the 15 register/witness
         //~~ - 6 sigmas evaluations (the last one is not evaluated)
-        fr_sponge.absorb_evaluations([&public_evals[0], &public_evals[1]], [&chunked_evals[0], &chunked_evals[1]]);
+        fr_sponge.absorb_evaluations(
+            [&public_evals[0], &public_evals[1]],
+            [&chunked_evals[0], &chunked_evals[1]],
+        );
 
         //~ 1. Sample $v'$ with the Fr-Sponge
         let v_chal = fr_sponge.challenge();
@@ -1285,7 +1288,13 @@ pub mod caml {
         G: AffineCurve,
         CamlPolyComm<CamlG>: From<PolyComm<G>>,
     {
-        fn from(LookupCommitments { aggreg, sorted, runtime } : LookupCommitments<G>) -> Self {
+        fn from(
+            LookupCommitments {
+                aggreg,
+                sorted,
+                runtime,
+            }: LookupCommitments<G>,
+        ) -> Self {
             Self {
                 aggreg: aggreg.into(),
                 sorted: sorted.into_iter().map(Into::into).collect(),
@@ -1299,7 +1308,13 @@ pub mod caml {
         G: AffineCurve,
         PolyComm<G>: From<CamlPolyComm<CamlG>>,
     {
-        fn from(CamlLookupCommitments { aggreg, sorted, runtime } : CamlLookupCommitments<CamlG>) -> LookupCommitments<G> {
+        fn from(
+            CamlLookupCommitments {
+                aggreg,
+                sorted,
+                runtime,
+            }: CamlLookupCommitments<CamlG>,
+        ) -> LookupCommitments<G> {
             LookupCommitments {
                 aggreg: aggreg.into(),
                 sorted: sorted.into_iter().map(Into::into).collect(),
