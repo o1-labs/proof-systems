@@ -471,7 +471,7 @@ mod tests {
         alphas::Alphas,
         circuits::{
             expr::{Column, Constants, PolishToken},
-            lookup::lookups::LookupInfo,
+            lookup::lookups::{LookupInfo, LookupPattern},
             wires::*,
         },
         proof::{LookupEvaluations, ProofEvaluations},
@@ -503,7 +503,12 @@ mod tests {
 
     #[test]
     fn chacha_linearization() {
-        let lookup_info = LookupInfo::<F>::create();
+        let lookup_info = LookupInfo::create(
+            [LookupPattern::ChaCha, LookupPattern::ChaChaFinal]
+                .into_iter()
+                .collect(),
+            false,
+        );
 
         let evaluated_cols = {
             let mut h = std::collections::HashSet::new();
@@ -551,8 +556,10 @@ mod tests {
                     .collect(),
                 aggreg: F::rand(rng),
                 table: F::rand(rng),
+                runtime: None,
             }),
         };
+
         let evals = vec![eval(), eval()];
 
         let constants = Constants {

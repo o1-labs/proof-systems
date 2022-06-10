@@ -21,8 +21,8 @@ As part of these algorithms, a number of tables are created (and then converted 
 
 The following tables are created to describe the circuit:
 
-**Gates**. A circuit is described by a series of gates, that we list in a table. 
-The columns of the tables list the gates, while the rows are the length of the circuit. 
+**Gates**. A circuit is described by a series of gates, that we list in a table.
+The columns of the tables list the gates, while the rows are the length of the circuit.
 For each row, only a single gate can take a value $1$ while all other gates take the value $0$.
 
 |  row  | Generic | Poseidon | CompleteAdd | VarBaseMul | EndoMul | EndoMulScalar | ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal |
@@ -30,19 +30,19 @@ For each row, only a single gate can take a value $1$ while all other gates take
 |   0   |    1    |    0     |      0      |     0      |    0    |       0       |    0    |    0    |    0    |      0      |
 |   1   |    0    |    1     |      0      |     0      |    0    |       0       |    0    |    0    |    0    |      0      |
 
-**Coefficients**. The coefficient table has 15 columns, and is used to tweak the gates. 
-Currently, only the [Generic](#double-generic-gate) and the [Poseidon](#poseidon) gates use it (refer to their own sections to see how). 
+**Coefficients**. The coefficient table has 15 columns, and is used to tweak the gates.
+Currently, only the [Generic](#double-generic-gate) and the [Poseidon](#poseidon) gates use it (refer to their own sections to see how).
 All other gates set their values to $0$.
 
 |  row  |   0   |   1   |   2   |   3   |   4   |   5   |   6   |   7   |   8   |   9   |  10   |  11   |  12   |  13   |  14   |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 |   0   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |
 
-**Wiring (or Permutation, or sigmas)**. For gates to take the outputs of other gates as inputs, we use a wiring table to wire registers together. 
+**Wiring (or Permutation, or sigmas)**. For gates to take the outputs of other gates as inputs, we use a wiring table to wire registers together.
 To learn about registers, see the next section.
-It is defined at every row, but only for the first $7$ registers. 
+It is defined at every row, but only for the first $7$ registers.
 Each cell specifies a `(row, column)` tuple that it should be wired to.  Cells that are not connected to another cell are wired to themselves.
-Note that if three or more registers are wired together, they must form a cycle. 
+Note that if three or more registers are wired together, they must form a cycle.
 For example, if register `(0, 4)` is wired to both registers `(80, 6)` and `(90, 0)` then you would have the following table:
 
 |  row  |    0    |   1   |   2   |   3   |    4     |   5   |    6     |
@@ -74,7 +74,7 @@ We currently have two lookup selectors:
 |   0   |      0      |        0         |
 |   1   |      1      |        0         |
 
-Where each apply 4 queries. A query is a table describing which lookup table it queries, and the linear combination of the witness to use in the query. 
+Where each apply 4 queries. A query is a table describing which lookup table it queries, and the linear combination of the witness to use in the query.
 For example, the following table describes a query into the XOR table made out of linear combinations of registers (checking that $r_0 \oplus r_2 = 2 \cdot r_1$):
 
 | table_id |   l   |   r   |   o   |
@@ -85,16 +85,16 @@ For example, the following table describes a query into the XOR table made out o
 
 The following tables are created by the prover at runtime:
 
-**Registers (or Witness)**. Registers are also defined at every row, and are split into two types: the *IO registers* from $0$ to $6$ usually contain input or output of the gates (note that a gate can output a value on the next row as well). 
-I/O registers can be wired to each other (they'll be forced to have the same value), no matter what row they're on (for example, the register at `row:0, col:4` can be wired to the register at `row:80, col:6`). 
-The rest of the registers, $7$ through $14$, are called *advice registers* as they can store values that useful only for the row's active gate. 
+**Registers (or Witness)**. Registers are also defined at every row, and are split into two types: the *IO registers* from $0$ to $6$ usually contain input or output of the gates (note that a gate can output a value on the next row as well).
+I/O registers can be wired to each other (they'll be forced to have the same value), no matter what row they're on (for example, the register at `row:0, col:4` can be wired to the register at `row:80, col:6`).
+The rest of the registers, $7$ through $14$, are called *advice registers* as they can store values that useful only for the row's active gate.
 Think of them as intermediary or temporary values needed in the computation when the prover executes a circuit.
 
 |  row  |   0   |   1   |   2   |   3   |   4   |   5   |   6   |   7   |   8   |   9   |  10   |  11   |  12   |  13   |  14   |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 |   0   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |
 
-**Wiring (Permutation) trace**. You can think of the permutation trace as an extra register that is used to enforce the wiring specified in the wiring table. 
+**Wiring (Permutation) trace**. You can think of the permutation trace as an extra register that is used to enforce the wiring specified in the wiring table.
 It is a single column that applies on all the rows as well, which the prover computes as part of a proof.
 
 |  row  |  pt   |
@@ -116,7 +116,7 @@ In this section we list these specifications, as well as the interfaces we make 
 
 ### Polynomial Commitments
 
-Refer to the [specification on polynomial commitments](./poly-commitment.md). 
+Refer to the [specification on polynomial commitments](./poly-commitment.md).
 We make use of the following functions from that specification:
 
 - `PolyCom.non_hiding_commit(poly) -> PolyCom::NonHidingCommitment`
@@ -126,7 +126,7 @@ We make use of the following functions from that specification:
 
 ### Poseidon hash function
 
-Refer to the [specification on Poseidon](./poseidon.md). 
+Refer to the [specification on Poseidon](./poseidon.md).
 We make use of the following functions from that specification:
 
 - `Poseidon.init(params) -> FqSponge`
@@ -160,8 +160,8 @@ In this section, we describe all the constraints that make up the main polynomia
 
 We define the following functions:
 
-* `combine_constraints(range_alpha, constraints)`, which takes a range of contiguous powers of alpha and a number of constraints. 
-It returns the sum of all the constraints, where each constraint has been multiplied by a power of alpha. 
+* `combine_constraints(range_alpha, constraints)`, which takes a range of contiguous powers of alpha and a number of constraints.
+It returns the sum of all the constraints, where each constraint has been multiplied by a power of alpha.
 In other words it returns:
 $$ \sum_i \alpha^i \cdot \text{constraint}_i $$
 
@@ -172,7 +172,7 @@ The different ranges of alpha are described as follows:
 * **Permutation**. Offset starts at 21 and 3 powers of $\alpha$ are used
 
 ```admonish
-As gates are mutually exclusive (a single gate is used on each row), we can reuse the same range of powers of alpha across all the gates. 
+As gates are mutually exclusive (a single gate is used on each row), we can reuse the same range of powers of alpha across all the gates.
 ```
 
 TODO: linearization
@@ -338,11 +338,14 @@ In this section, we describe the tables kimchi supports, as well as the differen
 
 #### The Lookup Tables
 
-Kimchi currently supports a single lookup table: 
+Kimchi currently supports a single lookup table:
 
 ```rs
 /// The table ID associated with the XOR lookup table.
 pub const XOR_TABLE_ID: i32 = 0;
+
+/// The range check table ID.
+pub const RANGE_CHECK_TABLE_ID: i32 = 1;
 ```
 
 
@@ -525,7 +528,7 @@ fifth round:
 where $w_{i, next}$ is the polynomial $w_i(\omega x)$ which points to the next row.
 
 
-#### Chacha 
+#### Chacha
 
 There are four chacha constraint types, corresponding to the four lines in each quarter round.
 
@@ -914,7 +917,7 @@ Gives the following equations when substituting the values of $s_2$ and $s_4$:
 
 
 
-#### Scalar Multiplication 
+#### Scalar Multiplication
 
 We implement custom Plonk constraints for short Weierstrass curve variable base scalar multiplication.
 
@@ -1041,14 +1044,14 @@ As such, the transformation of a circuit into these two indexes can be seen as a
 
 In this section we describe data that both the prover and the verifier index share.
 
-**`URS` (Uniform Reference String)** The URS is a set of parameters that is generated once, and shared between the prover and the verifier. 
+**`URS` (Uniform Reference String)** The URS is a set of parameters that is generated once, and shared between the prover and the verifier.
 It is used for polynomial commitments, so refer to the [poly-commitment specification](./poly-commitment.md) for more details.
 
 ```admonish
 Kimchi currently generates the URS based on the circuit, and attach it to the index. So each circuit can potentially be accompanied with a different URS. On the other hand, Mina reuses the same URS for multiple circuits ([see zkapps for more details](https://minaprotocol.com/blog/what-are-zkapps)).
 ```
 
-**`Domain`**. A domain large enough to contain the circuit and the zero-knowledge rows (used to provide zero-knowledge to the protocol). Specifically, the smallest subgroup in our field that has order greater or equal to `n + ZK_ROWS`, with `n` is the number of gates in the circuit. 
+**`Domain`**. A domain large enough to contain the circuit and the zero-knowledge rows (used to provide zero-knowledge to the protocol). Specifically, the smallest subgroup in our field that has order greater or equal to `n + ZK_ROWS`, with `n` is the number of gates in the circuit.
 TODO: what if the domain is larger than the URS?
 
 ```admonish warning "Ordering of elements in the domain"
@@ -1148,10 +1151,10 @@ To create the index, follow these steps:
 
    To do this, for each table:
 
-      - Update the corresponding entries in a table id vector (of size the domain as well)
-        with the table ID of the table.
-      - Copy the entries from the table to new rows in the corresponding columns of the concatenated table.
-      - Fill in any unused columns with 0 (to match the dummy value)
+	- Update the corresponding entries in a table id vector (of size the domain as well)
+   with the table ID of the table.
+	- Copy the entries from the table to new rows in the corresponding columns of the concatenated table.
+	- Fill in any unused columns with 0 (to match the dummy value)
 6. Pad the end of the concatened table with the dummy value.
 7. Pad the end of the table id vector with 0s.
 8. pre-compute polynomial and evaluation form for the look up tables
@@ -1167,16 +1170,16 @@ These pre-computations are optimizations, in the context of normal proofs, but t
 ```rs
 pub struct ProverIndex<G: CommitmentCurve> {
     /// constraints system polynomials
-    #[serde(bound = "ConstraintSystem<ScalarField<G>>: Serialize + DeserializeOwned")]
-    pub cs: ConstraintSystem<ScalarField<G>>,
+    #[serde(bound = "ConstraintSystem<G::ScalarField>: Serialize + DeserializeOwned")]
+    pub cs: ConstraintSystem<G::ScalarField>,
 
     /// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
     #[serde(skip)]
-    pub linearization: Linearization<Vec<PolishToken<ScalarField<G>>>>,
+    pub linearization: Linearization<Vec<PolishToken<G::ScalarField>>>,
 
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
-    pub powers_of_alpha: Alphas<ScalarField<G>>,
+    pub powers_of_alpha: Alphas<G::ScalarField>,
 
     /// polynomial commitment keys
     #[serde(skip)]
@@ -1190,7 +1193,7 @@ pub struct ProverIndex<G: CommitmentCurve> {
 
     /// random oracle argument parameters
     #[serde(skip)]
-    pub fq_sponge_params: ArithmeticSpongeParams<BaseField<G>>,
+    pub fq_sponge_params: ArithmeticSpongeParams<G::BaseField>,
 }
 ```
 
@@ -1207,7 +1210,7 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub lookup_table: Vec<PolyComm<G>>,
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub lookup_selectors: Vec<PolyComm<G>>,
+    pub lookup_selectors: LookupSelectors<PolyComm<G>>,
 
     /// Table IDs for the lookup values.
     /// This may be `None` if all lookups originate from table 0.
@@ -1216,6 +1219,10 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 
     /// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
     pub max_joint_size: u32,
+
+    /// An optional selector polynomial for runtime tables
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub runtime_tables_selector: Option<PolyComm<G>>,
 }
 
 #[serde_as]
@@ -1223,14 +1230,14 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 pub struct VerifierIndex<G: CommitmentCurve> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub domain: D<ScalarField<G>>,
+    pub domain: D<G::ScalarField>,
     /// maximal size of polynomial section
     pub max_poly_size: usize,
     /// maximal size of the quotient polynomial according to the supported constraints
     pub max_quot_size: usize,
     /// polynomial commitment keys
     #[serde(skip)]
-    pub srs: Arc<SRS<G>>,
+    pub srs: OnceCell<Arc<SRS<G>>>,
 
     // index polynomial commitments
     /// permutation commitment array
@@ -1266,34 +1273,38 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub chacha_comm: Option<[PolyComm<G>; 4]>,
 
+    // Range check gates polynomial commitments
+    #[serde(bound = "Vec<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub range_check_comm: Vec<PolyComm<G>>,
+
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
-    pub shift: [ScalarField<G>; PERMUTS],
+    pub shift: [G::ScalarField; PERMUTS],
     /// zero-knowledge polynomial
     #[serde(skip)]
-    pub zkpm: DensePolynomial<ScalarField<G>>,
+    pub zkpm: OnceCell<DensePolynomial<G::ScalarField>>,
     // TODO(mimoo): isn't this redundant with domain.d1.group_gen ?
     /// domain offset for zero-knowledge
     #[serde(skip)]
-    pub w: ScalarField<G>,
+    pub w: OnceCell<G::ScalarField>,
     /// endoscalar coefficient
     #[serde(skip)]
-    pub endo: ScalarField<G>,
+    pub endo: G::ScalarField,
 
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub lookup_index: Option<LookupVerifierIndex<G>>,
 
     #[serde(skip)]
-    pub linearization: Linearization<Vec<PolishToken<ScalarField<G>>>>,
+    pub linearization: Linearization<Vec<PolishToken<G::ScalarField>>>,
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
-    pub powers_of_alpha: Alphas<ScalarField<G>>,
+    pub powers_of_alpha: Alphas<G::ScalarField>,
 
     // random oracle argument parameters
     #[serde(skip)]
-    pub fr_sponge_params: ArithmeticSpongeParams<ScalarField<G>>,
+    pub fr_sponge_params: ArithmeticSpongeParams<G::ScalarField>,
     #[serde(skip)]
-    pub fq_sponge_params: ArithmeticSpongeParams<BaseField<G>>,
+    pub fq_sponge_params: ArithmeticSpongeParams<G::BaseField>,
 }
 ```
 
@@ -1368,44 +1379,78 @@ You can find these operations under the [proof creation](#proof-creation) and [p
 A proof consists of the following data structures:
 
 ```rs
-#[derive(Clone)]
+/// Evaluations of lookup polynomials
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(bound(
+    serialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::SerializeAs<Field>",
+    deserialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::DeserializeAs<'de, Field>"
+))]
 pub struct LookupEvaluations<Field> {
     /// sorted lookup table polynomial
+    #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
     pub sorted: Vec<Field>,
     /// lookup aggregation polynomial
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub aggreg: Field,
     // TODO: May be possible to optimize this away?
     /// lookup table polynomial
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub table: Field,
+
+    /// Optionally, a runtime table polynomial.
+    #[serde_as(as = "Option<Vec<o1_utils::serialization::SerdeAs>>")]
+    pub runtime: Option<Field>,
 }
 
 // TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
-#[derive(Clone)]
+/// Polynomial evaluations contained in a `ProverProof`.
+/// - **Chunked evaluations** `Field` is instantiated with vectors with a length that equals the length of the chunk
+/// - **Non chunked evaluations** `Field` is instantiated with a field, so they are single-sized#[serde_as]
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(bound(
+    serialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::SerializeAs<Field>",
+    deserialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::DeserializeAs<'de, Field>"
+))]
 pub struct ProofEvaluations<Field> {
     /// witness polynomials
+    #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; COLUMNS]")]
     pub w: [Field; COLUMNS],
     /// permutation polynomial
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub z: Field,
     /// permutation polynomials
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
+    #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; PERMUTS - 1]")]
     pub s: [Field; PERMUTS - 1],
     /// lookup-related evaluations
     pub lookup: Option<LookupEvaluations<Field>>,
     /// evaluation of the generic selector polynomial
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub generic_selector: Field,
     /// evaluation of the poseidon selector polynomial
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub poseidon_selector: Field,
 }
 
 /// Commitments linked to the lookup feature
-#[derive(Clone)]
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
 pub struct LookupCommitments<G: AffineCurve> {
+    /// Commitments to the sorted lookup table polynomial (may have chunks)
     pub sorted: Vec<PolyComm<G>>,
+    /// Commitment to the lookup aggregation polynomial
     pub aggreg: PolyComm<G>,
+    /// Optional commitment to concatenated runtime tables
+    pub runtime: Option<PolyComm<G>>,
 }
 
 /// All the commitments that the prover creates as part of the proof.
-#[derive(Clone)]
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
 pub struct ProverCommitments<G: AffineCurve> {
     /// The commitments to the witness (execution trace)
     pub w_comm: [PolyComm<G>; COLUMNS],
@@ -1417,8 +1462,10 @@ pub struct ProverCommitments<G: AffineCurve> {
     pub lookup: Option<LookupCommitments<G>>,
 }
 
-/// The proof that the prover creates from a [ProverIndex] and a `witness`.
-#[derive(Clone)]
+/// The proof that the prover creates from a [ProverIndex](super::prover_index::ProverIndex) and a `witness`.
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
 pub struct ProverProof<G: AffineCurve> {
     /// All the polynomial commitments required in the proof
     pub commitments: ProverCommitments<G>,
@@ -1428,17 +1475,35 @@ pub struct ProverProof<G: AffineCurve> {
 
     /// Two evaluations over a number of committed polynomials
     // TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }
-    pub evals: [ProofEvaluations<Vec<ScalarField<G>>>; 2],
+    pub evals: [ProofEvaluations<Vec<G::ScalarField>>; 2],
 
     /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
-    pub ft_eval1: ScalarField<G>,
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub ft_eval1: G::ScalarField,
 
     /// The public input
-    pub public: Vec<ScalarField<G>>,
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    pub public: Vec<G::ScalarField>,
 
     /// The challenges underlying the optional polynomials folded into the proof
-    pub prev_challenges: Vec<(Vec<ScalarField<G>>, PolyComm<G>)>,
+    pub prev_challenges: Vec<RecursionChallenge<G>>,
 }
+
+/// A struct to store the challenges inside a `ProverProof`
+#[serde_as]
+#[derive(Clone, Deserialize, Serialize)]
+#[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
+pub struct RecursionChallenge<G>
+where
+    G: AffineCurve,
+{
+    /// Vector of scalar field elements
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    pub chals: Vec<G::ScalarField>,
+    /// Polynomial commitment
+    pub comm: PolyComm<G>,
+}
+
 ```
 
 
@@ -1457,11 +1522,11 @@ The public input is expected to be passed in the first `Public` rows of the regi
 
 The following constants are set:
 
-* `EVAL_POINTS = 2`. This is the number of points that the prover has to evaluate their polynomials at. 
+* `EVAL_POINTS = 2`. This is the number of points that the prover has to evaluate their polynomials at.
 ($\zeta$ and $\zeta\omega$ where $\zeta$ will be deterministically generated.)
-* `ZK_ROWS = 3`. This is the number of rows that will be randomized to provide zero-knowledgeness. 
-Note that it only needs to be greater or equal to the number of evaluations (2) in the protocol. 
-Yet, it contains one extra row to take into account the last constraint (final value of the permutation accumulator). 
+* `ZK_ROWS = 3`. This is the number of rows that will be randomized to provide zero-knowledgeness.
+Note that it only needs to be greater or equal to the number of evaluations (2) in the protocol.
+Yet, it contains one extra row to take into account the last constraint (final value of the permutation accumulator).
 (TODO: treat the final constraint separately so that ZK_ROWS = 2)
 
 The prover then follows the following steps to create the proof:
@@ -1471,124 +1536,130 @@ The prover then follows the following steps to create the proof:
    but instead be of the length of the (smaller) circuit.
    If we cannot add `ZK_ROWS` rows to the columns of the witness before reaching
    the size of the domain, abort.
-2. Pad the witness columns with Zero gates to make them the same length as the domain.
+1. Pad the witness columns with Zero gates to make them the same length as the domain.
    Then, randomize the last `ZK_ROWS` of each columns.
-3. Setup the Fq-Sponge.
-4. Compute the negated public input polynomial as
+1. Setup the Fq-Sponge.
+1. Compute the negated public input polynomial as
    the polynomial that evaluates to $-p_i$ for the first `public_input_size` values of the domain,
    and $0$ for the rest.
-5. Commit (non-hiding) to the negated public input polynomial.
-6. Absorb the commitment to the public polynomial with the Fq-Sponge.
+1. Commit (non-hiding) to the negated public input polynomial.
+1. Absorb the commitment to the public polynomial with the Fq-Sponge.
+
    Note: unlike the original PLONK protocol,
    the prover also provides evaluations of the public polynomial to help the verifier circuit.
    This is why we need to absorb the commitment to the public polynomial at this point.
-7. Commit to the witness columns by creating `COLUMNS` hidding commitments.
+1. Commit to the witness columns by creating `COLUMNS` hidding commitments.
+
    Note: since the witness is in evaluation form,
    we can use the `commit_evaluation` optimization.
-8. Absorb the witness commitments with the Fq-Sponge.
-9. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
+1. Absorb the witness commitments with the Fq-Sponge.
+1. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
    TODO: why not do this first, and then commit? Why commit from evaluation directly?
-10. If using lookup:
-    - If queries involve a lookup table with multiple columns
-    then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
-    otherwise set the joint combiner challenge $j'$ to $0$.
-    - Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TOOD: specify)
-    - If multiple lookup tables are involved,
-     set the `table_id_combiner` as the $j^i$ with $i$ the maximum width of any used table.
-     Essentially, this is to add a last column of table ids to the concatenated lookup tables.
-    - Compute the dummy lookup value as the combination of the last entry of the XOR table (so `(0, 0, 0)`).
-     Warning: This assumes that we always use the XOR table when using lookups.
-    - Compute the lookup table values as the combination of the lookup table entries.
-     - Compute the sorted evaluations.
-     - Randomize the last `EVALS` rows in each of the sorted polynomials
-      in order to add zero-knowledge to the protocol.
-     - Commit each of the sorted polynomials.
-     - Absorb each commitments to the sorted polynomials.
-11. Sample $\beta$ with the Fq-Sponge.
-12. Sample $\gamma$ with the Fq-Sponge.
-13. If using lookup:
-    - Compute the lookup aggregation polynomial.
-    - Commit to the aggregation polynomial.
-    - Absorb the commitment to the aggregation polynomial with the Fq-Sponge.
-14. Compute the permutation aggregation polynomial $z$.
-15. Commit (hidding) to the permutation aggregation polynomial $z$.
-16. Absorb the permutation aggregation polynomial $z$ with the Fq-Sponge.
-17. Sample $\alpha'$ with the Fq-Sponge.
-18. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details)
-19. TODO: instantiate alpha?
-20. Compute the quotient polynomial (the $t$ in $f = Z_H \cdot t$).
-    The quotient polynomial is computed by adding all these polynomials together:
-    - the combined constraints for all the gates
-    - the combined constraints for the permutation
-    - TODO: lookup
-    - the negated public polynomial
-    and by then dividing the resulting polynomial with the vanishing polynomial $Z_H$.
-    TODO: specify the split of the permutation polynomial into perm and bnd?
-21. commit (hiding) to the quotient polynomial $t$
-    TODO: specify the dummies
-22. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.
-23. Sample $\zeta'$ with the Fq-Sponge.
-24. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
-25. If lookup is used, evaluate the following polynomials at $\zeta$ and $\zeta \omega$:
-26. Chunk evaluate the following polynomials at both $\zeta$ and $\zeta \omega$:
-    * $s_i$
-    * $w_i$
-    * $z$
-    * lookup (TODO)
-    * generic selector
-    * poseidon selector
+1. If using lookup:
+	- If queries involve a lookup table with multiple columns
+	  then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
+	  otherwise set the joint combiner challenge $j'$ to $0$.
+	- Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TOOD: specify)
+	- If multiple lookup tables are involved,
+	  set the `table_id_combiner` as the $j^i$ with $i$ the maximum width of any used table.
+	  Essentially, this is to add a last column of table ids to the concatenated lookup tables.
+	- Compute the dummy lookup value as the combination of the last entry of the XOR table (so `(0, 0, 0)`).
+	  Warning: This assumes that we always use the XOR table when using lookups.
+	- Compute the lookup table values as the combination of the lookup table entries.
+	- Compute the sorted evaluations.
+	- Randomize the last `EVALS` rows in each of the sorted polynomials
+	  in order to add zero-knowledge to the protocol.
+	- Commit each of the sorted polynomials.
+	- Absorb each commitments to the sorted polynomials.
+1. Sample $\beta$ with the Fq-Sponge.
+1. Sample $\gamma$ with the Fq-Sponge.
+1. If using lookup:
+	- Compute the lookup aggregation polynomial.
+	- Commit to the aggregation polynomial.
+	- Absorb the commitment to the aggregation polynomial with the Fq-Sponge.
+1. Compute the permutation aggregation polynomial $z$.
+1. Commit (hidding) to the permutation aggregation polynomial $z$.
+1. Absorb the permutation aggregation polynomial $z$ with the Fq-Sponge.
+1. Sample $\alpha'$ with the Fq-Sponge.
+1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details)
+1. TODO: instantiate alpha?
+1. Compute the quotient polynomial (the $t$ in $f = Z_H \cdot t$).
+   The quotient polynomial is computed by adding all these polynomials together:
+	- the combined constraints for all the gates
+	- the combined constraints for the permutation
+	- TODO: lookup
+	- the negated public polynomial
+   and by then dividing the resulting polynomial with the vanishing polynomial $Z_H$.
+   TODO: specify the split of the permutation polynomial into perm and bnd?
+1. commit (hiding) to the quotient polynomial $t$
+   TODO: specify the dummies
+1. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.
+1. Sample $\zeta'$ with the Fq-Sponge.
+1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
+1. If lookup is used, evaluate the following polynomials at $\zeta$ and $\zeta \omega$:
+	- the aggregation polynomial
+	- the sorted polynomials
+	- the table polynonial
+1. Chunk evaluate the following polynomials at both $\zeta$ and $\zeta \omega$:
+	- $s_i$
+	- $w_i$
+	- $z$
+	- lookup (TODO)
+	- generic selector
+	- poseidon selector
 
-    By "chunk evaluate" we mean that the evaluation of each polynomial can potentially be a vector of values.
-    This is because the index's `max_poly_size` parameter dictates the maximum size of a polynomial in the protocol.
-    If a polynomial $f$ exceeds this size, it must be split into several polynomials like so:
-    $$f(x) = f_0(x) + x^n f_1(x) + x^{2n} f_2(x) + \cdots$$
+   By "chunk evaluate" we mean that the evaluation of each polynomial can potentially be a vector of values.
+   This is because the index's `max_poly_size` parameter dictates the maximum size of a polynomial in the protocol.
+   If a polynomial $f$ exceeds this size, it must be split into several polynomials like so:
+   $$f(x) = f_0(x) + x^n f_1(x) + x^{2n} f_2(x) + \cdots$$
 
-    And the evaluation of such a polynomial is the following list for $x \in {\zeta, \zeta\omega}$:
+   And the evaluation of such a polynomial is the following list for $x \in {\zeta, \zeta\omega}$:
 
-    $$(f_0(x), f_1(x), f_2(x), \ldots)$$
+   $$(f_0(x), f_1(x), f_2(x), \ldots)$$
 
-     TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)
-27. Evaluate the same polynomials without chunking them
-    (so that each polynomial should correspond to a single value this time).
-28. Compute the ft polynomial.
-    This is to implement [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html).
-29. construct the blinding part of the ft polynomial commitment
-    see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#evaluation-proof-and-blinding-factors
-30. Evaluate the ft polynomial at $\zeta\omega$ only.
-31. Setup the Fr-Sponge
-32. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
-33. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
-34. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
-    - the public polynomial
-    - z
-    - generic selector
-    - poseidon selector
-    - the 15 register/witness
-    - 6 sigmas evaluations (the last one is not evaluated)
-35. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
-36. Sample $v'$ with the Fr-Sponge
-37. Derive $v$ from $v'$ using the endomorphism (TODO: specify)
-38. Sample $u'$ with the Fr-Sponge
-39. Derive $u$ from $u'$ using the endomorphism (TODO: specify)
-40. Create a list of all polynomials that will require evaluations
-    (and evaluation proofs) in the protocol.
-    First, include the previous challenges, in case we are in a recursive prover.
-41. Then, include:
-    - the negated public polynomial
-    - the ft polynomial
-    - the permutation aggregation polynomial z polynomial
-    - the generic selector
-    - the poseidon selector
-    - the 15 registers/witness columns
-    - the 6 sigmas
-42. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
+   TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)
+1. Evaluate the same polynomials without chunking them
+   (so that each polynomial should correspond to a single value this time).
+1. Compute the ft polynomial.
+   This is to implement [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html).
+1. construct the blinding part of the ft polynomial commitment
+   see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#evaluation-proof-and-blinding-factors
+1. Evaluate the ft polynomial at $\zeta\omega$ only.
+1. Setup the Fr-Sponge
+1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
+1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
+1. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
+	- the public polynomial
+	- z
+	- generic selector
+	- poseidon selector
+	- the 15 register/witness
+	- 6 sigmas evaluations (the last one is not evaluated)
+1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
+1. Sample $v'$ with the Fr-Sponge
+1. Derive $v$ from $v'$ using the endomorphism (TODO: specify)
+1. Sample $u'$ with the Fr-Sponge
+1. Derive $u$ from $u'$ using the endomorphism (TODO: specify)
+1. Create a list of all polynomials that will require evaluations
+   (and evaluation proofs) in the protocol.
+   First, include the previous challenges, in case we are in a recursive prover.
+1. Then, include:
+	- the negated public polynomial
+	- the ft polynomial
+	- the permutation aggregation polynomial z polynomial
+	- the generic selector
+	- the poseidon selector
+	- the 15 registers/witness columns
+	- the 6 sigmas
+	- optionally, the runtime table
+1. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
 
 
 ### Proof Verification
 
 TODO: we talk about batch verification, but is there an actual batch operation? It seems like we're just verifying an aggregated opening proof
 
-We define two helper algorithms below, used in the batch verification of proofs. 
+We define two helper algorithms below, used in the batch verification of proofs.
 
 
 #### Fiat-Shamir argument
@@ -1596,43 +1667,44 @@ We define two helper algorithms below, used in the batch verification of proofs.
 We run the following algorithm:
 
 1. Setup the Fq-Sponge.
-2. Absorb the commitment of the public input polynomial with the Fq-Sponge.
-3. Absorb the commitments to the registers / witness columns with the Fq-Sponge.
-4. If lookup is used:
-   - If it involves queries to a multiple-column lookup table,
-     then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
-     otherwise set the joint combiner challenge $j'$ to $0$.
-   - Derive the scalar joint combiner challenge $j$ from $j'$ using the endomorphism.
-   (TODO: specify endomorphism)
-   - absorb the commitments to the sorted polynomials.
-5. Sample $\beta$ with the Fq-Sponge.
-6. Sample $\gamma$ with the Fq-Sponge.
-7. If using lookup, absorb the commitment to the aggregation lookup polynomial.
-8. Absorb the commitment to the permutation trace with the Fq-Sponge.
-9. Sample $\alpha'$ with the Fq-Sponge.
-10. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
-11. Enforce that the length of the $t$ commitment is of size `PERMUTS`.
-12. Absorb the commitment to the quotient polynomial $t$ into the argument.
-13. Sample $\zeta'$ with the Fq-Sponge.
-14. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
-15. Setup the Fr-Sponge.
-16. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
-17. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
-    NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
-18. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
-    - the public polynomial
-    - z
-    - generic selector
-    - poseidon selector
-    - the 15 register/witness
-    - 6 sigmas evaluations (the last one is not evaluated)
-19. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
-20. Sample $v'$ with the Fr-Sponge.
-21. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
-22. Sample $u'$ with the Fr-Sponge.
-23. Derive $u$ from $u'$ using the endomorphism (TODO: specify).
-24. Create a list of all polynomials that have an evaluation proof.
-25. Compute the evaluation of $ft(\zeta)$.
+1. Absorb the commitment of the public input polynomial with the Fq-Sponge.
+1. Absorb the commitments to the registers / witness columns with the Fq-Sponge.
+1. If lookup is used:
+	- If it involves queries to a multiple-column lookup table,
+	  then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
+	  otherwise set the joint combiner challenge $j'$ to $0$.
+	- Derive the scalar joint combiner challenge $j$ from $j'$ using the endomorphism.
+	  (TODO: specify endomorphism)
+	- absorb the commitments to the sorted polynomials.
+1. Sample $\beta$ with the Fq-Sponge.
+1. Sample $\gamma$ with the Fq-Sponge.
+1. If using lookup, absorb the commitment to the aggregation lookup polynomial.
+1. Absorb the commitment to the permutation trace with the Fq-Sponge.
+1. Sample $\alpha'$ with the Fq-Sponge.
+1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
+1. Enforce that the length of the $t$ commitment is of size `PERMUTS`.
+1. Absorb the commitment to the quotient polynomial $t$ into the argument.
+1. Sample $\zeta'$ with the Fq-Sponge.
+1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
+1. Setup the Fr-Sponge.
+1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
+1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
+
+   NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
+1. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
+	- the public polynomial
+	- z
+	- generic selector
+	- poseidon selector
+	- the 15 register/witness
+	- 6 sigmas evaluations (the last one is not evaluated)
+1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
+1. Sample $v'$ with the Fr-Sponge.
+1. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
+1. Sample $u'$ with the Fr-Sponge.
+1. Derive $u$ from $u'$ using the endomorphism (TODO: specify).
+1. Create a list of all polynomials that have an evaluation proof.
+1. Compute the evaluation of $ft(\zeta)$.
 
 #### Partial verification
 
@@ -1641,8 +1713,8 @@ This allows us to potentially batch verify a number of partially verified proofs
 Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
 
 1. Commit to the negated public input polynomial.
-2. Run the [Fiat-Shamir argument](#fiat-shamir-argument).
-3. Combine the chunked polynomials' evaluations
+1. Run the [Fiat-Shamir argument](#fiat-shamir-argument).
+1. Combine the chunked polynomials' evaluations
    (TODO: most likely only the quotient polynomial is chunked)
    with the right powers of $\zeta^n$ and $(\zeta * \omega)^n$.
 4. Compute the commitment to the linearized polynomial $f$.
@@ -1653,18 +1725,18 @@ Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
    contained in the verifier index or in the proof,
    unless a polynomial has its evaluation provided by the proof
    in which case the evaluation should be used in place of the commitment.
-5. Compute the (chuncked) commitment of $ft$
+1. Compute the (chuncked) commitment of $ft$
    (see [Maller's optimization](../crypto/plonk/maller_15.html)).
-6. List the polynomial commitments, and their associated evaluations,
+1. List the polynomial commitments, and their associated evaluations,
    that are associated to the aggregated evaluation proof in the proof:
-    - recursion
-    - public input commitment
-    - ft commitment (chunks of it)
-    - permutation commitment
-    - index commitments that use the coefficients
-    - witness commitments
-    - sigma commitments
-    - lookup commitments
+	- recursion
+	- public input commitment
+	- ft commitment (chunks of it)
+	- permutation commitment
+	- index commitments that use the coefficients
+	- witness commitments
+	- sigma commitments
+	- lookup commitments
 #### Batch verification of proofs
 
 Below, we define the steps to verify a number of proofs
@@ -1672,9 +1744,9 @@ Below, we define the steps to verify a number of proofs
 You can, of course, use it to verify a single proof.
 
 1. If there's no proof to verify, the proof validates trivially.
-2. Ensure that all the proof's verifier index have a URS of the same length. (TODO: do they have to be the same URS though? should we check for that?)
-3. Validate each proof separately following the [partial verification](#partial-verification) steps.
-4. Use the [`PolyCom.verify`](#polynomial-commitments) to verify the partially evaluated proofs.
+1. Ensure that all the proof's verifier index have a URS of the same length. (TODO: do they have to be the same URS though? should we check for that?)
+1. Validate each proof separately following the [partial verification](#partial-verification) steps.
+1. Use the [`PolyCom.verify`](#polynomial-commitments) to verify the partially evaluated proofs.
 
 
 ## Optimizations

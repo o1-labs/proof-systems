@@ -24,9 +24,8 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
+          toolchain: "1.58.0"
           components: rustfmt, clippy
-          override: true
 
       - name: Setup OCaml (because of ocaml-gen)
         run: |
@@ -58,17 +57,17 @@ jobs:
 
       - name: Set up cargo-spec for specifications
         run: |
-          cargo install cargo-spec --version 0.3.0
+          cargo install cargo-spec --version 0.4.1
 
       - name: Build the kimchi specification
-        run: |          
+        run: |
           cd book/specifications
-          cd kimchi && make build 
+          cd kimchi && make build
 
       - name: Build the polynomial commitment specification
         run: |
           cd book/specifications
-          cd poly-commitment && make build 
+          cd poly-commitment && make build
 
       - name: Check that up-to-date specification is checked in
         run: |

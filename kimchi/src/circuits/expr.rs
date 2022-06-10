@@ -2,6 +2,7 @@ use crate::{
     circuits::{
         domains::EvaluationDomains,
         gate::{CurrOrNext, GateType},
+        lookup::{index::LookupSelectors, lookups::LookupPattern},
         polynomials::permutation::eval_vanishes_on_last_4_rows,
         wires::COLUMNS,
     },
@@ -20,7 +21,29 @@ use std::{
     collections::{HashMap, HashSet},
     ops::MulAssign,
 };
+use thiserror::Error;
 use CurrOrNext::{Curr, Next};
+
+#[derive(Debug, Error)]
+pub enum ExprError {
+    #[error("Empty stack")]
+    EmptyStack,
+
+    #[error("Lookup should not have been used")]
+    LookupShouldNotBeUsed,
+
+    #[error("Linearization failed (needed {0:?} evaluated at the {1:?} row")]
+    MissingEvaluation(Column, CurrOrNext),
+
+    #[error("Cannot get index evaluation {0:?} (should have been linearized away)")]
+    MissingIndexEvaluation(Column),
+
+    #[error("Linearization failed")]
+    FailedLinearization,
+
+    #[error("runtime table not available")]
+    MissingRuntime,
+}
 
 /// The collection of constants required to evaluate an `Expr`.
 pub struct Constants<F> {
@@ -48,9 +71,13 @@ pub struct LookupEnvironment<'a, F: FftField> {
     /// The lookup aggregation polynomials.
     pub aggreg: &'a Evaluations<F, D<F>>,
     /// The lookup-type selector polynomials.
-    pub selectors: &'a Vec<Evaluations<F, D<F>>>,
+    pub selectors: &'a LookupSelectors<Evaluations<F, D<F>>>,
     /// The evaluations of the combined lookup table polynomial.
     pub table: &'a Evaluations<F, D<F>>,
+    /// The evaluations of the optional runtime selector polynomial.
+    pub runtime_selector: Option<&'a Evaluations<F, D<F>>>,
+    /// The evaluations of the optional runtime table.
+    pub runtime_table: Option<&'a Evaluations<F, D<F>>>,
 }
 
 /// The collection of polynomials (all in evaluation form) and constants
@@ -87,10 +114,12 @@ impl<'a, F: FftField> Environment<'a, F> {
             Witness(i) => Some(&self.witness[*i]),
             Coefficient(i) => Some(&self.coefficient[*i]),
             Z => Some(self.z),
-            LookupKindIndex(i) => lookup.map(|l| &l.selectors[*i]),
+            LookupKindIndex(i) => lookup.and_then(|l| l.selectors[*i].as_ref()),
             LookupSorted(i) => lookup.map(|l| &l.sorted[*i]),
             LookupAggreg => lookup.map(|l| l.aggreg),
             LookupTable => lookup.map(|l| l.table),
+            LookupRuntimeSelector => lookup.and_then(|l| l.runtime_selector),
+            LookupRuntimeTable => lookup.and_then(|l| l.runtime_table),
             Index(t) => match self.index.get(t) {
                 None => None,
                 Some(e) => Some(e),
@@ -117,6 +146,16 @@ pub fn l0_1<F: FftField>(d: D<F>) -> F {
         .fold(F::one(), |acc, omega_j| acc * (F::one() - omega_j))
 }
 
+// Compute the ith unnormalized lagrange basis
+fn unnormalized_lagrange_basis<F: FftField>(domain: &D<F>, i: i32, pt: &F) -> F {
+    let omega_i = if i < 0 {
+        domain.group_gen.pow(&[-i as u64]).inverse().unwrap()
+    } else {
+        domain.group_gen.pow(&[i as u64])
+    };
+    domain.evaluate_vanishing_polynomial(*pt) / (*pt - omega_i)
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 /// A type representing one of the polynomials involved in the PLONK IOP.
 pub enum Column {
@@ -125,7 +164,9 @@ pub enum Column {
     LookupSorted(usize),
     LookupAggreg,
     LookupTable,
-    LookupKindIndex(usize),
+    LookupKindIndex(LookupPattern),
+    LookupRuntimeSelector,
+    LookupRuntimeTable,
     Index(GateType),
     Coefficient(usize),
 }
@@ -145,7 +186,9 @@ impl Column {
             Column::LookupSorted(i) => format!("s_{{{}}}", i),
             Column::LookupAggreg => "a".to_string(),
             Column::LookupTable => "t".to_string(),
-            Column::LookupKindIndex(i) => format!("k_{{{}}}", i),
+            Column::LookupKindIndex(i) => format!("k_{{{:?}}}", i),
+            Column::LookupRuntimeSelector => "rts".to_string(),
+            Column::LookupRuntimeTable => "rt".to_string(),
             Column::Index(gate) => {
                 format!("{:?}", gate)
             }
@@ -351,7 +394,7 @@ impl Op2 {
 ///
 /// - `Cell(v)` for `v : Variable`
 /// - VanishesOnLast4Rows
-/// - UnnormalizedLagrangeBasis(i) for `i : usize`
+/// - UnnormalizedLagrangeBasis(i) for `i : i32`
 ///
 /// This represents a PLONK "custom constraint", which enforces that
 /// the corresponding combination of the polynomials corresponding to
@@ -366,7 +409,7 @@ pub enum Expr<C> {
     VanishesOnLast4Rows,
     /// UnnormalizedLagrangeBasis(i) is
     /// (x^n - 1) / (x - omega^i)
-    UnnormalizedLagrangeBasis(usize),
+    UnnormalizedLagrangeBasis(i32),
     Pow(Box<Expr<C>>, u64),
     Cache(CacheId, Box<Expr<C>>),
 }
@@ -390,33 +433,30 @@ pub enum PolishToken<F> {
     Mul,
     Sub,
     VanishesOnLast4Rows,
-    UnnormalizedLagrangeBasis(usize),
+    UnnormalizedLagrangeBasis(i32),
     Store,
     Load(usize),
 }
 
 impl Variable {
-    fn evaluate<'a, 'b, F: Field>(&self, evals: &'a [ProofEvaluations<F>]) -> Result<F, &'b str> {
+    fn evaluate<F: Field>(&self, evals: &[ProofEvaluations<F>]) -> Result<F, ExprError> {
         let evals = &evals[self.row.shift()];
         use Column::*;
         let l = evals
             .lookup
             .as_ref()
-            .ok_or("Lookup should not have been used");
+            .ok_or(ExprError::LookupShouldNotBeUsed);
         match self.col {
             Witness(i) => Ok(evals.w[i]),
             Z => Ok(evals.z),
             LookupSorted(i) => l.map(|l| l.sorted[i]),
             LookupAggreg => l.map(|l| l.aggreg),
             LookupTable => l.map(|l| l.table),
+            LookupRuntimeTable => l.and_then(|l| l.runtime.ok_or(ExprError::MissingRuntime)),
             Index(GateType::Poseidon) => Ok(evals.poseidon_selector),
             Index(GateType::Generic) => Ok(evals.generic_selector),
-            Index(GateType::CairoClaim)
-            | Index(GateType::CairoInstruction)
-            | Index(GateType::CairoFlags)
-            | Index(GateType::CairoTransition) => todo!(),
-            Coefficient(_) | LookupKindIndex(_) | Index(_) => {
-                Err("Cannot get index evaluation (should have been linearized away)")
+            Coefficient(_) | LookupKindIndex(_) | LookupRuntimeSelector | Index(_) => {
+                Err(ExprError::MissingIndexEvaluation(self.col))
             }
         }
     }
@@ -424,13 +464,13 @@ impl Variable {
 
 impl<F: FftField> PolishToken<F> {
     /// Evaluate an RPN expression to a field element.
-    pub fn evaluate<'c>(
+    pub fn evaluate(
         toks: &[PolishToken<F>],
         d: D<F>,
         pt: F,
         evals: &[ProofEvaluations<F>],
         c: &Constants<F>,
-    ) -> Result<F, &'c str> {
+    ) -> Result<F, ExprError> {
         let mut stack = vec![];
         let mut cache: Vec<F> = vec![];
 
@@ -446,9 +486,9 @@ impl<F: FftField> PolishToken<F> {
                 EndoCoefficient => stack.push(c.endo_coefficient),
                 Mds { row, col } => stack.push(c.mds[*row][*col]),
                 VanishesOnLast4Rows => stack.push(eval_vanishes_on_last_4_rows(d, pt)),
-                UnnormalizedLagrangeBasis(i) => stack.push(
-                    d.evaluate_vanishing_polynomial(pt) / (pt - d.group_gen.pow(&[*i as u64])),
-                ),
+                UnnormalizedLagrangeBasis(i) => {
+                    stack.push(unnormalized_lagrange_basis(&d, *i, &pt))
+                }
                 Literal(x) => stack.push(*x),
                 Dup => stack.push(stack[stack.len() - 1]),
                 Cell(v) => match v.evaluate(evals) {
@@ -460,18 +500,18 @@ impl<F: FftField> PolishToken<F> {
                     stack[i] = stack[i].pow(&[*n as u64]);
                 }
                 Add => {
-                    let y = stack.pop().ok_or("Empty stack")?;
-                    let x = stack.pop().ok_or("Empty stack")?;
+                    let y = stack.pop().ok_or(ExprError::EmptyStack)?;
+                    let x = stack.pop().ok_or(ExprError::EmptyStack)?;
                     stack.push(x + y);
                 }
                 Mul => {
-                    let y = stack.pop().ok_or("Empty stack")?;
-                    let x = stack.pop().ok_or("Empty stack")?;
+                    let y = stack.pop().ok_or(ExprError::EmptyStack)?;
+                    let x = stack.pop().ok_or(ExprError::EmptyStack)?;
                     stack.push(x * y);
                 }
                 Sub => {
-                    let y = stack.pop().ok_or("Empty stack")?;
-                    let x = stack.pop().ok_or("Empty stack")?;
+                    let y = stack.pop().ok_or(ExprError::EmptyStack)?;
+                    let x = stack.pop().ok_or(ExprError::EmptyStack)?;
                     stack.push(x - y);
                 }
                 Store => {
@@ -601,7 +641,7 @@ pub fn pows<F: Field>(x: F, n: usize) -> Vec<F> {
 /// = ((omega_8^n)^r - 1) / (omega^q omega_8^r - omega^i)
 fn unnormalized_lagrange_evals<F: FftField>(
     l0_1: F,
-    i: usize,
+    i: i32,
     res_domain: Domain,
     env: &Environment<F>,
 ) -> Evaluations<F, D<F>> {
@@ -615,6 +655,12 @@ fn unnormalized_lagrange_evals<F: FftField>(
 
     let d1 = env.domain.d1;
     let n = d1.size;
+    // Renormalize negative values to wrap around at domain size
+    let i = if i < 0 {
+        ((i as isize) + (n as isize)) as usize
+    } else {
+        i as usize
+    };
     let ii = i as u64;
     assert!(ii < n);
     let omega = d1.group_gen;
@@ -666,7 +712,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
         res_domain: (Domain, D<F>),
         g: G,
     ) -> Evaluations<F, D<F>> {
-        let n = res_domain.1.size as usize;
+        let n = res_domain.1.size();
         Evaluations::<F, D<F>>::from_vec_and_domain(
             (0..n).into_par_iter().map(g).collect(),
             res_domain.1,
@@ -709,7 +755,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                     shift,
                 },
             ) => {
-                let n = res_domain.1.size as usize;
+                let n = res_domain.1.size();
                 let scale = (domain as usize) / (res_domain.0 as usize);
                 assert!(scale != 0);
                 let v: Vec<_> = (0..n)
@@ -786,7 +832,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 let scale2 = (d2 as usize) / (res_domain.0 as usize);
                 assert!(scale2 != 0);
 
-                let n = res_domain.1.size as usize;
+                let n = res_domain.1.size();
                 let v: Vec<_> = (0..n)
                     .into_par_iter()
                     .map(|i| {
@@ -1184,7 +1230,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
         pt: F,
         evals: &[ProofEvaluations<F>],
         env: &Environment<F>,
-    ) -> Result<F, &str> {
+    ) -> Result<F, ExprError> {
         self.evaluate_(d, pt, evals, &env.constants)
     }
 
@@ -1195,7 +1241,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
         pt: F,
         evals: &[ProofEvaluations<F>],
         c: &Constants<F>,
-    ) -> Result<F, &str> {
+    ) -> Result<F, ExprError> {
         use Expr::*;
         match self {
             Double(x) => x.evaluate_(d, pt, evals, c).map(|x| x.double()),
@@ -1218,9 +1264,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
                 Ok(x - y)
             }
             VanishesOnLast4Rows => Ok(eval_vanishes_on_last_4_rows(d, pt)),
-            UnnormalizedLagrangeBasis(i) => {
-                Ok(d.evaluate_vanishing_polynomial(pt) / (pt - d.group_gen.pow(&[*i as u64])))
-            }
+            UnnormalizedLagrangeBasis(i) => Ok(unnormalized_lagrange_basis(&d, *i, &pt)),
             Cell(v) => v.evaluate(evals),
             Cache(_, e) => e.evaluate_(d, pt, evals, c),
         }
@@ -1244,7 +1288,7 @@ enum Either<A, B> {
 
 impl<F: FftField> Expr<F> {
     /// Evaluate an expression into a field element.
-    pub fn evaluate(&self, d: D<F>, pt: F, evals: &[ProofEvaluations<F>]) -> Result<F, &str> {
+    pub fn evaluate(&self, d: D<F>, pt: F, evals: &[ProofEvaluations<F>]) -> Result<F, ExprError> {
         use Expr::*;
         match self {
             Constant(x) => Ok(*x),
@@ -1267,9 +1311,7 @@ impl<F: FftField> Expr<F> {
                 Ok(x - y)
             }
             VanishesOnLast4Rows => Ok(eval_vanishes_on_last_4_rows(d, pt)),
-            UnnormalizedLagrangeBasis(i) => {
-                Ok(d.evaluate_vanishing_polynomial(pt) / (pt - d.group_gen.pow(&[*i as u64])))
-            }
+            UnnormalizedLagrangeBasis(i) => Ok(unnormalized_lagrange_basis(&d, *i, &pt)),
             Cell(v) => v.evaluate(evals),
             Cache(_, e) => e.evaluate(d, pt, evals),
         }
@@ -1486,7 +1528,7 @@ impl<F: FftField> Linearization<Vec<PolishToken<F>>> {
         evals: &[ProofEvaluations<F>],
     ) -> (F, DensePolynomial<F>) {
         let cs = &env.constants;
-        let n = env.domain.d1.size as usize;
+        let n = env.domain.d1.size();
         let mut res = vec![F::zero(); n];
         self.index_terms.iter().for_each(|(idx, c)| {
             let c = PolishToken::evaluate(c, env.domain.d1, pt, evals, cs).unwrap();
@@ -1516,7 +1558,7 @@ impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
         evals: &[ProofEvaluations<F>],
     ) -> (F, DensePolynomial<F>) {
         let cs = &env.constants;
-        let n = env.domain.d1.size as usize;
+        let n = env.domain.d1.size();
         let mut res = vec![F::zero(); n];
         self.index_terms.iter().for_each(|(idx, c)| {
             let c = c.evaluate_(env.domain.d1, pt, evals, cs).unwrap();
@@ -1692,7 +1734,10 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
     /// this function computes `lin_or_err(factor_{V_0}(e))`, although it does not
     /// compute it in that way. Instead, it computes it by reducing the expression into
     /// a sum of monomials with `F` coefficients, and then factors the monomials.
-    pub fn linearize(&self, evaluated: HashSet<Column>) -> Result<Linearization<Expr<F>>, &str> {
+    pub fn linearize(
+        &self,
+        evaluated: HashSet<Column>,
+    ) -> Result<Linearization<Expr<F>>, ExprError> {
         let mut res: HashMap<Column, Expr<F>> = HashMap::new();
         let mut constant_term: Expr<F> = Self::zero();
         let monomials = self.monomials(&evaluated);
@@ -1707,9 +1752,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
                 let var = unevaluated.remove(0);
                 match var.row {
                     Next => {
-                        return Err(
-                            "Linearization failed (needed polynomial value at \"next\" row)",
-                        )
+                        return Err(ExprError::MissingEvaluation(var.col, var.row));
                     }
                     Curr => {
                         let e = match res.remove(&var.col) {
@@ -1731,7 +1774,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
                     }
                 }
             } else {
-                return Err("Linearization failed");
+                return Err(ExprError::FailedLinearization);
             }
         }
         Ok(Linearization {
@@ -2107,6 +2150,12 @@ pub mod constraints {
     pub fn boolean<F: Field>(b: &E<F>) -> E<F> {
         b.clone().square() - b.clone()
     }
+
+    /// Crumb constraint for 2-bit value x
+    pub fn crumb<F: FftField>(x: &E<F>) -> E<F> {
+        // Assert x \in [0,3] i.e. assert x*(x - 1)*(x - 2)*(x - 3) == 0
+        x.clone() * (x.clone() - E::one()) * (x.clone() - 2u64.into()) * (x.clone() - 3u64.into())
+    }
 }
 
 //
@@ -2154,11 +2203,15 @@ pub mod prologue {
 pub mod test {
     use super::*;
     use crate::circuits::{
-        constraints::ConstraintSystem, gate::CircuitGate, polynomials::generic::GenericGateSpec,
+        constraints::ConstraintSystem,
+        gate::CircuitGate,
+        polynomials::{generic::GenericGateSpec, permutation::ZK_ROWS},
         wires::Wire,
     };
+    use ark_ff::UniformRand;
     use array_init::array_init;
     use mina_curves::pasta::fp::Fp;
+    use rand::{prelude::StdRng, SeedableRng};
 
     #[test]
     #[should_panic]
@@ -2224,5 +2277,22 @@ pub mod test {
 
         // this should panic as we don't have a domain large enough
         expr.evaluations(&env);
+    }
+
+    #[test]
+    fn test_unnormalized_lagrange_basis() {
+        let domain = EvaluationDomains::<Fp>::create(2usize.pow(10) + ZK_ROWS as usize)
+            .expect("failed to create evaluation domain");
+        let rng = &mut StdRng::from_seed([17u8; 32]);
+
+        // Check that both ways of computing lagrange basis give the same result
+        let d1_size: i32 = domain.d1.size().try_into().expect("domain size too big");
+        for i in 1..d1_size {
+            let pt = Fp::rand(rng);
+            assert_eq!(
+                unnormalized_lagrange_basis(&domain.d1, d1_size - i, &pt),
+                unnormalized_lagrange_basis(&domain.d1, -i, &pt)
+            );
+        }
     }
 }

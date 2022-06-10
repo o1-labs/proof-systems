@@ -6,7 +6,8 @@ use crate::{
         gate::{CircuitGate, GateType},
         lookup::{index::LookupConstraintSystem, tables::LookupTable},
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
-        polynomials::permutation::ZK_ROWS,
+        polynomials::permutation::{Shifts, ZK_ROWS},
+        polynomials::range_check,
         wires::*,
     },
     error::SetupError,
@@ -17,13 +18,15 @@ use ark_poly::{
     Radix2EvaluationDomain as D,
 };
 use array_init::array_init;
-use blake2::{Blake2b512, Digest};
 use o1_utils::ExtendedEvaluations;
 use once_cell::sync::OnceCell;
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
+use std::collections::HashSet;
 use std::sync::Arc;
+
+use super::lookup::runtime_tables::RuntimeTableCfg;
 
 //
 // ConstraintSystem
@@ -108,6 +111,10 @@ pub struct ConstraintSystem<F: FftField> {
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub endomul_scalar8: E<F, D<F>>,
 
+    /// Range check gate selector polynomials
+    #[serde(bound = "Vec<range_check::SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
+    pub range_check_selector_polys: Vec<range_check::SelectorPolynomial<F>>,
+
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub shift: [F; PERMUTS],
@@ -128,80 +135,6 @@ pub struct ConstraintSystem<F: FftField> {
     precomputations: OnceCell<Arc<DomainConstantEvaluations<F>>>,
 }
 
-// TODO: move Shifts, and permutation-related functions to the permutation module
-
-/// Shifts represent the shifts required in the permutation argument of PLONK.
-/// It also caches the shifted powers of omega for optimization purposes.
-pub struct Shifts<F> {
-    /// The coefficients `k` (in the Plonk paper) that create a coset when multiplied with the generator of our domain.
-    shifts: [F; PERMUTS],
-    /// A matrix that maps all cells coordinates `{col, row}` to their shifted field element.
-    /// For example the cell `{col:2, row:1}` will map to `omega * k2`,
-    /// which lives in `map[2][1]`
-    map: [Vec<F>; PERMUTS],
-}
-
-impl<F> Shifts<F>
-where
-    F: FftField + SquareRootField,
-{
-    /// Generates the shifts for a given domain
-    pub fn new(domain: &D<F>) -> Self {
-        let mut shifts = [F::zero(); PERMUTS];
-
-        // first shift is the identity
-        shifts[0] = F::one();
-
-        // sample the other shifts
-        let mut i: u32 = 7;
-        for idx in 1..(PERMUTS) {
-            let mut shift = Self::sample(domain, &mut i);
-            // they have to be distincts
-            while shifts.contains(&shift) {
-                shift = Self::sample(domain, &mut i);
-            }
-            shifts[idx] = shift;
-        }
-
-        // create a map of cells to their shifted value
-        let map: [Vec<F>; PERMUTS] =
-            array_init(|i| domain.elements().map(|elm| shifts[i] * elm).collect());
-
-        //
-        Self { shifts, map }
-    }
-
-    /// retrieve the shifts
-    pub fn shifts(&self) -> &[F; PERMUTS] {
-        &self.shifts
-    }
-
-    /// sample coordinate shifts deterministically
-    fn sample(domain: &D<F>, input: &mut u32) -> F {
-        let mut h = Blake2b512::new();
-
-        *input += 1;
-        h.update(&input.to_be_bytes());
-
-        let mut shift = F::from_random_bytes(&h.finalize()[..31])
-            .expect("our field elements fit in more than 31 bytes");
-
-        while !shift.legendre().is_qnr() || domain.evaluate_vanishing_polynomial(shift).is_zero() {
-            let mut h = Blake2b512::new();
-            *input += 1;
-            h.update(&input.to_be_bytes());
-            shift = F::from_random_bytes(&h.finalize()[..31])
-                .expect("our field elements fit in more than 31 bytes");
-        }
-        shift
-    }
-
-    /// Returns the field element that represents a position
-    fn cell_to_field(&self, &Wire { row, col }: &Wire) -> F {
-        self.map[col][row]
-    }
-}
-
 /// Represents an error found when verifying a witness with a gate
 #[derive(Debug)]
 pub enum GateError {
@@ -213,31 +146,193 @@ pub enum GateError {
     Custom { row: usize, err: String },
 }
 
+pub struct Builder<F: FftField> {
+    gates: Vec<CircuitGate<F>>,
+    sponge_params: ArithmeticSpongeParams<F>,
+    public: usize,
+    lookup_tables: Vec<LookupTable<F>>,
+    runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
+    precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
+}
+
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
-    /// creates a constraint system from a vector of gates ([CircuitGate]), some sponge parameters ([ArithmeticSpongeParams]), and the number of public inputs.
+    /// Initializes the [ConstraintSystem<F>] on input `gates` and `fr_sponge_params`.
+    /// Returns a [Builder<F>]
+    /// It also defaults to the following values of the builder:
+    /// - `public: 0`
+    /// - `lookup_tables: vec![]`,
+    /// - `runtime_tables: None`,
+    /// - `precomputations: None`,
+    ///
+    /// How to use it:
+    /// 1. Create your instance of your builder for the constraint system using `crate(gates, sponge params)`
+    /// 2. Iterativelly invoke any desired number of steps: `public(), lookup(), runtime(), precomputations()``
+    /// 3. Finally call the `build()` method and unwrap the `Result` to obtain your `ConstraintSystem`
     pub fn create(
         gates: Vec<CircuitGate<F>>,
-        lookup_tables: Vec<LookupTable<F>>,
-        fr_sponge_params: ArithmeticSpongeParams<F>,
-        public: usize,
-    ) -> Result<Self, SetupError> {
-        ConstraintSystem::<F>::create_with_shared_precomputations(
+        sponge_params: ArithmeticSpongeParams<F>,
+    ) -> Builder<F> {
+        Builder {
             gates,
-            lookup_tables,
-            fr_sponge_params,
-            public,
-            None,
-        )
+            sponge_params,
+            public: 0,
+            lookup_tables: vec![],
+            runtime_tables: None,
+            precomputations: None,
+        }
     }
 
-    /// similar to create. but this fn creates a constraint system with a shared precomputation previously created elsewhere
-    pub fn create_with_shared_precomputations(
-        mut gates: Vec<CircuitGate<F>>,
-        lookup_tables: Vec<LookupTable<F>>,
-        fr_sponge_params: ArithmeticSpongeParams<F>,
-        public: usize,
-        precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
-    ) -> Result<Self, SetupError> {
+    pub fn precomputations(&self) -> &Arc<DomainConstantEvaluations<F>> {
+        self.precomputations
+            .get_or_init(|| Arc::new(DomainConstantEvaluations::create(self.domain).unwrap()))
+    }
+
+    pub fn set_precomputations(&self, precomputations: Arc<DomainConstantEvaluations<F>>) {
+        self.precomputations
+            .set(precomputations)
+            .expect("Precomputation has been set before");
+    }
+
+    /// This function verifies the consistency of the wire
+    /// assignements (witness) against the constraints
+    ///     witness: wire assignement witness
+    ///     RETURN: verification status
+    pub fn verify(&self, witness: &[Vec<F>; COLUMNS], public: &[F]) -> Result<(), GateError> {
+        // pad the witness
+        let pad = vec![F::zero(); self.domain.d1.size() - witness[0].len()];
+        let witness: [Vec<F>; COLUMNS] = array_init(|i| {
+            let mut w = witness[i].to_vec();
+            w.extend_from_slice(&pad);
+            w
+        });
+
+        // check each rows' wiring
+        for (row, gate) in self.gates.iter().enumerate() {
+            // check if wires are connected
+            for col in 0..PERMUTS {
+                let wire = gate.wires[col];
+
+                if wire.col >= PERMUTS {
+                    return Err(GateError::Custom {
+                        row,
+                        err: format!(
+                            "a wire can only be connected to the first {} columns",
+                            PERMUTS
+                        ),
+                    });
+                }
+
+                if witness[col][row] != witness[wire.col][wire.row] {
+                    return Err(GateError::DisconnectedWires(
+                        Wire { col, row },
+                        Wire {
+                            col: wire.col,
+                            row: wire.row,
+                        },
+                    ));
+                }
+            }
+
+            // for public gates, only the left wire is toggled
+            if row < self.public && gate.coeffs[0] != F::one() {
+                return Err(GateError::IncorrectPublic(row));
+            }
+
+            // check the gate's satisfiability
+            gate.verify(row, &witness, self, public)
+                .map_err(|err| GateError::Custom { row, err })?;
+        }
+
+        // all good!
+        Ok(())
+    }
+
+    /// evaluate witness polynomials over domains
+    pub fn evaluate(&self, w: &[DP<F>; COLUMNS], z: &DP<F>) -> WitnessOverDomains<F> {
+        // compute shifted witness polynomials
+        let w8: [E<F, D<F>>; COLUMNS] =
+            array_init(|i| w[i].evaluate_over_domain_by_ref(self.domain.d8));
+        let z8 = z.evaluate_over_domain_by_ref(self.domain.d8);
+
+        let w4: [E<F, D<F>>; COLUMNS] = array_init(|i| {
+            E::<F, D<F>>::from_vec_and_domain(
+                (0..self.domain.d4.size)
+                    .map(|j| w8[i].evals[2 * j as usize])
+                    .collect(),
+                self.domain.d4,
+            )
+        });
+        let z4 = DP::<F>::zero().evaluate_over_domain_by_ref(D::<F>::new(1).unwrap());
+
+        WitnessOverDomains {
+            d4: WitnessShifts {
+                next: WitnessEvals {
+                    w: array_init(|i| w4[i].shift(4)),
+                    // TODO(mimoo): change z to an Option? Or maybe not, we might actually need this dummy evaluation in the aggregated evaluation proof
+                    z: z4.clone(), // dummy evaluation
+                },
+                this: WitnessEvals {
+                    w: w4,
+                    z: z4, // dummy evaluation
+                },
+            },
+            d8: WitnessShifts {
+                next: WitnessEvals {
+                    w: array_init(|i| w8[i].shift(8)),
+                    z: z8.shift(8),
+                },
+                this: WitnessEvals { w: w8, z: z8 },
+            },
+        }
+    }
+}
+
+impl<F: FftField + SquareRootField> Builder<F> {
+    /// Set up the number of public inputs.
+    /// If not invoked, it equals `0` by default.
+    pub fn public(mut self, public: usize) -> Self {
+        self.public = public;
+        self
+    }
+
+    /// Set up the lookup tables.
+    /// If not invoked, it is `vec![]` by default.
+    ///
+    /// **Warning:** you have to make sure that the IDs of the lookup tables,
+    /// are unique and  not colliding with IDs of built-in lookup tables
+    /// (see [crate::circuits::lookup::tables]).
+    pub fn lookup(mut self, lookup_tables: Vec<LookupTable<F>>) -> Self {
+        self.lookup_tables = lookup_tables;
+        self
+    }
+
+    /// Set up the runtime tables.
+    /// If not invoked, it is `None` by default.
+    ///
+    /// **Warning:** you have to make sure that the IDs of the runtime lookup tables,
+    /// are unique and not colliding with IDs of built-in lookup tables
+    /// (see [crate::circuits::lookup::tables]).
+    pub fn runtime(mut self, runtime_tables: Option<Vec<RuntimeTableCfg<F>>>) -> Self {
+        self.runtime_tables = runtime_tables;
+        self
+    }
+
+    /// Set up the shared precomputations.
+    /// If not invoked, it is `None` by default.
+    pub fn shared_precomputations(
+        mut self,
+        shared_precomputations: Arc<DomainConstantEvaluations<F>>,
+    ) -> Self {
+        self.precomputations = Some(shared_precomputations);
+        self
+    }
+
+    /// Build the [ConstraintSystem] from a [Builder].
+    pub fn build(self) -> Result<ConstraintSystem<F>, SetupError> {
+        let mut gates = self.gates;
+        let lookup_tables = self.lookup_tables;
+        let runtime_tables = self.runtime_tables;
+
         //~ 1. If the circuit is less than 2 gates, abort.
         // for some reason we need more than 1 gate for the circuit to work, see TODO below
         assert!(gates.len() > 1);
@@ -261,6 +356,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             .collect();
         gates.append(&mut padding);
 
+        // Record which gates are used by this constraint system
+        let mut circuit_gates_used = HashSet::<GateType>::default();
+        gates.iter().for_each(|gate| {
+            circuit_gates_used.insert(gate.typ);
+        });
+
         //~ 4. sample the `PERMUTS` shifts.
         let shifts = Shifts::new(&domain.d1);
 
@@ -273,8 +374,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // -----------
 
         // compute permutation polynomials
-        let mut sigmal1: [Vec<F>; PERMUTS] =
-            array_init(|_| vec![F::zero(); domain.d1.size as usize]);
+        let mut sigmal1: [Vec<F>; PERMUTS] = array_init(|_| vec![F::zero(); domain.d1.size()]);
 
         for (row, gate) in gates.iter().enumerate() {
             for (cell, sigma) in gate.wires.iter().zip(sigmal1.iter_mut()) {
@@ -398,6 +498,16 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             }
         };
 
+        // Range check constraint selector polynomials
+        let range_check_selector_polys = {
+            if !circuit_gates_used.is_disjoint(&range_check::circuit_gates().into_iter().collect())
+            {
+                range_check::selector_polynomials(&gates, &domain)
+            } else {
+                vec![]
+            }
+        };
+
         //
         // Coefficient
         // -----------
@@ -419,7 +529,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // Lookup
         // ------
         let lookup_constraint_system =
-            LookupConstraintSystem::create(&gates, lookup_tables, &domain)
+            LookupConstraintSystem::create(&gates, lookup_tables, runtime_tables, &domain)
                 .map_err(|e| SetupError::ConstraintSystem(e.to_string()))?;
 
         let sid = shifts.map[0].clone();
@@ -433,7 +543,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             chacha8,
             endomul_scalar8,
             domain,
-            public,
+            public: self.public,
             sid,
             sigmal1,
             sigmal8,
@@ -446,15 +556,16 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             complete_addl4,
             mull8,
             emull,
+            range_check_selector_polys,
             gates,
             shift: shifts.shifts,
             endo,
-            fr_sponge_params,
+            fr_sponge_params: self.sponge_params,
             lookup_constraint_system,
             precomputations: domain_constant_evaluation,
         };
 
-        match precomputations {
+        match self.precomputations {
             Some(t) => {
                 constraints.set_precomputations(t);
             }
@@ -462,112 +573,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                 constraints.precomputations();
             }
         }
-
         Ok(constraints)
-    }
-
-    pub fn precomputations(&self) -> &Arc<DomainConstantEvaluations<F>> {
-        self.precomputations
-            .get_or_init(|| Arc::new(DomainConstantEvaluations::create(self.domain).unwrap()))
-    }
-
-    pub fn set_precomputations(&self, precomputations: Arc<DomainConstantEvaluations<F>>) {
-        self.precomputations
-            .set(precomputations)
-            .expect("Precomputation has been set before");
-    }
-
-    /// This function verifies the consistency of the wire
-    /// assignements (witness) against the constraints
-    ///     witness: wire assignement witness
-    ///     RETURN: verification status
-    pub fn verify(&self, witness: &[Vec<F>; COLUMNS], public: &[F]) -> Result<(), GateError> {
-        // pad the witness
-        let pad = vec![F::zero(); self.domain.d1.size as usize - witness[0].len()];
-        let witness: [Vec<F>; COLUMNS] = array_init(|i| {
-            let mut w = witness[i].to_vec();
-            w.extend_from_slice(&pad);
-            w
-        });
-
-        // check each rows' wiring
-        for (row, gate) in self.gates.iter().enumerate() {
-            // check if wires are connected
-            for col in 0..PERMUTS {
-                let wire = gate.wires[col];
-
-                if wire.col >= PERMUTS {
-                    return Err(GateError::Custom {
-                        row,
-                        err: format!(
-                            "a wire can only be connected to the first {} columns",
-                            PERMUTS
-                        ),
-                    });
-                }
-
-                if witness[col][row] != witness[wire.col][wire.row] {
-                    return Err(GateError::DisconnectedWires(
-                        Wire { col, row },
-                        Wire {
-                            col: wire.col,
-                            row: wire.row,
-                        },
-                    ));
-                }
-            }
-
-            // for public gates, only the left wire is toggled
-            if row < self.public && gate.coeffs[0] != F::one() {
-                return Err(GateError::IncorrectPublic(row));
-            }
-
-            // check the gate's satisfiability
-            gate.verify(row, &witness, self, public)
-                .map_err(|err| GateError::Custom { row, err })?;
-        }
-
-        // all good!
-        Ok(())
-    }
-
-    /// evaluate witness polynomials over domains
-    pub fn evaluate(&self, w: &[DP<F>; COLUMNS], z: &DP<F>) -> WitnessOverDomains<F> {
-        // compute shifted witness polynomials
-        let w8: [E<F, D<F>>; COLUMNS] =
-            array_init(|i| w[i].evaluate_over_domain_by_ref(self.domain.d8));
-        let z8 = z.evaluate_over_domain_by_ref(self.domain.d8);
-
-        let w4: [E<F, D<F>>; COLUMNS] = array_init(|i| {
-            E::<F, D<F>>::from_vec_and_domain(
-                (0..self.domain.d4.size)
-                    .map(|j| w8[i].evals[2 * j as usize])
-                    .collect(),
-                self.domain.d4,
-            )
-        });
-        let z4 = DP::<F>::zero().evaluate_over_domain_by_ref(D::<F>::new(1).unwrap());
-
-        WitnessOverDomains {
-            d4: WitnessShifts {
-                next: WitnessEvals {
-                    w: array_init(|i| w4[i].shift(4)),
-                    // TODO(mimoo): change z to an Option? Or maybe not, we might actually need this dummy evaluation in the aggregated evaluation proof
-                    z: z4.clone(), // dummy evaluation
-                },
-                this: WitnessEvals {
-                    w: w4,
-                    z: z4, // dummy evaluation
-                },
-            },
-            d8: WitnessShifts {
-                next: WitnessEvals {
-                    w: array_init(|i| w8[i].shift(8)),
-                    z: z8.shift(8),
-                },
-                this: WitnessEvals { w: w8, z: z8 },
-            },
-        }
     }
 }
 
@@ -584,7 +590,10 @@ pub mod tests {
         ) -> Self {
             let public = 0;
             // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
-            ConstraintSystem::<F>::create(gates, vec![], sponge_params, public).unwrap()
+            ConstraintSystem::<F>::create(gates, sponge_params)
+                .public(public)
+                .build()
+                .unwrap()
         }
     }
 

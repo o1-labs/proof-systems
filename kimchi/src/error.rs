@@ -1,5 +1,6 @@
 //! This module implements the [ProverError] type.
 
+use commitment_dlog::error::CommitmentError;
 use thiserror::Error;
 
 /// Errors that can arise when creating a proof
@@ -20,6 +21,15 @@ pub enum ProverError {
 
     #[error("the lookup failed to find a match in the table")]
     ValueNotInTable,
+
+    #[error("SRS size is smaller than the domain size required by the circuit")]
+    SRSTooSmall,
+
+    #[error("the runtime tables provided did not match the index's configuration")]
+    RuntimeTablesInconsistent,
+
+    #[error("wrong number of custom blinders given: {0}")]
+    WrongBlinders(CommitmentError),
 }
 
 /// Errors that can arise when verifying a proof
@@ -39,6 +49,15 @@ pub enum VerifyError {
 
     #[error("lookup used in circuit, but proof has inconsistent number of lookup evaluations and commitments")]
     ProofInconsistentLookup,
+
+    #[error("cannot batch proofs using different SRSes")]
+    DifferentSRS,
+
+    #[error("SRS size is smaller than the domain size required by the circuit")]
+    SRSTooSmall,
+
+    #[error("runtime tables are used, but missing from the proof")]
+    IncorrectRuntimeProof,
 }
 
 /// Errors that can arise when preparing the setup
@@ -49,4 +68,11 @@ pub enum SetupError {
 
     #[error("the domain could not be constructed: {0}")]
     DomainCreation(&'static str),
+}
+
+/// Errors that can arise when creating a verifier index
+#[derive(Error, Debug, Clone)]
+pub enum VerifierIndexError {
+    #[error("srs has already been set")]
+    SRSHasBeenSet,
 }

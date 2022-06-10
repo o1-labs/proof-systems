@@ -1,7 +1,11 @@
-use super::framework::TestFramework;
+use super::framework::{print_witness, TestFramework};
 use crate::circuits::{
     gate::{CircuitGate, GateType},
-    lookup::tables::LookupTable,
+    lookup::{
+        runtime_tables::{RuntimeTable, RuntimeTableCfg, RuntimeTableSpec},
+        tables::LookupTable,
+    },
+    polynomial::COLUMNS,
     wires::Wire,
 };
 use ark_ff::Zero;
@@ -86,7 +90,12 @@ fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_siz
         ]
     };
 
-    TestFramework::run_test_lookups(gates, witness, &[], lookup_tables);
+    TestFramework::default()
+        .gates(gates)
+        .witness(witness)
+        .lookup_tables(lookup_tables)
+        .setup()
+        .prove_and_verify();
 }
 
 #[test]
@@ -110,3 +119,85 @@ fn lookup_gate_proving_works_multiple_tables() {
 fn lookup_gate_rejects_bad_lookups_multiple_tables() {
     setup_lookup_proof(false, 500, vec![100, 50, 50, 2, 2])
 }
+
+fn runtime_table(num: usize, indexed: bool) {
+    // runtime
+    let mut runtime_tables_setup = vec![];
+    for table_id in 0..num {
+        let cfg = if indexed {
+            RuntimeTableCfg::Indexed(RuntimeTableSpec {
+                id: table_id as i32,
+                len: 5,
+            })
+        } else {
+            RuntimeTableCfg::Custom {
+                id: table_id as i32,
+                first_column: [8u32, 9, 8, 7, 1].into_iter().map(Into::into).collect(),
+            }
+        };
+        runtime_tables_setup.push(cfg);
+    }
+
+    let data: Vec<Fp> = [0u32, 2, 3, 4, 5].into_iter().map(Into::into).collect();
+    let runtime_tables: Vec<RuntimeTable<Fp>> = runtime_tables_setup
+        .iter()
+        .map(|cfg| RuntimeTable {
+            id: cfg.id(),
+            data: data.clone(),
+        })
+        .collect();
+
+    // circuit
+    let mut gates = vec![];
+    for row in 0..20 {
+        gates.push(CircuitGate {
+            typ: GateType::Lookup,
+            wires: Wire::new(row),
+            coeffs: vec![],
+        });
+    }
+
+    // witness
+    let witness = {
+        let mut cols: [_; COLUMNS] = array_init(|_col| vec![Fp::zero(); gates.len()]);
+
+        // only the first 7 registers are used in the lookup gate
+        let (lookup_cols, _rest) = cols.split_at_mut(7);
+
+        for row in 0..20 {
+            // the first register is the table id
+            lookup_cols[0][row] = 0u32.into();
+
+            // create queries into our runtime lookup table
+            let lookup_cols = &mut lookup_cols[1..];
+            for chunk in lookup_cols.chunks_mut(2) {
+                chunk[0][row] = if indexed { 1u32.into() } else { 9u32.into() }; // index
+                chunk[1][row] = 2u32.into(); // value
+            }
+        }
+        cols
+    };
+
+    print_witness(&witness, 0, 20);
+
+    // run test
+    TestFramework::default()
+        .gates(gates)
+        .witness(witness)
+        .runtime_tables_setup(runtime_tables_setup)
+        .setup()
+        .runtime_tables(runtime_tables)
+        .prove_and_verify();
+}
+
+#[test]
+fn test_indexed_runtime_table() {
+    runtime_table(5, true);
+}
+
+#[test]
+fn test_custom_runtime_table() {
+    runtime_table(5, false);
+}
+
+// TODO: add a test with a runtime table with ID 0 (it should panic)

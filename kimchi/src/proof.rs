@@ -6,47 +6,83 @@ use ark_ff::{FftField, Zero};
 use ark_poly::univariate::DensePolynomial;
 use array_init::array_init;
 use commitment_dlog::{commitment::PolyComm, evaluation_proof::OpeningProof};
-use o1_utils::{types::fields::*, ExtendedDensePolynomial};
+use o1_utils::ExtendedDensePolynomial;
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 
 //~ spec:startcode
-#[derive(Clone)]
+/// Evaluations of lookup polynomials
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(bound(
+    serialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::SerializeAs<Field>",
+    deserialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::DeserializeAs<'de, Field>"
+))]
 pub struct LookupEvaluations<Field> {
     /// sorted lookup table polynomial
+    #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
     pub sorted: Vec<Field>,
     /// lookup aggregation polynomial
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub aggreg: Field,
     // TODO: May be possible to optimize this away?
     /// lookup table polynomial
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub table: Field,
+
+    /// Optionally, a runtime table polynomial.
+    #[serde_as(as = "Option<Vec<o1_utils::serialization::SerdeAs>>")]
+    pub runtime: Option<Field>,
 }
 
 // TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
-#[derive(Clone)]
+/// Polynomial evaluations contained in a `ProverProof`.
+/// - **Chunked evaluations** `Field` is instantiated with vectors with a length that equals the length of the chunk
+/// - **Non chunked evaluations** `Field` is instantiated with a field, so they are single-sized#[serde_as]
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(bound(
+    serialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::SerializeAs<Field>",
+    deserialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::DeserializeAs<'de, Field>"
+))]
 pub struct ProofEvaluations<Field> {
     /// witness polynomials
+    #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; COLUMNS]")]
     pub w: [Field; COLUMNS],
     /// permutation polynomial
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub z: Field,
     /// permutation polynomials
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
+    #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; PERMUTS - 1]")]
     pub s: [Field; PERMUTS - 1],
     /// lookup-related evaluations
     pub lookup: Option<LookupEvaluations<Field>>,
     /// evaluation of the generic selector polynomial
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub generic_selector: Field,
     /// evaluation of the poseidon selector polynomial
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub poseidon_selector: Field,
 }
 
 /// Commitments linked to the lookup feature
-#[derive(Clone)]
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
 pub struct LookupCommitments<G: AffineCurve> {
+    /// Commitments to the sorted lookup table polynomial (may have chunks)
     pub sorted: Vec<PolyComm<G>>,
+    /// Commitment to the lookup aggregation polynomial
     pub aggreg: PolyComm<G>,
+    /// Optional commitment to concatenated runtime tables
+    pub runtime: Option<PolyComm<G>>,
 }
 
 /// All the commitments that the prover creates as part of the proof.
-#[derive(Clone)]
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
 pub struct ProverCommitments<G: AffineCurve> {
     /// The commitments to the witness (execution trace)
     pub w_comm: [PolyComm<G>; COLUMNS],
@@ -58,8 +94,10 @@ pub struct ProverCommitments<G: AffineCurve> {
     pub lookup: Option<LookupCommitments<G>>,
 }
 
-/// The proof that the prover creates from a [ProverIndex] and a `witness`.
-#[derive(Clone)]
+/// The proof that the prover creates from a [ProverIndex](super::prover_index::ProverIndex) and a `witness`.
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
 pub struct ProverProof<G: AffineCurve> {
     /// All the polynomial commitments required in the proof
     pub commitments: ProverCommitments<G>,
@@ -69,18 +107,42 @@ pub struct ProverProof<G: AffineCurve> {
 
     /// Two evaluations over a number of committed polynomials
     // TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }
-    pub evals: [ProofEvaluations<Vec<ScalarField<G>>>; 2],
+    pub evals: [ProofEvaluations<Vec<G::ScalarField>>; 2],
 
     /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
-    pub ft_eval1: ScalarField<G>,
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub ft_eval1: G::ScalarField,
 
     /// The public input
-    pub public: Vec<ScalarField<G>>,
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    pub public: Vec<G::ScalarField>,
 
     /// The challenges underlying the optional polynomials folded into the proof
-    pub prev_challenges: Vec<(Vec<ScalarField<G>>, PolyComm<G>)>,
+    pub prev_challenges: Vec<RecursionChallenge<G>>,
 }
+
+/// A struct to store the challenges inside a `ProverProof`
+#[serde_as]
+#[derive(Clone, Deserialize, Serialize)]
+#[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
+pub struct RecursionChallenge<G>
+where
+    G: AffineCurve,
+{
+    /// Vector of scalar field elements
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    pub chals: Vec<G::ScalarField>,
+    /// Polynomial commitment
+    pub comm: PolyComm<G>,
+}
+
 //~ spec:endcode
+
+impl<G: AffineCurve> RecursionChallenge<G> {
+    pub fn new(chals: Vec<G::ScalarField>, comm: PolyComm<G>) -> RecursionChallenge<G> {
+        RecursionChallenge { chals, comm }
+    }
+}
 
 impl<F: Zero> ProofEvaluations<F> {
     pub fn dummy_with_witness_evaluations(w: [F; COLUMNS]) -> ProofEvaluations<F> {
@@ -109,6 +171,10 @@ impl<F: FftField> ProofEvaluations<Vec<F>> {
                     .iter()
                     .map(|x| DensePolynomial::eval_polynomial(x, pt))
                     .collect(),
+                runtime: l
+                    .runtime
+                    .as_ref()
+                    .map(|rt| DensePolynomial::eval_polynomial(rt, pt)),
             }),
             generic_selector: DensePolynomial::eval_polynomial(&self.generic_selector, pt),
             poseidon_selector: DensePolynomial::eval_polynomial(&self.poseidon_selector, pt),
@@ -123,6 +189,48 @@ impl<F: FftField> ProofEvaluations<Vec<F>> {
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
+    use commitment_dlog::commitment::caml::CamlPolyComm;
+
+    //
+    // CamlRecursionChallenge<CamlG, CamlF>
+    //
+
+    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlRecursionChallenge<CamlG, CamlF> {
+        pub chals: Vec<CamlF>,
+        pub comm: CamlPolyComm<CamlG>,
+    }
+
+    //
+    // CamlRecursionChallenge<CamlG, CamlF> <-> RecursionChallenge<G>
+    //
+
+    impl<G, CamlG, CamlF> From<RecursionChallenge<G>> for CamlRecursionChallenge<CamlG, CamlF>
+    where
+        G: AffineCurve,
+        CamlG: From<G>,
+        CamlF: From<G::ScalarField>,
+    {
+        fn from(ch: RecursionChallenge<G>) -> Self {
+            Self {
+                chals: ch.chals.into_iter().map(Into::into).collect(),
+                comm: ch.comm.into(),
+            }
+        }
+    }
+
+    impl<G, CamlG, CamlF> From<CamlRecursionChallenge<CamlG, CamlF>> for RecursionChallenge<G>
+    where
+        G: AffineCurve + From<CamlG>,
+        G::ScalarField: From<CamlF>,
+    {
+        fn from(caml_ch: CamlRecursionChallenge<CamlG, CamlF>) -> RecursionChallenge<G> {
+            RecursionChallenge {
+                chals: caml_ch.chals.into_iter().map(Into::into).collect(),
+                comm: caml_ch.comm.into(),
+            }
+        }
+    }
 
     //
     // CamlLookupEvaluations<CamlF>
@@ -133,6 +241,7 @@ pub mod caml {
         pub sorted: Vec<Vec<CamlF>>,
         pub aggreg: Vec<CamlF>,
         pub table: Vec<CamlF>,
+        pub runtime: Option<Vec<CamlF>>,
     }
 
     impl<F, CamlF> From<LookupEvaluations<Vec<F>>> for CamlLookupEvaluations<CamlF>
@@ -149,6 +258,7 @@ pub mod caml {
                     .collect(),
                 aggreg: le.aggreg.into_iter().map(Into::into).collect(),
                 table: le.table.into_iter().map(Into::into).collect(),
+                runtime: le.runtime.map(|r| r.into_iter().map(Into::into).collect()),
             }
         }
     }
@@ -166,6 +276,7 @@ pub mod caml {
                     .collect(),
                 aggreg: pe.aggreg.into_iter().map(Into::into).collect(),
                 table: pe.table.into_iter().map(Into::into).collect(),
+                runtime: pe.runtime.map(|r| r.into_iter().map(Into::into).collect()),
             }
         }
     }
@@ -204,6 +315,8 @@ pub mod caml {
         ),
         pub generic_selector: Vec<CamlF>,
         pub poseidon_selector: Vec<CamlF>,
+
+        pub lookup: Option<CamlLookupEvaluations<CamlF>>,
     }
 
     //
@@ -248,6 +361,7 @@ pub mod caml {
                 s,
                 generic_selector: pe.generic_selector.into_iter().map(Into::into).collect(),
                 poseidon_selector: pe.poseidon_selector.into_iter().map(Into::into).collect(),
+                lookup: pe.lookup.map(Into::into),
             }
         }
     }
@@ -288,9 +402,9 @@ pub mod caml {
                 w,
                 z: cpe.z.into_iter().map(Into::into).collect(),
                 s,
-                lookup: None,
                 generic_selector: cpe.generic_selector.into_iter().map(Into::into).collect(),
                 poseidon_selector: cpe.poseidon_selector.into_iter().map(Into::into).collect(),
+                lookup: cpe.lookup.map(Into::into),
             }
         }
     }
