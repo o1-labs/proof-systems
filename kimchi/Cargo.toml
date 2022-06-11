@@ -37,7 +37,6 @@ groupmap = { path = "../groupmap" }
 mina-curves = { path = "../curves" }
 o1-utils = { path = "../utils" }
 oracle = { path = "../oracle" }
-circuit-construction = { path = "../circuit-construction" }
 
 ocaml = { version = "0.22.2", optional = true }
 ocaml-gen = { path = "../ocaml/ocaml-gen", optional = true}
