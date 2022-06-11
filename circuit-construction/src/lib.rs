@@ -1,5 +1,11 @@
 #![doc = include_str!("../../README.md")]
 
+pub use oracle;
+pub use kimchi;
+pub use commitment_dlog;
+pub use groupmap;
+pub use mina_curves;
+
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{BigInteger, FftField, Field, One, PrimeField, SquareRootField, Zero};
 use array_init::array_init;

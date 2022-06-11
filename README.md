@@ -22,19 +22,23 @@ Then, you can create an URS for your circuit in the following way:
 ```rust
 use std::sync::Arc;
 use ark_ff::{FftField, PrimeField};
-use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
-use circuit_construction::*;
-use commitment_dlog::{commitment::CommitmentCurve, srs::SRS};
-use groupmap::GroupMap;
-use kimchi::verifier::verify;
-use mina_curves::pasta::{
-    fp::Fp,
-    vesta::{Affine, VestaParameters},
+use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
+use circuit_construction::{
+    *, 
+    oracle::{
+        constants::*,
+        poseidon::{Sponge},
+        sponge::{DefaultFqSponge, DefaultFrSponge},
+    },
+    kimchi::verifier::verify,
+    commitment_dlog::{commitment::CommitmentCurve, srs::SRS},
+    groupmap::GroupMap,
+    mina_curves::pasta::{
+        fp::Fp,
+        vesta::{Affine, VestaParameters},
+    }
 };
-use oracle::{
-    constants::*,
-    sponge::{DefaultFqSponge, DefaultFrSponge},
-};
+
 type SpongeQ = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
 type SpongeR = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>;
 
@@ -59,7 +63,7 @@ pub fn circuit<
 // create SRS
 let srs = {
     let mut srs = SRS::<Affine>::create(1 << 3); // 2^3 = 8
-    srs.add_lagrange_basis(D::new(srs.g.len()).unwrap());
+    srs.add_lagrange_basis(Radix2EvaluationDomain::new(srs.g.len()).unwrap());
     Arc::new(srs)
 };
 let public_inputs = vec![1i32.into()];
