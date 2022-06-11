@@ -50,7 +50,6 @@ pub fn circuit<
     let first_public_input = public_input[0];
     let witness = sys.var(|| witness.unwrap());
 
-    //TODO replace the following free variable once the "add" gate constraint is ready to use.
     let result = sys.var(|| {
         first_public_input.val() + witness.val()
     });
@@ -59,7 +58,6 @@ pub fn circuit<
 
 // create SRS
 let srs = {
-    //TODO how to determine depth value? it throws error when the depth is too large
     let mut srs = SRS::<Affine>::create(1 << 3); // 2^3 = 8
     srs.add_lagrange_basis(D::new(srs.g.len()).unwrap());
     Arc::new(srs)
@@ -69,11 +67,9 @@ let group_map = <Affine as CommitmentCurve>::Map::setup();
 
 // generate circuit and index
 let prover_index = generate_prover_index::<FpInner, _>(
-    //TODO do these arguments have to be provided?
     srs,
     &fp_constants(),
     &oracle::pasta::fq_kimchi::params(),
-    //TODO should this be encapsulated?
     public_inputs.len(),
     |sys, p| circuit::<_, _>(None, sys, p),
 );
