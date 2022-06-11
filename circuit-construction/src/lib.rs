@@ -1,3 +1,5 @@
+#![doc = include_str!("../../README.md")]
+
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{BigInteger, FftField, Field, One, PrimeField, SquareRootField, Zero};
 use array_init::array_init;
