@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use CurrOrNext::{Curr, Next};
 
-use super::runtime_tables::{self, RuntimeTableSpec};
+use super::runtime_tables;
 
 /// Number of constraints produced by the argument.
 pub const CONSTRAINTS: u32 = 7;
@@ -78,6 +78,7 @@ pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
 //~
 
 /// Computes the sorted lookup tables required by the lookup argument.
+#[allow(clippy::too_many_arguments)]
 pub fn sorted<F>(
     dummy_lookup_value: F,
     joint_lookup_table_d8: &Evaluations<F, D<F>>,
@@ -86,6 +87,7 @@ pub fn sorted<F>(
     witness: &[Vec<F>; COLUMNS],
     joint_combiner: F,
     table_id_combiner: F,
+    lookup_info: &LookupInfo,
 ) -> Result<Vec<Vec<F>>, ProverError>
 where
     F: FftField,
@@ -97,7 +99,6 @@ where
     let mut counts: HashMap<&F, usize> = HashMap::new();
 
     let lookup_rows = n - ZK_ROWS - 1;
-    let lookup_info = LookupInfo::<F>::create();
     let by_row = lookup_info.by_row(gates);
     let max_lookups_per_row = lookup_info.max_per_row;
 
@@ -230,6 +231,7 @@ pub fn aggregation<R, F>(
     gamma: F,
     sorted: &[Evaluations<F, D<F>>],
     rng: &mut R,
+    lookup_info: &LookupInfo,
 ) -> Result<Evaluations<F, D<F>>, ProverError>
 where
     R: Rng + ?Sized,
@@ -257,7 +259,6 @@ where
     }));
     ark_ff::fields::batch_inversion::<F>(&mut lookup_aggreg[1..]);
 
-    let lookup_info = LookupInfo::<F>::create();
     let max_lookups_per_row = lookup_info.max_per_row;
 
     let complements_with_beta_term = {
@@ -331,17 +332,8 @@ pub struct LookupConfiguration<F: FftField> {
     /// The kind of lookups used
     pub lookup_used: LookupsUsed,
 
-    /// The maximum number of lookups per row
-    pub max_lookups_per_row: usize,
-
-    /// The maximum number of elements in a vector lookup
-    pub max_joint_size: u32,
-
-    /// Optional runtime tables, listed as tuples `(length, id)`.
-    pub runtime_tables: Option<Vec<RuntimeTableSpec>>,
-
-    /// The offset of the runtime table within the concatenated table
-    pub runtime_table_offset: Option<usize>,
+    /// Information about the specific lookups used
+    pub lookup_info: LookupInfo,
 
     /// A placeholder value that is known to appear in the lookup table.
     /// This is used to pad the lookups to `max_lookups_per_row` when fewer lookups are used in a
@@ -366,7 +358,7 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>) -> Vec<E
     // values) and thus
     //
     // num_lookup_rows = n - 3
-    let lookup_info = LookupInfo::<F>::create();
+    let lookup_info = &configuration.lookup_info;
 
     let column = |col: Column| E::cell(col, Curr);
 
@@ -382,8 +374,7 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>) -> Vec<E
             let lookup_indicator = lookup_info
                 .kinds
                 .iter()
-                .enumerate()
-                .map(|(i, _)| column(Column::LookupKindIndex(i)))
+                .map(|spec| column(Column::LookupKindIndex(*spec)))
                 .fold(E::zero(), |acc: E<F>, x| acc + x);
 
             E::one() - lookup_indicator
@@ -392,7 +383,7 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>) -> Vec<E
         let joint_combiner = ConstantExpr::JointCombiner;
         let table_id_combiner = joint_combiner
             .clone()
-            .pow(configuration.max_joint_size.into());
+            .pow(lookup_info.max_joint_size.into());
 
         // combine the columns of the dummy lookup row
         let dummy_lookup = {
@@ -463,8 +454,7 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>) -> Vec<E
             lookup_info
                 .kinds
                 .iter()
-                .enumerate()
-                .map(|(i, spec)| column(Column::LookupKindIndex(i)) * f_term(spec))
+                .map(|spec| column(Column::LookupKindIndex(*spec)) * f_term(&spec.lookups::<F>()))
                 .fold(dummy_rows, |acc, x| acc + x)
         };
 
@@ -557,7 +547,7 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>) -> Vec<E
 
     // if we are using runtime tables, we add:
     // $RT(x) (1 - \text{selector}_{RT}(x)) = 0$
-    if configuration.runtime_tables.is_some() {
+    if configuration.lookup_info.uses_runtime_tables {
         let rt_constraints = runtime_tables::constraints();
         res.extend(rt_constraints);
     }
@@ -577,6 +567,7 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
     joint_combiner: &F,
     table_id_combiner: &F,
     sorted: &[Evaluations<F, D<F>>],
+    lookup_info: &LookupInfo,
 ) {
     sorted
         .iter()
@@ -614,7 +605,6 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
     }
     assert_eq!(s_index, sorted_joined.len());
 
-    let lookup_info = LookupInfo::<F>::create();
     let by_row = lookup_info.by_row(gates);
 
     // Compute lookups||table and check multiset equality

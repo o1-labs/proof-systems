@@ -2,6 +2,7 @@ use crate::{
     circuits::{
         domains::EvaluationDomains,
         gate::{CurrOrNext, GateType},
+        lookup::{index::LookupSelectors, lookups::LookupPattern},
         polynomials::permutation::eval_vanishes_on_last_4_rows,
         wires::COLUMNS,
     },
@@ -70,7 +71,7 @@ pub struct LookupEnvironment<'a, F: FftField> {
     /// The lookup aggregation polynomials.
     pub aggreg: &'a Evaluations<F, D<F>>,
     /// The lookup-type selector polynomials.
-    pub selectors: &'a Vec<Evaluations<F, D<F>>>,
+    pub selectors: &'a LookupSelectors<Evaluations<F, D<F>>>,
     /// The evaluations of the combined lookup table polynomial.
     pub table: &'a Evaluations<F, D<F>>,
     /// The evaluations of the optional runtime selector polynomial.
@@ -113,7 +114,7 @@ impl<'a, F: FftField> Environment<'a, F> {
             Witness(i) => Some(&self.witness[*i]),
             Coefficient(i) => Some(&self.coefficient[*i]),
             Z => Some(self.z),
-            LookupKindIndex(i) => lookup.map(|l| &l.selectors[*i]),
+            LookupKindIndex(i) => lookup.and_then(|l| l.selectors[*i].as_ref()),
             LookupSorted(i) => lookup.map(|l| &l.sorted[*i]),
             LookupAggreg => lookup.map(|l| l.aggreg),
             LookupTable => lookup.map(|l| l.table),
@@ -163,7 +164,7 @@ pub enum Column {
     LookupSorted(usize),
     LookupAggreg,
     LookupTable,
-    LookupKindIndex(usize),
+    LookupKindIndex(LookupPattern),
     LookupRuntimeSelector,
     LookupRuntimeTable,
     Index(GateType),
@@ -185,7 +186,7 @@ impl Column {
             Column::LookupSorted(i) => format!("s_{{{}}}", i),
             Column::LookupAggreg => "a".to_string(),
             Column::LookupTable => "t".to_string(),
-            Column::LookupKindIndex(i) => format!("k_{{{}}}", i),
+            Column::LookupKindIndex(i) => format!("k_{{{:?}}}", i),
             Column::LookupRuntimeSelector => "rts".to_string(),
             Column::LookupRuntimeTable => "rt".to_string(),
             Column::Index(gate) => {

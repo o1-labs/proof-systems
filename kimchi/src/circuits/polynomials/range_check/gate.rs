@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 
+use crate::circuits::lookup::lookups::LookupInfo;
 use ark_ff::{FftField, SquareRootField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
@@ -174,8 +175,15 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
             .as_ref()
             .ok_or(GateError::MissingLookupConstraintSystem(self.typ))?;
 
-        let lookup_env_data =
-            set_up_lookup_env_data(self.typ, cs, &witness, &beta, &gamma).map_err(|e| e)?;
+        let lookup_env_data = set_up_lookup_env_data(
+            self.typ,
+            cs,
+            &witness,
+            &beta,
+            &gamma,
+            &lcs.configuration.lookup_info,
+        )
+        .map_err(|e| e)?;
         let lookup_env = Some(LookupEnvironment {
             aggreg: &lookup_env_data.aggreg8,
             sorted: &lookup_env_data.sorted8,
@@ -253,6 +261,7 @@ fn set_up_lookup_env_data<F: FftField>(
     witness: &[Vec<F>; COLUMNS],
     beta: &F,
     gamma: &F,
+    lookup_info: &LookupInfo,
 ) -> Result<LookupEnvironmentData<F>> {
     let lcs = cs
         .lookup_constraint_system
@@ -269,7 +278,7 @@ fn set_up_lookup_env_data<F: FftField>(
         F::zero()
     };
     let table_id_combiner: F = if lcs.table_ids8.as_ref().is_some() {
-        joint_combiner.pow([lcs.configuration.max_joint_size as u64])
+        joint_combiner.pow([lcs.configuration.lookup_info.max_joint_size as u64])
     } else {
         // TODO: just set this to None in case multiple tables are not used
         F::zero()
@@ -324,6 +333,7 @@ fn set_up_lookup_env_data<F: FftField>(
         witness,
         joint_combiner,
         table_id_combiner,
+        lookup_info,
     )
     .map_err(|_| GateError::InvalidLookupConstraintSorted(gate_type))?;
 
@@ -352,6 +362,7 @@ fn set_up_lookup_env_data<F: FftField>(
         *gamma,
         &sorted,
         rng,
+        lookup_info,
     )
     .map_err(|_| GateError::InvalidLookupConstraintAggregation(gate_type))?;
 

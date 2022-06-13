@@ -14,7 +14,7 @@ use crate::{
     },
     error::VerifyError,
     plonk_sponge::FrSponge,
-    proof::ProverProof,
+    proof::{ProverProof, RecursionChallenge},
     verifier_index::VerifierIndex,
 };
 use ark_ff::{Field, One, PrimeField, Zero};
@@ -24,7 +24,6 @@ use commitment_dlog::commitment::{
     Evaluation, PolyComm,
 };
 use itertools::izip;
-use o1_utils::types::fields::*;
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand::thread_rng;
 
@@ -35,29 +34,29 @@ pub type Result<T> = std::result::Result<T, VerifyError>;
 pub struct OraclesResult<G, EFqSponge>
 where
     G: CommitmentCurve,
-    EFqSponge: Clone + FqSponge<BaseField<G>, G, ScalarField<G>>,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
 {
     /// A sponge that acts on the base field of a curve
     pub fq_sponge: EFqSponge,
     /// the last evaluation of the Fq-Sponge in this protocol
-    pub digest: ScalarField<G>,
+    pub digest: G::ScalarField,
     /// the challenges produced in the protocol
-    pub oracles: RandomOracles<ScalarField<G>>,
+    pub oracles: RandomOracles<G::ScalarField>,
     /// the computed powers of alpha
-    pub all_alphas: Alphas<ScalarField<G>>,
+    pub all_alphas: Alphas<G::ScalarField>,
     /// public polynomial evaluations
-    pub p_eval: Vec<Vec<ScalarField<G>>>,
+    pub p_eval: Vec<Vec<G::ScalarField>>,
     /// zeta^n and (zeta * omega)^n
-    pub powers_of_eval_points_for_chunks: [ScalarField<G>; 2],
+    pub powers_of_eval_points_for_chunks: [G::ScalarField; 2],
     /// recursion data
     #[allow(clippy::type_complexity)]
-    pub polys: Vec<(PolyComm<G>, Vec<Vec<ScalarField<G>>>)>,
+    pub polys: Vec<(PolyComm<G>, Vec<Vec<G::ScalarField>>)>,
     /// pre-computed zeta^n
-    pub zeta1: ScalarField<G>,
+    pub zeta1: G::ScalarField,
     /// The evaluation f(zeta) - t(zeta) * Z_H(zeta)
-    pub ft_eval0: ScalarField<G>,
+    pub ft_eval0: G::ScalarField,
     /// Used by the OCaml side
-    pub combined_inner_product: ScalarField<G>,
+    pub combined_inner_product: G::ScalarField,
 }
 
 impl<G: CommitmentCurve> ProverProof<G>
@@ -67,16 +66,16 @@ where
     pub fn prev_chal_evals(
         &self,
         index: &VerifierIndex<G>,
-        evaluation_points: &[ScalarField<G>],
-        powers_of_eval_points_for_chunks: &[ScalarField<G>],
-    ) -> Vec<Vec<Vec<ScalarField<G>>>> {
+        evaluation_points: &[G::ScalarField],
+        powers_of_eval_points_for_chunks: &[G::ScalarField],
+    ) -> Vec<Vec<Vec<G::ScalarField>>> {
         self.prev_challenges
             .iter()
-            .map(|(chals, _poly)| {
+            .map(|RecursionChallenge { chals, comm: _ }| {
                 // No need to check the correctness of poly explicitly. Its correctness is assured by the
                 // checking of the inner product argument.
                 let b_len = 1 << chals.len();
-                let mut b: Option<Vec<ScalarField<G>>> = None;
+                let mut b: Option<Vec<G::ScalarField>> = None;
 
                 (0..2)
                     .map(|i| {
@@ -84,7 +83,7 @@ where
                         if index.max_poly_size == b_len {
                             return vec![full];
                         }
-                        let mut betaacc = ScalarField::<G>::one();
+                        let mut betaacc = G::ScalarField::one();
                         let diff = (index.max_poly_size..b_len)
                             .map(|j| {
                                 let b_j = match &b {
@@ -101,7 +100,7 @@ where
                                 betaacc *= &evaluation_points[i];
                                 ret
                             })
-                            .fold(ScalarField::<G>::zero(), |x, y| x + y);
+                            .fold(G::ScalarField::zero(), |x, y| x + y);
                         vec![full - (diff * powers_of_eval_points_for_chunks[i]), diff]
                     })
                     .collect()
@@ -111,8 +110,8 @@ where
 
     /// This function runs the random oracle argument
     pub fn oracles<
-        EFqSponge: Clone + FqSponge<BaseField<G>, G, ScalarField<G>>,
-        EFrSponge: FrSponge<ScalarField<G>>,
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+        EFrSponge: FrSponge<G::ScalarField>,
     >(
         &self,
         index: &VerifierIndex<G>,
@@ -161,13 +160,13 @@ where
             let joint_combiner = if joint_lookup_used {
                 fq_sponge.challenge()
             } else {
-                ScalarField::<G>::zero()
+                G::ScalarField::zero()
             };
 
             //~~ - Derive the scalar joint combiner challenge $j$ from $j'$ using the endomorphism.
             //~~   (TODO: specify endomorphism)
             let joint_combiner = ScalarChallenge(joint_combiner);
-            let joint_combiner = (joint_combiner, joint_combiner.to_field(&index.srs.endo_r));
+            let joint_combiner = (joint_combiner, joint_combiner.to_field(&index.srs().endo_r));
 
             //~~ - absorb the commitments to the sorted polynomials.
             for com in &lookup_commits.sorted {
@@ -197,7 +196,7 @@ where
         let alpha_chal = ScalarChallenge(fq_sponge.challenge());
 
         //~ 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
-        let alpha = alpha_chal.to_field(&index.srs.endo_r);
+        let alpha = alpha_chal.to_field(&index.srs().endo_r);
 
         //~ 1. Enforce that the length of the $t$ commitment is of size `PERMUTS`.
         if self.commitments.t_comm.unshifted.len() != PERMUTS {
@@ -211,7 +210,7 @@ where
         let zeta_chal = ScalarChallenge(fq_sponge.challenge());
 
         //~ 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
-        let zeta = zeta_chal.to_field(&index.srs.endo_r);
+        let zeta = zeta_chal.to_field(&index.srs().endo_r);
 
         //~ 1. Setup the Fr-Sponge.
         let digest = fq_sponge.clone().digest();
@@ -237,7 +236,7 @@ where
             .take(self.public.len())
             .for_each(|w| zeta_minus_x.push(zetaw - w));
 
-        ark_ff::fields::batch_inversion::<ScalarField<G>>(&mut zeta_minus_x);
+        ark_ff::fields::batch_inversion::<G::ScalarField>(&mut zeta_minus_x);
 
         //~ 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
         //~
@@ -251,8 +250,8 @@ where
                         .zip(zeta_minus_x.iter())
                         .zip(index.domain.elements())
                         .map(|((p, l), w)| -*l * p * w)
-                        .fold(ScalarField::<G>::zero(), |x, y| x + y))
-                        * (zeta1 - ScalarField::<G>::one())
+                        .fold(G::ScalarField::zero(), |x, y| x + y))
+                        * (zeta1 - G::ScalarField::one())
                         * index.domain.size_inv,
                 ],
                 vec![
@@ -262,13 +261,13 @@ where
                         .zip(zeta_minus_x[self.public.len()..].iter())
                         .zip(index.domain.elements())
                         .map(|((p, l), w)| -*l * p * w)
-                        .fold(ScalarField::<G>::zero(), |x, y| x + y))
+                        .fold(G::ScalarField::zero(), |x, y| x + y))
                         * index.domain.size_inv
-                        * (zetaw.pow(&[n as u64]) - ScalarField::<G>::one()),
+                        * (zetaw.pow(&[n as u64]) - G::ScalarField::one()),
                 ],
             ]
         } else {
-            vec![Vec::<ScalarField<G>>::new(), Vec::<ScalarField<G>>::new()]
+            vec![Vec::<G::ScalarField>::new(), Vec::<G::ScalarField>::new()]
         };
 
         //~ 1. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
@@ -289,13 +288,13 @@ where
         let v_chal = fr_sponge.challenge();
 
         //~ 1. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
-        let v = v_chal.to_field(&index.srs.endo_r);
+        let v = v_chal.to_field(&index.srs().endo_r);
 
         //~ 1. Sample $u'$ with the Fr-Sponge.
         let u_chal = fr_sponge.challenge();
 
         //~ 1. Derive $u$ from $u'$ using the endomorphism (TODO: specify).
-        let u = u_chal.to_field(&index.srs.endo_r);
+        let u = u_chal.to_field(&index.srs().endo_r);
 
         //~ 1. Create a list of all polynomials that have an evaluation proof.
         let evaluation_points = [zeta, zetaw];
@@ -308,7 +307,10 @@ where
             .prev_challenges
             .iter()
             .zip(self.prev_chal_evals(index, &evaluation_points, &powers_of_eval_points_for_chunks))
-            .map(|(c, e)| (c.1.clone(), e))
+            .map(|(challenge, evals)| {
+                let RecursionChallenge { chals: _, comm } = challenge;
+                (comm.clone(), evals)
+            })
             .collect();
 
         let evals = vec![
@@ -318,8 +320,8 @@ where
 
         //~ 1. Compute the evaluation of $ft(\zeta)$.
         let ft_eval0 = {
-            let zkp = index.zkpm.evaluate(&zeta);
-            let zeta1m1 = zeta1 - ScalarField::<G>::one();
+            let zkp = index.zkpm().evaluate(&zeta);
+            let zeta1m1 = zeta1 - G::ScalarField::one();
 
             let mut alpha_powers =
                 all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
@@ -344,7 +346,7 @@ where
             ft_eval0 -= if !p_eval[0].is_empty() {
                 p_eval[0][0]
             } else {
-                ScalarField::<G>::zero()
+                G::ScalarField::zero()
             };
 
             ft_eval0 -= evals[0]
@@ -354,11 +356,11 @@ where
                 .map(|(w, s)| gamma + (beta * zeta * s) + w)
                 .fold(alpha0 * zkp * evals[0].z, |x, y| x * y);
 
-            let numerator = ((zeta1m1 * alpha1 * (zeta - index.w))
-                + (zeta1m1 * alpha2 * (zeta - ScalarField::<G>::one())))
-                * (ScalarField::<G>::one() - evals[0].z);
+            let numerator = ((zeta1m1 * alpha1 * (zeta - index.w()))
+                + (zeta1m1 * alpha2 * (zeta - G::ScalarField::one())))
+                * (G::ScalarField::one() - evals[0].z);
 
-            let denominator = (zeta - index.w) * (zeta - ScalarField::<G>::one());
+            let denominator = (zeta - index.w()) * (zeta - G::ScalarField::one());
             let denominator = denominator.inverse().expect("negligible probability");
 
             ft_eval0 += numerator * denominator;
@@ -388,7 +390,7 @@ where
             let ft_eval1 = vec![self.ft_eval1];
 
             #[allow(clippy::type_complexity)]
-            let mut es: Vec<(Vec<Vec<ScalarField<G>>>, Option<usize>)> =
+            let mut es: Vec<(Vec<Vec<G::ScalarField>>, Option<usize>)> =
                 polys.iter().map(|(_, e)| (e.clone(), None)).collect();
             es.push((p_eval.clone(), None));
             es.push((vec![ft_eval0, ft_eval1], None));
@@ -437,7 +439,7 @@ where
                     .collect::<Vec<_>>(),
             );
 
-            combined_inner_product::<G>(&evaluation_points, &v, &u, &es, index.srs.g.len())
+            combined_inner_product::<G>(&evaluation_points, &v, &u, &es, index.srs().g.len())
         };
 
         let oracles = RandomOracles {
@@ -476,8 +478,8 @@ fn to_batch<'a, G, EFqSponge, EFrSponge>(
 where
     G: CommitmentCurve,
     G::BaseField: PrimeField,
-    EFqSponge: Clone + FqSponge<BaseField<G>, G, ScalarField<G>>,
-    EFrSponge: FrSponge<ScalarField<G>>,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+    EFrSponge: FrSponge<G::ScalarField>,
 {
     //~
     //~ #### Partial verification
@@ -489,7 +491,7 @@ where
 
     //~ 1. Commit to the negated public input polynomial.
     let lgr_comm = index
-        .srs
+        .srs()
         .lagrange_bases
         .get(&index.domain.size())
         .expect("pre-computed committed lagrange bases not found");
@@ -536,7 +538,7 @@ where
     //~    in which case the evaluation should be used in place of the commitment.
     let f_comm = {
         // the permutation is written manually (not using the expr framework)
-        let zkp = index.zkpm.evaluate(&oracles.zeta);
+        let zkp = index.zkpm().evaluate(&oracles.zeta);
 
         let alphas = all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
 
@@ -620,7 +622,12 @@ where
                         }
                         Some(lindex) => {
                             scalars.push(scalar);
-                            commitments.push(&lindex.lookup_selectors[*i]);
+                            commitments.push(lindex.lookup_selectors[*i].as_ref().expect(
+                                &*format!(
+                                "Attempted to use {:?}, but it was not found in the verifier index",
+                                col
+                            ),
+                            ));
                         }
                     },
                     LookupTable => panic!("Lookup table is unused in the linearization"),
@@ -677,7 +684,7 @@ where
         let zeta_to_srs_len = oracles.zeta.pow(&[index.max_poly_size as u64]);
         let chunked_f_comm = f_comm.chunk_commitment(zeta_to_srs_len);
         let chunked_t_comm = &proof.commitments.t_comm.chunk_commitment(zeta_to_srs_len);
-        &chunked_f_comm - &chunked_t_comm.scale(zeta_to_domain_size - ScalarField::<G>::one())
+        &chunked_f_comm - &chunked_t_comm.scale(zeta_to_domain_size - G::ScalarField::one())
     };
 
     //~ 1. List the polynomial commitments, and their associated evaluations,
@@ -892,8 +899,8 @@ pub fn verify<G, EFqSponge, EFrSponge>(
 where
     G: CommitmentCurve,
     G::BaseField: PrimeField,
-    EFqSponge: Clone + FqSponge<BaseField<G>, G, ScalarField<G>>,
-    EFrSponge: FrSponge<ScalarField<G>>,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+    EFrSponge: FrSponge<G::ScalarField>,
 {
     let proofs = vec![(verifier_index, proof)];
     batch_verify::<G, EFqSponge, EFrSponge>(group_map, &proofs)
@@ -910,8 +917,8 @@ pub fn batch_verify<G, EFqSponge, EFrSponge>(
 where
     G: CommitmentCurve,
     G::BaseField: PrimeField,
-    EFqSponge: Clone + FqSponge<BaseField<G>, G, ScalarField<G>>,
-    EFrSponge: FrSponge<ScalarField<G>>,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+    EFrSponge: FrSponge<G::ScalarField>,
 {
     //~ #### Batch verification of proofs
     //~
@@ -927,14 +934,14 @@ where
 
     //~ 1. Ensure that all the proof's verifier index have a URS of the same length. (TODO: do they have to be the same URS though? should we check for that?)
     // TODO: Account for the different SRS lengths
-    let srs = &proofs[0].0.srs;
+    let srs = &proofs[0].0.srs();
     for (index, _) in proofs.iter() {
-        if index.srs.g.len() != srs.g.len() {
+        if index.srs().g.len() != srs.g.len() {
             return Err(VerifyError::DifferentSRS);
         }
 
         // also make sure that the SRS is not smaller than the domain size
-        if index.srs.max_degree() < index.domain.size() {
+        if index.srs().max_degree() < index.domain.size() {
             return Err(VerifyError::SRSTooSmall);
         }
     }
