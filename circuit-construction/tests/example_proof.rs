@@ -1,23 +1,4 @@
-use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_ff::{FftField, PrimeField, UniformRand};
-use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
-use circuit_construction::{
-    commitment_dlog::{commitment::CommitmentCurve, srs::SRS},
-    groupmap::GroupMap,
-    kimchi::verifier::verify,
-    mina_curves::pasta::{
-        fp::Fp,
-        pallas::Affine as Other,
-        vesta::{Affine, VestaParameters},
-    },
-    oracle::{
-        constants::*,
-        poseidon::{ArithmeticSponge, Sponge},
-        sponge::{DefaultFqSponge, DefaultFrSponge},
-    },
-    *,
-};
-use std::sync::Arc;
+use circuit_construction::prologue::*;
 
 type SpongeQ = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
 type SpongeR = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>;
@@ -67,8 +48,8 @@ const PUBLIC_INPUT_LENGTH: usize = 3;
 fn test_example_circuit() {
     // create SRS
     let srs = {
-        let mut srs = SRS::<Affine>::create(1 << 7); // 2^7 = 128
-        srs.add_lagrange_basis(D::new(srs.g.len()).unwrap());
+        let mut srs = SRS::<VestaAffine>::create(1 << 7); // 2^7 = 128
+        srs.add_lagrange_basis(Radix2EvaluationDomain::new(srs.g.len()).unwrap());
         Arc::new(srs)
     };
 
@@ -81,16 +62,16 @@ fn test_example_circuit() {
         &proof_system_constants,
         &fq_poseidon,
         PUBLIC_INPUT_LENGTH,
-        |sys, p| circuit::<_, Other, _>(&proof_system_constants, None, sys, p),
+        |sys, p| circuit::<_, PallasAffine, _>(&proof_system_constants, None, sys, p),
     );
 
-    let group_map = <Affine as CommitmentCurve>::Map::setup();
+    let group_map = <VestaAffine as CommitmentCurve>::Map::setup();
 
     let mut rng = rand::thread_rng();
 
     // create witness
-    let private_key = <Other as AffineCurve>::ScalarField::rand(&mut rng);
-    let preimage = <Other as AffineCurve>::BaseField::rand(&mut rng);
+    let private_key = <PallasAffine as AffineCurve>::ScalarField::rand(&mut rng);
+    let preimage = <PallasAffine as AffineCurve>::BaseField::rand(&mut rng);
 
     let witness = Witness {
         s: private_key,
@@ -98,7 +79,7 @@ fn test_example_circuit() {
     };
 
     // create public input
-    let public_key = Other::prime_subgroup_generator()
+    let public_key = PallasAffine::prime_subgroup_generator()
         .mul(private_key)
         .into_affine();
     let hash = {
@@ -109,12 +90,12 @@ fn test_example_circuit() {
     };
 
     // generate proof
-    let proof = prove::<Affine, _, SpongeQ, SpongeR>(
+    let proof = prove::<VestaAffine, _, SpongeQ, SpongeR>(
         &prover_index,
         &group_map,
         None,
         vec![public_key.x, public_key.y, hash],
-        |sys, p| circuit::<Fp, Other, _>(&proof_system_constants, Some(&witness), sys, p),
+        |sys, p| circuit::<Fp, PallasAffine, _>(&proof_system_constants, Some(&witness), sys, p),
     );
 
     // verify proof
