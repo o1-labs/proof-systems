@@ -295,7 +295,7 @@ pub mod caml {
         G: AffineCurve,
         CamlF: From<G::ScalarField>,
     {
-        fn from(evals: ConsecutiveEvals<Vec<F>>) -> Self {
+        fn from(evals: ConsecutiveEvals<Vec<G::ScalarField>>) -> Self {
             Self {
                 zeta: evals.zeta.into(),
                 zetaw: evals.zetaw.into(),
