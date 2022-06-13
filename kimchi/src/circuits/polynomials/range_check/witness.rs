@@ -64,16 +64,16 @@ const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 4] = [
     /* row 1, RangeCheck0 row */
     [
         ValueWitnessCell::create(),
-        /* 12-bit plookups */
-        LimbWitnessCell::create(0, 0, 0, 12),
-        LimbWitnessCell::create(0, 0, 12, 24),
-        LimbWitnessCell::create(0, 0, 24, 36),
-        LimbWitnessCell::create(0, 0, 36, 48),
         /* 12-bit copies */
         // Copy cells are required because we have a limit
         // of 4 lookups per row.  These two lookups are moved to
         // the 4th row (i.e. Zero circuit gate) and the RangeCheck1
         // circuit gate triggers the lookup constraints.
+        LimbWitnessCell::create(0, 0, 0, 12),
+        LimbWitnessCell::create(0, 0, 12, 24),
+        /* 12-bit plookups */
+        LimbWitnessCell::create(0, 0, 24, 36),
+        LimbWitnessCell::create(0, 0, 36, 48),
         LimbWitnessCell::create(0, 0, 48, 60),
         LimbWitnessCell::create(0, 0, 60, 72),
         /* 2-bit crumbs */
@@ -89,12 +89,12 @@ const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 4] = [
     /* row 2, RangeCheck0 row */
     [
         ValueWitnessCell::create(),
-        /* 12-bit plookups */
+        /* 12-bit copies (see note about copies above) */
         LimbWitnessCell::create(1, 0, 0, 12),
         LimbWitnessCell::create(1, 0, 12, 24),
+        /* 12-bit plookups */
         LimbWitnessCell::create(1, 0, 24, 36),
         LimbWitnessCell::create(1, 0, 36, 48),
-        /* 12-bit copies (see note about copies above) */
         LimbWitnessCell::create(1, 0, 48, 60),
         LimbWitnessCell::create(1, 0, 60, 72),
         /* 2-bit crumbs */
@@ -110,14 +110,16 @@ const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 4] = [
     /* row 3, RangeCheck1 row */
     [
         ValueWitnessCell::create(),
+        /* 2-bit crumbs (placed here to keep lookup pattern */
+        /*               the same as RangeCheck0) */
+        LimbWitnessCell::create(2, 0, 0, 2),
+        LimbWitnessCell::create(2, 0, 2, 4),
         /* 12-bit plookups */
-        LimbWitnessCell::create(2, 0, 0, 12),
-        LimbWitnessCell::create(2, 0, 12, 24),
-        LimbWitnessCell::create(2, 0, 24, 36),
-        LimbWitnessCell::create(2, 0, 36, 48),
+        LimbWitnessCell::create(2, 0, 4, 16),
+        LimbWitnessCell::create(2, 0, 16, 28),
+        LimbWitnessCell::create(2, 0, 28, 40),
+        LimbWitnessCell::create(2, 0, 40, 52),
         /* 2-bit crumbs */
-        LimbWitnessCell::create(2, 0, 48, 50),
-        LimbWitnessCell::create(2, 0, 50, 52),
         LimbWitnessCell::create(2, 0, 52, 54),
         LimbWitnessCell::create(2, 0, 54, 56),
         LimbWitnessCell::create(2, 0, 56, 58),
@@ -130,14 +132,16 @@ const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 4] = [
     /* row 4, Zero row */
     [
         ZeroWitnessCell::create(),
-        /* 12-bit plookups (see note about copies above) */
-        CopyWitnessCell::create(0, 5),
-        CopyWitnessCell::create(0, 6),
-        CopyWitnessCell::create(1, 5),
-        CopyWitnessCell::create(1, 6),
-        /* 2-bit crumbs */
+        /* 2-bit crumbs (placed here to keep lookup pattern */
+        /*               the same as RangeCheck0) */
         LimbWitnessCell::create(2, 0, 68, 70),
         LimbWitnessCell::create(2, 0, 70, 72),
+        /* 12-bit plookups (see note about copies above) */
+        CopyWitnessCell::create(0, 1),
+        CopyWitnessCell::create(0, 2),
+        CopyWitnessCell::create(1, 1),
+        CopyWitnessCell::create(1, 2),
+        /* 2-bit crumbs */
         LimbWitnessCell::create(2, 0, 72, 74),
         LimbWitnessCell::create(2, 0, 74, 76),
         LimbWitnessCell::create(2, 0, 76, 78),
