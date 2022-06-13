@@ -1,11 +1,13 @@
 #![doc = include_str!("../../README.md")]
 
-pub mod writer;
+mod constants;
+mod prover;
+mod writer;
 
 pub mod prologue {
-    pub use super::writer::{
-        fp_constants, generate_prover_index, prove, Constants, CoordinateCurve, Cs, FpInner, Var,
-    };
+    pub use super::constants::{fp_constants, fq_constants, Constants};
+    pub use super::prover::{generate_prover_index, prove, CoordinateCurve, FpInner};
+    pub use super::writer::{Cs, Var};
     pub use ark_ec::{AffineCurve, ProjectiveCurve};
     pub use ark_ff::{FftField, PrimeField, UniformRand};
     pub use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
