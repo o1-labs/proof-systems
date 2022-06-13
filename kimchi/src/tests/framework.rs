@@ -37,6 +37,7 @@ pub(crate) struct TestFramework {
     lookup_tables: Vec<LookupTable<Fp>>,
     runtime_tables_setup: Option<Vec<RuntimeTableCfg<Fp>>>,
     runtime_tables: Vec<RuntimeTable<Fp>>,
+    recursive_proofs: usize,
     recursion: Vec<RecursionChallenge<Affine>>,
 
     prover_index: Option<ProverIndex<Affine>>,
@@ -61,6 +62,12 @@ impl TestFramework {
     #[must_use]
     pub(crate) fn public_inputs(mut self, public_inputs: Vec<Fp>) -> Self {
         self.public_inputs = public_inputs;
+        self
+    }
+
+    #[must_use]
+    pub(crate) fn recursive_proofs(mut self, num: usize) -> Self {
+        self.recursive_proofs = num;
         self
     }
 
@@ -92,6 +99,7 @@ impl TestFramework {
             self.public_inputs.len(),
             lookup_tables,
             runtime_tables_setup,
+            self.recursive_proofs,
         );
         println!(
             "- time to create prover index: {:?}s",
