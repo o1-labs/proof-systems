@@ -10,7 +10,7 @@ pub mod memory;
 pub mod runner;
 pub mod word;
 
-pub use crate::{
+pub use self::{
     memory::CairoMemory,
     runner::{CairoInstruction, CairoProgram, Pointers},
     word::{FlagBits, Offsets},
