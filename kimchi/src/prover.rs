@@ -1170,7 +1170,7 @@ pub mod caml {
     pub struct CamlProverProof<CamlG, CamlF> {
         pub commitments: CamlProverCommitments<CamlG>,
         pub proof: CamlOpeningProof<CamlG, CamlF>,
-        pub evals: CamlConsecutiveEvals<CamlF>,
+        pub evals: CamlConsecutiveEvals<Vec<CamlF>>,
         pub ft_eval1: CamlF,
         pub public: Vec<CamlF>,
         pub prev_challenges: Vec<CamlRecursionChallenge<CamlG, CamlF>>,

@@ -287,15 +287,25 @@ pub mod caml {
     }
 
     //
-    // CamlConsecutiveEvals<CamlF> <-> ConsecutiveEvals<G>
+    // CamlConsecutiveEvals<CamlF> <-> ConsecutiveEvals<F>
     //
 
-    impl<G, CamlF> From<ConsecutiveEvals<G>> for CamlConsecutiveEvals<CamlF>
+    impl<G, CamlF> From<ConsecutiveEvals<Vec<G::ScalarField>>> for CamlConsecutiveEvals<Vec<CamlF>>
     where
         G: AffineCurve,
         CamlF: From<G::ScalarField>,
     {
-        fn from(evals: ConsecutiveEvals<G>) -> Self {
+        fn from(evals: ConsecutiveEvals<Vec<F>>) -> Self {
+            Self {}
+        }
+    }
+
+    impl<G, G, CamlF> From<ConsecutiveEvals<F>> for CamlConsecutiveEvals<CamlF>
+    where
+        CamlF: From<F>,
+        Vec<CamlF>: From<Vec<F>>,
+    {
+        fn from(evals: ConsecutiveEvals<F>) -> Self {
             Self {
                 zeta: evals.zeta.into(),
                 zetaw: evals.zetaw.into(),
@@ -303,13 +313,13 @@ pub mod caml {
         }
     }
 
-    impl<G, CamlF> From<CamlConsecutiveEvals<CamlF>> for ConsecutiveEvals<G>
+    impl<F, G, CamlF> From<CamlConsecutiveEvals<CamlF>> for ConsecutiveEvals<F>
     where
         G: AffineCurve,
-        G::ScalarField: From<CamlF>,
+        F: From<CamlF>,
     {
-        fn from(caml_evals: CamlConsecutiveEvals<CamlF>) -> ConsecutiveEvals<G> {
-            ConsecutiveEvals {
+        fn from(caml_evals: CamlConsecutiveEvals<CamlF>) -> Self {
+            Self {
                 zeta: caml_evals.zeta.into(),
                 zetaw: caml_evals.zetaw.into(),
             }

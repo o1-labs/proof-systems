@@ -14,7 +14,7 @@ use crate::{
     },
     error::VerifyError,
     plonk_sponge::FrSponge,
-    proof::{ConsecutiveEvals, ProverProof, RecursionChallenge, ZW_IDX, Z_IDX},
+    proof::{ConsecutiveEvals, ProverProof, RecursionChallenge, EVALS, ZW_IDX, Z_IDX},
     verifier_index::VerifierIndex,
 };
 use ark_ff::{Field, One, PrimeField, Zero};
@@ -47,7 +47,7 @@ where
     /// public polynomial evaluations
     pub p_eval: Vec<Vec<G::ScalarField>>,
     /// zeta^n and (zeta * omega)^n
-    pub powers_of_eval_points_for_chunks: [G::ScalarField; 2],
+    pub powers_of_eval_points_for_chunks: EvalPowers<G::ScalarField>,
     /// recursion data
     #[allow(clippy::type_complexity)]
     pub polys: Vec<(PolyComm<G>, Vec<Vec<G::ScalarField>>)>,
@@ -59,6 +59,33 @@ where
     pub combined_inner_product: G::ScalarField,
 }
 
+/// Stores two evaluation points, `zeta` and `zetaw`
+pub struct EvalPoints<F> {
+    pub zeta: F,
+    pub zetaw: F,
+}
+
+impl<F: Field> EvalPoints<F> {
+    pub fn len(&self) -> usize {
+        EVALS
+    }
+}
+
+/// Struct to store the evaluation powers of both `zeta` and `zetaw`
+pub struct EvalPowers<F> {
+    pub zpow: F,
+    pub zwpow: F,
+}
+
+impl<F: Field> EvalPoints<F> {
+    pub fn pow(&self, size: usize) -> EvalPowers<F> {
+        EvalPowers {
+            zpow: self.zeta.pow(&[size as u64]),
+            zwpow: self.zetaw.pow(&[size as u64]),
+        }
+    }
+}
+
 impl<G: CommitmentCurve> ProverProof<G>
 where
     G::BaseField: PrimeField,
@@ -66,8 +93,8 @@ where
     pub fn prev_chal_evals(
         &self,
         index: &VerifierIndex<G>,
-        evaluation_points: &[G::ScalarField],
-        powers_of_eval_points_for_chunks: &[G::ScalarField],
+        evaluation_points: &EvalPoints<G::ScalarField>,
+        powers_of_eval_points_for_chunks: &EvalPowers<G::ScalarField>,
     ) -> Vec<Vec<Vec<G::ScalarField>>> {
         self.prev_challenges
             .iter()
@@ -77,9 +104,9 @@ where
                 let b_len = 1 << chals.len();
                 let mut b: Option<Vec<G::ScalarField>> = None;
 
-                (0..2)
-                    .map(|i| {
-                        let full = b_poly(chals, evaluation_points[i]);
+                let mut evaluate =
+                    |point: G::ScalarField, power: G::ScalarField| -> Vec<G::ScalarField> {
+                        let full = b_poly(chals, point);
                         if index.max_poly_size == b_len {
                             return vec![full];
                         }
@@ -97,13 +124,22 @@ where
                                 };
 
                                 let ret = betaacc * b_j;
-                                betaacc *= &evaluation_points[i];
+                                betaacc *= point;
                                 ret
                             })
                             .fold(G::ScalarField::zero(), |x, y| x + y);
-                        vec![full - (diff * powers_of_eval_points_for_chunks[i]), diff]
-                    })
-                    .collect()
+                        return vec![full - (diff * power), diff];
+                    };
+                vec![
+                    evaluate(
+                        evaluation_points.zeta,
+                        powers_of_eval_points_for_chunks.zpow,
+                    ),
+                    evaluate(
+                        evaluation_points.zetaw,
+                        powers_of_eval_points_for_chunks.zwpow,
+                    ),
+                ]
             })
             .collect()
     }
@@ -296,11 +332,8 @@ where
         let u = u_chal.to_field(&index.srs().endo_r);
 
         //~ 1. Create a list of all polynomials that have an evaluation proof.
-        let evaluation_points = [zeta, zetaw];
-        let powers_of_eval_points_for_chunks = [
-            zeta.pow(&[index.max_poly_size as u64]),
-            zetaw.pow(&[index.max_poly_size as u64]),
-        ];
+        let evaluation_points = EvalPoints { zeta, zetaw };
+        let powers_of_eval_points_for_chunks = evaluation_points.pow(index.max_poly_size);
 
         let polys: Vec<(PolyComm<G>, _)> = self
             .prev_challenges
@@ -316,11 +349,11 @@ where
             zeta: self
                 .evals
                 .zeta
-                .combine(powers_of_eval_points_for_chunks[Z_IDX]),
+                .combine(powers_of_eval_points_for_chunks.zpow),
             zetaw: self
                 .evals
                 .zetaw
-                .combine(powers_of_eval_points_for_chunks[ZW_IDX]),
+                .combine(powers_of_eval_points_for_chunks.zwpow),
         };
 
         //~ 1. Compute the evaluation of $ft(\zeta)$.
@@ -448,8 +481,8 @@ where
                     })
                     .collect::<Vec<_>>(),
             );
-
-            combined_inner_product::<G>(&evaluation_points, &v, &u, &es, index.srs().g.len())
+            let eval_points = [evaluation_points.zeta, evaluation_points.zetaw];
+            combined_inner_product::<G>(&eval_points, &v, &u, &es, index.srs().g.len())
         };
 
         let oracles = RandomOracles {
@@ -537,11 +570,11 @@ where
         zeta: proof
             .evals
             .zeta
-            .combine(powers_of_eval_points_for_chunks[Z_IDX]),
+            .combine(powers_of_eval_points_for_chunks.zpow),
         zetaw: proof
             .evals
             .zetaw
-            .combine(powers_of_eval_points_for_chunks[ZW_IDX]),
+            .combine(powers_of_eval_points_for_chunks.zwpow),
     };
 
     //~ 4. Compute the commitment to the linearized polynomial $f$.
