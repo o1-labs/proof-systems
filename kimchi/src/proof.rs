@@ -296,14 +296,29 @@ pub mod caml {
         CamlF: From<G::ScalarField>,
     {
         fn from(evals: ConsecutiveEvals<Vec<F>>) -> Self {
-            Self {}
+            Self {
+                zeta: evals.zeta.into(),
+                zetaw: evals.zetaw.into(),
+            }
         }
     }
 
-    impl<G, G, CamlF> From<ConsecutiveEvals<F>> for CamlConsecutiveEvals<CamlF>
+    impl<G, CamlF> From<CamlConsecutiveEvals<Vec<CamlF>>> for ConsecutiveEvals<Vec<G::ScalarField>>
+    where
+        G: AffineCurve,
+        G::ScalarField: From<CamlF>,
+    {
+        fn from(caml_evals: CamlConsecutiveEvals<Vec<CamlF>>) -> Self {
+            Self {
+                zeta: caml_evals.zeta.into(),
+                zetaw: caml_evals.zetaw.into(),
+            }
+        }
+    }
+
+    impl<F, CamlF> From<ConsecutiveEvals<F>> for CamlConsecutiveEvals<CamlF>
     where
         CamlF: From<F>,
-        Vec<CamlF>: From<Vec<F>>,
     {
         fn from(evals: ConsecutiveEvals<F>) -> Self {
             Self {
@@ -313,9 +328,8 @@ pub mod caml {
         }
     }
 
-    impl<F, G, CamlF> From<CamlConsecutiveEvals<CamlF>> for ConsecutiveEvals<F>
+    impl<F, CamlF> From<CamlConsecutiveEvals<CamlF>> for ConsecutiveEvals<F>
     where
-        G: AffineCurve,
         F: From<CamlF>,
     {
         fn from(caml_evals: CamlConsecutiveEvals<CamlF>) -> Self {
