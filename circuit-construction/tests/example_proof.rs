@@ -1,19 +1,21 @@
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{FftField, PrimeField, UniformRand};
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
-use circuit_construction::*;
-use commitment_dlog::{commitment::CommitmentCurve, srs::SRS};
-use groupmap::GroupMap;
-use kimchi::verifier::verify;
-use mina_curves::pasta::{
-    fp::Fp,
-    pallas::Affine as Other,
-    vesta::{Affine, VestaParameters},
-};
-use oracle::{
-    constants::*,
-    poseidon::{ArithmeticSponge, Sponge},
-    sponge::{DefaultFqSponge, DefaultFrSponge},
+use circuit_construction::{
+    commitment_dlog::{commitment::CommitmentCurve, srs::SRS},
+    groupmap::GroupMap,
+    kimchi::verifier::verify,
+    mina_curves::pasta::{
+        fp::Fp,
+        pallas::Affine as Other,
+        vesta::{Affine, VestaParameters},
+    },
+    oracle::{
+        constants::*,
+        poseidon::{ArithmeticSponge, Sponge},
+        sponge::{DefaultFqSponge, DefaultFrSponge},
+    },
+    *,
 };
 use std::sync::Arc;
 
