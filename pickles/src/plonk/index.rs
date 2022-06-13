@@ -27,7 +27,10 @@ where
     G: AffineCurve,
     G::BaseField: FftField + PrimeField,
 {
-    pub gate_selector: [VarPolyComm<G, 1>; SELECTORS], // commits to selector polynomials
+    // commitments to gate selector polynomials
+    pub gate_selectors: [VarPolyComm<G, 1>; SELECTORS], 
+
+    // commitment to permutation
 }
 
 /// An index consists of:
