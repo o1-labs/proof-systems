@@ -54,9 +54,6 @@ To obtain a flamegraph:
 
 Note: lots of good advice on system performance in the [flamegraph repo](https://github.com/flamegraph-rs/flamegraph#systems-performance-work-guided-by-flamegraphs).
 
-## Contributing
-
-Check [CONTRIBUTING.md](CONTRIBUTING.md) if you are interested in contributing to this project.
 
 ## Guidelines
 
