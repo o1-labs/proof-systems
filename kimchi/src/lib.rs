@@ -10,6 +10,14 @@ pub use mina_curves;
 pub use o1_utils;
 pub use oracle;
 
+pub use commitment_dlog::{commitment::CommitmentCurve, srs::SRS};
+pub use groupmap::GroupMap;
+pub use oracle::{
+    constants::*,
+    poseidon::{ArithmeticSponge, Sponge},
+    sponge::{DefaultFqSponge, DefaultFrSponge},
+};
+
 pub mod alphas;
 pub mod bench;
 pub mod circuits;
