@@ -214,11 +214,6 @@ where
     ProverIndex::<C::Outer>::create(constraint_system, poseidon_params.clone(), endo_q, srs)
 }
 
-pub fn shift<F: PrimeField>(size: usize) -> F {
-    let two: F = 2_u64.into();
-    two.pow(&[size as u64])
-}
-
 pub trait CoordinateCurve: AffineCurve {
     fn to_coords(&self) -> Option<(Self::BaseField, Self::BaseField)>;
 }
