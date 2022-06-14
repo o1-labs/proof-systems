@@ -1163,7 +1163,7 @@ mod tests {
         );
 
         // Verify computed witness satisfies the circuit
-        prover_index.verify(&witness, &[]).unwrap();
+        prover_index.verify_witness(&witness, &[]).unwrap();
 
         // Generate proof
         let group_map = <pasta_curves::vesta::Affine as CommitmentCurve>::Map::setup();

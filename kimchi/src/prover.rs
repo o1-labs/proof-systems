@@ -156,7 +156,9 @@ where
         // double-check the witness
         if cfg!(debug_assertions) {
             let public = witness[0][0..index.cs.public].to_vec();
-            index.verify(&witness, &public).expect("incorrect witness");
+            index
+                .verify_witness(&witness, &public)
+                .expect("incorrect witness");
         }
 
         //~ 1. Ensure we have room in the witness for the zero-knowledge rows.

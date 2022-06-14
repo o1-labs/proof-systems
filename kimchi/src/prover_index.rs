@@ -99,7 +99,7 @@ where
     /// assignements (witness) against the constraints
     ///     witness: wire assignement witness
     ///     RETURN: verification status
-    pub fn verify(
+    pub fn verify_witness(
         &self,
         witness: &[Vec<G::ScalarField>; COLUMNS],
         public: &[G::ScalarField],

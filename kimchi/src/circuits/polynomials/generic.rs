@@ -519,7 +519,7 @@ mod tests {
             let (endo_q, _endo_r) = endos::<pallas::Affine>();
             let prover = ProverIndex::create(cs, fq_sponge_params, endo_q, srs.into());
             // make sure we're done filling the witness correctly
-            prover.verify(&witness, &[]).unwrap();
+            prover.verify_witness(&witness, &[]).unwrap();
             prover.cs
         };
 
