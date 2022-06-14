@@ -28,8 +28,7 @@ where
     G::BaseField: FftField + PrimeField,
 {
     // commitments to gate selector polynomials
-    pub gate_selectors: [VarPolyComm<G, 1>; SELECTORS], 
-
+    pub gate_selectors: [VarPolyComm<G, 1>; SELECTORS],
     // commitment to permutation
 }
 

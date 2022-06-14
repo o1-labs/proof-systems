@@ -478,7 +478,7 @@ pub trait Cs<F: FftField + PrimeField> {
     }
 
     // TODO: optimize by reusing the same variable
-    // whenever the same constant is requested, e.g. 
+    // whenever the same constant is requested, e.g.
     // the constant 1 or -1 is very common.
     fn constant(&mut self, x: F) -> Var<F> {
         let v = self.var(|| x);
