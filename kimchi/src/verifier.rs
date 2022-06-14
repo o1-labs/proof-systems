@@ -24,6 +24,7 @@ use commitment_dlog::commitment::{
     Evaluation, PolyComm,
 };
 use itertools::izip;
+use o1_utils::math;
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand::thread_rng;
 
@@ -132,12 +133,23 @@ where
         index.absorb(&mut fq_sponge);
 
         //~ 1. If the verifier index expects a number of recursion challenges,
-        //~    make sure that the right number of challenges and commitments are passed in the proof,
+        //~    make sure that the right number of accumulators are passed in the proof,
+        //~    and that for each accumulators the number of challenges is the same as log2(SRS.len())
         if proof.prev_challenges.len() != index.recursive_proofs {
-            return Err(VerifyError::InvalidRecursionChallenges(
+            return Err(VerifyError::InvalidRecursionAccumulators(
                 proof.prev_challenges.len(),
                 index.recursive_proofs,
             ));
+        }
+
+        let expected_chals = math::ceil_log2(index.srs().max_degree());
+        for RecursionChallenge { chals, .. } in &proof.prev_challenges {
+            if chals.len() != expected_chals {
+                return Err(VerifyError::InvalidRecursionChallenges(
+                    chals.len(),
+                    expected_chals,
+                ));
+            }
         }
 
         //~ 1. Absorb the recursion commitments.

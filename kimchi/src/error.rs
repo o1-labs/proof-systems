@@ -62,6 +62,9 @@ pub enum VerifyError {
     #[error("using public input of size {0}, expected of size {1}")]
     InvalidPublicInputSize(usize, usize),
 
+    #[error("received {0} recursion accumulators, expected {1}")]
+    InvalidRecursionAccumulators(usize, usize),
+
     #[error("received {0} recursion challenges, expected {1}")]
     InvalidRecursionChallenges(usize, usize),
 }
