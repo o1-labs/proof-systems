@@ -1308,7 +1308,7 @@ mod tests {
     use kimchi::circuits::{constraints::ConstraintSystem, polynomial::COLUMNS, gate::CircuitGate};
     use mina_curves::pasta::{FpParameters};
 
-    use crate::{System, Cs, WitnessGenerator, fp_constants, Var};
+    use crate::{System, Cs, WitnessGenerator, fp_constants, Var, Cycle, FpInner};
 
     fn generate_gates<H>(
         mut circuit: H
@@ -1341,12 +1341,10 @@ mod tests {
         gates: Vec<CircuitGate<Fp256<FpParameters>>>
     ) -> ConstraintSystem<Fp256<FpParameters>> {
         let constants = fp_constants();
-        let constraint_system =
-        ConstraintSystem::<C::InnerField>::create(gates, constants.poseidon.clone())
+        ConstraintSystem::<<FpInner as Cycle>::InnerField>::create(gates, constants.poseidon.clone())
             .public(0)
             .build()
-            .expect("couldn't construct constraint system");
-
+            .expect("couldn't construct constraint system")
     }
 
     mod and_gate_tests {

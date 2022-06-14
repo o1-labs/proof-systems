@@ -14,7 +14,6 @@ use mina_curves::pasta::{
     pallas::{Affine as Other, PallasParameters},
     vesta::{Affine, VestaParameters},
 };
-use o1_utils::types::fields::*;
 use oracle::{
     constants::*,
     poseidon::{ArithmeticSponge, Sponge},
@@ -214,7 +213,7 @@ where
         let mut res = sys.constant(F::one());
 
         let mut check_vars = |vars: &[Var<F>]| {
-            for num in 0..9u32 {
+            for num in 1..=9u32 {
                 // must be 1 at the end
                 let mut in_row = sys.constant(F::zero());
                 let num = sys.constant(F::from(num));
@@ -279,9 +278,6 @@ pub fn sudoku_prove<F, G, Sys>(
 
     // 2. verify it
     sudoku.verify(sys);
-
-    // 3. add zk
-    sys.zk()
 }
 
 #[test]
@@ -294,7 +290,7 @@ fn test_sudoku() {
     };
 
     // generate sudoku + solution for example
-    let sudoku = Sudoku::<BaseField<Other>>::new_problem();
+    let sudoku = Sudoku::<<FpInner as Cycle>::InnerField>::new_problem();
     let solution = SudokuSolution::solve(&sudoku);
 
     // compile circuit
