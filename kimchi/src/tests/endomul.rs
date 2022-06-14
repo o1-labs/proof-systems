@@ -107,5 +107,9 @@ fn endomul_test() {
         assert_eq!(x.into_repr(), res.n.into_repr());
     }
 
-    TestFramework::run_test(gates, witness, &[]);
+    TestFramework::default()
+        .gates(gates)
+        .witness(witness)
+        .setup()
+        .prove_and_verify();
 }

@@ -55,6 +55,7 @@ impl<F: PrimeField> ScalarChallenge<F> {
 
         a * endo_coeff + b
     }
+
     pub fn to_field(&self, endo_coeff: &F) -> F {
         let length_in_bits = 64 * CHALLENGE_LENGTH_IN_LIMBS;
         self.to_field_with_length(length_in_bits, endo_coeff)

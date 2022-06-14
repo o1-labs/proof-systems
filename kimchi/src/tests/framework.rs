@@ -1,28 +1,26 @@
 //! Test Framework
 
-use crate::circuits::lookup::runtime_tables::{RuntimeTable, RuntimeTableConfiguration};
+use crate::circuits::lookup::runtime_tables::{RuntimeTable, RuntimeTableCfg};
 use crate::circuits::lookup::tables::LookupTable;
 use crate::circuits::{gate::CircuitGate, wires::COLUMNS};
-use crate::proof::ProverProof;
-use crate::prover_index::testing::{new_index_for_test, new_index_for_test_with_lookups};
+use crate::proof::{ProverProof, RecursionChallenge};
+use crate::prover_index::testing::new_index_for_test_with_lookups;
+use crate::prover_index::ProverIndex;
 use crate::verifier::verify;
-use ark_ff::{PrimeField, UniformRand};
-use ark_poly::univariate::DensePolynomial;
-use ark_poly::UVPolynomial;
-use array_init::array_init;
-use commitment_dlog::commitment::{b_poly_coefficients, CommitmentCurve};
+use crate::verifier_index::VerifierIndex;
+use ark_ff::PrimeField;
+use commitment_dlog::commitment::CommitmentCurve;
 use groupmap::GroupMap;
 use mina_curves::pasta::{
     fp::Fp,
     vesta::{Affine, VestaParameters},
 };
 use num_bigint::BigUint;
-use o1_utils::math;
 use oracle::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use rand::prelude::*;
+use std::mem;
 use std::time::Instant;
 
 // aliases
@@ -31,130 +29,131 @@ type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
-/// TKTK
-pub(crate) struct TestFramework;
+#[derive(Default)]
+pub(crate) struct TestFramework {
+    gates: Option<Vec<CircuitGate<Fp>>>,
+    witness: Option<[Vec<Fp>; COLUMNS]>,
+    public_inputs: Vec<Fp>,
+    lookup_tables: Vec<LookupTable<Fp>>,
+    runtime_tables_setup: Option<Vec<RuntimeTableCfg<Fp>>>,
+    runtime_tables: Vec<RuntimeTable<Fp>>,
+    recursion: Vec<RecursionChallenge<Affine>>,
+
+    prover_index: Option<ProverIndex<Affine>>,
+    verifier_index: Option<VerifierIndex<Affine>>,
+}
+
+pub(crate) struct TestRunner(TestFramework);
 
 impl TestFramework {
-    /// Create and verify a proof
-    pub(crate) fn run_test(
-        gates: Vec<CircuitGate<Fp>>,
-        witness: [Vec<Fp>; COLUMNS],
-        public: &[Fp],
-    ) {
-        // create the index
-        let start = Instant::now();
-        let index = new_index_for_test(gates, public.len());
-        let verifier_index = index.verifier_index();
-        println!("- time to create index: {:?}s", start.elapsed().as_secs());
-
-        // verify the circuit satisfiability by the computed witness
-        index.cs.verify(&witness, public).unwrap();
-
-        // add the proof to the batch
-        let start = Instant::now();
-        let group_map = <Affine as CommitmentCurve>::Map::setup();
-        let proof =
-            ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &[], &index)
-                .unwrap();
-        println!("- time to create proof: {:?}s", start.elapsed().as_secs());
-
-        // verify the proof
-        let start = Instant::now();
-        verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &verifier_index, &proof).unwrap();
-        println!("- time to verify: {}ms", start.elapsed().as_millis());
+    #[must_use]
+    pub(crate) fn gates(mut self, gates: Vec<CircuitGate<Fp>>) -> Self {
+        self.gates = Some(gates);
+        self
     }
 
-    /// Create and verify a recursive proof
-    pub(crate) fn run_test_recursion(
-        gates: Vec<CircuitGate<Fp>>,
-        witness: [Vec<Fp>; COLUMNS],
-        public: &[Fp],
-    ) {
-        // create the index
+    #[must_use]
+    pub(crate) fn witness(mut self, witness: [Vec<Fp>; COLUMNS]) -> Self {
+        self.witness = Some(witness);
+        self
+    }
+
+    #[must_use]
+    pub(crate) fn public_inputs(mut self, public_inputs: Vec<Fp>) -> Self {
+        self.public_inputs = public_inputs;
+        self
+    }
+
+    #[must_use]
+    pub(crate) fn lookup_tables(mut self, lookup_tables: Vec<LookupTable<Fp>>) -> Self {
+        self.lookup_tables = lookup_tables;
+        self
+    }
+
+    #[must_use]
+    pub(crate) fn runtime_tables_setup(
+        mut self,
+        runtime_tables_setup: Vec<RuntimeTableCfg<Fp>>,
+    ) -> Self {
+        self.runtime_tables_setup = Some(runtime_tables_setup);
+        self
+    }
+
+    /// creates the indexes
+    #[must_use]
+    pub(crate) fn setup(mut self) -> TestRunner {
         let start = Instant::now();
-        let index = new_index_for_test(gates, public.len());
-        let verifier_index = index.verifier_index();
-        println!("- time to create index: {:?}s", start.elapsed().as_secs());
+
+        let lookup_tables = mem::replace(&mut self.lookup_tables, vec![]);
+        let runtime_tables_setup = mem::replace(&mut self.runtime_tables_setup, None);
+
+        let index = new_index_for_test_with_lookups(
+            self.gates.take().unwrap(),
+            self.public_inputs.len(),
+            lookup_tables,
+            runtime_tables_setup,
+        );
+        println!(
+            "- time to create prover index: {:?}s",
+            start.elapsed().as_secs()
+        );
+
+        self.verifier_index = Some(index.verifier_index());
+        self.prover_index = Some(index);
+
+        TestRunner(self)
+    }
+}
+
+impl TestRunner {
+    #[must_use]
+    pub(crate) fn runtime_tables(mut self, runtime_tables: Vec<RuntimeTable<Fp>>) -> Self {
+        self.0.runtime_tables = runtime_tables;
+        self
+    }
+
+    #[must_use]
+    pub(crate) fn recursion(mut self, recursion: Vec<RecursionChallenge<Affine>>) -> Self {
+        self.0.recursion = recursion;
+        self
+    }
+
+    pub(crate) fn prover_index(&self) -> &ProverIndex<Affine> {
+        self.0.prover_index.as_ref().unwrap()
+    }
+
+    /// Create and verify a proof
+    pub(crate) fn prove_and_verify(self) {
+        let prover = self.0.prover_index.unwrap();
+        let witness = self.0.witness.unwrap();
 
         // verify the circuit satisfiability by the computed witness
-        index.cs.verify(&witness, public).unwrap();
-
-        // previous opening for recursion
-        let rng = &mut StdRng::from_seed([0u8; 32]);
-        let prev_challenges = {
-            let k = math::ceil_log2(index.srs.g.len());
-            let chals: Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();
-            let comm = {
-                let coeffs = b_poly_coefficients(&chals);
-                let b = DensePolynomial::from_coefficients_vec(coeffs);
-                index.srs.commit_non_hiding(&b, None)
-            };
-            (chals, comm)
-        };
+        prover.cs.verify(&witness, &self.0.public_inputs).unwrap();
 
         // add the proof to the batch
         let start = Instant::now();
+
         let group_map = <Affine as CommitmentCurve>::Map::setup();
+
         let proof = ProverProof::create_recursive::<BaseSponge, ScalarSponge>(
             &group_map,
             witness,
-            &[],
-            &index,
-            vec![prev_challenges],
-            array_init(|_| None),
+            &self.0.runtime_tables,
+            &prover,
+            self.0.recursion,
+            None,
         )
         .unwrap();
         println!("- time to create proof: {:?}s", start.elapsed().as_secs());
 
         // verify the proof
         let start = Instant::now();
-        verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &verifier_index, &proof).unwrap();
-        println!("- time to verify: {}ms", start.elapsed().as_millis());
-    }
-
-    /// Create and verify a proof with lookup tables
-    pub(crate) fn run_test_lookups(
-        gates: Vec<CircuitGate<Fp>>,
-        witness: [Vec<Fp>; COLUMNS],
-        public: &[Fp],
-        lookup_tables: Vec<LookupTable<Fp>>,
-        runtime_tables: Option<Vec<RuntimeTable<Fp>>>,
-    ) {
-        // create the index
-        let start = Instant::now();
-        let runtime_tables_cfg = runtime_tables.as_ref().map(|tables| {
-            tables
-                .iter()
-                .map(|table| RuntimeTableConfiguration {
-                    id: table.id,
-                    len: table.data.len(),
-                })
-                .collect()
-        });
-        let index =
-            new_index_for_test_with_lookups(gates, public.len(), lookup_tables, runtime_tables_cfg);
-        let verifier_index = index.verifier_index();
-        println!("- time to create index: {:?}s", start.elapsed().as_secs());
-
-        // verify the circuit satisfiability by the computed witness
-        index.cs.verify(&witness, public).unwrap();
-
-        // add the proof to the batch
-        let start = Instant::now();
-        let group_map = <Affine as CommitmentCurve>::Map::setup();
-        let runtime_tables = runtime_tables.unwrap_or(vec![]);
-        let proof = ProverProof::create::<BaseSponge, ScalarSponge>(
+        verify::<Affine, BaseSponge, ScalarSponge>(
             &group_map,
-            witness,
-            &runtime_tables,
-            &index,
+            &self.0.verifier_index.unwrap(),
+            &proof,
         )
         .unwrap();
-        println!("- time to create proof: {:?}s", start.elapsed().as_secs());
-
-        // verify the proof
-        let start = Instant::now();
-        verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &verifier_index, &proof).unwrap();
         println!("- time to verify: {}ms", start.elapsed().as_millis());
     }
 }

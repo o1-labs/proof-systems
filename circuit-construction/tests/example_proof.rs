@@ -1,35 +1,29 @@
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{FftField, PrimeField, UniformRand};
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
-use circuit_construction::*;
-use commitment_dlog::{
-    commitment::{CommitmentCurve, PolyComm},
-    srs::{endos, SRS},
-};
-use groupmap::GroupMap;
-use kimchi::verifier::verify;
-use mina_curves::pasta::{
-    fp::Fp,
-    fq::Fq,
-    pallas::{Affine as Other, PallasParameters},
-    vesta::{Affine, VestaParameters},
-};
-use o1_utils::types::fields::*;
-use oracle::{
-    constants::*,
-    poseidon::{ArithmeticSponge, Sponge},
-    sponge::{DefaultFqSponge, DefaultFrSponge},
+use circuit_construction::{
+    commitment_dlog::{commitment::CommitmentCurve, srs::SRS},
+    groupmap::GroupMap,
+    kimchi::verifier::verify,
+    mina_curves::pasta::{
+        fp::Fp,
+        pallas::Affine as Other,
+        vesta::{Affine, VestaParameters},
+    },
+    oracle::{
+        constants::*,
+        poseidon::{ArithmeticSponge, Sponge},
+        sponge::{DefaultFqSponge, DefaultFrSponge},
+    },
+    *,
 };
 use std::sync::Arc;
 
 type SpongeQ = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
 type SpongeR = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>;
 
-type PSpongeQ = DefaultFqSponge<PallasParameters, PlonkSpongeConstantsKimchi>;
-type PSpongeR = DefaultFrSponge<Fq, PlonkSpongeConstantsKimchi>;
-
 pub struct Witness<G: AffineCurve> {
-    pub s: ScalarField<G>,
+    pub s: G::ScalarField,
     pub preimage: G::BaseField,
 }
 
@@ -65,16 +59,15 @@ pub fn circuit<
     sys.assert_eq(actual.0, public_input[0]);
     sys.assert_eq(actual.1, public_input[1]);
     sys.assert_eq(actual_hash, public_input[2]);
-
-    sys.zk()
 }
 
 const PUBLIC_INPUT_LENGTH: usize = 3;
 
-fn main() {
-    // 2^8 = 256
+#[test]
+fn test_example_circuit() {
+    // create SRS
     let srs = {
-        let mut srs = SRS::<Affine>::create(1 << 8);
+        let mut srs = SRS::<Affine>::create(1 << 7); // 2^7 = 128
         srs.add_lagrange_basis(D::new(srs.g.len()).unwrap());
         Arc::new(srs)
     };
@@ -82,6 +75,7 @@ fn main() {
     let proof_system_constants = fp_constants();
     let fq_poseidon = oracle::pasta::fq_kimchi::params();
 
+    // generate circuit and index
     let prover_index = generate_prover_index::<FpInner, _>(
         srs,
         &proof_system_constants,
@@ -94,19 +88,19 @@ fn main() {
 
     let mut rng = rand::thread_rng();
 
-    // Example
-    let private_key = ScalarField::<Other>::rand(&mut rng);
-    let public_key = Other::prime_subgroup_generator()
-        .mul(private_key)
-        .into_affine();
-
-    let preimage = BaseField::<Other>::rand(&mut rng);
+    // create witness
+    let private_key = <Other as AffineCurve>::ScalarField::rand(&mut rng);
+    let preimage = <Other as AffineCurve>::BaseField::rand(&mut rng);
 
     let witness = Witness {
         s: private_key,
         preimage,
     };
 
+    // create public input
+    let public_key = Other::prime_subgroup_generator()
+        .mul(private_key)
+        .into_affine();
     let hash = {
         let mut s: ArithmeticSponge<_, PlonkSpongeConstantsKimchi> =
             ArithmeticSponge::new(proof_system_constants.poseidon.clone());
@@ -114,6 +108,7 @@ fn main() {
         s.squeeze()
     };
 
+    // generate proof
     let proof = prove::<Affine, _, SpongeQ, SpongeR>(
         &prover_index,
         &group_map,
@@ -122,6 +117,7 @@ fn main() {
         |sys, p| circuit::<Fp, Other, _>(&proof_system_constants, Some(&witness), sys, p),
     );
 
+    // verify proof
     let verifier_index = prover_index.verifier_index();
 
     verify::<_, SpongeQ, SpongeR>(&group_map, &verifier_index, &proof).unwrap();

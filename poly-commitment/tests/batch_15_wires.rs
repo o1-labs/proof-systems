@@ -90,7 +90,7 @@ where
 
             start = Instant::now();
             let polys: Vec<_> = (0..a.len())
-                .map(|i| (&a[i], bounds[i], (comm[i].0).1.clone()))
+                .map(|i| (&a[i], bounds[i], (comm[i].0).blinders.clone()))
                 .collect();
             let proof = srs.open::<DefaultFqSponge<VestaParameters, SC>, _>(
                 &group_map,
@@ -118,7 +118,7 @@ where
                 .4
                 .iter()
                 .map(|poly| Evaluation {
-                    commitment: (poly.0).0.clone(),
+                    commitment: (poly.0).commitment.clone(),
                     evaluations: poly.1.clone(),
                     degree_bound: poly.2,
                 })

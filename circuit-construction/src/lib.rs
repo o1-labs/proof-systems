@@ -1,3 +1,11 @@
+#![doc = include_str!("../../README.md")]
+
+pub use commitment_dlog;
+pub use groupmap;
+pub use kimchi;
+pub use mina_curves;
+pub use oracle;
+
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{BigInteger, FftField, Field, One, PrimeField, SquareRootField, Zero};
 use array_init::array_init;
@@ -16,7 +24,6 @@ use oracle::{constants::*, permutation::full_round, poseidon::ArithmeticSpongePa
 use std::collections::HashMap;
 
 pub const GENERICS: usize = 3;
-pub const ZK_ROWS: usize = kimchi::circuits::polynomials::permutation::ZK_ROWS as usize;
 
 pub const SINGLE_GENERIC_COEFFS: usize = 5;
 pub const GENERIC_ROW_COEFFS: usize = 2 * SINGLE_GENERIC_COEFFS;
@@ -146,7 +153,7 @@ pub trait Cs<F: FftField + PrimeField> {
     /// and can be anything that the prover wants.
     /// For example, division can be implemented as:
     ///
-    /// ```
+    /// ```ignore
     /// let a = sys.constant(5u32.into());
     /// let b = sys.constant(10u32.into());
     /// let c = sys.var(|| {
@@ -973,17 +980,6 @@ pub trait Cs<F: FftField + PrimeField> {
         }
     }
 
-    fn zk(&mut self) {
-        for _ in 0..ZK_ROWS {
-            let row = array_init(|_| self.var(|| F::rand(&mut rand::thread_rng())));
-            self.gate(GateSpec {
-                typ: GateType::Zero,
-                coeffs: vec![],
-                row,
-            });
-        }
-    }
-
     fn poseidon(&mut self, constants: &Constants<F>, input: Vec<Var<F>>) -> Vec<Var<F>> {
         use kimchi::circuits::polynomials::poseidon::*;
 
@@ -1156,6 +1152,7 @@ impl<F: FftField> System<F> {
     }
 }
 
+/// Given an index, a group map, custom blinders for the witness, a public input vector, and a circuit `main`, create a proof.
 pub fn prove<G, H, EFqSponge, EFrSponge>(
     index: &ProverIndex<G>,
     group_map: &G::Map,
@@ -1191,7 +1188,7 @@ where
     // get the witness columns
     let columns = gen.columns();
 
-    // TODO: woot??
+    // custom blinders for the witness commitment
     let blinders: [Option<PolyComm<G::ScalarField>>; COLUMNS] = match blinders {
         None => array_init(|_| None),
         Some(bs) => array_init(|i| {
@@ -1209,7 +1206,7 @@ where
         &[],
         index,
         vec![],
-        blinders,
+        Some(blinders),
     )
     .unwrap()
 }
@@ -1258,15 +1255,15 @@ where
     println!("gates: {}", gates.len());
     // Other base field = self scalar field
     let (endo_q, _endo_r) = endos::<C::Inner>();
-    let cs = ConstraintSystem::<C::InnerField>::create(
-        gates,
-        vec![],
-        None,
-        constants.poseidon.clone(),
-        public,
-    )
-    .unwrap();
-    ProverIndex::<C::Outer>::create(cs, poseidon_params.clone(), endo_q, srs)
+
+    let constraint_system =
+        ConstraintSystem::<C::InnerField>::create(gates, constants.poseidon.clone())
+            .public(public)
+            .build()
+            // TODO: return a Result instead of panicking
+            .expect("couldn't construct constraint system");
+
+    ProverIndex::<C::Outer>::create(constraint_system, poseidon_params.clone(), endo_q, srs)
 }
 
 pub fn fp_constants() -> Constants<Fp> {
@@ -1344,13 +1341,12 @@ mod tests {
         gates: Vec<CircuitGate<Fp256<FpParameters>>>
     ) -> ConstraintSystem<Fp256<FpParameters>> {
         let constants = fp_constants();
-        ConstraintSystem::<Fp256<FpParameters>>::create(
-            gates,
-            vec![],
-            None,
-            constants.poseidon.clone(),
-            0,
-        ).unwrap()
+        let constraint_system =
+        ConstraintSystem::<C::InnerField>::create(gates, constants.poseidon.clone())
+            .public(0)
+            .build()
+            .expect("couldn't construct constraint system");
+
     }
 
     mod and_gate_tests {

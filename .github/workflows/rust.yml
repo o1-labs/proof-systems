@@ -57,7 +57,7 @@ jobs:
 
       - name: Set up cargo-spec for specifications
         run: |
-          cargo install cargo-spec --version 0.3.0
+          cargo install cargo-spec --version 0.4.1
 
       - name: Build the kimchi specification
         run: |
