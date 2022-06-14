@@ -54,12 +54,3 @@ To obtain a flamegraph:
 
 Note: lots of good advice on system performance in the [flamegraph repo](https://github.com/flamegraph-rs/flamegraph#systems-performance-work-guided-by-flamegraphs).
 
-
-## Guidelines
-
-When using this library, make sure to include in your Cargo.toml the following dependency:
-
-`
-[dependencies]
-kimchi = { git = "https://github.com/o1-labs/proof-systems" }
-`
