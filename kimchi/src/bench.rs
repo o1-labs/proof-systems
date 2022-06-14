@@ -5,7 +5,7 @@ use crate::{
         wires::{Wire, COLUMNS},
     },
     proof::{ProverProof, RecursionChallenge},
-    prover_index::{testing::new_index_for_test, ProverIndex},
+    prover_index::{testing::new_index_for_test_with_lookups, ProverIndex},
     verifier::batch_verify,
     verifier_index::VerifierIndex,
 };
@@ -36,6 +36,7 @@ pub struct BenchmarkCtx {
     group_map: BWParameters<VestaParameters>,
     index: ProverIndex<Affine>,
     verifier_index: VerifierIndex<Affine>,
+    recursive_proofs: usize,
 }
 
 impl BenchmarkCtx {
@@ -43,7 +44,7 @@ impl BenchmarkCtx {
     /// Note that the size of the circuit is still of [CIRCUIT_SIZE].
     /// So the prover's work is based on num_gates,
     /// but the verifier work is based on [CIRCUIT_SIZE].
-    pub fn new(num_gates: usize) -> Self {
+    pub fn new(num_gates: usize, recursive_proofs: usize) -> Self {
         // create the circuit
         let mut gates = vec![];
 
@@ -66,7 +67,7 @@ impl BenchmarkCtx {
         let group_map = <Affine as CommitmentCurve>::Map::setup();
 
         // create the index
-        let index = new_index_for_test(gates, 0);
+        let index = new_index_for_test_with_lookups(gates, 0, vec![], None, recursive_proofs);
 
         // create the verifier index
         let verifier_index = index.verifier_index();
@@ -76,6 +77,7 @@ impl BenchmarkCtx {
             group_map,
             index,
             verifier_index,
+            recursive_proofs,
         }
     }
 
@@ -88,7 +90,8 @@ impl BenchmarkCtx {
         let witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![1u32.into(); CIRCUIT_SIZE]);
 
         // previous opening for recursion
-        let prev = {
+        let mut prev = vec![];
+        for _ in 0..self.recursive_proofs {
             let k = math::ceil_log2(self.index.srs.g.len());
             let chals: Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();
             let comm = {
@@ -96,8 +99,8 @@ impl BenchmarkCtx {
                 let b = DensePolynomial::from_coefficients_vec(coeffs);
                 self.index.srs.commit_non_hiding(&b, None)
             };
-            RecursionChallenge::new(chals, comm)
-        };
+            prev.push(RecursionChallenge::new(chals, comm));
+        }
 
         // add the proof to the batch
         ProverProof::create_recursive::<BaseSponge, ScalarSponge>(
@@ -105,7 +108,7 @@ impl BenchmarkCtx {
             witness,
             &[],
             &self.index,
-            vec![prev],
+            prev,
             None,
         )
         .unwrap()
@@ -131,7 +134,7 @@ mod tests {
     fn test_bench() {
         // context created in 21.2235 ms
         let start = Instant::now();
-        let ctx = BenchmarkCtx::new(1 << 4);
+        let ctx = BenchmarkCtx::new(1 << 4, 2);
         println!("context created in {}", start.elapsed().as_secs());
 
         // proof created in 7.1227 ms

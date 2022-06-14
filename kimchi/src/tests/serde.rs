@@ -28,7 +28,7 @@ mod tests {
 
     #[test]
     fn test_rmp_serde() {
-        let ctx = BenchmarkCtx::new(1 << 4);
+        let ctx = BenchmarkCtx::new(1 << 4, 1);
 
         let proof = ctx.create_proof();
 
