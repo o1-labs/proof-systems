@@ -10,7 +10,7 @@ site-url = "/proof-systems/"
 use-site-url-as-root = true
 curly-quotes = true
 git-repository-url = "https://www.github.com/o1-labs/proof-systems"
-additional-css = ["./assets/css/mdbook-admonish.css"]
+additional-css = ["./assets/css/mdbook-admonish.css", "././mdbook-admonish.css"]
 additional-js = ["mermaid.min.js", "mermaid-init.js"]
 
 # for LaTeX
