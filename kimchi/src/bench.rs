@@ -1,7 +1,7 @@
 use crate::{
     circuits::{
         gate::CircuitGate,
-        polynomials::generic::GenericGateSpec,
+        polynomials::{generic::GenericGateSpec, permutation::ZK_ROWS},
         wires::{Wire, COLUMNS},
     },
     proof::{ProverProof, RecursionChallenge},
@@ -28,11 +28,8 @@ type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
-/// The circuit size. This influences the size of the SRS.
-/// At the time of this writing our verifier circuits have 27164 & 18054 gates.
-pub const CIRCUIT_SIZE: usize = 27164;
-
 pub struct BenchmarkCtx {
+    num_gates: usize,
     group_map: BWParameters<VestaParameters>,
     index: ProverIndex<Affine>,
     verifier_index: VerifierIndex<Affine>,
@@ -58,7 +55,8 @@ impl BenchmarkCtx {
             ));
         }
 
-        for row in num_gates..CIRCUIT_SIZE {
+        // make room for zk
+        for row in num_gates..(num_gates + ZK_ROWS as usize) {
             let wires = Wire::new(row);
             gates.push(CircuitGate::zero(wires));
         }
@@ -74,6 +72,7 @@ impl BenchmarkCtx {
 
         //
         BenchmarkCtx {
+            num_gates,
             group_map,
             index,
             verifier_index,
@@ -87,7 +86,7 @@ impl BenchmarkCtx {
         let rng = &mut StdRng::from_seed([0u8; 32]);
 
         // create witness
-        let witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![1u32.into(); CIRCUIT_SIZE]);
+        let witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![1u32.into(); self.num_gates]);
 
         // previous opening for recursion
         let mut prev = vec![];
