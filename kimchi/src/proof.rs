@@ -23,25 +23,30 @@ pub const EVALS: usize = 2;
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(bound(
-    serialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::SerializeAs<Field>",
-    deserialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::DeserializeAs<'de, Field>"
+    serialize = "o1_utils::serialization::SerdeAs: serde_with::SerializeAs<F>",
+    deserialize = "o1_utils::serialization::SerdeAs: serde_with::DeserializeAs<'de, F>"
 ))]
-pub struct LookupEvaluations<Field> {
+pub struct LookupEvaluations<F> {
     /// sorted lookup table polynomial
-    #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
-    pub sorted: Vec<Field>,
-    /// lookup aggregation polynomial
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub aggreg: Field,
+    pub sorted: Vec<F>,
+    /// lookup aggregation polynomial
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub aggreg: F,
     // TODO: May be possible to optimize this away?
     /// lookup table polynomial
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub table: Field,
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub table: F,
 
     /// Optionally, a runtime table polynomial.
-    #[serde_as(as = "Option<Vec<o1_utils::serialization::SerdeAs>>")]
-    pub runtime: Option<Field>,
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    pub runtime: Option<F>,
 }
+
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(bound = "F: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
+pub struct ChunkedEvaluations<F>(ProofEvaluations<Vec<F>>);
 
 // TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
 /// Polynomial evaluations contained in a `ProverProof`.
@@ -50,27 +55,27 @@ pub struct LookupEvaluations<Field> {
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(bound(
-    serialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::SerializeAs<Field>",
-    deserialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::DeserializeAs<'de, Field>"
+    serialize = "o1_utils::serialization::SerdeAs: serde_with::SerializeAs<Field>",
+    deserialize = "o1_utils::serialization::SerdeAs: serde_with::DeserializeAs<'de, Field>"
 ))]
 pub struct ProofEvaluations<Field> {
     /// witness polynomials
-    #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; COLUMNS]")]
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
     pub w: [Field; COLUMNS],
     /// permutation polynomial
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub z: Field,
     /// permutation polynomials
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
-    #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; PERMUTS - 1]")]
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS - 1]")]
     pub s: [Field; PERMUTS - 1],
     /// lookup-related evaluations
     pub lookup: Option<LookupEvaluations<Field>>,
     /// evaluation of the generic selector polynomial
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub generic_selector: Field,
     /// evaluation of the poseidon selector polynomial
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub poseidon_selector: Field,
 }
 
