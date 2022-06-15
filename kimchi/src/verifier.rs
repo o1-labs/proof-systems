@@ -63,6 +63,11 @@ impl<G: CommitmentCurve> ProverProof<G>
 where
     G::BaseField: PrimeField,
 {
+    /// This function computes the expected evaluations (at zeta and zeta * omega)
+    /// for the b_polys computed out of the previous challenges.
+    ///
+    /// Warning: this function will panic if the challenges are larger than twice what they're expected to be.
+    /// In other words, the previous proofs' domains should not be more than twice the size of this index's domain.
     pub fn prev_chal_evals(
         &self,
         index: &VerifierIndex<G>,
@@ -80,9 +85,16 @@ where
                 (0..2)
                     .map(|i| {
                         let full = b_poly(chals, evaluation_points[i]);
-                        if index.max_poly_size == b_len {
+
+                        // the previous proof was computed in a domain of the same size (or smaller)
+                        if index.max_poly_size >= b_len {
                             return vec![full];
                         }
+
+                        // if not, we split the b_poly in _two chunks_
+                        // we panic if it requires more than two chunks.
+                        assert!(b_len <= 2 * index.max_poly_size);
+
                         let mut betaacc = G::ScalarField::one();
                         let diff = (index.max_poly_size..b_len)
                             .map(|j| {

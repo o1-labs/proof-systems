@@ -132,7 +132,7 @@ mod tests {
     fn test_bench() {
         // context created in 21.2235 ms
         let start = Instant::now();
-        let ctx = BenchmarkCtx::new(1 << 4, vec![5]);
+        let ctx = BenchmarkCtx::new(1 << 4, vec![3]);
         println!("context created in {}", start.elapsed().as_secs());
 
         // proof created in 7.1227 ms
