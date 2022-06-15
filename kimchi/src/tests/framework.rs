@@ -99,7 +99,7 @@ impl TestFramework {
             self.public_inputs.len(),
             lookup_tables,
             runtime_tables_setup,
-            self.recursive_proofs,
+            self.recursive_proofs.clone(),
         );
         println!(
             "- time to create prover index: {:?}s",

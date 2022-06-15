@@ -8,7 +8,6 @@ use ark_poly::UVPolynomial;
 use array_init::array_init;
 use commitment_dlog::commitment::b_poly_coefficients;
 use mina_curves::pasta::fp::Fp;
-use o1_utils::math;
 use rand::prelude::*;
 
 #[test]
@@ -20,27 +19,26 @@ fn test_recursion() {
     fill_in_witness(0, &mut witness, &[]);
 
     // setup
+    let recursive_proofs = vec![2, 4];
     let test_runner = TestFramework::default()
         .gates(gates)
         .witness(witness)
-        .recursive_proofs(vec![log2, log2])
+        .recursive_proofs(recursive_proofs.clone())
         .setup();
 
     // previous opening for recursion
     let index = test_runner.prover_index();
     let rng = &mut StdRng::from_seed([0u8; 32]);
-    let prev_challenges = {
-        let k = math::ceil_log2(index.srs.g.len());
+    let mut prev_challenges = vec![];
+    for k in recursive_proofs {
         let chals: Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();
         let comm = {
             let coeffs = b_poly_coefficients(&chals);
             let b = DensePolynomial::from_coefficients_vec(coeffs);
             index.srs.commit_non_hiding(&b, None)
         };
-        RecursionChallenge::new(chals, comm)
-    };
+        prev_challenges.push(RecursionChallenge::new(chals, comm));
+    }
 
-    test_runner
-        .recursion(vec![prev_challenges])
-        .prove_and_verify();
+    test_runner.recursion(prev_challenges).prove_and_verify();
 }

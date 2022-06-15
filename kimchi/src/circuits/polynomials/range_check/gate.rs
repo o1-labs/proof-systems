@@ -513,7 +513,7 @@ mod tests {
             public_size,
             vec![range_check::lookup_table()],
             None,
-            0,
+            vec![],
         )
     }
 
