@@ -1242,8 +1242,11 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     /// expected size of the public input
     pub public_input_size: usize,
 
-    /// Recursion challenges from previous proof (if any)
+    /// Number of recursion accumulators to verify (if any)
     pub recursive_proofs: usize,
+
+    /// Log2 size of the recursive circuit's domain on the other curve (or 0)
+    pub recursive_log2_domain: usize,
 
     // index polynomial commitments
     /// permutation commitment array
@@ -1678,7 +1681,8 @@ We run the following algorithm:
 1. Setup the Fq-Sponge.
 1. Absorb the verifier index
 1. If the verifier index expects a number of recursion challenges,
-   make sure that the right number of challenges and commitments are passed in the proof,
+   make sure that the right number of accumulators are passed in the proof,
+   and that for each accumulators the number of challenges is the same as log2(SRS.len())
 1. Absorb the recursion commitments.
 1. Absorb the commitment of the public input polynomial with the Fq-Sponge.
 1. Absorb the commitments to the registers / witness columns with the Fq-Sponge.

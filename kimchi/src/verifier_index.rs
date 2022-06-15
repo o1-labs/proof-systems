@@ -18,6 +18,7 @@ use commitment_dlog::{
     commitment::{CommitmentCurve, PolyComm},
     srs::SRS,
 };
+use o1_utils::math;
 use once_cell::sync::OnceCell;
 use oracle::poseidon::ArithmeticSpongeParams;
 use oracle::FqSponge;
@@ -71,8 +72,11 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     /// expected size of the public input
     pub public_input_size: usize,
 
-    /// Recursion challenges from previous proof (if any)
+    /// Number of recursion accumulators to verify (if any)
     pub recursive_proofs: usize,
+
+    /// Log2 size of the recursive circuit's domain on the other curve (or 0)
+    pub recursive_log2_domain: usize,
 
     // index polynomial commitments
     /// permutation commitment array
@@ -192,6 +196,7 @@ where
 
             public_input_size: self.cs.public,
             recursive_proofs: self.cs.recursive_proofs,
+            recursive_log2_domain: math::ceil_log2(self.srs.max_degree()),
 
             sigma_comm: array_init(|i| self.srs.commit_non_hiding(&self.cs.sigmam[i], None)),
             coefficients_comm: array_init(|i| {

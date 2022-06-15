@@ -24,7 +24,6 @@ use commitment_dlog::commitment::{
     Evaluation, PolyComm,
 };
 use itertools::izip;
-use o1_utils::math;
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand::thread_rng;
 
@@ -142,12 +141,11 @@ where
             ));
         }
 
-        let expected_chals = math::ceil_log2(index.srs().max_degree());
         for RecursionChallenge { chals, .. } in &proof.prev_challenges {
-            if chals.len() != expected_chals {
+            if chals.len() != index.recursive_log2_domain {
                 return Err(VerifyError::InvalidRecursionChallenges(
                     chals.len(),
-                    expected_chals,
+                    index.recursive_log2_domain,
                 ));
             }
         }
