@@ -267,36 +267,18 @@ where
         EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
     {
         // absorb all the commitments
-        let commitments = self
-            .sigma_comm
-            .iter()
-            .chain(&self.coefficients_comm)
-            .chain([&self.generic_comm])
-            .chain([&self.psm_comm])
-            .chain([&self.complete_add_comm])
-            .chain([&self.mul_comm])
-            .chain([&self.emul_comm])
-            .chain([&self.endomul_scalar_comm])
-            .chain(self.chacha_comm.iter().flatten())
-            .chain(&self.range_check_comm);
-
-        {
-            let other_com = chain!(
-                &self.sigma_comm,
-                &self.coefficients_comm,
-                [&self.generic_comm],
-                [&self.psm_comm],
-                [&self.complete_add_comm],
-                [&self.mul_comm],
-                [&self.emul_comm],
-                [&self.endomul_scalar_comm],
-                self.chacha_comm.iter().flatten(),
-                &self.range_check_comm
-            );
-            for (a1, a2) in commitments.clone().zip(other_com) {
-                assert_eq!(a1.clone(), a2.clone());
-            }
-        }
+        let commitments = chain!(
+            &self.sigma_comm,
+            &self.coefficients_comm,
+            [&self.generic_comm],
+            [&self.psm_comm],
+            [&self.complete_add_comm],
+            [&self.mul_comm],
+            [&self.emul_comm],
+            [&self.endomul_scalar_comm],
+            self.chacha_comm.iter().flatten(),
+            &self.range_check_comm
+        );
 
         for commitment in commitments {
             sponge.absorb_g(&commitment.unshifted);
