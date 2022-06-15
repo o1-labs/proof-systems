@@ -18,6 +18,7 @@ use commitment_dlog::{
     commitment::{CommitmentCurve, PolyComm},
     srs::SRS,
 };
+use itertools::chain;
 use once_cell::sync::OnceCell;
 use oracle::poseidon::ArithmeticSpongeParams;
 use oracle::FqSponge;
@@ -278,6 +279,24 @@ where
             .chain([&self.endomul_scalar_comm])
             .chain(self.chacha_comm.iter().flatten())
             .chain(&self.range_check_comm);
+
+        {
+            let other_com = chain!(
+                &self.sigma_comm,
+                &self.coefficients_comm,
+                [&self.generic_comm],
+                [&self.psm_comm],
+                [&self.complete_add_comm],
+                [&self.mul_comm],
+                [&self.emul_comm],
+                [&self.endomul_scalar_comm],
+                self.chacha_comm.iter().flatten(),
+                &self.range_check_comm
+            );
+            for (a1, a2) in commitments.clone().zip(other_com) {
+                assert_eq!(a1.clone(), a2.clone());
+            }
+        }
 
         for commitment in commitments {
             sponge.absorb_g(&commitment.unshifted);
