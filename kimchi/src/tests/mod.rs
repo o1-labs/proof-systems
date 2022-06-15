@@ -6,7 +6,7 @@ mod framework;
 mod generic;
 mod lookup;
 mod poseidon;
-mod recursion;
+// mod recursion;
 mod serde;
 mod turshi;
 mod varbasemul;

@@ -37,7 +37,7 @@ pub(crate) struct TestFramework {
     lookup_tables: Vec<LookupTable<Fp>>,
     runtime_tables_setup: Option<Vec<RuntimeTableCfg<Fp>>>,
     runtime_tables: Vec<RuntimeTable<Fp>>,
-    recursive_proofs: usize,
+    recursive_proofs: Vec<usize>,
     recursion: Vec<RecursionChallenge<Affine>>,
 
     prover_index: Option<ProverIndex<Affine>>,
@@ -66,7 +66,7 @@ impl TestFramework {
     }
 
     #[must_use]
-    pub(crate) fn recursive_proofs(mut self, num: usize) -> Self {
+    pub(crate) fn recursive_proofs(mut self, num: Vec<usize>) -> Self {
         self.recursive_proofs = num;
         self
     }

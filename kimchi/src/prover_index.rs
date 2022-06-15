@@ -110,7 +110,7 @@ pub mod testing {
         public: usize,
         lookup_tables: Vec<LookupTable<Fp>>,
         runtime_tables: Option<Vec<RuntimeTableCfg<Fp>>>,
-        recursive_proofs: usize,
+        recursive_proofs: Vec<usize>,
     ) -> ProverIndex<Affine> {
         let fp_sponge_params = oracle::pasta::fp_kimchi::params();
 
@@ -131,6 +131,6 @@ pub mod testing {
         ProverIndex::<Affine>::create(cs, fq_sponge_params, endo_q, srs)
     }
     pub fn new_index_for_test(gates: Vec<CircuitGate<Fp>>, public: usize) -> ProverIndex<Affine> {
-        new_index_for_test_with_lookups(gates, public, vec![], None, 0)
+        new_index_for_test_with_lookups(gates, public, vec![], None, vec![])
     }
 }

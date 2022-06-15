@@ -22,8 +22,6 @@ use oracle::{
 };
 use rand::{rngs::StdRng, SeedableRng};
 
-use o1_utils::math;
-
 type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
@@ -33,7 +31,7 @@ pub struct BenchmarkCtx {
     group_map: BWParameters<VestaParameters>,
     index: ProverIndex<Affine>,
     verifier_index: VerifierIndex<Affine>,
-    recursive_proofs: usize,
+    recursive_proofs: Vec<usize>,
 }
 
 impl BenchmarkCtx {
@@ -41,7 +39,7 @@ impl BenchmarkCtx {
     /// Note that the size of the circuit is still of [CIRCUIT_SIZE].
     /// So the prover's work is based on num_gates,
     /// but the verifier work is based on [CIRCUIT_SIZE].
-    pub fn new(num_gates: usize, recursive_proofs: usize) -> Self {
+    pub fn new(num_gates: usize, recursive_proofs: Vec<usize>) -> Self {
         // create the circuit
         let mut gates = vec![];
 
@@ -65,7 +63,8 @@ impl BenchmarkCtx {
         let group_map = <Affine as CommitmentCurve>::Map::setup();
 
         // create the index
-        let index = new_index_for_test_with_lookups(gates, 0, vec![], None, recursive_proofs);
+        let index =
+            new_index_for_test_with_lookups(gates, 0, vec![], None, recursive_proofs.clone());
 
         // create the verifier index
         let verifier_index = index.verifier_index();
@@ -90,8 +89,8 @@ impl BenchmarkCtx {
 
         // previous opening for recursion
         let mut prev = vec![];
-        for _ in 0..self.recursive_proofs {
-            let k = math::ceil_log2(self.index.srs.g.len());
+        for &k in &self.recursive_proofs {
+            //let k = math::ceil_log2(self.index.srs.g.len());
             let chals: Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();
             let comm = {
                 let coeffs = b_poly_coefficients(&chals);
@@ -133,7 +132,7 @@ mod tests {
     fn test_bench() {
         // context created in 21.2235 ms
         let start = Instant::now();
-        let ctx = BenchmarkCtx::new(1 << 4, 2);
+        let ctx = BenchmarkCtx::new(1 << 4, vec![1, 1]);
         println!("context created in {}", start.elapsed().as_secs());
 
         // proof created in 7.1227 ms

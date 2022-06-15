@@ -134,19 +134,18 @@ where
         //~ 1. If the verifier index expects a number of recursion challenges,
         //~    make sure that the right number of accumulators are passed in the proof,
         //~    and that for each accumulators the number of challenges is the same as log2(SRS.len())
-        if proof.prev_challenges.len() != index.recursive_proofs {
+        if proof.prev_challenges.len() != index.recursive_proofs.len() {
             return Err(VerifyError::InvalidRecursionAccumulators(
                 proof.prev_challenges.len(),
-                index.recursive_proofs,
+                index.recursive_proofs.len(),
             ));
         }
 
-        for RecursionChallenge { chals, .. } in &proof.prev_challenges {
-            if chals.len() != index.recursive_log2_domain {
-                return Err(VerifyError::InvalidRecursionChallenges(
-                    chals.len(),
-                    index.recursive_log2_domain,
-                ));
+        for (RecursionChallenge { chals, .. }, &log2) in
+            proof.prev_challenges.iter().zip(&index.recursive_proofs)
+        {
+            if chals.len() != log2 {
+                return Err(VerifyError::InvalidRecursionChallenges(chals.len(), log2));
             }
         }
 

@@ -23,7 +23,7 @@ fn test_recursion() {
     let test_runner = TestFramework::default()
         .gates(gates)
         .witness(witness)
-        .recursive_proofs(1)
+        .recursive_proofs(vec![log2, log2])
         .setup();
 
     // previous opening for recursion
