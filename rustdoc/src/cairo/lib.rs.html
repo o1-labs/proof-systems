@@ -16,6 +16,12 @@
 <span id="9">9</span>
 <span id="10">10</span>
 <span id="11">11</span>
+<span id="12">12</span>
+<span id="13">13</span>
+<span id="14">14</span>
+<span id="15">15</span>
+<span id="16">16</span>
+<span id="17">17</span>
 </pre><pre class="rust"><code><span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
 <span class="doccomment">//! This module contains the code that executes a compiled Cairo program and generates the memory.</span>
 <span class="doccomment">//! The Cairo runner includes code to execute a bytecode compiled Cairo program,</span>
@@ -27,6 +33,12 @@
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">memory</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">runner</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">word</span>;
+
+<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::{
+    <span class="ident">memory::CairoMemory</span>,
+    <span class="ident">runner</span>::{<span class="ident">CairoInstruction</span>, <span class="ident">CairoProgram</span>, <span class="ident">Pointers</span>},
+    <span class="ident">word</span>::{<span class="ident">FlagBits</span>, <span class="ident">Offsets</span>},
+};
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="cairo" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (7466d5492 2022-06-08)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="cairo" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (1f34da9ec 2022-06-14)" ></div>
 </body></html>

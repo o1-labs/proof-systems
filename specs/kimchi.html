@@ -31,6 +31,7 @@
 
         <!-- Custom theme stylesheets -->
         <link rel="stylesheet" href=".././assets/css/mdbook-admonish.css">
+        <link rel="stylesheet" href="../././mdbook-admonish.css">
 
     </head>
     <body>
@@ -343,9 +344,8 @@ In other words it returns:
 </ul>
 <div id="admonition-note" class="admonition note">
 <div class="admonition-title">
-<a class="admonition-anchor-link" href="#admonition-note">
 <p>Note</p>
-</a>
+<p><a class="admonition-anchor-link" href="#admonition-note"></a></p>
 </div>
 <div>
 <p>As gates are mutually exclusive (a single gate is used on each row), we can reuse the same range of powers of alpha across all the gates.</p>
@@ -391,9 +391,8 @@ in order to add zero-knowledge to the protocol.</p>
 The first case is useful to check for checking if a value belongs to a range (from 0 to 1,000, for example), whereas the second case is useful to check truth tables (for example, checking that three values can be found in the rows of an XOR table) or write and read from a memory vector (where one column is an index, and the other is the value stored at that index).</p>
 <div id="admonition-note-1" class="admonition note">
 <div class="admonition-title">
-<a class="admonition-anchor-link" href="#admonition-note-1">
 <p>Note</p>
-</a>
+<p><a class="admonition-anchor-link" href="#admonition-note-1"></a></p>
 </div>
 <div>
 <p>Similarly to the generic gate, each values taking part in a lookup can be scaled with a fixed field element.</p>
@@ -403,9 +402,8 @@ The first case is useful to check for checking if a value belongs to a range (fr
 From the user’s perspective, not using any gates that make use of lookups means that the  feature will be disabled and there will be no overhead to the protocol.</p>
 <div id="admonition-note-2" class="admonition note">
 <div class="admonition-title">
-<a class="admonition-anchor-link" href="#admonition-note-2">
 <p>Note</p>
-</a>
+<p><a class="admonition-anchor-link" href="#admonition-note-2"></a></p>
 </div>
 <div>
 <p>For now, the Chacha gates are the only gates making use of lookups.</p>
@@ -509,9 +507,8 @@ and the next state, after permutation, is represented by <code>(s1, s1, s1)</cod
 </ul>
 <div id="admonition-note-3" class="admonition note">
 <div class="admonition-title">
-<a class="admonition-anchor-link" href="#admonition-note-3">
 <p>Note</p>
-</a>
+<p><a class="admonition-anchor-link" href="#admonition-note-3"></a></p>
 </div>
 <div>
 <p>As some of the poseidon hash variants might not use <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.69444em;vertical-align:0em;"></span><span class="mord">5</span><span class="mord mathnormal" style="margin-right:0.03148em;">k</span></span></span></span> rounds (for some <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.69444em;vertical-align:0em;"></span><span class="mord mathnormal" style="margin-right:0.03148em;">k</span></span></span></span>),
@@ -916,9 +913,8 @@ If <span class="katex"><span class="katex-html" aria-hidden="true"><span class="
 represent here computes the operation <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.76666em;vertical-align:-0.08333em;"></span><span class="mord">2</span><span class="mord mathnormal" style="margin-right:0.13889em;">P</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.8777699999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal">Q</span></span></span></span> (point doubling and point addition) as <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.13889em;">P</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">Q</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.8777699999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal">Q</span></span></span></span>.</p>
 <div id="admonition-info" class="admonition info">
 <div class="admonition-title">
-<a class="admonition-anchor-link" href="#admonition-info">
 <p>Info</p>
-</a>
+<p><a class="admonition-anchor-link" href="#admonition-info"></a></p>
 </div>
 <div>
 <p>Point <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8777699999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal">Q</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:1.036108em;vertical-align:-0.286108em;"></span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.15139200000000003em;"><span style="top:-2.5500000000000003em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.03588em;">q</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.286108em;"><span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">y</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.15139200000000003em;"><span style="top:-2.5500000000000003em;margin-left:-0.03588em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.03588em;">q</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.286108em;"><span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span> has nothing to do with the order <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.625em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">q</span></span></span></span> of the field <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.974998em;vertical-align:-0.286108em;"></span><span class="mord"><span class="mord mathbb">F</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.15139200000000003em;"><span style="top:-2.5500000000000003em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.03588em;">q</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.286108em;"><span></span></span></span></span></span></span></span></span></span>.</p>
@@ -964,9 +960,8 @@ for the operation <span class="katex"><span class="katex-html" aria-hidden="true
 Then <code>Output</code> will be the point with coordinates <code>(xO, yO)</code> resulting from <code>O = ( I ± T ) + I</code></p>
 <div id="admonition-info-1" class="admonition info">
 <div class="admonition-title">
-<a class="admonition-anchor-link" href="#admonition-info-1">
 <p>Info</p>
-</a>
+<p><a class="admonition-anchor-link" href="#admonition-info-1"></a></p>
 </div>
 <div>
 <p>Do not confuse our <code>Output</code> point <code>(xO, yO)</code> with the point at infinity that is normally represented as <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.68333em;vertical-align:0em;"></span><span class="mord mathcal" style="margin-right:0.02778em;">O</span></span></span></span>.</p>
@@ -1017,9 +1012,8 @@ This equation is translated as the constraint:</p>
 </ul>
 <div id="admonition-note-4" class="admonition note">
 <div class="admonition-title">
-<a class="admonition-anchor-link" href="#admonition-note-4">
 <p>Note</p>
-</a>
+<p><a class="admonition-anchor-link" href="#admonition-note-4"></a></p>
 </div>
 <div>
 <p>The circuit creation part is not specified in this document. It might be specified in a separate document, or we might want to specify how to create the circuit description tables.</p>
@@ -1032,9 +1026,8 @@ This equation is translated as the constraint:</p>
 It is used for polynomial commitments, so refer to the <a href="./poly-commitment.html">poly-commitment specification</a> for more details.</p>
 <div id="admonition-note-5" class="admonition note">
 <div class="admonition-title">
-<a class="admonition-anchor-link" href="#admonition-note-5">
 <p>Note</p>
-</a>
+<p><a class="admonition-anchor-link" href="#admonition-note-5"></a></p>
 </div>
 <div>
 <p>Kimchi currently generates the URS based on the circuit, and attach it to the index. So each circuit can potentially be accompanied with a different URS. On the other hand, Mina reuses the same URS for multiple circuits (<a href="https://minaprotocol.com/blog/what-are-zkapps">see zkapps for more details</a>).</p>
@@ -1044,9 +1037,8 @@ It is used for polynomial commitments, so refer to the <a href="./poly-commitmen
 TODO: what if the domain is larger than the URS?</p>
 <div id="admonition-ordering-of-elements-in-the-domain" class="admonition warning">
 <div class="admonition-title">
-<a class="admonition-anchor-link" href="#admonition-ordering-of-elements-in-the-domain">
 <p>Ordering of elements in the domain</p>
-</a>
+<p><a class="admonition-anchor-link" href="#admonition-ordering-of-elements-in-the-domain"></a></p>
 </div>
 <div>
 <p>Note that in this specification we always assume that the first element of a domain is <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">1</span></span></span></span>.</p>
@@ -1489,9 +1481,8 @@ where
 </ul>
 <div id="admonition-note-6" class="admonition note">
 <div class="admonition-title">
-<a class="admonition-anchor-link" href="#admonition-note-6">
 <p>Note</p>
-</a>
+<p><a class="admonition-anchor-link" href="#admonition-note-6"></a></p>
 </div>
 <div>
 <p>The public input is expected to be passed in the first <code>Public</code> rows of the registers table.</p>
