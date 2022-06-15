@@ -158,7 +158,7 @@ where
             .map(|i| crumb(&witness_curr(i)))
             .collect::<Vec<E<F>>>();
 
-        // 2) Constrain that the combined limbs equals the limb stored in w(0):
+        // 2) Constrain that the combined limbs equals the value v stored in w(0):
         //
         //        w(0) = v = vp0 vp1 vp2 vp3 vp4 vp5 vc0 vc1 vc2 vc3 vc4 vc5 vc6 vc7
         //
