@@ -33,10 +33,10 @@ use super::evaluation_proof::*;
 
 /// A polynomial commitment.
 #[serde_as]
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PolyComm<C>
 where
-    C: CanonicalDeserialize + CanonicalSerialize + PartialEq,
+    C: CanonicalDeserialize + CanonicalSerialize,
 {
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub unshifted: Vec<C>,
@@ -53,14 +53,14 @@ where
     pub blinders: PolyComm<G::ScalarField>,
 }
 
-impl<A: Copy + PartialEq> PolyComm<A>
+impl<A: Copy> PolyComm<A>
 where
     A: CanonicalDeserialize + CanonicalSerialize,
 {
     pub fn map<B, F>(&self, mut f: F) -> PolyComm<B>
     where
         F: FnMut(A) -> B,
-        B: CanonicalDeserialize + CanonicalSerialize + PartialEq,
+        B: CanonicalDeserialize + CanonicalSerialize,
     {
         let unshifted = self.unshifted.iter().map(|x| f(*x)).collect();
         let shifted = self.shifted.map(f);
@@ -80,8 +80,8 @@ where
 
 impl<A: Copy, B: Copy> PolyComm<(A, B)>
 where
-    A: CanonicalDeserialize + CanonicalSerialize + PartialEq,
-    B: CanonicalDeserialize + CanonicalSerialize + PartialEq,
+    A: CanonicalDeserialize + CanonicalSerialize,
+    B: CanonicalDeserialize + CanonicalSerialize,
 {
     fn unzip(self) -> (PolyComm<A>, PolyComm<B>) {
         let a = self.map(|(x, _)| x);
@@ -90,9 +90,9 @@ where
     }
 }
 
-impl<A: Copy + CanonicalDeserialize + CanonicalSerialize + PartialEq> PolyComm<A> {
+impl<A: Copy + CanonicalDeserialize + CanonicalSerialize> PolyComm<A> {
     // TODO: if all callers end up calling unwrap, just call this zip_eq and panic here (and document the panic)
-    pub fn zip<B: Copy + CanonicalDeserialize + CanonicalSerialize + PartialEq>(
+    pub fn zip<B: Copy + CanonicalDeserialize + CanonicalSerialize>(
         &self,
         other: &PolyComm<B>,
     ) -> Option<PolyComm<(A, B)>> {
