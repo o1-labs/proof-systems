@@ -300,6 +300,9 @@ where
             vec![Vec::<G::ScalarField>::new(), Vec::<G::ScalarField>::new()]
         };
 
+        //~ 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
+        fr_sponge.absorb(&self.ft_eval1);
+
         //~ 1. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
         //~~ - the public polynomial
         //~~ - z
@@ -307,12 +310,7 @@ where
         //~~ - poseidon selector
         //~~ - the 15 register/witness
         //~~ - 6 sigmas evaluations (the last one is not evaluated)
-        for (p, e) in p_eval.iter().zip(&self.evals) {
-            fr_sponge.absorb_evaluations(p, e);
-        }
-
-        //~ 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
-        fr_sponge.absorb(&self.ft_eval1);
+        fr_sponge.absorb_evaluations([&p_eval[0], &p_eval[1]], [&self.evals[0], &self.evals[1]]);
 
         //~ 1. If recursion challenges are in the proof, absorb them
         for RecursionChallenge { chals, .. } in &proof.prev_challenges {

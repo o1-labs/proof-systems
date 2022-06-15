@@ -1637,6 +1637,7 @@ The prover then follows the following steps to create the proof:
 1. Setup the Fr-Sponge
 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
+1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
 1. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
 	- the public polynomial
 	- z
@@ -1644,7 +1645,6 @@ The prover then follows the following steps to create the proof:
 	- poseidon selector
 	- the 15 register/witness
 	- 6 sigmas evaluations (the last one is not evaluated)
-1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
 1. If recursion challenges are passed, absorb them
 1. Sample $v'$ with the Fr-Sponge
 1. Derive $v$ from $v'$ using the endomorphism (TODO: specify)
@@ -1706,6 +1706,7 @@ We run the following algorithm:
 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
 
    NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
+1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
 1. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
 	- the public polynomial
 	- z
@@ -1713,7 +1714,6 @@ We run the following algorithm:
 	- poseidon selector
 	- the 15 register/witness
 	- 6 sigmas evaluations (the last one is not evaluated)
-1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
 1. If recursion challenges are in the proof, absorb them
 1. Sample $v'$ with the Fr-Sponge.
 1. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
