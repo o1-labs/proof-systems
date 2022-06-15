@@ -287,16 +287,59 @@
 <span id="280">280</span>
 <span id="281">281</span>
 <span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
 </pre><pre class="rust"><code><span class="doccomment">///```text</span>
 <span class="doccomment">/// Range check circuit gates:</span>
 <span class="doccomment">///</span>
 <span class="doccomment">///    The range check gate is comprised of three circuit gates (RangeCheck0, RangeCheck1</span>
 <span class="doccomment">///    and Zero) and can perform range checks on up to three 88-bit values: v0, v1 and v2.</span>
-<span class="doccomment">///    Each value is in little-endian byte order.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">///    Byte-order:</span>
+<span class="doccomment">///      * Each value is in little-endian byte order</span>
+<span class="doccomment">///      * Limbs are mapped to columns in big-endian order (i.e. the lowest columns</span>
+<span class="doccomment">///        contain the highest bits)</span>
+<span class="doccomment">///      * We also have the highest bits covered by copy constraints and plookups, so that</span>
+<span class="doccomment">///        we can copy the highest two constraints to zero and get a 64-bit lookup, which</span>
+<span class="doccomment">///        are envisioned as a common case</span>
 <span class="doccomment">///</span>
 <span class="doccomment">///    The values are decomposed into limbs as follows.</span>
 <span class="doccomment">///</span>
-<span class="doccomment">///    L is a 12-bit lookup limb,</span>
+<span class="doccomment">///    L is a 12-bit lookup (or copy) limb,</span>
 <span class="doccomment">///    C is a 2-bit &quot;crumb&quot; limb.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">///         &lt;----6----&gt; &lt;------8------&gt;</span>
@@ -313,9 +356,12 @@
 <span class="doccomment">///     2   v2</span>
 <span class="doccomment">///     3   v0,v1,v2</span>
 <span class="doccomment">///</span>
-<span class="doccomment">///   * The first 2 rows contain v0 and v1 and their respective decompositions into 12-bit and 2-bit limbs</span>
-<span class="doccomment">///   * The 3rd row contains v2 and part of its decomposition: four 12-bit limbs and the 1st 10 crumbs</span>
-<span class="doccomment">///   * The final row contains v0&#39;s and v1&#39;s 5th and 6th 12-bit limbs as well as the remaining 10 crumbs of v2</span>
+<span class="doccomment">///   * The first 2 rows contain v0 and v1 and their respective decompositions</span>
+<span class="doccomment">///     into 12-bit and 2-bit limbs</span>
+<span class="doccomment">///   * The 3rd row contains v2 and part of its decomposition: four 12-bit limbs and</span>
+<span class="doccomment">///     the 1st 10 crumbs</span>
+<span class="doccomment">///   * The final row contains v0&#39;s and v1&#39;s 5th and 6th 12-bit limbs as well as the</span>
+<span class="doccomment">///     remaining 10 crumbs of v2</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// Constraints:</span>
 <span class="doccomment">///</span>
@@ -327,30 +373,30 @@
 <span class="doccomment">///</span>
 <span class="doccomment">///  This is how three 88-bit inputs v0, v1 and v2 are layed out and constrained.</span>
 <span class="doccomment">///</span>
-<span class="doccomment">///   * vipj is the jth 12-bit limb of vi</span>
-<span class="doccomment">///   * vicj is the jth 2-bit crumb limb of vi</span>
+<span class="doccomment">///   * vipj is the jth 12-bit limb of value vi</span>
+<span class="doccomment">///   * vicj is the jth 2-bit crumb limb of value vi</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// Gate:   RangeCheck0    RangeCheck0    RangeCheck1    Zero</span>
-<span class="doccomment">///   Rows --&gt;</span>
+<span class="doccomment">///    Rows --&gt;</span>
 <span class="doccomment">///         0              1              2              3</span>
-<span class="doccomment">///  C  0 | v0           | v1           | v2           | 0</span>
-<span class="doccomment">///  o  1 | plookup v0p0 | plookup v1p0 | plookup v2p0 | plookup v0p4</span>
-<span class="doccomment">///  l  2 | plookup v0p1 | plookup v1p1 | plookup v2p1 | plookup v0p5</span>
-<span class="doccomment">///  s  3 | plookup v0p2 | plookup v1p2 | plookup v2p2 | plookup v1p4</span>
-<span class="doccomment">///  |  4 | plookup v0p3 | plookup v1p3 | plookup v2p3 | plookup v1p5</span>
-<span class="doccomment">/// \ / 5 | copy v0p4    | copy v1p4    | crumb v2c0   | crumb v2c10</span>
-<span class="doccomment">///  &#39;  6 | copy v0p5    | copy v1p5    | crumb v2c1   | crumb v2c11</span>
-<span class="doccomment">///     7 | crumb v0c0   | crumb v1c0   | crumb v2c2   | crumb v2c12</span>
-<span class="doccomment">///     8 | crumb v0c1   | crumb v1c1   | crumb v2c3   | crumb v2c13</span>
-<span class="doccomment">///     9 | crumb v0c2   | crumb v1c2   | crumb v2c4   | crumb v2c14</span>
-<span class="doccomment">///    10 | crumb v0c3   | crumb v1c3   | crumb v2c5   | crumb v2c15</span>
-<span class="doccomment">///    11 | crumb v0c4   | crumb v1c4   | crumb v2c6   | crumb v2c16</span>
-<span class="doccomment">///    12 | crumb v0c5   | crumb v1c5   | crumb v2c7   | crumb v2c17</span>
-<span class="doccomment">///    13 | crumb v0c6   | crumb v1c6   | crumb v2c8   | crumb v2c18</span>
-<span class="doccomment">///    14 | crumb v0c7   | crumb v1c7   | crumb v2c9   | crumb v2c19</span>
+<span class="doccomment">///    0 | v0           | v1           | v2           | 0</span>
+<span class="doccomment">///    1 | copy    v0p0 | copy    v1p0 | crumb   v2c0 | crumb   v2c10 &lt;- MSB</span>
+<span class="doccomment">///    2 | copy    v0p1 | copy    v1p1 | crumb   v2c1 | crumb   v2c11</span>
+<span class="doccomment">///    3 | plookup v0p2 | plookup v1p2 | plookup v2p0 | plookup  v0p0</span>
+<span class="doccomment">///    4 | plookup v0p3 | plookup v1p3 | plookup v2p1 | plookup  v0p1</span>
+<span class="doccomment">///    5 | plookup v0p4 | plookup v1p4 | plookup v2p2 | plookup  v1p0</span>
+<span class="doccomment">///    6 | plookup v0p5 | plookup v1p5 | plookup v2p3 | plookup  v1p1</span>
+<span class="doccomment">///    7 | crumb   v0c0 | crumb   v1c0 | crumb   v2c2 | crumb   v2c12</span>
+<span class="doccomment">///    8 | crumb   v0c1 | crumb   v1c1 | crumb   v2c3 | crumb   v2c13</span>
+<span class="doccomment">///    9 | crumb   v0c2 | crumb   v1c2 | crumb   v2c4 | crumb   v2c14</span>
+<span class="doccomment">///   10 | crumb   v0c3 | crumb   v1c3 | crumb   v2c5 | crumb   v2c15</span>
+<span class="doccomment">///   11 | crumb   v0c4 | crumb   v1c4 | crumb   v2c6 | crumb   v2c16</span>
+<span class="doccomment">///   12 | crumb   v0c5 | crumb   v1c5 | crumb   v2c7 | crumb   v2c17</span>
+<span class="doccomment">///   13 | crumb   v0p6 | copy    v1c6 | crumb   v2c8 | crumb   v2c18</span>
+<span class="doccomment">///   14 | crumb   v0p7 | copy    v1c7 | crumb   v2c9 | crumb   v2c19 &lt;- LSB</span>
 <span class="doccomment">///</span>
-<span class="doccomment">///   The 12-bit chunks are constrained with plookups and the 2-bit crumbs constrained with</span>
-<span class="doccomment">///   degree-4 constraints of the form x*(x - 1)*(x - 2)*(x - 3).</span>
+<span class="doccomment">///   The 12-bit chunks are constrained with plookups and the 2-bit crumbs</span>
+<span class="doccomment">///   constrained with degree-4 constraints of the form x*(x - 1)*(x - 2)*(x - 3).</span>
 <span class="doccomment">///</span>
 <span class="doccomment">///   Note that copy denotes a plookup that is deferred to the 4th gate (i.e. Zero).</span>
 <span class="doccomment">///   This is because of the limitation that we have at most 4 lookups per row.</span>
@@ -364,7 +410,7 @@
 <span class="doccomment">///     0   RangeCheck0   Partially constrain v0</span>
 <span class="doccomment">///     1   RangeCheck0   Partially constrain v1</span>
 <span class="doccomment">///     2   RangeCheck1   Fully constrain v2 (and trigger plookups constraints on row 3)</span>
-<span class="doccomment">///     3   Zero          Complete the constraining of v0 and v1</span>
+<span class="doccomment">///     3   Zero          Complete the constraining of v0 and v1 using lookups</span>
 <span class="doccomment">///</span>
 <span class="doccomment">///  Nb. each CircuitGate type corresponds to a unique polynomial and thus</span>
 <span class="doccomment">///       is assigned its own unique powers of alpha</span>
@@ -386,28 +432,28 @@
 <span class="doccomment">///   * This gate operates on the Curr row</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// It uses three different types of constraints</span>
-<span class="doccomment">///   * plookup - plookup (12-bits)</span>
 <span class="doccomment">///   * copy    - copy to another cell (12-bits)</span>
+<span class="doccomment">///   * plookup - plookup (12-bits)</span>
 <span class="doccomment">///   * crumb   - degree-4 constraint (2-bits)</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// Given value v the layout looks like this</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// Column | Curr</span>
 <span class="doccomment">///      0 | v</span>
-<span class="doccomment">///      1 | plookup vp0</span>
-<span class="doccomment">///      2 | plookup vp1</span>
+<span class="doccomment">///      1 | copy    vp0</span>
+<span class="doccomment">///      2 | copy    vp1</span>
 <span class="doccomment">///      3 | plookup vp2</span>
 <span class="doccomment">///      4 | plookup vp3</span>
-<span class="doccomment">///      5 | copy vp4</span>
-<span class="doccomment">///      6 | copy vp5</span>
-<span class="doccomment">///      7 | crumb vc0</span>
-<span class="doccomment">///      8 | crumb vc1</span>
-<span class="doccomment">///      9 | crumb vc2</span>
-<span class="doccomment">///     10 | crumb vc3</span>
-<span class="doccomment">///     11 | crumb vc4</span>
-<span class="doccomment">///     12 | crumb vc5</span>
-<span class="doccomment">///     13 | crumb vc6</span>
-<span class="doccomment">///     14 | crumb vc7</span>
+<span class="doccomment">///      5 | plookup vp4</span>
+<span class="doccomment">///      6 | plookup vp5</span>
+<span class="doccomment">///      7 | crumb   vc0</span>
+<span class="doccomment">///      8 | crumb   vc1</span>
+<span class="doccomment">///      9 | crumb   vc2</span>
+<span class="doccomment">///     10 | crumb   vc3</span>
+<span class="doccomment">///     11 | crumb   vc4</span>
+<span class="doccomment">///     12 | crumb   vc5</span>
+<span class="doccomment">///     13 | crumb   vc6</span>
+<span class="doccomment">///     14 | crumb   vc7</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// where the notation vpi and vci defined in the &quot;Layout&quot; section above.</span>
 
@@ -423,41 +469,43 @@
 
     <span class="comment">// Constraints for RangeCheck0</span>
     <span class="comment">//   * Operates on Curr row</span>
-    <span class="comment">//   * Range constrain all limbs except vp4 and vp5 (barring plookup constraints, which are done elsewhere)</span>
+    <span class="comment">//   * Range constrain all limbs except vp0 and vp1 (barring plookup constraints, which are done elsewhere)</span>
     <span class="comment">//   * Constrain that combining all limbs equals the limb stored in column 0</span>
     <span class="kw">fn</span> <span class="ident">constraints</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="comment">// 1) Apply range constraints on limbs</span>
-        <span class="comment">// Columns 1-4 are 12-bit plookup range constraints (these are specified elsewhere)</span>
-        <span class="comment">// Create 8 2-bit chunk range constraints</span>
+        <span class="comment">//    * Columns 1-2 are 12-bit copy constraints</span>
+        <span class="comment">//        * They are copied to 3 rows ahead and are constrained by plookups</span>
+        <span class="comment">//          triggered by RangeCheck1 on its Next row</span>
+        <span class="comment">//        * They can be constrained to zero to obtain a 64-bit range check</span>
+        <span class="comment">//    * Columns 3-6 are 12-bit plookup range constraints (these are specified in the lookup gate)</span>
+        <span class="comment">//    * Columns 7-14 are 2-bit crumb range constraints</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">constraints</span> <span class="op">=</span> (<span class="number">7</span>..<span class="ident">COLUMNS</span>)
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">crumb</span>(<span class="kw-2">&amp;</span><span class="ident">witness_curr</span>(<span class="ident">i</span>)))
             .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>();
 
-        <span class="comment">// 2) Constrain that the combined limbs equals the limb stored in w(0) where</span>
-        <span class="comment">//    v = vp0 vp1 vp2 vp3 vp4 vp5 vc0 vc1 vc2 vc3 vc4 vc5 vc6 vc7</span>
-        <span class="comment">//    in big-endian byte order.</span>
+        <span class="comment">// 2) Constrain that the combined limbs equals the value v stored in w(0):</span>
         <span class="comment">//</span>
-        <span class="comment">//          Columns</span>
-        <span class="comment">//          0      1    2    3    4    5    6    7    8    9    10   11   12   13   14</span>
-        <span class="comment">//    Curr  v      vp0  vp1  vp2  vp3  vp4  vp5  vc0  vc1  vc2  vc3  vc4  vc5  vc6  vc7  &lt;- LSB</span>
+        <span class="comment">//        w(0) = v = vp0 vp1 vp2 vp3 vp4 vp5 vc0 vc1 vc2 vc3 vc4 vc5 vc6 vc7</span>
         <span class="comment">//</span>
-        <span class="comment">// Check v    =  vp0*2^0 + vp1*2^{12}  + ... + p5*2^{60}   + vc0*2^{72}  + vc1*2^{74}  + ... + vc7*2^{86}</span>
-        <span class="comment">//       w(0) = w(1)*2^0 + w(2)*2^{12} + ... + w(6)*2^{60} + w(7)*2^{72} + w(8)*2^{74} + ... + w(14)*2^{86}</span>
-        <span class="comment">//            = \sum i \in [1,7] 2^{12*(i - 1)}*w(i) + \sum i \in [8,14] 2^{2*(i - 7) + 6*12}*w(i)</span>
+        <span class="comment">//    where the value and limbs are stored in little-endian byte order, but mapped</span>
+        <span class="comment">//    to cells in big-endian order.</span>
+        <span class="comment">//</span>
+        <span class="comment">//    Cols: 0  1   2   3   4   5   6   7   8   9   10  11  12  13  14</span>
+        <span class="comment">//    Curr: v  vp0 vp1 vp2 vp3 vp4 vp5 vc0 vc1 vc2 vc3 vc4 vc5 vc6 vc7  &lt;- LSB</span>
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">power_of_2</span> <span class="op">=</span> <span class="ident">E::one</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">sum_of_limbs</span> <span class="op">=</span> <span class="ident">E::zero</span>();
 
-        <span class="comment">// Sum 12-bit limbs</span>
-        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">1</span>..<span class="number">7</span> {
-            <span class="ident">sum_of_limbs</span> <span class="op">+</span><span class="op">=</span> <span class="ident">power_of_2</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">witness_curr</span>(<span class="ident">i</span>);
-            <span class="ident">power_of_2</span> <span class="kw-2">*</span><span class="op">=</span> <span class="number">4096u64</span>.<span class="ident">into</span>(); <span class="comment">// 12 bits</span>
-        }
-
         <span class="comment">// Sum 2-bit limbs</span>
-        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">7</span>..<span class="ident">COLUMNS</span> {
+        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> (<span class="number">7</span>..<span class="ident">COLUMNS</span>).<span class="ident">rev</span>() {
             <span class="ident">sum_of_limbs</span> <span class="op">+</span><span class="op">=</span> <span class="ident">power_of_2</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">witness_curr</span>(<span class="ident">i</span>);
             <span class="ident">power_of_2</span> <span class="kw-2">*</span><span class="op">=</span> <span class="number">4u64</span>.<span class="ident">into</span>(); <span class="comment">// 2 bits</span>
+        }
+
+        <span class="comment">// Sum 12-bit limbs</span>
+        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> (<span class="number">1</span>..<span class="op">=</span><span class="number">6</span>).<span class="ident">rev</span>() {
+            <span class="ident">sum_of_limbs</span> <span class="op">+</span><span class="op">=</span> <span class="ident">power_of_2</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">witness_curr</span>(<span class="ident">i</span>);
+            <span class="ident">power_of_2</span> <span class="kw-2">*</span><span class="op">=</span> <span class="number">4096u64</span>.<span class="ident">into</span>(); <span class="comment">// 12 bits</span>
         }
 
         <span class="comment">// Check value v against the sum of limbs</span>
@@ -480,20 +528,20 @@
 <span class="doccomment">///</span>
 <span class="doccomment">/// Column | Curr         | Next</span>
 <span class="doccomment">///      0 | v2           | (ignored)</span>
-<span class="doccomment">///      1 | plookup v2p0 | (ignored)</span>
-<span class="doccomment">///      2 | plookup v2p1 | (ignored)</span>
-<span class="doccomment">///      3 | plookup v2p2 | (ignored)</span>
-<span class="doccomment">///      4 | plookup v2p3 | (ignored)</span>
-<span class="doccomment">///      5 | crumb v2c0   | crumb v2c10</span>
-<span class="doccomment">///      6 | crumb v2c1   | crumb v2c11</span>
-<span class="doccomment">///      7 | crumb v2c2   | crumb v2c12</span>
-<span class="doccomment">///      8 | crumb v2c3   | crumb v2c13</span>
-<span class="doccomment">///      9 | crumb v2c4   | crumb v2c14</span>
-<span class="doccomment">///     10 | crumb v2c5   | crumb v2c15</span>
-<span class="doccomment">///     11 | crumb v2c6   | crumb v2c16</span>
-<span class="doccomment">///     12 | crumb v2c7   | crumb v2c17</span>
-<span class="doccomment">///     13 | crumb v2c8   | crumb v2c18</span>
-<span class="doccomment">///     14 | crumb v2c9   | crumb v2c19</span>
+<span class="doccomment">///      1 | crumb   v2c0 | crumb v2c10</span>
+<span class="doccomment">///      2 | crumb   v2c1 | crumb v2c11</span>
+<span class="doccomment">///      3 | plookup v2p0 | (ignored)</span>
+<span class="doccomment">///      4 | plookup v2p1 | (ignored)</span>
+<span class="doccomment">///      5 | plookup v2p2 | (ignored)</span>
+<span class="doccomment">///      6 | plookup v2p3 | (ignored)</span>
+<span class="doccomment">///      7 | crumb   v2c2 | crumb v2c12</span>
+<span class="doccomment">///      8 | crumb   v2c3 | crumb v2c13</span>
+<span class="doccomment">///      9 | crumb   v2c4 | crumb v2c14</span>
+<span class="doccomment">///     10 | crumb   v2c5 | crumb v2c15</span>
+<span class="doccomment">///     11 | crumb   v2c6 | crumb v2c16</span>
+<span class="doccomment">///     12 | crumb   v2c7 | crumb v2c17</span>
+<span class="doccomment">///     13 | crumb   v2c8 | crumb v2c18</span>
+<span class="doccomment">///     14 | crumb   v2c9 | crumb v2c19</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// where the notation v2i and v2i defined in the &quot;Layout&quot; section above.</span>
 
@@ -512,54 +560,78 @@
     <span class="comment">//   * Range constrain all limbs (barring plookup constraints, which are done elsewhere)</span>
     <span class="comment">//   * Constrain that combining all limbs equals the value v2 stored in row Curr, column 0</span>
     <span class="kw">fn</span> <span class="ident">constraints</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="comment">// 1) Apply range constraints on limbs</span>
-        <span class="comment">// Columns 1-4 are 12-bit plookup range constraints (these are specified elsewhere)</span>
-
-        <span class="comment">// Create 10 2-bit chunk range constraints using Curr row</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">constraints</span> <span class="op">=</span> (<span class="number">5</span>..<span class="ident">COLUMNS</span>)
+        <span class="comment">// 1) Apply range constraints on limbs for Curr row</span>
+        <span class="comment">//    * Columns 1-2 are 2-bit crumbs</span>
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">constraints</span> <span class="op">=</span> (<span class="number">1</span>..<span class="op">=</span><span class="number">2</span>)
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">crumb</span>(<span class="kw-2">&amp;</span><span class="ident">witness_curr</span>(<span class="ident">i</span>)))
             .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>();
-
-        <span class="comment">// Create 10 more 2-bit chunk range constraints using Next row</span>
+        <span class="comment">//    * Columns 3-6 are 12-bit plookup range constraints (these are specified</span>
+        <span class="comment">//      in the lookup gate)</span>
+        <span class="comment">//    * Columns 7-14 are 2-bit crumb range constraints</span>
         <span class="ident">constraints</span>.<span class="ident">append</span>(
-            <span class="kw-2">&amp;mut</span> (<span class="number">5</span>..<span class="ident">COLUMNS</span>)
+            <span class="kw-2">&amp;mut</span> (<span class="number">7</span>..<span class="ident">COLUMNS</span>)
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">crumb</span>(<span class="kw-2">&amp;</span><span class="ident">witness_curr</span>(<span class="ident">i</span>)))
+                .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>(),
+        );
+
+        <span class="comment">// 2) Apply range constraints on limbs for Next row</span>
+        <span class="comment">//    * Columns 1-2 are 2-bit crumbs</span>
+        <span class="ident">constraints</span>.<span class="ident">append</span>(
+            <span class="kw-2">&amp;mut</span> (<span class="number">1</span>..<span class="op">=</span><span class="number">2</span>)
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">crumb</span>(<span class="kw-2">&amp;</span><span class="ident">witness_next</span>(<span class="ident">i</span>)))
+                .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>(),
+        );
+        <span class="comment">//    * Columns 3-6 are 12-bit plookup range constraints for v0 and v1 (these</span>
+        <span class="comment">//      are specified in the lookup gate)</span>
+        <span class="comment">//    * Columns 7-14 are more 2-bit crumbs</span>
+        <span class="ident">constraints</span>.<span class="ident">append</span>(
+            <span class="kw-2">&amp;mut</span> (<span class="number">7</span>..<span class="ident">COLUMNS</span>)
                 .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">crumb</span>(<span class="kw-2">&amp;</span><span class="ident">witness_next</span>(<span class="ident">i</span>)))
                 .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>(),
         );
 
         <span class="comment">// 2) Constrain that the combined limbs equals the value v2 stored in w(0) where</span>
-        <span class="comment">//    v2 = vp0 vp1 vp2 vp3 vc0 vc1 vc2 vc3 vc4 vc5 vc6 vc7 vc8 vc9 vc10 vc11 vc12 vc13 vc14 vc15 vc16 vc17 vc18 vc19</span>
-        <span class="comment">//    in little-endian byte order.</span>
         <span class="comment">//</span>
-        <span class="comment">//          Columns</span>
-        <span class="comment">//          0    1   2   3   4   5    6    7    8    9    10   11   12   13   14</span>
-        <span class="comment">//    Curr  v2   vp0 vp1 vp2 vp3 vc0  vc1  vc2  vc3  vc4  vc5  vc6  vc7  vc8  vc9</span>
-        <span class="comment">//    Next                       vc10 vc11 vc12 vc13 vc14 vc15 vc16 vc17 vc18 vc19</span>
+        <span class="comment">//    w(0) = v2 = vc0 vc1 vp0 vp1 vp2 vp3 vc2 vc3 vc4 vc5 vc6 vc7 vc8 vc9 vc10 vc11 vc12</span>
+        <span class="comment">//                vc13 vc14 vc15 vc16 vc17 vc18 vc19</span>
         <span class="comment">//</span>
-        <span class="comment">// Check   v2 = vp0*2^0          + vp1*2^{12}       + ... + vp3*2^{36}       + vc0*2^{48}     + vc1*2^{50}     + ... + vc19*2^{66}</span>
-        <span class="comment">//       w(0) = w_curr(1)*2^0    + w_curr(2)*2^{12} + ... + w_curr(4)*2^{36} + w_curr(5)*2^48 + w_curr(6)*2^50 + ... + w_curr(14)*2^66</span>
-        <span class="comment">//            + w_next(5)*2^{68} + w_next(6)*2^{70} + ... + w_next(14)*2^{86}</span>
-        <span class="comment">// (1st part) = \sum i \in [1,5] 2^{12*(i - 1)}*w_curr(i) + \sum i \in [6,14] 2^{2*(i - 5) + 4*12}*w_curr(i)</span>
-        <span class="comment">// (2nd part) + \sum i \in [5,14] 2^{2*(i - 5} + 68)*w_next(i)</span>
+        <span class="comment">//    where the value and limbs are stored in little-endian byte order, but mapped</span>
+        <span class="comment">//    to cells in big-endian order.</span>
+        <span class="comment">//</span>
+        <span class="comment">//          0  1   2   3   4   5    6    7    8    9    10   11   12   13   14</span>
+        <span class="comment">//    Curr  v2 vc0 vc1 vp0 vp1 vp2  vp3  vc2  vc3  vc4  vc5  vc6  vc7  vc8  vc9</span>
+        <span class="comment">//    Next                     vc10 vc11 vc12 vc13 vc14 vc15 vc16 vc17 vc18 vc19 &lt;- LSB</span>
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">power_of_2</span> <span class="op">=</span> <span class="ident">E::one</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">sum_of_limbs</span> <span class="op">=</span> <span class="ident">E::zero</span>();
 
-        <span class="comment">// 1st part: Sum 12-bit limbs (row Curr)</span>
-        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">1</span>..<span class="number">5</span> {
-            <span class="ident">sum_of_limbs</span> <span class="op">+</span><span class="op">=</span> <span class="ident">power_of_2</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">witness_curr</span>(<span class="ident">i</span>);
-            <span class="ident">power_of_2</span> <span class="kw-2">*</span><span class="op">=</span> <span class="number">4096u64</span>.<span class="ident">into</span>(); <span class="comment">// 12 bits</span>
+        <span class="comment">// Next row: Sum 2-bit limbs</span>
+        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> (<span class="number">7</span>..<span class="ident">COLUMNS</span>).<span class="ident">rev</span>() {
+            <span class="ident">sum_of_limbs</span> <span class="op">+</span><span class="op">=</span> <span class="ident">power_of_2</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">witness_next</span>(<span class="ident">i</span>);
+            <span class="ident">power_of_2</span> <span class="kw-2">*</span><span class="op">=</span> <span class="number">4u64</span>.<span class="ident">into</span>(); <span class="comment">// 2 bits</span>
         }
 
-        <span class="comment">// 1st part:  Sum 2-bit limbs (row Curr)</span>
-        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">5</span>..<span class="ident">COLUMNS</span> {
+        <span class="comment">// Next row:  Sum remaining 2-bit limbs vc10 and vc11</span>
+        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> (<span class="number">1</span>..<span class="op">=</span><span class="number">2</span>).<span class="ident">rev</span>() {
+            <span class="ident">sum_of_limbs</span> <span class="op">+</span><span class="op">=</span> <span class="ident">power_of_2</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">witness_next</span>(<span class="ident">i</span>);
+            <span class="ident">power_of_2</span> <span class="kw-2">*</span><span class="op">=</span> <span class="number">4u64</span>.<span class="ident">into</span>(); <span class="comment">// 2 bits</span>
+        }
+
+        <span class="comment">// Curr row:  Sum 2-bit limbs</span>
+        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> (<span class="number">7</span>..<span class="ident">COLUMNS</span>).<span class="ident">rev</span>() {
             <span class="ident">sum_of_limbs</span> <span class="op">+</span><span class="op">=</span> <span class="ident">power_of_2</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">witness_curr</span>(<span class="ident">i</span>);
             <span class="ident">power_of_2</span> <span class="kw-2">*</span><span class="op">=</span> <span class="number">4u64</span>.<span class="ident">into</span>(); <span class="comment">// 2 bits</span>
         }
 
-        <span class="comment">// 2nd part: Sum 2-bit limbs (row Next)</span>
-        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">5</span>..<span class="ident">COLUMNS</span> {
-            <span class="ident">sum_of_limbs</span> <span class="op">+</span><span class="op">=</span> <span class="ident">power_of_2</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">witness_next</span>(<span class="ident">i</span>);
+        <span class="comment">// Curr row: Sum 12-bit limbs</span>
+        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> (<span class="number">3</span>..<span class="op">=</span><span class="number">6</span>).<span class="ident">rev</span>() {
+            <span class="ident">sum_of_limbs</span> <span class="op">+</span><span class="op">=</span> <span class="ident">power_of_2</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">witness_curr</span>(<span class="ident">i</span>);
+            <span class="ident">power_of_2</span> <span class="kw-2">*</span><span class="op">=</span> <span class="number">4096u64</span>.<span class="ident">into</span>(); <span class="comment">// 12 bits</span>
+        }
+
+        <span class="comment">// Curr row:  Sum remaining 2-bit limbs: vc0 and vc1</span>
+        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> (<span class="number">1</span>..<span class="op">=</span><span class="number">2</span>).<span class="ident">rev</span>() {
+            <span class="ident">sum_of_limbs</span> <span class="op">+</span><span class="op">=</span> <span class="ident">power_of_2</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">witness_curr</span>(<span class="ident">i</span>);
             <span class="ident">power_of_2</span> <span class="kw-2">*</span><span class="op">=</span> <span class="number">4u64</span>.<span class="ident">into</span>(); <span class="comment">// 2 bits</span>
         }
 

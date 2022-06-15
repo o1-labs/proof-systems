@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["create_witness","Create a range check witness Input: three values: v0, v1 and v2"]]});
+initSidebarItems({"fn":[["create_multi_witness","Create a multi range check witness Input: three values: v0, v1 and v2"],["create_witness","Create a single range check witness Input: three values: v0, v1 and v2"]]});

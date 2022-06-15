@@ -195,6 +195,18 @@
 <span id="188">188</span>
 <span id="189">189</span>
 <span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Range check witness computation</span>
 
 <span class="kw">use</span> <span class="ident">ark_ff::PrimeField</span>;
@@ -215,6 +227,7 @@
     <span class="ident">row</span>: <span class="ident">usize</span>,
     <span class="ident">col</span>: <span class="ident">usize</span>,
 }
+
 <span class="kw">impl</span> <span class="ident">CopyWitnessCell</span> {
     <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">create</span>(<span class="ident">row</span>: <span class="ident">usize</span>, <span class="ident">col</span>: <span class="ident">usize</span>) -&gt; <span class="ident">WitnessCell</span> {
         <span class="ident">WitnessCell::Copy</span>(<span class="ident">CopyWitnessCell</span> { <span class="ident">row</span>, <span class="ident">col</span> })
@@ -236,6 +249,7 @@
     <span class="ident">start</span>: <span class="ident">usize</span>, <span class="comment">// Starting bit offset</span>
     <span class="ident">end</span>: <span class="ident">usize</span>,   <span class="comment">// Ending bit offset (exclusive)</span>
 }
+
 <span class="kw">impl</span> <span class="ident">LimbWitnessCell</span> {
     <span class="comment">// Params: source (row, col), starting bit offset and ending bit offset (exclusive)</span>
     <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">create</span>(<span class="ident">row</span>: <span class="ident">usize</span>, <span class="ident">col</span>: <span class="ident">usize</span>, <span class="ident">start</span>: <span class="ident">usize</span>, <span class="ident">end</span>: <span class="ident">usize</span>) -&gt; <span class="ident">WitnessCell</span> {
@@ -256,95 +270,95 @@
     }
 }
 
-<span class="comment">// Generate witness in shape that constraints expect (TODO: static for now, make dynamic)</span>
+<span class="comment">// Witness layout</span>
+<span class="comment">//   * The values and cell contents are in little-endian order.</span>
+<span class="comment">//     This is important for compatibility with other gates, where</span>
+<span class="comment">//     elements of the first 7 columns could be copied and reused by them.</span>
+<span class="comment">//     So they should be in the usual little-endian witness byte order.</span>
+<span class="comment">//   * Limbs are mapped to columns so that those containing the MSBs</span>
+<span class="comment">//     are in lower numbered columns (i.e. big-endian column mapping).</span>
+<span class="comment">//     This is important so that copy constraints are possible on the MSBs.</span>
+<span class="comment">//     For example, we can convert the RangeCheck0 circuit gate into</span>
+<span class="comment">//     a 64-bit lookup by adding two copy constraints to constrain</span>
+<span class="comment">//     columns 1 and 2 to zero.</span>
 <span class="kw">const</span> <span class="ident">WITNESS_SHAPE</span>: [[<span class="ident">WitnessCell</span>; <span class="ident">COLUMNS</span>]; <span class="number">4</span>] <span class="op">=</span> [
     <span class="comment">/* row 1, RangeCheck0 row */</span>
-    [
-        <span class="ident">ValueWitnessCell::create</span>(),
-        <span class="comment">/* 12-bit plookups */</span>
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">12</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">0</span>, <span class="number">0</span>, <span class="number">12</span>, <span class="number">24</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">0</span>, <span class="number">0</span>, <span class="number">24</span>, <span class="number">36</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">0</span>, <span class="number">0</span>, <span class="number">36</span>, <span class="number">48</span>),
-        <span class="comment">/* 12-bit copies */</span>
-        <span class="comment">// Copy cells are required because we have a limit</span>
-        <span class="comment">// of 4 lookups per row.  These two lookups are moved to</span>
-        <span class="comment">// the 4th row (i.e. Zero circuit gate) and the RangeCheck1</span>
-        <span class="comment">// circuit gate triggers the lookup constraints.</span>
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">0</span>, <span class="number">0</span>, <span class="number">48</span>, <span class="number">60</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">0</span>, <span class="number">0</span>, <span class="number">60</span>, <span class="number">72</span>),
-        <span class="comment">/* 2-bit crumbs */</span>
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">0</span>, <span class="number">0</span>, <span class="number">72</span>, <span class="number">74</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">0</span>, <span class="number">0</span>, <span class="number">74</span>, <span class="number">76</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">0</span>, <span class="number">0</span>, <span class="number">76</span>, <span class="number">78</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">0</span>, <span class="number">0</span>, <span class="number">78</span>, <span class="number">80</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">0</span>, <span class="number">0</span>, <span class="number">80</span>, <span class="number">82</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">0</span>, <span class="number">0</span>, <span class="number">82</span>, <span class="number">84</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">0</span>, <span class="number">0</span>, <span class="number">84</span>, <span class="number">86</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">0</span>, <span class="number">0</span>, <span class="number">86</span>, <span class="number">88</span>),
-    ],
+    <span class="ident">range_check_row</span>(<span class="number">0</span>),
     <span class="comment">/* row 2, RangeCheck0 row */</span>
-    [
-        <span class="ident">ValueWitnessCell::create</span>(),
-        <span class="comment">/* 12-bit plookups */</span>
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">1</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">12</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">1</span>, <span class="number">0</span>, <span class="number">12</span>, <span class="number">24</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">1</span>, <span class="number">0</span>, <span class="number">24</span>, <span class="number">36</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">1</span>, <span class="number">0</span>, <span class="number">36</span>, <span class="number">48</span>),
-        <span class="comment">/* 12-bit copies (see note about copies above) */</span>
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">1</span>, <span class="number">0</span>, <span class="number">48</span>, <span class="number">60</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">1</span>, <span class="number">0</span>, <span class="number">60</span>, <span class="number">72</span>),
-        <span class="comment">/* 2-bit crumbs */</span>
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">1</span>, <span class="number">0</span>, <span class="number">72</span>, <span class="number">74</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">1</span>, <span class="number">0</span>, <span class="number">74</span>, <span class="number">76</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">1</span>, <span class="number">0</span>, <span class="number">76</span>, <span class="number">78</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">1</span>, <span class="number">0</span>, <span class="number">78</span>, <span class="number">80</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">1</span>, <span class="number">0</span>, <span class="number">80</span>, <span class="number">82</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">1</span>, <span class="number">0</span>, <span class="number">82</span>, <span class="number">84</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">1</span>, <span class="number">0</span>, <span class="number">84</span>, <span class="number">86</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">1</span>, <span class="number">0</span>, <span class="number">86</span>, <span class="number">88</span>),
-    ],
+    <span class="ident">range_check_row</span>(<span class="number">1</span>),
     <span class="comment">/* row 3, RangeCheck1 row */</span>
     [
         <span class="ident">ValueWitnessCell::create</span>(),
+        <span class="comment">/* 2-bit crumbs (placed here to keep lookup pattern */</span>
+        <span class="comment">/*               the same as RangeCheck0) */</span>
+        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">86</span>, <span class="number">88</span>),
+        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">84</span>, <span class="number">86</span>),
         <span class="comment">/* 12-bit plookups */</span>
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">12</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">12</span>, <span class="number">24</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">24</span>, <span class="number">36</span>),
+        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">72</span>, <span class="number">84</span>),
+        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">60</span>, <span class="number">72</span>),
+        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">48</span>, <span class="number">60</span>),
         <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">36</span>, <span class="number">48</span>),
         <span class="comment">/* 2-bit crumbs */</span>
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">48</span>, <span class="number">50</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">50</span>, <span class="number">52</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">52</span>, <span class="number">54</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">54</span>, <span class="number">56</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">56</span>, <span class="number">58</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">58</span>, <span class="number">60</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">60</span>, <span class="number">62</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">62</span>, <span class="number">64</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">64</span>, <span class="number">66</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">66</span>, <span class="number">68</span>),
+        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">34</span>, <span class="number">36</span>),
+        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">32</span>, <span class="number">34</span>),
+        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">30</span>, <span class="number">32</span>),
+        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">28</span>, <span class="number">30</span>),
+        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">26</span>, <span class="number">28</span>),
+        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">24</span>, <span class="number">26</span>),
+        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">22</span>, <span class="number">24</span>),
+        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">20</span>, <span class="number">22</span>),
     ],
     <span class="comment">/* row 4, Zero row */</span>
     [
         <span class="ident">ZeroWitnessCell::create</span>(),
-        <span class="comment">/* 12-bit plookups (see note about copies above) */</span>
-        <span class="ident">CopyWitnessCell::create</span>(<span class="number">0</span>, <span class="number">5</span>),
-        <span class="ident">CopyWitnessCell::create</span>(<span class="number">0</span>, <span class="number">6</span>),
-        <span class="ident">CopyWitnessCell::create</span>(<span class="number">1</span>, <span class="number">5</span>),
-        <span class="ident">CopyWitnessCell::create</span>(<span class="number">1</span>, <span class="number">6</span>),
+        <span class="comment">/* 2-bit crumbs (placed here to keep lookup pattern */</span>
+        <span class="comment">/*               the same as RangeCheck0) */</span>
+        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">18</span>, <span class="number">20</span>),
+        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">16</span>, <span class="number">18</span>),
+        <span class="comment">/* 12-bit plookups (see note about copies in range_check_row) */</span>
+        <span class="ident">CopyWitnessCell::create</span>(<span class="number">0</span>, <span class="number">1</span>),
+        <span class="ident">CopyWitnessCell::create</span>(<span class="number">0</span>, <span class="number">2</span>),
+        <span class="ident">CopyWitnessCell::create</span>(<span class="number">1</span>, <span class="number">1</span>),
+        <span class="ident">CopyWitnessCell::create</span>(<span class="number">1</span>, <span class="number">2</span>),
         <span class="comment">/* 2-bit crumbs */</span>
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">68</span>, <span class="number">70</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">70</span>, <span class="number">72</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">72</span>, <span class="number">74</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">74</span>, <span class="number">76</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">76</span>, <span class="number">78</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">78</span>, <span class="number">80</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">80</span>, <span class="number">82</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">82</span>, <span class="number">84</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">84</span>, <span class="number">86</span>),
-        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">86</span>, <span class="number">88</span>),
+        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">14</span>, <span class="number">16</span>),
+        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">12</span>, <span class="number">14</span>),
+        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">10</span>, <span class="number">12</span>),
+        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">8</span>, <span class="number">10</span>),
+        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">6</span>, <span class="number">8</span>),
+        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">4</span>, <span class="number">6</span>),
+        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">2</span>, <span class="number">4</span>),
+        <span class="ident">LimbWitnessCell::create</span>(<span class="number">2</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">2</span>),
     ],
 ];
+
+<span class="comment">// The row layout for RangeCheck0</span>
+<span class="kw">const</span> <span class="kw">fn</span> <span class="ident">range_check_row</span>(<span class="ident">row</span>: <span class="ident">usize</span>) -&gt; [<span class="ident">WitnessCell</span>; <span class="ident">COLUMNS</span>] {
+    [
+        <span class="ident">ValueWitnessCell::create</span>(),
+        <span class="comment">/* 12-bit copies */</span>
+        <span class="comment">// Copy cells are required because we have a limit</span>
+        <span class="comment">// of 4 lookups per row.  These two lookups are moved to</span>
+        <span class="comment">// the 4th row, which is a Zero circuit gate, and the</span>
+        <span class="comment">// RangeCheck1 circuit gate triggers the lookup constraints.</span>
+        <span class="ident">LimbWitnessCell::create</span>(<span class="ident">row</span>, <span class="number">0</span>, <span class="number">76</span>, <span class="number">88</span>),
+        <span class="ident">LimbWitnessCell::create</span>(<span class="ident">row</span>, <span class="number">0</span>, <span class="number">64</span>, <span class="number">76</span>),
+        <span class="comment">/* 12-bit plookups */</span>
+        <span class="ident">LimbWitnessCell::create</span>(<span class="ident">row</span>, <span class="number">0</span>, <span class="number">52</span>, <span class="number">64</span>),
+        <span class="ident">LimbWitnessCell::create</span>(<span class="ident">row</span>, <span class="number">0</span>, <span class="number">40</span>, <span class="number">52</span>),
+        <span class="ident">LimbWitnessCell::create</span>(<span class="ident">row</span>, <span class="number">0</span>, <span class="number">28</span>, <span class="number">40</span>),
+        <span class="ident">LimbWitnessCell::create</span>(<span class="ident">row</span>, <span class="number">0</span>, <span class="number">16</span>, <span class="number">28</span>),
+        <span class="comment">/* 2-bit crumbs */</span>
+        <span class="ident">LimbWitnessCell::create</span>(<span class="ident">row</span>, <span class="number">0</span>, <span class="number">14</span>, <span class="number">16</span>),
+        <span class="ident">LimbWitnessCell::create</span>(<span class="ident">row</span>, <span class="number">0</span>, <span class="number">12</span>, <span class="number">14</span>),
+        <span class="ident">LimbWitnessCell::create</span>(<span class="ident">row</span>, <span class="number">0</span>, <span class="number">10</span>, <span class="number">12</span>),
+        <span class="ident">LimbWitnessCell::create</span>(<span class="ident">row</span>, <span class="number">0</span>, <span class="number">8</span>, <span class="number">10</span>),
+        <span class="ident">LimbWitnessCell::create</span>(<span class="ident">row</span>, <span class="number">0</span>, <span class="number">6</span>, <span class="number">8</span>),
+        <span class="ident">LimbWitnessCell::create</span>(<span class="ident">row</span>, <span class="number">0</span>, <span class="number">4</span>, <span class="number">6</span>),
+        <span class="ident">LimbWitnessCell::create</span>(<span class="ident">row</span>, <span class="number">0</span>, <span class="number">2</span>, <span class="number">4</span>),
+        <span class="ident">LimbWitnessCell::create</span>(<span class="ident">row</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">2</span>),
+    ]
+}
 
 <span class="kw">fn</span> <span class="ident">value_to_limb</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span>(<span class="ident">fe</span>: <span class="ident">F</span>, <span class="ident">start</span>: <span class="ident">usize</span>, <span class="ident">end</span>: <span class="ident">usize</span>) -&gt; <span class="ident">F</span> {
     <span class="ident">F::from_bits</span>(<span class="kw-2">&amp;</span><span class="ident">fe</span>.<span class="ident">to_bits</span>()[<span class="ident">start</span>..<span class="ident">end</span>]).<span class="ident">expect</span>(<span class="string">&quot;failed to deserialize field bits&quot;</span>)
@@ -373,15 +387,25 @@
     }
 }
 
-<span class="doccomment">/// Create a range check witness</span>
+<span class="doccomment">/// Create a multi range check witness</span>
 <span class="doccomment">/// Input: three values: v0, v1 and v2</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_witness</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span>(<span class="ident">v0</span>: <span class="ident">F</span>, <span class="ident">v1</span>: <span class="ident">F</span>, <span class="ident">v2</span>: <span class="ident">F</span>) -&gt; [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_multi_witness</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span>(<span class="ident">v0</span>: <span class="ident">F</span>, <span class="ident">v1</span>: <span class="ident">F</span>, <span class="ident">v2</span>: <span class="ident">F</span>) -&gt; [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="number">4</span>]);
 
     <span class="ident">init_range_check_row</span>(<span class="kw-2">&amp;mut</span> <span class="ident">witness</span>, <span class="number">0</span>, <span class="ident">v0</span>);
     <span class="ident">init_range_check_row</span>(<span class="kw-2">&amp;mut</span> <span class="ident">witness</span>, <span class="number">1</span>, <span class="ident">v1</span>);
     <span class="ident">init_range_check_row</span>(<span class="kw-2">&amp;mut</span> <span class="ident">witness</span>, <span class="number">2</span>, <span class="ident">v2</span>);
     <span class="ident">init_range_check_row</span>(<span class="kw-2">&amp;mut</span> <span class="ident">witness</span>, <span class="number">3</span>, <span class="ident">F::zero</span>());
+
+    <span class="ident">witness</span>
+}
+
+<span class="doccomment">/// Create a single range check witness</span>
+<span class="doccomment">/// Input: three values: v0, v1 and v2</span>
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_witness</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span>(<span class="ident">v0</span>: <span class="ident">F</span>) -&gt; [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] {
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="number">4</span>]);
+
+    <span class="ident">init_range_check_row</span>(<span class="kw-2">&amp;mut</span> <span class="ident">witness</span>, <span class="number">0</span>, <span class="ident">v0</span>);
 
     <span class="ident">witness</span>
 }

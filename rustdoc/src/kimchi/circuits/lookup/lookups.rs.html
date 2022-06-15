@@ -455,8 +455,6 @@
 <span id="448">448</span>
 <span id="449">449</span>
 <span id="450">450</span>
-<span id="451">451</span>
-<span id="452">452</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
     <span class="ident">domains::EvaluationDomains</span>,
     <span class="ident">gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">CurrOrNext</span>, <span class="ident">GateType</span>},
@@ -835,10 +833,10 @@
                     .<span class="ident">collect</span>()
             }
             <span class="ident">LookupPattern::RangeCheckGate</span> =&gt; {
-                (<span class="number">1</span>..<span class="op">=</span><span class="number">4</span>)
+                (<span class="number">3</span>..<span class="op">=</span><span class="number">6</span>)
                     .<span class="ident">map</span>(<span class="op">|</span><span class="ident">column</span><span class="op">|</span> {
                         <span class="comment">//   0 1 2 3 4 5 6 7 8 9 10 11 12 13 14</span>
-                        <span class="comment">//   - L L L L - - - - - -  -  -  -  -</span>
+                        <span class="comment">//   - - - L L L L - - - -  -  -  -  -</span>
                         <span class="ident">JointLookup</span> {
                             <span class="ident">table_id</span>: <span class="ident">LookupTableID::Constant</span>(<span class="ident">RANGE_CHECK_TABLE_ID</span>),
                             <span class="ident">entry</span>: <span class="macro">vec!</span>[<span class="ident">SingleLookup</span> {
@@ -868,9 +866,7 @@
             (<span class="ident">ChaCha0</span> <span class="op">|</span> <span class="ident">ChaCha1</span> <span class="op">|</span> <span class="ident">ChaCha2</span>, <span class="ident">Curr</span> <span class="op">|</span> <span class="ident">Next</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">LookupPattern::ChaCha</span>),
             (<span class="ident">ChaChaFinal</span>, <span class="ident">Curr</span> <span class="op">|</span> <span class="ident">Next</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">LookupPattern::ChaChaFinal</span>),
             (<span class="ident">Lookup</span>, <span class="ident">Curr</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">LookupPattern::LookupGate</span>),
-            (<span class="ident">RangeCheck0</span>, <span class="ident">Curr</span>) <span class="op">|</span> (<span class="ident">RangeCheck1</span>, <span class="ident">Curr</span>) <span class="op">|</span> (<span class="ident">RangeCheck1</span>, <span class="ident">Next</span>) =&gt; {
-                <span class="prelude-val">Some</span>(<span class="ident">LookupPattern::RangeCheckGate</span>)
-            }
+            (<span class="ident">RangeCheck0</span>, <span class="ident">Curr</span>) <span class="op">|</span> (<span class="ident">RangeCheck1</span>, <span class="ident">Curr</span> <span class="op">|</span> <span class="ident">Next</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">LookupPattern::RangeCheckGate</span>),
             <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
         }
     }
