@@ -1239,15 +1239,6 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     #[serde(skip)]
     pub srs: OnceCell<Arc<SRS<G>>>,
 
-    /// expected size of the public input
-    pub public_input_size: usize,
-
-    /// Number of recursion accumulators to verify (if any)
-    pub recursive_proofs: usize,
-
-    /// Log2 size of the recursive circuit's domain on the other curve (or 0)
-    pub recursive_log2_domain: usize,
-
     // index polynomial commitments
     /// permutation commitment array
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
@@ -1548,8 +1539,6 @@ The prover then follows the following steps to create the proof:
 1. Pad the witness columns with Zero gates to make them the same length as the domain.
    Then, randomize the last `ZK_ROWS` of each columns.
 1. Setup the Fq-Sponge.
-1. Absorb the verifier index
-1. If recursion commitments are passed, absorb them
 1. Compute the negated public input polynomial as
    the polynomial that evaluates to $-p_i$ for the first `public_input_size` values of the domain,
    and $0$ for the rest.
@@ -1639,6 +1628,7 @@ The prover then follows the following steps to create the proof:
 1. Setup the Fr-Sponge
 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
+1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
 1. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
 	- the public polynomial
 	- z
@@ -1646,8 +1636,6 @@ The prover then follows the following steps to create the proof:
 	- poseidon selector
 	- the 15 register/witness
 	- 6 sigmas evaluations (the last one is not evaluated)
-1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
-1. If recursion challenges are passed, absorb them
 1. Sample $v'$ with the Fr-Sponge
 1. Derive $v$ from $v'$ using the endomorphism (TODO: specify)
 1. Sample $u'$ with the Fr-Sponge
@@ -1679,11 +1667,6 @@ We define two helper algorithms below, used in the batch verification of proofs.
 We run the following algorithm:
 
 1. Setup the Fq-Sponge.
-1. Absorb the verifier index
-1. If the verifier index expects a number of recursion challenges,
-   make sure that the right number of accumulators are passed in the proof,
-   and that for each accumulators the number of challenges is the same as log2(SRS.len())
-1. Absorb the recursion commitments.
 1. Absorb the commitment of the public input polynomial with the Fq-Sponge.
 1. Absorb the commitments to the registers / witness columns with the Fq-Sponge.
 1. If lookup is used:
@@ -1708,6 +1691,7 @@ We run the following algorithm:
 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
 
    NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
+1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
 1. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
 	- the public polynomial
 	- z
@@ -1715,8 +1699,6 @@ We run the following algorithm:
 	- poseidon selector
 	- the 15 register/witness
 	- 6 sigmas evaluations (the last one is not evaluated)
-1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
-1. If recursion challenges are in the proof, absorb them
 1. Sample $v'$ with the Fr-Sponge.
 1. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
 1. Sample $u'$ with the Fr-Sponge.
@@ -1730,7 +1712,6 @@ For every proof we want to verify, we defer the proof opening to the very end.
 This allows us to potentially batch verify a number of partially verified proofs.
 Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
 
-1. Enforce the size of the public input
 1. Commit to the negated public input polynomial.
 1. Run the [Fiat-Shamir argument](#fiat-shamir-argument).
 1. Combine the chunked polynomials' evaluations

@@ -9,6 +9,19 @@ You can read more about this project on the [Kimchi book](https://o1-labs.github
 
 [See here for the rust documentation](https://o1-labs.github.io/proof-systems/rustdoc).
 
+# Kombucha
+
+This repository contains **kombucha**, the Kimchi circuit constructor for external users.
+
+## Guidelines
+
+When using this library, make sure to include in your Cargo.toml the following dependency:
+
+```toml
+[dependencies]
+circuit-construction = { git = "https://github.com/o1-labs/proof-systems" }
+```
+
 ## Example
 
 The following is an example to demonstrate a full cycle workflow using circuit-construction:
