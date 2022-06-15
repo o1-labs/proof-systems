@@ -1242,11 +1242,9 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     /// expected size of the public input
     pub public_input_size: usize,
 
-    /// Number of recursion accumulators to verify (if any)
-    pub recursive_proofs: usize,
-
-    /// Log2 size of the recursive circuit's domain on the other curve (or 0)
-    pub recursive_log2_domain: usize,
+    /// List of recursion accumulators to verify from previous proofs (if any).
+    /// The item is the log2 size of the accumulator's domain.
+    pub recursive_proofs: Vec<usize>,
 
     // index polynomial commitments
     /// permutation commitment array
