@@ -1,4 +1,4 @@
-use ark_ff::{BigInteger, FftField, PrimeField};
+use ark_ff::{BigInteger, FftField, PrimeField, Zero};
 use array_init::array_init;
 use kimchi::circuits::{
     gate::{CircuitGate, GateType},
@@ -48,16 +48,40 @@ impl<F: FftField> GateSpec<F> {
     }
 }
 
+#[derive(Default)]
 pub struct System<F: FftField> {
     pub next_variable: usize,
     pub generic_gate_queue: Vec<GateSpec<F>>,
     // pub equivalence_classes: HashMap<Var, Vec<Position>>,
     pub gates: Vec<GateSpec<F>>,
+    pub cached_constants: HashMap<F, Var<F>>,
 }
 
-pub struct WitnessGenerator<F> {
+#[derive(Default)]
+pub struct WitnessGenerator<F>
+where
+    F: PrimeField,
+{
     pub generic_gate_queue: Vec<GateSpec<F>>,
     pub rows: Vec<Row<F>>,
+    pub cached_constants: HashMap<F, Var<F>>,
+}
+
+impl<F> WitnessGenerator<F>
+where
+    F: PrimeField,
+{
+    /// Given a list of public inputs, creates the witness generator.
+    pub fn new(public_inputs: &[F]) -> Self {
+        let mut gen = Self::default();
+
+        for input in public_inputs {
+            let row = array_init(|i| if i == 0 { *input } else { F::zero() });
+            gen.rows.push(row);
+        }
+
+        gen
+    }
 }
 
 type Row<V> = [V; COLUMNS];
@@ -136,8 +160,10 @@ pub trait Cs<F: PrimeField> {
         self.generic(coeffs, vars);
     }
 
+    fn cached_constants(&mut self, x: F) -> Var<F>;
+
     fn constant(&mut self, x: F) -> Var<F> {
-        let v = self.var(|| x);
+        let v = self.cached_constants(x);
 
         let mut coeffs = [F::zero(); GENERIC_COEFFS];
         coeffs[0] = F::one();
@@ -744,6 +770,17 @@ impl<F: PrimeField> Cs<F> for WitnessGenerator<F> {
             None
         }
     }
+
+    fn cached_constants(&mut self, x: F) -> Var<F> {
+        match self.cached_constants.get(&x) {
+            Some(var) => *var,
+            None => {
+                let var = self.var(|| x);
+                self.cached_constants.insert(x, var);
+                var
+            }
+        }
+    }
 }
 
 impl<F: PrimeField> WitnessGenerator<F> {
@@ -787,6 +824,17 @@ impl<F: PrimeField> Cs<F> for System<F> {
         } else {
             self.generic_gate_queue.push(gate);
             None
+        }
+    }
+
+    fn cached_constants(&mut self, x: F) -> Var<F> {
+        match self.cached_constants.get(&x) {
+            Some(var) => *var,
+            None => {
+                let var = self.var(|| x);
+                self.cached_constants.insert(x, var);
+                var
+            }
         }
     }
 }
