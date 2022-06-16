@@ -282,7 +282,7 @@ pub trait Cs<F: PrimeField>: Sized {
 
         let mut coeffs = vec![F::zero(); GENERIC_ROW_COEFFS];
         coeffs[0] = F::one();
-        coeffs[1] = F::one();
+        coeffs[1] = -F::one();
         coeffs[2] = -F::one();
         self.gate(GateSpec {
             typ: GateType::Generic,
