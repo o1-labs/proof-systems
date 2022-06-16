@@ -40,6 +40,22 @@ pub fn circuit<
     sys.assert_eq(actual.0, public_input[0]);
     sys.assert_eq(actual.1, public_input[1]);
     sys.assert_eq(actual_hash, public_input[2]);
+
+    // test equals
+    let x1 = sys.var(|| 1u32.into());
+    let x2 = sys.var(|| 1u32.into());
+    let equals = sys.equals(x1, x2);
+    let one = sys.constant(F::one());
+    sys.assert_eq(equals, one);
+
+    let x3 = sys.add(x1, x2);
+    let two = sys.var(|| 2u32.into());
+    let equals2 = sys.equals(x3, two);
+    sys.assert_eq(equals2, one);
+
+    let not_equals = sys.equals(x1, two);
+    let zero = sys.constant(F::zero());
+    sys.assert_eq(not_equals, zero);
 }
 
 const PUBLIC_INPUT_LENGTH: usize = 3;
@@ -48,7 +64,7 @@ const PUBLIC_INPUT_LENGTH: usize = 3;
 fn test_example_circuit() {
     // create SRS
     let srs = {
-        let mut srs = SRS::<VestaAffine>::create(1 << 7); // 2^7 = 128
+        let mut srs = SRS::<VestaAffine>::create(1 << 8);
         srs.add_lagrange_basis(Radix2EvaluationDomain::new(srs.g.len()).unwrap());
         Arc::new(srs)
     };

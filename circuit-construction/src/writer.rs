@@ -190,12 +190,57 @@ pub trait Cs<F: PrimeField> {
     fn sub(&mut self, x1: Var<F>, x2: Var<F>) -> Var<F> {
         let res = self.var(|| x1.val() - x2.val());
 
-        let mut coeffs = [F::zero(); GENERIC_ROW_COEFFS];
+        let mut coeffs = [F::zero(); GENERIC_COEFFS];
         coeffs[0] = F::one();
-        coeffs[1] = F::one();
+        coeffs[1] = -F::one();
         coeffs[2] = -F::one();
 
         let vars = [Some(x1), Some(x2), Some(res)];
+
+        self.generic(coeffs, vars);
+
+        res
+    }
+
+    /// Returns a new variable set to 1 if x1 is equal to x2, 0 otherwise.
+    fn equals(&mut self, x1: Var<F>, x2: Var<F>) -> Var<F> {
+        // 1 - res
+        let res = self.var(|| {
+            if x1.val() == x2.val() {
+                F::one()
+            } else {
+                F::zero()
+            }
+        });
+
+        let one_minus_res = self.var(|| F::one() - res.val());
+
+        let mut coeffs = [F::zero(); GENERIC_COEFFS];
+        coeffs[0] = F::one();
+        coeffs[1] = -F::one();
+        coeffs[2] = -F::one();
+
+        let one = self.constant(F::one());
+        let vars = [Some(one), Some(res), Some(one_minus_res)];
+
+        self.generic(coeffs, vars);
+
+        // z_inv * z = 1 - res
+        let diff = self.sub(x2, x1);
+        let inv = self.var(|| diff.val().inverse().unwrap_or(F::zero()));
+
+        let mut coeffs = [F::zero(); GENERIC_COEFFS];
+        coeffs[2] = -F::one();
+        coeffs[3] = F::one();
+
+        let vars = [Some(inv), Some(diff), Some(one_minus_res)];
+        self.generic(coeffs, vars);
+
+        // res * z = 0
+        let mut coeffs = [F::zero(); GENERIC_COEFFS];
+        coeffs[3] = F::one();
+
+        let vars = [Some(res), Some(diff), None];
 
         self.generic(coeffs, vars);
 
