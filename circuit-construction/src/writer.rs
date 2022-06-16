@@ -170,6 +170,38 @@ pub trait Cs<F: PrimeField> {
         }
     }
 
+    /// Adds two field elements
+    fn add(&mut self, x1: Var<F>, x2: Var<F>) -> Var<F> {
+        let res = self.var(|| x1.val() + x2.val());
+
+        let mut coeffs = [F::zero(); GENERIC_COEFFS];
+        coeffs[0] = F::one();
+        coeffs[1] = F::one();
+        coeffs[2] = -F::one();
+
+        let vars = [Some(x1), Some(x2), Some(res)];
+
+        self.generic(coeffs, vars);
+
+        res
+    }
+
+    /// Subtract a field element `x2` to `x1` (i.e. `x1 - x2`).
+    fn sub(&mut self, x1: Var<F>, x2: Var<F>) -> Var<F> {
+        let res = self.var(|| x1.val() - x2.val());
+
+        let mut coeffs = [F::zero(); GENERIC_ROW_COEFFS];
+        coeffs[0] = F::one();
+        coeffs[1] = F::one();
+        coeffs[2] = -F::one();
+
+        let vars = [Some(x1), Some(x2), Some(res)];
+
+        self.generic(coeffs, vars);
+
+        res
+    }
+
     // TODO
     fn scale(&mut self, x: F, v: Var<F>) -> Var<F> {
         let xv = self.var(|| v.val() * x);
