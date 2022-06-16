@@ -28,6 +28,8 @@ pub const GENERICS: usize = 3;
 pub const SINGLE_GENERIC_COEFFS: usize = 5;
 pub const GENERIC_ROW_COEFFS: usize = 2 * SINGLE_GENERIC_COEFFS;
 
+/// A [Cycle] represents the algebraic structure that
+/// allows for recursion using elliptic curves.
 pub trait Cycle {
     type InnerField: FftField
         + PrimeField
@@ -108,6 +110,9 @@ impl Cycle for FqInner {
     type OuterProj = <Other as AffineCurve>::Projective;
 }
 
+/// A variable in our circuit.
+/// Variables are assigned with an index to differentiate from each other.
+/// Optionally, they can eventually take as value a field element.
 #[derive(Hash, Eq, PartialEq, Debug, Clone, Copy)]
 pub struct Var<F> {
     pub index: usize,
@@ -115,6 +120,8 @@ pub struct Var<F> {
 }
 
 impl<F: Copy> Var<F> {
+    /// Returns the value inside a variable [Var].
+    /// It panics if it is `None`.
     pub fn val(&self) -> F {
         self.value.unwrap()
     }
@@ -122,12 +129,17 @@ impl<F: Copy> Var<F> {
 
 pub struct ShiftedScalar<F>(Var<F>);
 
+/// Specifies a gate within a circuit.
+/// A gate will have a type,
+/// will refer to a row of variables,
+/// and will have associated vector of coefficients.
 pub struct GateSpec<F: FftField> {
     pub typ: GateType,
     pub row: [Var<F>; COLUMNS],
     pub c: Vec<F>,
 }
 
+/// The type of possible constants in the circuit
 #[derive(Clone)]
 pub struct Constants<F: Field> {
     pub poseidon: ArithmeticSpongeParams<F>,
@@ -135,18 +147,28 @@ pub struct Constants<F: Field> {
     pub base: (F, F),
 }
 
+/// A set of gates within the circuit.
+/// It carries the index for the next available variable,
+/// and the vector of [GateSpec] created so far.
 pub struct System<F: FftField> {
     pub next_variable: usize,
     // pub equivalence_classes: HashMap<Var, Vec<Position>>,
     pub gates: Vec<GateSpec<F>>,
 }
 
+/// Carries a vector of rows corresponding to the witness.
 pub struct WitnessGenerator<F> {
     pub rows: Vec<Row<F>>,
 }
 
+/// A row is an array of [COLUMNS] elements
 type Row<V> = [V; COLUMNS];
 
+/// This trait includes all the operations that can be executed
+/// by the elements in the circuits.
+/// It allows for different behaviours depending on the struct for
+/// which it is implemented for.
+/// In particular, the circuit mode and the witness generation mode.
 pub trait Cs<F: FftField + PrimeField> {
     /// In cases where you want to create a free variable in the circuit,
     /// as in the variable is not constrained _yet_
@@ -166,8 +188,12 @@ pub trait Cs<F: FftField + PrimeField> {
     where
         G: FnOnce() -> F;
 
+    /// Returns the number of gates that the current [Self] contains.
     fn curr_gate_count(&self) -> usize;
 
+    /// Returns a variable containing a field element as value that is
+    /// computed as the equivalent `BigInteger` number returned by
+    /// function `g`, only if the length is a multiple of 4.
     fn endo_scalar<G, N: BigInteger>(&mut self, length: usize, g: G) -> Var<F>
     where
         G: FnOnce() -> N,
@@ -181,6 +207,8 @@ pub trait Cs<F: FftField + PrimeField> {
         })
     }
 
+    /// This function creates a [ShiftedScalar] variable from a field element that is
+    /// returned by function `g()`, and a length that should be a multiple of 5.
     fn scalar<G, Fr: PrimeField>(&mut self, length: usize, g: G) -> ShiftedScalar<F>
     where
         G: FnOnce() -> Fr,
@@ -207,6 +235,9 @@ pub trait Cs<F: FftField + PrimeField> {
     /// In witness generation mode, adds the corresponding row to the witness.
     fn gate(&mut self, g: GateSpec<F>);
 
+    /// Creates a `Generic` gate that constrains if two variables are equal.
+    /// This is done by setting `x1` in the left wire and `x2` in the right wire
+    /// with left coefficient `1` and right coefficient `-1`, so that `x1 - x2 = 0`.  
     // TODO: Optimize to use permutation argument.
     fn assert_eq(&mut self, x1: Var<F>, x2: Var<F>) {
         // | 0  | 1  | 2 | ...
@@ -233,6 +264,10 @@ pub trait Cs<F: FftField + PrimeField> {
         });
     }
 
+    /// Creates a `Generic` gate to include a constant in the circuit, and returns the variable containing it.
+    /// It sets the left wire to be the variable containing the constant `x` and the rest to zero.
+    /// Then the left coefficient is set to one and the coefficient for constants is set to `-x`.
+    /// This way, the constraint `1 * x - x = 0` holds.
     fn constant(&mut self, x: F) -> Var<F> {
         let v = self.var(|| x);
 
@@ -250,7 +285,11 @@ pub trait Cs<F: FftField + PrimeField> {
         v
     }
 
-    // TODO
+    /// Creates a `Generic` gate to constrain that a variable `v` is scaled by an `x` amount and returns it.
+    /// First, it creates a new variable with a scaled value (meaning, the value in `v` times `x`).
+    /// Then, it creates a row that sets the left wire to be `v` and the right wire to be the scaled variable.
+    /// Finally, it sets the left coefficient to `x` and the right coefficient to `-1`.
+    /// That way, the constraint `x * v - 1 * xv = 0` is created.
     fn scale(&mut self, x: F, v: Var<F>) -> Var<F> {
         let xv = self.var(|| v.val() * x);
         let row = {
@@ -271,6 +310,9 @@ pub trait Cs<F: FftField + PrimeField> {
         xv
     }
 
+    /// Performs curve point addition.
+    /// It creates the corresponding `CompleteAdd` gate for the points `(x1, y1)` and `(x2,y2)`
+    /// and returns the third point resulting from the addition as a tuple of variables.
     fn add_group(
         &mut self,
         zero: Var<F>,
@@ -326,10 +368,17 @@ pub trait Cs<F: FftField + PrimeField> {
         (x3, y3)
     }
 
+    /// Doubles one curve point `(x1, y1)`, using internally the `add_group()` function.
+    /// It creates a `CompleteAdd` gate for this point addition (with itself).
+    /// Returns a tuple of variables corresponding to the doubled point.
     fn double(&mut self, zero: Var<F>, (x1, y1): (Var<F>, Var<F>)) -> (Var<F>, Var<F>) {
         self.add_group(zero, (x1, y1), (x1, y1))
     }
 
+    /// Creates a `CompleteAdd` gate that checks whether a third point `(x3, y3)` is the addition
+    /// of the two first points `(x1, y1)` and `(x2, y2)`.
+    /// The difference between this function and `add_group()` is that in `assert_add_group` the
+    /// third point is given, whereas in the other one it is computed with the formula.
     fn assert_add_group(
         &mut self,
         zero: Var<F>,
@@ -381,7 +430,31 @@ pub trait Cs<F: FftField + PrimeField> {
         });
     }
 
-    // TODO
+    /// This function is used to include conditionals in circuits.
+    /// It creates three `Generic` gates to simulate the logics of the conditional.
+    /// It receives as input:
+    ///  - `b`: the branch
+    ///  - `t`: the true
+    ///  - `f`: the false
+    /// And simulates the following equation: `res = b * ( t - f ) + f`
+    /// ( when the condition is false, `res = 1` )
+    /// ( when the condition is  true, `res = b` )
+    /// This is constrained using three `Generic` gates
+    /// 1. Constrain `delta = t - f`
+    /// 2. Constrain `res1 = b * delta`
+    /// 3. Constrain `res = res1 + f`
+    /// For (1):
+    /// - Creates a row with left wire `t`, right wire `f`, and output wire `delta`
+    /// - Assigns `1` to the left coefficient, `-1` to the right coefficient, and `-1` to the output coefficient.
+    /// - That way, it creates a first gate constraining: `1 * t - 1 * f - delta = 0``
+    /// For (2):
+    /// - Creates a row with left wire `b`, right wire `delta`, and output wire `res1`.
+    /// - Assigns `-1` to the output coefficient, and `1` to the multiplication coefficient.
+    /// - That way, it creates a second gate constraining: `-1 * res + 1 * b * delta = 0`
+    /// For (3):
+    /// - Creates a row with left wire `res1`, right wire `f`, and output wire `res`.
+    /// - Assigns `1` to the left coefficient, `1` to the right coefficient, and `-1` to the output coefficient.
+    /// - That way, it creates a third gate constraining: `1 * res1 + 1 * f - 1 * res = 0`
     fn cond_select(&mut self, b: Var<F>, t: Var<F>, f: Var<F>) -> Var<F> {
         // Could be more efficient. Currently uses three constraints :(
         // delta = t - f
@@ -449,6 +522,7 @@ pub trait Cs<F: FftField + PrimeField> {
         res
     }
 
+    ///
     fn scalar_mul(
         &mut self,
         zero: Var<F>,
