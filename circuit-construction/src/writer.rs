@@ -1,4 +1,4 @@
-use ark_ff::{BigInteger, FftField, PrimeField, Zero};
+use ark_ff::{BigInteger, FftField, PrimeField};
 use array_init::array_init;
 use kimchi::circuits::{
     gate::{CircuitGate, GateType},
