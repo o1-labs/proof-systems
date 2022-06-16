@@ -141,11 +141,7 @@ where
         Self(sudoku)
     }
 
-    fn new<Sys>(
-        sys: &mut Sys,
-        public_sudoku: Vec<Var<F>>,
-        witness: Option<&Sudoku<F>>,
-    ) -> Self
+    fn new<Sys>(sys: &mut Sys, public_sudoku: Vec<Var<F>>, witness: Option<&Sudoku<F>>) -> Self
     where
         Sys: Cs<F>,
     {
