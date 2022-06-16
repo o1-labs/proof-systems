@@ -204,7 +204,32 @@ pub trait Cs<F: PrimeField> {
 
     /// Returns a new variable set to 1 if x1 is equal to x2, 0 otherwise.
     fn equals(&mut self, x1: Var<F>, x2: Var<F>) -> Var<F> {
-        // 1 - res
+        // These four constraints are enough:
+        //
+        // 1. `diff = x2 - x1`
+        // 2. `one_minus_res = 1 - res`
+        // 3. `res * diff = 0`
+        // 4. `diff_inv * diff = one_minus_res`
+        //
+        // To prove this, it suffices to prove that:
+        //
+        // a. `diff = 0 => res = 1`.
+        // b. `diff != 0 => res = 0`.
+        //
+        // Proof:
+        //
+        // a. if `diff = 0`,
+        //      then using (4) `one_minus_res = 0`,
+        //      then using (2) `res = 1`
+        //
+        // b. if `diff != 0`
+        //      then using (3) `res = 0`
+        //
+
+        // 1. diff = x2 - x1
+        let diff = self.sub(x2, x1);
+
+        // 2. one_minus_res = 1 - res
         let res = self.var(|| {
             if x1.val() == x2.val() {
                 F::one()
@@ -225,23 +250,22 @@ pub trait Cs<F: PrimeField> {
 
         self.generic(coeffs, vars);
 
-        // z_inv * z = 1 - res
-        let diff = self.sub(x2, x1);
-        let inv = self.var(|| diff.val().inverse().unwrap_or(F::zero()));
-
-        let mut coeffs = [F::zero(); GENERIC_COEFFS];
-        coeffs[2] = -F::one();
-        coeffs[3] = F::one();
-
-        let vars = [Some(inv), Some(diff), Some(one_minus_res)];
-        self.generic(coeffs, vars);
-
-        // res * z = 0
+        // 3. res * diff = 0
         let mut coeffs = [F::zero(); GENERIC_COEFFS];
         coeffs[3] = F::one();
 
         let vars = [Some(res), Some(diff), None];
 
+        self.generic(coeffs, vars);
+
+        // 4. diff_inv * diff = one_minus_res
+        let diff_inv = self.var(|| diff.val().inverse().unwrap_or_else(F::zero));
+
+        let mut coeffs = [F::zero(); GENERIC_COEFFS];
+        coeffs[2] = -F::one();
+        coeffs[3] = F::one();
+
+        let vars = [Some(diff_inv), Some(diff), Some(one_minus_res)];
         self.generic(coeffs, vars);
 
         res
