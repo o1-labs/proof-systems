@@ -2,9 +2,7 @@ use ark_ff::{BigInteger, FftField, PrimeField};
 use array_init::array_init;
 use kimchi::circuits::{
     gate::{CircuitGate, GateType},
-    polynomials::generic::{
-        DOUBLE_GENERIC_COEFFS, DOUBLE_GENERIC_REGISTERS, GENERIC_COEFFS, GENERIC_REGISTERS,
-    },
+    polynomials::generic::{DOUBLE_GENERIC_COEFFS, GENERIC_REGISTERS},
     wires::{Wire, COLUMNS},
 };
 use oracle::{constants::*, permutation::full_round};
@@ -218,7 +216,7 @@ pub trait Cs<F: PrimeField> {
             row: [
                 x1, y1, x2, y2, x3, y3, inf, same_x, s, inf_z, x21_inv, zero, zero, zero, zero,
             ],
-            c: vec![],
+            coeffs: vec![],
         });
         (x3, y3)
     }
@@ -274,7 +272,7 @@ pub trait Cs<F: PrimeField> {
             row: [
                 x1, y1, x2, y2, x3, y3, inf, same_x, s, inf_z, x21_inv, zero, zero, zero, zero,
             ],
-            c: vec![],
+            coeffs: vec![],
         });
     }
 
@@ -401,13 +399,13 @@ pub trait Cs<F: PrimeField> {
             self.gate(GateSpec {
                 row: row1,
                 typ: GateType::VarBaseMul,
-                c: vec![],
+                coeffs: vec![],
             });
 
             self.gate(GateSpec {
                 row: row2,
                 typ: GateType::Zero,
-                c: vec![],
+                coeffs: vec![],
             })
         }
 
