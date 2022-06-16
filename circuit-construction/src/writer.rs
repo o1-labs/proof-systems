@@ -26,7 +26,7 @@ impl<F: Copy> Var<F> {
 
 pub struct ShiftedScalar<F>(Var<F>);
 
-pub struct GateSpec<F: FftField> {
+pub struct GateSpec<F> {
     pub typ: GateType,
     pub row: [Var<F>; COLUMNS],
     pub coeffs: Vec<F>,
@@ -44,7 +44,7 @@ pub struct WitnessGenerator<F> {
 
 type Row<V> = [V; COLUMNS];
 
-pub trait Cs<F: FftField + PrimeField> {
+pub trait Cs<F: PrimeField> {
     /// In cases where you want to create a free variable in the circuit,
     /// as in the variable is not constrained _yet_
     /// and can be anything that the prover wants.
@@ -673,7 +673,7 @@ pub trait Cs<F: FftField + PrimeField> {
     }
 }
 
-impl<F: FftField + PrimeField> Cs<F> for WitnessGenerator<F> {
+impl<F: PrimeField> Cs<F> for WitnessGenerator<F> {
     fn var<G>(&mut self, g: G) -> Var<F>
     where
         G: FnOnce() -> F,
@@ -693,14 +693,14 @@ impl<F: FftField + PrimeField> Cs<F> for WitnessGenerator<F> {
     }
 }
 
-impl<F: FftField> WitnessGenerator<F> {
+impl<F: PrimeField> WitnessGenerator<F> {
     /// Returns the columns of the witness.
     pub fn columns(&self) -> [Vec<F>; COLUMNS] {
         array_init(|col| self.rows.iter().map(|row| row[col]).collect())
     }
 }
 
-impl<F: FftField + PrimeField> Cs<F> for System<F> {
+impl<F: PrimeField> Cs<F> for System<F> {
     fn var<G>(&mut self, _: G) -> Var<F> {
         let v = self.next_variable;
         self.next_variable += 1;
@@ -719,7 +719,7 @@ impl<F: FftField + PrimeField> Cs<F> for System<F> {
     }
 }
 
-impl<F: FftField> System<F> {
+impl<F: PrimeField> System<F> {
     /// Compiles our intermediate representation into a circuit.
     pub fn gates(&self) -> Vec<CircuitGate<F>> {
         let mut first_cell: HashMap<usize, Wire> = HashMap::new();
