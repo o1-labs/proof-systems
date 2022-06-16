@@ -547,7 +547,6 @@ pub trait Cs<F: PrimeField> {
             });
         }
 
-        // TODO: use a generic gate with zero coeffs
         self.gate(GateSpec {
             typ: GateType::Zero,
             row: vec![
@@ -569,6 +568,7 @@ pub trait Cs<F: PrimeField> {
             ],
             coeffs: vec![],
         });
+
         acc
     }
 
@@ -697,16 +697,14 @@ pub trait Cs<F: PrimeField> {
         }
 
         let final_state = &states[states.len() - 1];
-        let final_row = vec![
+
+        let coeffs = [F::zero(); GENERIC_COEFFS];
+        let final_row = [
             Some(final_state[0]),
             Some(final_state[1]),
             Some(final_state[2]),
         ];
-        self.gate(GateSpec {
-            typ: kimchi::circuits::gate::GateType::Zero,
-            coeffs: vec![],
-            row: final_row,
-        });
+        self.generic(coeffs, final_row);
 
         states.pop().unwrap()
     }
