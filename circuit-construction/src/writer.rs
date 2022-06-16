@@ -2,12 +2,15 @@ use ark_ff::{BigInteger, FftField, PrimeField};
 use array_init::array_init;
 use kimchi::circuits::{
     gate::{CircuitGate, GateType},
+    polynomials::generic::{
+        DOUBLE_GENERIC_COEFFS, DOUBLE_GENERIC_REGISTERS, GENERIC_COEFFS, GENERIC_REGISTERS,
+    },
     wires::{Wire, COLUMNS},
 };
 use oracle::{constants::*, permutation::full_round};
 use std::collections::HashMap;
 
-use crate::constants::{Constants, GENERICS, GENERIC_ROW_COEFFS};
+use crate::constants::Constants;
 
 #[derive(Hash, Eq, PartialEq, Debug, Clone, Copy)]
 pub struct Var<F> {
@@ -26,7 +29,7 @@ pub struct ShiftedScalar<F>(Var<F>);
 pub struct GateSpec<F: FftField> {
     pub typ: GateType,
     pub row: [Var<F>; COLUMNS],
-    pub c: Vec<F>,
+    pub coeffs: Vec<F>,
 }
 
 pub struct System<F: FftField> {
@@ -116,30 +119,30 @@ pub trait Cs<F: FftField + PrimeField> {
         });
 
         // constrain `x1 - x2 = 0`
-        let mut c = vec![F::zero(); GENERIC_ROW_COEFFS];
-        c[0] = F::one();
-        c[1] = -F::one();
+        let mut coeffs = vec![F::zero(); DOUBLE_GENERIC_COEFFS];
+        coeffs[0] = F::one();
+        coeffs[1] = -F::one();
 
         self.gate(GateSpec {
             typ: GateType::Generic,
             row,
-            c,
+            coeffs,
         });
     }
 
     fn constant(&mut self, x: F) -> Var<F> {
         let v = self.var(|| x);
 
-        let mut c = vec![F::zero(); GENERIC_ROW_COEFFS];
-        c[0] = F::one();
-        c[GENERICS + 1] = -x;
+        let mut coeffs = vec![F::zero(); DOUBLE_GENERIC_COEFFS];
+        coeffs[0] = F::one();
+        coeffs[GENERIC_REGISTERS + 1] = -x;
 
         let row = array_init(|i| if i == 0 { v } else { self.var(|| F::zero()) });
 
         self.gate(GateSpec {
             typ: GateType::Generic,
             row,
-            c,
+            coeffs,
         });
         v
     }
@@ -154,13 +157,13 @@ pub trait Cs<F: FftField + PrimeField> {
             row
         };
 
-        let mut c = vec![F::zero(); GENERIC_ROW_COEFFS];
-        c[0] = x;
-        c[1] = -F::one();
+        let mut coeffs = vec![F::zero(); DOUBLE_GENERIC_COEFFS];
+        coeffs[0] = x;
+        coeffs[1] = -F::one();
         self.gate(GateSpec {
             typ: GateType::Generic,
             row,
-            c,
+            coeffs,
         });
         xv
     }
@@ -293,14 +296,14 @@ pub trait Cs<F: FftField + PrimeField> {
             r[2] = delta;
             r
         };
-        let mut c1 = vec![F::zero(); GENERIC_ROW_COEFFS];
+        let mut c1 = vec![F::zero(); DOUBLE_GENERIC_COEFFS];
         c1[0] = F::one();
         c1[1] = -F::one();
         c1[2] = -F::one();
         self.gate(GateSpec {
             typ: GateType::Generic,
             row: row1,
-            c: c1,
+            coeffs: c1,
         });
 
         let row2 = {
@@ -310,7 +313,8 @@ pub trait Cs<F: FftField + PrimeField> {
             r[2] = res1;
             r
         };
-        let mut c2 = vec![F::zero(); GENERIC_ROW_COEFFS];
+
+        let mut c2 = vec![F::zero(); DOUBLE_GENERIC_COEFFS];
         c2[0] = F::zero();
         c2[1] = F::zero();
         c2[2] = -F::one();
@@ -319,7 +323,7 @@ pub trait Cs<F: FftField + PrimeField> {
         self.gate(GateSpec {
             typ: GateType::Generic,
             row: row2,
-            c: c2,
+            coeffs: c2,
         });
 
         let row3 = {
@@ -329,7 +333,7 @@ pub trait Cs<F: FftField + PrimeField> {
             r[2] = res;
             r
         };
-        let mut c3 = vec![F::zero(); GENERIC_ROW_COEFFS];
+        let mut c3 = vec![F::zero(); DOUBLE_GENERIC_COEFFS];
         c3[0] = F::one();
         c3[1] = F::one();
         c3[2] = -F::one();
@@ -337,7 +341,7 @@ pub trait Cs<F: FftField + PrimeField> {
         self.gate(GateSpec {
             typ: GateType::Generic,
             row: row3,
-            c: c3,
+            coeffs: c3,
         });
 
         res
@@ -502,7 +506,7 @@ pub trait Cs<F: FftField + PrimeField> {
                 row: [
                     xt, yt, zero, zero, xp, yp, n_acc, xr, yr, s1, s3, b1, b2, b3, b4,
                 ],
-                c: vec![],
+                coeffs: vec![],
             });
 
             acc = (xs, ys);
@@ -526,7 +530,7 @@ pub trait Cs<F: FftField + PrimeField> {
                 zero, zero, zero, zero, acc.0, acc.1, scalar, zero, zero, zero, zero, zero, zero,
                 zero, zero,
             ],
-            c: vec![],
+            coeffs: vec![],
         });
         acc
     }
@@ -632,7 +636,7 @@ pub trait Cs<F: FftField + PrimeField> {
 
             self.gate(GateSpec {
                 typ: kimchi::circuits::gate::GateType::Poseidon,
-                c: (0..15)
+                coeffs: (0..15)
                     .map(|i| rc[offset + (i / width)][i % width])
                     .collect(),
                 row: [
@@ -661,7 +665,7 @@ pub trait Cs<F: FftField + PrimeField> {
         final_row[2] = states[states.len() - 1][2];
         self.gate(GateSpec {
             typ: kimchi::circuits::gate::GateType::Zero,
-            c: vec![],
+            coeffs: vec![],
             row: final_row,
         });
 
@@ -744,8 +748,8 @@ impl<F: FftField> System<F> {
 
             let g = CircuitGate {
                 typ: gate.typ,
-                coeffs: gate.c.clone(),
                 wires,
+                coeffs: gate.coeffs.clone(),
             };
             gates.push(g);
         }

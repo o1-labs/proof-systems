@@ -188,10 +188,11 @@ where
                     system.var(|| panic!("fail"))
                 }
             });
+
             system.gate(GateSpec {
                 typ: GateType::Generic,
-                c: public_input_row.clone(),
                 row,
+                coeffs: public_input_row.clone(),
             });
             v
         })
