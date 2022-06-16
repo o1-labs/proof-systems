@@ -1,6 +1,6 @@
 var sourcesIndex = {};
 sourcesIndex["cairo"] = {"name":"","files":["flags.rs","helper.rs","lib.rs","memory.rs","runner.rs","word.rs"]};
-sourcesIndex["circuit_construction"] = {"name":"","files":["lib.rs"]};
+sourcesIndex["circuit_construction"] = {"name":"","files":["constants.rs","lib.rs","prover.rs","writer.rs"]};
 sourcesIndex["commitment_dlog"] = {"name":"","files":["chunked.rs","combine.rs","commitment.rs","error.rs","evaluation_proof.rs","lib.rs","srs.rs"]};
 sourcesIndex["export_test_vectors"] = {"name":"","files":["main.rs","vectors.rs"]};
 sourcesIndex["flamegraph"] = {"name":"","files":["flamegraph.rs"]};

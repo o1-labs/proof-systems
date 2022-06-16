@@ -1,1 +1,1 @@
-initSidebarItems({"constant":[["GENERICS",""],["GENERIC_ROW_COEFFS",""],["SINGLE_GENERIC_COEFFS",""]],"fn":[["fp_constants",""],["fq_constants",""],["generate_prover_index",""],["prove","Given an index, a group map, custom blinders for the witness, a public input vector, and a circuit `main`, create a proof."],["shift",""]],"struct":[["Constants",""],["FpInner",""],["FqInner",""],["GateSpec",""],["ShiftedScalar",""],["System",""],["Var",""],["WitnessGenerator",""]],"trait":[["CoordinateCurve",""],["Cs",""],["Cycle",""]]});
+initSidebarItems({"mod":[["prologue",""]]});
