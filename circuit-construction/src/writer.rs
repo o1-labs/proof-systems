@@ -126,18 +126,14 @@ pub trait Cs<F: PrimeField> {
     fn assert_eq(&mut self, x1: Var<F>, x2: Var<F>) {
         // | 0  | 1  | 2 | ...
         // | x1 | x2 | 0 | ...
-        let row = vec![Some(x1), Some(x2)];
+        let vars = [Some(x1), Some(x2), None];
 
         // constrain `x1 - x2 = 0`
-        let mut coeffs = vec![F::zero(); DOUBLE_GENERIC_COEFFS];
+        let mut coeffs = [F::zero(); GENERIC_COEFFS];
         coeffs[0] = F::one();
         coeffs[1] = -F::one();
 
-        self.gate(GateSpec {
-            typ: GateType::Generic,
-            row,
-            coeffs,
-        });
+        self.generic(coeffs, vars);
     }
 
     fn constant(&mut self, x: F) -> Var<F> {
@@ -177,16 +173,15 @@ pub trait Cs<F: PrimeField> {
     // TODO
     fn scale(&mut self, x: F, v: Var<F>) -> Var<F> {
         let xv = self.var(|| v.val() * x);
-        let row = vec![Some(v), Some(xv)];
 
-        let mut coeffs = vec![F::zero(); DOUBLE_GENERIC_COEFFS];
+        let vars = [Some(v), Some(xv), None];
+
+        let mut coeffs = [F::zero(); GENERIC_COEFFS];
         coeffs[0] = x;
         coeffs[1] = -F::one();
-        self.gate(GateSpec {
-            typ: GateType::Generic,
-            row,
-            coeffs,
-        });
+
+        self.generic(coeffs, vars);
+
         xv
     }
 
@@ -331,42 +326,31 @@ pub trait Cs<F: PrimeField> {
         let res1 = self.var(|| b.val() * delta.val());
         let res = self.var(|| f.val() + res1.val());
 
-        let row1 = vec![Some(t), Some(f), Some(delta)];
-        let mut c1 = vec![F::zero(); DOUBLE_GENERIC_COEFFS];
+        let row1 = [Some(t), Some(f), Some(delta)];
+        let mut c1 = [F::zero(); GENERIC_COEFFS];
         c1[0] = F::one();
         c1[1] = -F::one();
         c1[2] = -F::one();
-        self.gate(GateSpec {
-            typ: GateType::Generic,
-            row: row1,
-            coeffs: c1,
-        });
 
-        let row2 = vec![Some(b), Some(delta), Some(res1)];
+        self.generic(c1, row1);
 
-        let mut c2 = vec![F::zero(); DOUBLE_GENERIC_COEFFS];
+        let row2 = [Some(b), Some(delta), Some(res1)];
+
+        let mut c2 = [F::zero(); GENERIC_COEFFS];
         c2[0] = F::zero();
         c2[1] = F::zero();
         c2[2] = -F::one();
         c2[3] = F::one();
 
-        self.gate(GateSpec {
-            typ: GateType::Generic,
-            row: row2,
-            coeffs: c2,
-        });
+        self.generic(c2, row2);
 
-        let row3 = vec![Some(res1), Some(f), Some(res)];
-        let mut c3 = vec![F::zero(); DOUBLE_GENERIC_COEFFS];
+        let row3 = [Some(res1), Some(f), Some(res)];
+        let mut c3 = [F::zero(); GENERIC_COEFFS];
         c3[0] = F::one();
         c3[1] = F::one();
         c3[2] = -F::one();
 
-        self.gate(GateSpec {
-            typ: GateType::Generic,
-            row: row3,
-            coeffs: c3,
-        });
+        self.generic(c3, row3);
 
         res
     }
