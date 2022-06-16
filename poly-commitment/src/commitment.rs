@@ -22,6 +22,7 @@ use core::ops::{Add, Sub};
 use groupmap::{BWParameters, GroupMap};
 use o1_utils::math;
 use o1_utils::ExtendedDensePolynomial as _;
+use oracle::poseidon::ArithmeticSpongeParamsTrait;
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand_core::{CryptoRng, RngCore};
 use rayon::prelude::*;
@@ -499,7 +500,11 @@ where
     pub opening: &'a OpeningProof<G>,
 }
 
-impl<G: CommitmentCurve> SRS<G> {
+impl<G: CommitmentCurve, S> SRS<G, S>
+where
+    G: CommitmentCurve,
+    S: ArithmeticSpongeParamsTrait<G::ScalarField>,
+{
     /// Commits a polynomial, potentially splitting the result in multiple commitments.
     pub fn commit(
         &self,
@@ -923,8 +928,7 @@ mod tests {
         let n = 64;
         let domain = D::<Fp>::new(n).unwrap();
 
-        let scalar_sponge_params = oracle::pasta::fp_kimchi::params();
-        let mut srs = SRS::<VestaG>::create(n, scalar_sponge_params);
+        let mut srs = SRS::<VestaG>::create(n);
         srs.add_lagrange_basis(domain);
 
         let expected_lagrange_commitments: Vec<_> = (0..n)
@@ -956,8 +960,7 @@ mod tests {
         let poly2 = DensePolynomial::<Fp>::from_coefficients_slice(&coeffs[..5]);
 
         // create an SRS
-        let scalar_sponge_params = oracle::pasta::fp_kimchi::params();
-        let srs = SRS::<VestaG>::create(20, scalar_sponge_params);
+        let srs = SRS::<VestaG>::create(20);
         let rng = &mut StdRng::from_seed([0u8; 32]);
 
         // commit the two polynomials (and upperbound the second one)

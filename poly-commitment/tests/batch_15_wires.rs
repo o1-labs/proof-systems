@@ -29,8 +29,7 @@ where
     let mut random = rand::thread_rng();
 
     let size = 1 << 7;
-    let scalar_sponge_params = oracle::pasta::fp_kimchi::params();
-    let srs = SRS::<Affine>::create(size, scalar_sponge_params);
+    let srs = SRS::<Affine>::create(size);
 
     let group_map = <Affine as CommitmentCurve>::Map::setup();
     let sponge = DefaultFqSponge::<VestaParameters, SC>::new(oracle::pasta::fq_kimchi::params());

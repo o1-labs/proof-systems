@@ -7,8 +7,10 @@ use ark_poly::univariate::DensePolynomial;
 use array_init::array_init;
 use commitment_dlog::{commitment::PolyComm, evaluation_proof::OpeningProof};
 use o1_utils::ExtendedDensePolynomial;
+use oracle::poseidon::{ArithmeticSpongeParamsTrait, DefaultSpongeParams};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
+use std::marker::PhantomData;
 
 //~ spec:startcode
 /// Evaluations of lookup polynomials
@@ -98,7 +100,11 @@ pub struct ProverCommitments<G: AffineCurve> {
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
-pub struct ProverProof<G: AffineCurve> {
+pub struct ProverProof<G, S = DefaultSpongeParams<<G as AffineCurve>::ScalarField>>
+where
+    G: AffineCurve,
+    S: ArithmeticSpongeParamsTrait<G::ScalarField>,
+{
     /// All the polynomial commitments required in the proof
     pub commitments: ProverCommitments<G>,
 
@@ -119,6 +125,7 @@ pub struct ProverProof<G: AffineCurve> {
 
     /// The challenges underlying the optional polynomials folded into the proof
     pub prev_challenges: Vec<RecursionChallenge<G>>,
+    pub _sponge: PhantomData<S>,
 }
 
 /// A struct to store the challenges inside a `ProverProof`

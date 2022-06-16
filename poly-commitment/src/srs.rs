@@ -7,14 +7,18 @@ use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
 use array_init::array_init;
 use blake2::{Blake2b512, Digest};
 use groupmap::GroupMap;
-use oracle::poseidon::ArithmeticSpongeParams;
+use oracle::poseidon::{ArithmeticSpongeParams, ArithmeticSpongeParamsTrait, DefaultSpongeParams};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use std::collections::HashMap;
+use std::{collections::HashMap, marker::PhantomData};
 
 #[serde_as]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct SRS<G: CommitmentCurve> {
+pub struct SRS<G, S = DefaultSpongeParams<<G as AffineCurve>::ScalarField>>
+where
+    G: CommitmentCurve,
+    S: ArithmeticSpongeParamsTrait<G::ScalarField>,
+{
     /// The vector of group elements for committing to polynomials in coefficient form
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub g: Vec<G>,
@@ -32,7 +36,8 @@ pub struct SRS<G: CommitmentCurve> {
     /// Coefficient for the curve endomorphism
     #[serde(skip)]
     pub endo_q: G::BaseField,
-    pub scalar_sponge_params: ArithmeticSpongeParams<G::ScalarField>,
+    //pub scalar_sponge_params: ArithmeticSpongeParams<G::ScalarField>,
+    pub t: PhantomData<S>,
 }
 
 pub fn endos<G: CommitmentCurve>() -> (G::BaseField, G::ScalarField)
@@ -73,12 +78,20 @@ where
     G::of_coordinates(x, y)
 }
 
-impl<G: CommitmentCurve> SRS<G>
+impl<G, S> SRS<G, S>
 where
+    G: CommitmentCurve,
     G::BaseField: PrimeField,
+    S: ArithmeticSpongeParamsTrait<G::ScalarField>,
 {
     pub fn max_degree(&self) -> usize {
         self.g.len()
+    }
+    pub fn mds(&self) -> &Vec<Vec<G::ScalarField>> {
+        S::mds()
+    }
+    pub fn params(&self) -> ArithmeticSpongeParams<G::ScalarField> {
+        S::params()
     }
 
     /// Compute commitments to the lagrange basis corresponding to the given domain and
@@ -162,10 +175,7 @@ where
     }
 
     /// This function creates SRS instance for circuits with number of rows up to `depth`.
-    pub fn create(
-        depth: usize,
-        scalar_sponge_params: ArithmeticSpongeParams<G::ScalarField>,
-    ) -> Self {
+    pub fn create(depth: usize) -> Self {
         let m = G::Map::setup();
 
         let g: Vec<_> = (0..depth)
@@ -192,7 +202,8 @@ where
             lagrange_bases: HashMap::new(),
             endo_r,
             endo_q,
-            scalar_sponge_params,
+            //scalar_sponge_params,
+            t: PhantomData::default(),
         }
     }
 }

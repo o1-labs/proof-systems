@@ -16,6 +16,7 @@ use kimchi::{
     },
     prover_index::ProverIndex,
 };
+use oracle::poseidon::ArithmeticSpongeParamsTrait;
 use serde::Serialize;
 use std::{
     collections::HashMap,
@@ -74,9 +75,10 @@ where
 }
 
 /// Produces a `circuit.html` in the current folder.
-pub fn visu<G>(index: &ProverIndex<G>, witness: Option<Witness<G::ScalarField>>)
+pub fn visu<G, S>(index: &ProverIndex<G, S>, witness: Option<Witness<G::ScalarField>>)
 where
     G: CommitmentCurve,
+    S: ArithmeticSpongeParamsTrait<G::ScalarField>,
 {
     // serialize index
     let index = serde_json::to_string(index).expect("couldn't serialize index");

@@ -66,7 +66,7 @@ fn test_example_circuit() {
     // create SRS
     let proof_system_constants = fp_constants();
     let srs = {
-        let mut srs = SRS::<Affine>::create(1 << 7, proof_system_constants.poseidon.clone()); // 2^7 = 128
+        let mut srs = SRS::<Affine>::create(1 << 7); // 2^7 = 128
         srs.add_lagrange_basis(D::new(srs.g.len()).unwrap());
         Arc::new(srs)
     };
@@ -75,7 +75,7 @@ fn test_example_circuit() {
 
     // generate circuit and index
     let prover_index =
-        generate_prover_index::<FpInner, _>(srs, &fq_poseidon, PUBLIC_INPUT_LENGTH, |sys, p| {
+        generate_prover_index::<FpInner, _, _>(srs, &fq_poseidon, PUBLIC_INPUT_LENGTH, |sys, p| {
             circuit::<_, Other, _>(&proof_system_constants, None, sys, p)
         });
 
@@ -104,7 +104,7 @@ fn test_example_circuit() {
     };
 
     // generate proof
-    let proof = prove::<Affine, _, SpongeQ, SpongeR>(
+    let proof = prove::<Affine, _, SpongeQ, SpongeR, _>(
         &prover_index,
         &group_map,
         None,
@@ -115,5 +115,5 @@ fn test_example_circuit() {
     // verify proof
     let verifier_index = prover_index.verifier_index();
 
-    verify::<_, SpongeQ, SpongeR>(&group_map, &verifier_index, &proof).unwrap();
+    verify::<_, SpongeQ, SpongeR, _>(&group_map, &verifier_index, &proof).unwrap();
 }

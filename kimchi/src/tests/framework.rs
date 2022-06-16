@@ -150,7 +150,7 @@ impl TestRunner {
 
         // verify the proof
         let start = Instant::now();
-        verify::<Affine, BaseSponge, ScalarSponge>(
+        verify::<Affine, BaseSponge, ScalarSponge, _>(
             &group_map,
             &self.0.verifier_index.unwrap(),
             &proof,

@@ -11,6 +11,7 @@ use crate::circuits::{
 };
 use crate::error::VerifierIndexError;
 use crate::prover_index::ProverIndex;
+use ark_ec::AffineCurve;
 use ark_ff::PrimeField;
 use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D};
 use array_init::array_init;
@@ -19,7 +20,7 @@ use commitment_dlog::{
     srs::SRS,
 };
 use once_cell::sync::OnceCell;
-use oracle::poseidon::ArithmeticSpongeParams;
+use oracle::poseidon::{ArithmeticSpongeParams, ArithmeticSpongeParamsTrait, DefaultSpongeParams};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::io::SeekFrom::Start;
@@ -55,7 +56,11 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 
 #[serde_as]
 #[derive(Serialize, Deserialize)]
-pub struct VerifierIndex<G: CommitmentCurve> {
+pub struct VerifierIndex<G, S = DefaultSpongeParams<<G as AffineCurve>::ScalarField>>
+where
+    G: CommitmentCurve,
+    S: ArithmeticSpongeParamsTrait<G::ScalarField>,
+{
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub domain: D<G::ScalarField>,
@@ -65,7 +70,7 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     pub max_quot_size: usize,
     /// polynomial commitment keys
     #[serde(skip)]
-    pub srs: OnceCell<Arc<SRS<G>>>,
+    pub srs: OnceCell<Arc<SRS<G, S>>>,
 
     // index polynomial commitments
     /// permutation commitment array
@@ -136,12 +141,13 @@ pub struct VerifierIndex<G: CommitmentCurve> {
 }
 //~spec:endcode
 
-impl<'a, G: CommitmentCurve> ProverIndex<G>
+impl<'a, G: CommitmentCurve, S> ProverIndex<G, S>
 where
     G::BaseField: PrimeField,
+    S: ArithmeticSpongeParamsTrait<G::ScalarField>,
 {
     /// Produces the [VerifierIndex] from the prover's [ProverIndex].
-    pub fn verifier_index(&self) -> VerifierIndex<G> {
+    pub fn verifier_index(&self) -> VerifierIndex<G, S> {
         let domain = self.cs.domain.d1;
 
         let lookup_index = {
@@ -238,20 +244,22 @@ where
             endo: self.cs.endo,
             lookup_index,
             linearization: self.linearization.clone(),
-            fr_sponge_params: self.srs.scalar_sponge_params.clone(),
+            fr_sponge_params: self.srs.params().clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),
         }
     }
 }
 
-impl<G: CommitmentCurve> VerifierIndex<G>
+impl<G, S> VerifierIndex<G, S>
 where
+    G: CommitmentCurve,
     G::BaseField: PrimeField,
+    S: ArithmeticSpongeParamsTrait<G::ScalarField>,
 {
     /// Gets srs from [VerifierIndex] lazily
-    pub fn srs(&self) -> &Arc<SRS<G>> {
+    pub fn srs(&self) -> &Arc<SRS<G, S>> {
         self.srs.get_or_init(|| {
-            let mut srs = SRS::<G>::create(self.max_poly_size, self.fr_sponge_params.clone());
+            let mut srs = SRS::<G, S>::create(self.max_poly_size);
             srs.add_lagrange_basis(self.domain);
             Arc::new(srs)
         })
@@ -269,7 +277,7 @@ where
 
     /// Deserializes a [VerifierIndex] from a file, given a pointer to an SRS and an optional offset in the file.
     pub fn from_file(
-        srs: Option<Arc<SRS<G>>>,
+        srs: Option<Arc<SRS<G, S>>>,
         path: &Path,
         offset: Option<u64>,
         // TODO: we shouldn't have to pass these

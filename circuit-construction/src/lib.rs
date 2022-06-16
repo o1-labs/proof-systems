@@ -12,7 +12,12 @@ use kimchi::circuits::{
 };
 use kimchi::{plonk_sponge::FrSponge, proof::ProverProof, prover_index::ProverIndex};
 use mina_curves::pasta::{fp::Fp, fq::Fq, pallas::Affine as Other, vesta::Affine};
-use oracle::{constants::*, permutation::full_round, poseidon::ArithmeticSpongeParams, FqSponge};
+use oracle::{
+    constants::*,
+    permutation::full_round,
+    poseidon::{ArithmeticSpongeParams, ArithmeticSpongeParamsTrait},
+    FqSponge,
+};
 use std::collections::HashMap;
 
 pub const GENERICS: usize = 3;
@@ -859,19 +864,20 @@ impl<F: FftField> System<F> {
 }
 
 /// Given an index, a group map, custom blinders for the witness, a public input vector, and a circuit `main`, create a proof.
-pub fn prove<G, H, EFqSponge, EFrSponge>(
-    index: &ProverIndex<G>,
+pub fn prove<G, H, EFqSponge, EFrSponge, S>(
+    index: &ProverIndex<G, S>,
     group_map: &G::Map,
     blinders: Option<[Option<G::ScalarField>; COLUMNS]>,
     public_input: Vec<G::ScalarField>,
     mut main: H,
-) -> ProverProof<G>
+) -> ProverProof<G, S>
 where
     H: FnMut(&mut WitnessGenerator<G::ScalarField>, Vec<Var<G::ScalarField>>),
     G::BaseField: PrimeField,
     G: CommitmentCurve,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
+    S: ArithmeticSpongeParamsTrait<G::ScalarField>,
 {
     // create the public rows
     let mut gen: WitnessGenerator<G::ScalarField> = WitnessGenerator {
@@ -917,15 +923,16 @@ where
     .unwrap()
 }
 
-pub fn generate_prover_index<C, H>(
-    srs: std::sync::Arc<SRS<C::Outer>>,
+pub fn generate_prover_index<C, H, S>(
+    srs: std::sync::Arc<SRS<C::Outer, S>>,
     poseidon_params: &ArithmeticSpongeParams<C::OuterField>,
     public: usize,
     main: H,
-) -> ProverIndex<C::Outer>
+) -> ProverIndex<C::Outer, S>
 where
     H: FnOnce(&mut System<C::InnerField>, Vec<Var<C::InnerField>>),
     C: Cycle,
+    S: ArithmeticSpongeParamsTrait<<<C as Cycle>::Outer as AffineCurve>::ScalarField>,
 {
     let mut system: System<C::InnerField> = System {
         next_variable: 0,
@@ -967,7 +974,7 @@ where
         // TODO: return a Result instead of panicking
         .expect("couldn't construct constraint system");
 
-    ProverIndex::<C::Outer>::create(constraint_system, poseidon_params.clone(), endo_q, srs)
+    ProverIndex::<C::Outer, _>::create(constraint_system, poseidon_params.clone(), endo_q, srs)
 }
 
 pub fn fp_constants() -> Constants<Fp> {

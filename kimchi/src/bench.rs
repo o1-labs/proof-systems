@@ -117,7 +117,7 @@ impl BenchmarkCtx {
             .iter()
             .map(|proof| (&self.verifier_index, proof))
             .collect();
-        batch_verify::<Affine, BaseSponge, ScalarSponge>(&self.group_map, &batch).unwrap();
+        batch_verify::<Affine, BaseSponge, ScalarSponge, _>(&self.group_map, &batch).unwrap();
     }
 }
 

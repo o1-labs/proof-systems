@@ -1179,7 +1179,7 @@ mod tests {
         let verifier_index = prover_index.verifier_index();
 
         // Verify proof
-        let res = verify::<pasta_curves::vesta::Affine, BaseSponge, ScalarSponge>(
+        let res = verify::<pasta_curves::vesta::Affine, BaseSponge, ScalarSponge, _>(
             &group_map,
             &verifier_index,
             &proof,

@@ -41,8 +41,8 @@ use commitment_dlog::commitment::{
 };
 use itertools::Itertools;
 use o1_utils::ExtendedDensePolynomial as _;
-use oracle::{sponge::ScalarChallenge, FqSponge};
-use std::collections::HashMap;
+use oracle::{poseidon::ArithmeticSpongeParamsTrait, sponge::ScalarChallenge, FqSponge};
+use std::{collections::HashMap, marker::PhantomData};
 
 /// The result of a proof creation or verification.
 type Result<T> = std::result::Result<T, ProverError>;
@@ -108,9 +108,10 @@ where
     runtime_second_col_d8: Option<Evaluations<F, D<F>>>,
 }
 
-impl<G: CommitmentCurve> ProverProof<G>
+impl<G: CommitmentCurve, S> ProverProof<G, S>
 where
     G::BaseField: PrimeField,
+    S: ArithmeticSpongeParamsTrait<G::ScalarField>,
 {
     /// This function constructs prover's zk-proof from the witness & the ProverIndex against SRS instance
     pub fn create<
@@ -120,7 +121,7 @@ where
         groupmap: &G::Map,
         witness: [Vec<G::ScalarField>; COLUMNS],
         runtime_tables: &[RuntimeTable<G::ScalarField>],
-        index: &ProverIndex<G>,
+        index: &ProverIndex<G, S>,
     ) -> Result<Self> {
         Self::create_recursive::<EFqSponge, EFrSponge>(
             groupmap,
@@ -140,7 +141,7 @@ where
         group_map: &G::Map,
         mut witness: [Vec<G::ScalarField>; COLUMNS],
         runtime_tables: &[RuntimeTable<G::ScalarField>],
-        index: &ProverIndex<G>,
+        index: &ProverIndex<G, S>,
         prev_challenges: Vec<RecursionChallenge<G>>,
         blinders: Option<[Option<PolyComm<G::ScalarField>>; COLUMNS]>,
     ) -> Result<Self> {
@@ -593,7 +594,7 @@ where
                     gamma,
                     joint_combiner: lookup_context.joint_combiner,
                     endo_coefficient: index.cs.endo,
-                    mds: index.srs.scalar_sponge_params.mds.clone(),
+                    mds: index.srs.mds().clone(),
                 },
                 witness: &lagrange.d8.this.w,
                 coefficient: &index.cs.coefficients8,
@@ -1033,7 +1034,7 @@ where
 
         //~ 1. Setup the Fr-Sponge
         let fq_sponge_before_evaluations = fq_sponge.clone();
-        let mut fr_sponge = EFrSponge::new(index.srs.scalar_sponge_params.clone());
+        let mut fr_sponge = EFrSponge::new(index.srs.params().clone());
 
         //~ 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
         fr_sponge.absorb(&fq_sponge.digest());
@@ -1200,6 +1201,7 @@ where
             ft_eval1,
             public,
             prev_challenges,
+            _sponge: PhantomData::default(),
         })
     }
 }

@@ -73,11 +73,7 @@ mod tests {
             serde_json::from_str(&verifier_index_serialize).unwrap();
 
         // add srs with lagrange bases
-        let scalar_sponge_params = oracle::pasta::fp_kimchi::params();
-        let mut srs = SRS::<GroupAffine<VestaParameters>>::create(
-            verifier_index.max_poly_size,
-            scalar_sponge_params,
-        );
+        let mut srs = SRS::<GroupAffine<VestaParameters>>::create(verifier_index.max_poly_size);
         srs.add_lagrange_basis(verifier_index.domain);
         verifier_index_deserialize.fq_sponge_params = oracle::pasta::fq_kimchi::params();
         verifier_index_deserialize.fr_sponge_params = oracle::pasta::fp_kimchi::params();
@@ -86,8 +82,12 @@ mod tests {
 
         // verify the proof
         let start = Instant::now();
-        verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &verifier_index_deserialize, &proof)
-            .unwrap();
+        verify::<Affine, BaseSponge, ScalarSponge, _>(
+            &group_map,
+            &verifier_index_deserialize,
+            &proof,
+        )
+        .unwrap();
         println!("- time to verify: {}ms", start.elapsed().as_millis());
     }
 }

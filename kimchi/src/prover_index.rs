@@ -8,10 +8,11 @@ use crate::circuits::{
     wires::*,
 };
 use crate::linearization::expr_linearization;
+use ark_ec::AffineCurve;
 use ark_ff::PrimeField;
 use ark_poly::EvaluationDomain;
 use commitment_dlog::{commitment::CommitmentCurve, srs::SRS};
-use oracle::poseidon::ArithmeticSpongeParams;
+use oracle::poseidon::{ArithmeticSpongeParams, ArithmeticSpongeParamsTrait, DefaultSpongeParams};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::sync::Arc;
@@ -20,7 +21,11 @@ use std::sync::Arc;
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug)]
 //~spec:startcode
-pub struct ProverIndex<G: CommitmentCurve> {
+pub struct ProverIndex<G, S = DefaultSpongeParams<<G as AffineCurve>::ScalarField>>
+where
+    G: CommitmentCurve,
+    S: ArithmeticSpongeParamsTrait<G::ScalarField>,
+{
     /// constraints system polynomials
     #[serde(bound = "ConstraintSystem<G::ScalarField>: Serialize + DeserializeOwned")]
     pub cs: ConstraintSystem<G::ScalarField>,
@@ -35,7 +40,7 @@ pub struct ProverIndex<G: CommitmentCurve> {
 
     /// polynomial commitment keys
     #[serde(skip)]
-    pub srs: Arc<SRS<G>>,
+    pub srs: Arc<SRS<G, S>>,
 
     /// maximal size of polynomial section
     pub max_poly_size: usize,
@@ -49,16 +54,18 @@ pub struct ProverIndex<G: CommitmentCurve> {
 }
 //~spec:endcode
 
-impl<'a, G: CommitmentCurve> ProverIndex<G>
+impl<'a, G, S> ProverIndex<G, S>
 where
+    G: CommitmentCurve,
     G::BaseField: PrimeField,
+    S: ArithmeticSpongeParamsTrait<G::ScalarField>,
 {
     /// this function compiles the index from constraints
     pub fn create(
         mut cs: ConstraintSystem<G::ScalarField>,
         fq_sponge_params: ArithmeticSpongeParams<G::BaseField>,
         endo_q: G::ScalarField,
-        srs: Arc<SRS<G>>,
+        srs: Arc<SRS<G, S>>,
     ) -> Self {
         let max_poly_size = srs.g.len();
         if cs.public > 0 {
@@ -104,7 +111,7 @@ where
         witness: &[Vec<G::ScalarField>; COLUMNS],
         public: &[G::ScalarField],
     ) -> Result<(), GateError> {
-        let scalar_sponge_params = &self.srs.scalar_sponge_params;
+        let scalar_sponge_params = &self.srs.params();
         self.cs.verify(witness, public, scalar_sponge_params)
     }
 }
@@ -132,8 +139,7 @@ pub mod testing {
             .public(public)
             .build()
             .unwrap();
-        let scalar_sponge_params = oracle::pasta::fp_kimchi::params();
-        let mut srs = SRS::<Affine>::create(cs.domain.d1.size(), scalar_sponge_params);
+        let mut srs = SRS::<Affine>::create(cs.domain.d1.size());
         srs.add_lagrange_basis(cs.domain.d1);
         let srs = Arc::new(srs);
 

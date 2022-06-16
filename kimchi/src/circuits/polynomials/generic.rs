@@ -513,8 +513,7 @@ mod tests {
         testing::fill_in_witness(0, &mut witness, &[]);
 
         let cs = {
-            let scalar_sponge_params = oracle::pasta::fp_kimchi::params();
-            let srs = SRS::<Affine>::create(cs.domain.d1.size(), scalar_sponge_params);
+            let srs = SRS::<Affine>::create(cs.domain.d1.size());
             let fq_sponge_params = oracle::pasta::fq_kimchi::params();
             let (endo_q, _endo_r) = endos::<pallas::Affine>();
             let prover = ProverIndex::create(cs, fq_sponge_params, endo_q, srs.into());

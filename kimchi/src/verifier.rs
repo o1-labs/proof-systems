@@ -24,7 +24,7 @@ use commitment_dlog::commitment::{
     Evaluation, PolyComm,
 };
 use itertools::izip;
-use oracle::{sponge::ScalarChallenge, FqSponge};
+use oracle::{poseidon::ArithmeticSpongeParamsTrait, sponge::ScalarChallenge, FqSponge};
 use rand::thread_rng;
 
 /// The result of a proof verification.
@@ -59,13 +59,14 @@ where
     pub combined_inner_product: G::ScalarField,
 }
 
-impl<G: CommitmentCurve> ProverProof<G>
+impl<G: CommitmentCurve, S> ProverProof<G, S>
 where
     G::BaseField: PrimeField,
+    S: ArithmeticSpongeParamsTrait<G::ScalarField>,
 {
     pub fn prev_chal_evals(
         &self,
-        index: &VerifierIndex<G>,
+        index: &VerifierIndex<G, S>,
         evaluation_points: &[G::ScalarField],
         powers_of_eval_points_for_chunks: &[G::ScalarField],
     ) -> Vec<Vec<Vec<G::ScalarField>>> {
@@ -114,7 +115,7 @@ where
         EFrSponge: FrSponge<G::ScalarField>,
     >(
         &self,
-        index: &VerifierIndex<G>,
+        index: &VerifierIndex<G, S>,
         p_comm: &PolyComm<G>,
     ) -> Result<OraclesResult<G, EFqSponge>> {
         //~
@@ -471,15 +472,16 @@ where
     }
 }
 
-fn to_batch<'a, G, EFqSponge, EFrSponge>(
-    index: &VerifierIndex<G>,
-    proof: &'a ProverProof<G>,
+fn to_batch<'a, G, EFqSponge, EFrSponge, S>(
+    index: &VerifierIndex<G, S>,
+    proof: &'a ProverProof<G, S>,
 ) -> Result<BatchEvaluationProof<'a, G, EFqSponge>>
 where
     G: CommitmentCurve,
     G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
+    S: ArithmeticSpongeParamsTrait<G::ScalarField>,
 {
     //~
     //~ #### Partial verification
@@ -891,34 +893,36 @@ where
 }
 
 /// Verify a proof [ProverProof] using a [VerifierIndex] and a `group_map`.
-pub fn verify<G, EFqSponge, EFrSponge>(
+pub fn verify<G, EFqSponge, EFrSponge, S>(
     group_map: &G::Map,
-    verifier_index: &VerifierIndex<G>,
-    proof: &ProverProof<G>,
+    verifier_index: &VerifierIndex<G, S>,
+    proof: &ProverProof<G, S>,
 ) -> Result<()>
 where
     G: CommitmentCurve,
     G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
+    S: ArithmeticSpongeParamsTrait<G::ScalarField>,
 {
     let proofs = vec![(verifier_index, proof)];
-    batch_verify::<G, EFqSponge, EFrSponge>(group_map, &proofs)
+    batch_verify::<G, EFqSponge, EFrSponge, _>(group_map, &proofs)
 }
 
 /// This function verifies the batch of zk-proofs
 ///     proofs: vector of Plonk proofs
 ///     index: VerifierIndex
 ///     RETURN: verification status
-pub fn batch_verify<G, EFqSponge, EFrSponge>(
+pub fn batch_verify<G, EFqSponge, EFrSponge, S>(
     group_map: &G::Map,
-    proofs: &[(&VerifierIndex<G>, &ProverProof<G>)],
+    proofs: &[(&VerifierIndex<G, S>, &ProverProof<G, S>)],
 ) -> Result<()>
 where
     G: CommitmentCurve,
     G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
+    S: ArithmeticSpongeParamsTrait<G::ScalarField>,
 {
     //~ #### Batch verification of proofs
     //~
@@ -949,7 +953,7 @@ where
     //~ 1. Validate each proof separately following the [partial verification](#partial-verification) steps.
     let mut batch = vec![];
     for (index, proof) in proofs {
-        batch.push(to_batch::<G, EFqSponge, EFrSponge>(index, proof)?);
+        batch.push(to_batch::<G, EFqSponge, EFrSponge, _>(index, proof)?);
     }
 
     //~ 1. Use the [`PolyCom.verify`](#polynomial-commitments) to verify the partially evaluated proofs.

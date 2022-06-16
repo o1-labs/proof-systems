@@ -4,7 +4,7 @@ use ark_ec::{msm::VariableBaseMSM, AffineCurve, ProjectiveCurve};
 use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use o1_utils::math;
-use oracle::{sponge::ScalarChallenge, FqSponge};
+use oracle::{poseidon::ArithmeticSpongeParamsTrait, sponge::ScalarChallenge, FqSponge};
 use rand_core::{CryptoRng, RngCore};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -65,7 +65,11 @@ impl<'a, F: Field> ScaledChunkedPolynomial<F, &'a [F]> {
     }
 }
 
-impl<G: CommitmentCurve> SRS<G> {
+impl<G, S> SRS<G, S>
+where
+    G: CommitmentCurve,
+    S: ArithmeticSpongeParamsTrait<G::ScalarField>,
+{
     /// This function opens polynomial commitments in batch
     ///     plnms: batch of polynomials to open commitments for with, optionally, max degrees
     ///     elm: evaluation point vector to open the commitments at

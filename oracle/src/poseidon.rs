@@ -1,5 +1,7 @@
 //! This module implements Poseidon Hash Function primitive
 
+use std::marker::PhantomData;
+
 use crate::constants::SpongeConstants;
 use crate::permutation::{full_round, poseidon_block_cipher};
 use ark_ff::Field;
@@ -40,6 +42,20 @@ pub struct ArithmeticSpongeParams<F: Field> {
     #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
     pub mds: Vec<Vec<F>>,
 }
+///the name can become ArithmeticSpongeParams when the struct is removed
+pub trait ArithmeticSpongeParamsTrait<F: Field>: Default + std::fmt::Debug {
+    fn round_constants() -> &'static Vec<Vec<F>>;
+    fn mds() -> &'static Vec<Vec<F>>;
+    ///ideally will be removed
+    fn params() -> ArithmeticSpongeParams<F> {
+        ArithmeticSpongeParams {
+            round_constants: Self::round_constants().clone(),
+            mds: Self::mds().clone(),
+        }
+    }
+}
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct DefaultSpongeParams<F: Field>(PhantomData<F>);
 
 #[derive(Clone)]
 pub struct ArithmeticSponge<F: Field, SC: SpongeConstants> {
