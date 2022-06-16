@@ -7,19 +7,13 @@ use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
 use circuit_construction::*;
 use commitment_dlog::{commitment::CommitmentCurve, srs::SRS};
 use groupmap::GroupMap;
-use kimchi::{
-    circuits::{
-        gate::GateType, polynomial::COLUMNS, polynomials::generic::GENERIC_COEFFS, wires::GateWires,
-    },
-    verifier::verify,
-};
+use kimchi::verifier::verify;
 use mina_curves::pasta::{
     fp::Fp,
     fq::Fq,
     pallas::{Affine as Other, PallasParameters},
     vesta::{Affine, VestaParameters},
 };
-use o1_utils::types::fields::*;
 use oracle::{
     constants::*,
     poseidon::{ArithmeticSponge, Sponge},
@@ -29,13 +23,6 @@ use std::{collections::HashMap, sync::Arc};
 
 type SpongeQ = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
 type SpongeR = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>;
-
-/// A solution is the full thing
-const PUBLIC_INPUT_LENGTH: usize = 9 * 9;
-
-//
-// Sudoku made out of field elements
-//
 
 /// -1 means not filled in
 #[derive(Clone)]
@@ -55,17 +42,17 @@ where
         };
         let e = -1;
         let data: Vec<Vec<i32>> = vec![
-            vec![5, 3, e, /* */ e, 7, e, /* */ e, e, e],
-            vec![6, e, e, /* */ 1, 9, 5, /* */ e, e, e],
-            vec![e, 9, 8, /* */ e, e, e, /* */ e, 6, e],
+            vec![e, 4, e, /* */ 3, e, e, /* */ e, 8, e],
+            vec![e, e, 3, /* */ 5, e, 2, /* */ e, 4, e],
+            vec![e, e, e, /* */ e, e, 1, /* */ 5, e, 3],
             /* -------------------------------------- */
-            vec![8, e, e, /* */ e, 6, e, /* */ e, e, 3],
-            vec![4, e, e, /* */ 8, e, 3, /* */ e, e, 1],
-            vec![7, e, e, /* */ e, 2, e, /* */ e, e, 6],
+            vec![e, e, 2, /* */ 4, e, e, /* */ 1, e, e],
+            vec![4, e, e, /* */ e, 2, e, /* */ e, e, 7],
+            vec![e, e, 7, /* */ e, e, 3, /* */ 8, e, e],
             /* -------------------------------------- */
-            vec![e, 6, e, /* */ e, e, e, /* */ 2, 8, e],
-            vec![e, e, e, /* */ 4, 1, 9, /* */ e, e, 5],
-            vec![e, e, e, /* */ e, 8, e, /* */ e, 7, 9],
+            vec![1, e, 8, /* */ 2, e, e, /* */ e, e, e],
+            vec![e, 7, e, /* */ 1, e, 8, /* */ 4, e, e],
+            vec![e, 2, e, /* */ e, e, 9, /* */ e, 1, e],
         ];
         let mut res = vec![];
         for row in data {
@@ -84,17 +71,17 @@ where
         };
         let e = -1;
         let data: Vec<Vec<i32>> = vec![
-            vec![5, 3, 4, /* */ 6, 7, 8, /* */ 9, 1, 2],
-            vec![6, 7, 2, /* */ 1, 9, 5, /* */ 3, 4, 8],
-            vec![1, 9, 8, /* */ 3, 4, 2, /* */ 5, 6, 7],
+            vec![6, 4, 5, /* */ 3, 9, 7, /* */ 2, 8, 1],
+            vec![7, 1, 3, /* */ 5, 8, 2, /* */ 9, 4, 6],
+            vec![2, 8, 9, /* */ 6, 4, 1, /* */ 5, 7, 3],
             /* -------------------------------------- */
-            vec![8, 5, 9, /* */ 7, 6, 1, /* */ 4, 2, 3],
-            vec![4, 2, 6, /* */ 8, 5, 3, /* */ 7, 9, 1],
-            vec![7, 1, 3, /* */ 9, 2, 4, /* */ 8, 5, 6],
+            vec![8, 3, 2, /* */ 4, 7, 6, /* */ 1, 9, 5],
+            vec![4, 9, 1, /* */ 8, 2, 5, /* */ 3, 6, 7],
+            vec![5, 6, 7, /* */ 9, 1, 3, /* */ 8, 2, 4],
             /* -------------------------------------- */
-            vec![9, 6, 1, /* */ 5, 3, 7, /* */ 2, 8, 4],
-            vec![2, 8, 7, /* */ 4, 1, 9, /* */ 6, 3, 5],
-            vec![3, 4, 5, /* */ 2, 8, 6, /* */ 1, 7, 9],
+            vec![1, 5, 8, /* */ 2, 6, 4, /* */ 7, 3, 9],
+            vec![9, 7, 6, /* */ 1, 3, 8, /* */ 4, 5, 2],
+            vec![3, 2, 4, /* */ 7, 5, 9, /* */ 6, 1, 8],
         ];
         let mut res = vec![];
         for row in data {
@@ -116,9 +103,8 @@ where
     }
 }
 
-//
-// Sudoku made out of vars
-//
+/// A solution is the full thing
+const PUBLIC_INPUT_LENGTH: usize = 9 * 9;
 
 pub struct SudokuVar<F>(Vec<Vec<Var<F>>>);
 
@@ -155,6 +141,33 @@ where
         Self(sudoku)
     }
 
+    fn new<Sys>(sys: &mut Sys, public_sudoku: Vec<Var<F>>, witness: Option<&Sudoku<F>>) -> Self
+    where
+        Sys: Cs<F>,
+    {
+        // parse public sudoku
+        let sudoku = Self::from_public_input(sys, public_sudoku);
+
+        // parse witness
+        let witness = Self::from_witness(sys, witness);
+
+        // reconstruct full sudoku
+        let mut thing = vec![];
+        for row in 0..9 {
+            let mut column = vec![];
+            for col in 0..9 {
+                let is_empty = sudoku.is_empty(sys, row, col);
+                let cell = sudoku.get(row, col);
+                let solved = witness.get(row, col);
+                let val = sys.cond_select(is_empty, solved, cell);
+                column.push(val);
+            }
+            thing.push(column);
+        }
+
+        Self(thing)
+    }
+
     fn from_witness<Sys>(sys: &mut Sys, solution: Option<&Sudoku<F>>) -> Self
     where
         Sys: Cs<F>,
@@ -180,9 +193,8 @@ where
         let one = sys.constant(F::one());
         let mut res = sys.constant(F::one());
 
-        /*
         let mut check_vars = |vars: &[Var<F>]| {
-            for num in 0..9u32 {
+            for num in 1..=9u32 {
                 // must be 1 at the end
                 let mut in_row = sys.constant(F::zero());
                 let num = sys.constant(F::from(num));
@@ -218,14 +230,13 @@ where
         let other_diag: Vec<_> = self
             .0
             .iter()
-            .zip(8..=0)
+            .zip((0..=8).rev())
             .map(|(row, idx)| row[idx])
             .collect();
         check_vars(&other_diag);
 
         // assert
         sys.assert_eq(res, one);
-        */
 
         // TODO: it's really a pain to do anything because there's no add, sub, etc. implemented on Var
     }
@@ -263,56 +274,24 @@ pub fn sudoku_prove<F, G, Sys>(
     G: AffineCurve<BaseField = F> + CoordinateCurve,
     Sys: Cs<F>,
 {
-    // parse public sudoku
-    let sudoku = SudokuVar::from_public_input(sys, public_input);
+    // 1. reconstruct the sudoku
+    let sudoku = SudokuVar::new(sys, public_input, witness);
 
-    // parse witness
-    let witness = SudokuVar::from_witness(sys, witness);
-
-    // reconstruct full sudoku
-    let mut rows = vec![];
-    for row in 0..9 {
-        let mut column = vec![];
-        for col in 0..9 {
-            let is_empty = sudoku.is_empty(sys, row, col);
-            let cell = sudoku.get(row, col);
-            let solved = witness.get(row, col);
-            //let val = sys.cond_select(is_empty, solved, cell);
-            //column.push(val);
-            column.push(cell);
-        }
-        rows.push(column);
-        break;
-    }
-
-    //let sudoku = SudokuVar(rows);
-
-    //sudoku.debug(sys);
-
-    /*
     // 2. verify it
     sudoku.verify(sys);
-    */
-
-    // 3. add zk
-    //sys.zk()
 }
-
-//
-// Test
-//
 
 #[test]
 fn test_sudoku() {
     // generate SRS
     let srs = {
-        let mut srs = SRS::<Affine>::create(1 << 10);
-        srs.add_lagrange_basis(D::new(256).unwrap());
+        let mut srs = SRS::<Affine>::create(1 << 14); // 2^8 = 256
+        srs.add_lagrange_basis(D::new(srs.g.len()).unwrap());
         Arc::new(srs)
     };
 
     // generate sudoku + solution for example
-    let sudoku = Sudoku::<BaseField<Other>>::new_problem();
+    let sudoku = Sudoku::<<FpInner as Cycle>::InnerField>::new_problem();
     let solution = Sudoku::solution();
 
     // compile circuit
