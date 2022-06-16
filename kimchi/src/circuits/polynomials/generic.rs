@@ -336,12 +336,22 @@ pub mod testing {
             ensure_eq!(self.typ, GateType::Generic, "generic: incorrect gate");
 
             let check_single = |coeffs_offset, register_offset| {
-                let sum = self.coeffs[coeffs_offset] * this[register_offset]
-                    + self.coeffs[coeffs_offset + 1] * this[register_offset + 1]
-                    + self.coeffs[coeffs_offset + 2] * this[register_offset + 2];
-                let mul = self.coeffs[coeffs_offset + 3]
-                    * this[register_offset]
-                    * this[register_offset + 1];
+                let get = |offset| {
+                    self.coeffs
+                        .get(offset)
+                        .cloned()
+                        .unwrap_or_else(|| F::zero())
+                };
+                let l_coeff = get(coeffs_offset);
+                let r_coeff = get(coeffs_offset + 1);
+                let o_coeff = get(coeffs_offset + 2);
+                let m_coeff = get(coeffs_offset + 3);
+                let c_coeff = get(coeffs_offset + 4);
+
+                let sum = l_coeff * this[register_offset]
+                    + r_coeff * this[register_offset + 1]
+                    + o_coeff * this[register_offset + 2];
+                let mul = m_coeff * this[register_offset] * this[register_offset + 1];
                 let public = if coeffs_offset == 0 {
                     public.get(row).cloned().unwrap_or_else(F::zero)
                 } else {
@@ -349,7 +359,7 @@ pub mod testing {
                 };
                 ensure_eq!(
                     zero,
-                    sum + mul + self.coeffs[coeffs_offset + 4] - public,
+                    sum + mul + c_coeff - public,
                     "generic: incorrect gate"
                 );
                 Ok(())
