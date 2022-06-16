@@ -399,40 +399,66 @@ pub trait Cs<F: PrimeField>: Sized {
                 F::zero()
             }
         });
-
         // 1 - res
+        // TODO: none of this is taking advantage of the double generic gate...
         let one_minus_res = self.var(|| F::one() - res.val());
-
-        let left = (None, Some(self.constant(F::one())));
-        let right = (Some(-F::one()), Some(res));
-        let output = (None, Some(one_minus_res));
-        let gen = DoubleGenericGateSpec::default().add(self, left, right, output);
-        {
-            let els: HashMap<_, _> = (0..=9u32).map(|i| (F::from(i), i)).collect();
-
-            self.debug(|| {
-                println!(
-                    "1 - {res} = {one_minus_res}",
-                    one_minus_res = els[&one_minus_res.val()],
-                    res = els[&res.val()]
-                );
-            });
-        }
-
+        let row = array_init(|i| {
+            if i == 0 {
+                self.constant(F::one())
+            } else if i == 1 {
+                res
+            } else if i == 2 {
+                one_minus_res
+            } else {
+                self.var(|| F::zero())
+            }
+        });
+        let mut coeffs = vec![F::zero(); GENERIC_ROW_COEFFS];
+        coeffs[0] = F::one(); // 1
+        coeffs[1] = -F::one(); // 1 - res
+        coeffs[2] = -F::one(); // 1 - res - one_minus_res = 0
+        self.gate(GateSpec {
+            typ: GateType::Generic,
+            row,
+            coeffs,
+        });
         // z_inv * z = 1 - res
-        /*
-        let gen = gen.mul(
-            self,
-            None,
-            Some(inv),
-            Some(diff),
-            (None, Some(one_minus_res)),
-        );
-        */
-
+        let row = array_init(|i| {
+            if i == 0 {
+                inv
+            } else if i == 1 {
+                diff
+            } else if i == 2 {
+                one_minus_res
+            } else {
+                self.var(|| F::zero())
+            }
+        });
+        let mut coeffs = vec![F::zero(); GENERIC_ROW_COEFFS];
+        coeffs[2] = -F::one(); // - one_minus_res
+        coeffs[3] = F::one(); // inv * diff - one_minus_res = 0
+        self.gate(GateSpec {
+            typ: GateType::Generic,
+            row,
+            coeffs,
+        });
         // res * z = 0
-        //        let gen = gen.mul(self, None, Some(res), Some(diff), (None, None));
-        //gen.finalize(self);
+        let row = array_init(|i| {
+            if i == 0 {
+                res
+            } else if i == 1 {
+                diff
+            } else {
+                self.var(|| F::zero())
+            }
+        });
+        let mut coeffs = vec![F::zero(); GENERIC_ROW_COEFFS];
+        coeffs[3] = F::one(); // res * diff = 0
+        self.gate(GateSpec {
+            typ: GateType::Generic,
+            row,
+            coeffs,
+        });
 
         res
     }
