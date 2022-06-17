@@ -276,7 +276,7 @@ $$
 t_0[i] + j t_1[i] + j^2 t_2[i] = t_0[l] + j t_1[l] + j^2 t_2[l]
 $$
 
-For example, if $f = \{1, 2, 2, 3\}$ and $t = \{2, 1, 2, 3\}$, then $\text{sorted}(f, t) = \{2, 2, 1, 1, 2, 3\}$ would be one way of sorting things out. But $\text{sorted}(f, t) = \{2, 2, 2, 1, 1, 3\}$ would be incorrect.
+For example, if $f = \{1, 2, 2, 3\}$ and $t = \{2, 1, 2, 3\}$, then $\text{sorted}(f, t) = \{2, 2, 2, 1, 1, 2, 3, 3\}$ would be one way of sorting things out. But $\text{sorted}(f, t) = \{ 2, 2, 2, 2, 1, 1, 3, 3 \}$ would be incorrect.
 
 
 ## Recap

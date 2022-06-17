@@ -53,3 +53,4 @@ To obtain a flamegraph:
     the [binary](src/bin/flamegraph.rs) will run forever, so you have to C-c to exit and produce the `flamegraph.svg` file.
 
 Note: lots of good advice on system performance in the [flamegraph repo](https://github.com/flamegraph-rs/flamegraph#systems-performance-work-guided-by-flamegraphs).
+

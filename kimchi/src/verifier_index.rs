@@ -18,7 +18,6 @@ use commitment_dlog::{
     commitment::{CommitmentCurve, PolyComm},
     srs::SRS,
 };
-use o1_utils::types::fields::*;
 use once_cell::sync::OnceCell;
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -59,7 +58,7 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 pub struct VerifierIndex<G: CommitmentCurve> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub domain: D<ScalarField<G>>,
+    pub domain: D<G::ScalarField>,
     /// maximal size of polynomial section
     pub max_poly_size: usize,
     /// maximal size of the quotient polynomial according to the supported constraints
@@ -108,32 +107,32 @@ pub struct VerifierIndex<G: CommitmentCurve> {
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
-    pub shift: [ScalarField<G>; PERMUTS],
+    pub shift: [G::ScalarField; PERMUTS],
     /// zero-knowledge polynomial
     #[serde(skip)]
-    pub zkpm: OnceCell<DensePolynomial<ScalarField<G>>>,
+    pub zkpm: OnceCell<DensePolynomial<G::ScalarField>>,
     // TODO(mimoo): isn't this redundant with domain.d1.group_gen ?
     /// domain offset for zero-knowledge
     #[serde(skip)]
-    pub w: OnceCell<ScalarField<G>>,
+    pub w: OnceCell<G::ScalarField>,
     /// endoscalar coefficient
     #[serde(skip)]
-    pub endo: ScalarField<G>,
+    pub endo: G::ScalarField,
 
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub lookup_index: Option<LookupVerifierIndex<G>>,
 
     #[serde(skip)]
-    pub linearization: Linearization<Vec<PolishToken<ScalarField<G>>>>,
+    pub linearization: Linearization<Vec<PolishToken<G::ScalarField>>>,
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
-    pub powers_of_alpha: Alphas<ScalarField<G>>,
+    pub powers_of_alpha: Alphas<G::ScalarField>,
 
     // random oracle argument parameters
     #[serde(skip)]
-    pub fr_sponge_params: ArithmeticSpongeParams<ScalarField<G>>,
+    pub fr_sponge_params: ArithmeticSpongeParams<G::ScalarField>,
     #[serde(skip)]
-    pub fq_sponge_params: ArithmeticSpongeParams<BaseField<G>>,
+    pub fq_sponge_params: ArithmeticSpongeParams<G::BaseField>,
 }
 //~spec:endcode
 
@@ -259,12 +258,12 @@ where
     }
 
     /// Gets zkpm from [VerifierIndex] lazily
-    pub fn zkpm(&self) -> &DensePolynomial<ScalarField<G>> {
+    pub fn zkpm(&self) -> &DensePolynomial<G::ScalarField> {
         self.zkpm.get_or_init(|| zk_polynomial(self.domain))
     }
 
     /// Gets w from [VerifierIndex] lazily
-    pub fn w(&self) -> &ScalarField<G> {
+    pub fn w(&self) -> &G::ScalarField {
         self.w.get_or_init(|| zk_w3(self.domain))
     }
 
@@ -275,8 +274,8 @@ where
         offset: Option<u64>,
         // TODO: we shouldn't have to pass these
         endo: G::ScalarField,
-        fq_sponge_params: ArithmeticSpongeParams<BaseField<G>>,
-        fr_sponge_params: ArithmeticSpongeParams<ScalarField<G>>,
+        fq_sponge_params: ArithmeticSpongeParams<G::BaseField>,
+        fr_sponge_params: ArithmeticSpongeParams<G::ScalarField>,
     ) -> Result<Self, String> {
         // open file
         let file = File::open(path).map_err(|e| e.to_string())?;

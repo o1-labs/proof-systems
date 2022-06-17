@@ -71,25 +71,25 @@ fn connect_cell_pair(wires: &mut [GateWires], cell1: (usize, usize), cell2: (usi
 }
 
 impl<F: FftField + SquareRootField> CircuitGate<F> {
-    /// Create range check gate
+    /// Create range check gate for constraining three 88-bit values.
     ///     Inputs the starting row
     ///     Outputs tuple (next_row, circuit_gates) where
     ///       next_row      - next row after this gate
     ///       circuit_gates - vector of circuit gates comprising this gate
-    pub fn create_range_check(start_row: usize) -> (usize, Vec<Self>) {
+    pub fn create_multi_range_check(start_row: usize) -> (usize, Vec<Self>) {
         let mut wires: Vec<GateWires> = (0..4).map(|i| Wire::new(start_row + i)).collect();
 
-        // copy a0p4
-        connect_cell_pair(&mut wires, (0, 5), (3, 1));
+        // copy v0p0
+        connect_cell_pair(&mut wires, (0, 1), (3, 3));
 
-        // copy a0p5
-        connect_cell_pair(&mut wires, (0, 6), (3, 2));
+        // copy v0p1
+        connect_cell_pair(&mut wires, (0, 2), (3, 4));
 
-        // copy a1p4
-        connect_cell_pair(&mut wires, (1, 5), (3, 3));
+        // copy v1p0
+        connect_cell_pair(&mut wires, (1, 1), (3, 5));
 
-        // copy a1p5
-        connect_cell_pair(&mut wires, (1, 6), (3, 4));
+        // copy v1p1
+        connect_cell_pair(&mut wires, (1, 2), (3, 6));
 
         let circuit_gates = vec![
             CircuitGate {
@@ -115,6 +115,22 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
         ];
 
         (start_row + circuit_gates.len(), circuit_gates)
+    }
+
+    /// Create single range check gate
+    ///     Inputs the starting row
+    ///     Outputs tuple (next_row, circuit_gates) where
+    ///       next_row      - next row after this gate
+    ///       circuit_gates - vector of circuit gates comprising this gate
+    pub fn create_range_check(start_row: usize) -> (usize, Vec<Self>) {
+        (
+            start_row + 1,
+            vec![CircuitGate {
+                typ: GateType::RangeCheck0,
+                wires: Wire::new(start_row),
+                coeffs: vec![],
+            }],
+        )
     }
 
     /// Verify the witness against a range check (related) circuit gate
@@ -467,7 +483,10 @@ mod tests {
             constraints::ConstraintSystem,
             gate::{CircuitGate, GateType},
             polynomial::COLUMNS,
-            polynomials::range_check::{self, GateError},
+            polynomials::{
+                generic::GenericGateSpec,
+                range_check::{self, GateError},
+            },
             wires::Wire,
         },
         proof::ProverProof,
@@ -484,7 +503,7 @@ mod tests {
     type PallasField = <pallas::Affine as AffineCurve>::BaseField;
 
     fn create_test_constraint_system() -> ConstraintSystem<PallasField> {
-        let (mut next_row, mut gates) = CircuitGate::<PallasField>::create_range_check(0);
+        let (mut next_row, mut gates) = CircuitGate::<PallasField>::create_multi_range_check(0);
 
         // Temporary workaround for lookup-table/domain-size issue
         for _ in 0..(1 << 13) {
@@ -500,7 +519,7 @@ mod tests {
     fn create_test_prover_index(
         public_size: usize,
     ) -> ProverIndex<mina_curves::pasta::vesta::Affine> {
-        let (mut next_row, mut gates) = CircuitGate::<PallasField>::create_range_check(0);
+        let (mut next_row, mut gates) = CircuitGate::<PallasField>::create_multi_range_check(0);
 
         // Temporary workaround for lookup-table/domain-size issue
         for _ in 0..(1 << 13) {
@@ -545,7 +564,7 @@ mod tests {
     fn verify_range_check0_valid_witness() {
         let cs = create_test_constraint_system();
 
-        let witness = range_check::create_witness::<PallasField>(
+        let witness = range_check::create_multi_witness::<PallasField>(
             PallasField::from_hex(
                 "115655443433221211ffef000000000000000000000000000000000000000000",
             )
@@ -566,7 +585,7 @@ mod tests {
         // gates[1] is RangeCheck0
         assert_eq!(cs.gates[1].verify_range_check(1, &witness, &cs), Ok(()));
 
-        let witness = range_check::create_witness::<PallasField>(
+        let witness = range_check::create_multi_witness::<PallasField>(
             PallasField::from_hex(
                 "23d406ac800d1af73040dd000000000000000000000000000000000000000000",
             )
@@ -592,7 +611,7 @@ mod tests {
     fn verify_range_check0_invalid_witness() {
         let cs = create_test_constraint_system();
 
-        let mut witness = range_check::create_witness::<PallasField>(
+        let mut witness = range_check::create_multi_witness::<PallasField>(
             PallasField::from_hex(
                 "22f6b4e7ecb4488433ade7000000000000000000000000000000000000000000",
             )
@@ -608,7 +627,7 @@ mod tests {
         );
 
         // Invalidate witness copy constraint
-        witness[5][0] += PallasField::one();
+        witness[1][0] += PallasField::one();
 
         // gates[0] is RangeCheck0
         assert_eq!(
@@ -617,7 +636,7 @@ mod tests {
         );
 
         // Invalidate witness copy constraint
-        witness[6][1] += PallasField::one();
+        witness[2][1] += PallasField::one();
 
         // gates[1] is RangeCheck0
         assert_eq!(
@@ -625,7 +644,7 @@ mod tests {
             Err(GateError::InvalidCopyConstraint(GateType::RangeCheck0))
         );
 
-        let mut witness = range_check::create_witness::<PallasField>(
+        let mut witness = range_check::create_multi_witness::<PallasField>(
             PallasField::from_hex(
                 "22cab5e27101eeafd2cbe1000000000000000000000000000000000000000000",
             )
@@ -663,7 +682,7 @@ mod tests {
     fn verify_range_check0_valid_v0_in_range() {
         let cs = create_test_constraint_system();
 
-        let witness = range_check::create_witness::<PallasField>(
+        let witness = range_check::create_multi_witness::<PallasField>(
             PallasField::from(PallasField::from(2u64).pow([88]) - PallasField::one()),
             PallasField::zero(),
             PallasField::zero(),
@@ -672,7 +691,7 @@ mod tests {
         // gates[0] is RangeCheck0 and contains v0
         assert_eq!(cs.gates[0].verify_range_check(0, &witness, &cs), Ok(()));
 
-        let witness = range_check::create_witness::<PallasField>(
+        let witness = range_check::create_multi_witness::<PallasField>(
             PallasField::from(PallasField::from(2u64).pow([64])),
             PallasField::zero(),
             PallasField::zero(),
@@ -681,7 +700,7 @@ mod tests {
         // gates[0] is RangeCheck0 and contains v0
         assert_eq!(cs.gates[0].verify_range_check(0, &witness, &cs), Ok(()));
 
-        let witness = range_check::create_witness::<PallasField>(
+        let witness = range_check::create_multi_witness::<PallasField>(
             PallasField::from(42u64),
             PallasField::zero(),
             PallasField::zero(),
@@ -690,7 +709,7 @@ mod tests {
         // gates[0] is RangeCheck0 and contains v0
         assert_eq!(cs.gates[0].verify_range_check(0, &witness, &cs), Ok(()));
 
-        let witness = range_check::create_witness::<PallasField>(
+        let witness = range_check::create_multi_witness::<PallasField>(
             PallasField::one(),
             PallasField::zero(),
             PallasField::zero(),
@@ -704,7 +723,7 @@ mod tests {
     fn verify_range_check0_valid_v1_in_range() {
         let cs = create_test_constraint_system();
 
-        let witness = range_check::create_witness::<PallasField>(
+        let witness = range_check::create_multi_witness::<PallasField>(
             PallasField::zero(),
             PallasField::from(PallasField::from(2u64).pow([88]) - PallasField::one()),
             PallasField::zero(),
@@ -713,7 +732,7 @@ mod tests {
         // gates[1] is RangeCheck0 and contains v1
         assert_eq!(cs.gates[1].verify_range_check(1, &witness, &cs), Ok(()));
 
-        let witness = range_check::create_witness::<PallasField>(
+        let witness = range_check::create_multi_witness::<PallasField>(
             PallasField::zero(),
             PallasField::from(PallasField::from(2u64).pow([63])),
             PallasField::zero(),
@@ -722,7 +741,7 @@ mod tests {
         // gates[1] is RangeCheck0 and contains v1
         assert_eq!(cs.gates[1].verify_range_check(1, &witness, &cs), Ok(()));
 
-        let witness = range_check::create_witness::<PallasField>(
+        let witness = range_check::create_multi_witness::<PallasField>(
             PallasField::zero(),
             PallasField::from(48u64),
             PallasField::zero(),
@@ -731,7 +750,7 @@ mod tests {
         // gates[1] is RangeCheck0 and contains v1
         assert_eq!(cs.gates[1].verify_range_check(1, &witness, &cs), Ok(()));
 
-        let witness = range_check::create_witness::<PallasField>(
+        let witness = range_check::create_multi_witness::<PallasField>(
             PallasField::zero(),
             PallasField::one() + PallasField::one(),
             PallasField::zero(),
@@ -745,7 +764,7 @@ mod tests {
     fn verify_range_check0_invalid_v0_not_in_range() {
         let cs = create_test_constraint_system();
 
-        let witness = range_check::create_witness::<PallasField>(
+        let witness = range_check::create_multi_witness::<PallasField>(
             PallasField::from(2u64).pow([88]), // out of range
             PallasField::zero(),
             PallasField::zero(),
@@ -757,7 +776,7 @@ mod tests {
             Err(GateError::InvalidConstraint(GateType::RangeCheck0))
         );
 
-        let witness = range_check::create_witness::<PallasField>(
+        let witness = range_check::create_multi_witness::<PallasField>(
             PallasField::from(2u64).pow([96]), // out of range
             PallasField::zero(),
             PallasField::zero(),
@@ -774,7 +793,7 @@ mod tests {
     fn verify_range_check0_invalid_v1_not_in_range() {
         let cs = create_test_constraint_system();
 
-        let witness = range_check::create_witness::<PallasField>(
+        let witness = range_check::create_multi_witness::<PallasField>(
             PallasField::zero(),
             PallasField::from(2u64).pow([88]), // out of range
             PallasField::zero(),
@@ -786,7 +805,7 @@ mod tests {
             Err(GateError::InvalidConstraint(GateType::RangeCheck0))
         );
 
-        let witness = range_check::create_witness::<PallasField>(
+        let witness = range_check::create_multi_witness::<PallasField>(
             PallasField::zero(),
             PallasField::from(2u64).pow([96]), // out of range
             PallasField::zero(),
@@ -800,12 +819,46 @@ mod tests {
     }
 
     #[test]
+    fn verify_range_check0_test_copy_constraints() {
+        let cs = create_test_constraint_system();
+
+        for row in 0..=1 {
+            for col in 1..=2 {
+                // Copy constraints impact v0 and v1
+                let mut witness = range_check::create_multi_witness::<PallasField>(
+                    PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
+                    PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
+                    PallasField::zero(),
+                );
+
+                // Positive test case (gates[0] is a RangeCheck0 circuit gate)
+                assert_eq!(cs.gates[0].verify_range_check(0, &witness, &cs), Ok(()));
+
+                // Positive test case (gates[1] is a RangeCheck0 circuit gate)
+                assert_eq!(cs.gates[1].verify_range_check(1, &witness, &cs), Ok(()));
+
+                // Negative test cases by breaking a copy constraint
+                assert_ne!(witness[col][row], PallasField::zero());
+                witness[col][row] = PallasField::zero();
+                assert_eq!(
+                    cs.gates[0].verify_range_check(0, &witness, &cs),
+                    Err(GateError::InvalidCopyConstraint(GateType::RangeCheck0))
+                );
+                assert_eq!(
+                    cs.gates[1].verify_range_check(1, &witness, &cs),
+                    Err(GateError::InvalidCopyConstraint(GateType::RangeCheck0))
+                );
+            }
+        }
+    }
+
+    #[test]
     fn verify_range_check0_v0_test_lookups() {
         let cs = create_test_constraint_system();
 
-        for i in 1..=4 {
+        for i in 3..=6 {
             // Test ith lookup
-            let mut witness = range_check::create_witness::<PallasField>(
+            let mut witness = range_check::create_multi_witness::<PallasField>(
                 PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
                 PallasField::zero(),
                 PallasField::zero(),
@@ -833,9 +886,9 @@ mod tests {
     fn verify_range_check0_v1_test_lookups() {
         let cs = create_test_constraint_system();
 
-        for i in 1..=4 {
+        for i in 3..=6 {
             // Test ith lookup
-            let mut witness = range_check::create_witness::<PallasField>(
+            let mut witness = range_check::create_multi_witness::<PallasField>(
                 PallasField::zero(),
                 PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
                 PallasField::zero(),
@@ -884,7 +937,7 @@ mod tests {
     fn verify_range_check1_valid_witness() {
         let cs = create_test_constraint_system();
 
-        let witness = range_check::create_witness::<PallasField>(
+        let witness = range_check::create_multi_witness::<PallasField>(
             PallasField::from_hex(
                 "22cab5e27101eeafd2cbe1000000000000000000000000000000000000000000",
             )
@@ -902,7 +955,7 @@ mod tests {
         // gates[2] is RangeCheck1
         assert_eq!(cs.gates[2].verify_range_check(2, &witness, &cs), Ok(()));
 
-        let witness = range_check::create_witness::<PallasField>(
+        let witness = range_check::create_multi_witness::<PallasField>(
             PallasField::from_hex(
                 "0d96f6fc210316c73bcc4d000000000000000000000000000000000000000000",
             )
@@ -925,7 +978,7 @@ mod tests {
     fn verify_range_check1_invalid_witness() {
         let cs = create_test_constraint_system();
 
-        let mut witness = range_check::create_witness::<PallasField>(
+        let mut witness = range_check::create_multi_witness::<PallasField>(
             PallasField::from_hex(
                 "2ce2d3ac942f98d59e7e11000000000000000000000000000000000000000000",
             )
@@ -949,7 +1002,7 @@ mod tests {
             Err(GateError::InvalidConstraint(GateType::RangeCheck1))
         );
 
-        let mut witness = range_check::create_witness::<PallasField>(
+        let mut witness = range_check::create_multi_witness::<PallasField>(
             PallasField::from_hex(
                 "1bd50c94d2dc83d32f01c0000000000000000000000000000000000000000000",
             )
@@ -965,7 +1018,7 @@ mod tests {
         );
 
         // Corrupt witness
-        witness[13][2] = witness[1][2];
+        witness[13][2] = witness[3][2];
 
         // gates[2] is RangeCheck1
         assert_eq!(
@@ -978,7 +1031,7 @@ mod tests {
     fn verify_range_check1_valid_v2_in_range() {
         let cs = create_test_constraint_system();
 
-        let witness = range_check::create_witness::<PallasField>(
+        let witness = range_check::create_multi_witness::<PallasField>(
             PallasField::zero(),
             PallasField::zero(),
             PallasField::from(PallasField::from(2u64).pow([88]) - PallasField::one()),
@@ -987,7 +1040,7 @@ mod tests {
         // gates[2] is RangeCheck1 and constrains v2
         assert_eq!(cs.gates[2].verify_range_check(2, &witness, &cs), Ok(()));
 
-        let witness = range_check::create_witness::<PallasField>(
+        let witness = range_check::create_multi_witness::<PallasField>(
             PallasField::zero(),
             PallasField::zero(),
             PallasField::from(PallasField::from(2u64).pow([64])),
@@ -996,7 +1049,7 @@ mod tests {
         // gates[2] is RangeCheck1 and constrains v2
         assert_eq!(cs.gates[2].verify_range_check(2, &witness, &cs), Ok(()));
 
-        let witness = range_check::create_witness::<PallasField>(
+        let witness = range_check::create_multi_witness::<PallasField>(
             PallasField::zero(),
             PallasField::zero(),
             PallasField::from(42u64),
@@ -1005,7 +1058,7 @@ mod tests {
         // gates[2] is RangeCheck1 and constrains v2
         assert_eq!(cs.gates[2].verify_range_check(2, &witness, &cs), Ok(()));
 
-        let witness = range_check::create_witness::<PallasField>(
+        let witness = range_check::create_multi_witness::<PallasField>(
             PallasField::zero(),
             PallasField::zero(),
             PallasField::one(),
@@ -1019,7 +1072,7 @@ mod tests {
     fn verify_range_check1_invalid_v2_not_in_range() {
         let cs = create_test_constraint_system();
 
-        let witness = range_check::create_witness::<PallasField>(
+        let witness = range_check::create_multi_witness::<PallasField>(
             PallasField::zero(),
             PallasField::zero(),
             PallasField::from(2u64).pow([88]), // out of range
@@ -1031,7 +1084,7 @@ mod tests {
             Err(GateError::InvalidConstraint(GateType::RangeCheck1))
         );
 
-        let witness = range_check::create_witness::<PallasField>(
+        let witness = range_check::create_multi_witness::<PallasField>(
             PallasField::zero(),
             PallasField::zero(),
             PallasField::from(2u64).pow([96]), // out of range
@@ -1049,8 +1102,9 @@ mod tests {
         let cs = create_test_constraint_system();
 
         for row in 0..=1 {
-            for col in 5..=6 {
-                let mut witness = range_check::create_witness::<PallasField>(
+            for col in 1..=2 {
+                // Copy constraints impact v0 and v1
+                let mut witness = range_check::create_multi_witness::<PallasField>(
                     PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
                     PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
                     PallasField::zero(),
@@ -1060,6 +1114,7 @@ mod tests {
                 assert_eq!(cs.gates[2].verify_range_check(2, &witness, &cs), Ok(()));
 
                 // Negative test case by breaking a copy constraint
+                assert_ne!(witness[col][row], PallasField::zero());
                 witness[col][row] = PallasField::zero();
                 assert_eq!(
                     cs.gates[2].verify_range_check(2, &witness, &cs),
@@ -1073,9 +1128,9 @@ mod tests {
     fn verify_range_check1_test_curr_row_lookups() {
         let cs = create_test_constraint_system();
 
-        for i in 1..=4 {
-            // Test ith lookup
-            let mut witness = range_check::create_witness::<PallasField>(
+        for i in 3..=6 {
+            // Test ith lookup (impacts v2)
+            let mut witness = range_check::create_multi_witness::<PallasField>(
                 PallasField::zero(),
                 PallasField::zero(),
                 PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
@@ -1105,21 +1160,21 @@ mod tests {
         let cs = create_test_constraint_system();
 
         for row in 0..=1 {
-            for col in 5..=6 {
-                let mut witness = range_check::create_witness::<PallasField>(
+            for col in 1..=2 {
+                let mut witness = range_check::create_multi_witness::<PallasField>(
                     PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
                     PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
                     PallasField::zero(),
                 );
 
                 // Positive test case (gates[2] is RangeCheck1 and constrains
-                // both v0's and v1's deferred lookups)
+                // both v0's and v1's lookups that are deferred to 4th row)
                 assert_eq!(cs.gates[2].verify_range_check(2, &witness, &cs), Ok(()));
 
                 // Negative test by making plookup limb out of range
                 // and making sure copy constraint is valid
                 witness[col][row] = PallasField::from(2u64.pow(12));
-                witness[col - 5 + 2 * row + 1][3] = PallasField::from(2u64.pow(12));
+                witness[col - 1 + 2 * row + 3][3] = PallasField::from(2u64.pow(12));
                 assert_eq!(
                     cs.gates[2].verify_range_check(2, &witness, &cs),
                     Err(GateError::InvalidLookupConstraintSorted(
@@ -1128,6 +1183,69 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn verify_64_bit_range_check() {
+        // Test circuit layout
+        //    Row Gate        Cells       Description
+        //      0 GenericPub  0 <-,-, ... Used to get a cell with zero
+        //      1 RangeCheck0 v0  0 0 ... Wire cells 1 and 2 to 1st cell 0 of GenericPub
+        let mut gates = vec![];
+        gates.push(CircuitGate::<PallasField>::create_generic_gadget(
+            Wire::new(0),
+            GenericGateSpec::Pub,
+            None,
+        ));
+        gates.append(&mut CircuitGate::<PallasField>::create_range_check(1).1);
+        gates[1].wires[1] = Wire { row: 1, col: 2 };
+        gates[1].wires[2] = Wire { row: 0, col: 0 };
+        gates[0].wires[0] = Wire { row: 1, col: 1 };
+
+        // Temporary workaround for lookup-table/domain-size issue
+        let mut next_row = 2;
+        for _ in 0..(1 << 13) {
+            gates.push(CircuitGate::zero(Wire::new(next_row)));
+            next_row += 1;
+        }
+
+        // Create constraint system
+        let cs = ConstraintSystem::create(gates, oracle::pasta::fp_kimchi::params())
+            .build()
+            .unwrap();
+
+        // Witness layout (positive test case)
+        //   Row 0 1 2 3 ... 14  Gate
+        //   0   0 0 0 0 ... 0   GenericPub
+        //   1   0 0 X X ... X   RangeCheck0
+        let mut witness: [Vec<PallasField>; COLUMNS] = array_init(|_| vec![PallasField::zero()]);
+        range_check::create_witness::<PallasField>(
+            PallasField::from(2u64).pow([64]) - PallasField::one(), // in range
+        )
+        .iter_mut()
+        .enumerate()
+        .for_each(|(row, col)| witness[row].append(col));
+
+        // Positive test case
+        assert_eq!(cs.gates[1].verify_range_check(1, &witness, &cs), Ok(()));
+
+        // Witness layout (negative test case)
+        //   Row 0 1 2 3 ... 14  Gate
+        //   0   0 0 0 0 ... 0   GenericPub
+        //   1   0 X X X ... X   RangeCheck0
+        let mut witness: [Vec<PallasField>; COLUMNS] = array_init(|_| vec![PallasField::zero()]);
+        range_check::create_witness::<PallasField>(
+            PallasField::from(2u64).pow([64]), // out of range
+        )
+        .iter_mut()
+        .enumerate()
+        .for_each(|(row, col)| witness[row].append(col));
+
+        // Negative test case
+        assert_eq!(
+            cs.gates[1].verify_range_check(1, &witness, &cs),
+            Err(GateError::InvalidCopyConstraint(GateType::RangeCheck0))
+        );
     }
 
     use crate::{prover_index::ProverIndex, verifier::verify};
@@ -1149,7 +1267,7 @@ mod tests {
         let prover_index = create_test_prover_index(0);
 
         // Create witness
-        let witness = range_check::create_witness::<PallasField>(
+        let witness = range_check::create_multi_witness::<PallasField>(
             PallasField::from_hex(
                 "2bc0afaa2f6f50b1d1424b000000000000000000000000000000000000000000",
             )
