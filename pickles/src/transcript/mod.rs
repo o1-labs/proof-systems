@@ -5,9 +5,11 @@ use ark_ff::{BigInteger, FftField, FpParameters, PrimeField};
 mod sponge;
 mod utils;
 
-use super::Context;
+use super::{Context};
 
-pub use sponge::{Absorb, VarSponge};
+use crate::context:: PassedField;
+
+pub use sponge::{Absorb, Challenge, VarSponge};
 
 use std::mem;
 use std::ops::{Deref, DerefMut};
@@ -23,16 +25,15 @@ struct Public<F: FftField + PrimeField> {
 
 // A "container type"
 struct Side<F: FftField + PrimeField> {
-    sponge: VarSponge<F>, // sponge constrained inside the proof system
-    merged: bool,         // has the current state been merged with the other side?
+    constants: Constants<F>,
+    sponge: Option<VarSponge<F>>, // sponge constrained inside the proof system
 }
 
 impl<F: FftField + PrimeField> Side<F> {
     fn new(constants: Constants<F>) -> Self {
         Self {
-            sponge: VarSponge::new(constants.clone()),
-            merged: true, // sponges start "syncronized":
-                          // the empty Fr transcript has been absorbed into the Fp sponge by definition
+            sponge: None,
+            constants
         }
     }
 }
@@ -55,17 +56,6 @@ where
     inner: Option<Inner<Fp, Fr, CsFp, CsFr>>,
 }
 
-/// Describes a type which can be "squeezed" (generated) from the sponge
-pub trait Challenge<F: FftField + PrimeField> {
-    fn generate<C: Cs<F>>(cs: &mut C, sponge: &mut VarSponge<F>) -> Self;
-}
-
-// Can generate a variable from the same field
-impl<F: FftField + PrimeField> Challenge<F> for Var<F> {
-    fn generate<C: Cs<F>>(cs: &mut C, sponge: &mut VarSponge<F>) -> Self {
-        sponge.squeeze(cs)
-    }
-}
 
 pub struct Msg<T> {
     value: T,
@@ -152,29 +142,10 @@ where
         msg
     }
 
-    #[must_use]
-    pub fn recv_fr<H: Absorb<Fr>>(
-        &mut self,
-        ctx: &mut Context<Fp, Fr, CsFp, CsFr>,
-        msg: Msg<H>,
-    ) -> H {
-        ctx.flip(|ctx| {
-            // flip the context
-            self.flip(|m| {
-                // flip the transcript
-                m.recv(ctx, msg) // receive
-            })
-        })
-    }
+    // invoke scope without affecting the current sponge state
+    // essentially "branches", this requires a scope
+    pub fn fork() {
 
-    #[must_use]
-    pub fn challenge_fr<C: Challenge<Fr>>(&mut self, ctx: &mut Context<Fp, Fr, CsFp, CsFr>) -> C {
-        ctx.flip(|ctx| {
-            self.flip(|m| {
-                // flip the transcript
-                m.challenge(ctx)
-            })
-        })
     }
 }
 
@@ -193,40 +164,43 @@ where
         }
     }
 
-    /// Receive a message from the prover
-    #[must_use]
-    fn recv_old<H: Absorb<Fp>>(&mut self, ctx: &mut Context<Fp, Fr, CsFp, CsFr>, msg: Msg<H>) -> H {
-        self.fp.merged = false; // state updated since last squeeze
-        msg.value.absorb(&mut ctx.fp.cs, &mut self.fp.sponge);
-        msg.value
+    // do not invoke this manually
+    fn fp_sponge(&mut self, ctx: &mut Context<Fp, Fr, CsFp, CsFr>) -> &mut VarSponge<Fp> {
+        // initialize Fp sponge
+        let st_fp = self.fp.sponge.get_or_insert_with(|| {
+            VarSponge::new(self.fp.constants.clone())
+        });
+        
+        // check if Fr side is not none
+        if let Some(mut fr_st) = self.fr.sponge.take() {
+            // compute digest in other side and pass over
+            let hsh_fr: PassedField<Fp> = ctx.flip(|ctx| {
+                let st_fr: Var<Fr> = fr_st.challenge(&mut ctx.fp.cs);
+                ctx.pass(st_fr)
+            });
+
+            // absorb in Fp
+            hsh_fr.absorb(ctx.cs(), st_fp);
+        }
+
+        st_fp
     }
 
     /// Receive a message from the prover
     #[must_use]
-    fn recv<R: Receivable<Fp>>(&mut self, ctx: &mut Context<Fp, Fr, CsFp, CsFr>, msg: R) -> R::Dst {
-        self.fp.merged = false; // state updated since last squeeze
-        msg.unpack(&mut ctx.fp.cs, &mut self.fp.sponge)
+    pub fn recv<R: Receivable<Fp>>(&mut self, ctx: &mut Context<Fp, Fr, CsFp, CsFr>, msg: R) -> R::Dst {
+        let st = self.fp_sponge(ctx);
+        msg.unpack(ctx.cs(), st)
     }
 
     /// Generate a challenge over the current field
     #[must_use]
-    fn challenge<C: Challenge<Fp>>(&mut self, ctx: &mut Context<Fp, Fr, CsFp, CsFr>) -> C {
-        // check if we need to merge the states
-        if !self.fr.merged {
-            // merge the "foreign sponge" by adding the current state to the statement
-            let st_fr: Var<Fr> = self.fr.sponge.squeeze(&mut ctx.fr.cs);
-            let st_fp: Var<Fp> = ctx.fp.cs.var(|| transfer_hash(st_fr.value.unwrap()));
-
-            // absorb commitment to "foreign sponge"
-            st_fp.absorb(&mut ctx.fp.cs, &mut self.fp.sponge);
-            self.fr.merged = true;
-        }
-
-        // squeeze "native sponge" (Fp)
-        C::generate(&mut ctx.fp.cs, &mut self.fp.sponge)
+    pub fn challenge<C: Challenge<Fp>>(&mut self, ctx: &mut Context<Fp, Fr, CsFp, CsFr>) -> C {
+        let st = self.fp_sponge(ctx);
+        C::generate(&mut ctx.fp.cs, st)
     }
 
-    fn flipped(self) -> Inner<Fr, Fp, CsFr, CsFp> {
+    pub fn flipped(self) -> Inner<Fr, Fp, CsFr, CsFp> {
         Inner {
             fp: self.fr,
             fr: self.fp,

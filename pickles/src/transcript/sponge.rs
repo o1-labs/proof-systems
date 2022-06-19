@@ -29,7 +29,19 @@ impl<F: FftField + PrimeField> VarSponge<F> {
         val.absorb(cs, self);
     }
 
-    pub fn squeeze<C: Cs<F>>(&mut self, cs: &mut C) -> Var<F> {
+    pub fn challenge<C: Cs<F>, T: Challenge<F>>(&mut self, cs: &mut C) -> T {
+        T::generate(cs, self)
+    }
+}
+
+/// Describes a type which can be "squeezed" (generated) from the sponge
+pub trait Challenge<F: FftField + PrimeField> {
+    fn generate<C: Cs<F>>(cs: &mut C, sponge: &mut VarSponge<F>) -> Self;
+}
+
+// Can generate a variable from the same field
+impl<F: FftField + PrimeField> Challenge<F> for Var<F> {
+    fn generate<C: Cs<F>>(cs: &mut C, sponge: &mut VarSponge<F>) -> Self {
         unimplemented!()
     }
 }

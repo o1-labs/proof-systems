@@ -10,14 +10,14 @@ use super::{Proof, COLUMNS, PERMUTS};
 use crate::plonk::types::{VarOpen, VarPolyComm};
 use crate::transcript::{Absorb, Msg, VarSponge};
 
-pub struct VarAccumulatorChallenges<F: FftField + PrimeField, const N: usize>([Var<F>; N]);
+pub struct VarAccumulatorChallenges<F: FftField + PrimeField, const N: usize>(Vec<Var<F>>);
 
 impl<F, const N: usize> Absorb<F> for VarAccumulatorChallenges<F, N>
 where
     F: FftField + PrimeField,
 {
     fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut VarSponge<F>) {
-        sponge.absorb(cs, &self.0);
+        self.0.iter().map(|chal| sponge.absorb(cs, chal));
     }
 }
 

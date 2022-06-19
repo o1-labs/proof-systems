@@ -5,7 +5,7 @@ use circuit_construction::{Cs, Var};
 
 use std::marker::PhantomData;
 
-use crate::context::Bounded;
+use crate::context::{AsPublic, PassTo, Public};
 use crate::transcript::{Absorb, Challenge, VarSponge};
 
 use crate::plonk::CHALLENGE_LEN;
@@ -119,26 +119,20 @@ pub struct ScalarChallenge<F: FftField + PrimeField> {
     challenge: Var<F>,
 }
 
-impl<F: FftField + PrimeField> From<Var<F>> for ScalarChallenge<F> {
-    fn from(v: Var<F>) -> Self {
-        Self { challenge: v }
+impl <F: FftField + PrimeField> AsPublic<F> for ScalarChallenge<F> where {
+    fn public(&self) -> Vec<Public<F>> {
+        unimplemented!()
     }
 }
 
-impl<F: FftField + PrimeField> Bounded<F> for ScalarChallenge<F> {
-    const SIZE: usize = CHALLENGE_LEN;
-}
+impl <Fp, Fr> PassTo<ScalarChallenge<Fr>, Fp, Fr> for ScalarChallenge<Fp>
+    where 
+          Fp: FftField + PrimeField,
+          Fr: FftField + PrimeField
 
-impl<F: FftField + PrimeField> From<(Var<F>, Option<Var<F>>)> for ScalarChallenge<F> {
-    fn from(t: (Var<F>, Option<Var<F>>)) -> Self {
-        assert!(t.1.is_none());
-        Self { challenge: t.0 }
-    }
-}
-
-impl<F: FftField + PrimeField> Into<Var<F>> for ScalarChallenge<F> {
-    fn into(self) -> Var<F> {
-        self.challenge
+{
+    fn convert<CsFp: Cs<Fp>, CsFr: Cs<Fr>>(self, csfp: &mut CsFp, csfr: &mut CsFr) -> ScalarChallenge<Fr> {
+        unimplemented!()
     }
 }
 
