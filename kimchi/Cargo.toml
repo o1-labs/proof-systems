@@ -41,7 +41,7 @@ oracle = { path = "../oracle" }
 ocaml = { version = "0.22.2", optional = true }
 ocaml-gen = { path = "../ocaml/ocaml-gen", optional = true}
 
-wasm-bindgen = { version = "0.2", optional = true }
+wasm-bindgen = { version = "0.2.81", optional = true }
 
 [dev-dependencies]
 proptest = "1.0.0"
