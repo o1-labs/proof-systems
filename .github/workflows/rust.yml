@@ -38,9 +38,10 @@ jobs:
         uses: Swatinem/rust-cache@v1
 
       - name: Setup OCaml (because of ocaml-gen)
-        run: |
-          sudo apt update
-          sudo apt install -y ocaml
+        uses: ocaml/setup-ocaml@v2
+        with:
+          ocaml-compiler: 4.13.1
+          dune-cache: true
 
       # https://nexte.st/book/pre-built-binaries.html#using-nextest-in-github-actions
       - name: Install latest nextest release
