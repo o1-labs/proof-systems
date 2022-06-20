@@ -46,6 +46,12 @@ jobs:
       - name: Install latest nextest release
         uses: taiki-e/install-action@nextest
 
+      - name: Install cargo-spec for specifications
+        uses: actions-rs/install@v0.1
+        with:
+          crate: cargo-spec
+          version: 0.4.1
+
       #
       # Tests
       # 
@@ -75,10 +81,6 @@ jobs:
       #
       # Doc & Spec
       #
-
-      - name: Set up cargo-spec for specifications
-        run: |
-          cargo install cargo-spec --version 0.4.1
 
       - name: Build the kimchi specification
         run: |
