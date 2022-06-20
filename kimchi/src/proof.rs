@@ -43,11 +43,6 @@ pub struct LookupEvaluations<Field> {
     pub runtime: Option<Field>,
 }
 
-#[serde_as]
-#[derive(Clone, Serialize, Deserialize)]
-#[serde(bound = "F: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
-pub struct ChunkedEvaluations<F>(ProofEvaluations<Vec<F>>);
-
 // TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
 /// Polynomial evaluations contained in a `ProverProof`.
 /// - **Chunked evaluations** `Field` is instantiated with vectors with a length that equals the length of the chunk
