@@ -13,12 +13,18 @@
 <span id="6">6</span>
 <span id="7">7</span>
 <span id="8">8</span>
+<span id="9">9</span>
+<span id="10">10</span>
+<span id="11">11</span>
 </pre><pre class="rust"><code><span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">chunked</span>;
 <span class="kw">mod</span> <span class="ident">combine</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">commitment</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">error</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">evaluation_proof</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">srs</span>;
+
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+<span class="kw">mod</span> <span class="ident">tests</span>;
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">commitment::PolyComm</span>;
 </code></pre></div>

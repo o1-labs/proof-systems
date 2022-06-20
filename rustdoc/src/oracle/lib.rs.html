@@ -22,11 +22,17 @@
 <span id="15">15</span>
 <span id="16">16</span>
 <span id="17">17</span>
+<span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
 </pre><pre class="rust"><code><span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">constants</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">pasta</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">permutation</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">poseidon</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">sponge</span>;
+
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+<span class="kw">mod</span> <span class="ident">tests</span>;
 
 <span class="kw">use</span> <span class="ident">ark_ff::Field</span>;
 
