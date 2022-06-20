@@ -205,24 +205,24 @@
         }
     }
 
-    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">CamlF</span><span class="op">&gt;</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">RandomOracles</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CamlRandomOracles</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>
+    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">CamlF</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">CamlRandomOracles</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">RandomOracles</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
     <span class="kw">where</span>
         <span class="ident">CamlF</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
         <span class="ident">F</span>: <span class="ident">Field</span>,
     {
-        <span class="kw">fn</span> <span class="ident">into</span>(<span class="self">self</span>) -&gt; <span class="ident">RandomOracles</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">caml_ro</span>: <span class="ident">CamlRandomOracles</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
             <span class="ident">RandomOracles</span> {
-                <span class="ident">joint_combiner</span>: <span class="self">self</span>.<span class="ident">joint_combiner</span>.<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">l</span>, <span class="ident">r</span>)<span class="op">|</span> (<span class="ident">l</span>.<span class="ident">into</span>(), <span class="ident">r</span>.<span class="ident">into</span>())),
-                <span class="ident">beta</span>: <span class="self">self</span>.<span class="ident">beta</span>.<span class="ident">into</span>(),
-                <span class="ident">gamma</span>: <span class="self">self</span>.<span class="ident">gamma</span>.<span class="ident">into</span>(),
-                <span class="ident">alpha_chal</span>: <span class="self">self</span>.<span class="ident">alpha_chal</span>.<span class="ident">into</span>(),
-                <span class="ident">alpha</span>: <span class="self">self</span>.<span class="ident">alpha</span>.<span class="ident">into</span>(),
-                <span class="ident">zeta</span>: <span class="self">self</span>.<span class="ident">zeta</span>.<span class="ident">into</span>(),
-                <span class="ident">v</span>: <span class="self">self</span>.<span class="ident">v</span>.<span class="ident">into</span>(),
-                <span class="ident">u</span>: <span class="self">self</span>.<span class="ident">u</span>.<span class="ident">into</span>(),
-                <span class="ident">zeta_chal</span>: <span class="self">self</span>.<span class="ident">zeta_chal</span>.<span class="ident">into</span>(),
-                <span class="ident">v_chal</span>: <span class="self">self</span>.<span class="ident">v_chal</span>.<span class="ident">into</span>(),
-                <span class="ident">u_chal</span>: <span class="self">self</span>.<span class="ident">u_chal</span>.<span class="ident">into</span>(),
+                <span class="ident">joint_combiner</span>: <span class="ident">caml_ro</span>.<span class="ident">joint_combiner</span>.<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">l</span>, <span class="ident">r</span>)<span class="op">|</span> (<span class="ident">l</span>.<span class="ident">into</span>(), <span class="ident">r</span>.<span class="ident">into</span>())),
+                <span class="ident">beta</span>: <span class="ident">caml_ro</span>.<span class="ident">beta</span>.<span class="ident">into</span>(),
+                <span class="ident">gamma</span>: <span class="ident">caml_ro</span>.<span class="ident">gamma</span>.<span class="ident">into</span>(),
+                <span class="ident">alpha_chal</span>: <span class="ident">caml_ro</span>.<span class="ident">alpha_chal</span>.<span class="ident">into</span>(),
+                <span class="ident">alpha</span>: <span class="ident">caml_ro</span>.<span class="ident">alpha</span>.<span class="ident">into</span>(),
+                <span class="ident">zeta</span>: <span class="ident">caml_ro</span>.<span class="ident">zeta</span>.<span class="ident">into</span>(),
+                <span class="ident">v</span>: <span class="ident">caml_ro</span>.<span class="ident">v</span>.<span class="ident">into</span>(),
+                <span class="ident">u</span>: <span class="ident">caml_ro</span>.<span class="ident">u</span>.<span class="ident">into</span>(),
+                <span class="ident">zeta_chal</span>: <span class="ident">caml_ro</span>.<span class="ident">zeta_chal</span>.<span class="ident">into</span>(),
+                <span class="ident">v_chal</span>: <span class="ident">caml_ro</span>.<span class="ident">v_chal</span>.<span class="ident">into</span>(),
+                <span class="ident">u_chal</span>: <span class="ident">caml_ro</span>.<span class="ident">u_chal</span>.<span class="ident">into</span>(),
             }
         }
     }

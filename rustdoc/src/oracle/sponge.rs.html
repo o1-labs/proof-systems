@@ -482,12 +482,12 @@
         }
     }
 
-    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">CamlF</span><span class="op">&gt;</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">ScalarChallenge</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CamlScalarChallenge</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>
+    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">CamlF</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">CamlScalarChallenge</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ScalarChallenge</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
     <span class="kw">where</span>
         <span class="ident">CamlF</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
     {
-        <span class="kw">fn</span> <span class="ident">into</span>(<span class="self">self</span>) -&gt; <span class="ident">ScalarChallenge</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-            <span class="ident">ScalarChallenge</span>(<span class="self">self</span>.<span class="number">0</span>.<span class="ident">into</span>())
+        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">caml_sc</span>: <span class="ident">CamlScalarChallenge</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
+            <span class="self">Self</span>(<span class="ident">caml_sc</span>.<span class="number">0</span>.<span class="ident">into</span>())
         }
     }
 }

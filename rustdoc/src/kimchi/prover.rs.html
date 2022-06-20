@@ -1458,6 +1458,7 @@
 <span id="1451">1451</span>
 <span id="1452">1452</span>
 <span id="1453">1453</span>
+<span id="1454">1454</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements prover&#39;s zk-proof primitive.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -2699,6 +2700,7 @@
         <span class="kw">pub</span> <span class="ident">runtime</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">CamlPolyComm</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     }
 
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::type_complexity</span>)]</span>
     <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">ocaml_gen::Struct</span>)]</span>
     <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlProverCommitments</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span> {
         <span class="comment">// polynomial commitments</span>

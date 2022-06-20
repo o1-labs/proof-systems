@@ -455,6 +455,7 @@
 <span id="448">448</span>
 <span id="449">449</span>
 <span id="450">450</span>
+<span id="451">451</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the data structures of a proof.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::wires</span>::{<span class="ident">COLUMNS</span>, <span class="ident">PERMUTS</span>};
@@ -781,6 +782,7 @@
     <span class="comment">// CamlProofEvaluations&lt;CamlF&gt;</span>
     <span class="comment">//</span>
 
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::type_complexity</span>)]</span>
     <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">ocaml_gen::Struct</span>)]</span>
     <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlProofEvaluations</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span> {
         <span class="kw">pub</span> <span class="ident">w</span>: (

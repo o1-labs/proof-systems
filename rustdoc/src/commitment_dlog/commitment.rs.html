@@ -2292,23 +2292,23 @@
         }
     }
 
-    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>, <span class="ident">CamlF</span>, <span class="ident">CamlG</span><span class="op">&gt;</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">OpeningProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CamlOpeningProof</span><span class="op">&lt;</span><span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span>
+    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>, <span class="ident">CamlF</span>, <span class="ident">CamlG</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">CamlOpeningProof</span><span class="op">&lt;</span><span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">OpeningProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
     <span class="kw">where</span>
         <span class="ident">G</span>: <span class="ident">AffineCurve</span>,
         <span class="ident">CamlG</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
         <span class="ident">CamlF</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span>,
     {
-        <span class="kw">fn</span> <span class="ident">into</span>(<span class="self">self</span>) -&gt; <span class="ident">OpeningProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
-            <span class="ident">OpeningProof</span> {
-                <span class="ident">lr</span>: <span class="self">self</span>
+        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">caml</span>: <span class="ident">CamlOpeningProof</span><span class="op">&lt;</span><span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
+            <span class="self">Self</span> {
+                <span class="ident">lr</span>: <span class="ident">caml</span>
                     .<span class="ident">lr</span>
                     .<span class="ident">into_iter</span>()
                     .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">g1</span>, <span class="ident">g2</span>)<span class="op">|</span> (<span class="ident">g1</span>.<span class="ident">into</span>(), <span class="ident">g2</span>.<span class="ident">into</span>()))
                     .<span class="ident">collect</span>(),
-                <span class="ident">delta</span>: <span class="self">self</span>.<span class="ident">delta</span>.<span class="ident">into</span>(),
-                <span class="ident">z1</span>: <span class="self">self</span>.<span class="ident">z1</span>.<span class="ident">into</span>(),
-                <span class="ident">z2</span>: <span class="self">self</span>.<span class="ident">z2</span>.<span class="ident">into</span>(),
-                <span class="ident">sg</span>: <span class="self">self</span>.<span class="ident">sg</span>.<span class="ident">into</span>(),
+                <span class="ident">delta</span>: <span class="ident">caml</span>.<span class="ident">delta</span>.<span class="ident">into</span>(),
+                <span class="ident">z1</span>: <span class="ident">caml</span>.<span class="ident">z1</span>.<span class="ident">into</span>(),
+                <span class="ident">z2</span>: <span class="ident">caml</span>.<span class="ident">z2</span>.<span class="ident">into</span>(),
+                <span class="ident">sg</span>: <span class="ident">caml</span>.<span class="ident">sg</span>.<span class="ident">into</span>(),
             }
         }
     }
