@@ -10,7 +10,6 @@ tmp/
 
 target
 .DS_Store
-Cargo.lock
 idea
 .idea
 *.iml

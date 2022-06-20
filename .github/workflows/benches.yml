@@ -50,9 +50,11 @@ jobs:
 
             <pre><code>${criterion_bench}</code></pre>`;
 
+            /*
             const iai = `Here's some more accurate benchmark with [iai](https://github.com/bheisler/iai)
 
             <pre><code>${iai_bench}</code></pre>`;
+            */
 
             // post comment
             github.rest.issues.createComment({
