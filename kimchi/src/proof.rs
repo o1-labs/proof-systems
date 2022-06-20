@@ -177,6 +177,7 @@ pub struct EvalPowers<F> {
 //~ spec:endcode
 
 impl<F: Field> EvalPoints<F> {
+    /// It computes the powers of `zeta` and `zeta · omega` for a given `size`
     pub fn pow(&self, size: usize) -> EvalPowers<F> {
         EvalPowers {
             zpow: self.zeta.pow(&[size as u64]),
@@ -186,7 +187,9 @@ impl<F: Field> EvalPoints<F> {
 }
 
 impl<F: Field> EvalPoints<F> {
-    pub fn len(&self) -> usize {
+    /// Returns the number of steps inside [EvalPoints], meaning the number of fields.
+    /// This should correspond to the value inside the [EVALS] constant.
+    pub fn steps(&self) -> usize {
         EVALS
     }
 }
