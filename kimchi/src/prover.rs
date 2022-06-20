@@ -29,6 +29,7 @@ use crate::{
     },
     prover_index::ProverIndex,
 };
+use ark_ec::ProjectiveCurve;
 use ark_ff::{FftField, Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
@@ -127,6 +128,7 @@ where
             runtime_tables,
             index,
             Vec::new(),
+            None,
         )
     }
 
@@ -140,6 +142,7 @@ where
         runtime_tables: &[RuntimeTable<G::ScalarField>],
         index: &ProverIndex<G>,
         prev_challenges: Vec<RecursionChallenge<G>>,
+        blinders: Option<[Option<PolyComm<G::ScalarField>>; COLUMNS]>,
     ) -> Result<Self> {
         // make sure that the SRS is not smaller than the domain size
         let d1_size = index.cs.domain.d1.size();
@@ -151,7 +154,7 @@ where
         let rng = &mut rand::rngs::OsRng;
 
         // double-check the witness
-        if cfg!(test) {
+        if cfg!(debug_assertions) {
             let public = witness[0][0..index.cs.public].to_vec();
             index
                 .cs
@@ -168,6 +171,7 @@ where
         let length_padding = d1_size
             .checked_sub(length_witness)
             .ok_or(ProverError::NoRoomForZkInWitness)?;
+
         if length_padding < ZK_ROWS as usize {
             return Err(ProverError::NoRoomForZkInWitness);
         }
@@ -215,15 +219,41 @@ where
         //~
         //~    Note: since the witness is in evaluation form,
         //~    we can use the `commit_evaluation` optimization.
-        let w_comm: [BlindedCommitment<G>; COLUMNS] = array_init(|i| {
-            let e = Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-                witness[i].clone(),
-                index.cs.domain.d1,
-            );
-            index
-                .srs
-                .commit_evaluations(index.cs.domain.d1, &e, None, rng)
-        });
+        let mut w_comm = vec![];
+        for col in 0..COLUMNS {
+            // witness coeff -> witness eval
+            let witness_eval =
+                Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+                    witness[col].clone(),
+                    index.cs.domain.d1,
+                );
+
+            let com = match blinders.as_ref().and_then(|b| b[col].as_ref()) {
+                // no blinders: blind the witness
+                None => index
+                    .srs
+                    .commit_evaluations(index.cs.domain.d1, &witness_eval, None, rng),
+                // blinders: blind the witness with them
+                Some(blinder) => {
+                    // TODO: make this a function rather no? mask_with_custom()
+                    let witness_com = index.srs.commit_evaluations_non_hiding(
+                        index.cs.domain.d1,
+                        &witness_eval,
+                        None,
+                    );
+                    index
+                        .srs
+                        .mask_custom(witness_com, blinder)
+                        .map_err(ProverError::WrongBlinders)?
+                }
+            };
+
+            w_comm.push(com);
+        }
+
+        let w_comm: [BlindedCommitment<G>; COLUMNS] = w_comm
+            .try_into()
+            .expect("previous loop is of the correct length");
 
         //~ 1. Absorb the witness commitments with the Fq-Sponge.
         w_comm
@@ -758,7 +788,6 @@ where
             // number of commitments in `t_comm` is less than the max size, it means that
             // the higher degree coefficients of `t` are 0.
             for _ in 0..dummies {
-                use ark_ec::ProjectiveCurve;
                 let w = <G::ScalarField as UniformRand>::rand(rng);
                 t_comm
                     .commitment
@@ -999,6 +1028,9 @@ where
             ]
         };
 
+        //~ 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
+        fr_sponge.absorb(&ft_eval1);
+
         //~ 1. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
         //~~ - the public polynomial
         //~~ - z
@@ -1006,11 +1038,13 @@ where
         //~~ - poseidon selector
         //~~ - the 15 register/witness
         //~~ - 6 sigmas evaluations (the last one is not evaluated)
-        fr_sponge.absorb_evaluations(&public_evals[Z_IDX], &chunked_evals.zeta);
-        fr_sponge.absorb_evaluations(&public_evals[ZW_IDX], &chunked_evals.zetaw);
+        //fr_sponge.absorb_evaluations(&public_evals[Z_IDX], &chunked_evals.zeta);
+        //fr_sponge.absorb_evaluations(&public_evals[ZW_IDX], &chunked_evals.zetaw);
 
-        //~ 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
-        fr_sponge.absorb(&ft_eval1);
+        fr_sponge.absorb_evaluations(
+            [&public_evals[0], &public_evals[1]],
+            [&chunked_evals[0], &chunked_evals[1]],
+        );
 
         //~ 1. Sample $v'$ with the Fr-Sponge
         let v_chal = fr_sponge.challenge();
@@ -1076,7 +1110,6 @@ where
         );
 
         // if using lookup
-
         if let Some(lcs) = &index.cs.lookup_constraint_system {
             // add the sorted polynomials
             let sorted_poly = lookup_context.sorted_coeffs.as_ref().unwrap();
@@ -1181,6 +1214,13 @@ pub mod caml {
     //
 
     #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlLookupCommitments<CamlG> {
+        pub sorted: Vec<CamlPolyComm<CamlG>>,
+        pub aggreg: CamlPolyComm<CamlG>,
+        pub runtime: Option<CamlPolyComm<CamlG>>,
+    }
+
+    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlProverCommitments<CamlG> {
         // polynomial commitments
         pub w_comm: (
@@ -1202,6 +1242,7 @@ pub mod caml {
         ),
         pub z_comm: CamlPolyComm<CamlG>,
         pub t_comm: CamlPolyComm<CamlG>,
+        pub lookup: Option<CamlLookupCommitments<CamlG>>,
     }
 
     // These implementations are handy for conversions such as:
@@ -1218,6 +1259,50 @@ pub mod caml {
     // we don't know that information, unless we implemented some trait (e.g. ToCaml)
     // we can do that, but instead we implemented the From trait for the reverse operations (From<G> for CamlG).
     // it reduces the complexity, but forces us to do the conversion in two phases instead of one.
+
+    //
+    // CamlLookupCommitments<CamlG> <-> LookupCommitments<G>
+    //
+
+    impl<G, CamlG> From<LookupCommitments<G>> for CamlLookupCommitments<CamlG>
+    where
+        G: AffineCurve,
+        CamlPolyComm<CamlG>: From<PolyComm<G>>,
+    {
+        fn from(
+            LookupCommitments {
+                aggreg,
+                sorted,
+                runtime,
+            }: LookupCommitments<G>,
+        ) -> Self {
+            Self {
+                aggreg: aggreg.into(),
+                sorted: sorted.into_iter().map(Into::into).collect(),
+                runtime: runtime.map(Into::into),
+            }
+        }
+    }
+
+    impl<G, CamlG> From<CamlLookupCommitments<CamlG>> for LookupCommitments<G>
+    where
+        G: AffineCurve,
+        PolyComm<G>: From<CamlPolyComm<CamlG>>,
+    {
+        fn from(
+            CamlLookupCommitments {
+                aggreg,
+                sorted,
+                runtime,
+            }: CamlLookupCommitments<CamlG>,
+        ) -> LookupCommitments<G> {
+            LookupCommitments {
+                aggreg: aggreg.into(),
+                sorted: sorted.into_iter().map(Into::into).collect(),
+                runtime: runtime.map(Into::into),
+            }
+        }
+    }
 
     //
     // CamlProverCommitments<CamlG> <-> ProverCommitments<G>
@@ -1251,6 +1336,7 @@ pub mod caml {
                 ),
                 z_comm: prover_comm.z_comm.into(),
                 t_comm: prover_comm.t_comm.into(),
+                lookup: prover_comm.lookup.map(Into::into),
             }
         }
     }
@@ -1298,7 +1384,7 @@ pub mod caml {
                 ],
                 z_comm: caml_prover_comm.z_comm.into(),
                 t_comm: caml_prover_comm.t_comm.into(),
-                lookup: None,
+                lookup: caml_prover_comm.lookup.map(Into::into),
             }
         }
     }

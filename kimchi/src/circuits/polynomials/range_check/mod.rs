@@ -7,4 +7,4 @@ pub mod witness;
 
 pub use circuitgates::{RangeCheck0, RangeCheck1};
 pub use gate::*;
-pub use witness::create_witness;
+pub use witness::*;

@@ -106,6 +106,7 @@ impl BenchmarkCtx {
             &[],
             &self.index,
             vec![prev],
+            None,
         )
         .unwrap()
     }
