@@ -1,8 +1,11 @@
 #![doc = include_str!("../../README.md")]
 
-mod constants;
-mod prover;
-mod writer;
+pub mod constants;
+pub mod prover;
+pub mod writer;
+
+#[cfg(test)]
+mod tests;
 
 pub mod prologue {
     pub use super::constants::{fp_constants, fq_constants, Constants};
