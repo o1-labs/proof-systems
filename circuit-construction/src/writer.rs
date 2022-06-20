@@ -413,7 +413,7 @@ pub trait Cs<F: FftField + PrimeField> {
         res
     }
 
-    /// Performs a scalar multiplication between a [ShiftedSCalar] and a point `(xt, yt)`.
+    /// Performs a scalar multiplication between a [ShiftedScalar] and a point `(xt, yt)`.
     /// This function creates 51 rows pairs of rows.
     fn scalar_mul(
         &mut self,
