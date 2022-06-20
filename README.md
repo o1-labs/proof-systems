@@ -33,24 +33,7 @@ The following is an example to demonstrate a full cycle workflow using circuit-c
 5. Verify the proof
 
 ```rust
-use std::sync::Arc;
-use ark_ff::{FftField, PrimeField};
-use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
-use circuit_construction::{
-    *, 
-    oracle::{
-        constants::*,
-        poseidon::{Sponge},
-        sponge::{DefaultFqSponge, DefaultFrSponge},
-    },
-    kimchi::verifier::verify,
-    commitment_dlog::{commitment::CommitmentCurve, srs::SRS},
-    groupmap::GroupMap,
-    mina_curves::pasta::{
-        fp::Fp,
-        vesta::{Affine, VestaParameters},
-    }
-};
+use circuit_construction::{prologue::*};
 
 type SpongeQ = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
 type SpongeR = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>;
@@ -82,12 +65,12 @@ pub fn circuit<
 
 // create SRS
 let srs = {
-    let mut srs = SRS::<Affine>::create(1 << 3); // 2^3 = 8
+    let mut srs = SRS::<VestaAffine>::create(1 << 3); // 2^3 = 8
     srs.add_lagrange_basis(Radix2EvaluationDomain::new(srs.g.len()).unwrap());
     Arc::new(srs)
 };
 let public_inputs = vec![1i32.into()];
-let group_map = <Affine as CommitmentCurve>::Map::setup();
+let group_map = <VestaAffine as CommitmentCurve>::Map::setup();
 
 // generate circuit and index
 let prover_index = generate_prover_index::<FpInner, _>(
@@ -105,7 +88,7 @@ let prover_index = generate_prover_index::<FpInner, _>(
 let witness = 2i32;
 
 // generate proof
-let proof = prove::<Affine, _, SpongeQ, SpongeR>(
+let proof = prove::<VestaAffine, _, SpongeQ, SpongeR>(
     &prover_index,
     &group_map,
     None,

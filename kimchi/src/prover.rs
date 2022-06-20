@@ -1049,6 +1049,9 @@ where
             ]
         };
 
+        //~ 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
+        fr_sponge.absorb(&ft_eval1);
+
         //~ 1. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
         //~~ - the public polynomial
         //~~ - z
@@ -1056,12 +1059,10 @@ where
         //~~ - poseidon selector
         //~~ - the 15 register/witness
         //~~ - 6 sigmas evaluations (the last one is not evaluated)
-        for i in 0..2 {
-            fr_sponge.absorb_evaluations(&public_evals[i], &chunked_evals[i])
-        }
-
-        //~ 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
-        fr_sponge.absorb(&ft_eval1);
+        fr_sponge.absorb_evaluations(
+            [&public_evals[0], &public_evals[1]],
+            [&chunked_evals[0], &chunked_evals[1]],
+        );
 
         //~ 1. Sample $v'$ with the Fr-Sponge
         let v_chal = fr_sponge.challenge();
@@ -1232,6 +1233,13 @@ pub mod caml {
     //
 
     #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlLookupCommitments<CamlG> {
+        pub sorted: Vec<CamlPolyComm<CamlG>>,
+        pub aggreg: CamlPolyComm<CamlG>,
+        pub runtime: Option<CamlPolyComm<CamlG>>,
+    }
+
+    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlProverCommitments<CamlG> {
         // polynomial commitments
         pub w_comm: (
@@ -1253,6 +1261,7 @@ pub mod caml {
         ),
         pub z_comm: CamlPolyComm<CamlG>,
         pub t_comm: CamlPolyComm<CamlG>,
+        pub lookup: Option<CamlLookupCommitments<CamlG>>,
     }
 
     // These implementations are handy for conversions such as:
@@ -1269,6 +1278,50 @@ pub mod caml {
     // we don't know that information, unless we implemented some trait (e.g. ToCaml)
     // we can do that, but instead we implemented the From trait for the reverse operations (From<G> for CamlG).
     // it reduces the complexity, but forces us to do the conversion in two phases instead of one.
+
+    //
+    // CamlLookupCommitments<CamlG> <-> LookupCommitments<G>
+    //
+
+    impl<G, CamlG> From<LookupCommitments<G>> for CamlLookupCommitments<CamlG>
+    where
+        G: AffineCurve,
+        CamlPolyComm<CamlG>: From<PolyComm<G>>,
+    {
+        fn from(
+            LookupCommitments {
+                aggreg,
+                sorted,
+                runtime,
+            }: LookupCommitments<G>,
+        ) -> Self {
+            Self {
+                aggreg: aggreg.into(),
+                sorted: sorted.into_iter().map(Into::into).collect(),
+                runtime: runtime.map(Into::into),
+            }
+        }
+    }
+
+    impl<G, CamlG> From<CamlLookupCommitments<CamlG>> for LookupCommitments<G>
+    where
+        G: AffineCurve,
+        PolyComm<G>: From<CamlPolyComm<CamlG>>,
+    {
+        fn from(
+            CamlLookupCommitments {
+                aggreg,
+                sorted,
+                runtime,
+            }: CamlLookupCommitments<CamlG>,
+        ) -> LookupCommitments<G> {
+            LookupCommitments {
+                aggreg: aggreg.into(),
+                sorted: sorted.into_iter().map(Into::into).collect(),
+                runtime: runtime.map(Into::into),
+            }
+        }
+    }
 
     //
     // CamlProverCommitments<CamlG> <-> ProverCommitments<G>
@@ -1302,6 +1355,7 @@ pub mod caml {
                 ),
                 z_comm: prover_comm.z_comm.into(),
                 t_comm: prover_comm.t_comm.into(),
+                lookup: prover_comm.lookup.map(Into::into),
             }
         }
     }
@@ -1349,7 +1403,7 @@ pub mod caml {
                 ],
                 z_comm: caml_prover_comm.z_comm.into(),
                 t_comm: caml_prover_comm.t_comm.into(),
-                lookup: None,
+                lookup: caml_prover_comm.lookup.map(Into::into),
             }
         }
     }
