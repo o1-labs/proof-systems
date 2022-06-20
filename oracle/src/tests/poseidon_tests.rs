@@ -32,7 +32,7 @@ where
 {
     // read test vectors from given file
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    path.push("tests/test_vectors");
+    path.push("src/tests/test_vectors");
     path.push(&test_vector_file);
     let file = File::open(&path).expect("couldn't open test vector file");
     let test_vectors: TestVectors =
