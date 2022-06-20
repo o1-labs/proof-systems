@@ -24,8 +24,8 @@ use crate::{
     error::ProverError,
     plonk_sponge::FrSponge,
     proof::{
-        ConsecutiveEvals, LookupCommitments, LookupEvaluations, ProofEvaluations,
-        ProverCommitments, ProverProof, RecursionChallenge, ZW_IDX, Z_IDX,
+        ConsecutiveEvals, EvalPoints, EvalPowers, LookupCommitments, LookupEvaluations,
+        ProofEvaluations, ProverCommitments, ProverProof, RecursionChallenge,
     },
     prover_index::ProverIndex,
 };
@@ -942,13 +942,19 @@ where
             }
         };
 
-        let zeta_to_srs_len = zeta.pow(&[index.max_poly_size as u64]);
-        let zeta_omega_to_srs_len = zeta.pow(&[index.max_poly_size as u64]);
         let zeta_to_domain_size = zeta.pow(&[d1_size as u64]);
 
         //~ 1. Evaluate the same polynomials without chunking them
         //~    (so that each polynomial should correspond to a single value this time).
-        let power_of_eval_points_for_chunks = [zeta_to_srs_len, zeta_omega_to_srs_len];
+        let power_of_eval_points_for_chunks = EvalPoints {
+            zeta,
+            zetaw: zeta_omega,
+        }
+        .pow(index.max_poly_size);
+        let EvalPowers {
+            zpow: zeta_to_srs_len,
+            zwpow: _zeta_omega_to_srs_len,
+        } = power_of_eval_points_for_chunks;
         let evals = chunked_evals.combine(&power_of_eval_points_for_chunks);
 
         //~ 1. Compute the ft polynomial.
@@ -1398,6 +1404,7 @@ pub mod caml {
         G: AffineCurve,
         CamlG: From<G>,
         CamlF: From<G::ScalarField>,
+        Vec<CamlF>: From<G::ScalarField>,
     {
         fn from(pp: ProverProof<G>) -> Self {
             Self {
@@ -1414,7 +1421,7 @@ pub mod caml {
     impl<G, CamlG, CamlF> From<CamlProverProof<CamlG, CamlF>> for ProverProof<G>
     where
         G: AffineCurve + From<CamlG>,
-        G::ScalarField: From<CamlF>,
+        G::ScalarField: From<CamlF> + From<Vec<CamlF>>,
     {
         fn from(caml_pp: CamlProverProof<CamlG, CamlF>) -> ProverProof<G> {
             ProverProof {

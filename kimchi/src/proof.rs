@@ -4,7 +4,7 @@ use std::ops::Index;
 
 use crate::circuits::wires::{COLUMNS, PERMUTS};
 use ark_ec::AffineCurve;
-use ark_ff::{FftField, Zero};
+use ark_ff::{FftField, Field, Zero};
 use ark_poly::univariate::DensePolynomial;
 use array_init::array_init;
 use commitment_dlog::{commitment::PolyComm, evaluation_proof::OpeningProof};
@@ -162,8 +162,34 @@ where
     pub comm: PolyComm<G>,
 }
 
+/// Stores two evaluation points, `zeta` and `zetaw`
+pub struct EvalPoints<F> {
+    pub zeta: F,
+    pub zetaw: F,
+}
+
+/// Struct to store the evaluation powers of both `zeta` and `zetaw`
+pub struct EvalPowers<F> {
+    pub zpow: F,
+    pub zwpow: F,
+}
+
 //~ spec:endcode
 
+impl<F: Field> EvalPoints<F> {
+    pub fn pow(&self, size: usize) -> EvalPowers<F> {
+        EvalPowers {
+            zpow: self.zeta.pow(&[size as u64]),
+            zwpow: self.zetaw.pow(&[size as u64]),
+        }
+    }
+}
+
+impl<F: Field> EvalPoints<F> {
+    pub fn len(&self) -> usize {
+        EVALS
+    }
+}
 impl<F> ProofEvaluations<F> {
     pub fn transpose<const N: usize>(
         evals: [&ProofEvaluations<F>; N],
@@ -210,10 +236,10 @@ impl<G: AffineCurve> RecursionChallenge<G> {
 }
 
 impl<F: FftField> ConsecutiveEvals<Vec<F>> {
-    pub fn combine(&self, pts: &[F; EVALS]) -> ConsecutiveEvals<F> {
+    pub fn combine(&self, pts: &EvalPowers<F>) -> ConsecutiveEvals<F> {
         ConsecutiveEvals {
-            zeta: self.zeta.combine(pts[Z_IDX]),
-            zetaw: self.zetaw.combine(pts[ZW_IDX]),
+            zeta: self.zeta.combine(pts.zpow),
+            zetaw: self.zetaw.combine(pts.zwpow),
         }
     }
 }
@@ -334,37 +360,12 @@ pub mod caml {
     // CamlConsecutiveEvals<CamlF> <-> ConsecutiveEvals<F>
     //
 
-    impl<G, CamlF> From<ConsecutiveEvals<Vec<G::ScalarField>>> for CamlConsecutiveEvals<Vec<CamlF>>
+    impl<F, CamlF> From<ConsecutiveEvals<Vec<F>>> for CamlConsecutiveEvals<CamlF>
     where
-        G: AffineCurve,
-        CamlF: From<G::ScalarField>,
-    {
-        fn from(evals: ConsecutiveEvals<Vec<G::ScalarField>>) -> Self {
-            Self {
-                zeta: evals.zeta.into(),
-                zetaw: evals.zetaw.into(),
-            }
-        }
-    }
-
-    impl<G, CamlF> From<CamlConsecutiveEvals<Vec<CamlF>>> for ConsecutiveEvals<Vec<G::ScalarField>>
-    where
-        G: AffineCurve,
-        G::ScalarField: From<CamlF>,
-    {
-        fn from(caml_evals: CamlConsecutiveEvals<Vec<CamlF>>) -> Self {
-            Self {
-                zeta: caml_evals.zeta.into(),
-                zetaw: caml_evals.zetaw.into(),
-            }
-        }
-    }
-
-    impl<F, CamlF> From<ConsecutiveEvals<F>> for CamlConsecutiveEvals<CamlF>
-    where
+        F: Clone,
         CamlF: From<F>,
     {
-        fn from(evals: ConsecutiveEvals<F>) -> Self {
+        fn from(evals: ConsecutiveEvals<Vec<F>>) -> Self {
             Self {
                 zeta: evals.zeta.into(),
                 zetaw: evals.zetaw.into(),
@@ -372,8 +373,9 @@ pub mod caml {
         }
     }
 
-    impl<F, CamlF> From<CamlConsecutiveEvals<CamlF>> for ConsecutiveEvals<F>
+    impl<F, CamlF> From<CamlConsecutiveEvals<CamlF>> for ConsecutiveEvals<Vec<F>>
     where
+        F: Clone,
         F: From<CamlF>,
     {
         fn from(caml_evals: CamlConsecutiveEvals<CamlF>) -> Self {

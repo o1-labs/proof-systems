@@ -14,7 +14,7 @@ use crate::{
     },
     error::VerifyError,
     plonk_sponge::FrSponge,
-    proof::{ConsecutiveEvals, ProverProof, RecursionChallenge, EVALS, ZW_IDX, Z_IDX},
+    proof::{ConsecutiveEvals, EvalPoints, EvalPowers, ProverProof, RecursionChallenge},
     verifier_index::VerifierIndex,
 };
 use ark_ff::{Field, One, PrimeField, Zero};
@@ -57,33 +57,6 @@ where
     pub ft_eval0: G::ScalarField,
     /// Used by the OCaml side
     pub combined_inner_product: G::ScalarField,
-}
-
-/// Stores two evaluation points, `zeta` and `zetaw`
-pub struct EvalPoints<F> {
-    pub zeta: F,
-    pub zetaw: F,
-}
-
-impl<F: Field> EvalPoints<F> {
-    pub fn len(&self) -> usize {
-        EVALS
-    }
-}
-
-/// Struct to store the evaluation powers of both `zeta` and `zetaw`
-pub struct EvalPowers<F> {
-    pub zpow: F,
-    pub zwpow: F,
-}
-
-impl<F: Field> EvalPoints<F> {
-    pub fn pow(&self, size: usize) -> EvalPowers<F> {
-        EvalPowers {
-            zpow: self.zeta.pow(&[size as u64]),
-            zwpow: self.zetaw.pow(&[size as u64]),
-        }
-    }
 }
 
 impl<G: CommitmentCurve> ProverProof<G>

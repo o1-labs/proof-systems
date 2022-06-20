@@ -1409,6 +1409,11 @@ pub struct LookupEvaluations<Field> {
     pub runtime: Option<Field>,
 }
 
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(bound = "F: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
+pub struct ChunkedEvaluations<F>(ProofEvaluations<Vec<F>>);
+
 // TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
 /// Polynomial evaluations contained in a `ProverProof`.
 /// - **Chunked evaluations** `Field` is instantiated with vectors with a length that equals the length of the chunk
@@ -1498,14 +1503,14 @@ pub struct ProverProof<G: AffineCurve> {
 #[serde_as]
 #[derive(Clone, Deserialize, Serialize)]
 #[serde(bound(
-    serialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::SerializeAs<F>",
-    deserialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::DeserializeAs<'de, F>"
+    serialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::SerializeAs<Field>",
+    deserialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::DeserializeAs<'de, Field>"
 ))]
-pub struct ConsecutiveEvals<F> {
+pub struct ConsecutiveEvals<Field> {
     /// evaluations of zeta, correspond to current row
-    pub zeta: ProofEvaluations<F>,
+    pub zeta: ProofEvaluations<Field>,
     /// evaluations of omega · zeta, correspond to next row
-    pub zetaw: ProofEvaluations<F>,
+    pub zetaw: ProofEvaluations<Field>,
 }
 
 /// A struct to store the challenges inside a `ProverProof`
@@ -1521,6 +1526,18 @@ where
     pub chals: Vec<G::ScalarField>,
     /// Polynomial commitment
     pub comm: PolyComm<G>,
+}
+
+/// Stores two evaluation points, `zeta` and `zetaw`
+pub struct EvalPoints<F> {
+    pub zeta: F,
+    pub zetaw: F,
+}
+
+/// Struct to store the evaluation powers of both `zeta` and `zetaw`
+pub struct EvalPowers<F> {
+    pub zpow: F,
+    pub zwpow: F,
 }
 
 ```
