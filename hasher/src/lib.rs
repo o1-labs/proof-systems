@@ -7,6 +7,9 @@ pub use mina_curves::pasta::Fp;
 pub use poseidon::{PoseidonHasherKimchi, PoseidonHasherLegacy};
 pub use roinput::ROInput;
 
+#[cfg(test)]
+mod tests;
+
 use ark_ff::PrimeField;
 use o1_utils::FieldHelpers;
 
