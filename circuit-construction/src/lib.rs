@@ -1,12 +1,13 @@
 #![doc = include_str!("../../README.md")]
 
 /// Definition of possible constants in circuits
-mod constants;
+pub mod constants;
 /// This contains the prover functions, ranging from curves definitions to prover index and proof generation
-mod prover;
+pub mod prover;
 /// This is the actual writer with all of the available functions to set up a circuit and its corresponding constraint system
-mod writer;
+pub mod writer;
 
+/// This contains the Kimchi dependencies being used
 pub mod prologue {
     pub use super::constants::{fp_constants, fq_constants, Constants};
     pub use super::prover::{generate_prover_index, prove, CoordinateCurve, FpInner};
