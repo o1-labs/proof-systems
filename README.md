@@ -107,6 +107,23 @@ For the other examples, please refer to the [tests](./circuit-construction/tests
 
 Note that kimchi is specifically designed for use in a recursion proof system, like [pickles](https://medium.com/minaprotocol/meet-pickles-snark-enabling-smart-contract-on-coda-protocol-7ede3b54c250), but can also be used a stand alone for normal proofs.
 
+## Performance
+
+At the time of this writing:
+
+**Proving time**
+
+| number of gates | seconds |
+|:---------------:|:-------:|
+|       2^11      |   0.6s  |
+|       2^16      |   6.3s  |
+
+**Verification time**
+
+| number of gates | seconds |
+|:---------------:|:-------:|
+|       2^16      |   0.1s  |
+
 ## Organization
 
 The project is organized in the following way:

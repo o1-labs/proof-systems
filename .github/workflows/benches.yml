@@ -14,7 +14,6 @@ jobs:
       - name: Install dependencies
         run: |
           set -x
-          sudo apt install -y valgrind    # iai
           cargo install cargo-criterion   # criterion
 
       - name: Setup OCaml (because of ocaml-gen)
@@ -23,11 +22,11 @@ jobs:
       - name: Checkout PR
         uses: actions/checkout@v2
 
-      - name: Run iai bench
-        run: |
-          set -x
-          cargo bench -p kimchi --bench proof_iai > iai_bench
-          cat iai_bench
+#      - name: Run iai bench
+#        run: |
+#          set -x
+#          cargo bench -p kimchi --bench proof_iai > iai_bench
+#          cat iai_bench
 
       - name: Run criterion bench
         run: |
@@ -42,16 +41,16 @@ jobs:
             const fs = require('fs');
 
             // read the output file
-            const iai_bench = fs.readFileSync("iai_bench", {encoding:'utf8', flag:'r'});
+            // const iai_bench = fs.readFileSync("iai_bench", {encoding:'utf8', flag:'r'});
             const criterion_bench = fs.readFileSync("criterion_bench", {encoding:'utf8', flag:'r'});
 
             // form message
             const message = `Hello there👋 
             Here are some benchmark results using [criterion](https://bheisler.github.io/criterion.rs/). Keep in mind that since this runs in CI, it is not really accurate (as it depends on the host load)
 
-            <pre><code>${criterion_bench}</code></pre>
+            <pre><code>${criterion_bench}</code></pre>`;
 
-            Here's some more accurate benchmark with [iai](https://github.com/bheisler/iai)
+            const iai = `Here's some more accurate benchmark with [iai](https://github.com/bheisler/iai)
 
             <pre><code>${iai_bench}</code></pre>`;
 
