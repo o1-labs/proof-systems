@@ -522,7 +522,8 @@ pub trait Cs<F: FftField + PrimeField> {
         res
     }
 
-    ///
+    /// Performs a scalar multiplication between a [ShiftedSCalar] and a point `(xt, yt)`.
+    /// This function creates 51 rows pairs of rows.
     fn scalar_mul(
         &mut self,
         zero: Var<F>,
@@ -533,10 +534,11 @@ pub trait Cs<F: FftField + PrimeField> {
         let num_row_pairs = num_bits / 5;
         let mut witness: [Vec<F>; COLUMNS] = array_init(|_| vec![]);
 
-        let acc0 = self.add_group(zero, (xt, yt), (xt, yt));
+        let acc0 = self.double(zero, (xt, yt));
 
         let _ = self.var(|| {
             witness = array_init(|_| vec![F::zero(); 2 * num_row_pairs]);
+            // Creates a vector of bits from the value inside the scalar, with the most significant bit upfront
             let bits_msb: Vec<bool> = scalar
                 .0
                 .val()
@@ -547,6 +549,7 @@ pub trait Cs<F: FftField + PrimeField> {
                 .copied()
                 .rev()
                 .collect();
+            // Creates a witness for the VarBaseMul gate.
             kimchi::circuits::polynomials::varbasemul::witness(
                 &mut witness,
                 0,
@@ -557,6 +560,7 @@ pub trait Cs<F: FftField + PrimeField> {
             F::zero()
         });
 
+        // For each of the pairs, it generates a VarBaseMul and a Zero gate.
         let mut res = None;
         for i in 0..num_row_pairs {
             let mut row1 = array_init(|j| self.var(|| witness[j][2 * i]));
