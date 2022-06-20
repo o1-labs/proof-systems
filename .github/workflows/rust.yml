@@ -11,6 +11,8 @@ env:
   RUSTFLAGS: -Coverflow-checks=y -Cdebug-assertions=y
   # https://doc.rust-lang.org/cargo/reference/profiles.html#incremental
   CARGO_INCREMENTAL: 1
+  # https://nexte.st/book/pre-built-binaries.html#using-nextest-in-github-actions
+  CARGO_TERM_COLOR: always
 
 jobs:
   run_checks:
@@ -31,6 +33,7 @@ jobs:
           toolchain: "1.58.0"
           components: rustfmt, clippy
 
+      # https://github.com/Swatinem/rust-cache
       - name: Cache Rust stuff
         uses: Swatinem/rust-cache@v1
 
@@ -39,6 +42,7 @@ jobs:
           sudo apt update
           sudo apt install -y ocaml
 
+      # https://nexte.st/book/pre-built-binaries.html#using-nextest-in-github-actions
       - name: Install latest nextest release
         uses: taiki-e/install-action@nextest
 
@@ -48,20 +52,25 @@ jobs:
 
       - name: Test with latest nextest release (faster than cargo test)
         uses: actions-rs/cargo@v1
-        with:
+        with:            
           command: nextest
-          args: run --all-features --profile ci
+          args: run --all-features
 
       #
       # Coding guidelines
       #
 
       - name: Enforce formating
-        run: cargo fmt -- --check
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: -- --check
 
-      # TODO: Need clippy for `--features ocaml_types`?
-      - name: Enforce clean clippy output
-        run: cargo clippy -- -D warnings
+      - name: Lint (clippy)
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: --all-features -- -D warnings
 
       #
       # Doc & Spec
