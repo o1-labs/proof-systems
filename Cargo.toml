@@ -12,6 +12,7 @@ members = [
     "oracle/export_test_vectors",
     "poly-commitment",
     "signer",
+    "snarky",
     "tools/kimchi-visu",
     "utils",
 ]
