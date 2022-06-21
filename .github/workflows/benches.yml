@@ -11,16 +11,31 @@ jobs:
     name: Run some basic checks
     if: github.event.label.name == 'benchmark'
     steps:
-      - name: Install dependencies
-        run: |
-          set -x
-          cargo install cargo-criterion   # criterion
-
-      - name: Setup OCaml (because of ocaml-gen)
-        run: sudo apt update && sudo apt install ocaml
+      #
+      # Setup
+      #
 
       - name: Checkout PR
         uses: actions/checkout@v2
+
+      - name: Set up cargo/rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: "1.58.0"
+          components: rustfmt, clippy
+
+      # https://github.com/Swatinem/rust-cache
+      - name: Cache Rust stuff
+        uses: Swatinem/rust-cache@v1
+
+      - name: Install cargo-criterion
+        uses: actions-rs/install@v0.1
+        with:
+          crate: cargo-criterion
+
+      - name: Setup OCaml (because of ocaml-gen)
+        run: sudo apt update && sudo apt install -y ocaml
 
 #      - name: Run iai bench
 #        run: |
@@ -28,11 +43,19 @@ jobs:
 #          cargo bench -p kimchi --bench proof_iai > iai_bench
 #          cat iai_bench
 
+      #
+      # Run benchmark
+      #
+
       - name: Run criterion bench
         run: |
           set -x
           cargo criterion -p kimchi --bench proof_criterion --color never > criterion_bench 2>&1
           cat criterion_bench
+
+      #
+      # Comment on PR
+      #
 
       - name: Write result in PR
         uses: actions/github-script@v5
