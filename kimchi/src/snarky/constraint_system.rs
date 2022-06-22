@@ -737,6 +737,56 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
         }
     }
 
+    /// reduce any [Cvar] to a single internal variable [V]
+    fn reduce_to_var<Cvar>(&mut self, x: Cvar) -> V
+    where
+        Cvar: SnarkyCvar<Field = Field>,
+    {
+        match self.reduce_lincom(x) {
+            (s, ConstantOrVar::Var(x)) => {
+                if s == Field::one() {
+                    x
+                } else {
+                    let sx = self.create_internal(Some(s), vec![(s, x)]);
+                    // s * x - sx = 0
+                    self.add_generic_constraint(
+                        Some(x),
+                        None,
+                        Some(sx),
+                        vec![
+                            s,
+                            Field::zero(),
+                            Field::one().neg(),
+                            Field::zero(),
+                            Field::zero(),
+                        ],
+                    );
+                    sx
+                }
+            }
+            (s, ConstantOrVar::Constant) => match self.cached_constants.get(&s) {
+                Some(x) => *x,
+                None => {
+                    let x = self.create_internal(None, vec![]);
+                    self.add_generic_constraint(
+                        Some(x),
+                        None,
+                        None,
+                        vec![
+                            Field::one(),
+                            Field::zero(),
+                            Field::zero(),
+                            Field::zero(),
+                            s.neg(),
+                        ],
+                    );
+                    self.cached_constants.insert(s, x);
+                    x
+                }
+            },
+        }
+    }
+
     pub fn add_basic_snarky_constraint<Cvar>(
         self: &mut Self,
         constraint: BasicSnarkyConstraint<Cvar>,
