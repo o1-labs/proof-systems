@@ -120,6 +120,7 @@ where
             .iter()
             .map(|x| array_init(|i| if i == 0 { *x } else { G::ScalarField::zero() }))
             .collect(),
+        generic_gate_queue: vec![],
     };
 
     // run the witness generation
@@ -173,6 +174,7 @@ where
     let mut system: System<C::InnerField> = System {
         next_variable: 0,
         gates: vec![],
+        generic_gate_queue: vec![],
     };
     let z = C::InnerField::zero();
 
