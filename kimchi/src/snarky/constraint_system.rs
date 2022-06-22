@@ -10,8 +10,8 @@ use super::constants::Constants;
 /** A gate interface, parameterized by a field. */
 pub trait GateVector<Field: FftField> {
     fn create() -> Self;
-    fn add(self: &mut Self, gate: CircuitGate<Field>);
-    fn get(self: &Self, idx: usize) -> CircuitGate<Field>;
+    fn add(&mut self, gate: CircuitGate<Field>);
+    fn get(&self, idx: usize) -> CircuitGate<Field>;
 }
 
 /** A row indexing in a constraint system.
@@ -24,7 +24,7 @@ enum Row {
 }
 
 impl Row {
-    fn to_absolute(self: &Self, public_input_size: usize) -> usize {
+    fn to_absolute(&self, public_input_size: usize) -> usize {
         match self {
             Row::PublicInput(i) => *i,
             Row::AfterPublicInput(i) => *i + public_input_size,
@@ -42,7 +42,7 @@ struct Position<Row> {
 }
 
 impl Position<usize> {
-    fn to_rust_wire(self: Self) -> Wire {
+    fn to_rust_wire(self) -> Wire {
         Wire {
             row: self.row,
             col: self.col,
@@ -60,7 +60,7 @@ struct GateSpec<Row, Field> {
 
 impl<Row, Field> GateSpec<Row, Field> {
     /** Applies a function [f] to the [row] of [t] and all the rows of its [wired_to]. */
-    fn map_rows<Row2, F: Fn(Row) -> Row2>(self: Self, f: F) -> GateSpec<Row2, Field> {
+    fn map_rows<Row2, F: Fn(Row) -> Row2>(self, f: F) -> GateSpec<Row2, Field> {
         let GateSpec {
             kind,
             wired_to,
@@ -78,7 +78,7 @@ impl<Row, Field> GateSpec<Row, Field> {
 }
 
 impl<Field: FftField> GateSpec<usize, Field> {
-    fn to_rust_gate(self: Self) -> CircuitGate<Field> {
+    fn to_rust_gate(self) -> CircuitGate<Field> {
         let GateSpec {
             kind,
             wired_to,
@@ -260,7 +260,7 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
       the function will return a hashtable that maps pos1 to pos3,
       pos3 to pos7, and pos7 to pos1.
     */
-    fn equivalence_classes_to_hashtbl(self: &mut Self) -> HashMap<Position<Row>, Position<Row>> {
+    fn equivalence_classes_to_hashtbl(&mut self) -> HashMap<Position<Row>, Position<Row>> {
         let mut equivalence_classes: HashMap<usize, HashSet<Position<Row>>> = HashMap::new();
         for (key, data) in self.equivalence_classes.iter() {
             let u = self.union_finds.find(*key).unwrap();
@@ -284,10 +284,7 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
     /** Compute the witness, given the constraint system `sys`
        and a function that converts the indexed secret inputs to their concrete values.
     */
-    pub fn compute_witness<F: Fn(usize) -> Field>(
-        self: &Self,
-        external_values: F,
-    ) -> Vec<Vec<Field>> {
+    pub fn compute_witness<F: Fn(usize) -> Field>(&self, external_values: F) -> Vec<Vec<Field>> {
         let mut internal_values = HashMap::new();
         let public_input_size = self.public_input_size.unwrap();
         let num_rows = public_input_size + self.next_row;
@@ -329,11 +326,11 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
         res
     }
 
-    fn union_find(self: &mut Self, value: V) {
+    fn union_find(&mut self, value: V) {
         self.union_finds.make_set(value)
     }
 
-    fn create_internal(self: &mut Self, constant: Option<Field>, lc: Vec<(Field, V)>) -> V {
+    fn create_internal(&mut self, constant: Option<Field>, lc: Vec<(Field, V)>) -> V {
         let v = InternalVar(self.next_internal_var);
         self.next_internal_var += 1;
         self.union_find(V::Internal(v));
@@ -360,22 +357,22 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
     }
 
     /** Returns the number of auxiliary inputs. */
-    pub fn get_auxiliary_input_size(self: &Self) -> usize {
+    pub fn get_auxiliary_input_size(&self) -> usize {
         self.auxiliary_input_size
     }
 
     /** Returns the number of public inputs. */
-    pub fn get_primary_input_size(self: &Self) -> usize {
+    pub fn get_primary_input_size(&self) -> usize {
         self.public_input_size.unwrap()
     }
 
     /** Non-public part of the witness. */
-    pub fn set_auxiliary_input_size(self: &mut Self, x: usize) {
+    pub fn set_auxiliary_input_size(&mut self, x: usize) {
         self.auxiliary_input_size = x
     }
 
     /** Sets the number of public-input. It should only be called once. */
-    pub fn set_public_input_size(self: &mut Self, x: usize) {
+    pub fn set_public_input_size(&mut self, x: usize) {
         self.public_input_size = Some(x)
     }
 
@@ -383,7 +380,7 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
     A key is an external or internal variable.
     The row must be given relative to the start of the circuit
     (so at the start of the public-input rows). */
-    fn wire_(self: &mut Self, key: V, row: Row, col: usize) {
+    fn wire_(&mut self, key: V, row: Row, col: usize) {
         self.union_find(key);
         self.equivalence_classes
             .entry(key)
@@ -392,12 +389,12 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
     }
 
     /** Same as wire', except that the row must be given relatively to the end of the public-input rows. */
-    fn wire(self: &mut Self, key: V, row: usize, col: usize) {
+    fn wire(&mut self, key: V, row: usize, col: usize) {
         self.wire_(key, Row::AfterPublicInput(row), col)
     }
 
     /** Adds a row/gate/constraint to a constraint system `sys`. */
-    fn add_row(self: &mut Self, vars: Vec<Option<V>>, kind: GateType, coeffs: Vec<Field>) {
+    fn add_row(&mut self, vars: Vec<Option<V>>, kind: GateType, coeffs: Vec<Field>) {
         /* As we're adding a row, we're adding new cells.
            If these cells (the first 7) contain variables,
            make sure that they are wired
@@ -423,7 +420,7 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
         self.rows.push(vars);
     }
 
-    pub fn finalize(self: &mut Self) {
+    pub fn finalize(&mut self) {
         if let Circuit::Compiled(_, _) = self.gates {
             return;
         } else if let Some(_) = &self.pending_generic_gate {
@@ -517,7 +514,7 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
         }
     }
 
-    pub fn finalize_and_get_gates(self: &mut Self) -> &mut Gates {
+    pub fn finalize_and_get_gates(&mut self) -> &mut Gates {
         self.finalize();
         match &mut self.gates {
             Circuit::Compiled(_, gates) => gates,
@@ -560,7 +557,7 @@ fn accumulate_terms<Field: FftField>(terms: Vec<(Field, usize)>) -> HashMap<usiz
 pub trait SnarkyCvar: Clone {
     type Field;
 
-    fn to_constant_and_terms(self: &Self) -> (Option<Self::Field>, Vec<(Self::Field, usize)>);
+    fn to_constant_and_terms(&self) -> (Option<Self::Field>, Vec<(Self::Field, usize)>);
 }
 
 pub fn canonicalize<Cvar>(x: Cvar) -> Option<(Vec<(Cvar::Field, usize)>, usize, bool)>
@@ -590,7 +587,7 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
     every other generic gate.
     */
     fn add_generic_constraint(
-        self: &mut Self,
+        &mut self,
         l: Option<V>,
         r: Option<V>,
         o: Option<V>,
@@ -624,7 +621,7 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
     - return (1, internal_var_2)
 
     It assumes that the list of terms is not empty. */
-    fn completely_reduce<Terms>(self: &mut Self, terms: Terms) -> (Field, V)
+    fn completely_reduce<Terms>(&mut self, terms: Terms) -> (Field, V)
     where
         Terms: IntoIterator<Item = (Field, usize)>,
         <Terms as IntoIterator>::IntoIter: DoubleEndedIterator,
@@ -657,7 +654,7 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
       It returns the output variable as (1, `Var res),
       unless the output is a constant, in which case it returns (c, `Constant).
     */
-    fn reduce_lincom<Cvar>(self: &mut Self, x: Cvar) -> (Field, ConstantOrVar)
+    fn reduce_lincom<Cvar>(&mut self, x: Cvar) -> (Field, ConstantOrVar)
     where
         Cvar: SnarkyCvar<Field = Field>,
     {
@@ -761,10 +758,8 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
         }
     }
 
-    pub fn add_basic_snarky_constraint<Cvar>(
-        self: &mut Self,
-        constraint: BasicSnarkyConstraint<Cvar>,
-    ) where
+    pub fn add_basic_snarky_constraint<Cvar>(&mut self, constraint: BasicSnarkyConstraint<Cvar>)
+    where
         Cvar: SnarkyCvar<Field = Field>,
     {
         match constraint {
