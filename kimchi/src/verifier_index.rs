@@ -105,6 +105,10 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     #[serde(bound = "Vec<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub range_check_comm: Vec<PolyComm<G>>,
 
+    // Foreign field multiplication gates polynomial commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub foreign_field_mul_comm: Vec<PolyComm<G>>,
+
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub shift: [G::ScalarField; PERMUTS],
@@ -133,6 +137,9 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     pub fr_sponge_params: ArithmeticSpongeParams<G::ScalarField>,
     #[serde(skip)]
     pub fq_sponge_params: ArithmeticSpongeParams<G::BaseField>,
+    // Foreign field modulus
+    #[serde(skip)]
+    pub foreign_field_modulus: Vec<G::ScalarField>,
 }
 //~spec:endcode
 
@@ -224,6 +231,16 @@ where
                 })
                 .collect(),
 
+            foreign_field_mul_comm: self
+                .cs
+                .foreign_field_mul_selector_polys
+                .iter()
+                .map(|poly| {
+                    self.srs
+                        .commit_evaluations_non_hiding(domain, &poly.eval8, None)
+                })
+                .collect(),
+
             shift: self.cs.shift,
             zkpm: {
                 let cell = OnceCell::new();
@@ -240,6 +257,7 @@ where
             linearization: self.linearization.clone(),
             fr_sponge_params: self.cs.fr_sponge_params.clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),
+            foreign_field_modulus: self.cs.foreign_field_modulus.clone(),
         }
     }
 }

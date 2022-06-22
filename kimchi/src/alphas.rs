@@ -242,7 +242,7 @@ mod tests {
     use std::{fs, path::Path};
 
     use super::*;
-    use crate::circuits::gate::GateType;
+    use crate::circuits::{gate::GateType, polynomials::foreign_field_mul};
     use mina_curves::pasta::Fp;
 
     // testing [Builder]
@@ -331,6 +331,7 @@ mod tests {
                 .lookup_constraint_system
                 .as_ref()
                 .map(|lcs| &lcs.configuration),
+            !index.cs.foreign_field_mul_selector_polys.is_empty(),
         );
         // make sure this is present in the specification
         let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();

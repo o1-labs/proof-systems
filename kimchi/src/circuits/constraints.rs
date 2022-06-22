@@ -7,7 +7,7 @@ use crate::{
         lookup::{index::LookupConstraintSystem, tables::LookupTable},
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
         polynomials::permutation::{Shifts, ZK_ROWS},
-        polynomials::range_check,
+        polynomials::{foreign_field_mul, range_check},
         wires::*,
     },
     error::SetupError,
@@ -26,7 +26,7 @@ use serde_with::serde_as;
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use super::lookup::runtime_tables::RuntimeTableCfg;
+use super::{gate::SelectorPolynomial, lookup::runtime_tables::RuntimeTableCfg};
 
 //
 // ConstraintSystem
@@ -112,8 +112,16 @@ pub struct ConstraintSystem<F: FftField> {
     pub endomul_scalar8: E<F, D<F>>,
 
     /// Range check gate selector polynomials
-    #[serde(bound = "Vec<range_check::SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
-    pub range_check_selector_polys: Vec<range_check::SelectorPolynomial<F>>,
+    #[serde(bound = "Vec<SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
+    pub range_check_selector_polys: Vec<SelectorPolynomial<F>>,
+
+    /// Foreign field modulus parameter
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    pub foreign_field_modulus: Vec<F>,
+
+    /// Foreign field multiplication gate selector polynomials
+    #[serde(bound = "Vec<SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
+    pub foreign_field_mul_selector_polys: Vec<SelectorPolynomial<F>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -153,6 +161,48 @@ pub struct Builder<F: FftField> {
     lookup_tables: Vec<LookupTable<F>>,
     runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
     precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
+    foreign_field_modulus: Vec<F>,
+}
+
+/// Create selector polynomial for a circuit gate
+pub fn selector_polynomial<F: FftField>(
+    gate_type: GateType,
+    gates: &[CircuitGate<F>],
+    domain: &EvaluationDomains<F>,
+) -> SelectorPolynomial<F> {
+    // Coefficient form
+    let coeff = E::<F, D<F>>::from_vec_and_domain(
+        gates
+            .iter()
+            .map(|gate| {
+                if gate.typ == gate_type {
+                    F::one()
+                } else {
+                    F::zero()
+                }
+            })
+            .collect(),
+        domain.d1,
+    )
+    .interpolate();
+
+    // Evaluation form (evaluated over d8)
+    let eval8 = coeff.evaluate_over_domain_by_ref(domain.d8);
+
+    SelectorPolynomial { coeff, eval8 }
+}
+
+/// Create selector polynomials for a gate (i.e. a collection of circuit gates)
+pub fn selector_polynomials<F: FftField>(
+    gate_types: &[GateType],
+    gates: &[CircuitGate<F>],
+    domain: &EvaluationDomains<F>,
+) -> Vec<SelectorPolynomial<F>> {
+    Vec::from_iter(
+        gate_types
+            .iter()
+            .map(|gate_type| selector_polynomial(*gate_type, gates, domain)),
+    )
 }
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
@@ -179,6 +229,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             lookup_tables: vec![],
             runtime_tables: None,
             precomputations: None,
+            foreign_field_modulus: vec![],
         }
     }
 
@@ -194,8 +245,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     }
 
     /// This function verifies the consistency of the wire
-    /// assignements (witness) against the constraints
-    ///     witness: wire assignement witness
+    /// assignments (witness) against the constraints
+    ///     witness: wire assignment witness
     ///     RETURN: verification status
     pub fn verify(&self, witness: &[Vec<F>; COLUMNS], public: &[F]) -> Result<(), GateError> {
         // pad the witness
@@ -324,6 +375,13 @@ impl<F: FftField + SquareRootField> Builder<F> {
         shared_precomputations: Arc<DomainConstantEvaluations<F>>,
     ) -> Self {
         self.precomputations = Some(shared_precomputations);
+        self
+    }
+
+    /// Set up the foreign field modulus.
+    /// If not invoked, it is `vec![]` by default.
+    pub fn foreign_field_modulus(mut self, foreign_field_modulus: Vec<F>) -> Self {
+        self.foreign_field_modulus = foreign_field_modulus;
         self
     }
 
@@ -502,7 +560,18 @@ impl<F: FftField + SquareRootField> Builder<F> {
         let range_check_selector_polys = {
             if !circuit_gates_used.is_disjoint(&range_check::circuit_gates().into_iter().collect())
             {
-                range_check::selector_polynomials(&gates, &domain)
+                selector_polynomials(&range_check::circuit_gates(), &gates, &domain)
+            } else {
+                vec![]
+            }
+        };
+
+        // Foreign field multiplication constraint selector polynomials
+        let foreign_field_mul_selector_polys = {
+            if !circuit_gates_used
+                .is_disjoint(&foreign_field_mul::circuit_gates().into_iter().collect())
+            {
+                selector_polynomials(&foreign_field_mul::circuit_gates(), &gates, &domain)
             } else {
                 vec![]
             }
@@ -557,6 +626,8 @@ impl<F: FftField + SquareRootField> Builder<F> {
             mull8,
             emull,
             range_check_selector_polys,
+            foreign_field_modulus: self.foreign_field_modulus,
+            foreign_field_mul_selector_polys,
             gates,
             shift: shifts.shifts,
             endo,

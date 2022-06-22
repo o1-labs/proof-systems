@@ -13,7 +13,7 @@ use crate::{
             complete_add::CompleteAdd,
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
-            generic, permutation,
+            foreign_field_mul, generic, permutation,
             permutation::ZK_ROWS,
             poseidon::Poseidon,
             range_check,
@@ -586,6 +586,16 @@ where
                     |(i, gate_type)| (*gate_type, &index.cs.range_check_selector_polys[i].eval8),
                 ));
             }
+            if !index.cs.foreign_field_mul_selector_polys.is_empty() {
+                index_evals.extend(foreign_field_mul::circuit_gates().iter().enumerate().map(
+                    |(i, gate_type)| {
+                        (
+                            *gate_type,
+                            &index.cs.foreign_field_mul_selector_polys[i].eval8,
+                        )
+                    },
+                ));
+            }
 
             Environment {
                 constants: Constants {
@@ -595,6 +605,7 @@ where
                     joint_combiner: lookup_context.joint_combiner,
                     endo_coefficient: index.cs.endo,
                     mds: index.cs.fr_sponge_params.mds.clone(),
+                    foreign_field_modulus: index.cs.foreign_field_modulus.clone(),
                 },
                 witness: &lagrange.d8.this.w,
                 coefficient: &index.cs.coefficients8,
@@ -646,6 +657,39 @@ where
                 // Range check gate
                 for gate_type in range_check::circuit_gates() {
                     let expr = range_check::circuit_gate_constraints(gate_type, &all_alphas);
+
+                    let evals = expr.evaluations(&env);
+
+                    if evals.domain().size == t4.domain().size {
+                        t4 += &evals;
+                    } else if evals.domain().size == t8.domain().size {
+                        t8 += &evals;
+                    } else {
+                        panic!(
+                            "Bad evaluation domain size {} for {:?}",
+                            evals.domain().size,
+                            gate_type
+                        );
+                    }
+
+                    if cfg!(test) {
+                        let (_, res) = evals
+                            .interpolate()
+                            .divide_by_vanishing_poly(index.cs.domain.d1)
+                            .unwrap();
+                        if !res.is_zero() {
+                            panic!("Nonzero vanishing polynomial division for {:?}", gate_type);
+                        }
+                    }
+                }
+            }
+
+            if !index.cs.foreign_field_mul_selector_polys.is_empty() {
+                assert!(!index.cs.foreign_field_modulus.is_empty());
+
+                // foreign field multiplication
+                for gate_type in foreign_field_mul::circuit_gates() {
+                    let expr = foreign_field_mul::circuit_gate_constraints(gate_type, &all_alphas);
 
                     let evals = expr.evaluations(&env);
 
