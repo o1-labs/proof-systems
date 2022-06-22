@@ -9,104 +9,6 @@ You can read more about this project on the [Kimchi book](https://o1-labs.github
 
 [See here for the rust documentation](https://o1-labs.github.io/proof-systems/rustdoc).
 
-# Kombucha
-
-This repository contains **kombucha**, the Kimchi circuit constructor for external users.
-
-## Guidelines
-
-When using this library, make sure to include in your Cargo.toml the following dependency:
-
-```toml
-[dependencies]
-circuit-construction = { git = "https://github.com/o1-labs/proof-systems" }
-```
-
-## Example
-
-The following is an example to demonstrate a full cycle workflow using circuit-construction:
-
-1. Specify a circuit
-2. Create SRS
-3. Generate prover index
-4. Generate a proof
-5. Verify the proof
-
-```rust
-use circuit_construction::{prologue::*};
-
-type SpongeQ = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
-type SpongeR = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>;
-
-// a callback function to specify constraint gates for a circuit
-pub fn circuit<
-    F: PrimeField + FftField,
-    Sys: Cs<F>,
->(
-    witness: Option<F>,
-    sys: &mut Sys,
-    public_input: Vec<Var<F>>,
-) {
-    // add a constant gate
-    let three = sys.constant(3u32.into());
-    // read the first public input
-    let first_public_input = public_input[0];
-    // create a free variable to hold a witness value
-    let witness = sys.var(|| witness.unwrap());
-
-    // create a free variable to hold a calculation result
-    let result = sys.var(|| {
-        first_public_input.val() + witness.val()
-    });
-
-    // add a gate to assert the calculation equals to a constant constraint
-    sys.assert_eq(result, three);
-}
-
-// create SRS
-let srs = {
-    let mut srs = SRS::<VestaAffine>::create(1 << 3); // 2^3 = 8
-    srs.add_lagrange_basis(Radix2EvaluationDomain::new(srs.g.len()).unwrap());
-    Arc::new(srs)
-};
-let public_inputs = vec![1i32.into()];
-let group_map = <VestaAffine as CommitmentCurve>::Map::setup();
-
-// generate circuit and index
-let prover_index = generate_prover_index::<FpInner, _>(
-    srs,
-    &fp_constants(),
-    &oracle::pasta::fq_kimchi::params(),
-    // to determine how many placeholders to generate for public inputs
-    public_inputs.len(),
-    // use the circuit callback to generate gate constraints 
-    // with placeholders for the witness and public inputs
-    |sys, p| circuit::<_, _>(None, sys, p),
-);
-
-// create witness
-let witness = 2i32;
-
-// generate proof
-let proof = prove::<VestaAffine, _, SpongeQ, SpongeR>(
-    &prover_index,
-    &group_map,
-    None,
-    public_inputs,
-    // use the same circuit callbacb
-    // but with values for witness and public inputs
-    |sys, p| circuit::<Fp, _>(Some(witness.into()), sys, p),
-);
-
-// verify proof
-let verifier_index = prover_index.verifier_index();
-verify::<_, SpongeQ, SpongeR>(&group_map, &verifier_index, &proof).unwrap();
-```
-
-For the other examples, please refer to the [tests](./circuit-construction/tests/).
-
-Note that kimchi is specifically designed for use in a recursion proof system, like [pickles](https://medium.com/minaprotocol/meet-pickles-snark-enabling-smart-contract-on-coda-protocol-7ede3b54c250), but can also be used a stand alone for normal proofs.
-
 ## Performance
 
 At the time of this writing:
@@ -134,7 +36,6 @@ The project is organized in the following way:
 * [groupmap/](https://github.com/o1-labs/proof-systems/tree/master/groupmap). Used to convert elliptic curve elements to field elements.
 * [hasher/](https://github.com/o1-labs/proof-systems/tree/master/hasher). Interfaces for mina hashing.
 * [kimchi/](https://github.com/o1-labs/proof-systems/tree/master/kimchi). Our proof system.
-* [circuit-construction/](https://github.com/o1-labs/proof-systems/tree/master/circuit-construction). Circuit writer.
 * [ocaml/](https://github.com/o1-labs/proof-systems/tree/master/ocaml). Ocaml bindings generator tool.
 * [oracle/](https://github.com/o1-labs/proof-systems/tree/master/oracle). Implementation of the poseidon hash function.
 * [poly-commitment/](https://github.com/o1-labs/proof-systems/tree/master/poly-commitment). Polynomial commitment code.

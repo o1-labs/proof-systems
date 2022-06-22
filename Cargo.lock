@@ -281,39 +281,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bd650552110e39b7c5058986cf177decd3365841836578ac50a286094eac0be6"
 
 [[package]]
-name = "circuit-construction"
-version = "0.1.0"
-dependencies = [
- "ark-ec",
- "ark-ff",
- "ark-poly",
- "ark-serialize",
- "array-init",
- "blake2",
- "colored",
- "commitment_dlog",
- "criterion",
- "groupmap",
- "iai",
- "itertools",
- "kimchi",
- "mina-curves",
- "num-derive",
- "num-traits",
- "o1-utils",
- "oracle",
- "proptest",
- "proptest-derive",
- "rand",
- "rand_core",
- "rayon",
- "rmp-serde",
- "serde",
- "serde_with",
- "thiserror",
-]
-
-[[package]]
 name = "clap"
 version = "2.34.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
