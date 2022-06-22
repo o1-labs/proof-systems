@@ -57,6 +57,12 @@ pub const GENERIC_REGISTERS: usize = 3;
 /// and one for the constant.
 pub const GENERIC_COEFFS: usize = GENERIC_REGISTERS + 1 /* mul */ + 1 /* cst */;
 
+/// The double generic gate actually contains two generic gates.
+pub const DOUBLE_GENERIC_COEFFS: usize = GENERIC_COEFFS * 2;
+
+/// Number of generic of registers by a double generic gate.
+pub const DOUBLE_GENERIC_REGISTERS: usize = GENERIC_REGISTERS * 2;
+
 /// The different type of computation that are possible with a generic gate.
 /// This type is useful to create a generic gate via the [CircuitGate::create_generic_gadget] function.
 pub enum GenericGateSpec<F> {
