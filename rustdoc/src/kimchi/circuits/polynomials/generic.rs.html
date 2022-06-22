@@ -566,6 +566,16 @@
 <span id="560">560</span>
 <span id="561">561</span>
 <span id="562">562</span>
+<span id="563">563</span>
+<span id="564">564</span>
+<span id="565">565</span>
+<span id="566">566</span>
+<span id="567">567</span>
+<span id="568">568</span>
+<span id="569">569</span>
+<span id="570">570</span>
+<span id="571">571</span>
+<span id="572">572</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the double generic gate.</span>
 
 <span class="comment">//~ The double generic gate contains two generic gates.</span>
@@ -904,12 +914,22 @@
             <span class="macro">ensure_eq!</span>(<span class="self">self</span>.<span class="ident">typ</span>, <span class="ident">GateType::Generic</span>, <span class="string">&quot;generic: incorrect gate&quot;</span>);
 
             <span class="kw">let</span> <span class="ident">check_single</span> <span class="op">=</span> <span class="op">|</span><span class="ident">coeffs_offset</span>, <span class="ident">register_offset</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">sum</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">coeffs</span>[<span class="ident">coeffs_offset</span>] <span class="op">*</span> <span class="ident">this</span>[<span class="ident">register_offset</span>]
-                    <span class="op">+</span> <span class="self">self</span>.<span class="ident">coeffs</span>[<span class="ident">coeffs_offset</span> <span class="op">+</span> <span class="number">1</span>] <span class="op">*</span> <span class="ident">this</span>[<span class="ident">register_offset</span> <span class="op">+</span> <span class="number">1</span>]
-                    <span class="op">+</span> <span class="self">self</span>.<span class="ident">coeffs</span>[<span class="ident">coeffs_offset</span> <span class="op">+</span> <span class="number">2</span>] <span class="op">*</span> <span class="ident">this</span>[<span class="ident">register_offset</span> <span class="op">+</span> <span class="number">2</span>];
-                <span class="kw">let</span> <span class="ident">mul</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">coeffs</span>[<span class="ident">coeffs_offset</span> <span class="op">+</span> <span class="number">3</span>]
-                    <span class="op">*</span> <span class="ident">this</span>[<span class="ident">register_offset</span>]
-                    <span class="op">*</span> <span class="ident">this</span>[<span class="ident">register_offset</span> <span class="op">+</span> <span class="number">1</span>];
+                <span class="kw">let</span> <span class="ident">get</span> <span class="op">=</span> <span class="op">|</span><span class="ident">offset</span><span class="op">|</span> {
+                    <span class="self">self</span>.<span class="ident">coeffs</span>
+                        .<span class="ident">get</span>(<span class="ident">offset</span>)
+                        .<span class="ident">cloned</span>()
+                        .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">F::zero</span>())
+                };
+                <span class="kw">let</span> <span class="ident">l_coeff</span> <span class="op">=</span> <span class="ident">get</span>(<span class="ident">coeffs_offset</span>);
+                <span class="kw">let</span> <span class="ident">r_coeff</span> <span class="op">=</span> <span class="ident">get</span>(<span class="ident">coeffs_offset</span> <span class="op">+</span> <span class="number">1</span>);
+                <span class="kw">let</span> <span class="ident">o_coeff</span> <span class="op">=</span> <span class="ident">get</span>(<span class="ident">coeffs_offset</span> <span class="op">+</span> <span class="number">2</span>);
+                <span class="kw">let</span> <span class="ident">m_coeff</span> <span class="op">=</span> <span class="ident">get</span>(<span class="ident">coeffs_offset</span> <span class="op">+</span> <span class="number">3</span>);
+                <span class="kw">let</span> <span class="ident">c_coeff</span> <span class="op">=</span> <span class="ident">get</span>(<span class="ident">coeffs_offset</span> <span class="op">+</span> <span class="number">4</span>);
+
+                <span class="kw">let</span> <span class="ident">sum</span> <span class="op">=</span> <span class="ident">l_coeff</span> <span class="op">*</span> <span class="ident">this</span>[<span class="ident">register_offset</span>]
+                    <span class="op">+</span> <span class="ident">r_coeff</span> <span class="op">*</span> <span class="ident">this</span>[<span class="ident">register_offset</span> <span class="op">+</span> <span class="number">1</span>]
+                    <span class="op">+</span> <span class="ident">o_coeff</span> <span class="op">*</span> <span class="ident">this</span>[<span class="ident">register_offset</span> <span class="op">+</span> <span class="number">2</span>];
+                <span class="kw">let</span> <span class="ident">mul</span> <span class="op">=</span> <span class="ident">m_coeff</span> <span class="op">*</span> <span class="ident">this</span>[<span class="ident">register_offset</span>] <span class="op">*</span> <span class="ident">this</span>[<span class="ident">register_offset</span> <span class="op">+</span> <span class="number">1</span>];
                 <span class="kw">let</span> <span class="ident">public</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">coeffs_offset</span> <span class="op">==</span> <span class="number">0</span> {
                     <span class="ident">public</span>.<span class="ident">get</span>(<span class="ident">row</span>).<span class="ident">cloned</span>().<span class="ident">unwrap_or_else</span>(<span class="ident">F::zero</span>)
                 } <span class="kw">else</span> {
@@ -917,7 +937,7 @@
                 };
                 <span class="macro">ensure_eq!</span>(
                     <span class="ident">zero</span>,
-                    <span class="ident">sum</span> <span class="op">+</span> <span class="ident">mul</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">coeffs</span>[<span class="ident">coeffs_offset</span> <span class="op">+</span> <span class="number">4</span>] <span class="op">-</span> <span class="ident">public</span>,
+                    <span class="ident">sum</span> <span class="op">+</span> <span class="ident">mul</span> <span class="op">+</span> <span class="ident">c_coeff</span> <span class="op">-</span> <span class="ident">public</span>,
                     <span class="string">&quot;generic: incorrect gate&quot;</span>
                 );
                 <span class="prelude-val">Ok</span>(())

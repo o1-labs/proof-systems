@@ -223,6 +223,8 @@
 <span id="217">217</span>
 <span id="218">218</span>
 <span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">ark_ec</span>::{<span class="ident">AffineCurve</span>, <span class="ident">ProjectiveCurve</span>};
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">One</span>, <span class="ident">PrimeField</span>, <span class="ident">SquareRootField</span>, <span class="ident">Zero</span>};
 <span class="kw">use</span> <span class="ident">array_init::array_init</span>;
@@ -345,6 +347,7 @@
             .<span class="ident">iter</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="kw">if</span> <span class="ident">i</span> <span class="op">==</span> <span class="number">0</span> { <span class="kw-2">*</span><span class="ident">x</span> } <span class="kw">else</span> { <span class="ident">G::ScalarField::zero</span>() }))
             .<span class="ident">collect</span>(),
+        <span class="ident">generic_gate_queue</span>: <span class="macro">vec!</span>[],
     };
 
     <span class="comment">// run the witness generation</span>
@@ -398,6 +401,7 @@
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">system</span>: <span class="ident">System</span><span class="op">&lt;</span><span class="ident">C::InnerField</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">System</span> {
         <span class="ident">next_variable</span>: <span class="number">0</span>,
         <span class="ident">gates</span>: <span class="macro">vec!</span>[],
+        <span class="ident">generic_gate_queue</span>: <span class="macro">vec!</span>[],
     };
     <span class="kw">let</span> <span class="ident">z</span> <span class="op">=</span> <span class="ident">C::InnerField::zero</span>();
 
