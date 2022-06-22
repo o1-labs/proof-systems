@@ -11,12 +11,18 @@ env:
   RUSTFLAGS: -Coverflow-checks=y -Cdebug-assertions=y
   # https://doc.rust-lang.org/cargo/reference/profiles.html#incremental
   CARGO_INCREMENTAL: 1
+  # https://nexte.st/book/pre-built-binaries.html#using-nextest-in-github-actions
+  CARGO_TERM_COLOR: always
 
 jobs:
   run_checks:
     runs-on: ubuntu-latest
     name: Run some basic checks and tests
     steps:
+      #
+      # Setup
+      #
+
       - name: Checkout PR
         uses: actions/checkout@v2
 
@@ -27,37 +33,55 @@ jobs:
           toolchain: "1.58.0"
           components: rustfmt, clippy
 
+      # https://github.com/Swatinem/rust-cache
+      - name: Cache Rust stuff
+        uses: Swatinem/rust-cache@v1
+
       - name: Setup OCaml (because of ocaml-gen)
         run: |
           sudo apt update
           sudo apt install -y ocaml
 
-      # `cargo check` compiles the packages without performing the final step of code generation,
-      # which is faster than running `cargo build`.
-      # Use release build to speed up tests
-      - name: Run cargo check
-        run: cargo check --release
+      # https://nexte.st/book/pre-built-binaries.html#using-nextest-in-github-actions
+      - name: Install latest nextest release
+        uses: taiki-e/install-action@nextest
 
-      # https://github.com/o1-labs/proof-systems/issues/398
-      - name: Compile tests
-        run: cargo test --release --no-run
+      - name: Install cargo-spec for specifications
+        uses: actions-rs/install@v0.1
+        with:
+          crate: cargo-spec
+          version: 0.4.1
+          use-tool-cache: true
 
-      - name: Run cargo check with all features (including ocaml_types)
-        run: cargo check --release --all-features
+      #
+      # Tests
+      # 
 
-      - name: Run tests
-        run: cargo test --release --all-features
+      - name: Test with latest nextest release (faster than cargo test)
+        uses: actions-rs/cargo@v1
+        with:            
+          command: nextest
+          args: run --all-features --release
+
+      #
+      # Coding guidelines
+      #
 
       - name: Enforce formating
-        run: cargo fmt -- --check
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: -- --check
 
-      # TODO: Need clippy for `--features ocaml_types`?
-      - name: Enforce clean clippy output
-        run: cargo clippy -- -D warnings
+      - name: Lint (clippy)
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: --all-features -- -D warnings
 
-      - name: Set up cargo-spec for specifications
-        run: |
-          cargo install cargo-spec --version 0.3.0
+      #
+      # Doc & Spec
+      #
 
       - name: Build the kimchi specification
         run: |

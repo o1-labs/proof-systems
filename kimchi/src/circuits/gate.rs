@@ -92,8 +92,7 @@ pub enum GateType {
     // Range check (16-24)
     RangeCheck0 = 16,
     RangeCheck1 = 17,
-    RangeCheck2 = 18,
-    ForeignFieldAdd = 19,
+    ForeignFieldAdd = 18,
 }
 
 #[serde_as]
@@ -161,7 +160,9 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
             CairoClaim | CairoInstruction | CairoFlags | CairoTransition => {
                 self.verify_cairo_gate(row, witness, cs)
             }
-            RangeCheck0 | RangeCheck1 | RangeCheck2 => self.verify_range_check(row, witness, cs),
+            RangeCheck0 | RangeCheck1 => self
+                .verify_range_check(row, witness, cs)
+                .map_err(|e| e.to_string()),
             ForeignFieldAdd => {
                 // TODO
                 Ok(())

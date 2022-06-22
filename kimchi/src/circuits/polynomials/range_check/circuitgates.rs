@@ -1,84 +1,91 @@
 ///```text
-/// Range check field element structure:
+/// Range check circuit gates:
 ///
-///    Each field element a should be decomposed into three 88-bit limbs a0, a1, a2 s.t. a = a0a1a2 in
-///    little-endian byte order (i.e. a = a2*2^{2b} + a1*2^b + a0).
+///    The range check gate is comprised of three circuit gates (RangeCheck0, RangeCheck1
+///    and Zero) and can perform range checks on up to three 88-bit values: v0, v1 and v2.
 ///
-///    This gate only performs 3 88-bit range checks on a0, a1 and a2, but does not constrain that
-///    the sum of those is equal to a.
+///    Byte-order:
+///      * Each value is in little-endian byte order
+///      * Limbs are mapped to columns in big-endian order (i.e. the lowest columns
+///        contain the highest bits)
+///      * We also have the highest bits covered by copy constraints and plookups, so that
+///        we can copy the highest two constraints to zero and get a 64-bit lookup, which
+///        are envisioned as a common case
 ///
-///    L is a 12-bit lookup,
-///    C is a 2-bit crumb.
+///    The values are decomposed into limbs as follows.
+///
+///    L is a 12-bit lookup (or copy) limb,
+///    C is a 2-bit "crumb" limb.
 ///
 ///         <----6----> <------8------>
-///    a0 = L L L L L L C C C C C C C C
-///    a1 = L L L L L L C C C C C C C C
+///    v0 = L L L L L L C C C C C C C C
+///    v1 = L L L L L L C C C C C C C C
 ///         <--4--> <------------------20----------------->
-///    a2 = L L L L C C C C C C C C C C C C C C C C C C C C
+///    v2 = L L L L C C C C C C C C C C C C C C C C C C C C
 ///
-/// Input structure:
+/// Witness structure:
 ///
-///   Each of the first 3 gates checks most of a different range-check input.
-///   The final gate performs the remaining checks for all 3 inputs.
+///   Row  Contents
+///     0   v0
+///     1   v1
+///     2   v2
+///     3   v0,v1,v2
 ///
-///   Row*  Contents**
-///     0   a0
-///     1   a1
-///     2   a2
-///     3   a0,a1,a2
-///
-///    (*)  Row offsets
-///    (**) Some part of the limb is contained in this row
+///   * The first 2 rows contain v0 and v1 and their respective decompositions
+///     into 12-bit and 2-bit limbs
+///   * The 3rd row contains v2 and part of its decomposition: four 12-bit limbs and
+///     the 1st 10 crumbs
+///   * The final row contains v0's and v1's 5th and 6th 12-bit limbs as well as the
+///     remaining 10 crumbs of v2
 ///
 /// Constraints:
 ///
-///   For efficiency, the field element inputs are constrained
-///   by their sublimbs according to their type.
-///    * 12-bit sublimbs are constrained with plookups
+///   For efficiency, the values are constrained differently according to their type.
+///    * 12-bit limbs are constrained with plookups
 ///    * 2-bit crumbs are constrained with degree-4 constraints
 ///
-/// Example:
+/// Layout:
 ///
-///  This example shows how input a is constrained
+///  This is how three 88-bit inputs v0, v1 and v2 are layed out and constrained.
 ///
-///   * aXpi is a 12-bit sublimb of limb aX
-///   * aXci is a 2-bit "crumb" sublimb of aX
+///   * vipj is the jth 12-bit limb of value vi
+///   * vicj is the jth 2-bit crumb limb of value vi
 ///
-/// Gate:   RangeCheck0    RangeCheck0    RangeCheck1    RangeCheck2
-///   Rows -->
+/// Gate:   RangeCheck0    RangeCheck0    RangeCheck1    Zero
+///    Rows -->
 ///         0              1              2              3
-///  C  0 | a0           | a1           | a2           | 0
-///  o  1 | plookup a0p0 | plookup a1p0 | plookup a2p0 | plookup a0p4
-///  l  2 | plookup a0p1 | plookup a1p1 | plookup a2p1 | plookup a0p5
-///  s  3 | plookup a0p2 | plookup a1p2 | plookup a2p2 | plookup a1p4
-///  |  4 | plookup a0p3 | plookup a1p3 | plookup a2p3 | plookup a1p5
-/// \ / 5 | copy a0p4    | copy a1p4    | crumb a2c0   | crumb a2c10
-///  '  6 | copy a0p5    | copy a1p5    | crumb a2c1   | crumb a2c11
-///     7 | crumb a0c0   | crumb a1c0   | crumb a2c2   | crumb a2c12
-///     8 | crumb a0c1   | crumb a1c1   | crumb a2c3   | crumb a2c13
-///     9 | crumb a0c2   | crumb a1c2   | crumb a2c4   | crumb a2c14
-///    10 | crumb a0c3   | crumb a1c3   | crumb a2c5   | crumb a2c15
-///    11 | crumb a0c4   | crumb a1c4   | crumb a2c6   | crumb a2c16
-///    12 | crumb a0c5   | crumb a1c5   | crumb a2c7   | crumb a2c17
-///    13 | crumb a0c6   | crumb a1c6   | crumb a2c8   | crumb a2c18
-///    14 | crumb a0c7   | crumb a1c7   | crumb a2c9   | crumb a2c19
+///    0 | v0           | v1           | v2           | 0
+///    1 | copy    v0p0 | copy    v1p0 | crumb   v2c0 | crumb   v2c10 <- MSB
+///    2 | copy    v0p1 | copy    v1p1 | crumb   v2c1 | crumb   v2c11
+///    3 | plookup v0p2 | plookup v1p2 | plookup v2p0 | plookup  v0p0
+///    4 | plookup v0p3 | plookup v1p3 | plookup v2p1 | plookup  v0p1
+///    5 | plookup v0p4 | plookup v1p4 | plookup v2p2 | plookup  v1p0
+///    6 | plookup v0p5 | plookup v1p5 | plookup v2p3 | plookup  v1p1
+///    7 | crumb   v0c0 | crumb   v1c0 | crumb   v2c2 | crumb   v2c12
+///    8 | crumb   v0c1 | crumb   v1c1 | crumb   v2c3 | crumb   v2c13
+///    9 | crumb   v0c2 | crumb   v1c2 | crumb   v2c4 | crumb   v2c14
+///   10 | crumb   v0c3 | crumb   v1c3 | crumb   v2c5 | crumb   v2c15
+///   11 | crumb   v0c4 | crumb   v1c4 | crumb   v2c6 | crumb   v2c16
+///   12 | crumb   v0c5 | crumb   v1c5 | crumb   v2c7 | crumb   v2c17
+///   13 | crumb   v0p6 | copy    v1c6 | crumb   v2c8 | crumb   v2c18
+///   14 | crumb   v0p7 | copy    v1c7 | crumb   v2c9 | crumb   v2c19 <- LSB
 ///
-///   The 12-bit chunks are constrained with plookups and the 2-bit crumbs constrained with
-///   degree-4 constraints of the form x*(x - 1)*(x - 2)*(x - 3).
+///   The 12-bit chunks are constrained with plookups and the 2-bit crumbs
+///   constrained with degree-4 constraints of the form x*(x - 1)*(x - 2)*(x - 3).
 ///
-///   Note that copy denotes a plookup that is deferred to the RangeCheck2 gate.
+///   Note that copy denotes a plookup that is deferred to the 4th gate (i.e. Zero).
 ///   This is because of the limitation that we have at most 4 lookups per row.
 ///   The copies are constrained using the permutation argument.
 ///
 /// Gate types:
 ///
-///   Different rows are constrained differently using different CircuitGate types
+///   Different rows are constrained using different CircuitGate types
 ///
 ///   Row   CircuitGate   Purpose
-///     0   RangeCheck0   Partially constrain a0
-///     1   RangeCheck0   Partially constrain a1
-///     2   RangeCheck1   Fully constrain a2
-///     3   RangeCheck2   Complete the constraining of a0 and a1
+///     0   RangeCheck0   Partially constrain v0
+///     1   RangeCheck0   Partially constrain v1
+///     2   RangeCheck1   Fully constrain v2 (and trigger plookups constraints on row 3)
+///     3   Zero          Complete the constraining of v0 and v1 using lookups
 ///
 ///  Nb. each CircuitGate type corresponds to a unique polynomial and thus
 ///       is assigned its own unique powers of alpha
@@ -95,35 +102,35 @@ use ark_ff::{FftField, One, Zero};
 
 /// RangeCheck0 - Range check constraints
 ///
-///    Field element F is comprised of three 88-bit limbs L0L1L2
-///
-///    * This circuit gate is used to partially constrain L0 and L1
-///    * The rest of L0 and L1 are constrained by a single RangeCheck2
-///    * This gate operates on the Curr row
+///   * This circuit gate is used to partially constrain values v0 and v1
+///   * The rest of v0 and v1 are constrained by the lookups in the Zero gate row
+///   * This gate operates on the Curr row
 ///
 /// It uses three different types of constraints
-///   * plookup - plookup (12-bits)
 ///   * copy    - copy to another cell (12-bits)
+///   * plookup - plookup (12-bits)
 ///   * crumb   - degree-4 constraint (2-bits)
 ///
-/// For limb L the layout looks like this
+/// Given value v the layout looks like this
 ///
 /// Column | Curr
-///      0 | L
-///      1 | plookup Lp0
-///      2 | plookup Lp1
-///      3 | plookup Lp2
-///      4 | plookup Lp3
-///      5 | copy Lp4
-///      6 | copy Lp5
-///      7 | crumb Lc0
-///      8 | crumb Lc1
-///      9 | crumb Lc2
-///     10 | crumb Lc3
-///     11 | crumb Lc4
-///     12 | crumb Lc5
-///     13 | crumb Lc6
-///     14 | crumb Lc7
+///      0 | v
+///      1 | copy    vp0
+///      2 | copy    vp1
+///      3 | plookup vp2
+///      4 | plookup vp3
+///      5 | plookup vp4
+///      6 | plookup vp5
+///      7 | crumb   vc0
+///      8 | crumb   vc1
+///      9 | crumb   vc2
+///     10 | crumb   vc3
+///     11 | crumb   vc4
+///     12 | crumb   vc5
+///     13 | crumb   vc6
+///     14 | crumb   vc7
+///
+/// where the notation vpi and vci defined in the "Layout" section above.
 
 #[derive(Default)]
 pub struct RangeCheck0<F>(PhantomData<F>);
@@ -137,45 +144,47 @@ where
 
     // Constraints for RangeCheck0
     //   * Operates on Curr row
-    //   * Range constrain all sublimbs except p4 and p5 (barring plookup constraints, which are done elsewhere)
-    //   * Constrain that combining all sublimbs equals the limb stored in column 0
+    //   * Range constrain all limbs except vp0 and vp1 (barring plookup constraints, which are done elsewhere)
+    //   * Constrain that combining all limbs equals the limb stored in column 0
     fn constraints() -> Vec<E<F>> {
-        // 1) Apply range constraints on sublimbs
-        // Columns 1-4 are 12-bit plookup range constraints (these are specified elsewhere)
-        // Create 8 2-bit chunk range constraints
+        // 1) Apply range constraints on limbs
+        //    * Columns 1-2 are 12-bit copy constraints
+        //        * They are copied to 3 rows ahead and are constrained by plookups
+        //          triggered by RangeCheck1 on its Next row
+        //        * They can be constrained to zero to obtain a 64-bit range check
+        //    * Columns 3-6 are 12-bit plookup range constraints (these are specified in the lookup gate)
+        //    * Columns 7-14 are 2-bit crumb range constraints
         let mut constraints = (7..COLUMNS)
             .map(|i| crumb(&witness_curr(i)))
             .collect::<Vec<E<F>>>();
 
-        // 2) Constrain that the combined sublimbs equals the limb stored in w(0) where
-        //    limb = lp0 lp1 lp2 lp3 lp4 lp5 lc0 lc1 lc2 lc3 lc4 lc5 lc6 lc7
-        //    in big-endian byte order.
+        // 2) Constrain that the combined limbs equals the value v stored in w(0):
         //
-        //          Columns
-        //          0      1    2    3    4    5    6    7    8    9    10   11   12   13   14
-        //    Curr  limb   lp0  lp1  lp2  lp3  lp4  lp5  lc0  lc1  lc2  lc3  lc4  lc5  lc6  lc7  <- LSB
+        //        w(0) = v = vp0 vp1 vp2 vp3 vp4 vp5 vc0 vc1 vc2 vc3 vc4 vc5 vc6 vc7
         //
-        // Check limb =  lp0*2^0 + lp1*2^{12}  + ... + p5*2^{60}   + lc0*2^{72}  + lc1*2^{74}  + ... + lc7*2^{86}
-        //       w(0) = w(1)*2^0 + w(2)*2^{12} + ... + w(6)*2^{60} + w(7)*2^{72} + w(8)*2^{74} + ... + w(14)*2^{86}
-        //            = \sum i \in [1,7] 2^{12*(i - 1)}*w(i) + \sum i \in [8,14] 2^{2*(i - 7) + 6*12}*w(i)
+        //    where the value and limbs are stored in little-endian byte order, but mapped
+        //    to cells in big-endian order.
+        //
+        //    Cols: 0  1   2   3   4   5   6   7   8   9   10  11  12  13  14
+        //    Curr: v  vp0 vp1 vp2 vp3 vp4 vp5 vc0 vc1 vc2 vc3 vc4 vc5 vc6 vc7  <- LSB
 
         let mut power_of_2 = E::one();
-        let mut sum_of_sublimbs = E::zero();
+        let mut sum_of_limbs = E::zero();
 
-        // Sum 12-bit sublimbs
-        for i in 1..7 {
-            sum_of_sublimbs += power_of_2.clone() * witness_curr(i);
-            power_of_2 *= 4096u64.into(); // 12 bits
-        }
-
-        // Sum 2-bit sublimbs
-        for i in 7..COLUMNS {
-            sum_of_sublimbs += power_of_2.clone() * witness_curr(i);
+        // Sum 2-bit limbs
+        for i in (7..COLUMNS).rev() {
+            sum_of_limbs += power_of_2.clone() * witness_curr(i);
             power_of_2 *= 4u64.into(); // 2 bits
         }
 
-        // Check limb against the sum of sublimbs
-        constraints.push(sum_of_sublimbs - witness_curr(0));
+        // Sum 12-bit limbs
+        for i in (1..=6).rev() {
+            sum_of_limbs += power_of_2.clone() * witness_curr(i);
+            power_of_2 *= 4096u64.into(); // 12 bits
+        }
+
+        // Check value v against the sum of limbs
+        constraints.push(sum_of_limbs - witness_curr(0));
 
         constraints
     }
@@ -183,31 +192,33 @@ where
 
 /// RangeCheck1 - Range check constraints
 ///
-///    Field element F is comprised of three 88-bit limbs L0L1L2
-///
-///    * This circuit gate is used to fully constrain L2
-///    * It operates on the Curr and Next rows
+///   * This circuit gate is used to fully constrain v2
+///   * It operates on the Curr and Next rows
 ///
 /// It uses two different types of constraints
 ///   * plookup - plookup (12-bits)
 ///   * crumb   - degree-4 constraint (2-bits)
 ///
+/// Given value v2 the layout looks like this
+///
 /// Column | Curr         | Next
-///      0 | L2           | (ignored)
-///      1 | plookup L2p0 | (ignored)
-///      2 | plookup L2p1 | (ignored)
-///      3 | plookup L2p2 | (ignored)
-///      4 | plookup L2p3 | (ignored)
-///      5 | crumb L2c0   | crumb L2c10
-///      6 | crumb L2c1   | crumb L2c11
-///      7 | crumb L2c2   | crumb L2c12
-///      8 | crumb L2c3   | crumb L2c13
-///      9 | crumb L2c4   | crumb L2c14
-///     10 | crumb L2c5   | crumb L2c15
-///     11 | crumb L2c6   | crumb L2c16
-///     12 | crumb L2c7   | crumb L2c17
-///     13 | crumb L2c8   | crumb L2c18
-///     14 | crumb L2c9   | crumb L2c19
+///      0 | v2           | (ignored)
+///      1 | crumb   v2c0 | crumb v2c10
+///      2 | crumb   v2c1 | crumb v2c11
+///      3 | plookup v2p0 | (ignored)
+///      4 | plookup v2p1 | (ignored)
+///      5 | plookup v2p2 | (ignored)
+///      6 | plookup v2p3 | (ignored)
+///      7 | crumb   v2c2 | crumb v2c12
+///      8 | crumb   v2c3 | crumb v2c13
+///      9 | crumb   v2c4 | crumb v2c14
+///     10 | crumb   v2c5 | crumb v2c15
+///     11 | crumb   v2c6 | crumb v2c16
+///     12 | crumb   v2c7 | crumb v2c17
+///     13 | crumb   v2c8 | crumb v2c18
+///     14 | crumb   v2c9 | crumb v2c19
+///
+/// where the notation v2i and v2i defined in the "Layout" section above.
 
 #[derive(Default)]
 pub struct RangeCheck1<F>(PhantomData<F>);
@@ -221,62 +232,86 @@ where
 
     // Constraints for RangeCheck1
     //   * Operates on Curr and Next row
-    //   * Range constrain all sublimbs (barring plookup constraints, which are done elsewhere)
-    //   * Constrain that combining all sublimbs equals the limb stored in row Curr, column 0
+    //   * Range constrain all limbs (barring plookup constraints, which are done elsewhere)
+    //   * Constrain that combining all limbs equals the value v2 stored in row Curr, column 0
     fn constraints() -> Vec<E<F>> {
-        // 1) Apply range constraints on sublimbs
-        // Columns 1-4 are 12-bit plookup range constraints (these are specified elsewhere)
-
-        // Create 10 2-bit chunk range constraints using Curr row
-        let mut constraints = (5..COLUMNS)
+        // 1) Apply range constraints on limbs for Curr row
+        //    * Columns 1-2 are 2-bit crumbs
+        let mut constraints = (1..=2)
             .map(|i| crumb(&witness_curr(i)))
             .collect::<Vec<E<F>>>();
-
-        // Create 10 more 2-bit chunk range constraints using Next row
+        //    * Columns 3-6 are 12-bit plookup range constraints (these are specified
+        //      in the lookup gate)
+        //    * Columns 7-14 are 2-bit crumb range constraints
         constraints.append(
-            &mut (5..COLUMNS)
+            &mut (7..COLUMNS)
+                .map(|i| crumb(&witness_curr(i)))
+                .collect::<Vec<E<F>>>(),
+        );
+
+        // 2) Apply range constraints on limbs for Next row
+        //    * Columns 1-2 are 2-bit crumbs
+        constraints.append(
+            &mut (1..=2)
+                .map(|i| crumb(&witness_next(i)))
+                .collect::<Vec<E<F>>>(),
+        );
+        //    * Columns 3-6 are 12-bit plookup range constraints for v0 and v1 (these
+        //      are specified in the lookup gate)
+        //    * Columns 7-14 are more 2-bit crumbs
+        constraints.append(
+            &mut (7..COLUMNS)
                 .map(|i| crumb(&witness_next(i)))
                 .collect::<Vec<E<F>>>(),
         );
 
-        // 2) Constrain that the combined sublimbs equals the limb l2 stored in w(0) where
-        //    l2 = lp0 lp1 lp2 lp3 lc0 lc1 lc2 lc3 lc4 lc5 lc6 lc7 lc8 lc9 lc10 lc11 lc12 lc13 lc14 lc15 lc16 lc17 lc18 lc19
-        //    in little-endian byte order.
+        // 2) Constrain that the combined limbs equals the value v2 stored in w(0) where
         //
-        //          Columns
-        //          0    1   2   3   4   5    6    7    8    9    10   11   12   13   14
-        //    Curr  l2   lp0 lp1 lp2 lp3 lc0  lc1  lc2  lc3  lc4  lc5  lc6  lc7  lc8  lc9
-        //    Next                       lc10 lc11 lc12 lc13 lc14 lc15 lc16 lc17 lc18 lc19
+        //    w(0) = v2 = vc0 vc1 vp0 vp1 vp2 vp3 vc2 vc3 vc4 vc5 vc6 vc7 vc8 vc9 vc10 vc11 vc12
+        //                vc13 vc14 vc15 vc16 vc17 vc18 vc19
         //
-        // Check   l2 = lp0*2^0          + lp1*2^{12}       + ... + lp3*2^{36}       + lc0*2^{48}     + lc1*2^{50}     + ... + lc19*2^{66}
-        //       w(0) = w_curr(1)*2^0    + w_curr(2)*2^{12} + ... + w_curr(4)*2^{36} + w_curr(5)*2^48 + w_curr(6)*2^50 + ... + w_curr(14)*2^66
-        //            + w_next(5)*2^{68} + w_next(6)*2^{70} + ... + w_next(14)*2^{86}
-        // (1st part) = \sum i \in [1,5] 2^{12*(i - 1)}*w_curr(i) + \sum i \in [6,14] 2^{2*(i - 5) + 4*12}*w_curr(i)
-        // (2nd part) + \sum i \in [5,14] 2^{2*(i - 5} + 68)*w_next(i)
+        //    where the value and limbs are stored in little-endian byte order, but mapped
+        //    to cells in big-endian order.
+        //
+        //          0  1   2   3   4   5    6    7    8    9    10   11   12   13   14
+        //    Curr  v2 vc0 vc1 vp0 vp1 vp2  vp3  vc2  vc3  vc4  vc5  vc6  vc7  vc8  vc9
+        //    Next                     vc10 vc11 vc12 vc13 vc14 vc15 vc16 vc17 vc18 vc19 <- LSB
 
         let mut power_of_2 = E::one();
-        let mut sum_of_sublimbs = E::zero();
+        let mut sum_of_limbs = E::zero();
 
-        // 1st part: Sum 12-bit sublimbs (row Curr)
-        for i in 1..5 {
-            sum_of_sublimbs += power_of_2.clone() * witness_curr(i);
+        // Next row: Sum 2-bit limbs
+        for i in (7..COLUMNS).rev() {
+            sum_of_limbs += power_of_2.clone() * witness_next(i);
+            power_of_2 *= 4u64.into(); // 2 bits
+        }
+
+        // Next row:  Sum remaining 2-bit limbs vc10 and vc11
+        for i in (1..=2).rev() {
+            sum_of_limbs += power_of_2.clone() * witness_next(i);
+            power_of_2 *= 4u64.into(); // 2 bits
+        }
+
+        // Curr row:  Sum 2-bit limbs
+        for i in (7..COLUMNS).rev() {
+            sum_of_limbs += power_of_2.clone() * witness_curr(i);
+            power_of_2 *= 4u64.into(); // 2 bits
+        }
+
+        // Curr row: Sum 12-bit limbs
+        for i in (3..=6).rev() {
+            sum_of_limbs += power_of_2.clone() * witness_curr(i);
             power_of_2 *= 4096u64.into(); // 12 bits
         }
 
-        // 1st part:  Sum 2-bit sublimbs (row Curr)
-        for i in 5..COLUMNS {
-            sum_of_sublimbs += power_of_2.clone() * witness_curr(i);
+        // Curr row:  Sum remaining 2-bit limbs: vc0 and vc1
+        for i in (1..=2).rev() {
+            sum_of_limbs += power_of_2.clone() * witness_curr(i);
             power_of_2 *= 4u64.into(); // 2 bits
         }
 
-        // 2nd part: Sum 2-bit sublimbs
-        for i in 5..COLUMNS {
-            sum_of_sublimbs += power_of_2.clone() * witness_next(i);
-            power_of_2 *= 4u64.into(); // 2 bits
-        }
-
-        // Check limb against the sum of sublimbs
-        constraints.push(sum_of_sublimbs - witness_curr(0));
+        // Check value v2 against the sum of limbs
+        constraints.push(sum_of_limbs - witness_curr(0));
 
         constraints
     }

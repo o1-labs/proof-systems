@@ -1,39 +1,23 @@
-use crate::circuits::gate::{CurrOrNext, GateType};
 use ark_ff::{FftField, One, Zero};
 use commitment_dlog::PolyComm;
-use o1_utils::types::ScalarField;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
 
+pub mod range_check;
 pub mod xor;
 
 //~ spec:startcode
 /// The table ID associated with the XOR lookup table.
 pub const XOR_TABLE_ID: i32 = 0;
+
+/// The range check table ID.
+pub const RANGE_CHECK_TABLE_ID: i32 = 1;
 //~ spec:endcode
 
 /// Enumerates the different 'fixed' lookup tables used by individual gates
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum GateLookupTable {
     Xor,
-}
-
-/// Specifies the relative position of gates and the fixed lookup table (if applicable) that a
-/// given lookup configuration should apply to.
-pub struct GatesLookupSpec {
-    /// The set of positions relative to an active gate where a lookup configuration applies.
-    pub gate_positions: HashSet<(GateType, CurrOrNext)>,
-    /// The fixed lookup table that should be used for these lookups, if applicable.
-    pub gate_lookup_table: Option<GateLookupTable>,
-}
-
-/// Specifies mapping from positions defined relative to gates into lookup data.
-pub struct GatesLookupMaps {
-    /// Enumerates the selector that should be active for a particular gate-relative position.
-    pub gate_selector_map: HashMap<(GateType, CurrOrNext), usize>,
-    /// Enumerates the fixed tables that should be used for lookups in a particular gate-relative
-    /// position.
-    pub gate_table_map: HashMap<(GateType, CurrOrNext), GateLookupTable>,
+    RangeCheck,
 }
 
 /// A table of values that can be used for a lookup, along with the ID for the table.
@@ -78,6 +62,7 @@ where
 pub fn get_table<F: FftField>(table_name: GateLookupTable) -> LookupTable<F> {
     match table_name {
         GateLookupTable::Xor => xor::xor_table(),
+        GateLookupTable::RangeCheck => range_check::range_check_table(),
     }
 }
 
@@ -115,8 +100,8 @@ where
 /// The function will panic if given an empty table (0 columns).
 pub fn combine_table<G>(
     columns: &[&PolyComm<G>],
-    column_combiner: ScalarField<G>,
-    table_id_combiner: ScalarField<G>,
+    column_combiner: G::ScalarField,
+    table_id_combiner: G::ScalarField,
     table_id_vector: Option<&PolyComm<G>>,
     runtime_vector: Option<&PolyComm<G>>,
 ) -> PolyComm<G>
@@ -126,7 +111,7 @@ where
     assert!(!columns.is_empty());
 
     // combine the columns
-    let mut j = ScalarField::<G>::one();
+    let mut j = G::ScalarField::one();
     let mut scalars = vec![j];
     let mut commitments = vec![columns[0]];
     for comm in columns.iter().skip(1) {

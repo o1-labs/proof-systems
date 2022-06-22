@@ -19,10 +19,8 @@ use crate::circuits::{
     wires::*,
 };
 use ark_ff::{FftField, SquareRootField};
-use ark_poly::Radix2EvaluationDomain as D;
 
 pub fn constraints_expr<F: FftField + SquareRootField>(
-    domain: D<F>,
     chacha: bool,
     range_check: bool,
     lookup_constraint_system: Option<&LookupConfiguration<F>>,
@@ -64,7 +62,7 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
 
     // lookup
     if let Some(lcs) = lookup_constraint_system.as_ref() {
-        let constraints = lookup::constraints::constraints(lcs, domain);
+        let constraints = lookup::constraints::constraints(lcs);
 
         // note: the number of constraints depends on the lookup configuration,
         // specifically the presence of runtime tables.
@@ -106,14 +104,14 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
 
     // the lookup polynomials
     if let Some(lcs) = &lookup_constraint_system {
-        for i in 0..(lcs.max_lookups_per_row + 1) {
+        for i in 0..(lcs.lookup_info.max_per_row + 1) {
             h.insert(LookupSorted(i));
         }
         h.insert(LookupAggreg);
         h.insert(LookupTable);
 
         // the runtime lookup polynomials
-        if lcs.runtime_tables.is_some() {
+        if lcs.lookup_info.uses_runtime_tables {
             h.insert(LookupRuntimeTable);
         }
     }
@@ -131,7 +129,6 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
 }
 
 pub fn expr_linearization<F: FftField + SquareRootField>(
-    domain: D<F>,
     chacha: bool,
     range_check: bool,
     lookup_constraint_system: Option<&LookupConfiguration<F>>,
@@ -139,13 +136,7 @@ pub fn expr_linearization<F: FftField + SquareRootField>(
 ) -> (Linearization<Vec<PolishToken<F>>>, Alphas<F>) {
     let evaluated_cols = linearization_columns::<F>(lookup_constraint_system);
 
-    let (expr, powers_of_alpha) = constraints_expr(
-        domain,
-        chacha,
-        range_check,
-        lookup_constraint_system,
-        foreign_field_addition,
-    );
+    let (expr, powers_of_alpha) = constraints_expr(chacha, range_check, lookup_constraint_system, foreign_field_addition);
 
     let linearization = expr
         .linearize(evaluated_cols)

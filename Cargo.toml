@@ -5,6 +5,7 @@ members = [
     "groupmap",
     "hasher",
     "kimchi",
+    "circuit-construction",
     "ocaml/ocaml-gen",
     "ocaml/ocaml-gen/derive",
     "oracle",
@@ -18,4 +19,4 @@ members = [
 [profile.release]
 lto = true
 panic = 'abort'
-codegen-units = 1
+# codegen-units = 1

@@ -87,24 +87,24 @@ pub mod caml {
         }
     }
 
-    impl<F, CamlF> Into<RandomOracles<F>> for CamlRandomOracles<CamlF>
+    impl<F, CamlF> From<CamlRandomOracles<CamlF>> for RandomOracles<F>
     where
         CamlF: Into<F>,
         F: Field,
     {
-        fn into(self) -> RandomOracles<F> {
+        fn from(caml_ro: CamlRandomOracles<CamlF>) -> Self {
             RandomOracles {
-                joint_combiner: self.joint_combiner.map(|(l, r)| (l.into(), r.into())),
-                beta: self.beta.into(),
-                gamma: self.gamma.into(),
-                alpha_chal: self.alpha_chal.into(),
-                alpha: self.alpha.into(),
-                zeta: self.zeta.into(),
-                v: self.v.into(),
-                u: self.u.into(),
-                zeta_chal: self.zeta_chal.into(),
-                v_chal: self.v_chal.into(),
-                u_chal: self.u_chal.into(),
+                joint_combiner: caml_ro.joint_combiner.map(|(l, r)| (l.into(), r.into())),
+                beta: caml_ro.beta.into(),
+                gamma: caml_ro.gamma.into(),
+                alpha_chal: caml_ro.alpha_chal.into(),
+                alpha: caml_ro.alpha.into(),
+                zeta: caml_ro.zeta.into(),
+                v: caml_ro.v.into(),
+                u: caml_ro.u.into(),
+                zeta_chal: caml_ro.zeta_chal.into(),
+                v_chal: caml_ro.v_chal.into(),
+                u_chal: caml_ro.u_chal.into(),
             }
         }
     }

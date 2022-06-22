@@ -3,14 +3,13 @@
 use crate::circuits::lookup::runtime_tables::{RuntimeTable, RuntimeTableCfg};
 use crate::circuits::lookup::tables::LookupTable;
 use crate::circuits::{gate::CircuitGate, wires::COLUMNS};
-use crate::proof::ProverProof;
+use crate::proof::{ProverProof, RecursionChallenge};
 use crate::prover_index::testing::new_index_for_test_with_lookups;
 use crate::prover_index::ProverIndex;
 use crate::verifier::verify;
 use crate::verifier_index::VerifierIndex;
 use ark_ff::PrimeField;
 use commitment_dlog::commitment::CommitmentCurve;
-use commitment_dlog::PolyComm;
 use groupmap::GroupMap;
 use mina_curves::pasta::{
     fp::Fp,
@@ -38,7 +37,7 @@ pub(crate) struct TestFramework {
     lookup_tables: Vec<LookupTable<Fp>>,
     runtime_tables_setup: Option<Vec<RuntimeTableCfg<Fp>>>,
     runtime_tables: Vec<RuntimeTable<Fp>>,
-    recursion: Vec<(Vec<Fp>, PolyComm<Affine>)>,
+    recursion: Vec<RecursionChallenge<Affine>>,
 
     prover_index: Option<ProverIndex<Affine>>,
     verifier_index: Option<VerifierIndex<Affine>>,
@@ -114,7 +113,7 @@ impl TestRunner {
     }
 
     #[must_use]
-    pub(crate) fn recursion(mut self, recursion: Vec<(Vec<Fp>, PolyComm<Affine>)>) -> Self {
+    pub(crate) fn recursion(mut self, recursion: Vec<RecursionChallenge<Affine>>) -> Self {
         self.0.recursion = recursion;
         self
     }
@@ -142,6 +141,7 @@ impl TestRunner {
             &self.0.runtime_tables,
             &prover,
             self.0.recursion,
+            None,
         )
         .unwrap();
         println!("- time to create proof: {:?}s", start.elapsed().as_secs());
