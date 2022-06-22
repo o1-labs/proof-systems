@@ -1091,7 +1091,25 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
                     vec![coeff(l), coeff(r), coeff(o), m, c],
                 )
             }
-            _ => unimplemented!(),
+            KimchiConstraint::Poseidon { state } => todo!(),
+            KimchiConstraint::EcAddComplete {
+                p1,
+                p2,
+                p3,
+                inf,
+                same_x,
+                slope,
+                inf_z,
+                x21_inv,
+            } => todo!(),
+            KimchiConstraint::EcScale { state } => todo!(),
+            KimchiConstraint::EcEndoscale {
+                state,
+                xs,
+                ys,
+                n_acc,
+            } => todo!(),
+            KimchiConstraint::EcEndoscalar { state } => todo!(),
         }
     }
 }
