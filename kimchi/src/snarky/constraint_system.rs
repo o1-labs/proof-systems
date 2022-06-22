@@ -1282,7 +1282,6 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
                 xs,
                 ys,
                 n_acc,
-            KimchiConstraint::EcEndoscalar { state } => todo!(),
             } => {
                 for round in state {
                     let vars = vec![
@@ -1317,6 +1316,27 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
                     Some(self.reduce_to_var(n_acc)),
                 ];
                 self.add_row(vars, GateType::Zero, vec![]);
+            }
+            KimchiConstraint::EcEndoscalar { state } => {
+                for round in state {
+                    let vars = vec![
+                        Some(self.reduce_to_var(round.n0)),
+                        Some(self.reduce_to_var(round.n8)),
+                        Some(self.reduce_to_var(round.a0)),
+                        Some(self.reduce_to_var(round.b0)),
+                        Some(self.reduce_to_var(round.a8)),
+                        Some(self.reduce_to_var(round.b8)),
+                        Some(self.reduce_to_var(round.x0)),
+                        Some(self.reduce_to_var(round.x1)),
+                        Some(self.reduce_to_var(round.x2)),
+                        Some(self.reduce_to_var(round.x3)),
+                        Some(self.reduce_to_var(round.x4)),
+                        Some(self.reduce_to_var(round.x5)),
+                        Some(self.reduce_to_var(round.x6)),
+                        Some(self.reduce_to_var(round.x7)),
+                    ];
+                    self.add_row(vars, GateType::EndoMulScalar, vec![]);
+                }
             }
         }
     }
