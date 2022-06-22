@@ -96,41 +96,36 @@ where
         let upper_bound_check_1 = witness_next::<F>(4);
         let upper_bound_check_2 = witness_next::<F>(5);
 
-        let mut res = vec![];
-
-        // Field overflow bit is 0 or 1.
-        res.push(field_overflow.clone() * (field_overflow.clone() - 1u64.into()));
-
-        // Carry bits are -1, 0, or 1.
-        res.push(
+        let mut res = vec![
+            // Field overflow bit is 0 or 1.
+            field_overflow.clone() * (field_overflow.clone() - 1u64.into()),
+            // Carry bits are -1, 0, or 1.
             result_carry_0.clone()
                 * (result_carry_0.clone() - 1u64.into())
                 * (result_carry_0.clone() + 1u64.into()),
-        );
-        res.push(
             result_carry_1.clone()
                 * (result_carry_1.clone() - 1u64.into())
                 * (result_carry_1.clone() + 1u64.into()),
-        );
+        ];
 
         // r_1 = a_1 + b_1 - x * m_1 + y_1
-        let result_calculated_0 = left_input_0.clone() + right_input_0.clone()
-            - field_overflow.clone() * foreign_modulus_0.clone()
+        let result_calculated_0 = left_input_0 + right_input_0
+            - field_overflow.clone() * foreign_modulus_0
             + result_carry_0.clone();
         // r_2 = a_2 + b_2 - x * m_2 - 2^88 * y_1 + y_2
-        let result_calculated_1 = left_input_1.clone() + right_input_1.clone()
-            - field_overflow.clone() * foreign_modulus_1.clone()
-            - (result_carry_0.clone() * two_to_88.clone())
+        let result_calculated_1 = left_input_1 + right_input_1
+            - field_overflow.clone() * foreign_modulus_1
+            - (result_carry_0 * two_to_88.clone())
             + result_carry_1.clone();
         // r_3 = a_3 + b_3 - x * m_3 - 2^88 * y_2
-        let result_calculated_2 = left_input_2.clone() + right_input_2.clone()
-            - field_overflow.clone() * foreign_modulus_2.clone()
-            - (result_carry_1.clone() * two_to_88.clone());
+        let result_calculated_2 = left_input_2 + right_input_2
+            - field_overflow * foreign_modulus_2
+            - (result_carry_1 * two_to_88.clone());
 
         // Result values match
-        res.push(result_0.clone() - result_calculated_0.clone());
-        res.push(result_1.clone() - result_calculated_1.clone());
-        res.push(result_2.clone() - result_calculated_2.clone());
+        res.push(result_0.clone() - result_calculated_0);
+        res.push(result_1.clone() - result_calculated_1);
+        res.push(result_2.clone() - result_calculated_2);
 
         // Upper bound check's carry bits are 0 or 1
         res.push(
@@ -142,14 +137,14 @@ where
 
         // o_1 = r_1 + k_1 + z_1
         let upper_bound_check_calculated_0 =
-            result_0.clone() + max_sub_foreign_modulus_0 + upper_bound_check_carry_0.clone();
+            result_0 + max_sub_foreign_modulus_0 + upper_bound_check_carry_0.clone();
         // o_2 = r_2 + k_2 - z_1 * 2^88 + z_2
-        let upper_bound_check_calculated_1 = result_1.clone() + max_sub_foreign_modulus_1
-            - upper_bound_check_carry_0.clone() * two_to_88.clone()
+        let upper_bound_check_calculated_1 = result_1 + max_sub_foreign_modulus_1
+            - upper_bound_check_carry_0 * two_to_88.clone()
             - upper_bound_check_carry_1.clone();
         // o_3 = r_3 + k_3 - z_2 * 2^88
-        let upper_bound_check_calculated_2 = result_2.clone() + max_sub_foreign_modulus_2
-            - (upper_bound_check_carry_1.clone() * two_to_88.clone());
+        let upper_bound_check_calculated_2 =
+            result_2 + max_sub_foreign_modulus_2 - (upper_bound_check_carry_1 * two_to_88);
 
         // Upper bound values match
         res.push(upper_bound_check_0 - upper_bound_check_calculated_0);
@@ -165,9 +160,9 @@ pub fn witness<F: FftField>(
     right: &[F; 3],
     foreign_modulus: &[F; 3],
 ) -> [Vec<F>; 2] {
-    let [left_input_0, left_input_1, left_input_2] = left.clone();
-    let [right_input_0, right_input_1, right_input_2] = right.clone();
-    let [foreign_modulus_0, foreign_modulus_1, foreign_modulus_2] = foreign_modulus.clone();
+    let [left_input_0, left_input_1, left_input_2] = *left;
+    let [right_input_0, right_input_1, right_input_2] = *right;
+    let [foreign_modulus_0, foreign_modulus_1, foreign_modulus_2] = *foreign_modulus;
     let two_to_88 = F::from(2u64).pow([88]);
 
     let max_sub_foreign_modulus_2: F = two_to_88 - foreign_modulus_2;
