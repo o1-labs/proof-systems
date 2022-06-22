@@ -1199,7 +1199,6 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
                 slope,
                 inf_z,
                 x21_inv,
-            KimchiConstraint::EcScale { state } => todo!(),
             } => {
                 let mut reduce_curve_point =
                     |(x, y)| (self.reduce_to_var(x), self.reduce_to_var(y));
@@ -1223,6 +1222,60 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
                     Some(self.reduce_to_var(x21_inv)),
                 ];
                 self.add_row(vars, GateType::CompleteAdd, vec![]);
+            }
+            KimchiConstraint::EcScale { state } => {
+                for (
+                    round,
+                    ScaleRound {
+                        accs,
+                        bits,
+                        ss,
+                        base,
+                        n_prev,
+                        n_next,
+                    },
+                ) in state.into_iter().enumerate()
+                {
+                    // 0   1   2   3   4   5   6   7   8   9   10  11  12  13  14
+                    // xT  yT  x0  y0  n   n'      x1  y1  x2  y2  x3  y3  x4  y4
+                    // x5  y5  b0  b1  b2  b3  b4  s0  s1  s2  s3  s4
+                    let curr_row = vec![
+                        Some(self.reduce_to_var(base.0)),
+                        Some(self.reduce_to_var(base.1)),
+                        Some(self.reduce_to_var(accs[0].0.clone())),
+                        Some(self.reduce_to_var(accs[0].1.clone())),
+                        Some(self.reduce_to_var(n_prev)),
+                        Some(self.reduce_to_var(n_next)),
+                        None,
+                        Some(self.reduce_to_var(accs[1].0.clone())),
+                        Some(self.reduce_to_var(accs[1].1.clone())),
+                        Some(self.reduce_to_var(accs[2].0.clone())),
+                        Some(self.reduce_to_var(accs[2].1.clone())),
+                        Some(self.reduce_to_var(accs[3].0.clone())),
+                        Some(self.reduce_to_var(accs[3].1.clone())),
+                        Some(self.reduce_to_var(accs[4].0.clone())),
+                        Some(self.reduce_to_var(accs[4].1.clone())),
+                    ];
+
+                    self.add_row(curr_row, GateType::VarBaseMul, vec![]);
+
+                    let next_row = vec![
+                        Some(self.reduce_to_var(accs[5].0.clone())),
+                        Some(self.reduce_to_var(accs[5].1.clone())),
+                        Some(self.reduce_to_var(bits[0].clone())),
+                        Some(self.reduce_to_var(bits[1].clone())),
+                        Some(self.reduce_to_var(bits[2].clone())),
+                        Some(self.reduce_to_var(bits[3].clone())),
+                        Some(self.reduce_to_var(bits[4].clone())),
+                        Some(self.reduce_to_var(ss[0].clone())),
+                        Some(self.reduce_to_var(ss[1].clone())),
+                        Some(self.reduce_to_var(ss[2].clone())),
+                        Some(self.reduce_to_var(ss[3].clone())),
+                        Some(self.reduce_to_var(ss[4].clone())),
+                    ];
+
+                    self.add_row(next_row, GateType::Zero, vec![]);
+                }
             }
             KimchiConstraint::EcEndoscale {
                 state,
