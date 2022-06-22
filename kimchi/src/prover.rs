@@ -13,7 +13,7 @@ use crate::{
             complete_add::CompleteAdd,
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
-            ffadd::FFAdd,
+            foreign_field_add::FFAdd,
             generic, permutation,
             permutation::ZK_ROWS,
             poseidon::Poseidon,
