@@ -41,44 +41,6 @@ struct Position<Row> {
     col: usize,
 }
 
-impl<Row> Position<Row> {
-    /** Generates a full row of positions that each points to itself. */
-    fn create_cols(row: Row) -> Vec<Self>
-    where
-        Row: Clone,
-    {
-        (0..PERMUTS)
-            .map(|col| Position {
-                row: row.clone(),
-                col,
-            })
-            .collect()
-    }
-
-    /** Given a number of columns, append enough column wires to get an entire row.
-    The wire appended will simply point to themselves, so as to not take part in the
-    permutation argument. */
-    fn append_cols(row: Row, cols: &mut Vec<Position<Row>>)
-    where
-        Row: Clone,
-    {
-        let padding_offset = cols.len();
-        assert!(padding_offset <= PERMUTS);
-        let padding_len = PERMUTS - padding_offset;
-        cols.extend((0..padding_len).map(|i| Position {
-            row: row.clone(),
-            col: i + padding_offset,
-        }))
-    }
-
-    /** Converts an array of [Constants.columns] to [Constants.permutation_cols].
-    This is useful to truncate arrays of cells to the ones that only matter for the permutation argument.
-    */
-    fn cols_to_perms<A: Clone>(x: Vec<A>) -> Vec<A> {
-        x[0..PERMUTS].to_vec()
-    }
-}
-
 impl Position<usize> {
     fn to_rust_wire(self: Self) -> Wire {
         Wire {
@@ -1039,7 +1001,7 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
         }
     }
 
-    pub fn add_constraint<Cvar>(self: &mut Self, constraint: KimchiConstraint<Cvar, Field>)
+    pub fn add_constraint<Cvar>(&mut self, constraint: KimchiConstraint<Cvar, Field>)
     where
         Cvar: SnarkyCvar<Field = Field>,
     {
@@ -1224,17 +1186,14 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
                 self.add_row(vars, GateType::CompleteAdd, vec![]);
             }
             KimchiConstraint::EcScale { state } => {
-                for (
-                    round,
-                    ScaleRound {
-                        accs,
-                        bits,
-                        ss,
-                        base,
-                        n_prev,
-                        n_next,
-                    },
-                ) in state.into_iter().enumerate()
+                for ScaleRound {
+                    accs,
+                    bits,
+                    ss,
+                    base,
+                    n_prev,
+                    n_next,
+                } in state
                 {
                     // 0   1   2   3   4   5   6   7   8   9   10  11  12  13  14
                     // xT  yT  x0  y0  n   n'      x1  y1  x2  y2  x3  y3  x4  y4
