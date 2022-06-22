@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["constants",""],["prologue",""],["prover",""],["writer",""]]});
+window.SIDEBAR_ITEMS = {"mod":[["constants",""],["prologue",""],["prover",""],["writer",""]]};

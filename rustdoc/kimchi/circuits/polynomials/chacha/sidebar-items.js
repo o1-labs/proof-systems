@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["testing",""]],"struct":[["ChaCha0","Implementation of the ChaCha0 gate"],["ChaCha1","Implementation of the ChaCha1 gate"],["ChaCha2","Implementation of the ChaCha2 gate"],["ChaChaFinal","Implementation of the ChaChaFinal gate"]]});
+window.SIDEBAR_ITEMS = {"mod":[["testing",""]],"struct":[["ChaCha0","Implementation of the ChaCha0 gate"],["ChaCha1","Implementation of the ChaCha1 gate"],["ChaCha2","Implementation of the ChaCha2 gate"],["ChaChaFinal","Implementation of the ChaChaFinal gate"]]};

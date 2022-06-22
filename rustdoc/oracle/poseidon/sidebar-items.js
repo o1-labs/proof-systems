@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["SpongeState",""]],"fn":[["sbox",""]],"struct":[["ArithmeticSponge",""],["ArithmeticSpongeParams",""]],"trait":[["Sponge","Cryptographic sponge interface - for hashing an arbitrary amount of data into one or more field elements"]]});
+window.SIDEBAR_ITEMS = {"enum":[["SpongeState",""]],"fn":[["sbox",""]],"struct":[["ArithmeticSponge",""],["ArithmeticSpongeParams",""]],"trait":[["Sponge","Cryptographic sponge interface - for hashing an arbitrary amount of data into one or more field elements"]]};

@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["FqParameters",""]],"type":[["Fq",""]]});
+window.SIDEBAR_ITEMS = {"struct":[["FqParameters",""]],"type":[["Fq",""]]};

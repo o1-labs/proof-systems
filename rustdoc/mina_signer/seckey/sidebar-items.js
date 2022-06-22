@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["SecKey","Secret key"]]});
+window.SIDEBAR_ITEMS = {"struct":[["SecKey","Secret key"]]};

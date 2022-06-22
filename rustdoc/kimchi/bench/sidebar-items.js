@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["BenchmarkCtx",""]]});
+window.SIDEBAR_ITEMS = {"struct":[["BenchmarkCtx",""]]};

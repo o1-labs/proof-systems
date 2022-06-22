@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["EvaluationDomains",""]]});
+window.SIDEBAR_ITEMS = {"struct":[["EvaluationDomains",""]]};

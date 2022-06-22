@@ -1,1 +1,1 @@
-initSidebarItems({"constant":[["G_GENERATOR_X","G_GENERATOR_X = 1"],["G_GENERATOR_Y","G1_GENERATOR_Y = 12418654782883325593414442427049395787963493412651469444558597405572177144507"]],"struct":[["PallasParameters",""]],"type":[["Affine",""],["Projective",""]]});
+window.SIDEBAR_ITEMS = {"constant":[["G_GENERATOR_X","G_GENERATOR_X = 1"],["G_GENERATOR_Y","G1_GENERATOR_Y = 12418654782883325593414442427049395787963493412651469444558597405572177144507"]],"struct":[["PallasParameters",""]],"type":[["Affine",""],["Projective",""]]};

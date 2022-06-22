@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["params",""]]});
+window.SIDEBAR_ITEMS = {"fn":[["params",""]]};

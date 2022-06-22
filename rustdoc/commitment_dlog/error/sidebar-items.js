@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["CommitmentError",""]]});
+window.SIDEBAR_ITEMS = {"enum":[["CommitmentError",""]]};

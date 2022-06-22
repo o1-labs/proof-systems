@@ -1,1 +1,1 @@
-initSidebarItems({"trait":[["CairoFieldHelpers","Field element helpers for Cairo"]]});
+window.SIDEBAR_ITEMS = {"trait":[["CairoFieldHelpers","Field element helpers for Cairo"]]};

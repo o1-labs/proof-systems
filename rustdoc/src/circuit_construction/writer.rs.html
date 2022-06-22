@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `circuit-construction/src/writer.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>writer.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><script defer src="../../main.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../circuit_construction/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `circuit-construction/src/writer.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>writer.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../circuit_construction/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
         </a><h2 class="location"></h2>
     </nav>
     <nav class="sidebar"><a class="sidebar-logo" href="../../circuit_construction/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
@@ -766,16 +765,19 @@
 <span id="759">759</span>
 <span id="760">760</span>
 <span id="761">761</span>
+<span id="762">762</span>
+<span id="763">763</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">BigInteger</span>, <span class="ident">FftField</span>, <span class="ident">PrimeField</span>};
 <span class="kw">use</span> <span class="ident">array_init::array_init</span>;
 <span class="kw">use</span> <span class="ident">kimchi::circuits</span>::{
     <span class="ident">gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">GateType</span>},
+    <span class="ident">polynomials::generic</span>::{<span class="ident">DOUBLE_GENERIC_COEFFS</span>, <span class="ident">GENERIC_REGISTERS</span>},
     <span class="ident">wires</span>::{<span class="ident">Wire</span>, <span class="ident">COLUMNS</span>},
 };
 <span class="kw">use</span> <span class="ident">oracle</span>::{<span class="ident">constants</span>::<span class="kw-2">*</span>, <span class="ident">permutation::full_round</span>};
 <span class="kw">use</span> <span class="ident">std::collections::HashMap</span>;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants</span>::{<span class="ident">Constants</span>, <span class="ident">GENERICS</span>, <span class="ident">GENERIC_ROW_COEFFS</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants::Constants</span>;
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Hash</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
@@ -791,10 +793,10 @@
 
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ShiftedScalar</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>);
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">GateSpec</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> {
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">GateSpec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="kw">pub</span> <span class="ident">typ</span>: <span class="ident">GateType</span>,
     <span class="kw">pub</span> <span class="ident">row</span>: [<span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
-    <span class="kw">pub</span> <span class="ident">c</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">coeffs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">System</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> {
@@ -809,7 +811,7 @@
 
 <span class="kw">type</span> <span class="ident">Row</span><span class="op">&lt;</span><span class="ident">V</span><span class="op">&gt;</span> <span class="op">=</span> [<span class="ident">V</span>; <span class="ident">COLUMNS</span>];
 
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Cs</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">PrimeField</span><span class="op">&gt;</span> {
+<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Cs</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> {
     <span class="doccomment">/// In cases where you want to create a free variable in the circuit,</span>
     <span class="doccomment">/// as in the variable is not constrained _yet_</span>
     <span class="doccomment">/// and can be anything that the prover wants.</span>
@@ -884,30 +886,30 @@
         });
 
         <span class="comment">// constrain `x1 - x2 = 0`</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">c</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="ident">GENERIC_ROW_COEFFS</span>];
-        <span class="ident">c</span>[<span class="number">0</span>] <span class="op">=</span> <span class="ident">F::one</span>();
-        <span class="ident">c</span>[<span class="number">1</span>] <span class="op">=</span> <span class="op">-</span><span class="ident">F::one</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">coeffs</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="ident">DOUBLE_GENERIC_COEFFS</span>];
+        <span class="ident">coeffs</span>[<span class="number">0</span>] <span class="op">=</span> <span class="ident">F::one</span>();
+        <span class="ident">coeffs</span>[<span class="number">1</span>] <span class="op">=</span> <span class="op">-</span><span class="ident">F::one</span>();
 
         <span class="self">self</span>.<span class="ident">gate</span>(<span class="ident">GateSpec</span> {
             <span class="ident">typ</span>: <span class="ident">GateType::Generic</span>,
             <span class="ident">row</span>,
-            <span class="ident">c</span>,
+            <span class="ident">coeffs</span>,
         });
     }
 
     <span class="kw">fn</span> <span class="ident">constant</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">x</span>: <span class="ident">F</span>) -&gt; <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">x</span>);
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">c</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="ident">GENERIC_ROW_COEFFS</span>];
-        <span class="ident">c</span>[<span class="number">0</span>] <span class="op">=</span> <span class="ident">F::one</span>();
-        <span class="ident">c</span>[<span class="ident">GENERICS</span> <span class="op">+</span> <span class="number">1</span>] <span class="op">=</span> <span class="op">-</span><span class="ident">x</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">coeffs</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="ident">DOUBLE_GENERIC_COEFFS</span>];
+        <span class="ident">coeffs</span>[<span class="number">0</span>] <span class="op">=</span> <span class="ident">F::one</span>();
+        <span class="ident">coeffs</span>[<span class="ident">GENERIC_REGISTERS</span> <span class="op">+</span> <span class="number">1</span>] <span class="op">=</span> <span class="op">-</span><span class="ident">x</span>;
 
         <span class="kw">let</span> <span class="ident">row</span> <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="kw">if</span> <span class="ident">i</span> <span class="op">==</span> <span class="number">0</span> { <span class="ident">v</span> } <span class="kw">else</span> { <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">F::zero</span>()) });
 
         <span class="self">self</span>.<span class="ident">gate</span>(<span class="ident">GateSpec</span> {
             <span class="ident">typ</span>: <span class="ident">GateType::Generic</span>,
             <span class="ident">row</span>,
-            <span class="ident">c</span>,
+            <span class="ident">coeffs</span>,
         });
         <span class="ident">v</span>
     }
@@ -922,13 +924,13 @@
             <span class="ident">row</span>
         };
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">c</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="ident">GENERIC_ROW_COEFFS</span>];
-        <span class="ident">c</span>[<span class="number">0</span>] <span class="op">=</span> <span class="ident">x</span>;
-        <span class="ident">c</span>[<span class="number">1</span>] <span class="op">=</span> <span class="op">-</span><span class="ident">F::one</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">coeffs</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="ident">DOUBLE_GENERIC_COEFFS</span>];
+        <span class="ident">coeffs</span>[<span class="number">0</span>] <span class="op">=</span> <span class="ident">x</span>;
+        <span class="ident">coeffs</span>[<span class="number">1</span>] <span class="op">=</span> <span class="op">-</span><span class="ident">F::one</span>();
         <span class="self">self</span>.<span class="ident">gate</span>(<span class="ident">GateSpec</span> {
             <span class="ident">typ</span>: <span class="ident">GateType::Generic</span>,
             <span class="ident">row</span>,
-            <span class="ident">c</span>,
+            <span class="ident">coeffs</span>,
         });
         <span class="ident">xv</span>
     }
@@ -983,7 +985,7 @@
             <span class="ident">row</span>: [
                 <span class="ident">x1</span>, <span class="ident">y1</span>, <span class="ident">x2</span>, <span class="ident">y2</span>, <span class="ident">x3</span>, <span class="ident">y3</span>, <span class="ident">inf</span>, <span class="ident">same_x</span>, <span class="ident">s</span>, <span class="ident">inf_z</span>, <span class="ident">x21_inv</span>, <span class="ident">zero</span>, <span class="ident">zero</span>, <span class="ident">zero</span>, <span class="ident">zero</span>,
             ],
-            <span class="ident">c</span>: <span class="macro">vec!</span>[],
+            <span class="ident">coeffs</span>: <span class="macro">vec!</span>[],
         });
         (<span class="ident">x3</span>, <span class="ident">y3</span>)
     }
@@ -1039,7 +1041,7 @@
             <span class="ident">row</span>: [
                 <span class="ident">x1</span>, <span class="ident">y1</span>, <span class="ident">x2</span>, <span class="ident">y2</span>, <span class="ident">x3</span>, <span class="ident">y3</span>, <span class="ident">inf</span>, <span class="ident">same_x</span>, <span class="ident">s</span>, <span class="ident">inf_z</span>, <span class="ident">x21_inv</span>, <span class="ident">zero</span>, <span class="ident">zero</span>, <span class="ident">zero</span>, <span class="ident">zero</span>,
             ],
-            <span class="ident">c</span>: <span class="macro">vec!</span>[],
+            <span class="ident">coeffs</span>: <span class="macro">vec!</span>[],
         });
     }
 
@@ -1061,14 +1063,14 @@
             <span class="ident">r</span>[<span class="number">2</span>] <span class="op">=</span> <span class="ident">delta</span>;
             <span class="ident">r</span>
         };
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">c1</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="ident">GENERIC_ROW_COEFFS</span>];
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">c1</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="ident">DOUBLE_GENERIC_COEFFS</span>];
         <span class="ident">c1</span>[<span class="number">0</span>] <span class="op">=</span> <span class="ident">F::one</span>();
         <span class="ident">c1</span>[<span class="number">1</span>] <span class="op">=</span> <span class="op">-</span><span class="ident">F::one</span>();
         <span class="ident">c1</span>[<span class="number">2</span>] <span class="op">=</span> <span class="op">-</span><span class="ident">F::one</span>();
         <span class="self">self</span>.<span class="ident">gate</span>(<span class="ident">GateSpec</span> {
             <span class="ident">typ</span>: <span class="ident">GateType::Generic</span>,
             <span class="ident">row</span>: <span class="ident">row1</span>,
-            <span class="ident">c</span>: <span class="ident">c1</span>,
+            <span class="ident">coeffs</span>: <span class="ident">c1</span>,
         });
 
         <span class="kw">let</span> <span class="ident">row2</span> <span class="op">=</span> {
@@ -1078,7 +1080,8 @@
             <span class="ident">r</span>[<span class="number">2</span>] <span class="op">=</span> <span class="ident">res1</span>;
             <span class="ident">r</span>
         };
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">c2</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="ident">GENERIC_ROW_COEFFS</span>];
+
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">c2</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="ident">DOUBLE_GENERIC_COEFFS</span>];
         <span class="ident">c2</span>[<span class="number">0</span>] <span class="op">=</span> <span class="ident">F::zero</span>();
         <span class="ident">c2</span>[<span class="number">1</span>] <span class="op">=</span> <span class="ident">F::zero</span>();
         <span class="ident">c2</span>[<span class="number">2</span>] <span class="op">=</span> <span class="op">-</span><span class="ident">F::one</span>();
@@ -1087,7 +1090,7 @@
         <span class="self">self</span>.<span class="ident">gate</span>(<span class="ident">GateSpec</span> {
             <span class="ident">typ</span>: <span class="ident">GateType::Generic</span>,
             <span class="ident">row</span>: <span class="ident">row2</span>,
-            <span class="ident">c</span>: <span class="ident">c2</span>,
+            <span class="ident">coeffs</span>: <span class="ident">c2</span>,
         });
 
         <span class="kw">let</span> <span class="ident">row3</span> <span class="op">=</span> {
@@ -1097,7 +1100,7 @@
             <span class="ident">r</span>[<span class="number">2</span>] <span class="op">=</span> <span class="ident">res</span>;
             <span class="ident">r</span>
         };
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">c3</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="ident">GENERIC_ROW_COEFFS</span>];
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">c3</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="ident">DOUBLE_GENERIC_COEFFS</span>];
         <span class="ident">c3</span>[<span class="number">0</span>] <span class="op">=</span> <span class="ident">F::one</span>();
         <span class="ident">c3</span>[<span class="number">1</span>] <span class="op">=</span> <span class="ident">F::one</span>();
         <span class="ident">c3</span>[<span class="number">2</span>] <span class="op">=</span> <span class="op">-</span><span class="ident">F::one</span>();
@@ -1105,7 +1108,7 @@
         <span class="self">self</span>.<span class="ident">gate</span>(<span class="ident">GateSpec</span> {
             <span class="ident">typ</span>: <span class="ident">GateType::Generic</span>,
             <span class="ident">row</span>: <span class="ident">row3</span>,
-            <span class="ident">c</span>: <span class="ident">c3</span>,
+            <span class="ident">coeffs</span>: <span class="ident">c3</span>,
         });
 
         <span class="ident">res</span>
@@ -1165,13 +1168,13 @@
             <span class="self">self</span>.<span class="ident">gate</span>(<span class="ident">GateSpec</span> {
                 <span class="ident">row</span>: <span class="ident">row1</span>,
                 <span class="ident">typ</span>: <span class="ident">GateType::VarBaseMul</span>,
-                <span class="ident">c</span>: <span class="macro">vec!</span>[],
+                <span class="ident">coeffs</span>: <span class="macro">vec!</span>[],
             });
 
             <span class="self">self</span>.<span class="ident">gate</span>(<span class="ident">GateSpec</span> {
                 <span class="ident">row</span>: <span class="ident">row2</span>,
                 <span class="ident">typ</span>: <span class="ident">GateType::Zero</span>,
-                <span class="ident">c</span>: <span class="macro">vec!</span>[],
+                <span class="ident">coeffs</span>: <span class="macro">vec!</span>[],
             })
         }
 
@@ -1270,7 +1273,7 @@
                 <span class="ident">row</span>: [
                     <span class="ident">xt</span>, <span class="ident">yt</span>, <span class="ident">zero</span>, <span class="ident">zero</span>, <span class="ident">xp</span>, <span class="ident">yp</span>, <span class="ident">n_acc</span>, <span class="ident">xr</span>, <span class="ident">yr</span>, <span class="ident">s1</span>, <span class="ident">s3</span>, <span class="ident">b1</span>, <span class="ident">b2</span>, <span class="ident">b3</span>, <span class="ident">b4</span>,
                 ],
-                <span class="ident">c</span>: <span class="macro">vec!</span>[],
+                <span class="ident">coeffs</span>: <span class="macro">vec!</span>[],
             });
 
             <span class="ident">acc</span> <span class="op">=</span> (<span class="ident">xs</span>, <span class="ident">ys</span>);
@@ -1294,7 +1297,7 @@
                 <span class="ident">zero</span>, <span class="ident">zero</span>, <span class="ident">zero</span>, <span class="ident">zero</span>, <span class="ident">acc</span>.<span class="number">0</span>, <span class="ident">acc</span>.<span class="number">1</span>, <span class="ident">scalar</span>, <span class="ident">zero</span>, <span class="ident">zero</span>, <span class="ident">zero</span>, <span class="ident">zero</span>, <span class="ident">zero</span>, <span class="ident">zero</span>,
                 <span class="ident">zero</span>, <span class="ident">zero</span>,
             ],
-            <span class="ident">c</span>: <span class="macro">vec!</span>[],
+            <span class="ident">coeffs</span>: <span class="macro">vec!</span>[],
         });
         <span class="ident">acc</span>
     }
@@ -1400,7 +1403,7 @@
 
             <span class="self">self</span>.<span class="ident">gate</span>(<span class="ident">GateSpec</span> {
                 <span class="ident">typ</span>: <span class="ident">kimchi::circuits::gate::GateType::Poseidon</span>,
-                <span class="ident">c</span>: (<span class="number">0</span>..<span class="number">15</span>)
+                <span class="ident">coeffs</span>: (<span class="number">0</span>..<span class="number">15</span>)
                     .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">rc</span>[<span class="ident">offset</span> <span class="op">+</span> (<span class="ident">i</span> <span class="op">/</span> <span class="ident">width</span>)][<span class="ident">i</span> <span class="op">%</span> <span class="ident">width</span>])
                     .<span class="ident">collect</span>(),
                 <span class="ident">row</span>: [
@@ -1429,7 +1432,7 @@
         <span class="ident">final_row</span>[<span class="number">2</span>] <span class="op">=</span> <span class="ident">states</span>[<span class="ident">states</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>][<span class="number">2</span>];
         <span class="self">self</span>.<span class="ident">gate</span>(<span class="ident">GateSpec</span> {
             <span class="ident">typ</span>: <span class="ident">kimchi::circuits::gate::GateType::Zero</span>,
-            <span class="ident">c</span>: <span class="macro">vec!</span>[],
+            <span class="ident">coeffs</span>: <span class="macro">vec!</span>[],
             <span class="ident">row</span>: <span class="ident">final_row</span>,
         });
 
@@ -1437,7 +1440,7 @@
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">PrimeField</span><span class="op">&gt;</span> <span class="ident">Cs</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">WitnessGenerator</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> <span class="ident">Cs</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">WitnessGenerator</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="kw">fn</span> <span class="ident">var</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">g</span>: <span class="ident">G</span>) -&gt; <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
     <span class="kw">where</span>
         <span class="ident">G</span>: <span class="ident">FnOnce</span>() -&gt; <span class="ident">F</span>,
@@ -1457,14 +1460,14 @@
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> <span class="ident">WitnessGenerator</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> <span class="ident">WitnessGenerator</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Returns the columns of the witness.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">columns</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] {
         <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">rows</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">row</span><span class="op">|</span> <span class="ident">row</span>[<span class="ident">col</span>]).<span class="ident">collect</span>())
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">PrimeField</span><span class="op">&gt;</span> <span class="ident">Cs</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">System</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> <span class="ident">Cs</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">System</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="kw">fn</span> <span class="ident">var</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="kw">_</span>: <span class="ident">G</span>) -&gt; <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">next_variable</span>;
         <span class="self">self</span>.<span class="ident">next_variable</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
@@ -1483,7 +1486,7 @@
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> <span class="ident">System</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> <span class="ident">System</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Compiles our intermediate representation into a circuit.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">gates</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">first_cell</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">Wire</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
@@ -1512,8 +1515,8 @@
 
             <span class="kw">let</span> <span class="ident">g</span> <span class="op">=</span> <span class="ident">CircuitGate</span> {
                 <span class="ident">typ</span>: <span class="ident">gate</span>.<span class="ident">typ</span>,
-                <span class="ident">coeffs</span>: <span class="ident">gate</span>.<span class="ident">c</span>.<span class="ident">clone</span>(),
                 <span class="ident">wires</span>,
+                <span class="ident">coeffs</span>: <span class="ident">gate</span>.<span class="ident">coeffs</span>.<span class="ident">clone</span>(),
             };
             <span class="ident">gates</span>.<span class="ident">push</span>(<span class="ident">g</span>);
         }
@@ -1528,5 +1531,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="circuit_construction" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (bb8c2f411 2022-06-19)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="circuit_construction" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (dc80ca78b 2022-06-21)" ></div>
 </body></html>

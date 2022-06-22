@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["GateSpec",""],["ShiftedScalar",""],["System",""],["Var",""],["WitnessGenerator",""]],"trait":[["Cs",""]]});
+window.SIDEBAR_ITEMS = {"struct":[["GateSpec",""],["ShiftedScalar",""],["System",""],["Var",""],["WitnessGenerator",""]],"trait":[["Cs",""]]};

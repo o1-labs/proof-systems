@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["RandomOracles",""]]});
+window.SIDEBAR_ITEMS = {"struct":[["RandomOracles",""]]};
