@@ -12,7 +12,7 @@ pub trait GateVector<Field: FftField> {
     fn create() -> Self;
     fn add(&mut self, gate: CircuitGate<Field>);
     fn get(&self, idx: usize) -> CircuitGate<Field>;
-    fn digest(&self) -> Vec<u8>;
+    fn digest(&self) -> [u8; 32];
 }
 
 /** A row indexing in a constraint system.
@@ -206,7 +206,7 @@ enum Circuit<Field, RustGates> {
     /** Once finalized, a circuit is represented as a digest
         and a list of gates that corresponds to the circuit.
     */
-    Compiled(Vec<u8>, RustGates),
+    Compiled([u8; 32], RustGates),
 }
 
 /** The constraint system. */
