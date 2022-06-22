@@ -74,7 +74,9 @@ pub trait Cycle {
     >;
 }
 
+/// Used to configure the base curve of Pallas
 pub struct FpInner;
+/// Used to configure the base curve of Vesta
 pub struct FqInner;
 
 impl Cycle for FpInner {
@@ -101,7 +103,7 @@ impl Cycle for FqInner {
     type OuterProj = <Other as AffineCurve>::Projective;
 }
 
-/// Given an index, a group map, custom blinders for the witness, a public input vector, and a circuit `main`, create a proof.
+/// Given an index, a group map, custom blinders for the witness, a public input vector, and a circuit `main`, it creates a proof.
 pub fn prove<G, H, EFqSponge, EFrSponge>(
     index: &ProverIndex<G>,
     group_map: &G::Map,
@@ -161,6 +163,7 @@ where
     .unwrap()
 }
 
+/// Creates the prover index on input an `srs`, used `constants`, parameters for Poseidon, number of public inputs, and a specific circuit
 pub fn generate_prover_index<C, H>(
     srs: std::sync::Arc<SRS<C::Outer>>,
     constants: &Constants<C::InnerField>,
@@ -216,7 +219,9 @@ where
     ProverIndex::<C::Outer>::create(constraint_system, poseidon_params.clone(), endo_q, srs)
 }
 
+/// Handling coordinates in an affine curve
 pub trait CoordinateCurve: AffineCurve {
+    /// Returns the coordinates in the curve as two points of the base field
     fn to_coords(&self) -> Option<(Self::BaseField, Self::BaseField)>;
 }
 

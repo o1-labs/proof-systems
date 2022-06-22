@@ -485,6 +485,17 @@ pub trait Cs<F: FftField + PrimeField> {
         res.unwrap()
     }
 
+    /// Creates an endoscalar multiplication gadget with `length_in_bits/4 + 1` gates.
+    /// For each row, it adds one `EndoMul` gate. The gadget is finalized with a `Zero` gate.
+    ///
+    /// | row | `GateType` |
+    /// | --- | ---------- |
+    /// |  i  | `EndoMul`  |
+    /// | i+1 | `EndoMul`  |
+    /// | ... |    ...     |
+    /// |  r  | `EndoMul`  |
+    /// | r+1 | `Zero`     |
+    ///
     fn endo(
         &mut self,
         zero: Var<F>,
@@ -606,12 +617,16 @@ pub trait Cs<F: FftField + PrimeField> {
         acc
     }
 
+    /// Checks that a string of bits (with LSB first) correspond to the value inside variable `x`.
+    /// It splits the bitstring across rows, where each row takes care of 8 crumbs of 2 bits each.
+    ///
     fn assert_pack(&mut self, zero: Var<F>, x: Var<F>, bits_lsb: &[Var<F>]) {
         let crumbs_per_row = 8;
         let bits_per_row = 2 * crumbs_per_row;
         assert_eq!(bits_lsb.len() % bits_per_row, 0);
         let num_rows = bits_lsb.len() / bits_per_row;
 
+        // Reverse string of bits to have MSB first in the vector
         let bits_msb: Vec<_> = bits_lsb.iter().rev().collect();
 
         let mut a = self.var(|| F::from(2u64));
@@ -621,17 +636,22 @@ pub trait Cs<F: FftField + PrimeField> {
         let one = F::one();
         let neg_one = -one;
 
+        // For each of the chunks, get the corresponding bits
         for (i, row_bits) in bits_msb[..].chunks(bits_per_row).enumerate() {
             let mut row: [Var<F>; COLUMNS] = array_init(|_| self.var(|| F::zero()));
             row[0] = n;
             row[2] = a;
             row[3] = b;
 
+            // For this row, get crumbs of 2 bits each
             for (j, crumb_bits) in row_bits.chunks(2).enumerate() {
-                let b0 = crumb_bits[1];
-                let b1 = crumb_bits[0];
+                // Remember the MSB of each crumb is in the 0 index
+                let b0 = crumb_bits[1]; // less valued
+                let b1 = crumb_bits[0]; // more valued
 
+                // Value of the 2-bit crumb in MSB
                 let crumb = self.var(|| b0.val() + b1.val().double());
+                // Stores the 8 of them in positions [6..13] of the row
                 row[6 + j] = crumb;
 
                 a = self.var(|| {
@@ -652,9 +672,11 @@ pub trait Cs<F: FftField + PrimeField> {
                     }
                 });
 
+                // Accumulated chunk value
                 n = self.var(|| n.val().double().double() + crumb.val());
             }
 
+            // In final row, this is the input value, otherwise the accumulated value
             row[1] = if i == num_rows - 1 { x } else { n };
             row[4] = a;
             row[5] = b;
@@ -663,6 +685,8 @@ pub trait Cs<F: FftField + PrimeField> {
         }
     }
 
+    /// Creates a Poseidon gadget for given constants and a given input.
+    /// It generates a number of `Poseidon` gates followed by a final `Zero` gate.
     fn poseidon(&mut self, constants: &Constants<F>, input: Vec<Var<F>>) -> Vec<Var<F>> {
         use kimchi::circuits::polynomials::poseidon::*;
 
@@ -707,7 +731,7 @@ pub trait Cs<F: FftField + PrimeField> {
 
             self.gate(GateSpec {
                 typ: kimchi::circuits::gate::GateType::Poseidon,
-                c: (0..15)
+                c: (0..COLUMNS)
                     .map(|i| rc[offset + (i / width)][i % width])
                     .collect(),
                 row: [
@@ -745,6 +769,7 @@ pub trait Cs<F: FftField + PrimeField> {
 }
 
 impl<F: FftField + PrimeField> Cs<F> for WitnessGenerator<F> {
+    /// Creates a variable with value given by a function `g` with index `0`
     fn var<G>(&mut self, g: G) -> Var<F>
     where
         G: FnOnce() -> F,
@@ -755,10 +780,12 @@ impl<F: FftField + PrimeField> Cs<F> for WitnessGenerator<F> {
         }
     }
 
+    /// Returns the number of rows.
     fn curr_gate_count(&self) -> usize {
         self.rows.len()
     }
 
+    /// Pushes a new row corresponding to the values in the row of gate `g`.
     fn gate(&mut self, g: GateSpec<F>) {
         self.rows.push(array_init(|i| g.row[i].value.unwrap()))
     }
@@ -772,6 +799,7 @@ impl<F: FftField> WitnessGenerator<F> {
 }
 
 impl<F: FftField + PrimeField> Cs<F> for System<F> {
+    /// Creates a new empty variable with the next available index
     fn var<G>(&mut self, _: G) -> Var<F> {
         let v = self.next_variable;
         self.next_variable += 1;
@@ -781,10 +809,12 @@ impl<F: FftField + PrimeField> Cs<F> for System<F> {
         }
     }
 
+    /// Outputs the number of gates in the circuit
     fn curr_gate_count(&self) -> usize {
         self.gates.len()
     }
 
+    /// Introduces a gate `g` to the current collection of `gates` in the circuit.
     fn gate(&mut self, g: GateSpec<F>) {
         self.gates.push(g);
     }
