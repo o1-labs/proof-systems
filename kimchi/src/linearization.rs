@@ -136,7 +136,12 @@ pub fn expr_linearization<F: FftField + SquareRootField>(
 ) -> (Linearization<Vec<PolishToken<F>>>, Alphas<F>) {
     let evaluated_cols = linearization_columns::<F>(lookup_constraint_system);
 
-    let (expr, powers_of_alpha) = constraints_expr(chacha, range_check, lookup_constraint_system, foreign_field_addition);
+    let (expr, powers_of_alpha) = constraints_expr(
+        chacha,
+        range_check,
+        lookup_constraint_system,
+        foreign_field_addition,
+    );
 
     let linearization = expr
         .linearize(evaluated_cols)

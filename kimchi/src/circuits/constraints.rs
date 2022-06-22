@@ -1,4 +1,3 @@
-
 //! This module implements Plonk circuit constraint primitive.
 use crate::{
     circuits::{
