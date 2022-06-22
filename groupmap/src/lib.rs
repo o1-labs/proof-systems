@@ -14,9 +14,9 @@
 //! Our goal is to construct such a map of type `F -> V`. The paper SvdW06 constructs
 //! a family of such maps, defined by a collection of values which we'll term `params`.
 //!
-//! OCaml implementation https://github.com/o1-labs/snarky/blob/2e9013159ad0d1df0af681735b89518befc4be11/group_map/group_map.ml#L4
-//! SvdW06: Shallue and van de Woestijne, "Construction of rational points on elliptic curves over finite fields." Proc. ANTS 2006. https://works.bepress.com/andrew_shallue/1/download/
-//! WB19: Riad S. Wahby and Dan Boneh, Fast and simple constant-time hashing to the BLS12-381 elliptic curve. https://eprint.iacr.org/2019/403
+//! OCaml implementation <https://github.com/o1-labs/snarky/blob/2e9013159ad0d1df0af681735b89518befc4be11/group_map/group_map.ml#L4>
+//! SvdW06: Shallue and van de Woestijne, "Construction of rational points on elliptic curves over finite fields." Proc. ANTS 2006. <https://works.bepress.com/andrew_shallue/1/download/>
+//! WB19: Riad S. Wahby and Dan Boneh, Fast and simple constant-time hashing to the BLS12-381 elliptic curve. <https://eprint.iacr.org/2019/403>
 //!
 
 use ark_ec::models::SWModelParameters;
@@ -28,6 +28,7 @@ pub trait GroupMap<F> {
     fn batch_to_group_x(&self, ts: Vec<F>) -> Vec<[F; 3]>;
 }
 
+#[derive(Clone, Copy)]
 pub struct BWParameters<G: SWModelParameters> {
     u: G::BaseField,
     fu: G::BaseField,

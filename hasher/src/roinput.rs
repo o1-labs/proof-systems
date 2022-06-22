@@ -73,7 +73,7 @@ impl ROInput {
     }
 
     /// Append a `Hashable` input
-    pub fn append_hashable(&mut self, input: impl Hashable) -> &mut Self {
+    pub fn append_hashable(&mut self, input: &impl Hashable) -> &mut Self {
         self.append_roinput(input.to_roinput());
         self
     }

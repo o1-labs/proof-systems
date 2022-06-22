@@ -215,9 +215,8 @@ fn single_bit<F: FftField>(
     output: CurveVar,
 ) -> Vec<E<F>> {
     let v = E::Cell;
-    let double = |x: E<_>| x.clone() + x;
 
-    let b_sign = double(v(b)) - E::one();
+    let b_sign = v(b).double() - E::one();
 
     let s1_squared = cache.cache(v(s1) * v(s1));
 
@@ -228,7 +227,7 @@ fn single_bit<F: FftField>(
 
     let rx = s1_squared.clone() - v(input.0) - v(base.0);
     let t = cache.cache(v(input.0) - rx);
-    let u = cache.cache(double(v(input.1)) - t.clone() * v(s1));
+    let u = cache.cache(v(input.1).double() - t.clone() * v(s1));
     // s2 = u / t
 
     // output.x = base.x + s2^2 - s1^2
@@ -256,7 +255,7 @@ fn single_bit<F: FftField>(
     ]
 }
 
-struct Layout {
+pub struct Layout {
     accs: [(Variable, Variable); 6],
     bits: [Variable; 5],
     ss: [Variable; 5],

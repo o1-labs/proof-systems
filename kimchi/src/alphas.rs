@@ -324,15 +324,14 @@ mod tests {
         let gates = vec![CircuitGate::<Fp>::zero(Wire::new(0)); 2];
         let index = new_index_for_test(gates, 0);
         let (_linearization, powers_of_alpha) = expr_linearization(
-            index.cs.domain.d1,
             index.cs.chacha8.is_some(),
+            !index.cs.range_check_selector_polys.is_empty(),
             index
                 .cs
                 .lookup_constraint_system
                 .as_ref()
                 .map(|lcs| &lcs.configuration),
         );
-
         // make sure this is present in the specification
         let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
         let spec_path = Path::new(&manifest_dir)

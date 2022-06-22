@@ -9,67 +9,120 @@ You can read more about this project on the [Kimchi book](https://o1-labs.github
 
 [See here for the rust documentation](https://o1-labs.github.io/proof-systems/rustdoc).
 
-## Example
+# Kombucha
 
-We assume that you already have:
+This repository contains **kombucha**, the Kimchi circuit constructor for external users.
 
-* `gates`: a circuit, which can be expressed as a vector of [CircuitGate](https://o1-labs.github.io/proof-systems/rustdoc/kimchi/circuits/gate/struct.CircuitGate.html)
-* a way to produce a `witness`, which can be expressed as a `[Vec<F>; COLUMNS]` (for `F` some field of your chosing)
-* `public_size`: the size of the public input
+## Guidelines
 
-Then, you can create an URS for your circuit in the following way:
+When using this library, make sure to include in your Cargo.toml the following dependency:
 
-```rust,ignore
-use kimchi::{circuits::constraints, verifier::verify};
-use mina_curves::pasta::{fp::Fp, vesta::{Affine, VestaParameters}, pallas::Affine as Other};
-use oracle::{
-    constants::PlonkSpongeConstantsKimchi,
-    sponge::{DefaultFqSponge, DefaultFrSponge},
-};
-use commitment_dlog::commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve};
-
-type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
-type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
-
-// compile the circuit
-let fp_sponge_params = oracle::pasta::fp_kimchi::params();
-let cs = ConstraintSystem::<Fp>::create(gates, vec![], fp_sponge_params, public_size).unwrap();
-
-// create an URS
-let mut urs = SRS::<Affine>::create(cs.domain.d1.size as usize);
-srs.add_lagrange_basis(cs.domain.d1);
-
-// obtain a prover index
-let prover_index = {
-    let fq_sponge_params = oracle::pasta::fq_kimchi::params();
-    let (endo_q, _endo_r) = endos::<Other>();
-    Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs)
-};
-
-// obtain a verifier index
-let verifier_index = prover_index.verifier_index();
-
-// create a proof
-let group_map = <Affine as CommitmentCurve>::Map::setup();
-let proof = {
-    // for recursion
-    let k = ceil_log2(index.srs.g.len());
-    let chals: Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();
-    let comm = {
-        let coeffs = b_poly_coefficients(&chals);
-        let b = DensePolynomial::from_coefficients_vec(coeffs);
-        index.srs.commit_non_hiding(&b, None)
-    };
-    (chals, comm)
-    ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &prover_index, vec![prev])
-};
-
-// verify a proof
-verify::<Affine, BaseSponge, ScalarSponge>(&group_map, verifier_index, proof).unwrap();
+```toml
+[dependencies]
+circuit-construction = { git = "https://github.com/o1-labs/proof-systems" }
 ```
 
+## Example
+
+The following is an example to demonstrate a full cycle workflow using circuit-construction:
+
+1. Specify a circuit
+2. Create SRS
+3. Generate prover index
+4. Generate a proof
+5. Verify the proof
+
+```rust
+use circuit_construction::{prologue::*};
+
+type SpongeQ = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
+type SpongeR = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>;
+
+// a callback function to specify constraint gates for a circuit
+pub fn circuit<
+    F: PrimeField + FftField,
+    Sys: Cs<F>,
+>(
+    witness: Option<F>,
+    sys: &mut Sys,
+    public_input: Vec<Var<F>>,
+) {
+    // add a constant gate
+    let three = sys.constant(3u32.into());
+    // read the first public input
+    let first_public_input = public_input[0];
+    // create a free variable to hold a witness value
+    let witness = sys.var(|| witness.unwrap());
+
+    // create a free variable to hold a calculation result
+    let result = sys.var(|| {
+        first_public_input.val() + witness.val()
+    });
+
+    // add a gate to assert the calculation equals to a constant constraint
+    sys.assert_eq(result, three);
+}
+
+// create SRS
+let srs = {
+    let mut srs = SRS::<VestaAffine>::create(1 << 3); // 2^3 = 8
+    srs.add_lagrange_basis(Radix2EvaluationDomain::new(srs.g.len()).unwrap());
+    Arc::new(srs)
+};
+let public_inputs = vec![1i32.into()];
+let group_map = <VestaAffine as CommitmentCurve>::Map::setup();
+
+// generate circuit and index
+let prover_index = generate_prover_index::<FpInner, _>(
+    srs,
+    &fp_constants(),
+    &oracle::pasta::fq_kimchi::params(),
+    // to determine how many placeholders to generate for public inputs
+    public_inputs.len(),
+    // use the circuit callback to generate gate constraints 
+    // with placeholders for the witness and public inputs
+    |sys, p| circuit::<_, _>(None, sys, p),
+);
+
+// create witness
+let witness = 2i32;
+
+// generate proof
+let proof = prove::<VestaAffine, _, SpongeQ, SpongeR>(
+    &prover_index,
+    &group_map,
+    None,
+    public_inputs,
+    // use the same circuit callbacb
+    // but with values for witness and public inputs
+    |sys, p| circuit::<Fp, _>(Some(witness.into()), sys, p),
+);
+
+// verify proof
+let verifier_index = prover_index.verifier_index();
+verify::<_, SpongeQ, SpongeR>(&group_map, &verifier_index, &proof).unwrap();
+```
+
+For the other examples, please refer to the [tests](./circuit-construction/tests/).
+
 Note that kimchi is specifically designed for use in a recursion proof system, like [pickles](https://medium.com/minaprotocol/meet-pickles-snark-enabling-smart-contract-on-coda-protocol-7ede3b54c250), but can also be used a stand alone for normal proofs.
+
+## Performance
+
+At the time of this writing:
+
+**Proving time**
+
+| number of gates | seconds |
+|:---------------:|:-------:|
+|       2^11      |   0.6s  |
+|       2^16      |   6.3s  |
+
+**Verification time**
+
+| number of gates | seconds |
+|:---------------:|:-------:|
+|       2^16      |   0.1s  |
 
 ## Organization
 
@@ -81,6 +134,7 @@ The project is organized in the following way:
 * [groupmap/](https://github.com/o1-labs/proof-systems/tree/master/groupmap). Used to convert elliptic curve elements to field elements.
 * [hasher/](https://github.com/o1-labs/proof-systems/tree/master/hasher). Interfaces for mina hashing.
 * [kimchi/](https://github.com/o1-labs/proof-systems/tree/master/kimchi). Our proof system.
+* [circuit-construction/](https://github.com/o1-labs/proof-systems/tree/master/circuit-construction). Circuit writer.
 * [ocaml/](https://github.com/o1-labs/proof-systems/tree/master/ocaml). Ocaml bindings generator tool.
 * [oracle/](https://github.com/o1-labs/proof-systems/tree/master/oracle). Implementation of the poseidon hash function.
 * [poly-commitment/](https://github.com/o1-labs/proof-systems/tree/master/poly-commitment). Polynomial commitment code.
@@ -88,8 +142,6 @@ The project is organized in the following way:
 * [tools/](https://github.com/o1-labs/proof-systems/tree/master/tools). Various tooling to help us work on kimchi.
 * [utils/](https://github.com/o1-labs/proof-systems/tree/master/utils). Collection of useful functions and traits.
 
-## Windows Development
-Windows development can be done using [Windows Subsystem for Linux (WSL)](https://docs.microsoft.com/en-us/windows/wsl/install).
-* Install and open WSL
-* Within WSL, install OCaml using your distro's package manager. For example: `apt install opam`
-* Within WSL, navigate to the project directory and run `cargo test`. If there are no failures then everything is set up correctly.
+## Contributing
+
+Check [CONTRIBUTING.md](CONTRIBUTING.md) if you are interested in contributing to this project.

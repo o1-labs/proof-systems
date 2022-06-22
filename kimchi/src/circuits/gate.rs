@@ -1,8 +1,8 @@
 //! This module implements Plonk constraint gate primitive.
 
 use crate::circuits::{constraints::ConstraintSystem, wires::*};
-use ark_ff::bytes::ToBytes;
 use ark_ff::FftField;
+use ark_ff::{bytes::ToBytes, SquareRootField};
 use num_traits::cast::ToPrimitive;
 use o1_utils::hasher::CryptoDigest;
 use serde::{Deserialize, Serialize};
@@ -82,6 +82,16 @@ pub enum GateType {
     ChaCha1 = 8,
     ChaCha2 = 9,
     ChaChaFinal = 10,
+    // Lookup
+    Lookup = 11,
+    /// Cairo
+    CairoClaim = 12,
+    CairoInstruction = 13,
+    CairoFlags = 14,
+    CairoTransition = 15,
+    // Range check (16-24)
+    RangeCheck0 = 16,
+    RangeCheck1 = 17,
 }
 
 #[serde_as]
@@ -114,7 +124,7 @@ impl<F: FftField> ToBytes for CircuitGate<F> {
     }
 }
 
-impl<F: FftField> CircuitGate<F> {
+impl<F: FftField + SquareRootField> CircuitGate<F> {
     /// this function creates "empty" circuit gate
     pub fn zero(wires: GateWires) -> Self {
         CircuitGate {
@@ -125,7 +135,7 @@ impl<F: FftField> CircuitGate<F> {
     }
 
     /// This function verifies the consistency of the wire
-    /// assignements (witness) against the constraints
+    /// assignments (witness) against the constraints
     pub fn verify(
         &self,
         row: usize,
@@ -144,6 +154,14 @@ impl<F: FftField> CircuitGate<F> {
             EndoMulScalar => self.verify_endomul_scalar(row, witness, cs),
             // TODO: implement the verification for chacha
             ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => Ok(()),
+            // TODO: implement the verification for the lookup gate
+            Lookup => Ok(()),
+            CairoClaim | CairoInstruction | CairoFlags | CairoTransition => {
+                self.verify_cairo_gate(row, witness, cs)
+            }
+            RangeCheck0 | RangeCheck1 => self
+                .verify_range_check(row, witness, cs)
+                .map_err(|e| e.to_string()),
         }
     }
 }
@@ -295,7 +313,7 @@ mod tests {
         #[test]
         fn test_gate_serialization(cg in arb_circuit_gate()) {
             let encoded = rmp_serde::to_vec(&cg).unwrap();
-            let decoded: CircuitGate<Fp> = rmp_serde::from_read_ref(&encoded).unwrap();
+            let decoded: CircuitGate<Fp> = rmp_serde::from_slice(&encoded).unwrap();
             prop_assert_eq!(cg.typ, decoded.typ);
             for i in 0..PERMUTS {
                 prop_assert_eq!(cg.wires[i], decoded.wires[i]);

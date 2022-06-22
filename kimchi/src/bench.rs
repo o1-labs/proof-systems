@@ -9,10 +9,8 @@ use crate::{
     verifier::batch_verify,
     verifier_index::VerifierIndex,
 };
-use ark_ff::UniformRand;
-use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use array_init::array_init;
-use commitment_dlog::commitment::{b_poly_coefficients, CommitmentCurve};
+use commitment_dlog::commitment::CommitmentCurve;
 use groupmap::{BWParameters, GroupMap};
 use mina_curves::pasta::vesta::VestaParameters;
 use mina_curves::pasta::{fp::Fp, vesta::Affine};
@@ -20,7 +18,6 @@ use oracle::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use rand::{rngs::StdRng, SeedableRng};
 
 use o1_utils::math;
 
@@ -28,21 +25,19 @@ type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
-/// The circuit size. This influences the size of the SRS.
-/// At the time of this writing our verifier circuits have 27164 & 18054 gates.
-pub const CIRCUIT_SIZE: usize = 27164;
-
 pub struct BenchmarkCtx {
+    num_gates: usize,
     group_map: BWParameters<VestaParameters>,
     index: ProverIndex<Affine>,
     verifier_index: VerifierIndex<Affine>,
 }
 
 impl BenchmarkCtx {
+    pub fn srs_size(&self) -> usize {
+        math::ceil_log2(self.index.srs.max_degree())
+    }
+
     /// This will create a context that allows for benchmarks of `num_gates` gates (multiplication gates).
-    /// Note that the size of the circuit is still of [CIRCUIT_SIZE].
-    /// So the prover's work is based on num_gates,
-    /// but the verifier work is based on [CIRCUIT_SIZE].
     pub fn new(num_gates: usize) -> Self {
         // create the circuit
         let mut gates = vec![];
@@ -57,11 +52,6 @@ impl BenchmarkCtx {
             ));
         }
 
-        for row in num_gates..CIRCUIT_SIZE {
-            let wires = Wire::new(row);
-            gates.push(CircuitGate::zero(wires));
-        }
-
         // group map
         let group_map = <Affine as CommitmentCurve>::Map::setup();
 
@@ -73,6 +63,7 @@ impl BenchmarkCtx {
 
         //
         BenchmarkCtx {
+            num_gates,
             group_map,
             index,
             verifier_index,
@@ -81,32 +72,12 @@ impl BenchmarkCtx {
 
     /// Produces a proof
     pub fn create_proof(&self) -> ProverProof<Affine> {
-        // set up
-        let rng = &mut StdRng::from_seed([0u8; 32]);
-
         // create witness
-        let witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![1u32.into(); CIRCUIT_SIZE]);
-
-        // previous opening for recursion
-        let prev = {
-            let k = math::ceil_log2(self.index.srs.g.len());
-            let chals: Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();
-            let comm = {
-                let coeffs = b_poly_coefficients(&chals);
-                let b = DensePolynomial::from_coefficients_vec(coeffs);
-                self.index.srs.commit_non_hiding(&b, None)
-            };
-            (chals, comm)
-        };
+        let witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![1u32.into(); self.num_gates]);
 
         // add the proof to the batch
-        ProverProof::create_recursive::<BaseSponge, ScalarSponge>(
-            &self.group_map,
-            witness,
-            &self.index,
-            vec![prev],
-        )
-        .unwrap()
+        ProverProof::create::<BaseSponge, ScalarSponge>(&self.group_map, witness, &[], &self.index)
+            .unwrap()
     }
 
     pub fn batch_verification(&self, batch: Vec<ProverProof<Affine>>) {

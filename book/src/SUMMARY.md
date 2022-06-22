@@ -9,12 +9,12 @@
 - [Rings](./fundamentals/zkbook_rings.md)
 - [Fields](./fundamentals/zkbook.md)
 - [Polynomials](./fundamentals/zkbook_polynomials.md)
-  - [Polynomial multiplications with FFT](./fundamentals/zkbook_fft.md)
+  - [Multiplying polynomials](./fundamentals/zkbook_multiplying_polynomials.md)
+  - [Fast Fourier transform](./fundamentals/zkbook_fft.md)
 
 # Cryptographic tools
 
 - [Commitments](./fundamentals/zkbook_commitment.md)
-- [Commitments](./plonk/commitments.md)
 - [Polynomial commitments](./plonk/polynomial_commitments.md)
   - [Inner product argument](./plonk/inner_product.md)
   - [Different functionnalities](./plonk/inner_product_api.md)
@@ -52,6 +52,7 @@
 - [RFC 0: Alternative zero-knowledge](./plonk/zkpm.md)
 - [RFC 1: Final check](./plonk/final_check.md)
 - [RFC 2: Maller's optimization for kimchi](./plonk/maller_15.md)
+- [RFC 3: Plookup integration in kimchi](./rfcs/3-lookup.md)
 
 # Specifications
 
@@ -59,5 +60,6 @@
 - [Polynomial commitment](./specs/poly-commitment.md)
 - [Pasta curves](./specs/pasta.md)
 - [Kimchi](./specs/kimchi.md)
+- [Universal Reference String (URS)](./specs/urs.md)
 - [Pickles](./specs/pickles.md)
 - [Consensus](./specs/consensus.md)

@@ -29,8 +29,7 @@ fn get_bit(limbs_lsb: &[u64], i: u64) -> u64 {
 }
 
 impl<F: PrimeField> ScalarChallenge<F> {
-    pub fn to_field(&self, endo_coeff: &F) -> F {
-        let length_in_bits: u64 = (64 * CHALLENGE_LENGTH_IN_LIMBS) as u64;
+    pub fn to_field_with_length(&self, length_in_bits: usize, endo_coeff: &F) -> F {
         let rep = self.0.into_repr();
         let r = rep.as_ref();
 
@@ -40,7 +39,7 @@ impl<F: PrimeField> ScalarChallenge<F> {
         let one = F::one();
         let neg_one = -one;
 
-        for i in (0..(length_in_bits / 2)).rev() {
+        for i in (0..(length_in_bits as u64 / 2)).rev() {
             a.double_in_place();
             b.double_in_place();
 
@@ -55,6 +54,11 @@ impl<F: PrimeField> ScalarChallenge<F> {
         }
 
         a * endo_coeff + b
+    }
+
+    pub fn to_field(&self, endo_coeff: &F) -> F {
+        let length_in_bits = 64 * CHALLENGE_LENGTH_IN_LIMBS;
+        self.to_field_with_length(length_in_bits, endo_coeff)
     }
 }
 
@@ -228,12 +232,12 @@ pub mod caml {
         }
     }
 
-    impl<F, CamlF> Into<ScalarChallenge<F>> for CamlScalarChallenge<CamlF>
+    impl<F, CamlF> From<CamlScalarChallenge<CamlF>> for ScalarChallenge<F>
     where
         CamlF: Into<F>,
     {
-        fn into(self) -> ScalarChallenge<F> {
-            ScalarChallenge(self.0.into())
+        fn from(caml_sc: CamlScalarChallenge<CamlF>) -> Self {
+            Self(caml_sc.0.into())
         }
     }
 }

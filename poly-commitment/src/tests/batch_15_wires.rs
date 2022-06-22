@@ -1,13 +1,13 @@
 //! This module tests polynomial commitments, batched openings and
 //! verification of a batch of batched opening proofs of polynomial commitments
 
-use ark_ff::{UniformRand, Zero};
-use ark_poly::{univariate::DensePolynomial, UVPolynomial};
-use colored::Colorize;
-use commitment_dlog::{
+use crate::{
     commitment::{BatchEvaluationProof, CommitmentCurve, Evaluation},
     srs::SRS,
 };
+use ark_ff::{UniformRand, Zero};
+use ark_poly::{univariate::DensePolynomial, UVPolynomial};
+use colored::Colorize;
 use groupmap::GroupMap;
 use mina_curves::pasta::{
     vesta::{Affine, VestaParameters},
@@ -90,7 +90,7 @@ where
 
             start = Instant::now();
             let polys: Vec<_> = (0..a.len())
-                .map(|i| (&a[i], bounds[i], (comm[i].0).1.clone()))
+                .map(|i| (&a[i], bounds[i], (comm[i].0).blinders.clone()))
                 .collect();
             let proof = srs.open::<DefaultFqSponge<VestaParameters, SC>, _>(
                 &group_map,
@@ -118,7 +118,7 @@ where
                 .4
                 .iter()
                 .map(|poly| Evaluation {
-                    commitment: (poly.0).0.clone(),
+                    commitment: (poly.0).commitment.clone(),
                     evaluations: poly.1.clone(),
                     degree_bound: poly.2,
                 })
