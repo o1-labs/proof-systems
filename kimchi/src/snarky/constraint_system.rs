@@ -1,7 +1,11 @@
 use crate::circuits::gate::{CircuitGate, GateType};
+use crate::circuits::polynomials::poseidon::{ROUNDS_PER_HASH, SPONGE_WIDTH};
 use crate::circuits::wires::{Wire, COLUMNS, PERMUTS};
 use ark_ff::FftField;
+use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
+
+use super::constants::Constants;
 
 /** A gate interface, parameterized by a field. */
 pub trait GateVector<Field: FftField> {
@@ -243,7 +247,13 @@ enum Circuit<Field, RustGates> {
 }
 
 /** The constraint system. */
-pub struct SnarkyConstraintSystem<Field, RustGates> {
+pub struct SnarkyConstraintSystem<Field, RustGates>
+where
+    Field: ark_ff::Field,
+{
+    // TODO: once we have a trait we can get these via the Curve (if we parameterize SnarkyConstraintSystem on the curve)
+    constants: Constants<Field>,
+
     /** Map of cells that share the same value (enforced by to the permutation). */
     equivalence_classes: HashMap<V, Vec<Position<Row>>>,
     next_internal_var: usize,
@@ -369,8 +379,10 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
         V::Internal(v)
     }
 
-    pub fn create() -> Self {
+    pub fn create(constants: Constants<Field>) -> Self {
         Self {
+            // TODO: if we expect a `Field: KimchiParams` we can simply do `Field::constants()` here. But we might want to wait for Fabrizio's trait? Also we should keep this close to the OCaml stuff if we want to avoid pains when we plug this in
+            constants: constants,
             public_input_size: None,
             next_internal_var: 0,
             internal_vars: HashMap::new(),
@@ -1091,7 +1103,93 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
                     vec![coeff(l), coeff(r), coeff(o), m, c],
                 )
             }
-            KimchiConstraint::Poseidon { state } => todo!(),
+            // TODO: the code in circuit-writer was better
+            // TODO: also `rounds` would be a better name than `state`
+            KimchiConstraint::Poseidon { state } => {
+                // we expect state to be a vector of all the intermediary round states
+                // (in addition to the initial and final states)
+                assert_eq!(state.len(), ROUNDS_PER_HASH * ROUNDS_PER_HASH);
+
+                // where each state is three field elements
+                assert!(state.iter().all(|x| x.len() == SPONGE_WIDTH));
+
+                // reduce the state
+                let state: Vec<Vec<_>> = state
+                    .into_iter()
+                    .map(|vars| vars.into_iter().map(|x| self.reduce_to_var(x)).collect())
+                    .collect();
+
+                // retrieve the final state
+                let mut rev_state = state.into_iter().rev();
+                let final_state = rev_state.next().unwrap();
+                let state = rev_state.rev();
+
+                // iterate ROUNDS_PER_ROW rounds at a time
+                for mut round_state in &state.enumerate().chunks(5) {
+                    let (round_0, state_0) = round_state.next().unwrap();
+                    let (round_1, state_1) = round_state.next().unwrap();
+                    let (round_2, state_2) = round_state.next().unwrap();
+                    let (round_3, state_3) = round_state.next().unwrap();
+                    let (round_4, state_4) = round_state.next().unwrap();
+
+                    let vars = vec![
+                        Some(state_0[0]),
+                        Some(state_0[1]),
+                        Some(state_0[2]),
+                        // the last state is in 2nd position
+                        Some(state_4[0]),
+                        Some(state_4[1]),
+                        Some(state_4[2]),
+                        Some(state_1[0]),
+                        Some(state_1[1]),
+                        Some(state_1[2]),
+                        Some(state_2[0]),
+                        Some(state_2[1]),
+                        Some(state_2[2]),
+                        Some(state_3[0]),
+                        Some(state_3[1]),
+                        Some(state_3[2]),
+                    ];
+                    let coeffs = vec![
+                        self.constants.poseidon.round_constants[round_0][0],
+                        self.constants.poseidon.round_constants[round_0][1],
+                        self.constants.poseidon.round_constants[round_0][2],
+                        self.constants.poseidon.round_constants[round_1][0],
+                        self.constants.poseidon.round_constants[round_1][1],
+                        self.constants.poseidon.round_constants[round_1][2],
+                        self.constants.poseidon.round_constants[round_2][0],
+                        self.constants.poseidon.round_constants[round_2][1],
+                        self.constants.poseidon.round_constants[round_2][2],
+                        self.constants.poseidon.round_constants[round_3][0],
+                        self.constants.poseidon.round_constants[round_3][1],
+                        self.constants.poseidon.round_constants[round_3][2],
+                        self.constants.poseidon.round_constants[round_4][0],
+                        self.constants.poseidon.round_constants[round_4][1],
+                        self.constants.poseidon.round_constants[round_4][2],
+                    ];
+                    self.add_row(vars, GateType::Poseidon, coeffs);
+                }
+
+                // add_last_row adds the last row containing the output
+                let vars = vec![
+                    Some(final_state[0]),
+                    Some(final_state[1]),
+                    Some(final_state[2]),
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                ];
+                self.add_row(vars, GateType::Zero, vec![]);
+            }
             KimchiConstraint::EcAddComplete {
                 p1,
                 p2,
