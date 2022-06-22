@@ -1282,8 +1282,42 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
                 xs,
                 ys,
                 n_acc,
-            } => todo!(),
             KimchiConstraint::EcEndoscalar { state } => todo!(),
+            } => {
+                for round in state {
+                    let vars = vec![
+                        Some(self.reduce_to_var(round.xt)),
+                        Some(self.reduce_to_var(round.yt)),
+                        None,
+                        None,
+                        Some(self.reduce_to_var(round.xp)),
+                        Some(self.reduce_to_var(round.yp)),
+                        Some(self.reduce_to_var(round.n_acc)),
+                        Some(self.reduce_to_var(round.xr)),
+                        Some(self.reduce_to_var(round.yr)),
+                        Some(self.reduce_to_var(round.s1)),
+                        Some(self.reduce_to_var(round.s3)),
+                        Some(self.reduce_to_var(round.b1)),
+                        Some(self.reduce_to_var(round.b2)),
+                        Some(self.reduce_to_var(round.b3)),
+                        Some(self.reduce_to_var(round.b4)),
+                    ];
+
+                    self.add_row(vars, GateType::EndoMul, vec![]);
+                }
+
+                // last row
+                let vars = vec![
+                    None,
+                    None,
+                    None,
+                    None,
+                    Some(self.reduce_to_var(xs)),
+                    Some(self.reduce_to_var(ys)),
+                    Some(self.reduce_to_var(n_acc)),
+                ];
+                self.add_row(vars, GateType::Zero, vec![]);
+            }
         }
     }
 }
