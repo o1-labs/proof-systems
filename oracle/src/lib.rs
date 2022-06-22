@@ -4,6 +4,9 @@ pub mod permutation;
 pub mod poseidon;
 pub mod sponge;
 
+#[cfg(test)]
+mod tests;
+
 use ark_ff::Field;
 
 pub trait FqSponge<Fq: Field, G, Fr> {

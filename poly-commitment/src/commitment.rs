@@ -1131,23 +1131,23 @@ pub mod caml {
         }
     }
 
-    impl<G, CamlF, CamlG> Into<OpeningProof<G>> for CamlOpeningProof<CamlG, CamlF>
+    impl<G, CamlF, CamlG> From<CamlOpeningProof<CamlG, CamlF>> for OpeningProof<G>
     where
         G: AffineCurve,
         CamlG: Into<G>,
         CamlF: Into<G::ScalarField>,
     {
-        fn into(self) -> OpeningProof<G> {
-            OpeningProof {
-                lr: self
+        fn from(caml: CamlOpeningProof<CamlG, CamlF>) -> Self {
+            Self {
+                lr: caml
                     .lr
                     .into_iter()
                     .map(|(g1, g2)| (g1.into(), g2.into()))
                     .collect(),
-                delta: self.delta.into(),
-                z1: self.z1.into(),
-                z2: self.z2.into(),
-                sg: self.sg.into(),
+                delta: caml.delta.into(),
+                z1: caml.z1.into(),
+                z2: caml.z2.into(),
+                sg: caml.sg.into(),
             }
         }
     }

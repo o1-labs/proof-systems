@@ -7,6 +7,9 @@ pub mod prover;
 /// This is the actual writer with all of the available functions to set up a circuit and its corresponding constraint system
 pub mod writer;
 
+#[cfg(test)]
+mod tests;
+
 /// This contains the Kimchi dependencies being used
 pub mod prologue {
     pub use super::constants::{fp_constants, fq_constants, Constants};

@@ -1,4 +1,4 @@
-use circuit_construction::prologue::*;
+use crate::prologue::*;
 
 type SpongeQ = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
 type SpongeR = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>;

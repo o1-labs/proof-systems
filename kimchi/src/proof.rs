@@ -324,6 +324,7 @@ pub mod caml {
     // CamlProofEvaluations<CamlF>
     //
 
+    #[allow(clippy::type_complexity)]
     #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlProofEvaluations<CamlF> {
         pub w: (

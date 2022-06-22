@@ -1,4 +1,4 @@
-use mina_hasher::{Fp, Hashable, Hasher, ROInput};
+use crate::{create_kimchi, create_legacy, Fp, Hashable, Hasher, ROInput};
 use o1_utils::FieldHelpers;
 use serde::Deserialize;
 use std::fs::File;
@@ -39,7 +39,7 @@ impl Hashable for TestVector {
 fn test_vectors(test_vector_file: &str, hasher: &mut dyn Hasher<TestVector>) {
     // read test vectors from given file
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    path.push("../oracle/tests/test_vectors");
+    path.push("../oracle/src/tests/test_vectors");
     path.push(&test_vector_file);
 
     let file = File::open(&path).expect("couldn't open test vector file");
@@ -63,12 +63,12 @@ fn test_vectors(test_vector_file: &str, hasher: &mut dyn Hasher<TestVector>) {
 
 #[test]
 fn hasher_test_vectors_legacy() {
-    let mut hasher = mina_hasher::create_legacy::<TestVector>(());
+    let mut hasher = create_legacy::<TestVector>(());
     test_vectors("legacy.json", &mut hasher);
 }
 
 #[test]
 fn hasher_test_vectors_kimchi() {
-    let mut hasher = mina_hasher::create_kimchi::<TestVector>(());
+    let mut hasher = create_kimchi::<TestVector>(());
     test_vectors("kimchi.json", &mut hasher);
 }

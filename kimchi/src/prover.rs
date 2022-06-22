@@ -1239,6 +1239,7 @@ pub mod caml {
         pub runtime: Option<CamlPolyComm<CamlG>>,
     }
 
+    #[allow(clippy::type_complexity)]
     #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlProverCommitments<CamlG> {
         // polynomial commitments
