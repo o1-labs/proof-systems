@@ -12,6 +12,7 @@ pub trait GateVector<Field: FftField> {
     fn create() -> Self;
     fn add(&mut self, gate: CircuitGate<Field>);
     fn get(&self, idx: usize) -> CircuitGate<Field>;
+    fn digest(&self) -> Vec<u8>;
 }
 
 /** A row indexing in a constraint system.
@@ -205,7 +206,7 @@ enum Circuit<Field, RustGates> {
     /** Once finalized, a circuit is represented as a digest
         and a list of gates that corresponds to the circuit.
     */
-    Compiled(() /* TODO: MD5 hash in OCaml */, RustGates),
+    Compiled(Vec<u8>, RustGates),
 }
 
 /** The constraint system. */
@@ -421,97 +422,94 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
     }
 
     pub fn finalize(&mut self) {
-        if let Circuit::Compiled(_, _) = self.gates {
+        // if it's already finalized, return early
+        if matches!(self.gates, Circuit::Compiled(..)) {
+            // TODO: return an error?
             return;
-        } else if let Some(_) = &self.pending_generic_gate {
-            if let Some((l, r, o, coeffs)) = std::mem::replace(&mut self.pending_generic_gate, None)
-            {
-                self.pending_generic_gate = None;
-                self.add_row(vec![l, r, o], GateType::Generic, coeffs.clone());
-                self.finalize()
-            }
-        } else if let Circuit::Unfinalized(_) = self.gates {
-            if let Circuit::Unfinalized(gates) =
-                std::mem::replace(&mut self.gates, Circuit::Compiled((), GateVector::create()))
-            {
-                {
-                    let mut rust_gates = Gates::create();
-                    /* Create rows for public input. */
-                    let public_input_size = self.public_input_size.unwrap();
-                    let pub_selectors: Vec<_> = vec![
-                        Field::one(),
-                        Field::zero(),
-                        Field::zero(),
-                        Field::zero(),
-                        Field::zero(),
-                    ];
-                    let mut public_gates = Vec::new();
-                    for row in 0..(public_input_size - 1) {
-                        let public_var = V::External(row + 1);
-                        self.wire_(public_var, Row::PublicInput(row), 0);
-                        public_gates.push(GateSpec {
-                            kind: GateType::Generic,
-                            wired_to: Vec::new(),
-                            coeffs: pub_selectors.clone(),
-                        });
-                    }
-
-                    /* Construct permutation hashmap */
-                    let pos_map = self.equivalence_classes_to_hashtbl();
-                    let permutation = |pos: Position<Row>| *pos_map.get(&pos).unwrap_or(&pos);
-
-                    let update_gate_with_permutation_info =
-                        |row: Row, gate: GateSpec<(), Field>| {
-                            let GateSpec {
-                                kind,
-                                wired_to: _,
-                                coeffs,
-                            } = gate;
-                            GateSpec {
-                                kind,
-                                wired_to: (0..PERMUTS)
-                                    .map(|col| permutation(Position { row, col }))
-                                    .collect(),
-                                coeffs,
-                            }
-                        };
-
-                    let public_gates = public_gates
-                        .into_iter()
-                        .enumerate()
-                        .map(|(absolute_row, gate)| {
-                            update_gate_with_permutation_info(Row::PublicInput(absolute_row), gate)
-                        })
-                        .collect();
-                    let gates = gates
-                        .into_iter()
-                        .enumerate()
-                        .map(|(relative_row, gate)| {
-                            update_gate_with_permutation_info(
-                                Row::AfterPublicInput(relative_row),
-                                gate,
-                            )
-                        })
-                        .collect();
-
-                    /* concatenate and convert to absolute rows */
-                    let to_absolute_row = |gate: GateSpec<_, _>| {
-                        gate.map_rows(|row: Row| row.to_absolute(public_input_size))
-                    };
-
-                    /* convert all the gates into our Gates.t Rust vector type */
-                    let mut add_gates = |gates: Vec<_>| {
-                        for gate in gates.into_iter() {
-                            let g = to_absolute_row(gate);
-                            rust_gates.add(g.to_rust_gate());
-                        }
-                    };
-                    add_gates(public_gates);
-                    add_gates(gates);
-                    self.gates = Circuit::Compiled((), rust_gates);
-                }
-            }
         }
+
+        // if we still have some pending gates, deal with it first
+        if let Some((l, r, o, coeffs)) = self.pending_generic_gate.take() {
+            self.pending_generic_gate = None;
+            self.add_row(vec![l, r, o], GateType::Generic, coeffs.clone());
+        }
+
+        // get gates without holding on an immutable reference
+        let gates = match std::mem::replace(&mut self.gates, Circuit::Unfinalized(vec![])) {
+            Circuit::Unfinalized(gates) => gates,
+            _ => panic!("we expect the gates to be unfinalized"),
+        };
+
+        /* Create rows for public input. */
+        let public_input_size = self.public_input_size.unwrap();
+        let pub_selectors: Vec<_> = vec![
+            Field::one(),
+            Field::zero(),
+            Field::zero(),
+            Field::zero(),
+            Field::zero(),
+        ];
+        let mut public_gates = Vec::new();
+        for row in 0..(public_input_size - 1) {
+            let public_var = V::External(row + 1);
+            self.wire_(public_var, Row::PublicInput(row), 0);
+            public_gates.push(GateSpec {
+                kind: GateType::Generic,
+                wired_to: Vec::new(),
+                coeffs: pub_selectors.clone(),
+            });
+        }
+
+        /* Construct permutation hashmap */
+        let pos_map = self.equivalence_classes_to_hashtbl();
+        let permutation = |pos: Position<Row>| *pos_map.get(&pos).unwrap_or(&pos);
+
+        let update_gate_with_permutation_info = |row: Row, gate: GateSpec<(), Field>| {
+            let GateSpec {
+                kind,
+                wired_to: _,
+                coeffs,
+            } = gate;
+            GateSpec {
+                kind,
+                wired_to: (0..PERMUTS)
+                    .map(|col| permutation(Position { row, col }))
+                    .collect(),
+                coeffs,
+            }
+        };
+
+        let public_gates = public_gates
+            .into_iter()
+            .enumerate()
+            .map(|(absolute_row, gate)| {
+                update_gate_with_permutation_info(Row::PublicInput(absolute_row), gate)
+            })
+            .collect();
+        let gates = gates
+            .into_iter()
+            .enumerate()
+            .map(|(relative_row, gate)| {
+                update_gate_with_permutation_info(Row::AfterPublicInput(relative_row), gate)
+            })
+            .collect();
+
+        /* concatenate and convert to absolute rows */
+        let to_absolute_row =
+            |gate: GateSpec<_, _>| gate.map_rows(|row: Row| row.to_absolute(public_input_size));
+
+        /* convert all the gates into our Gates.t Rust vector type */
+        let mut rust_gates = Gates::create();
+        let mut add_gates = |gates: Vec<_>| {
+            for gate in gates.into_iter() {
+                let g = to_absolute_row(gate);
+                rust_gates.add(g.to_rust_gate());
+            }
+        };
+        add_gates(public_gates);
+        add_gates(gates);
+
+        self.gates = Circuit::Compiled(rust_gates.digest(), rust_gates);
     }
 
     pub fn finalize_and_get_gates(&mut self) -> &mut Gates {
