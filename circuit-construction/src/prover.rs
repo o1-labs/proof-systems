@@ -181,17 +181,10 @@ where
     let public_input: Vec<_> = (0..public)
         .map(|_| {
             let v = system.var(|| panic!("fail"));
-            let row = array_init(|i| {
-                if i == 0 {
-                    v
-                } else {
-                    system.var(|| panic!("fail"))
-                }
-            });
 
             system.gate(GateSpec {
                 typ: GateType::Generic,
-                row,
+                row: vec![Some(v)],
                 coeffs: public_input_row.clone(),
             });
             v
