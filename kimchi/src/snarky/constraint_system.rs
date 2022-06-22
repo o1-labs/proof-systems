@@ -595,7 +595,7 @@ fn accumulate_terms<Field: FftField>(terms: Vec<(Field, usize)>) -> HashMap<usiz
     acc
 }
 
-pub trait SnarkyCvar {
+pub trait SnarkyCvar: Clone {
     type Field;
 
     fn to_constant_and_terms(self: &Self) -> (Option<Self::Field>, Vec<(Self::Field, usize)>);
@@ -1199,8 +1199,31 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
                 slope,
                 inf_z,
                 x21_inv,
-            } => todo!(),
             KimchiConstraint::EcScale { state } => todo!(),
+            } => {
+                let mut reduce_curve_point =
+                    |(x, y)| (self.reduce_to_var(x), self.reduce_to_var(y));
+                // 0   1   2   3   4   5   6   7      8   9
+                // x1  y1  x2  y2  x3  y3  inf same_x s   inf_z  x21_inv
+                let (x1, y1) = reduce_curve_point(p1);
+                let (x2, y2) = reduce_curve_point(p2);
+                let (x3, y3) = reduce_curve_point(p3);
+
+                let vars = vec![
+                    Some(x1),
+                    Some(y1),
+                    Some(x2),
+                    Some(y2),
+                    Some(x3),
+                    Some(y3),
+                    Some(self.reduce_to_var(inf)),
+                    Some(self.reduce_to_var(same_x)),
+                    Some(self.reduce_to_var(slope)),
+                    Some(self.reduce_to_var(inf_z)),
+                    Some(self.reduce_to_var(x21_inv)),
+                ];
+                self.add_row(vars, GateType::CompleteAdd, vec![]);
+            }
             KimchiConstraint::EcEndoscale {
                 state,
                 xs,
