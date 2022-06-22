@@ -15,6 +15,8 @@ use mina_curves::pasta::{fp::Fp, fq::Fq, pallas::Affine as Other, vesta::Affine}
 use oracle::{constants::*, permutation::full_round, poseidon::ArithmeticSpongeParams, FqSponge};
 use std::collections::HashMap;
 
+pub use generic_gate::generic;
+
 pub const GENERICS: usize = 3;
 
 pub const SINGLE_GENERIC_COEFFS: usize = 5;
@@ -198,6 +200,38 @@ pub trait Cs<F: FftField + PrimeField> {
     /// In circuit mode, adds a gate to the circuit.
     /// In witness generation mode, adds the corresponding row to the witness.
     fn gate(&mut self, g: GateSpec<F>);
+
+    fn generic_assert(
+        &mut self,
+        vars: (Var<F>, Var<F>, Var<F>),
+        coeff: [F; 5],
+    ) {
+        //
+        let row = array_init(|i| {
+            if i == 0 {
+                vars.0
+            } else if i == 1 {
+                vars.1
+            } else if i == 2 {
+                vars.2
+            } else {
+                self.var(|| F::zero())
+            }
+        });
+
+        let mut c = vec![F::zero(); GENERIC_ROW_COEFFS];
+        c[0] = coeff[0];
+        c[1] = coeff[1];
+        c[2] = coeff[2];
+        c[3] = coeff[3];
+        c[4] = coeff[4];
+
+        self.gate(GateSpec {
+            typ: GateType::Generic,
+            row,
+            c
+        });
+    }
 
     // Constrains: out = a_c*a + b_c*b + ab_c*a*b + constant
     //

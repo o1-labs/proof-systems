@@ -60,6 +60,8 @@ where
     }
 }
 
+
+
 /// Add constraints for evaluating a polynomial
 ///
 /// coeffs are the coefficients from least significant to most significant
@@ -140,14 +142,14 @@ impl<F: FftField + PrimeField> Absorb<F> for VarEvaluation<F> {
 }
 
 pub struct VarEvaluations<F: FftField + PrimeField> {
-    pub z: VarEvaluation<F>,  // evaluation at z
-    pub zw: VarEvaluation<F>, // evaluation at z * \omega (2^k root of unity, next step)
+    pub zeta: VarEvaluation<F>,  // evaluation at \zeta
+    pub zetaw: VarEvaluation<F>, // evaluation at \zeta * \omega (2^k root of unity, next step)
 }
 
 impl<F: FftField + PrimeField> Absorb<F> for VarEvaluations<F> {
     fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut VarSponge<F>) {
-        sponge.absorb(cs, &self.z);
-        sponge.absorb(cs, &self.zw);
+        sponge.absorb(cs, &self.zeta);
+        sponge.absorb(cs, &self.zetaw);
     }
 }
 

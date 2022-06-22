@@ -26,12 +26,19 @@ serde = "1.0.130"
 serde_with = "1.10.0"
 thiserror = "1.0.30"
 
+generic-gate = {path = "generic-gate"} # provides the ability to specify generic gates using macros
+
 commitment_dlog = { path = "../poly-commitment" }
 groupmap = { path = "../groupmap" }
 mina-curves = { path = "../curves" }
 o1-utils = { path = "../utils" }
 oracle = { path = "../oracle" }
 kimchi = { path = "../kimchi" }
+
+ocaml = { version = "0.22.2", optional = true }
+ocaml-gen = { path = "../ocaml/ocaml-gen", optional = true}
+
+wasm-bindgen = { version = "0.2", optional = true }
 
 [dev-dependencies]
 proptest = "1.0.0"
@@ -41,3 +48,12 @@ colored = "2.0.0"
 # benchmarks
 criterion = "0.3"
 iai = "0.1"
+
+[[bench]]
+name = "example_proof"
+harness = false
+
+[features]
+default = []
+ocaml_types = [ "ocaml", "ocaml-gen", "commitment_dlog/ocaml_types", "oracle/ocaml_types" ]
+wasm_types = [ "wasm-bindgen" ]

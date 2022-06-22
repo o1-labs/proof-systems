@@ -1,7 +1,10 @@
 use ark_ec::AffineCurve;
 use ark_ff::{FftField, PrimeField};
 
-use circuit_construction::{Cs, Var};
+use ark_poly::Radix2EvaluationDomain as Domain;
+use ark_poly::EvaluationDomain;
+
+use circuit_construction::{Cs, Var, generic};
 
 use std::marker::PhantomData;
 
@@ -9,6 +12,7 @@ use crate::context::{AsPublic, PassTo, Public};
 use crate::transcript::{Absorb, Challenge, VarSponge};
 
 use crate::plonk::CHALLENGE_LEN;
+use crate::plonk::misc::var_sum;
 
 pub struct VarPoint<G>
 where
@@ -81,6 +85,15 @@ where
 {
     fn into(self) -> VarOpen<F, 1> {
         VarOpen { chunks: [self] }
+    }
+}
+
+impl<F> From<VarOpen<F, 1>> for Var<F>
+where
+    F: FftField + PrimeField,
+{
+    fn from(open: VarOpen<F, 1>) -> Var<F> {
+        open.chunks[0]
     }
 }
 
@@ -158,5 +171,66 @@ impl<F: FftField + PrimeField> Challenge<F> for ScalarChallenge<F> {
 impl<F: FftField + PrimeField> ScalarChallenge<F> {
     pub fn to_field<C: Cs<F>>(&self, cs: &mut C) -> Var<F> {
         unimplemented!()
+    }
+}
+
+pub struct LagrangePoly<F: FftField + PrimeField> {
+    evals: Vec<Var<F>>,
+}
+
+impl <F: FftField + PrimeField> LagrangePoly<F> {
+    // evaluates a lagrange polynomial at 
+    //
+    // see: https://o1-labs.github.io/proof-systems/plonk/lagrange.html
+    pub fn eval<C: Cs<F>>(
+        &self, 
+        cs: &mut C, 
+        domain: &Domain<F>, // interpolation domain
+        x: Var<F>, // evaluation point
+        vanish_at_x: Var<F> // Z_H(x)
+    ) -> Var<F> {
+        assert!(self.evals.len() > 0);
+        assert!(self.evals.len() as u64 <= domain.size);
+
+        // L_i(X) = Z_H(X) / (m * (X - g^i))
+        //
+        let mut terms = vec![];
+        let mut gen = domain.elements();
+        for yi in self.evals.iter().cloned() {
+            // compute g^i
+            let gi = gen.next().unwrap();
+            let m = domain.size_as_field_element;
+
+            // The lagrange polynomial time yi can be evaluated using a single generic gate.
+            // (since only x and yi are variable).
+            //
+            // Define:
+            //
+            // liyi = yi * L_i(x) / Z_H(x)
+            // yi times the i'th lagrange poly L_i evaluated at x, except the multiplication by Z_H(x).
+            // 
+            // Rewrite:
+            //
+            // 1. [liyi] = ([yi] * gi) / (m * [x] - m gi)
+            // 2. [liyi] * (m * [x] - m g^i) = [yi] * gi 
+            // 3. [liyi] * (m * [x] - m g^i) = [yi] * gi
+            terms.push(
+                generic!(
+                    cs,
+                    (x, yi) : { ? * (m*x - m*gi) = yi*gi }
+                )
+            );
+        }
+
+        // compute sum and muliply bu Z_H(x)
+        let sum = var_sum(cs, terms.into_iter());
+        cs.mul(
+            sum,
+            vanish_at_x 
+        )
+    }
+
+    pub fn size(&self) -> usize {
+        self.evals.len()
     }
 }

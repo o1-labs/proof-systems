@@ -90,8 +90,8 @@ impl<'a, F: FftField + PrimeField> Evaluator<'a, F> {
     fn eval_variable(&self, variable: &Variable) -> &'a Var<F> {
         // select the right row (evaluation point)
         let evals = match variable.row {
-            CurrOrNext::Curr => &self.evaluations.z, // evaluation at \zeta
-            CurrOrNext::Next => &self.evaluations.zw, // evaluations at \zeta\omega
+            CurrOrNext::Curr => &self.evaluations.zeta, // evaluation at \zeta
+            CurrOrNext::Next => &self.evaluations.zetaw, // evaluations at \zeta\omega
         };
 
         // select the right column (which evaluation)
