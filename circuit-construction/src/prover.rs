@@ -118,13 +118,8 @@ where
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
 {
-    // create the public rows
-    let mut gen: WitnessGenerator<G::ScalarField> = WitnessGenerator {
-        rows: public_input
-            .iter()
-            .map(|x| array_init(|i| if i == 0 { *x } else { G::ScalarField::zero() }))
-            .collect(),
-    };
+    // create the witness generator
+    let mut gen: WitnessGenerator<G::ScalarField> = WitnessGenerator::new(&public_input);
 
     // run the witness generation
     let public_vars = public_input
@@ -175,10 +170,7 @@ where
     H: FnOnce(&mut System<C::InnerField>, Vec<Var<C::InnerField>>),
     C: Cycle,
 {
-    let mut system: System<C::InnerField> = System {
-        next_variable: 0,
-        gates: vec![],
-    };
+    let mut system: System<C::InnerField> = System::default();
     let z = C::InnerField::zero();
 
     // create public input variables
@@ -186,17 +178,11 @@ where
     let public_input: Vec<_> = (0..public)
         .map(|_| {
             let v = system.var(|| panic!("fail"));
-            let row = array_init(|i| {
-                if i == 0 {
-                    v
-                } else {
-                    system.var(|| panic!("fail"))
-                }
-            });
+
             system.gate(GateSpec {
                 typ: GateType::Generic,
-                c: public_input_row.clone(),
-                row,
+                row: vec![Some(v)],
+                coeffs: public_input_row.clone(),
             });
             v
         })

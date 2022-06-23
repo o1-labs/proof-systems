@@ -4,10 +4,6 @@ use commitment_dlog::{commitment::CommitmentCurve, srs::endos};
 use mina_curves::pasta::{pallas::Affine as PallasAffine, vesta::Affine as VestaAffine, Fp, Fq};
 use oracle::poseidon::ArithmeticSpongeParams;
 
-pub const GENERICS: usize = 3;
-pub const SINGLE_GENERIC_COEFFS: usize = 5;
-pub const GENERIC_ROW_COEFFS: usize = 2 * SINGLE_GENERIC_COEFFS;
-
 /// The type of possible constants in the circuit
 #[derive(Clone)]
 pub struct Constants<F: Field> {
