@@ -116,12 +116,14 @@ At the time of this writing:
 | number of gates | seconds |
 |:---------------:|:-------:|
 |       2^11      |   0.6s  |
+|       2^15      |   3.3s  |
 |       2^16      |   6.3s  |
 
 **Verification time**
 
 | number of gates | seconds |
 |:---------------:|:-------:|
+|       2^15      |   0.1s  |
 |       2^16      |   0.1s  |
 
 ## Organization
