@@ -215,6 +215,13 @@
 <span id="209">209</span>
 <span id="210">210</span>
 <span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">ark_ec</span>::{<span class="ident">AffineCurve</span>, <span class="ident">ProjectiveCurve</span>};
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">One</span>, <span class="ident">PrimeField</span>, <span class="ident">SquareRootField</span>, <span class="ident">Zero</span>};
 <span class="kw">use</span> <span class="ident">array_init::array_init</span>;
@@ -236,6 +243,8 @@
     <span class="ident">writer</span>::{<span class="ident">Cs</span>, <span class="ident">GateSpec</span>, <span class="ident">System</span>, <span class="ident">Var</span>, <span class="ident">WitnessGenerator</span>},
 };
 
+<span class="doccomment">/// A [Cycle] represents the algebraic structure that</span>
+<span class="doccomment">/// allows for recursion using elliptic curves.</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Cycle</span> {
     <span class="kw">type</span> <span class="ident">InnerField</span>: <span class="ident">FftField</span>
         <span class="op">+</span> <span class="ident">PrimeField</span>
@@ -289,7 +298,9 @@
     <span class="op">&gt;</span>;
 }
 
+<span class="doccomment">/// Used to configure the base curve of Pallas</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">FpInner</span>;
+<span class="doccomment">/// Used to configure the base curve of Vesta</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">FqInner</span>;
 
 <span class="kw">impl</span> <span class="ident">Cycle</span> <span class="kw">for</span> <span class="ident">FpInner</span> {
@@ -316,7 +327,7 @@
     <span class="kw">type</span> <span class="ident">OuterProj</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">Other</span> <span class="kw">as</span> <span class="ident">AffineCurve</span><span class="op">&gt;</span><span class="ident">::Projective</span>;
 }
 
-<span class="doccomment">/// Given an index, a group map, custom blinders for the witness, a public input vector, and a circuit `main`, create a proof.</span>
+<span class="doccomment">/// Given an index, a group map, custom blinders for the witness, a public input vector, and a circuit `main`, it creates a proof.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">prove</span><span class="op">&lt;</span><span class="ident">G</span>, <span class="ident">H</span>, <span class="ident">EFqSponge</span>, <span class="ident">EFrSponge</span><span class="op">&gt;</span>(
     <span class="ident">index</span>: <span class="kw-2">&amp;</span><span class="ident">ProverIndex</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
     <span class="ident">group_map</span>: <span class="kw-2">&amp;</span><span class="ident">G::Map</span>,
@@ -371,6 +382,7 @@
     .<span class="ident">unwrap</span>()
 }
 
+<span class="doccomment">/// Creates the prover index on input an `srs`, used `constants`, parameters for Poseidon, number of public inputs, and a specific circuit</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_prover_index</span><span class="op">&lt;</span><span class="ident">C</span>, <span class="ident">H</span><span class="op">&gt;</span>(
     <span class="ident">srs</span>: <span class="ident">std::sync::Arc</span><span class="op">&lt;</span><span class="ident">SRS</span><span class="op">&lt;</span><span class="ident">C::Outer</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">constants</span>: <span class="kw-2">&amp;</span><span class="ident">Constants</span><span class="op">&lt;</span><span class="ident">C::InnerField</span><span class="op">&gt;</span>,
@@ -417,7 +429,9 @@
     <span class="ident">ProverIndex</span>::<span class="op">&lt;</span><span class="ident">C::Outer</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">constraint_system</span>, <span class="ident">poseidon_params</span>.<span class="ident">clone</span>(), <span class="ident">endo_q</span>, <span class="ident">srs</span>)
 }
 
+<span class="doccomment">/// Handling coordinates in an affine curve</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">CoordinateCurve</span>: <span class="ident">AffineCurve</span> {
+    <span class="doccomment">/// Returns the coordinates in the curve as two points of the base field</span>
     <span class="kw">fn</span> <span class="ident">to_coords</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident"><span class="self">Self</span>::BaseField</span>, <span class="ident"><span class="self">Self</span>::BaseField</span>)<span class="op">&gt;</span>;
 }
 
@@ -427,5 +441,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="circuit_construction" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (dc80ca78b 2022-06-21)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="circuit_construction" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (10f4ce324 2022-06-22)" ></div>
 </body></html>

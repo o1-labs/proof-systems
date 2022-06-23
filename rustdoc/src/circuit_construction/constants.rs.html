@@ -40,12 +40,16 @@
 <span id="34">34</span>
 <span id="35">35</span>
 <span id="36">36</span>
+<span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">ark_ec::AffineCurve</span>;
 <span class="kw">use</span> <span class="ident">ark_ff::Field</span>;
 <span class="kw">use</span> <span class="ident">commitment_dlog</span>::{<span class="ident">commitment::CommitmentCurve</span>, <span class="ident">srs::endos</span>};
 <span class="kw">use</span> <span class="ident">mina_curves::pasta</span>::{<span class="ident">pallas::Affine</span> <span class="kw">as</span> <span class="ident">PallasAffine</span>, <span class="ident">vesta::Affine</span> <span class="kw">as</span> <span class="ident">VestaAffine</span>, <span class="ident">Fp</span>, <span class="ident">Fq</span>};
 <span class="kw">use</span> <span class="ident">oracle::poseidon::ArithmeticSpongeParams</span>;
 
+<span class="doccomment">/// The type of possible constants in the circuit</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Constants</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span> {
     <span class="kw">pub</span> <span class="ident">poseidon</span>: <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
@@ -53,6 +57,7 @@
     <span class="kw">pub</span> <span class="ident">base</span>: (<span class="ident">F</span>, <span class="ident">F</span>),
 }
 
+<span class="doccomment">/// Constants for the base field of Pallas</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">fp_constants</span>() -&gt; <span class="ident">Constants</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span> {
     <span class="kw">let</span> (<span class="ident">endo_q</span>, <span class="ident">_endo_r</span>) <span class="op">=</span> <span class="ident">endos</span>::<span class="op">&lt;</span><span class="ident">PallasAffine</span><span class="op">&gt;</span>();
     <span class="kw">let</span> <span class="ident">base</span> <span class="op">=</span> <span class="ident">PallasAffine::prime_subgroup_generator</span>()
@@ -65,6 +70,7 @@
     }
 }
 
+<span class="doccomment">/// Constants for the base field of Vesta</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">fq_constants</span>() -&gt; <span class="ident">Constants</span><span class="op">&lt;</span><span class="ident">Fq</span><span class="op">&gt;</span> {
     <span class="kw">let</span> (<span class="ident">endo_q</span>, <span class="ident">_endo_r</span>) <span class="op">=</span> <span class="ident">endos</span>::<span class="op">&lt;</span><span class="ident">VestaAffine</span><span class="op">&gt;</span>();
     <span class="kw">let</span> <span class="ident">base</span> <span class="op">=</span> <span class="ident">VestaAffine::prime_subgroup_generator</span>()
@@ -77,5 +83,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="circuit_construction" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (dc80ca78b 2022-06-21)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="circuit_construction" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (10f4ce324 2022-06-22)" ></div>
 </body></html>
