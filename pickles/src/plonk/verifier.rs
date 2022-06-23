@@ -2,7 +2,7 @@ use super::Proof;
 
 use std::iter;
 
-use circuit_construction::{Constants, Cs, Var};
+use circuit_construction::{Constants, Cs, Var, generic};
 
 use kimchi::circuits::wires::{COLUMNS, PERMUTS};
 
@@ -13,8 +13,8 @@ use crate::context::Context;
 use crate::expr::{Assignments, Evaluator};
 use crate::plonk::index::Index;
 use crate::plonk::misc::{eval_const_poly};
-use crate::plonk::proof::{eval_polynomial, VarEvaluations, VarProof};
-use crate::plonk::types::{ScalarChallenge, LagrangePoly, VarOpen, VarPolyComm};
+use crate::plonk::proof::{eval_polynomial, VarEvaluation, VarEvaluations, VarProof};
+use crate::plonk::types::{ScalarChallenge, VanishEval, LagrangePoly, VarOpen, VarPolyComm};
 use crate::transcript::{Arthur, Msg};
 
 /// Combine multiple openings using a linear combination
@@ -75,18 +75,30 @@ fn product<F: FftField + PrimeField, I: Iterator<Item = Var<F>>, C: Cs<F>>(cs: &
     tmp
 }
 
-
-
-struct PublicInput<G> 
+// public input is a polynomial in Lagrange basis
+// (but where accessing an evaluation of the poly requires absorption)
+struct PublicInput<G>(LagrangePoly<G::ScalarField>)
 where
     G: AffineCurve,
-    G::BaseField: FftField + PrimeField,
-{
-    comm: Msg<VarPolyComm<G, 1>>,
-    inputs: LagrangePoly<G::ScalarField>,
+    G::BaseField: FftField + PrimeField;
+
+impl <G> PublicInput<G>  where
+G: AffineCurve,
+G::BaseField: FftField + PrimeField {
+    pub fn eval<C: Cs<G::ScalarField>>(
+        &self, 
+        cs: &mut C, 
+        x: Var<G::ScalarField>,
+        pnt: &VanishEval<G::ScalarField>,
+    ) -> Msg<VarOpen<G::ScalarField,1>> {
+        self.0.eval(cs, x, pnt).into()
+    }
+
+    fn len(&self) -> usize {
+        self.0.len()
+    }
 }
-
-
+    
 impl<G> Index<G>
 where
     G: AffineCurve,
@@ -99,64 +111,40 @@ where
 fn compute_ft_eval0<C: Cs<G::ScalarField>>  (
     &self,
     cs: &mut C,
-    eval: VarEvaluations<G::ScalarField>, // evaluations at zeta
+    zh_zeta: &VanishEval<G::ScalarField>,
+    eval: &VarEvaluations<G::ScalarField>,
     gamma: Var<G::ScalarField>,
     beta: Var<G::ScalarField>,
     zeta: Var<G::ScalarField>,
     alpha: &[Var<G::ScalarField>; 3],
 )  -> VarOpen<G::ScalarField, 1> {
-    // compute \zeta^{|<\omega>|}:
-    // \zeta shifted "one-beyond" the length of the domain
-    let w = cs.constant(self.constant.domain.group_gen); // omega
-    let one = cs.constant(G::ScalarField::one());
-
-    // evaluate vanishing polynomial at \zeta
-     // this is called zeta1 (for some reason) in Kimchi
-    let zeta1 = cs.pow(zeta, self.constant.domain.size);
-
-    let zeta1m1 = cs.sub(zeta1, one);
-
     // evaluate the (constant) ZKP polynomial at \zeta, i.e. zkpm(\zeta)
     let zkp = eval_const_poly(cs, &self.constant.zkpm, zeta);
 
-    // row constraints: gates satified, public input restricted
+    // row constraints: 
+    // 1. gates satified
+    // 2. public input
     let term_row = {
         
 
     };
 
     // shuffle proof related constraints
-    let term_shuffle = {
-        // shuffle proof "base": recurrence for Bayer-Groth-style product
-        let base: Var<_> = {
-            // \prod_i (\zeta * \beta * shift[i]) + w[i] + \gamma
-            let mut prod = (0..PERMUTS).map(|i| {
-                // TODO: optimize using generic gate
-                // let t = generic!(cs, (beta, zeta), { beta * zeta * s });
-                let s = cs.constant(self.constant.shift[i]);
-                let t = cs.mul(beta, zeta);
-                let t = cs.mul(t, s);
-
-                let t = cs.add(t, eval.zeta.w[i].clone().into());
-                let t = cs.add(t, gamma.into());
-                t
-            }).collect::<Vec<Var<_>>>();
-
-            // * z(\zeta)
-            debug_assert_eq!(prod.len(), PERMUTS);
-            prod.push(eval.zeta.z.clone().into());
-            product(cs, prod.into_iter())
-        };
-
-        // shuffle proof "step": recurrence for Bayer-Groth-style product
-        let step: Var<_> = {
-            // \prod_i (\beta * s[i]) + w[i] + \gamma
+    let term_recurrence = {
+        // $\prod_i \left((\beta s_i) + w_i + \gamma\right)$
+        let before: Var<_> = {
             let mut prod = (0..PERMUTS - 1).map(|i| {
-                // (\beta * s[i]) + w[i] + \gamma
-                let t = cs.mul(beta, eval.zeta.s[i].clone().into());
-                let t = cs.add(t, eval.zeta.w[i].clone().into());
-                let t = cs.add(t, gamma.into());
-                t
+                let si = eval.zeta.s[i].clone().into();
+                let wi = eval.zeta.w[i].clone().into();
+
+                // \beta * s
+                let tmp = cs.mul(beta, si);
+
+                // + w[i]
+                let tmp = cs.add(tmp, wi);
+
+                // + \gamma
+                cs.add(tmp, gamma)
             }).collect::<Vec<Var<_>>>();
 
             // last column is handled differently:
@@ -167,51 +155,70 @@ fn compute_ft_eval0<C: Cs<G::ScalarField>>  (
 
             // * z(\zeta\omega)
             debug_assert_eq!(prod.len(), PERMUTS);
-            prod.push(eval.zetaw.z.into());
+            prod.push(eval.zetaw.z.clone().into());
             product(cs, prod.into_iter())
         };
 
-        // <base> - <step>
-        let diff = cs.sub(base, step);
+        // $\prod_i left((\zeta  \beta shift_i) + w_i + \gamma\right)$
+        let after: Var<_> = {
+            let mut prod = (0..PERMUTS).map(|i| {
+                let ki = self.constant.shift[i];
+                let wi = eval.zeta.w[i].clone().into();
 
-        // multiply by zkp(\zeta) for hiding
-        let tmp = cs.mul(diff, zkp);
+                // beta * zeta * shift;
+                let tmp = generic!(cs, (beta, zeta) : { ? = beta * ki * zeta });
 
-        // multiply by alpha power to seperate
-        let tmp = cs.mul(tmp, alpha[0]);
-        tmp
+                // + w[i]
+                let tmp = cs.add(tmp, wi);
+
+                // + \gamma
+                cs.add(tmp, gamma)
+            }).collect::<Vec<Var<_>>>();
+
+            // * z(\zeta)
+            debug_assert_eq!(prod.len(), PERMUTS);
+            prod.push(eval.zeta.z.clone().into());
+            product(cs, prod.into_iter())
+        };
+
+        // (<before> - <after>)
+        let diff = cs.sub(before, after);
+
+        // * zkp(\zeta)
+        cs.mul(diff, zkp)
     };
 
-    //
-    let term_b = {
-        let numerator = {
-            // (zeta1m1 * alpha[1] * (zeta - w))
-            let t1 = cs.mul(zeta1m1, alpha[1]);
-            let t2 = cs.sub(zeta, w);
-            let a1 = cs.mul(t1, t2);
-            
-            // (zeta1m1 * alpha[2] * (zeta - one))
-            let t1 = cs.mul(zeta1m1, alpha[2]);
-            let t2 = cs.sub(zeta, one);
-            let a2 = cs.mul(t1, t2);
+    // boundary condition on permutation proof
+    // this is somewhat more complicated that in the original plonk due to the zkp polynomial
+    let term_boundary = {
+        let one = G::ScalarField::one();
+        let zhz = zh_zeta.as_ref().clone();
+        let omega = self.constant.domain.group_gen;
+        let eval0_z: Var<G::ScalarField> = eval.zeta.z.clone().into();
 
-            //   (zeta1m1 * alpha[1] * (zeta - w))
-            // + (zeta1m1 * alpha[2] * (zeta - one))
+        let numerator = {
+            // $a_1 = \alpha_1 \cdot Z_H(\zeta) \cdot (\zeta - \omega)$
+            let t1 = generic!(cs, (zhz, zeta) : { ? = zhz * (zeta - omega) } ); 
+            let a1 = cs.mul(t1, alpha[1]);
+            
+            // $a_2 = alpha_2 \cdot Z_H(\zeta) \cdot (\zeta - 1)$
+            let t2 = generic!(cs, (zhz, zeta) : { ? = zhz * (zeta - one) } ); 
+            let a2 = cs.mul(t2, alpha[2]);
+
+            // $b = a_1 + a_2$
             let b = cs.add(a1, a2);
 
-            //
-            let t1 = cs.sub(one, eval.zeta.z.into());
-            cs.mul(t1, b)
+            // $b \cdot (1 - z(\zeta))$
+            generic!(cs, (b, eval0_z) : { ? = b * (one - eval0_z) })
         };
 
         // (\zeta - \omega) * (\zeta - 1)
-        let denominator = {
-            // this is a single generic gate!
-            let t1 = cs.sub(zeta, w);
-            let t2 = cs.sub(zeta, one);
-            cs.mul(t1, t2)
-        };
+        let denominator = generic!(
+            cs, 
+            (zeta) : { ? = (zeta - omega) * (zeta - one) }
+        );
 
+        //
         cs.div(numerator, denominator)
     };
     
@@ -234,7 +241,8 @@ fn compute_ft_eval0<C: Cs<G::ScalarField>>  (
         &self,
         // ctx: &mut MutualContext<A::BaseField, A::ScalarField, CsFp, CsFr>,
         ctx: &mut Context<G::BaseField, G::ScalarField, CsFp, CsFr>,
-        p: PublicInput<G>, // commitment to public input
+        p_comm: Msg<VarPolyComm<G, 1>>,
+        inputs: &PublicInput<G>, // commitment to public input
         witness: Option<Proof<G>>,      // witness (a PlonK proof)
     ) where
         CsFp: Cs<G::BaseField>,
@@ -247,7 +255,7 @@ fn compute_ft_eval0<C: Cs<G::ScalarField>>  (
         let proof: VarProof<_, 2> = VarProof::new(witness);
 
         // sanity checks
-        assert_eq!(p.inputs.size(), self.constant.public_input_size);
+        assert_eq!(inputs.len(), self.constant.public_input_size);
 
         //~ 1. absorb index
 
@@ -255,7 +263,7 @@ fn compute_ft_eval0<C: Cs<G::ScalarField>>  (
         let acc_comms = tx.recv(ctx, proof.prev_challenges.comm);
 
         //~ 2. Absorb commitment to the public input polynomial
-        let p_comm = tx.recv(ctx, p.comm);
+        let p_comm = tx.recv(ctx, p_comm);
 
         //~ 3. Absorb commitments to the registers / witness columns
         let w_comm = tx.recv(ctx, proof.commitments.w_comm);
@@ -302,6 +310,13 @@ fn compute_ft_eval0<C: Cs<G::ScalarField>>  (
         // Enforce constraints on other side
         let (evals, ft_eval, v_chal) = ctx.flip(|ctx| {
             tx.flip(|tx| {
+                // zetaw = zeta * \omega
+                let omega = self.constant.domain.group_gen;
+                let zetaw = generic!({ ctx.cs() }, (zeta) : { ? = omega * zeta } );
+              
+                // note that $Z_H(\zeta) = Z_H(\zeta \omega)$: we only need to eval one
+                let zh_zeta = VanishEval::new(ctx.cs(), &self.constant.domain, zeta);
+
                 //~ 19. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
                 //~     - the public polynomial
                 //~     - z
@@ -309,7 +324,24 @@ fn compute_ft_eval0<C: Cs<G::ScalarField>>  (
                 //~     - poseidon selector
                 //~     - the 15 register/witness
                 //~     - 6 sigmas evaluations (the last one is not evaluated)
-                let evals = tx.recv(ctx, proof.evals);
+
+                // absorb $\zeta$ evaluations
+                let p_zeta = inputs.eval(ctx.cs(), zeta, &zh_zeta); 
+                let p_zeta = tx.recv(ctx, p_zeta);
+                let e_zeta = tx.recv(ctx, proof.evals.zeta);
+
+                // absorb $\zeta\omega$ evaluations 
+                let p_zetaw = inputs.eval(ctx.cs(), zetaw, &zh_zeta);
+                let p_zetaw = tx.recv(ctx, p_zetaw);
+                let e_zetaw = tx.recv(ctx, proof.evals.zetaw);
+
+                let evals = VarEvaluations {
+                    zeta: e_zeta,
+                    zetaw: e_zetaw
+                };
+
+                // compute ft_eval0
+                let ft_eval0 = unimplemented!();
 
                 //~ 20. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
                 let ft_eval1 = tx.recv(ctx, proof.ft_eval1);
@@ -332,7 +364,7 @@ fn compute_ft_eval0<C: Cs<G::ScalarField>>  (
                 // compute \zeta\omega = \zeta * \omega
                 // TODO: optimize can be done using a single gate
                 let omega = ctx.constant(self.constant.domain.group_gen);
-                let zetaw = ctx.mul(zeta, omega);
+                
 
                 // evaluate the h(X) polynomials from accumulators at \zeta
                 let hs_z: Vec<_> = acc_chals
@@ -347,15 +379,7 @@ fn compute_ft_eval0<C: Cs<G::ScalarField>>  (
                     .collect();
 
                 //~ 25. Create a list of all polynomials that have an evaluation proof.
-                /*
-                let powers_of_eval_points_for_chunks = [
-                    ctx.pow(zeta, self.max_poly_size as u64),
-                    ctx.pow(zetaw, self.max_poly_size as u64),
-                ];
-                */
 
-                // compute ft_eval0 (from gate/row constraints)
-                let ft_eval0 = unimplemented!(); // self.compute_ft_eval0(zeta); // how to do this using Var<F>, PolishToken does not support it
 
                 // compute the combined inner product:
                 // the batching of all the openings

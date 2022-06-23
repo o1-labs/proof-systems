@@ -221,11 +221,9 @@ impl Expr {
             Some(mul) => {
                 // find c variable (if used)
                 let mut c = None;
-                if vars.len() == 3 {
-                    for var in vars.iter() {
-                        if !mul.contains(var) {
-                            c = Some(*var)
-                        }
+                for var in vars.iter() {
+                    if !mul.contains(var) {
+                        c = Some(*var)
                     }
                 }
 
@@ -282,10 +280,10 @@ pub fn generic(input: TokenStream) -> TokenStream {
     prog.push_str(&format!("// expansion of: generic!({})\n", org.to_string()));
     prog.push_str("// imports and constants\n");
     prog.push_str("use ark_ff::{Zero, One};\n");
-    prog.push_str("fn one<C: Cs<F>, F: FftField + PrimeField>(_cs: &mut C) -> F { F::one() };\n");
-    prog.push_str("fn zero<C: Cs<F>, F: FftField + PrimeField>(_cs: &mut C) -> F { F::zero() };\n");
-    prog.push_str(&format!("let {CONST_ONE} = one({cs});\n"));
-    prog.push_str(&format!("let {CONST_ZERO} = zero({cs});\n"));
+    prog.push_str(&format!("fn {CONST_ONE}_func<C: Cs<F>, F: FftField + PrimeField>(_cs: &mut C) -> F {{ F::one() }};\n"));
+    prog.push_str(&format!("fn {CONST_ZERO}_func<C: Cs<F>, F: FftField + PrimeField>(_cs: &mut C) -> F {{ F::zero() }};\n"));
+    prog.push_str(&format!("let {CONST_ONE} = {CONST_ONE}_func({cs});\n"));
+    prog.push_str(&format!("let {CONST_ZERO} = {CONST_ZERO}_func({cs});\n"));
     prog.push_str("\n");
 
     // coefficient vector
@@ -379,21 +377,23 @@ pub fn generic(input: TokenStream) -> TokenStream {
         ));
     }
 
+    let columns = assignment.columns();
+
+    {
+        prog.push_str(&format!("let {NAME_WITNESSES} = ("));
+        let terms: Vec<String> = (0..3)
+            .map(|i| match columns.get(i) {
+                Some(var) => format!("{}", vars.name(*var)),
+                None => format!("{cs}.var(|| {CONST_ZERO})"),
+            })
+            .collect();
+        prog.push_str(&terms.join(","));
+        prog.push_str(");\n");
+    }
+
     prog.push_str("\n// add constraint \n");
     prog.push_str(&format!("{cs}.generic_assert(\n"));
-
-    let columns = assignment.columns();
-    prog.push_str("    (");
-
-    let terms: Vec<String> = (0..3)
-        .map(|i| match columns.get(i) {
-            Some(var) => format!("{}", vars.name(*var)),
-            None => format!("{cs}.var(|| {CONST_ZERO})"),
-        })
-        .collect();
-
-    prog.push_str(&terms.join(","));
-    prog.push_str("),\n");
+    prog.push_str(&format!("    {NAME_WITNESSES},\n"));
     prog.push_str("    [\n");
 
     for c in C::COLUMNS.iter().copied() {

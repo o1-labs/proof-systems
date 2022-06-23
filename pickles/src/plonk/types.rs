@@ -178,28 +178,63 @@ pub struct LagrangePoly<F: FftField + PrimeField> {
     evals: Vec<Var<F>>,
 }
 
+/// A saved evaluation of the vanishing polynomial Z_H of H
+/// at the point x. In Kimchi this is refered to as zeta1m1 
+///
+/// Note that this polynomial evaluates to the same on any element of the same H coset:
+/// i.e. $Z_H(\omega^i * \zeta) = Z_H(\zeta)$ for any $\zeta, i$.
+pub struct VanishEval<F: FftField + PrimeField> {
+    xn: Var<F>,
+    zhx: Var<F>,
+    domain: Domain<F>
+}
+
+impl <F: FftField + PrimeField> VanishEval<F> {
+   
+    // compute Z_H(x)
+    pub fn new<C: Cs<F>>(cs: &mut C, domain: &Domain<F>, x: Var<F>) -> Self {
+        let one: F = F::one();
+        let xn: Var<F> = cs.pow(x, domain.size);
+
+        VanishEval{
+            xn,
+            domain: domain.clone(),
+            zhx: generic!(cs, (xn) : { xn - one = ?}),
+        }
+    }
+}
+
+impl <F: FftField + PrimeField> AsRef<Var<F>> for VanishEval<F> {
+    fn as_ref(&self) -> &Var<F> {
+        &self.zhx
+    }
+}
+
 impl <F: FftField + PrimeField> LagrangePoly<F> {
+    pub fn len(&self) -> usize {
+        self.evals.len()
+    }
+
     // evaluates a lagrange polynomial at 
     //
     // see: https://o1-labs.github.io/proof-systems/plonk/lagrange.html
     pub fn eval<C: Cs<F>>(
         &self, 
         cs: &mut C, 
-        domain: &Domain<F>, // interpolation domain
-        x: Var<F>, // evaluation point
-        vanish_at_x: Var<F> // Z_H(x)
-    ) -> Var<F> {
+        x: Var<F>,
+        pnt: &VanishEval<F>,
+    ) -> VarOpen<F,1> {
+
         assert!(self.evals.len() > 0);
-        assert!(self.evals.len() as u64 <= domain.size);
+        assert!(self.evals.len() as u64 <= pnt.domain.size);
 
         // L_i(X) = Z_H(X) / (m * (X - g^i))
-        //
+   
+        // iterate over evaluation pairs (xi, yi)
         let mut terms = vec![];
-        let mut gen = domain.elements();
-        for yi in self.evals.iter().cloned() {
+        for (gi, yi) in pnt.domain.elements().zip(self.evals.iter().cloned()) {
             // compute g^i
-            let gi = gen.next().unwrap();
-            let m = domain.size_as_field_element;
+            let m = pnt.domain.size_as_field_element;
 
             // The lagrange polynomial time yi can be evaluated using a single generic gate.
             // (since only x and yi are variable).
@@ -226,8 +261,8 @@ impl <F: FftField + PrimeField> LagrangePoly<F> {
         let sum = var_sum(cs, terms.into_iter());
         cs.mul(
             sum,
-            vanish_at_x 
-        )
+            pnt.zhx
+        ).into()
     }
 
     pub fn size(&self) -> usize {

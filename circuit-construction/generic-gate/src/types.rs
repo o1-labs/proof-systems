@@ -31,7 +31,7 @@ impl Vars {
             }
         }
 
-        unreachable!()
+        unreachable!("looked up: {:?}", v);
     }
 
     // resolve name to variable
@@ -58,7 +58,7 @@ impl Assignment {
         } else if v == self.c {
             C::C
         } else {
-            unreachable!()
+            unreachable!("unassigned: {:?}", v)
         }
     }
 

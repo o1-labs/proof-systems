@@ -142,15 +142,8 @@ impl<F: FftField + PrimeField> Absorb<F> for VarEvaluation<F> {
 }
 
 pub struct VarEvaluations<F: FftField + PrimeField> {
-    pub zeta: VarEvaluation<F>,  // evaluation at \zeta
-    pub zetaw: VarEvaluation<F>, // evaluation at \zeta * \omega (2^k root of unity, next step)
-}
-
-impl<F: FftField + PrimeField> Absorb<F> for VarEvaluations<F> {
-    fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut VarSponge<F>) {
-        sponge.absorb(cs, &self.zeta);
-        sponge.absorb(cs, &self.zetaw);
-    }
+    pub zeta: VarEvaluation<F>,
+    pub zetaw: VarEvaluation<F>,
 }
 
 /// All the commitments included in a PlonK/Kimchi proof.
@@ -186,6 +179,12 @@ where
     pub comm: Msg<[[VarPolyComm<G, 1>; N]; B]>,
 }
 
+pub struct ProofEvaluations<F: FftField + PrimeField> {
+    pub zeta: Msg<VarEvaluation<F>>,  // evaluation at \zeta
+    pub zetaw: Msg<VarEvaluation<F>>, // evaluation at \zeta * \omega (2^k root of unity, next step)
+}
+
+
 /// WARNING: Make sure this only contains Msg types
 /// (or structs of Msg types)
 pub struct VarProof<G, const B: usize>
@@ -195,9 +194,11 @@ where
 {
     pub commitments: VarCommitments<G>,
     pub ft_eval1: Msg<VarOpen<G::ScalarField, 1>>, // THIS MUST BE INCLUDED IN PUBLIC INPUT!
-    pub evals: Msg<VarEvaluations<G::ScalarField>>,
+    pub evals: ProofEvaluations<G::ScalarField>,
     pub prev_challenges: VarAccumulators<G, B, 16>, // maybe change the name of this field?
 }
+
+
 
 impl<A, const B: usize> VarProof<A, B>
 where
