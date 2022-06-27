@@ -232,12 +232,12 @@ pub mod caml {
         }
     }
 
-    impl<F, CamlF> Into<ScalarChallenge<F>> for CamlScalarChallenge<CamlF>
+    impl<F, CamlF> From<CamlScalarChallenge<CamlF>> for ScalarChallenge<F>
     where
         CamlF: Into<F>,
     {
-        fn into(self) -> ScalarChallenge<F> {
-            ScalarChallenge(self.0.into())
+        fn from(caml_sc: CamlScalarChallenge<CamlF>) -> Self {
+            Self(caml_sc.0.into())
         }
     }
 }
