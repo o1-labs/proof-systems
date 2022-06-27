@@ -11,7 +11,7 @@ use crate::transcript::{Absorb, Msg, VarSponge};
 
 use circuit_construction::{Constants, Cs};
 
-use kimchi::circuits::expr::{CacheId, Column, ConstantExpr, Expr, Op2, Variable};
+use kimchi::circuits::expr::{ConstantExpr, Expr};
 
 use std::iter;
 
@@ -108,12 +108,12 @@ where
             p.absorb(cs, sponge)
         }
     }
-    
 }
 
 /// An index consists of:
 ///
-/// 1. The variable part which specifies the relation circuit
+/// 1. The variable part which specifies the relation circuit: 
+///    must be absorbed before being touched (for adaptive soundness).
 /// 2. A fixed part which specifies row constraints etc.
 pub struct Index<G>
 where
