@@ -128,34 +128,6 @@ fn compute_ft_perm<F: FftField + PrimeField, C: Cs<F>>(
     cs.add(term_boundary, term_recurrence)
 }
 
-// \alpha^0 terms
-fn compute_ft_row<F: FftField + PrimeField, C: Cs<F>>  (
-    cs: &mut C,
-    index: &ConstIndex<F>,
-    eval: &VarEvaluations<F>,
-    p_zeta: Var<F>,
-    gamma: Var<F>,
-    beta: Var<F>,
-    zeta: Var<F>,
-    alpha: Var<F>,
-) -> Var<F> {
-    // evaluate row
-    let row_poly = Evaluator::new(
-        zeta, 
-        index.domain.clone(),  
-        Assignments {
-            alpha,
-            beta,
-            gamma,
-            constants: index.constants.clone(),
-        },
-        eval
-    ).eval_expr(cs, &index.row_expr);
-
-    // subtract $p(\zeta)$ and negate
-    cs.add(row_poly, p_zeta)
-}
-
 /// Note: we do not care about the evaluation of ft(\zeta \omega),
 /// however we need it for aggregation, therefore we simply allow the prover to provide it.
 fn compute_ft_eval0<F: FftField + PrimeField, C: Cs<F>>  (
@@ -247,10 +219,6 @@ where
     res
 }
 
-fn powers<F: FftField + PrimeField>(base: Var<F>, num: usize) -> Vec<Var<F>> {
-    unimplemented!()
-}
-
 // TODO: add unit test for compat with combined_inner_product from Kimchi using Witness Generator
 
 fn product<F: FftField + PrimeField, I: Iterator<Item = Var<F>>, C: Cs<F>>(cs: &mut C, mut prod: I) -> Var<F> {
@@ -262,8 +230,8 @@ fn product<F: FftField + PrimeField, I: Iterator<Item = Var<F>>, C: Cs<F>>(cs: &
 }
 
 // public input is a polynomial in Lagrange basis
-// (but where accessing an evaluation of the poly requires absorption)
-struct PublicInput<G>(LagrangePoly<G::ScalarField>)
+// (where accessing an evaluation of the poly requires absorption)
+pub struct PublicInput<G>(LagrangePoly<G::ScalarField>)
 where
     G: AffineCurve,
     G::BaseField: FftField + PrimeField;
@@ -290,17 +258,14 @@ where
     G: AffineCurve,
     G::BaseField: FftField + PrimeField,
 {
-
-
-
     /// Takes a mutual context with the base-field of the Plonk proof as the "native field"
     /// and generates Fp (base field) and Fr (scalar field)
     /// constraints for the verification of the proof.
     ///
     /// The goal is for this method to look as much as the "clear verifier" in Kimchi.
     ///
-    fn verify<CsFp, CsFr, C, T>(
-        &self,
+    pub fn verify<CsFp, CsFr, C, T>(
+        self,
         // ctx: &mut MutualContext<A::BaseField, A::ScalarField, CsFp, CsFr>,
         ctx: &mut Context<G::BaseField, G::ScalarField, CsFp, CsFr>,
         p_comm: Msg<VarPolyComm<G, 1>>,
@@ -310,14 +275,16 @@ where
         CsFp: Cs<G::BaseField>,
         CsFr: Cs<G::ScalarField>,
     {
-        // start a new transcript
-        let mut tx = Arthur::new(ctx);
-
         // sanity checks
         assert_eq!(inputs.len(), self.constant.public_input_size);
 
-        //~ 1. absorb index
+        // start a new transcript
+        let mut tx = Arthur::new(ctx);
 
+        //~ 1. absorb index
+        // absorb variable part of the index: the relation description
+        let relation = tx.recv(ctx, self.relation);
+        
         //~ 1. absorb accumulator commitments
         let acc_comms = tx.recv(ctx, proof.prev_challenges.comm);
 
