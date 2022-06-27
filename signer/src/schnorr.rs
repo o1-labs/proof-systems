@@ -26,13 +26,14 @@ use crate::{BaseField, CurvePoint, Hashable, Keypair, PubKey, ScalarField, Signa
 /// Schnorr signer context for the Mina signature algorithm
 ///
 /// For details about the signature algorithm please see the [`schnorr`](crate::schnorr) documentation
-pub struct Schnorr<H: Hashable> {
-    hasher: Box<dyn Hasher<Message<H>>>,
+pub struct Schnorr<T: Hasher<Message<H>>, H: Hashable> {
+    hasher: T,
     domain_param: H::D,
 }
 
+/// Type that represents a signable message
 #[derive(Clone)]
-struct Message<H: Hashable> {
+pub struct Message<H: Hashable> {
     input: H,
     pub_key_x: BaseField,
     pub_key_y: BaseField,
@@ -56,7 +57,7 @@ impl<H: Hashable> Hashable for Message<H> {
     }
 }
 
-impl<H: 'static + Hashable> Signer<H> for Schnorr<H> {
+impl<T: Hasher<Message<H>>, H: 'static + Hashable> Signer<H> for Schnorr<T, H> {
     fn sign(&mut self, kp: &Keypair, input: &H) -> Signature {
         let k: ScalarField = self.derive_nonce(kp, input);
         let r: CurvePoint = CurvePoint::prime_subgroup_generator().mul(k).into_affine();
@@ -83,23 +84,41 @@ impl<H: 'static + Hashable> Signer<H> for Schnorr<H> {
 
         rv.y.into_repr().is_even() && rv.x == sig.rx
     }
+
+    fn reset(&mut self) {
+        self.hasher.reset();
+    }
 }
 
 pub(crate) fn create_legacy<H: 'static + Hashable>(domain_param: H::D) -> impl Signer<H> {
-    Schnorr::<H> {
-        hasher: Box::new(mina_hasher::create_legacy::<Message<H>>(domain_param)),
+    Schnorr::new(
+        mina_hasher::create_legacy::<Message<H>>(domain_param),
         domain_param,
-    }
+    )
 }
 
 pub(crate) fn create_kimchi<H: 'static + Hashable>(domain_param: H::D) -> impl Signer<H> {
-    Schnorr::<H> {
-        hasher: Box::new(mina_hasher::create_kimchi::<Message<H>>(domain_param)),
+    Schnorr::new(
+        mina_hasher::create_kimchi::<Message<H>>(domain_param),
         domain_param,
-    }
+    )
 }
 
-impl<H: 'static + Hashable> Schnorr<H> {
+impl<T: Hasher<Message<H>>, H: 'static + Hashable> Schnorr<T, H> {
+    /// Creates a schnorr instance
+    pub fn new(hasher: T, domain_param: H::D) -> Self {
+        Self {
+            hasher,
+            domain_param,
+        }
+    }
+
+    /// Initiates inner hasher with the given domain param
+    pub fn init_domain_param(&mut self, domain_param: H::D) {
+        self.hasher.init(domain_param);
+        self.domain_param = domain_param;
+    }
+
     /// This function uses a cryptographic hash function to create a uniformly and
     /// randomly distributed nonce.  It is crucial for security that no two different
     /// messages share the same nonce.
