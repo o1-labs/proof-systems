@@ -126,30 +126,68 @@ impl<F: FftField + PrimeField, const N: usize> Absorb<F> for VarOpen<F, N> {
     }
 }
 
-/// A collection of CHALLENGE_LEN bits
-/// (represented over the given field)
-pub struct ScalarChallenge<F: FftField + PrimeField> {
+pub struct BitChallenge<F: FftField + PrimeField> {
     challenge: Var<F>,
 }
 
-impl <F: FftField + PrimeField> AsPublic<F> for ScalarChallenge<F> where {
+impl <F: FftField + PrimeField> Into<Var<F>> for BitChallenge<F> {
+    fn into(self) -> Var<F> {
+        self.challenge
+    }
+}
+
+impl<F: FftField + PrimeField> Challenge<F> for BitChallenge<F> {
+    fn generate<C: Cs<F>>(cs: &mut C, sponge: &mut VarSponge<F>) -> Self {
+        // squeeze 128-bit
+        unimplemented!()
+    }
+}
+
+/// A collection of CHALLENGE_LEN bits
+/// (represented over the given field)
+pub struct EndoChallenge<F: FftField + PrimeField> {
+    challenge: Var<F>,
+}
+
+
+
+impl <F: FftField + PrimeField> AsPublic<F> for BitChallenge<F> where {
     fn public(&self) -> Vec<Public<F>> {
         unimplemented!()
     }
 }
 
-impl <Fp, Fr> PassTo<ScalarChallenge<Fr>, Fp, Fr> for ScalarChallenge<Fp>
+impl <Fp, Fr> PassTo<BitChallenge<Fr>, Fp, Fr> for BitChallenge<Fp>
     where 
           Fp: FftField + PrimeField,
           Fr: FftField + PrimeField
 
 {
-    fn convert<CsFp: Cs<Fp>, CsFr: Cs<Fr>>(self, csfp: &mut CsFp, csfr: &mut CsFr) -> ScalarChallenge<Fr> {
+    fn convert<CsFp: Cs<Fp>, CsFr: Cs<Fr>>(self, csfp: &mut CsFp, csfr: &mut CsFr) -> BitChallenge<Fr> {
         unimplemented!()
     }
 }
 
-impl<F: FftField + PrimeField> Challenge<F> for ScalarChallenge<F> {
+
+impl <F: FftField + PrimeField> AsPublic<F> for EndoChallenge<F> where {
+    fn public(&self) -> Vec<Public<F>> {
+        unimplemented!()
+    }
+}
+
+impl <Fp, Fr> PassTo<EndoChallenge<Fr>, Fp, Fr> for EndoChallenge<Fp>
+    where 
+          Fp: FftField + PrimeField,
+          Fr: FftField + PrimeField
+
+{
+    fn convert<CsFp: Cs<Fp>, CsFr: Cs<Fr>>(self, csfp: &mut CsFp, csfr: &mut CsFr) -> EndoChallenge
+<Fr> {
+        unimplemented!()
+    }
+}
+
+impl<F: FftField + PrimeField> Challenge<F> for EndoChallenge<F> {
     fn generate<C: Cs<F>>(cs: &mut C, sponge: &mut VarSponge<F>) -> Self {
         // generate challenge using sponge
         let scalar: Var<F> = Var::generate(cs, sponge);
@@ -164,11 +202,11 @@ impl<F: FftField + PrimeField> Challenge<F> for ScalarChallenge<F> {
         cs.assert_eq(challenge, scalar);
 
         // bit decompose challenge
-        ScalarChallenge { challenge }
+        EndoChallenge { challenge }
     }
 }
 
-impl<F: FftField + PrimeField> ScalarChallenge<F> {
+impl<F: FftField + PrimeField> EndoChallenge<F> {
     pub fn to_field<C: Cs<F>>(&self, cs: &mut C) -> Var<F> {
         unimplemented!()
     }

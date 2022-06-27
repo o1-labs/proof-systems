@@ -3,6 +3,8 @@ use ark_ff::{FftField, PrimeField};
 
 use oracle::sponge::ScalarChallenge;
 
+mod alphas;
+
 mod misc;
 
 mod index;

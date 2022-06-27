@@ -9,27 +9,33 @@ use kimchi::circuits::wires::PERMUTS;
 use crate::plonk::types::VarPolyComm;
 use crate::plonk::SELECTORS;
 
+use circuit_construction::Constants;
+
+use kimchi::circuits::expr::{CacheId, Column, ConstantExpr, Expr, Op2, Variable};
 
 /// The fixed part of the verifier index
 /// (same across all relation circuits)
 /// 
 /// TODO: We should split the Index/SRS in Kimchi, 
 /// so that the constant part can be reused.
-pub struct ConstIndex<G>
-where
-    G: AffineCurve,
-    G::BaseField: FftField + PrimeField,
+pub struct ConstIndex<F: FftField + PrimeField>
 {
-    pub domain: Domain<G::ScalarField>,
+    pub domain: Domain<F>,
     pub max_poly_size: usize,
-    pub zkpm: DensePolynomial<G::ScalarField>,
+    pub zkpm: DensePolynomial<F>,
+
+    // circuit constants
+    pub constants: Constants<F>,
+
+    // linearlization terms: row constraints
+    pub row_expr: Expr<ConstantExpr<F>>,
 
     // length of the public input
     pub public_input_size: usize,
 
     // shifts, defines disjoint cosets of H = <\omega>
     // H_i = shift[i] * H, called k_i in the PlonK paper.
-    pub shift: [G::ScalarField; PERMUTS],
+    pub shift: [F; PERMUTS],
 }
 
 /// The variable part of the verifier index:
@@ -58,5 +64,5 @@ where
     G::BaseField: FftField + PrimeField,
 {
     pub relation: VarIndex<G>,
-    pub constant: ConstIndex<G>,
+    pub constant: ConstIndex<G::ScalarField>,
 }

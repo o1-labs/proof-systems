@@ -3,21 +3,37 @@ use std::collections::HashMap;
 use kimchi::circuits::expr::{CacheId, Column, ConstantExpr, Expr, Op2, Variable};
 use kimchi::circuits::gate::{CurrOrNext, GateType};
 use kimchi::circuits::lookup::constraints::ZK_ROWS;
+use kimchi::linearization::{constraints_expr, linearization_columns};
 
 use circuit_construction::{Constants, Cs, Var};
 
-use ark_ff::{FftField, PrimeField};
+use ark_ff::{FftField, PrimeField, SquareRootField};
 use ark_poly::Radix2EvaluationDomain as Domain;
 
 use crate::plonk::proof::VarEvaluations;
 
+fn linearlization<F: FftField + SquareRootField>(
+    chacha: bool,
+    range_check: bool,
+) {
+    let lookup_constraint_system = None;
+
+    let (expr, powers_of_alpha) = constraints_expr(chacha, range_check, lookup_constraint_system);
+
+
+
+    let evaluated_cols = linearization_columns::<F>(lookup_constraint_system);
+
+
+}
+
 pub struct Assignments<F: FftField + PrimeField> {
     // verifier challenges
-    alpha: Var<F>,
-    beta: Var<F>,
-    gamma: Var<F>,
+    pub alpha: Var<F>,
+    pub beta: Var<F>,
+    pub gamma: Var<F>,
     // circuit constants, e.g. Poseidon round constants
-    constant: Constants<F>,
+    pub constants: Constants<F>,
 }
 
 /// Enables the evaluation of an Expr types into constraints.
@@ -58,9 +74,9 @@ impl<'a, F: FftField + PrimeField> Evaluator<'a, F> {
             ConstantExpr::JointCombiner => unimplemented!(), // for Plookup
 
             // Constants
-            ConstantExpr::EndoCoefficient => cs.constant(self.assignment.constant.endo),
+            ConstantExpr::EndoCoefficient => cs.constant(self.assignment.constants.endo),
             ConstantExpr::Mds { row, col } => {
-                cs.constant(self.assignment.constant.poseidon.mds[*row][*col])
+                cs.constant(self.assignment.constants.poseidon.mds[*row][*col])
             }
             ConstantExpr::Literal(value) => cs.constant(*value),
 
