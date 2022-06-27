@@ -127,12 +127,12 @@ impl<F: FftField + PrimeField, const N: usize> Absorb<F> for VarOpen<F, N> {
 }
 
 pub struct BitChallenge<F: FftField + PrimeField> {
-    challenge: Var<F>,
+    bits: Var<F>,
 }
 
 impl <F: FftField + PrimeField> Into<Var<F>> for BitChallenge<F> {
     fn into(self) -> Var<F> {
-        self.challenge
+        self.bits
     }
 }
 
@@ -146,7 +146,7 @@ impl<F: FftField + PrimeField> Challenge<F> for BitChallenge<F> {
 /// A collection of CHALLENGE_LEN bits
 /// (represented over the given field)
 pub struct EndoChallenge<F: FftField + PrimeField> {
-    challenge: Var<F>,
+    bits: Var<F>,
 }
 
 
@@ -193,16 +193,16 @@ impl<F: FftField + PrimeField> Challenge<F> for EndoChallenge<F> {
         let scalar: Var<F> = Var::generate(cs, sponge);
 
         // create endoscalar (bit decompose)
-        let challenge = cs.endo_scalar(CHALLENGE_LEN, || {
+        let bits = cs.endo_scalar(CHALLENGE_LEN, || {
             let s: F = scalar.val();
             s.into_repr()
         });
 
         // enforce equality
-        cs.assert_eq(challenge, scalar);
+        cs.assert_eq(bits, scalar);
 
         // bit decompose challenge
-        EndoChallenge { challenge }
+        EndoChallenge { bits }
     }
 }
 

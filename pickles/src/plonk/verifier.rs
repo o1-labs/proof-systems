@@ -1,11 +1,8 @@
-use super::Proof;
-
 use std::iter;
 
 use circuit_construction::{Constants, Cs, Var, generic};
 
 use kimchi::circuits::wires::{COLUMNS, PERMUTS};
-
 
 use ark_ec::AffineCurve;
 use ark_ff::{FftField, One, PrimeField, Zero};
@@ -308,16 +305,13 @@ where
         ctx: &mut Context<G::BaseField, G::ScalarField, CsFp, CsFr>,
         p_comm: Msg<VarPolyComm<G, 1>>,
         inputs: &PublicInput<G>, // commitment to public input
-        witness: Option<Proof<G>>,      // witness (a PlonK proof)
+        proof: VarProof<G, 2>,
     ) where
         CsFp: Cs<G::BaseField>,
         CsFr: Cs<G::ScalarField>,
     {
         // start a new transcript
         let mut tx = Arthur::new(ctx);
-
-        // create proof instance (with/without witness)
-        let proof: VarProof<_, 2> = VarProof::new(witness);
 
         // sanity checks
         assert_eq!(inputs.len(), self.constant.public_input_size);

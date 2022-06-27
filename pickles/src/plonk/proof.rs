@@ -5,10 +5,12 @@ use std::iter;
 
 use circuit_construction::{Cs, Var};
 
-use super::{Proof, COLUMNS, PERMUTS};
+use super::{COLUMNS, PERMUTS};
 
 use crate::plonk::types::{VarOpen, VarPolyComm};
 use crate::transcript::{Absorb, Msg, VarSponge};
+
+use kimchi::proof::ProverProof;
 
 pub struct VarAccumulatorChallenges<F: FftField + PrimeField, const N: usize>(Vec<Var<F>>);
 
@@ -198,14 +200,12 @@ where
     pub prev_challenges: VarAccumulators<G, B, 16>, // maybe change the name of this field?
 }
 
-
-
-impl<A, const B: usize> VarProof<A, B>
+impl<G, const B: usize> VarProof<G, B>
 where
-    A: AffineCurve,
-    A::BaseField: FftField + PrimeField,
+    G: AffineCurve,
+    G::BaseField: FftField + PrimeField,
 {
-    pub fn new(witness: Option<Proof<A>>) -> Self {
+    pub fn new(witness: Option<ProverProof<G>>) -> Self {
         unimplemented!()
     }
 }
