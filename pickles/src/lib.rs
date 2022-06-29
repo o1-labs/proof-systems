@@ -4,8 +4,8 @@
 /// Expression framework
 mod expr;
 
-/// Generic plonk types/methods
-mod plonk;
+/// Generic kimchi types/methods
+mod kimchi;
 
 /// Accumulation for IPA
 mod ipa;

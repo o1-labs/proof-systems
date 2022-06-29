@@ -7,7 +7,7 @@ use circuit_construction::{Cs, Var};
 
 use super::{COLUMNS, PERMUTS};
 
-use crate::plonk::types::{VarOpen, VarPolyComm};
+use crate::kimchi::types::{VarOpen, VarPolyComm};
 use crate::transcript::{Absorb, Msg, VarSponge};
 
 use kimchi::proof::ProverProof;

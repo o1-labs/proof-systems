@@ -11,8 +11,8 @@ use std::marker::PhantomData;
 use crate::context::{AsPublic, PassTo, Public};
 use crate::transcript::{Absorb, Challenge, VarSponge};
 
-use crate::plonk::CHALLENGE_LEN;
-use crate::plonk::misc::var_sum;
+use crate::kimchi::CHALLENGE_LEN;
+use crate::kimchi::misc::var_sum;
 
 pub struct VarPoint<G>
 where
@@ -255,7 +255,7 @@ impl <F: FftField + PrimeField> LagrangePoly<F> {
 
     // evaluates a lagrange polynomial at 
     //
-    // see: https://o1-labs.github.io/proof-systems/plonk/lagrange.html
+    // see: https://o1-labs.github.io/proof-systems/kimchi/lagrange.html
     pub fn eval<C: Cs<F>>(
         &self, 
         cs: &mut C, 

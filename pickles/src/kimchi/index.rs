@@ -6,7 +6,7 @@ use ark_poly::univariate::DensePolynomial;
 
 use kimchi::circuits::wires::{COLUMNS, PERMUTS};
 
-use crate::plonk::types::VarPolyComm;
+use crate::kimchi::types::VarPolyComm;
 use crate::transcript::{Absorb, Msg, VarSponge};
 
 use circuit_construction::{Constants, Cs};

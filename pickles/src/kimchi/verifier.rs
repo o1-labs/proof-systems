@@ -11,11 +11,11 @@ use ark_ff::{FftField, One, PrimeField, Zero};
 
 use crate::context::Context;
 use crate::expr::{Assignments, Evaluator};
-use crate::plonk::index::{Index, ConstIndex};
-use crate::plonk::misc::{eval_const_poly};
-use crate::plonk::alphas::Alphas;
-use crate::plonk::proof::{eval_polynomial, VarEvaluation, VarEvaluations, VarProof};
-use crate::plonk::types::{EndoChallenge, BitChallenge, VanishEval, LagrangePoly, VarOpen, VarPolyComm};
+use crate::kimchi::index::{Index, ConstIndex};
+use crate::kimchi::misc::{eval_const_poly};
+use crate::kimchi::alphas::Alphas;
+use crate::kimchi::proof::{eval_polynomial, VarEvaluation, VarEvaluations, VarProof};
+use crate::kimchi::types::{EndoChallenge, BitChallenge, VanishEval, LagrangePoly, VarOpen, VarPolyComm};
 use crate::transcript::{Arthur, Msg};
 
 fn perm_scalars<F: FftField + PrimeField, C: Cs<F>>(
@@ -143,7 +143,7 @@ fn compute_ft_perm<F: FftField + PrimeField, C: Cs<F>>(
     };
 
     // boundary condition on permutation proof
-    // this is somewhat more complicated that in the original plonk due to the zkp polynomial
+    // this is somewhat more complicated that in the original kimchi due to the zkp polynomial
     let term_boundary = {
         let one: F = F::one();
         let omega: F = index.domain.group_gen;

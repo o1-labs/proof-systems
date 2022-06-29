@@ -10,7 +10,7 @@ use circuit_construction::{Constants, Cs, Var};
 use ark_ff::{FftField, PrimeField, SquareRootField};
 use ark_poly::Radix2EvaluationDomain as Domain;
 
-use crate::plonk::proof::VarEvaluations;
+use crate::kimchi::proof::VarEvaluations;
 
 pub fn linearlization<F: FftField + SquareRootField>(
     chacha: bool,
