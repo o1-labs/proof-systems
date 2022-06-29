@@ -11,7 +11,7 @@ use crate::transcript::{Absorb, Msg, VarSponge};
 
 use circuit_construction::{Constants, Cs};
 
-use kimchi::circuits::expr::{ConstantExpr, Expr};
+use kimchi::circuits::expr::{Linearization, PolishToken, ConstantExpr, Expr};
 
 use std::iter;
 
@@ -29,11 +29,13 @@ pub struct ConstIndex<F: FftField + PrimeField>
     // circuit constants
     pub constants: Constants<F>,
 
-    // linearlization terms: row constraints
-    pub row_expr: Expr<ConstantExpr<F>>,
+    // NOTE: this does not use the RPN framework from Kimchi
+    pub linearization: Linearization<Expr<ConstantExpr<F>>>,
 
     // length of the public input
     pub public_input_size: usize,
+
+    // pub linearization: Linearization<Vec<PolishToken<G::ScalarField>>>,
 
     // shifts, defines disjoint cosets of H = <\omega>
     // H_i = shift[i] * H, called k_i in the PlonK paper.

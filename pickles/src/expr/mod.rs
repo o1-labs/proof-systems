@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use kimchi::circuits::expr::{CacheId, Column, ConstantExpr, Expr, Op2, Variable};
+use kimchi::circuits::expr::{CacheId, Column, Linearization, ConstantExpr, Expr, Op2, Variable};
 use kimchi::circuits::gate::{CurrOrNext, GateType};
 use kimchi::circuits::lookup::constraints::ZK_ROWS;
 use kimchi::linearization::{constraints_expr, linearization_columns};
@@ -12,19 +12,17 @@ use ark_poly::Radix2EvaluationDomain as Domain;
 
 use crate::plonk::proof::VarEvaluations;
 
-fn linearlization<F: FftField + SquareRootField>(
+pub fn linearlization<F: FftField + SquareRootField>(
     chacha: bool,
     range_check: bool,
-) {
-    let lookup_constraint_system = None;
+) -> Linearization<Expr<ConstantExpr<F>>> {
+    let lookup_constraint_system = None; // TODO
 
-    let (expr, powers_of_alpha) = constraints_expr(chacha, range_check, lookup_constraint_system);
-
-
+    let (expr, _) = constraints_expr(chacha, range_check, lookup_constraint_system);
 
     let evaluated_cols = linearization_columns::<F>(lookup_constraint_system);
 
-
+    expr.linearize(evaluated_cols).expect("failed to linearize row expr")
 }
 
 pub struct Assignments<F: FftField + PrimeField> {

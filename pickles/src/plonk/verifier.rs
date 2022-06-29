@@ -3,6 +3,8 @@ use std::iter;
 use circuit_construction::{Constants, Cs, Var, generic};
 
 use kimchi::circuits::wires::{COLUMNS, PERMUTS};
+use kimchi::circuits::expr::Column;
+use kimchi::circuits::gate::GateType;
 
 use ark_ec::AffineCurve;
 use ark_ff::{FftField, One, PrimeField, Zero};
@@ -15,6 +17,56 @@ use crate::plonk::alphas::Alphas;
 use crate::plonk::proof::{eval_polynomial, VarEvaluation, VarEvaluations, VarProof};
 use crate::plonk::types::{EndoChallenge, BitChallenge, VanishEval, LagrangePoly, VarOpen, VarPolyComm};
 use crate::transcript::{Arthur, Msg};
+
+fn perm_scalars<F: FftField + PrimeField, C: Cs<F>>(
+    cs: &mut C,
+    evals: &VarEvaluations<F>,
+    beta: Var<F>,
+    gamma: Var<F>,
+    alphas: &[Var<F>; 3],
+    zkp_zeta: Var<F>
+) -> Var<F> {    
+    //~ Compute
+    //~
+    //~ $$
+    //~ \begin{align}
+    //~ z(\zeta \omega) \beta \alpha^{PERM0} zkpl(\zeta) \cdot \\
+    //~ (\gamma + \beta \sigma_0(\zeta) + w_0(\zeta)) \cdot \\
+    //~ (\gamma + \beta \sigma_1(\zeta) + w_1(\zeta)) \cdot \\
+    //~ (\gamma + \beta \sigma_2(\zeta) + w_2(\zeta)) \cdot \\
+    //~ (\gamma + \beta \sigma_3(\zeta) + w_3(\zeta)) \cdot \\
+    //~ (\gamma + \beta \sigma_4(\zeta) + w_4(\zeta)) \cdot \\
+    //~ (\gamma + \beta \sigma_5(\zeta) + w_5(\zeta)) \cdot \\
+    //~ \end{align}
+    //~$$
+    //~
+
+    // first term
+    let mut prod = vec![
+        evals.zetaw.z.clone().into(),
+        beta,
+        alphas[0],
+        zkp_zeta
+    ];
+
+    // compute for every chunk of the committed permutation
+    debug_assert_eq!(evals.zeta.s.len(), PERMUTS - 1);
+    prod.extend((0..PERMUTS - 1).map(|i| {
+        let si = evals.zeta.s[i].clone().into();
+        let wi = evals.zeta.w[i].clone().into();
+
+        // \beta * s
+        let tmp = cs.mul(beta, si);
+
+        // + w[i]
+        let tmp = cs.add(tmp, wi);
+
+        // + \gamma
+        cs.add(tmp, gamma)
+    }));
+
+    product(cs, prod.into_iter())
+}
 
 /// Compute the permutation argument part of the 
 fn compute_ft_perm<F: FftField + PrimeField, C: Cs<F>>(
@@ -126,53 +178,6 @@ fn compute_ft_perm<F: FftField + PrimeField, C: Cs<F>>(
     };
 
     cs.add(term_boundary, term_recurrence)
-}
-
-/// Note: we do not care about the evaluation of ft(\zeta \omega),
-/// however we need it for aggregation, therefore we simply allow the prover to provide it.
-fn compute_ft_eval0<F: FftField + PrimeField, C: Cs<F>>  (
-    cs: &mut C,
-    index: &ConstIndex<F>,
-    zh_zeta: &VanishEval<F>,
-    eval: &VarEvaluations<F>,
-    p_zeta: Var<F>,
-    gamma: Var<F>,
-    beta: Var<F>,
-    zeta: Var<F>,
-    alpha: Var<F>,
-    alphas: &Alphas<F>,
-)  -> VarOpen<F, 1> {
-    let term_perm = compute_ft_perm(
-        cs,
-        index,
-        zh_zeta,
-        eval,
-        gamma,
-        beta,
-        zeta,
-        alphas.permutation().try_into().unwrap()
-    );
-
-    let term_row = {
-        // evaluate row
-        let row_poly = Evaluator::new(
-            zeta, 
-            index.domain.clone(),  
-            Assignments {
-                alpha,
-                beta,
-                gamma,
-                constants: index.constants.clone(),
-            },
-            eval
-        ).eval_expr(cs, &index.row_expr);
-
-        // subtract $p(\zeta)$ and negate
-        let zero = F::zero();
-        generic!(cs, (row_poly, p_zeta): { ? = zero - row_poly - p_zeta })
-    };
-
-    cs.sub(term_perm, term_row).into()
 }
 
 /// Combine multiple openings using a linear combination
@@ -367,10 +372,23 @@ where
                 let p_zetaw = tx.recv(ctx, p_zetaw);
                 let e_zetaw = tx.recv(ctx, proof.evals.zetaw);
 
+                // setup Expr evaluator with evaluations provided by prover
                 let evals = VarEvaluations {
                     zeta: e_zeta,
                     zetaw: e_zetaw
                 };
+
+                let mut evalutator = Evaluator::new(
+                    zeta, 
+                    self.constant.domain.clone(),  
+                    Assignments {
+                        alpha,
+                        beta,
+                        gamma,
+                        constants: self.constant.constants.clone(),
+                    },
+                    &evals
+                );
 
                 // compute ft_eval0
                 let ft_zeta = {
@@ -386,18 +404,8 @@ where
                     );
                 
                     let term_row = {
-                        // evaluate row
-                        let row_poly = Evaluator::new(
-                            zeta, 
-                            self.constant.domain.clone(),  
-                            Assignments {
-                                alpha,
-                                beta,
-                                gamma,
-                                constants: self.constant.constants.clone(),
-                            },
-                            &evals
-                        ).eval_expr(ctx.cs(), &self.constant.row_expr);
+                        // evaluate constant term of the row constraint linearization
+                        let row_poly = evalutator.eval_expr(ctx.cs(), &self.constant.linearization.constant_term);
                 
                         // subtract $p(\zeta)$ and negate
                         ctx.add(row_poly, p_zeta.clone().into())
@@ -437,23 +445,76 @@ where
                     .collect();
 
                 //~ 25. Create a list of all polynomials that have an evaluation proof.
+                // evaluations at $\zeta$
+                let evals_z = iter::empty()
+                    .chain(h_zeta) // $h(\zeta)$
+                    .chain(iter::once(p_zeta)) // p_eval(\zeta)
+                    .chain(iter::once(ft_zeta)) // ft_eval0
+                    .chain(evals.zeta.iter().cloned()); // openings from proof
+
+                // evaluations at $\zeta \omega$
+                let evals_zw = iter::empty()
+                    .chain(h_zetaw) // $h(\zeta\omega)$
+                    .chain(iter::once(p_zetaw)) // p_eval(\zeta\omega)
+                    .chain(iter::once(ft_zetaw)) // ft_eval1
+                    .chain(evals.zetaw.iter().cloned()); // openings from proof
+
+                // evaluate every linearlization term and 
+                // associate with corresponding polynomial commitment
+                let mut scalars: Vec<Var<G::ScalarField>> = Vec::new();
+                let mut commitments: Vec<&VarPolyComm<G, 1>> = Vec::new();
+                for (col, expr) in &self.constant.linearization.index_terms {
+                    let scalar = evalutator.eval_expr(ctx.cs(), expr);
+
+                    use Column::*;
+                    match col {
+                        Witness(i) => {
+                            scalars.push(scalar);
+                            commitments.push(&w_comm[*i])
+                        }
+                        Coefficient(i) => {
+                            scalars.push(scalar);
+                            commitments.push(&relation.coefficients_comm[*i])
+                        }
+                        Z => {
+                            scalars.push(scalar);
+                            commitments.push(&z_comm);
+                        }
+                        Index(t) => {
+                            use GateType::*;
+                            let c = match t {
+                                Zero | Generic | Lookup => {
+                                    panic!("Selector for {:?} not defined", t)
+                                }
+                                CompleteAdd => &relation.complete_add_comm,
+                                VarBaseMul => &relation.mul_comm,
+                                EndoMul => &relation.emul_comm,
+                                EndoMulScalar => &relation.endomul_scalar_comm,
+                                Poseidon => &relation.psm_comm,
+                                ChaCha0 => &relation.chacha_comm.as_ref().unwrap()[0],
+                                ChaCha1 => &relation.chacha_comm.as_ref().unwrap()[1],
+                                ChaCha2 => &relation.chacha_comm.as_ref().unwrap()[2],
+                                ChaChaFinal => &relation.chacha_comm.as_ref().unwrap()[3],
+                                CairoClaim | CairoInstruction | CairoFlags | CairoTransition => {
+                                    unimplemented!()
+                                }
+                                RangeCheck0 => &relation.range_check_comm[0],
+                                RangeCheck1 => &relation.range_check_comm[1],
+                            };
+                            scalars.push(scalar);
+                            commitments.push(c);
+                        }
+                        _ => unimplemented!() // TODO: lookup related column types
+                    }
+                }
+
+                // pass scalars to G::BaseField side for ft_comm computation
+                
 
                 // compute the combined inner product:
                 // the batching of all the openings
                 let combined_inner_product = {
-                    // evaluations at $\zeta$
-                    let evals_z = iter::empty()
-                        .chain(h_zeta) // $h(\zeta)$
-                        .chain(iter::once(p_zeta)) // p_eval(\zeta)
-                        .chain(iter::once(ft_zeta)) // ft_eval0
-                        .chain(evals.zeta.iter().cloned()); // openings from proof
-
-                    // evaluations at $\zeta \omega$
-                    let evals_zw = iter::empty()
-                        .chain(h_zetaw) // $h(\zeta\omega)$
-                        .chain(iter::once(p_zetaw)) // p_eval(\zeta\omega)
-                        .chain(iter::once(ft_zetaw)) // ft_eval1
-                        .chain(evals.zetaw.iter().cloned()); // openings from proof
+                   
 
                     // compute a randomized combinations of all the openings
                     // with xi = v, r = u
@@ -471,5 +532,20 @@ where
                 combined_inner_product
             })
         });
+
+        let ft_comm = unimplemented!();
+
+        let comms = iter::empty()
+            .chain(&acc_comms)
+            .chain(iter::once(&p_comm))
+            .chain(iter::once(&ft_comm))
+            .chain(iter::once(&z_comm))
+            .chain(iter::once(&relation.generic_comm))
+            .chain(iter::once(&relation.psm_comm))
+            .chain(&w_comm)
+            .chain(&relation.sigma_comm);
+
+        // TODO: add the lookup terms
+
     }
 }

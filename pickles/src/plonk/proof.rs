@@ -178,7 +178,7 @@ where
     pub chal: Msg<[VarAccumulatorChallenges<G::ScalarField, N>; B]>,
 
     // all the commitments (1 chunk each)
-    pub comm: Msg<[[VarPolyComm<G, 1>; N]; B]>,
+    pub comm: Msg<[VarPolyComm<G, 1>; N]>,
 }
 
 pub struct ProofEvaluations<F: FftField + PrimeField> {

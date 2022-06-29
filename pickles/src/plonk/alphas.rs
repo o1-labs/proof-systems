@@ -6,8 +6,6 @@ use kimchi::circuits::argument::{ArgumentType, Argument};
 use kimchi::circuits::polynomials::permutation;
 use kimchi::circuits::polynomials::varbasemul::VarbaseMul;
 
-const TOTAL_ALPHAS: usize = 60;
-
 pub struct Alphas<F: FftField + PrimeField> {
     alphas: Vec<Var<F>>,
 }
