@@ -1,21 +1,26 @@
 use std::iter;
 
-use circuit_construction::{Constants, Cs, Var, generic};
+use circuit_construction::{generic, Constants, Cs, Var};
 
-use kimchi::circuits::wires::{COLUMNS, PERMUTS};
 use kimchi::circuits::expr::Column;
 use kimchi::circuits::gate::GateType;
+use kimchi::circuits::wires::{COLUMNS, PERMUTS};
 
 use ark_ec::AffineCurve;
 use ark_ff::{FftField, One, PrimeField, Zero};
 
 use crate::context::Context;
+
 use crate::expr::{Assignments, Evaluator};
-use crate::kimchi::index::{Index, ConstIndex};
-use crate::kimchi::misc::{eval_const_poly};
+
 use crate::kimchi::alphas::Alphas;
-use crate::kimchi::proof::{eval_polynomial, VarEvaluation, VarEvaluations, VarProof};
-use crate::kimchi::types::{EndoChallenge, BitChallenge, VanishEval, LagrangePoly, VarOpen, VarPolyComm};
+use crate::kimchi::index::{ConstIndex, Index};
+use crate::kimchi::proof::{eval_polynomial, VarEvaluations, VarProof};
+
+use crate::util::eval_const_poly;
+
+use crate::types::{FieldChallenge, GLVChallenge, LagrangePoly, VanishEval, VarEval, VarPolyComm};
+
 use crate::transcript::{Arthur, Msg};
 
 fn perm_scalars<F: FftField + PrimeField, C: Cs<F>>(
@@ -24,8 +29,8 @@ fn perm_scalars<F: FftField + PrimeField, C: Cs<F>>(
     beta: Var<F>,
     gamma: Var<F>,
     alphas: &[Var<F>; 3],
-    zkp_zeta: Var<F>
-) -> Var<F> {    
+    zkp_zeta: Var<F>,
+) -> Var<F> {
     //~ Compute
     //~
     //~ $$
@@ -42,12 +47,7 @@ fn perm_scalars<F: FftField + PrimeField, C: Cs<F>>(
     //~
 
     // first term
-    let mut prod = vec![
-        evals.zetaw.z.clone().into(),
-        beta,
-        alphas[0],
-        zkp_zeta
-    ];
+    let mut prod = vec![evals.zetaw.z.clone().into(), beta, alphas[0], zkp_zeta];
 
     // compute for every chunk of the committed permutation
     debug_assert_eq!(evals.zeta.s.len(), PERMUTS - 1);
@@ -68,7 +68,7 @@ fn perm_scalars<F: FftField + PrimeField, C: Cs<F>>(
     product(cs, prod.into_iter())
 }
 
-/// Compute the permutation argument part of the 
+/// Compute the permutation argument part of the
 fn compute_ft_perm<F: FftField + PrimeField, C: Cs<F>>(
     cs: &mut C,
     index: &ConstIndex<F>,
@@ -81,30 +81,30 @@ fn compute_ft_perm<F: FftField + PrimeField, C: Cs<F>>(
 ) -> Var<F> {
     // evaluate the (constant) ZKP polynomial at \zeta, i.e. zkpm(\zeta)
     let zkp = eval_const_poly(cs, &index.zkpm, zeta);
-    
+
     // shuffle proof related constraints
     let term_recurrence = {
         // $\prod_i \left((\beta s_i) + w_i + \gamma\right)$
         let before: Var<_> = {
-            let mut prod = (0..PERMUTS - 1).map(|i| {
-                let si = eval.zeta.s[i].clone().into();
-                let wi = eval.zeta.w[i].clone().into();
+            let mut prod = (0..PERMUTS - 1)
+                .map(|i| {
+                    let si = eval.zeta.s[i].clone().into();
+                    let wi = eval.zeta.w[i].clone().into();
 
-                // \beta * s
-                let tmp = cs.mul(beta, si);
+                    // \beta * s
+                    let tmp = cs.mul(beta, si);
 
-                // + w[i]
-                let tmp = cs.add(tmp, wi);
+                    // + w[i]
+                    let tmp = cs.add(tmp, wi);
 
-                // + \gamma
-                cs.add(tmp, gamma)
-            }).collect::<Vec<Var<_>>>();
+                    // + \gamma
+                    cs.add(tmp, gamma)
+                })
+                .collect::<Vec<Var<_>>>();
 
             // last column is handled differently:
             // linearlization optimization
-            prod.push({
-                cs.add(eval.zeta.w[PERMUTS - 1].clone().into(), gamma)
-            });
+            prod.push({ cs.add(eval.zeta.w[PERMUTS - 1].clone().into(), gamma) });
 
             // * z(\zeta\omega)
             debug_assert_eq!(prod.len(), PERMUTS);
@@ -114,19 +114,21 @@ fn compute_ft_perm<F: FftField + PrimeField, C: Cs<F>>(
 
         // $\prod_i left((\zeta  \beta shift_i) + w_i + \gamma\right)$
         let after: Var<_> = {
-            let mut prod = (0..PERMUTS).map(|i| {
-                let ki = index.shift[i];
-                let wi = eval.zeta.w[i].clone().into();
+            let mut prod = (0..PERMUTS)
+                .map(|i| {
+                    let ki = index.shift[i];
+                    let wi = eval.zeta.w[i].clone().into();
 
-                // beta * zeta * shift;
-                let tmp = generic!(cs, (beta, zeta) : { ? = beta * ki * zeta });
+                    // beta * zeta * shift;
+                    let tmp = generic!(cs, (beta, zeta) : { ? = beta * ki * zeta });
 
-                // + w[i]
-                let tmp = cs.add(tmp, wi);
+                    // + w[i]
+                    let tmp = cs.add(tmp, wi);
 
-                // + \gamma
-                cs.add(tmp, gamma)
-            }).collect::<Vec<Var<_>>>();
+                    // + \gamma
+                    cs.add(tmp, gamma)
+                })
+                .collect::<Vec<Var<_>>>();
 
             // * z(\zeta)
             debug_assert_eq!(prod.len(), PERMUTS);
@@ -153,11 +155,11 @@ fn compute_ft_perm<F: FftField + PrimeField, C: Cs<F>>(
 
         let numerator = {
             // $a_1 = \alpha_1 \cdot Z_H(\zeta) \cdot (\zeta - \omega)$
-            let t1 = generic!(cs, (zhz, zeta) : { ? = zhz * (zeta - omega) } ); 
+            let t1 = generic!(cs, (zhz, zeta) : { ? = zhz * (zeta - omega) } );
             let a1 = cs.mul(t1, alpha[1]);
-            
+
             // $a_2 = alpha_2 \cdot Z_H(\zeta) \cdot (\zeta - 1)$
-            let t2 = generic!(cs, (zhz, zeta) : { ? = zhz * (zeta - one) } ); 
+            let t2 = generic!(cs, (zhz, zeta) : { ? = zhz * (zeta - one) } );
             let a2 = cs.mul(t2, alpha[2]);
 
             // $b = a_1 + a_2$
@@ -169,7 +171,7 @@ fn compute_ft_perm<F: FftField + PrimeField, C: Cs<F>>(
 
         // (\zeta - \omega) * (\zeta - 1)
         let denominator = generic!(
-            cs, 
+            cs,
             (zeta) : { ? = (zeta - omega) * (zeta - one) }
         );
 
@@ -186,7 +188,7 @@ fn compute_ft_perm<F: FftField + PrimeField, C: Cs<F>>(
 /// why do we need both xi and r?
 fn combine_inner_product<'a, F, C: Cs<F>, const N: usize>(
     cs: &mut C,
-    evaluations: &[(Var<F>, Vec<VarOpen<F, N>>)], // evaluation point and openings
+    evaluations: &[(Var<F>, Vec<VarEval<F, N>>)], // evaluation point and openings
     xi: Var<F>,                                   // combinations at powers of x
     r: Var<F>,                                    // new evaluation point
 ) -> Var<F>
@@ -226,7 +228,10 @@ where
 
 // TODO: add unit test for compat with combined_inner_product from Kimchi using Witness Generator
 
-fn product<F: FftField + PrimeField, I: Iterator<Item = Var<F>>, C: Cs<F>>(cs: &mut C, mut prod: I) -> Var<F> {
+fn product<F: FftField + PrimeField, I: Iterator<Item = Var<F>>, C: Cs<F>>(
+    cs: &mut C,
+    mut prod: I,
+) -> Var<F> {
     let mut tmp = prod.next().unwrap();
     for term in prod {
         tmp = cs.mul(term, tmp);
@@ -241,15 +246,17 @@ where
     G: AffineCurve,
     G::BaseField: FftField + PrimeField;
 
-impl <G> PublicInput<G>  where
-G: AffineCurve,
-G::BaseField: FftField + PrimeField {
+impl<G> PublicInput<G>
+where
+    G: AffineCurve,
+    G::BaseField: FftField + PrimeField,
+{
     pub fn eval<C: Cs<G::ScalarField>>(
-        &self, 
-        cs: &mut C, 
+        &self,
+        cs: &mut C,
         x: Var<G::ScalarField>,
         pnt: &VanishEval<G::ScalarField>,
-    ) -> Msg<VarOpen<G::ScalarField,1>> {
+    ) -> Msg<VarEval<G::ScalarField, 1>> {
         self.0.eval(cs, x, pnt).into()
     }
 
@@ -257,7 +264,7 @@ G::BaseField: FftField + PrimeField {
         self.0.len()
     }
 }
-    
+
 impl<G> Index<G>
 where
     G: AffineCurve,
@@ -289,7 +296,7 @@ where
         //~ 1. absorb index
         // absorb variable part of the index: the relation description
         let relation = tx.recv(ctx, self.relation);
-        
+
         //~ 1. absorb accumulator commitments
         let acc_comms = tx.recv(ctx, proof.prev_challenges.comm);
 
@@ -300,14 +307,14 @@ where
         let w_comm = tx.recv(ctx, proof.commitments.w_comm);
 
         //~ 6. Sample $\beta$
-        let beta: BitChallenge<_> = tx.challenge(ctx); // sample challenge using Fp sponge
-        let beta: BitChallenge<_> = ctx.pass(beta);    // pass to other side
-        let beta: Var<G::ScalarField> = beta.into();   // interpret as variable
+        let beta: FieldChallenge<_> = tx.challenge(ctx); // sample challenge using Fp sponge
+        let beta: FieldChallenge<_> = ctx.pass(beta); // pass to other side
+        let beta: Var<G::ScalarField> = beta.into(); // interpret as variable
 
         //~ 7. Sample $\gamma$
-        let gamma: BitChallenge<_> = tx.challenge(ctx); // sample challenge using Fp sponge
-        let gamma: BitChallenge<_> = ctx.pass(gamma);   // pass to other side
-        let gamma: Var<G::ScalarField> = gamma.into();  // interpret as variable
+        let gamma: FieldChallenge<_> = tx.challenge(ctx); // sample challenge using Fp sponge
+        let gamma: FieldChallenge<_> = ctx.pass(gamma); // pass to other side
+        let gamma: Var<G::ScalarField> = gamma.into(); // interpret as variable
 
         //~ 8. If using lookup, absorb the commitment to the aggregation lookup polynomial.
         /*self.commitments.lookup.iter().for_each(|l| {
@@ -319,12 +326,12 @@ where
         let z_comm = tx.recv(ctx, proof.commitments.z_comm);
 
         //~ 10. Sample $\alpha'$
-        let alpha_chal: EndoChallenge<G::BaseField> = tx.challenge(ctx);
+        let alpha_chal: GLVChallenge<G::BaseField> = tx.challenge(ctx);
 
         //~ 11. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
-        let alpha: EndoChallenge<G::ScalarField> = ctx.pass(alpha_chal);
+        let alpha: GLVChallenge<G::ScalarField> = ctx.pass(alpha_chal);
         let alpha: Var<G::ScalarField> = ctx.flip(|ctx| alpha.to_field(ctx.cs()));
-        
+
         //~ 12. Enforce that the length of the $t$ commitment is of size `PERMUTS`.
         // CHANGE: Happens at deserialization time (it is an array).
 
@@ -332,10 +339,10 @@ where
         let t_comm = tx.recv(ctx, proof.commitments.t_comm);
 
         //~ 14. Sample $\zeta'$ (GLV decomposition of $\zeta$)
-        let zeta_chal: EndoChallenge<G::BaseField> = tx.challenge(ctx);
+        let zeta_chal: GLVChallenge<G::BaseField> = tx.challenge(ctx);
 
         //~ 15. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
-        let zeta: EndoChallenge<G::ScalarField> = ctx.pass(zeta_chal);
+        let zeta: GLVChallenge<G::ScalarField> = ctx.pass(zeta_chal);
         let zeta: Var<G::ScalarField> = ctx.flip(|ctx| zeta.to_field(ctx.cs()));
 
         //~ 18. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
@@ -350,7 +357,7 @@ where
                 // zetaw = zeta * \omega
                 let omega = self.constant.domain.group_gen;
                 let zetaw = generic!({ ctx.cs() }, (zeta) : { ? = omega * zeta } );
-              
+
                 // note that $Z_H(\zeta) = Z_H(\zeta \omega)$: we only need to eval one
                 let zh_zeta = VanishEval::new(ctx.cs(), &self.constant.domain, zeta);
 
@@ -363,11 +370,11 @@ where
                 //~     - 6 sigmas evaluations (the last one is not evaluated)
 
                 // absorb $\zeta$ evaluations
-                let p_zeta = inputs.eval(ctx.cs(), zeta, &zh_zeta); 
+                let p_zeta = inputs.eval(ctx.cs(), zeta, &zh_zeta);
                 let p_zeta = tx.recv(ctx, p_zeta);
                 let e_zeta = tx.recv(ctx, proof.evals.zeta);
 
-                // absorb $\zeta\omega$ evaluations 
+                // absorb $\zeta\omega$ evaluations
                 let p_zetaw = inputs.eval(ctx.cs(), zetaw, &zh_zeta);
                 let p_zetaw = tx.recv(ctx, p_zetaw);
                 let e_zetaw = tx.recv(ctx, proof.evals.zetaw);
@@ -375,19 +382,19 @@ where
                 // setup Expr evaluator with evaluations provided by prover
                 let evals = VarEvaluations {
                     zeta: e_zeta,
-                    zetaw: e_zetaw
+                    zetaw: e_zetaw,
                 };
 
                 let mut evalutator = Evaluator::new(
-                    zeta, 
-                    self.constant.domain.clone(),  
+                    zeta,
+                    self.constant.domain.clone(),
                     Assignments {
                         alpha,
                         beta,
                         gamma,
                         constants: self.constant.constants.clone(),
                     },
-                    &evals
+                    &evals,
                 );
 
                 // compute ft_eval0
@@ -400,17 +407,18 @@ where
                         gamma,
                         beta,
                         zeta,
-                        alphas.permutation().try_into().unwrap()
+                        alphas.permutation().try_into().unwrap(),
                     );
-                
+
                     let term_row = {
                         // evaluate constant term of the row constraint linearization
-                        let row_poly = evalutator.eval_expr(ctx.cs(), &self.constant.linearization.constant_term);
-                
+                        let row_poly = evalutator
+                            .eval_expr(ctx.cs(), &self.constant.linearization.constant_term);
+
                         // subtract $p(\zeta)$ and negate
                         ctx.add(row_poly, p_zeta.clone().into())
                     };
-                
+
                     ctx.sub(term_perm, term_row).into()
                 };
 
@@ -421,25 +429,25 @@ where
                 let acc_chals = tx.recv(ctx, proof.prev_challenges.chal);
 
                 //~ 21. Sample $v'$ with the Fr-Sponge.
-                let v_chal: EndoChallenge<G::ScalarField> = tx.challenge(ctx);
+                let v_chal: GLVChallenge<G::ScalarField> = tx.challenge(ctx);
 
                 //~ 22. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
                 let v: Var<G::ScalarField> = v_chal.to_field(ctx.cs());
 
                 //~ 23. Sample $u'$ with the Fr-Sponge.
-                let u_chal: EndoChallenge<G::ScalarField> = tx.challenge(ctx);
+                let u_chal: GLVChallenge<G::ScalarField> = tx.challenge(ctx);
 
                 //~ 24. Derive $u$ from $u'$ using the endomorphism (TODO: specify).
-                let u = u_chal.to_field(ctx. cs());
+                let u = u_chal.to_field(ctx.cs());
 
                 // evaluate the $h(X)$ polynomials from the accumulators at $\zeta$
-                let h_zeta: Vec<VarOpen<_, 1>> = acc_chals
+                let h_zeta: Vec<VarEval<_, 1>> = acc_chals
                     .iter()
                     .map(|acc| acc.eval_h(ctx.cs(), zeta))
                     .collect();
 
                 // evaluate the $h(X)$ polynomials from the accumulators at $\zeta\omega$
-                let h_zetaw: Vec<VarOpen<_, 1>> = acc_chals
+                let h_zetaw: Vec<VarEval<_, 1>> = acc_chals
                     .iter()
                     .map(|acc| acc.eval_h(ctx.cs(), zetaw))
                     .collect();
@@ -459,7 +467,7 @@ where
                     .chain(iter::once(ft_zetaw)) // ft_eval1
                     .chain(evals.zetaw.iter().cloned()); // openings from proof
 
-                // evaluate every linearlization term and 
+                // evaluate every linearlization term and
                 // associate with corresponding polynomial commitment
                 let mut scalars: Vec<Var<G::ScalarField>> = Vec::new();
                 let mut commitments: Vec<&VarPolyComm<G, 1>> = Vec::new();
@@ -504,18 +512,15 @@ where
                             scalars.push(scalar);
                             commitments.push(c);
                         }
-                        _ => unimplemented!() // TODO: lookup related column types
+                        _ => unimplemented!(), // TODO: lookup related column types
                     }
                 }
 
                 // pass scalars to G::BaseField side for ft_comm computation
-                
 
                 // compute the combined inner product:
                 // the batching of all the openings
                 let combined_inner_product = {
-                   
-
                     // compute a randomized combinations of all the openings
                     // with xi = v, r = u
                     combine_inner_product(
@@ -546,6 +551,5 @@ where
             .chain(&relation.sigma_comm);
 
         // TODO: add the lookup terms
-
     }
 }

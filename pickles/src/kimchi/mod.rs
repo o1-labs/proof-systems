@@ -5,13 +5,7 @@ use oracle::sponge::ScalarChallenge;
 
 mod alphas;
 
-mod misc;
-
 mod index;
-
-// General "Var" types
-// (e.g. an evaluation of a polynomial as a variable)
-mod types;
 
 /// Proof types
 pub mod proof;

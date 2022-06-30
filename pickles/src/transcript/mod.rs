@@ -5,9 +5,7 @@ use ark_ff::{BigInteger, FftField, FpParameters, PrimeField};
 mod sponge;
 mod utils;
 
-use super::{Context};
-
-use crate::context:: PassedField;
+use crate::context::Context;
 
 pub use sponge::{Absorb, Challenge, VarSponge};
 
@@ -33,7 +31,7 @@ impl<F: FftField + PrimeField> Side<F> {
     fn new(constants: Constants<F>) -> Self {
         Self {
             sponge: None,
-            constants
+            constants,
         }
     }
 }
@@ -55,7 +53,6 @@ where
 {
     inner: Option<Inner<Fp, Fr, CsFp, CsFr>>,
 }
-
 
 pub struct Msg<T> {
     value: T,
@@ -144,9 +141,7 @@ where
 
     // invoke scope without affecting the current sponge state
     // essentially "branches", this requires a scope
-    pub fn fork() {
-
-    }
+    pub fn fork() {}
 }
 
 impl<Fp, Fr, CsFp, CsFr> Inner<Fp, Fr, CsFp, CsFr>
@@ -167,12 +162,15 @@ where
     // do not invoke this manually
     fn fp_sponge(&mut self, ctx: &mut Context<Fp, Fr, CsFp, CsFr>) -> &mut VarSponge<Fp> {
         // initialize Fp sponge
-        let st_fp = self.fp.sponge.get_or_insert_with(|| {
-            VarSponge::new(self.fp.constants.clone())
-        });
-        
+        let st_fp = self
+            .fp
+            .sponge
+            .get_or_insert_with(|| VarSponge::new(self.fp.constants.clone()));
+
         // check if Fr side is not none
         if let Some(mut fr_st) = self.fr.sponge.take() {
+            unimplemented!();
+            /*
             // compute digest in other side and pass over
             let hsh_fr: PassedField<Fp> = ctx.flip(|ctx| {
                 let st_fr: Var<Fr> = fr_st.challenge(&mut ctx.fp.cs);
@@ -181,6 +179,7 @@ where
 
             // absorb in Fp
             hsh_fr.absorb(ctx.cs(), st_fp);
+            */
         }
 
         st_fp
@@ -188,7 +187,11 @@ where
 
     /// Receive a message from the prover
     #[must_use]
-    pub fn recv<R: Receivable<Fp>>(&mut self, ctx: &mut Context<Fp, Fr, CsFp, CsFr>, msg: R) -> R::Dst {
+    pub fn recv<R: Receivable<Fp>>(
+        &mut self,
+        ctx: &mut Context<Fp, Fr, CsFp, CsFr>,
+        msg: R,
+    ) -> R::Dst {
         let st = self.fp_sponge(ctx);
         msg.unpack(ctx.cs(), st)
     }

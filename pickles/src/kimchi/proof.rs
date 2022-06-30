@@ -7,8 +7,8 @@ use circuit_construction::{Cs, Var};
 
 use super::{COLUMNS, PERMUTS};
 
-use crate::kimchi::types::{VarOpen, VarPolyComm};
 use crate::transcript::{Absorb, Msg, VarSponge};
+use crate::types::{VarEval, VarPolyComm};
 
 use kimchi::proof::ProverProof;
 
@@ -33,7 +33,7 @@ where
     /// h(X) = \prod_{i = 0}^{n} (1 + c_{n-i} X^{2^i})
     ///
     /// Evalute h(X) at x.
-    pub fn eval_h<C: Cs<F>>(&self, cs: &mut C, x: Var<F>) -> VarOpen<F, 1> {
+    pub fn eval_h<C: Cs<F>>(&self, cs: &mut C, x: Var<F>) -> VarEval<F, 1> {
         assert_ne!(
             self.0.len(),
             0,
@@ -58,11 +58,9 @@ where
             prod = cs.mul(prod, term);
         }
 
-        VarOpen { chunks: [prod] }
+        VarEval { chunks: [prod] }
     }
 }
-
-
 
 /// Add constraints for evaluating a polynomial
 ///
@@ -104,30 +102,30 @@ pub struct LookupEvaluations<Field> {
 /// Note: the number of chunks is always 1 for the polynomials covered below.
 pub struct VarEvaluation<F: FftField + PrimeField> {
     /// witness polynomials
-    pub w: [VarOpen<F, 1>; COLUMNS],
+    pub w: [VarEval<F, 1>; COLUMNS],
 
     /// permutation polynomial
-    pub z: VarOpen<F, 1>,
+    pub z: VarEval<F, 1>,
 
     /// permutation polynomials
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
-    pub s: [VarOpen<F, 1>; PERMUTS - 1],
+    pub s: [VarEval<F, 1>; PERMUTS - 1],
 
     /// lookup-related evaluations
     // pub lookup: Option<LookupEvaluations<F>>,
 
     /// evaluation of the generic selector polynomial
-    pub generic_selector: VarOpen<F, 1>,
+    pub generic_selector: VarEval<F, 1>,
 
     /// evaluation of the poseidon selector polynomial
-    pub poseidon_selector: VarOpen<F, 1>,
+    pub poseidon_selector: VarEval<F, 1>,
 }
 
 impl<F: FftField + PrimeField> VarEvaluation<F> {
     /// Iterate over the evaluations in the order used by both:
     /// - The combined inner product
     /// - When absorbing the evaluations in the transcript.
-    pub fn iter(&self) -> impl Iterator<Item = &VarOpen<F, 1>> {
+    pub fn iter(&self) -> impl Iterator<Item = &VarEval<F, 1>> {
         iter::empty()
             .chain(iter::once(&self.z))
             .chain(iter::once(&self.generic_selector))
@@ -186,7 +184,6 @@ pub struct ProofEvaluations<F: FftField + PrimeField> {
     pub zetaw: Msg<VarEvaluation<F>>, // evaluation at \zeta * \omega (2^k root of unity, next step)
 }
 
-
 /// WARNING: Make sure this only contains Msg types
 /// (or structs of Msg types)
 pub struct VarProof<G, const B: usize>
@@ -195,7 +192,7 @@ where
     G::BaseField: FftField + PrimeField,
 {
     pub commitments: VarCommitments<G>,
-    pub ft_eval1: Msg<VarOpen<G::ScalarField, 1>>, // THIS MUST BE INCLUDED IN PUBLIC INPUT!
+    pub ft_eval1: Msg<VarEval<G::ScalarField, 1>>, // THIS MUST BE INCLUDED IN PUBLIC INPUT!
     pub evals: ProofEvaluations<G::ScalarField>,
     pub prev_challenges: VarAccumulators<G, B, 16>, // maybe change the name of this field?
 }

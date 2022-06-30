@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use kimchi::circuits::expr::{CacheId, Column, Linearization, ConstantExpr, Expr, Op2, Variable};
+use kimchi::circuits::expr::{CacheId, Column, ConstantExpr, Expr, Linearization, Op2, Variable};
 use kimchi::circuits::gate::{CurrOrNext, GateType};
 use kimchi::circuits::lookup::constraints::ZK_ROWS;
 use kimchi::linearization::{constraints_expr, linearization_columns};
@@ -22,7 +22,8 @@ pub fn linearlization<F: FftField + SquareRootField>(
 
     let evaluated_cols = linearization_columns::<F>(lookup_constraint_system);
 
-    expr.linearize(evaluated_cols).expect("failed to linearize row expr")
+    expr.linearize(evaluated_cols)
+        .expect("failed to linearize row expr")
 }
 
 pub struct Assignments<F: FftField + PrimeField> {

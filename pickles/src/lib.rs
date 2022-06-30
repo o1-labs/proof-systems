@@ -1,6 +1,3 @@
-/// QUESTION: Could we hope to extract a Kimchi verfier from the Pickles descriuption?
-/// (rather than implement twice in Kimchi and Pickles? To simplify maintainence)
-
 /// Expression framework
 mod expr;
 
@@ -10,9 +7,14 @@ mod kimchi;
 /// Accumulation for IPA
 mod ipa;
 
+/// Variable types
+mod types;
+
+/// Represents a union of two constraint systems
+/// and the consistency between public inputs "exported/passed" between the two sides
 mod context;
 
+/// Fiat-Shamir abstraction
 mod transcript;
 
-use context::Context;
-
+mod util;

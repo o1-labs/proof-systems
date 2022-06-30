@@ -1,22 +1,17 @@
+use std::ops::{Deref, DerefMut};
+
 use circuit_construction::{Constants, Cs, Var};
 
-use ark_ff::{BigInteger, FftField, FpParameters, PrimeField};
-use crate::transcript::{Absorb, VarSponge};
+use ark_ff::{FftField, PrimeField};
 
-use std::ops::{Deref, DerefMut};
-use std::iter;
-
-pub struct Public<F: FftField + PrimeField> {
-    var: Var<F>,
-    size: usize,
-}
+use crate::context::Public;
 
 // A "container type"
 pub(crate) struct Side<F: FftField + PrimeField, C: Cs<F>> {
     pub(crate) cs: C,
     pub(crate) constants: Constants<F>,
-    public: Vec<Public<F>>,   // "export / pass"
-    passthrough: Vec<Var<F>>, // passthough fields from this side (to the complement)
+    pub(crate) public: Vec<Public<F>>, // "export / pass"
+    passthrough: Vec<Var<F>>,          // passthough fields from this side (to the complement)
 }
 
 impl<F: FftField + PrimeField, C: Cs<F>> Side<F, C> {
@@ -143,103 +138,6 @@ where
     }
 }
 
-pub trait AsPublic<F: FftField + PrimeField> {
-    fn public(&self) -> Vec<Public<F>>;
-}
-
-///
-/// 
-pub trait PassTo<D, Fp, Fr>: AsPublic<Fp>
-    where D: AsPublic<Fr>,
-          Fp: FftField + PrimeField,
-          Fr: FftField + PrimeField
-
-{
-    fn convert<CsFp: Cs<Fp>, CsFr: Cs<Fr>>(self, csfp: &mut CsFp, csfr: &mut CsFr) -> D;
-}
-
-pub struct PassedField<F: FftField + PrimeField> {
-    high: Var<F>,
-    low: Option<Var<F>>,
-}
-
-impl <F: FftField + PrimeField> Absorb<F> for PassedField<F> {
-    fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut VarSponge<F>) {
-        sponge.absorb(cs, &self.high);
-        self.low.map(|low| sponge.absorb(cs, &self.high));
-    }
-}
-
-impl <F: FftField + PrimeField> AsPublic<F> for Var<F> where {
-    fn public(&self) -> Vec<Public<F>> {
-        vec![
-            Public{
-                var: self.clone(),
-                size: F::size_in_bits()
-            }
-        ]
-    }
-}
-
-impl <F: FftField + PrimeField> AsPublic<F> for PassedField<F> where {
-    fn public(&self) -> Vec<Public<F>> {
-        // check high bit
-        let mut inputs = vec![Public {
-            var: self.high,
-            size: F::size_in_bits(),
-        }];
-
-        // check if low bit is decomposed
-        if let Some(low) = self.low {
-            inputs.push(Public {
-                var: low,
-                size: 1,
-            })
-        };
-
-        inputs
-    }
-}
-
-impl <Fr, Fp> PassTo<PassedField<Fr>, Fp, Fr> for Var<Fp> where
-Fr: FftField + PrimeField,
-Fp: FftField + PrimeField,
-{
-    fn convert<CsFp: Cs<Fp>, CsFr: Cs<Fr>>(self, csfp: &mut CsFp, csfr: &mut CsFr) -> PassedField<Fr> {
-        let split = Fr::Params::MODULUS.into() < Fp::Params::MODULUS.into();
-
-        // convert the witness to a vec of bits
-        let bits = self.value.map(|v| v.into_repr().to_bits_le());
-
-        // converts a slice of bits (minimal representative) to a field element
-        fn from_bits<F: FftField + PrimeField>(bits: &[bool]) -> F {
-            F::from_repr(<F as PrimeField>::BigInt::from_bits_le(bits)).unwrap()
-        }
-            
-        //
-        if split {
-            // split into high/low(bit)
-            let decm = bits.as_ref().map(|b| {
-                let h = from_bits(&b[1..b.len()]);
-                let l = if b[0] { Fr::one() } else { Fr::zero() };
-                (h, l)
-            });
-
-            // split and assign
-            PassedField {
-                high: csfr.var(|| decm.unwrap().0),
-                low: Some(csfr.var(|| decm.unwrap().1)),
-            }
-        } else {
-            // fit everything in high
-            PassedField {
-                high: csfr.var(|| from_bits(&bits.unwrap()[..])),
-                low: None,
-            }
-        }
-    }
-}
-
 impl<Fp, Fr, CsFp, CsFr> InnerContext<Fp, Fr, CsFp, CsFr>
 where
     Fp: FftField + PrimeField,
@@ -257,24 +155,6 @@ where
             fp: Side::new(cs_fp, consts_fp),
             fr: Side::new(cs_fr, consts_fr),
         }
-    }
-
-    /// Pass through a type (representable as a variable) of bounded size
-    /// (adding it to the statement on both sides)
-    #[must_use]
-    pub fn pass<T: AsPublic<Fr>, F: PassTo<T, Fp, Fr>>(&mut self, from: F) -> T {
-        // add to public inputs on fp side
-        // (assert equality with public inputs and size bounds)
-        self.fp.public.extend(from.public());
-
-        // convert type
-        let to = from.convert(&mut self.fp.cs, &mut self.fr.cs);
-
-        // add to public inputs on fr side
-        // (assert equality with public inputs and size bounds)
-        self.fr.public.extend(to.public());
-
-        to
     }
 
     pub fn cs(&mut self) -> &mut CsFp {

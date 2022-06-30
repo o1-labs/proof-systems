@@ -1,8 +1,8 @@
 use ark_ff::{FftField, PrimeField};
 
-use circuit_construction::{Var, Cs};
+use circuit_construction::{Cs, Var};
 
-use kimchi::circuits::argument::{ArgumentType, Argument};
+use kimchi::circuits::argument::{Argument, ArgumentType};
 use kimchi::circuits::polynomials::permutation;
 use kimchi::circuits::polynomials::varbasemul::VarbaseMul;
 
@@ -10,13 +10,13 @@ pub struct Alphas<F: FftField + PrimeField> {
     alphas: Vec<Var<F>>,
 }
 
-fn total_alphas<F: FftField + PrimeField>() -> usize {    
+fn total_alphas<F: FftField + PrimeField>() -> usize {
     let t = VarbaseMul::<F>::CONSTRAINTS as usize; // TODO: this is error prone, we should compute max automatically!
     let t = t + permutation::CONSTRAINTS as usize;
     t
 }
 
-impl <F: FftField + PrimeField> Alphas<F> {
+impl<F: FftField + PrimeField> Alphas<F> {
     pub fn new<C: Cs<F>>(cs: &mut C, alpha: Var<F>) -> Self {
         unimplemented!()
     }

@@ -1,27 +1,26 @@
 use ark_ec::AffineCurve;
 use ark_ff::{FftField, PrimeField};
 
-use ark_poly::Radix2EvaluationDomain as Domain;
 use ark_poly::univariate::DensePolynomial;
+use ark_poly::Radix2EvaluationDomain as Domain;
 
 use kimchi::circuits::wires::{COLUMNS, PERMUTS};
 
-use crate::kimchi::types::VarPolyComm;
 use crate::transcript::{Absorb, Msg, VarSponge};
+use crate::types::VarPolyComm;
 
 use circuit_construction::{Constants, Cs};
 
-use kimchi::circuits::expr::{Linearization, PolishToken, ConstantExpr, Expr};
+use kimchi::circuits::expr::{ConstantExpr, Expr, Linearization, PolishToken};
 
 use std::iter;
 
 /// The fixed part of the verifier index
 /// (same across all relation circuits)
-/// 
-/// TODO: We should split the Index/SRS in Kimchi, 
+///
+/// TODO: We should split the Index/SRS in Kimchi,
 /// so that the constant part can be reused.
-pub struct ConstIndex<F: FftField + PrimeField>
-{
+pub struct ConstIndex<F: FftField + PrimeField> {
     pub domain: Domain<F>,
     pub max_poly_size: usize,
     pub zkpm: DensePolynomial<F>,
@@ -87,10 +86,10 @@ where
     pub range_check_comm: Vec<VarPolyComm<G, 1>>,
 }
 
-impl <G> Absorb<G::BaseField> for VarIndex<G>
+impl<G> Absorb<G::BaseField> for VarIndex<G>
 where
     G: AffineCurve,
-    G::BaseField: FftField + PrimeField
+    G::BaseField: FftField + PrimeField,
 {
     fn absorb<C: Cs<G::BaseField>>(&self, cs: &mut C, sponge: &mut VarSponge<G::BaseField>) {
         //
@@ -114,7 +113,7 @@ where
 
 /// An index consists of:
 ///
-/// 1. The variable part which specifies the relation circuit: 
+/// 1. The variable part which specifies the relation circuit:
 ///    must be absorbed before being touched (for adaptive soundness).
 /// 2. A fixed part which specifies row constraints etc.
 pub struct Index<G>
