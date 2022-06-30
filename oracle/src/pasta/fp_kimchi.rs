@@ -5,7 +5,7 @@ use mina_curves::pasta::Fp;
 
 use std::str::FromStr;
 
-pub(crate) fn params() -> ArithmeticSpongeParams<Fp> {
+pub fn params() -> ArithmeticSpongeParams<Fp> {
     ArithmeticSpongeParams {
         mds: vec![
             vec![
