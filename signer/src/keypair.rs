@@ -86,7 +86,7 @@ impl Keypair {
 
     /// Validates the keypair
     pub fn validate(&self) -> bool {
-        let public = Self::derive_pubkey_curve_point(self.secret.clone().into_scalar());
+        let public = Self::derive_pubkey_curve_point(self.secret.into_scalar());
         &public == self.public.point()
     }
 
