@@ -69,7 +69,7 @@ pub fn generate(mode: Mode, param_type: ParamType) -> TestVectors {
             ),
             ParamType::Kimchi => poseidon::<constants::PlonkSpongeConstantsKimchi>(
                 &input,
-                pasta::fp_kimchi::params(),
+                pasta::fp_kimchi::static_parms().clone(),
             ),
         };
 

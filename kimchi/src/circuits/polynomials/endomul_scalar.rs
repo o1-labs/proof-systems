@@ -12,13 +12,14 @@ use crate::circuits::{
 };
 use ark_ff::{BitIteratorLE, FftField, Field, PrimeField, Zero};
 use array_init::array_init;
+use commitment_dlog::srs::KimchiCurve;
 
-impl<F: FftField> CircuitGate<F> {
+impl<G: KimchiCurve> CircuitGate<G> {
     pub fn verify_endomul_scalar(
         &self,
         row: usize,
-        witness: &[Vec<F>; COLUMNS],
-        _cs: &ConstraintSystem<F>,
+        witness: &[Vec<G::ScalarField>; COLUMNS],
+        _cs: &ConstraintSystem<G>,
     ) -> Result<(), String> {
         ensure_eq!(self.typ, GateType::EndoMulScalar, "incorrect gate type");
 

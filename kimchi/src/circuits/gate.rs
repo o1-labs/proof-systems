@@ -1,8 +1,8 @@
 //! This module implements Plonk constraint gate primitive.
 
 use crate::circuits::{constraints::ConstraintSystem, wires::*};
-use ark_ff::FftField;
-use ark_ff::{bytes::ToBytes, SquareRootField};
+use ark_ff::bytes::ToBytes;
+use commitment_dlog::srs::KimchiCurve;
 use num_traits::cast::ToPrimitive;
 use o1_utils::hasher::CryptoDigest;
 use serde::{Deserialize, Serialize};
@@ -97,17 +97,17 @@ pub enum GateType {
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 /// A single gate in a circuit.
-pub struct CircuitGate<F: FftField> {
+pub struct CircuitGate<G: KimchiCurve> {
     /// type of the gate
     pub typ: GateType,
     /// gate wiring (for each cell, what cell it is wired to)
     pub wires: GateWires,
     /// public selector polynomials that can used as handy coefficients in gates
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub coeffs: Vec<F>,
+    pub coeffs: Vec<G::ScalarField>,
 }
 
-impl<F: FftField> ToBytes for CircuitGate<F> {
+impl<G: KimchiCurve> ToBytes for CircuitGate<G> {
     #[inline]
     fn write<W: Write>(&self, mut w: W) -> IoResult<()> {
         let typ: u8 = ToPrimitive::to_u8(&self.typ).unwrap();
@@ -124,7 +124,7 @@ impl<F: FftField> ToBytes for CircuitGate<F> {
     }
 }
 
-impl<F: FftField + SquareRootField> CircuitGate<F> {
+impl<G: KimchiCurve> CircuitGate<G> {
     /// this function creates "empty" circuit gate
     pub fn zero(wires: GateWires) -> Self {
         CircuitGate {
@@ -139,15 +139,15 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
     pub fn verify(
         &self,
         row: usize,
-        witness: &[Vec<F>; COLUMNS],
-        cs: &ConstraintSystem<F>,
-        public: &[F],
+        witness: &[Vec<G::ScalarField>; COLUMNS],
+        cs: &ConstraintSystem<G>,
+        public: &[G::ScalarField],
     ) -> Result<(), String> {
         use GateType::*;
         match self.typ {
             Zero => Ok(()),
             Generic => self.verify_generic(row, witness, public),
-            Poseidon => self.verify_poseidon(row, witness, cs),
+            Poseidon => self.verify_poseidon(row, witness),
             CompleteAdd => self.verify_complete_add(row, witness),
             VarBaseMul => self.verify_vbmul(row, witness),
             EndoMul => self.verify_endomul(row, witness, cs),
@@ -168,11 +168,11 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
 
 /// A circuit is specified as a series of [CircuitGate].
 #[derive(Serialize)]
-pub struct Circuit<'a, F: FftField>(
-    #[serde(bound = "CircuitGate<F>: Serialize")] pub &'a [CircuitGate<F>],
+pub struct Circuit<'a, G: KimchiCurve>(
+    #[serde(bound = "CircuitGate<G>: Serialize")] pub &'a [CircuitGate<G>],
 );
 
-impl<'a, F: FftField> CryptoDigest for Circuit<'a, F> {
+impl<'a, G: KimchiCurve> CryptoDigest for Circuit<'a, G> {
     const PREFIX: &'static [u8; 15] = b"kimchi-circuit0";
 }
 
@@ -276,6 +276,7 @@ pub mod caml {
 mod tests {
     use super::*;
     use ark_ff::UniformRand as _;
+    use mina_curves::pasta::vesta::Affine as Vesta;
     use mina_curves::pasta::Fp;
     use proptest::prelude::*;
     use rand::SeedableRng as _;
@@ -300,7 +301,7 @@ mod tests {
     }
 
     prop_compose! {
-        fn arb_circuit_gate()(typ: GateType, wires: GateWires, coeffs in arb_fp_vec(25)) -> CircuitGate<Fp> {
+        fn arb_circuit_gate()(typ: GateType, wires: GateWires, coeffs in arb_fp_vec(25)) -> CircuitGate<Vesta> {
             CircuitGate {
                 typ,
                 wires,
@@ -313,7 +314,7 @@ mod tests {
         #[test]
         fn test_gate_serialization(cg in arb_circuit_gate()) {
             let encoded = rmp_serde::to_vec(&cg).unwrap();
-            let decoded: CircuitGate<Fp> = rmp_serde::from_slice(&encoded).unwrap();
+            let decoded: CircuitGate<Vesta> = rmp_serde::from_slice(&encoded).unwrap();
             prop_assert_eq!(cg.typ, decoded.typ);
             for i in 0..PERMUTS {
                 prop_assert_eq!(cg.wires[i], decoded.wires[i]);

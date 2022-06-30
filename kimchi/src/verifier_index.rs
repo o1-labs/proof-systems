@@ -14,6 +14,7 @@ use crate::prover_index::ProverIndex;
 use ark_ff::PrimeField;
 use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D};
 use array_init::array_init;
+use commitment_dlog::srs::KimchiCurve;
 use commitment_dlog::{
     commitment::{CommitmentCurve, PolyComm},
     srs::SRS,
@@ -55,7 +56,7 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 
 #[serde_as]
 #[derive(Serialize, Deserialize)]
-pub struct VerifierIndex<G: CommitmentCurve> {
+pub struct VerifierIndex<G: CommitmentCurve + KimchiCurve> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub domain: D<G::ScalarField>,
@@ -136,7 +137,7 @@ pub struct VerifierIndex<G: CommitmentCurve> {
 }
 //~spec:endcode
 
-impl<'a, G: CommitmentCurve> ProverIndex<G>
+impl<'a, G: CommitmentCurve + KimchiCurve> ProverIndex<G>
 where
     G::BaseField: PrimeField,
 {
@@ -238,13 +239,13 @@ where
             endo: self.cs.endo,
             lookup_index,
             linearization: self.linearization.clone(),
-            fr_sponge_params: self.cs.fr_sponge_params.clone(),
+            fr_sponge_params: G::sponge_params().clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),
         }
     }
 }
 
-impl<G: CommitmentCurve> VerifierIndex<G>
+impl<G: CommitmentCurve + KimchiCurve> VerifierIndex<G>
 where
     G::BaseField: PrimeField,
 {

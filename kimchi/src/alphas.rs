@@ -243,7 +243,7 @@ mod tests {
 
     use super::*;
     use crate::circuits::gate::GateType;
-    use mina_curves::pasta::Fp;
+    use mina_curves::pasta::{vesta::Affine as Vesta, Fp};
 
     // testing [Builder]
 
@@ -321,7 +321,7 @@ mod tests {
 
     #[test]
     fn get_alphas_for_spec() {
-        let gates = vec![CircuitGate::<Fp>::zero(Wire::new(0)); 2];
+        let gates = vec![CircuitGate::<Vesta>::zero(Wire::new(0)); 2];
         let index = new_index_for_test(gates, 0);
         let (_linearization, powers_of_alpha) = expr_linearization(
             index.cs.chacha8.is_some(),

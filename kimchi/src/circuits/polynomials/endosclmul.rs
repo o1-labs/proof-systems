@@ -4,7 +4,8 @@
 
 use std::marker::PhantomData;
 
-use ark_ff::{FftField, Field, One};
+use ark_ff::{FftField, Field, One, Zero};
+use commitment_dlog::srs::KimchiCurve;
 
 use crate::circuits::constraints::ConstraintSystem;
 use crate::circuits::gate::CircuitGate;
@@ -110,7 +111,7 @@ use crate::proof::ProofEvaluations;
 
 /// Implementation of group endomorphism optimised
 /// variable base scalar multiplication custom Plonk constraints.
-impl<F: FftField> CircuitGate<F> {
+impl<G: KimchiCurve> CircuitGate<G> {
     pub fn create_endomul(wires: GateWires) -> Self {
         CircuitGate {
             typ: GateType::EndoMul,
@@ -122,26 +123,26 @@ impl<F: FftField> CircuitGate<F> {
     pub fn verify_endomul(
         &self,
         row: usize,
-        witness: &[Vec<F>; COLUMNS],
-        cs: &ConstraintSystem<F>,
+        witness: &[Vec<G::ScalarField>; COLUMNS],
+        cs: &ConstraintSystem<G>,
     ) -> Result<(), String> {
         ensure_eq!(self.typ, GateType::EndoMul, "incorrect gate type");
 
-        let this: [F; COLUMNS] = array_init::array_init(|i| witness[i][row]);
-        let next: [F; COLUMNS] = array_init::array_init(|i| witness[i][row + 1]);
+        let this: [G::ScalarField; COLUMNS] = array_init::array_init(|i| witness[i][row]);
+        let next: [G::ScalarField; COLUMNS] = array_init::array_init(|i| witness[i][row + 1]);
 
-        let pt = F::from(123456u64);
+        let pt = <G::ScalarField>::from(123456u64);
 
         let constants = expr::Constants {
-            alpha: F::zero(),
-            beta: F::zero(),
-            gamma: F::zero(),
+            alpha: <G::ScalarField>::zero(),
+            beta: <G::ScalarField>::zero(),
+            gamma: <G::ScalarField>::zero(),
             joint_combiner: None,
             mds: vec![],
             endo_coefficient: cs.endo,
         };
 
-        let evals: [ProofEvaluations<F>; 2] = [
+        let evals: [ProofEvaluations<G::ScalarField>; 2] = [
             ProofEvaluations::dummy_with_witness_evaluations(this),
             ProofEvaluations::dummy_with_witness_evaluations(next),
         ];
@@ -150,7 +151,7 @@ impl<F: FftField> CircuitGate<F> {
         for (i, c) in constraints.iter().enumerate() {
             match c.evaluate_(cs.domain.d1, pt, &evals, &constants) {
                 Ok(x) => {
-                    if x != F::zero() {
+                    if x != <G::ScalarField>::zero() {
                         return Err(format!("Bad endo equation {}", i));
                     }
                 }
@@ -161,11 +162,11 @@ impl<F: FftField> CircuitGate<F> {
         Ok(())
     }
 
-    pub fn endomul(&self) -> F {
+    pub fn endomul(&self) -> G::ScalarField {
         if self.typ == GateType::EndoMul {
-            F::one()
+            <G::ScalarField>::one()
         } else {
-            F::zero()
+            <G::ScalarField>::zero()
         }
     }
 }

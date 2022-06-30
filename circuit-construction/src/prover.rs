@@ -1,9 +1,10 @@
+use crate::writer::{Cs, GateSpec, System, Var, WitnessGenerator};
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{FftField, One, PrimeField, SquareRootField, Zero};
 use array_init::array_init;
 use commitment_dlog::{
     commitment::{CommitmentCurve, PolyComm},
-    srs::{endos, SRS},
+    srs::{endos, KimchiCurve, SRS},
 };
 use kimchi::{
     circuits::{constraints::ConstraintSystem, gate::GateType, wires::COLUMNS},
@@ -13,11 +14,6 @@ use kimchi::{
 };
 use mina_curves::pasta::{fp::Fp, fq::Fq, pallas::Affine as Other, vesta::Affine};
 use oracle::{poseidon::ArithmeticSpongeParams, FqSponge};
-
-use crate::{
-    constants::Constants,
-    writer::{Cs, GateSpec, System, Var, WitnessGenerator},
-};
 
 pub trait Cycle {
     type InnerField: FftField
@@ -65,11 +61,11 @@ pub trait Cycle {
         + std::ops::MulAssign<Self::InnerField>;
 
     type Outer: CommitmentCurve<
-        Projective = Self::OuterProj,
-        Map = Self::OuterMap,
-        ScalarField = Self::InnerField,
-        BaseField = Self::OuterField,
-    >;
+            Projective = Self::OuterProj,
+            Map = Self::OuterMap,
+            ScalarField = Self::InnerField,
+            BaseField = Self::OuterField,
+        > + KimchiCurve;
 }
 
 pub struct FpInner;
@@ -110,7 +106,7 @@ pub fn prove<G, H, EFqSponge, EFrSponge>(
 where
     H: FnMut(&mut WitnessGenerator<G::ScalarField>, Vec<Var<G::ScalarField>>),
     G::BaseField: PrimeField,
-    G: CommitmentCurve,
+    G: CommitmentCurve + KimchiCurve,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
 {
@@ -161,16 +157,15 @@ where
 
 pub fn generate_prover_index<C, H>(
     srs: std::sync::Arc<SRS<C::Outer>>,
-    constants: &Constants<C::InnerField>,
     poseidon_params: &ArithmeticSpongeParams<C::OuterField>,
     public: usize,
     main: H,
 ) -> ProverIndex<C::Outer>
 where
-    H: FnOnce(&mut System<C::InnerField>, Vec<Var<C::InnerField>>),
+    H: FnOnce(&mut System<C::Outer>, Vec<Var<C::InnerField>>),
     C: Cycle,
 {
-    let mut system: System<C::InnerField> = System {
+    let mut system: System<C::Outer> = System {
         next_variable: 0,
         gates: vec![],
     };
@@ -204,12 +199,11 @@ where
     // Other base field = self scalar field
     let (endo_q, _endo_r) = endos::<C::Inner>();
 
-    let constraint_system =
-        ConstraintSystem::<C::InnerField>::create(gates, constants.poseidon.clone())
-            .public(public)
-            .build()
-            // TODO: return a Result instead of panicking
-            .expect("couldn't construct constraint system");
+    let constraint_system = ConstraintSystem::<C::Outer>::create(gates)
+        .public(public)
+        .build()
+        // TODO: return a Result instead of panicking
+        .expect("couldn't construct constraint system");
 
     ProverIndex::<C::Outer>::create(constraint_system, poseidon_params.clone(), endo_q, srs)
 }

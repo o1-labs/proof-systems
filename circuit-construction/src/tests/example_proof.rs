@@ -57,13 +57,10 @@ fn test_example_circuit() {
     let fq_poseidon = oracle::pasta::fq_kimchi::params();
 
     // generate circuit and index
-    let prover_index = generate_prover_index::<FpInner, _>(
-        srs,
-        &proof_system_constants,
-        &fq_poseidon,
-        PUBLIC_INPUT_LENGTH,
-        |sys, p| circuit::<_, PallasAffine, _>(&proof_system_constants, None, sys, p),
-    );
+    let prover_index =
+        generate_prover_index::<FpInner, _>(srs, &fq_poseidon, PUBLIC_INPUT_LENGTH, |sys, p| {
+            circuit::<_, PallasAffine, _>(&proof_system_constants, None, sys, p)
+        });
 
     let group_map = <VestaAffine as CommitmentCurve>::Map::setup();
 

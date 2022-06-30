@@ -39,11 +39,12 @@ use crate::circuits::{
     polynomial::COLUMNS,
     wires::GateWires,
 };
-use ark_ff::{FftField, SquareRootField, Zero};
+use ark_ff::{FftField, One, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
 use array_init::array_init;
+use commitment_dlog::srs::KimchiCurve;
 use rayon::prelude::*;
 
 /// Number of constraints produced by the gate.
@@ -82,9 +83,9 @@ pub enum GenericGateSpec<F> {
     Pub,
 }
 
-impl<F: FftField> CircuitGate<F> {
+impl<G: KimchiCurve> CircuitGate<G> {
     /// This allows you to create two generic gates that will fit in one row, check [Self::create_generic_gadget] for a better to way to create these gates.
-    pub fn create_generic(wires: GateWires, c: [F; GENERIC_COEFFS * 2]) -> Self {
+    pub fn create_generic(wires: GateWires, c: [G::ScalarField; GENERIC_COEFFS * 2]) -> Self {
         CircuitGate {
             typ: GateType::Generic,
             wires,
@@ -96,33 +97,33 @@ impl<F: FftField> CircuitGate<F> {
     /// `gate1` and `gate2` as two [GenericGateSpec].
     pub fn create_generic_gadget(
         wires: GateWires,
-        gate1: GenericGateSpec<F>,
-        gate2: Option<GenericGateSpec<F>>,
+        gate1: GenericGateSpec<G::ScalarField>,
+        gate2: Option<GenericGateSpec<G::ScalarField>>,
     ) -> Self {
-        let mut coeffs = [F::zero(); GENERIC_COEFFS * 2];
+        let mut coeffs = [<G::ScalarField>::zero(); GENERIC_COEFFS * 2];
         match gate1 {
             GenericGateSpec::Add {
                 left_coeff,
                 right_coeff,
                 output_coeff,
             } => {
-                coeffs[0] = left_coeff.unwrap_or_else(F::one);
-                coeffs[1] = right_coeff.unwrap_or_else(F::one);
-                coeffs[2] = output_coeff.unwrap_or_else(|| -F::one());
+                coeffs[0] = left_coeff.unwrap_or_else(<G::ScalarField>::one);
+                coeffs[1] = right_coeff.unwrap_or_else(<G::ScalarField>::one);
+                coeffs[2] = output_coeff.unwrap_or_else(|| -<G::ScalarField>::one());
             }
             GenericGateSpec::Mul {
                 output_coeff,
                 mul_coeff,
             } => {
-                coeffs[2] = output_coeff.unwrap_or_else(|| -F::one());
-                coeffs[3] = mul_coeff.unwrap_or_else(F::one);
+                coeffs[2] = output_coeff.unwrap_or_else(|| -<G::ScalarField>::one());
+                coeffs[3] = mul_coeff.unwrap_or_else(<G::ScalarField>::one);
             }
             GenericGateSpec::Const(cst) => {
-                coeffs[0] = F::one();
+                coeffs[0] = <G::ScalarField>::one();
                 coeffs[4] = -cst;
             }
             GenericGateSpec::Pub => {
-                coeffs[0] = F::one();
+                coeffs[0] = <G::ScalarField>::one();
             }
         };
         match gate2 {
@@ -131,23 +132,23 @@ impl<F: FftField> CircuitGate<F> {
                 right_coeff,
                 output_coeff,
             }) => {
-                coeffs[5] = left_coeff.unwrap_or_else(F::one);
-                coeffs[6] = right_coeff.unwrap_or_else(F::one);
-                coeffs[7] = output_coeff.unwrap_or_else(|| -F::one());
+                coeffs[5] = left_coeff.unwrap_or_else(<G::ScalarField>::one);
+                coeffs[6] = right_coeff.unwrap_or_else(<G::ScalarField>::one);
+                coeffs[7] = output_coeff.unwrap_or_else(|| -<G::ScalarField>::one());
             }
             Some(GenericGateSpec::Mul {
                 output_coeff,
                 mul_coeff,
             }) => {
-                coeffs[7] = output_coeff.unwrap_or_else(|| -F::one());
-                coeffs[8] = mul_coeff.unwrap_or_else(F::one);
+                coeffs[7] = output_coeff.unwrap_or_else(|| -<G::ScalarField>::one());
+                coeffs[8] = mul_coeff.unwrap_or_else(<G::ScalarField>::one);
             }
             Some(GenericGateSpec::Const(cst)) => {
-                coeffs[5] = F::one();
+                coeffs[5] = <G::ScalarField>::one();
                 coeffs[9] = -cst;
             }
             Some(GenericGateSpec::Pub) => {
-                coeffs[5] = F::one();
+                coeffs[5] = <G::ScalarField>::one();
                 unimplemented!();
             }
             None => (),
@@ -165,16 +166,16 @@ impl<F: FftField> CircuitGate<F> {
 //~
 //~ where the $c_i$ are the [coefficients]().
 
-impl<F: FftField + SquareRootField> ConstraintSystem<F> {
+impl<G: KimchiCurve> ConstraintSystem<G> {
     /// generic constraint quotient poly contribution computation
     pub fn gnrc_quot(
         &self,
-        mut alphas: impl Iterator<Item = F>,
-        witness_cols_d4: &[Evaluations<F, D<F>>; COLUMNS],
-    ) -> Evaluations<F, D<F>> {
+        mut alphas: impl Iterator<Item = G::ScalarField>,
+        witness_cols_d4: &[Evaluations<G::ScalarField, D<G::ScalarField>>; COLUMNS],
+    ) -> Evaluations<G::ScalarField, D<G::ScalarField>> {
         let generic_gate = |alpha_pow, coeff_offset, register_offset| {
             let mut res = Evaluations::from_vec_and_domain(
-                vec![F::zero(); self.domain.d4.size()],
+                vec![<G::ScalarField>::zero(); self.domain.d4.size()],
                 self.domain.d4,
             );
 
@@ -240,10 +241,10 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// alpha * generic(zeta) * w[2](zeta)
     /// ```
     pub fn gnrc_scalars(
-        mut alphas: impl Iterator<Item = F>,
-        w_zeta: &[F; COLUMNS],
-        generic_zeta: F,
-    ) -> Vec<F> {
+        mut alphas: impl Iterator<Item = G::ScalarField>,
+        w_zeta: &[G::ScalarField; COLUMNS],
+        generic_zeta: G::ScalarField,
+    ) -> Vec<G::ScalarField> {
         // setup
         let mut res = vec![];
 
@@ -278,10 +279,10 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// generic constraint linearization poly contribution computation
     pub fn gnrc_lnrz(
         &self,
-        alphas: impl Iterator<Item = F>,
-        w_zeta: &[F; COLUMNS],
-        generic_zeta: F,
-    ) -> Evaluations<F, D<F>> {
+        alphas: impl Iterator<Item = G::ScalarField>,
+        w_zeta: &[G::ScalarField; COLUMNS],
+        generic_zeta: G::ScalarField,
+    ) -> Evaluations<G::ScalarField, D<G::ScalarField>> {
         let d1 = self.domain.d1;
         let n = d1.size();
 
@@ -289,7 +290,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let scalars = Self::gnrc_scalars(alphas, w_zeta, generic_zeta);
 
         //
-        let mut res = Evaluations::from_vec_and_domain(vec![F::zero(); n], d1);
+        let mut res = Evaluations::from_vec_and_domain(vec![<G::ScalarField>::zero(); n], d1);
 
         let scale = self.coefficients8[0].evals.len() / n;
 
@@ -312,19 +313,19 @@ pub mod testing {
     use crate::circuits::wires::Wire;
     use itertools::iterate;
 
-    impl<F: FftField> CircuitGate<F> {
+    impl<G: KimchiCurve> CircuitGate<G> {
         /// verifies that the generic gate constraints are solved by the witness
         pub fn verify_generic(
             &self,
             row: usize,
-            witness: &[Vec<F>; COLUMNS],
-            public: &[F],
+            witness: &[Vec<G::ScalarField>; COLUMNS],
+            public: &[G::ScalarField],
         ) -> Result<(), String> {
             // assignments
-            let this: [F; COLUMNS] = array_init(|i| witness[i][row]);
+            let this: [G::ScalarField; COLUMNS] = array_init(|i| witness[i][row]);
 
             // constants
-            let zero = F::zero();
+            let zero = <G::ScalarField>::zero();
 
             // check if it's the correct gate
             ensure_eq!(self.typ, GateType::Generic, "generic: incorrect gate");
@@ -337,9 +338,12 @@ pub mod testing {
                     * this[register_offset]
                     * this[register_offset + 1];
                 let public = if coeffs_offset == 0 {
-                    public.get(row).cloned().unwrap_or_else(F::zero)
+                    public
+                        .get(row)
+                        .cloned()
+                        .unwrap_or_else(<G::ScalarField>::zero)
                 } else {
-                    F::zero()
+                    <G::ScalarField>::zero()
                 };
                 ensure_eq!(
                     zero,
@@ -354,12 +358,12 @@ pub mod testing {
         }
     }
 
-    impl<F: FftField + SquareRootField> ConstraintSystem<F> {
+    impl<G: KimchiCurve> ConstraintSystem<G> {
         /// Function to verify the generic polynomials with a witness.
         pub fn verify_generic(
             &self,
-            witness: &[DensePolynomial<F>; COLUMNS],
-            public: &DensePolynomial<F>,
+            witness: &[DensePolynomial<G::ScalarField>; COLUMNS],
+            public: &DensePolynomial<G::ScalarField>,
         ) -> bool {
             let coefficientsm: [_; COLUMNS] =
                 array_init(|i| self.coefficients8[i].clone().interpolate());
@@ -398,7 +402,7 @@ pub mod testing {
     }
 
     /// function to create a generic circuit
-    pub fn create_circuit<F: FftField>(start_row: usize, public: usize) -> Vec<CircuitGate<F>> {
+    pub fn create_circuit<G: KimchiCurve>(start_row: usize, public: usize) -> Vec<CircuitGate<G>> {
         // create constraint system with a single generic gate
         let mut gates = vec![];
 
@@ -495,13 +499,13 @@ mod tests {
     use ark_ff::{UniformRand, Zero};
     use ark_poly::{EvaluationDomain, Polynomial};
     use array_init::array_init;
-    use mina_curves::pasta::fp::Fp;
+    use mina_curves::pasta::{fp::Fp, vesta::Affine as Vesta};
     use rand::SeedableRng;
 
     #[test]
     fn test_generic_polynomial() {
         // create circuit
-        let gates = testing::create_circuit::<Fp>(0, 0);
+        let gates = testing::create_circuit::<Vesta>(0, 0);
 
         // create constraint system
         let cs = ConstraintSystem::fp_for_testing(gates);

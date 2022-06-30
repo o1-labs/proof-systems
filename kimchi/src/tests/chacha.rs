@@ -61,7 +61,7 @@ fn chacha_prover() {
     for _ in 0..num_chachas {
         gates.extend(chacha::testing::chacha20_gates())
     }
-    let gates: Vec<CircuitGate<Fp>> = gates
+    let gates: Vec<CircuitGate<Affine>> = gates
         .into_iter()
         .enumerate()
         .map(|(i, typ)| CircuitGate {
@@ -113,7 +113,7 @@ fn chacha_setup_bad_lookup(table_id: i32) {
         GateType::ChaCha0,
         GateType::Zero,
     ];
-    let gates: Vec<CircuitGate<Fp>> = gates
+    let gates: Vec<CircuitGate<Affine>> = gates
         .into_iter()
         .enumerate()
         .map(|(i, typ)| CircuitGate {

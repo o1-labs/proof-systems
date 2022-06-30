@@ -1,3 +1,4 @@
+use commitment_dlog::srs::KimchiCurve;
 use kimchi::{
     circuits::{
         gate::CircuitGate,
@@ -7,11 +8,11 @@ use kimchi::{
     prover_index::testing::new_index_for_test,
 };
 use kimchi_visu::{visu, Witness};
-use mina_curves::pasta::Fp;
+use mina_curves::pasta::vesta::Affine as Vesta;
 
 fn main() {
     let public = 3;
-    let poseidon_params = oracle::pasta::fp_kimchi::params();
+    let poseidon_params = Vesta::sponge_params().clone();
 
     // create circuit
     let (gates, row) = {
@@ -20,7 +21,7 @@ fn main() {
         // public input
         let row = {
             for i in 0..public {
-                let g = CircuitGate::<Fp>::create_generic_gadget(
+                let g = CircuitGate::<Vesta>::create_generic_gadget(
                     Wire::new(i),
                     GenericGateSpec::Pub,
                     None,
@@ -33,7 +34,7 @@ fn main() {
         // poseidon
         let row = {
             let round_constants = &poseidon_params.round_constants;
-            let (g, row) = CircuitGate::<Fp>::create_poseidon_gadget(
+            let (g, row) = CircuitGate::<Vesta>::create_poseidon_gadget(
                 row,
                 [Wire::new(row), Wire::new(row + 11)],
                 round_constants,

@@ -1,6 +1,9 @@
 use ark_ec::AffineCurve;
 use ark_ff::Field;
-use commitment_dlog::{commitment::CommitmentCurve, srs::endos};
+use commitment_dlog::{
+    commitment::CommitmentCurve,
+    srs::{endos, KimchiCurve},
+};
 use mina_curves::pasta::{pallas::Affine as PallasAffine, vesta::Affine as VestaAffine, Fp, Fq};
 use oracle::poseidon::ArithmeticSpongeParams;
 
@@ -21,7 +24,7 @@ pub fn fp_constants() -> Constants<Fp> {
         .to_coordinates()
         .unwrap();
     Constants {
-        poseidon: oracle::pasta::fp_kimchi::params(),
+        poseidon: VestaAffine::sponge_params().clone(),
         endo: endo_q,
         base,
     }

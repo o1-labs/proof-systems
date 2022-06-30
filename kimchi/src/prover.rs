@@ -36,8 +36,9 @@ use ark_poly::{
     Radix2EvaluationDomain as D, UVPolynomial,
 };
 use array_init::array_init;
-use commitment_dlog::commitment::{
-    b_poly_coefficients, BlindedCommitment, CommitmentCurve, PolyComm,
+use commitment_dlog::{
+    commitment::{b_poly_coefficients, BlindedCommitment, CommitmentCurve, PolyComm},
+    srs::KimchiCurve,
 };
 use itertools::Itertools;
 use o1_utils::ExtendedDensePolynomial as _;
@@ -108,7 +109,7 @@ where
     runtime_second_col_d8: Option<Evaluations<F, D<F>>>,
 }
 
-impl<G: CommitmentCurve> ProverProof<G>
+impl<G: CommitmentCurve + KimchiCurve> ProverProof<G>
 where
     G::BaseField: PrimeField,
 {
@@ -488,7 +489,7 @@ where
             //~~ - Compute the lookup aggregation polynomial.
             let joint_lookup_table_d8 = lookup_context.joint_lookup_table_d8.as_ref().unwrap();
 
-            let aggreg = lookup::constraints::aggregation::<_, G::ScalarField>(
+            let aggreg = lookup::constraints::aggregation::<_, G>(
                 lookup_context.dummy_lookup_value.unwrap(),
                 joint_lookup_table_d8,
                 index.cs.domain.d1,
@@ -587,6 +588,7 @@ where
                 ));
             }
 
+            let mds = G::sponge_params().mds.clone();
             Environment {
                 constants: Constants {
                     alpha,
@@ -594,7 +596,7 @@ where
                     gamma,
                     joint_combiner: lookup_context.joint_combiner,
                     endo_coefficient: index.cs.endo,
-                    mds: index.cs.fr_sponge_params.mds.clone(),
+                    mds,
                 },
                 witness: &lagrange.d8.this.w,
                 coefficient: &index.cs.coefficients8,
@@ -1034,7 +1036,8 @@ where
 
         //~ 1. Setup the Fr-Sponge
         let fq_sponge_before_evaluations = fq_sponge.clone();
-        let mut fr_sponge = EFrSponge::new(index.cs.fr_sponge_params.clone());
+        let params = G::sponge_params().clone();
+        let mut fr_sponge = EFrSponge::new(params);
 
         //~ 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
         fr_sponge.absorb(&fq_sponge.digest());

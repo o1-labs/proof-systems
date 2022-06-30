@@ -19,9 +19,12 @@ use crate::{
 };
 use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Polynomial};
-use commitment_dlog::commitment::{
-    b_poly, b_poly_coefficients, combined_inner_product, BatchEvaluationProof, CommitmentCurve,
-    Evaluation, PolyComm,
+use commitment_dlog::{
+    commitment::{
+        b_poly, b_poly_coefficients, combined_inner_product, BatchEvaluationProof, CommitmentCurve,
+        Evaluation, PolyComm,
+    },
+    srs::KimchiCurve,
 };
 use itertools::izip;
 use oracle::{sponge::ScalarChallenge, FqSponge};
@@ -59,7 +62,7 @@ where
     pub combined_inner_product: G::ScalarField,
 }
 
-impl<G: CommitmentCurve> ProverProof<G>
+impl<G: CommitmentCurve + KimchiCurve> ProverProof<G>
 where
     G::BaseField: PrimeField,
 {
@@ -474,7 +477,7 @@ fn to_batch<'a, G, EFqSponge, EFrSponge>(
     proof: &'a ProverProof<G>,
 ) -> Result<BatchEvaluationProof<'a, G, EFqSponge>>
 where
-    G: CommitmentCurve,
+    G: CommitmentCurve + KimchiCurve,
     G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
@@ -541,7 +544,7 @@ where
         let alphas = all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
 
         let mut commitments = vec![&index.sigma_comm[PERMUTS - 1]];
-        let mut scalars = vec![ConstraintSystem::perm_scalars(
+        let mut scalars = vec![ConstraintSystem::<G>::perm_scalars(
             &evals,
             oracles.beta,
             oracles.gamma,
@@ -554,8 +557,11 @@ where
             let alphas =
                 all_alphas.get_alphas(ArgumentType::Gate(GateType::Generic), generic::CONSTRAINTS);
 
-            let generic_scalars =
-                &ConstraintSystem::gnrc_scalars(alphas, &evals[0].w, evals[0].generic_selector);
+            let generic_scalars = &ConstraintSystem::<G>::gnrc_scalars(
+                alphas,
+                &evals[0].w,
+                evals[0].generic_selector,
+            );
 
             let generic_com = index.coefficients_comm.iter().take(generic_scalars.len());
 
@@ -895,7 +901,7 @@ pub fn verify<G, EFqSponge, EFrSponge>(
     proof: &ProverProof<G>,
 ) -> Result<()>
 where
-    G: CommitmentCurve,
+    G: CommitmentCurve + KimchiCurve,
     G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
@@ -913,7 +919,7 @@ pub fn batch_verify<G, EFqSponge, EFrSponge>(
     proofs: &[(&VerifierIndex<G>, &ProverProof<G>)],
 ) -> Result<()>
 where
-    G: CommitmentCurve,
+    G: CommitmentCurve + KimchiCurve,
     G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,

@@ -1,5 +1,6 @@
 use ark_ff::{BigInteger, FftField, PrimeField};
 use array_init::array_init;
+use commitment_dlog::srs::KimchiCurve;
 use kimchi::circuits::{
     gate::{CircuitGate, GateType},
     wires::{Wire, COLUMNS},
@@ -29,10 +30,10 @@ pub struct GateSpec<F: FftField> {
     pub c: Vec<F>,
 }
 
-pub struct System<F: FftField> {
+pub struct System<G: KimchiCurve> {
     pub next_variable: usize,
     // pub equivalence_classes: HashMap<Var, Vec<Position>>,
-    pub gates: Vec<GateSpec<F>>,
+    pub gates: Vec<GateSpec<G::ScalarField>>,
 }
 
 pub struct WitnessGenerator<F> {
@@ -696,8 +697,8 @@ impl<F: FftField> WitnessGenerator<F> {
     }
 }
 
-impl<F: FftField + PrimeField> Cs<F> for System<F> {
-    fn var<G>(&mut self, _: G) -> Var<F> {
+impl<G: KimchiCurve> Cs<G::ScalarField> for System<G> {
+    fn var<V>(&mut self, _: V) -> Var<G::ScalarField> {
         let v = self.next_variable;
         self.next_variable += 1;
         Var {
@@ -710,14 +711,14 @@ impl<F: FftField + PrimeField> Cs<F> for System<F> {
         self.gates.len()
     }
 
-    fn gate(&mut self, g: GateSpec<F>) {
+    fn gate(&mut self, g: GateSpec<G::ScalarField>) {
         self.gates.push(g);
     }
 }
 
-impl<F: FftField> System<F> {
+impl<G: KimchiCurve> System<G> {
     /// Compiles our intermediate representation into a circuit.
-    pub fn gates(&self) -> Vec<CircuitGate<F>> {
+    pub fn gates(&self) -> Vec<CircuitGate<G>> {
         let mut first_cell: HashMap<usize, Wire> = HashMap::new();
         let mut most_recent_cell: HashMap<usize, Wire> = HashMap::new();
         let mut gates = vec![];

@@ -1,19 +1,23 @@
 //! This module implements the Marlin structured reference string primitive
 
 use crate::commitment::CommitmentCurve;
-use ark_ec::{AffineCurve, ProjectiveCurve};
+use ark_ec::{
+    short_weierstrass_jacobian::GroupAffine, AffineCurve, ModelParameters, ProjectiveCurve,
+};
 use ark_ff::{BigInteger, PrimeField};
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
 use array_init::array_init;
 use blake2::{Blake2b512, Digest};
 use groupmap::GroupMap;
+use mina_curves::pasta::{pallas::PallasParameters, vesta::VestaParameters};
+use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::collections::HashMap;
 
 #[serde_as]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct SRS<G: CommitmentCurve> {
+pub struct SRS<G: CommitmentCurve + KimchiCurve> {
     /// The vector of group elements for committing to polynomials in coefficient form
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub g: Vec<G>,
@@ -71,7 +75,7 @@ where
     G::of_coordinates(x, y)
 }
 
-impl<G: CommitmentCurve> SRS<G>
+impl<G: CommitmentCurve + KimchiCurve> SRS<G>
 where
     G::BaseField: PrimeField,
 {
@@ -188,5 +192,44 @@ where
             endo_r,
             endo_q,
         }
+    }
+}
+
+pub trait KimchiCurve: CommitmentCurve {
+    type OtherCurve: KimchiCurve;
+
+    fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField>;
+
+    //q,r endos
+    fn endos() -> &'static (Self::BaseField, Self::ScalarField);
+}
+
+//static ref VESTA_ENDOS:(VestaParameters::BaseField,VestaParameters::ScalarField) = endos();
+lazy_static::lazy_static! {
+    static ref VESTA_ENDOS:(<VestaParameters as ModelParameters>::BaseField,<VestaParameters as ModelParameters>::ScalarField) = endos::<GroupAffine<VestaParameters>>();
+    static ref PALLAS_ENDOS:(<PallasParameters as ModelParameters>::BaseField,<PallasParameters as ModelParameters>::ScalarField) = endos::<GroupAffine<PallasParameters>>();
+}
+impl KimchiCurve for GroupAffine<VestaParameters> {
+    type OtherCurve = GroupAffine<PallasParameters>;
+
+    fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
+        oracle::pasta::fp_kimchi::static_parms()
+    }
+
+    fn endos() -> &'static (Self::BaseField, Self::ScalarField) {
+        &VESTA_ENDOS
+    }
+}
+
+impl KimchiCurve for GroupAffine<PallasParameters> {
+    type OtherCurve = GroupAffine<VestaParameters>;
+
+    fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
+        oracle::pasta::fq_kimchi::static_parms()
+    }
+
+    fn endos() -> &'static (Self::BaseField, Self::ScalarField) {
+        //&PALLAS_ENDOS
+        &PALLAS_ENDOS
     }
 }

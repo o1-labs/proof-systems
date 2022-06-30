@@ -31,7 +31,7 @@ type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 #[derive(Default)]
 pub(crate) struct TestFramework {
-    gates: Option<Vec<CircuitGate<Fp>>>,
+    gates: Option<Vec<CircuitGate<Affine>>>,
     witness: Option<[Vec<Fp>; COLUMNS]>,
     public_inputs: Vec<Fp>,
     lookup_tables: Vec<LookupTable<Fp>>,
@@ -47,7 +47,7 @@ pub(crate) struct TestRunner(TestFramework);
 
 impl TestFramework {
     #[must_use]
-    pub(crate) fn gates(mut self, gates: Vec<CircuitGate<Fp>>) -> Self {
+    pub(crate) fn gates(mut self, gates: Vec<CircuitGate<Affine>>) -> Self {
         self.gates = Some(gates);
         self
     }

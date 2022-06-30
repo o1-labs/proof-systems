@@ -12,7 +12,8 @@
 
 use std::marker::PhantomData;
 
-use ark_ff::{FftField, One};
+use ark_ff::{FftField, One, Zero};
+use commitment_dlog::srs::KimchiCurve;
 use CurrOrNext::{Curr, Next};
 
 use crate::circuits::{
@@ -129,7 +130,7 @@ use crate::circuits::{
 //~ `0 = n' - (b4 + 2 * (b3 + 2 * (b2 + 2 * (b1 + 2 * (b0 + 2*n)))))`
 //~
 
-impl<F: FftField> CircuitGate<F> {
+impl<G: KimchiCurve> CircuitGate<G> {
     pub fn create_vbmul(wires: &[GateWires; 2]) -> Vec<Self> {
         vec![
             CircuitGate {
@@ -145,16 +146,20 @@ impl<F: FftField> CircuitGate<F> {
         ]
     }
 
-    pub fn verify_vbmul(&self, _row: usize, _witness: &[Vec<F>; COLUMNS]) -> Result<(), String> {
+    pub fn verify_vbmul(
+        &self,
+        _row: usize,
+        _witness: &[Vec<G::ScalarField>; COLUMNS],
+    ) -> Result<(), String> {
         // TODO: implement
         Ok(())
     }
 
-    pub fn vbmul(&self) -> F {
+    pub fn vbmul(&self) -> G::ScalarField {
         if self.typ == GateType::VarBaseMul {
-            F::one()
+            <G::ScalarField>::one()
         } else {
-            F::zero()
+            <G::ScalarField>::zero()
         }
     }
 }

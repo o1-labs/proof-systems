@@ -1,7 +1,7 @@
 use crate::circuits::gate::CircuitGate;
 use crate::circuits::polynomials::turshi::{testing::*, witness::*};
 use cairo::{CairoMemory, CairoProgram};
-use mina_curves::pasta::fp::Fp as F;
+use mina_curves::pasta::{fp::Fp as F, vesta::Affine as Vesta};
 
 #[test]
 fn test_cairo_should_fail() {
@@ -17,7 +17,7 @@ fn test_cairo_should_fail() {
     // Create the Cairo circuit
     let ninstr = prog.trace().len();
     let inirow = 0;
-    let (circuit, _) = CircuitGate::<F>::create_cairo_gadget(inirow, ninstr);
+    let (circuit, _) = CircuitGate::<Vesta>::create_cairo_gadget(inirow, ninstr);
 
     let mut witness = cairo_witness(&prog);
     // break a witness
@@ -70,7 +70,7 @@ fn test_cairo_gate() {
     // Create the Cairo circuit
     let ninstr = prog.trace().len();
     let inirow = 0;
-    let (circuit, _) = CircuitGate::<F>::create_cairo_gadget(inirow, ninstr);
+    let (circuit, _) = CircuitGate::<Vesta>::create_cairo_gadget(inirow, ninstr);
 
     // Verify each gate
     let mut row = 0;

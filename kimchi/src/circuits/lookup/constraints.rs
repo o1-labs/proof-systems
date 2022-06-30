@@ -11,8 +11,9 @@ use crate::{
     },
     error::ProverError,
 };
-use ark_ff::{FftField, One, Zero};
+use ark_ff::{FftField, Field, One, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
+use commitment_dlog::srs::KimchiCurve;
 use o1_utils::adjacent_pairs::AdjacentPairs;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -79,24 +80,21 @@ pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
 
 /// Computes the sorted lookup tables required by the lookup argument.
 #[allow(clippy::too_many_arguments)]
-pub fn sorted<F>(
-    dummy_lookup_value: F,
-    joint_lookup_table_d8: &Evaluations<F, D<F>>,
-    d1: D<F>,
-    gates: &[CircuitGate<F>],
-    witness: &[Vec<F>; COLUMNS],
-    joint_combiner: F,
-    table_id_combiner: F,
+pub fn sorted<G: KimchiCurve>(
+    dummy_lookup_value: G::ScalarField,
+    joint_lookup_table_d8: &Evaluations<G::ScalarField, D<G::ScalarField>>,
+    d1: D<G::ScalarField>,
+    gates: &[CircuitGate<G>],
+    witness: &[Vec<G::ScalarField>; COLUMNS],
+    joint_combiner: G::ScalarField,
+    table_id_combiner: G::ScalarField,
     lookup_info: &LookupInfo,
-) -> Result<Vec<Vec<F>>, ProverError>
-where
-    F: FftField,
-{
+) -> Result<Vec<Vec<G::ScalarField>>, ProverError> {
     // We pad the lookups so that it is as if we lookup exactly
     // `max_lookups_per_row` in every row.
 
     let n = d1.size();
-    let mut counts: HashMap<&F, usize> = HashMap::new();
+    let mut counts: HashMap<&G::ScalarField, usize> = HashMap::new();
 
     let lookup_rows = n - ZK_ROWS - 1;
     let by_row = lookup_info.by_row(gates);
@@ -125,7 +123,7 @@ where
         let spec = row;
         let padding = max_lookups_per_row - spec.len();
         for joint_lookup in spec.iter() {
-            let eval = |pos: LocalPosition| -> F {
+            let eval = |pos: LocalPosition| -> G::ScalarField {
                 let row = match pos.row {
                     Curr => i,
                     Next => i + 1,
@@ -143,7 +141,7 @@ where
     }
 
     let sorted = {
-        let mut sorted: Vec<Vec<F>> =
+        let mut sorted: Vec<Vec<G::ScalarField>> =
             vec![Vec::with_capacity(lookup_rows + 1); max_lookups_per_row + 1];
 
         let mut i = 0;
@@ -219,29 +217,29 @@ where
 /// after multiplying all of the values, all of the terms will have cancelled if s is a sorting of f and t, and the final term will be 1
 /// because of the random choice of beta and gamma, there is negligible probability that the terms will cancel if s is not a sorting of f and t
 #[allow(clippy::too_many_arguments)]
-pub fn aggregation<R, F>(
-    dummy_lookup_value: F,
-    joint_lookup_table_d8: &Evaluations<F, D<F>>,
-    d1: D<F>,
-    gates: &[CircuitGate<F>],
-    witness: &[Vec<F>; COLUMNS],
-    joint_combiner: &F,
-    table_id_combiner: &F,
-    beta: F,
-    gamma: F,
-    sorted: &[Evaluations<F, D<F>>],
+pub fn aggregation<R, G>(
+    dummy_lookup_value: G::ScalarField,
+    joint_lookup_table_d8: &Evaluations<G::ScalarField, D<G::ScalarField>>,
+    d1: D<G::ScalarField>,
+    gates: &[CircuitGate<G>],
+    witness: &[Vec<G::ScalarField>; COLUMNS],
+    joint_combiner: &G::ScalarField,
+    table_id_combiner: &G::ScalarField,
+    beta: G::ScalarField,
+    gamma: G::ScalarField,
+    sorted: &[Evaluations<G::ScalarField, D<G::ScalarField>>],
     rng: &mut R,
     lookup_info: &LookupInfo,
-) -> Result<Evaluations<F, D<F>>, ProverError>
+) -> Result<Evaluations<G::ScalarField, D<G::ScalarField>>, ProverError>
 where
     R: Rng + ?Sized,
-    F: FftField,
+    G: KimchiCurve,
 {
     let n = d1.size();
     let lookup_rows = n - ZK_ROWS - 1;
-    let beta1 = F::one() + beta;
+    let beta1: G::ScalarField = <G::ScalarField>::one() + beta;
     let gammabeta1 = gamma * beta1;
-    let mut lookup_aggreg = vec![F::one()];
+    let mut lookup_aggreg = vec![<G::ScalarField>::one()];
 
     lookup_aggreg.extend((0..lookup_rows).map(|row| {
         sorted
@@ -255,14 +253,14 @@ where
                 };
                 gammabeta1 + s[i1] + beta * s[i2]
             })
-            .fold(F::one(), |acc, x| acc * x)
+            .fold(<G::ScalarField>::one(), |acc, x| acc * x)
     }));
-    ark_ff::fields::batch_inversion::<F>(&mut lookup_aggreg[1..]);
+    ark_ff::fields::batch_inversion::<G::ScalarField>(&mut lookup_aggreg[1..]);
 
     let max_lookups_per_row = lookup_info.max_per_row;
 
     let complements_with_beta_term = {
-        let mut v = vec![F::one()];
+        let mut v = vec![<G::ScalarField>::one()];
         let x = gamma + dummy_lookup_value;
         for i in 1..(max_lookups_per_row + 1) {
             v.push(v[i - 1] * x)
@@ -280,7 +278,7 @@ where
         .enumerate()
         .for_each(|(i, ((t0, t1), spec))| {
             let f_chunk = {
-                let eval = |pos: LocalPosition| -> F {
+                let eval = |pos: LocalPosition| -> G::ScalarField {
                     let row = match pos.row {
                         Curr => i,
                         Next => i + 1,
@@ -315,7 +313,7 @@ where
     // check that the final evaluation is equal to 1
     if cfg!(debug_assertions) {
         let final_val = res.evals[d1.size() - (ZK_ROWS + 1)];
-        if final_val != F::one() {
+        if final_val != <G::ScalarField>::one() {
             panic!("aggregation incorrect: {}", final_val);
         }
     }
@@ -557,16 +555,16 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>) -> Vec<E
 
 /// Checks that all the lookup constraints are satisfied.
 #[allow(clippy::too_many_arguments)]
-pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
-    dummy_lookup_value: F,
-    lookup_table: G,
+pub fn verify<G: KimchiCurve, I: Iterator<Item = G::ScalarField>, T: Fn() -> I>(
+    dummy_lookup_value: G::ScalarField,
+    lookup_table: T,
     lookup_table_entries: usize,
-    d1: D<F>,
-    gates: &[CircuitGate<F>],
-    witness: &[Vec<F>; COLUMNS],
-    joint_combiner: &F,
-    table_id_combiner: &F,
-    sorted: &[Evaluations<F, D<F>>],
+    d1: D<G::ScalarField>,
+    gates: &[CircuitGate<G>],
+    witness: &[Vec<G::ScalarField>; COLUMNS],
+    joint_combiner: &G::ScalarField,
+    table_id_combiner: &G::ScalarField,
+    sorted: &[Evaluations<G::ScalarField, D<G::ScalarField>>],
     lookup_info: &LookupInfo,
 ) {
     sorted
@@ -587,7 +585,8 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
     }
 
     // Check sorting
-    let mut sorted_joined: Vec<F> = Vec::with_capacity((lookup_rows + 1) * sorted.len());
+    let mut sorted_joined: Vec<G::ScalarField> =
+        Vec::with_capacity((lookup_rows + 1) * sorted.len());
     for (i, s) in sorted.iter().enumerate() {
         let es = s.evals.iter().take(lookup_rows + 1);
         if i % 2 == 0 {
@@ -608,7 +607,7 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
     let by_row = lookup_info.by_row(gates);
 
     // Compute lookups||table and check multiset equality
-    let sorted_counts: HashMap<F, usize> = {
+    let sorted_counts: HashMap<G::ScalarField, usize> = {
         let mut counts = HashMap::new();
         for (i, s) in sorted.iter().enumerate() {
             if i % 2 == 0 {
@@ -624,12 +623,12 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
         counts
     };
 
-    let mut all_lookups: HashMap<F, usize> = HashMap::new();
+    let mut all_lookups: HashMap<G::ScalarField, usize> = HashMap::new();
     lookup_table()
         .take(lookup_rows)
         .for_each(|t| *all_lookups.entry(t).or_insert(0) += 1);
     for (i, spec) in by_row.iter().take(lookup_rows).enumerate() {
-        let eval = |pos: LocalPosition| -> F {
+        let eval = |pos: LocalPosition| -> G::ScalarField {
             let row = match pos.row {
                 Curr => i,
                 Next => i + 1,

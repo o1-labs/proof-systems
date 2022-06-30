@@ -6,6 +6,7 @@
 //!     producing the batched opening proof
 //! 3. Verify batch of batched opening proofs
 
+use crate::srs::KimchiCurve;
 use crate::{error::CommitmentError, srs::SRS};
 use ark_ec::{
     models::short_weierstrass_jacobian::GroupAffine as SWJAffine, msm::VariableBaseMSM,
@@ -499,7 +500,7 @@ where
     pub opening: &'a OpeningProof<G>,
 }
 
-impl<G: CommitmentCurve> SRS<G> {
+impl<G: CommitmentCurve + KimchiCurve> SRS<G> {
     /// Commits a polynomial, potentially splitting the result in multiple commitments.
     pub fn commit(
         &self,

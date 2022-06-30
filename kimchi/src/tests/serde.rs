@@ -24,6 +24,8 @@ type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 #[cfg(test)]
 mod tests {
 
+    use commitment_dlog::srs::KimchiCurve;
+
     use super::*;
 
     #[test]
@@ -76,7 +78,7 @@ mod tests {
         let mut srs = SRS::<GroupAffine<VestaParameters>>::create(verifier_index.max_poly_size);
         srs.add_lagrange_basis(verifier_index.domain);
         verifier_index_deserialize.fq_sponge_params = oracle::pasta::fq_kimchi::params();
-        verifier_index_deserialize.fr_sponge_params = oracle::pasta::fp_kimchi::params();
+        verifier_index_deserialize.fr_sponge_params = Affine::sponge_params().clone();
         verifier_index_deserialize.powers_of_alpha = index.powers_of_alpha;
         verifier_index_deserialize.linearization = index.linearization;
 

@@ -25,19 +25,21 @@
 //~ ```
 //~
 
-use crate::circuits::argument::{Argument, ArgumentType};
-use crate::circuits::expr::{prologue::*, Cache, ConstantExpr};
-use crate::circuits::gate::{CircuitGate, CurrOrNext, GateType};
-use ark_ff::{FftField, Field, SquareRootField};
-use oracle::constants::{PlonkSpongeConstantsKimchi, SpongeConstants};
-use oracle::poseidon::{sbox, ArithmeticSponge, ArithmeticSpongeParams, Sponge};
-use std::marker::PhantomData;
-use std::ops::Range;
+use crate::circuits::{
+    argument::{Argument, ArgumentType},
+    expr::{prologue::*, Cache, ConstantExpr},
+    gate::{CircuitGate, CurrOrNext, GateType},
+    polynomial::COLUMNS,
+    wires::{GateWires, Wire},
+};
+use ark_ff::{FftField, Field, One, Zero};
+use commitment_dlog::srs::KimchiCurve;
+use oracle::{
+    constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
+    poseidon::{sbox, ArithmeticSponge, ArithmeticSpongeParams, Sponge},
+};
+use std::{marker::PhantomData, ops::Range};
 use CurrOrNext::{Curr, Next};
-
-use crate::circuits::constraints::ConstraintSystem;
-use crate::circuits::polynomial::COLUMNS;
-use crate::circuits::wires::{GateWires, Wire};
 
 //
 // Constants
@@ -73,11 +75,11 @@ pub const fn round_to_cols(i: usize) -> Range<usize> {
     start..(start + SPONGE_WIDTH)
 }
 
-impl<F: FftField + SquareRootField> CircuitGate<F> {
+impl<G: KimchiCurve> CircuitGate<G> {
     pub fn create_poseidon(
         wires: GateWires,
         // Coefficients are passed in in the logical order
-        coeffs: [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW],
+        coeffs: [[G::ScalarField; SPONGE_WIDTH]; ROUNDS_PER_ROW],
     ) -> Self {
         CircuitGate {
             typ: GateType::Poseidon,
@@ -97,7 +99,7 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
         row: usize,
         // first and last row of the poseidon circuit (because they are used in the permutation)
         first_and_last_row: [GateWires; 2],
-        round_constants: &[Vec<F>],
+        round_constants: &[Vec<G::ScalarField>],
     ) -> (Vec<Self>, usize) {
         let mut gates = vec![];
 
@@ -136,8 +138,7 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
         &self,
         row: usize,
         // TODO(mimoo): we should just pass two rows instead of the whole witness
-        witness: &[Vec<F>; COLUMNS],
-        cs: &ConstraintSystem<F>,
+        witness: &[Vec<G::ScalarField>; COLUMNS],
     ) -> Result<(), String> {
         ensure_eq!(
             self.typ,
@@ -149,26 +150,28 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
         let mut states = vec![];
         for round in 0..ROUNDS_PER_ROW {
             let cols = round_to_cols(round);
-            let state: Vec<F> = witness[cols].iter().map(|col| col[row]).collect();
+            let state: Vec<G::ScalarField> = witness[cols].iter().map(|col| col[row]).collect();
             states.push(state);
         }
         // (last state is in next row)
         let cols = round_to_cols(0);
         let next_row = row + 1;
-        let last_state: Vec<F> = witness[cols].iter().map(|col| col[next_row]).collect();
+        let last_state: Vec<G::ScalarField> =
+            witness[cols].iter().map(|col| col[next_row]).collect();
         states.push(last_state);
 
         // round constants
         let rc = self.rc();
+        let mds = &G::sponge_params().mds;
 
         // for each round, check that the permutation was applied correctly
         for round in 0..ROUNDS_PER_ROW {
-            for (i, mds_row) in cs.fr_sponge_params.mds.iter().enumerate() {
+            for (i, mds_row) in mds.iter().enumerate() {
                 // i-th(new_state) = i-th(rc) + mds(sbox(state))
                 let state = &states[round];
                 let mut new_state = rc[round][i];
                 for (&s, mds) in state.iter().zip(mds_row.iter()) {
-                    let sboxed = sbox::<F, PlonkSpongeConstantsKimchi>(s);
+                    let sboxed = sbox::<G::ScalarField, PlonkSpongeConstantsKimchi>(s);
                     new_state += sboxed * mds;
                 }
 
@@ -188,22 +191,22 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
         Ok(())
     }
 
-    pub fn ps(&self) -> F {
+    pub fn ps(&self) -> G::ScalarField {
         if self.typ == GateType::Poseidon {
-            F::one()
+            <G::ScalarField>::one()
         } else {
-            F::zero()
+            <G::ScalarField>::zero()
         }
     }
 
     /// round constant that are relevant for this specific gate
-    pub fn rc(&self) -> [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW] {
+    pub fn rc(&self) -> [[G::ScalarField; SPONGE_WIDTH]; ROUNDS_PER_ROW] {
         array_init::array_init(|round| {
             array_init::array_init(|col| {
                 if self.typ == GateType::Poseidon {
                     self.coeffs[SPONGE_WIDTH * round + col]
                 } else {
-                    F::zero()
+                    <G::ScalarField>::zero()
                 }
             })
         })

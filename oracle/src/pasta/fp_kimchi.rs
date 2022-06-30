@@ -5,7 +5,7 @@ use mina_curves::pasta::Fp;
 
 use std::str::FromStr;
 
-pub fn params() -> ArithmeticSpongeParams<Fp> {
+pub(crate) fn params() -> ArithmeticSpongeParams<Fp> {
     ArithmeticSpongeParams {
         mds: vec![
             vec![
@@ -825,4 +825,11 @@ pub fn params() -> ArithmeticSpongeParams<Fp> {
             ],
         ],
     }
+}
+
+lazy_static::lazy_static! {
+    static ref PARAMS:ArithmeticSpongeParams<Fp> = params();
+}
+pub fn static_parms() -> &'static ArithmeticSpongeParams<Fp> {
+    &PARAMS
 }

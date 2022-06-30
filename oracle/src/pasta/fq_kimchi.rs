@@ -825,3 +825,10 @@ pub fn params() -> ArithmeticSpongeParams<Fq> {
         ],
     }
 }
+
+lazy_static::lazy_static! {
+    static ref PARAMS:ArithmeticSpongeParams<Fq> = params();
+}
+pub fn static_parms() -> &'static ArithmeticSpongeParams<Fq> {
+    &PARAMS
+}

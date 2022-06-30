@@ -1,7 +1,7 @@
 //! Implements a tool to visualize a circuit as an HTML page.
 
 use ark_ff::PrimeField;
-use commitment_dlog::commitment::CommitmentCurve;
+use commitment_dlog::{commitment::CommitmentCurve, srs::KimchiCurve};
 use kimchi::{
     circuits::{
         argument::Argument,
@@ -76,7 +76,7 @@ where
 /// Produces a `circuit.html` in the current folder.
 pub fn visu<G>(index: &ProverIndex<G>, witness: Option<Witness<G::ScalarField>>)
 where
-    G: CommitmentCurve,
+    G: CommitmentCurve + KimchiCurve,
 {
     // serialize index
     let index = serde_json::to_string(index).expect("couldn't serialize index");
