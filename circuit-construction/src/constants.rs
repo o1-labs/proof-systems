@@ -36,7 +36,7 @@ pub fn fq_constants() -> Constants<Fq> {
         .to_coordinates()
         .unwrap();
     Constants {
-        poseidon: oracle::pasta::fq_kimchi::params(),
+        poseidon: PallasAffine::sponge_params().clone(),
         endo: endo_q,
         base,
     }

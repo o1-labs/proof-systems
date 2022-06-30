@@ -129,7 +129,7 @@ pub mod testing {
         srs.add_lagrange_basis(cs.domain.d1);
         let srs = Arc::new(srs);
 
-        let fq_sponge_params = oracle::pasta::fq_kimchi::params();
+        let fq_sponge_params = Pallas::sponge_params().clone();
         let (endo_q, _endo_r) = endos::<Pallas>();
         ProverIndex::<Vesta>::create(cs, fq_sponge_params, endo_q, srs)
     }

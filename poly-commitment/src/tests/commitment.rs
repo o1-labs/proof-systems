@@ -1,13 +1,14 @@
 use crate::{
     commitment::{BatchEvaluationProof, BlindedCommitment, CommitmentCurve, Evaluation, PolyComm},
     evaluation_proof::OpeningProof,
-    srs::SRS,
+    srs::{KimchiCurve, SRS},
 };
 use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use colored::Colorize;
 use groupmap::GroupMap;
 use mina_curves::pasta::{
+    pallas::Affine as Pallas,
     vesta::{Affine, VestaParameters},
     Fp,
 };
@@ -107,7 +108,7 @@ where
     // setup
     let mut rng = rand::thread_rng();
     let group_map = <Affine as CommitmentCurve>::Map::setup();
-    let fq_sponge = DefaultFqSponge::<VestaParameters, SC>::new(oracle::pasta::fq_kimchi::params());
+    let fq_sponge = DefaultFqSponge::<VestaParameters, SC>::new(Pallas::sponge_params().clone());
 
     // create an SRS optimized for polynomials of degree 2^7 - 1
     let srs = SRS::<Affine>::create(1 << 7);

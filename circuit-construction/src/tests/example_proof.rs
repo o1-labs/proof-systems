@@ -1,3 +1,5 @@
+use commitment_dlog::srs::KimchiCurve;
+
 use crate::prologue::*;
 
 type SpongeQ = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
@@ -46,6 +48,7 @@ const PUBLIC_INPUT_LENGTH: usize = 3;
 
 #[test]
 fn test_example_circuit() {
+    use mina_curves::pasta::pallas::Affine as Pallas;
     // create SRS
     let srs = {
         let mut srs = SRS::<VestaAffine>::create(1 << 7); // 2^7 = 128
@@ -54,11 +57,11 @@ fn test_example_circuit() {
     };
 
     let proof_system_constants = fp_constants();
-    let fq_poseidon = oracle::pasta::fq_kimchi::params();
+    let fq_poseidon = Pallas::sponge_params();
 
     // generate circuit and index
     let prover_index =
-        generate_prover_index::<FpInner, _>(srs, &fq_poseidon, PUBLIC_INPUT_LENGTH, |sys, p| {
+        generate_prover_index::<FpInner, _>(srs, fq_poseidon, PUBLIC_INPUT_LENGTH, |sys, p| {
             circuit::<_, PallasAffine, _>(&proof_system_constants, None, sys, p)
         });
 
