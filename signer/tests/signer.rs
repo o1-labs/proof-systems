@@ -65,7 +65,7 @@ fn signer_test_raw() {
     let kp = Keypair::from_hex("164244176fddb5d769b7de2027469d027ad428fadcc0c02396e6280142efb718")
         .expect("failed to create keypair");
     let tx = Transaction::new_payment(
-        kp.public,
+        kp.public.clone(),
         PubKey::from_address("B62qicipYxyEHu7QjUqS7QvBipTs5CzgkYZZZkPoKVYBu6tnDUcE9Zt")
             .expect("invalid address"),
         1729000000000,
@@ -97,7 +97,7 @@ fn signer_zero_test() {
     let kp = Keypair::from_hex("164244176fddb5d769b7de2027469d027ad428fadcc0c02396e6280142efb718")
         .expect("failed to create keypair");
     let tx = Transaction::new_payment(
-        kp.public,
+        kp.public.clone(),
         PubKey::from_address("B62qicipYxyEHu7QjUqS7QvBipTs5CzgkYZZZkPoKVYBu6tnDUcE9Zt")
             .expect("invalid address"),
         1729000000000,

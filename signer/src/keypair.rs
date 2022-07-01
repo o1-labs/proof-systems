@@ -26,7 +26,7 @@ pub enum KeypairError {
 pub type Result<T> = std::result::Result<T, KeypairError>;
 
 /// Keypair structure
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Keypair {
     /// Secret key
     pub(crate) secret: SecKey,
@@ -48,11 +48,11 @@ impl Keypair {
     pub fn rand(rng: &mut (impl RngCore + CryptoRng)) -> Self {
         let sec_key: SecKey = SecKey::rand(rng);
         let public: CurvePoint = CurvePoint::prime_subgroup_generator()
-            .mul(sec_key.into_scalar())
+            .mul(*sec_key.scalar())
             .into_affine();
 
         // Safe in this case b/c point must be on curve
-        Self::from_parts_unsafe(sec_key.into_scalar(), public)
+        Self::from_parts_unsafe(*sec_key.scalar(), public)
     }
 
     /// Deserialize a keypair from secret key hex

@@ -5,7 +5,7 @@ use ark_ff::UniformRand;
 use rand::{self, CryptoRng, RngCore};
 
 /// Secret key
-#[derive(Clone, Copy, PartialEq, Eq)] // No Debug nor Display
+#[derive(Clone, PartialEq, Eq)] // No Debug nor Display
 pub struct SecKey(ScalarField);
 
 impl SecKey {
@@ -21,8 +21,8 @@ impl SecKey {
         Self(scalar)
     }
 
-    /// Convert secret key into scalar field element
-    pub fn into_scalar(self) -> ScalarField {
-        self.0
+    /// Borrows secret key as scalar field element
+    pub fn scalar(&self) -> &ScalarField {
+        &self.0
     }
 }
