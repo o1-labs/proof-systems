@@ -6,7 +6,6 @@
 //!     producing the batched opening proof
 //! 3. Verify batch of batched opening proofs
 
-use crate::srs::KimchiCurve;
 use crate::{error::CommitmentError, srs::SRS};
 use ark_ec::{
     models::short_weierstrass_jacobian::GroupAffine as SWJAffine, msm::VariableBaseMSM,
@@ -500,7 +499,7 @@ where
     pub opening: &'a OpeningProof<G>,
 }
 
-impl<G: CommitmentCurve + KimchiCurve> SRS<G> {
+impl<G: CommitmentCurve> SRS<G> {
     /// Commits a polynomial, potentially splitting the result in multiple commitments.
     pub fn commit(
         &self,
@@ -914,7 +913,7 @@ mod tests {
     use crate::srs::SRS;
     use ark_poly::{Polynomial, UVPolynomial};
     use array_init::array_init;
-    use mina_curves::pasta::{fp::Fp, pallas::Affine as Pallas, vesta::Affine as VestaG};
+    use mina_curves::pasta::{fp::Fp, vesta::Affine as VestaG};
     use oracle::constants::PlonkSpongeConstantsKimchi as SC;
     use oracle::sponge::DefaultFqSponge;
     use rand::{rngs::StdRng, SeedableRng};
@@ -967,7 +966,8 @@ mod tests {
         // create an aggregated opening proof
         let (u, v) = (Fp::rand(rng), Fp::rand(rng));
         let group_map = <VestaG as CommitmentCurve>::Map::setup();
-        let sponge = DefaultFqSponge::<_, SC>::new(Pallas::sponge_params().clone());
+        let sponge =
+            DefaultFqSponge::<_, SC>::new(oracle::pasta::fq_kimchi::static_params().clone());
 
         let polys = vec![
             (&poly1, None, commitment.blinders),

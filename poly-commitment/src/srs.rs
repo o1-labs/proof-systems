@@ -18,7 +18,7 @@ use std::collections::HashMap;
 
 #[serde_as]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct SRS<G: CommitmentCurve + KimchiCurve> {
+pub struct SRS<G: CommitmentCurve> {
     /// The vector of group elements for committing to polynomials in coefficient form
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub g: Vec<G>,
@@ -76,7 +76,7 @@ where
     G::of_coordinates(x, y)
 }
 
-impl<G: CommitmentCurve + KimchiCurve> SRS<G>
+impl<G: CommitmentCurve> SRS<G>
 where
     G::BaseField: PrimeField,
 {

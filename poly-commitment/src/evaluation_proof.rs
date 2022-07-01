@@ -1,5 +1,5 @@
+use crate::commitment::*;
 use crate::srs::SRS;
-use crate::{commitment::*, srs::KimchiCurve};
 use ark_ec::{msm::VariableBaseMSM, AffineCurve, ProjectiveCurve};
 use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
@@ -65,7 +65,7 @@ impl<'a, F: Field> ScaledChunkedPolynomial<F, &'a [F]> {
     }
 }
 
-impl<G: CommitmentCurve + KimchiCurve> SRS<G> {
+impl<G: CommitmentCurve> SRS<G> {
     /// This function opens polynomial commitments in batch
     ///     plnms: batch of polynomials to open commitments for with, optionally, max degrees
     ///     elm: evaluation point vector to open the commitments at

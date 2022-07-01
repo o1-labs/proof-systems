@@ -3,14 +3,13 @@
 
 use crate::{
     commitment::{BatchEvaluationProof, CommitmentCurve, Evaluation},
-    srs::{KimchiCurve, SRS},
+    srs::SRS,
 };
 use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use colored::Colorize;
 use groupmap::GroupMap;
 use mina_curves::pasta::{
-    pallas::Affine as Pallas,
     vesta::{Affine, VestaParameters},
     Fp,
 };
@@ -34,7 +33,9 @@ where
 
     let group_map = <Affine as CommitmentCurve>::Map::setup();
 
-    let sponge = DefaultFqSponge::<VestaParameters, SC>::new(Pallas::sponge_params().clone());
+    let sponge = DefaultFqSponge::<VestaParameters, SC>::new(
+        oracle::pasta::fq_kimchi::static_params().clone(),
+    );
 
     let mut commit = Duration::new(0, 0);
     let mut open = Duration::new(0, 0);
