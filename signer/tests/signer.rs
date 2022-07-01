@@ -111,7 +111,7 @@ fn signer_zero_test() {
     assert_eq!(ctx.verify(&sig, &kp.public, &tx), true);
 
     // Zero some things
-    let mut sig2 = sig;
+    let mut sig2 = sig.clone();
     sig2.rx = BaseField::zero();
     assert_eq!(ctx.verify(&sig2, &kp.public, &tx), false);
     let mut sig3 = sig;

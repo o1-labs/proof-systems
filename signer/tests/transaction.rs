@@ -6,7 +6,7 @@ const TAG_BITS: usize = 3;
 const PAYMENT_TX_TAG: [bool; TAG_BITS] = [false, false, false];
 const DELEGATION_TX_TAG: [bool; TAG_BITS] = [false, false, true];
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct Transaction {
     // Common
     pub fee: u64,

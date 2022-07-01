@@ -13,7 +13,7 @@ use crate::{BaseField, CurvePoint};
 use o1_utils::FieldHelpers;
 
 /// Public key errors
-#[derive(Error, Debug, Clone, Copy, PartialEq)]
+#[derive(Error, Debug, Clone, PartialEq)]
 pub enum PubKeyError {
     /// Invalid address length
     #[error("invalid address length")]
@@ -107,6 +107,11 @@ impl PubKey {
         &self.0
     }
 
+    /// Convert public key into curve point
+    pub fn into_point(self) -> CurvePoint {
+        self.0
+    }
+
     /// Convert public key into compressed public key
     pub fn into_compressed(&self) -> CompressedPubKey {
         let point = self.0;
@@ -118,7 +123,7 @@ impl PubKey {
 
     /// Serialize public key into corresponding Mina address
     pub fn into_address(&self) -> String {
-        let point = &self.0;
+        let point = self.point();
         into_address(&point.x, point.y.into_repr().is_odd())
     }
 }
@@ -136,7 +141,7 @@ impl fmt::Display for PubKey {
 }
 
 /// Compressed public keys consist of x-coordinate and y-coordinate parity.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CompressedPubKey {
     /// X-coordinate
     pub x: BaseField,

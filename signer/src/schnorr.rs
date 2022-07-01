@@ -87,14 +87,18 @@ impl<H: 'static + Hashable> Signer<H> for Schnorr<H> {
 
 pub(crate) fn create_legacy<H: 'static + Hashable>(domain_param: H::D) -> impl Signer<H> {
     Schnorr::<H> {
-        hasher: Box::new(mina_hasher::create_legacy::<Message<H>>(domain_param)),
+        hasher: Box::new(mina_hasher::create_legacy::<Message<H>>(
+            domain_param.clone(),
+        )),
         domain_param,
     }
 }
 
 pub(crate) fn create_kimchi<H: 'static + Hashable>(domain_param: H::D) -> impl Signer<H> {
     Schnorr::<H> {
-        hasher: Box::new(mina_hasher::create_kimchi::<Message<H>>(domain_param)),
+        hasher: Box::new(mina_hasher::create_kimchi::<Message<H>>(
+            domain_param.clone(),
+        )),
         domain_param,
     }
 }
@@ -110,7 +114,7 @@ impl<H: 'static + Hashable> Schnorr<H> {
         roi.append_field(kp.public.point().x);
         roi.append_field(kp.public.point().y);
         roi.append_scalar(*kp.secret.scalar());
-        roi.append_bytes(&self.domain_param.into_bytes());
+        roi.append_bytes(&self.domain_param.clone().into_bytes());
 
         blake_hasher.update(&roi.to_bytes());
 

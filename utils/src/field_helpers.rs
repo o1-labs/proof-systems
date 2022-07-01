@@ -4,7 +4,7 @@ use std::ops::Neg;
 use thiserror::Error;
 
 // Field helpers error
-#[derive(Error, Debug, Clone, Copy, PartialEq)]
+#[derive(Error, Debug, Clone, PartialEq)]
 pub enum FieldHelpersError {
     #[error("failed to deserialize field bytes")]
     DeserializeBytes,

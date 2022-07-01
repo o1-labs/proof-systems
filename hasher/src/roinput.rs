@@ -834,7 +834,7 @@ mod tests {
 
     #[test]
     fn nested_roinput_test() {
-        #[derive(Clone, Copy, Debug)]
+        #[derive(Clone, Debug)]
         struct A {
             x: u32,
             y: bool,
@@ -858,7 +858,7 @@ mod tests {
             }
         }
 
-        #[derive(Clone, Copy, Debug)]
+        #[derive(Clone, Debug)]
         struct B1 {
             a: A,
             b: u64,
@@ -881,7 +881,7 @@ mod tests {
             }
         }
 
-        #[derive(Clone, Copy, Debug)]
+        #[derive(Clone, Debug)]
         struct B2 {
             a: A,
             b: u64,
@@ -919,7 +919,7 @@ mod tests {
             c: true,
         };
         let b2 = B2 {
-            a: b1.a,
+            a: b1.a.clone(),
             b: b1.b,
             c: b1.c,
         };
@@ -927,14 +927,14 @@ mod tests {
         assert_eq!(b1.to_roinput(), b2.to_roinput());
 
         let b2 = B2 {
-            a: b1.a,
-            b: b1.b,
+            a: b1.a.clone(),
+            b: b1.b.clone(),
             c: false,
         };
         assert_ne!(b1.to_roinput(), b2.to_roinput());
 
         let b2 = B2 {
-            a: b1.a,
+            a: b1.a.clone(),
             b: b1.b + 1,
             c: b1.c,
         };
