@@ -368,7 +368,7 @@ where
                 alpha,
                 beta,
                 gamma,
-                joint_combiner: joint_combiner.clone().map(|j| j.1),
+                joint_combiner: joint_combiner.as_ref().map(|j| j.1),
                 endo_coefficient: index.endo,
                 mds: index.fr_sponge_params.mds.clone(),
             };
