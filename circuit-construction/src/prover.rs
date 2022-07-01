@@ -106,7 +106,7 @@ pub fn prove<G, H, EFqSponge, EFrSponge>(
 where
     H: FnMut(&mut WitnessGenerator<G::ScalarField>, Vec<Var<G::ScalarField>>),
     G::BaseField: PrimeField,
-    G: CommitmentCurve + KimchiCurve,
+    G: KimchiCurve,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
 {

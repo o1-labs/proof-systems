@@ -109,7 +109,7 @@ where
     runtime_second_col_d8: Option<Evaluations<F, D<F>>>,
 }
 
-impl<G: CommitmentCurve + KimchiCurve> ProverProof<G>
+impl<G: KimchiCurve> ProverProof<G>
 where
     G::BaseField: PrimeField,
 {

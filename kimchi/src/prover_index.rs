@@ -1,16 +1,17 @@
 //! This module implements the prover index as [ProverIndex].
 
-use crate::alphas::Alphas;
-use crate::circuits::{
-    constraints::ConstraintSystem,
-    expr::{Linearization, PolishToken},
-    wires::*,
+use crate::{
+    alphas::Alphas,
+    circuits::{
+        constraints::ConstraintSystem,
+        expr::{Linearization, PolishToken},
+        wires::*,
+    },
+    linearization::expr_linearization,
 };
-use crate::linearization::expr_linearization;
 use ark_ff::PrimeField;
 use ark_poly::EvaluationDomain;
-use commitment_dlog::srs::KimchiCurve;
-use commitment_dlog::{commitment::CommitmentCurve, srs::SRS};
+use commitment_dlog::srs::{KimchiCurve, SRS};
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
@@ -20,7 +21,7 @@ use std::sync::Arc;
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug)]
 //~spec:startcode
-pub struct ProverIndex<G: CommitmentCurve + KimchiCurve>
+pub struct ProverIndex<G: KimchiCurve>
 where
     G: KimchiCurve,
 {

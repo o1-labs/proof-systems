@@ -56,7 +56,7 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 
 #[serde_as]
 #[derive(Serialize, Deserialize)]
-pub struct VerifierIndex<G: CommitmentCurve + KimchiCurve> {
+pub struct VerifierIndex<G: KimchiCurve> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub domain: D<G::ScalarField>,
@@ -137,7 +137,7 @@ pub struct VerifierIndex<G: CommitmentCurve + KimchiCurve> {
 }
 //~spec:endcode
 
-impl<'a, G: CommitmentCurve + KimchiCurve> ProverIndex<G>
+impl<'a, G: KimchiCurve> ProverIndex<G>
 where
     G::BaseField: PrimeField,
 {
@@ -245,7 +245,7 @@ where
     }
 }
 
-impl<G: CommitmentCurve + KimchiCurve> VerifierIndex<G>
+impl<G: KimchiCurve> VerifierIndex<G>
 where
     G::BaseField: PrimeField,
 {

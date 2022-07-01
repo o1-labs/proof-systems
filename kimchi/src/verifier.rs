@@ -62,7 +62,7 @@ where
     pub combined_inner_product: G::ScalarField,
 }
 
-impl<G: CommitmentCurve + KimchiCurve> ProverProof<G>
+impl<G:  KimchiCurve> ProverProof<G>
 where
     G::BaseField: PrimeField,
 {
@@ -477,7 +477,7 @@ fn to_batch<'a, G, EFqSponge, EFrSponge>(
     proof: &'a ProverProof<G>,
 ) -> Result<BatchEvaluationProof<'a, G, EFqSponge>>
 where
-    G: CommitmentCurve + KimchiCurve,
+    G: KimchiCurve,
     G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
@@ -901,7 +901,7 @@ pub fn verify<G, EFqSponge, EFrSponge>(
     proof: &ProverProof<G>,
 ) -> Result<()>
 where
-    G: CommitmentCurve + KimchiCurve,
+    G:  KimchiCurve,
     G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
@@ -919,7 +919,7 @@ pub fn batch_verify<G, EFqSponge, EFrSponge>(
     proofs: &[(&VerifierIndex<G>, &ProverProof<G>)],
 ) -> Result<()>
 where
-    G: CommitmentCurve + KimchiCurve,
+    G:  KimchiCurve,
     G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
