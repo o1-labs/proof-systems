@@ -10,6 +10,7 @@ use array_init::array_init;
 use blake2::{Blake2b512, Digest};
 use groupmap::GroupMap;
 use mina_curves::pasta::{pallas::PallasParameters, vesta::VestaParameters};
+use once_cell::sync::Lazy;
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
@@ -204,19 +205,18 @@ pub trait KimchiCurve: CommitmentCurve {
     fn endos() -> &'static (Self::BaseField, Self::ScalarField);
 }
 
-//static ref VESTA_ENDOS:(VestaParameters::BaseField,VestaParameters::ScalarField) = endos();
-lazy_static::lazy_static! {
-    static ref VESTA_ENDOS:(<VestaParameters as ModelParameters>::BaseField,<VestaParameters as ModelParameters>::ScalarField) = endos::<GroupAffine<VestaParameters>>();
-    static ref PALLAS_ENDOS:(<PallasParameters as ModelParameters>::BaseField,<PallasParameters as ModelParameters>::ScalarField) = endos::<GroupAffine<PallasParameters>>();
-}
 impl KimchiCurve for GroupAffine<VestaParameters> {
     type OtherCurve = GroupAffine<PallasParameters>;
 
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
-        oracle::pasta::fp_kimchi::static_parms()
+        oracle::pasta::fp_kimchi::static_params()
     }
 
     fn endos() -> &'static (Self::BaseField, Self::ScalarField) {
+        static VESTA_ENDOS: Lazy<(
+            <VestaParameters as ModelParameters>::BaseField,
+            <VestaParameters as ModelParameters>::ScalarField,
+        )> = Lazy::new(endos::<GroupAffine<VestaParameters>>);
         &VESTA_ENDOS
     }
 }
@@ -225,11 +225,14 @@ impl KimchiCurve for GroupAffine<PallasParameters> {
     type OtherCurve = GroupAffine<VestaParameters>;
 
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
-        oracle::pasta::fq_kimchi::static_parms()
+        oracle::pasta::fq_kimchi::static_params()
     }
 
     fn endos() -> &'static (Self::BaseField, Self::ScalarField) {
-        //&PALLAS_ENDOS
+        static PALLAS_ENDOS: Lazy<(
+            <PallasParameters as ModelParameters>::BaseField,
+            <PallasParameters as ModelParameters>::ScalarField,
+        )> = Lazy::new(endos::<GroupAffine<PallasParameters>>);
         &PALLAS_ENDOS
     }
 }

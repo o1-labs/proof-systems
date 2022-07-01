@@ -57,7 +57,7 @@ pub type PoseidonHasherKimchi<H> = Poseidon<PlonkSpongeConstantsKimchi, H>;
 pub(crate) fn new_kimchi<H: Hashable>(domain_param: H::D) -> PoseidonHasherKimchi<H> {
     Poseidon::<PlonkSpongeConstantsKimchi, H>::new(
         domain_param,
-        pasta::fp_kimchi::static_parms().clone(),
+        pasta::fp_kimchi::static_params().clone(),
     )
 }
 
