@@ -127,6 +127,11 @@ where
         //~ 1. Setup the Fq-Sponge.
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
 
+        //~ 1. Absorb the commitments of the previous challenges with the Fq-sponge.
+        for RecursionChallenge { comm, .. } in self.prev_challenges.iter() {
+            fq_sponge.absorb_g(&comm.unshifted);
+        }
+
         //~ 1. Absorb the commitment of the public input polynomial with the Fq-Sponge.
         fq_sponge.absorb_g(&p_comm.unshifted);
 
