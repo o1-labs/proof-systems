@@ -492,6 +492,12 @@ where
     //~ Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
     //~
 
+    if proof.prev_challenges.len() != index.prev_challenges {
+        return Err(VerifyError::IncorrectPrevChallengesLength(
+            index.prev_challenges,
+        ));
+    }
+
     //~ 1. Commit to the negated public input polynomial.
     let lgr_comm = index
         .srs()
