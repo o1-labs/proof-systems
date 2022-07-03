@@ -945,7 +945,7 @@ where
         };
 
         let zeta_to_srs_len = zeta.pow(&[index.max_poly_size as u64]);
-        let zeta_omega_to_srs_len = zeta.pow(&[index.max_poly_size as u64]);
+        let zeta_omega_to_srs_len = zeta_omega.pow(&[index.max_poly_size as u64]);
         let zeta_to_domain_size = zeta.pow(&[d1_size as u64]);
 
         //~ 1. Evaluate the same polynomials without chunking them
