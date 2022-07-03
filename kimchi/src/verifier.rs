@@ -239,7 +239,9 @@ where
         //~~ - poseidon selector
         //~~ - the 15 register/witness
         //~~ - 6 sigmas evaluations (the last one is not evaluated)
-        fr_sponge.absorb_evaluations([&p_eval[0], &p_eval[1]], [&self.evals[0], &self.evals[1]]);
+        fr_sponge.absorb_multiple(&p_eval[0]);
+        fr_sponge.absorb_multiple(&p_eval[1]);
+        fr_sponge.absorb_evaluations([&self.evals[0], &self.evals[1]]);
 
         //~ 1. Sample $v'$ with the Fr-Sponge.
         let v_chal = fr_sponge.challenge();
