@@ -20,6 +20,9 @@ pub trait FrSponge<Fr: Field> {
     /// Creates a [ScalarChallenge] by squeezing the sponge.
     fn challenge(&mut self) -> ScalarChallenge<Fr>;
 
+    /// Consumes the sponge and returns the current digest, by squeezing.
+    fn digest(self) -> Fr;
+
     /// Absorbs the given evaluations into the sponge.
     // TODO: IMO this function should be inlined in prover/verifier
     fn absorb_evaluations<const N: usize>(&mut self, e: [&ProofEvaluations<Vec<Fr>>; N]);
@@ -46,6 +49,10 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
     fn challenge(&mut self) -> ScalarChallenge<Fr> {
         // TODO: why involve sponge_5_wires here?
         ScalarChallenge(self.squeeze(oracle::sponge::CHALLENGE_LENGTH_IN_LIMBS))
+    }
+
+    fn digest(mut self) -> Fr {
+        self.sponge.squeeze()
     }
 
     // We absorb all evaluations of the same polynomial at the same time

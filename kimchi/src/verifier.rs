@@ -181,6 +181,39 @@ where
         // prepare some often used values
         let zeta1 = zeta.pow(&[n]);
         let zetaw = zeta * index.domain.group_gen;
+        let evaluation_points = [zeta, zetaw];
+        let powers_of_eval_points_for_chunks = [
+            zeta.pow(&[index.max_poly_size as u64]),
+            zetaw.pow(&[index.max_poly_size as u64]),
+        ];
+
+        //~ 1. Compute evaluations for the previous recursion challenges.
+        let polys: Vec<(PolyComm<G>, _)> = self
+            .prev_challenges
+            .iter()
+            .map(|challenge| {
+                let evals = challenge.evals(
+                    index.max_poly_size,
+                    &evaluation_points,
+                    &powers_of_eval_points_for_chunks,
+                );
+                let RecursionChallenge { chals: _, comm } = challenge;
+                (comm.clone(), evals)
+            })
+            .collect();
+
+        //~ 1. Absorb evaluations for the previous recusion challenges.
+        let prev_challenge_digest = {
+            // Note: we absorb in a new sponge here to limit the scope in which we need the
+            // more-expensive 'optional sponge'.
+            let mut fr_sponge = EFrSponge::new(index.fr_sponge_params.clone());
+            for (_, prev_chal_eval) in polys.iter() {
+                fr_sponge.absorb_multiple(&prev_chal_eval[0]);
+                fr_sponge.absorb_multiple(&prev_chal_eval[1]);
+            }
+            fr_sponge.digest()
+        };
+        fr_sponge.absorb(&prev_challenge_digest);
 
         // retrieve ranges for the powers of alphas
         let mut all_alphas = index.powers_of_alpha.clone();
@@ -256,25 +289,6 @@ where
         let u = u_chal.to_field(&index.srs().endo_r);
 
         //~ 1. Create a list of all polynomials that have an evaluation proof.
-        let evaluation_points = [zeta, zetaw];
-        let powers_of_eval_points_for_chunks = [
-            zeta.pow(&[index.max_poly_size as u64]),
-            zetaw.pow(&[index.max_poly_size as u64]),
-        ];
-
-        let polys: Vec<(PolyComm<G>, _)> = self
-            .prev_challenges
-            .iter()
-            .map(|challenge| {
-                let evals = challenge.evals(
-                    index.max_poly_size,
-                    &evaluation_points,
-                    &powers_of_eval_points_for_chunks,
-                );
-                let RecursionChallenge { chals: _, comm } = challenge;
-                (comm.clone(), evals)
-            })
-            .collect();
 
         let evals = vec![
             self.evals[0].combine(powers_of_eval_points_for_chunks[0]),

@@ -1044,6 +1044,35 @@ where
         //~ 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
         fr_sponge.absorb(&fq_sponge.digest());
 
+        //~ 1. Compute evaluations for the previous recursion challenges.
+        let polys = prev_challenges
+            .iter()
+            .map(|RecursionChallenge { chals, comm }| {
+                (
+                    DensePolynomial::from_coefficients_vec(b_poly_coefficients(chals)),
+                    comm.unshifted.len(),
+                )
+            })
+            .collect::<Vec<_>>();
+
+        //~ 1. Absorb evaluations for the previous recusion challenges.
+        let prev_challenge_digest = {
+            // Note: we absorb in a new sponge here to limit the scope in which we need the
+            // more-expensive 'optional sponge'.
+            let mut fr_sponge = EFrSponge::new(index.cs.fr_sponge_params.clone());
+            for prev_challenge in prev_challenges.iter() {
+                let evals = prev_challenge.evals(
+                    index.max_poly_size,
+                    &[zeta, zeta_omega],
+                    &[zeta_to_srs_len, zeta_omega_to_srs_len],
+                );
+                fr_sponge.absorb_multiple(&evals[0]);
+                fr_sponge.absorb_multiple(&evals[1]);
+            }
+            fr_sponge.digest()
+        };
+        fr_sponge.absorb(&prev_challenge_digest);
+
         //~ 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
         let public_evals = if public_poly.is_zero() {
             [Vec::new(), Vec::new()]
@@ -1087,16 +1116,6 @@ where
             unshifted: vec![G::ScalarField::zero(); d1_size],
             shifted: None,
         };
-
-        let polys = prev_challenges
-            .iter()
-            .map(|RecursionChallenge { chals, comm }| {
-                (
-                    DensePolynomial::from_coefficients_vec(b_poly_coefficients(chals)),
-                    comm.unshifted.len(),
-                )
-            })
-            .collect::<Vec<_>>();
 
         let mut polynomials = polys
             .iter()
