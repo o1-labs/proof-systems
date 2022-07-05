@@ -10,7 +10,6 @@ use crate::{
     curve::KimchiCurve,
     linearization::expr_linearization,
 };
-use ark_ff::PrimeField;
 use ark_poly::EvaluationDomain;
 use commitment_dlog::srs::SRS;
 use oracle::poseidon::ArithmeticSpongeParams;
@@ -57,7 +56,6 @@ where
 impl<'a, G> ProverIndex<G>
 where
     G: KimchiCurve,
-    G::BaseField: PrimeField,
 {
     /// this function compiles the index from constraints
     pub fn create(

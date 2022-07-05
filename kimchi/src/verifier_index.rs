@@ -137,10 +137,7 @@ pub struct VerifierIndex<G: KimchiCurve> {
 }
 //~spec:endcode
 
-impl<'a, G: KimchiCurve> ProverIndex<G>
-where
-    G::BaseField: PrimeField,
-{
+impl<'a, G: KimchiCurve> ProverIndex<G> {
     /// Produces the [VerifierIndex] from the prover's [ProverIndex].
     pub fn verifier_index(&self) -> VerifierIndex<G> {
         let domain = self.cs.domain.d1;
@@ -245,12 +242,12 @@ where
     }
 }
 
-impl<G: KimchiCurve> VerifierIndex<G>
-where
-    G::BaseField: PrimeField,
-{
+impl<G: KimchiCurve> VerifierIndex<G> {
     /// Gets srs from [VerifierIndex] lazily
-    pub fn srs(&self) -> &Arc<SRS<G>> {
+    pub fn srs(&self) -> &Arc<SRS<G>>
+    where
+        G::BaseField: PrimeField,
+    {
         self.srs.get_or_init(|| {
             let mut srs = SRS::<G>::create(self.max_poly_size);
             srs.add_lagrange_basis(self.domain);
