@@ -350,7 +350,7 @@ where
         //~     Absorb over the foreign field
 
         // Enforce constraints on other side
-        ctx.flip(|ctx| {
+        let (_, scalars, commitments) = ctx.flip(|ctx| {
             tx.flip(|tx| {
                 let alphas: Alphas<_> = Alphas::new(ctx.cs(), alpha);
 
@@ -517,7 +517,7 @@ where
                 }
 
                 // pass scalars to G::BaseField side for ft_comm computation (MSM inside circuit)
-                let scalars: Vec<Scalar<G::BaseField>> = scalars.into_iter().map(|s| ctx.pass(s)).collect();
+                let scalars: Vec<Scalar<G>> = scalars.into_iter().map(|s| ctx.pass(s)).collect();
 
                 // compute the combined inner product:
                 // the batching of all the openings
@@ -535,10 +535,11 @@ where
                     )
                 };
 
-                combined_inner_product
+                (combined_inner_product, scalars, commitments)
             })
         });
 
+        // compute MSM
         let ft_comm = unimplemented!();
 
         let comms = iter::empty()

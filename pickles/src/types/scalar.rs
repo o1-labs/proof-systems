@@ -2,6 +2,7 @@ use circuit_construction::{Var, Cs};
 
 use crate::context::{FromPublic, ToPublic, Public};
 
+use ark_ec::AffineCurve;
 use ark_ff::{BigInteger, FftField, FpParameters, PrimeField};
 
 // An (elliptic curve) scalar of a given size. 
@@ -15,14 +16,24 @@ use ark_ff::{BigInteger, FftField, FpParameters, PrimeField};
 // Note that there are no efficient way to do arithmetic on the Scalar type:
 // it corresponds to a field element in the foreign field Fr represented in Fq.
 // However efficient elliptic curve scalar multiplication.
-pub struct Scalar<F: FftField + PrimeField> {
+//
+// Note: the scalar is represented over the base field of the elliptic curve,
+// this is not a mistake!
+pub struct Scalar<G> where
+    G: AffineCurve,
+    G::BaseField: FftField + PrimeField, 
+{
     size: usize, // total number of bits in scalar
-    high_bits: Var<F>, // "high bits" of scalar
-    low_bit: Option<Var<F>> // single "low bit" of scalar
+    high_bits: Var<G::BaseField>, // "high bits" of scalar
+    low_bit: Option<Var<G::BaseField>> // single "low bit" of scalar
 }
 
-impl<Fp: FftField + PrimeField> ToPublic<Fp> for Scalar<Fp> {
-    fn to_public(&self) -> Vec<Public<Fp>> {
+
+
+impl<G> ToPublic<G::BaseField> for Scalar<G> where 
+G: AffineCurve,
+G::BaseField: FftField + PrimeField, {
+    fn to_public(&self) -> Vec<Public<G::BaseField>> {
         match self.low_bit {
             Some(low_bit) => vec![
                 Public {
@@ -44,11 +55,14 @@ impl<Fp: FftField + PrimeField> ToPublic<Fp> for Scalar<Fp> {
     }
 }
 
-impl<Fq: FftField + PrimeField, Fr: FftField + PrimeField> FromPublic<Fq, Fr> for Scalar<Fr> {
+impl<G> FromPublic<G::ScalarField, G::BaseField> for Scalar<G> where 
+    G: AffineCurve,
+    G::BaseField: FftField + PrimeField 
+{
     type Error = ();
 
-    /// A scalar is always constructed from a single (possibly bounded) element of Fq
-    fn from_public<C: Cs<Fr>, I: Iterator<Item = Public<Fq>>>(
+    /// A scalar is always constructed from a single (possibly bounded) element of the scalar field
+    fn from_public<C: Cs<G::BaseField>, I: Iterator<Item = Public<G::ScalarField>>>(
         cs: &mut C,
         inputs: &mut I,
     ) -> Result<Self, Self::Error> {
@@ -64,16 +78,16 @@ impl<Fq: FftField + PrimeField, Fr: FftField + PrimeField> FromPublic<Fq, Fr> fo
         }
 
         // split if no size bound and destination field is larger
-        let (low_bit, size): (Option<Var<Fr>>, usize) = match elem.size {
+        let (low_bit, size): (Option<Var<G::BaseField>>, usize) = match elem.size {
             Some(size) => {
                 // sanity check: ensure that it fits in a single field element
-                assert!(size < Fq::Params::MODULUS.num_bits() as usize);
+                assert!(size < <G::ScalarField as PrimeField>::Params::MODULUS.num_bits() as usize);
                 (None, size)
             },
             None => {
-                let size: usize = Fr::Params::MODULUS.num_bits() as usize;
-                let mod_to = <Fr::Params as FpParameters>::MODULUS.into();
-                let mod_from = <Fq::Params as FpParameters>::MODULUS.into();
+                let size: usize = <G::ScalarField as PrimeField>::Params::MODULUS.num_bits() as usize;
+                let mod_to = <<G::BaseField as PrimeField>::Params as FpParameters>::MODULUS.into();
+                let mod_from = <<G::ScalarField as PrimeField>::Params as FpParameters>::MODULUS.into();
                 if mod_from > mod_to {
                     // the source field is larger: we need to split
                     let low_bit = cs.var(|| from_bits(&bits.as_ref().unwrap()[..1]));
