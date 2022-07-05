@@ -1313,7 +1313,6 @@
 <span id="1307">1307</span>
 <span id="1308">1308</span>
 <span id="1309">1309</span>
-<span id="1310">1310</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Range check gate</span>
 
 <span class="kw">use</span> <span class="ident">std::collections::HashMap</span>;
@@ -1514,8 +1513,7 @@
             <span class="kw-2">&amp;</span><span class="ident">beta</span>,
             <span class="kw-2">&amp;</span><span class="ident">gamma</span>,
             <span class="kw-2">&amp;</span><span class="ident">lcs</span>.<span class="ident">configuration</span>.<span class="ident">lookup_info</span>,
-        )
-        .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>)<span class="question-mark">?</span>;
+        )<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">lookup_env</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">LookupEnvironment</span> {
             <span class="ident">aggreg</span>: <span class="kw-2">&amp;</span><span class="ident">lookup_env_data</span>.<span class="ident">aggreg8</span>,
             <span class="ident">sorted</span>: <span class="kw-2">&amp;</span><span class="ident">lookup_env_data</span>.<span class="ident">sorted8</span>,
@@ -2625,5 +2623,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (830880640 2022-06-28)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (27eb6d701 2022-07-04)" ></div>
 </body></html>

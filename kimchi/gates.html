@@ -151,12 +151,13 @@
 <h2 id="custom-gates"><a class="header" href="#custom-gates">Custom gates</a></h2>
 <p>The goal of this section is to draw the connections between the practical aspect of designing custom gates and the theory behind it. </p>
 <p>First, suppose we had the following layout of gates. This means that our circuit has four gates: a (single) generic gate, a (non-optimized) complete add, and then two different <code>Example</code> gates that we just make up for the example; <code>ExamplePairs</code> and <code>ExampleTriples</code>.</p>
-<table><thead><tr><th>row</th><th><code>GateType::</code></th><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th><th>11</th><th>12</th><th>13</th><th>14</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>row</th><th><code>GateType::</code></th><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th><th>11</th><th>12</th><th>13</th><th>14</th></tr></thead><tbody>
 <tr><td>0</td><td><code>Generic</code></td><td><code>l</code></td><td><code>r</code></td><td><code>o</code></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 <tr><td>1</td><td><code>CompleteAdd</code></td><td><code>x1</code></td><td><code>y1</code></td><td><code>x2</code></td><td><code>y2</code></td><td><code>x3</code></td><td><code>y3</code></td><td><code>inf</code></td><td><code>same_x</code></td><td><code>s</code></td><td><code>inf_z</code></td><td><code>x21_inv</code></td><td></td><td></td><td></td><td></td></tr>
 <tr><td>2</td><td><code>ExamplePairs</code></td><td><code>a</code></td><td><code>e</code></td><td><code>i</code></td><td><code>o</code></td><td><code>u</code></td><td><code>y</code></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 <tr><td>3</td><td><code>ExampleTriples</code></td><td><code>a</code></td><td><code>b</code></td><td><code>c</code></td><td><code>d</code></td><td><code>e</code></td><td><code>f</code></td><td><code>g</code></td><td><code>h</code></td><td><code>i</code></td><td><code>j</code></td><td><code>k</code></td><td><code>l</code></td><td><code>m</code></td><td><code>n</code></td><td><code>o</code></td></tr>
 </tbody></table>
+</div>
 <p>The most important aspect to take into account when you are designing a new custom gate is writing the actual description of the new functionality. For this, we are using the <code>Expression</code> framework that allows us to write equations generically by representing each column of the table (wire) as a variable. Then we can write operations between them and define the <strong>gate constraints</strong>. From a mathematical perspective, these will have the shape of multivariate polynomials of as many variables as columns in the table (currently 15 for Kimchi) that is constrained to equal 0. </p>
 <p>In our example, we would define equations that represent the operations carried out by each of the gates. In the following equations we use the variable names that we wrote in the cells above, and we don’t imply that the same name in a different row correspond to the same value (we are not imposing equalities between gates yet):</p>
 <p><code>Generic</code>: </p>
@@ -188,15 +189,13 @@
 <li><code>m</code> <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.44445em;vertical-align:0em;"></span><span class="mord">⋅</span></span></span></span> <code>n</code> <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.44445em;vertical-align:0em;"></span><span class="mord">⋅</span></span></span></span> <code>o</code> <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.36687em;vertical-align:0em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">0</span></span></span></span></li>
 </ol>
 <p>Nonetheless, when we write these constraints in <code>proof-systems</code>, we use a shared framework that helps us use the columns in each row as placeholders. For example, the <code>i</code>-th column of the current row <code>Curr</code> is represented as:</p>
-<pre><pre class="playground"><code class="language-rust">
-<span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>E::&lt;F&gt;::cell(Column::Witness(i), CurrOrNext::Curr)
 <span class="boring">}
 </span></code></pre></pre>
 <p>where the <code>E</code> type is a shorthand for <code>Expr&lt;ConstantExpr&gt;</code>. More succinctly, we refer to the above simply as:</p>
-<pre><pre class="playground"><code class="language-rust">
-<span class="boring">#![allow(unused)]
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>witness_curr(i)
 <span class="boring">}
