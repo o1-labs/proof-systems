@@ -260,7 +260,7 @@
 
 <span class="comment">// TODO: move to a different file / module</span>
 <span class="doccomment">/// A challenge which is used as a scalar on a group element in the verifier</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ScalarChallenge</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="kw">pub</span> <span class="ident">F</span>);
 
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">endo_coefficient</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span>() -&gt; <span class="ident">F</span> {

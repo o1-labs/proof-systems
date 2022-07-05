@@ -162,6 +162,7 @@
 <span id="156">156</span>
 <span id="157">157</span>
 <span id="158">158</span>
+<span id="159">159</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Keypair structures and algorithms</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Definition of secret key, keypairs and related helpers</span>
@@ -174,7 +175,7 @@
 <span class="kw">use</span> <span class="ident">thiserror::Error</span>;
 
 <span class="doccomment">/// Keypair error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">PartialEq</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">KeypairError</span> {
     <span class="doccomment">/// Invalid secret key hex</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;invalid secret key hex&quot;</span>)]</span>
@@ -190,7 +191,7 @@
 <span class="kw">pub</span> <span class="kw">type</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">std::result::Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">KeypairError</span><span class="op">&gt;</span>;
 
 <span class="doccomment">/// Keypair structure</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Keypair</span> {
     <span class="doccomment">/// Secret key</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">secret</span>: <span class="ident">SecKey</span>,
@@ -211,12 +212,13 @@
     <span class="doccomment">/// Generate a random keypair</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">rand</span>(<span class="ident">rng</span>: <span class="kw-2">&amp;mut</span> (<span class="kw">impl</span> <span class="ident">RngCore</span> <span class="op">+</span> <span class="ident">CryptoRng</span>)) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">sec_key</span>: <span class="ident">SecKey</span> <span class="op">=</span> <span class="ident">SecKey::rand</span>(<span class="ident">rng</span>);
+        <span class="kw">let</span> <span class="ident">scalar</span> <span class="op">=</span> <span class="ident">sec_key</span>.<span class="ident">into_scalar</span>();
         <span class="kw">let</span> <span class="ident">public</span>: <span class="ident">CurvePoint</span> <span class="op">=</span> <span class="ident">CurvePoint::prime_subgroup_generator</span>()
-            .<span class="ident">mul</span>(<span class="ident">sec_key</span>.<span class="ident">into_scalar</span>())
+            .<span class="ident">mul</span>(<span class="ident">scalar</span>)
             .<span class="ident">into_affine</span>();
 
         <span class="comment">// Safe in this case b/c point must be on curve</span>
-        <span class="ident"><span class="self">Self</span>::from_parts_unsafe</span>(<span class="ident">sec_key</span>.<span class="ident">into_scalar</span>(), <span class="ident">public</span>)
+        <span class="ident"><span class="self">Self</span>::from_parts_unsafe</span>(<span class="ident">scalar</span>, <span class="ident">public</span>)
     }
 
     <span class="doccomment">/// Deserialize a keypair from secret key hex</span>

@@ -153,6 +153,10 @@
 <span id="147">147</span>
 <span id="148">148</span>
 <span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Mina Schnorr signature scheme</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! An implementation of the singer interface for the Mina signature algorithm</span>
@@ -218,7 +222,7 @@
         <span class="kw">let</span> <span class="ident">k</span>: <span class="ident">ScalarField</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">r</span>.<span class="ident">y</span>.<span class="ident">into_repr</span>().<span class="ident">is_even</span>() { <span class="ident">k</span> } <span class="kw">else</span> { <span class="op">-</span><span class="ident">k</span> };
 
         <span class="kw">let</span> <span class="ident">e</span>: <span class="ident">ScalarField</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">message_hash</span>(<span class="kw-2">&amp;</span><span class="ident">kp</span>.<span class="ident">public</span>, <span class="ident">r</span>.<span class="ident">x</span>, <span class="ident">input</span>);
-        <span class="kw">let</span> <span class="ident">s</span>: <span class="ident">ScalarField</span> <span class="op">=</span> <span class="ident">k</span> <span class="op">+</span> <span class="ident">e</span> <span class="op">*</span> <span class="ident">kp</span>.<span class="ident">secret</span>.<span class="ident">into_scalar</span>();
+        <span class="kw">let</span> <span class="ident">s</span>: <span class="ident">ScalarField</span> <span class="op">=</span> <span class="ident">k</span> <span class="op">+</span> <span class="ident">e</span> <span class="op">*</span> <span class="ident">kp</span>.<span class="ident">secret</span>.<span class="ident">scalar</span>();
 
         <span class="ident">Signature::new</span>(<span class="ident">r</span>.<span class="ident">x</span>, <span class="ident">s</span>)
     }
@@ -230,7 +234,7 @@
             .<span class="ident">mul</span>(<span class="ident">sig</span>.<span class="ident">s</span>)
             .<span class="ident">into_affine</span>();
         <span class="comment">// Perform addition and infinity check in projective coordinates for performance</span>
-        <span class="kw">let</span> <span class="ident">rv</span> <span class="op">=</span> <span class="ident">public</span>.<span class="ident">into_point</span>().<span class="ident">mul</span>(<span class="ident">ev</span>).<span class="ident">neg</span>().<span class="ident">add_mixed</span>(<span class="kw-2">&amp;</span><span class="ident">sv</span>);
+        <span class="kw">let</span> <span class="ident">rv</span> <span class="op">=</span> <span class="ident">public</span>.<span class="ident">point</span>().<span class="ident">mul</span>(<span class="ident">ev</span>).<span class="ident">neg</span>().<span class="ident">add_mixed</span>(<span class="kw-2">&amp;</span><span class="ident">sv</span>);
         <span class="kw">if</span> <span class="ident">rv</span>.<span class="ident">is_zero</span>() {
             <span class="kw">return</span> <span class="bool-val">false</span>;
         }
@@ -242,14 +246,18 @@
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">create_legacy</span><span class="op">&lt;</span><span class="ident">H</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Hashable</span><span class="op">&gt;</span>(<span class="ident">domain_param</span>: <span class="ident">H::D</span>) -&gt; <span class="kw">impl</span> <span class="ident">Signer</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span> {
     <span class="ident">Schnorr</span>::<span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span> {
-        <span class="ident">hasher</span>: <span class="ident">Box::new</span>(<span class="ident">mina_hasher::create_legacy</span>::<span class="op">&lt;</span><span class="ident">Message</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="ident">domain_param</span>)),
+        <span class="ident">hasher</span>: <span class="ident">Box::new</span>(<span class="ident">mina_hasher::create_legacy</span>::<span class="op">&lt;</span><span class="ident">Message</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span><span class="op">&gt;</span>(
+            <span class="ident">domain_param</span>.<span class="ident">clone</span>(),
+        )),
         <span class="ident">domain_param</span>,
     }
 }
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">create_kimchi</span><span class="op">&lt;</span><span class="ident">H</span>: <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Hashable</span><span class="op">&gt;</span>(<span class="ident">domain_param</span>: <span class="ident">H::D</span>) -&gt; <span class="kw">impl</span> <span class="ident">Signer</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span> {
     <span class="ident">Schnorr</span>::<span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span> {
-        <span class="ident">hasher</span>: <span class="ident">Box::new</span>(<span class="ident">mina_hasher::create_kimchi</span>::<span class="op">&lt;</span><span class="ident">Message</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="ident">domain_param</span>)),
+        <span class="ident">hasher</span>: <span class="ident">Box::new</span>(<span class="ident">mina_hasher::create_kimchi</span>::<span class="op">&lt;</span><span class="ident">Message</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span><span class="op">&gt;</span>(
+            <span class="ident">domain_param</span>.<span class="ident">clone</span>(),
+        )),
         <span class="ident">domain_param</span>,
     }
 }
@@ -262,10 +270,10 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blake_hasher</span> <span class="op">=</span> <span class="ident">Blake2bVar::new</span>(<span class="number">32</span>).<span class="ident">unwrap</span>();
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">roi</span>: <span class="ident">ROInput</span> <span class="op">=</span> <span class="ident">input</span>.<span class="ident">to_roinput</span>();
-        <span class="ident">roi</span>.<span class="ident">append_field</span>(<span class="ident">kp</span>.<span class="ident">public</span>.<span class="ident">into_point</span>().<span class="ident">x</span>);
-        <span class="ident">roi</span>.<span class="ident">append_field</span>(<span class="ident">kp</span>.<span class="ident">public</span>.<span class="ident">into_point</span>().<span class="ident">y</span>);
-        <span class="ident">roi</span>.<span class="ident">append_scalar</span>(<span class="ident">kp</span>.<span class="ident">secret</span>.<span class="ident">into_scalar</span>());
-        <span class="ident">roi</span>.<span class="ident">append_bytes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">domain_param</span>.<span class="ident">into_bytes</span>());
+        <span class="ident">roi</span>.<span class="ident">append_field</span>(<span class="ident">kp</span>.<span class="ident">public</span>.<span class="ident">point</span>().<span class="ident">x</span>);
+        <span class="ident">roi</span>.<span class="ident">append_field</span>(<span class="ident">kp</span>.<span class="ident">public</span>.<span class="ident">point</span>().<span class="ident">y</span>);
+        <span class="ident">roi</span>.<span class="ident">append_scalar</span>(<span class="kw-2">*</span><span class="ident">kp</span>.<span class="ident">secret</span>.<span class="ident">scalar</span>());
+        <span class="ident">roi</span>.<span class="ident">append_bytes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">domain_param</span>.<span class="ident">clone</span>().<span class="ident">into_bytes</span>());
 
         <span class="ident">blake_hasher</span>.<span class="ident">update</span>(<span class="kw-2">&amp;</span><span class="ident">roi</span>.<span class="ident">to_bytes</span>());
 
@@ -290,8 +298,8 @@
     <span class="kw">fn</span> <span class="ident">message_hash</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">pub_key</span>: <span class="kw-2">&amp;</span><span class="ident">PubKey</span>, <span class="ident">rx</span>: <span class="ident">BaseField</span>, <span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="ident">H</span>) -&gt; <span class="ident">ScalarField</span> {
         <span class="kw">let</span> <span class="ident">schnorr_input</span> <span class="op">=</span> <span class="ident">Message</span>::<span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span> {
             <span class="ident">input</span>: <span class="ident">input</span>.<span class="ident">clone</span>(),
-            <span class="ident">pub_key_x</span>: <span class="ident">pub_key</span>.<span class="ident">into_point</span>().<span class="ident">x</span>,
-            <span class="ident">pub_key_y</span>: <span class="ident">pub_key</span>.<span class="ident">into_point</span>().<span class="ident">y</span>,
+            <span class="ident">pub_key_x</span>: <span class="ident">pub_key</span>.<span class="ident">point</span>().<span class="ident">x</span>,
+            <span class="ident">pub_key_y</span>: <span class="ident">pub_key</span>.<span class="ident">point</span>().<span class="ident">y</span>,
             <span class="ident">rx</span>,
         };
 

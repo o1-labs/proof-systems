@@ -205,6 +205,11 @@
 <span id="199">199</span>
 <span id="200">200</span>
 <span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Public key structures and algorithms</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Definition of public key structure and helpers</span>
@@ -220,7 +225,7 @@
 <span class="kw">use</span> <span class="ident">o1_utils::FieldHelpers</span>;
 
 <span class="doccomment">/// Public key errors</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">PartialEq</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">PubKeyError</span> {
     <span class="doccomment">/// Invalid address length</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;invalid address length&quot;</span>)]</span>
@@ -255,7 +260,7 @@
 <span class="kw">const</span> <span class="ident">MINA_ADDRESS_RAW_LEN</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">40</span>;
 
 <span class="doccomment">/// Public key</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PubKey</span>(<span class="ident">CurvePoint</span>);
 
 <span class="kw">impl</span> <span class="ident">PubKey</span> {
@@ -309,14 +314,19 @@
         <span class="prelude-val">Ok</span>(<span class="ident">PubKey::from_point_unsafe</span>(<span class="ident">pt</span>))
     }
 
+    <span class="doccomment">/// Borrow public key as curve point</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">point</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">CurvePoint</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>
+    }
+
     <span class="doccomment">/// Convert public key into curve point</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_point</span>(<span class="self">self</span>) -&gt; <span class="ident">CurvePoint</span> {
         <span class="self">self</span>.<span class="number">0</span>
     }
 
     <span class="doccomment">/// Convert public key into compressed public key</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_compressed</span>(<span class="self">self</span>) -&gt; <span class="ident">CompressedPubKey</span> {
-        <span class="kw">let</span> <span class="ident">point</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">into_point</span>();
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_compressed</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">CompressedPubKey</span> {
+        <span class="kw">let</span> <span class="ident">point</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>;
         <span class="ident">CompressedPubKey</span> {
             <span class="ident">x</span>: <span class="ident">point</span>.<span class="ident">x</span>,
             <span class="ident">is_odd</span>: <span class="ident">point</span>.<span class="ident">y</span>.<span class="ident">into_repr</span>().<span class="ident">is_odd</span>(),
@@ -324,15 +334,15 @@
     }
 
     <span class="doccomment">/// Serialize public key into corresponding Mina address</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_address</span>(<span class="self">self</span>) -&gt; <span class="ident">String</span> {
-        <span class="kw">let</span> <span class="ident">point</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">into_point</span>();
-        <span class="ident">into_address</span>(<span class="ident">point</span>.<span class="ident">x</span>, <span class="ident">point</span>.<span class="ident">y</span>.<span class="ident">into_repr</span>().<span class="ident">is_odd</span>())
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_address</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">String</span> {
+        <span class="kw">let</span> <span class="ident">point</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">point</span>();
+        <span class="ident">into_address</span>(<span class="kw-2">&amp;</span><span class="ident">point</span>.<span class="ident">x</span>, <span class="ident">point</span>.<span class="ident">y</span>.<span class="ident">into_repr</span>().<span class="ident">is_odd</span>())
     }
 }
 
 <span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">PubKey</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="kw">let</span> <span class="ident">point</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">into_point</span>();
+        <span class="kw">let</span> <span class="ident">point</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">point</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">x_bytes</span> <span class="op">=</span> <span class="ident">point</span>.<span class="ident">x</span>.<span class="ident">to_bytes</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">y_bytes</span> <span class="op">=</span> <span class="ident">point</span>.<span class="ident">y</span>.<span class="ident">to_bytes</span>();
         <span class="ident">x_bytes</span>.<span class="ident">reverse</span>();
@@ -343,7 +353,7 @@
 }
 
 <span class="doccomment">/// Compressed public keys consist of x-coordinate and y-coordinate parity.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CompressedPubKey</span> {
     <span class="doccomment">/// X-coordinate</span>
     <span class="kw">pub</span> <span class="ident">x</span>: <span class="ident">BaseField</span>,
@@ -352,7 +362,7 @@
     <span class="kw">pub</span> <span class="ident">is_odd</span>: <span class="ident">bool</span>,
 }
 
-<span class="kw">fn</span> <span class="ident">into_address</span>(<span class="ident">x</span>: <span class="ident">BaseField</span>, <span class="ident">is_odd</span>: <span class="ident">bool</span>) -&gt; <span class="ident">String</span> {
+<span class="kw">fn</span> <span class="ident">into_address</span>(<span class="ident">x</span>: <span class="kw-2">&amp;</span><span class="ident">BaseField</span>, <span class="ident">is_odd</span>: <span class="ident">bool</span>) -&gt; <span class="ident">String</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">raw</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[
         <span class="number">0xcb</span>, <span class="comment">// version for base58 check</span>
         <span class="number">0x01</span>, <span class="comment">// non_zero_curve_point version</span>
@@ -375,8 +385,8 @@
 
 <span class="kw">impl</span> <span class="ident">CompressedPubKey</span> {
     <span class="doccomment">/// Serialize compressed public key into corresponding Mina address</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_address</span>(<span class="self">self</span>) -&gt; <span class="ident">String</span> {
-        <span class="ident">into_address</span>(<span class="self">self</span>.<span class="ident">x</span>, <span class="self">self</span>.<span class="ident">is_odd</span>)
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_address</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">String</span> {
+        <span class="ident">into_address</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">x</span>, <span class="self">self</span>.<span class="ident">is_odd</span>)
     }
 
     <span class="doccomment">/// Deserialize Mina address into compressed public key (via an uncompressed PubKey)</span>

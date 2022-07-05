@@ -124,7 +124,7 @@
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">ScalarField</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">CurvePoint</span> <span class="kw">as</span> <span class="ident">AffineCurve</span><span class="op">&gt;</span><span class="ident">::ScalarField</span>;
 
 <span class="doccomment">/// Mina network (or blockchain) identifier</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">NetworkId</span> {
     <span class="doccomment">/// Id for all testnets</span>
     <span class="ident">TESTNET</span> <span class="op">=</span> <span class="number">0x00</span>,

@@ -25,7 +25,7 @@
 <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">Keypair::rand</span>(<span class="kw-2">&amp;mut</span> <span class="ident">rand::rngs::OsRng</span>);
 
 <span class="kw">let</span> <span class="ident">tx</span> <span class="op">=</span> <span class="ident">Transaction::new_payment</span>(
-                <span class="ident">keypair</span>.<span class="ident">public</span>,
+                <span class="ident">keypair</span>.<span class="ident">public</span>.<span class="ident">clone</span>(),
                 <span class="ident">PubKey::from_address</span>(<span class="string">&quot;B62qicipYxyEHu7QjUqS7QvBipTs5CzgkYZZZkPoKVYBu6tnDUcE9Zt&quot;</span>).<span class="ident">expect</span>(<span class="string">&quot;invalid receiver address&quot;</span>),
                 <span class="number">1729000000000</span>,
                 <span class="number">2000000000</span>,

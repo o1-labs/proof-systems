@@ -202,7 +202,7 @@
 
 <span class="doccomment">/// The domain parameter trait is used during hashing to convey extra</span>
 <span class="doccomment">/// arguments to domain string generation.  It is also used by generic signing code.</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">DomainParameter</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">Copy</span> {
+<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">DomainParameter</span>: <span class="ident">Clone</span> {
     <span class="doccomment">/// Conversion into vector of bytes</span>
     <span class="kw">fn</span> <span class="ident">into_bytes</span>(<span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>;
 }

@@ -98,30 +98,30 @@
 <span class="doccomment">/// Field element helpers for Cairo</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">CairoFieldHelpers</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Return field element as byte, if it fits. Otherwise returns least significant byte</span>
-    <span class="kw">fn</span> <span class="ident">lsb</span>(<span class="self">self</span>) -&gt; <span class="ident">u8</span>;
+    <span class="kw">fn</span> <span class="ident">lsb</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u8</span>;
 
     <span class="doccomment">/// Return `pos`-th 16-bit chunk as another field element</span>
-    <span class="kw">fn</span> <span class="ident">u16_chunk</span>(<span class="self">self</span>, <span class="ident">pos</span>: <span class="ident">usize</span>) -&gt; <span class="ident">F</span>;
+    <span class="kw">fn</span> <span class="ident">u16_chunk</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">pos</span>: <span class="ident">usize</span>) -&gt; <span class="ident">F</span>;
 
     <span class="doccomment">/// Return first 64 bits of the field element</span>
-    <span class="kw">fn</span> <span class="ident">to_u64</span>(<span class="self">self</span>) -&gt; <span class="ident">u64</span>;
+    <span class="kw">fn</span> <span class="ident">to_u64</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u64</span>;
 
     <span class="doccomment">/// Return a field element in hexadecimal in big endian</span>
-    <span class="kw">fn</span> <span class="ident">to_hex_be</span>(<span class="self">self</span>) -&gt; <span class="ident">String</span>;
+    <span class="kw">fn</span> <span class="ident">to_hex_be</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">String</span>;
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span> <span class="ident">CairoFieldHelpers</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">F</span> {
-    <span class="kw">fn</span> <span class="ident">lsb</span>(<span class="self">self</span>) -&gt; <span class="ident">u8</span> {
+    <span class="kw">fn</span> <span class="ident">lsb</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u8</span> {
         <span class="self">self</span>.<span class="ident">to_bytes</span>()[<span class="number">0</span>]
     }
 
-    <span class="kw">fn</span> <span class="ident">u16_chunk</span>(<span class="self">self</span>, <span class="ident">pos</span>: <span class="ident">usize</span>) -&gt; <span class="ident">F</span> {
+    <span class="kw">fn</span> <span class="ident">u16_chunk</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">pos</span>: <span class="ident">usize</span>) -&gt; <span class="ident">F</span> {
         <span class="kw">let</span> <span class="ident">bytes</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">to_bytes</span>();
         <span class="kw">let</span> <span class="ident">chunk</span> <span class="op">=</span> <span class="ident">u16::from</span>(<span class="ident">bytes</span>[<span class="number">2</span> <span class="op">*</span> <span class="ident">pos</span>]) <span class="op">+</span> <span class="ident">u16::from</span>(<span class="ident">bytes</span>[<span class="number">2</span> <span class="op">*</span> <span class="ident">pos</span> <span class="op">+</span> <span class="number">1</span>]) <span class="op">*</span> <span class="number">2u16</span>.<span class="ident">pow</span>(<span class="number">8</span>);
         <span class="ident">F::from</span>(<span class="ident">chunk</span>)
     }
 
-    <span class="kw">fn</span> <span class="ident">to_u64</span>(<span class="self">self</span>) -&gt; <span class="ident">u64</span> {
+    <span class="kw">fn</span> <span class="ident">to_u64</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u64</span> {
         <span class="kw">let</span> <span class="ident">bytes</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">to_bytes</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">acc</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
         <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">8</span> {
@@ -130,7 +130,7 @@
         <span class="ident">acc</span>
     }
 
-    <span class="kw">fn</span> <span class="ident">to_hex_be</span>(<span class="self">self</span>) -&gt; <span class="ident">String</span> {
+    <span class="kw">fn</span> <span class="ident">to_hex_be</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">String</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">bytes</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">to_bytes</span>();
         <span class="ident">bytes</span>.<span class="ident">reverse</span>();
         <span class="ident">hex::encode</span>(<span class="ident">bytes</span>)

@@ -1783,7 +1783,7 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">nested_roinput_test</span>() {
-        <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>)]</span>
+        <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
         <span class="kw">struct</span> <span class="ident">A</span> {
             <span class="ident">x</span>: <span class="ident">u32</span>,
             <span class="ident">y</span>: <span class="ident">bool</span>,
@@ -1807,7 +1807,7 @@
             }
         }
 
-        <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>)]</span>
+        <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
         <span class="kw">struct</span> <span class="ident">B1</span> {
             <span class="ident">a</span>: <span class="ident">A</span>,
             <span class="ident">b</span>: <span class="ident">u64</span>,
@@ -1830,7 +1830,7 @@
             }
         }
 
-        <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>)]</span>
+        <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
         <span class="kw">struct</span> <span class="ident">B2</span> {
             <span class="ident">a</span>: <span class="ident">A</span>,
             <span class="ident">b</span>: <span class="ident">u64</span>,
@@ -1868,7 +1868,7 @@
             <span class="ident">c</span>: <span class="bool-val">true</span>,
         };
         <span class="kw">let</span> <span class="ident">b2</span> <span class="op">=</span> <span class="ident">B2</span> {
-            <span class="ident">a</span>: <span class="ident">b1</span>.<span class="ident">a</span>,
+            <span class="ident">a</span>: <span class="ident">b1</span>.<span class="ident">a</span>.<span class="ident">clone</span>(),
             <span class="ident">b</span>: <span class="ident">b1</span>.<span class="ident">b</span>,
             <span class="ident">c</span>: <span class="ident">b1</span>.<span class="ident">c</span>,
         };
@@ -1876,14 +1876,14 @@
         <span class="macro">assert_eq!</span>(<span class="ident">b1</span>.<span class="ident">to_roinput</span>(), <span class="ident">b2</span>.<span class="ident">to_roinput</span>());
 
         <span class="kw">let</span> <span class="ident">b2</span> <span class="op">=</span> <span class="ident">B2</span> {
-            <span class="ident">a</span>: <span class="ident">b1</span>.<span class="ident">a</span>,
-            <span class="ident">b</span>: <span class="ident">b1</span>.<span class="ident">b</span>,
+            <span class="ident">a</span>: <span class="ident">b1</span>.<span class="ident">a</span>.<span class="ident">clone</span>(),
+            <span class="ident">b</span>: <span class="ident">b1</span>.<span class="ident">b</span>.<span class="ident">clone</span>(),
             <span class="ident">c</span>: <span class="bool-val">false</span>,
         };
         <span class="macro">assert_ne!</span>(<span class="ident">b1</span>.<span class="ident">to_roinput</span>(), <span class="ident">b2</span>.<span class="ident">to_roinput</span>());
 
         <span class="kw">let</span> <span class="ident">b2</span> <span class="op">=</span> <span class="ident">B2</span> {
-            <span class="ident">a</span>: <span class="ident">b1</span>.<span class="ident">a</span>,
+            <span class="ident">a</span>: <span class="ident">b1</span>.<span class="ident">a</span>.<span class="ident">clone</span>(),
             <span class="ident">b</span>: <span class="ident">b1</span>.<span class="ident">b</span> <span class="op">+</span> <span class="number">1</span>,
             <span class="ident">c</span>: <span class="ident">b1</span>.<span class="ident">c</span>,
         };
