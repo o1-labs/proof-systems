@@ -11,7 +11,7 @@ use crate::verifier_index::VerifierIndex;
 use ark_ff::PrimeField;
 use ark_poly::EvaluationDomain;
 use commitment_dlog::{commitment::CommitmentCurve, srs::SRS};
-use oracle::poseidon::ArithmeticSpongeParams;
+use oracle::{poseidon::ArithmeticSpongeParams, FqSponge};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::sync::Arc;
@@ -50,6 +50,10 @@ pub struct ProverIndex<G: CommitmentCurve> {
     /// The verifier index corresponding to this prover index
     #[serde(skip)]
     pub verifier_index: Option<VerifierIndex<G>>,
+
+    /// The verifier index digest corresponding to this prover index
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    pub verifier_index_digest: Option<G::ScalarField>,
 }
 //~spec:endcode
 
@@ -97,6 +101,44 @@ where
             max_quot_size,
             fq_sponge_params,
             verifier_index: None,
+            verifier_index_digest: None,
+        }
+    }
+
+    /// Retrieve or compute the digest for the corresponding verifier index.
+    /// If the digest is not already cached inside the index, store it.
+    pub fn compute_verifier_index_digest<
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+    >(
+        &mut self,
+    ) -> G::ScalarField {
+        if let Some(verifier_index_digest) = self.verifier_index_digest {
+            return verifier_index_digest;
+        }
+
+        if let None = &self.verifier_index {
+            self.verifier_index = Some(self.verifier_index());
+        }
+
+        let verifier_index_digest = self.verifier_index_digest::<EFqSponge>();
+        self.verifier_index_digest = Some(verifier_index_digest);
+        verifier_index_digest
+    }
+
+    /// Retrieve or compute the digest for the corresponding verifier index.
+    pub fn verifier_index_digest<EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>>(
+        &self,
+    ) -> G::ScalarField {
+        if let Some(verifier_index_digest) = self.verifier_index_digest {
+            return verifier_index_digest;
+        }
+
+        match &self.verifier_index {
+            None => {
+                let verifier_index = self.verifier_index();
+                verifier_index.digest::<EFqSponge>()
+            }
+            Some(verifier_index) => verifier_index.digest::<EFqSponge>(),
         }
     }
 }
