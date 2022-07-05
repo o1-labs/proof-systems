@@ -1,4 +1,5 @@
 //! This module implements Plonk circuit constraint primitive.
+use crate::curve::KimchiCurve;
 use crate::{
     circuits::{
         domain_constant_evaluation::DomainConstantEvaluations,
@@ -18,7 +19,6 @@ use ark_poly::{
     Radix2EvaluationDomain as D,
 };
 use array_init::array_init;
-use commitment_dlog::srs::KimchiCurve;
 use o1_utils::ExtendedEvaluations;
 use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};

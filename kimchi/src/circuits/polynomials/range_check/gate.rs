@@ -3,12 +3,12 @@
 use std::collections::HashMap;
 
 use crate::circuits::lookup::lookups::LookupInfo;
+use crate::curve::KimchiCurve;
 use ark_ff::{FftField, Field, One, UniformRand, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
 use array_init::array_init;
-use commitment_dlog::srs::KimchiCurve;
 use rand::{prelude::StdRng, SeedableRng};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;

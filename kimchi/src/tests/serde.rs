@@ -32,9 +32,8 @@ type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 #[cfg(test)]
 mod tests {
 
-    use commitment_dlog::srs::KimchiCurve;
-
     use super::*;
+    use crate::curve::KimchiCurve;
 
     #[test]
     fn test_rmp_serde() {

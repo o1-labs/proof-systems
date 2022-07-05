@@ -1,6 +1,7 @@
 //! This module implements zk-proof batch verifier functionality.
 
 use crate::{
+    curve::KimchiCurve,
     alphas::Alphas,
     circuits::{
         argument::ArgumentType,
@@ -24,7 +25,6 @@ use commitment_dlog::{
         b_poly, b_poly_coefficients, combined_inner_product, BatchEvaluationProof, CommitmentCurve,
         Evaluation, PolyComm,
     },
-    srs::KimchiCurve,
 };
 use itertools::izip;
 use oracle::{sponge::ScalarChallenge, FqSponge};

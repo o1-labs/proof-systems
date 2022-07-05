@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::curve::KimchiCurve;
 use crate::{
     circuits::{
         expr::{prologue::*, Column, ConstantExpr},
@@ -13,7 +14,6 @@ use crate::{
 };
 use ark_ff::{FftField, Field, One, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
-use commitment_dlog::srs::KimchiCurve;
 use o1_utils::adjacent_pairs::AdjacentPairs;
 use rand::Rng;
 use serde::{Deserialize, Serialize};

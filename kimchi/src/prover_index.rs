@@ -7,11 +7,12 @@ use crate::{
         expr::{Linearization, PolishToken},
         wires::*,
     },
+    curve::KimchiCurve,
     linearization::expr_linearization,
 };
 use ark_ff::PrimeField;
 use ark_poly::EvaluationDomain;
-use commitment_dlog::srs::{KimchiCurve, SRS};
+use commitment_dlog::srs::SRS;
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;

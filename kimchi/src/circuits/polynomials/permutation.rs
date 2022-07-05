@@ -40,6 +40,7 @@
 //~ You can read more about why it looks like that in [this post](https://minaprotocol.com/blog/a-more-efficient-approach-to-zero-knowledge-for-plonk).
 //~
 
+use crate::curve::KimchiCurve;
 use crate::{
     circuits::{constraints::ConstraintSystem, polynomial::WitnessOverDomains, wires::*},
     error::ProverError,
@@ -53,7 +54,6 @@ use ark_poly::{
 use ark_poly::{Polynomial, UVPolynomial};
 use array_init::array_init;
 use blake2::{Blake2b512, Digest};
-use commitment_dlog::srs::KimchiCurve;
 use o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
 use rand::{CryptoRng, RngCore};
 

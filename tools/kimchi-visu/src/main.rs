@@ -1,10 +1,10 @@
-use commitment_dlog::srs::KimchiCurve;
 use kimchi::{
     circuits::{
         gate::CircuitGate,
         polynomials::{generic::GenericGateSpec, poseidon::generate_witness},
         wires::Wire,
     },
+    curve::KimchiCurve,
     prover_index::testing::new_index_for_test,
 };
 use kimchi_visu::{visu, Witness};

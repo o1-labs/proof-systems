@@ -9,7 +9,7 @@ use crate::circuits::{
 };
 use ark_ff::{Field, One, Zero};
 use ark_poly::{EvaluationDomain, Evaluations as E, Radix2EvaluationDomain as D};
-use commitment_dlog::srs::KimchiCurve;
+use crate::curve::KimchiCurve;
 use o1_utils::field_helpers::i32_to_field;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;

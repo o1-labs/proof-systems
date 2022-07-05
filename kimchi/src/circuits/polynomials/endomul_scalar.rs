@@ -10,9 +10,9 @@ use crate::circuits::{
     gate::{CircuitGate, GateType},
     wires::COLUMNS,
 };
+use crate::curve::KimchiCurve;
 use ark_ff::{BitIteratorLE, FftField, Field, PrimeField, Zero};
 use array_init::array_init;
-use commitment_dlog::srs::KimchiCurve;
 
 impl<G: KimchiCurve> CircuitGate<G> {
     pub fn verify_endomul_scalar(

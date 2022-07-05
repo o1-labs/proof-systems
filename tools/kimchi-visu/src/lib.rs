@@ -1,7 +1,7 @@
 //! Implements a tool to visualize a circuit as an HTML page.
 
 use ark_ff::PrimeField;
-use commitment_dlog::{commitment::CommitmentCurve, srs::KimchiCurve};
+use commitment_dlog::commitment::CommitmentCurve;
 use kimchi::{
     circuits::{
         argument::Argument,
@@ -14,6 +14,7 @@ use kimchi::{
             varbasemul::VarbaseMul,
         },
     },
+    curve::KimchiCurve,
     prover_index::ProverIndex,
 };
 use serde::Serialize;

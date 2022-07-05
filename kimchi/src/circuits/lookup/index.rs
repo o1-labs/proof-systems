@@ -9,12 +9,12 @@ use crate::circuits::{
     },
     polynomials::permutation::ZK_ROWS,
 };
+use crate::curve::KimchiCurve;
 use ark_ff::{FftField, One, Zero};
 use ark_poly::{
     univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
     Radix2EvaluationDomain as D,
 };
-use commitment_dlog::srs::KimchiCurve;
 use itertools::repeat_n;
 use o1_utils::field_helpers::i32_to_field;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};

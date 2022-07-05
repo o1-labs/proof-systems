@@ -1,20 +1,21 @@
 //! This module implements the verifier index as [VerifierIndex].
 //! You can derive this struct from the [ProverIndex] struct.
 
-use crate::alphas::Alphas;
-use crate::circuits::lookup::{index::LookupSelectors, lookups::LookupsUsed};
-use crate::circuits::polynomials::permutation::zk_polynomial;
-use crate::circuits::polynomials::permutation::zk_w3;
-use crate::circuits::{
-    expr::{Linearization, PolishToken},
-    wires::*,
+use crate::{
+    alphas::Alphas,
+    circuits::{
+        expr::{Linearization, PolishToken},
+        lookup::{index::LookupSelectors, lookups::LookupsUsed},
+        polynomials::permutation::{zk_polynomial, zk_w3},
+        wires::*,
+    },
+    curve::KimchiCurve,
+    error::VerifierIndexError,
+    prover_index::ProverIndex,
 };
-use crate::error::VerifierIndexError;
-use crate::prover_index::ProverIndex;
 use ark_ff::PrimeField;
 use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D};
 use array_init::array_init;
-use commitment_dlog::srs::KimchiCurve;
 use commitment_dlog::{
     commitment::{CommitmentCurve, PolyComm},
     srs::SRS,
@@ -23,10 +24,9 @@ use once_cell::sync::OnceCell;
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
-use std::io::SeekFrom::Start;
 use std::{
     fs::{File, OpenOptions},
-    io::{BufReader, BufWriter, Seek},
+    io::{BufReader, BufWriter, Seek, SeekFrom::Start},
     path::Path,
     sync::Arc,
 };

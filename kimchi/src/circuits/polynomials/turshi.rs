@@ -85,6 +85,7 @@ use crate::circuits::expr::{self, Column};
 use crate::circuits::expr::{witness_curr, witness_next, Cache, ConstantExpr, Expr, E};
 use crate::circuits::gate::{CircuitGate, GateType};
 use crate::circuits::wires::{GateWires, Wire, COLUMNS};
+use crate::curve::KimchiCurve;
 use crate::proof::ProofEvaluations;
 use ark_ff::{FftField, Field, One, UniformRand, Zero};
 use array_init::array_init;
@@ -92,7 +93,6 @@ use cairo::{
     runner::{CairoInstruction, CairoProgram, Pointers},
     word::{FlagBits, Offsets},
 };
-use commitment_dlog::srs::KimchiCurve;
 use rand::prelude::StdRng;
 use rand::SeedableRng;
 use std::marker::PhantomData;

@@ -32,8 +32,8 @@ use crate::circuits::{
     polynomial::COLUMNS,
     wires::{GateWires, Wire},
 };
+use crate::curve::KimchiCurve;
 use ark_ff::{FftField, Field, One, Zero};
-use commitment_dlog::srs::KimchiCurve;
 use oracle::{
     constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
     poseidon::{sbox, ArithmeticSponge, ArithmeticSpongeParams, Sponge},

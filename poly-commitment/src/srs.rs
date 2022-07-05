@@ -1,17 +1,12 @@
 //! This module implements the Marlin structured reference string primitive
 
 use crate::commitment::CommitmentCurve;
-use ark_ec::{
-    short_weierstrass_jacobian::GroupAffine, AffineCurve, ModelParameters, ProjectiveCurve,
-};
+use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{BigInteger, PrimeField};
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
 use array_init::array_init;
 use blake2::{Blake2b512, Digest};
 use groupmap::GroupMap;
-use mina_curves::pasta::{pallas::PallasParameters, vesta::VestaParameters};
-use once_cell::sync::Lazy;
-use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::collections::HashMap;
@@ -193,46 +188,5 @@ where
             endo_r,
             endo_q,
         }
-    }
-}
-
-pub trait KimchiCurve: CommitmentCurve {
-    type OtherCurve: KimchiCurve;
-
-    fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField>;
-
-    //q,r endos
-    fn endos() -> &'static (Self::BaseField, Self::ScalarField);
-}
-
-impl KimchiCurve for GroupAffine<VestaParameters> {
-    type OtherCurve = GroupAffine<PallasParameters>;
-
-    fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
-        oracle::pasta::fp_kimchi::static_params()
-    }
-
-    fn endos() -> &'static (Self::BaseField, Self::ScalarField) {
-        static VESTA_ENDOS: Lazy<(
-            <VestaParameters as ModelParameters>::BaseField,
-            <VestaParameters as ModelParameters>::ScalarField,
-        )> = Lazy::new(endos::<GroupAffine<VestaParameters>>);
-        &VESTA_ENDOS
-    }
-}
-
-impl KimchiCurve for GroupAffine<PallasParameters> {
-    type OtherCurve = GroupAffine<VestaParameters>;
-
-    fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
-        oracle::pasta::fq_kimchi::static_params()
-    }
-
-    fn endos() -> &'static (Self::BaseField, Self::ScalarField) {
-        static PALLAS_ENDOS: Lazy<(
-            <PallasParameters as ModelParameters>::BaseField,
-            <PallasParameters as ModelParameters>::ScalarField,
-        )> = Lazy::new(endos::<GroupAffine<PallasParameters>>);
-        &PALLAS_ENDOS
     }
 }

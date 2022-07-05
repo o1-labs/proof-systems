@@ -12,8 +12,8 @@
 
 use std::marker::PhantomData;
 
+use crate::curve::KimchiCurve;
 use ark_ff::{FftField, One, Zero};
-use commitment_dlog::srs::KimchiCurve;
 use CurrOrNext::{Curr, Next};
 
 use crate::circuits::{

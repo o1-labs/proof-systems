@@ -39,12 +39,12 @@ use crate::circuits::{
     polynomial::COLUMNS,
     wires::GateWires,
 };
+use crate::curve::KimchiCurve;
 use ark_ff::{FftField, One, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
 use array_init::array_init;
-use commitment_dlog::srs::KimchiCurve;
 use rayon::prelude::*;
 
 /// Number of constraints produced by the gate.

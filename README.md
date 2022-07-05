@@ -114,15 +114,15 @@ At the time of this writing:
 **Proving time**
 
 | number of gates | seconds |
-|:---------------:|:-------:|
-|       2^11      |   0.6s  |
-|       2^16      |   6.3s  |
+| :-------------: | :-----: |
+|      2^11       |  0.6s   |
+|      2^16       |  6.3s   |
 
 **Verification time**
 
 | number of gates | seconds |
-|:---------------:|:-------:|
-|       2^16      |   0.1s  |
+| :-------------: | :-----: |
+|      2^16       |  0.1s   |
 
 ## Organization
 

@@ -1,10 +1,10 @@
 use ark_ff::{BigInteger, FftField, PrimeField};
 use array_init::array_init;
-use commitment_dlog::srs::KimchiCurve;
 use kimchi::circuits::{
     gate::{CircuitGate, GateType},
     wires::{Wire, COLUMNS},
 };
+use kimchi::curve::KimchiCurve;
 use oracle::{constants::*, permutation::full_round};
 use std::collections::HashMap;
 

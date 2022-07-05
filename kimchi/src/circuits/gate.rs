@@ -1,8 +1,8 @@
 //! This module implements Plonk constraint gate primitive.
 
 use crate::circuits::{constraints::ConstraintSystem, wires::*};
+use crate::curve::KimchiCurve;
 use ark_ff::bytes::ToBytes;
-use commitment_dlog::srs::KimchiCurve;
 use num_traits::cast::ToPrimitive;
 use o1_utils::hasher::CryptoDigest;
 use serde::{Deserialize, Serialize};

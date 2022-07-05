@@ -13,6 +13,7 @@ pub use oracle;
 pub mod alphas;
 pub mod bench;
 pub mod circuits;
+pub mod curve;
 pub mod error;
 pub mod linearization;
 pub mod plonk_sponge;

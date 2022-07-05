@@ -21,8 +21,8 @@ use crate::circuits::{
     gate::{CircuitGate, GateType},
     wires::COLUMNS,
 };
+use crate::curve::KimchiCurve;
 use ark_ff::{FftField, Field, One, Zero};
-use commitment_dlog::srs::KimchiCurve;
 
 /// This enforces that
 ///

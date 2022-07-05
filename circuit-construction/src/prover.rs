@@ -4,10 +4,11 @@ use ark_ff::{FftField, One, PrimeField, SquareRootField, Zero};
 use array_init::array_init;
 use commitment_dlog::{
     commitment::{CommitmentCurve, PolyComm},
-    srs::{endos, KimchiCurve, SRS},
+    srs::{endos, SRS},
 };
 use kimchi::{
     circuits::{constraints::ConstraintSystem, gate::GateType, wires::COLUMNS},
+    curve::KimchiCurve,
     plonk_sponge::FrSponge,
     proof::ProverProof,
     prover_index::ProverIndex,

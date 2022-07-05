@@ -1,6 +1,5 @@
-use commitment_dlog::srs::KimchiCurve;
-
 use crate::prologue::*;
+use kimchi::curve::KimchiCurve;
 
 type SpongeQ = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
 type SpongeR = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>;

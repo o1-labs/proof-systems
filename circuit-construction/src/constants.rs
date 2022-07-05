@@ -1,9 +1,7 @@
 use ark_ec::AffineCurve;
 use ark_ff::Field;
-use commitment_dlog::{
-    commitment::CommitmentCurve,
-    srs::{endos, KimchiCurve},
-};
+use commitment_dlog::{commitment::CommitmentCurve, srs::endos};
+use kimchi::curve::KimchiCurve;
 use mina_curves::pasta::{pallas::Affine as PallasAffine, vesta::Affine as VestaAffine, Fp, Fq};
 use oracle::poseidon::ArithmeticSpongeParams;
 

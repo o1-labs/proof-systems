@@ -4,10 +4,11 @@ use crate::circuits::{
     polynomials::poseidon::ROUNDS_PER_ROW,
     wires::{Wire, COLUMNS},
 };
+use crate::curve::KimchiCurve;
 use crate::tests::framework::TestFramework;
 use ark_ff::Zero;
 use array_init::array_init;
-use commitment_dlog::srs::KimchiCurve;
+//use commitment_dlog::srs::KimchiCurve;
 use mina_curves::pasta::fp::Fp;
 use mina_curves::pasta::vesta::Affine as Vesta;
 use o1_utils::math;
@@ -32,7 +33,7 @@ fn test_poseidon() {
     assert_eq!(ROUNDS_PER_HASH % ROUNDS_PER_ROW, 0);
 
     //let round_constants = oracle::pasta::fp_kimchi::params().round_constants;
-    let round_constants = &Vesta::sponge_params().round_constants;
+    let round_constants = &*Vesta::sponge_params().round_constants;
 
     // we keep track of an absolute row, and relative row within a gadget
     let mut abs_row = 0;
