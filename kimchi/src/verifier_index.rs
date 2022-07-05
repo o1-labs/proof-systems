@@ -19,7 +19,7 @@ use commitment_dlog::{
     srs::SRS,
 };
 use once_cell::sync::OnceCell;
-use oracle::poseidon::ArithmeticSpongeParams;
+use oracle::{poseidon::ArithmeticSpongeParams, FqSponge};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::io::SeekFrom::Start;
@@ -324,5 +324,26 @@ where
 
         self.serialize(&mut rmp_serde::Serializer::new(writer))
             .map_err(|e| e.to_string())
+    }
+
+    /// Compute the digest of the [VerifierIndex], which can be used for the Fiat-Shamir
+    /// transformation while proving / verifying.
+    pub fn digest<EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>>(
+        &self,
+    ) -> G::ScalarField {
+        let mut fq_sponge = EFqSponge::new(self.fq_sponge_params.clone());
+        for comm in self.sigma_comm.iter() {
+            fq_sponge.absorb_g(&comm.unshifted)
+        }
+        for comm in self.coefficients_comm.iter() {
+            fq_sponge.absorb_g(&comm.unshifted)
+        }
+        fq_sponge.absorb_g(&self.generic_comm.unshifted);
+        fq_sponge.absorb_g(&self.psm_comm.unshifted);
+        fq_sponge.absorb_g(&self.complete_add_comm.unshifted);
+        fq_sponge.absorb_g(&self.mul_comm.unshifted);
+        fq_sponge.absorb_g(&self.emul_comm.unshifted);
+        fq_sponge.absorb_g(&self.endomul_scalar_comm.unshifted);
+        fq_sponge.digest()
     }
 }
