@@ -19,7 +19,7 @@ use crate::kimchi::proof::{eval_polynomial, VarEvaluations, VarProof};
 
 use crate::util::eval_const_poly;
 
-use crate::types::{FieldChallenge, GLVChallenge, LagrangePoly, VanishEval, VarEval, VarPolyComm};
+use crate::types::{FieldChallenge, Scalar, GLVChallenge, LagrangePoly, VanishEval, VarEval, VarPolyComm};
 
 use crate::transcript::{Arthur, Msg};
 
@@ -516,7 +516,8 @@ where
                     }
                 }
 
-                // pass scalars to G::BaseField side for ft_comm computation
+                // pass scalars to G::BaseField side for ft_comm computation (MSM inside circuit)
+                let scalars: Vec<Scalar<G::BaseField>> = scalars.into_iter().map(|s| ctx.pass(s)).collect();
 
                 // compute the combined inner product:
                 // the batching of all the openings

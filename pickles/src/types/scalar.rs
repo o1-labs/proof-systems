@@ -1,11 +1,8 @@
 use circuit_construction::{Var, Cs};
 
-use crate::context::{FromPublic, Public};
-
-use crate::transcript::{Challenge, VarSponge};
+use crate::context::{FromPublic, ToPublic, Public};
 
 use ark_ff::{BigInteger, FftField, FpParameters, PrimeField};
-
 
 // An (elliptic curve) scalar of a given size. 
 // It allows passing a full variable (with no size bound) from one side to the other,
@@ -22,6 +19,29 @@ pub struct Scalar<F: FftField + PrimeField> {
     size: usize, // total number of bits in scalar
     high_bits: Var<F>, // "high bits" of scalar
     low_bit: Option<Var<F>> // single "low bit" of scalar
+}
+
+impl<Fp: FftField + PrimeField> ToPublic<Fp> for Scalar<Fp> {
+    fn to_public(&self) -> Vec<Public<Fp>> {
+        match self.low_bit {
+            Some(low_bit) => vec![
+                Public {
+                    size: Some(1),
+                    bits: low_bit
+                },
+                Public {
+                    size: Some(self.size - 1), // the lowest bit not covered
+                    bits: self.high_bits
+                }
+            ],
+            None => vec![
+                Public {
+                    size: Some(self.size),
+                    bits: self.high_bits
+                }
+            ]
+        }
+    }
 }
 
 impl<Fq: FftField + PrimeField, Fr: FftField + PrimeField> FromPublic<Fq, Fr> for Scalar<Fr> {

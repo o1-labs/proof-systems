@@ -10,6 +10,9 @@ mod challenge;
 // Var types related to polynomial (evaluation)
 mod polynomials;
 
+// Implementations of Pickles traits on "Var"
+mod var;
+
 mod scalar;
 
 mod passed;
@@ -18,3 +21,4 @@ pub use challenge::{FieldChallenge, GLVChallenge};
 pub use comm::VarPolyComm;
 pub use group::VarPoint;
 pub use polynomials::{LagrangePoly, VanishEval, VarEval};
+pub use scalar::Scalar;
