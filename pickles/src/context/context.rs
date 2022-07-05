@@ -6,20 +6,33 @@ use ark_ff::{FftField, PrimeField};
 
 use crate::context::Public;
 
+// These are split solely for readability purposes
+pub struct Pass<F: FftField + PrimeField> {
+    pub(crate) send: Vec<Public<F>>, // values "exported" from this side
+    pub(crate) recv: Vec<Public<F>>  // values "imported" on this side
+}
+
+impl <F: FftField + PrimeField> Default for Pass<F> {
+    fn default() -> Self {
+        Self {
+            send: vec![],
+            recv: vec![]
+        }
+    }
+}
+
 // A "container type"
 pub(crate) struct Side<F: FftField + PrimeField, C: Cs<F>> {
     pub(crate) cs: C,
     pub(crate) constants: Constants<F>,
-    pub(crate) public: Vec<Public<F>>, // "export / pass"
-    passthrough: Vec<Var<F>>,          // passthough fields from this side (to the complement)
+    pub(crate) public: Pass<F>,
 }
 
 impl<F: FftField + PrimeField, C: Cs<F>> Side<F, C> {
     fn new(cs: C, constants: Constants<F>) -> Self {
         Self {
             cs,
-            public: vec![],
-            passthrough: vec![],
+            public: Default::default(),
             constants,
         }
     }

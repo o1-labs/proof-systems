@@ -22,11 +22,11 @@ struct Bits<F: FftField + PrimeField> {
     bits: Var<F>,
 }
 
-impl<F: FftField + PrimeField> ToPublic<F> for Bits<F> {
-    fn to_public(&self) -> Vec<Public<F>> {
+impl<Fp: FftField + PrimeField> ToPublic<Fp> for Bits<Fp> {
+    fn to_public(&self) -> Vec<Public<Fp>> {
         vec![Public {
-            size: CHALLENGE_LEN,
-            var: self.bits,
+            size: Some(CHALLENGE_LEN),
+            bits: self.bits,
         }]
     }
 }
@@ -43,7 +43,7 @@ impl<Fq: FftField + PrimeField, Fr: FftField + PrimeField> FromPublic<Fq, Fr> fo
 
         // bit decompose Fq element
         let bits = inputs.next().unwrap();
-        let bits = bits.var.value.map(|v| v.into_repr().to_bits_le());
+        let bits = bits.bits.value.map(|v| v.into_repr().to_bits_le());
 
         // converts a slice of bits (minimal representative) to a field element
         fn from_bits<F: FftField + PrimeField>(bits: &[bool]) -> F {

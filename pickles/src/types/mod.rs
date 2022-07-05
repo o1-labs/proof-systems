@@ -10,6 +10,10 @@ mod challenge;
 // Var types related to polynomial (evaluation)
 mod polynomials;
 
+mod scalar;
+
+mod passed;
+
 pub use challenge::{FieldChallenge, GLVChallenge};
 pub use comm::VarPolyComm;
 pub use group::VarPoint;
