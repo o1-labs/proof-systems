@@ -500,9 +500,12 @@ where
             unshifted: vec![*c],
             shifted: None,
         })
-        .take(proof.public.len())
+        .take(index.public)
         .collect();
     let com_ref: Vec<_> = com.iter().collect();
+    if proof.public.len() != index.public {
+        return Err(VerifyError::IncorrectPubicInputLength(index.public));
+    }
     let elm: Vec<_> = proof.public.iter().map(|s| -*s).collect();
     let p_comm = PolyComm::<G>::multi_scalar_mul(&com_ref, &elm);
 

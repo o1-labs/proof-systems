@@ -66,6 +66,8 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     /// polynomial commitment keys
     #[serde(skip)]
     pub srs: OnceCell<Arc<SRS<G>>>,
+    /// number of public inputs
+    pub public: usize,
 
     // index polynomial commitments
     /// permutation commitment array
@@ -184,6 +186,7 @@ where
             max_poly_size: self.max_poly_size,
             max_quot_size: self.max_quot_size,
             powers_of_alpha: self.powers_of_alpha.clone(),
+            public: self.cs.public,
             srs: {
                 let cell = OnceCell::new();
                 cell.set(Arc::clone(&self.srs)).unwrap();
