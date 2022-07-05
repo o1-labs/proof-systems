@@ -1,6 +1,9 @@
 use ark_ec::{short_weierstrass_jacobian::GroupAffine, ModelParameters};
 use commitment_dlog::{commitment::CommitmentCurve, srs::endos};
-use mina_curves::pasta::{pallas::PallasParameters, vesta::VestaParameters};
+use mina_curves::pasta::{
+    pallas::{LegacyPallasParameters, PallasParameters},
+    vesta::{LegacyVestaParameters, VestaParameters},
+};
 use once_cell::sync::Lazy;
 use oracle::poseidon::ArithmeticSpongeParams;
 
@@ -42,5 +45,28 @@ impl KimchiCurve for GroupAffine<PallasParameters> {
             <PallasParameters as ModelParameters>::ScalarField,
         )> = Lazy::new(endos::<GroupAffine<PallasParameters>>);
         &PALLAS_ENDOS
+    }
+}
+//legacy curves
+impl KimchiCurve for GroupAffine<LegacyVestaParameters> {
+    type OtherCurve = GroupAffine<LegacyPallasParameters>;
+
+    fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
+        oracle::pasta::fp_legacy::static_params()
+    }
+
+    fn endos() -> &'static (Self::BaseField, Self::ScalarField) {
+        GroupAffine::<VestaParameters>::endos()
+    }
+}
+impl KimchiCurve for GroupAffine<LegacyPallasParameters> {
+    type OtherCurve = GroupAffine<LegacyVestaParameters>;
+
+    fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
+        oracle::pasta::fq_legacy::static_params()
+    }
+
+    fn endos() -> &'static (Self::BaseField, Self::ScalarField) {
+        GroupAffine::<PallasParameters>::endos()
     }
 }

@@ -49,3 +49,20 @@ pub const G_GENERATOR_Y: Fp = field_new!(
     Fp,
     "12418654782883325593414442427049395787963493412651469444558597405572177144507"
 );
+
+//legacy curve
+#[derive(Copy, Clone, Default, PartialEq, Eq)]
+pub struct LegacyPallasParameters;
+
+impl ModelParameters for LegacyPallasParameters {
+    type BaseField = <PallasParameters as ModelParameters>::BaseField;
+    type ScalarField = <PallasParameters as ModelParameters>::ScalarField;
+}
+impl SWModelParameters for LegacyPallasParameters {
+    const COEFF_A: Self::BaseField = <PallasParameters as SWModelParameters>::COEFF_A;
+    const COEFF_B: Self::BaseField = <PallasParameters as SWModelParameters>::COEFF_B;
+    const COFACTOR: &'static [u64] = <PallasParameters as SWModelParameters>::COFACTOR;
+    const COFACTOR_INV: Self::ScalarField = <PallasParameters as SWModelParameters>::COFACTOR_INV;
+    const AFFINE_GENERATOR_COEFFS: (Self::BaseField, Self::BaseField) =
+        <PallasParameters as SWModelParameters>::AFFINE_GENERATOR_COEFFS;
+}

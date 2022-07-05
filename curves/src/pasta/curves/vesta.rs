@@ -49,3 +49,20 @@ pub const G_GENERATOR_Y: Fq = field_new!(
     Fq,
     "11426906929455361843568202299992114520848200991084027513389447476559454104162"
 );
+
+//legacy curve
+#[derive(Copy, Clone, Default, PartialEq, Eq)]
+pub struct LegacyVestaParameters;
+
+impl ModelParameters for LegacyVestaParameters {
+    type BaseField = <VestaParameters as ModelParameters>::BaseField;
+    type ScalarField = <VestaParameters as ModelParameters>::ScalarField;
+}
+impl SWModelParameters for LegacyVestaParameters {
+    const COEFF_A: Self::BaseField = <VestaParameters as SWModelParameters>::COEFF_A;
+    const COEFF_B: Self::BaseField = <VestaParameters as SWModelParameters>::COEFF_B;
+    const COFACTOR: &'static [u64] = <VestaParameters as SWModelParameters>::COFACTOR;
+    const COFACTOR_INV: Self::ScalarField = <VestaParameters as SWModelParameters>::COFACTOR_INV;
+    const AFFINE_GENERATOR_COEFFS: (Self::BaseField, Self::BaseField) =
+        <VestaParameters as SWModelParameters>::AFFINE_GENERATOR_COEFFS;
+}
