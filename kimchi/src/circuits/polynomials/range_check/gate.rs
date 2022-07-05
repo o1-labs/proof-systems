@@ -222,7 +222,7 @@ impl<G: KimchiCurve> CircuitGate<G> {
                     gamma: <G::ScalarField>::rand(rng),
                     joint_combiner: Some(<G::ScalarField>::rand(rng)),
                     endo_coefficient: cs.endo,
-                    mds: vec![], // TODO: maybe cs.fr_sponge_params.mds.clone()
+                    mds: &G::sponge_params().mds,
                 },
                 witness: &witness_evals.d8.this.w,
                 coefficient: &cs.coefficients8,

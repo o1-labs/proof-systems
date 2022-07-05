@@ -592,7 +592,7 @@ pub trait Cs<F: FftField + PrimeField> {
     fn poseidon(&mut self, constants: &Constants<F>, input: Vec<Var<F>>) -> Vec<Var<F>> {
         use kimchi::circuits::polynomials::poseidon::*;
 
-        let params = &constants.poseidon;
+        let params = constants.poseidon;
         let rc = &params.round_constants;
         let width = PlonkSpongeConstantsKimchi::SPONGE_WIDTH;
 

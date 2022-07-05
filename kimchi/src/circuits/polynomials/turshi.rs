@@ -236,7 +236,7 @@ impl<G: KimchiCurve> CircuitGate<G> {
             gamma: <G::ScalarField>::rand(rng),
             joint_combiner: None,
             endo_coefficient: cs.endo,
-            mds: vec![],
+            mds: &G::sponge_params().mds,
         };
 
         let pt = <G::ScalarField>::rand(rng);

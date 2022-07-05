@@ -21,6 +21,7 @@ use crate::{
         },
         wires::{COLUMNS, PERMUTS},
     },
+    curve::KimchiCurve,
     error::ProverError,
     plonk_sponge::FrSponge,
     proof::{
@@ -28,7 +29,6 @@ use crate::{
         RecursionChallenge,
     },
     prover_index::ProverIndex,
-    curve::KimchiCurve,
 };
 use ark_ec::ProjectiveCurve;
 use ark_ff::{FftField, Field, One, PrimeField, UniformRand, Zero};
@@ -37,8 +37,8 @@ use ark_poly::{
     Radix2EvaluationDomain as D, UVPolynomial,
 };
 use array_init::array_init;
-use commitment_dlog::{
-    commitment::{b_poly_coefficients, BlindedCommitment, CommitmentCurve, PolyComm},
+use commitment_dlog::commitment::{
+    b_poly_coefficients, BlindedCommitment, CommitmentCurve, PolyComm,
 };
 use itertools::Itertools;
 use o1_utils::ExtendedDensePolynomial as _;
@@ -588,7 +588,7 @@ where
                 ));
             }
 
-            let mds = G::sponge_params().mds.clone();
+            let mds = &G::sponge_params().mds;
             Environment {
                 constants: Constants {
                     alpha,

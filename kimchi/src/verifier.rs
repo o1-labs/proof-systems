@@ -1,7 +1,6 @@
 //! This module implements zk-proof batch verifier functionality.
 
 use crate::{
-    curve::KimchiCurve,
     alphas::Alphas,
     circuits::{
         argument::ArgumentType,
@@ -13,6 +12,7 @@ use crate::{
         scalars::RandomOracles,
         wires::*,
     },
+    curve::KimchiCurve,
     error::VerifyError,
     plonk_sponge::FrSponge,
     proof::{ProverProof, RecursionChallenge},
@@ -20,11 +20,9 @@ use crate::{
 };
 use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Polynomial};
-use commitment_dlog::{
-    commitment::{
-        b_poly, b_poly_coefficients, combined_inner_product, BatchEvaluationProof, CommitmentCurve,
-        Evaluation, PolyComm,
-    },
+use commitment_dlog::commitment::{
+    b_poly, b_poly_coefficients, combined_inner_product, BatchEvaluationProof, CommitmentCurve,
+    Evaluation, PolyComm,
 };
 use itertools::izip;
 use oracle::{sponge::ScalarChallenge, FqSponge};
@@ -62,7 +60,7 @@ where
     pub combined_inner_product: G::ScalarField,
 }
 
-impl<G:  KimchiCurve> ProverProof<G>
+impl<G: KimchiCurve> ProverProof<G>
 where
     G::BaseField: PrimeField,
 {
@@ -372,7 +370,7 @@ where
                 gamma,
                 joint_combiner: joint_combiner.map(|j| j.1),
                 endo_coefficient: index.endo,
-                mds: index.fr_sponge_params.mds.clone(),
+                mds: &G::sponge_params().mds,
             };
             ft_eval0 -= PolishToken::evaluate(
                 &index.linearization.constant_term,
@@ -580,7 +578,7 @@ where
                 gamma: oracles.gamma,
                 joint_combiner: oracles.joint_combiner.map(|j| j.1),
                 endo_coefficient: index.endo,
-                mds: index.fr_sponge_params.mds.clone(),
+                mds: &G::sponge_params().mds,
             };
 
             for (col, tokens) in &index.linearization.index_terms {
@@ -901,7 +899,7 @@ pub fn verify<G, EFqSponge, EFrSponge>(
     proof: &ProverProof<G>,
 ) -> Result<()>
 where
-    G:  KimchiCurve,
+    G: KimchiCurve,
     G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
@@ -919,7 +917,7 @@ pub fn batch_verify<G, EFqSponge, EFrSponge>(
     proofs: &[(&VerifierIndex<G>, &ProverProof<G>)],
 ) -> Result<()>
 where
-    G:  KimchiCurve,
+    G: KimchiCurve,
     G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,

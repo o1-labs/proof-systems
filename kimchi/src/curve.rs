@@ -4,7 +4,7 @@ use mina_curves::pasta::{pallas::PallasParameters, vesta::VestaParameters};
 use once_cell::sync::Lazy;
 use oracle::poseidon::ArithmeticSpongeParams;
 
-///Representing additional information that a curve needs to be used with Kimchi
+///Represents additional information that a curve needs in order to be used with Kimchi
 pub trait KimchiCurve: CommitmentCurve {
     type OtherCurve: KimchiCurve;
 

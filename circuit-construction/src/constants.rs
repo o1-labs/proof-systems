@@ -10,8 +10,8 @@ pub const SINGLE_GENERIC_COEFFS: usize = 5;
 pub const GENERIC_ROW_COEFFS: usize = 2 * SINGLE_GENERIC_COEFFS;
 
 #[derive(Clone)]
-pub struct Constants<F: Field> {
-    pub poseidon: ArithmeticSpongeParams<F>,
+pub struct Constants<F: Field + 'static> {
+    pub poseidon: &'static ArithmeticSpongeParams<F>,
     pub endo: F,
     pub base: (F, F),
 }
@@ -22,7 +22,7 @@ pub fn fp_constants() -> Constants<Fp> {
         .to_coordinates()
         .unwrap();
     Constants {
-        poseidon: VestaAffine::sponge_params().clone(),
+        poseidon: VestaAffine::sponge_params(),
         endo: endo_q,
         base,
     }
@@ -34,7 +34,7 @@ pub fn fq_constants() -> Constants<Fq> {
         .to_coordinates()
         .unwrap();
     Constants {
-        poseidon: PallasAffine::sponge_params().clone(),
+        poseidon: PallasAffine::sponge_params(),
         endo: endo_q,
         base,
     }

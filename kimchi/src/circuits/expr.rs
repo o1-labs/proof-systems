@@ -46,7 +46,7 @@ pub enum ExprError {
 }
 
 /// The collection of constants required to evaluate an `Expr`.
-pub struct Constants<F> {
+pub struct Constants<F: 'static> {
     /// The challenge alpha from the PLONK IOP.
     pub alpha: F,
     /// The challenge beta from the PLONK IOP.
@@ -59,7 +59,7 @@ pub struct Constants<F> {
     /// The endomorphism coefficient
     pub endo_coefficient: F,
     /// The MDS matrix
-    pub mds: Vec<Vec<F>>,
+    pub mds: &'static Vec<Vec<F>>,
 }
 
 /// The polynomials specific to the lookup argument.
@@ -2202,15 +2202,19 @@ pub mod prologue {
 #[cfg(test)]
 pub mod test {
     use super::*;
-    use crate::circuits::{
-        constraints::ConstraintSystem,
-        gate::CircuitGate,
-        polynomials::{generic::GenericGateSpec, permutation::ZK_ROWS},
-        wires::Wire,
+    use crate::{
+        circuits::{
+            constraints::ConstraintSystem,
+            gate::CircuitGate,
+            polynomials::{generic::GenericGateSpec, permutation::ZK_ROWS},
+            wires::Wire,
+        },
+        curve::KimchiCurve,
     };
     use ark_ff::UniformRand;
     use array_init::array_init;
     use mina_curves::pasta::fp::Fp;
+    use mina_curves::pasta::vesta::Affine as Vesta;
     use rand::{prelude::StdRng, SeedableRng};
 
     #[test]
@@ -2263,7 +2267,7 @@ pub mod test {
                 gamma: one,
                 joint_combiner: None,
                 endo_coefficient: one,
-                mds: vec![vec![]],
+                mds: &Vesta::sponge_params().mds,
             },
             witness: &domain_evals.d8.this.w,
             coefficient: &constraint_system.coefficients8,

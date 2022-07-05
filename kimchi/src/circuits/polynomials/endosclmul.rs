@@ -138,7 +138,7 @@ impl<G: KimchiCurve> CircuitGate<G> {
             beta: <G::ScalarField>::zero(),
             gamma: <G::ScalarField>::zero(),
             joint_combiner: None,
-            mds: vec![],
+            mds: &G::sponge_params().mds,
             endo_coefficient: cs.endo,
         };
 
