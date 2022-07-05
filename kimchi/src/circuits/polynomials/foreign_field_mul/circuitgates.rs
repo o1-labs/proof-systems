@@ -25,15 +25,14 @@
 ///   8-11   | multi-range-check  | "                     | 264  | $q$
 ///   12-15  | multi-range-check  | "                     | 264  | $r$
 ///   16-19  | multi-range-check  | "                     | 264  | $p_{10}, p_{111}, v_{10}$
-///   20     | custom-range-check | "                     |   3  | $v_{11} \in [0, 2^3)$
-///   20     | custom-range-check | "                     |   2  | $q[0][0] \in [0, 2^2)$ ($q < 2^{256}$) maybe combine with (12-15)
-///   20     | custom-range-check | "                     |   2  | $p_{110} \in [0, 2^2)$
-///   20     | custom-range-check | "                     |   2  | $v_0 \in [0, 2^2)$
-///   ?-?    | ForeignFieldMul    | Assertions            |      | Equality checks
+///   20     | ForeignFieldMul0   | "                     | 3    | $v_{11} \in [0, 2^3)$
+///   20     | ForeignFieldMul0   | "                     | 2    | $q[0][0] \in [0, 2^2)$ ($q < 2^{256}$)
+///   20     | ForeignFieldMul0   | "                     | 2    | $p_{110} \in [0, 2^2)$
+///   20     | ForeignFieldMul0   | "                     | 2    | $v_0 \in [0, 2^2)$
 ///   ?-?    | ForeignFieldMul    | Intermediate products |      | $p_0, p_1, p_2$
 ///   ?-?    | ForeignFieldMul    | Composition(s)        |      | $p_1[, p_0]$
 ///   ?-?    | ForeignFieldMul    | $u$-value halves      |      | $u_0, u_1$
-
+///   ?-?    | ForeignFieldMul    | Assertions            |      | Equality checks
 use std::marker::PhantomData;
 
 use ark_ff::FftField;
@@ -55,6 +54,8 @@ where
     const CONSTRAINTS: u32 = 0;
 
     fn constraints() -> Vec<E<F>> {
-        vec![]
+        /// Columns: 0    1       2  3      4    5 .. 14
+        ///          q_0  p_{110} v  v_{11} v_0  (TODO: pack more in here)
+
     }
 }

@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 
-use array_init::array_init;
 use ark_ff::{FftField, SquareRootField, Zero};
-use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D, EvaluationDomain};
+use ark_poly::{
+    univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
+};
+use array_init::array_init;
 use rand::{prelude::StdRng, SeedableRng};
 
 use crate::{
@@ -10,15 +12,51 @@ use crate::{
     circuits::{
         argument::{Argument, ArgumentType},
         constraints::ConstraintSystem,
-        expr::{E, LookupEnvironment, Environment, self, l0_1},
-        gate::{CircuitGate, CircuitGateResult, GateType, CircuitGateError},
-        polynomial::COLUMNS, lookup::{lookups::{LookupInfo, LookupsUsed}, self},
+        expr::{self, l0_1, Environment, LookupEnvironment, E},
+        gate::{CircuitGate, CircuitGateError, CircuitGateResult, GateType},
+        lookup::{
+            self,
+            lookups::{LookupInfo, LookupsUsed},
+        },
+        polynomial::COLUMNS,
+        polynomials::range_check,
+        wires::{GateWires, Wire},
     },
 };
 
 use super::ForeignFieldMul0;
 
 impl<F: FftField + SquareRootField> CircuitGate<F> {
+    /// Create foreign field multiplication gate
+    ///     Inputs the starting row
+    ///     Outputs tuple (next_row, circuit_gates) where
+    ///       next_row      - next row after this gate
+    ///       circuit_gates - vector of circuit gates comprising this gate
+    pub fn create_foreign_field_mul(start_row: usize) -> (usize, Vec<Self>) {
+        // Create multi-range-check gates for $a, b, q, r, p_{10}, p_{111}$ and $v_{10}$
+        let mut circuit_gates = vec![];
+        let mut next_row = start_row;
+        for _ in 0..5 {
+            let (mut next_row, mut range_check_circuit_gates) =
+                CircuitGate::create_multi_range_check(next_row);
+            circuit_gates.append(&mut range_check_circuit_gates);
+        }
+
+        // Foreign field multiplication gates
+        let mut wires: Vec<GateWires> = (0..1).map(|i| Wire::new(next_row + i)).collect();
+
+        // // copy v0p0
+        // connect_cell_pair(&mut wires, (0, 1), (3, 3));
+
+        circuit_gates.append(&mut vec![CircuitGate {
+            typ: GateType::ForeignFieldMul0,
+            wires: wires[0],
+            coeffs: vec![],
+        }]);
+
+        (start_row + circuit_gates.len(), circuit_gates)
+    }
+
     pub fn verify_foreign_field_mul(
         &self,
         _: usize,
