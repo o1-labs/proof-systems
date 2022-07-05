@@ -32,7 +32,7 @@ use std::{
 
 //~spec:startcode
 #[serde_as]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LookupVerifierIndex<G: CommitmentCurve> {
     pub lookup_used: LookupsUsed,
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
@@ -54,7 +54,7 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 }
 
 #[serde_as]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct VerifierIndex<G: CommitmentCurve> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
@@ -146,6 +146,10 @@ where
 {
     /// Produces the [VerifierIndex] from the prover's [ProverIndex].
     pub fn verifier_index(&self) -> VerifierIndex<G> {
+        if let Some(verifier_index) = &self.verifier_index {
+            return verifier_index.clone();
+        }
+
         let domain = self.cs.domain.d1;
 
         let lookup_index = {

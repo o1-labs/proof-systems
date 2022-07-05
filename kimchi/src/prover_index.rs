@@ -7,6 +7,7 @@ use crate::circuits::{
     wires::*,
 };
 use crate::linearization::expr_linearization;
+use crate::verifier_index::VerifierIndex;
 use ark_ff::PrimeField;
 use ark_poly::EvaluationDomain;
 use commitment_dlog::{commitment::CommitmentCurve, srs::SRS};
@@ -45,6 +46,10 @@ pub struct ProverIndex<G: CommitmentCurve> {
     /// random oracle argument parameters
     #[serde(skip)]
     pub fq_sponge_params: ArithmeticSpongeParams<G::BaseField>,
+
+    /// The verifier index corresponding to this prover index
+    #[serde(skip)]
+    pub verifier_index: Option<VerifierIndex<G>>,
 }
 //~spec:endcode
 
@@ -91,6 +96,7 @@ where
             max_poly_size,
             max_quot_size,
             fq_sponge_params,
+            verifier_index: None,
         }
     }
 }
