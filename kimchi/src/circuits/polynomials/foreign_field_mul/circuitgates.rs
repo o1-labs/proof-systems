@@ -1,6 +1,6 @@
 ///```text
-/// Foreign field multiplication circuit gates for native field $F_p$ and
-/// foreign field $F_f$, where $F_p$ is the generic type parameter `F` in code below
+/// Foreign field multiplication circuit gates for native field $F_n$ and
+/// foreign field $F_f$, where $F_n$ is the generic type parameter `F` in code below
 /// and the foreign field modulus $f$ is store in the constraint system (`cs.foreign_field_modulus`).
 ///
 /// Inputs:
@@ -14,7 +14,7 @@
 ///
 ///       $a \cdot b = q \cdot f + r$
 ///
-///     in $F_f$ by using the native field $F_p$.
+///     in $F_f$ by using the native field $F_n$.
 ///
 /// **Layout**
 ///
