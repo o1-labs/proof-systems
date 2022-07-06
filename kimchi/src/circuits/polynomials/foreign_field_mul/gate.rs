@@ -23,7 +23,7 @@ use crate::{
     },
 };
 
-use super::{ForeignFieldMul0, ForeignFieldMul1};
+use super::ForeignFieldMul;
 
 impl<F: FftField + SquareRootField> CircuitGate<F> {
     /// Create foreign field multiplication gate
@@ -51,12 +51,12 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
 
         circuit_gates.append(&mut vec![
             CircuitGate {
-                typ: GateType::ForeignFieldMul0,
+                typ: GateType::ForeignFieldMul,
                 wires: wires[0],
                 coeffs: vec![],
             },
             CircuitGate {
-                typ: GateType::ForeignFieldMul1,
+                typ: GateType::Zero,
                 wires: wires[1],
                 coeffs: vec![],
             },
@@ -322,22 +322,20 @@ fn set_up_lookup_env_data<F: FftField>(
 
 fn circuit_gate_selector_index(typ: GateType) -> usize {
     match typ {
-        GateType::ForeignFieldMul0 => 0,
-        GateType::ForeignFieldMul1 => 1,
+        GateType::ForeignFieldMul => 0,
         _ => panic!("invalid gate type"),
     }
 }
 
 /// Get vector of foreign field multiplication circuit gate types
 pub fn circuit_gates() -> Vec<GateType> {
-    vec![GateType::ForeignFieldMul0, GateType::ForeignFieldMul1]
+    vec![GateType::ForeignFieldMul, GateType::Zero]
 }
 
 /// Get combined constraints for a given foreign field multiplication circuit gate
 pub fn circuit_gate_constraints<F: FftField>(typ: GateType, alphas: &Alphas<F>) -> E<F> {
     match typ {
-        GateType::ForeignFieldMul0 => ForeignFieldMul0::combined_constraints(alphas),
-        GateType::ForeignFieldMul1 => ForeignFieldMul1::combined_constraints(alphas),
+        GateType::ForeignFieldMul => ForeignFieldMul::combined_constraints(alphas),
         _ => panic!("invalid gate type"),
     }
 }
@@ -345,13 +343,12 @@ pub fn circuit_gate_constraints<F: FftField>(typ: GateType, alphas: &Alphas<F>) 
 /// Number of constraints for a given foreign field mul circuit gate type
 pub fn circuit_gate_constraint_count<F: FftField>(typ: GateType) -> u32 {
     match typ {
-        GateType::ForeignFieldMul0 => ForeignFieldMul0::<F>::CONSTRAINTS,
-        GateType::ForeignFieldMul1 => ForeignFieldMul1::<F>::CONSTRAINTS,
+        GateType::ForeignFieldMul => ForeignFieldMul::<F>::CONSTRAINTS,
         _ => panic!("invalid gate type"),
     }
 }
 
 /// Get the combined constraints for all foreign field multiplication circuit gates
 pub fn combined_constraints<F: FftField>(alphas: &Alphas<F>) -> E<F> {
-    ForeignFieldMul0::combined_constraints(alphas) + ForeignFieldMul1::combined_constraints(alphas)
+    ForeignFieldMul::combined_constraints(alphas)
 }

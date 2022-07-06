@@ -669,8 +669,7 @@ where
                             }
                             RangeCheck0 => &index.range_check_comm[0],
                             RangeCheck1 => &index.range_check_comm[1],
-                            ForeignFieldMul0 => &index.foreign_field_mul_comm[0],
-                            ForeignFieldMul1 => &index.foreign_field_mul_comm[1],
+                            ForeignFieldMul => &index.foreign_field_mul_comm[0],
                         };
                         scalars.push(scalar);
                         commitments.push(c);

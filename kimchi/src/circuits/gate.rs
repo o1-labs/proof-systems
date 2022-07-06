@@ -97,8 +97,7 @@ pub enum GateType {
     RangeCheck0 = 16,
     RangeCheck1 = 17,
     // Foreign mul
-    ForeignFieldMul0 = 18,
-    ForeignFieldMul1 = 19,
+    ForeignFieldMul = 18,
 }
 
 /// Selector polynomial
@@ -207,7 +206,7 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
             RangeCheck0 | RangeCheck1 => self
                 .verify_range_check(row, witness, cs)
                 .map_err(|e| e.to_string()),
-            ForeignFieldMul0 | ForeignFieldMul1 => self
+            ForeignFieldMul => self
                 .verify_foreign_field_mul(row, witness, cs)
                 .map_err(|e| e.to_string()),
         }
