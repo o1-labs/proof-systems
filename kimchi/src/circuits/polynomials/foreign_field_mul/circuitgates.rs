@@ -106,14 +106,11 @@ where
         //    product_low := a0 * b0 - quotient0 * foreign_modulus0
         let product_low = a0.clone() * b0.clone() - quotient0.clone() * foreign_modulus0.clone();
         //    product_mid := a0 * b1 + a1 * b0 - quotient0 * foreign_modulus1 - quotient1 * foreign_modulus0
-        let product_mid = a0.clone() * b1.clone()
-            + a1.clone() * b0.clone()
+        let product_mid = a0.clone() * b1.clone() + a1.clone() * b0.clone()
             - quotient0.clone() * foreign_modulus1.clone()
             - quotient1.clone() * foreign_modulus0.clone();
         //    product_hi := a0 * b2 + a2 * b0 + a1 * b1 - quotient0 * foreign_modulus2 - quotient2 * foreign_modulus0 - quotient1 * foreign_modulus1
-        let product_hi = a0 * b2
-            + a2 * b0
-            + a1 * b1
+        let product_hi = a0 * b2 + a2 * b0 + a1 * b1
             - quotient0.clone() * foreign_modulus2
             - quotient2 * foreign_modulus0
             - quotient1 * foreign_modulus1;
