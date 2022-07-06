@@ -29,11 +29,11 @@
 ///
 /// | Row(s) | Gate                | Witness
 /// -|-|-
-///   0-3    | multi-range-check-0 | multiplicand `a`
-///   4-7    | multi-range-check-1 | multiplicand `b`
-///   8-11   | multi-range-check-2 | `quotient`
-///   12-15  | multi-range-check-3 | `remainder`
-///   16-19  | multi-range-check-4 | `product_mid0`, `product_mid1_0`, `carry1_0`
+///   0-3    | multi-range-check   | left_input multiplicand
+///   4-7    | multi-range-check   | right_input multiplicand
+///   8-11   | multi-range-check   | quotient
+///   12-15  | multi-range-check   | remainder
+///   16-19  | multi-range-check   | product_mid0, product_mid1_0, carry1_0
 ///   20     | ForeignFieldMul     | (see below)
 ///   21     | Zero                | (see below)
 ///
@@ -82,9 +82,9 @@ where
     fn constraints() -> Vec<E<F>> {
         // Columns | Curr           | Next
         // -|-|-
-        //       0 | right_input0             | left_input0
-        //       1 | right_input2             | quotient0
-        //       2 | left_input2             | 2^9 * carry1_1
+        //       0 | right_input0   | left_input0
+        //       1 | right_input2   | quotient0
+        //       2 | left_input2    | 2^9 * carry1_1
         //       3 | quotient2      | 2^8 * quotient0
         //       4 | remainder0     | left_input1
         //       5 | remainder1     | right_input1
@@ -131,14 +131,15 @@ where
 
         // 0) Define intermediate products for readability
         //    product_low := left_input0 * right_input0 - quotient0 * foreign_modulus0
+        //    product_mid := left_input0 * right_input1 + left_input1 * right_input0 - quotient0 * foreign_modulus1 - quotient1 * foreign_modulus0
+        //    product_hi := left_input0 * right_input2 + left_input2 * right_input0 + left_input1 * right_input1 - quotient0 * foreign_modulus2 - quotient2 * foreign_modulus0 - quotient1 * foreign_modulus1
+
         let product_low = left_input0.clone() * right_input0.clone()
             - quotient0.clone() * foreign_modulus0.clone();
-        //    product_mid := left_input0 * right_input1 + left_input1 * right_input0 - quotient0 * foreign_modulus1 - quotient1 * foreign_modulus0
         let product_mid = left_input0.clone() * right_input1.clone()
             + left_input1.clone() * right_input0.clone()
             - quotient0.clone() * foreign_modulus1.clone()
             - quotient1.clone() * foreign_modulus0.clone();
-        //    product_hi := left_input0 * right_input2 + left_input2 * right_input0 + left_input1 * right_input1 - quotient0 * foreign_modulus2 - quotient2 * foreign_modulus0 - quotient1 * foreign_modulus1
         let product_hi =
             left_input0 * right_input2 + left_input2 * right_input0 + left_input1 * right_input1
                 - quotient0.clone() * foreign_modulus2
@@ -146,31 +147,36 @@ where
                 - quotient1 * foreign_modulus1;
 
         // 1) Constrain decomposition of middle intermediate product
-        // p11 = 2^88 * product_mid1_1 + product_mid1_0
-        // p1 = 2^88 * p11 + product_mid0
-        // 2^88 * (2^88 * cw(10) + cw(9)) + cw(7) = nw(0) * cw(0) + nw(4) * nw(5) - nw(1) * foreign_modulus1 - nw(6) * foreign_modulus0
+        //    * product_mid_prefix = 2^88 * product_mid1_1 + product_mid1_0
+        //    * product_mid_sum = 2^88 * p11 + product_mid0
+        //    * 2^88 * product_mid_prefix + product_mid0  = product_mid
         let product_mid_prefix = two_to_88.clone() * product_mid1_1.clone() + product_mid1_0;
         let product_mid_sum = two_to_88.clone() * product_mid_prefix + product_mid0.clone();
         constraints.push(product_mid - product_mid_sum.clone());
 
-        // 2) Constrain carry witness value $carry_0 \in [0, 2^2)$
+        // 2) Constrain carry witness value `carry0` $~\in [0, 2^2)$
         constraints.push(crumb(&carry0));
 
-        // 3) Constrain intermediate product fragment $p_{111} \in [0, 2^2)$
+        // 3) Constrain intermediate product fragment `product_mid1_1` $~\in [0, 2^2)$
         constraints.push(crumb(&product_mid1_1));
 
-        // 4) Constrain $v_11$ value
+        // 4) Constrain `carry1_1` value
         constraints.push(carry1_1_shift - two_to_9 * carry1_1.clone());
 
-        // 5) Constrain shifted $carry_0$ witness value to prove $u_0$'s leading bits are zero
-        //    2^176 * carry0 = p0 - remainder0 + 2^88 ( product_mid0 - remainder1 )
-        //    2^176 * wc(11) = p0 + 2^88 * wc(7) - wc(4) - 2^88 * wc(5)
+        // 5) Constrain shifted `carry0` witness value to prove $u_0$'s leading bits are zero
+        //    For details on $u_0$ and why this is valid, please see this design document section:
+        //        https://hackmd.io/37M7qiTaSIKaZjCC5OnM1w?view#Intermediate-products
+        //
+        //    2^176 * carry0 = product_low - remainder0 + 2^88 ( product_mid0 - remainder1)
         let low_half = product_low - remainder0 + two_to_88.clone() * (product_mid0 - remainder1);
         constraints.push(low_half - two_to_176 * carry0.clone());
 
-        // 6) Constraint shifted $v_1$ witness value to prove $u_1$'s bits are zero
-        //    Let $v_1 = v_{10} + 2^{3} *  carry_{11}$
-        //    Check 2^88 * v1 = 2^88 * product_mid1_1 + product_mid1_0 + p2 - remainder2 + carry0
+        // 6) Constrain the shifted `carry1` witness value to prove $u_1$'s bits are zero
+        //    For details on $u_1$ and why this is valid, please see this design document section:
+        //        https://hackmd.io/37M7qiTaSIKaZjCC5OnM1w?view#Intermediate-products
+        //
+        //    Let `carry_1` $~=~$ `carry1_0` $~+ 2^{3} *~$ `carry1_1`
+        //    Check 2^88 * v1 = 2^88 * product_mid1_1 + product_mid1_0 + product_hi - remainder2 + carry0
         let carry1_sum = carry1_0 + eight * carry1_1;
         let up_half = carry0 + product_mid_sum + product_hi - remainder2;
         constraints.push(up_half - two_to_88 * carry1_sum);
