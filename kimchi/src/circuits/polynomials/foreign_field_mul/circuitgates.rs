@@ -6,7 +6,7 @@
 /// For more details please see: https://hackmd.io/37M7qiTaSIKaZjCC5OnM1w?view
 ///
 /// Inputs:
-///   * $f$ := foreign field modulus (currently stored in constraint system globally, but that might change)
+///   * $f$ := foreign field modulus (currently stored in constraint system globally)
 ///   * `left_input` $~\in F_f$ := left foreign field element multiplicand
 ///   * `right_input` $~\in F_f$ := right foreign field element multiplicand
 ///
@@ -43,9 +43,9 @@
 ///   Columns | ForeignFieldMul   | Zero
 ///   -|-|-
 ///         0 | right_input0   (copy) | left_input0     (copy)
-///         1 | right_input2   (copy) | quotient0       (copy)
+///         1 | right_input2   (copy) | quotient2       (copy)
 ///         2 | left_input2    (copy) | 2^9 * carry1_1  (plookup)
-///         3 | quotient2      (copy) | 2^8 * quotient0 (plookup)
+///         3 | quotient0      (copy) | 2^8 * quotient2 (plookup)
 ///         4 | remainder0     (copy) | left_input1     (copy)
 ///         5 | remainder1     (copy) | right_input1    (copy)
 ///         6 | remainder2     (copy) | quotient1       (copy)
@@ -83,9 +83,9 @@ where
         // Columns | Curr           | Next
         // -|-|-
         //       0 | right_input0   | left_input0
-        //       1 | right_input2   | quotient0
+        //       1 | right_input2   | quotient2
         //       2 | left_input2    | 2^9 * carry1_1
-        //       3 | quotient2      | 2^8 * quotient0
+        //       3 | quotient0      | 2^8 * quotient2
         //       4 | remainder0     | left_input1
         //       5 | remainder1     | right_input1
         //       6 | remainder2     | quotient1
@@ -100,7 +100,7 @@ where
         let right_input0 = witness_curr(0);
         let right_input2 = witness_curr(1);
         let left_input2 = witness_curr(2);
-        let quotient2 = witness_curr(3);
+        let quotient0 = witness_curr(3);
         let remainder0 = witness_curr(4);
         let remainder1 = witness_curr(5);
         let remainder2 = witness_curr(6);
@@ -112,9 +112,9 @@ where
         let carry1_1 = witness_curr(14);
 
         let left_input0 = witness_next(0);
-        let quotient0 = witness_next(1);
+        let quotient2 = witness_next(1);
         let carry1_1_shift = witness_next(2);
-        let quotient0_shift = witness_next(3);
+        let quotient2_shift = witness_next(3);
         let left_input1 = witness_next(4);
         let right_input1 = witness_next(5);
         let quotient1 = witness_next(6);
@@ -131,8 +131,10 @@ where
 
         // 0) Define intermediate products for readability
         //    product_low := left_input0 * right_input0 - quotient0 * foreign_modulus0
-        //    product_mid := left_input0 * right_input1 + left_input1 * right_input0 - quotient0 * foreign_modulus1 - quotient1 * foreign_modulus0
-        //    product_hi := left_input0 * right_input2 + left_input2 * right_input0 + left_input1 * right_input1 - quotient0 * foreign_modulus2 - quotient2 * foreign_modulus0 - quotient1 * foreign_modulus1
+        //    product_mid := left_input0 * right_input1 + left_input1 * right_input0
+        //                   - quotient0 * foreign_modulus1 - quotient1 * foreign_modulus0
+        //    product_hi := left_input0 * right_input2 + left_input2 * right_input0 + left_input1 * right_input1
+        //                  - quotient0 * foreign_modulus2 - quotient2 * foreign_modulus0 - quotient1 * foreign_modulus1
 
         let product_low = left_input0.clone() * right_input0.clone()
             - quotient0.clone() * foreign_modulus0.clone();
@@ -142,8 +144,8 @@ where
             - quotient1.clone() * foreign_modulus0.clone();
         let product_hi =
             left_input0 * right_input2 + left_input2 * right_input0 + left_input1 * right_input1
-                - quotient0.clone() * foreign_modulus2
-                - quotient2 * foreign_modulus0
+                - quotient0 * foreign_modulus2
+                - quotient2.clone() * foreign_modulus0
                 - quotient1 * foreign_modulus1;
 
         // 1) Constrain decomposition of middle intermediate product
@@ -181,8 +183,8 @@ where
         let up_half = carry0 + product_mid_sum + product_hi - remainder2;
         constraints.push(up_half - two_to_88 * carry1_sum);
 
-        // 7) Check zero prefix of quotient
-        constraints.push(two_to_8 * quotient0 - quotient0_shift);
+        // 7) Check zero prefix of quotient2
+        constraints.push(two_to_8 * quotient2 - quotient2_shift);
 
         // 8-9) Plookups on the Next row @ columns 2 and 3
         constraints

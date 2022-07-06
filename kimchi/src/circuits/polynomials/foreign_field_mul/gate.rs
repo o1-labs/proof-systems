@@ -51,8 +51,8 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
         connect_cell_pair(&mut circuit_gates[6].wires, 0, &mut wires, (0, 1));
         // Copy left_input2 -> Curr(2)
         connect_cell_pair(&mut circuit_gates[2].wires, 0, &mut wires, (0, 2));
-        // Copy quotient2 -> Curr(3)
-        connect_cell_pair(&mut circuit_gates[10].wires, 0, &mut wires, (0, 3));
+        // Copy quotient0 -> Curr(3)
+        connect_cell_pair(&mut circuit_gates[8].wires, 0, &mut wires, (0, 3));
         // Copy remainder0 -> Curr(4)
         connect_cell_pair(&mut circuit_gates[12].wires, 0, &mut wires, (0, 4));
         // Copy remainder1 -> Curr(5)
@@ -62,8 +62,8 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
 
         // Copy left_input0 -> Next(0)
         connect_cell_pair(&mut circuit_gates[0].wires, 0, &mut wires, (1, 0));
-        // Copy quotient0 -> Next(1)
-        connect_cell_pair(&mut circuit_gates[8].wires, 0, &mut wires, (1, 1));
+        // Copy quotient2 -> Next(1)
+        connect_cell_pair(&mut circuit_gates[10].wires, 0, &mut wires, (1, 1));
         // Copy left_input1 -> Next(4)
         connect_cell_pair(&mut circuit_gates[1].wires, 0, &mut wires, (1, 4));
         // Copy right_input1 -> Next(5)
