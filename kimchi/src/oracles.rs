@@ -34,3 +34,68 @@ where
     /// Used by the OCaml side
     pub combined_inner_product: G::ScalarField,
 }
+
+#[cfg(feature = "ocaml_types")]
+pub mod caml {
+    use ark_ff::PrimeField;
+    use commitment_dlog::commitment::shift_scalar;
+
+    use crate::{
+        circuits::scalars::caml::CamlRandomOracles, error::VerifyError, plonk_sponge::FrSponge,
+        proof::ProverProof, verifier_index::VerifierIndex,
+    };
+
+    use super::*;
+
+    pub struct CamlOracles<F> {
+        pub o: CamlRandomOracles<F>,
+        pub p_eval: (F, F),
+        pub opening_prechallenges: Vec<F>,
+        pub digest_before_evaluations: F,
+    }
+
+    pub fn create_caml_oracles<G, EFqSponge, EFrSponge, CurveParams>(
+        lgr_comm: Vec<PolyComm<G>>,
+        index: VerifierIndex<G>,
+        proof: ProverProof<G>,
+    ) -> Result<CamlOracles<G::ScalarField>, VerifyError>
+    where
+        G: CommitmentCurve,
+        G::BaseField: PrimeField,
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+        EFrSponge: FrSponge<G::ScalarField>,
+    {
+        let lgr_comm: Vec<PolyComm<G>> = lgr_comm.into_iter().take(proof.public.len()).collect();
+        let lgr_comm_refs: Vec<_> = lgr_comm.iter().collect();
+
+        let negated_public: Vec<_> = proof.public.iter().map(|s| -*s).collect();
+
+        let p_comm = PolyComm::<G>::multi_scalar_mul(&lgr_comm_refs, &negated_public);
+
+        let oracles_result = proof.oracles::<EFqSponge, EFrSponge>(&index, &p_comm)?;
+
+        let (mut sponge, combined_inner_product, p_eval, digest, oracles) = (
+            oracles_result.fq_sponge,
+            oracles_result.combined_inner_product,
+            oracles_result.p_eval,
+            oracles_result.digest,
+            oracles_result.oracles,
+        );
+
+        sponge.absorb_fr(&[shift_scalar::<G>(combined_inner_product)]);
+
+        let opening_prechallenges = proof
+            .proof
+            .prechallenges(&mut sponge)
+            .into_iter()
+            .map(|x| x.0.into())
+            .collect();
+
+        Ok(CamlOracles {
+            o: oracles.into(),
+            p_eval: (p_eval[0][0].into(), p_eval[1][0].into()),
+            opening_prechallenges,
+            digest_before_evaluations: digest.into(),
+        })
+    }
+}
