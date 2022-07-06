@@ -409,7 +409,9 @@ impl LookupPattern {
             (ChaCha0 | ChaCha1 | ChaCha2, Curr | Next) => Some(LookupPattern::ChaCha),
             (ChaChaFinal, Curr | Next) => Some(LookupPattern::ChaChaFinal),
             (Lookup, Curr) => Some(LookupPattern::LookupGate),
-            (RangeCheck0, Curr) | (RangeCheck1, Curr | Next) => Some(LookupPattern::RangeCheckGate),
+            (RangeCheck0, Curr) | (RangeCheck1, Curr | Next) | (ForeignFieldMul, Next) => {
+                Some(LookupPattern::RangeCheckGate)
+            }
             _ => None,
         }
     }
