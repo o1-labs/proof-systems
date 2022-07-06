@@ -22,11 +22,11 @@
 ///
 /// | Row(s) | Gate                | Witness
 /// -|-|-
-///   0-3    | multi-range-check-0 | $a$
-///   4-7    | multi-range-check-1 | $b$
-///   8-11   | multi-range-check-2 | $quotient$
-///   12-15  | multi-range-check-3 | $remainder$
-///   16-19  | multi-range-check-4 | $p_{10}, p_{110}, carry_{10}$
+///   0-3    | multi-range-check-0 | multiplicand `a`
+///   4-7    | multi-range-check-1 | multiplicand `b`
+///   8-11   | multi-range-check-2 | `quotient`
+///   12-15  | multi-range-check-3 | `remainder`
+///   16-19  | multi-range-check-4 | `product_mid0`, `product_mid1_0`, `carry1_0`
 ///   20     | ForeignFieldMul     | (see below)
 ///   21     | Zero                | (see below)
 ///
