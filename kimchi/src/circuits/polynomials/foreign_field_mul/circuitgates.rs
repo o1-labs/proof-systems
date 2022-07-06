@@ -98,31 +98,30 @@ where
         let two_to_9 = E::from(512);
         let two_to_88 = E::from(2).pow(88);
         let two_to_176 = two_to_88.clone().pow(2);
-        let neg_foreign_0 = -E::constant(ConstantExpr::ForeignFieldModulus(0));
-        let neg_foreign_1 = -E::constant(ConstantExpr::ForeignFieldModulus(1));
-        let neg_foreign_2 = -E::constant(ConstantExpr::ForeignFieldModulus(2));
+        let foreign_modulus0 = E::constant(ConstantExpr::ForeignFieldModulus(0));
+        let foreign_modulus1 = E::constant(ConstantExpr::ForeignFieldModulus(1));
+        let foreign_modulus2 = E::constant(ConstantExpr::ForeignFieldModulus(1));
 
         // 0) Define intermediate products for readability
-        //    product_low := a0 * b0 - quotient0 * f0
-        //    product_mid := a0 * b1 + a1 * b0 - quotient0 * f1 - quotient1 * f0
-        //    product_hi := a0 * b2 + a2 * b0 + a1 * b1 - quotient0 * f2 - quotient2 * f0 - quotient1 * f1
-
-        let product_low = a0.clone() * b0.clone() + quotient0.clone() * neg_foreign_0.clone();
+        //    product_low := a0 * b0 - quotient0 * foreign_modulus0
+        let product_low = a0.clone() * b0.clone() - quotient0.clone() * foreign_modulus0.clone();
+        //    product_mid := a0 * b1 + a1 * b0 - quotient0 * foreign_modulus1 - quotient1 * foreign_modulus0
         let product_mid = a0.clone() * b1.clone()
             + a1.clone() * b0.clone()
-            + quotient0.clone() * neg_foreign_1.clone()
-            + quotient1.clone() * neg_foreign_0.clone();
+            - quotient0.clone() * foreign_modulus1.clone()
+            - quotient1.clone() * foreign_modulus0.clone();
+        //    product_hi := a0 * b2 + a2 * b0 + a1 * b1 - quotient0 * foreign_modulus2 - quotient2 * foreign_modulus0 - quotient1 * foreign_modulus1
         let product_hi = a0 * b2
             + a2 * b0
             + a1 * b1
-            + quotient0.clone() * neg_foreign_2
-            + quotient2 * neg_foreign_0
-            + quotient1 * neg_foreign_1;
+            - quotient0.clone() * foreign_modulus2
+            - quotient2 * foreign_modulus0
+            - quotient1 * foreign_modulus1;
 
         // 1) Constrain decomposition of middle intermediate product
         // p11 = 2^88 * product_mid1_1 + product_mid1_0
         // p1 = 2^88 * p11 + product_mid0
-        // 2^88 * (2^88 * cw(10) + cw(9)) + cw(7) = nw(0) * cw(0) + nw(4) * nw(5) - nw(1) * f1 - nw(6) * f0
+        // 2^88 * (2^88 * cw(10) + cw(9)) + cw(7) = nw(0) * cw(0) + nw(4) * nw(5) - nw(1) * foreign_modulus1 - nw(6) * foreign_modulus0
         let product_mid_prefix = two_to_88.clone() * product_mid1_1.clone() + product_mid1_0;
         let product_mid_sum = two_to_88.clone() * product_mid_prefix + product_mid0.clone();
         constraints.push(product_mid - product_mid_sum.clone());
