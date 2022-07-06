@@ -1,13 +1,19 @@
 //! Test Framework
 
-use crate::circuits::lookup::runtime_tables::{RuntimeTable, RuntimeTableCfg};
-use crate::circuits::lookup::tables::LookupTable;
-use crate::circuits::{gate::CircuitGate, wires::COLUMNS};
-use crate::proof::{ProverProof, RecursionChallenge};
-use crate::prover_index::testing::new_index_for_test_with_lookups;
-use crate::prover_index::ProverIndex;
-use crate::verifier::verify;
-use crate::verifier_index::VerifierIndex;
+use crate::{
+    circuits::{
+        gate::CircuitGate,
+        lookup::{
+            runtime_tables::{RuntimeTable, RuntimeTableCfg},
+            tables::LookupTable,
+        },
+        wires::COLUMNS,
+    },
+    proof::{ProverProof, RecursionChallenge},
+    prover_index::{testing::new_index_for_test_with_lookups, ProverIndex},
+    verifier::verify,
+    verifier_index::VerifierIndex,
+};
 use ark_ff::PrimeField;
 use commitment_dlog::commitment::CommitmentCurve;
 use groupmap::GroupMap;
@@ -20,8 +26,7 @@ use oracle::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use std::mem;
-use std::time::Instant;
+use std::{mem, time::Instant};
 
 // aliases
 
@@ -31,7 +36,7 @@ type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 #[derive(Default)]
 pub(crate) struct TestFramework {
-    gates: Option<Vec<CircuitGate<Affine>>>,
+    gates: Option<Vec<CircuitGate<Fp>>>,
     witness: Option<[Vec<Fp>; COLUMNS]>,
     public_inputs: Vec<Fp>,
     lookup_tables: Vec<LookupTable<Fp>>,
@@ -47,7 +52,7 @@ pub(crate) struct TestRunner(TestFramework);
 
 impl TestFramework {
     #[must_use]
-    pub(crate) fn gates(mut self, gates: Vec<CircuitGate<Affine>>) -> Self {
+    pub(crate) fn gates(mut self, gates: Vec<CircuitGate<Fp>>) -> Self {
         self.gates = Some(gates);
         self
     }

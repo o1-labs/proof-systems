@@ -1,7 +1,7 @@
-use std::iter;
-
-use crate::circuits::{domains::EvaluationDomains, gate::CircuitGate};
+use super::runtime_tables::{RuntimeTableCfg, RuntimeTableSpec};
 use crate::circuits::{
+    domains::EvaluationDomains,
+    gate::CircuitGate,
     lookup::{
         constraints::LookupConfiguration,
         lookups::{JointLookup, LookupInfo, LookupPattern},
@@ -9,8 +9,7 @@ use crate::circuits::{
     },
     polynomials::permutation::ZK_ROWS,
 };
-use crate::curve::KimchiCurve;
-use ark_ff::{FftField, One, Zero};
+use ark_ff::{FftField, SquareRootField};
 use ark_poly::{
     univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
     Radix2EvaluationDomain as D,
@@ -19,9 +18,8 @@ use itertools::repeat_n;
 use o1_utils::field_helpers::i32_to_field;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
+use std::iter;
 use thiserror::Error;
-
-use super::runtime_tables::{RuntimeTableCfg, RuntimeTableSpec};
 
 /// Represents an error found when computing the lookup constraint system
 #[derive(Debug, Error)]
@@ -158,31 +156,31 @@ impl<T> LookupSelectors<T> {
 
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct LookupConstraintSystem<G: KimchiCurve> {
+pub struct LookupConstraintSystem<F: FftField> {
     /// Lookup tables
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub lookup_table: Vec<DP<G::ScalarField>>,
+    pub lookup_table: Vec<DP<F>>,
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub lookup_table8: Vec<E<G::ScalarField, D<G::ScalarField>>>,
+    pub lookup_table8: Vec<E<F, D<F>>>,
 
     /// Table IDs for the lookup values.
     /// This may be `None` if all lookups originate from table 0.
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
-    pub table_ids: Option<DP<G::ScalarField>>,
+    pub table_ids: Option<DP<F>>,
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
-    pub table_ids8: Option<E<G::ScalarField, D<G::ScalarField>>>,
+    pub table_ids8: Option<E<F, D<F>>>,
 
     /// Lookup selectors:
     /// For each kind of lookup-pattern, we have a selector that's
     /// 1 at the rows where that pattern should be enforced, and 0 at
     /// all other rows.
-    #[serde_as(as = "LookupSelectorsSerdeAs<G::ScalarField>")]
-    pub lookup_selectors: LookupSelectors<E<G::ScalarField, D<G::ScalarField>>>,
+    #[serde_as(as = "LookupSelectorsSerdeAs<F>")]
+    pub lookup_selectors: LookupSelectors<E<F, D<F>>>,
 
     /// An optional runtime table selector. It is 0 everywhere,
     /// except at the rows where the runtime tables apply.
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
-    pub runtime_selector: Option<E<G::ScalarField, D<G::ScalarField>>>,
+    pub runtime_selector: Option<E<F, D<F>>>,
 
     /// Optional runtime tables, listed as tuples `(length, id)`.
     pub runtime_tables: Option<Vec<RuntimeTableSpec>>,
@@ -191,16 +189,16 @@ pub struct LookupConstraintSystem<G: KimchiCurve> {
     pub runtime_table_offset: Option<usize>,
 
     /// Configuration for the lookup constraint.
-    #[serde(bound = "LookupConfiguration<G::ScalarField>: Serialize + DeserializeOwned")]
-    pub configuration: LookupConfiguration<G::ScalarField>,
+    #[serde(bound = "LookupConfiguration<F>: Serialize + DeserializeOwned")]
+    pub configuration: LookupConfiguration<F>,
 }
 
-impl<G: KimchiCurve> LookupConstraintSystem<G> {
+impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
     pub fn create(
-        gates: &[CircuitGate<G>],
-        lookup_tables: Vec<LookupTable<G::ScalarField>>,
-        runtime_tables: Option<Vec<RuntimeTableCfg<G::ScalarField>>>,
-        domain: &EvaluationDomains<G::ScalarField>,
+        gates: &[CircuitGate<F>],
+        lookup_tables: Vec<LookupTable<F>>,
+        runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
+        domain: &EvaluationDomains<F>,
     ) -> Result<Option<Self>, LookupError> {
         //~ 1. If no lookup is used in the circuit, do not create a lookup index
         match LookupInfo::create_from_gates(gates, runtime_tables.is_some()) {
@@ -251,25 +249,21 @@ impl<G: KimchiCurve> LookupConstraintSystem<G> {
 
                             // it's 1 everywhere, except at the entries where
                             // the runtime table applies
+                            evals.extend(iter::repeat(<F>::one()).take(runtime_table_offset));
+                            evals.extend(iter::repeat(<F>::zero()).take(runtime_len));
                             evals.extend(
-                                iter::repeat(<G::ScalarField>::one()).take(runtime_table_offset),
-                            );
-                            evals.extend(iter::repeat(<G::ScalarField>::zero()).take(runtime_len));
-                            evals.extend(
-                                iter::repeat(<G::ScalarField>::one())
+                                iter::repeat(<F>::one())
                                     .take(d1_size - runtime_table_offset - runtime_len),
                             );
 
                             // although the last ZK_ROWS are fine
                             for e in evals.iter_mut().rev().take(ZK_ROWS as usize) {
-                                *e = <G::ScalarField>::zero();
+                                *e = <F>::zero();
                             }
 
-                            E::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-                                evals, domain.d1,
-                            )
-                            .interpolate()
-                            .evaluate_over_domain(domain.d8)
+                            E::<F, D<F>>::from_vec_and_domain(evals, domain.d1)
+                                .interpolate()
+                                .evaluate_over_domain(domain.d8)
                         };
 
                         // create fixed tables for indexing the runtime tables
@@ -277,8 +271,7 @@ impl<G: KimchiCurve> LookupConstraintSystem<G> {
                             use RuntimeTableCfg::*;
                             let (id, first_column) = match runtime_table {
                                 &Indexed(RuntimeTableSpec { id, len }) => {
-                                    let indexes =
-                                        (0..(len as u32)).map(<G::ScalarField>::from).collect();
+                                    let indexes = (0..(len as u32)).map(<F>::from).collect();
                                     (id, indexes)
                                 }
                                 Custom { id, first_column } => (*id, first_column.clone()),
@@ -293,7 +286,7 @@ impl<G: KimchiCurve> LookupConstraintSystem<G> {
                             // important: we still need a placeholder column to make sure that
                             // if all other tables have a single column
                             // we don't use the second table as table ID column.
-                            let placeholders = vec![<G::ScalarField>::zero(); first_column.len()];
+                            let placeholders = vec![<F>::zero(); first_column.len()];
                             let data = vec![first_column, placeholders];
                             let table = LookupTable { id, data };
                             lookup_tables.push(table);
@@ -354,7 +347,7 @@ impl<G: KimchiCurve> LookupConstraintSystem<G> {
                 //~    To do this, for each table:
                 //~
                 let mut lookup_table = vec![Vec::with_capacity(d1_size); max_table_width];
-                let mut table_ids: Vec<G::ScalarField> = Vec::with_capacity(d1_size);
+                let mut table_ids: Vec<F> = Vec::with_capacity(d1_size);
 
                 let mut non_zero_table_id = false;
                 let mut has_table_id_0_with_zero_entry = false;
@@ -373,7 +366,7 @@ impl<G: KimchiCurve> LookupConstraintSystem<G> {
 
                     //~~ - Update the corresponding entries in a table id vector (of size the domain as well)
                     //~    with the table ID of the table.
-                    let table_id: G::ScalarField = i32_to_field(table.id);
+                    let table_id: F = i32_to_field(table.id);
                     table_ids.extend(repeat_n(table_id, table_len));
 
                     //~~ - Copy the entries from the table to new rows in the corresponding columns of the concatenated table.
@@ -386,7 +379,7 @@ impl<G: KimchiCurve> LookupConstraintSystem<G> {
 
                     //~~ - Fill in any unused columns with 0 (to match the dummy value)
                     for lookup_table in lookup_table.iter_mut().skip(table.data.len()) {
-                        lookup_table.extend(repeat_n(<G::ScalarField>::zero(), table_len))
+                        lookup_table.extend(repeat_n(<F>::zero(), table_len))
                     }
                 }
 
@@ -408,30 +401,22 @@ impl<G: KimchiCurve> LookupConstraintSystem<G> {
                 // table 0.
                 let dummy_lookup = JointLookup {
                     entry: vec![],
-                    table_id: <G::ScalarField>::zero(),
+                    table_id: <F>::zero(),
                 };
 
                 //~ 6. Pad the end of the concatened table with the dummy value.
-                lookup_table.iter_mut().for_each(|col| {
-                    col.extend(repeat_n(
-                        <G::ScalarField>::zero(),
-                        max_num_entries - col.len(),
-                    ))
-                });
+                lookup_table
+                    .iter_mut()
+                    .for_each(|col| col.extend(repeat_n(<F>::zero(), max_num_entries - col.len())));
 
                 //~ 7. Pad the end of the table id vector with 0s.
-                table_ids.extend(repeat_n(
-                    <G::ScalarField>::zero(),
-                    max_num_entries - table_ids.len(),
-                ));
+                table_ids.extend(repeat_n(<F>::zero(), max_num_entries - table_ids.len()));
 
                 //~ 8. pre-compute polynomial and evaluation form for the look up tables
-                let mut lookup_table_polys: Vec<DP<G::ScalarField>> = vec![];
-                let mut lookup_table8: Vec<E<G::ScalarField, D<G::ScalarField>>> = vec![];
+                let mut lookup_table_polys: Vec<DP<F>> = vec![];
+                let mut lookup_table8: Vec<E<F, D<F>>> = vec![];
                 for col in lookup_table.into_iter() {
-                    let poly =
-                        E::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(col, domain.d1)
-                            .interpolate();
+                    let poly = E::<F, D<F>>::from_vec_and_domain(col, domain.d1).interpolate();
                     let eval = poly.evaluate_over_domain_by_ref(domain.d8);
                     lookup_table_polys.push(poly);
                     lookup_table8.push(eval);
@@ -440,13 +425,9 @@ impl<G: KimchiCurve> LookupConstraintSystem<G> {
                 //~ 9. pre-compute polynomial and evaluation form for the table IDs,
                 //~    only if a table with an ID different from zero was used.
                 let (table_ids, table_ids8) = if non_zero_table_id {
-                    let table_ids: DP<G::ScalarField> =
-                        E::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-                            table_ids, domain.d1,
-                        )
-                        .interpolate();
-                    let table_ids8: E<G::ScalarField, D<G::ScalarField>> =
-                        table_ids.evaluate_over_domain_by_ref(domain.d8);
+                    let table_ids: DP<F> =
+                        E::<F, D<F>>::from_vec_and_domain(table_ids, domain.d1).interpolate();
+                    let table_ids8: E<F, D<F>> = table_ids.evaluate_over_domain_by_ref(domain.d8);
                     (Some(table_ids), Some(table_ids8))
                 } else {
                     (None, None)

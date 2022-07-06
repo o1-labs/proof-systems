@@ -718,7 +718,7 @@ impl<G: KimchiCurve> Cs<G::ScalarField> for System<G> {
 
 impl<G: KimchiCurve> System<G> {
     /// Compiles our intermediate representation into a circuit.
-    pub fn gates(&self) -> Vec<CircuitGate<G>> {
+    pub fn gates(&self) -> Vec<CircuitGate<G::ScalarField>> {
         let mut first_cell: HashMap<usize, Wire> = HashMap::new();
         let mut most_recent_cell: HashMap<usize, Wire> = HashMap::new();
         let mut gates = vec![];

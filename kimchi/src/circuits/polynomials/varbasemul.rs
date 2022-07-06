@@ -10,18 +10,15 @@
 //! See <https://github.com/zcash/zcash/issues/3924>
 //! and 3.1 of <https://arxiv.org/pdf/math/0208038.pdf> for details.
 
-use std::marker::PhantomData;
-
-use crate::curve::KimchiCurve;
-use ark_ff::{FftField, One, Zero};
-use CurrOrNext::{Curr, Next};
-
 use crate::circuits::{
     argument::{Argument, ArgumentType},
     expr::{prologue::*, Cache, Column, Variable},
     gate::{CircuitGate, CurrOrNext, GateType},
     wires::{GateWires, COLUMNS},
 };
+use ark_ff::{FftField, One};
+use std::marker::PhantomData;
+use CurrOrNext::{Curr, Next};
 
 //~ We implement custom Plonk constraints for short Weierstrass curve variable base scalar multiplication.
 //~
@@ -130,7 +127,7 @@ use crate::circuits::{
 //~ `0 = n' - (b4 + 2 * (b3 + 2 * (b2 + 2 * (b1 + 2 * (b0 + 2*n)))))`
 //~
 
-impl<G: KimchiCurve> CircuitGate<G> {
+impl<F: FftField> CircuitGate<F> {
     pub fn create_vbmul(wires: &[GateWires; 2]) -> Vec<Self> {
         vec![
             CircuitGate {
@@ -146,20 +143,16 @@ impl<G: KimchiCurve> CircuitGate<G> {
         ]
     }
 
-    pub fn verify_vbmul(
-        &self,
-        _row: usize,
-        _witness: &[Vec<G::ScalarField>; COLUMNS],
-    ) -> Result<(), String> {
+    pub fn verify_vbmul(&self, _row: usize, _witness: &[Vec<F>; COLUMNS]) -> Result<(), String> {
         // TODO: implement
         Ok(())
     }
 
-    pub fn vbmul(&self) -> G::ScalarField {
+    pub fn vbmul(&self) -> F {
         if self.typ == GateType::VarBaseMul {
-            <G::ScalarField>::one()
+            <F>::one()
         } else {
-            <G::ScalarField>::zero()
+            <F>::zero()
         }
     }
 }

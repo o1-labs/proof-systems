@@ -1,24 +1,25 @@
 //! Implementation of the EndomulScalar gate for the endomul scalar multiplication.
 //! This gate checks 8 rounds of the Algorithm 2 in the [Halo paper](https://eprint.iacr.org/2019/1021.pdf) per row.
 
-use std::marker::PhantomData;
-
-use crate::circuits::{
-    argument::{Argument, ArgumentType},
-    constraints::ConstraintSystem,
-    expr::{prologue::*, Cache},
-    gate::{CircuitGate, GateType},
-    wires::COLUMNS,
+use crate::{
+    circuits::{
+        argument::{Argument, ArgumentType},
+        constraints::ConstraintSystem,
+        expr::{prologue::*, Cache},
+        gate::{CircuitGate, GateType},
+        wires::COLUMNS,
+    },
+    curve::KimchiCurve,
 };
-use crate::curve::KimchiCurve;
 use ark_ff::{BitIteratorLE, FftField, Field, PrimeField, Zero};
 use array_init::array_init;
+use std::marker::PhantomData;
 
-impl<G: KimchiCurve> CircuitGate<G> {
-    pub fn verify_endomul_scalar(
+impl<F: FftField> CircuitGate<F> {
+    pub fn verify_endomul_scalar<G: KimchiCurve<ScalarField = F>>(
         &self,
         row: usize,
-        witness: &[Vec<G::ScalarField>; COLUMNS],
+        witness: &[Vec<F>; COLUMNS],
         _cs: &ConstraintSystem<G>,
     ) -> Result<(), String> {
         ensure_eq!(self.typ, GateType::EndoMulScalar, "incorrect gate type");

@@ -111,7 +111,7 @@ pub mod testing {
     use mina_curves::pasta::{pallas::Affine as Pallas, vesta::Affine as Vesta, Fp};
 
     pub fn new_index_for_test_with_lookups(
-        gates: Vec<CircuitGate<Vesta>>,
+        gates: Vec<CircuitGate<Fp>>,
         public: usize,
         lookup_tables: Vec<LookupTable<Fp>>,
         runtime_tables: Option<Vec<RuntimeTableCfg<Fp>>>,
@@ -133,7 +133,7 @@ pub mod testing {
         let (endo_q, _endo_r) = endos::<Pallas>();
         ProverIndex::<Vesta>::create(cs, fq_sponge_params, endo_q, srs)
     }
-    pub fn new_index_for_test(gates: Vec<CircuitGate<Vesta>>, public: usize) -> ProverIndex<Vesta> {
+    pub fn new_index_for_test(gates: Vec<CircuitGate<Fp>>, public: usize) -> ProverIndex<Vesta> {
         new_index_for_test_with_lookups(gates, public, vec![], None)
     }
 }

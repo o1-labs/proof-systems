@@ -7,9 +7,8 @@ use crate::circuits::{
         XOR_TABLE_ID,
     },
 };
-use ark_ff::{Field, One, Zero};
+use ark_ff::{FftField, Field, One, Zero};
 use ark_poly::{EvaluationDomain, Evaluations as E, Radix2EvaluationDomain as D};
-use crate::curve::KimchiCurve;
 use o1_utils::field_helpers::i32_to_field;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -65,8 +64,8 @@ impl LookupInfo {
         }
     }
 
-    pub fn create_from_gates<G: KimchiCurve>(
-        gates: &[CircuitGate<G>],
+    pub fn create_from_gates<F: FftField>(
+        gates: &[CircuitGate<F>],
         uses_runtime_tables: bool,
     ) -> Option<Self> {
         let mut kinds = HashSet::new();
@@ -99,19 +98,16 @@ impl LookupInfo {
 
     /// Each entry in `kinds` has a corresponding selector polynomial that controls whether that
     /// lookup kind should be enforced at a given row. This computes those selector polynomials.
-    pub fn selector_polynomials_and_tables<G: KimchiCurve>(
+    pub fn selector_polynomials_and_tables<F: FftField>(
         &self,
-        domain: &EvaluationDomains<G::ScalarField>,
-        gates: &[CircuitGate<G>],
-    ) -> (
-        LookupSelectors<Evaluations<G::ScalarField>>,
-        Vec<LookupTable<G::ScalarField>>,
-    ) {
+        domain: &EvaluationDomains<F>,
+        gates: &[CircuitGate<F>],
+    ) -> (LookupSelectors<Evaluations<F>>, Vec<LookupTable<F>>) {
         let n = domain.d1.size();
 
         let mut selector_values = LookupSelectors::default();
         for kind in &self.kinds {
-            selector_values[*kind] = Some(vec![<G::ScalarField>::zero(); n]);
+            selector_values[*kind] = Some(vec![<F>::zero(); n]);
         }
 
         let mut gate_tables = HashSet::new();
@@ -120,7 +116,7 @@ impl LookupInfo {
             let selector = selector_values[lookup_pattern]
                 .as_mut()
                 .expect(&*format!("has selector for {:?}", lookup_pattern));
-            selector[i] = <G::ScalarField>::one();
+            selector[i] = <F>::one();
         };
 
         // TODO: is take(n) useful here? I don't see why we need this
@@ -144,7 +140,7 @@ impl LookupInfo {
         // Actually, don't need to evaluate over domain 8 here.
         // TODO: so why do it :D?
         let selector_values8: LookupSelectors<_> = selector_values.map(|v| {
-            E::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(v, domain.d1)
+            E::<F, D<F>>::from_vec_and_domain(v, domain.d1)
                 .interpolate()
                 .evaluate_over_domain(domain.d8)
         });
@@ -153,10 +149,7 @@ impl LookupInfo {
     }
 
     /// For each row in the circuit, which lookup-constraints should be enforced at that row.
-    pub fn by_row<G: KimchiCurve>(
-        &self,
-        gates: &[CircuitGate<G>],
-    ) -> Vec<Vec<JointLookupSpec<G::ScalarField>>> {
+    pub fn by_row<F: FftField>(&self, gates: &[CircuitGate<F>]) -> Vec<Vec<JointLookupSpec<F>>> {
         let mut kinds = vec![vec![]; gates.len() + 1];
         for i in 0..gates.len() {
             let typ = gates[i].typ;

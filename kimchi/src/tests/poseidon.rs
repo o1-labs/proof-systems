@@ -1,16 +1,16 @@
-use crate::circuits::{
-    gate::CircuitGate,
-    polynomials,
-    polynomials::poseidon::ROUNDS_PER_ROW,
-    wires::{Wire, COLUMNS},
+use crate::{
+    circuits::{
+        gate::CircuitGate,
+        polynomials,
+        polynomials::poseidon::ROUNDS_PER_ROW,
+        wires::{Wire, COLUMNS},
+    },
+    curve::KimchiCurve,
+    tests::framework::TestFramework,
 };
-use crate::curve::KimchiCurve;
-use crate::tests::framework::TestFramework;
 use ark_ff::Zero;
 use array_init::array_init;
-//use commitment_dlog::srs::KimchiCurve;
-use mina_curves::pasta::fp::Fp;
-use mina_curves::pasta::vesta::Affine as Vesta;
+use mina_curves::pasta::{fp::Fp, vesta::Affine as Vesta};
 use o1_utils::math;
 use oracle::constants::{PlonkSpongeConstantsKimchi, SpongeConstants};
 
@@ -39,7 +39,7 @@ fn test_poseidon() {
     let mut abs_row = 0;
 
     // circuit gates
-    let mut gates: Vec<CircuitGate<Vesta>> = Vec::with_capacity(max_size);
+    let mut gates: Vec<CircuitGate<Fp>> = Vec::with_capacity(max_size);
 
     // custom constraints for Poseidon hash function permutation
     // ROUNDS_FULL full rounds constraint gates
@@ -47,7 +47,7 @@ fn test_poseidon() {
         let first_wire = Wire::new(abs_row);
         let last_row = abs_row + POS_ROWS_PER_HASH;
         let last_wire = Wire::new(last_row);
-        let (poseidon, row) = CircuitGate::<Vesta>::create_poseidon_gadget(
+        let (poseidon, row) = CircuitGate::<Fp>::create_poseidon_gadget(
             abs_row,
             [first_wire, last_wire],
             round_constants,

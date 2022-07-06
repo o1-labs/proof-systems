@@ -489,7 +489,7 @@ where
             //~~ - Compute the lookup aggregation polynomial.
             let joint_lookup_table_d8 = lookup_context.joint_lookup_table_d8.as_ref().unwrap();
 
-            let aggreg = lookup::constraints::aggregation::<_, G>(
+            let aggreg = lookup::constraints::aggregation::<_, G::ScalarField>(
                 lookup_context.dummy_lookup_value.unwrap(),
                 joint_lookup_table_d8,
                 index.cs.domain.d1,

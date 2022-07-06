@@ -25,15 +25,17 @@
 //~ ```
 //~
 
-use crate::circuits::{
-    argument::{Argument, ArgumentType},
-    expr::{prologue::*, Cache, ConstantExpr},
-    gate::{CircuitGate, CurrOrNext, GateType},
-    polynomial::COLUMNS,
-    wires::{GateWires, Wire},
+use crate::{
+    circuits::{
+        argument::{Argument, ArgumentType},
+        expr::{prologue::*, Cache, ConstantExpr},
+        gate::{CircuitGate, CurrOrNext, GateType},
+        polynomial::COLUMNS,
+        wires::{GateWires, Wire},
+    },
+    curve::KimchiCurve,
 };
-use crate::curve::KimchiCurve;
-use ark_ff::{FftField, Field, One, Zero};
+use ark_ff::{FftField, Field};
 use oracle::{
     constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
     poseidon::{sbox, ArithmeticSponge, ArithmeticSpongeParams, Sponge},
@@ -75,11 +77,11 @@ pub const fn round_to_cols(i: usize) -> Range<usize> {
     start..(start + SPONGE_WIDTH)
 }
 
-impl<G: KimchiCurve> CircuitGate<G> {
+impl<F: FftField> CircuitGate<F> {
     pub fn create_poseidon(
         wires: GateWires,
         // Coefficients are passed in in the logical order
-        coeffs: [[G::ScalarField; SPONGE_WIDTH]; ROUNDS_PER_ROW],
+        coeffs: [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW],
     ) -> Self {
         CircuitGate {
             typ: GateType::Poseidon,
@@ -99,7 +101,7 @@ impl<G: KimchiCurve> CircuitGate<G> {
         row: usize,
         // first and last row of the poseidon circuit (because they are used in the permutation)
         first_and_last_row: [GateWires; 2],
-        round_constants: &[Vec<G::ScalarField>],
+        round_constants: &[Vec<F>],
     ) -> (Vec<Self>, usize) {
         let mut gates = vec![];
 
@@ -134,11 +136,11 @@ impl<G: KimchiCurve> CircuitGate<G> {
     }
 
     /// Checks if a witness verifies a poseidon gate
-    pub fn verify_poseidon(
+    pub fn verify_poseidon<G: KimchiCurve<ScalarField = F>>(
         &self,
         row: usize,
         // TODO(mimoo): we should just pass two rows instead of the whole witness
-        witness: &[Vec<G::ScalarField>; COLUMNS],
+        witness: &[Vec<F>; COLUMNS],
     ) -> Result<(), String> {
         ensure_eq!(
             self.typ,
@@ -150,14 +152,13 @@ impl<G: KimchiCurve> CircuitGate<G> {
         let mut states = vec![];
         for round in 0..ROUNDS_PER_ROW {
             let cols = round_to_cols(round);
-            let state: Vec<G::ScalarField> = witness[cols].iter().map(|col| col[row]).collect();
+            let state: Vec<F> = witness[cols].iter().map(|col| col[row]).collect();
             states.push(state);
         }
         // (last state is in next row)
         let cols = round_to_cols(0);
         let next_row = row + 1;
-        let last_state: Vec<G::ScalarField> =
-            witness[cols].iter().map(|col| col[next_row]).collect();
+        let last_state: Vec<F> = witness[cols].iter().map(|col| col[next_row]).collect();
         states.push(last_state);
 
         // round constants
@@ -171,7 +172,7 @@ impl<G: KimchiCurve> CircuitGate<G> {
                 let state = &states[round];
                 let mut new_state = rc[round][i];
                 for (&s, mds) in state.iter().zip(mds_row.iter()) {
-                    let sboxed = sbox::<G::ScalarField, PlonkSpongeConstantsKimchi>(s);
+                    let sboxed = sbox::<F, PlonkSpongeConstantsKimchi>(s);
                     new_state += sboxed * mds;
                 }
 
@@ -191,22 +192,22 @@ impl<G: KimchiCurve> CircuitGate<G> {
         Ok(())
     }
 
-    pub fn ps(&self) -> G::ScalarField {
+    pub fn ps(&self) -> F {
         if self.typ == GateType::Poseidon {
-            <G::ScalarField>::one()
+            <F>::one()
         } else {
-            <G::ScalarField>::zero()
+            <F>::zero()
         }
     }
 
     /// round constant that are relevant for this specific gate
-    pub fn rc(&self) -> [[G::ScalarField; SPONGE_WIDTH]; ROUNDS_PER_ROW] {
+    pub fn rc(&self) -> [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW] {
         array_init::array_init(|round| {
             array_init::array_init(|col| {
                 if self.typ == GateType::Poseidon {
                     self.coeffs[SPONGE_WIDTH * round + col]
                 } else {
-                    <G::ScalarField>::zero()
+                    <F>::zero()
                 }
             })
         })

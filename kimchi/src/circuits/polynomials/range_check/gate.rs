@@ -1,10 +1,7 @@
 //! Range check gate
 
-use std::collections::HashMap;
-
-use crate::circuits::lookup::lookups::LookupInfo;
-use crate::curve::KimchiCurve;
-use ark_ff::{FftField, Field, One, UniformRand, Zero};
+use crate::{circuits::lookup::lookups::LookupInfo, curve::KimchiCurve};
+use ark_ff::{FftField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
@@ -12,6 +9,7 @@ use array_init::array_init;
 use rand::{prelude::StdRng, SeedableRng};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
+use std::collections::HashMap;
 use thiserror::Error;
 
 use crate::{
@@ -71,7 +69,7 @@ fn connect_cell_pair(wires: &mut [GateWires], cell1: (usize, usize), cell2: (usi
     wires[cell2.0][cell2.1] = tmp;
 }
 
-impl<G: KimchiCurve> CircuitGate<G> {
+impl<F: FftField> CircuitGate<F> {
     /// Create range check gate for constraining three 88-bit values.
     ///     Inputs the starting row
     ///     Outputs tuple (next_row, circuit_gates) where
@@ -141,10 +139,10 @@ impl<G: KimchiCurve> CircuitGate<G> {
     ///     Circuit gates used by the range check gate are: RangeChange0 and RangeCheck1
     ///   * Permutation argument checks for copied cells / wiring
     ///   * Plookup checks for any lookups defined
-    pub fn verify_range_check(
+    pub fn verify_range_check<G: KimchiCurve<ScalarField = F>>(
         &self,
         _: usize,
-        witness: &[Vec<G::ScalarField>; COLUMNS],
+        witness: &[Vec<F>; COLUMNS],
         cs: &ConstraintSystem<G>,
     ) -> Result<()> {
         if !circuit_gates().contains(&self.typ) {
@@ -160,22 +158,19 @@ impl<G: KimchiCurve> CircuitGate<G> {
             .unwrap();
         let mut witness = witness.clone();
         for w in &mut witness {
-            w.extend(std::iter::repeat(<G::ScalarField>::zero()).take(padding_length as usize));
+            w.extend(std::iter::repeat(<F>::zero()).take(padding_length as usize));
         }
 
         // Compute witness polynomial
-        let witness_poly: [DensePolynomial<G::ScalarField>; COLUMNS] = array_init(|i| {
-            Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-                witness[i].clone(),
-                cs.domain.d1,
-            )
-            .interpolate()
+        let witness_poly: [DensePolynomial<F>; COLUMNS] = array_init(|i| {
+            Evaluations::<F, D<F>>::from_vec_and_domain(witness[i].clone(), cs.domain.d1)
+                .interpolate()
         });
 
         // Compute permutation polynomial
         let rng = &mut StdRng::from_seed([0u8; 32]);
-        let beta = <G::ScalarField>::rand(rng);
-        let gamma = <G::ScalarField>::rand(rng);
+        let beta = <F>::rand(rng);
+        let gamma = <F>::rand(rng);
         let z_poly = cs
             .perm_aggreg(&witness, &beta, &gamma, rng)
             .map_err(|_| GateError::InvalidCopyConstraint(self.typ))?;
@@ -217,10 +212,10 @@ impl<G: KimchiCurve> CircuitGate<G> {
         let env = {
             Environment {
                 constants: expr::Constants {
-                    alpha: <G::ScalarField>::rand(rng),
-                    beta: <G::ScalarField>::rand(rng),
-                    gamma: <G::ScalarField>::rand(rng),
-                    joint_combiner: Some(<G::ScalarField>::rand(rng)),
+                    alpha: <F>::rand(rng),
+                    beta: <F>::rand(rng),
+                    gamma: <F>::rand(rng),
+                    joint_combiner: Some(<F>::rand(rng)),
                     endo_coefficient: cs.endo,
                     mds: &G::sponge_params().mds,
                 },
@@ -236,10 +231,10 @@ impl<G: KimchiCurve> CircuitGate<G> {
         };
 
         // Setup powers of alpha
-        let mut alphas = Alphas::<G::ScalarField>::default();
+        let mut alphas = Alphas::<F>::default();
         alphas.register(
             ArgumentType::Gate(self.typ),
-            circuit_gate_constraint_count::<G::ScalarField>(self.typ),
+            circuit_gate_constraint_count::<F>(self.typ),
         );
 
         // Get constraints for this circuit gate
@@ -275,14 +270,14 @@ struct LookupEnvironmentData<F: FftField> {
 // computing the dummy lookup value, creating the combined lookup table, computing the sorted plookup
 // evaluations and the plookup aggregation evaluations.
 // Note: This function assumes the cs contains a lookup constraint system.
-fn set_up_lookup_env_data<G: KimchiCurve>(
+fn set_up_lookup_env_data<F: FftField, G: KimchiCurve<ScalarField = F>>(
     gate_type: GateType,
     cs: &ConstraintSystem<G>,
-    witness: &[Vec<G::ScalarField>; COLUMNS],
-    beta: &G::ScalarField,
-    gamma: &G::ScalarField,
+    witness: &[Vec<F>; COLUMNS],
+    beta: &F,
+    gamma: &F,
     lookup_info: &LookupInfo,
-) -> Result<LookupEnvironmentData<G::ScalarField>> {
+) -> Result<LookupEnvironmentData<F>> {
     let lcs = cs
         .lookup_constraint_system
         .as_ref()
@@ -293,15 +288,15 @@ fn set_up_lookup_env_data<G: KimchiCurve>(
     // Set up joint-combiner and table-id-combiner
     let joint_lookup_used = matches!(lcs.configuration.lookup_used, LookupsUsed::Joint);
     let joint_combiner = if joint_lookup_used {
-        <G::ScalarField>::rand(rng)
+        <F>::rand(rng)
     } else {
-        <G::ScalarField>::zero()
+        <F>::zero()
     };
-    let table_id_combiner: G::ScalarField = if lcs.table_ids8.as_ref().is_some() {
+    let table_id_combiner: F = if lcs.table_ids8.as_ref().is_some() {
         joint_combiner.pow([lcs.configuration.lookup_info.max_joint_size as u64])
     } else {
         // TODO: just set this to None in case multiple tables are not used
-        <G::ScalarField>::zero()
+        <F>::zero()
     };
 
     // Compute the dummy lookup value as the combination of the last entry of the XOR table (so `(0, 0, 0)`).
@@ -322,7 +317,7 @@ fn set_up_lookup_env_data<G: KimchiCurve>(
                 // If there is no `table_ids8` in the constraint system,
                 // every table ID is identically 0.
                 {
-                    <G::ScalarField>::zero()
+                    <F>::zero()
                 }
             };
 
@@ -370,7 +365,7 @@ fn set_up_lookup_env_data<G: KimchiCurve>(
         .collect::<Vec<_>>();
 
     // Compute the plookup aggregation evaluations
-    let aggreg = lookup::constraints::aggregation::<_, G>(
+    let aggreg = lookup::constraints::aggregation::<_, F>(
         dummy_lookup_value,
         &joint_lookup_table_d8,
         cs.domain.d1,
@@ -447,20 +442,20 @@ pub struct SelectorPolynomial<F: FftField> {
 }
 
 /// Create range check circuit gates selector polynomials
-pub fn selector_polynomials<G: KimchiCurve>(
-    gates: &[CircuitGate<G>],
-    domain: &EvaluationDomains<G::ScalarField>,
-) -> Vec<SelectorPolynomial<G::ScalarField>> {
+pub fn selector_polynomials<F: FftField>(
+    gates: &[CircuitGate<F>],
+    domain: &EvaluationDomains<F>,
+) -> Vec<SelectorPolynomial<F>> {
     Vec::from_iter(circuit_gates().iter().map(|gate_type| {
         // Coefficient form
-        let coeff = Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+        let coeff = Evaluations::<F, D<F>>::from_vec_and_domain(
             gates
                 .iter()
                 .map(|gate| {
                     if gate.typ == *gate_type {
-                        <G::ScalarField>::one()
+                        <F>::one()
                     } else {
-                        <G::ScalarField>::zero()
+                        <F>::zero()
                     }
                 })
                 .collect(),
@@ -501,6 +496,7 @@ mod tests {
     use ark_ff::{Field, One, Zero};
     use mina_curves::pasta::pallas;
     use mina_curves::pasta::vesta::Affine as Vesta;
+    use mina_curves::pasta::Fp;
     use o1_utils::FieldHelpers;
 
     use array_init::array_init;
@@ -508,7 +504,7 @@ mod tests {
     type PallasField = <pallas::Affine as AffineCurve>::BaseField;
 
     fn create_test_constraint_system() -> ConstraintSystem<Vesta> {
-        let (mut next_row, mut gates) = CircuitGate::<Vesta>::create_multi_range_check(0);
+        let (mut next_row, mut gates) = CircuitGate::<Fp>::create_multi_range_check(0);
 
         // Temporary workaround for lookup-table/domain-size issue
         for _ in 0..(1 << 13) {
@@ -522,7 +518,7 @@ mod tests {
     }
 
     fn create_test_prover_index(public_size: usize) -> ProverIndex<Vesta> {
-        let (mut next_row, mut gates) = CircuitGate::<Vesta>::create_multi_range_check(0);
+        let (mut next_row, mut gates) = CircuitGate::<Fp>::create_multi_range_check(0);
 
         // Temporary workaround for lookup-table/domain-size issue
         for _ in 0..(1 << 13) {
@@ -1195,12 +1191,12 @@ mod tests {
         //      0 GenericPub  0 <-,-, ... Used to get a cell with zero
         //      1 RangeCheck0 v0  0 0 ... Wire cells 1 and 2 to 1st cell 0 of GenericPub
         let mut gates = vec![];
-        gates.push(CircuitGate::<Vesta>::create_generic_gadget(
+        gates.push(CircuitGate::<Fp>::create_generic_gadget(
             Wire::new(0),
             GenericGateSpec::Pub,
             None,
         ));
-        gates.append(&mut CircuitGate::<Vesta>::create_range_check(1).1);
+        gates.append(&mut CircuitGate::<Fp>::create_range_check(1).1);
         gates[1].wires[1] = Wire { row: 1, col: 2 };
         gates[1].wires[2] = Wire { row: 0, col: 0 };
         gates[0].wires[0] = Wire { row: 1, col: 1 };
@@ -1213,9 +1209,10 @@ mod tests {
         }
 
         // Create constraint system
-        let cs = ConstraintSystem::create(gates /*, oracle::pasta::fp_kimchi::params()*/)
-            .build()
-            .unwrap();
+        let cs =
+            ConstraintSystem::<Vesta>::create(gates /*, oracle::pasta::fp_kimchi::params()*/)
+                .build()
+                .unwrap();
 
         // Witness layout (positive test case)
         //   Row 0 1 2 3 ... 14  Gate

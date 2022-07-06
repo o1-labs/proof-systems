@@ -2,22 +2,19 @@
 //! endomorphism optimised variable base
 //! scalar multiplication custom Plonk polynomials.
 
-use std::marker::PhantomData;
-
-use crate::curve::KimchiCurve;
-use ark_ff::{FftField, Field, One, Zero};
-
-use crate::circuits::constraints::ConstraintSystem;
-use crate::circuits::gate::CircuitGate;
-use crate::circuits::wires::GateWires;
-use crate::circuits::{
-    argument::{Argument, ArgumentType},
-    expr,
-    expr::{constraints::boolean, prologue::*, Cache, ConstantExpr},
-    gate::GateType,
-    wires::COLUMNS,
+use crate::{
+    circuits::{
+        argument::{Argument, ArgumentType},
+        constraints::ConstraintSystem,
+        expr::{self, constraints::boolean, prologue::*, Cache, ConstantExpr},
+        gate::{CircuitGate, GateType},
+        wires::{GateWires, COLUMNS},
+    },
+    curve::KimchiCurve,
+    proof::ProofEvaluations,
 };
-use crate::proof::ProofEvaluations;
+use ark_ff::{FftField, Field, One};
+use std::marker::PhantomData;
 
 //~ We implement custom gate constraints for short Weierstrass curve
 //~ endomorphism optimised variable base scalar multiplication.
@@ -111,7 +108,7 @@ use crate::proof::ProofEvaluations;
 
 /// Implementation of group endomorphism optimised
 /// variable base scalar multiplication custom Plonk constraints.
-impl<G: KimchiCurve> CircuitGate<G> {
+impl<F: FftField> CircuitGate<F> {
     pub fn create_endomul(wires: GateWires) -> Self {
         CircuitGate {
             typ: GateType::EndoMul,
@@ -120,23 +117,23 @@ impl<G: KimchiCurve> CircuitGate<G> {
         }
     }
 
-    pub fn verify_endomul(
+    pub fn verify_endomul<G: KimchiCurve<ScalarField = F>>(
         &self,
         row: usize,
-        witness: &[Vec<G::ScalarField>; COLUMNS],
+        witness: &[Vec<F>; COLUMNS],
         cs: &ConstraintSystem<G>,
     ) -> Result<(), String> {
         ensure_eq!(self.typ, GateType::EndoMul, "incorrect gate type");
 
-        let this: [G::ScalarField; COLUMNS] = array_init::array_init(|i| witness[i][row]);
-        let next: [G::ScalarField; COLUMNS] = array_init::array_init(|i| witness[i][row + 1]);
+        let this: [F; COLUMNS] = array_init::array_init(|i| witness[i][row]);
+        let next: [F; COLUMNS] = array_init::array_init(|i| witness[i][row + 1]);
 
-        let pt = <G::ScalarField>::from(123456u64);
+        let pt = <F>::from(123456u64);
 
         let constants = expr::Constants {
-            alpha: <G::ScalarField>::zero(),
-            beta: <G::ScalarField>::zero(),
-            gamma: <G::ScalarField>::zero(),
+            alpha: <F>::zero(),
+            beta: <F>::zero(),
+            gamma: <F>::zero(),
             joint_combiner: None,
             mds: &G::sponge_params().mds,
             endo_coefficient: cs.endo,
@@ -151,7 +148,7 @@ impl<G: KimchiCurve> CircuitGate<G> {
         for (i, c) in constraints.iter().enumerate() {
             match c.evaluate_(cs.domain.d1, pt, &evals, &constants) {
                 Ok(x) => {
-                    if x != <G::ScalarField>::zero() {
+                    if x != <F>::zero() {
                         return Err(format!("Bad endo equation {}", i));
                     }
                 }
@@ -162,11 +159,11 @@ impl<G: KimchiCurve> CircuitGate<G> {
         Ok(())
     }
 
-    pub fn endomul(&self) -> G::ScalarField {
+    pub fn endomul(&self) -> F {
         if self.typ == GateType::EndoMul {
-            <G::ScalarField>::one()
+            <F>::one()
         } else {
-            <G::ScalarField>::zero()
+            <F>::zero()
         }
     }
 }

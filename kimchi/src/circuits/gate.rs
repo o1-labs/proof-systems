@@ -1,8 +1,10 @@
 //! This module implements Plonk constraint gate primitive.
 
-use crate::circuits::{constraints::ConstraintSystem, wires::*};
-use crate::curve::KimchiCurve;
-use ark_ff::bytes::ToBytes;
+use crate::{
+    circuits::{constraints::ConstraintSystem, wires::*},
+    curve::KimchiCurve,
+};
+use ark_ff::{bytes::ToBytes, FftField};
 use num_traits::cast::ToPrimitive;
 use o1_utils::hasher::CryptoDigest;
 use serde::{Deserialize, Serialize};
@@ -97,17 +99,17 @@ pub enum GateType {
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 /// A single gate in a circuit.
-pub struct CircuitGate<G: KimchiCurve> {
+pub struct CircuitGate<F: FftField> {
     /// type of the gate
     pub typ: GateType,
     /// gate wiring (for each cell, what cell it is wired to)
     pub wires: GateWires,
     /// public selector polynomials that can used as handy coefficients in gates
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub coeffs: Vec<G::ScalarField>,
+    pub coeffs: Vec<F>,
 }
 
-impl<G: KimchiCurve> ToBytes for CircuitGate<G> {
+impl<F: FftField> ToBytes for CircuitGate<F> {
     #[inline]
     fn write<W: Write>(&self, mut w: W) -> IoResult<()> {
         let typ: u8 = ToPrimitive::to_u8(&self.typ).unwrap();
@@ -124,7 +126,7 @@ impl<G: KimchiCurve> ToBytes for CircuitGate<G> {
     }
 }
 
-impl<G: KimchiCurve> CircuitGate<G> {
+impl<F: FftField> CircuitGate<F> {
     /// this function creates "empty" circuit gate
     pub fn zero(wires: GateWires) -> Self {
         CircuitGate {
@@ -136,18 +138,18 @@ impl<G: KimchiCurve> CircuitGate<G> {
 
     /// This function verifies the consistency of the wire
     /// assignments (witness) against the constraints
-    pub fn verify(
+    pub fn verify<G: KimchiCurve<ScalarField = F>>(
         &self,
         row: usize,
-        witness: &[Vec<G::ScalarField>; COLUMNS],
+        witness: &[Vec<F>; COLUMNS],
         cs: &ConstraintSystem<G>,
-        public: &[G::ScalarField],
+        public: &[F],
     ) -> Result<(), String> {
         use GateType::*;
         match self.typ {
             Zero => Ok(()),
             Generic => self.verify_generic(row, witness, public),
-            Poseidon => self.verify_poseidon(row, witness),
+            Poseidon => self.verify_poseidon::<G>(row, witness),
             CompleteAdd => self.verify_complete_add(row, witness),
             VarBaseMul => self.verify_vbmul(row, witness),
             EndoMul => self.verify_endomul(row, witness, cs),
@@ -168,11 +170,11 @@ impl<G: KimchiCurve> CircuitGate<G> {
 
 /// A circuit is specified as a series of [CircuitGate].
 #[derive(Serialize)]
-pub struct Circuit<'a, G: KimchiCurve>(
-    #[serde(bound = "CircuitGate<G>: Serialize")] pub &'a [CircuitGate<G>],
+pub struct Circuit<'a, F: FftField>(
+    #[serde(bound = "CircuitGate<F>: Serialize")] pub &'a [CircuitGate<F>],
 );
 
-impl<'a, G: KimchiCurve> CryptoDigest for Circuit<'a, G> {
+impl<'a, F: FftField> CryptoDigest for Circuit<'a, F> {
     const PREFIX: &'static [u8; 15] = b"kimchi-circuit0";
 }
 
@@ -276,7 +278,6 @@ pub mod caml {
 mod tests {
     use super::*;
     use ark_ff::UniformRand as _;
-    use mina_curves::pasta::vesta::Affine as Vesta;
     use mina_curves::pasta::Fp;
     use proptest::prelude::*;
     use rand::SeedableRng as _;
@@ -301,7 +302,7 @@ mod tests {
     }
 
     prop_compose! {
-        fn arb_circuit_gate()(typ: GateType, wires: GateWires, coeffs in arb_fp_vec(25)) -> CircuitGate<Vesta> {
+        fn arb_circuit_gate()(typ: GateType, wires: GateWires, coeffs in arb_fp_vec(25)) -> CircuitGate<Fp> {
             CircuitGate {
                 typ,
                 wires,
@@ -314,7 +315,7 @@ mod tests {
         #[test]
         fn test_gate_serialization(cg in arb_circuit_gate()) {
             let encoded = rmp_serde::to_vec(&cg).unwrap();
-            let decoded: CircuitGate<Vesta> = rmp_serde::from_slice(&encoded).unwrap();
+            let decoded: CircuitGate<Fp> = rmp_serde::from_slice(&encoded).unwrap();
             prop_assert_eq!(cg.typ, decoded.typ);
             for i in 0..PERMUTS {
                 prop_assert_eq!(cg.wires[i], decoded.wires[i]);

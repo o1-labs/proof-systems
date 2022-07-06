@@ -78,23 +78,25 @@
 //!- op1: content of second operand of right part
 //!- res: result of the operation in the right part
 
-use crate::alphas::Alphas;
-use crate::circuits::argument::{Argument, ArgumentType};
-use crate::circuits::constraints::ConstraintSystem;
-use crate::circuits::expr::{self, Column};
-use crate::circuits::expr::{witness_curr, witness_next, Cache, ConstantExpr, Expr, E};
-use crate::circuits::gate::{CircuitGate, GateType};
-use crate::circuits::wires::{GateWires, Wire, COLUMNS};
-use crate::curve::KimchiCurve;
-use crate::proof::ProofEvaluations;
-use ark_ff::{FftField, Field, One, UniformRand, Zero};
+use crate::{
+    alphas::Alphas,
+    circuits::{
+        argument::{Argument, ArgumentType},
+        constraints::ConstraintSystem,
+        expr::{self, witness_curr, witness_next, Cache, Column, ConstantExpr, Expr, E},
+        gate::{CircuitGate, GateType},
+        wires::{GateWires, Wire, COLUMNS},
+    },
+    curve::KimchiCurve,
+    proof::ProofEvaluations,
+};
+use ark_ff::{FftField, Field, One};
 use array_init::array_init;
 use cairo::{
     runner::{CairoInstruction, CairoProgram, Pointers},
     word::{FlagBits, Offsets},
 };
-use rand::prelude::StdRng;
-use rand::SeedableRng;
+use rand::{prelude::StdRng, SeedableRng};
 use std::marker::PhantomData;
 
 const NUM_FLAGS: usize = 16;
@@ -102,7 +104,7 @@ pub const CIRCUIT_GATE_COUNT: usize = 4;
 
 // GATE-RELATED
 
-impl<G: KimchiCurve> CircuitGate<G> {
+impl<F: FftField> CircuitGate<F> {
     /// This function creates a CairoClaim gate
     pub fn create_cairo_claim(wires: GateWires) -> Self {
         CircuitGate {
@@ -154,7 +156,7 @@ impl<G: KimchiCurve> CircuitGate<G> {
         // ...
         // 4n-3: 1 row for last instruction
         // 4n-2: 1 row for Auxiliary argument (no constraints)
-        let mut gates: Vec<CircuitGate<G>> = Vec::new();
+        let mut gates: Vec<CircuitGate<F>> = Vec::new();
         if num > 0 {
             let claim_gate = Wire::new(row);
             gates.push(CircuitGate::create_cairo_claim(claim_gate));
@@ -182,15 +184,15 @@ impl<G: KimchiCurve> CircuitGate<G> {
     }
 
     /// verifies that the Cairo gate constraints are solved by the witness depending on its type
-    pub fn verify_cairo_gate(
+    pub fn verify_cairo_gate<G: KimchiCurve<ScalarField = F>>(
         &self,
         row: usize,
-        witness: &[Vec<G::ScalarField>; COLUMNS],
+        witness: &[Vec<F>; COLUMNS],
         cs: &ConstraintSystem<G>,
     ) -> Result<(), String> {
         // assignments
-        let curr: [G::ScalarField; COLUMNS] = array_init(|i| witness[i][row]);
-        let mut next: [G::ScalarField; COLUMNS] = array_init(|_| <G::ScalarField>::zero());
+        let curr: [F; COLUMNS] = array_init(|i| witness[i][row]);
+        let mut next: [F; COLUMNS] = array_init(|_| <F>::zero());
         if self.typ != GateType::Zero {
             next = array_init(|i| witness[i][row + 1]);
         }
@@ -210,11 +212,8 @@ impl<G: KimchiCurve> CircuitGate<G> {
         };
 
         // assign powers of alpha to these gates
-        let mut alphas = Alphas::<G::ScalarField>::default();
-        alphas.register(
-            ArgumentType::Gate(self.typ),
-            Instruction::<G::ScalarField>::CONSTRAINTS,
-        );
+        let mut alphas = Alphas::<F>::default();
+        alphas.register(ArgumentType::Gate(self.typ), Instruction::<F>::CONSTRAINTS);
 
         // Get constraints for this circuit gate
         let constraints = circuit_gate_combined_constraints(self.typ, &alphas);
@@ -231,15 +230,15 @@ impl<G: KimchiCurve> CircuitGate<G> {
 
         // Setup circuit constants
         let constants = expr::Constants {
-            alpha: <G::ScalarField>::rand(rng),
-            beta: <G::ScalarField>::rand(rng),
-            gamma: <G::ScalarField>::rand(rng),
+            alpha: <F>::rand(rng),
+            beta: <F>::rand(rng),
+            gamma: <F>::rand(rng),
             joint_combiner: None,
             endo_coefficient: cs.endo,
             mds: &G::sponge_params().mds,
         };
 
-        let pt = <G::ScalarField>::rand(rng);
+        let pt = <F>::rand(rng);
 
         // Evaluate constraints
         match linearized
@@ -247,7 +246,7 @@ impl<G: KimchiCurve> CircuitGate<G> {
             .evaluate_(cs.domain.d1, pt, &evals, &constants)
         {
             Ok(x) => {
-                if x == <G::ScalarField>::zero() {
+                if x == <F>::zero() {
                     Ok(())
                 } else {
                     Err(format!("Invalid {:?} constraint", self.typ))
@@ -416,30 +415,30 @@ pub mod testing {
     use super::*;
 
     /// verifies that the Cairo gate constraints are solved by the witness depending on its type
-    pub fn ensure_cairo_gate<G: KimchiCurve>(
-        gate: &CircuitGate<G>,
+    pub fn ensure_cairo_gate<F: FftField>(
+        gate: &CircuitGate<F>,
         row: usize,
-        witness: &[Vec<G::ScalarField>; COLUMNS],
+        witness: &[Vec<F>; COLUMNS],
         //_cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
         // assignments
-        let this: [G::ScalarField; COLUMNS] = array_init(|i| witness[i][row]);
+        let this: [F; COLUMNS] = array_init(|i| witness[i][row]);
 
         match gate.typ {
             GateType::CairoClaim => {
-                let next: [G::ScalarField; COLUMNS] = array_init(|i| witness[i][row + 1]);
+                let next: [F; COLUMNS] = array_init(|i| witness[i][row + 1]);
                 ensure_claim(&this, &next) // CircuitGate::ensure_transition(&this),
             }
             GateType::CairoInstruction => {
-                let next: [G::ScalarField; COLUMNS] = array_init(|i| witness[i][row + 1]);
+                let next: [F; COLUMNS] = array_init(|i| witness[i][row + 1]);
                 ensure_instruction(&this, &next)
             }
             GateType::CairoFlags => {
-                let next: [G::ScalarField; COLUMNS] = array_init(|i| witness[i][row + 1]);
+                let next: [F; COLUMNS] = array_init(|i| witness[i][row + 1]);
                 ensure_flags(&this, &next)
             }
             GateType::CairoTransition => {
-                let next: [G::ScalarField; COLUMNS] = array_init(|i| witness[i][row + 1]);
+                let next: [F; COLUMNS] = array_init(|i| witness[i][row + 1]);
                 ensure_transition(&this, &next)
             }
             GateType::Zero => Ok(()),

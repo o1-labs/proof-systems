@@ -8,7 +8,7 @@ use kimchi::{
     prover_index::testing::new_index_for_test,
 };
 use kimchi_visu::{visu, Witness};
-use mina_curves::pasta::vesta::Affine as Vesta;
+use mina_curves::pasta::{vesta::Affine as Vesta, Fp};
 
 fn main() {
     let public = 3;
@@ -21,7 +21,7 @@ fn main() {
         // public input
         let row = {
             for i in 0..public {
-                let g = CircuitGate::<Vesta>::create_generic_gadget(
+                let g = CircuitGate::<Fp>::create_generic_gadget(
                     Wire::new(i),
                     GenericGateSpec::Pub,
                     None,
@@ -34,7 +34,7 @@ fn main() {
         // poseidon
         let row = {
             let round_constants = &poseidon_params.round_constants;
-            let (g, row) = CircuitGate::<Vesta>::create_poseidon_gadget(
+            let (g, row) = CircuitGate::<Fp>::create_poseidon_gadget(
                 row,
                 [Wire::new(row), Wire::new(row + 11)],
                 round_constants,

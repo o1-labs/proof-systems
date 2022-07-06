@@ -13,16 +13,14 @@
 //~ The rest of the values are inaccessible from the permutation argument, but
 //~ - `same_x` is a boolean that is true iff `x1 == x2`.
 //~
-use std::marker::PhantomData;
-
 use crate::circuits::{
     argument::{Argument, ArgumentType},
     expr::{prologue::*, Cache},
     gate::{CircuitGate, GateType},
     wires::COLUMNS,
 };
-use crate::curve::KimchiCurve;
-use ark_ff::{FftField, Field, One, Zero};
+use ark_ff::{FftField, Field, One};
+use std::marker::PhantomData;
 
 /// This enforces that
 ///
@@ -220,12 +218,12 @@ where
     }
 }
 
-impl<G: KimchiCurve> CircuitGate<G> {
+impl<F: FftField> CircuitGate<F> {
     /// Check the correctness of witness values for a complete-add gate.
     pub fn verify_complete_add(
         &self,
         row: usize,
-        witness: &[Vec<G::ScalarField>; COLUMNS],
+        witness: &[Vec<F>; COLUMNS],
     ) -> Result<(), String> {
         let x1 = witness[0][row];
         let y1 = witness[1][row];
@@ -240,12 +238,12 @@ impl<G: KimchiCurve> CircuitGate<G> {
         let x21_inv = witness[10][row];
 
         if x1 == x2 {
-            ensure_eq!(same_x, <G::ScalarField>::one(), "Expected same_x = true");
+            ensure_eq!(same_x, <F>::one(), "Expected same_x = true");
         } else {
-            ensure_eq!(same_x, <G::ScalarField>::zero(), "Expected same_x = false");
+            ensure_eq!(same_x, <F>::zero(), "Expected same_x = false");
         }
 
-        if same_x == <G::ScalarField>::one() {
+        if same_x == <F>::one() {
             let x1_squared = x1.square();
             ensure_eq!(
                 (s + s) * y1,
@@ -264,26 +262,22 @@ impl<G: KimchiCurve> CircuitGate<G> {
             format!("y3 wrong {}: (expected {}, got {})", row, expected_y3, y3)
         );
 
-        let not_same_y = <G::ScalarField>::from((y1 != y2) as u64);
+        let not_same_y = <F>::from((y1 != y2) as u64);
         ensure_eq!(inf, same_x * not_same_y, "inf wrong");
 
         if y1 == y2 {
-            ensure_eq!(inf_z, <G::ScalarField>::zero(), "wrong inf z (y1 == y2)");
+            ensure_eq!(inf_z, <F>::zero(), "wrong inf z (y1 == y2)");
         } else {
-            let a = if same_x == <G::ScalarField>::one() {
+            let a = if same_x == <F>::one() {
                 (y2 - y1).inverse().unwrap()
             } else {
-                <G::ScalarField>::zero()
+                <F>::zero()
             };
             ensure_eq!(inf_z, a, "wrong inf z (y1 != y2)");
         }
 
         if x1 == x2 {
-            ensure_eq!(
-                x21_inv,
-                <G::ScalarField>::zero(),
-                "wrong x21_inv (x1 == x2)"
-            );
+            ensure_eq!(x21_inv, <F>::zero(), "wrong x21_inv (x1 == x2)");
         } else {
             ensure_eq!(
                 x21_inv,

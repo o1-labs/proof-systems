@@ -1,5 +1,5 @@
 //! This module implements Plonk circuit constraint primitive.
-use crate::curve::KimchiCurve;
+use super::lookup::runtime_tables::RuntimeTableCfg;
 use crate::{
     circuits::{
         domain_constant_evaluation::DomainConstantEvaluations,
@@ -11,6 +11,7 @@ use crate::{
         polynomials::range_check,
         wires::*,
     },
+    curve::KimchiCurve,
     error::SetupError,
 };
 use ark_ff::{One, Zero};
@@ -23,10 +24,7 @@ use o1_utils::ExtendedEvaluations;
 use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
-use std::collections::HashSet;
-use std::sync::Arc;
-
-use super::lookup::runtime_tables::RuntimeTableCfg;
+use std::{collections::HashSet, sync::Arc};
 
 //
 // ConstraintSystem
@@ -43,8 +41,8 @@ pub struct ConstraintSystem<G: KimchiCurve> {
     #[serde(bound = "EvaluationDomains<G::ScalarField>: Serialize + DeserializeOwned")]
     pub domain: EvaluationDomains<G::ScalarField>,
     /// circuit gates
-    #[serde(bound = "CircuitGate<G>: Serialize + DeserializeOwned")]
-    pub gates: Vec<CircuitGate<G>>,
+    #[serde(bound = "CircuitGate<G::ScalarField>: Serialize + DeserializeOwned")]
+    pub gates: Vec<CircuitGate<G::ScalarField>>,
 
     // Polynomials over the monomial base
     // ----------------------------------
@@ -129,8 +127,8 @@ pub struct ConstraintSystem<G: KimchiCurve> {
     //pub fr_sponge_params: ArithmeticSpongeParams<G::ScalarField>,
 
     /// lookup constraint system
-    #[serde(bound = "LookupConstraintSystem<G>: Serialize + DeserializeOwned")]
-    pub lookup_constraint_system: Option<LookupConstraintSystem<G>>,
+    #[serde(bound = "LookupConstraintSystem<G::ScalarField>: Serialize + DeserializeOwned")]
+    pub lookup_constraint_system: Option<LookupConstraintSystem<G::ScalarField>>,
 
     /// precomputes
     #[serde(skip)]
@@ -149,7 +147,7 @@ pub enum GateError {
 }
 
 pub struct Builder<G: KimchiCurve> {
-    gates: Vec<CircuitGate<G>>,
+    gates: Vec<CircuitGate<G::ScalarField>>,
     //sponge_params: ArithmeticSpongeParams<G::ScalarField>,
     public: usize,
     lookup_tables: Vec<LookupTable<G::ScalarField>>,
@@ -171,7 +169,7 @@ impl<G: KimchiCurve> ConstraintSystem<G> {
     /// 2. Iterativelly invoke any desired number of steps: `public(), lookup(), runtime(), precomputations()``
     /// 3. Finally call the `build()` method and unwrap the `Result` to obtain your `ConstraintSystem`
     pub fn create(
-        gates: Vec<CircuitGate<G>>,
+        gates: Vec<CircuitGate<G::ScalarField>>,
         //sponge_params: ArithmeticSpongeParams<G::ScalarField>,
     ) -> Builder<G> {
         Builder {
@@ -362,7 +360,7 @@ impl<G: KimchiCurve> Builder<G> {
         let d1_size = domain.d1.size();
         let mut padding = (gates.len()..d1_size)
             .map(|i| {
-                CircuitGate::<G>::zero(array_init(|j| Wire {
+                CircuitGate::<G::ScalarField>::zero(array_init(|j| Wire {
                     col: WIRES[j],
                     row: i,
                 }))
@@ -607,12 +605,13 @@ impl<G: KimchiCurve> Builder<G> {
 #[cfg(test)]
 pub mod tests {
     use super::*;
+    use mina_curves::pasta::fp::Fp;
     use mina_curves::pasta::vesta::Affine;
 
     impl<G: KimchiCurve> ConstraintSystem<G> {
         pub fn for_testing(
             //sponge_params: ArithmeticSpongeParams<G::ScalarField>,
-            gates: Vec<CircuitGate<G>>,
+            gates: Vec<CircuitGate<G::ScalarField>>,
         ) -> Self {
             let public = 0;
             // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
@@ -624,7 +623,7 @@ pub mod tests {
     }
 
     impl ConstraintSystem<Affine> {
-        pub fn fp_for_testing(gates: Vec<CircuitGate<Affine>>) -> Self {
+        pub fn fp_for_testing(gates: Vec<CircuitGate<Fp>>) -> Self {
             //let fp_sponge_params = oracle::pasta::fp_kimchi::params();
             Self::for_testing(gates)
         }
