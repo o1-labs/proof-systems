@@ -334,7 +334,7 @@ where
     /// transformation while proving / verifying.
     pub fn digest<EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>>(
         &self,
-    ) -> G::ScalarField {
+    ) -> G::BaseField {
         let mut fq_sponge = EFqSponge::new(self.fq_sponge_params.clone());
         for comm in self.sigma_comm.iter() {
             fq_sponge.absorb_g(&comm.unshifted)
@@ -348,6 +348,6 @@ where
         fq_sponge.absorb_g(&self.mul_comm.unshifted);
         fq_sponge.absorb_g(&self.emul_comm.unshifted);
         fq_sponge.absorb_g(&self.endomul_scalar_comm.unshifted);
-        fq_sponge.digest()
+        fq_sponge.digest_fq()
     }
 }

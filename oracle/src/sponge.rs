@@ -156,6 +156,10 @@ where
         }
     }
 
+    fn absorb_fq(&mut self, x: &[P::BaseField]) {
+        self.sponge.absorb(x)
+    }
+
     fn absorb_fr(&mut self, x: &[P::ScalarField]) {
         self.last_squeezed = vec![];
 
@@ -197,6 +201,10 @@ where
         // Previously the attacker's odds were 1/q, now it's (q-p)/q.
         // Since log2(q-p) ~ 86 and log2(q) ~ 254 the odds of a successful attack are negligible.
         P::ScalarField::from_repr(x.into()).unwrap_or_else(P::ScalarField::zero)
+    }
+
+    fn digest_fq(mut self) -> P::BaseField {
+        self.squeeze_field()
     }
 
     fn challenge(&mut self) -> P::ScalarField {

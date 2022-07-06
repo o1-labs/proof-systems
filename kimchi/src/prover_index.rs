@@ -53,7 +53,7 @@ pub struct ProverIndex<G: CommitmentCurve> {
 
     /// The verifier index digest corresponding to this prover index
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
-    pub verifier_index_digest: Option<G::ScalarField>,
+    pub verifier_index_digest: Option<G::BaseField>,
 }
 //~spec:endcode
 
@@ -111,7 +111,7 @@ where
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     >(
         &mut self,
-    ) -> G::ScalarField {
+    ) -> G::BaseField {
         if let Some(verifier_index_digest) = self.verifier_index_digest {
             return verifier_index_digest;
         }
@@ -128,7 +128,7 @@ where
     /// Retrieve or compute the digest for the corresponding verifier index.
     pub fn verifier_index_digest<EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>>(
         &self,
-    ) -> G::ScalarField {
+    ) -> G::BaseField {
         if let Some(verifier_index_digest) = self.verifier_index_digest {
             return verifier_index_digest;
         }
