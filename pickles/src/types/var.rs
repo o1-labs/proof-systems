@@ -1,6 +1,6 @@
-use circuit_construction::{Var};
+use circuit_construction::Var;
 
-use crate::context::{ToPublic, Public};
+use crate::context::{Public, ToPublic};
 
 use ark_ff::{FftField, PrimeField};
 

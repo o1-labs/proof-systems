@@ -27,3 +27,13 @@ where
         sponge.absorb(cs, &self.y);
     }
 }
+
+impl<G> VarPoint<G>
+where
+    G: AffineCurve,
+    G::BaseField: FftField + PrimeField,
+{
+    pub fn add<C: Cs<G::BaseField>>(&self, cs: &mut C, other: &Self) -> Self {
+        unimplemented!()
+    }
+}

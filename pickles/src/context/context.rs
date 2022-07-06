@@ -9,14 +9,14 @@ use crate::context::Public;
 // These are split solely for readability purposes
 pub struct Pass<F: FftField + PrimeField> {
     pub(crate) send: Vec<Public<F>>, // values "exported" from this side
-    pub(crate) recv: Vec<Public<F>>  // values "imported" on this side
+    pub(crate) recv: Vec<Public<F>>, // values "imported" on this side
 }
 
-impl <F: FftField + PrimeField> Default for Pass<F> {
+impl<F: FftField + PrimeField> Default for Pass<F> {
     fn default() -> Self {
         Self {
             send: vec![],
-            recv: vec![]
+            recv: vec![],
         }
     }
 }

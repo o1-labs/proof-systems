@@ -19,7 +19,9 @@ use crate::kimchi::proof::{eval_polynomial, VarEvaluations, VarProof};
 
 use crate::util::eval_const_poly;
 
-use crate::types::{FieldChallenge, Scalar, GLVChallenge, LagrangePoly, VanishEval, VarEval, VarPolyComm};
+use crate::types::{
+    FieldChallenge, GLVChallenge, LagrangePoly, Scalar, VanishEval, VarEval, VarPoint, VarPolyComm,
+};
 
 use crate::transcript::{Arthur, Msg};
 
@@ -539,10 +541,12 @@ where
             })
         });
 
-        // compute MSM
-        let ft_comm = unimplemented!();
+        // compute ft_comm MSM (linearlizated row constraints)
+        let ft_comm: VarPoint<G> = VarPoint::msm(ctx.cs(), scalars.iter().zip(commitments.iter()));
+        let ft_comm: VarPolyComm<G, 1> = ft_comm.into();
 
-        let comms = iter::empty()
+        // compute combined polynomial opening
+        let poly_comms = iter::empty()
             .chain(&acc_comms)
             .chain(iter::once(&p_comm))
             .chain(iter::once(&ft_comm))
@@ -551,6 +555,8 @@ where
             .chain(iter::once(&relation.psm_comm))
             .chain(&w_comm)
             .chain(&relation.sigma_comm);
+
+        // combine using powers of alpha
 
         // TODO: add the lookup terms
     }

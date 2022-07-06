@@ -5,16 +5,16 @@ use circuit_construction::{Cs, Var};
 use ark_ff::{BigInteger, FftField, FpParameters, PrimeField};
 
 /// Represents a public input added
-/// 
+///
 /// NOTE: because this represents a public input from the "source side"
 /// it always fits within one variable: there can be no overflow,
 /// however on the "destination side" it can overflow
-/// 
-/// NOTE: a "public input" 
+///
+/// NOTE: a "public input"
 #[derive(Clone, Debug)]
 pub struct Public<F: FftField + PrimeField> {
-    pub bits: Var<F>, // 
-    pub size: Option<usize>,  // size of public input
+    pub bits: Var<F>,        //
+    pub size: Option<usize>, // size of public input
 }
 
 pub trait FromPublic<Fq: FftField + PrimeField, Fr: FftField + PrimeField>: Sized {
@@ -39,19 +39,16 @@ where
     CsFp: Cs<Fp>,
     CsFr: Cs<Fr>,
 {
-    /// 
+    ///
     /// TODO: this method should also be able to ignore
     /// the "from" and consume provided public inputs directly.
     pub fn pass<In, Out>(&mut self, from: In) -> Out
     where
-        In: ToPublic<Fp>,        // the input can be converted to public inputs on Fq
+        In: ToPublic<Fp>, // the input can be converted to public inputs on Fq
         Out: FromPublic<Fp, Fr> + ToPublic<Fr>, // the (Fr) output can be created from Fq public inputs turned into Fr public inputs
     {
         // create destination type from Fr public inputs
-        let output = Out::from_public(
-            &mut self.fr.cs, 
-            &mut from.to_public().into_iter()
-        ).unwrap();
+        let output = Out::from_public(&mut self.fr.cs, &mut from.to_public().into_iter()).unwrap();
 
         // add to (send) public inputs on fp side
         self.fp.public.send.extend(from.to_public());
