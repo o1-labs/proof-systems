@@ -19,12 +19,11 @@ use crate::{
             lookups::{LookupInfo, LookupsUsed},
         },
         polynomial::COLUMNS,
-        polynomials::range_check,
         wires::{GateWires, Wire},
     },
 };
 
-use super::ForeignFieldMul0;
+use super::{ForeignFieldMul0, ForeignFieldMul1};
 
 impl<F: FftField + SquareRootField> CircuitGate<F> {
     /// Create foreign field multiplication gate
@@ -37,22 +36,31 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
         let mut circuit_gates = vec![];
         let mut next_row = start_row;
         for _ in 0..5 {
-            let (mut next_row, mut range_check_circuit_gates) =
+            let (subsequent_row, mut range_check_circuit_gates) =
                 CircuitGate::create_multi_range_check(next_row);
             circuit_gates.append(&mut range_check_circuit_gates);
+            next_row = subsequent_row
         }
 
         // Foreign field multiplication gates
-        let mut wires: Vec<GateWires> = (0..1).map(|i| Wire::new(next_row + i)).collect();
+        let wires: Vec<GateWires> = (0..2).map(|i| Wire::new(next_row + i)).collect();
 
+        // TODO: wiring
         // // copy v0p0
         // connect_cell_pair(&mut wires, (0, 1), (3, 3));
 
-        circuit_gates.append(&mut vec![CircuitGate {
-            typ: GateType::ForeignFieldMul0,
-            wires: wires[0],
-            coeffs: vec![],
-        }]);
+        circuit_gates.append(&mut vec![
+            CircuitGate {
+                typ: GateType::ForeignFieldMul0,
+                wires: wires[0],
+                coeffs: vec![],
+            },
+            CircuitGate {
+                typ: GateType::ForeignFieldMul1,
+                wires: wires[1],
+                coeffs: vec![],
+            },
+        ]);
 
         (start_row + circuit_gates.len(), circuit_gates)
     }
@@ -315,19 +323,21 @@ fn set_up_lookup_env_data<F: FftField>(
 fn circuit_gate_selector_index(typ: GateType) -> usize {
     match typ {
         GateType::ForeignFieldMul0 => 0,
+        GateType::ForeignFieldMul1 => 1,
         _ => panic!("invalid gate type"),
     }
 }
 
 /// Get vector of foreign field multiplication circuit gate types
 pub fn circuit_gates() -> Vec<GateType> {
-    vec![GateType::ForeignFieldMul0]
+    vec![GateType::ForeignFieldMul0, GateType::ForeignFieldMul1]
 }
 
 /// Get combined constraints for a given foreign field multiplication circuit gate
 pub fn circuit_gate_constraints<F: FftField>(typ: GateType, alphas: &Alphas<F>) -> E<F> {
     match typ {
         GateType::ForeignFieldMul0 => ForeignFieldMul0::combined_constraints(alphas),
+        GateType::ForeignFieldMul1 => ForeignFieldMul1::combined_constraints(alphas),
         _ => panic!("invalid gate type"),
     }
 }
@@ -336,11 +346,12 @@ pub fn circuit_gate_constraints<F: FftField>(typ: GateType, alphas: &Alphas<F>) 
 pub fn circuit_gate_constraint_count<F: FftField>(typ: GateType) -> u32 {
     match typ {
         GateType::ForeignFieldMul0 => ForeignFieldMul0::<F>::CONSTRAINTS,
+        GateType::ForeignFieldMul1 => ForeignFieldMul1::<F>::CONSTRAINTS,
         _ => panic!("invalid gate type"),
     }
 }
 
 /// Get the combined constraints for all foreign field multiplication circuit gates
 pub fn combined_constraints<F: FftField>(alphas: &Alphas<F>) -> E<F> {
-    ForeignFieldMul0::combined_constraints(alphas)
+    ForeignFieldMul0::combined_constraints(alphas) + ForeignFieldMul1::combined_constraints(alphas)
 }
