@@ -43,11 +43,33 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
         }
 
         // Foreign field multiplication gates
-        let wires: Vec<GateWires> = (0..2).map(|i| Wire::new(next_row + i)).collect();
+        let mut wires: Vec<GateWires> = (0..2).map(|i| Wire::new(next_row + i)).collect();
 
-        // TODO: wiring
-        // // copy v0p0
-        // connect_cell_pair(&mut wires, (0, 1), (3, 3));
+        // Copy b0 -> Curr(0)
+        connect_cell_pair(&mut circuit_gates[4].wires, 0, &mut wires, (0, 0));
+        // Copy b2 -> Curr(1)
+        connect_cell_pair(&mut circuit_gates[6].wires, 0, &mut wires, (0, 1));
+        // Copy a2 -> Curr(2)
+        connect_cell_pair(&mut circuit_gates[2].wires, 0, &mut wires, (0, 2));
+        // Copy quotient2 -> Curr(3)
+        connect_cell_pair(&mut circuit_gates[10].wires, 0, &mut wires, (0, 3));
+        // Copy remainder0 -> Curr(4)
+        connect_cell_pair(&mut circuit_gates[12].wires, 0, &mut wires, (0, 4));
+        // Copy remainder1 -> Curr(5)
+        connect_cell_pair(&mut circuit_gates[13].wires, 0, &mut wires, (0, 5));
+        // Copy remainder2 -> Curr(6)
+        connect_cell_pair(&mut circuit_gates[14].wires, 0, &mut wires, (0, 6));
+
+        // Copy a0 -> Next(0)
+        connect_cell_pair(&mut circuit_gates[0].wires, 0, &mut wires, (1, 0));
+        // Copy quotient0 -> Next(1)
+        connect_cell_pair(&mut circuit_gates[8].wires, 0, &mut wires, (1, 1));
+        // Copy a1 -> Next(4)
+        connect_cell_pair(&mut circuit_gates[1].wires, 0, &mut wires, (1, 4));
+        // Copy b1 -> Next(5)
+        connect_cell_pair(&mut circuit_gates[5].wires, 0, &mut wires, (1, 5));
+        // Copy quotient1 -> Next(6)
+        connect_cell_pair(&mut circuit_gates[9].wires, 0, &mut wires, (1, 6));
 
         circuit_gates.append(&mut vec![
             CircuitGate {
@@ -181,6 +203,25 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
             Err(CircuitGateError::InvalidConstraint(self.typ))
         }
     }
+}
+
+// Connect the pair of cells in different wires vectors, specified by the
+// wires1, col1 and wires2, cell2 parameters
+//
+// cell1 --> cell2 && cell2 --> cell1
+//
+// Cell format is: (row, col)
+//
+// Note: This function assumes that the targeted cells are freshly instantiated
+//       with self-connections.  If the two cells are transitively already part
+//       of the same permutation then this would split it.
+fn connect_cell_pair(
+    wires1: &mut GateWires,
+    col1: usize,
+    wires2: &mut [GateWires],
+    cell2: (usize, usize),
+) {
+    std::mem::swap(&mut wires1[col1], &mut wires2[cell2.0][cell2.1]);
 }
 
 // Data required by the lookup environment

@@ -6,19 +6,26 @@
 /// For more details please see: https://hackmd.io/37M7qiTaSIKaZjCC5OnM1w?view
 ///
 /// Inputs:
-///   * $a, b \in F_f$ := foreign field element multiplicands
-///   * $f$ := foreign field modulus
+///   * $f$ := foreign field modulus (currently stored in constraint system globally, but that might change)
+///   * `left_input` $~\in F_f$ := left foreign field element multiplicand
+///   * `right_input` $~\in F_f$ := right foreign field element multiplicand
 ///
 /// Witness:
-///   * $q, r \in F_f$ := foreign field quotient and remainder
+///   * `quotient` $~\in F_f$  := foreign field quotient
+///   * `remainder` $~\in F_f$ := foreign field remainder
+///   * `carry0`               := two bit carry
+///   * `carry1_0`             := low 88 bits of `carry1`
+///   * `carry1_1`             := high 3 bits of `carry1`
 ///
 /// Constraint: This gate is used to constrain that
 ///
-///       $a \cdot b = q \cdot f + r$
+///       `left_input` $\cdot$ `right_input` = `quotient` $\cdot f + $ `remainder`
 ///
 ///     in $F_f$ by using the native field $F_n$.
 ///
 /// **Layout**
+///
+/// Overall layout
 ///
 /// | Row(s) | Gate                | Witness
 /// -|-|-
@@ -30,6 +37,26 @@
 ///   20     | ForeignFieldMul     | (see below)
 ///   21     | Zero                | (see below)
 ///
+/// Foreign field multiplication gate layout
+///
+///             Curr                Next
+///   Columns | ForeignFieldMul   | Zero
+///   -|-|-
+///         0 | right_input0   (copy) | left_input0     (copy)
+///         1 | right_input2   (copy) | quotient0       (copy)
+///         2 | left_input2    (copy) | 2^9 * carry1_1  (plookup)
+///         3 | quotient2      (copy) | 2^8 * quotient0 (plookup)
+///         4 | remainder0     (copy) | left_input1     (copy)
+///         5 | remainder1     (copy) | right_input1    (copy)
+///         6 | remainder2     (copy) | quotient1       (copy)
+///         7 | product_mid0          | (unused)
+///         8 | product_mid1_0        | (unused)
+///         9 | product_mid1_1        | (unused)
+///        10 | carry0                | (unused)
+///        11 | carry1_0              | (unused)
+///        12 | carry1_1              | (unused)
+///        13 | (unused)              | (unused)
+///        14 | (unused)              | (unused)
 use std::marker::PhantomData;
 
 use ark_ff::FftField;
@@ -55,12 +82,12 @@ where
     fn constraints() -> Vec<E<F>> {
         // Columns | Curr           | Next
         // -|-|-
-        //       0 | b0             | a0
-        //       1 | b2             | quotient0
-        //       2 | a2             | 2^9 * carry1_1
+        //       0 | right_input0             | left_input0
+        //       1 | right_input2             | quotient0
+        //       2 | left_input2             | 2^9 * carry1_1
         //       3 | quotient2      | 2^8 * quotient0
-        //       4 | remainder0     | a1
-        //       5 | remainder1     | b1
+        //       4 | remainder0     | left_input1
+        //       5 | remainder1     | right_input1
         //       6 | remainder2     | quotient1
         //       7 | product_mid0   | (unused)
         //       8 | product_mid1_0 | (unused)
@@ -70,9 +97,9 @@ where
         //      12 | carry1_1       | (unused)
 
         // For clarity, load the Curr row variables into well-named variables
-        let b0 = witness_curr(0);
-        let b2 = witness_curr(1);
-        let a2 = witness_curr(2);
+        let right_input0 = witness_curr(0);
+        let right_input2 = witness_curr(1);
+        let left_input2 = witness_curr(2);
         let quotient2 = witness_curr(3);
         let remainder0 = witness_curr(4);
         let remainder1 = witness_curr(5);
@@ -84,12 +111,12 @@ where
         let carry1_0 = witness_curr(13);
         let carry1_1 = witness_curr(14);
 
-        let a0 = witness_next(0);
+        let left_input0 = witness_next(0);
         let quotient0 = witness_next(1);
         let carry1_1_shift = witness_next(2);
         let quotient0_shift = witness_next(3);
-        let a1 = witness_next(4);
-        let b1 = witness_next(5);
+        let left_input1 = witness_next(4);
+        let right_input1 = witness_next(5);
         let quotient1 = witness_next(6);
 
         let mut constraints = vec![];
@@ -103,17 +130,20 @@ where
         let foreign_modulus2 = E::constant(ConstantExpr::ForeignFieldModulus(1));
 
         // 0) Define intermediate products for readability
-        //    product_low := a0 * b0 - quotient0 * foreign_modulus0
-        let product_low = a0.clone() * b0.clone() - quotient0.clone() * foreign_modulus0.clone();
-        //    product_mid := a0 * b1 + a1 * b0 - quotient0 * foreign_modulus1 - quotient1 * foreign_modulus0
-        let product_mid = a0.clone() * b1.clone() + a1.clone() * b0.clone()
+        //    product_low := left_input0 * right_input0 - quotient0 * foreign_modulus0
+        let product_low = left_input0.clone() * right_input0.clone()
+            - quotient0.clone() * foreign_modulus0.clone();
+        //    product_mid := left_input0 * right_input1 + left_input1 * right_input0 - quotient0 * foreign_modulus1 - quotient1 * foreign_modulus0
+        let product_mid = left_input0.clone() * right_input1.clone()
+            + left_input1.clone() * right_input0.clone()
             - quotient0.clone() * foreign_modulus1.clone()
             - quotient1.clone() * foreign_modulus0.clone();
-        //    product_hi := a0 * b2 + a2 * b0 + a1 * b1 - quotient0 * foreign_modulus2 - quotient2 * foreign_modulus0 - quotient1 * foreign_modulus1
-        let product_hi = a0 * b2 + a2 * b0 + a1 * b1
-            - quotient0.clone() * foreign_modulus2
-            - quotient2 * foreign_modulus0
-            - quotient1 * foreign_modulus1;
+        //    product_hi := left_input0 * right_input2 + left_input2 * right_input0 + left_input1 * right_input1 - quotient0 * foreign_modulus2 - quotient2 * foreign_modulus0 - quotient1 * foreign_modulus1
+        let product_hi =
+            left_input0 * right_input2 + left_input2 * right_input0 + left_input1 * right_input1
+                - quotient0.clone() * foreign_modulus2
+                - quotient2 * foreign_modulus0
+                - quotient1 * foreign_modulus1;
 
         // 1) Constrain decomposition of middle intermediate product
         // p11 = 2^88 * product_mid1_1 + product_mid1_0
