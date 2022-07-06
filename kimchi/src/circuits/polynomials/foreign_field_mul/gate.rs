@@ -329,7 +329,7 @@ fn circuit_gate_selector_index(typ: GateType) -> usize {
 
 /// Get vector of foreign field multiplication circuit gate types
 pub fn circuit_gates() -> Vec<GateType> {
-    vec![GateType::ForeignFieldMul, GateType::Zero]
+    vec![GateType::ForeignFieldMul]
 }
 
 /// Get combined constraints for a given foreign field multiplication circuit gate
