@@ -8,7 +8,7 @@ use crate::DomainParameter;
 use mina_curves::pasta::Fp;
 use oracle::{
     constants::{PlonkSpongeConstantsKimchi, PlonkSpongeConstantsLegacy, SpongeConstants},
-    pasta,
+    pasta::{fp_kimchi_params, fp_legacy_params},
     poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge, SpongeState},
 };
 
@@ -47,7 +47,7 @@ pub type PoseidonHasherLegacy<H> = Poseidon<PlonkSpongeConstantsLegacy, H>;
 
 /// Create a legacy hasher context
 pub(crate) fn new_legacy<H: Hashable>(domain_param: H::D) -> PoseidonHasherLegacy<H> {
-    Poseidon::<PlonkSpongeConstantsLegacy, H>::new(domain_param, pasta::fp_legacy::params())
+    Poseidon::<PlonkSpongeConstantsLegacy, H>::new(domain_param, fp_legacy_params())
 }
 
 /// Poseidon hasher type with experimental kimchi plonk sponge constants
@@ -55,7 +55,7 @@ pub type PoseidonHasherKimchi<H> = Poseidon<PlonkSpongeConstantsKimchi, H>;
 
 /// Create an experimental kimchi hasher context
 pub(crate) fn new_kimchi<H: Hashable>(domain_param: H::D) -> PoseidonHasherKimchi<H> {
-    Poseidon::<PlonkSpongeConstantsKimchi, H>::new(domain_param, pasta::fp_kimchi::params())
+    Poseidon::<PlonkSpongeConstantsKimchi, H>::new(domain_param, fp_kimchi_params())
 }
 
 impl<SC: SpongeConstants, H: Hashable> Hasher<H> for Poseidon<SC, H>

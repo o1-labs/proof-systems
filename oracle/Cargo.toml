@@ -12,6 +12,7 @@ ark-ff = { version = "0.3.0", features = [ "parallel", "asm" ] }
 ark-ec = { version = "0.3.0", features = [ "parallel" ] }
 ark-poly = { version = "0.3.0", features = [ "parallel" ] }
 o1-utils = { path = "../utils" }
+once_cell = "1"
 rand = "0.8.0"
 rayon = "1"
 serde = { version = "1.0", features = ["derive"] }
