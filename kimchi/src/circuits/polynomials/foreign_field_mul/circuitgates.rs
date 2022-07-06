@@ -20,15 +20,15 @@
 ///
 /// **Layout**
 ///
-/// | Row(s) | Gate                | Checks                | Witness
-/// -|-|-|-
-///   0-3    | multi-range-check-0 | "                     | $a$
-///   4-7    | multi-range-check-1 | "                     | $b$
-///   8-11   | multi-range-check-2 | "                     | $q$
-///   12-15  | multi-range-check-3 | "                     | $r$
-///   16-19  | multi-range-check-4 | "                     | $p_{10}, p_{110}, v_{10}$
-///   20     | ForeignFieldMul     | "                     | (see below)
-///   21     | ForeignFieldMul1    | "                     | (see below)
+/// | Row(s) | Gate                | Witness
+/// -|-|-
+///   0-3    | multi-range-check-0 | multiplicand `a`
+///   4-7    | multi-range-check-1 | multiplicand `b`
+///   8-11   | multi-range-check-2 | `quotient`
+///   12-15  | multi-range-check-3 | `remainder`
+///   16-19  | multi-range-check-4 | `product_mid0`, `product_mid1_0`, `carry1_0`
+///   20     | ForeignFieldMul     | (see below)
+///   21     | Zero                | (see below)
 ///
 use std::marker::PhantomData;
 
@@ -112,7 +112,7 @@ where
         // powers of 2 for range constraints
         let eight = E::from(8);
         let two_to_8 = E::from(256);
-        let two_to_9 = E::from(2).pow(9);
+        let two_to_9 = E::from(512);
         let two_to_88 = E::from(2).pow(88);
         let two_to_176 = two_to_88.clone().pow(2);
 
@@ -156,8 +156,8 @@ where
         // 4) Constrain $v_11$ value
         constraints.push(wit_sft - two_to_9 * wit_top_carry.clone());
 
-        // 5) Constrain shifted $v_0$ witness value to prove $u_0$'s leading bits are zero
-        //    2^176 * v0 = p0 - r0 + 2^88 ( p10 - r1 )
+        // 5) Constrain shifted $carry_0$ witness value to prove $u_0$'s leading bits are zero
+        //    2^176 * carry0 = p0 - remainder0 + 2^88 ( product_mid0 - remainder1 )
         //    2^176 * wc(11) = p0 + 2^88 * wc(7) - wc(4) - 2^88 * wc(5)
         let zero_low =
             mul_low - rem_low.clone() + two_to_88.clone() * (mul_mid_low.clone() - rem_mid.clone());
@@ -175,6 +175,7 @@ where
 
         // The remaining constraints on next columns 2 and 3 are plookup constraints
 
+        // 8-9) Plookups on the Next row @ columns 2 and 3
         constraints
     }
 }

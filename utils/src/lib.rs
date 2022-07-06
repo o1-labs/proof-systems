@@ -3,6 +3,7 @@ pub mod chunked_polynomial;
 pub mod dense_polynomial;
 pub mod evaluations;
 pub mod field_helpers;
+pub mod foreign_modulus;
 pub mod hasher;
 pub mod math;
 pub mod serialization;
