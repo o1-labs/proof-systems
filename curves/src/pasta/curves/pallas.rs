@@ -66,3 +66,5 @@ impl SWModelParameters for LegacyPallasParameters {
     const AFFINE_GENERATOR_COEFFS: (Self::BaseField, Self::BaseField) =
         <PallasParameters as SWModelParameters>::AFFINE_GENERATOR_COEFFS;
 }
+
+pub type LegacyPallas = GroupAffine<LegacyPallasParameters>;

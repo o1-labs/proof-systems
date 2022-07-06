@@ -12,7 +12,7 @@ use mina_curves::pasta::{vesta::Affine as Vesta, Fp};
 
 fn main() {
     let public = 3;
-    let poseidon_params = Vesta::sponge_params().clone();
+    let poseidon_params = Vesta::sponge_params();
 
     // create circuit
     let (gates, row) = {

@@ -70,7 +70,7 @@ fn test_poseidon() {
 
         polynomials::poseidon::generate_witness(
             first_row,
-            Vesta::sponge_params().clone(),
+            Vesta::sponge_params(),
             &mut witness,
             input,
         );

@@ -16,7 +16,6 @@ use commitment_dlog::{commitment::CommitmentCurve, srs::SRS};
 use groupmap::GroupMap;
 use mina_curves::pasta::{
     fp::Fp,
-    pallas::Affine as Pallas,
     vesta::{Affine as Vesta, VestaParameters},
 };
 use oracle::{
@@ -33,7 +32,6 @@ type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 mod tests {
 
     use super::*;
-    use crate::curve::KimchiCurve;
 
     #[test]
     fn test_rmp_serde() {
@@ -84,8 +82,6 @@ mod tests {
         // add srs with lagrange bases
         let mut srs = SRS::<GroupAffine<VestaParameters>>::create(verifier_index.max_poly_size);
         srs.add_lagrange_basis(verifier_index.domain);
-        verifier_index_deserialize.fq_sponge_params = Pallas::sponge_params().clone();
-        verifier_index_deserialize.fr_sponge_params = Vesta::sponge_params().clone();
         verifier_index_deserialize.powers_of_alpha = index.powers_of_alpha;
         verifier_index_deserialize.linearization = index.linearization;
 

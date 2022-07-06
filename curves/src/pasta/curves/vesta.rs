@@ -66,3 +66,5 @@ impl SWModelParameters for LegacyVestaParameters {
     const AFFINE_GENERATOR_COEFFS: (Self::BaseField, Self::BaseField) =
         <VestaParameters as SWModelParameters>::AFFINE_GENERATOR_COEFFS;
 }
+
+pub type LegacyVesta = GroupAffine<LegacyVestaParameters>;

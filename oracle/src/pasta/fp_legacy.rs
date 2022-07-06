@@ -6,7 +6,7 @@ use once_cell::sync::Lazy;
 
 use std::str::FromStr;
 
-pub fn params() -> ArithmeticSpongeParams<Fp> {
+fn params() -> ArithmeticSpongeParams<Fp> {
     ArithmeticSpongeParams {
         mds: vec![
             vec![

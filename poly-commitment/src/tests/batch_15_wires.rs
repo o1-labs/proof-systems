@@ -33,9 +33,8 @@ where
 
     let group_map = <Affine as CommitmentCurve>::Map::setup();
 
-    let sponge = DefaultFqSponge::<VestaParameters, SC>::new(
-        oracle::pasta::fq_kimchi::static_params().clone(),
-    );
+    let sponge =
+        DefaultFqSponge::<VestaParameters, SC>::new(oracle::pasta::fq_kimchi::static_params());
 
     let mut commit = Duration::new(0, 0);
     let mut open = Duration::new(0, 0);

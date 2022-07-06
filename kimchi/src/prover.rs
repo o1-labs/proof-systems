@@ -194,7 +194,7 @@ where
         }
 
         //~ 1. Setup the Fq-Sponge.
-        let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
+        let mut fq_sponge = EFqSponge::new(G::OtherCurve::sponge_params());
 
         //~ 1. Compute the negated public input polynomial as
         //~    the polynomial that evaluates to $-p_i$ for the first `public_input_size` values of the domain,
@@ -1036,7 +1036,7 @@ where
 
         //~ 1. Setup the Fr-Sponge
         let fq_sponge_before_evaluations = fq_sponge.clone();
-        let params = G::sponge_params().clone();
+        let params = G::sponge_params();
         let mut fr_sponge = EFrSponge::new(params);
 
         //~ 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.

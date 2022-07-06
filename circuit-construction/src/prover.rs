@@ -14,7 +14,7 @@ use kimchi::{
     prover_index::ProverIndex,
 };
 use mina_curves::pasta::{fp::Fp, fq::Fq, pallas::Affine as Other, vesta::Affine};
-use oracle::{poseidon::ArithmeticSpongeParams, FqSponge};
+use oracle::FqSponge;
 
 pub trait Cycle {
     type InnerField: FftField
@@ -158,7 +158,6 @@ where
 
 pub fn generate_prover_index<C, H>(
     srs: std::sync::Arc<SRS<C::Outer>>,
-    poseidon_params: &ArithmeticSpongeParams<C::OuterField>,
     public: usize,
     main: H,
 ) -> ProverIndex<C::Outer>
@@ -206,7 +205,7 @@ where
         // TODO: return a Result instead of panicking
         .expect("couldn't construct constraint system");
 
-    ProverIndex::<C::Outer>::create(constraint_system, poseidon_params.clone(), endo_q, srs)
+    ProverIndex::<C::Outer>::create(constraint_system, endo_q, srs)
 }
 
 pub trait CoordinateCurve: AffineCurve {

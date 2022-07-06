@@ -12,7 +12,6 @@ use crate::{
 };
 use ark_poly::EvaluationDomain;
 use commitment_dlog::srs::SRS;
-use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::sync::Arc;
@@ -46,10 +45,6 @@ where
 
     /// maximal size of the quotient polynomial according to the supported constraints
     pub max_quot_size: usize,
-
-    /// random oracle argument parameters
-    #[serde(skip)]
-    pub fq_sponge_params: ArithmeticSpongeParams<G::BaseField>,
 }
 //~spec:endcode
 
@@ -58,12 +53,7 @@ where
     G: KimchiCurve,
 {
     /// this function compiles the index from constraints
-    pub fn create(
-        mut cs: ConstraintSystem<G>,
-        fq_sponge_params: ArithmeticSpongeParams<G::BaseField>,
-        endo_q: G::ScalarField,
-        srs: Arc<SRS<G>>,
-    ) -> Self {
+    pub fn create(mut cs: ConstraintSystem<G>, endo_q: G::ScalarField, srs: Arc<SRS<G>>) -> Self {
         let max_poly_size = srs.g.len();
         if cs.public > 0 {
             assert!(
@@ -95,7 +85,6 @@ where
             srs,
             max_poly_size,
             max_quot_size,
-            fq_sponge_params,
         }
     }
 }
@@ -129,9 +118,8 @@ pub mod testing {
         srs.add_lagrange_basis(cs.domain.d1);
         let srs = Arc::new(srs);
 
-        let fq_sponge_params = Pallas::sponge_params().clone();
         let (endo_q, _endo_r) = endos::<Pallas>();
-        ProverIndex::<Vesta>::create(cs, fq_sponge_params, endo_q, srs)
+        ProverIndex::<Vesta>::create(cs, endo_q, srs)
     }
     pub fn new_index_for_test(gates: Vec<CircuitGate<Fp>>, public: usize) -> ProverIndex<Vesta> {
         new_index_for_test_with_lookups(gates, public, vec![], None)

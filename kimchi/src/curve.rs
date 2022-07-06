@@ -9,10 +9,14 @@ use oracle::poseidon::ArithmeticSpongeParams;
 
 ///Represents additional information that a curve needs in order to be used with Kimchi
 pub trait KimchiCurve: CommitmentCurve {
-    type OtherCurve: KimchiCurve;
+    type OtherCurve: KimchiCurve<ScalarField = Self::BaseField>;
 
+    /// Provides the sponge params to be used with this curve
+    /// If the params for the base field are needed, they can be obtained from [KimchiCurve::OtherCurve]
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField>;
 
+    /// Provides the coefficients for the curve endomorphism
+    // called (q,r) in some places
     fn endos() -> &'static (Self::BaseField, Self::ScalarField);
 }
 

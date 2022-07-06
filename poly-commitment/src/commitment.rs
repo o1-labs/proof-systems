@@ -966,8 +966,7 @@ mod tests {
         // create an aggregated opening proof
         let (u, v) = (Fp::rand(rng), Fp::rand(rng));
         let group_map = <VestaG as CommitmentCurve>::Map::setup();
-        let sponge =
-            DefaultFqSponge::<_, SC>::new(oracle::pasta::fq_kimchi::static_params().clone());
+        let sponge = DefaultFqSponge::<_, SC>::new(oracle::pasta::fq_kimchi::static_params());
 
         let polys = vec![
             (&poly1, None, commitment.blinders),

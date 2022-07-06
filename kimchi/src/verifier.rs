@@ -126,7 +126,7 @@ where
         let n = index.domain.size;
 
         //~ 1. Setup the Fq-Sponge.
-        let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
+        let mut fq_sponge = EFqSponge::new(G::OtherCurve::sponge_params());
 
         //~ 1. Absorb the commitment of the public input polynomial with the Fq-Sponge.
         fq_sponge.absorb_g(&p_comm.unshifted);
@@ -215,7 +215,7 @@ where
 
         //~ 1. Setup the Fr-Sponge.
         let digest = fq_sponge.clone().digest();
-        let mut fr_sponge = EFrSponge::new(index.fr_sponge_params.clone());
+        let mut fr_sponge = EFrSponge::new(G::sponge_params());
 
         //~ 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
         fr_sponge.absorb(&digest);

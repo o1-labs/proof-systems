@@ -10,7 +10,7 @@ use serde_with::serde_as;
 /// data into one or more field elements
 pub trait Sponge<Input: Field, Digest> {
     /// Create a new cryptographic sponge using arithmetic sponge `params`
-    fn new(params: ArithmeticSpongeParams<Input>) -> Self;
+    fn new(params: &'static ArithmeticSpongeParams<Input>) -> Self;
 
     /// Absorb an array of field elements `x`
     fn absorb(&mut self, x: &[Input]);
@@ -42,12 +42,12 @@ pub struct ArithmeticSpongeParams<F: Field> {
 }
 
 #[derive(Clone)]
-pub struct ArithmeticSponge<F: Field, SC: SpongeConstants> {
+pub struct ArithmeticSponge<F: Field + 'static, SC: SpongeConstants> {
     pub sponge_state: SpongeState,
     rate: usize,
     // TODO(mimoo: an array enforcing the width is better no? or at least an assert somewhere)
     pub state: Vec<F>,
-    params: ArithmeticSpongeParams<F>,
+    params: &'static ArithmeticSpongeParams<F>,
     pub constants: std::marker::PhantomData<SC>,
 }
 
@@ -62,7 +62,7 @@ impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
 }
 
 impl<F: Field, SC: SpongeConstants> Sponge<F, F> for ArithmeticSponge<F, SC> {
-    fn new(params: ArithmeticSpongeParams<F>) -> ArithmeticSponge<F, SC> {
+    fn new(params: &'static ArithmeticSpongeParams<F>) -> ArithmeticSponge<F, SC> {
         let capacity = SC::SPONGE_CAPACITY;
         let rate = SC::SPONGE_RATE;
 

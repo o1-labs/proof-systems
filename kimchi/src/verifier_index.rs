@@ -21,7 +21,6 @@ use commitment_dlog::{
     srs::SRS,
 };
 use once_cell::sync::OnceCell;
-use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::{
@@ -128,12 +127,6 @@ pub struct VerifierIndex<G: KimchiCurve> {
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
     pub powers_of_alpha: Alphas<G::ScalarField>,
-
-    // random oracle argument parameters
-    #[serde(skip)]
-    pub fr_sponge_params: ArithmeticSpongeParams<G::ScalarField>,
-    #[serde(skip)]
-    pub fq_sponge_params: ArithmeticSpongeParams<G::BaseField>,
 }
 //~spec:endcode
 
@@ -236,8 +229,6 @@ impl<'a, G: KimchiCurve> ProverIndex<G> {
             endo: self.cs.endo,
             lookup_index,
             linearization: self.linearization.clone(),
-            fr_sponge_params: G::sponge_params().clone(),
-            fq_sponge_params: self.fq_sponge_params.clone(),
         }
     }
 }
@@ -272,8 +263,6 @@ impl<G: KimchiCurve> VerifierIndex<G> {
         offset: Option<u64>,
         // TODO: we shouldn't have to pass these
         endo: G::ScalarField,
-        fq_sponge_params: ArithmeticSpongeParams<G::BaseField>,
-        fr_sponge_params: ArithmeticSpongeParams<G::ScalarField>,
     ) -> Result<Self, String> {
         // open file
         let file = File::open(path).map_err(|e| e.to_string())?;
@@ -297,8 +286,6 @@ impl<G: KimchiCurve> VerifierIndex<G> {
         };
 
         verifier_index.endo = endo;
-        verifier_index.fq_sponge_params = fq_sponge_params;
-        verifier_index.fr_sponge_params = fr_sponge_params;
 
         Ok(verifier_index)
     }
