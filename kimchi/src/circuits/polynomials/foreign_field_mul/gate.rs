@@ -352,3 +352,14 @@ pub fn circuit_gate_constraint_count<F: FftField>(typ: GateType) -> u32 {
 pub fn combined_constraints<F: FftField>(alphas: &Alphas<F>) -> E<F> {
     ForeignFieldMul::combined_constraints(alphas)
 }
+
+#[cfg(test)]
+mod tests {
+    use num_bigint::BigUint;
+
+    fn _biguint_from_hex_le(hex: &str) -> BigUint {
+        let mut bytes = hex::decode(hex).expect("invalid hex");
+        bytes.reverse();
+        BigUint::from_bytes_le(&bytes)
+    }
+}
