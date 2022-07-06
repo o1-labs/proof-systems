@@ -195,6 +195,11 @@ where
         //~ 1. Setup the Fq-Sponge.
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
 
+
+        //~ 1. Absorb the digest of the VerifierIndex.
+        let verifier_index_digest = index.verifier_index_digest::<EFqSponge>();
+        fq_sponge.absorb_fq(&[verifier_index_digest]);
+
         //~ 1. Absorb the commitments of the previous challenges with the Fq-sponge.
         for RecursionChallenge { comm, .. } in prev_challenges.iter() {
             fq_sponge.absorb_g(&comm.unshifted);
