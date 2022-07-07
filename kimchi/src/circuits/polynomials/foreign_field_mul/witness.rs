@@ -1,15 +1,15 @@
 //! Foreign field multiplication witness computation
 
-use ark_ff::PrimeField;
-use array_init::array_init;
-use num_bigint::BigUint;
-
 use crate::circuits::{
     polynomial::COLUMNS,
     polynomials::range_check::{
         self, handle_standard_witness_cell, value_to_limb, CopyWitnessCell, ZeroWitnessCell,
     },
 };
+use ark_ff::PrimeField;
+use array_init::array_init;
+use num_bigint::BigUint;
+use o1_utils::foreign_field::LIMB_BITS;
 
 // Extend standard WitnessCell to support foreign field multiplication
 // specific cell types
@@ -84,12 +84,12 @@ const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 2] = [
         WitnessCell::Standard(CopyWitnessCell::create(8, 0)), // quotient_lo
         WitnessCell::Standard(CopyWitnessCell::create(9, 0)), // quotient_mid
         WitnessCell::Standard(CopyWitnessCell::create(10, 0)), // quotient_hi
-        ValueLimbWitnessCell::create(ValueType::ProductMid, 0, 88), // product_mid_bottom
-        ValueLimbWitnessCell::create(ValueType::ProductMid, 88, 176), // product_mid_top_limb
-        ValueLimbWitnessCell::create(ValueType::ProductMid, 176, 178), // product_mid_top_extra
+        ValueLimbWitnessCell::create(ValueType::ProductMid, 0, LIMB_BITS), // product_mid_bottom
+        ValueLimbWitnessCell::create(ValueType::ProductMid, LIMB_BITS, 2 * LIMB_BITS), // product_mid_top_limb
+        ValueLimbWitnessCell::create(ValueType::ProductMid, 2 * LIMB_BITS, 2 * LIMB_BITS + 2), // product_mid_top_extra
         WitnessCell::Standard(range_check::ValueWitnessCell::create()), // carry_bottom
-        ValueLimbWitnessCell::create(ValueType::Carry, 0, 88), // carry_top_limb
-        ValueLimbWitnessCell::create(ValueType::Carry, 88, 91), // carry_top_extra
+        ValueLimbWitnessCell::create(ValueType::Carry, 0, LIMB_BITS),   // carry_top_limb
+        ValueLimbWitnessCell::create(ValueType::Carry, LIMB_BITS, LIMB_BITS + 3), // carry_top_extra
         WitnessCell::Standard(ZeroWitnessCell::create()),
         WitnessCell::Standard(ZeroWitnessCell::create()),
     ],
