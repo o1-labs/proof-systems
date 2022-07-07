@@ -742,28 +742,31 @@ where
     });
 
     //~~ - witness commitments
-    evaluations.extend(
-        proof
-            .commitments
-            .w_comm
-            .iter()
-            .zip(
-                (0..COLUMNS)
-                    .map(|i| {
-                        proof
-                            .evals
-                            .iter()
-                            .map(|e| e.w[i].clone())
-                            .collect::<Vec<_>>()
-                    })
-                    .collect::<Vec<_>>(),
-            )
-            .map(|(c, e)| Evaluation {
-                commitment: c.clone(),
-                evaluations: e,
-                degree_bound: None,
-            }),
-    );
+    let thing: Vec<_> = proof
+        .commitments
+        .w_comm
+        .iter()
+        .zip(
+            (0..COLUMNS)
+                .map(|i| {
+                    proof
+                        .evals
+                        .iter()
+                        .map(|e| e.w[i].clone())
+                        .collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>(),
+        )
+        .map(|(c, e)| Evaluation {
+            commitment: c.clone(),
+            evaluations: e,
+            degree_bound: None,
+        })
+        .collect();
+
+    dbg!(&thing[0].evaluations);
+
+    evaluations.extend(thing);
 
     //~~ - sigma commitments
     evaluations.extend(
