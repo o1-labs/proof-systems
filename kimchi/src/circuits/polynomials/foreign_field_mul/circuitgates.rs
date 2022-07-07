@@ -6,19 +6,26 @@
 /// For more details please see: https://hackmd.io/37M7qiTaSIKaZjCC5OnM1w?view
 ///
 /// Inputs:
-///   * $a, b \in F_f$ := foreign field element multiplicands
-///   * $f$ := foreign field modulus
+///   * $f$ := foreign field modulus (currently stored in constraint system globally, but that might change)
+///   * `left_input` $~\in F_f$ := left foreign field element multiplicand
+///   * `right_input` $~\in F_f$ := right foreign field element multiplicand
 ///
 /// Witness:
-///   * $q, r \in F_f$ := foreign field quotient and remainder
+///   * `quotient` $~\in F_f$  := foreign field quotient
+///   * `remainder` $~\in F_f$ := foreign field remainder
+///   * `carry0`               := two bit carry
+///   * `carry1_0`             := low 88 bits of `carry1`
+///   * `carry1_1`             := high 3 bits of `carry1`
 ///
 /// Constraint: This gate is used to constrain that
 ///
-///       $a \cdot b = q \cdot f + r$
+///       `left_input` $\cdot$ `right_input` = `quotient` $\cdot f + $ `remainder`
 ///
 ///     in $F_f$ by using the native field $F_n$.
 ///
 /// **Layout**
+///
+/// Overall layout
 ///
 /// | Row(s) | Gate                | Witness
 /// -|-|-
@@ -30,6 +37,26 @@
 ///   20     | ForeignFieldMul     | (see below)
 ///   21     | Zero                | (see below)
 ///
+/// Foreign field multiplication gate layout
+///
+///             Curr                Next
+///   Columns | ForeignFieldMul   | Zero
+///   -|-|-
+///         0 | right_input0   (copy) | left_input0     (copy)
+///         1 | right_input2   (copy) | quotient0       (copy)
+///         2 | left_input2    (copy) | 2^9 * carry1_1  (plookup)
+///         3 | quotient2      (copy) | 2^8 * quotient0 (plookup)
+///         4 | remainder0     (copy) | left_input1     (copy)
+///         5 | remainder1     (copy) | right_input1    (copy)
+///         6 | remainder2     (copy) | quotient1       (copy)
+///         7 | product_mid0          | (unused)
+///         8 | product_mid1_0        | (unused)
+///         9 | product_mid1_1        | (unused)
+///        10 | carry0                | (unused)
+///        11 | carry1_0              | (unused)
+///        12 | carry1_1              | (unused)
+///        13 | (unused)              | (unused)
+///        14 | (unused)              | (unused)
 use std::marker::PhantomData;
 
 use ark_ff::FftField;

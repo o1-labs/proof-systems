@@ -35,6 +35,8 @@ use super::{RangeCheck0, RangeCheck1};
 // Connect the pair of cells specified by the cell1 and cell2 parameters
 // cell1 --> cell2 && cell2 --> cell1
 //
+// Cell format is: (row, col)
+//
 // Note: This function assumes that the targeted cells are freshly instantiated
 //       with self-connections.  If the two cells are transitively already part
 //       of the same permutation then this would split it.
