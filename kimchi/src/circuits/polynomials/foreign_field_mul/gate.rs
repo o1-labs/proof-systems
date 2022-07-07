@@ -45,30 +45,30 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
         // Foreign field multiplication gates
         let mut wires: Vec<GateWires> = (0..2).map(|i| Wire::new(next_row + i)).collect();
 
-        // Copy left_input0 -> Curr(0)
+        // Copy left_input_lo -> Curr(0)
         connect_cell_pair(&mut circuit_gates[0].wires, 0, &mut wires, (0, 0));
-        // Copy left_input1 -> Curr(1)
+        // Copy left_input_mid -> Curr(1)
         connect_cell_pair(&mut circuit_gates[1].wires, 0, &mut wires, (0, 1));
-        // Copy left_input2 -> Curr(2)
-        connect_cell_pair(&mut circuit_gates[2].wires, 0, &mut wires, (0, 2));
-        // Copy right_input0 -> Curr(3)
-        connect_cell_pair(&mut circuit_gates[4].wires, 0, &mut wires, (0, 3));
-        // Copy right_input1 -> Curr(4)
-        connect_cell_pair(&mut circuit_gates[5].wires, 0, &mut wires, (0, 4));
-        // Copy right_input2 -> Curr(5)
-        connect_cell_pair(&mut circuit_gates[6].wires, 0, &mut wires, (0, 5));
-        // Copy quotient0 -> Curr(6)
-        connect_cell_pair(&mut circuit_gates[8].wires, 0, &mut wires, (0, 6));
+        // Copy quotient_lo -> Curr(4)
+        connect_cell_pair(&mut circuit_gates[8].wires, 0, &mut wires, (0, 4));
+        // Copy quotient_mid -> Curr(5)
+        connect_cell_pair(&mut circuit_gates[9].wires, 0, &mut wires, (0, 5));
+        // Copy quotient_hi -> Curr(6)
+        connect_cell_pair(&mut circuit_gates[10].wires, 0, &mut wires, (0, 6));
 
-        // Copy quotient1 -> Next(0)
-        connect_cell_pair(&mut circuit_gates[9].wires, 0, &mut wires, (1, 0));
-        // Copy quotient2 -> Next(1)
-        connect_cell_pair(&mut circuit_gates[10].wires, 0, &mut wires, (1, 1));
-        // Copy remainder0 -> Next(4)
+        // Copy left_input_hi -> Next(0)
+        connect_cell_pair(&mut circuit_gates[2].wires, 0, &mut wires, (1, 0));
+        // Copy right_input_lo -> Next(1)
+        connect_cell_pair(&mut circuit_gates[4].wires, 0, &mut wires, (1, 1));
+        // Copy right_input_mid -> Next(2)
+        connect_cell_pair(&mut circuit_gates[5].wires, 0, &mut wires, (1, 2));
+        // Copy right_input_hi -> Next(3)
+        connect_cell_pair(&mut circuit_gates[6].wires, 0, &mut wires, (1, 3));
+        // Copy remainder_lo -> Next(4)
         connect_cell_pair(&mut circuit_gates[12].wires, 0, &mut wires, (1, 4));
-        // Copy remainder1 -> Next(5)
+        // Copy remainder_mid -> Next(5)
         connect_cell_pair(&mut circuit_gates[13].wires, 0, &mut wires, (1, 5));
-        // Copy remainder2 -> Next(6)
+        // Copy remainder_hi -> Next(6)
         connect_cell_pair(&mut circuit_gates[14].wires, 0, &mut wires, (1, 6));
 
         circuit_gates.append(&mut vec![
