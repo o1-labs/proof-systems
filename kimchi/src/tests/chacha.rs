@@ -31,8 +31,8 @@ use super::framework::TestFramework;
 // aliases
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
-type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
+type BaseSponge<'a> = DefaultFqSponge<'a, VestaParameters, SpongeParams>;
+type ScalarSponge<'a> = DefaultFrSponge<'a, Fp, SpongeParams>;
 
 const PUBLIC: usize = 0;
 

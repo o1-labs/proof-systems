@@ -32,7 +32,7 @@ where
     let srs = SRS::<Affine>::create(size);
 
     let group_map = <Affine as CommitmentCurve>::Map::setup();
-    let sponge = DefaultFqSponge::<VestaParameters, SC>::new(oracle::pasta::fq_kimchi::params());
+    let sponge = DefaultFqSponge::<VestaParameters, SC>::new(oracle::pasta::fq_kimchi_params());
 
     let mut commit = Duration::new(0, 0);
     let mut open = Duration::new(0, 0);

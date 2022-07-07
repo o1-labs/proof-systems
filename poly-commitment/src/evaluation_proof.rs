@@ -65,7 +65,7 @@ impl<'a, F: Field> ScaledChunkedPolynomial<F, &'a [F]> {
     }
 }
 
-impl<G: CommitmentCurve> SRS<G> {
+impl<'a, G: CommitmentCurve> SRS<G> {
     /// This function opens polynomial commitments in batch
     ///     plnms: batch of polynomials to open commitments for with, optionally, max degrees
     ///     elm: evaluation point vector to open the commitments at
@@ -92,7 +92,7 @@ impl<G: CommitmentCurve> SRS<G> {
         rng: &mut RNG,
     ) -> OpeningProof<G>
     where
-        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+        EFqSponge: Clone + FqSponge<'a, G::BaseField, G, G::ScalarField>,
         RNG: RngCore + CryptoRng,
         G::BaseField: PrimeField,
     {
@@ -330,8 +330,8 @@ pub struct Challenges<F> {
     pub chal_inv: Vec<F>,
 }
 
-impl<G: AffineCurve> OpeningProof<G> {
-    pub fn prechallenges<EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>>(
+impl<'a, G: AffineCurve> OpeningProof<G> {
+    pub fn prechallenges<EFqSponge: FqSponge<'a, G::BaseField, G, G::ScalarField>>(
         &self,
         sponge: &mut EFqSponge,
     ) -> Vec<ScalarChallenge<G::ScalarField>> {
@@ -346,7 +346,7 @@ impl<G: AffineCurve> OpeningProof<G> {
             .collect()
     }
 
-    pub fn challenges<EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>>(
+    pub fn challenges<EFqSponge: FqSponge<'a, G::BaseField, G, G::ScalarField>>(
         &self,
         endo_r: &G::ScalarField,
         sponge: &mut EFqSponge,

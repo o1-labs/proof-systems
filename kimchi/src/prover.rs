@@ -108,19 +108,19 @@ where
     runtime_second_col_d8: Option<Evaluations<F, D<F>>>,
 }
 
-impl<G: CommitmentCurve> ProverProof<G>
+impl<'a, G: CommitmentCurve> ProverProof<G>
 where
     G::BaseField: PrimeField,
 {
     /// This function constructs prover's zk-proof from the witness & the ProverIndex against SRS instance
     pub fn create<
-        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-        EFrSponge: FrSponge<G::ScalarField>,
+        EFqSponge: Clone + FqSponge<'a, G::BaseField, G, G::ScalarField>,
+        EFrSponge: FrSponge<'a, G::ScalarField>,
     >(
         groupmap: &G::Map,
         witness: [Vec<G::ScalarField>; COLUMNS],
         runtime_tables: &[RuntimeTable<G::ScalarField>],
-        index: &ProverIndex<G>,
+        index: &'a ProverIndex<G>,
     ) -> Result<Self> {
         Self::create_recursive::<EFqSponge, EFrSponge>(
             groupmap,
@@ -134,13 +134,13 @@ where
 
     /// This function constructs prover's recursive zk-proof from the witness & the ProverIndex against SRS instance
     pub fn create_recursive<
-        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-        EFrSponge: FrSponge<G::ScalarField>,
+        EFqSponge: Clone + FqSponge<'a, G::BaseField, G, G::ScalarField>,
+        EFrSponge: FrSponge<'a, G::ScalarField>,
     >(
         group_map: &G::Map,
         mut witness: [Vec<G::ScalarField>; COLUMNS],
         runtime_tables: &[RuntimeTable<G::ScalarField>],
-        index: &ProverIndex<G>,
+        index: &'a ProverIndex<G>,
         prev_challenges: Vec<RecursionChallenge<G>>,
         blinders: Option<[Option<PolyComm<G::ScalarField>>; COLUMNS]>,
     ) -> Result<Self> {
@@ -193,7 +193,7 @@ where
         }
 
         //~ 1. Setup the Fq-Sponge.
-        let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
+        let mut fq_sponge = EFqSponge::new(&index.fq_sponge_params);
 
         //~ 1. Compute the negated public input polynomial as
         //~    the polynomial that evaluates to $-p_i$ for the first `public_input_size` values of the domain,
@@ -1034,7 +1034,7 @@ where
 
         //~ 1. Setup the Fr-Sponge
         let fq_sponge_before_evaluations = fq_sponge.clone();
-        let mut fr_sponge = EFrSponge::new(index.cs.fr_sponge_params.clone());
+        let mut fr_sponge = EFrSponge::new(&index.cs.fr_sponge_params);
 
         //~ 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
         fr_sponge.absorb(&fq_sponge.digest());

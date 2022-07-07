@@ -35,8 +35,8 @@ The following is an example to demonstrate a full cycle workflow using circuit-c
 ```rust
 use circuit_construction::{prologue::*};
 
-type SpongeQ = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
-type SpongeR = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>;
+type SpongeQ<'a> = DefaultFqSponge<'a, VestaParameters, PlonkSpongeConstantsKimchi>;
+type SpongeR<'a> = DefaultFrSponge<'a, Fp, PlonkSpongeConstantsKimchi>;
 
 // a callback function to specify constraint gates for a circuit
 pub fn circuit<

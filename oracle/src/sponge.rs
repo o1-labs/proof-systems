@@ -63,13 +63,13 @@ impl<F: PrimeField> ScalarChallenge<F> {
 }
 
 #[derive(Clone)]
-pub struct DefaultFqSponge<P: SWModelParameters, SC: SpongeConstants> {
-    pub sponge: ArithmeticSponge<P::BaseField, SC>,
+pub struct DefaultFqSponge<'a, P: SWModelParameters, SC: SpongeConstants> {
+    pub sponge: ArithmeticSponge<'a, P::BaseField, SC>,
     pub last_squeezed: Vec<u64>,
 }
 
-pub struct DefaultFrSponge<Fr: Field, SC: SpongeConstants> {
-    pub sponge: ArithmeticSponge<Fr, SC>,
+pub struct DefaultFrSponge<'a, Fr: Field, SC: SpongeConstants> {
+    pub sponge: ArithmeticSponge<'a, Fr, SC>,
     pub last_squeezed: Vec<u64>,
 }
 
@@ -82,7 +82,7 @@ fn pack<B: BigInteger>(limbs_lsb: &[u64]) -> B {
     res
 }
 
-impl<Fr: PrimeField, SC: SpongeConstants> DefaultFrSponge<Fr, SC> {
+impl<'a, Fr: PrimeField, SC: SpongeConstants> DefaultFrSponge<'a, Fr, SC> {
     pub fn squeeze(&mut self, num_limbs: usize) -> Fr {
         if self.last_squeezed.len() >= num_limbs {
             let last_squeezed = self.last_squeezed.clone();
@@ -99,7 +99,7 @@ impl<Fr: PrimeField, SC: SpongeConstants> DefaultFrSponge<Fr, SC> {
     }
 }
 
-impl<P: SWModelParameters, SC: SpongeConstants> DefaultFqSponge<P, SC>
+impl<'a, P: SWModelParameters, SC: SpongeConstants> DefaultFqSponge<'a, P, SC>
 where
     P::BaseField: PrimeField,
     <P::BaseField as PrimeField>::BigInt: Into<<P::ScalarField as PrimeField>::BigInt>,
@@ -129,13 +129,13 @@ where
     }
 }
 
-impl<P: SWModelParameters, SC: SpongeConstants>
-    FqSponge<P::BaseField, GroupAffine<P>, P::ScalarField> for DefaultFqSponge<P, SC>
+impl<'a, P: SWModelParameters, SC: SpongeConstants>
+    FqSponge<'a, P::BaseField, GroupAffine<P>, P::ScalarField> for DefaultFqSponge<'a, P, SC>
 where
     P::BaseField: PrimeField,
     <P::BaseField as PrimeField>::BigInt: Into<<P::ScalarField as PrimeField>::BigInt>,
 {
-    fn new(params: ArithmeticSpongeParams<P::BaseField>) -> DefaultFqSponge<P, SC> {
+    fn new(params: &'a ArithmeticSpongeParams<P::BaseField>) -> DefaultFqSponge<P, SC> {
         DefaultFqSponge {
             sponge: ArithmeticSponge::new(params),
             last_squeezed: vec![],

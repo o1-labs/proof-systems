@@ -315,17 +315,24 @@ pub fn pows<F: Field>(d: usize, x: F) -> Vec<F> {
     res
 }
 
-pub fn squeeze_prechallenge<Fq: Field, G, Fr: SquareRootField, EFqSponge: FqSponge<Fq, G, Fr>>(
+pub fn squeeze_prechallenge<
+    'a,
+    Fq: Field,
+    G,
+    Fr: SquareRootField,
+    EFqSponge: FqSponge<'a, Fq, G, Fr>,
+>(
     sponge: &mut EFqSponge,
 ) -> ScalarChallenge<Fr> {
     ScalarChallenge(sponge.challenge())
 }
 
 pub fn squeeze_challenge<
+    'a,
     Fq: Field,
     G,
     Fr: PrimeField + SquareRootField,
-    EFqSponge: FqSponge<Fq, G, Fr>,
+    EFqSponge: FqSponge<'a, Fq, G, Fr>,
 >(
     endo_r: &Fr,
     sponge: &mut EFqSponge,
@@ -485,7 +492,7 @@ where
 pub struct BatchEvaluationProof<'a, G, EFqSponge>
 where
     G: AffineCurve,
-    EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
+    EFqSponge: FqSponge<'a, G::BaseField, G, G::ScalarField>,
 {
     pub sponge: EFqSponge,
     pub evaluations: Vec<Evaluation<G>>,
@@ -499,7 +506,7 @@ where
     pub opening: &'a OpeningProof<G>,
 }
 
-impl<G: CommitmentCurve> SRS<G> {
+impl<'a, G: CommitmentCurve> SRS<G> {
     /// Commits a polynomial, potentially splitting the result in multiple commitments.
     pub fn commit(
         &self,
@@ -683,11 +690,11 @@ impl<G: CommitmentCurve> SRS<G> {
     pub fn verify<EFqSponge, RNG>(
         &self,
         group_map: &G::Map,
-        batch: &mut [BatchEvaluationProof<G, EFqSponge>],
+        batch: &mut [BatchEvaluationProof<'a, G, EFqSponge>],
         rng: &mut RNG,
     ) -> bool
     where
-        EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
+        EFqSponge: FqSponge<'a, G::BaseField, G, G::ScalarField>,
         RNG: RngCore + CryptoRng,
         G::BaseField: PrimeField,
     {
@@ -915,7 +922,7 @@ mod tests {
     use array_init::array_init;
     use mina_curves::pasta::{fp::Fp, vesta::Affine as VestaG};
     use oracle::constants::PlonkSpongeConstantsKimchi as SC;
-    use oracle::{pasta::fq_kimchi::params as spongeFqParams, sponge::DefaultFqSponge};
+    use oracle::{pasta::fq_kimchi_params as spongeFqParams, sponge::DefaultFqSponge};
     use rand::{rngs::StdRng, SeedableRng};
 
     #[test]

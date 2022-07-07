@@ -26,8 +26,8 @@ use std::time::Instant;
 // aliases
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
-type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
+type BaseSponge<'a> = DefaultFqSponge<'a, VestaParameters, SpongeParams>;
+type ScalarSponge<'a> = DefaultFrSponge<'a, Fp, SpongeParams>;
 
 #[derive(Default)]
 pub(crate) struct TestFramework {

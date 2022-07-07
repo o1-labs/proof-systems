@@ -20,15 +20,15 @@ use super::{domain_prefix_to_field, Hashable, Hasher};
 //  so we only want to do this once and then re-use the Poseidon context
 //  for many hashes. Also, following approach of the mina code we store
 //  a backup of the initialized sponge state for efficient reuse.
-pub struct Poseidon<SC: SpongeConstants, H: Hashable> {
-    sponge: ArithmeticSponge<Fp, SC>,
+pub struct Poseidon<'a, SC: SpongeConstants, H: Hashable> {
+    sponge: ArithmeticSponge<'a, Fp, SC>,
     sponge_state: SpongeState,
     state: Vec<Fp>,
     phantom: PhantomData<H>,
 }
 
-impl<SC: SpongeConstants, H: Hashable> Poseidon<SC, H> {
-    fn new(domain_param: H::D, sponge_params: ArithmeticSpongeParams<Fp>) -> Self {
+impl<'a, SC: SpongeConstants, H: Hashable> Poseidon<'a, SC, H> {
+    fn new(domain_param: H::D, sponge_params: &'a ArithmeticSpongeParams<Fp>) -> Self {
         let mut poseidon = Poseidon::<SC, H> {
             sponge: ArithmeticSponge::<Fp, SC>::new(sponge_params),
             sponge_state: SpongeState::Absorbed(0),
@@ -43,22 +43,22 @@ impl<SC: SpongeConstants, H: Hashable> Poseidon<SC, H> {
 }
 
 /// Poseidon hasher type with legacy plonk sponge constants
-pub type PoseidonHasherLegacy<H> = Poseidon<PlonkSpongeConstantsLegacy, H>;
+pub type PoseidonHasherLegacy<'a, H> = Poseidon<'a, PlonkSpongeConstantsLegacy, H>;
 
 /// Create a legacy hasher context
-pub(crate) fn new_legacy<H: Hashable>(domain_param: H::D) -> PoseidonHasherLegacy<H> {
+pub(crate) fn new_legacy<'a, H: Hashable>(domain_param: H::D) -> PoseidonHasherLegacy<'a, H> {
     Poseidon::<PlonkSpongeConstantsLegacy, H>::new(domain_param, fp_legacy_params())
 }
 
 /// Poseidon hasher type with experimental kimchi plonk sponge constants
-pub type PoseidonHasherKimchi<H> = Poseidon<PlonkSpongeConstantsKimchi, H>;
+pub type PoseidonHasherKimchi<'a, H> = Poseidon<'a, PlonkSpongeConstantsKimchi, H>;
 
 /// Create an experimental kimchi hasher context
-pub(crate) fn new_kimchi<H: Hashable>(domain_param: H::D) -> PoseidonHasherKimchi<H> {
+pub(crate) fn new_kimchi<'a, H: Hashable>(domain_param: H::D) -> PoseidonHasherKimchi<'a, H> {
     Poseidon::<PlonkSpongeConstantsKimchi, H>::new(domain_param, fp_kimchi_params())
 }
 
-impl<SC: SpongeConstants, H: Hashable> Hasher<H> for Poseidon<SC, H>
+impl<'a, SC: SpongeConstants, H: Hashable> Hasher<H> for Poseidon<'a, SC, H>
 where
     H::D: DomainParameter,
 {

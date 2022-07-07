@@ -168,14 +168,14 @@ fn domain_prefix_to_field<F: PrimeField>(prefix: String) -> F {
 }
 
 /// Create a legacy hasher context
-pub fn create_legacy<H: Hashable>(domain_param: H::D) -> PoseidonHasherLegacy<H> {
-    poseidon::new_legacy::<H>(domain_param)
+pub fn create_legacy<'a, H: Hashable>(domain_param: H::D) -> PoseidonHasherLegacy<'a, H> {
+    poseidon::new_legacy::<'a, H>(domain_param)
 }
 
 /// Create an experimental kimchi hasher context
-pub fn create_kimchi<H: Hashable>(domain_param: H::D) -> PoseidonHasherKimchi<H>
+pub fn create_kimchi<'a, H: Hashable>(domain_param: H::D) -> PoseidonHasherKimchi<'a, H>
 where
     H::D: DomainParameter,
 {
-    poseidon::new_kimchi::<H>(domain_param)
+    poseidon::new_kimchi::<'a, H>(domain_param)
 }

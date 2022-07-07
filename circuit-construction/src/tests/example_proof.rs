@@ -1,7 +1,7 @@
 use crate::prologue::*;
 
-type SpongeQ = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
-type SpongeR = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>;
+type SpongeQ<'a> = DefaultFqSponge<'a, VestaParameters, PlonkSpongeConstantsKimchi>;
+type SpongeR<'a> = DefaultFrSponge<'a, Fp, PlonkSpongeConstantsKimchi>;
 
 pub struct Witness<G: AffineCurve> {
     pub s: G::ScalarField,
@@ -84,7 +84,7 @@ fn test_example_circuit() {
         .into_affine();
     let hash = {
         let mut s: ArithmeticSponge<_, PlonkSpongeConstantsKimchi> =
-            ArithmeticSponge::new(proof_system_constants.poseidon.clone());
+            ArithmeticSponge::new(&proof_system_constants.poseidon);
         s.absorb(&[preimage]);
         s.squeeze()
     };

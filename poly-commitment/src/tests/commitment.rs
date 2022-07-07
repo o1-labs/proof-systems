@@ -56,7 +56,7 @@ mod prover {
 }
 
 /// This struct represents an aggregated evaluation proof for a number of polynomial commitments, as well as a number of evaluation points.
-pub struct AggregatedEvaluationProof {
+pub struct AggregatedEvaluationProof<'a> {
     /// a number of evaluation points
     eval_points: Vec<Fp>,
     /// a number of commitments evaluated at these evaluation points
@@ -66,12 +66,12 @@ pub struct AggregatedEvaluationProof {
     /// the random value used to separate evaluations
     evalmask: Fp,
     /// an Fq-sponge
-    fq_sponge: DefaultFqSponge<VestaParameters, SC>,
+    fq_sponge: DefaultFqSponge<'a, VestaParameters, SC>,
     /// the actual evaluation proof
     proof: OpeningProof<Affine>,
 }
 
-impl AggregatedEvaluationProof {
+impl<'a> AggregatedEvaluationProof<'a> {
     /// This function converts an aggregated evaluation proof into something the verify API understands
     pub fn verify_type(
         &self,
@@ -107,7 +107,7 @@ where
     // setup
     let mut rng = rand::thread_rng();
     let group_map = <Affine as CommitmentCurve>::Map::setup();
-    let fq_sponge = DefaultFqSponge::<VestaParameters, SC>::new(oracle::pasta::fq_kimchi::params());
+    let fq_sponge = DefaultFqSponge::<VestaParameters, SC>::new(oracle::pasta::fq_kimchi_params());
 
     // create an SRS optimized for polynomials of degree 2^7 - 1
     let srs = SRS::<Affine>::create(1 << 7);

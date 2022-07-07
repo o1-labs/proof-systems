@@ -1256,9 +1256,9 @@ mod tests {
         sponge::{DefaultFqSponge, DefaultFrSponge},
     };
 
-    type BaseSponge =
-        DefaultFqSponge<pasta_curves::vesta::VestaParameters, PlonkSpongeConstantsKimchi>;
-    type ScalarSponge = DefaultFrSponge<pasta_curves::Fp, PlonkSpongeConstantsKimchi>;
+    type BaseSponge<'a> =
+        DefaultFqSponge<'a, pasta_curves::vesta::VestaParameters, PlonkSpongeConstantsKimchi>;
+    type ScalarSponge<'a> = DefaultFrSponge<'a, pasta_curves::Fp, PlonkSpongeConstantsKimchi>;
 
     #[test]
     fn verify_range_check_valid_proof1() {

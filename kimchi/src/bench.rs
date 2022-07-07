@@ -22,8 +22,8 @@ use oracle::{
 use o1_utils::math;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
-type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
+type BaseSponge<'a> = DefaultFqSponge<'a, VestaParameters, SpongeParams>;
+type ScalarSponge<'a> = DefaultFrSponge<'a, Fp, SpongeParams>;
 
 pub struct BenchmarkCtx {
     num_gates: usize,

@@ -1,7 +1,6 @@
 use crate::{
     constants::{PlonkSpongeConstantsKimchi, PlonkSpongeConstantsLegacy},
-    pasta::fp_kimchi as SpongeParametersKimchi,
-    pasta::fp_legacy as SpongeParametersLegacy,
+    pasta::*,
     poseidon::ArithmeticSponge as Poseidon,
     poseidon::Sponge as _,
 };
@@ -61,8 +60,7 @@ where
 #[test]
 fn poseidon_test_vectors_legacy() {
     fn hash(input: &[Fp]) -> Fp {
-        let mut hash =
-            Poseidon::<Fp, PlonkSpongeConstantsLegacy>::new(SpongeParametersLegacy::params());
+        let mut hash = Poseidon::<Fp, PlonkSpongeConstantsLegacy>::new(fp_legacy_params());
         hash.absorb(input);
         hash.squeeze()
     }
@@ -72,8 +70,7 @@ fn poseidon_test_vectors_legacy() {
 #[test]
 fn poseidon_test_vectors_kimchi() {
     fn hash(input: &[Fp]) -> Fp {
-        let mut hash =
-            Poseidon::<Fp, PlonkSpongeConstantsKimchi>::new(SpongeParametersKimchi::params());
+        let mut hash = Poseidon::<Fp, PlonkSpongeConstantsKimchi>::new(fp_kimchi_params());
         hash.absorb(input);
         hash.squeeze()
     }

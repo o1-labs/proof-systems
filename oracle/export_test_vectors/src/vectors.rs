@@ -37,7 +37,7 @@ pub struct TestVector {
 
 /// Computes the poseidon hash of several field elements.
 /// Uses the 'basic' configuration with N states and M rounds.
-fn poseidon<SC: SpongeConstants>(input: &[Fp], params: ArithmeticSpongeParams<Fp>) -> Fp {
+fn poseidon<SC: SpongeConstants>(input: &[Fp], params: &ArithmeticSpongeParams<Fp>) -> Fp {
     let mut s = Poseidon::<Fp, SC>::new(params);
     s.absorb(input);
     s.squeeze()
@@ -63,14 +63,12 @@ pub fn generate(mode: Mode, param_type: ParamType) -> TestVectors {
         // generate input & hash
         let input = rand_fields(&mut rng, length);
         let output = match param_type {
-            ParamType::Legacy => poseidon::<constants::PlonkSpongeConstantsLegacy>(
-                &input,
-                pasta::fp_legacy::params(),
-            ),
-            ParamType::Kimchi => poseidon::<constants::PlonkSpongeConstantsKimchi>(
-                &input,
-                pasta::fp_kimchi::params(),
-            ),
+            ParamType::Legacy => {
+                poseidon::<constants::PlonkSpongeConstantsLegacy>(&input, pasta::fp_legacy_params())
+            }
+            ParamType::Kimchi => {
+                poseidon::<constants::PlonkSpongeConstantsKimchi>(&input, pasta::fp_kimchi_params())
+            }
         };
 
         // serialize input & output

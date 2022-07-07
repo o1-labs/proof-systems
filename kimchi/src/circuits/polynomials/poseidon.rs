@@ -215,7 +215,7 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
 /// and with input `input`.
 pub fn generate_witness<F: Field>(
     row: usize,
-    params: ArithmeticSpongeParams<F>,
+    params: &ArithmeticSpongeParams<F>,
     witness_cols: &mut [Vec<F>; COLUMNS],
     input: [F; SPONGE_WIDTH],
 ) {

@@ -26,15 +26,16 @@ use commitment_dlog::commitment::{
 use itertools::izip;
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand::thread_rng;
+use std::marker::PhantomData;
 
 /// The result of a proof verification.
 pub type Result<T> = std::result::Result<T, VerifyError>;
 
 /// The result of running the oracle protocol
-pub struct OraclesResult<G, EFqSponge>
+pub struct OraclesResult<'a, G, EFqSponge>
 where
     G: CommitmentCurve,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+    EFqSponge: Clone + FqSponge<'a, G::BaseField, G, G::ScalarField>,
 {
     /// A sponge that acts on the base field of a curve
     pub fq_sponge: EFqSponge,
@@ -57,9 +58,10 @@ where
     pub ft_eval0: G::ScalarField,
     /// Used by the OCaml side
     pub combined_inner_product: G::ScalarField,
+    _pd: PhantomData<&'a ()>,
 }
 
-impl<G: CommitmentCurve> ProverProof<G>
+impl<'a, G: CommitmentCurve> ProverProof<G>
 where
     G::BaseField: PrimeField,
 {
@@ -110,13 +112,13 @@ where
 
     /// This function runs the random oracle argument
     pub fn oracles<
-        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-        EFrSponge: FrSponge<G::ScalarField>,
+        EFqSponge: Clone + FqSponge<'a, G::BaseField, G, G::ScalarField>,
+        EFrSponge: FrSponge<'a, G::ScalarField>,
     >(
         &self,
-        index: &VerifierIndex<G>,
+        index: &'a VerifierIndex<G>,
         p_comm: &PolyComm<G>,
-    ) -> Result<OraclesResult<G, EFqSponge>> {
+    ) -> Result<OraclesResult<'a, G, EFqSponge>> {
         //~
         //~ #### Fiat-Shamir argument
         //~
@@ -125,7 +127,7 @@ where
         let n = index.domain.size;
 
         //~ 1. Setup the Fq-Sponge.
-        let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
+        let mut fq_sponge = EFqSponge::new(&index.fq_sponge_params);
 
         //~ 1. Absorb the commitment of the public input polynomial with the Fq-Sponge.
         fq_sponge.absorb_g(&p_comm.unshifted);
@@ -215,7 +217,7 @@ where
 
         //~ 1. Setup the Fr-Sponge.
         let digest = fq_sponge.clone().digest();
-        let mut fr_sponge = EFrSponge::new(index.fr_sponge_params.clone());
+        let mut fr_sponge = EFrSponge::new(&index.fr_sponge_params);
 
         //~ 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
         fr_sponge.absorb(&digest);
@@ -466,19 +468,20 @@ where
             zeta1,
             ft_eval0,
             combined_inner_product,
+            _pd: Default::default(),
         })
     }
 }
 
 fn to_batch<'a, G, EFqSponge, EFrSponge>(
-    index: &VerifierIndex<G>,
+    index: &'a VerifierIndex<G>,
     proof: &'a ProverProof<G>,
 ) -> Result<BatchEvaluationProof<'a, G, EFqSponge>>
 where
     G: CommitmentCurve,
     G::BaseField: PrimeField,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-    EFrSponge: FrSponge<G::ScalarField>,
+    EFqSponge: Clone + FqSponge<'a, G::BaseField, G, G::ScalarField>,
+    EFrSponge: FrSponge<'a, G::ScalarField>,
 {
     //~
     //~ #### Partial verification
@@ -893,16 +896,16 @@ where
 }
 
 /// Verify a proof [ProverProof] using a [VerifierIndex] and a `group_map`.
-pub fn verify<G, EFqSponge, EFrSponge>(
-    group_map: &G::Map,
-    verifier_index: &VerifierIndex<G>,
-    proof: &ProverProof<G>,
+pub fn verify<'a, G, EFqSponge, EFrSponge>(
+    group_map: &'a G::Map,
+    verifier_index: &'a VerifierIndex<G>,
+    proof: &'a ProverProof<G>,
 ) -> Result<()>
 where
     G: CommitmentCurve,
     G::BaseField: PrimeField,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-    EFrSponge: FrSponge<G::ScalarField>,
+    EFqSponge: Clone + FqSponge<'a, G::BaseField, G, G::ScalarField>,
+    EFrSponge: FrSponge<'a, G::ScalarField>,
 {
     let proofs = vec![(verifier_index, proof)];
     batch_verify::<G, EFqSponge, EFrSponge>(group_map, &proofs)
@@ -912,15 +915,15 @@ where
 ///     proofs: vector of Plonk proofs
 ///     index: VerifierIndex
 ///     RETURN: verification status
-pub fn batch_verify<G, EFqSponge, EFrSponge>(
+pub fn batch_verify<'a, G, EFqSponge, EFrSponge>(
     group_map: &G::Map,
-    proofs: &[(&VerifierIndex<G>, &ProverProof<G>)],
+    proofs: &[(&'a VerifierIndex<G>, &'a ProverProof<G>)],
 ) -> Result<()>
 where
     G: CommitmentCurve,
     G::BaseField: PrimeField,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-    EFrSponge: FrSponge<G::ScalarField>,
+    EFqSponge: Clone + FqSponge<'a, G::BaseField, G, G::ScalarField>,
+    EFrSponge: FrSponge<'a, G::ScalarField>,
 {
     //~ #### Batch verification of proofs
     //~
@@ -936,7 +939,7 @@ where
 
     //~ 1. Ensure that all the proof's verifier index have a URS of the same length. (TODO: do they have to be the same URS though? should we check for that?)
     // TODO: Account for the different SRS lengths
-    let srs = &proofs[0].0.srs();
+    let srs = proofs[0].0.srs();
     for (index, _) in proofs.iter() {
         if index.srs().g.len() != srs.g.len() {
             return Err(VerifyError::DifferentSRS);
@@ -951,7 +954,7 @@ where
     //~ 1. Validate each proof separately following the [partial verification](#partial-verification) steps.
     let mut batch = vec![];
     for (index, proof) in proofs {
-        batch.push(to_batch::<G, EFqSponge, EFrSponge>(index, proof)?);
+        batch.push(to_batch::<'a, G, EFqSponge, EFrSponge>(index, proof)?);
     }
 
     //~ 1. Use the [`PolyCom.verify`](#polynomial-commitments) to verify the partially evaluated proofs.

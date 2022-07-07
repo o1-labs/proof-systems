@@ -66,7 +66,7 @@ fn test_poseidon() {
 
         polynomials::poseidon::generate_witness(
             first_row,
-            oracle::pasta::fp_kimchi::params(),
+            oracle::pasta::fp_kimchi_params(),
             &mut witness,
             input,
         );

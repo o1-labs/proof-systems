@@ -18,8 +18,8 @@ use oracle::sponge::{DefaultFqSponge, DefaultFrSponge};
 use std::time::Instant;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
-type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
+type BaseSponge<'a> = DefaultFqSponge<'a, VestaParameters, SpongeParams>;
+type ScalarSponge<'a> = DefaultFrSponge<'a, Fp, SpongeParams>;
 
 #[cfg(test)]
 mod tests {

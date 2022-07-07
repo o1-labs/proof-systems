@@ -7,9 +7,9 @@ use oracle::{
 
 use crate::proof::ProofEvaluations;
 
-pub trait FrSponge<Fr: Field> {
+pub trait FrSponge<'a, Fr: Field> {
     /// Creates a new Fr-Sponge.
-    fn new(p: ArithmeticSpongeParams<Fr>) -> Self;
+    fn new(p: &'a ArithmeticSpongeParams<Fr>) -> Self;
 
     /// Absorbs the field element into the sponge.
     fn absorb(&mut self, x: &Fr);
@@ -26,8 +26,8 @@ pub trait FrSponge<Fr: Field> {
     );
 }
 
-impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
-    fn new(params: ArithmeticSpongeParams<Fr>) -> DefaultFrSponge<Fr, SC> {
+impl<'a, Fr: PrimeField> FrSponge<'a, Fr> for DefaultFrSponge<'a, Fr, SC> {
+    fn new(params: &'a ArithmeticSpongeParams<Fr>) -> DefaultFrSponge<Fr, SC> {
         DefaultFrSponge {
             sponge: ArithmeticSponge::new(params),
             last_squeezed: vec![],

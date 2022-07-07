@@ -104,8 +104,8 @@ impl Cycle for FqInner {
 }
 
 /// Given an index, a group map, custom blinders for the witness, a public input vector, and a circuit `main`, it creates a proof.
-pub fn prove<G, H, EFqSponge, EFrSponge>(
-    index: &ProverIndex<G>,
+pub fn prove<'a, G, H, EFqSponge, EFrSponge>(
+    index: &'a ProverIndex<G>,
     group_map: &G::Map,
     blinders: Option<[Option<G::ScalarField>; COLUMNS]>,
     public_input: Vec<G::ScalarField>,
@@ -115,8 +115,8 @@ where
     H: FnMut(&mut WitnessGenerator<G::ScalarField>, Vec<Var<G::ScalarField>>),
     G::BaseField: PrimeField,
     G: CommitmentCurve,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-    EFrSponge: FrSponge<G::ScalarField>,
+    EFqSponge: Clone + FqSponge<'a, G::BaseField, G, G::ScalarField>,
+    EFrSponge: FrSponge<'a, G::ScalarField>,
 {
     // create the witness generator
     let mut gen: WitnessGenerator<G::ScalarField> = WitnessGenerator::new(&public_input);
