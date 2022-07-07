@@ -3,7 +3,6 @@
 use ark_ff::PrimeField;
 use array_init::array_init;
 use num_bigint::BigUint;
-use o1_utils::foreign_field::field_element_to_native_limbs;
 
 use crate::circuits::{
     polynomial::COLUMNS,
@@ -40,14 +39,19 @@ impl ShiftWitnessCell {
 }
 
 // Witness cell containing a limb of a value
+enum ValueType {
+    ProductMid,
+    Carry,
+}
 pub struct ValueLimbWitnessCell {
+    kind: ValueType,
     start: usize,
     end: usize,
 }
 
 impl ValueLimbWitnessCell {
-    pub const fn create(start: usize, end: usize) -> WitnessCell {
-        WitnessCell::ValueLimb(ValueLimbWitnessCell { start, end })
+    pub const fn create(kind: ValueType, start: usize, end: usize) -> WitnessCell {
+        WitnessCell::ValueLimb(ValueLimbWitnessCell { kind, start, end })
     }
 }
 
@@ -81,7 +85,7 @@ const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 2] = [
         // TODO: Anais
         WitnessCell::Standard(ZeroWitnessCell::create()),
         WitnessCell::Standard(ZeroWitnessCell::create()),
-        ValueLimbWitnessCell::create(0, 88), // product_mid_bottom
+        ValueLimbWitnessCell::create(ValueType::ProductMid, 0, 88), // product_mid_bottom
         WitnessCell::Standard(ZeroWitnessCell::create()),
         WitnessCell::Standard(ZeroWitnessCell::create()),
         WitnessCell::Standard(ZeroWitnessCell::create()),
@@ -111,15 +115,16 @@ const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 2] = [
     ],
 ];
 
-fn init_foreign_filed_multiplication_row<F: PrimeField>(
+fn init_foreign_filed_mul0_row<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
     row: usize,
-    value: F,
+    product_mid: F,
+    carry: F,
 ) {
     for col in 0..COLUMNS {
         match &WITNESS_SHAPE[row][col] {
             WitnessCell::Standard(standard_cell) => {
-                handle_standard_witness_cell(witness, standard_cell, row, col, value)
+                handle_standard_witness_cell(witness, standard_cell, row, col, F::zero() /* unused by this gate */)
             }
             WitnessCell::Shift(shift_cell) => {
                 todo!()
@@ -127,7 +132,10 @@ fn init_foreign_filed_multiplication_row<F: PrimeField>(
             }
             WitnessCell::ValueLimb(value_limb_cell) => {
                 witness[col][row] = value_to_limb(
-                    value,                 // value
+                    match value_limb_cell.kind { // value
+                        ValueType::Carry => carry,
+                        ValueType::ProductMid => product_mid,
+                    },
                     value_limb_cell.start, // starting bit
                     value_limb_cell.end,   // ending bit (exclusive)
                 );
@@ -136,21 +144,36 @@ fn init_foreign_filed_multiplication_row<F: PrimeField>(
     }
 }
 
+fn init_zero_row<F: PrimeField>(
+    witness: &mut [Vec<F>; COLUMNS],
+    row: usize
+) {
+    // TODO
+}
+
+
 /// Create a foreign field multiplication witness
 /// Input: multiplicands left_input and right_input
 pub fn create_witness<F: PrimeField>(
     left_input: BigUint,
     right_input: BigUint,
 ) -> [Vec<F>; COLUMNS] {
-    let mut witness: [Vec<F>; COLUMNS] = array_init(|_| vec![F::zero(); 2]);
+    let mut witness = array_init(|_| vec![F::zero(); 0]);
 
     // Create multi-range-check witness for left_input and right_input
     range_check::extend_witness(&mut witness, left_input);
     range_check::extend_witness(&mut witness, right_input);
 
     // TODO: Compute quotient and remainder
+    let product_mid = F::zero();
+    let carry = F::zero();
 
-    // Create foreign field multiplication rows witness
+    // Create foreign field multiplication and zero witness rows
+    for w in &mut witness {
+        w.extend(std::iter::repeat(F::zero()).take(2));
+    }
+
+    init_foreign_filed_mul0_row(&mut witness, 20, product_mid, carry);
 
     witness
 }
