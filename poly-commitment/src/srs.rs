@@ -27,10 +27,10 @@ pub struct SRS<G: CommitmentCurve> {
     pub lagrange_bases: HashMap<usize, Vec<G>>,
     /// Coefficient for the curve endomorphism
     #[serde(skip)]
-    pub endo_r: G::ScalarField,
+    pub(crate) endo_r: G::ScalarField,
     /// Coefficient for the curve endomorphism
     #[serde(skip)]
-    pub endo_q: G::BaseField,
+    pub(crate) endo_q: G::BaseField,
 }
 
 pub fn endos<G: CommitmentCurve>() -> (G::BaseField, G::ScalarField)

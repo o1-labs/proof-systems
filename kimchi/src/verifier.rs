@@ -124,6 +124,7 @@ where
         //~ We run the following algorithm:
         //~
         let n = index.domain.size;
+        let (_, endo_r) = G::endos();
 
         //~ 1. Setup the Fq-Sponge.
         let mut fq_sponge = EFqSponge::new(G::OtherCurve::sponge_params());
@@ -167,7 +168,7 @@ where
             //~~ - Derive the scalar joint combiner challenge $j$ from $j'$ using the endomorphism.
             //~~   (TODO: specify endomorphism)
             let joint_combiner = ScalarChallenge(joint_combiner);
-            let joint_combiner = (joint_combiner, joint_combiner.to_field(&index.srs().endo_r));
+            let joint_combiner = (joint_combiner, joint_combiner.to_field(endo_r));
 
             //~~ - absorb the commitments to the sorted polynomials.
             for com in &lookup_commits.sorted {
@@ -197,7 +198,7 @@ where
         let alpha_chal = ScalarChallenge(fq_sponge.challenge());
 
         //~ 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
-        let alpha = alpha_chal.to_field(&index.srs().endo_r);
+        let alpha = alpha_chal.to_field(endo_r);
 
         //~ 1. Enforce that the length of the $t$ commitment is of size `PERMUTS`.
         if self.commitments.t_comm.unshifted.len() != PERMUTS {
@@ -211,7 +212,7 @@ where
         let zeta_chal = ScalarChallenge(fq_sponge.challenge());
 
         //~ 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
-        let zeta = zeta_chal.to_field(&index.srs().endo_r);
+        let zeta = zeta_chal.to_field(endo_r);
 
         //~ 1. Setup the Fr-Sponge.
         let digest = fq_sponge.clone().digest();
@@ -287,13 +288,13 @@ where
         let v_chal = fr_sponge.challenge();
 
         //~ 1. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
-        let v = v_chal.to_field(&index.srs().endo_r);
+        let v = v_chal.to_field(endo_r);
 
         //~ 1. Sample $u'$ with the Fr-Sponge.
         let u_chal = fr_sponge.challenge();
 
         //~ 1. Derive $u$ from $u'$ using the endomorphism (TODO: specify).
-        let u = u_chal.to_field(&index.srs().endo_r);
+        let u = u_chal.to_field(endo_r);
 
         //~ 1. Create a list of all polynomials that have an evaluation proof.
         let evaluation_points = [zeta, zetaw];

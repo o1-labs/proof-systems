@@ -151,6 +151,8 @@ where
             return Err(ProverError::SRSTooSmall);
         }
 
+        let (_, endo_r) = G::endos();
+
         // TODO: rng should be passed as arg
         let rng = &mut rand::rngs::OsRng;
 
@@ -351,8 +353,7 @@ where
             };
 
             //~~ - Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TOOD: specify)
-            let joint_combiner: G::ScalarField =
-                ScalarChallenge(joint_combiner).to_field(&index.srs.endo_r);
+            let joint_combiner: G::ScalarField = ScalarChallenge(joint_combiner).to_field(endo_r);
 
             //~~ - If multiple lookup tables are involved,
             //~~   set the `table_id_combiner` as the $j^i$ with $i$ the maximum width of any used table.
@@ -536,7 +537,7 @@ where
         let alpha_chal = ScalarChallenge(fq_sponge.challenge());
 
         //~ 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details)
-        let alpha: G::ScalarField = alpha_chal.to_field(&index.srs.endo_r);
+        let alpha: G::ScalarField = alpha_chal.to_field(endo_r);
 
         //~ 1. TODO: instantiate alpha?
         let mut all_alphas = index.powers_of_alpha.clone();
@@ -807,7 +808,7 @@ where
         let zeta_chal = ScalarChallenge(fq_sponge.challenge());
 
         //~ 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
-        let zeta = zeta_chal.to_field(&index.srs.endo_r);
+        let zeta = zeta_chal.to_field(endo_r);
 
         let omega = index.cs.domain.d1.group_gen;
         let zeta_omega = zeta * omega;
@@ -1071,13 +1072,13 @@ where
         let v_chal = fr_sponge.challenge();
 
         //~ 1. Derive $v$ from $v'$ using the endomorphism (TODO: specify)
-        let v = v_chal.to_field(&index.srs.endo_r);
+        let v = v_chal.to_field(endo_r);
 
         //~ 1. Sample $u'$ with the Fr-Sponge
         let u_chal = fr_sponge.challenge();
 
         //~ 1. Derive $u$ from $u'$ using the endomorphism (TODO: specify)
-        let u = u_chal.to_field(&index.srs.endo_r);
+        let u = u_chal.to_field(endo_r);
 
         //~ 1. Create a list of all polynomials that will require evaluations
         //~    (and evaluation proofs) in the protocol.
