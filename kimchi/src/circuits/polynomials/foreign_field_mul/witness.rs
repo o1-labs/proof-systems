@@ -60,7 +60,7 @@ impl ValueLimbWitnessCell {
 //     is important for compatibility with other gates.
 //   * The witness sections for the multi range check gates should be set up
 //     so that the last range checked value is the MS limb of the respective
-//     foreign field element.  For example, given foreign field element q
+//     foreign field element. For example, given foreign field element q
 //     such that
 //
 //         q = q0 + 2^88 * q1 + 2^176 * q2
@@ -79,10 +79,10 @@ const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 2] = [
     [
         WitnessCell::Standard(CopyWitnessCell::create(0, 0)), // left_input_lo
         WitnessCell::Standard(CopyWitnessCell::create(1, 0)), // left_input_mid
-        WitnessCell::Standard(CopyWitnessCell::create(2, 0)), // left_input_hi
         ShiftWitnessCell::create(20, 0, 9),                   // carry_shift
         ShiftWitnessCell::create(10, 0, 8),                   // quotient_shift
         // TODO: Anais
+        WitnessCell::Standard(ZeroWitnessCell::create()),
         WitnessCell::Standard(ZeroWitnessCell::create()),
         WitnessCell::Standard(ZeroWitnessCell::create()),
         ValueLimbWitnessCell::create(ValueType::ProductMid, 0, 88), // product_mid_bottom
@@ -97,7 +97,7 @@ const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 2] = [
     // Zero row
     [
         // TODO: Joseph
-        WitnessCell::Standard(ZeroWitnessCell::create()),
+        WitnessCell::Standard(CopyWitnessCell::create(2, 0)), // left_input_hi,
         WitnessCell::Standard(ZeroWitnessCell::create()),
         WitnessCell::Standard(ZeroWitnessCell::create()),
         WitnessCell::Standard(ZeroWitnessCell::create()),
@@ -124,7 +124,13 @@ fn init_foreign_field_mul_row<F: PrimeField>(
     for col in 0..COLUMNS {
         match &WITNESS_SHAPE[row][col] {
             WitnessCell::Standard(standard_cell) => {
-                handle_standard_witness_cell(witness, standard_cell, row, col, F::zero() /* unused by this gate */)
+                handle_standard_witness_cell(
+                    witness,
+                    standard_cell,
+                    row,
+                    col,
+                    F::zero(), /* unused by this gate */
+                )
             }
             WitnessCell::Shift(shift_cell) => {
                 todo!()
@@ -132,7 +138,8 @@ fn init_foreign_field_mul_row<F: PrimeField>(
             }
             WitnessCell::ValueLimb(value_limb_cell) => {
                 witness[col][row] = value_to_limb(
-                    match value_limb_cell.kind { // value
+                    match value_limb_cell.kind {
+                        // value
                         ValueType::Carry => carry,
                         ValueType::ProductMid => product_mid,
                     },
@@ -143,7 +150,6 @@ fn init_foreign_field_mul_row<F: PrimeField>(
         }
     }
 }
-
 
 /// Create a foreign field multiplication witness
 /// Input: multiplicands left_input and right_input
