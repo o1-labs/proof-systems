@@ -1,8 +1,10 @@
 use super::context::InnerContext;
 
+use crate::util::from_bits;
+
 use circuit_construction::{Cs, Var};
 
-use ark_ff::{BigInteger, FftField, FpParameters, PrimeField};
+use ark_ff::{BigInteger, FftField, PrimeField};
 
 use std::fmt::Debug;
 
@@ -29,10 +31,7 @@ impl<Fp: FftField + PrimeField> Public<Fp> {
         Cr: Cs<Fr>,
     {
         // converts a slice of bits (minimal representative) to a field element
-        fn from_bits<F: FftField + PrimeField>(bits: &[bool]) -> F {
-            F::from_repr(<F as PrimeField>::BigInt::from_bits_le(bits)).unwrap()
-        }
-
+        
         Public {
             bits: cs.var(|| from_bits(&self.bits.val().into_repr().to_bits_le())),
             size: self.size,

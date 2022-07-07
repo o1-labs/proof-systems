@@ -1,7 +1,18 @@
-use ark_ff::{FftField, PrimeField};
 use ark_poly::univariate::DensePolynomial;
 
 use circuit_construction::{Cs, Var};
+
+use ark_ff::{BigInteger, FftField, FpParameters, PrimeField};
+
+pub fn field_is_bigger<Fp: PrimeField, Fr: PrimeField>() -> bool {
+    let m_fp = <<Fp as PrimeField>::Params as FpParameters>::MODULUS.into();
+    let m_fr = <<Fr as PrimeField>::Params as FpParameters>::MODULUS.into();
+    m_fp > m_fr
+}
+
+pub fn from_bits<F: FftField + PrimeField>(bits: &[bool]) -> F {
+    F::from_repr(<F as PrimeField>::BigInt::from_bits_le(bits)).unwrap()
+}
 
 // evaluate constant polynomial at variable point
 //

@@ -1,11 +1,13 @@
 use circuit_construction::{Cs, Var};
 
 use crate::context::{FromPublic, Public, ToPublic};
+use crate::util::field_is_bigger;
 
 use ark_ec::AffineCurve;
 use ark_ff::{BigInteger, FftField, FpParameters, PrimeField};
 
 use super::VarPoint;
+
 
 // An (elliptic curve) scalar of a given size.
 // It allows passing a full variable (with no size bound) from one side to the other,
@@ -28,18 +30,6 @@ where
 {
     high_bits: Var<G::BaseField>,       // "high bits" of scalar
     low_bit: Option<Var<G::BaseField>>, // single "low bit" of scalar
-}
-
-impl<G> Scalar<G>
-where
-    G: AffineCurve,
-    G::BaseField: FftField + PrimeField,
-{
-    fn need_low_bit() -> bool {
-        let m_fp = <<G::BaseField as PrimeField>::Params as FpParameters>::MODULUS.into();
-        let m_fr = <<G::ScalarField as PrimeField>::Params as FpParameters>::MODULUS.into();
-        m_fp > m_fr
-    }
 }
 
 impl<G> VarPoint<G>
@@ -85,9 +75,9 @@ where
         let high_bits = inputs.next().expect("Missing high bits").bits;
 
         // read low bits from public input
-        let low_bit = if Self::need_low_bit() {
+        let low_bit = if field_is_bigger::<G::ScalarField, G::BaseField>() {
             let low_bit = inputs.next().expect("Missing low bit");
-            assert_eq!(low_bit.size, 1);
+            assert_eq!(low_bit.size, Some(1));
             Some(low_bit.bits)
         } else {
             None

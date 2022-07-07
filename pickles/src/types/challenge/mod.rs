@@ -53,7 +53,7 @@ where
         assert!(Fr::Params::MODULUS.num_bits() as usize > CHALLENGE_LEN);
 
         let bits = inputs.next().unwrap();
-        assert_eq!(bits.size, CHALLENGE_LEN);
+        assert_eq!(bits.size, Some(CHALLENGE_LEN));
         Ok(Bits { bits: bits.bits })
     }
 }
