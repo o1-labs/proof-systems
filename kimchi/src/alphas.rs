@@ -242,7 +242,7 @@ mod tests {
     use std::{fs, path::Path};
 
     use super::*;
-    use crate::circuits::{gate::GateType, polynomials::foreign_field_mul};
+    use crate::circuits::gate::GateType;
     use mina_curves::pasta::Fp;
 
     // testing [Builder]

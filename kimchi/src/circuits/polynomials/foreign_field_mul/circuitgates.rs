@@ -1,62 +1,68 @@
-///```text
-/// Foreign field multiplication circuit gates for native field $F_n$ and
-/// foreign field $F_f$, where $F_n$ is the generic type parameter `F` in code below
-/// and the foreign field modulus $f$ is store in the constraint system (`cs.formod_field_modulus`).
+/// Foreign field multiplication circuit gates
 ///
-/// For more details please see: https://hackmd.io/37M7qiTaSIKaZjCC5OnM1w?view
+/// These circuit gates are used to constrain that
+///
+///     left_input * right_input = quotient * foreign_modulus + remainder
+///
+/// For more details please see https://hackmd.io/37M7qiTaSIKaZjCC5OnM1w?view
+/// and apply this mapping to the variable names.
+///
+/// The ideas behind this naming is:
+/// - when a variable is split into 3 limbs we use: hi, mid, lo (where high is the most significant)
+/// - when a variable is split in 2 halves we use: top, bottom  (where top is the most significant)
+/// - when the bits of a variable are split in a limb string and some extra bits we use: limb, extra (where extra is the most significant)
+///
+///     left_input_hi  => a2  right_input_hi  => b2  quotient_hi  => q2  remainder_hi  => r2
+///     left_input_mid => a1  right_input_mid => b1  quotient_mid => q1  remainder_mid => r1
+///     left_input_lo  => a0  right_input_lo  => b0  quotient_lo  => q0  remainder_lo  => r0
+///
+///     product_mid_bottom => p10  product_mid_top_limb => p110  product_mid_top_extra => p111
+///     carry_bottom       => v0   carry_top_limb       => v10   carry_top_extra => v11
 ///
 /// Inputs:
-///   * $f$ := foreign field modulus (currently stored in constraint system globally, but that might change)
-///   * `left_input` $~\in F_f$ := left foreign field element multiplicand
-///   * `right_input` $~\in F_f$ := right foreign field element multiplicand
+///   * foreign_modulus        := foreign field modulus (currently stored in constraint system)
+///   * left_input $~\in F_f$  := left foreign field element multiplicand
+///   * right_input $~\in F_f$ := right foreign field element multiplicand
+///
+///   N.b. the native field modulus is obtainable from F, the native field's trait bound below.
 ///
 /// Witness:
-///   * `quotient` $~\in F_f$  := foreign field quotient
-///   * `remainder` $~\in F_f$ := foreign field remainder
-///   * `carry0`               := two bit carry
-///   * `carry1_0`             := low 88 bits of `carry1`
-///   * `carry1_1`             := high 3 bits of `carry1`
+///   * quotient $~\in F_f$  := foreign field quotient
+///   * remainder $~\in F_f$ := foreign field remainder
+///   * carry_bottom         := a two bit carry
+///   * carry_top_limb       := low 88 bits of carry_top
+///   * carry_top_extra      := high 3 bits of carry_top
 ///
-/// Constraint: This gate is used to constrain that
+/// Layout:
 ///
-///       `left_input` $\cdot$ `right_input` = `quotient` $\cdot f + $ `remainder`
+///   Row(s) | Gate              | Witness
+///      0-3 | multi-range-check | left_input multiplicand
+///      4-7 | multi-range-check | right_input multiplicand
+///     8-11 | multi-range-check | quotient
+///    12-15 | multi-range-check | remainder
+///    16-19 | multi-range-check | product_mid_bottom, product_mid_top_limb, carry_top_limb
+///       20 | ForeignFieldMul   | (see below)
+///       21 | Zero              | (see below)
 ///
-///     in $F_f$ by using the native field $F_n$.
+/// The last two rows are layed out like this.
 ///
-/// **Layout**
-///
-/// Overall layout
-///
-/// | Row(s) | Gate                | Witness
-/// -|-|-
-///   0-3    | multi-range-check-0 | multiplicand `a`
-///   4-7    | multi-range-check-1 | multiplicand `b`
-///   8-11   | multi-range-check-2 | `quotient`
-///   12-15  | multi-range-check-3 | `remainder`
-///   16-19  | multi-range-check-4 | `product_mid0`, `product_mid1_0`, `carry1_0`
-///   20     | ForeignFieldMul     | (see below)
-///   21     | Zero                | (see below)
-///
-/// Foreign field multiplication gate layout
-///
-///             Curr                Next
-///   Columns | ForeignFieldMul   | Zero
-///   -|-|-
-///         0 | right_input0   (copy) | left_input0     (copy)
-///         1 | right_input2   (copy) | quotient0       (copy)
-///         2 | left_input2    (copy) | 2^9 * carry1_1  (plookup)
-///         3 | quotient2      (copy) | 2^8 * quotient0 (plookup)
-///         4 | remainder0     (copy) | left_input1     (copy)
-///         5 | remainder1     (copy) | right_input1    (copy)
-///         6 | remainder2     (copy) | quotient1       (copy)
-///         7 | product_mid0          | (unused)
-///         8 | product_mid1_0        | (unused)
-///         9 | product_mid1_1        | (unused)
-///        10 | carry0                | (unused)
-///        11 | carry1_0              | (unused)
-///        12 | carry1_1              | (unused)
-///        13 | (unused)              | (unused)
-///        14 | (unused)              | (unused)
+///    | col | `ForeignFieldMul`       | `Zero`                   |
+///    | --- | ----------------------- | ------------------------ |
+///    |   0 | `left_input_hi`  (copy) | `left_input_mid`  (copy) |
+///    |   1 | `right_input_lo` (copy) | `right_input_mid` (copy) |
+///    |   2 | `carry_shift`    (look) | `left_input_lo`   (copy) |
+///    |   3 | `quotient_shift` (look) | `right_input_lo`  (copy) |
+///    |   4 | `quotient_hi`    (copy) | `remainder_hi`    (copy) |
+///    |   5 | `quotient_mid`   (copy) | `remainder_mid`   (copy) |
+///    |   6 | `quotient_lo`    (copy) | `remainder_lo`    (copy) |
+///    |   7 | `product_mid_top_extra` |                          |
+///    |   8 | `product_mid_top_limb`  |                          |
+///    |   9 | `product_mid_bottom`    |                          |
+///    |  10 | `carry_top_extra`       |                          |
+///    |  11 | `carry_top_limb`        |                          |
+///    |  12 | `carry_bottom`          |                          |
+///    |  13 |                         |                          |
+///    |  14 |                         |                          |
 use std::marker::PhantomData;
 
 use ark_ff::FftField;
@@ -79,60 +85,43 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldMul);
     const CONSTRAINTS: u32 = 7;
 
-    ///   | col | `ForeignFieldMul`   | `Zero`           |
-    ///   | --- | ------------------- | ---------------- |
-    ///   |   0 | `a_low` (copy)      | `a_top` (copy)   |
-    ///   |   1 | `b_low` (copy)      | `b_top` (copy)   |
-    ///   |   2 | `wit_sft` (look)    | `a_mid` (copy)   |
-    ///   |   3 | `quo_sft` (look)    | `b_mid` (copy)   |
-    ///   |   4 | `quo_top` (copy)    | `rem_top` (copy) |
-    ///   |   5 | `quo_mid` (copy)    | `rem_mid` (copy) |
-    ///   |   6 | `quo_low` (copy)    | `rem_low` (copy) |
-    ///   |   7 | `mul_mid_top_carry` |                  |
-    ///   |   8 | `mul_mid_top_limb`  |                  |
-    ///   |   9 | `mul_mid_low`       |                  |
-    ///   |  10 | `wit_top_carry`     |                  |
-    ///   |  11 | `wit_top_limb`      |                  |
-    ///   |  12 | `wit_low`           |                  |
-    ///   |  13 |                     |                  |
-    ///   |  14 |                     |                  |
     fn constraints() -> Vec<E<F>> {
         // WITNESS VALUES
         // witness values from the current and next rows according to the layout
 
         // -> define top, middle and lower limbs of the foreign field element `a`
-        let a_top = witness_next(0);
-        let a_mid = witness_next(2);
-        let a_low = witness_curr(0);
+        let left_input_hi = witness_next(0);
+        let left_input_mid = witness_next(2);
+        let left_input_lo = witness_curr(0);
 
         // -> define top, middle and lower limbs of the foreign field element `b`
-        let b_top = witness_next(1);
-        let b_mid = witness_next(3);
-        let b_low = witness_curr(1);
+        let right_input_hi = witness_next(1);
+        let right_input_mid = witness_next(3);
+        let right_input_lo = witness_curr(1);
 
         // -> define top, middle and lower limbs of the quotient and remainder
-        let quo_top = witness_curr(4);
-        let quo_mid = witness_curr(5);
-        let quo_low = witness_curr(6);
-        let rem_top = witness_next(4);
-        let rem_mid = witness_next(5);
-        let rem_low = witness_next(6);
+        let quotient_hi = witness_curr(4);
+        let quotient_mid = witness_curr(5);
+        let quotient_lo = witness_curr(6);
+        let remainder_hi = witness_next(4);
+        let remainder_mid = witness_next(5);
+        let remainder_lo = witness_next(6);
 
         // -> define shifted values of the quotient and witness values
-        let wit_sft = witness_curr(2);
-        let quo_sft = witness_curr(3);
+        let carry_shift = witness_curr(2);
+        let quotient_shift = witness_curr(3);
 
         // -> define decomposition values of the intermediate multiplication
-        let mul_mid_top_carry = witness_curr(7);
-        let mul_mid_top_limb = witness_curr(8);
-        let mul_mid_low = witness_curr(9);
+        let product_mid_top_extra = witness_curr(7);
+        let product_mid_top_limb = witness_curr(8);
+        let product_mid_bottom = witness_curr(9);
 
         // -> define witness values for the zero sum
-        let wit_top_carry = witness_curr(10);
-        let wit_top_limb = witness_curr(11);
-        let wit_low = witness_curr(12);
+        let carry_top_extra = witness_curr(10);
+        let carry_top_limb = witness_curr(11);
+        let carry_bottom = witness_curr(12);
 
-        // AUXILIARY DEFINITIONS
+        // HELPERS
 
         let mut constraints = vec![];
 
@@ -141,68 +130,97 @@ where
         let two_to_8 = E::from(256);
         let two_to_9 = E::from(512);
         let two_to_88 = E::from(2).pow(88);
-        let two_to_176 = two_to_88.clone().pow(2);
+        let two_to_176 = E::from(2).pow(176);
 
-        // negated foreign field modulus in 3 limbs: top, middle and lower
-        let neg_formod_top = -E::constant(ConstantExpr::ForeignFieldModulus(2));
-        let neg_formod_mid = -E::constant(ConstantExpr::ForeignFieldModulus(1));
-        let neg_formod_low = -E::constant(ConstantExpr::ForeignFieldModulus(0));
+        // negated foreign field modulus in 3 limbs: high, middle and low
+        let neg_foreign_mod_hi = -E::constant(ConstantExpr::ForeignFieldModulus(2));
+        let neg_foreign_mod_mid = -E::constant(ConstantExpr::ForeignFieldModulus(1));
+        let neg_foreign_mod_lo = -E::constant(ConstantExpr::ForeignFieldModulus(0));
 
-        // intermediate products for readability of the constraints
-        //    p0 := a0 * b0 - q0 * f0
-        //    p1 := a0 * b1 + a1 * b0 - q0 * f1 - q1 * f0
-        //    p2 := a0 * b2 + a2 * b0 + a1 * b1 - q0 * f2 - q2 * f0 - q1 * f1
-        let mul_low = a_low.clone() * b_low.clone() + quo_low.clone() * neg_formod_low.clone();
-        let mul_mid = a_low.clone() * b_mid.clone()
-            + a_mid.clone() * b_low.clone()
-            + quo_low.clone() * neg_formod_mid.clone()
-            + quo_mid.clone() * neg_formod_low.clone();
-        let mul_top = a_low.clone() * b_top.clone()
-            + a_top.clone() * b_low.clone()
-            + a_mid.clone() * b_mid.clone()
-            + quo_low.clone() * neg_formod_top.clone()
-            + quo_top.clone() * neg_formod_low.clone()
-            + quo_mid.clone() * neg_formod_mid.clone();
+        // intermediate products for better readability of the constraints
+        //
+        //               p0 := a0 * b0 - q0 * f0
+        //  <=>  product_lo := left_input_lo * right_input_lo - quotient_lo * foreign_mod_lo
+        //
+        //               p1 := a0 * b1 + a1 * b0 - q0 * f1 - q1 * f0
+        //  <=> product_mid := left_input_lo * right_input_mid + left_input_mid * right_input_lo
+        //                   - quotient_lo * foreign_mod_mid - quotient_mid * foreign_mod_lo
+        //
+        //               p2 := a0 * b2 + a2 * b0 + a1 * b1 - q0 * f2 - q2 * f0 - q1 * f1
+        //  <=>  product_hi := left_input_lo * right_input_hi + left_input_hi * right_input_lo + left_input_mid * right_input_mid
+        //                  - quotient_lo * foreign_mod_hi - quotient_hi * foreign_mod_lo - quotient_mid * foreign_mod_mid
+        //
+        let product_lo = left_input_lo.clone() * right_input_lo.clone()
+            + quotient_lo.clone() * neg_foreign_mod_lo.clone();
+        let product_mid = left_input_lo.clone() * right_input_mid.clone()
+            + left_input_mid.clone() * right_input_lo.clone()
+            + quotient_lo.clone() * neg_foreign_mod_mid.clone()
+            + quotient_mid.clone() * neg_foreign_mod_lo.clone();
+        let product_hi = left_input_lo * right_input_hi
+            + left_input_hi * right_input_lo
+            + left_input_mid * right_input_mid
+            + quotient_lo * neg_foreign_mod_hi
+            + quotient_hi.clone() * neg_foreign_mod_lo
+            + quotient_mid * neg_foreign_mod_mid;
 
         // GATE CONSTRAINTS
 
         // 1) Constrain decomposition of middle intermediate product
-        // p11 = 2^88 * p111 + p110
-        // p1 = 2^88 * p11 + p10
-        // 2^88 * (2^88 * cw(10) + cw(9)) + cw(7) = nw(0) * cw(0) + nw(4) * nw(5) - nw(1) * f1 - nw(6) * f0
-        let mul_mid_top = two_to_88.clone() * mul_mid_top_carry.clone() + mul_mid_top_limb.clone();
-        let mul_mid_sum = two_to_88.clone() * mul_mid_top + mul_mid_low.clone();
-        constraints.push(mul_mid - mul_mid_sum.clone());
+        //
+        //                p11 = 2^88 * p111 + p110
+        //                p1' = 2^88 * p11 + p10
+        //                 p1 = p1'
+        //                   <=>
+        //    product_mid_top = 2^88 * product_mid_top_extra + product_mid_top_limb
+        //    product_mid_sum = 2^88 * product_mid_top + product_mid_bottom
+        //    product_mid_sum = product_mid
+        //                   <=>
+        //    product_mid = 2^88 * (  2^88 * product_mid_top_extra + product_mid_top_limb ) + product_mid_bottom
+        //
+        let product_mid_top =
+            two_to_88.clone() * product_mid_top_extra.clone() + product_mid_top_limb;
+        let product_mid_sum =
+            two_to_88.clone() * product_mid_top.clone() + product_mid_bottom.clone();
+        constraints.push(product_mid - product_mid_sum);
 
-        // 2) Constrain carry witness value $v_0 \in [0, 2^2)$
-        constraints.push(crumb(&wit_low.clone()));
+        // 2) Constrain carry witness value `carry_bottom` $~\in [0, 2^2)$
+        constraints.push(crumb(&carry_bottom));
 
-        // 3) Constrain intermediate product fragment $p_{111} \in [0, 2^2)$
-        constraints.push(crumb(&mul_mid_top_carry.clone()));
+        // 3) Constrain intermediate product fragment `product_mid_top_extra` $~\in [0, 2^2)$
+        constraints.push(crumb(&product_mid_top_extra));
 
-        // 4) Constrain $v_11$ value
-        constraints.push(wit_sft - two_to_9 * wit_top_carry.clone());
+        // 4) Constrain `carry_shift` comes from shifting 9 bits the `carry_top_extra` value
+        constraints.push(carry_shift - two_to_9 * carry_top_extra.clone());
 
-        // 5) Constrain shifted $carry_0$ witness value to prove $u_0$'s leading bits are zero
-        //    2^176 * carry0 = p0 - remainder0 + 2^88 ( product_mid0 - remainder1 )
-        //    2^176 * wc(11) = p0 + 2^88 * wc(7) - wc(4) - 2^88 * wc(5)
-        let zero_low =
-            mul_low - rem_low.clone() + two_to_88.clone() * (mul_mid_low.clone() - rem_mid.clone());
-        constraints.push(zero_low - two_to_176 * wit_low.clone());
+        // 5) Check zero prefix of quotient, meaning that `quotient_shift` comes from shifting 8 bits the `quotient_hi` value
+        constraints.push(quotient_shift - two_to_8 * quotient_hi);
 
-        // 6) Constraint shifted $v_1$ witness value to prove $u_1$'s bits are zero
-        //    Let $v_1 = v_{10} + 2^{3} *  v_{11}$
-        //    Check 2^88 * v1 = 2^88 * p111 + p110 + p2 - r2 + v0
-        let wit_top = wit_top_limb.clone() + eight * wit_top_carry;
-        let zero_top = wit_low + mul_mid_sum + mul_top.clone() - rem_top.clone();
-        constraints.push(zero_top - two_to_88 * wit_top);
+        // 6) Constrain `carry_bottom` witness value to prove `zero_bottom`'s least significant bits are zero
+        //    For details on `zero_bottom` ($u_0$) and why this is valid, please see this design document section:
+        //        https://hackmd.io/37M7qiTaSIKaZjCC5OnM1w?view#Intermediate-products
+        //
+        //                  2^176 * v_0 = u_0         = p0 - r0 + 2^88 (p10 - r1)
+        //    <=>  2^176 * carry_bottom = zero_bottom = product_lo - remainder_lo + 2^88 ( product_mid_bottom - remainder_mid )
+        //
+        let zero_bottom =
+            product_lo - remainder_lo + two_to_88.clone() * (product_mid_bottom - remainder_mid);
+        constraints.push(zero_bottom - two_to_176 * carry_bottom.clone());
 
-        // 7) Check zero prefix of quotient
-        constraints.push(quo_sft - two_to_8 * quo_low);
+        // 7) Constraint `carry_top` to prove `zero_top`'s bits are zero
+        //    For details on `zero_top` ($u_1$) and why this is valid, please see this design document section:
+        //        https://hackmd.io/37M7qiTaSIKaZjCC5OnM1w?view#Intermediate-products
+        //
+        //              v_1 = v_{10} + 2^3 * v_{11}$
+        //        2^88 * v1 = u1 = v0 + p11 + p2 - r2
+        //                 <=>
+        //        carry_top = 2^3 * carry_top_extra + carry_top_limb
+        // 2^88 * carry_top = zero_top = carry_bottom + product_mid_top + product_hi - remainder_hi
+        //
+        let carry_top = eight * carry_top_extra + carry_top_limb;
+        let zero_top = carry_bottom + product_mid_top + product_hi - remainder_hi;
+        constraints.push(zero_top - two_to_88 * carry_top);
 
-        // The remaining constraints on next columns 2 and 3 are plookup constraints
-
-        // 8-9) Plookups on the Next row @ columns 2 and 3
+        // 8-9) Plookups on the Curr row @ columns 2 and 3
         constraints
     }
 }
