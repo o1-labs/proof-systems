@@ -1,11 +1,13 @@
-use ark_ff::{FftField, PrimeField};
+use ark_ff::FftField;
 use num_bigint::BigUint;
 
-/// Pack the foreign `modulus` into a vector a field elements of type `F`
-pub fn field_element_to_native_limbs<F: FftField>(modulus: BigUint) -> Vec<F> {
+const LIMB_BITS: usize = 88;
+
+/// Split a foreign field element into a vector of `LIMB_BITS`-bit field elements of type `F`
+pub fn foreign_field_element_to_limbs<F: FftField>(modulus: BigUint) -> Vec<F> {
     let bytes = modulus.to_bytes_le();
     let chunks: Vec<&[u8]> = bytes
-        .chunks(<F::BasePrimeField as PrimeField>::size_in_bits() / 8)
+        .chunks(LIMB_BITS / 8)
         .collect();
     chunks
         .iter()

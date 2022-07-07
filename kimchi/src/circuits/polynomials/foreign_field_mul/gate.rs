@@ -16,7 +16,7 @@ use crate::{
         gate::{CircuitGate, CircuitGateError, CircuitGateResult, GateType},
         lookup::{
             self,
-            lookups::{LookupInfo, LookupsUsed},
+            lookups::{LookupInfo, LookupsUsed}, tables::{LookupTable, GateLookupTable},
         },
         polynomial::COLUMNS,
         wires::{GateWires, Wire},
@@ -400,6 +400,11 @@ pub fn circuit_gate_constraint_count<F: FftField>(typ: GateType) -> u32 {
 /// Get the combined constraints for all foreign field multiplication circuit gates
 pub fn combined_constraints<F: FftField>(alphas: &Alphas<F>) -> E<F> {
     ForeignFieldMul::combined_constraints(alphas)
+}
+
+/// Get the foreign field multiplication lookup table
+pub fn lookup_table<F: FftField>() -> LookupTable<F> {
+    lookup::tables::get_table::<F>(GateLookupTable::RangeCheck)
 }
 
 #[cfg(test)]
