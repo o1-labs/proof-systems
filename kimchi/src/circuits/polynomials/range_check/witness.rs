@@ -2,7 +2,8 @@
 
 use ark_ff::PrimeField;
 use array_init::array_init;
-use o1_utils::FieldHelpers;
+use num_bigint::BigUint;
+use o1_utils::{foreign_field::field_element_to_native_limbs, FieldHelpers};
 
 use crate::circuits::polynomial::COLUMNS;
 
@@ -151,7 +152,7 @@ const fn range_check_row(row: usize) -> [WitnessCell; COLUMNS] {
     ]
 }
 
-fn value_to_limb<F: PrimeField>(fe: F, start: usize, end: usize) -> F {
+pub fn value_to_limb<F: PrimeField>(fe: F, start: usize, end: usize) -> F {
     F::from_bits(&fe.to_bits()[start..end]).expect("failed to deserialize field bits")
 }
 
@@ -209,4 +210,14 @@ pub fn create_witness<F: PrimeField>(v0: F) -> [Vec<F>; COLUMNS] {
     init_range_check_row(&mut witness, 0, v0);
 
     witness
+}
+
+/// Extend an existing witness with a multi-range-check gate for foreign field
+/// elements fe
+pub fn extend_witness<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], fe: BigUint) {
+    let limbs = field_element_to_native_limbs::<F>(fe);
+    let limbs_witness = create_multi_witness(limbs[0], limbs[1], limbs[2]);
+    for col in 0..COLUMNS {
+        witness[col].extend(limbs_witness[col].iter())
+    }
 }

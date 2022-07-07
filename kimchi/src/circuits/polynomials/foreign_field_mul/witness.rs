@@ -2,11 +2,13 @@
 
 use ark_ff::PrimeField;
 use array_init::array_init;
+use num_bigint::BigUint;
+use o1_utils::foreign_field::field_element_to_native_limbs;
 
 use crate::circuits::{
     polynomial::COLUMNS,
     polynomials::range_check::{
-        self, handle_standard_witness_cell, CopyWitnessCell, ZeroWitnessCell,
+        self, handle_standard_witness_cell, value_to_limb, CopyWitnessCell, ZeroWitnessCell,
     },
 };
 
@@ -124,8 +126,11 @@ fn init_foreign_filed_multiplication_row<F: PrimeField>(
                 // TODO: Joseph
             }
             WitnessCell::ValueLimb(value_limb_cell) => {
-                todo!()
-                // TODO: Joseph
+                witness[col][row] = value_to_limb(
+                    value,                 // value
+                    value_limb_cell.start, // starting bit
+                    value_limb_cell.end,   // ending bit (exclusive)
+                );
             }
         }
     }
@@ -133,10 +138,19 @@ fn init_foreign_filed_multiplication_row<F: PrimeField>(
 
 /// Create a foreign field multiplication witness
 /// Input: multiplicands left_input and right_input
-pub fn create_witness<F: PrimeField>(left_input: F, right_input: F) -> [Vec<F>; COLUMNS] {
-    let mut witness: [Vec<F>; COLUMNS] = array_init(|_| vec![F::zero(); 21]);
+pub fn create_witness<F: PrimeField>(
+    left_input: BigUint,
+    right_input: BigUint,
+) -> [Vec<F>; COLUMNS] {
+    let mut witness: [Vec<F>; COLUMNS] = array_init(|_| vec![F::zero(); 2]);
 
-    // Joseph: TODO
+    // Create multi-range-check witness for left_input and right_input
+    range_check::extend_witness(&mut witness, left_input);
+    range_check::extend_witness(&mut witness, right_input);
+
+    // TODO: Compute quotient and remainder
+
+    // Create foreign field multiplication rows witness
 
     witness
 }
