@@ -20,8 +20,7 @@ use super::compute_intermediate_products;
 //     * Shift     := value is copied from another cell and right shifted (little-endian)
 //     * ValueLimb := contiguous range of bits extracted a value
 //
-// TODO: Currently located in range check, but could be moved
-//       elsewhere so other gates could reuse
+// TODO: Currently located in range check, but could be moved elsewhere
 pub enum WitnessCell {
     Standard(range_check::WitnessCell),
     Shift(ShiftWitnessCell),
@@ -196,6 +195,7 @@ pub fn create_witness<F: PrimeField>(
         foreign_modulus_limbs[2],
     );
 
+    // Define some helpers
     let two_to_88 = F::from(2u32.pow(88));
     let two_to_176 = two_to_88 * two_to_88;
     let carry_bottom = product_lo / two_to_176;
