@@ -319,11 +319,6 @@ where
             })
             .collect();
 
-        let evals = vec![
-            self.evals[0].combine(powers_of_eval_points_for_chunks[0]),
-            self.evals[1].combine(powers_of_eval_points_for_chunks[1]),
-        ];
-
         //~ 1. Compute the evaluation of $ft(\zeta)$.
         let ft_eval0 = {
             let zkp = index.zkpm().evaluate(&zeta);
@@ -341,11 +336,11 @@ where
                 .next()
                 .expect("missing power of alpha for permutation");
 
-            let init = (evals[0].w[PERMUTS - 1] + gamma) * evals[1].z * alpha0 * zkp;
-            let mut ft_eval0 = evals[0]
+            let init = (self.evals[0].w[PERMUTS - 1] + gamma) * self.evals[1].z * alpha0 * zkp;
+            let mut ft_eval0 = self.evals[0]
                 .w
                 .iter()
-                .zip(evals[0].s.iter())
+                .zip(self.evals[0].s.iter())
                 .map(|(w, s)| (beta * s) + w + gamma)
                 .fold(init, |x, y| x * y);
 
@@ -355,16 +350,16 @@ where
                 G::ScalarField::zero()
             };
 
-            ft_eval0 -= evals[0]
+            ft_eval0 -= self.evals[0]
                 .w
                 .iter()
                 .zip(index.shift.iter())
                 .map(|(w, s)| gamma + (beta * zeta * s) + w)
-                .fold(alpha0 * zkp * evals[0].z, |x, y| x * y);
+                .fold(alpha0 * zkp * self.evals[0].z, |x, y| x * y);
 
             let numerator = ((zeta1m1 * alpha1 * (zeta - index.w()))
                 + (zeta1m1 * alpha2 * (zeta - G::ScalarField::one())))
-                * (G::ScalarField::one() - evals[0].z);
+                * (G::ScalarField::one() - self.evals[0].z);
 
             let denominator = (zeta - index.w()) * (zeta - G::ScalarField::one());
             let denominator = denominator.inverse().expect("negligible probability");
@@ -383,7 +378,7 @@ where
                 &index.linearization.constant_term,
                 index.domain,
                 zeta,
-                &evals,
+                &self.evals,
                 &cs,
             )
             .unwrap();
@@ -401,20 +396,23 @@ where
             es.push((p_eval.clone(), None));
             es.push((vec![ft_eval0, ft_eval1], None));
             es.push((
-                self.evals.iter().map(|e| e.z.clone()).collect::<Vec<_>>(),
-                None,
-            ));
-            es.push((
                 self.evals
                     .iter()
-                    .map(|e| e.generic_selector.clone())
+                    .map(|e| vec![e.z.clone()])
                     .collect::<Vec<_>>(),
                 None,
             ));
             es.push((
                 self.evals
                     .iter()
-                    .map(|e| e.poseidon_selector.clone())
+                    .map(|e| vec![e.generic_selector.clone()])
+                    .collect::<Vec<_>>(),
+                None,
+            ));
+            es.push((
+                self.evals
+                    .iter()
+                    .map(|e| vec![e.poseidon_selector.clone()])
                     .collect::<Vec<_>>(),
                 None,
             ));
@@ -424,7 +422,7 @@ where
                         (
                             self.evals
                                 .iter()
-                                .map(|e| e.w[c].clone())
+                                .map(|e| vec![e.w[c].clone()])
                                 .collect::<Vec<_>>(),
                             None,
                         )
@@ -437,7 +435,7 @@ where
                         (
                             self.evals
                                 .iter()
-                                .map(|e| e.s[c].clone())
+                                .map(|e| vec![e.s[c].clone()])
                                 .collect::<Vec<_>>(),
                             None,
                         )
@@ -529,20 +527,11 @@ where
         oracles,
         all_alphas,
         p_eval,
-        powers_of_eval_points_for_chunks,
         polys,
         zeta1: zeta_to_domain_size,
         ft_eval0,
         ..
     } = proof.oracles::<EFqSponge, EFrSponge>(index, &p_comm)?;
-
-    //~ 1. Combine the chunked polynomials' evaluations
-    //~    (TODO: most likely only the quotient polynomial is chunked)
-    //~    with the right powers of $\zeta^n$ and $(\zeta * \omega)^n$.
-    let evals = vec![
-        proof.evals[0].combine(powers_of_eval_points_for_chunks[0]),
-        proof.evals[1].combine(powers_of_eval_points_for_chunks[1]),
-    ];
 
     //~ 4. Compute the commitment to the linearized polynomial $f$.
     //~    To do this, add the constraints of all of the gates, of the permutation,
@@ -559,8 +548,8 @@ where
         let alphas = all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
 
         let mut commitments = vec![&index.sigma_comm[PERMUTS - 1]];
-        let mut scalars = vec![ConstraintSystem::<G::ScalarField>::perm_scalars(
-            &evals,
+        let mut scalars = vec![ConstraintSystem::perm_scalars(
+            &proof.evals,
             oracles.beta,
             oracles.gamma,
             alphas,
@@ -572,10 +561,10 @@ where
             let alphas =
                 all_alphas.get_alphas(ArgumentType::Gate(GateType::Generic), generic::CONSTRAINTS);
 
-            let generic_scalars = &ConstraintSystem::<G::ScalarField>::gnrc_scalars(
+            let generic_scalars = &ConstraintSystem::gnrc_scalars(
                 alphas,
-                &evals[0].w,
-                evals[0].generic_selector,
+                &proof.evals[0].w,
+                proof.evals[0].generic_selector,
             );
 
             let generic_com = index.coefficients_comm.iter().take(generic_scalars.len());
@@ -599,9 +588,14 @@ where
             };
 
             for (col, tokens) in &index.linearization.index_terms {
-                let scalar =
-                    PolishToken::evaluate(tokens, index.domain, oracles.zeta, &evals, &constants)
-                        .expect("should evaluate");
+                let scalar = PolishToken::evaluate(
+                    tokens,
+                    index.domain,
+                    oracles.zeta,
+                    &proof.evals,
+                    &constants,
+                )
+                .expect("should evaluate");
 
                 use Column::*;
                 match col {
@@ -734,53 +728,43 @@ where
     //~~ - permutation commitment
     evaluations.push(Evaluation {
         commitment: proof.commitments.z_comm.clone(),
-        evaluations: proof.evals.iter().map(|e| e.z.clone()).collect(),
+        evaluations: proof.evals.iter().map(|e| vec![e.z.clone()]).collect(),
         degree_bound: None,
     });
 
     //~~ - index commitments that use the coefficients
-    evaluations.push(Evaluation {
-        commitment: index.generic_comm.clone(),
-        evaluations: proof
-            .evals
-            .iter()
-            .map(|e| e.generic_selector.clone())
-            .collect(),
-        degree_bound: None,
-    });
-    evaluations.push(Evaluation {
-        commitment: index.psm_comm.clone(),
-        evaluations: proof
-            .evals
-            .iter()
-            .map(|e| e.poseidon_selector.clone())
-            .collect(),
-        degree_bound: None,
-    });
+    if !index.generic_comm.is_empty() {
+        evaluations.push(Evaluation {
+            commitment: index.generic_comm.clone(),
+            evaluations: proof
+                .evals
+                .iter()
+                .map(|e| vec![e.generic_selector.clone()])
+                .collect(),
+            degree_bound: None,
+        });
+    }
+
+    if !index.psm_comm.is_empty() {
+        evaluations.push(Evaluation {
+            commitment: index.psm_comm.clone(),
+            evaluations: proof
+                .evals
+                .iter()
+                .map(|e| vec![e.poseidon_selector.clone()])
+                .collect(),
+            degree_bound: None,
+        });
+    }
 
     //~~ - witness commitments
-    evaluations.extend(
-        proof
-            .commitments
-            .w_comm
-            .iter()
-            .zip(
-                (0..COLUMNS)
-                    .map(|i| {
-                        proof
-                            .evals
-                            .iter()
-                            .map(|e| e.w[i].clone())
-                            .collect::<Vec<_>>()
-                    })
-                    .collect::<Vec<_>>(),
-            )
-            .map(|(c, e)| Evaluation {
-                commitment: c.clone(),
-                evaluations: e,
-                degree_bound: None,
-            }),
-    );
+    for (i, comm) in proof.commitments.w_comm.iter().enumerate() {
+        evaluations.push(Evaluation {
+            commitment: comm.clone(),
+            evaluations: proof.evals.iter().map(|e| vec![e.w[i].clone()]).collect(),
+            degree_bound: None,
+        });
+    }
 
     //~~ - sigma commitments
     evaluations.extend(
@@ -793,7 +777,7 @@ where
                         proof
                             .evals
                             .iter()
-                            .map(|e| e.s[i].clone())
+                            .map(|e| vec![e.s[i].clone()])
                             .collect::<Vec<_>>()
                     })
                     .collect::<Vec<_>>(),
@@ -835,7 +819,7 @@ where
         ) {
             evaluations.push(Evaluation {
                 commitment: comm.clone(),
-                evaluations: vec![evals0, evals1],
+                evaluations: vec![vec![evals0], vec![evals1]],
                 degree_bound: None,
             });
         }
@@ -843,7 +827,10 @@ where
         // add evaluations of the aggreg polynomial
         evaluations.push(Evaluation {
             commitment: lookup_comms.aggreg.clone(),
-            evaluations: vec![lookup_eval0.aggreg.clone(), lookup_eval1.aggreg.clone()],
+            evaluations: vec![
+                vec![lookup_eval0.aggreg.clone()],
+                vec![lookup_eval1.aggreg.clone()],
+            ],
             degree_bound: None,
         });
 
@@ -868,7 +855,10 @@ where
         // add evaluation of the table polynomial
         evaluations.push(Evaluation {
             commitment: table_comm,
-            evaluations: vec![lookup_eval0.table.clone(), lookup_eval1.table.clone()],
+            evaluations: vec![
+                vec![lookup_eval0.table.clone()],
+                vec![lookup_eval1.table.clone()],
+            ],
             degree_bound: None,
         });
 
@@ -891,7 +881,7 @@ where
 
             evaluations.push(Evaluation {
                 commitment: runtime.clone(),
-                evaluations: vec![runtime_eval0, runtime_eval1],
+                evaluations: vec![vec![runtime_eval0], vec![runtime_eval1]],
                 degree_bound: None,
             });
         }
