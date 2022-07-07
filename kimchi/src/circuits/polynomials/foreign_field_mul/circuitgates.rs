@@ -44,25 +44,25 @@
 ///       20 | ForeignFieldMul   | (see below)
 ///       21 | Zero              | (see below)
 ///
-/// The last two rows are layed out like this.
+/// The last two rows are layed out like this
 ///
-///    | col | `ForeignFieldMul`       | `Zero`                   |
-///    | --- | ----------------------- | ------------------------ |
-///    |   0 | `left_input_hi`  (copy) | `left_input_mid`  (copy) |
-///    |   1 | `right_input_lo` (copy) | `right_input_mid` (copy) |
-///    |   2 | `carry_shift`    (look) | `left_input_lo`   (copy) |
-///    |   3 | `quotient_shift` (look) | `right_input_lo`  (copy) |
-///    |   4 | `quotient_hi`    (copy) | `remainder_hi`    (copy) |
-///    |   5 | `quotient_mid`   (copy) | `remainder_mid`   (copy) |
-///    |   6 | `quotient_lo`    (copy) | `remainder_lo`    (copy) |
-///    |   7 | `product_mid_top_extra` |                          |
-///    |   8 | `product_mid_top_limb`  |                          |
-///    |   9 | `product_mid_bottom`    |                          |
-///    |  10 | `carry_top_extra`       |                          |
-///    |  11 | `carry_top_limb`        |                          |
-///    |  12 | `carry_bottom`          |                          |
-///    |  13 |                         |                          |
-///    |  14 |                         |                          |
+///    | col | `ForeignFieldMul`         | `Zero`                   |
+///    | --- | ------------------------- | ------------------------ |
+///    |   0 | `left_input_lo`  (copy)   | `left_input_hi`   (copy) |
+///    |   1 | `left_input_mid` (copy)   | `right_input_lo`  (copy) |
+///    |   2 | `carry_shift`    (lookup) | `right_input_mid` (copy) |
+///    |   3 | `quotient_shift` (lookup) | `right_input_hi`  (copy) |
+///    |   4 | `quotient_lo`    (copy)   | `remainder_lo`    (copy) |
+///    |   5 | `quotient_mid`   (copy)   | `remainder_mid`   (copy) |
+///    |   6 | `quotient_hi`    (copy)   | `remainder_hi`    (copy) |
+///    |   7 | `product_mid_bottom`      |                          |
+///    |   8 | `product_mid_top_limb`    |                          |
+///    |   9 | `product_mid_top_extra`   |                          |
+///    |  10 | `carry_bottom`            |                          |
+///    |  11 | `carry_top_limb`          |                          |
+///    |  12 | `carry_top_extra`         |                          |
+///    |  13 |                           |                          |
+///    |  14 |                           |                          |
 use std::marker::PhantomData;
 
 use ark_ff::FftField;
@@ -91,35 +91,35 @@ where
 
         // -> define top, middle and lower limbs of the foreign field element `a`
         let left_input_lo = witness_curr(0);
-        let left_input_mid = witness_curr(1);
-        let left_input_hi = witness_curr(2);
+        let left_input_mid = witness_next(1);
+        let left_input_hi = witness_next(0);
 
         // -> define top, middle and lower limbs of the foreign field element `b`
-        let right_input_lo = witness_curr(3);
-        let right_input_mid = witness_curr(4);
-        let right_input_hi = witness_curr(5);
+        let right_input_lo = witness_next(1);
+        let right_input_mid = witness_next(2);
+        let right_input_hi = witness_next(3);
 
         // -> define top, middle and lower limbs of the quotient and remainder
-        let quotient_lo = witness_curr(6);
-        let quotient_mid = witness_next(0);
-        let quotient_hi = witness_next(1);
+        let quotient_lo = witness_curr(4);
+        let quotient_mid = witness_curr(5);
+        let quotient_hi = witness_curr(6);
         let remainder_lo = witness_next(4);
         let remainder_mid = witness_next(5);
         let remainder_hi = witness_next(6);
 
         // -> define shifted values of the quotient and witness values
-        let carry_shift = witness_next(2);
-        let quotient_shift = witness_next(3);
+        let carry_shift = witness_curr(2);
+        let quotient_shift = witness_curr(3);
 
         // -> define decomposition values of the intermediate multiplication
-        let product_mid_top_extra = witness_curr(7);
+        let product_mid_bottom = witness_curr(7);
         let product_mid_top_limb = witness_curr(8);
-        let product_mid_bottom = witness_curr(9);
+        let product_mid_top_extra = witness_curr(9);
 
         // -> define witness values for the zero sum
-        let carry_top_extra = witness_curr(10);
+        let carry_bottom = witness_curr(10);
         let carry_top_limb = witness_curr(11);
-        let carry_bottom = witness_curr(12);
+        let carry_top_extra = witness_curr(12);
 
         // HELPERS
 
