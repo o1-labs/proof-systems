@@ -90,26 +90,26 @@ where
         // witness values from the current and next rows according to the layout
 
         // -> define top, middle and lower limbs of the foreign field element `a`
-        let left_input_hi = witness_next(0);
-        let left_input_mid = witness_next(2);
         let left_input_lo = witness_curr(0);
+        let left_input_mid = witness_curr(1);
+        let left_input_hi = witness_curr(2);
 
         // -> define top, middle and lower limbs of the foreign field element `b`
-        let right_input_hi = witness_next(1);
-        let right_input_mid = witness_next(3);
-        let right_input_lo = witness_curr(1);
+        let right_input_lo = witness_curr(3);
+        let right_input_mid = witness_curr(4);
+        let right_input_hi = witness_curr(5);
 
         // -> define top, middle and lower limbs of the quotient and remainder
-        let quotient_hi = witness_curr(4);
-        let quotient_mid = witness_curr(5);
         let quotient_lo = witness_curr(6);
-        let remainder_hi = witness_next(4);
+        let quotient_mid = witness_next(0);
+        let quotient_hi = witness_next(1);
+        let remainder_lo = witness_next(4);
         let remainder_mid = witness_next(5);
-        let remainder_lo = witness_next(6);
+        let remainder_hi = witness_next(6);
 
         // -> define shifted values of the quotient and witness values
-        let carry_shift = witness_curr(2);
-        let quotient_shift = witness_curr(3);
+        let carry_shift = witness_next(2);
+        let quotient_shift = witness_next(3);
 
         // -> define decomposition values of the intermediate multiplication
         let product_mid_top_extra = witness_curr(7);
@@ -220,7 +220,7 @@ where
         let zero_top = carry_bottom + product_mid_top + product_hi - remainder_hi;
         constraints.push(zero_top - two_to_88 * carry_top);
 
-        // 8-9) Plookups on the Curr row @ columns 2 and 3
+        // 8-9) Plookups on the Next row @ columns 2 and 3
         constraints
     }
 }
