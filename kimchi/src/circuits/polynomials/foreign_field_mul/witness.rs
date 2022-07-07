@@ -9,6 +9,7 @@ use crate::circuits::{
 use ark_ff::PrimeField;
 use array_init::array_init;
 use num_bigint::BigUint;
+use num_integer::Integer;
 use o1_utils::foreign_field::LIMB_BITS;
 
 // Extend standard WitnessCell to support foreign field multiplication
@@ -154,6 +155,7 @@ fn init_foreign_field_mul_row<F: PrimeField>(
 pub fn create_witness<F: PrimeField>(
     left_input: BigUint,
     right_input: BigUint,
+    foreign_modulus: BigUint,
 ) -> [Vec<F>; COLUMNS] {
     let mut witness = array_init(|_| vec![F::zero(); 0]);
 
