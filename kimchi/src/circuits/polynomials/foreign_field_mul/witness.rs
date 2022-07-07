@@ -39,7 +39,7 @@ impl ShiftWitnessCell {
 }
 
 // Witness cell containing a limb of a value
-enum ValueType {
+pub enum ValueType {
     ProductMid,
     Carry,
 }
@@ -80,7 +80,7 @@ const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 2] = [
         WitnessCell::Standard(CopyWitnessCell::create(0, 0)), // left_input_lo
         WitnessCell::Standard(CopyWitnessCell::create(1, 0)), // left_input_mid
         WitnessCell::Standard(CopyWitnessCell::create(2, 0)), // left_input_hi
-        ShiftWitnessCell::create(10, 0, 9),                   // carry_shift
+        ShiftWitnessCell::create(20, 0, 9),                   // carry_shift
         ShiftWitnessCell::create(10, 0, 8),                   // quotient_shift
         // TODO: Anais
         WitnessCell::Standard(ZeroWitnessCell::create()),
@@ -115,7 +115,7 @@ const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 2] = [
     ],
 ];
 
-fn init_foreign_filed_mul0_row<F: PrimeField>(
+fn init_foreign_field_mul_row<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
     row: usize,
     product_mid: F,
@@ -144,13 +144,6 @@ fn init_foreign_filed_mul0_row<F: PrimeField>(
     }
 }
 
-fn init_zero_row<F: PrimeField>(
-    witness: &mut [Vec<F>; COLUMNS],
-    row: usize
-) {
-    // TODO
-}
-
 
 /// Create a foreign field multiplication witness
 /// Input: multiplicands left_input and right_input
@@ -173,7 +166,10 @@ pub fn create_witness<F: PrimeField>(
         w.extend(std::iter::repeat(F::zero()).take(2));
     }
 
-    init_foreign_filed_mul0_row(&mut witness, 20, product_mid, carry);
+    // ForeignFieldMul row
+    init_foreign_field_mul_row(&mut witness, 20, product_mid, carry);
+    // Zero row
+    init_foreign_field_mul_row(&mut witness, 21, F::zero(), F::zero());
 
     witness
 }
