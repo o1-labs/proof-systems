@@ -2,6 +2,7 @@ use std::ops::{Deref, DerefMut};
 
 use circuit_construction::{Constants, Cs, Var};
 
+use ark_ec::AffineCurve;
 use ark_ff::{FftField, PrimeField};
 
 use crate::context::Public;
@@ -193,6 +194,9 @@ where
     CsFp: Cs<Fp>,
     CsFr: Cs<Fr>,
 {
+    /// Creates a scope in which the roles of the fields is flipped,
+    /// this enables accessing "the other side" and automatically returning.
+    ///
     /// Note: this is a "zero cost" operation, which adds no constraints to the proof system
     pub fn flip<T, F: FnOnce(&mut Context<Fr, Fp, CsFr, CsFp>) -> T>(&mut self, scope: F) -> T {
         // flip the inner

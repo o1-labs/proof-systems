@@ -4,19 +4,12 @@ use circuit_construction::{Cs, Var};
 
 use super::Bits;
 
-use crate::context::{FromPublic, Public, ToPublic};
+use crate::context::{FromPublic, Pass, Public, ToPublic};
 use crate::transcript::{Challenge, VarSponge};
 
 /// A challenge which is a sequence of bits: b_0, ..., b_l representing: \sum_i 2^i b_i
 pub struct FieldChallenge<F: FftField + PrimeField> {
     inner: Bits<F>,
-}
-
-/// A bit challenge is already in "field" format (no conversion)
-impl<F: FftField + PrimeField> Into<Var<F>> for FieldChallenge<F> {
-    fn into(self) -> Var<F> {
-        self.inner.bits
-    }
 }
 
 impl<F: FftField + PrimeField> Challenge<F> for FieldChallenge<F> {
@@ -27,21 +20,43 @@ impl<F: FftField + PrimeField> Challenge<F> for FieldChallenge<F> {
     }
 }
 
-impl<F: FftField + PrimeField> ToPublic<F> for FieldChallenge<F> {
-    fn to_public(&self) -> Vec<Public<F>> {
-        self.inner.to_public()
+/// A bit challenge is already in "field" format (no conversion)
+impl<F: FftField + PrimeField> Into<Var<F>> for FieldChallenge<F> {
+    fn into(self) -> Var<F> {
+        self.inner.bits
     }
 }
 
-impl<Fq: FftField + PrimeField, Fr: FftField + PrimeField> FromPublic<Fq, Fr>
-    for FieldChallenge<Fr>
+// a GLV challenge can be passed to itself
+impl<Fr, Fp> Pass<FieldChallenge<Fr>> for FieldChallenge<Fp>
+where
+    Fp: FftField + PrimeField,
+    Fr: FftField + PrimeField,
+{
+}
+
+impl<Fp, Fr> ToPublic<Fp, Fr> for FieldChallenge<Fp>
+where
+    Fp: FftField + PrimeField,
+    Fr: FftField + PrimeField,
+{
+    fn to_public<Cp: Cs<Fp>>(&self, cp: &mut Cp) -> Vec<Public<Fp>> {
+        <Bits<Fp> as ToPublic<Fp, Fr>>::to_public::<Cp>(&self.inner, cp)
+    }
+}
+
+impl<Fp, Fr> FromPublic<Fp, Fr> for FieldChallenge<Fr>
+where
+    Fp: FftField + PrimeField,
+    Fr: FftField + PrimeField,
 {
     type Error = ();
 
-    fn from_public<C: Cs<Fr>, I: Iterator<Item = Public<Fq>>>(
+    fn from_public<C: Cs<Fr>, I: Iterator<Item = Public<Fr>>>(
         cs: &mut C,
         inputs: &mut I,
     ) -> Result<Self, Self::Error> {
-        Bits::from_public(cs, inputs).map(|inner| Self { inner })
+        <Bits<Fr> as FromPublic<Fp, Fr>>::from_public::<C, I>(cs, inputs)
+            .map(|inner| Self { inner })
     }
 }

@@ -22,8 +22,15 @@ struct Bits<F: FftField + PrimeField> {
     bits: Var<F>,
 }
 
-impl<Fp: FftField + PrimeField> ToPublic<Fp> for Bits<Fp> {
-    fn to_public(&self) -> Vec<Public<Fp>> {
+impl<Fp, Fr> ToPublic<Fp, Fr> for Bits<Fp>
+where
+    Fp: FftField + PrimeField,
+    Fr: FftField + PrimeField,
+{
+    // it always fits
+    fn to_public<Cp: Cs<Fp>>(&self, _: &mut Cp) -> Vec<Public<Fp>> {
+        assert!(Fp::Params::MODULUS.num_bits() as usize > CHALLENGE_LEN);
+        assert!(Fr::Params::MODULUS.num_bits() as usize > CHALLENGE_LEN);
         vec![Public {
             size: Some(CHALLENGE_LEN),
             bits: self.bits,
@@ -31,29 +38,23 @@ impl<Fp: FftField + PrimeField> ToPublic<Fp> for Bits<Fp> {
     }
 }
 
-impl<Fq: FftField + PrimeField, Fr: FftField + PrimeField> FromPublic<Fq, Fr> for Bits<Fr> {
+impl<Fp, Fr> FromPublic<Fp, Fr> for Bits<Fr>
+where
+    Fp: FftField + PrimeField,
+    Fr: FftField + PrimeField,
+{
     type Error = ();
 
-    fn from_public<C: Cs<Fr>, I: Iterator<Item = Public<Fq>>>(
+    fn from_public<C: Cs<Fr>, I: Iterator<Item = Public<Fr>>>(
         cs: &mut C,
         inputs: &mut I,
     ) -> Result<Self, Self::Error> {
-        assert!(Fq::Params::MODULUS.num_bits() as usize > CHALLENGE_LEN);
+        assert!(Fp::Params::MODULUS.num_bits() as usize > CHALLENGE_LEN);
         assert!(Fr::Params::MODULUS.num_bits() as usize > CHALLENGE_LEN);
 
-        // bit decompose Fq element
         let bits = inputs.next().unwrap();
-        let bits = bits.bits.value.map(|v| v.into_repr().to_bits_le());
-
-        // converts a slice of bits (minimal representative) to a field element
-        fn from_bits<F: FftField + PrimeField>(bits: &[bool]) -> F {
-            F::from_repr(<F as PrimeField>::BigInt::from_bits_le(bits)).unwrap()
-        }
-
-        // pack into Fr
-        Ok(Bits {
-            bits: cs.var(|| from_bits(&bits.unwrap()[..CHALLENGE_LEN])),
-        })
+        assert_eq!(bits.size, CHALLENGE_LEN);
+        Ok(Bits { bits: bits.bits })
     }
 }
 

@@ -4,12 +4,20 @@ use circuit_construction::{Cs, Var};
 
 use super::Bits;
 
-use crate::context::{FromPublic, Public, ToPublic};
+use crate::context::{FromPublic, Pass, Public, ToPublic};
 use crate::transcript::{Challenge, VarSponge};
 
 /// A collection of CHALLENGE_LEN bits representing a GLV decomposition
 pub struct GLVChallenge<F: FftField + PrimeField> {
     inner: Bits<F>,
+}
+
+// a GLV challenge can be passed to itself
+impl<Fr, Fp> Pass<GLVChallenge<Fr>> for GLVChallenge<Fp>
+where
+    Fp: FftField + PrimeField,
+    Fr: FftField + PrimeField,
+{
 }
 
 impl<F: FftField + PrimeField> Challenge<F> for GLVChallenge<F> {
@@ -20,20 +28,29 @@ impl<F: FftField + PrimeField> Challenge<F> for GLVChallenge<F> {
     }
 }
 
-impl<F: FftField + PrimeField> ToPublic<F> for GLVChallenge<F> {
-    fn to_public(&self) -> Vec<Public<F>> {
-        self.inner.to_public()
+impl<Fp, Fr> ToPublic<Fp, Fr> for GLVChallenge<Fp>
+where
+    Fp: FftField + PrimeField,
+    Fr: FftField + PrimeField,
+{
+    fn to_public<Cp: Cs<Fp>>(&self, cp: &mut Cp) -> Vec<Public<Fp>> {
+        <Bits<Fp> as ToPublic<Fp, Fr>>::to_public::<Cp>(&self.inner, cp)
     }
 }
 
-impl<Fq: FftField + PrimeField, Fr: FftField + PrimeField> FromPublic<Fq, Fr> for GLVChallenge<Fr> {
+impl<Fp, Fr> FromPublic<Fp, Fr> for GLVChallenge<Fr>
+where
+    Fp: FftField + PrimeField,
+    Fr: FftField + PrimeField,
+{
     type Error = ();
 
-    fn from_public<C: Cs<Fr>, I: Iterator<Item = Public<Fq>>>(
+    fn from_public<C: Cs<Fr>, I: Iterator<Item = Public<Fr>>>(
         cs: &mut C,
         inputs: &mut I,
     ) -> Result<Self, Self::Error> {
-        Bits::from_public(cs, inputs).map(|inner| Self { inner })
+        <Bits<Fr> as FromPublic<Fp, Fr>>::from_public::<C, I>(cs, inputs)
+            .map(|inner| Self { inner })
     }
 }
 
