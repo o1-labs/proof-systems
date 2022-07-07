@@ -91,7 +91,7 @@ where
 
         // -> define top, middle and lower limbs of the foreign field element `a`
         let left_input_lo = witness_curr(0);
-        let left_input_mid = witness_next(1);
+        let left_input_mid = witness_curr(1);
         let left_input_hi = witness_next(0);
 
         // -> define top, middle and lower limbs of the foreign field element `b`
