@@ -9,7 +9,10 @@ use crate::circuits::{
 use ark_ff::PrimeField;
 use array_init::array_init;
 use num_bigint::BigUint;
+use num_integer::Integer;
 use o1_utils::foreign_field::{foreign_field_element_to_limbs, LIMB_BITS};
+
+use super::compute_intermediate_products;
 
 // Extend standard WitnessCell to support foreign field multiplication
 // specific cell types
@@ -41,7 +44,8 @@ impl ShiftWitnessCell {
 // Witness cell containing a limb of a value
 pub enum ValueType {
     ProductMid,
-    Carry,
+    CarryBottom,
+    CarryTop,
 }
 pub struct ValueLimbWitnessCell {
     kind: ValueType,
@@ -87,9 +91,9 @@ const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 2] = [
         ValueLimbWitnessCell::create(ValueType::ProductMid, 0, LIMB_BITS), // product_mid_bottom
         ValueLimbWitnessCell::create(ValueType::ProductMid, LIMB_BITS, 2 * LIMB_BITS), // product_mid_top_limb
         ValueLimbWitnessCell::create(ValueType::ProductMid, 2 * LIMB_BITS, 2 * LIMB_BITS + 2), // product_mid_top_extra
-        WitnessCell::Standard(range_check::ValueWitnessCell::create()), // carry_bottom
-        ValueLimbWitnessCell::create(ValueType::Carry, 0, LIMB_BITS),   // carry_top_limb
-        ValueLimbWitnessCell::create(ValueType::Carry, LIMB_BITS, LIMB_BITS + 3), // carry_top_extra
+        ValueLimbWitnessCell::create(ValueType::CarryBottom, 0, 2), // carry_bottom
+        ValueLimbWitnessCell::create(ValueType::CarryTop, 0, LIMB_BITS), // carry_top_limb
+        ValueLimbWitnessCell::create(ValueType::CarryTop, LIMB_BITS, LIMB_BITS + 3), // carry_top_extra
         WitnessCell::Standard(ZeroWitnessCell::create()),
         WitnessCell::Standard(ZeroWitnessCell::create()),
     ],
@@ -117,7 +121,8 @@ fn init_foreign_field_mul_row<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
     row: usize,
     product_mid: F,
-    carry: F,
+    carry_bottom: F,
+    carry_top: F,
 ) {
     for col in 0..COLUMNS {
         match &WITNESS_SHAPE[row][col] {
@@ -138,7 +143,8 @@ fn init_foreign_field_mul_row<F: PrimeField>(
                 witness[col][row] = value_to_limb(
                     match value_limb_cell.kind {
                         // value
-                        ValueType::Carry => carry,
+                        ValueType::CarryBottom => carry_bottom,
+                        ValueType::CarryTop => carry_top,
                         ValueType::ProductMid => product_mid,
                     },
                     value_limb_cell.start, // starting bit
@@ -162,32 +168,35 @@ pub fn create_witness<F: PrimeField>(
     range_check::extend_witness(&mut witness, left_input.clone());
     range_check::extend_witness(&mut witness, right_input.clone());
 
-    // TODO: Compute quotient and remainder
-    let quotient = (left_input.clone() * right_input.clone()) / foreign_modulus.clone();
-    let remainder = (left_input.clone() * right_input.clone()) % foreign_modulus.clone();
+    // Compute quotient and remainder and add to witness
+    let (quotient, remainder) =
+        (left_input.clone() * right_input.clone()).div_rem(&foreign_modulus);
+    range_check::extend_witness(&mut witness, quotient.clone());
+    range_check::extend_witness(&mut witness, remainder.clone());
 
     let left_input_limbs = foreign_field_element_to_limbs::<F>(left_input);
     let right_input_limbs = foreign_field_element_to_limbs::<F>(right_input);
-    let ffmod_limbs = foreign_field_element_to_limbs::<F>(foreign_modulus);
+    let foreign_modulus_limbs = foreign_field_element_to_limbs::<F>(foreign_modulus);
     let quotient_limbs = foreign_field_element_to_limbs::<F>(quotient);
     let remainder_limbs = foreign_field_element_to_limbs::<F>(remainder);
 
-    let product_hi: F = left_input_limbs[0] * right_input_limbs[2]
-        + left_input_limbs[2] * right_input_limbs[1]
-        + left_input_limbs[0] * right_input_limbs[1]
-        - quotient_limbs[0] * ffmod_limbs[2]
-        - quotient_limbs[2] * ffmod_limbs[0]
-        - quotient_limbs[1] * ffmod_limbs[1];
+    // Compute nonzero intermediate products
+    let (product_lo, product_mid, product_hi) = compute_intermediate_products(
+        left_input_limbs[0],
+        left_input_limbs[1],
+        left_input_limbs[2],
+        right_input_limbs[0],
+        right_input_limbs[1],
+        right_input_limbs[2],
+        quotient_limbs[0],
+        quotient_limbs[1],
+        quotient_limbs[2],
+        foreign_modulus_limbs[0],
+        foreign_modulus_limbs[1],
+        foreign_modulus_limbs[2],
+    );
 
-    let product_mid: F = left_input_limbs[0] * right_input_limbs[1]
-        + left_input_limbs[1] * right_input_limbs[0]
-        - quotient_limbs[0] * ffmod_limbs[1]
-        - quotient_limbs[1] * ffmod_limbs[0];
-
-    let product_lo: F =
-        left_input_limbs[0] * right_input_limbs[0] - quotient_limbs[0] * ffmod_limbs[0];
-
-    let two_to_88 = F::from(2u128.pow(88));
+    let two_to_88 = F::from(2u32.pow(88));
     let two_to_176 = two_to_88 * two_to_88;
     let carry_bottom = product_lo / two_to_176;
     let product_mid_top = product_mid / two_to_88;
@@ -199,9 +208,9 @@ pub fn create_witness<F: PrimeField>(
     }
 
     // ForeignFieldMul row
-    init_foreign_field_mul_row(&mut witness, 20, product_mid, carry_top);
+    init_foreign_field_mul_row(&mut witness, 20, product_mid, carry_bottom, carry_top);
     // Zero row
-    init_foreign_field_mul_row(&mut witness, 21, F::zero(), F::zero());
+    init_foreign_field_mul_row(&mut witness, 21, F::zero(), F::zero(), F::zero());
 
     witness
 }

@@ -765,6 +765,7 @@ dependencies = [
  "mina-curves",
  "num-bigint",
  "num-derive",
+ "num-integer",
  "num-traits",
  "o1-utils",
  "ocaml",

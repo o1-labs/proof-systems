@@ -10,7 +10,8 @@
 /// The ideas behind this naming is:
 /// - when a variable is split into 3 limbs we use: hi, mid, lo (where high is the most significant)
 /// - when a variable is split in 2 halves we use: top, bottom  (where top is the most significant)
-/// - when the bits of a variable are split in a limb string and some extra bits we use: limb, extra (where extra is the most significant)
+/// - when the bits of a variable are split in a limb string and some extra bits we use: limb,
+///   extra (where extra is the most significant)
 ///
 ///     left_input_hi  => a2  right_input_hi  => b2  quotient_hi  => q2  remainder_hi  => r2
 ///     left_input_mid => a1  right_input_mid => b1  quotient_mid => q1  remainder_mid => r1
@@ -73,6 +74,60 @@ use crate::circuits::{
     gate::GateType,
 };
 
+/// Compute nonzero intermediate products
+///
+/// For details see this section of the design document
+///
+///     https://hackmd.io/37M7qiTaSIKaZjCC5OnM1w?view#Intermediate-products
+///
+/// Note: Thanks to the below trait bound, this code is reusable
+///       as constraint code or as witness generation code
+#[allow(clippy::too_many_arguments)] // Our use of many arguments is intentional
+pub fn compute_intermediate_products<
+    F: std::ops::Mul<Output = F> + std::ops::Sub<Output = F> + std::ops::Add<Output = F> + Clone,
+>(
+    left_input_lo: F,
+    left_input_mid: F,
+    left_input_hi: F,
+    right_input_lo: F,
+    right_input_mid: F,
+    right_input_hi: F,
+    quotient_lo: F,
+    quotient_mid: F,
+    quotient_hi: F,
+    foreign_modulus_lo: F,
+    foreign_modulus_mid: F,
+    foreign_modulus_hi: F,
+) -> (F, F, F) {
+    //
+    //               p0 := a0 * b0 - q0 * f0
+    //  <=>  product_lo := left_input_lo * right_input_lo - quotient_lo * foreign_modulus_lo
+    //
+    //               p1 := a0 * b1 + a1 * b0 - q0 * f1 - q1 * f0
+    //  <=> product_mid := left_input_lo * right_input_mid + left_input_mid * right_input_lo
+    //                   - quotient_lo * foreign_modulus_mid - quotient_mid * foreign_modulus_lo
+    //
+    //               p2 := a0 * b2 + a2 * b0 + a1 * b1 - q0 * f2 - q2 * f0 - q1 * f1
+    //  <=>  product_hi := left_input_lo * right_input_hi + left_input_hi * right_input_lo
+    //                     + left_input_mid * right_input_mid - quotient_lo * foreign_modulus_hi
+    //                     - quotient_hi * foreign_modulus_lo - quotient_mid * foreign_modulus_mid
+    //
+    let product_lo = left_input_lo.clone() * right_input_lo.clone()
+        - quotient_lo.clone() * foreign_modulus_lo.clone();
+    let product_mid = left_input_lo.clone() * right_input_mid.clone()
+        + left_input_mid.clone() * right_input_lo.clone()
+        - quotient_lo.clone() * foreign_modulus_mid
+        - quotient_mid.clone() * foreign_modulus_lo.clone(); // TODO: Check algebra sign
+    let product_hi = left_input_lo * right_input_hi
+        + left_input_hi * right_input_lo
+        + left_input_mid * right_input_mid
+        - quotient_lo * foreign_modulus_hi.clone()
+        - quotient_hi * foreign_modulus_lo
+        - quotient_mid * foreign_modulus_hi; // TODO: Check algebra sign
+
+    (product_lo, product_mid, product_hi)
+}
+
 /// ForeignFieldMul0
 ///    Rows: Curr + Next
 #[derive(Default)]
@@ -133,37 +188,25 @@ where
         let two_to_176 = E::from(2).pow(176);
 
         // negated foreign field modulus in 3 limbs: high, middle and low
-        let neg_foreign_mod_hi = -E::constant(ConstantExpr::ForeignFieldModulus(2));
-        let neg_foreign_mod_mid = -E::constant(ConstantExpr::ForeignFieldModulus(1));
-        let neg_foreign_mod_lo = -E::constant(ConstantExpr::ForeignFieldModulus(0));
+        let foreign_modulus_lo = E::constant(ConstantExpr::ForeignFieldModulus(0));
+        let foreign_modulus_mid = E::constant(ConstantExpr::ForeignFieldModulus(1));
+        let foreign_modulus_hi = E::constant(ConstantExpr::ForeignFieldModulus(2));
 
         // intermediate products for better readability of the constraints
-        //
-        //               p0 := a0 * b0 - q0 * f0
-        //  <=>  product_lo := left_input_lo * right_input_lo - quotient_lo * foreign_mod_lo
-        //
-        //               p1 := a0 * b1 + a1 * b0 - q0 * f1 - q1 * f0
-        //  <=> product_mid := left_input_lo * right_input_mid + left_input_mid * right_input_lo
-        //                   - quotient_lo * foreign_mod_mid - quotient_mid * foreign_mod_lo
-        //
-        //               p2 := a0 * b2 + a2 * b0 + a1 * b1 - q0 * f2 - q2 * f0 - q1 * f1
-        //  <=>  product_hi := left_input_lo * right_input_hi + left_input_hi * right_input_lo + left_input_mid * right_input_mid
-        //                  - quotient_lo * foreign_mod_hi - quotient_hi * foreign_mod_lo - quotient_mid * foreign_mod_mid
-        //
-        let product_lo = left_input_lo.clone() * right_input_lo.clone()
-            + quotient_lo.clone() * neg_foreign_mod_lo.clone();
-        let product_mid = left_input_lo.clone() * right_input_mid.clone()
-            + left_input_mid.clone() * right_input_lo.clone()
-            + quotient_lo.clone() * neg_foreign_mod_mid.clone()
-            + quotient_mid.clone() * neg_foreign_mod_lo.clone();
-        let product_hi = left_input_lo * right_input_hi
-            + left_input_hi * right_input_lo
-            + left_input_mid * right_input_mid
-            + quotient_lo * neg_foreign_mod_hi
-            + quotient_hi.clone() * neg_foreign_mod_lo
-            + quotient_mid * neg_foreign_mod_mid;
-
-        // GATE CONSTRAINTS
+        let (product_lo, product_mid, product_hi) = compute_intermediate_products(
+            left_input_lo,
+            left_input_mid,
+            left_input_hi,
+            right_input_lo,
+            right_input_mid,
+            right_input_hi,
+            quotient_lo,
+            quotient_mid,
+            quotient_hi.clone(),
+            foreign_modulus_lo,
+            foreign_modulus_mid,
+            foreign_modulus_hi,
+        );
 
         // 1) Constrain decomposition of middle intermediate product
         //
@@ -192,11 +235,12 @@ where
         // 4) Constrain `carry_shift` comes from shifting 9 bits the `carry_top_extra` value
         constraints.push(carry_shift - two_to_9 * carry_top_extra.clone());
 
-        // 5) Check zero prefix of quotient, meaning that `quotient_shift` comes from shifting 8 bits the `quotient_hi` value
+        // 5) Check zero prefix of quotient, meaning that `quotient_shift` comes from
+        //    shifting 8 bits the `quotient_hi` value
         constraints.push(quotient_shift - two_to_8 * quotient_hi);
 
-        // 6) Constrain `carry_bottom` witness value to prove `zero_bottom`'s least significant bits are zero
-        //    For details on `zero_bottom` ($u_0$) and why this is valid, please see this design document section:
+        // 6) Constrain `carry_bottom` witness value to prove `zero_bottom`'s LSB are zero
+        //    For details on `zero_bottom` ($u_0$) and why this is valid, please see this:
         //        https://hackmd.io/37M7qiTaSIKaZjCC5OnM1w?view#Intermediate-products
         //
         //                  2^176 * v_0 = u_0         = p0 - r0 + 2^88 (p10 - r1)
