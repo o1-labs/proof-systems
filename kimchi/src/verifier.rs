@@ -717,7 +717,13 @@ where
     //~~ - permutation commitment
     evaluations.push(Evaluation {
         commitment: proof.commitments.z_comm.clone(),
-        evaluations: proof.evals.iter().map(|e| e.z.clone()).collect(),
+        evaluations: proof
+            .other_evals
+            .as_ref()
+            .unwrap()
+            .iter()
+            .map(|e| vec![e.z.clone()])
+            .collect(),
         degree_bound: None,
     });
 
@@ -725,12 +731,31 @@ where
     evaluations.push(Evaluation {
         commitment: index.generic_comm.clone(),
         evaluations: proof
-            .evals
+            .other_evals
+            .as_ref()
+            .unwrap()
             .iter()
-            .map(|e| e.generic_selector.clone())
+            .map(|e| vec![e.generic_selector.clone()])
             .collect(),
         degree_bound: None,
     });
+
+    {
+        println!("other:");
+        proof
+            .other_evals
+            .as_ref()
+            .unwrap()
+            .iter()
+            .for_each(|e| println!("{:?}", vec![e.poseidon_selector]));
+
+        println!("orign:");
+        proof
+            .evals
+            .iter()
+            .for_each(|e| println!("{:?}", e.poseidon_selector));
+    }
+
     evaluations.push(Evaluation {
         commitment: index.psm_comm.clone(),
         evaluations: proof
@@ -742,54 +767,34 @@ where
     });
 
     //~~ - witness commitments
-    let thing: Vec<_> = proof
-        .commitments
-        .w_comm
-        .iter()
-        .zip(
-            (0..COLUMNS)
-                .map(|i| {
-                    proof
-                        .evals
-                        .iter()
-                        .map(|e| e.w[i].clone())
-                        .collect::<Vec<_>>()
-                })
-                .collect::<Vec<_>>(),
-        )
-        .map(|(c, e)| Evaluation {
-            commitment: c.clone(),
-            evaluations: e,
+    for (i, comm) in proof.commitments.w_comm.iter().enumerate() {
+        evaluations.push(Evaluation {
+            commitment: comm.clone(),
+            evaluations: proof
+                .other_evals
+                .as_ref()
+                .unwrap()
+                .iter()
+                .map(|e| vec![e.w[i].clone()])
+                .collect(),
             degree_bound: None,
-        })
-        .collect();
-
-    dbg!(&thing[0].evaluations);
-
-    evaluations.extend(thing);
+        });
+    }
 
     //~~ - sigma commitments
-    evaluations.extend(
-        index
-            .sigma_comm
-            .iter()
-            .zip(
-                (0..PERMUTS - 1)
-                    .map(|i| {
-                        proof
-                            .evals
-                            .iter()
-                            .map(|e| e.s[i].clone())
-                            .collect::<Vec<_>>()
-                    })
-                    .collect::<Vec<_>>(),
-            )
-            .map(|(c, e)| Evaluation {
-                commitment: c.clone(),
-                evaluations: e,
-                degree_bound: None,
-            }),
-    );
+    for (i, comm) in index.sigma_comm.iter().take(PERMUTS - 1).enumerate() {
+        evaluations.push(Evaluation {
+            commitment: comm.clone(),
+            evaluations: proof
+                .other_evals
+                .as_ref()
+                .unwrap()
+                .iter()
+                .map(|e| vec![e.s[i].clone()])
+                .collect(),
+            degree_bound: None,
+        });
+    }
 
     //~~ - lookup commitments
     if let Some(li) = &index.lookup_index {

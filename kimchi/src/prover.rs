@@ -939,6 +939,37 @@ where
             [chunked_evals_zeta, chunked_evals_zeta_omega]
         };
 
+        let other_evals = {
+            let evals_zeta = crate::proof::other::ProofEvaluations::<G::ScalarField> {
+                w: array_init(|i| witness_poly[i].evaluate(&zeta)),
+
+                z: z_poly.evaluate(&zeta),
+
+                s: array_init(|i| index.cs.sigmam[0..PERMUTS - 1][i].evaluate(&zeta)),
+
+                lookup: None,
+
+                generic_selector: index.cs.genericm.evaluate(&zeta),
+
+                poseidon_selector: index.cs.psm.evaluate(&zeta),
+            };
+            let evals_zeta_omega = crate::proof::other::ProofEvaluations::<G::ScalarField> {
+                w: array_init(|i| witness_poly[i].evaluate(&zeta_omega)),
+
+                z: z_poly.evaluate(&zeta_omega),
+
+                s: array_init(|i| index.cs.sigmam[0..PERMUTS - 1][i].evaluate(&zeta_omega)),
+
+                lookup: None,
+
+                generic_selector: index.cs.genericm.evaluate(&zeta_omega),
+
+                poseidon_selector: index.cs.psm.evaluate(&zeta_omega),
+            };
+
+            [evals_zeta, evals_zeta_omega]
+        };
+
         let zeta_to_srs_len = zeta.pow(&[index.max_poly_size as u64]);
         let zeta_omega_to_srs_len = zeta.pow(&[index.max_poly_size as u64]);
         let zeta_to_domain_size = zeta.pow(&[d1_size as u64]);
@@ -1198,6 +1229,7 @@ where
                 lookup,
             },
             proof,
+            other_evals: Some(other_evals),
             evals: chunked_evals,
             ft_eval1,
             public,
@@ -1441,6 +1473,7 @@ pub mod caml {
                 commitments: caml_pp.commitments.into(),
                 proof: caml_pp.proof.into(),
                 evals: [caml_pp.evals.0.into(), caml_pp.evals.1.into()],
+                other_evals: None,
                 ft_eval1: caml_pp.ft_eval1.into(),
                 public: caml_pp.public.into_iter().map(Into::into).collect(),
                 prev_challenges: caml_pp

@@ -2,14 +2,78 @@
 
 use crate::circuits::wires::{COLUMNS, PERMUTS};
 use ark_ec::AffineCurve;
-use ark_ff::{FftField, Zero};
+use ark_ff::{FftField, Field, Zero};
 use ark_poly::univariate::DensePolynomial;
 use array_init::array_init;
 use commitment_dlog::{commitment::PolyComm, evaluation_proof::OpeningProof};
 use o1_utils::ExtendedDensePolynomial;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 
+pub mod other {
+    use super::*;
+    //~ spec:startcode
+    /// Evaluations of lookup polynomials
+    #[serde_as]
+    #[derive(Clone, Serialize, Deserialize)]
+    pub struct LookupEvaluations<F>
+    where
+        F: Field,
+    {
+        /// sorted lookup table polynomial
+        #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+        pub sorted: Vec<F>,
+
+        /// lookup aggregation polynomial
+        #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+        pub aggreg: F,
+
+        // TODO: May be possible to optimize this away?
+        /// lookup table polynomial
+        #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+        pub table: F,
+
+        /// Optionally, a runtime table polynomial.
+        #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+        pub runtime: Option<F>,
+    }
+
+    // TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
+    /// Polynomial evaluations contained in a `ProverProof`.
+    /// - **Chunked evaluations** `Field` is instantiated with vectors with a length that equals the length of the chunk
+    /// - **Non chunked evaluations** `Field` is instantiated with a field, so they are single-sized
+    #[serde_as]
+    #[derive(Clone, Serialize, Deserialize)]
+    pub struct ProofEvaluations<F>
+    where
+        F: Field,
+    {
+        /// witness polynomials
+        #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
+        pub w: [F; COLUMNS],
+
+        /// permutation polynomial
+        #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+        pub z: F,
+
+        /// permutation polynomials
+        /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
+        #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS - 1]")]
+        pub s: [F; PERMUTS - 1],
+
+        /// lookup-related evaluations
+        #[serde(bound = "LookupEvaluations<F>: Serialize + DeserializeOwned")]
+        pub lookup: Option<LookupEvaluations<F>>,
+
+        /// evaluation of the generic selector polynomial
+        #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+        pub generic_selector: F,
+
+        /// evaluation of the poseidon selector polynomial
+        #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+        pub poseidon_selector: F,
+    }
+}
 //~ spec:startcode
 /// Evaluations of lookup polynomials
 #[serde_as]
@@ -108,6 +172,8 @@ pub struct ProverProof<G: AffineCurve> {
     /// Two evaluations over a number of committed polynomials
     // TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }
     pub evals: [ProofEvaluations<Vec<G::ScalarField>>; 2],
+
+    pub other_evals: Option<[other::ProofEvaluations<G::ScalarField>; 2]>,
 
     /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
