@@ -548,8 +548,11 @@ where
             let alphas =
                 all_alphas.get_alphas(ArgumentType::Gate(GateType::Generic), generic::CONSTRAINTS);
 
-            let generic_scalars =
-                &ConstraintSystem::gnrc_scalars(alphas, &proof.evals[0].w, proof.evals[0].generic_selector);
+            let generic_scalars = &ConstraintSystem::gnrc_scalars(
+                alphas,
+                &proof.evals[0].w,
+                proof.evals[0].generic_selector,
+            );
 
             let generic_com = index.coefficients_comm.iter().take(generic_scalars.len());
 
@@ -572,9 +575,14 @@ where
             };
 
             for (col, tokens) in &index.linearization.index_terms {
-                let scalar =
-                    PolishToken::evaluate(tokens, index.domain, oracles.zeta, &proof.evals, &constants)
-                        .expect("should evaluate");
+                let scalar = PolishToken::evaluate(
+                    tokens,
+                    index.domain,
+                    oracles.zeta,
+                    &proof.evals,
+                    &constants,
+                )
+                .expect("should evaluate");
 
                 use Column::*;
                 match col {
@@ -732,29 +740,23 @@ where
     });
 
     //~~ - witness commitments
-    evaluations.extend(
-        proof
-            .commitments
-            .w_comm
-            .iter()
-            .zip(
-                (0..COLUMNS)
-                    .map(|i| {
-                        proof
-                            .evals
-                            .iter()
-                            .map(|e| vec![e.w[i].clone()])
-                            .collect::<Vec<_>>()
-                    })
-                    .collect::<Vec<_>>(),
-            )
-            .map(|(c, e)| Evaluation {
-                commitment: c.clone(),
-                evaluations: e,
-                degree_bound: None,
-            }),
-    );
+    /*
+    {
+        evaluations.push(Evaluation {
+            commitment: proof.commitments.w_comm[0].clone(),
+            evaluations: proof.evals.iter().map(|e| vec![e.w[0].clone()]).collect(),
+            degree_bound: None,
+        });
 
+        dbg!(format!("{}", proof.evals[0].w[0]));
+    }
+        for (i, comm) in proof.commitments.w_comm.iter().enumerate() {
+            evaluations.push(Evaluation {
+                commitment: comm.clone(),
+                evaluations: proof.evals.iter().map(|e| vec![e.w[i].clone()]).collect(),
+                degree_bound: None,
+            });
+        }
     //~~ - sigma commitments
     evaluations.extend(
         index
@@ -875,6 +877,7 @@ where
             });
         }
     }
+    */
 
     // prepare for the opening proof verification
     let evaluation_points = vec![oracles.zeta, oracles.zeta * index.domain.group_gen];
