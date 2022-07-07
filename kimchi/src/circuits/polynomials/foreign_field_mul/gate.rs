@@ -16,7 +16,8 @@ use crate::{
         gate::{CircuitGate, CircuitGateError, CircuitGateResult, GateType},
         lookup::{
             self,
-            lookups::{LookupInfo, LookupsUsed}, tables::{LookupTable, GateLookupTable},
+            lookups::{LookupInfo, LookupsUsed},
+            tables::{GateLookupTable, LookupTable},
         },
         polynomial::COLUMNS,
         wires::{GateWires, Wire},
