@@ -9,7 +9,12 @@ use oracle::poseidon::ArithmeticSpongeParams;
 
 ///Represents additional information that a curve needs in order to be used with Kimchi
 pub trait KimchiCurve: CommitmentCurve {
-    type OtherCurve: KimchiCurve<ScalarField = Self::BaseField>;
+    /// The other curve that forms the cycle used for recursion
+    type OtherCurve: KimchiCurve<
+        ScalarField = Self::BaseField,
+        BaseField = Self::ScalarField,
+        OtherCurve = Self,
+    >;
 
     /// Provides the sponge params to be used with this curve
     /// If the params for the base field are needed, they can be obtained from [KimchiCurve::OtherCurve]
