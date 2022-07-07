@@ -27,28 +27,28 @@
 ///
 /// Overall layout
 ///
-/// | Row(s) | Gate                | Witness
+/// | Row(s) | Gate              | Witness
 /// -|-|-
-///   0-3    | multi-range-check   | left_input multiplicand
-///   4-7    | multi-range-check   | right_input multiplicand
-///   8-11   | multi-range-check   | quotient
-///   12-15  | multi-range-check   | remainder
-///   16-19  | multi-range-check   | product_mid0, product_mid1_0, carry1_0
-///   20     | ForeignFieldMul     | (see below)
-///   21     | Zero                | (see below)
+///      0-3 | multi-range-check | left_input multiplicand
+///      4-7 | multi-range-check | right_input multiplicand
+///     8-11 | multi-range-check | quotient
+///    12-15 | multi-range-check | remainder
+///    16-19 | multi-range-check | product_mid0, product_mid1_0, carry1_0
+///       20 | ForeignFieldMul   | (see below)
+///       21 | Zero              | (see below)
 ///
 /// Foreign field multiplication gate layout
 ///
-///             Curr                Next
-///   Columns | ForeignFieldMul   | Zero
+///             Curr                    Next
+///   Columns | ForeignFieldMul       | Zero
 ///   -|-|-
-///         0 | right_input0   (copy) | left_input0     (copy)
-///         1 | right_input2   (copy) | quotient2       (copy)
+///         0 | left_input0    (copy) | quotient1       (copy)
+///         1 | left_input1    (copy) | quotient2       (copy)
 ///         2 | left_input2    (copy) | 2^9 * carry1_1  (plookup)
-///         3 | quotient0      (copy) | 2^8 * quotient2 (plookup)
-///         4 | remainder0     (copy) | left_input1     (copy)
-///         5 | remainder1     (copy) | right_input1    (copy)
-///         6 | remainder2     (copy) | quotient1       (copy)
+///         3 | right_input0   (copy) | 2^8 * quotient2 (plookup)
+///         4 | right_input1   (copy) | remainder0      (copy)
+///         5 | right_input2   (copy) | remainder1      (copy)
+///         6 | quotient0      (copy) | remainder2      (copy)
 ///         7 | product_mid0          | (unused)
 ///         8 | product_mid1_0        | (unused)
 ///         9 | product_mid1_1        | (unused)
@@ -57,6 +57,7 @@
 ///        12 | carry1_1              | (unused)
 ///        13 | (unused)              | (unused)
 ///        14 | (unused)              | (unused)
+///
 use std::marker::PhantomData;
 
 use ark_ff::FftField;
@@ -82,13 +83,13 @@ where
     fn constraints() -> Vec<E<F>> {
         // Columns | Curr           | Next
         // -|-|-
-        //       0 | right_input0   | left_input0
-        //       1 | right_input2   | quotient2
+        //       0 | left_input0    | quotient1
+        //       1 | left_input1    | quotient2
         //       2 | left_input2    | 2^9 * carry1_1
-        //       3 | quotient0      | 2^8 * quotient2
-        //       4 | remainder0     | left_input1
-        //       5 | remainder1     | right_input1
-        //       6 | remainder2     | quotient1
+        //       3 | right_input0   | 2^8 * quotient2
+        //       4 | right_input1   | remainder0
+        //       5 | right_input2   | remainder1
+        //       6 | quotient0      | remainder2
         //       7 | product_mid0   | (unused)
         //       8 | product_mid1_0 | (unused)
         //       9 | product_mid1_1 | (unused)
@@ -96,35 +97,40 @@ where
         //      11 | carry1_0       | (unused)
         //      12 | carry1_1       | (unused)
 
-        // For clarity, load the Curr row variables into well-named variables
-        let right_input0 = witness_curr(0);
-        let right_input2 = witness_curr(1);
+        // Load the Curr row variables into well-named variables
+        let left_input0 = witness_curr(0);
+        let left_input1 = witness_curr(1);
         let left_input2 = witness_curr(2);
-        let quotient0 = witness_curr(3);
-        let remainder0 = witness_curr(4);
-        let remainder1 = witness_curr(5);
-        let remainder2 = witness_curr(6);
+        let right_input0 = witness_curr(3);
+        let right_input2 = witness_curr(4);
+        let right_input1 = witness_curr(5);
+        let quotient0 = witness_curr(6);
         let product_mid0 = witness_curr(7);
-        let product_mid1_0 = witness_curr(9);
-        let product_mid1_1 = witness_curr(10);
-        let carry0 = witness_curr(11);
-        let carry1_0 = witness_curr(13);
-        let carry1_1 = witness_curr(14);
+        let product_mid1_0 = witness_curr(8);
+        let product_mid1_1 = witness_curr(9);
+        let carry0 = witness_curr(10);
+        let carry1_0 = witness_curr(11);
+        let carry1_1 = witness_curr(12);
 
-        let left_input0 = witness_next(0);
+        // Load the Next row variables into well-named variables
+        let quotient1 = witness_next(0);
         let quotient2 = witness_next(1);
         let carry1_1_shift = witness_next(2);
         let quotient2_shift = witness_next(3);
-        let left_input1 = witness_next(4);
-        let right_input1 = witness_next(5);
-        let quotient1 = witness_next(6);
+        let remainder0 = witness_next(4);
+        let remainder1 = witness_next(5);
+        let remainder2 = witness_next(6);
 
         let mut constraints = vec![];
+
+        // Helpers
         let eight = E::from(8);
         let two_to_8 = E::from(256);
         let two_to_9 = E::from(512);
         let two_to_88 = E::from(2).pow(88);
         let two_to_176 = two_to_88.clone().pow(2);
+
+        // Foreign field modulus
         let foreign_modulus0 = E::constant(ConstantExpr::ForeignFieldModulus(0));
         let foreign_modulus1 = E::constant(ConstantExpr::ForeignFieldModulus(1));
         let foreign_modulus2 = E::constant(ConstantExpr::ForeignFieldModulus(1));
