@@ -6,26 +6,22 @@ use array_init::array_init;
 use crate::circuits::{
     polynomial::COLUMNS,
     polynomials::range_check::{
-        self, handle_standard_witness_cell, CopyWitnessCell, LimbWitnessCell, ZeroWitnessCell,
+        self, handle_standard_witness_cell, CopyWitnessCell, ZeroWitnessCell,
     },
 };
-
-use ark_ec::AffineCurve;
-use mina_curves::pasta::pallas;
-type PallasField = <pallas::Affine as AffineCurve>::BaseField;
 
 // Extend standard WitnessCell to support foreign field multiplication
 // specific cell types
 //
 //     * Shift     := value is copied from another cell and right shifted (little-endian)
-//     * ValueLimb := contiguous range of bits extracted from value passed as argument
+//     * ValueLimb := contiguous range of bits extracted a value
 //
 // TODO: Currently located in range check, but could be moved
 //       elsewhere so other gates could reuse
-pub enum WitnessCell<F> {
+pub enum WitnessCell {
     Standard(range_check::WitnessCell),
     Shift(ShiftWitnessCell),
-    ValueLimb(ValueLimbWitnessCell<F>),
+    ValueLimb(ValueLimbWitnessCell),
 }
 
 // Witness cell copied and shifted from another
@@ -36,21 +32,20 @@ pub struct ShiftWitnessCell {
 }
 
 impl ShiftWitnessCell {
-    pub const fn create<F>(row: usize, col: usize, shift: usize) -> WitnessCell<F> {
+    pub const fn create(row: usize, col: usize, shift: usize) -> WitnessCell {
         WitnessCell::Shift(ShiftWitnessCell { row, col, shift })
     }
 }
 
 // Witness cell containing a limb of a value
-pub struct ValueLimbWitnessCell<F> {
-    value: F,
+pub struct ValueLimbWitnessCell {
     start: usize,
     end: usize,
 }
 
-impl<F> ValueLimbWitnessCell<F> {
-    pub const fn create(value: F, start: usize, end: usize) -> WitnessCell<F> {
-        WitnessCell::ValueLimb(ValueLimbWitnessCell { value, start, end })
+impl ValueLimbWitnessCell {
+    pub const fn create(start: usize, end: usize) -> WitnessCell {
+        WitnessCell::ValueLimb(ValueLimbWitnessCell { start, end })
     }
 }
 
@@ -73,7 +68,7 @@ impl<F> ValueLimbWitnessCell<F> {
 //
 //     so that most significant limb, q2, is in W[2][0].
 //
-const WITNESS_SHAPE: [[WitnessCell<PallasField>; COLUMNS]; 2] = [
+const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 2] = [
     // ForeignFieldMul row
     [
         WitnessCell::Standard(CopyWitnessCell::create(0, 0)), // left_input_lo
@@ -84,7 +79,7 @@ const WITNESS_SHAPE: [[WitnessCell<PallasField>; COLUMNS]; 2] = [
         // TODO: Anais
         WitnessCell::Standard(ZeroWitnessCell::create()),
         WitnessCell::Standard(ZeroWitnessCell::create()),
-        WitnessCell::Standard(LimbWitnessCell::create(8, 0, 86, 88)), // quotient_lo
+        ValueLimbWitnessCell::create(0, 88), // product_mid_bottom
         WitnessCell::Standard(ZeroWitnessCell::create()),
         WitnessCell::Standard(ZeroWitnessCell::create()),
         WitnessCell::Standard(ZeroWitnessCell::create()),
@@ -137,7 +132,7 @@ fn init_foreign_filed_multiplication_row<F: PrimeField>(
 }
 
 /// Create a foreign field multiplication witness
-/// Input: three values: v0, v1 and v2
+/// Input: multiplicands left_input and right_input
 pub fn create_witness<F: PrimeField>(left_input: F, right_input: F) -> [Vec<F>; COLUMNS] {
     let mut witness: [Vec<F>; COLUMNS] = array_init(|_| vec![F::zero(); 21]);
 
