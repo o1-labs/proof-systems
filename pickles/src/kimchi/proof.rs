@@ -19,7 +19,9 @@ where
     F: FftField + PrimeField,
 {
     fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut VarSponge<F>) {
-        self.0.iter().map(|chal| sponge.absorb(cs, chal));
+        for chal in self.0.iter() {
+            sponge.absorb(cs, chal)
+        }
     }
 }
 
