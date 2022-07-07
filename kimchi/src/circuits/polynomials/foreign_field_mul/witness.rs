@@ -9,8 +9,7 @@ use crate::circuits::{
 use ark_ff::PrimeField;
 use array_init::array_init;
 use num_bigint::BigUint;
-use num_integer::Integer;
-use o1_utils::foreign_field::LIMB_BITS;
+use o1_utils::foreign_field::{foreign_field_element_to_limbs, LIMB_BITS};
 
 // Extend standard WitnessCell to support foreign field multiplication
 // specific cell types
@@ -160,12 +159,39 @@ pub fn create_witness<F: PrimeField>(
     let mut witness = array_init(|_| vec![F::zero(); 0]);
 
     // Create multi-range-check witness for left_input and right_input
-    range_check::extend_witness(&mut witness, left_input);
-    range_check::extend_witness(&mut witness, right_input);
+    range_check::extend_witness(&mut witness, left_input.clone());
+    range_check::extend_witness(&mut witness, right_input.clone());
 
     // TODO: Compute quotient and remainder
-    let product_mid = F::zero();
-    let carry = F::zero();
+    let quotient = (left_input.clone() * right_input.clone()) / foreign_modulus.clone();
+    let remainder = (left_input.clone() * right_input.clone()) % foreign_modulus.clone();
+
+    let left_input_limbs = foreign_field_element_to_limbs::<F>(left_input);
+    let right_input_limbs = foreign_field_element_to_limbs::<F>(right_input);
+    let ffmod_limbs = foreign_field_element_to_limbs::<F>(foreign_modulus);
+    let quotient_limbs = foreign_field_element_to_limbs::<F>(quotient);
+    let remainder_limbs = foreign_field_element_to_limbs::<F>(remainder);
+
+    let product_hi: F = left_input_limbs[0] * right_input_limbs[2]
+        + left_input_limbs[2] * right_input_limbs[1]
+        + left_input_limbs[0] * right_input_limbs[1]
+        - quotient_limbs[0] * ffmod_limbs[2]
+        - quotient_limbs[2] * ffmod_limbs[0]
+        - quotient_limbs[1] * ffmod_limbs[1];
+
+    let product_mid: F = left_input_limbs[0] * right_input_limbs[1]
+        + left_input_limbs[1] * right_input_limbs[0]
+        - quotient_limbs[0] * ffmod_limbs[1]
+        - quotient_limbs[1] * ffmod_limbs[0];
+
+    let product_lo: F =
+        left_input_limbs[0] * right_input_limbs[0] - quotient_limbs[0] * ffmod_limbs[0];
+
+    let two_to_88 = F::from(2u128.pow(88));
+    let two_to_176 = two_to_88 * two_to_88;
+    let carry_bottom = product_lo / two_to_176;
+    let product_mid_top = product_mid / two_to_88;
+    let carry_top = carry_bottom + product_mid_top + product_hi - remainder_limbs[2];
 
     // Create foreign field multiplication and zero witness rows
     for w in &mut witness {
@@ -173,7 +199,7 @@ pub fn create_witness<F: PrimeField>(
     }
 
     // ForeignFieldMul row
-    init_foreign_field_mul_row(&mut witness, 20, product_mid, carry);
+    init_foreign_field_mul_row(&mut witness, 20, product_mid, carry_top);
     // Zero row
     init_foreign_field_mul_row(&mut witness, 21, F::zero(), F::zero());
 
