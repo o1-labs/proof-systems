@@ -81,29 +81,28 @@ const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 2] = [
         WitnessCell::Standard(CopyWitnessCell::create(1, 0)), // left_input_mid
         ShiftWitnessCell::create(20, 0, 9),                   // carry_shift
         ShiftWitnessCell::create(10, 0, 8),                   // quotient_shift
-        // TODO: Anais
-        WitnessCell::Standard(ZeroWitnessCell::create()),
-        WitnessCell::Standard(ZeroWitnessCell::create()),
-        WitnessCell::Standard(ZeroWitnessCell::create()),
+        WitnessCell::Standard(CopyWitnessCell::create(8, 0)), // quotient_lo
+        WitnessCell::Standard(CopyWitnessCell::create(9, 0)), // quotient_mid
+        WitnessCell::Standard(CopyWitnessCell::create(10, 0)), // quotient_hi
         ValueLimbWitnessCell::create(ValueType::ProductMid, 0, 88), // product_mid_bottom
-        WitnessCell::Standard(ZeroWitnessCell::create()),
-        WitnessCell::Standard(ZeroWitnessCell::create()),
-        WitnessCell::Standard(ZeroWitnessCell::create()),
-        WitnessCell::Standard(ZeroWitnessCell::create()),
-        WitnessCell::Standard(ZeroWitnessCell::create()),
+        ValueLimbWitnessCell::create(ValueType::ProductMid, 88, 176), // product_mid_top_limb
+        ValueLimbWitnessCell::create(ValueType::ProductMid, 176, 178), // product_mid_top_extra
+        WitnessCell::Standard(ZeroWitnessCell::create()),     // carry_bottom
+        ValueLimbWitnessCell::create(ValueType::Carry, 0, 88), // carry_top_limb
+        ValueLimbWitnessCell::create(ValueType::Carry, 88, 176), // carry_top_extra
         WitnessCell::Standard(ZeroWitnessCell::create()),
         WitnessCell::Standard(ZeroWitnessCell::create()),
     ],
     // Zero row
     [
         // TODO: Joseph
-        WitnessCell::Standard(CopyWitnessCell::create(2, 0)), // left_input_hi,
-        WitnessCell::Standard(ZeroWitnessCell::create()),
-        WitnessCell::Standard(ZeroWitnessCell::create()),
-        WitnessCell::Standard(ZeroWitnessCell::create()),
-        WitnessCell::Standard(ZeroWitnessCell::create()),
-        WitnessCell::Standard(ZeroWitnessCell::create()),
-        WitnessCell::Standard(ZeroWitnessCell::create()),
+        WitnessCell::Standard(CopyWitnessCell::create(2, 0)), // left_input_hi
+        WitnessCell::Standard(CopyWitnessCell::create(4, 0)), // right_input_lo
+        WitnessCell::Standard(CopyWitnessCell::create(5, 0)), // right_input_mid
+        WitnessCell::Standard(CopyWitnessCell::create(6, 0)), // right_input_hi
+        WitnessCell::Standard(CopyWitnessCell::create(12, 0)), // remainder_lo
+        WitnessCell::Standard(CopyWitnessCell::create(13, 0)), // remainder_mid
+        WitnessCell::Standard(CopyWitnessCell::create(14, 0)), // remainder_hi
         WitnessCell::Standard(ZeroWitnessCell::create()),
         WitnessCell::Standard(ZeroWitnessCell::create()),
         WitnessCell::Standard(ZeroWitnessCell::create()),
