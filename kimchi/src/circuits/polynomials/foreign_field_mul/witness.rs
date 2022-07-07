@@ -87,15 +87,14 @@ const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 2] = [
         ValueLimbWitnessCell::create(ValueType::ProductMid, 0, 88), // product_mid_bottom
         ValueLimbWitnessCell::create(ValueType::ProductMid, 88, 176), // product_mid_top_limb
         ValueLimbWitnessCell::create(ValueType::ProductMid, 176, 178), // product_mid_top_extra
-        WitnessCell::Standard(ZeroWitnessCell::create()),     // carry_bottom
+        WitnessCell::Standard(range_check::ValueWitnessCell::create()), // carry_bottom
         ValueLimbWitnessCell::create(ValueType::Carry, 0, 88), // carry_top_limb
-        ValueLimbWitnessCell::create(ValueType::Carry, 88, 176), // carry_top_extra
+        ValueLimbWitnessCell::create(ValueType::Carry, 88, 91), // carry_top_extra
         WitnessCell::Standard(ZeroWitnessCell::create()),
         WitnessCell::Standard(ZeroWitnessCell::create()),
     ],
     // Zero row
     [
-        // TODO: Joseph
         WitnessCell::Standard(CopyWitnessCell::create(2, 0)), // left_input_hi
         WitnessCell::Standard(CopyWitnessCell::create(4, 0)), // right_input_lo
         WitnessCell::Standard(CopyWitnessCell::create(5, 0)), // right_input_mid
