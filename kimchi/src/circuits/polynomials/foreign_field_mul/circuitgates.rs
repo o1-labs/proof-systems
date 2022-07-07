@@ -1,34 +1,37 @@
 ///```text
-/// Foreign field multiplication circuit gates for native field $F_n$ and
-/// foreign field $F_f$, where $F_n$ is the generic type parameter `F` in code below
-/// and the foreign field modulus $f$ is store in the constraint system (`cs.foreign_field_modulus`).
+/// Foreign field multiplication circuit gates
 ///
-/// For more details please see: https://hackmd.io/37M7qiTaSIKaZjCC5OnM1w?view
+/// These circuit gates are used to constrain that
+///
+///     left_input * right_input = quotient * foreign_modulus + remainder
+///
+/// For more details please see https://hackmd.io/37M7qiTaSIKaZjCC5OnM1w?view
+/// and apply this mapping to the variable names.
+///
+///     left_input0 => a0  right_input0 => b0  quotient0 => q0  remainder0 => r0
+///     left_input1 => a1  right_input1 => b1  quotient1 => q1  remainder1 => r1
+///     left_input2 => a2  right_input2 => b2  quotient2 => q2  remainder2 => r2
+///
+///     product_mid0 => p10    product_mid1_0 => p100    product_mid1_1 => p111
+///     carry0       => v0     carry1_0       => v10     carry1_1       => v11
 ///
 /// Inputs:
-///   * $f$ := foreign field modulus (currently stored in constraint system globally)
-///   * `left_input` $~\in F_f$ := left foreign field element multiplicand
-///   * `right_input` $~\in F_f$ := right foreign field element multiplicand
+///   * foreign_modulus        := foreign field modulus (currently stored in constraint system)
+///   * left_input $~\in F_f$  := left foreign field element multiplicand
+///   * right_input $~\in F_f$ := right foreign field element multiplicand
+///
+///   N.b. the native field modulus is obtainable from F, the native field's trait bound below.
 ///
 /// Witness:
-///   * `quotient` $~\in F_f$  := foreign field quotient
-///   * `remainder` $~\in F_f$ := foreign field remainder
-///   * `carry0`               := two bit carry
-///   * `carry1_0`             := low 88 bits of `carry1`
-///   * `carry1_1`             := high 3 bits of `carry1`
+///   * quotient $~\in F_f$  := foreign field quotient
+///   * remainder $~\in F_f$ := foreign field remainder
+///   * carry0               := two bit carry
+///   * carry1_0             := low 88 bits of carry1
+///   * carry1_1             := high 3 bits of carry1
 ///
-/// Constraint: This gate is used to constrain that
+/// Layout:
 ///
-///       `left_input` $\cdot$ `right_input` = `quotient` $\cdot f + $ `remainder`
-///
-///     in $F_f$ by using the native field $F_n$.
-///
-/// **Layout**
-///
-/// Overall layout
-///
-/// | Row(s) | Gate              | Witness
-/// -|-|-
+///   Row(s) | Gate              | Witness
 ///      0-3 | multi-range-check | left_input multiplicand
 ///      4-7 | multi-range-check | right_input multiplicand
 ///     8-11 | multi-range-check | quotient
@@ -37,11 +40,10 @@
 ///       20 | ForeignFieldMul   | (see below)
 ///       21 | Zero              | (see below)
 ///
-/// Foreign field multiplication gate layout
+/// The last two rows are layed out like this.
 ///
 ///             Curr                    Next
 ///   Columns | ForeignFieldMul       | Zero
-///   -|-|-
 ///         0 | left_input0    (copy) | quotient1       (copy)
 ///         1 | left_input1    (copy) | quotient2       (copy)
 ///         2 | left_input2    (copy) | 2^9 * carry1_1  (plookup)
