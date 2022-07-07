@@ -29,11 +29,11 @@ pub enum WitnessCell {
 pub struct ShiftWitnessCell {
     row: usize,
     col: usize,
-    shift: usize,
+    shift: u64,
 }
 
 impl ShiftWitnessCell {
-    pub const fn create(row: usize, col: usize, shift: usize) -> WitnessCell {
+    pub const fn create(row: usize, col: usize, shift: u64) -> WitnessCell {
         WitnessCell::Shift(ShiftWitnessCell { row, col, shift })
     }
 }
@@ -131,8 +131,8 @@ fn init_foreign_field_mul_row<F: PrimeField>(
                 )
             }
             WitnessCell::Shift(shift_cell) => {
-                todo!()
-                // TODO: Joseph
+                witness[col][row] =
+                    F::from(2u32).pow([shift_cell.shift]) * witness[shift_cell.col][shift_cell.row];
             }
             WitnessCell::ValueLimb(value_limb_cell) => {
                 witness[col][row] = value_to_limb(
