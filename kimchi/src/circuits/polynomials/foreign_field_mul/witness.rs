@@ -180,7 +180,7 @@ pub fn create_witness<F: PrimeField>(
     let quotient_limbs = foreign_field_element_to_limbs::<F>(quotient);
     let remainder_limbs = foreign_field_element_to_limbs::<F>(remainder);
 
-    // Compute nonzero intermediate products
+    // Compute nonzero intermediate products (uses the same code as constraints!)
     let (product_lo, product_mid, product_hi) = compute_intermediate_products(
         left_input_limbs[0],
         left_input_limbs[1],

@@ -4,14 +4,13 @@
 ///
 ///     left_input * right_input = quotient * foreign_modulus + remainder
 ///
-/// For more details please see https://hackmd.io/37M7qiTaSIKaZjCC5OnM1w?view
-/// and apply this mapping to the variable names.
+/// Documentation:
 ///
-/// The ideas behind this naming is:
-/// - when a variable is split into 3 limbs we use: hi, mid, lo (where high is the most significant)
-/// - when a variable is split in 2 halves we use: top, bottom  (where top is the most significant)
-/// - when the bits of a variable are split in a limb string and some extra bits we use: limb,
-///   extra (where extra is the most significant)
+///   For more details please see https://hackmd.io/37M7qiTaSIKaZjCC5OnM1w?view
+///
+///   Mapping:
+///     To make things clearer, the following mapping between the variable names
+///     used in the code and those of the document can be helpful.
 ///
 ///     left_input_hi  => a2  right_input_hi  => b2  quotient_hi  => q2  remainder_hi  => r2
 ///     left_input_mid => a1  right_input_mid => b1  quotient_mid => q1  remainder_mid => r1
@@ -19,6 +18,15 @@
 ///
 ///     product_mid_bottom => p10  product_mid_top_limb => p110  product_mid_top_extra => p111
 ///     carry_bottom       => v0   carry_top_limb       => v10   carry_top_extra => v11
+///
+///   Suffixes:
+///     The variable names in this code uses descriptive suffixes to convey information about the
+///     positions of the bits referred to.
+///
+///       - When a variable is split into 3 limbs we use: lo, mid, hi (where high is the most significant)
+///       - When a variable is split in 2 halves we use: bottom, top  (where top is the most significant)
+///       - When the bits of a variable are split into a limb and some extra bits we use: limb,
+///         extra (where extra is the most significant)
 ///
 /// Inputs:
 ///   * foreign_modulus        := foreign field modulus (currently stored in constraint system)
@@ -64,6 +72,7 @@
 ///    |  12 | `carry_top_extra`         |                          |
 ///    |  13 |                           |                          |
 ///    |  14 |                           |                          |
+///
 use std::marker::PhantomData;
 
 use ark_ff::FftField;
@@ -128,8 +137,9 @@ pub fn compute_intermediate_products<
     (product_lo, product_mid, product_hi)
 }
 
-/// ForeignFieldMul0
-///    Rows: Curr + Next
+/// ForeignFieldMul0 - foreign field multiplication
+///    * This circuit gate operates on the Curr and Next rows
+///    * It uses copy, plookup, crumb and some custom constraints
 #[derive(Default)]
 pub struct ForeignFieldMul<F>(PhantomData<F>);
 
@@ -141,8 +151,12 @@ where
     const CONSTRAINTS: u32 = 7;
 
     fn constraints() -> Vec<E<F>> {
-        // WITNESS VALUES
-        // witness values from the current and next rows according to the layout
+        let mut constraints = vec![];
+
+        //
+        // Define some helper variables to refer to the witness elements
+        // described in the layout above
+        //
 
         // -> define top, middle and lower limbs of the foreign field element `a`
         let left_input_lo = witness_curr(0);
@@ -176,23 +190,23 @@ where
         let carry_top_limb = witness_curr(11);
         let carry_top_extra = witness_curr(12);
 
-        // HELPERS
+        //
+        // Define some helpers to be used in the constraints
+        //
 
-        let mut constraints = vec![];
-
-        // powers of 2 for range constraints
+        // Powers of 2 for range constraints
         let eight = E::from(8);
         let two_to_8 = E::from(256);
         let two_to_9 = E::from(512);
         let two_to_88 = E::from(2).pow(88);
         let two_to_176 = E::from(2).pow(176);
 
-        // negated foreign field modulus in 3 limbs: high, middle and low
+        // Foreign field modulus in 3 limbs: low, middle and high
         let foreign_modulus_lo = E::constant(ConstantExpr::ForeignFieldModulus(0));
         let foreign_modulus_mid = E::constant(ConstantExpr::ForeignFieldModulus(1));
         let foreign_modulus_hi = E::constant(ConstantExpr::ForeignFieldModulus(2));
 
-        // intermediate products for better readability of the constraints
+        // Intermediate products for better readability of the constraints
         let (product_lo, product_mid, product_hi) = compute_intermediate_products(
             left_input_lo,
             left_input_mid,
@@ -207,6 +221,10 @@ where
             foreign_modulus_mid,
             foreign_modulus_hi,
         );
+
+        //
+        // Define constraints
+        //
 
         // 1) Constrain decomposition of middle intermediate product
         //
@@ -226,21 +244,21 @@ where
             two_to_88.clone() * product_mid_top.clone() + product_mid_bottom.clone();
         constraints.push(product_mid - product_mid_sum);
 
-        // 2) Constrain carry witness value `carry_bottom` $~\in [0, 2^2)$
+        // 2) Constrain carry witness value carry_bottom \in [0, 2^2)
         constraints.push(crumb(&carry_bottom));
 
-        // 3) Constrain intermediate product fragment `product_mid_top_extra` $~\in [0, 2^2)$
+        // 3) Constrain intermediate product fragment product_mid_top_extra \in [0, 2^2)
         constraints.push(crumb(&product_mid_top_extra));
 
-        // 4) Constrain `carry_shift` comes from shifting 9 bits the `carry_top_extra` value
+        // 4) Constrain carry_shift comes from shifting 9 bits the carry_top_extra value
         constraints.push(carry_shift - two_to_9 * carry_top_extra.clone());
 
-        // 5) Check zero prefix of quotient, meaning that `quotient_shift` comes from
-        //    shifting 8 bits the `quotient_hi` value
+        // 5) Check zero prefix of quotient, meaning that quotient_shift comes from
+        //    shifting 8 bits the quotient_hi value
         constraints.push(quotient_shift - two_to_8 * quotient_hi);
 
-        // 6) Constrain `carry_bottom` witness value to prove `zero_bottom`'s LSB are zero
-        //    For details on `zero_bottom` ($u_0$) and why this is valid, please see this:
+        // 6) Constrain carry_bottom witness value to prove zero_bottom's LSB are zero
+        //    For details on zero_bottom and why this is valid, please see
         //        https://hackmd.io/37M7qiTaSIKaZjCC5OnM1w?view#Intermediate-products
         //
         //                  2^176 * v_0 = u_0         = p0 - r0 + 2^88 (p10 - r1)
@@ -250,8 +268,8 @@ where
             product_lo - remainder_lo + two_to_88.clone() * (product_mid_bottom - remainder_mid);
         constraints.push(zero_bottom - two_to_176 * carry_bottom.clone());
 
-        // 7) Constraint `carry_top` to prove `zero_top`'s bits are zero
-        //    For details on `zero_top` ($u_1$) and why this is valid, please see this design document section:
+        // 7) Constraint carry_top to prove zero_top's bits are zero
+        //    For details on zero_top and why this is valid, please see
         //        https://hackmd.io/37M7qiTaSIKaZjCC5OnM1w?view#Intermediate-products
         //
         //              v_1 = v_{10} + 2^3 * v_{11}$
@@ -264,7 +282,7 @@ where
         let zero_top = carry_bottom + product_mid_top + product_hi - remainder_hi;
         constraints.push(zero_top - two_to_88 * carry_top);
 
-        // 8-9) Plookups on the Next row @ columns 2 and 3
+        // 8-9) Plookup constraints on columns 2 and 3 of the Next row
         constraints
     }
 }
