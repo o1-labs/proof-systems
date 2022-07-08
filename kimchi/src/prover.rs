@@ -117,6 +117,12 @@ impl<G: CommitmentCurve + ark_ec::AffineCurve<ScalarField = F>, F: PrimeField> L
         rng: &mut (impl RngCore + CryptoRng),
         fq_sponge: &mut EFqSponge,
     ) -> Result<LookupContext<G, F>> {
+        //~
+        //~ #### Lookup context creation
+        //~
+        //~ When we want to create a proof for a circuit that uses lookups,
+        //~ we must create a lookup context.
+
         let mut lookup_context = LookupContext::default();
 
         if let Some(lcs) = &index.cs.lookup_constraint_system {
@@ -338,6 +344,10 @@ impl<G: CommitmentCurve + ark_ec::AffineCurve<ScalarField = F>, F: PrimeField> L
         beta: F,
         gamma: F,
     ) -> Result<()> {
+        //~
+        //~ #### Lookup context aggregation polynomial creation
+        //~
+
         //~ 1. If using lookup:
         if let Some(lcs) = &index.cs.lookup_constraint_system {
             //~~ - Compute the lookup aggregation polynomial.
@@ -543,7 +553,7 @@ where
             .interpolate()
         });
 
-        // if using runtime table
+        // 1. Lookup context creation
         let mut lookup_context =
             LookupContext::create(&witness, runtime_tables, index, rng, &mut fq_sponge)
                 .map_err(|e| e)?;
@@ -554,7 +564,7 @@ where
         //~ 1. Sample $\gamma$ with the Fq-Sponge.
         let gamma = fq_sponge.challenge();
 
-        //~ 1. If using lookup:
+        //~ 1. Lookup context aggregation polynomial creation
         lookup_context
             .compute_aggregation_polynomial(&witness, index, rng, &mut fq_sponge, beta, gamma)
             .map_err(|e| e)?;
