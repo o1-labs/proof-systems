@@ -20,6 +20,7 @@ use oracle::FqSponge;
 use rand::Rng;
 use std::time::{Duration, Instant};
 
+/*
 #[test]
 fn dlog_commitment_test()
 where
@@ -134,3 +135,4 @@ where
     assert!(srs.verify::<DefaultFqSponge<VestaParameters, SC>, _>(&group_map, &mut proofs, rng));
     println!("{}{:?}", "verification time: ".green(), start.elapsed());
 }
+*/

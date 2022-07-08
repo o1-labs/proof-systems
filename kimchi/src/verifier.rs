@@ -20,7 +20,7 @@ use crate::{
 use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Polynomial};
 use commitment_dlog::commitment::{
-    b_poly, b_poly_coefficients, combined_inner_product, BatchEvaluationProof, CommitmentCurve,
+    b_poly, b_poly_coefficients, combined_inner_product2, BatchEvaluationProof, CommitmentCurve,
     Evaluation, PolyComm,
 };
 use itertools::izip;
@@ -45,7 +45,7 @@ where
     /// the computed powers of alpha
     pub all_alphas: Alphas<G::ScalarField>,
     /// public polynomial evaluations
-    pub p_eval: Vec<Vec<G::ScalarField>>,
+    pub p_eval: [G::ScalarField; 2],
     /// zeta^n and (zeta * omega)^n
     pub powers_of_eval_points_for_chunks: [G::ScalarField; 2],
     /// recursion data
@@ -243,32 +243,28 @@ where
         //~
         //~    NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
         let p_eval = if !self.public.is_empty() {
-            vec![
-                vec![
-                    (self
-                        .public
-                        .iter()
-                        .zip(zeta_minus_x.iter())
-                        .zip(index.domain.elements())
-                        .map(|((p, l), w)| -*l * p * w)
-                        .fold(G::ScalarField::zero(), |x, y| x + y))
-                        * (zeta1 - G::ScalarField::one())
-                        * index.domain.size_inv,
-                ],
-                vec![
-                    (self
-                        .public
-                        .iter()
-                        .zip(zeta_minus_x[self.public.len()..].iter())
-                        .zip(index.domain.elements())
-                        .map(|((p, l), w)| -*l * p * w)
-                        .fold(G::ScalarField::zero(), |x, y| x + y))
-                        * index.domain.size_inv
-                        * (zetaw.pow(&[n as u64]) - G::ScalarField::one()),
-                ],
+            [
+                (self
+                    .public
+                    .iter()
+                    .zip(zeta_minus_x.iter())
+                    .zip(index.domain.elements())
+                    .map(|((p, l), w)| -*l * p * w)
+                    .fold(G::ScalarField::zero(), |x, y| x + y))
+                    * (zeta1 - G::ScalarField::one())
+                    * index.domain.size_inv,
+                (self
+                    .public
+                    .iter()
+                    .zip(zeta_minus_x[self.public.len()..].iter())
+                    .zip(index.domain.elements())
+                    .map(|((p, l), w)| -*l * p * w)
+                    .fold(G::ScalarField::zero(), |x, y| x + y))
+                    * index.domain.size_inv
+                    * (zetaw.pow(&[n as u64]) - G::ScalarField::one()),
             ]
         } else {
-            vec![Vec::<G::ScalarField>::new(), Vec::<G::ScalarField>::new()]
+            [G::ScalarField::zero(), G::ScalarField::zero()]
         };
 
         //~ 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
@@ -281,7 +277,7 @@ where
         //~~ - poseidon selector
         //~~ - the 15 register/witness
         //~~ - 6 sigmas evaluations (the last one is not evaluated)
-        fr_sponge.absorb_evaluations([&p_eval[0], &p_eval[1]], [&self.evals[0], &self.evals[1]]);
+        fr_sponge.absorb_evaluations(&p_eval, [&self.evals[0], &self.evals[1]]);
 
         //~ 1. Sample $v'$ with the Fr-Sponge.
         let v_chal = fr_sponge.challenge();
@@ -302,7 +298,13 @@ where
             zetaw.pow(&[index.max_poly_size as u64]),
         ];
 
-        let polys: Vec<(PolyComm<G>, _)> = self
+        // problem: prev_challenges can actually be split into two parts
+        // solution: interpret the two parts as two different poylnomials
+
+        let mut polys: Vec<(PolyComm<G>, _)> = vec![];
+
+        /*
+        self
             .prev_challenges
             .iter()
             .zip(self.prev_chal_evals(index, &evaluation_points, &powers_of_eval_points_for_chunks))
@@ -311,6 +313,7 @@ where
                 (comm.clone(), evals)
             })
             .collect();
+            */
 
         //~ 1. Compute the evaluation of $ft(\zeta)$.
         let ft_eval0 = {
@@ -337,11 +340,7 @@ where
                 .map(|(w, s)| (beta * s) + w + gamma)
                 .fold(init, |x, y| x * y);
 
-            ft_eval0 -= if !p_eval[0].is_empty() {
-                p_eval[0][0]
-            } else {
-                G::ScalarField::zero()
-            };
+            ft_eval0 -= p_eval[0];
 
             ft_eval0 -= self.evals[0]
                 .w
@@ -380,32 +379,27 @@ where
         };
 
         let combined_inner_product = {
-            let ft_eval0 = vec![ft_eval0];
-            let ft_eval1 = vec![self.ft_eval1];
+            // ignore recursion stuff for now
+            let mut es = vec![];
 
-            #[allow(clippy::type_complexity)]
-            let mut es: Vec<(Vec<Vec<G::ScalarField>>, Option<usize>)> =
-                polys.iter().map(|(_, e)| (e.clone(), None)).collect();
-            es.push((p_eval.clone(), None));
-            es.push((vec![ft_eval0, ft_eval1], None));
+            //            let mut es: Vec<_> = polys.iter().map(|(_, e)| (e.clone(), None)).collect();
+            es.push((p_eval.to_vec(), None));
+            es.push((vec![ft_eval0, self.ft_eval1], None));
+            es.push((
+                self.evals.iter().map(|e| e.z.clone()).collect::<Vec<_>>(),
+                None,
+            ));
             es.push((
                 self.evals
                     .iter()
-                    .map(|e| vec![e.z.clone()])
+                    .map(|e| e.generic_selector.clone())
                     .collect::<Vec<_>>(),
                 None,
             ));
             es.push((
                 self.evals
                     .iter()
-                    .map(|e| vec![e.generic_selector.clone()])
-                    .collect::<Vec<_>>(),
-                None,
-            ));
-            es.push((
-                self.evals
-                    .iter()
-                    .map(|e| vec![e.poseidon_selector.clone()])
+                    .map(|e| e.poseidon_selector.clone())
                     .collect::<Vec<_>>(),
                 None,
             ));
@@ -415,7 +409,7 @@ where
                         (
                             self.evals
                                 .iter()
-                                .map(|e| vec![e.w[c].clone()])
+                                .map(|e| e.w[c].clone())
                                 .collect::<Vec<_>>(),
                             None,
                         )
@@ -428,7 +422,7 @@ where
                         (
                             self.evals
                                 .iter()
-                                .map(|e| vec![e.s[c].clone()])
+                                .map(|e| e.s[c].clone())
                                 .collect::<Vec<_>>(),
                             None,
                         )
@@ -436,7 +430,13 @@ where
                     .collect::<Vec<_>>(),
             );
 
-            combined_inner_product::<G>(&evaluation_points, &v, &u, &es, index.srs().g.len())
+            combined_inner_product2::<G::ScalarField>(
+                &evaluation_points,
+                v,
+                u,
+                &es,
+                index.srs().g.len(),
+            )
         };
 
         let oracles = RandomOracles {
@@ -692,30 +692,32 @@ where
     let mut evaluations = vec![];
 
     //~~ - recursion
+    /*
     evaluations.extend(polys.into_iter().map(|(c, e)| Evaluation {
         commitment: c,
         evaluations: e,
         degree_bound: None,
     }));
+    */
 
     //~~ - public input commitment
     evaluations.push(Evaluation {
         commitment: p_comm,
-        evaluations: p_eval,
+        evaluations: p_eval.to_vec(),
         degree_bound: None,
     });
 
     //~~ - ft commitment (chunks of it)
     evaluations.push(Evaluation {
         commitment: ft_comm,
-        evaluations: vec![vec![ft_eval0], vec![proof.ft_eval1]],
+        evaluations: vec![ft_eval0, proof.ft_eval1],
         degree_bound: None,
     });
 
     //~~ - permutation commitment
     evaluations.push(Evaluation {
         commitment: proof.commitments.z_comm.clone(),
-        evaluations: proof.evals.iter().map(|e| vec![e.z.clone()]).collect(),
+        evaluations: proof.evals.iter().map(|e| e.z.clone()).collect(),
         degree_bound: None,
     });
 
@@ -725,7 +727,7 @@ where
         evaluations: proof
             .evals
             .iter()
-            .map(|e| vec![e.generic_selector.clone()])
+            .map(|e| e.generic_selector.clone())
             .collect(),
         degree_bound: None,
     });
@@ -734,7 +736,7 @@ where
         evaluations: proof
             .evals
             .iter()
-            .map(|e| vec![e.poseidon_selector.clone()])
+            .map(|e| e.poseidon_selector.clone())
             .collect(),
         degree_bound: None,
     });

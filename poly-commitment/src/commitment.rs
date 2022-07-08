@@ -14,6 +14,7 @@ use ark_ec::{
 use ark_ff::{
     BigInteger, Field, FpParameters, One, PrimeField, SquareRootField, UniformRand, Zero,
 };
+use ark_poly::UVPolynomial;
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
@@ -22,7 +23,6 @@ use core::ops::{Add, Sub};
 use groupmap::{BWParameters, GroupMap};
 use itertools::{izip, multizip};
 use o1_utils::math::{self, powers_of};
-use o1_utils::types::fields::*;
 use o1_utils::ExtendedDensePolynomial as _;
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand_core::{CryptoRng, RngCore};
@@ -427,44 +427,10 @@ pub fn combined_inner_product<G: CommitmentCurve>(
     xi: &G::ScalarField,
     r: &G::ScalarField,
     // TODO(mimoo): needs a type that can get you evaluations or segments
-    polys: &[(Vec<Vec<G::ScalarField>>, Option<usize>)],
+    polys: &[(Vec<G::ScalarField>, Option<usize>)],
     srs_length: usize,
 ) -> G::ScalarField {
-    let mut res = G::ScalarField::zero();
-    let mut xi_i = G::ScalarField::one();
-
-    for (evals_tr, shifted) in polys.iter().filter(|(evals_tr, _)| !evals_tr[0].is_empty()) {
-        // transpose the evaluations
-        let evals = (0..evals_tr[0].len())
-            .map(|i| evals_tr.iter().map(|v| v[i]).collect::<Vec<_>>())
-            .collect::<Vec<_>>();
-
-        // iterating over the polynomial segments
-        for eval in evals.iter() {
-            let term = DensePolynomial::<G::ScalarField>::eval_polynomial(eval, *r);
-
-            res += &(xi_i * term);
-            xi_i *= xi;
-        }
-
-        if let Some(m) = shifted {
-            // xi^i sum_j r^j elm_j^{N - m} f(elm_j)
-            let last_evals = if *m > evals.len() * srs_length {
-                vec![G::ScalarField::zero(); evaluation_points.len()]
-            } else {
-                evals[evals.len() - 1].clone()
-            };
-            let shifted_evals: Vec<_> = evaluation_points
-                .iter()
-                .zip(last_evals.iter())
-                .map(|(elm, f_elm)| elm.pow(&[(srs_length - (*m) % srs_length) as u64]) * f_elm)
-                .collect();
-
-            res += &(xi_i * DensePolynomial::<G::ScalarField>::eval_polynomial(&shifted_evals, *r));
-            xi_i *= xi;
-        }
-    }
-    res
+    unimplemented!();
 }
 
 /// Combines the evaluations of different polynomials for an evaluation proof.
@@ -586,8 +552,8 @@ where
     /// The commitment of the polynomial being evaluated
     pub commitment: PolyComm<G>,
 
-    /// Contains an evaluation table
-    pub evaluations: Vec<Vec<G::ScalarField>>,
+    /// Contains evaluations of a polynomial at different points
+    pub evaluations: Vec<G::ScalarField>,
 
     /// optional degree bound
     pub degree_bound: Option<usize>,
@@ -878,7 +844,13 @@ impl<G: CommitmentCurve> SRS<G> {
                         },
                     )
                     .collect();
-                combined_inner_product::<G>(evaluation_points, xi, r, &es, self.g.len())
+                combined_inner_product2::<G::ScalarField>(
+                    evaluation_points,
+                    *xi,
+                    *r,
+                    &es,
+                    self.g.len(),
+                )
             };
 
             sponge.absorb_fr(&[shift_scalar::<G>(combined_inner_product0)]);
@@ -1089,8 +1061,8 @@ mod tests {
         let b = combined_inner_product2(&eval_points, poly_combinator, eval_combinator, &polys, 0);
 
         // legacy API
-        let f_evaluations = vec![vec![f0], vec![f1]];
-        let g_evaluations = vec![vec![g0], vec![g1]];
+        let f_evaluations = vec![f0, f1];
+        let g_evaluations = vec![g0, g1];
         let polys = [(f_evaluations, None), (g_evaluations, None)];
         let a = combined_inner_product::<VestaG>(
             &eval_points,
@@ -1133,33 +1105,9 @@ mod tests {
         let opening_proof = srs.open(&group_map, &polys, &elm, v, u, sponge.clone(), rng);
 
         // evaluate the polynomials at these two points
-        let poly1_chunked_evals = vec![
-            poly1
-                .to_chunked_polynomial(srs.g.len())
-                .evaluate_chunks(elm[0]),
-            poly1
-                .to_chunked_polynomial(srs.g.len())
-                .evaluate_chunks(elm[1]),
-        ];
+        let poly1_chunked_evals = vec![poly1.evaluate(&elm[0]), poly1.evaluate(&elm[1])];
 
-        fn sum(c: &[Fp]) -> Fp {
-            c.iter().fold(Fp::zero(), |a, &b| a + b)
-        }
-
-        assert_eq!(sum(&poly1_chunked_evals[0]), poly1.evaluate(&elm[0]));
-        assert_eq!(sum(&poly1_chunked_evals[1]), poly1.evaluate(&elm[1]));
-
-        let poly2_chunked_evals = vec![
-            poly2
-                .to_chunked_polynomial(srs.g.len())
-                .evaluate_chunks(elm[0]),
-            poly2
-                .to_chunked_polynomial(srs.g.len())
-                .evaluate_chunks(elm[1]),
-        ];
-
-        assert_eq!(sum(&poly2_chunked_evals[0]), poly2.evaluate(&elm[0]));
-        assert_eq!(sum(&poly2_chunked_evals[1]), poly2.evaluate(&elm[1]));
+        let poly2_chunked_evals = vec![poly2.evaluate(&elm[0]), poly2.evaluate(&elm[1])];
 
         // verify the proof
         let mut batch = vec![BatchEvaluationProof {

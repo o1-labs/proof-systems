@@ -954,11 +954,11 @@ where
 
         //~ 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
         let public_evals = if public_poly.is_zero() {
-            [Vec::new(), Vec::new()]
+            [G::ScalarField::zero(), G::ScalarField::zero()]
         } else {
             [
-                vec![public_poly.evaluate(&zeta)],
-                vec![public_poly.evaluate(&zeta_omega)],
+                public_poly.evaluate(&zeta),
+                public_poly.evaluate(&zeta_omega),
             ]
         };
 
@@ -972,7 +972,7 @@ where
         //~~ - poseidon selector
         //~~ - the 15 register/witness
         //~~ - 6 sigmas evaluations (the last one is not evaluated)
-        fr_sponge.absorb_evaluations([&public_evals[0], &public_evals[1]], [&evals[0], &evals[1]]);
+        fr_sponge.absorb_evaluations(&public_evals, [&evals[0], &evals[1]]);
 
         //~ 1. Sample $v'$ with the Fr-Sponge
         let v_chal = fr_sponge.challenge();
@@ -994,16 +994,18 @@ where
             shifted: None,
         };
 
-        let polys = prev_challenges
-            .iter()
-            .map(|RecursionChallenge { chals, comm }| {
-                (
-                    DensePolynomial::from_coefficients_vec(b_poly_coefficients(chals)),
-                    comm.unshifted.len(),
-                )
-            })
-            .collect::<Vec<_>>();
-
+        let polys = vec![];
+        /*
+                let polys = prev_challenges
+                    .iter()
+                    .map(|RecursionChallenge { chals, comm }| {
+                        (
+                            DensePolynomial::from_coefficients_vec(b_poly_coefficients(chals)),
+                            comm.unshifted.len(),
+                        )
+                    })
+                    .collect::<Vec<_>>();
+        */
         let mut polynomials = polys
             .iter()
             .map(|(p, d1_size)| (p, None, non_hiding(*d1_size)))

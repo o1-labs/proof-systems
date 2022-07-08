@@ -21,7 +21,7 @@ use std::time::{Duration, Instant};
 // Note: Because the current API uses large tuples of types, I re-create types
 // in this test to facilitate aggregated proofs and batch verification of proofs.
 // TODO: improve the polynomial commitment API
-
+/*
 /// A commitment
 pub struct Commitment {
     /// the commitment itself, potentially in chunks
@@ -231,3 +231,4 @@ where
         timer.elapsed()
     );
 }
+*/

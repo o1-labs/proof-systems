@@ -21,7 +21,7 @@ pub trait FrSponge<Fr: Field> {
     // TODO: IMO this function should be inlined in prover/verifier
     fn absorb_evaluations<const N: usize>(
         &mut self,
-        p: [&[Fr]; N],
+        p: &[Fr; N],
         evals: [&ProofEvaluations<Fr>; N],
     );
 }
@@ -47,13 +47,11 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
     // We absorb all evaluations of the same polynomial at the same time
     fn absorb_evaluations<const N: usize>(
         &mut self,
-        p: [&[Fr]; N],
+        p: &[Fr; N],
         evals: [&ProofEvaluations<Fr>; N],
     ) {
         self.last_squeezed = vec![];
-        for x in p {
-            self.sponge.absorb(x);
-        }
+        self.sponge.absorb(p);
 
         let zeta_evals = &evals[0];
         let zeta_omega_evals = &evals[1];
