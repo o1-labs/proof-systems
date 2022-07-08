@@ -1533,6 +1533,11 @@ Yet, it contains one extra row to take into account the last constraint (final v
 
 The prover then follows the following steps to create the proof:
 
+
+#### Lookup context creation
+
+When we want to create a proof for a circuit that uses lookups,
+we must create a lookup context.
 	- If queries involve a lookup table with multiple columns
 	  then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
 	  otherwise set the joint combiner challenge $j'$ to $0$.
@@ -1548,6 +1553,9 @@ The prover then follows the following steps to create the proof:
 	  in order to add zero-knowledge to the protocol.
 	- Commit each of the sorted polynomials.
 	- Absorb each commitments to the sorted polynomials.
+
+#### Lookup context aggregation polynomial creation
+
 1. If using lookup:
 	- Compute the lookup aggregation polynomial.
 	- Commit to the aggregation polynomial.
@@ -1578,7 +1586,7 @@ The prover then follows the following steps to create the proof:
    TODO: why not do this first, and then commit? Why commit from evaluation directly?
 1. Sample $\beta$ with the Fq-Sponge.
 1. Sample $\gamma$ with the Fq-Sponge.
-1. If using lookup:
+1. Lookup context aggregation polynomial creation
 1. Compute the permutation aggregation polynomial $z$.
 1. Commit (hidding) to the permutation aggregation polynomial $z$.
 1. Absorb the permutation aggregation polynomial $z$ with the Fq-Sponge.
