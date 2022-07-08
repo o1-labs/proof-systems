@@ -1238,6 +1238,8 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     /// polynomial commitment keys
     #[serde(skip)]
     pub srs: OnceCell<Arc<SRS<G>>>,
+    /// number of public inputs
+    pub public: usize,
 
     // index polynomial commitments
     /// permutation commitment array
