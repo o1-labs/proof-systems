@@ -8,7 +8,6 @@ use ark_ff::{BigInteger, FftField, FpParameters, PrimeField};
 
 use super::VarPoint;
 
-
 // An (elliptic curve) scalar of a given size.
 // It allows passing a full variable (with no size bound) from one side to the other,
 // however it does not enable efficient field operations.
@@ -37,12 +36,17 @@ where
     G: AffineCurve,
     G::BaseField: FftField + PrimeField,
 {
-    fn scale<C: Cs<G::BaseField>>(&self, cs: &mut C, scalar: &Scalar<G>) -> VarPoint<G> {
+    pub fn scale<C: Cs<G::BaseField>>(&self, cs: &mut C, scalar: &Scalar<G>) -> VarPoint<G> {
         unimplemented!()
     }
 
-    // do a MSM inside the circuit, panics if the MSM is empty
-    pub fn msm<'a, C, P, I>(cs: &mut C, mut exps: I) -> Self
+    // fixed based MSM inside the circuit
+    pub fn fix_msm() -> Self {
+        unimplemented!()
+    }
+
+    // variable base MSM inside the circuit, panics if the MSM is empty
+    pub fn var_msm<'a, C, P, I>(cs: &mut C, mut exps: I) -> Self
     where
         C: Cs<G::BaseField>,
         P: AsRef<Self> + 'a,

@@ -1,8 +1,8 @@
-use circuit_construction::{Cs, Var, generic};
+use circuit_construction::{generic, Cs, Var};
 
 use crate::context::{Pass, Public, ToPublic};
 use crate::types::Scalar;
-use crate::util::{from_bits, field_is_bigger};
+use crate::util::{field_is_bigger, from_bits};
 
 use ark_ec::AffineCurve;
 use ark_ff::{BigInteger, FftField, FpParameters, PrimeField};
@@ -29,8 +29,8 @@ where
             // introduce high_bits / low_bit
             let high_bits = cs.var(|| from_bits(&bits.as_ref().unwrap()[1..]));
             let low_bit = cs.var(|| from_bits(&bits.as_ref().unwrap()[..1]));
-            
-            // enforce decomposition 
+
+            // enforce decomposition
             // (range enforced on all public inputs, no need to check inside circuit)
             let two = Fp::from(2u32);
             let value = self.clone();
@@ -45,9 +45,8 @@ where
                 Public {
                     size: Some(1),
                     bits: low_bit,
-                }
+                },
             ]
-
         } else {
             vec![Public {
                 size: None,

@@ -1,9 +1,9 @@
-use ark_ec::AffineCurve;
 use ark_ff::{FftField, PrimeField};
 
 use circuit_construction::{Cs, Var};
 
 use crate::transcript::{Absorb, VarSponge};
+use crate::types::polynomials::ShiftEval;
 
 /// The evaluation of a (possibly chunked) polynomial.
 /// The least significant chunk is first.
@@ -51,8 +51,7 @@ impl<F: FftField + PrimeField, const N: usize> VarEval<F, N> {
     /// Combines the evaluation chunks f_0(x), f_1(m), ..., f_m(x) to a single evaluation
     /// f(x) = f_0(x) + x^N f_1(x) + ... + x^{m N} f_m(x)
     ///
-    /// pt is zeta^max_degree
-    fn combine<C: Cs<F>>(&self, cs: &mut C, pt: Var<F>) -> Var<F> {
+    fn collapse<C: Cs<F>>(&self, cs: &mut C, xn: &ShiftEval<F>) -> Var<F> {
         // iterate over coefficients:
         // most-to-least significant
         let mut chk = self.chunks[..].iter().rev().cloned();
@@ -62,7 +61,7 @@ impl<F: FftField + PrimeField, const N: usize> VarEval<F, N> {
 
         // shift by pt and add next chunk
         for c in chk {
-            sum = cs.mul(sum, pt.clone());
+            sum = cs.mul(sum, xn.as_ref().clone());
             sum = cs.add(sum, c);
         }
 

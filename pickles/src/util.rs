@@ -40,6 +40,17 @@ pub fn eval_const_poly<F: FftField + PrimeField, C: Cs<F>>(
     sum
 }
 
+pub fn var_product<F: FftField + PrimeField, I: Iterator<Item = Var<F>>, C: Cs<F>>(
+    cs: &mut C,
+    mut prod: I,
+) -> Var<F> {
+    let mut tmp = prod.next().expect("Empty product is undefined");
+    for term in prod {
+        tmp = cs.mul(term, tmp);
+    }
+    tmp
+}
+
 // Computes a summation of variables
 //
 // Panics if there are zero terms in the summation.

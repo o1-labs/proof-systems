@@ -31,7 +31,7 @@ impl<Fp: FftField + PrimeField> Public<Fp> {
         Cr: Cs<Fr>,
     {
         // converts a slice of bits (minimal representative) to a field element
-        
+
         Public {
             bits: cs.var(|| from_bits(&self.bits.val().into_repr().to_bits_le())),
             size: self.size,
@@ -76,7 +76,7 @@ where
     /// the "from" and consume provided the variable assignments in the public inputs directly.
     ///
     /// This way we can check the defered computation without implementing the logic twice.
-    pub fn pass<From, To>(&mut self, from: From) -> To
+    pub fn pass<From, To>(&mut self, from: &From) -> To
     where
         From: ToPublic<Fp, Fr> + Pass<To>,
         To: FromPublic<Fp, Fr>,

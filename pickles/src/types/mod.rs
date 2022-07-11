@@ -7,8 +7,8 @@ mod comm;
 // Var types for the verifiers challenges
 mod challenge;
 
-// Var types related to polynomial (evaluation)
-mod polynomials;
+// Types for evaluating manipulating polynomials inside circuits
+pub mod polynomials;
 
 // Implementations of Pickles traits on "Var"
 mod var;

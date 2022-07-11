@@ -17,10 +17,11 @@ use crate::kimchi::alphas::Alphas;
 use crate::kimchi::index::{ConstIndex, Index};
 use crate::kimchi::proof::{eval_polynomial, VarEvaluations, VarProof};
 
-use crate::util::eval_const_poly;
+use crate::util::{eval_const_poly, var_product};
 
 use crate::types::{
-    FieldChallenge, GLVChallenge, LagrangePoly, Scalar, VanishEval, VarEval, VarPoint, VarPolyComm,
+    FieldChallenge, GLVChallenge, LagrangePoly, Scalar, VarEval, VarPoint, VarPolyComm,
+    polynomials
 };
 
 use crate::transcript::{Arthur, Msg};
@@ -67,14 +68,14 @@ fn perm_scalars<F: FftField + PrimeField, C: Cs<F>>(
         cs.add(tmp, gamma)
     }));
 
-    product(cs, prod.into_iter())
+    var_product(cs, prod.into_iter())
 }
 
 /// Compute the permutation argument part of the
 fn compute_ft_perm<F: FftField + PrimeField, C: Cs<F>>(
     cs: &mut C,
     index: &ConstIndex<F>,
-    zh_zeta: &VanishEval<F>,
+    zh_zeta: &polynomials::VanishEval<F>,
     eval: &VarEvaluations<F>,
     gamma: Var<F>,
     beta: Var<F>,
@@ -106,12 +107,12 @@ fn compute_ft_perm<F: FftField + PrimeField, C: Cs<F>>(
 
             // last column is handled differently:
             // linearlization optimization
-            prod.push({ cs.add(eval.zeta.w[PERMUTS - 1].clone().into(), gamma) });
+            prod.push(cs.add(eval.zeta.w[PERMUTS - 1].clone().into(), gamma));
 
             // * z(\zeta\omega)
             debug_assert_eq!(prod.len(), PERMUTS);
             prod.push(eval.zetaw.z.clone().into());
-            product(cs, prod.into_iter())
+            var_product(cs, prod.into_iter())
         };
 
         // $\prod_i left((\zeta  \beta shift_i) + w_i + \gamma\right)$
@@ -135,7 +136,7 @@ fn compute_ft_perm<F: FftField + PrimeField, C: Cs<F>>(
             // * z(\zeta)
             debug_assert_eq!(prod.len(), PERMUTS);
             prod.push(eval.zeta.z.clone().into());
-            product(cs, prod.into_iter())
+            var_product(cs, prod.into_iter())
         };
 
         // (<before> - <after>)
@@ -230,17 +231,6 @@ where
 
 // TODO: add unit test for compat with combined_inner_product from Kimchi using Witness Generator
 
-fn product<F: FftField + PrimeField, I: Iterator<Item = Var<F>>, C: Cs<F>>(
-    cs: &mut C,
-    mut prod: I,
-) -> Var<F> {
-    let mut tmp = prod.next().unwrap();
-    for term in prod {
-        tmp = cs.mul(term, tmp);
-    }
-    tmp
-}
-
 // public input is a polynomial in Lagrange basis
 // (where accessing an evaluation of the poly requires absorption)
 pub struct PublicInput<G>(LagrangePoly<G::ScalarField>)
@@ -257,7 +247,7 @@ where
         &self,
         cs: &mut C,
         x: Var<G::ScalarField>,
-        pnt: &VanishEval<G::ScalarField>,
+        pnt: &polynomials::VanishEval<G::ScalarField>,
     ) -> Msg<VarEval<G::ScalarField, 1>> {
         self.0.eval(cs, x, pnt).into()
     }
@@ -310,12 +300,12 @@ where
 
         //~ 6. Sample $\beta$
         let beta: FieldChallenge<_> = tx.challenge(ctx); // sample challenge using Fp sponge
-        let beta: FieldChallenge<_> = ctx.pass(beta); // pass to other side
+        let beta: FieldChallenge<_> = ctx.pass(&beta); // pass to other side
         let beta: Var<G::ScalarField> = beta.into(); // interpret as variable
 
         //~ 7. Sample $\gamma$
         let gamma: FieldChallenge<_> = tx.challenge(ctx); // sample challenge using Fp sponge
-        let gamma: FieldChallenge<_> = ctx.pass(gamma); // pass to other side
+        let gamma: FieldChallenge<_> = ctx.pass(&gamma); // pass to other side
         let gamma: Var<G::ScalarField> = gamma.into(); // interpret as variable
 
         //~ 8. If using lookup, absorb the commitment to the aggregation lookup polynomial.
@@ -327,11 +317,11 @@ where
         //~ 9. Absorb the commitment to the permutation trace with the Fq-Sponge.
         let z_comm = tx.recv(ctx, proof.commitments.z_comm);
 
-        //~ 10. Sample $\alpha'$
-        let alpha_chal: GLVChallenge<G::BaseField> = tx.challenge(ctx);
+        //~ 10. Sample $\alpha'$ (GLV decomposed scalar)
+        let alpha_glv: GLVChallenge<G::BaseField> = tx.challenge(ctx);
 
-        //~ 11. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
-        let alpha: GLVChallenge<G::ScalarField> = ctx.pass(alpha_chal);
+        //~ 11. Derive $\alpha$ from $\alpha'$ using the endomorphism
+        let alpha: GLVChallenge<G::ScalarField> = ctx.pass(&alpha_glv);
         let alpha: Var<G::ScalarField> = ctx.flip(|ctx| alpha.to_field(ctx.cs()));
 
         //~ 12. Enforce that the length of the $t$ commitment is of size `PERMUTS`.
@@ -341,10 +331,10 @@ where
         let t_comm = tx.recv(ctx, proof.commitments.t_comm);
 
         //~ 14. Sample $\zeta'$ (GLV decomposition of $\zeta$)
-        let zeta_chal: GLVChallenge<G::BaseField> = tx.challenge(ctx);
+        let zeta_glv: GLVChallenge<G::BaseField> = tx.challenge(ctx);
 
         //~ 15. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
-        let zeta: GLVChallenge<G::ScalarField> = ctx.pass(zeta_chal);
+        let zeta: GLVChallenge<G::ScalarField> = ctx.pass(&zeta_glv);
         let zeta: Var<G::ScalarField> = ctx.flip(|ctx| zeta.to_field(ctx.cs()));
 
         //~ 18. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
@@ -352,7 +342,7 @@ where
         //~     Absorb over the foreign field
 
         // Enforce constraints on other side
-        let (_, scalars, commitments) = ctx.flip(|ctx| {
+        let (_, scalars, commitments, shift_zeta) = ctx.flip(|ctx| {
             tx.flip(|tx| {
                 let alphas: Alphas<_> = Alphas::new(ctx.cs(), alpha);
 
@@ -360,8 +350,12 @@ where
                 let omega = self.constant.domain.group_gen;
                 let zetaw = generic!({ ctx.cs() }, (zeta) : { ? = omega * zeta } );
 
+                // compute shift polynomial: $\zeta^{|domain size|}$
+                let shift_zeta = polynomials::ShiftEval::new(ctx.cs(), &self.constant.domain, zeta);
+
+                // compute vanishing polynomial (of domain) at $\zeta$
                 // note that $Z_H(\zeta) = Z_H(\zeta \omega)$: we only need to eval one
-                let zh_zeta = VanishEval::new(ctx.cs(), &self.constant.domain, zeta);
+                let vanish_zeta = polynomials::VanishEval::new(ctx.cs(), &shift_zeta);
 
                 //~ 19. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
                 //~     - the public polynomial
@@ -372,12 +366,12 @@ where
                 //~     - 6 sigmas evaluations (the last one is not evaluated)
 
                 // absorb $\zeta$ evaluations
-                let p_zeta = inputs.eval(ctx.cs(), zeta, &zh_zeta);
+                let p_zeta = inputs.eval(ctx.cs(), zeta, &vanish_zeta);
                 let p_zeta = tx.recv(ctx, p_zeta);
                 let e_zeta = tx.recv(ctx, proof.evals.zeta);
 
                 // absorb $\zeta\omega$ evaluations
-                let p_zetaw = inputs.eval(ctx.cs(), zetaw, &zh_zeta);
+                let p_zetaw = inputs.eval(ctx.cs(), zetaw, &vanish_zeta);
                 let p_zetaw = tx.recv(ctx, p_zetaw);
                 let e_zetaw = tx.recv(ctx, proof.evals.zetaw);
 
@@ -404,7 +398,7 @@ where
                     let term_perm = compute_ft_perm(
                         ctx.cs(),
                         &self.constant,
-                        &zh_zeta,
+                        &vanish_zeta,
                         &evals,
                         gamma,
                         beta,
@@ -519,7 +513,7 @@ where
                 }
 
                 // pass scalars to G::BaseField side for ft_comm computation (MSM inside circuit)
-                let scalars: Vec<Scalar<G>> = scalars.into_iter().map(|s| ctx.pass(s)).collect();
+                let scalars: Vec<Scalar<G>> = scalars.into_iter().map(|s| ctx.pass(&s)).collect();
 
                 // compute the combined inner product:
                 // the batching of all the openings
@@ -537,26 +531,41 @@ where
                     )
                 };
 
-                (combined_inner_product, scalars, commitments)
+                let shift_zeta: Scalar<G> = ctx.pass(shift_zeta.as_ref());
+
+                (combined_inner_product, scalars, commitments, shift_zeta)
             })
         });
 
-        // compute ft_comm MSM (linearlizated row constraints)
-        let ft_comm: VarPoint<G> = VarPoint::msm(ctx.cs(), scalars.iter().zip(commitments.iter()));
-        let ft_comm: VarPolyComm<G, 1> = ft_comm.into();
+        // compute ft_comm MSM (linearlizated row constraints based on gate selectors)
+        let f_comm: VarPolyComm<G, 1> =
+            VarPolyComm::linear_combination(ctx.cs(), scalars.iter().zip(commitments));
+
+        // compute the chunked commitment of ft: 
+        // the prover provides the negated qoutient (t), the linearlization is the remainder: i.e.
+        //
+        // $$
+        // ft(X) = f(X) - t(X) \cdot Z_H(X)
+        // $$
+        let ft_comm: VarPolyComm<G, 1> = {
+            let t_collapsed: VarPolyComm<G, 1> = t_comm.collapse(ctx.cs(), &shift_zeta);
+            let t_collapsed: VarPolyComm<G, 1> = t_collapsed.mul_vanish(ctx.cs(), &shift_zeta);
+            f_comm.sub(ctx.cs(), &t_collapsed) // f_comm is already a single chunk, hence collapse is a no-op
+        };
 
         // compute combined polynomial opening
         let poly_comms = iter::empty()
-            .chain(&acc_comms)
-            .chain(iter::once(&p_comm))
-            .chain(iter::once(&ft_comm))
-            .chain(iter::once(&z_comm))
+            .chain(&acc_comms) // * [\alpha^0]
+            .chain(iter::once(&p_comm)) // * [\alpha^1]
+            .chain(iter::once(&ft_comm)) // * [\alpha^2]
+            .chain(iter::once(&z_comm)) // ...
             .chain(iter::once(&relation.generic_comm))
             .chain(iter::once(&relation.psm_comm))
             .chain(&w_comm)
             .chain(&relation.sigma_comm);
 
-        // combine using powers of alpha
+        // combine all $\zeta$ openings using powers of $\alpha$
+        let combined_comm = VarPolyComm::combine_with_glv(ctx.cs(), poly_comms, &alpha_glv);
 
         // TODO: add the lookup terms
     }
