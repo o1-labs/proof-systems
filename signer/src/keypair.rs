@@ -10,7 +10,7 @@ use rand::{self, CryptoRng, RngCore};
 use thiserror::Error;
 
 /// Keypair error
-#[derive(Error, Debug, Clone, Copy, PartialEq)]
+#[derive(Error, Debug, Clone, PartialEq)]
 pub enum KeypairError {
     /// Invalid secret key hex
     #[error("invalid secret key hex")]
@@ -26,7 +26,7 @@ pub enum KeypairError {
 pub type Result<T> = std::result::Result<T, KeypairError>;
 
 /// Keypair structure
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Keypair {
     /// Secret key
     pub(crate) secret: SecKey,
@@ -47,10 +47,10 @@ impl Keypair {
     /// Generate a random keypair
     pub fn rand(rng: &mut (impl RngCore + CryptoRng)) -> Self {
         let sec_key: SecKey = SecKey::rand(rng);
-        let public = Self::derive_pubkey_curve_point(sec_key.into_scalar());
-
+        let scalar = sec_key.into_scalar();
+        let public = Self::derive_pubkey_curve_point(scalar);
         // Safe in this case b/c point must be on curve
-        Self::from_parts_unsafe(sec_key.into_scalar(), public)
+        Self::from_parts_unsafe(scalar, public)
     }
 
     /// Deserialize a keypair from secret key hex
@@ -80,13 +80,13 @@ impl Keypair {
     }
 
     /// Obtain the Mina address corresponding to the keypair's public key
-    pub fn get_address(self) -> String {
+    pub fn get_address(&self) -> String {
         self.public.into_address()
     }
 
     /// Validates the keypair
     pub fn validate(&self) -> bool {
-        let public = Self::derive_pubkey_curve_point(self.secret.into_scalar());
+        let public = Self::derive_pubkey_curve_point(*self.secret.scalar());
         &public == self.public.point()
     }
 

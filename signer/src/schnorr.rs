@@ -64,7 +64,7 @@ impl<T: Hasher<Message<H>>, H: 'static + Hashable> Signer<H> for Schnorr<T, H> {
         let k: ScalarField = if r.y.into_repr().is_even() { k } else { -k };
 
         let e: ScalarField = self.message_hash(&kp.public, r.x, input);
-        let s: ScalarField = k + e * kp.secret.into_scalar();
+        let s: ScalarField = k + e * kp.secret.scalar();
 
         Signature::new(r.x, s)
     }
@@ -76,7 +76,7 @@ impl<T: Hasher<Message<H>>, H: 'static + Hashable> Signer<H> for Schnorr<T, H> {
             .mul(sig.s)
             .into_affine();
         // Perform addition and infinity check in projective coordinates for performance
-        let rv = public.into_point().mul(ev).neg().add_mixed(&sv);
+        let rv = public.point().mul(ev).neg().add_mixed(&sv);
         if rv.is_zero() {
             return false;
         }
@@ -92,14 +92,14 @@ impl<T: Hasher<Message<H>>, H: 'static + Hashable> Signer<H> for Schnorr<T, H> {
 
 pub(crate) fn create_legacy<H: 'static + Hashable>(domain_param: H::D) -> impl Signer<H> {
     Schnorr::new(
-        mina_hasher::create_legacy::<Message<H>>(domain_param),
+        mina_hasher::create_legacy::<Message<H>>(domain_param.clone()),
         domain_param,
     )
 }
 
 pub(crate) fn create_kimchi<H: 'static + Hashable>(domain_param: H::D) -> impl Signer<H> {
     Schnorr::new(
-        mina_hasher::create_kimchi::<Message<H>>(domain_param),
+        mina_hasher::create_kimchi::<Message<H>>(domain_param.clone()),
         domain_param,
     )
 }
@@ -115,7 +115,7 @@ impl<T: Hasher<Message<H>>, H: 'static + Hashable> Schnorr<T, H> {
 
     /// Initiates inner hasher with the given domain param
     pub fn init_domain_param(&mut self, domain_param: H::D) {
-        self.hasher.init(domain_param);
+        self.hasher.init(domain_param.clone());
         self.domain_param = domain_param;
     }
 
@@ -126,10 +126,10 @@ impl<T: Hasher<Message<H>>, H: 'static + Hashable> Schnorr<T, H> {
         let mut blake_hasher = Blake2bVar::new(32).unwrap();
 
         let mut roi: ROInput = input.to_roinput();
-        roi.append_field(kp.public.into_point().x);
-        roi.append_field(kp.public.into_point().y);
-        roi.append_scalar(kp.secret.into_scalar());
-        roi.append_bytes(&self.domain_param.into_bytes());
+        roi.append_field(kp.public.point().x);
+        roi.append_field(kp.public.point().y);
+        roi.append_scalar(*kp.secret.scalar());
+        roi.append_bytes(&self.domain_param.clone().into_bytes());
 
         blake_hasher.update(&roi.to_bytes());
 
@@ -154,8 +154,8 @@ impl<T: Hasher<Message<H>>, H: 'static + Hashable> Schnorr<T, H> {
     fn message_hash(&mut self, pub_key: &PubKey, rx: BaseField, input: &H) -> ScalarField {
         let schnorr_input = Message::<H> {
             input: input.clone(),
-            pub_key_x: pub_key.into_point().x,
-            pub_key_y: pub_key.into_point().y,
+            pub_key_x: pub_key.point().x,
+            pub_key_y: pub_key.point().y,
             rx,
         };
 

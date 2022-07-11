@@ -26,7 +26,7 @@ pub type BaseField = <CurvePoint as AffineCurve>::BaseField;
 pub type ScalarField = <CurvePoint as AffineCurve>::ScalarField;
 
 /// Mina network (or blockchain) identifier
-#[derive(Copy, Clone)]
+#[derive(Debug, Clone)]
 pub enum NetworkId {
     /// Id for all testnets
     TESTNET = 0x00,
