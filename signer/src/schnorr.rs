@@ -84,10 +84,6 @@ impl<T: Hasher<Message<H>>, H: 'static + Hashable> Signer<H> for Schnorr<T, H> {
 
         rv.y.into_repr().is_even() && rv.x == sig.rx
     }
-
-    fn reset(&mut self) {
-        self.hasher.reset();
-    }
 }
 
 pub(crate) fn create_legacy<H: 'static + Hashable>(domain_param: H::D) -> impl Signer<H> {
@@ -111,12 +107,6 @@ impl<T: Hasher<Message<H>>, H: 'static + Hashable> Schnorr<T, H> {
             hasher,
             domain_param,
         }
-    }
-
-    /// Initiates inner hasher with the given domain param
-    pub fn init_domain_param(&mut self, domain_param: H::D) {
-        self.hasher.init(domain_param.clone());
-        self.domain_param = domain_param;
     }
 
     /// This function uses a cryptographic hash function to create a uniformly and

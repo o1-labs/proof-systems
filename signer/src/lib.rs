@@ -57,9 +57,6 @@ pub trait Signer<H: Hashable> {
     /// Verify that the signature `sig` on `input` (see [`Hashable`]) is signed with the secret key corresponding to `pub_key`.
     /// Return `true` if the signature is valid and `false` otherwise.
     fn verify(&mut self, sig: &Signature, pub_key: &PubKey, input: &H) -> bool;
-
-    /// Resets inner state of the signer so that it can be reused
-    fn reset(&mut self);
 }
 
 /// Create a legacy signer context with domain parameters initialized with `domain_param`
