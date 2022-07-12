@@ -1,3 +1,4 @@
+use super::framework::TestFramework;
 use crate::{
     circuits::{
         gate::{CircuitGate, GateType},
@@ -18,13 +19,12 @@ use mina_curves::pasta::{
     fp::Fp,
     vesta::{Affine, VestaParameters},
 };
+use o1_utils::math;
 use oracle::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use std::time::Instant;
-use o1_utils::math;
-use super::framework::TestFramework;
 
 // aliases
 
