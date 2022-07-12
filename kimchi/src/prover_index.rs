@@ -48,10 +48,7 @@ where
 }
 //~spec:endcode
 
-impl<'a, G> ProverIndex<G>
-where
-    G: KimchiCurve,
-{
+impl<G: KimchiCurve> ProverIndex<G> {
     /// this function compiles the index from constraints
     pub fn create(mut cs: ConstraintSystem<G>, endo_q: G::ScalarField, srs: Arc<SRS<G>>) -> Self {
         let max_poly_size = srs.g.len();

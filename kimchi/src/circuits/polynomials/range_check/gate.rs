@@ -197,8 +197,7 @@ impl<F: FftField> CircuitGate<F> {
             &beta,
             &gamma,
             &lcs.configuration.lookup_info,
-        )
-        .map_err(|e| e)?;
+        )?;
         let lookup_env = Some(LookupEnvironment {
             aggreg: &lookup_env_data.aggreg8,
             sorted: &lookup_env_data.sorted8,

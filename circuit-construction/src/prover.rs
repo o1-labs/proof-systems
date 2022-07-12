@@ -16,6 +16,8 @@ use kimchi::{
 use mina_curves::pasta::{fp::Fp, fq::Fq, pallas::Affine as Other, vesta::Affine};
 use oracle::FqSponge;
 
+/// A [Cycle] represents the algebraic structure that
+/// allows for recursion using elliptic curves.
 pub trait Cycle {
     type InnerField: FftField
         + PrimeField
@@ -69,7 +71,9 @@ pub trait Cycle {
         > + KimchiCurve;
 }
 
+/// Used to configure the base curve of Pallas
 pub struct FpInner;
+/// Used to configure the base curve of Vesta
 pub struct FqInner;
 
 impl Cycle for FpInner {
@@ -96,7 +100,7 @@ impl Cycle for FqInner {
     type OuterProj = <Other as AffineCurve>::Projective;
 }
 
-/// Given an index, a group map, custom blinders for the witness, a public input vector, and a circuit `main`, create a proof.
+/// Given an index, a group map, custom blinders for the witness, a public input vector, and a circuit `main`, it creates a proof.
 pub fn prove<G, H, EFqSponge, EFrSponge>(
     index: &ProverIndex<G>,
     group_map: &G::Map,
@@ -111,13 +115,8 @@ where
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
 {
-    // create the public rows
-    let mut gen: WitnessGenerator<G::ScalarField> = WitnessGenerator {
-        rows: public_input
-            .iter()
-            .map(|x| array_init(|i| if i == 0 { *x } else { G::ScalarField::zero() }))
-            .collect(),
-    };
+    // create the witness generator
+    let mut gen: WitnessGenerator<G::ScalarField> = WitnessGenerator::new(&public_input);
 
     // run the witness generation
     let public_vars = public_input
@@ -156,6 +155,7 @@ where
     .unwrap()
 }
 
+/// Creates the prover index on input an `srs`, used `constants`, parameters for Poseidon, number of public inputs, and a specific circuit
 pub fn generate_prover_index<C, H>(
     srs: std::sync::Arc<SRS<C::Outer>>,
     public: usize,
@@ -165,10 +165,7 @@ where
     H: FnOnce(&mut System<C::Outer>, Vec<Var<C::InnerField>>),
     C: Cycle,
 {
-    let mut system: System<C::Outer> = System {
-        next_variable: 0,
-        gates: vec![],
-    };
+    let mut system: System<C::Outer> = System::default();
     let z = C::InnerField::zero();
 
     // create public input variables
@@ -176,17 +173,11 @@ where
     let public_input: Vec<_> = (0..public)
         .map(|_| {
             let v = system.var(|| panic!("fail"));
-            let row = array_init(|i| {
-                if i == 0 {
-                    v
-                } else {
-                    system.var(|| panic!("fail"))
-                }
-            });
+
             system.gate(GateSpec {
                 typ: GateType::Generic,
-                c: public_input_row.clone(),
-                row,
+                row: vec![Some(v)],
+                coeffs: public_input_row.clone(),
             });
             v
         })
@@ -208,7 +199,9 @@ where
     ProverIndex::<C::Outer>::create(constraint_system, endo_q, srs)
 }
 
+/// Handling coordinates in an affine curve
 pub trait CoordinateCurve: AffineCurve {
+    /// Returns the coordinates in the curve as two points of the base field
     fn to_coords(&self) -> Option<(Self::BaseField, Self::BaseField)>;
 }
 

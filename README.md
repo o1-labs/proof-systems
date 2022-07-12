@@ -115,12 +115,14 @@ At the time of this writing:
 | number of gates | seconds |
 | :-------------: | :-----: |
 |      2^11       |  0.6s   |
+|      2^15       |  3.3s   |
 |      2^16       |  6.3s   |
 
 **Verification time**
 
 | number of gates | seconds |
 | :-------------: | :-----: |
+|      2^15       |  0.1s   |
 |      2^16       |  0.1s   |
 
 ## Organization
@@ -129,11 +131,11 @@ The project is organized in the following way:
 
 * [book/](https://github.com/o1-labs/proof-systems/tree/master/book). The mina book, RFCs, and specifications.
 * [cairo/](https://github.com/o1-labs/proof-systems/tree/master/cairo). A Cairo runner written in rust.
+* [circuit-construction/](https://github.com/o1-labs/proof-systems/tree/master/circuit-construction). Circuit writer.
 * [curves/](https://github.com/o1-labs/proof-systems/tree/master/curves). The elliptic curves we use (for now just the pasta curves).
 * [groupmap/](https://github.com/o1-labs/proof-systems/tree/master/groupmap). Used to convert elliptic curve elements to field elements.
 * [hasher/](https://github.com/o1-labs/proof-systems/tree/master/hasher). Interfaces for mina hashing.
 * [kimchi/](https://github.com/o1-labs/proof-systems/tree/master/kimchi). Our proof system.
-* [circuit-construction/](https://github.com/o1-labs/proof-systems/tree/master/circuit-construction). Circuit writer.
 * [ocaml/](https://github.com/o1-labs/proof-systems/tree/master/ocaml). Ocaml bindings generator tool.
 * [oracle/](https://github.com/o1-labs/proof-systems/tree/master/oracle). Implementation of the poseidon hash function.
 * [poly-commitment/](https://github.com/o1-labs/proof-systems/tree/master/poly-commitment). Polynomial commitment code.

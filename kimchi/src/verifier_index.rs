@@ -66,6 +66,8 @@ pub struct VerifierIndex<G: KimchiCurve> {
     /// polynomial commitment keys
     #[serde(skip)]
     pub srs: OnceCell<Arc<SRS<G>>>,
+    /// number of public inputs
+    pub public: usize,
 
     // index polynomial commitments
     /// permutation commitment array
@@ -130,7 +132,7 @@ pub struct VerifierIndex<G: KimchiCurve> {
 }
 //~spec:endcode
 
-impl<'a, G: KimchiCurve> ProverIndex<G> {
+impl<G: KimchiCurve> ProverIndex<G> {
     /// Produces the [VerifierIndex] from the prover's [ProverIndex].
     pub fn verifier_index(&self) -> VerifierIndex<G> {
         let domain = self.cs.domain.d1;
@@ -168,6 +170,7 @@ impl<'a, G: KimchiCurve> ProverIndex<G> {
             max_poly_size: self.max_poly_size,
             max_quot_size: self.max_quot_size,
             powers_of_alpha: self.powers_of_alpha.clone(),
+            public: self.cs.public,
             srs: {
                 let cell = OnceCell::new();
                 cell.set(Arc::clone(&self.srs)).unwrap();

@@ -60,6 +60,12 @@ pub const GENERIC_REGISTERS: usize = 3;
 /// and one for the constant.
 pub const GENERIC_COEFFS: usize = GENERIC_REGISTERS + 1 /* mul */ + 1 /* cst */;
 
+/// The double generic gate actually contains two generic gates.
+pub const DOUBLE_GENERIC_COEFFS: usize = GENERIC_COEFFS * 2;
+
+/// Number of generic of registers by a double generic gate.
+pub const DOUBLE_GENERIC_REGISTERS: usize = GENERIC_REGISTERS * 2;
+
 /// The different type of computation that are possible with a generic gate.
 /// This type is useful to create a generic gate via the [CircuitGate::create_generic_gadget] function.
 pub enum GenericGateSpec<F> {
@@ -333,12 +339,22 @@ pub mod testing {
             ensure_eq!(self.typ, GateType::Generic, "generic: incorrect gate");
 
             let check_single = |coeffs_offset, register_offset| {
-                let sum = self.coeffs[coeffs_offset] * this[register_offset]
-                    + self.coeffs[coeffs_offset + 1] * this[register_offset + 1]
-                    + self.coeffs[coeffs_offset + 2] * this[register_offset + 2];
-                let mul = self.coeffs[coeffs_offset + 3]
-                    * this[register_offset]
-                    * this[register_offset + 1];
+                let get = |offset| {
+                    self.coeffs
+                        .get(offset)
+                        .cloned()
+                        .unwrap_or_else(|| F::zero())
+                };
+                let l_coeff = get(coeffs_offset);
+                let r_coeff = get(coeffs_offset + 1);
+                let o_coeff = get(coeffs_offset + 2);
+                let m_coeff = get(coeffs_offset + 3);
+                let c_coeff = get(coeffs_offset + 4);
+
+                let sum = l_coeff * this[register_offset]
+                    + r_coeff * this[register_offset + 1]
+                    + o_coeff * this[register_offset + 2];
+                let mul = m_coeff * this[register_offset] * this[register_offset + 1];
                 let public = if coeffs_offset == 0 {
                     public.get(row).cloned().unwrap_or_else(<F>::zero)
                 } else {
@@ -346,7 +362,7 @@ pub mod testing {
                 };
                 ensure_eq!(
                     zero,
-                    sum + mul + self.coeffs[coeffs_offset + 4] - public,
+                    sum + mul + c_coeff - public,
                     "generic: incorrect gate"
                 );
                 Ok(())
