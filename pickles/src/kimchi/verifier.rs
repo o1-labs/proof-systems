@@ -1,90 +1,39 @@
 use std::iter;
 
-use circuit_construction::{generic, Constants, Cs, Var};
+use ark_ec::AffineCurve;
+use ark_ff::{FftField, PrimeField};
+
+use circuit_construction::{generic, Cs, Var};
 
 use kimchi::circuits::expr::Column;
 use kimchi::circuits::gate::GateType;
 use kimchi::circuits::wires::{COLUMNS, PERMUTS};
 
-use ark_ec::AffineCurve;
-use ark_ff::{FftField, One, PrimeField, Zero};
-
-use crate::context::Context;
-
-use crate::expr::{Assignments, Evaluator};
-
 use crate::kimchi::alphas::Alphas;
+use crate::kimchi::constraints;
 use crate::kimchi::index::{ConstIndex, Index};
 use crate::kimchi::proof::{eval_polynomial, VarEvaluations, VarProof};
 
-use crate::util::{eval_const_poly, var_product};
-
-use crate::types::{
-    FieldChallenge, GLVChallenge, LagrangePoly, Scalar, VarEval, VarPoint, VarPolyComm,
-    polynomials
-};
-
+use crate::context::Context;
+use crate::expr::{Assignments, Evaluator};
 use crate::transcript::{Arthur, Msg};
-
-fn perm_scalars<F: FftField + PrimeField, C: Cs<F>>(
-    cs: &mut C,
-    evals: &VarEvaluations<F>,
-    beta: Var<F>,
-    gamma: Var<F>,
-    alphas: &[Var<F>; 3],
-    zkp_zeta: Var<F>,
-) -> Var<F> {
-    //~ Compute
-    //~
-    //~ $$
-    //~ \begin{align}
-    //~ z(\zeta \omega) \beta \alpha^{PERM0} zkpl(\zeta) \cdot \\
-    //~ (\gamma + \beta \sigma_0(\zeta) + w_0(\zeta)) \cdot \\
-    //~ (\gamma + \beta \sigma_1(\zeta) + w_1(\zeta)) \cdot \\
-    //~ (\gamma + \beta \sigma_2(\zeta) + w_2(\zeta)) \cdot \\
-    //~ (\gamma + \beta \sigma_3(\zeta) + w_3(\zeta)) \cdot \\
-    //~ (\gamma + \beta \sigma_4(\zeta) + w_4(\zeta)) \cdot \\
-    //~ (\gamma + \beta \sigma_5(\zeta) + w_5(\zeta)) \cdot \\
-    //~ \end{align}
-    //~$$
-    //~
-
-    // first term
-    let mut prod = vec![evals.zetaw.z.clone().into(), beta, alphas[0], zkp_zeta];
-
-    // compute for every chunk of the committed permutation
-    debug_assert_eq!(evals.zeta.s.len(), PERMUTS - 1);
-    prod.extend((0..PERMUTS - 1).map(|i| {
-        let si = evals.zeta.s[i].clone().into();
-        let wi = evals.zeta.w[i].clone().into();
-
-        // \beta * s
-        let tmp = cs.mul(beta, si);
-
-        // + w[i]
-        let tmp = cs.add(tmp, wi);
-
-        // + \gamma
-        cs.add(tmp, gamma)
-    }));
-
-    var_product(cs, prod.into_iter())
-}
+use crate::types::{
+    polynomials, FieldChallenge, GLVChallenge, LagrangePoly, Scalar, VarEval, VarPolyComm,
+};
+use crate::util::var_product;
 
 /// Compute the permutation argument part of the
 fn compute_ft_perm<F: FftField + PrimeField, C: Cs<F>>(
     cs: &mut C,
     index: &ConstIndex<F>,
     zh_zeta: &polynomials::VanishEval<F>,
+    zkp_zeta: &polynomials::ZKPEval<F>,
     eval: &VarEvaluations<F>,
     gamma: Var<F>,
     beta: Var<F>,
     zeta: Var<F>,
     alpha: &[Var<F>; 3],
 ) -> Var<F> {
-    // evaluate the (constant) ZKP polynomial at \zeta, i.e. zkpm(\zeta)
-    let zkp = eval_const_poly(cs, &index.zkpm, zeta);
-
     // shuffle proof related constraints
     let term_recurrence = {
         // $\prod_i \left((\beta s_i) + w_i + \gamma\right)$
@@ -143,7 +92,7 @@ fn compute_ft_perm<F: FftField + PrimeField, C: Cs<F>>(
         let diff = cs.sub(before, after);
 
         // * zkp(\zeta)
-        let mask = cs.mul(diff, zkp);
+        let mask = cs.mul(diff, *zkp_zeta.as_ref());
         cs.mul(mask, alpha[0])
     };
 
@@ -357,6 +306,9 @@ where
                 // note that $Z_H(\zeta) = Z_H(\zeta \omega)$: we only need to eval one
                 let vanish_zeta = polynomials::VanishEval::new(ctx.cs(), &shift_zeta);
 
+                // evaluate the ZKP (masking polynomial)
+                let zkp_zeta = polynomials::ZKPEval::new(ctx.cs(), &self.constant, zeta);
+
                 //~ 19. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
                 //~     - the public polynomial
                 //~     - z
@@ -399,6 +351,7 @@ where
                         ctx.cs(),
                         &self.constant,
                         &vanish_zeta,
+                        &zkp_zeta,
                         &evals,
                         gamma,
                         beta,
@@ -467,6 +420,34 @@ where
                 // associate with corresponding polynomial commitment
                 let mut scalars: Vec<Var<G::ScalarField>> = Vec::new();
                 let mut commitments: Vec<&VarPolyComm<G, 1>> = Vec::new();
+
+                // handle permutation argument
+                {
+                    let perm_scalar = constraints::perm_scalar(
+                        ctx.cs(),
+                        &evals,
+                        beta,
+                        gamma,
+                        alphas.permutation(),
+                        &zkp_zeta,
+                    );
+                    scalars.push(perm_scalar);
+                    commitments.push(&relation.sigma_comm[PERMUTS - 1])
+                }
+
+                // handle generic gate
+                {
+                    let generic_scalars =
+                        constraints::generic_scalars(ctx.cs(), alphas.gate(), &evals);
+                    let generic_comm = relation
+                        .coefficients_comm
+                        .iter()
+                        .take(generic_scalars.len());
+                    scalars.extend(generic_scalars);
+                    commitments.extend(generic_comm);
+                }
+
+                // handle all other types of gates
                 for (col, expr) in &self.constant.linearization.index_terms {
                     let scalar = evalutator.eval_expr(ctx.cs(), expr);
 
@@ -541,7 +522,7 @@ where
         let f_comm: VarPolyComm<G, 1> =
             VarPolyComm::linear_combination(ctx.cs(), scalars.iter().zip(commitments));
 
-        // compute the chunked commitment of ft: 
+        // compute the chunked commitment of ft:
         // the prover provides the negated qoutient (t), the linearlization is the remainder: i.e.
         //
         // $$
@@ -574,7 +555,5 @@ where
 
         // combine all $\zeta$ openings using powers of $\alpha$
         let combined_comm = VarPolyComm::combine_with_glv(ctx.cs(), poly_comms, &alpha_glv);
-
-        // TODO: add the lookup terms
     }
 }

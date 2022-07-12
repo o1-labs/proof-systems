@@ -1,7 +1,7 @@
 use ark_ec::AffineCurve;
 use ark_ff::{FftField, PrimeField};
 
-use circuit_construction::{Cs};
+use circuit_construction::Cs;
 
 use crate::transcript::{Absorb, VarSponge};
 use crate::types::group::VarPoint;
@@ -25,27 +25,34 @@ where
 {
     /// "Collapses" a chunked commitment to a polynomial at the evaluation point $\zeta$ to an unchunked polynomial at $\zeta$.
     /// A chunked evaluation of $f(\zeta)$ with $N$ chunks is represented as:
-    /// 
+    ///
     /// $$
     /// y = f(\zeta) = \sum_{i = 0}^{N} \zeta^{n \cdot i} \cdot \text{chunk}_i
     /// $$
-    /// 
+    ///
     /// This method "collapses" all these chunks to form a commitment to a polynomial $g(X)$ of degree less than $n$ st.
     /// $g(X)$ opens to $y$ at $\zeta$ ($f(\zeta) = y$) iff. the original $f(X)$ did so.
-    /// 
+    ///
     /// For this transformation to be meaninful zeta_n should be a passing of the Shift of $\zeta$.
     /// The same ShiftEval should be used to collapse the corresponding chunked openings of this commitment.
-    /// 
-    /// If the polynomial has 1 chunk, this is a no-op.
-    pub fn collapse<C: Cs<G::BaseField>>(&self, cs: &mut C, zeta_n: &Scalar<G>) -> VarPolyComm<G, 1> {
-        VarPoint::combine_with_scalar_power(cs, self.chunks.iter().rev(),  zeta_n).into()
+    ///
+    /// If the polynomial already has 1 chunk, this is a no-op.
+    pub fn collapse<C: Cs<G::BaseField>>(
+        &self,
+        cs: &mut C,
+        zeta_n: &Scalar<G>,
+    ) -> VarPolyComm<G, 1> {
+        VarPoint::combine_with_scalar_power(cs, self.chunks.iter().rev(), zeta_n).into()
     }
 
     /// Multiplies by the vanishing polynomial Z_H(X), the new polynomial has 1 more chunk than the old.
-    /// 
+    ///
     /// Note: this is an efficient operation (no scalar multiplications) since the vanishing polynomial has the form: X^{|H|} - 1.
     /// Hence it corresponds to shifting all the chunks up by one, and subtracting the next chunk from the previous.
-    pub fn mul_vanish< C: Cs<G::BaseField>, const N1: usize>(&self, cs: &mut C) -> VarPolyComm<G, N1>  {
+    pub fn mul_vanish<C: Cs<G::BaseField>, const N1: usize>(
+        &self,
+        cs: &mut C,
+    ) -> VarPolyComm<G, N1> {
         assert_eq!(N1, N, "multiplying a polynomial by the vanishing polynomial increases the number of chunks by 1");
 
         // the constant chunk is the inverse of the old constant
@@ -58,36 +65,37 @@ where
 
             // subtract from previous chunk
             if i != 0 {
-                chunks[i-1] = chunks[i-1].sub(cs, chunk);
+                chunks[i - 1] = chunks[i - 1].sub(cs, chunk);
             }
         }
-        
+
         VarPolyComm {
-            chunks: chunks.try_into().unwrap()
+            chunks: chunks.try_into().unwrap(),
         }
     }
 
     /// Adds two polynomials (in the ring F[X]})
     pub fn add<C: Cs<G::BaseField>>(&self, cs: &mut C, other: &Self) -> Self {
-        let mut chunks = Vec::new(); 
+        let mut chunks = Vec::new();
         for i in 0..N {
             chunks.push(self.chunks[i].add(cs, &other.chunks[i]));
         }
         VarPolyComm {
-            chunks: chunks.try_into().unwrap()
+            chunks: chunks.try_into().unwrap(),
         }
     }
 
     /// Subtracts two polynomials (in the ring F[X])
     pub fn sub<C: Cs<G::BaseField>>(&self, cs: &mut C, other: &Self) -> Self {
-        let mut chunks = Vec::new(); 
+        let mut chunks = Vec::new();
         for i in 0..N {
             chunks.push(self.chunks[i].sub(cs, &other.chunks[i]));
         }
         VarPolyComm {
-            chunks: chunks.try_into().unwrap()
+            chunks: chunks.try_into().unwrap(),
         }
-    }}
+    }
+}
 
 impl<G, const N: usize> Absorb<G::BaseField> for VarPolyComm<G, N>
 where
@@ -119,9 +127,13 @@ where
     {
         VarPoint::var_msm(cs, elems).into()
     }
-    
+
     /// Combines a number of polynomial commitments using a random GLV challenge
-    pub fn combine_with_glv<'a, I, C>(cs: &mut C, mut elems: I, chal: &GLVChallenge<G::BaseField>) -> Self
+    pub fn combine_with_glv<'a, I, C>(
+        cs: &mut C,
+        mut elems: I,
+        chal: &GLVChallenge<G::BaseField>,
+    ) -> Self
     where
         I: Iterator<Item = &'a Self>,
         C: Cs<G::BaseField>,

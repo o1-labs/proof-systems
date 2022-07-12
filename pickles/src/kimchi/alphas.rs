@@ -26,9 +26,11 @@ impl<F: FftField + PrimeField> Alphas<F> {
         &self.alphas[offset..VarbaseMul::<F>::CONSTRAINTS as usize]
     }
 
-    pub fn permutation(&self) -> &[Var<F>] {
+    pub fn permutation(&self) -> &[Var<F>; 3] {
         let offset = VarbaseMul::<F>::CONSTRAINTS as usize;
-        &self.alphas[offset..offset + permutation::CONSTRAINTS as usize]
+        self.alphas[offset..offset + permutation::CONSTRAINTS as usize]
+            .try_into()
+            .unwrap()
     }
 
     pub fn pow(&self, i: usize) -> Var<F> {

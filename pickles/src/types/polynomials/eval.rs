@@ -7,7 +7,7 @@ use crate::types::polynomials::ShiftEval;
 
 /// The evaluation of a (possibly chunked) polynomial.
 /// The least significant chunk is first.
-#[derive(Clone)]
+#[derive(Clone, Copy, Debug)]
 pub struct VarEval<F: FftField + PrimeField, const C: usize> {
     pub(crate) chunks: [Var<F>; C],
 }

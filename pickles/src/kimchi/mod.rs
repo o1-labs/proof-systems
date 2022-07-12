@@ -5,7 +5,11 @@ use oracle::sponge::ScalarChallenge;
 
 mod alphas;
 
-mod index;
+/// Code to handle generic gates:
+/// Generic gates do not use the expression framework :(
+mod constraints;
+
+pub mod index;
 
 /// Proof types
 pub mod proof;

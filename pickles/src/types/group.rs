@@ -66,11 +66,7 @@ where
     ///
     /// \sum_{i = 0} [chal^i] elems_i
     ///
-    pub fn combine_with_scalar_power<'a, I, C>(
-        cs: &mut C,
-        mut elems: I,
-        chal: &Scalar<G>,
-    ) -> Self
+    pub fn combine_with_scalar_power<'a, I, C>(cs: &mut C, mut elems: I, chal: &Scalar<G>) -> Self
     where
         I: Iterator<Item = &'a Self>,
         C: Cs<G::BaseField>,
