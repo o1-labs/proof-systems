@@ -12,6 +12,9 @@ use std::collections::HashMap;
 
 use crate::constants::Constants;
 
+/// A variable in our circuit.
+/// Variables are assigned with an index to differentiate from each other.
+/// Optionally, they can eventually take as value a field element.
 #[derive(Hash, Eq, PartialEq, Debug, Clone, Copy)]
 pub struct Var<F> {
     pub index: usize,
@@ -19,13 +22,20 @@ pub struct Var<F> {
 }
 
 impl<F: Copy> Var<F> {
+    /// Returns the value inside a variable [Var].
+    /// It panics if it is `None`.
     pub fn val(&self) -> F {
         self.value.unwrap()
     }
 }
 
+/// A variable that corresponds to scalar that is shifted by a certain amount.
 pub struct ShiftedScalar<F>(Var<F>);
 
+/// Specifies a gate within a circuit.
+/// A gate will have a type,
+/// will refer to a row of variables,
+/// and will have associated vector of coefficients.
 pub struct GateSpec<F> {
     pub typ: GateType,
     pub row: Vec<Option<Var<F>>>,
@@ -48,6 +58,10 @@ impl<F: FftField> GateSpec<F> {
     }
 }
 
+/// A set of gates within the circuit.
+/// It carries the index for the next available variable,
+/// and the vector of [GateSpec] created so far.
+/// It also keeps track of the queue of generic gates and cached constants.
 #[derive(Default)]
 pub struct System<F: FftField> {
     pub next_variable: usize,
@@ -57,6 +71,7 @@ pub struct System<F: FftField> {
     pub cached_constants: HashMap<F, Var<F>>,
 }
 
+/// Carries a vector of rows corresponding to the witness, a queue of generic gates, and stores the cached constants
 #[derive(Default)]
 pub struct WitnessGenerator<F>
 where
@@ -84,8 +99,14 @@ where
     }
 }
 
+/// A row is an array of [COLUMNS] elements
 type Row<V> = [V; COLUMNS];
 
+/// This trait includes all the operations that can be executed
+/// by the elements in the circuits.
+/// It allows for different behaviours depending on the struct for
+/// which it is implemented for.
+/// In particular, the circuit mode and the witness generation mode.
 pub trait Cs<F: PrimeField> {
     /// In cases where you want to create a free variable in the circuit,
     /// as in the variable is not constrained _yet_
@@ -105,8 +126,12 @@ pub trait Cs<F: PrimeField> {
     where
         G: FnOnce() -> F;
 
+    /// Returns the number of gates that the current [Self] contains.
     fn curr_gate_count(&self) -> usize;
 
+    /// Returns a variable containing a field element as value that is
+    /// computed as the equivalent `BigInteger` number returned by
+    /// function `g`, only if the length is a multiple of 4.
     fn endo_scalar<G, N: BigInteger>(&mut self, length: usize, g: G) -> Var<F>
     where
         G: FnOnce() -> N,
@@ -120,6 +145,8 @@ pub trait Cs<F: PrimeField> {
         })
     }
 
+    /// This function creates a [ShiftedScalar] variable from a field element that is
+    /// returned by function `g()`, and a length that should be a multiple of 5.
     fn scalar<G, Fr: PrimeField>(&mut self, length: usize, g: G) -> ShiftedScalar<F>
     where
         G: FnOnce() -> Fr,
@@ -146,6 +173,9 @@ pub trait Cs<F: PrimeField> {
     /// In witness generation mode, adds the corresponding row to the witness.
     fn gate(&mut self, g: GateSpec<F>);
 
+    /// Creates a `Generic` gate that constrains if two variables are equal.
+    /// This is done by setting `x1` in the left wire and `x2` in the right wire
+    /// with left coefficient `1` and right coefficient `-1`, so that `x1 - x2 = 0`.  
     // TODO: Optimize to use permutation argument.
     fn assert_eq(&mut self, x1: Var<F>, x2: Var<F>) {
         // | 0  | 1  | 2 | ...
@@ -160,8 +190,14 @@ pub trait Cs<F: PrimeField> {
         self.generic(coeffs, vars);
     }
 
+    /// Checks if a constant `x` is already in the cached constants of `self` and returns it.
+    /// Otherwise, it creates a variable for it and caches it.
     fn cached_constants(&mut self, x: F) -> Var<F>;
 
+    /// Creates a `Generic` gate to include a constant in the circuit, and returns the variable containing it.
+    /// It sets the left wire to be the variable containing the constant `x` and the rest to zero.
+    /// Then the left coefficient is set to one and the coefficient for constants is set to `-x`.
+    /// This way, the constraint `1 * x - x = 0` holds.
     fn constant(&mut self, x: F) -> Var<F> {
         let v = self.cached_constants(x);
 
@@ -196,7 +232,11 @@ pub trait Cs<F: PrimeField> {
         }
     }
 
-    // TODO
+    /// Creates a `Generic` gate to constrain that a variable `v` is scaled by an `x` amount and returns it.
+    /// First, it creates a new variable with a scaled value (meaning, the value in `v` times `x`).
+    /// Then, it creates a row that sets the left wire to be `v` and the right wire to be the scaled variable.
+    /// Finally, it sets the left coefficient to `x` and the right coefficient to `-1`.
+    /// That way, the constraint `x * v - 1 * xv = 0` is created.
     fn scale(&mut self, x: F, v: Var<F>) -> Var<F> {
         let xv = self.var(|| v.val() * x);
 
@@ -211,6 +251,9 @@ pub trait Cs<F: PrimeField> {
         xv
     }
 
+    /// Performs curve point addition.
+    /// It creates the corresponding `CompleteAdd` gate for the points `(x1, y1)` and `(x2,y2)`
+    /// and returns the third point resulting from the addition as a tuple of variables.
     fn add_group(
         &mut self,
         zero: Var<F>,
@@ -276,10 +319,17 @@ pub trait Cs<F: PrimeField> {
         (x3, y3)
     }
 
+    /// Doubles one curve point `(x1, y1)`, using internally the `add_group()` function.
+    /// It creates a `CompleteAdd` gate for this point addition (with itself).
+    /// Returns a tuple of variables corresponding to the doubled point.
     fn double(&mut self, zero: Var<F>, (x1, y1): (Var<F>, Var<F>)) -> (Var<F>, Var<F>) {
         self.add_group(zero, (x1, y1), (x1, y1))
     }
 
+    /// Creates a `CompleteAdd` gate that checks whether a third point `(x3, y3)` is the addition
+    /// of the two first points `(x1, y1)` and `(x2, y2)`.
+    /// The difference between this function and `add_group()` is that in `assert_add_group` the
+    /// third point is given, whereas in the other one it is computed with the formula.
     fn assert_add_group(
         &mut self,
         zero: Var<F>,
@@ -341,7 +391,31 @@ pub trait Cs<F: PrimeField> {
         });
     }
 
-    // TODO
+    /// This function is used to include conditionals in circuits.
+    /// It creates three `Generic` gates to simulate the logics of the conditional.
+    /// It receives as input:
+    ///  - `b`: the branch
+    ///  - `t`: the true
+    ///  - `f`: the false
+    /// And simulates the following equation: `res = b * ( t - f ) + f`
+    /// ( when the condition is false, `res = 1` )
+    /// ( when the condition is  true, `res = b` )
+    /// This is constrained using three `Generic` gates
+    /// 1. Constrain `delta = t - f`
+    /// 2. Constrain `res1 = b * delta`
+    /// 3. Constrain `res = res1 + f`
+    /// For (1):
+    /// - Creates a row with left wire `t`, right wire `f`, and output wire `delta`
+    /// - Assigns `1` to the left coefficient, `-1` to the right coefficient, and `-1` to the output coefficient.
+    /// - That way, it creates a first gate constraining: `1 * t - 1 * f - delta = 0``
+    /// For (2):
+    /// - Creates a row with left wire `b`, right wire `delta`, and output wire `res1`.
+    /// - Assigns `-1` to the output coefficient, and `1` to the multiplication coefficient.
+    /// - That way, it creates a second gate constraining: `-1 * res + 1 * b * delta = 0`
+    /// For (3):
+    /// - Creates a row with left wire `res1`, right wire `f`, and output wire `res`.
+    /// - Assigns `1` to the left coefficient, `1` to the right coefficient, and `-1` to the output coefficient.
+    /// - That way, it creates a third gate constraining: `1 * res1 + 1 * f - 1 * res = 0`
     fn cond_select(&mut self, b: Var<F>, t: Var<F>, f: Var<F>) -> Var<F> {
         // Could be more efficient. Currently uses three constraints :(
         // delta = t - f
@@ -381,6 +455,8 @@ pub trait Cs<F: PrimeField> {
         res
     }
 
+    /// Performs a scalar multiplication between a [ShiftedScalar] and a point `(xt, yt)`.
+    /// This function creates 51 rows pairs of rows.
     fn scalar_mul(
         &mut self,
         zero: Var<F>,
@@ -395,6 +471,7 @@ pub trait Cs<F: PrimeField> {
 
         let _ = self.var(|| {
             witness = array_init(|_| vec![F::zero(); 2 * num_row_pairs]);
+            // Creates a vector of bits from the value inside the scalar, with the most significant bit upfront
             let bits_msb: Vec<bool> = scalar
                 .0
                 .val()
@@ -405,6 +482,7 @@ pub trait Cs<F: PrimeField> {
                 .copied()
                 .rev()
                 .collect();
+            // Creates a witness for the VarBaseMul gate.
             kimchi::circuits::polynomials::varbasemul::witness(
                 &mut witness,
                 0,
@@ -415,6 +493,7 @@ pub trait Cs<F: PrimeField> {
             F::zero()
         });
 
+        // For each of the pairs, it generates a VarBaseMul and a Zero gate.
         let mut res = None;
         for i in 0..num_row_pairs {
             let mut row1: [_; COLUMNS] = array_init(|j| self.var(|| witness[j][2 * i]));
@@ -448,6 +527,17 @@ pub trait Cs<F: PrimeField> {
         res.unwrap()
     }
 
+    /// Creates an endoscalar multiplication gadget with `length_in_bits/4 + 1` gates.
+    /// For each row, it adds one `EndoMul` gate. The gadget is finalized with a `Zero` gate.
+    ///
+    /// | row | `GateType` |
+    /// | --- | ---------- |
+    /// |  i  | `EndoMul`  |
+    /// | i+1 | `EndoMul`  |
+    /// | ... |    ...     |
+    /// |  r  | `EndoMul`  |
+    /// | r+1 | `Zero`     |
+    ///
     fn endo(
         &mut self,
         zero: Var<F>,
@@ -598,12 +688,16 @@ pub trait Cs<F: PrimeField> {
         acc
     }
 
+    /// Checks that a string of bits (with LSB first) correspond to the value inside variable `x`.
+    /// It splits the bitstring across rows, where each row takes care of 8 crumbs of 2 bits each.
+    ///
     fn assert_pack(&mut self, zero: Var<F>, x: Var<F>, bits_lsb: &[Var<F>]) {
         let crumbs_per_row = 8;
         let bits_per_row = 2 * crumbs_per_row;
         assert_eq!(bits_lsb.len() % bits_per_row, 0);
         let num_rows = bits_lsb.len() / bits_per_row;
 
+        // Reverse string of bits to have MSB first in the vector
         let bits_msb: Vec<_> = bits_lsb.iter().rev().collect();
 
         let mut a = self.var(|| F::from(2u64));
@@ -613,17 +707,22 @@ pub trait Cs<F: PrimeField> {
         let one = F::one();
         let neg_one = -one;
 
+        // For each of the chunks, get the corresponding bits
         for (i, row_bits) in bits_msb[..].chunks(bits_per_row).enumerate() {
             let mut row: [Var<F>; COLUMNS] = array_init(|_| self.var(|| F::zero()));
             row[0] = n;
             row[2] = a;
             row[3] = b;
 
+            // For this row, get crumbs of 2 bits each
             for (j, crumb_bits) in row_bits.chunks(2).enumerate() {
-                let b0 = crumb_bits[1];
-                let b1 = crumb_bits[0];
+                // Remember the MSB of each crumb is in the 0 index
+                let b0 = crumb_bits[1]; // less valued
+                let b1 = crumb_bits[0]; // more valued
 
+                // Value of the 2-bit crumb in MSB
                 let crumb = self.var(|| b0.val() + b1.val().double());
+                // Stores the 8 of them in positions [6..13] of the row
                 row[6 + j] = crumb;
 
                 a = self.var(|| {
@@ -644,9 +743,11 @@ pub trait Cs<F: PrimeField> {
                     }
                 });
 
+                // Accumulated chunk value
                 n = self.var(|| n.val().double().double() + crumb.val());
             }
 
+            // In final row, this is the input value, otherwise the accumulated value
             row[1] = if i == num_rows - 1 { x } else { n };
             row[4] = a;
             row[5] = b;
@@ -655,6 +756,8 @@ pub trait Cs<F: PrimeField> {
         }
     }
 
+    /// Creates a Poseidon gadget for given constants and a given input.
+    /// It generates a number of `Poseidon` gates followed by a final `Zero` gate.
     fn poseidon(&mut self, constants: &Constants<F>, input: Vec<Var<F>>) -> Vec<Var<F>> {
         use kimchi::circuits::polynomials::poseidon::*;
 
@@ -699,7 +802,7 @@ pub trait Cs<F: PrimeField> {
 
             self.gate(GateSpec {
                 typ: kimchi::circuits::gate::GateType::Poseidon,
-                coeffs: (0..15)
+                coeffs: (0..COLUMNS)
                     .map(|i| rc[offset + (i / width)][i % width])
                     .collect(),
                 row: vec![
@@ -739,6 +842,7 @@ pub trait Cs<F: PrimeField> {
 }
 
 impl<F: PrimeField> Cs<F> for WitnessGenerator<F> {
+    /// Creates a variable with value given by a function `g` with index `0`
     fn var<G>(&mut self, g: G) -> Var<F>
     where
         G: FnOnce() -> F,
@@ -749,10 +853,12 @@ impl<F: PrimeField> Cs<F> for WitnessGenerator<F> {
         }
     }
 
+    /// Returns the number of rows.
     fn curr_gate_count(&self) -> usize {
         self.rows.len()
     }
 
+    /// Pushes a new row corresponding to the values in the row of gate `g`.
     fn gate(&mut self, g: GateSpec<F>) {
         assert!(g.row.len() <= COLUMNS);
 
@@ -797,6 +903,7 @@ impl<F: PrimeField> WitnessGenerator<F> {
 }
 
 impl<F: PrimeField> Cs<F> for System<F> {
+    /// Creates a new empty variable with the next available index
     fn var<G>(&mut self, _: G) -> Var<F> {
         let v = self.next_variable;
         self.next_variable += 1;
@@ -806,10 +913,12 @@ impl<F: PrimeField> Cs<F> for System<F> {
         }
     }
 
+    /// Outputs the number of gates in the circuit
     fn curr_gate_count(&self) -> usize {
         self.gates.len()
     }
 
+    /// Introduces a gate `g` to the current collection of `gates` in the circuit.
     fn gate(&mut self, g: GateSpec<F>) {
         self.gates.push(g);
     }

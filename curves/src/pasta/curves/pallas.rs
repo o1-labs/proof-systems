@@ -5,7 +5,7 @@ use ark_ec::{
 };
 use ark_ff::{field_new, Zero};
 
-#[derive(Copy, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct PallasParameters;
 
 impl ModelParameters for PallasParameters {
