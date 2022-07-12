@@ -548,8 +548,16 @@ where
         // ft(X) = f(X) - t(X) \cdot Z_H(X)
         // $$
         let ft_comm: VarPolyComm<G, 1> = {
+            // collapse at zeta
             let t_collapsed: VarPolyComm<G, 1> = t_comm.collapse(ctx.cs(), &shift_zeta);
-            let t_collapsed: VarPolyComm<G, 1> = t_collapsed.mul_vanish(ctx.cs(), &shift_zeta);
+
+            // multiply by Z_H
+            let t_collapsed: VarPolyComm<G, 2> = t_collapsed.mul_vanish(ctx.cs());
+
+            // collapse at zeta again
+            // NOTE: we could mul_vanish and do a single collapse with the same complexity
+            let t_collapsed: VarPolyComm<G, 1> = t_collapsed.collapse(ctx.cs(), &shift_zeta);
+
             f_comm.sub(ctx.cs(), &t_collapsed) // f_comm is already a single chunk, hence collapse is a no-op
         };
 

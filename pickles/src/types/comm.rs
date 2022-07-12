@@ -1,13 +1,13 @@
 use ark_ec::AffineCurve;
 use ark_ff::{FftField, PrimeField};
 
-use circuit_construction::{Cs, Var};
+use circuit_construction::{Cs};
 
 use crate::transcript::{Absorb, VarSponge};
 use crate::types::group::VarPoint;
 use crate::types::{GLVChallenge, Scalar};
 
-/// A commitment to a polynomial
+/// A commitment to a polynomial in coefficient form
 /// with a given number of chunks, least significant first
 #[derive(Clone, Debug)]
 pub struct VarPolyComm<G, const N: usize>
@@ -23,7 +23,7 @@ where
     G: AffineCurve,
     G::BaseField: FftField + PrimeField,
 {
-    /// Collapses a chunked opening of a polynomial at $\zeta$ to an unchunked polynomial at $\zeta$:
+    /// "Collapses" a chunked commitment to a polynomial at the evaluation point $\zeta$ to an unchunked polynomial at $\zeta$.
     /// A chunked evaluation of $f(\zeta)$ with $N$ chunks is represented as:
     /// 
     /// $$
@@ -34,27 +34,59 @@ where
     /// $g(X)$ opens to $y$ at $\zeta$ ($f(\zeta) = y$) iff. the original $f(X)$ did so.
     /// 
     /// For this transformation to be meaninful zeta_n should be a passing of the Shift of $\zeta$.
+    /// The same ShiftEval should be used to collapse the corresponding chunked openings of this commitment.
     /// 
     /// If the polynomial has 1 chunk, this is a no-op.
     pub fn collapse<C: Cs<G::BaseField>>(&self, cs: &mut C, zeta_n: &Scalar<G>) -> VarPolyComm<G, 1> {
         VarPoint::combine_with_scalar_power(cs, self.chunks.iter().rev(),  zeta_n).into()
     }
 
-    /// Shift the polynomial by the vanishing polynomial: enforcing that it evaluates to zero on the domain
-    /// This means that the polynomial represents a "quotient" of some polynomial by the domain, i.e. $g(X) / Z_H(X)$
+    /// Multiplies by the vanishing polynomial Z_H(X), the new polynomial has 1 more chunk than the old.
     /// 
-    pub fn mul_vanish<C: Cs<G::BaseField>>(&self, cs: &mut C, zeta_n: &Scalar<G>) -> VarPolyComm<G, 1> {
-        unimplemented!()
+    /// Note: this is an efficient operation (no scalar multiplications) since the vanishing polynomial has the form: X^{|H|} - 1.
+    /// Hence it corresponds to shifting all the chunks up by one, and subtracting the next chunk from the previous.
+    pub fn mul_vanish< C: Cs<G::BaseField>, const N1: usize>(&self, cs: &mut C) -> VarPolyComm<G, N1>  {
+        assert_eq!(N1, N, "multiplying a polynomial by the vanishing polynomial increases the number of chunks by 1");
+
+        // the constant chunk is the inverse of the old constant
+        let mut chunks = vec![self.chunks[0].inv(cs)];
+
+        // the remaining chunks are shifted up by 1
+        for (i, chunk) in self.chunks.iter().enumerate() {
+            // shift up
+            chunks.push(chunk.clone());
+
+            // subtract from previous chunk
+            if i != 0 {
+                chunks[i-1] = chunks[i-1].sub(cs, chunk);
+            }
+        }
+        
+        VarPolyComm {
+            chunks: chunks.try_into().unwrap()
+        }
     }
 
     /// Adds two polynomials (in the ring F[X]})
     pub fn add<C: Cs<G::BaseField>>(&self, cs: &mut C, other: &Self) -> Self {
-        unimplemented!()
+        let mut chunks = Vec::new(); 
+        for i in 0..N {
+            chunks.push(self.chunks[i].add(cs, &other.chunks[i]));
+        }
+        VarPolyComm {
+            chunks: chunks.try_into().unwrap()
+        }
     }
 
     /// Subtracts two polynomials (in the ring F[X])
     pub fn sub<C: Cs<G::BaseField>>(&self, cs: &mut C, other: &Self) -> Self {
-        unimplemented!()
+        let mut chunks = Vec::new(); 
+        for i in 0..N {
+            chunks.push(self.chunks[i].sub(cs, &other.chunks[i]));
+        }
+        VarPolyComm {
+            chunks: chunks.try_into().unwrap()
+        }
     }}
 
 impl<G, const N: usize> Absorb<G::BaseField> for VarPolyComm<G, N>

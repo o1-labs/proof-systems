@@ -43,7 +43,19 @@ where
         unimplemented!()
     }
 
+    pub fn add_constant<C: Cs<G::BaseField>>(&self, cs: &mut C, other: G) -> Self {
+        unimplemented!()
+    }
+
+    pub fn inv<C: Cs<G::BaseField>>(&self, cs: &mut C) -> Self {
+        unimplemented!()
+    }
+
     pub fn add<C: Cs<G::BaseField>>(&self, cs: &mut C, other: &Self) -> Self {
+        unimplemented!()
+    }
+
+    pub fn sub<C: Cs<G::BaseField>>(&self, cs: &mut C, other: &Self) -> Self {
         unimplemented!()
     }
 
