@@ -90,7 +90,7 @@ use crate::{
     curve::KimchiCurve,
     proof::ProofEvaluations,
 };
-use ark_ff::{FftField, Field, One};
+use ark_ff::{FftField, Field, One, PrimeField};
 use array_init::array_init;
 use cairo::{
     runner::{CairoInstruction, CairoProgram, Pointers},
@@ -104,7 +104,7 @@ pub const CIRCUIT_GATE_COUNT: usize = 4;
 
 // GATE-RELATED
 
-impl<F: FftField> CircuitGate<F> {
+impl<F: PrimeField> CircuitGate<F> {
     /// This function creates a CairoClaim gate
     pub fn create_cairo_claim(wires: GateWires) -> Self {
         CircuitGate {
@@ -188,7 +188,7 @@ impl<F: FftField> CircuitGate<F> {
         &self,
         row: usize,
         witness: &[Vec<F>; COLUMNS],
-        cs: &ConstraintSystem<G>,
+        cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
         // assignments
         let curr: [F; COLUMNS] = array_init(|i| witness[i][row]);
@@ -415,7 +415,7 @@ pub mod testing {
     use super::*;
 
     /// verifies that the Cairo gate constraints are solved by the witness depending on its type
-    pub fn ensure_cairo_gate<F: FftField>(
+    pub fn ensure_cairo_gate<F: PrimeField>(
         gate: &CircuitGate<F>,
         row: usize,
         witness: &[Vec<F>; COLUMNS],

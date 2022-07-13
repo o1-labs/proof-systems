@@ -14,7 +14,7 @@ use crate::{
     curve::KimchiCurve,
     error::SetupError,
 };
-use ark_ff::{One, Zero};
+use ark_ff::{PrimeField, SquareRootField, Zero};
 use ark_poly::{
     univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
     Radix2EvaluationDomain as D,
@@ -32,107 +32,99 @@ use std::{collections::HashSet, sync::Arc};
 
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct ConstraintSystem<G: KimchiCurve> {
+pub struct ConstraintSystem<F: PrimeField> {
     // Basics
     // ------
     /// number of public inputs
     pub public: usize,
     /// evaluation domains
-    #[serde(bound = "EvaluationDomains<G::ScalarField>: Serialize + DeserializeOwned")]
-    pub domain: EvaluationDomains<G::ScalarField>,
+    #[serde(bound = "EvaluationDomains<F>: Serialize + DeserializeOwned")]
+    pub domain: EvaluationDomains<F>,
     /// circuit gates
-    #[serde(bound = "CircuitGate<G::ScalarField>: Serialize + DeserializeOwned")]
-    pub gates: Vec<CircuitGate<G::ScalarField>>,
+    #[serde(bound = "CircuitGate<F>: Serialize + DeserializeOwned")]
+    pub gates: Vec<CircuitGate<F>>,
 
     // Polynomials over the monomial base
     // ----------------------------------
     /// permutation polynomial array
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
-    pub sigmam: [DP<G::ScalarField>; PERMUTS],
+    pub sigmam: [DP<F>; PERMUTS],
 
     // Coefficient polynomials. These define constant that gates can use as they like.
     // ---------------------------------------
     /// coefficients polynomials in evaluation form
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
-    pub coefficients8: [E<G::ScalarField, D<G::ScalarField>>; COLUMNS],
+    pub coefficients8: [E<F, D<F>>; COLUMNS],
 
     // Generic constraint selector polynomials
     // ---------------------------------------
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub genericm: DP<G::ScalarField>,
+    pub genericm: DP<F>,
 
     // Poseidon selector polynomials
     // -----------------------------
     /// poseidon constraint selector polynomial
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub psm: DP<G::ScalarField>,
+    pub psm: DP<F>,
 
     // Generic constraint selector polynomials
     // ---------------------------------------
     /// multiplication evaluations over domain.d4
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub generic4: E<G::ScalarField, D<G::ScalarField>>,
+    pub generic4: E<F, D<F>>,
 
     // permutation polynomials
     // -----------------------
     /// permutation polynomial array evaluations over domain d1
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
-    pub sigmal1: [E<G::ScalarField, D<G::ScalarField>>; PERMUTS],
+    pub sigmal1: [E<F, D<F>>; PERMUTS],
     /// permutation polynomial array evaluations over domain d8
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
-    pub sigmal8: [E<G::ScalarField, D<G::ScalarField>>; PERMUTS],
+    pub sigmal8: [E<F, D<F>>; PERMUTS],
     /// SID polynomial
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub sid: Vec<G::ScalarField>,
+    pub sid: Vec<F>,
 
     // Poseidon selector polynomials
     // -----------------------------
     /// poseidon selector over domain.d8
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub ps8: E<G::ScalarField, D<G::ScalarField>>,
+    pub ps8: E<F, D<F>>,
 
     // ECC arithmetic selector polynomials
     // -----------------------------------
     /// EC point addition selector evaluations w over domain.d4
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub complete_addl4: E<G::ScalarField, D<G::ScalarField>>,
+    pub complete_addl4: E<F, D<F>>,
     /// scalar multiplication selector evaluations over domain.d8
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub mull8: E<G::ScalarField, D<G::ScalarField>>,
+    pub mull8: E<F, D<F>>,
     /// endoscalar multiplication selector evaluations over domain.d8
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub emull: E<G::ScalarField, D<G::ScalarField>>,
+    pub emull: E<F, D<F>>,
     /// ChaCha indexes
     #[serde_as(as = "Option<[o1_utils::serialization::SerdeAs; 4]>")]
-    pub chacha8: Option<[E<G::ScalarField, D<G::ScalarField>>; 4]>,
+    pub chacha8: Option<[E<F, D<F>>; 4]>,
     /// EC point addition selector evaluations w over domain.d8
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub endomul_scalar8: E<G::ScalarField, D<G::ScalarField>>,
+    pub endomul_scalar8: E<F, D<F>>,
 
     /// Range check gate selector polynomials
-    #[serde(
-        bound = "Vec<range_check::SelectorPolynomial<G::ScalarField>>: Serialize + DeserializeOwned"
-    )]
-    pub range_check_selector_polys: Vec<range_check::SelectorPolynomial<G::ScalarField>>,
+    #[serde(bound = "Vec<range_check::SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
+    pub range_check_selector_polys: Vec<range_check::SelectorPolynomial<F>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
-    pub shift: [G::ScalarField; PERMUTS],
+    pub shift: [F; PERMUTS],
     /// coefficient for the group endomorphism
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub endo: G::ScalarField,
-
-    /// random oracle argument parameters
-    //#[serde(skip)]
-    //pub fr_sponge_params: ArithmeticSpongeParams<G::ScalarField>,
-
+    pub endo: F,
     /// lookup constraint system
-    #[serde(bound = "LookupConstraintSystem<G::ScalarField>: Serialize + DeserializeOwned")]
-    pub lookup_constraint_system: Option<LookupConstraintSystem<G::ScalarField>>,
-
+    #[serde(bound = "LookupConstraintSystem<F>: Serialize + DeserializeOwned")]
+    pub lookup_constraint_system: Option<LookupConstraintSystem<F>>,
     /// precomputes
     #[serde(skip)]
-    precomputations: OnceCell<Arc<DomainConstantEvaluations<G::ScalarField>>>,
+    precomputations: OnceCell<Arc<DomainConstantEvaluations<F>>>,
 }
 
 /// Represents an error found when verifying a witness with a gate
@@ -146,16 +138,15 @@ pub enum GateError {
     Custom { row: usize, err: String },
 }
 
-pub struct Builder<G: KimchiCurve> {
-    gates: Vec<CircuitGate<G::ScalarField>>,
-    //sponge_params: ArithmeticSpongeParams<G::ScalarField>,
+pub struct Builder<F: PrimeField> {
+    gates: Vec<CircuitGate<F>>,
     public: usize,
-    lookup_tables: Vec<LookupTable<G::ScalarField>>,
-    runtime_tables: Option<Vec<RuntimeTableCfg<G::ScalarField>>>,
-    precomputations: Option<Arc<DomainConstantEvaluations<G::ScalarField>>>,
+    lookup_tables: Vec<LookupTable<F>>,
+    runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
+    precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
 }
 
-impl<G: KimchiCurve> ConstraintSystem<G> {
+impl<F: PrimeField> ConstraintSystem<F> {
     /// Initializes the [ConstraintSystem<F>] on input `gates` and `fr_sponge_params`.
     /// Returns a [Builder<F>]
     /// It also defaults to the following values of the builder:
@@ -168,10 +159,7 @@ impl<G: KimchiCurve> ConstraintSystem<G> {
     /// 1. Create your instance of your builder for the constraint system using `crate(gates, sponge params)`
     /// 2. Iterativelly invoke any desired number of steps: `public(), lookup(), runtime(), precomputations()``
     /// 3. Finally call the `build()` method and unwrap the `Result` to obtain your `ConstraintSystem`
-    pub fn create(
-        gates: Vec<CircuitGate<G::ScalarField>>,
-        //sponge_params: ArithmeticSpongeParams<G::ScalarField>,
-    ) -> Builder<G> {
+    pub fn create(gates: Vec<CircuitGate<F>>) -> Builder<F> {
         Builder {
             gates,
             //sponge_params,
@@ -182,15 +170,12 @@ impl<G: KimchiCurve> ConstraintSystem<G> {
         }
     }
 
-    pub fn precomputations(&self) -> &Arc<DomainConstantEvaluations<G::ScalarField>> {
+    pub fn precomputations(&self) -> &Arc<DomainConstantEvaluations<F>> {
         self.precomputations
             .get_or_init(|| Arc::new(DomainConstantEvaluations::create(self.domain).unwrap()))
     }
 
-    pub fn set_precomputations(
-        &self,
-        precomputations: Arc<DomainConstantEvaluations<G::ScalarField>>,
-    ) {
+    pub fn set_precomputations(&self, precomputations: Arc<DomainConstantEvaluations<F>>) {
         self.precomputations
             .set(precomputations)
             .expect("Precomputation has been set before");
@@ -200,14 +185,14 @@ impl<G: KimchiCurve> ConstraintSystem<G> {
     /// assignements (witness) against the constraints
     ///     witness: wire assignement witness
     ///     RETURN: verification status
-    pub fn verify(
+    pub fn verify<G: KimchiCurve<ScalarField = F>>(
         &self,
-        witness: &[Vec<G::ScalarField>; COLUMNS],
-        public: &[G::ScalarField],
+        witness: &[Vec<F>; COLUMNS],
+        public: &[F],
     ) -> Result<(), GateError> {
         // pad the witness
-        let pad = vec![<G::ScalarField>::zero(); self.domain.d1.size() - witness[0].len()];
-        let witness: [Vec<G::ScalarField>; COLUMNS] = array_init(|i| {
+        let pad = vec![<F>::zero(); self.domain.d1.size() - witness[0].len()];
+        let witness: [Vec<F>; COLUMNS] = array_init(|i| {
             let mut w = witness[i].to_vec();
             w.extend_from_slice(&pad);
             w
@@ -241,12 +226,12 @@ impl<G: KimchiCurve> ConstraintSystem<G> {
             }
 
             // for public gates, only the left wire is toggled
-            if row < self.public && gate.coeffs[0] != <G::ScalarField>::one() {
+            if row < self.public && gate.coeffs[0] != <F>::one() {
                 return Err(GateError::IncorrectPublic(row));
             }
 
             // check the gate's satisfiability
-            gate.verify(row, &witness, self, public)
+            gate.verify::<G>(row, &witness, self, public)
                 .map_err(|err| GateError::Custom { row, err })?;
         }
 
@@ -255,26 +240,21 @@ impl<G: KimchiCurve> ConstraintSystem<G> {
     }
 
     /// evaluate witness polynomials over domains
-    pub fn evaluate(
-        &self,
-        w: &[DP<G::ScalarField>; COLUMNS],
-        z: &DP<G::ScalarField>,
-    ) -> WitnessOverDomains<G::ScalarField> {
+    pub fn evaluate(&self, w: &[DP<F>; COLUMNS], z: &DP<F>) -> WitnessOverDomains<F> {
         // compute shifted witness polynomials
-        let w8: [E<G::ScalarField, D<G::ScalarField>>; COLUMNS] =
+        let w8: [E<F, D<F>>; COLUMNS] =
             array_init(|i| w[i].evaluate_over_domain_by_ref(self.domain.d8));
         let z8 = z.evaluate_over_domain_by_ref(self.domain.d8);
 
-        let w4: [E<G::ScalarField, D<G::ScalarField>>; COLUMNS] = array_init(|i| {
-            E::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+        let w4: [E<F, D<F>>; COLUMNS] = array_init(|i| {
+            E::<F, D<F>>::from_vec_and_domain(
                 (0..self.domain.d4.size)
                     .map(|j| w8[i].evals[2 * j as usize])
                     .collect(),
                 self.domain.d4,
             )
         });
-        let z4 = DP::<G::ScalarField>::zero()
-            .evaluate_over_domain_by_ref(D::<G::ScalarField>::new(1).unwrap());
+        let z4 = DP::<F>::zero().evaluate_over_domain_by_ref(D::<F>::new(1).unwrap());
 
         WitnessOverDomains {
             d4: WitnessShifts {
@@ -299,7 +279,7 @@ impl<G: KimchiCurve> ConstraintSystem<G> {
     }
 }
 
-impl<G: KimchiCurve> Builder<G> {
+impl<F: PrimeField + SquareRootField> Builder<F> {
     /// Set up the number of public inputs.
     /// If not invoked, it equals `0` by default.
     pub fn public(mut self, public: usize) -> Self {
@@ -313,7 +293,7 @@ impl<G: KimchiCurve> Builder<G> {
     /// **Warning:** you have to make sure that the IDs of the lookup tables,
     /// are unique and  not colliding with IDs of built-in lookup tables
     /// (see [crate::circuits::lookup::tables]).
-    pub fn lookup(mut self, lookup_tables: Vec<LookupTable<G::ScalarField>>) -> Self {
+    pub fn lookup(mut self, lookup_tables: Vec<LookupTable<F>>) -> Self {
         self.lookup_tables = lookup_tables;
         self
     }
@@ -324,7 +304,7 @@ impl<G: KimchiCurve> Builder<G> {
     /// **Warning:** you have to make sure that the IDs of the runtime lookup tables,
     /// are unique and not colliding with IDs of built-in lookup tables
     /// (see [crate::circuits::lookup::tables]).
-    pub fn runtime(mut self, runtime_tables: Option<Vec<RuntimeTableCfg<G::ScalarField>>>) -> Self {
+    pub fn runtime(mut self, runtime_tables: Option<Vec<RuntimeTableCfg<F>>>) -> Self {
         self.runtime_tables = runtime_tables;
         self
     }
@@ -333,14 +313,14 @@ impl<G: KimchiCurve> Builder<G> {
     /// If not invoked, it is `None` by default.
     pub fn shared_precomputations(
         mut self,
-        shared_precomputations: Arc<DomainConstantEvaluations<G::ScalarField>>,
+        shared_precomputations: Arc<DomainConstantEvaluations<F>>,
     ) -> Self {
         self.precomputations = Some(shared_precomputations);
         self
     }
 
     /// Build the [ConstraintSystem] from a [Builder].
-    pub fn build(self) -> Result<ConstraintSystem<G>, SetupError> {
+    pub fn build(self) -> Result<ConstraintSystem<F>, SetupError> {
         let mut gates = self.gates;
         let lookup_tables = self.lookup_tables;
         let runtime_tables = self.runtime_tables;
@@ -352,7 +332,7 @@ impl<G: KimchiCurve> Builder<G> {
         //~ 2. Create a domain for the circuit. That is,
         //~    compute the smallest subgroup of the field that
         //~    has order greater or equal to `n + ZK_ROWS` elements.
-        let domain = EvaluationDomains::<G::ScalarField>::create(gates.len() + ZK_ROWS as usize)?;
+        let domain = EvaluationDomains::<F>::create(gates.len() + ZK_ROWS as usize)?;
 
         assert!(domain.d1.size > ZK_ROWS);
 
@@ -360,7 +340,7 @@ impl<G: KimchiCurve> Builder<G> {
         let d1_size = domain.d1.size();
         let mut padding = (gates.len()..d1_size)
             .map(|i| {
-                CircuitGate::<G::ScalarField>::zero(array_init(|j| Wire {
+                CircuitGate::<F>::zero(array_init(|j| Wire {
                     col: WIRES[j],
                     row: i,
                 }))
@@ -386,8 +366,7 @@ impl<G: KimchiCurve> Builder<G> {
         // -----------
 
         // compute permutation polynomials
-        let mut sigmal1: [Vec<G::ScalarField>; PERMUTS] =
-            array_init(|_| vec![<G::ScalarField>::zero(); domain.d1.size()]);
+        let mut sigmal1: [Vec<F>; PERMUTS] = array_init(|_| vec![<F>::zero(); domain.d1.size()]);
 
         for (row, gate) in gates.iter().enumerate() {
             for (cell, sigma) in gate.wires.iter().zip(sigmal1.iter_mut()) {
@@ -398,18 +377,17 @@ impl<G: KimchiCurve> Builder<G> {
         let sigmal1: [_; PERMUTS] = {
             let [s0, s1, s2, s3, s4, s5, s6] = sigmal1;
             [
-                E::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(s0, domain.d1),
-                E::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(s1, domain.d1),
-                E::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(s2, domain.d1),
-                E::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(s3, domain.d1),
-                E::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(s4, domain.d1),
-                E::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(s5, domain.d1),
-                E::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(s6, domain.d1),
+                E::<F, D<F>>::from_vec_and_domain(s0, domain.d1),
+                E::<F, D<F>>::from_vec_and_domain(s1, domain.d1),
+                E::<F, D<F>>::from_vec_and_domain(s2, domain.d1),
+                E::<F, D<F>>::from_vec_and_domain(s3, domain.d1),
+                E::<F, D<F>>::from_vec_and_domain(s4, domain.d1),
+                E::<F, D<F>>::from_vec_and_domain(s5, domain.d1),
+                E::<F, D<F>>::from_vec_and_domain(s6, domain.d1),
             ]
         };
 
-        let sigmam: [DP<G::ScalarField>; PERMUTS] =
-            array_init(|i| sigmal1[i].clone().interpolate());
+        let sigmam: [DP<F>; PERMUTS] = array_init(|i| sigmal1[i].clone().interpolate());
 
         let sigmal8 = array_init(|i| sigmam[i].evaluate_over_domain_by_ref(domain.d8));
 
@@ -422,7 +400,7 @@ impl<G: KimchiCurve> Builder<G> {
         // Note: gates must be mutually exclusive.
 
         // poseidon gate
-        let psm = E::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+        let psm = E::<F, D<F>>::from_vec_and_domain(
             gates.iter().map(|gate| gate.ps()).collect(),
             domain.d1,
         )
@@ -430,34 +408,34 @@ impl<G: KimchiCurve> Builder<G> {
         let ps8 = psm.evaluate_over_domain_by_ref(domain.d8);
 
         // ECC gates
-        let complete_addm = E::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+        let complete_addm = E::<F, D<F>>::from_vec_and_domain(
             gates
                 .iter()
-                .map(|gate| G::ScalarField::from((gate.typ == GateType::CompleteAdd) as u64))
+                .map(|gate| F::from((gate.typ == GateType::CompleteAdd) as u64))
                 .collect(),
             domain.d1,
         )
         .interpolate();
         let complete_addl4 = complete_addm.evaluate_over_domain_by_ref(domain.d4);
 
-        let mulm = E::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+        let mulm = E::<F, D<F>>::from_vec_and_domain(
             gates.iter().map(|gate| gate.vbmul()).collect(),
             domain.d1,
         )
         .interpolate();
         let mull8 = mulm.evaluate_over_domain_by_ref(domain.d8);
 
-        let emulm = E::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+        let emulm = E::<F, D<F>>::from_vec_and_domain(
             gates.iter().map(|gate| gate.endomul()).collect(),
             domain.d1,
         )
         .interpolate();
         let emull = emulm.evaluate_over_domain_by_ref(domain.d8);
 
-        let endomul_scalarm = E::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+        let endomul_scalarm = E::<F, D<F>>::from_vec_and_domain(
             gates
                 .iter()
-                .map(|gate| G::ScalarField::from((gate.typ == GateType::EndoMulScalar) as u64))
+                .map(|gate| F::from((gate.typ == GateType::EndoMulScalar) as u64))
                 .collect(),
             domain.d1,
         )
@@ -465,14 +443,14 @@ impl<G: KimchiCurve> Builder<G> {
         let endomul_scalar8 = endomul_scalarm.evaluate_over_domain_by_ref(domain.d8);
 
         // double generic gate
-        let genericm = E::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+        let genericm = E::<F, D<F>>::from_vec_and_domain(
             gates
                 .iter()
                 .map(|gate| {
                     if matches!(gate.typ, GateType::Generic) {
-                        <G::ScalarField>::one()
+                        <F>::one()
                     } else {
-                        <G::ScalarField>::zero()
+                        <F>::zero()
                     }
                 })
                 .collect(),
@@ -498,14 +476,14 @@ impl<G: KimchiCurve> Builder<G> {
                         3 => ChaChaFinal,
                         _ => panic!("Invalid index"),
                     };
-                    E::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+                    E::<F, D<F>>::from_vec_and_domain(
                         gates
                             .iter()
                             .map(|gate| {
                                 if gate.typ == g {
-                                    <G::ScalarField>::one()
+                                    <F>::one()
                                 } else {
-                                    <G::ScalarField>::zero()
+                                    <F>::zero()
                                 }
                             })
                             .collect(),
@@ -537,12 +515,7 @@ impl<G: KimchiCurve> Builder<G> {
         let coefficientsm: [_; COLUMNS] = array_init(|i| {
             let padded = gates
                 .iter()
-                .map(|gate| {
-                    gate.coeffs
-                        .get(i)
-                        .cloned()
-                        .unwrap_or_else(<G::ScalarField>::zero)
-                })
+                .map(|gate| gate.coeffs.get(i).cloned().unwrap_or_else(<F>::zero))
                 .collect();
             let eval = E::from_vec_and_domain(padded, domain.d1);
             eval.interpolate()
@@ -560,7 +533,7 @@ impl<G: KimchiCurve> Builder<G> {
         let sid = shifts.map[0].clone();
 
         // TODO: remove endo as a field
-        let endo = <G::ScalarField>::zero();
+        let endo = <F>::zero();
 
         let domain_constant_evaluation = OnceCell::new();
 
@@ -606,23 +579,19 @@ impl<G: KimchiCurve> Builder<G> {
 pub mod tests {
     use super::*;
     use mina_curves::pasta::fp::Fp;
-    use mina_curves::pasta::vesta::Affine;
 
-    impl<G: KimchiCurve> ConstraintSystem<G> {
-        pub fn for_testing(
-            //sponge_params: ArithmeticSpongeParams<G::ScalarField>,
-            gates: Vec<CircuitGate<G::ScalarField>>,
-        ) -> Self {
+    impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
+        pub fn for_testing(gates: Vec<CircuitGate<F>>) -> Self {
             let public = 0;
             // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
-            ConstraintSystem::<G>::create(gates)
+            ConstraintSystem::<F>::create(gates)
                 .public(public)
                 .build()
                 .unwrap()
         }
     }
 
-    impl ConstraintSystem<Affine> {
+    impl ConstraintSystem<Fp> {
         pub fn fp_for_testing(gates: Vec<CircuitGate<Fp>>) -> Self {
             //let fp_sponge_params = oracle::pasta::fp_kimchi::params();
             Self::for_testing(gates)

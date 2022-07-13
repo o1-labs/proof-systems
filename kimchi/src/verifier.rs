@@ -547,7 +547,7 @@ where
         let alphas = all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
 
         let mut commitments = vec![&index.sigma_comm[PERMUTS - 1]];
-        let mut scalars = vec![ConstraintSystem::<G>::perm_scalars(
+        let mut scalars = vec![ConstraintSystem::<G::ScalarField>::perm_scalars(
             &evals,
             oracles.beta,
             oracles.gamma,
@@ -560,7 +560,7 @@ where
             let alphas =
                 all_alphas.get_alphas(ArgumentType::Gate(GateType::Generic), generic::CONSTRAINTS);
 
-            let generic_scalars = &ConstraintSystem::<G>::gnrc_scalars(
+            let generic_scalars = &ConstraintSystem::<G::ScalarField>::gnrc_scalars(
                 alphas,
                 &evals[0].w,
                 evals[0].generic_selector,

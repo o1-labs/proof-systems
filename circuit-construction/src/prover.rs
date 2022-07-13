@@ -162,10 +162,10 @@ pub fn generate_prover_index<C, H>(
     main: H,
 ) -> ProverIndex<C::Outer>
 where
-    H: FnOnce(&mut System<C::Outer>, Vec<Var<C::InnerField>>),
+    H: FnOnce(&mut System<C::InnerField>, Vec<Var<C::InnerField>>),
     C: Cycle,
 {
-    let mut system: System<C::Outer> = System::default();
+    let mut system: System<C::InnerField> = System::default();
     let z = C::InnerField::zero();
 
     // create public input variables
@@ -190,7 +190,7 @@ where
     // Other base field = self scalar field
     let (endo_q, _endo_r) = endos::<C::Inner>();
 
-    let constraint_system = ConstraintSystem::<C::Outer>::create(gates)
+    let constraint_system = ConstraintSystem::<C::InnerField>::create(gates)
         .public(public)
         .build()
         // TODO: return a Result instead of panicking

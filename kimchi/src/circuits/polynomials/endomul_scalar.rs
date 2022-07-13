@@ -15,12 +15,12 @@ use ark_ff::{BitIteratorLE, FftField, Field, PrimeField, Zero};
 use array_init::array_init;
 use std::marker::PhantomData;
 
-impl<F: FftField> CircuitGate<F> {
+impl<F: PrimeField> CircuitGate<F> {
     pub fn verify_endomul_scalar<G: KimchiCurve<ScalarField = F>>(
         &self,
         row: usize,
         witness: &[Vec<F>; COLUMNS],
-        _cs: &ConstraintSystem<G>,
+        _cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
         ensure_eq!(self.typ, GateType::EndoMulScalar, "incorrect gate type");
 

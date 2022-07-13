@@ -33,16 +33,13 @@
 //~ and c1 (resp. c2) the constant selector for the first (resp. second) gate.
 //~
 
-use crate::{
-    circuits::{
-        constraints::ConstraintSystem,
-        gate::{CircuitGate, GateType},
-        polynomial::COLUMNS,
-        wires::GateWires,
-    },
-    curve::KimchiCurve,
+use crate::circuits::{
+    constraints::ConstraintSystem,
+    gate::{CircuitGate, GateType},
+    polynomial::COLUMNS,
+    wires::GateWires,
 };
-use ark_ff::{FftField, Zero};
+use ark_ff::{FftField, PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
@@ -91,7 +88,7 @@ pub enum GenericGateSpec<F> {
     Pub,
 }
 
-impl<F: FftField> CircuitGate<F> {
+impl<F: PrimeField> CircuitGate<F> {
     /// This allows you to create two generic gates that will fit in one row, check [Self::create_generic_gadget] for a better to way to create these gates.
     pub fn create_generic(wires: GateWires, c: [F; GENERIC_COEFFS * 2]) -> Self {
         CircuitGate {
@@ -174,16 +171,16 @@ impl<F: FftField> CircuitGate<F> {
 //~
 //~ where the $c_i$ are the [coefficients]().
 
-impl<G: KimchiCurve> ConstraintSystem<G> {
+impl<F: PrimeField> ConstraintSystem<F> {
     /// generic constraint quotient poly contribution computation
     pub fn gnrc_quot(
         &self,
-        mut alphas: impl Iterator<Item = G::ScalarField>,
-        witness_cols_d4: &[Evaluations<G::ScalarField, D<G::ScalarField>>; COLUMNS],
-    ) -> Evaluations<G::ScalarField, D<G::ScalarField>> {
+        mut alphas: impl Iterator<Item = F>,
+        witness_cols_d4: &[Evaluations<F, D<F>>; COLUMNS],
+    ) -> Evaluations<F, D<F>> {
         let generic_gate = |alpha_pow, coeff_offset, register_offset| {
             let mut res = Evaluations::from_vec_and_domain(
-                vec![<G::ScalarField>::zero(); self.domain.d4.size()],
+                vec![<F>::zero(); self.domain.d4.size()],
                 self.domain.d4,
             );
 
@@ -249,10 +246,10 @@ impl<G: KimchiCurve> ConstraintSystem<G> {
     /// alpha * generic(zeta) * w[2](zeta)
     /// ```
     pub fn gnrc_scalars(
-        mut alphas: impl Iterator<Item = G::ScalarField>,
-        w_zeta: &[G::ScalarField; COLUMNS],
-        generic_zeta: G::ScalarField,
-    ) -> Vec<G::ScalarField> {
+        mut alphas: impl Iterator<Item = F>,
+        w_zeta: &[F; COLUMNS],
+        generic_zeta: F,
+    ) -> Vec<F> {
         // setup
         let mut res = vec![];
 
@@ -287,10 +284,10 @@ impl<G: KimchiCurve> ConstraintSystem<G> {
     /// generic constraint linearization poly contribution computation
     pub fn gnrc_lnrz(
         &self,
-        alphas: impl Iterator<Item = G::ScalarField>,
-        w_zeta: &[G::ScalarField; COLUMNS],
-        generic_zeta: G::ScalarField,
-    ) -> Evaluations<G::ScalarField, D<G::ScalarField>> {
+        alphas: impl Iterator<Item = F>,
+        w_zeta: &[F; COLUMNS],
+        generic_zeta: F,
+    ) -> Evaluations<F, D<F>> {
         let d1 = self.domain.d1;
         let n = d1.size();
 
@@ -298,7 +295,7 @@ impl<G: KimchiCurve> ConstraintSystem<G> {
         let scalars = Self::gnrc_scalars(alphas, w_zeta, generic_zeta);
 
         //
-        let mut res = Evaluations::from_vec_and_domain(vec![<G::ScalarField>::zero(); n], d1);
+        let mut res = Evaluations::from_vec_and_domain(vec![<F>::zero(); n], d1);
 
         let scale = self.coefficients8[0].evals.len() / n;
 
@@ -321,7 +318,7 @@ pub mod testing {
     use crate::circuits::wires::Wire;
     use itertools::iterate;
 
-    impl<F: FftField> CircuitGate<F> {
+    impl<F: PrimeField> CircuitGate<F> {
         /// verifies that the generic gate constraints are solved by the witness
         pub fn verify_generic(
             &self,
@@ -373,12 +370,12 @@ pub mod testing {
         }
     }
 
-    impl<G: KimchiCurve> ConstraintSystem<G> {
+    impl<F: PrimeField> ConstraintSystem<F> {
         /// Function to verify the generic polynomials with a witness.
         pub fn verify_generic(
             &self,
-            witness: &[DensePolynomial<G::ScalarField>; COLUMNS],
-            public: &DensePolynomial<G::ScalarField>,
+            witness: &[DensePolynomial<F>; COLUMNS],
+            public: &DensePolynomial<F>,
         ) -> bool {
             let coefficientsm: [_; COLUMNS] =
                 array_init(|i| self.coefficients8[i].clone().interpolate());
@@ -417,7 +414,7 @@ pub mod testing {
     }
 
     /// function to create a generic circuit
-    pub fn create_circuit<F: FftField>(start_row: usize, public: usize) -> Vec<CircuitGate<F>> {
+    pub fn create_circuit<F: PrimeField>(start_row: usize, public: usize) -> Vec<CircuitGate<F>> {
         // create constraint system with a single generic gate
         let mut gates = vec![];
 
@@ -515,6 +512,7 @@ mod tests {
     use ark_poly::{EvaluationDomain, Polynomial};
     use array_init::array_init;
     use mina_curves::pasta::fp::Fp;
+    use mina_curves::pasta::vesta::Affine as Vesta;
     use rand::SeedableRng;
 
     #[test]
@@ -531,7 +529,7 @@ mod tests {
         testing::fill_in_witness(0, &mut witness, &[]);
 
         // make sure we're done filling the witness correctly
-        cs.verify(&witness, &[]).unwrap();
+        cs.verify::<Vesta>(&witness, &[]).unwrap();
 
         // generate witness polynomials
         let witness_evals: [Evaluations<Fp, D<Fp>>; COLUMNS] =

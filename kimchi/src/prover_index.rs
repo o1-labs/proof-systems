@@ -25,8 +25,8 @@ where
     G: KimchiCurve,
 {
     /// constraints system polynomials
-    #[serde(bound = "ConstraintSystem<G>: Serialize + DeserializeOwned")]
-    pub cs: ConstraintSystem<G>,
+    #[serde(bound = "ConstraintSystem<G::ScalarField>: Serialize + DeserializeOwned")]
+    pub cs: ConstraintSystem<G::ScalarField>,
 
     /// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
     #[serde(skip)]
@@ -50,7 +50,11 @@ where
 
 impl<G: KimchiCurve> ProverIndex<G> {
     /// this function compiles the index from constraints
-    pub fn create(mut cs: ConstraintSystem<G>, endo_q: G::ScalarField, srs: Arc<SRS<G>>) -> Self {
+    pub fn create(
+        mut cs: ConstraintSystem<G::ScalarField>,
+        endo_q: G::ScalarField,
+        srs: Arc<SRS<G>>,
+    ) -> Self {
         let max_poly_size = srs.g.len();
         if cs.public > 0 {
             assert!(
@@ -92,7 +96,6 @@ pub mod testing {
         gate::CircuitGate,
         lookup::{runtime_tables::RuntimeTableCfg, tables::LookupTable},
     };
-    use ark_poly::EvaluationDomain;
     use commitment_dlog::srs::endos;
     use mina_curves::pasta::{pallas::Affine as Pallas, vesta::Affine as Vesta, Fp};
 
@@ -102,10 +105,8 @@ pub mod testing {
         lookup_tables: Vec<LookupTable<Fp>>,
         runtime_tables: Option<Vec<RuntimeTableCfg<Fp>>>,
     ) -> ProverIndex<Vesta> {
-        //let fp_sponge_params = oracle::pasta::fp_kimchi::params();
-
         // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
-        let cs = ConstraintSystem::<Vesta>::create(gates)
+        let cs = ConstraintSystem::<Fp>::create(gates)
             .lookup(lookup_tables)
             .runtime(runtime_tables)
             .public(public)

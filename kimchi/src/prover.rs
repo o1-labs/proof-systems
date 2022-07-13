@@ -161,7 +161,7 @@ where
             let public = witness[0][0..index.cs.public].to_vec();
             index
                 .cs
-                .verify(&witness, &public)
+                .verify::<G>(&witness, &public)
                 .expect("incorrect witness");
         }
 

@@ -13,7 +13,7 @@ use crate::{
     curve::KimchiCurve,
     proof::ProofEvaluations,
 };
-use ark_ff::{FftField, Field, One};
+use ark_ff::{FftField, Field, One, PrimeField};
 use std::marker::PhantomData;
 
 //~ We implement custom gate constraints for short Weierstrass curve
@@ -108,7 +108,7 @@ use std::marker::PhantomData;
 
 /// Implementation of group endomorphism optimised
 /// variable base scalar multiplication custom Plonk constraints.
-impl<F: FftField> CircuitGate<F> {
+impl<F: PrimeField> CircuitGate<F> {
     pub fn create_endomul(wires: GateWires) -> Self {
         CircuitGate {
             typ: GateType::EndoMul,
@@ -121,7 +121,7 @@ impl<F: FftField> CircuitGate<F> {
         &self,
         row: usize,
         witness: &[Vec<F>; COLUMNS],
-        cs: &ConstraintSystem<G>,
+        cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
         ensure_eq!(self.typ, GateType::EndoMul, "incorrect gate type");
 

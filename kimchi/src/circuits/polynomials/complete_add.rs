@@ -19,7 +19,7 @@ use crate::circuits::{
     gate::{CircuitGate, GateType},
     wires::COLUMNS,
 };
-use ark_ff::{FftField, Field, One};
+use ark_ff::{FftField, Field, One, PrimeField};
 use std::marker::PhantomData;
 
 /// This enforces that
@@ -218,7 +218,7 @@ where
     }
 }
 
-impl<F: FftField> CircuitGate<F> {
+impl<F: PrimeField> CircuitGate<F> {
     /// Check the correctness of witness values for a complete-add gate.
     pub fn verify_complete_add(
         &self,

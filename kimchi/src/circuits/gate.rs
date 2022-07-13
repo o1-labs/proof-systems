@@ -4,7 +4,7 @@ use crate::{
     circuits::{constraints::ConstraintSystem, wires::*},
     curve::KimchiCurve,
 };
-use ark_ff::{bytes::ToBytes, FftField};
+use ark_ff::{bytes::ToBytes, PrimeField};
 use num_traits::cast::ToPrimitive;
 use o1_utils::hasher::CryptoDigest;
 use serde::{Deserialize, Serialize};
@@ -99,7 +99,7 @@ pub enum GateType {
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 /// A single gate in a circuit.
-pub struct CircuitGate<F: FftField> {
+pub struct CircuitGate<F: PrimeField> {
     /// type of the gate
     pub typ: GateType,
     /// gate wiring (for each cell, what cell it is wired to)
@@ -109,7 +109,7 @@ pub struct CircuitGate<F: FftField> {
     pub coeffs: Vec<F>,
 }
 
-impl<F: FftField> ToBytes for CircuitGate<F> {
+impl<F: PrimeField> ToBytes for CircuitGate<F> {
     #[inline]
     fn write<W: Write>(&self, mut w: W) -> IoResult<()> {
         let typ: u8 = ToPrimitive::to_u8(&self.typ).unwrap();
@@ -126,7 +126,7 @@ impl<F: FftField> ToBytes for CircuitGate<F> {
     }
 }
 
-impl<F: FftField> CircuitGate<F> {
+impl<F: PrimeField> CircuitGate<F> {
     /// this function creates "empty" circuit gate
     pub fn zero(wires: GateWires) -> Self {
         CircuitGate {
@@ -142,7 +142,7 @@ impl<F: FftField> CircuitGate<F> {
         &self,
         row: usize,
         witness: &[Vec<F>; COLUMNS],
-        cs: &ConstraintSystem<G>,
+        cs: &ConstraintSystem<F>,
         public: &[F],
     ) -> Result<(), String> {
         use GateType::*;
@@ -152,17 +152,17 @@ impl<F: FftField> CircuitGate<F> {
             Poseidon => self.verify_poseidon::<G>(row, witness),
             CompleteAdd => self.verify_complete_add(row, witness),
             VarBaseMul => self.verify_vbmul(row, witness),
-            EndoMul => self.verify_endomul(row, witness, cs),
-            EndoMulScalar => self.verify_endomul_scalar(row, witness, cs),
+            EndoMul => self.verify_endomul::<G>(row, witness, cs),
+            EndoMulScalar => self.verify_endomul_scalar::<G>(row, witness, cs),
             // TODO: implement the verification for chacha
             ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => Ok(()),
             // TODO: implement the verification for the lookup gate
             Lookup => Ok(()),
             CairoClaim | CairoInstruction | CairoFlags | CairoTransition => {
-                self.verify_cairo_gate(row, witness, cs)
+                self.verify_cairo_gate::<G>(row, witness, cs)
             }
             RangeCheck0 | RangeCheck1 => self
-                .verify_range_check(row, witness, cs)
+                .verify_range_check::<G>(row, witness, cs)
                 .map_err(|e| e.to_string()),
         }
     }
@@ -170,11 +170,11 @@ impl<F: FftField> CircuitGate<F> {
 
 /// A circuit is specified as a series of [CircuitGate].
 #[derive(Serialize)]
-pub struct Circuit<'a, F: FftField>(
+pub struct Circuit<'a, F: PrimeField>(
     #[serde(bound = "CircuitGate<F>: Serialize")] pub &'a [CircuitGate<F>],
 );
 
-impl<'a, F: FftField> CryptoDigest for Circuit<'a, F> {
+impl<'a, F: PrimeField> CryptoDigest for Circuit<'a, F> {
     const PREFIX: &'static [u8; 15] = b"kimchi-circuit0";
 }
 
@@ -202,7 +202,7 @@ pub mod caml {
     impl<F, CamlF> From<CircuitGate<F>> for CamlCircuitGate<CamlF>
     where
         CamlF: From<F>,
-        F: FftField,
+        F: PrimeField,
     {
         fn from(cg: CircuitGate<F>) -> Self {
             Self {
@@ -216,7 +216,7 @@ pub mod caml {
     impl<F, CamlF> From<&CircuitGate<F>> for CamlCircuitGate<CamlF>
     where
         CamlF: From<F>,
-        F: FftField,
+        F: PrimeField,
     {
         fn from(cg: &CircuitGate<F>) -> Self {
             Self {
@@ -230,7 +230,7 @@ pub mod caml {
     impl<F, CamlF> From<CamlCircuitGate<CamlF>> for CircuitGate<F>
     where
         F: From<CamlF>,
-        F: FftField,
+        F: PrimeField,
     {
         fn from(ccg: CamlCircuitGate<CamlF>) -> Self {
             Self {

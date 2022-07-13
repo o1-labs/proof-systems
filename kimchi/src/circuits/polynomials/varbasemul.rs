@@ -16,7 +16,7 @@ use crate::circuits::{
     gate::{CircuitGate, CurrOrNext, GateType},
     wires::{GateWires, COLUMNS},
 };
-use ark_ff::{FftField, One};
+use ark_ff::{FftField, One, PrimeField};
 use std::marker::PhantomData;
 use CurrOrNext::{Curr, Next};
 
@@ -127,7 +127,7 @@ use CurrOrNext::{Curr, Next};
 //~ `0 = n' - (b4 + 2 * (b3 + 2 * (b2 + 2 * (b1 + 2 * (b0 + 2*n)))))`
 //~
 
-impl<F: FftField> CircuitGate<F> {
+impl<F: PrimeField> CircuitGate<F> {
     pub fn create_vbmul(wires: &[GateWires; 2]) -> Vec<Self> {
         vec![
             CircuitGate {

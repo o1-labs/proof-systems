@@ -9,7 +9,7 @@ use crate::{
     },
     error::ProverError,
 };
-use ark_ff::{FftField, One, Zero};
+use ark_ff::{FftField, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
 use o1_utils::adjacent_pairs::AdjacentPairs;
 use rand::Rng;
@@ -78,7 +78,7 @@ pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
 
 /// Computes the sorted lookup tables required by the lookup argument.
 #[allow(clippy::too_many_arguments)]
-pub fn sorted<F: FftField>(
+pub fn sorted<F: PrimeField>(
     dummy_lookup_value: F,
     joint_lookup_table_d8: &Evaluations<F, D<F>>,
     d1: D<F>,
@@ -231,7 +231,7 @@ pub fn aggregation<R, F>(
 ) -> Result<Evaluations<F, D<F>>, ProverError>
 where
     R: Rng + ?Sized,
-    F: FftField,
+    F: PrimeField,
 {
     let n = d1.size();
     let lookup_rows = n - ZK_ROWS - 1;
@@ -553,7 +553,7 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>) -> Vec<E
 
 /// Checks that all the lookup constraints are satisfied.
 #[allow(clippy::too_many_arguments)]
-pub fn verify<F: FftField, I: Iterator<Item = F>, T: Fn() -> I>(
+pub fn verify<F: PrimeField, I: Iterator<Item = F>, T: Fn() -> I>(
     dummy_lookup_value: F,
     lookup_table: T,
     lookup_table_entries: usize,

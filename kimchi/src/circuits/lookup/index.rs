@@ -9,7 +9,7 @@ use crate::circuits::{
     },
     polynomials::permutation::ZK_ROWS,
 };
-use ark_ff::{FftField, SquareRootField};
+use ark_ff::{FftField, PrimeField, SquareRootField};
 use ark_poly::{
     univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
     Radix2EvaluationDomain as D,
@@ -193,7 +193,7 @@ pub struct LookupConstraintSystem<F: FftField> {
     pub configuration: LookupConfiguration<F>,
 }
 
-impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
+impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
     pub fn create(
         gates: &[CircuitGate<F>],
         lookup_tables: Vec<LookupTable<F>>,

@@ -40,13 +40,12 @@
 //~ You can read more about why it looks like that in [this post](https://minaprotocol.com/blog/a-more-efficient-approach-to-zero-knowledge-for-plonk).
 //~
 
-use crate::curve::KimchiCurve;
 use crate::{
     circuits::{constraints::ConstraintSystem, polynomial::WitnessOverDomains, wires::*},
     error::ProverError,
     proof::ProofEvaluations,
 };
-use ark_ff::{FftField, One, SquareRootField, UniformRand, Zero};
+use ark_ff::{FftField, PrimeField, SquareRootField, UniformRand, Zero};
 use ark_poly::{
     univariate::{DenseOrSparsePolynomial, DensePolynomial},
     EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
@@ -187,23 +186,17 @@ where
     }
 }
 
-impl<G: KimchiCurve> ConstraintSystem<G> {
+impl<F: PrimeField> ConstraintSystem<F> {
     /// permutation quotient poly contribution computation
     #[allow(clippy::type_complexity)]
     pub fn perm_quot(
         &self,
-        lagrange: &WitnessOverDomains<G::ScalarField>,
-        beta: G::ScalarField,
-        gamma: G::ScalarField,
-        z: &DensePolynomial<G::ScalarField>,
-        mut alphas: impl Iterator<Item = G::ScalarField>,
-    ) -> Result<
-        (
-            Evaluations<G::ScalarField, D<G::ScalarField>>,
-            DensePolynomial<G::ScalarField>,
-        ),
-        ProverError,
-    > {
+        lagrange: &WitnessOverDomains<F>,
+        beta: F,
+        gamma: F,
+        z: &DensePolynomial<F>,
+        mut alphas: impl Iterator<Item = F>,
+    ) -> Result<(Evaluations<F, D<F>>, DensePolynomial<F>), ProverError> {
         let alpha0 = alphas.next().expect("missing power of alpha");
         let alpha1 = alphas.next().expect("missing power of alpha");
         let alpha2 = alphas.next().expect("missing power of alpha");
@@ -274,15 +267,12 @@ impl<G: KimchiCurve> ConstraintSystem<G> {
         //~     a^{PERM2} \cdot \frac{z(x) - 1}{x - sid[n-k]}
         //~ $$
         let bnd = {
-            let one_poly = DensePolynomial::from_coefficients_slice(&[<G::ScalarField>::one()]);
+            let one_poly = DensePolynomial::from_coefficients_slice(&[<F>::one()]);
             let z_minus_1 = z - &one_poly;
 
             // TODO(mimoo): use self.sid[0] instead of 1
             // accumulator init := (z(x) - 1) / (x - 1)
-            let x_minus_1 = DensePolynomial::from_coefficients_slice(&[
-                -<G::ScalarField>::one(),
-                <G::ScalarField>::one(),
-            ]);
+            let x_minus_1 = DensePolynomial::from_coefficients_slice(&[-<F>::one(), <F>::one()]);
             let (bnd1, res) = DenseOrSparsePolynomial::divide_with_q_and_r(
                 &z_minus_1.clone().into(),
                 &x_minus_1.into(),
@@ -295,7 +285,7 @@ impl<G: KimchiCurve> ConstraintSystem<G> {
             // accumulator end := (z(x) - 1) / (x - sid[n-3])
             let denominator = DensePolynomial::from_coefficients_slice(&[
                 -self.sid[self.domain.d1.size() - 3],
-                <G::ScalarField>::one(),
+                <F>::one(),
             ]);
             let (bnd2, res) = DenseOrSparsePolynomial::divide_with_q_and_r(
                 &z_minus_1.into(),
@@ -316,12 +306,12 @@ impl<G: KimchiCurve> ConstraintSystem<G> {
     /// permutation linearization poly contribution computation
     pub fn perm_lnrz(
         &self,
-        e: &[ProofEvaluations<G::ScalarField>],
-        zeta: G::ScalarField,
-        beta: G::ScalarField,
-        gamma: G::ScalarField,
-        alphas: impl Iterator<Item = G::ScalarField>,
-    ) -> DensePolynomial<G::ScalarField> {
+        e: &[ProofEvaluations<F>],
+        zeta: F,
+        beta: F,
+        gamma: F,
+        alphas: impl Iterator<Item = F>,
+    ) -> DensePolynomial<F> {
         //~
         //~ The linearization:
         //~
@@ -333,12 +323,12 @@ impl<G: KimchiCurve> ConstraintSystem<G> {
     }
 
     pub fn perm_scalars(
-        e: &[ProofEvaluations<G::ScalarField>],
-        beta: G::ScalarField,
-        gamma: G::ScalarField,
-        mut alphas: impl Iterator<Item = G::ScalarField>,
-        zkp_zeta: G::ScalarField,
-    ) -> G::ScalarField {
+        e: &[ProofEvaluations<F>],
+        beta: F,
+        gamma: F,
+        mut alphas: impl Iterator<Item = F>,
+        zkp_zeta: F,
+    ) -> F {
         let alpha0 = alphas
             .next()
             .expect("not enough powers of alpha for permutation");
@@ -376,18 +366,15 @@ impl<G: KimchiCurve> ConstraintSystem<G> {
     /// permutation aggregation polynomial computation
     pub fn perm_aggreg(
         &self,
-        witness: &[Vec<G::ScalarField>; COLUMNS],
-        beta: &G::ScalarField,
-        gamma: &G::ScalarField,
+        witness: &[Vec<F>; COLUMNS],
+        beta: &F,
+        gamma: &F,
         rng: &mut (impl RngCore + CryptoRng),
-    ) -> Result<DensePolynomial<G::ScalarField>, ProverError> {
+    ) -> Result<DensePolynomial<F>, ProverError> {
         let n = self.domain.d1.size();
 
         // only works if first element is 1
-        assert_eq!(
-            self.domain.d1.elements().next(),
-            Some(<G::ScalarField>::one())
-        );
+        assert_eq!(self.domain.d1.elements().next(), Some(<F>::one()));
 
         //~ To compute the permutation aggregation polynomial,
         //~ the prover interpolates the polynomial that has the following evaluations.
@@ -395,7 +382,7 @@ impl<G: KimchiCurve> ConstraintSystem<G> {
         //~ The first evaluation represents the initial value of the accumulator:
         //~ $$z(g^0) = 1$$
 
-        let mut z: Vec<G::ScalarField> = vec![<G::ScalarField>::one(); n];
+        let mut z: Vec<F> = vec![<F>::one(); n];
 
         //~ For $i = 0, \cdot, n - 4$, where $n$ is the size of the domain,
         //~ evaluations are computed as:
@@ -436,10 +423,10 @@ impl<G: KimchiCurve> ConstraintSystem<G> {
                 .iter()
                 .zip(self.sigmal1.iter())
                 .map(|(w, s)| w[j] + (s[j] * beta) + gamma)
-                .fold(<G::ScalarField>::one(), |x, y| x * y)
+                .fold(<F>::one(), |x, y| x * y)
         }
 
-        ark_ff::fields::batch_inversion::<G::ScalarField>(&mut z[1..=n - 3]);
+        ark_ff::fields::batch_inversion::<F>(&mut z[1..=n - 3]);
 
         for j in 0..n - 3 {
             let x = z[j];
@@ -452,7 +439,7 @@ impl<G: KimchiCurve> ConstraintSystem<G> {
 
         //~ If computed correctly, we should have $z(g^{n-3}) = 1$.
         //~
-        if z[n - 3] != <G::ScalarField>::one() {
+        if z[n - 3] != <F>::one() {
             return Err(ProverError::Permutation("final value"));
         };
 
@@ -461,11 +448,7 @@ impl<G: KimchiCurve> ConstraintSystem<G> {
         z[n - 2] = UniformRand::rand(rng);
         z[n - 1] = UniformRand::rand(rng);
 
-        let res = Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-            z,
-            self.domain.d1,
-        )
-        .interpolate();
+        let res = Evaluations::<F, D<F>>::from_vec_and_domain(z, self.domain.d1).interpolate();
         Ok(res)
     }
 }

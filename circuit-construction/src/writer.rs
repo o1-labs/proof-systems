@@ -7,7 +7,6 @@ use kimchi::circuits::{
     },
     wires::{Wire, COLUMNS},
 };
-use kimchi::curve::KimchiCurve;
 use oracle::{constants::*, permutation::full_round};
 use std::collections::HashMap;
 
@@ -64,12 +63,12 @@ impl<F: FftField> GateSpec<F> {
 /// and the vector of [GateSpec] created so far.
 /// It also keeps track of the queue of generic gates and cached constants.
 #[derive(Default)]
-pub struct System<G: KimchiCurve> {
+pub struct System<F> {
     pub next_variable: usize,
-    pub generic_gate_queue: Vec<GateSpec<G::ScalarField>>,
+    pub generic_gate_queue: Vec<GateSpec<F>>,
     // pub equivalence_classes: HashMap<Var, Vec<Position>>,
-    pub gates: Vec<GateSpec<G::ScalarField>>,
-    pub cached_constants: HashMap<G::ScalarField, Var<G::ScalarField>>,
+    pub gates: Vec<GateSpec<F>>,
+    pub cached_constants: HashMap<F, Var<F>>,
 }
 
 /// Carries a vector of rows corresponding to the witness, a queue of generic gates, and stores the cached constants
@@ -903,8 +902,8 @@ impl<F: PrimeField> WitnessGenerator<F> {
     }
 }
 
-impl<G: KimchiCurve> Cs<G::ScalarField> for System<G> {
-    fn var<V>(&mut self, _: V) -> Var<G::ScalarField> {
+impl<F: PrimeField> Cs<F> for System<F> {
+    fn var<V>(&mut self, _: V) -> Var<F> {
         let v = self.next_variable;
         self.next_variable += 1;
         Var {
@@ -918,14 +917,11 @@ impl<G: KimchiCurve> Cs<G::ScalarField> for System<G> {
         self.gates.len()
     }
 
-    fn gate(&mut self, g: GateSpec<G::ScalarField>) {
+    fn gate(&mut self, g: GateSpec<F>) {
         self.gates.push(g);
     }
 
-    fn generic_queue(
-        &mut self,
-        gate: GateSpec<G::ScalarField>,
-    ) -> Option<GateSpec<G::ScalarField>> {
+    fn generic_queue(&mut self, gate: GateSpec<F>) -> Option<GateSpec<F>> {
         if let Some(mut other) = self.generic_gate_queue.pop() {
             other.row.extend(&gate.row);
             assert_eq!(other.row.len(), DOUBLE_GENERIC_REGISTERS);
@@ -938,7 +934,7 @@ impl<G: KimchiCurve> Cs<G::ScalarField> for System<G> {
         }
     }
 
-    fn cached_constants(&mut self, x: G::ScalarField) -> Var<G::ScalarField> {
+    fn cached_constants(&mut self, x: F) -> Var<F> {
         match self.cached_constants.get(&x) {
             Some(var) => *var,
             None => {
@@ -950,9 +946,9 @@ impl<G: KimchiCurve> Cs<G::ScalarField> for System<G> {
     }
 }
 
-impl<G: KimchiCurve> System<G> {
+impl<F: PrimeField> System<F> {
     /// Compiles our intermediate representation into a circuit.
-    pub fn gates(&mut self) -> Vec<CircuitGate<G::ScalarField>> {
+    pub fn gates(&mut self) -> Vec<CircuitGate<F>> {
         let mut first_cell: HashMap<usize, Wire> = HashMap::new();
         let mut most_recent_cell: HashMap<usize, Wire> = HashMap::new();
         let mut gates = vec![];

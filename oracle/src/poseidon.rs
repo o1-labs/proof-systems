@@ -53,11 +53,11 @@ pub struct ArithmeticSponge<F: Field + 'static, SC: SpongeConstants> {
 
 impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
     pub fn full_round(&mut self, r: usize) {
-        full_round::<F, SC>(&self.params, &mut self.state, r);
+        full_round::<F, SC>(self.params, &mut self.state, r);
     }
 
     fn poseidon_block_cipher(&mut self) {
-        poseidon_block_cipher::<F, SC>(&self.params, &mut self.state);
+        poseidon_block_cipher::<F, SC>(self.params, &mut self.state);
     }
 }
 
