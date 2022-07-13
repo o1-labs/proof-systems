@@ -50,7 +50,7 @@ pub const G_GENERATOR_Y: Fp = field_new!(
     "12418654782883325593414442427049395787963493412651469444558597405572177144507"
 );
 
-//legacy curve
+/// legacy curve, a copy of the normal curve to support legacy sponge params
 #[derive(Copy, Clone, Default, PartialEq, Eq)]
 pub struct LegacyPallasParameters;
 
