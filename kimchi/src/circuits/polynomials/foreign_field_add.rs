@@ -42,7 +42,7 @@ use crate::circuits::{
     gate::GateType,
 };
 
-/// Implementation of the VarbaseMul gate
+/// Implementation of the ForeignFieldAdd gate
 pub struct FFAdd<F>(PhantomData<F>);
 
 impl<F> Argument<F> for FFAdd<F>
@@ -50,7 +50,7 @@ where
     F: FftField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldAdd);
-    const CONSTRAINTS: u32 = 21;
+    const CONSTRAINTS: u32 = 8;
 
     fn constraints() -> Vec<E<F>> {
         let foreign_modulus_0 = E::constant(ForeignFieldModulus(0));
