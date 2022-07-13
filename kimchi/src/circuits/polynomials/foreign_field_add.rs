@@ -31,6 +31,47 @@
 //! a_1 a_2 a_3 b_1 b_2 b_3 x y_1 y_2 z_1 z_2
 //! r_1 r_2 r_3 o_1 o_2 o_3
 //! ```
+//!
+//!    | col | `ForeignFieldAdd' | `Zero`      |
+//!    | --- | ----------------- | ----------- |
+//!    |   0 | `a1` (copy)       | `r1` (copy) |
+//!    |   1 | `a2` (copy)       | `r2` (copy) |
+//!    |   2 | `a3` (copy)       | `r3` (copy) |
+//!    |   3 | `b1` (copy)       | `o1` (copy) |
+//!    |   4 | `b2` (copy)       | `o2` (copy) |
+//!    |   5 | `b3` (copy)       | `o3` (copy) |
+//!    |   6 | `x`               |             |
+//!    |   7 | `y1`              |             |
+//!    |   8 | `y2`              |             |
+//!    |   9 | `z1`              |             |
+//!    |  10 | `z2`              |             |
+//!    |  11 |                   |             |
+//!    |  12 |                   |             |
+//!    |  13 |                   |             |
+//!    |  14 |                   |             |
+//!
+//!  Documentation:
+//!
+//!   For more details please see https://hackmd.io/7qnPOasqTTmElac8Xghnrw?view
+//!
+//!   Mapping:
+//!     To make things clearer, the following mapping between the variable names
+//!     used in the code and those of the document can be helpful.
+//!
+//!     left_input_0 => a1  right_input_0 => b1  result_0 => r1  upper_bound_check_0 => o1
+//!     left_input_1 => a2  right_input_1 => b2  result_1 => r2  upper_bound_check_1 => o2
+//!     left_input_2 => a3  right_input_2 => b3  result_2 => r3  upper_bound_check_2 => o3
+//!
+//!     field_overflow => x  
+//!     result_carry_0 => y1  
+//!     result_carry_1 => y2
+//!     upper_bound_check_carry_0 => z1   
+//!     upper_bound_check_carry_1 => z2   
+//!
+//!     max_sub_foreign_modulus_2 => k_3 = 2^88 - m_3
+//!     max_sub_foreign_modulus_1 => k_2 = 2^88 - m_2 - 1
+//!     max_sub_foreign_modulus_0 => k_1 = 2^88 - m_1 - 1
+//!
 
 use std::marker::PhantomData;
 
@@ -50,7 +91,7 @@ where
     F: FftField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldAdd);
-    const CONSTRAINTS: u32 = 8;
+    const CONSTRAINTS: u32 = 11;
 
     fn constraints() -> Vec<E<F>> {
         let foreign_modulus_0 = E::constant(ForeignFieldModulus(0));
