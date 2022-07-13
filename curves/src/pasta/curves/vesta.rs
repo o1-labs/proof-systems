@@ -50,7 +50,7 @@ pub const G_GENERATOR_Y: Fq = field_new!(
     "11426906929455361843568202299992114520848200991084027513389447476559454104162"
 );
 
-//legacy curve
+/// legacy curve, a copy of the normal curve to support legacy sponge params
 #[derive(Copy, Clone, Default, PartialEq, Eq)]
 pub struct LegacyVestaParameters;
 
