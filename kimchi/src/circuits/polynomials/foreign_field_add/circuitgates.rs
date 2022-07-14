@@ -1,87 +1,86 @@
-//! This module implements foreign field addition.
-//!
-//! ```text
-//! let a_1, a_2, a_3 be 88-bit limbs of the left element
-//! let b_1, b_2, b_3 be 88-bit limbs of the right element
-//! let m_1, m_2, m_3 be 88-bit limbs of the modulus
-//!
-//! Then the limbs of the result are
-//! r_1 = a_1 + b_1 - x * m_1 + y_1
-//! r_2 = a_2 + b_2 - x * m_2 - 2^88 * y_1 + y_2
-//! r_3 = a_3 + b_3 - x * m_3 - 2^88 * y_2
-//!
-//! x = 0 or 1 handles overflows in the field
-//! y_i = -1, 0, 1 are auxiliary variables that handle carries between limbs
-//!
-//! We need to do an additional range check to make sure that the result is < the modulus, by
-//! adding 2^(3*88) - m. (This can be computed easily from the limbs of m.) Represent this as limbs
-//! k_1, k_2, k_3.
-//! The upper-bound check can be calculated as
-//! o_1 = r_1 + k_1 + z_1
-//! o_2 = r_2 + k_2 - z_1 * 2^88 + z_2
-//! o_3 = r_3 + k_3 - z_2 * 2^88
-//!
-//! z_i = 0 or 1 are auxiliary variables that handle carries between limbs
-//!
-//! Then, range check r and o. The range check of o can be skipped if there are multiple additions
-//! and r is an intermediate value that is unused elsewhere (since the final r must have had the
-//! right number of moduluses subtracted along the way).
-//!
-//! You could lay this out as a double-width gate, e.g.
-//! a_1 a_2 a_3 b_1 b_2 b_3 x y_1 y_2 z_1 z_2
-//! r_1 r_2 r_3 o_1 o_2 o_3
-//! ```
-//!
-//!    | col | `ForeignFieldAdd' | `Zero`      |
-//!    | --- | ----------------- | ----------- |
-//!    |   0 | `a1` (copy)       | `r1` (copy) |
-//!    |   1 | `a2` (copy)       | `r2` (copy) |
-//!    |   2 | `a3` (copy)       | `r3` (copy) |
-//!    |   3 | `b1` (copy)       | `o1` (copy) |
-//!    |   4 | `b2` (copy)       | `o2` (copy) |
-//!    |   5 | `b3` (copy)       | `o3` (copy) |
-//!    |   6 | `x`               |             |
-//!    |   7 | `y1`              |             |
-//!    |   8 | `y2`              |             |
-//!    |   9 | `z1`              |             |
-//!    |  10 | `z2`              |             |
-//!    |  11 |                   |             |
-//!    |  12 |                   |             |
-//!    |  13 |                   |             |
-//!    |  14 |                   |             |
-//!
-//!  Documentation:
-//!
-//!   For more details please see https://hackmd.io/7qnPOasqTTmElac8Xghnrw?view
-//!
-//!   Mapping:
-//!     To make things clearer, the following mapping between the variable names
-//!     used in the code and those of the document can be helpful.
-//!
-//!     left_input_0 => a1  right_input_0 => b1  result_0 => r1  upper_bound_check_0 => o1
-//!     left_input_1 => a2  right_input_1 => b2  result_1 => r2  upper_bound_check_1 => o2
-//!     left_input_2 => a3  right_input_2 => b3  result_2 => r3  upper_bound_check_2 => o3
-//!
-//!     field_overflow => x  
-//!     result_carry_0 => y1  
-//!     result_carry_1 => y2
-//!     upper_bound_check_carry_0 => z1   
-//!     upper_bound_check_carry_1 => z2   
-//!
-//!     max_sub_foreign_modulus_2 => k_3 = 2^88 - m_3
-//!     max_sub_foreign_modulus_1 => k_2 = 2^88 - m_2 - 1
-//!     max_sub_foreign_modulus_0 => k_1 = 2^88 - m_1 - 1
-//!
-
+///```text
+/// This module implements foreign field addition.
+///
+///
+/// let a_1, a_2, a_3 be 88-bit limbs of the left element
+/// let b_1, b_2, b_3 be 88-bit limbs of the right element
+/// let m_1, m_2, m_3 be 88-bit limbs of the modulus
+///
+/// Then the limbs of the result are
+/// r_1 = a_1 + b_1 - x * m_1 + y_1
+/// r_2 = a_2 + b_2 - x * m_2 - 2^88 * y_1 + y_2
+/// r_3 = a_3 + b_3 - x * m_3 - 2^88 * y_2
+///
+/// x = 0 or 1 handles overflows in the field
+/// y_i = -1, 0, 1 are auxiliary variables that handle carries between limbs
+///
+/// We need to do an additional range check to make sure that the result is < the modulus, by
+/// adding 2^(3*88) - m. (This can be computed easily from the limbs of m.) Represent this as limbs
+/// k_1, k_2, k_3.
+/// The upper-bound check can be calculated as
+/// o_1 = r_1 + k_1 + z_1
+/// o_2 = r_2 + k_2 - z_1 * 2^88 + z_2
+/// o_3 = r_3 + k_3 - z_2 * 2^88
+///
+/// z_i = 0 or 1 are auxiliary variables that handle carries between limbs
+///
+/// Then, range check r and o. The range check of o can be skipped if there are multiple additions
+/// and r is an intermediate value that is unused elsewhere (since the final r must have had the
+/// right number of moduluses subtracted along the way).
+///
+/// You could lay this out as a double-width gate, e.g.
+/// a_1 a_2 a_3 b_1 b_2 b_3 x y_1 y_2 z_1 z_2
+/// r_1 r_2 r_3 o_1 o_2 o_3
+///
+///    | col | 'ForeignFieldAdd' | 'Zero'      |
+///    | --- | ----------------- | ----------- |
+///    |   0 | 'a1' (copy)       | 'r1' (copy) |
+///    |   1 | 'a2' (copy)       | 'r2' (copy) |
+///    |   2 | 'a3' (copy)       | 'r3' (copy) |
+///    |   3 | 'b1' (copy)       | 'o1' (copy) |
+///    |   4 | 'b2' (copy)       | 'o2' (copy) |
+///    |   5 | 'b3' (copy)       | 'o3' (copy) |
+///    |   6 | 'x'               |             |
+///    |   7 | 'y1'              |             |
+///    |   8 | 'y2'              |             |
+///    |   9 | 'z1'              |             |
+///    |  10 | 'z2'              |             |
+///    |  11 |                   |             |
+///    |  12 |                   |             |
+///    |  13 |                   |             |
+///    |  14 |                   |             |
+///
+///  Documentation:
+///
+///   For more details please see https://hackmd.io/7qnPOasqTTmElac8Xghnrw?view
+///
+///   Mapping:
+///     To make things clearer, the following mapping between the variable names
+///     used in the code and those of the document can be helpful.
+///
+///     left_input_0 -> a1  right_input_0 => b1  result_0 -> r1  upper_bound_check_0 -> o1
+///     left_input_1 -> a2  right_input_1 => b2  result_1 -> r2  upper_bound_check_1 -> o2
+///     left_input_2 -> a3  right_input_2 => b3  result_2 -> r3  upper_bound_check_2 -> o3
+///
+///     field_overflow -> x  
+///     result_carry_0 -> y1  
+///     result_carry_1 -> y2
+///     upper_bound_check_carry_0 -> z1   
+///     upper_bound_check_carry_1 -> z2   
+///
+///     max_sub_foreign_modulus_2 -> k_3 = 2^88 - m_3
+///     max_sub_foreign_modulus_1 -> k_2 = 2^88 - m_2 - 1
+///     max_sub_foreign_modulus_0 -> k_1 = 2^88 - m_1 - 1
+///```
 use std::marker::PhantomData;
-
-use ark_ff::FftField;
 
 use crate::circuits::{
     argument::{Argument, ArgumentType},
     expr::{prologue::*, ConstantExpr::ForeignFieldModulus},
     gate::GateType,
 };
+
+use ark_ff::FftField;
 
 /// Implementation of the ForeignFieldAdd gate
 pub struct FFAdd<F>(PhantomData<F>);
