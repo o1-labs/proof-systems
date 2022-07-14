@@ -7,7 +7,7 @@ use crate::{
         lookup::{index::LookupConstraintSystem, tables::LookupTable},
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
         polynomials::permutation::{Shifts, ZK_ROWS},
-        polynomials::range_check,
+        polynomials::{foreign_field_add, range_check},
         wires::*,
     },
     error::SetupError,
@@ -26,7 +26,7 @@ use serde_with::serde_as;
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use super::lookup::runtime_tables::RuntimeTableCfg;
+use super::{gate::SelectorPolynomial, lookup::runtime_tables::RuntimeTableCfg};
 
 //
 // ConstraintSystem
@@ -116,8 +116,8 @@ pub struct ConstraintSystem<F: FftField> {
     pub range_check_selector_polys: Vec<range_check::SelectorPolynomial<F>>,
 
     /// Foreign field addition gate selector polynomial
-    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
-    pub foreign_field_add_selector8: Option<E<F, D<F>>>,
+    #[serde(bound = "Option<range_check::SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
+    pub foreign_field_add_selector_poly: Option<SelectorPolynomial<F>>,
 
     /// Foreign field modulus
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
@@ -162,6 +162,47 @@ pub struct Builder<F: FftField> {
     runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
     precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
     foreign_field_modulus: Vec<F>,
+}
+
+/// Create selector polynomial for a circuit gate
+pub fn selector_polynomial<F: FftField>(
+    gate_type: GateType,
+    gates: &[CircuitGate<F>],
+    domain: &EvaluationDomains<F>,
+) -> SelectorPolynomial<F> {
+    // Coefficient form
+    let coeff = E::<F, D<F>>::from_vec_and_domain(
+        gates
+            .iter()
+            .map(|gate| {
+                if gate.typ == gate_type {
+                    F::one()
+                } else {
+                    F::zero()
+                }
+            })
+            .collect(),
+        domain.d1,
+    )
+    .interpolate();
+
+    // Evaluation form (evaluated over d8)
+    let eval8 = coeff.evaluate_over_domain_by_ref(domain.d8);
+
+    SelectorPolynomial { coeff, eval8 }
+}
+
+/// Create selector polynomials for a gate (i.e. a collection of circuit gates)
+pub fn selector_polynomials<F: FftField>(
+    gate_types: &[GateType],
+    gates: &[CircuitGate<F>],
+    domain: &EvaluationDomains<F>,
+) -> Vec<SelectorPolynomial<F>> {
+    Vec::from_iter(
+        gate_types
+            .iter()
+            .map(|gate_type| selector_polynomial(*gate_type, gates, domain)),
+    )
 }
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
@@ -525,24 +566,14 @@ impl<F: FftField + SquareRootField> Builder<F> {
             }
         };
 
-        let foreign_field_add_selector8 = {
-            if circuit_gates_used.contains(&GateType::ForeignFieldAdd) {
+        // Foreign field addition constraint selector polynomial
+        let foreign_field_add_selector_poly = {
+            if !circuit_gates_used
+                .is_disjoint(&foreign_field_add::circuit_gates().into_iter().collect())
+            {
                 Some(
-                    E::<F, D<F>>::from_vec_and_domain(
-                        gates
-                            .iter()
-                            .map(|gate| {
-                                if gate.typ == GateType::ForeignFieldAdd {
-                                    F::one()
-                                } else {
-                                    F::zero()
-                                }
-                            })
-                            .collect(),
-                        domain.d1,
-                    )
-                    .interpolate()
-                    .evaluate_over_domain(domain.d8),
+                    selector_polynomials(&foreign_field_add::circuit_gates(), &gates, &domain)[0]
+                        .clone(),
                 )
             } else {
                 None
@@ -598,7 +629,7 @@ impl<F: FftField + SquareRootField> Builder<F> {
             mull8,
             emull,
             range_check_selector_polys,
-            foreign_field_add_selector8,
+            foreign_field_add_selector_poly,
             foreign_field_modulus: self.foreign_field_modulus,
             gates,
             shift: shifts.shifts,

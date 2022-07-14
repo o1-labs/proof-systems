@@ -13,7 +13,7 @@ use crate::{
             complete_add::CompleteAdd,
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
-            foreign_field_add::gate::FFAdd,
+            foreign_field_add::circuitgates::FFAdd,
             generic, permutation,
             permutation::ZK_ROWS,
             poseidon::Poseidon,
@@ -763,7 +763,7 @@ where
 
             // foreign field addition
             {
-                if index.cs.foreign_field_add_selector8.as_ref().is_some() {
+                if index.cs.foreign_field_add_selector_poly.is_some() {
                     let foreign_add = FFAdd::combined_constraints(&all_alphas).evaluations(&env);
                     t4 += &foreign_add;
                     check_constraint!(index, foreign_add);

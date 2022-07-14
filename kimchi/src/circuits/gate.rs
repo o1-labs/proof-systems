@@ -3,11 +3,15 @@
 use crate::circuits::{constraints::ConstraintSystem, wires::*};
 use ark_ff::FftField;
 use ark_ff::{bytes::ToBytes, SquareRootField};
+use ark_poly::univariate::DensePolynomial;
+use ark_poly::Evaluations;
+use ark_poly::Radix2EvaluationDomain as D;
 use num_traits::cast::ToPrimitive;
 use o1_utils::hasher::CryptoDigest;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::io::{Result as IoResult, Write};
+use thiserror::Error;
 
 /// A row accessible from a given row, corresponds to the fact that we open all polynomials
 /// at `zeta` **and** `omega * zeta`.
@@ -89,11 +93,50 @@ pub enum GateType {
     CairoInstruction = 13,
     CairoFlags = 14,
     CairoTransition = 15,
-    // Range check (16-24)
+    /// Foreign field
     RangeCheck0 = 16,
     RangeCheck1 = 17,
-    ForeignFieldAdd = 18,
+    //ForeignFieldMul = 18,
+    ForeignFieldAdd = 19,
 }
+
+/// Selector polynomial
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct SelectorPolynomial<F: FftField> {
+    /// Coefficient form
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub coeff: DensePolynomial<F>,
+    /// Evaluation form (evaluated over domain d8)
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub eval8: Evaluations<F, D<F>>,
+}
+
+/// Gate error
+#[derive(Error, Debug, Clone, Copy, PartialEq)]
+pub enum CircuitGateError {
+    /// Invalid constraint
+    #[error("Invalid circuit gate type {0:?}")]
+    InvalidCircuitGateType(GateType),
+    /// Invalid constraint
+    #[error("Invalid {0:?} constraint")]
+    InvalidConstraint(GateType),
+    /// Invalid copy constraint
+    #[error("Invalid {0:?} copy constraint")]
+    InvalidCopyConstraint(GateType),
+    /// Invalid lookup constraint - sorted evaluations
+    #[error("Invalid {0:?} lookup constraint - sorted evaluations")]
+    InvalidLookupConstraintSorted(GateType),
+    /// Invalid lookup constraint - sorted evaluations
+    #[error("Invalid {0:?} lookup constraint - aggregation polynomial")]
+    InvalidLookupConstraintAggregation(GateType),
+    /// Missing lookup constraint system
+    #[error("Failed to get lookup constraint system for {0:?}")]
+    MissingLookupConstraintSystem(GateType),
+}
+
+/// Gate result
+pub type CircuitGateResult<T> = std::result::Result<T, CircuitGateError>;
 
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize)]

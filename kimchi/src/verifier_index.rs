@@ -234,9 +234,12 @@ where
 
             foreign_field_add_comm: self
                 .cs
-                .foreign_field_add_selector8
+                .foreign_field_add_selector_poly
                 .as_ref()
-                .map(|poly| self.srs.commit_evaluations_non_hiding(domain, poly, None)),
+                .map(|poly| {
+                    self.srs
+                        .commit_evaluations_non_hiding(domain, &poly.eval8, None)
+                }),
 
             shift: self.cs.shift,
             zkpm: {
