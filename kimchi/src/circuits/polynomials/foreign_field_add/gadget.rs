@@ -57,28 +57,28 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
 
         // Copy left_input_lo -> Curr(0)
         connect_cell_pair(&mut circuit_gates[0].wires, 0, &mut wires, (0, 0));
-        // Copy left_input_mid -> Curr(1)
+        // Copy left_input_mi -> Curr(1)
         connect_cell_pair(&mut circuit_gates[1].wires, 0, &mut wires, (0, 1));
         // Copy left_input_hi -> Curr(2)
         connect_cell_pair(&mut circuit_gates[2].wires, 0, &mut wires, (0, 2));
 
         // Copy right_input_lo -> Curr(3)
         connect_cell_pair(&mut circuit_gates[4].wires, 0, &mut wires, (0, 3));
-        // Copy right_input_mid -> Curr(4)
+        // Copy right_input_mi -> Curr(4)
         connect_cell_pair(&mut circuit_gates[5].wires, 0, &mut wires, (0, 4));
         // Copy right_input_hi -> Curr(5)
         connect_cell_pair(&mut circuit_gates[6].wires, 0, &mut wires, (0, 5));
 
         // Copy result_lo -> Next(0)
         connect_cell_pair(&mut circuit_gates[8].wires, 0, &mut wires, (1, 0));
-        // Copy result_mid -> Next(1)
+        // Copy result_mi -> Next(1)
         connect_cell_pair(&mut circuit_gates[9].wires, 0, &mut wires, (1, 1));
         // Copy result_hi -> Next(2)
         connect_cell_pair(&mut circuit_gates[10].wires, 0, &mut wires, (1, 2));
 
         // Copy upper_bound_lo -> Next(3)
         connect_cell_pair(&mut circuit_gates[12].wires, 0, &mut wires, (1, 3));
-        // Copy upper_bound_mid -> Next(4)
+        // Copy upper_bound_mi -> Next(4)
         connect_cell_pair(&mut circuit_gates[13].wires, 0, &mut wires, (1, 4));
         // Copy upper_bound_hi -> Next(5)
         connect_cell_pair(&mut circuit_gates[14].wires, 0, &mut wires, (1, 5));
