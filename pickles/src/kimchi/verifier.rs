@@ -12,13 +12,14 @@ use kimchi::circuits::wires::{COLUMNS, PERMUTS};
 use crate::kimchi::alphas::Alphas;
 use crate::kimchi::constraints;
 use crate::kimchi::index::{ConstIndex, Index};
-use crate::kimchi::proof::{eval_polynomial, VarEvaluations, VarProof};
+use crate::kimchi::proof::{VarEvaluations, VarProof, PublicInput};
+use crate::kimchi::batch::combine_inner_product;
 
 use crate::context::Context;
 use crate::expr::{Assignments, Evaluator};
 use crate::transcript::{Arthur, Msg};
 use crate::types::{
-    polynomials, FieldChallenge, GLVChallenge, LagrangePoly, Scalar, VarEval, VarPolyComm,
+    polynomials, FieldChallenge, GLVChallenge, Scalar, VarEval, VarPolyComm,
 };
 use crate::util::var_product;
 
@@ -134,77 +135,7 @@ fn compute_ft_perm<F: FftField + PrimeField, C: Cs<F>>(
     cs.add(term_boundary, term_recurrence)
 }
 
-/// Combine multiple openings using a linear combination
-///
-/// QUESTION: why can this not just be one large linear combination,
-/// why do we need both xi and r?
-fn combine_inner_product<'a, F, C: Cs<F>, const N: usize>(
-    cs: &mut C,
-    evaluations: &[(Var<F>, Vec<VarEval<F, N>>)], // evaluation point and openings
-    xi: Var<F>,                                   // combinations at powers of x
-    r: Var<F>,                                    // new evaluation point
-) -> Var<F>
-where
-    F: FftField + PrimeField,
-{
-    // accumulated sum: \sum_{j=0} xi^j * term_j
-    let mut res = cs.constant(F::zero());
-
-    // xi^i
-    let mut xi_i = cs.constant(F::one());
-
-    //
-    for (_eval_point, polys) in evaluations {
-        for i in 0..N {
-            // take the i'th chunk from each polynomial
-            let chunks: Vec<Var<F>> = polys.iter().map(|p| p.chunks[i]).collect();
-
-            // evaluate the polynomial with the chunks as coefficients
-            let term: Var<F> = eval_polynomial(cs, &chunks, r);
-
-            // res += xi_i * term
-            let xi_i_term = cs.mul(xi_i, term);
-            res = cs.add(res, xi_i_term);
-
-            // xi_i *= xi
-            xi_i = cs.mul(xi_i, xi);
-
-            // QUESTION: the shifting does not seem to be used
-            // do we need it? It adds complexity and constraints particularly
-            // in the circuit where we need to add a circuit for computing the shift
-        }
-    }
-
-    res
-}
-
 // TODO: add unit test for compat with combined_inner_product from Kimchi using Witness Generator
-
-// public input is a polynomial in Lagrange basis
-// (where accessing an evaluation of the poly requires absorption)
-pub struct PublicInput<G>(LagrangePoly<G::ScalarField>)
-where
-    G: AffineCurve,
-    G::BaseField: FftField + PrimeField;
-
-impl<G> PublicInput<G>
-where
-    G: AffineCurve,
-    G::BaseField: FftField + PrimeField,
-{
-    pub fn eval<C: Cs<G::ScalarField>>(
-        &self,
-        cs: &mut C,
-        x: Var<G::ScalarField>,
-        pnt: &polynomials::VanishEval<G::ScalarField>,
-    ) -> Msg<VarEval<G::ScalarField, 1>> {
-        self.0.eval(cs, x, pnt).into()
-    }
-
-    fn len(&self) -> usize {
-        self.0.len()
-    }
-}
 
 impl<G> Index<G>
 where
@@ -232,7 +163,7 @@ where
         assert_eq!(inputs.len(), self.constant.public_input_size);
 
         // start a new transcript
-        let mut tx = Arthur::new(ctx);
+        let mut tx = Arthur::new(ctx.constants());
 
         //~ 1. absorb index
         // absorb variable part of the index: the relation description
@@ -249,12 +180,12 @@ where
 
         //~ 6. Sample $\beta$
         let beta: FieldChallenge<_> = tx.challenge(ctx); // sample challenge using Fp sponge
-        let beta: FieldChallenge<_> = ctx.pass(&beta); // pass to other side
+        let beta: FieldChallenge<_> = ctx.pass(beta); // pass to other side
         let beta: Var<G::ScalarField> = beta.into(); // interpret as variable
 
         //~ 7. Sample $\gamma$
         let gamma: FieldChallenge<_> = tx.challenge(ctx); // sample challenge using Fp sponge
-        let gamma: FieldChallenge<_> = ctx.pass(&gamma); // pass to other side
+        let gamma: FieldChallenge<_> = ctx.pass(gamma); // pass to other side
         let gamma: Var<G::ScalarField> = gamma.into(); // interpret as variable
 
         //~ 8. If using lookup, absorb the commitment to the aggregation lookup polynomial.
@@ -270,7 +201,7 @@ where
         let alpha_glv: GLVChallenge<G::BaseField> = tx.challenge(ctx);
 
         //~ 11. Derive $\alpha$ from $\alpha'$ using the endomorphism
-        let alpha: GLVChallenge<G::ScalarField> = ctx.pass(&alpha_glv);
+        let alpha: GLVChallenge<G::ScalarField> = ctx.pass(alpha_glv);
         let alpha: Var<G::ScalarField> = ctx.flip(|ctx| alpha.to_field(ctx.cs()));
 
         //~ 12. Enforce that the length of the $t$ commitment is of size `PERMUTS`.
@@ -283,239 +214,231 @@ where
         let zeta_glv: GLVChallenge<G::BaseField> = tx.challenge(ctx);
 
         //~ 15. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
-        let zeta: GLVChallenge<G::ScalarField> = ctx.pass(&zeta_glv);
+        let zeta: GLVChallenge<G::ScalarField> = ctx.pass(zeta_glv);
         let zeta: Var<G::ScalarField> = ctx.flip(|ctx| zeta.to_field(ctx.cs()));
 
         //~ 18. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
         //~     NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
         //~     Absorb over the foreign field
 
-        // Enforce constraints on other side
-        let (_, scalars, commitments, shift_zeta) = ctx.flip(|ctx| {
-            tx.flip(|tx| {
-                let alphas: Alphas<_> = Alphas::new(ctx.cs(), alpha);
+        // pass transcript to other side
+        let mut tx: Arthur<G::ScalarField> = ctx.pass(tx);
 
-                // zetaw = zeta * \omega
-                let omega = self.constant.domain.group_gen;
-                let zetaw = generic!({ ctx.cs() }, (zeta) : { ? = omega * zeta } );
+        // enforce constraints on other side
+        let (evals_z, evals_zw, scalars, commitments, shift_zeta) = ctx.flip(|ctx| {
+            let alphas: Alphas<_> = Alphas::new(ctx.cs(), alpha);
 
-                // compute shift polynomial: $\zeta^{|domain size|}$
-                let shift_zeta = polynomials::ShiftEval::new(ctx.cs(), &self.constant.domain, zeta);
+            // zetaw = zeta * \omega
+            let omega = self.constant.domain.group_gen;
+            let zetaw = generic!({ ctx.cs() }, (zeta) : { ? = omega * zeta } );
 
-                // compute vanishing polynomial (of domain) at $\zeta$
-                // note that $Z_H(\zeta) = Z_H(\zeta \omega)$: we only need to eval one
-                let vanish_zeta = polynomials::VanishEval::new(ctx.cs(), &shift_zeta);
+            // compute shift polynomial: $\zeta^{|domain size|}$
+            let shift_zeta = polynomials::ShiftEval::new(ctx.cs(), &self.constant.domain, zeta);
 
-                // evaluate the ZKP (masking polynomial)
-                let zkp_zeta = polynomials::ZKPEval::new(ctx.cs(), &self.constant, zeta);
+            // compute vanishing polynomial (of domain) at $\zeta$
+            // note that $Z_H(\zeta) = Z_H(\zeta \omega)$: we only need to eval one
+            let vanish_zeta = polynomials::VanishEval::new(ctx.cs(), &shift_zeta);
 
-                //~ 19. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
-                //~     - the public polynomial
-                //~     - z
-                //~     - generic selector
-                //~     - poseidon selector
-                //~     - the 15 register/witness
-                //~     - 6 sigmas evaluations (the last one is not evaluated)
+            // evaluate the ZKP (masking polynomial)
+            let zkp_zeta = polynomials::ZKPEval::new(ctx.cs(), &self.constant, zeta);
 
-                // absorb $\zeta$ evaluations
-                let p_zeta = inputs.eval(ctx.cs(), zeta, &vanish_zeta);
-                let p_zeta = tx.recv(ctx, p_zeta);
-                let e_zeta = tx.recv(ctx, proof.evals.zeta);
+            //~ 19. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
+            //~     - the public polynomial
+            //~     - z
+            //~     - generic selector
+            //~     - poseidon selector
+            //~     - the 15 register/witness
+            //~     - 6 sigmas evaluations (the last one is not evaluated)
 
-                // absorb $\zeta\omega$ evaluations
-                let p_zetaw = inputs.eval(ctx.cs(), zetaw, &vanish_zeta);
-                let p_zetaw = tx.recv(ctx, p_zetaw);
-                let e_zetaw = tx.recv(ctx, proof.evals.zetaw);
+            // absorb $\zeta$ evaluations
+            let p_zeta = inputs.eval(ctx.cs(), zeta, &vanish_zeta);
+            let p_zeta = tx.recv(ctx, p_zeta);
+            let e_zeta = tx.recv(ctx, proof.evals.zeta);
 
-                // setup Expr evaluator with evaluations provided by prover
-                let evals = VarEvaluations {
-                    zeta: e_zeta,
-                    zetaw: e_zetaw,
-                };
+            // absorb $\zeta\omega$ evaluations
+            let p_zetaw = inputs.eval(ctx.cs(), zetaw, &vanish_zeta);
+            let p_zetaw = tx.recv(ctx, p_zetaw);
+            let e_zetaw = tx.recv(ctx, proof.evals.zetaw);
 
-                let mut evalutator = Evaluator::new(
-                    zeta,
-                    self.constant.domain.clone(),
-                    Assignments {
-                        alpha,
-                        beta,
-                        gamma,
-                        constants: self.constant.constants.clone(),
-                    },
+            // setup Expr evaluator with evaluations provided by prover
+            let evals = VarEvaluations {
+                zeta: e_zeta,
+                zetaw: e_zetaw,
+            };
+
+            let mut evalutator = Evaluator::new(
+                zeta,
+                self.constant.domain.clone(),
+                Assignments {
+                    alpha,
+                    beta,
+                    gamma,
+                    constants: self.constant.constants.clone(),
+                },
+                &evals,
+            );
+
+            // compute ft_eval0
+            let ft_zeta = {
+                let term_perm = compute_ft_perm(
+                    ctx.cs(),
+                    &self.constant,
+                    &vanish_zeta,
+                    &zkp_zeta,
                     &evals,
+                    gamma,
+                    beta,
+                    zeta,
+                    alphas.permutation().try_into().unwrap(),
                 );
 
-                // compute ft_eval0
-                let ft_zeta = {
-                    let term_perm = compute_ft_perm(
-                        ctx.cs(),
-                        &self.constant,
-                        &vanish_zeta,
-                        &zkp_zeta,
-                        &evals,
-                        gamma,
-                        beta,
-                        zeta,
-                        alphas.permutation().try_into().unwrap(),
-                    );
+                let term_row = {
+                    // evaluate constant term of the row constraint linearization
+                    let row_poly = evalutator
+                        .eval_expr(ctx.cs(), &self.constant.linearization.constant_term);
 
-                    let term_row = {
-                        // evaluate constant term of the row constraint linearization
-                        let row_poly = evalutator
-                            .eval_expr(ctx.cs(), &self.constant.linearization.constant_term);
-
-                        // subtract $p(\zeta)$ and negate
-                        ctx.add(row_poly, p_zeta.clone().into())
-                    };
-
-                    ctx.sub(term_perm, term_row).into()
+                    // subtract $p(\zeta)$ and negate
+                    ctx.add(row_poly, p_zeta.clone().into())
                 };
 
-                //~ 20. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
-                let ft_zetaw = tx.recv(ctx, proof.ft_eval1);
+                ctx.sub(term_perm, term_row).into()
+            };
 
-                // receive accumulator challenges (IPA challenges)
-                let acc_chals = tx.recv(ctx, proof.prev_challenges.chal);
+            //~ 20. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
+            let ft_zetaw = tx.recv(ctx, proof.ft_eval1);
 
-                //~ 21. Sample $v'$ with the Fr-Sponge.
-                let v_chal: GLVChallenge<G::ScalarField> = tx.challenge(ctx);
+            // receive accumulator challenges (IPA challenges)
+            let acc_chals = tx.recv(ctx, proof.prev_challenges.chal);
 
-                //~ 22. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
-                let v: Var<G::ScalarField> = v_chal.to_field(ctx.cs());
+            //~ 21. Sample $v'$ with the Fr-Sponge.
+            let v_chal: GLVChallenge<G::ScalarField> = tx.challenge(ctx);
 
-                //~ 23. Sample $u'$ with the Fr-Sponge.
-                let u_chal: GLVChallenge<G::ScalarField> = tx.challenge(ctx);
+            //~ 22. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
+            let v: Var<G::ScalarField> = v_chal.to_field(ctx.cs());
 
-                //~ 24. Derive $u$ from $u'$ using the endomorphism (TODO: specify).
-                let u = u_chal.to_field(ctx.cs());
+            //~ 23. Sample $u'$ with the Fr-Sponge.
+            let u_chal: GLVChallenge<G::ScalarField> = tx.challenge(ctx);
 
-                // evaluate the $h(X)$ polynomials from the accumulators at $\zeta$
-                let h_zeta: Vec<VarEval<_, 1>> = acc_chals
+            //~ 24. Derive $u$ from $u'$ using the endomorphism (TODO: specify).
+            let u = u_chal.to_field(ctx.cs());
+
+            // evaluate the $h(X)$ polynomials from the accumulators at $\zeta$
+            let h_zeta: Vec<VarEval<_, 1>> = acc_chals
+                .iter()
+                .map(|acc| acc.eval_h(ctx.cs(), zeta))
+                .collect();
+
+            // evaluate the $h(X)$ polynomials from the accumulators at $\zeta\omega$
+            let h_zetaw: Vec<VarEval<_, 1>> = acc_chals
+                .iter()
+                .map(|acc| acc.eval_h(ctx.cs(), zetaw))
+                .collect();
+
+            //~ 25. Create a list of all polynomials that have an evaluation proof.
+            // evaluations at $\zeta$
+            let evals_z: Vec<_> = iter::empty()
+                .chain(h_zeta) // $h(\zeta)$
+                .chain(iter::once(p_zeta)) // p_eval(\zeta)
+                .chain(iter::once(ft_zeta)) // ft_eval0
+                .chain(evals.zeta.iter().cloned())
+                .collect(); // openings from proof
+
+            // evaluations at $\zeta \omega$
+            let evals_zw: Vec<_> = iter::empty()
+                .chain(h_zetaw) // $h(\zeta\omega)$
+                .chain(iter::once(p_zetaw)) // p_eval(\zeta\omega)
+                .chain(iter::once(ft_zetaw)) // ft_eval1
+                .chain(evals.zetaw.iter().cloned())
+                .collect();
+
+            // evaluate every linearlization term and
+            // associate with corresponding polynomial commitment
+            let mut scalars: Vec<Var<G::ScalarField>> = Vec::new();
+            let mut commitments: Vec<&VarPolyComm<G, 1>> = Vec::new();
+
+            // handle permutation argument
+            {
+                let perm_scalar = constraints::perm_scalar(
+                    ctx.cs(),
+                    &evals,
+                    beta,
+                    gamma,
+                    alphas.permutation(),
+                    &zkp_zeta,
+                );
+                scalars.push(perm_scalar);
+                commitments.push(&relation.sigma_comm[PERMUTS - 1])
+            }
+
+            // handle generic gate
+            {
+                let generic_scalars =
+                    constraints::generic_scalars(ctx.cs(), alphas.gate(), &evals);
+                let generic_comm = relation
+                    .coefficients_comm
                     .iter()
-                    .map(|acc| acc.eval_h(ctx.cs(), zeta))
-                    .collect();
+                    .take(generic_scalars.len());
+                scalars.extend(generic_scalars);
+                commitments.extend(generic_comm);
+            }
 
-                // evaluate the $h(X)$ polynomials from the accumulators at $\zeta\omega$
-                let h_zetaw: Vec<VarEval<_, 1>> = acc_chals
-                    .iter()
-                    .map(|acc| acc.eval_h(ctx.cs(), zetaw))
-                    .collect();
+            // handle all other types of gates
+            for (col, expr) in &self.constant.linearization.index_terms {
+                let scalar = evalutator.eval_expr(ctx.cs(), expr);
 
-                //~ 25. Create a list of all polynomials that have an evaluation proof.
-                // evaluations at $\zeta$
-                let evals_z = iter::empty()
-                    .chain(h_zeta) // $h(\zeta)$
-                    .chain(iter::once(p_zeta)) // p_eval(\zeta)
-                    .chain(iter::once(ft_zeta)) // ft_eval0
-                    .chain(evals.zeta.iter().cloned()); // openings from proof
-
-                // evaluations at $\zeta \omega$
-                let evals_zw = iter::empty()
-                    .chain(h_zetaw) // $h(\zeta\omega)$
-                    .chain(iter::once(p_zetaw)) // p_eval(\zeta\omega)
-                    .chain(iter::once(ft_zetaw)) // ft_eval1
-                    .chain(evals.zetaw.iter().cloned()); // openings from proof
-
-                // evaluate every linearlization term and
-                // associate with corresponding polynomial commitment
-                let mut scalars: Vec<Var<G::ScalarField>> = Vec::new();
-                let mut commitments: Vec<&VarPolyComm<G, 1>> = Vec::new();
-
-                // handle permutation argument
-                {
-                    let perm_scalar = constraints::perm_scalar(
-                        ctx.cs(),
-                        &evals,
-                        beta,
-                        gamma,
-                        alphas.permutation(),
-                        &zkp_zeta,
-                    );
-                    scalars.push(perm_scalar);
-                    commitments.push(&relation.sigma_comm[PERMUTS - 1])
-                }
-
-                // handle generic gate
-                {
-                    let generic_scalars =
-                        constraints::generic_scalars(ctx.cs(), alphas.gate(), &evals);
-                    let generic_comm = relation
-                        .coefficients_comm
-                        .iter()
-                        .take(generic_scalars.len());
-                    scalars.extend(generic_scalars);
-                    commitments.extend(generic_comm);
-                }
-
-                // handle all other types of gates
-                for (col, expr) in &self.constant.linearization.index_terms {
-                    let scalar = evalutator.eval_expr(ctx.cs(), expr);
-
-                    use Column::*;
-                    match col {
-                        Witness(i) => {
-                            scalars.push(scalar);
-                            commitments.push(&w_comm[*i])
-                        }
-                        Coefficient(i) => {
-                            scalars.push(scalar);
-                            commitments.push(&relation.coefficients_comm[*i])
-                        }
-                        Z => {
-                            scalars.push(scalar);
-                            commitments.push(&z_comm);
-                        }
-                        Index(t) => {
-                            use GateType::*;
-                            let c = match t {
-                                Zero | Generic | Lookup => {
-                                    panic!("Selector for {:?} not defined", t)
-                                }
-                                CompleteAdd => &relation.complete_add_comm,
-                                VarBaseMul => &relation.mul_comm,
-                                EndoMul => &relation.emul_comm,
-                                EndoMulScalar => &relation.endomul_scalar_comm,
-                                Poseidon => &relation.psm_comm,
-                                ChaCha0 => &relation.chacha_comm.as_ref().unwrap()[0],
-                                ChaCha1 => &relation.chacha_comm.as_ref().unwrap()[1],
-                                ChaCha2 => &relation.chacha_comm.as_ref().unwrap()[2],
-                                ChaChaFinal => &relation.chacha_comm.as_ref().unwrap()[3],
-                                CairoClaim | CairoInstruction | CairoFlags | CairoTransition => {
-                                    unimplemented!()
-                                }
-                                RangeCheck0 => &relation.range_check_comm[0],
-                                RangeCheck1 => &relation.range_check_comm[1],
-                            };
-                            scalars.push(scalar);
-                            commitments.push(c);
-                        }
-                        _ => unimplemented!(), // TODO: lookup related column types
+                use Column::*;
+                match col {
+                    Witness(i) => {
+                        scalars.push(scalar);
+                        commitments.push(&w_comm[*i])
                     }
+                    Coefficient(i) => {
+                        scalars.push(scalar);
+                        commitments.push(&relation.coefficients_comm[*i])
+                    }
+                    Z => {
+                        scalars.push(scalar);
+                        commitments.push(&z_comm);
+                    }
+                    Index(t) => {
+                        use GateType::*;
+                        let c = match t {
+                            Zero | Generic | Lookup => {
+                                panic!("Selector for {:?} not defined", t)
+                            }
+                            CompleteAdd => &relation.complete_add_comm,
+                            VarBaseMul => &relation.mul_comm,
+                            EndoMul => &relation.emul_comm,
+                            EndoMulScalar => &relation.endomul_scalar_comm,
+                            Poseidon => &relation.psm_comm,
+                            ChaCha0 => &relation.chacha_comm.as_ref().unwrap()[0],
+                            ChaCha1 => &relation.chacha_comm.as_ref().unwrap()[1],
+                            ChaCha2 => &relation.chacha_comm.as_ref().unwrap()[2],
+                            ChaChaFinal => &relation.chacha_comm.as_ref().unwrap()[3],
+                            CairoClaim | CairoInstruction | CairoFlags | CairoTransition => {
+                                unimplemented!()
+                            }
+                            RangeCheck0 => &relation.range_check_comm[0],
+                            RangeCheck1 => &relation.range_check_comm[1],
+                        };
+                        scalars.push(scalar);
+                        commitments.push(c);
+                    }
+                    _ => unimplemented!(), // TODO: lookup related column types
                 }
+            }
 
-                // pass scalars to G::BaseField side for ft_comm computation (MSM inside circuit)
-                let scalars: Vec<Scalar<G>> = scalars.into_iter().map(|s| ctx.pass(&s)).collect();
+            // pass scalars to G::BaseField side for ft_comm computation (MSM inside circuit)
+            // TODO: this can be avoid by not using linearlization in the future
+            let scalars: Vec<Scalar<G>> = scalars.into_iter().map(|s| ctx.pass(s)).collect();
 
-                // compute the combined inner product:
-                // the batching of all the openings
-                let combined_inner_product = {
-                    // compute a randomized combinations of all the openings
-                    // with xi = v, r = u
-                    combine_inner_product(
-                        ctx.cs(),
-                        &vec![
-                            (zeta, evals_z.collect()),   // (eval point, openings)
-                            (zetaw, evals_zw.collect()), // (eval point, openings)
-                        ],
-                        v, // xi
-                        u, // r
-                    )
-                };
+            // we also need to pass $\zeta^{|H|}$ to the other side
+            let shift_zeta: Scalar<G> = ctx.pass(shift_zeta.as_ref().clone());
 
-                let shift_zeta: Scalar<G> = ctx.pass(shift_zeta.as_ref());
+            // 
+            let v_chal = ctx.pass(v_chal);
 
-                (combined_inner_product, scalars, commitments, shift_zeta)
-            })
+            (evals_z, evals_zw, scalars, commitments, shift_zeta)
         });
 
         // compute ft_comm MSM (linearlizated row constraints based on gate selectors)
@@ -529,21 +452,20 @@ where
         // ft(X) = f(X) - t(X) \cdot Z_H(X)
         // $$
         let ft_comm: VarPolyComm<G, 1> = {
-            // collapse at zeta
+            // collapse at  $\zeta$
             let t_collapsed: VarPolyComm<G, 1> = t_comm.collapse(ctx.cs(), &shift_zeta);
 
-            // multiply by Z_H
+            // multiply by $Z_H(X)$
             let t_collapsed: VarPolyComm<G, 2> = t_collapsed.mul_vanish(ctx.cs());
 
-            // collapse at zeta again
-            // NOTE: we could mul_vanish and do a single collapse with the same complexity
+            // collapse at $\zeta$ again
             let t_collapsed: VarPolyComm<G, 1> = t_collapsed.collapse(ctx.cs(), &shift_zeta);
 
             f_comm.sub(ctx.cs(), &t_collapsed) // f_comm is already a single chunk, hence collapse is a no-op
         };
 
         // compute combined polynomial opening
-        let poly_comms = iter::empty()
+        let comms: Vec<_> = iter::empty()
             .chain(&acc_comms) // * [\alpha^0]
             .chain(iter::once(&p_comm)) // * [\alpha^1]
             .chain(iter::once(&ft_comm)) // * [\alpha^2]
@@ -551,9 +473,30 @@ where
             .chain(iter::once(&relation.generic_comm))
             .chain(iter::once(&relation.psm_comm))
             .chain(&w_comm)
-            .chain(&relation.sigma_comm);
+            .chain(&relation.sigma_comm)
+            .collect();
+
+        // sanity check: the number of commitments is the same as the number of evaluations
+        assert_eq!(comms.len(), evals_z.len());
+        assert_eq!(comms.len(), evals_zw.len());
+
+        // combine/aggregate openings
+
+        // combine openings using random challenge
+        // DISCUSS: v (xi) is NEVER USED in kimchi: the power is always 0..., since there is always one chunk!
+        // The evaluation points are also never used since the shift is always None.
+        // hence "combined_inner_product" simplifies to this.
+        //
+        // Why does this work when the evaluations are at different points: \zeta, \zeta\omega ?
+        /*
+        let combined_opening: VarEval<_, 1> = VarEval::combine(
+            ctx.cs(), 
+            evals_z.chain(evals_zw).collect::<Vec<_>>().iter(), 
+            v
+        );
 
         // combine all $\zeta$ openings using powers of $\alpha$
         let combined_comm = VarPolyComm::combine_with_glv(ctx.cs(), poly_comms, &alpha_glv);
+        */
     }
 }

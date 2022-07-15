@@ -17,4 +17,6 @@ mod context;
 /// Fiat-Shamir abstraction
 mod transcript;
 
+mod commitment;
+
 mod util;

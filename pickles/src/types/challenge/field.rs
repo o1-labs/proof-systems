@@ -1,6 +1,6 @@
 use ark_ff::{FftField, PrimeField};
 
-use circuit_construction::{Cs, Var};
+use circuit_construction::{Cs, Var, Constants};
 
 use super::Bits;
 
@@ -40,8 +40,8 @@ where
     Fp: FftField + PrimeField,
     Fr: FftField + PrimeField,
 {
-    fn to_public<Cp: Cs<Fp>>(&self, cp: &mut Cp) -> Vec<Public<Fp>> {
-        <Bits<Fp> as ToPublic<Fp, Fr>>::to_public::<Cp>(&self.inner, cp)
+    fn to_public<Cp: Cs<Fp>>(self, cp: &mut Cp, cnst: &Constants<Fp>) -> Vec<Public<Fp>> {
+        <Bits<Fp> as ToPublic<Fp, Fr>>::to_public::<Cp>(self.inner, cp, cnst)
     }
 }
 
@@ -54,9 +54,10 @@ where
 
     fn from_public<C: Cs<Fr>, I: Iterator<Item = Public<Fr>>>(
         cs: &mut C,
+        cnst: &Constants<Fr>,
         inputs: &mut I,
     ) -> Result<Self, Self::Error> {
-        <Bits<Fr> as FromPublic<Fp, Fr>>::from_public::<C, I>(cs, inputs)
+        <Bits<Fr> as FromPublic<Fp, Fr>>::from_public::<C, I>(cs, cnst, inputs)
             .map(|inner| Self { inner })
     }
 }

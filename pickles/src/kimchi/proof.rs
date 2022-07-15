@@ -8,7 +8,7 @@ use circuit_construction::{Cs, Var};
 use super::{COLUMNS, PERMUTS};
 
 use crate::transcript::{Absorb, Msg, VarSponge};
-use crate::types::{VarEval, VarPolyComm};
+use crate::types::{VarEval, VarPolyComm, polynomials};
 
 use kimchi::proof::ProverProof;
 
@@ -64,29 +64,30 @@ where
     }
 }
 
-/// Add constraints for evaluating a polynomial
-///
-/// coeffs are the coefficients from least significant to most significant
-/// (e.g. starting with the constant term)
-pub fn eval_polynomial<F: FftField + PrimeField, C: Cs<F>>(
-    cs: &mut C,
-    coeffs: &[Var<F>],
-    x: Var<F>,
-) -> Var<F> {
-    // iterate over coefficients:
-    // most-to-least significant
-    let mut chk = coeffs.iter().rev().cloned();
+// public input is a polynomial in Lagrange basis
+// (where accessing an evaluation of the poly requires absorption)
+pub struct PublicInput<G>(polynomials::LagrangePoly<G::ScalarField>)
+where
+    G: AffineCurve,
+    G::BaseField: FftField + PrimeField;
 
-    // the initial sum is the most significant term
-    let mut sum = chk.next().expect("zero chunks in poly.");
-
-    // shift by pt and add next chunk
-    for c in chk {
-        sum = cs.mul(sum, x.clone());
-        sum = cs.add(sum, c);
+impl<G> PublicInput<G>
+where
+    G: AffineCurve,
+    G::BaseField: FftField + PrimeField,
+{
+    pub fn eval<C: Cs<G::ScalarField>>(
+        &self,
+        cs: &mut C,
+        x: Var<G::ScalarField>,
+        pnt: &polynomials::VanishEval<G::ScalarField>,
+    ) -> Msg<VarEval<G::ScalarField, 1>> {
+        self.0.eval(cs, x, pnt).into()
     }
 
-    sum
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
 }
 
 //~ spec:startcode

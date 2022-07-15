@@ -17,8 +17,11 @@ mod scalar;
 
 mod passed;
 
+mod decomposed;
+
 pub use challenge::{FieldChallenge, GLVChallenge};
 pub use comm::VarPolyComm;
 pub use group::VarPoint;
 pub use polynomials::{LagrangePoly, VanishEval, VarEval};
 pub use scalar::Scalar;
+pub use decomposed::DecomposedVar;

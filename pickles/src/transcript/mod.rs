@@ -2,56 +2,21 @@ use circuit_construction::{Constants, Cs, Var};
 
 use ark_ff::{BigInteger, FftField, FpParameters, PrimeField};
 
+
+
 mod sponge;
 mod utils;
 
-use crate::context::Context;
+use crate::context::{Context, Public, Pass, FromPublic, ToPublic};
+use crate::types::DecomposedVar;
 
 pub use sponge::{Absorb, Challenge, VarSponge};
 
-use std::mem;
-use std::ops::{Deref, DerefMut};
 
 use std::marker::PhantomData;
 
-use utils::{decompose, lift, need_decompose, transfer_hash};
-
-struct Public<F: FftField + PrimeField> {
-    var: Var<F>,
-    size: usize,
-}
-
-// A "container type"
-struct Side<F: FftField + PrimeField> {
-    constants: Constants<F>,
-    sponge: Option<VarSponge<F>>, // sponge constrained inside the proof system
-}
-
-impl<F: FftField + PrimeField> Side<F> {
-    fn new(constants: Constants<F>) -> Self {
-        Self {
-            sponge: None,
-            constants,
-        }
-    }
-}
-
-struct Inner<Fp, Fr, CsFp, CsFr>
-where
-    Fp: FftField + PrimeField,
-    Fr: FftField + PrimeField,
-{
-    fp: Side<Fp>,
-    fr: Side<Fr>,
-    _ph: PhantomData<(CsFp, CsFr)>,
-}
-
-pub struct Arthur<Fp, Fr, CsFp, CsFr>
-where
-    Fp: FftField + PrimeField,
-    Fr: FftField + PrimeField,
-{
-    inner: Option<Inner<Fp, Fr, CsFp, CsFr>>,
+pub struct Arthur<Fp: FftField + PrimeField> {
+    sponge: VarSponge<Fp>,
 }
 
 pub struct Msg<T> {
@@ -96,118 +61,95 @@ where
     }
 }
 
-impl<Fp, Fr, CsFp, CsFr> Arthur<Fp, Fr, CsFp, CsFr>
-where
-    Fp: FftField + PrimeField,
-    Fr: FftField + PrimeField,
-    CsFp: Cs<Fp>,
-    CsFr: Cs<Fr>,
-{
-    pub fn new(ctx: &Context<Fp, Fr, CsFp, CsFr>) -> Self {
+impl<Fp: FftField + PrimeField> Arthur<Fp> {
+    pub fn new(cnst: &Constants<Fp>) -> Self {
         Self {
-            inner: Some(Inner::new(ctx)),
+            sponge: VarSponge::new(cnst.clone())
         }
     }
 
+    // Side<F: FftField + PrimeField, C: Cs<F>>
+
     #[must_use]
-    pub fn recv<R: Receivable<Fp>>(
+    pub fn recv<R, Fr, Cp, Cr>(
         &mut self,
-        ctx: &mut Context<Fp, Fr, CsFp, CsFr>,
+        ctx: &mut Context<Fp, Fr, Cp, Cr>,
         msg: R,
-    ) -> R::Dst {
-        self.inner.as_mut().unwrap().recv(ctx, msg)
+    ) -> R::Dst where
+        R: Receivable<Fp>,
+        Fr: FftField + PrimeField,
+        Cp: Cs<Fp>,
+        Cr: Cs<Fr>
+    {
+        msg.unpack(ctx.cs(), &mut self.sponge)
     }
 
     /// Generate a challenge over the current field
     #[must_use]
-    pub fn challenge<C: Challenge<Fp>>(&mut self, ctx: &mut Context<Fp, Fr, CsFp, CsFr>) -> C {
-        self.inner.as_mut().unwrap().challenge(ctx)
+    pub fn challenge<C, Fr, Cp, Cr>(&mut self, ctx: &mut Context<Fp, Fr, Cp, Cr>) -> C 
+    where
+        C: Challenge<Fp>,
+        Fr: FftField + PrimeField,
+        Cp: Cs<Fp>,
+        Cr: Cs<Fr>
+    {
+        self.sponge.challenge(ctx.cs())
     }
-
-    #[must_use]
-    pub fn flip<T, F: FnOnce(&mut Arthur<Fr, Fp, CsFr, CsFp>) -> T>(&mut self, scope: F) -> T {
-        // flip the Arthur
-        let mut merlin = Arthur {
-            inner: self.inner.take().map(|m| m.flipped()),
-        };
-
-        // invoke scope
-        let msg = scope(&mut merlin);
-
-        // flip back
-        self.inner = merlin.inner.map(|m| m.flipped());
-        msg
-    }
-
-    // invoke scope without affecting the current sponge state
-    // essentially "branches", this requires a scope
-    pub fn fork() {}
 }
 
-impl<Fp, Fr, CsFp, CsFr> Inner<Fp, Fr, CsFp, CsFr>
+
+// we can send a transcript from one side to the other
+// by squeezing on the source side and absorbing the hash on the destination
+impl<Fp, Fr> Pass<Arthur<Fr>> for Arthur<Fp> where
+    Fp: FftField + PrimeField,
+    Fr: FftField + PrimeField,
+{}
+
+
+impl<Fp, Fr> ToPublic<Fp, Fr> for Arthur<Fp>
 where
     Fp: FftField + PrimeField,
     Fr: FftField + PrimeField,
-    CsFp: Cs<Fp>,
-    CsFr: Cs<Fr>,
 {
-    fn new(ctx: &Context<Fp, Fr, CsFp, CsFr>) -> Self {
-        Self {
-            fp: Side::new(ctx.fp.constants.clone()),
-            fr: Side::new(ctx.fr.constants.clone()),
-            _ph: PhantomData,
+    fn to_public<C: Cs<Fp>>(mut self, cs: &mut C, cnst: &Constants<Fp>) -> Vec<Public<Fp>> {
+        // squeeze sponge
+        let hash: Var<Fp> = self.sponge.challenge(cs);
+
+        // export variable
+        <Var<Fp> as ToPublic<Fp, Fr>>::to_public(hash, cs, cnst)
+    }
+}
+
+impl<Fp, Fr> FromPublic<Fp, Fr> for Arthur<Fr>
+where
+    Fp: FftField + PrimeField,
+    Fr: FftField + PrimeField
+{
+    type Error = ();
+
+    /// A scalar is always constructed from a single (possibly bounded) element of the scalar field
+    fn from_public<C: Cs<Fr>, I: Iterator<Item = Public<Fr>>>(
+        cs: &mut C,
+        cnst: &Constants<Fr>,
+        inputs: &mut I,
+    ) -> Result<Self, Self::Error> {
+        // obtain decomposed hash
+        let decomp_hash = <DecomposedVar<Fr> as FromPublic<Fp, Fr>>::from_public(cs, cnst, inputs)?;
+
+        // create new sponge
+        let mut sponge = VarSponge::new(cnst.clone()); 
+
+        // absorb exported hash
+        sponge.absorb(cs, &decomp_hash.high);
+        if let Some(low) = decomp_hash.low.as_ref() {
+            sponge.absorb(cs, low);
         }
-    }
 
-    // do not invoke this manually
-    fn fp_sponge(&mut self, ctx: &mut Context<Fp, Fr, CsFp, CsFr>) -> &mut VarSponge<Fp> {
-        // initialize Fp sponge
-        let st_fp = self
-            .fp
-            .sponge
-            .get_or_insert_with(|| VarSponge::new(self.fp.constants.clone()));
-
-        // check if Fr side is not none
-        if let Some(mut fr_st) = self.fr.sponge.take() {
-            unimplemented!();
-            /*
-            // compute digest in other side and pass over
-            let hsh_fr: PassedField<Fp> = ctx.flip(|ctx| {
-                let st_fr: Var<Fr> = fr_st.challenge(&mut ctx.fp.cs);
-                ctx.pass(st_fr)
-            });
-
-            // absorb in Fp
-            hsh_fr.absorb(ctx.cs(), st_fp);
-            */
-        }
-
-        st_fp
-    }
-
-    /// Receive a message from the prover
-    #[must_use]
-    pub fn recv<R: Receivable<Fp>>(
-        &mut self,
-        ctx: &mut Context<Fp, Fr, CsFp, CsFr>,
-        msg: R,
-    ) -> R::Dst {
-        let st = self.fp_sponge(ctx);
-        msg.unpack(ctx.cs(), st)
-    }
-
-    /// Generate a challenge over the current field
-    #[must_use]
-    pub fn challenge<C: Challenge<Fp>>(&mut self, ctx: &mut Context<Fp, Fr, CsFp, CsFr>) -> C {
-        let st = self.fp_sponge(ctx);
-        C::generate(&mut ctx.fp.cs, st)
-    }
-
-    pub fn flipped(self) -> Inner<Fr, Fp, CsFr, CsFp> {
-        Inner {
-            fp: self.fr,
-            fr: self.fp,
-            _ph: PhantomData,
-        }
+        // wrap sponge in transcript
+        Ok(
+            Arthur{
+                sponge
+            }
+        )
     }
 }

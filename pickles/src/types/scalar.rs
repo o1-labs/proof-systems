@@ -1,7 +1,8 @@
-use circuit_construction::{Cs, Var};
+use circuit_construction::{Cs, Constants};
 
 use crate::context::{FromPublic, Public, ToPublic};
 use crate::util::field_is_bigger;
+use crate::types::DecomposedVar;
 
 use ark_ec::AffineCurve;
 use ark_ff::{BigInteger, FftField, FpParameters, PrimeField};
@@ -27,8 +28,7 @@ where
     G: AffineCurve,
     G::BaseField: FftField + PrimeField,
 {
-    high_bits: Var<G::BaseField>,       // "high bits" of scalar
-    low_bit: Option<Var<G::BaseField>>, // single "low bit" of scalar
+    bits: DecomposedVar<G::BaseField>,
 }
 
 impl<G> VarPoint<G>
@@ -73,20 +73,9 @@ where
     /// A scalar is always constructed from a single (possibly bounded) element of the scalar field
     fn from_public<C: Cs<G::BaseField>, I: Iterator<Item = Public<G::BaseField>>>(
         cs: &mut C,
+        cnst: &Constants<G::BaseField>,
         inputs: &mut I,
     ) -> Result<Self, Self::Error> {
-        // read high bits from public input
-        let high_bits = inputs.next().expect("Missing high bits").bits;
-
-        // read low bits from public input
-        let low_bit = if field_is_bigger::<G::ScalarField, G::BaseField>() {
-            let low_bit = inputs.next().expect("Missing low bit");
-            assert_eq!(low_bit.size, Some(1));
-            Some(low_bit.bits)
-        } else {
-            None
-        };
-
-        Ok(Self { high_bits, low_bit })
+        <DecomposedVar<G::BaseField> as FromPublic<G::ScalarField, G::BaseField>>::from_public(cs, cnst, inputs).map(|bits| Self{ bits })
     }
 }

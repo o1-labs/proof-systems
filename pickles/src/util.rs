@@ -65,3 +65,28 @@ pub fn var_sum<F: FftField + PrimeField, I: Iterator<Item = Var<F>>, C: Cs<F>>(
     }
     sum
 }
+
+/// Add constraints for evaluating a polynomial
+///
+/// coeffs are the coefficients from least significant to most significant
+/// (e.g. starting with the constant term)
+pub fn eval_polynomial<F: FftField + PrimeField, C: Cs<F>>(
+    cs: &mut C,
+    coeffs: &[Var<F>],
+    x: Var<F>,
+) -> Var<F> {
+    // iterate over coefficients:
+    // most-to-least significant
+    let mut chk = coeffs.iter().rev().cloned();
+
+    // the initial sum is the most significant term
+    let mut sum = chk.next().expect("zero chunks in poly.");
+
+    // shift by pt and add next chunk
+    for c in chk {
+        sum = cs.mul(sum, x.clone());
+        sum = cs.add(sum, c);
+    }
+
+    sum
+}

@@ -1,4 +1,4 @@
-use circuit_construction::{generic, Cs, Var};
+use circuit_construction::{generic, Cs, Var, Constants};
 
 use crate::context::{Pass, Public, ToPublic};
 use crate::types::Scalar;
@@ -21,7 +21,7 @@ where
     Fp: FftField + PrimeField,
     Fr: FftField + PrimeField,
 {
-    fn to_public<C: Cs<Fp>>(&self, cs: &mut C) -> Vec<Public<Fp>> {
+    fn to_public<C: Cs<Fp>>(self, cs: &mut C, _cnst: &Constants<Fp>) -> Vec<Public<Fp>> {
         if field_is_bigger::<Fp, Fr>() {
             // decompose witness (if available)
             let bits = self.value.map(|v| v.into_repr().to_bits_le());

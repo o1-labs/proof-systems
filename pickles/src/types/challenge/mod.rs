@@ -1,4 +1,4 @@
-use circuit_construction::{Cs, Var};
+use circuit_construction::{Cs, Var, Constants};
 
 use crate::context::{FromPublic, Public, ToPublic};
 use crate::transcript::{Challenge, VarSponge};
@@ -28,7 +28,7 @@ where
     Fr: FftField + PrimeField,
 {
     // it always fits
-    fn to_public<Cp: Cs<Fp>>(&self, _: &mut Cp) -> Vec<Public<Fp>> {
+    fn to_public<Cp: Cs<Fp>>(self, _: &mut Cp, _: &Constants<Fp>) -> Vec<Public<Fp>> {
         assert!(Fp::Params::MODULUS.num_bits() as usize > CHALLENGE_LEN);
         assert!(Fr::Params::MODULUS.num_bits() as usize > CHALLENGE_LEN);
         vec![Public {
@@ -47,6 +47,7 @@ where
 
     fn from_public<C: Cs<Fr>, I: Iterator<Item = Public<Fr>>>(
         cs: &mut C,
+        _cnst: &Constants<Fr>,
         inputs: &mut I,
     ) -> Result<Self, Self::Error> {
         assert!(Fp::Params::MODULUS.num_bits() as usize > CHALLENGE_LEN);
