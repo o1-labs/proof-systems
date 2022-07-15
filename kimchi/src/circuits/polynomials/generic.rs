@@ -139,13 +139,13 @@ impl<F: PrimeField> CircuitGate<F> {
             }) => {
                 coeffs[5] = left_coeff.unwrap_or_else(F::one);
                 coeffs[6] = right_coeff.unwrap_or_else(F::one);
-                coeffs[7] = output_coeff.unwrap_or_else(|| F::one());
+                coeffs[7] = output_coeff.unwrap_or_else(|| -F::one());
             }
             Some(GenericGateSpec::Mul {
                 output_coeff,
                 mul_coeff,
             }) => {
-                coeffs[7] = output_coeff.unwrap_or_else(|| F::one());
+                coeffs[7] = output_coeff.unwrap_or_else(|| -F::one());
                 coeffs[8] = mul_coeff.unwrap_or_else(F::one);
             }
             Some(GenericGateSpec::Const(cst)) => {

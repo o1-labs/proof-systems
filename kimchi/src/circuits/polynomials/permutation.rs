@@ -272,7 +272,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
 
             // TODO(mimoo): use self.sid[0] instead of 1
             // accumulator init := (z(x) - 1) / (x - 1)
-            let x_minus_1 = DensePolynomial::from_coefficients_slice(&[F::one(), F::one()]);
+            let x_minus_1 = DensePolynomial::from_coefficients_slice(&[-F::one(), F::one()]);
             let (bnd1, res) = DenseOrSparsePolynomial::divide_with_q_and_r(
                 &z_minus_1.clone().into(),
                 &x_minus_1.into(),
