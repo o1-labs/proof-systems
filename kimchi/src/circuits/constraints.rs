@@ -189,7 +189,7 @@ pub fn selector_polynomial<F: FftField>(
     // Evaluation form (evaluated over d8)
     let eval8 = coeff.evaluate_over_domain_by_ref(domain.d8);
 
-    SelectorPolynomial { coeff, eval8 }
+    SelectorPolynomial { eval8 }
 }
 
 /// Create selector polynomials for a gate (i.e. a collection of circuit gates)

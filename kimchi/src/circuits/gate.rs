@@ -93,7 +93,7 @@ pub enum GateType {
     CairoInstruction = 13,
     CairoFlags = 14,
     CairoTransition = 15,
-    /// Foreign field
+    /// Range check (16-24)
     RangeCheck0 = 16,
     RangeCheck1 = 17,
     //ForeignFieldMul = 18,
@@ -104,9 +104,9 @@ pub enum GateType {
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct SelectorPolynomial<F: FftField> {
-    /// Coefficient form
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub coeff: DensePolynomial<F>,
+    // Coefficient form
+    //#[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    //pub coeff: DensePolynomial<F>,
     /// Evaluation form (evaluated over domain d8)
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub eval8: Evaluations<F, D<F>>,
