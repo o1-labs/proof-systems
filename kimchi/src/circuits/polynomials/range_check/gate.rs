@@ -190,7 +190,7 @@ impl<F: PrimeField> CircuitGate<F> {
             .as_ref()
             .ok_or(GateError::MissingLookupConstraintSystem(self.typ))?;
 
-        let lookup_env_data = set_up_lookup_env_data::<G, _>(
+        let lookup_env_data = set_up_lookup_env_data(
             self.typ,
             cs,
             &witness,
@@ -269,7 +269,7 @@ struct LookupEnvironmentData<F: FftField> {
 // computing the dummy lookup value, creating the combined lookup table, computing the sorted plookup
 // evaluations and the plookup aggregation evaluations.
 // Note: This function assumes the cs contains a lookup constraint system.
-fn set_up_lookup_env_data<G: KimchiCurve<ScalarField = F>, F: PrimeField>(
+fn set_up_lookup_env_data<F: PrimeField>(
     gate_type: GateType,
     cs: &ConstraintSystem<F>,
     witness: &[Vec<F>; COLUMNS],
