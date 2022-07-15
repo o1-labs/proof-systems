@@ -54,7 +54,7 @@ impl LimbWitnessCell {
     }
 }
 
-// An cell containing zero
+// A cell containing zero
 pub struct ZeroWitnessCell;
 impl ZeroWitnessCell {
     pub const fn create() -> WitnessCell {
