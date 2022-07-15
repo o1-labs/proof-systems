@@ -1168,10 +1168,7 @@ Both the prover and the verifier index, besides the common parts described above
 These pre-computations are optimizations, in the context of normal proofs, but they are necessary for recursion.
 
 ```rs
-pub struct ProverIndex<G: KimchiCurve>
-where
-    G: KimchiCurve,
-{
+pub struct ProverIndex<G: KimchiCurve> {
     /// constraints system polynomials
     #[serde(bound = "ConstraintSystem<G::ScalarField>: Serialize + DeserializeOwned")]
     pub cs: ConstraintSystem<G::ScalarField>,
