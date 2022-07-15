@@ -2,7 +2,7 @@ use super::context::InnerContext;
 
 use crate::util::from_bits;
 
-use circuit_construction::{Cs, Var, Constants};
+use circuit_construction::{Constants, Cs, Var};
 
 use ark_ff::{BigInteger, FftField, PrimeField};
 
@@ -17,14 +17,14 @@ use std::fmt::Debug;
 /// NOTE: a "public input"
 #[derive(Clone, Debug)]
 pub struct Public<F: FftField + PrimeField> {
-    pub bits: Var<F>,        //
-    pub size: Option<usize>, // size of public input
+    pub bits: Var<F>, //
+    pub size: usize,  // size of public input
 }
 
 impl<Fp: FftField + PrimeField> Public<Fp> {
     /// This panics if the destination field is too small to contain the value:
     /// In case we are passing from the larger field to the smaller a
-    /// decomposition in the source field is required.
+    /// decomposition in the source field is required first.
     fn cast<Cr, Fr>(&self, cs: &mut Cr) -> Public<Fr>
     where
         Fr: FftField + PrimeField,
@@ -45,7 +45,11 @@ where
     type Error: Debug;
 
     /// Constructs a type from public inputs
-    fn from_public<C, I>(cs: &mut C, cnst: &Constants<Fr>, inputs: &mut I) -> Result<Self, Self::Error>
+    fn from_public<C, I>(
+        cs: &mut C,
+        cnst: &Constants<Fr>,
+        inputs: &mut I,
+    ) -> Result<Self, Self::Error>
     where
         I: Iterator<Item = Public<Fr>>,
         C: Cs<Fr>;
@@ -70,7 +74,6 @@ where
     CsFp: Cs<Fp>,
     CsFr: Cs<Fr>,
 {
-
     /// TODO: this method should also be able to ignore
     /// the "from" and consume provided the variable assignments in the public inputs directly.
     ///
@@ -89,7 +92,7 @@ where
             // cast Fp element to Fr element
             let fr = fp.cast(&mut self.fr.cs);
 
-            // add to "public input" on both side (in finalize we whill choose which): 
+            // add to "public input" on both side (in finalize we whill choose which):
             // this method does not distinguish between Tick/Tock
             self.fp.public.push(fp);
             self.fr.public.push(fr);

@@ -1,4 +1,4 @@
-use circuit_construction::{generic, Cs, Var, Constants};
+use circuit_construction::{generic, Constants, Cs, Var};
 
 use crate::context::{Pass, Public, ToPublic};
 use crate::types::Scalar;
@@ -22,6 +22,10 @@ where
     Fr: FftField + PrimeField,
 {
     fn to_public<C: Cs<Fp>>(self, cs: &mut C, _cnst: &Constants<Fp>) -> Vec<Public<Fp>> {
+        // the two fields must have the same bit-size: they differ by ~ \sqrt{Fp} factor.
+        assert_eq!(Fp::size_in_bits(), Fr::size_in_bits());
+
+        //
         if field_is_bigger::<Fp, Fr>() {
             // decompose witness (if available)
             let bits = self.value.map(|v| v.into_repr().to_bits_le());
@@ -39,17 +43,17 @@ where
             // return two public inputs
             vec![
                 Public {
-                    size: Some(unimplemented!()),
+                    size: Fp::size_in_bits() - 1,
                     bits: high_bits,
                 },
                 Public {
-                    size: Some(1),
+                    size: 1,
                     bits: low_bit,
                 },
             ]
         } else {
             vec![Public {
-                size: None,
+                size: Fp::size_in_bits(),
                 bits: self.clone(),
             }]
         }

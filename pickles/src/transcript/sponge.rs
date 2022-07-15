@@ -1,6 +1,6 @@
 use circuit_construction::{Constants, Cs, Var};
 
-use ark_ff::{FftField, FpParameters, PrimeField};
+use ark_ff::{FftField, PrimeField};
 
 // DISCUSS: these constants are currently hidden behind a trait
 // which prevents their use with const-generics in current rust.

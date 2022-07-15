@@ -1,28 +1,28 @@
-use circuit_construction::{Cs, Constants};
+use circuit_construction::{Constants, Cs};
 
 use crate::context::{FromPublic, Public, ToPublic};
-use crate::util::field_is_bigger;
 use crate::types::DecomposedVar;
+use crate::util::field_is_bigger;
 
 use ark_ec::AffineCurve;
 use ark_ff::{BigInteger, FftField, FpParameters, PrimeField};
 
 use super::VarPoint;
 
-// An (elliptic curve) scalar of a given size.
-// It allows passing a full variable (with no size bound) from one side to the other,
-// however it does not enable efficient field operations.
-//
-// It only implements FromPublic, i.e. it can only be "received" by not "sent" accros itself.
-//
-// Every scalar will correspond to a unique generator (for the Pedersen commitment)
-//
-// Note that there are no efficient way to do arithmetic on the Scalar type:
-// it corresponds to a field element in the foreign field Fr represented in Fq.
-// However efficient elliptic curve scalar multiplication.
-//
-// Note: the scalar is represented over the base field of the elliptic curve,
-// this is not a mistake!
+/// An (elliptic curve) scalar of a given size.
+/// It allows passing a full variable (with no size bound) from one side to the other,
+/// however it does not enable efficient field operations.
+///
+/// It only implements FromPublic, i.e. it can only be "received" by not "sent" accros itself.
+///
+/// Every scalar will correspond to a unique generator (for the Pedersen commitment)
+///
+/// Note that there are no efficient way to do arithmetic on the Scalar type:
+/// it corresponds to a field element in the foreign field Fr represented in Fq.
+/// However efficient elliptic curve scalar multiplication.
+///
+/// Note: the scalar is represented over the base field of the elliptic curve, this is not a mistake!
+/// This enables us to enforce scalar operations on the elliptic curve using the basefield proof system.
 pub struct Scalar<G>
 where
     G: AffineCurve,
@@ -76,6 +76,9 @@ where
         cnst: &Constants<G::BaseField>,
         inputs: &mut I,
     ) -> Result<Self, Self::Error> {
-        <DecomposedVar<G::BaseField> as FromPublic<G::ScalarField, G::BaseField>>::from_public(cs, cnst, inputs).map(|bits| Self{ bits })
+        <DecomposedVar<G::BaseField> as FromPublic<G::ScalarField, G::BaseField>>::from_public(
+            cs, cnst, inputs,
+        )
+        .map(|bits| Self { bits })
     }
 }

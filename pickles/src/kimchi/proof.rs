@@ -8,7 +8,7 @@ use circuit_construction::{Cs, Var};
 use super::{COLUMNS, PERMUTS};
 
 use crate::transcript::{Absorb, Msg, VarSponge};
-use crate::types::{VarEval, VarPolyComm, polynomials};
+use crate::types::{polynomials, VarEval, VarPolyComm};
 
 use kimchi::proof::ProverProof;
 

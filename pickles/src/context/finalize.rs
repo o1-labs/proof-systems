@@ -17,27 +17,28 @@ where
     /// the correct "passing" between the two proofs.
     ///
     /// This method is a bit magical and central to how recursion works.
+    /// At a high level, it creates circuits to ensure that the values "passed" between the two proofs are consistent.
     ///
-    /// Namely it creates circuits that ensure that the public
-    /// inputs of the other side are consistent with the values passed.
     /// To do so, it computes **the commitment** to the public inputs of the other side,
     /// based on the public inputs on this side.
-    ///
-    /// Computes the commitment to Fr's public inputs in the Fp side.
-    /// Computes the commitment to Fp's public inputs in the Fr side.
-    /// Computes the commitment public input of one proof in the other and vise versa
-    pub fn finalize<Gp, Gr>(self)
+    pub fn finalize<Gp, Gr>(self, srs: ())
     where
         Gp: AffineCurve,
         Gp::BaseField: FftField + PrimeField,
         Gr: AffineCurve,
         Gr::BaseField: FftField + PrimeField,
     {
-        // compute Fr sides public input:
-        // all values passed e.g. if sending Fp element to Fr side and Fr side is smaller,
-        // decompose Fp element inside Fp circuit and compute exponentation for the two variables (high_bits, low_bit)
-        //
-        // convert public Fp public inputs to Scalars for the other curve
-        unimplemented!()
+        // sanity check
+        assert_eq!(
+            self.fr.public.len(),
+            self.fp.public.len(),
+            "public inputs does not have the same length, cannot enforce bit-wise equality"
+        );
+
+        // compute commitment to public inputs on the Fr side
+        // self.fr.public
+
+        // enforce equality between computed commitment (from above) and
+        // public input of the Kimchi proof we are verifying on Fr side
     }
 }

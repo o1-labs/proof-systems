@@ -9,16 +9,15 @@ use crate::types::VarEval;
 use crate::util::eval_polynomial;
 
 struct BatchedEvaluation<G>
-where G: AffineCurve 
+where
+    G: AffineCurve,
 {
     _ph: PhantomData<G>,
     zeta: G::ScalarField,
-    zetaw: G::ScalarField
+    zetaw: G::ScalarField,
 }
 
-fn combined_opening() {
-
-}
+fn combined_opening() {}
 
 /// Combine multiple openings using a linear combination
 ///

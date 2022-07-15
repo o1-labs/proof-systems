@@ -10,17 +10,15 @@ use kimchi::circuits::gate::GateType;
 use kimchi::circuits::wires::{COLUMNS, PERMUTS};
 
 use crate::kimchi::alphas::Alphas;
+use crate::kimchi::batch::combine_inner_product;
 use crate::kimchi::constraints;
 use crate::kimchi::index::{ConstIndex, Index};
-use crate::kimchi::proof::{VarEvaluations, VarProof, PublicInput};
-use crate::kimchi::batch::combine_inner_product;
+use crate::kimchi::proof::{PublicInput, VarEvaluations, VarProof};
 
 use crate::context::Context;
 use crate::expr::{Assignments, Evaluator};
 use crate::transcript::{Arthur, Msg};
-use crate::types::{
-    polynomials, FieldChallenge, GLVChallenge, Scalar, VarEval, VarPolyComm,
-};
+use crate::types::{polynomials, FieldChallenge, GLVChallenge, Scalar, VarEval, VarPolyComm};
 use crate::util::var_product;
 
 /// Compute the permutation argument part of the
@@ -294,8 +292,8 @@ where
 
                 let term_row = {
                     // evaluate constant term of the row constraint linearization
-                    let row_poly = evalutator
-                        .eval_expr(ctx.cs(), &self.constant.linearization.constant_term);
+                    let row_poly =
+                        evalutator.eval_expr(ctx.cs(), &self.constant.linearization.constant_term);
 
                     // subtract $p(\zeta)$ and negate
                     ctx.add(row_poly, p_zeta.clone().into())
@@ -372,8 +370,7 @@ where
 
             // handle generic gate
             {
-                let generic_scalars =
-                    constraints::generic_scalars(ctx.cs(), alphas.gate(), &evals);
+                let generic_scalars = constraints::generic_scalars(ctx.cs(), alphas.gate(), &evals);
                 let generic_comm = relation
                     .coefficients_comm
                     .iter()
@@ -435,7 +432,7 @@ where
             // we also need to pass $\zeta^{|H|}$ to the other side
             let shift_zeta: Scalar<G> = ctx.pass(shift_zeta.as_ref().clone());
 
-            // 
+            //
             let v_chal = ctx.pass(v_chal);
 
             (evals_z, evals_zw, scalars, commitments, shift_zeta)
@@ -490,8 +487,8 @@ where
         // Why does this work when the evaluations are at different points: \zeta, \zeta\omega ?
         /*
         let combined_opening: VarEval<_, 1> = VarEval::combine(
-            ctx.cs(), 
-            evals_z.chain(evals_zw).collect::<Vec<_>>().iter(), 
+            ctx.cs(),
+            evals_z.chain(evals_zw).collect::<Vec<_>>().iter(),
             v
         );
 

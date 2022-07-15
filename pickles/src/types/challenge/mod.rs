@@ -1,4 +1,4 @@
-use circuit_construction::{Cs, Var, Constants};
+use circuit_construction::{Constants, Cs, Var};
 
 use crate::context::{FromPublic, Public, ToPublic};
 use crate::transcript::{Challenge, VarSponge};
@@ -32,7 +32,7 @@ where
         assert!(Fp::Params::MODULUS.num_bits() as usize > CHALLENGE_LEN);
         assert!(Fr::Params::MODULUS.num_bits() as usize > CHALLENGE_LEN);
         vec![Public {
-            size: Some(CHALLENGE_LEN),
+            size: CHALLENGE_LEN,
             bits: self.bits,
         }]
     }

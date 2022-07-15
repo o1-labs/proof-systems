@@ -1,9 +1,8 @@
 use std::ops::{Deref, DerefMut};
 
-use circuit_construction::{Constants, Cs, Var};
-
-use ark_ec::AffineCurve;
 use ark_ff::{FftField, PrimeField};
+
+use circuit_construction::{Constants, Cs, Var};
 
 use crate::context::Public;
 
@@ -11,7 +10,7 @@ use crate::context::Public;
 pub(crate) struct Side<F: FftField + PrimeField, C: Cs<F>> {
     pub(crate) cs: C,
     pub(crate) constants: Constants<F>,
-    pub(crate) public: Vec<Public<F>>,
+    pub(crate) public: Vec<Public<F>>, // these are called "defered values" in pickles-ocaml
 }
 
 impl<F: FftField + PrimeField, C: Cs<F>> Side<F, C> {
@@ -155,7 +154,6 @@ where
             fr: Side::new(cs_fr, consts_fr),
         }
     }
-
 
     pub fn fp(&mut self) -> &mut CsFp {
         &mut self.fp.cs

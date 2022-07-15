@@ -1,6 +1,6 @@
 use ark_ff::{FftField, PrimeField};
 
-use circuit_construction::{Cs, Var, Constants};
+use circuit_construction::{Constants, Cs, Var};
 
 use super::Bits;
 
