@@ -192,7 +192,7 @@ impl<F: PrimeField> CircuitGate<F> {
     ) -> Result<(), String> {
         // assignments
         let curr: [F; COLUMNS] = array_init(|i| witness[i][row]);
-        let mut next: [F; COLUMNS] = array_init(|_| <F>::zero());
+        let mut next: [F; COLUMNS] = array_init(|_| F::zero());
         if self.typ != GateType::Zero {
             next = array_init(|i| witness[i][row + 1]);
         }
@@ -230,15 +230,15 @@ impl<F: PrimeField> CircuitGate<F> {
 
         // Setup circuit constants
         let constants = expr::Constants {
-            alpha: <F>::rand(rng),
-            beta: <F>::rand(rng),
-            gamma: <F>::rand(rng),
+            alpha: F::rand(rng),
+            beta: F::rand(rng),
+            gamma: F::rand(rng),
             joint_combiner: None,
             endo_coefficient: cs.endo,
             mds: &G::sponge_params().mds,
         };
 
-        let pt = <F>::rand(rng);
+        let pt = F::rand(rng);
 
         // Evaluate constraints
         match linearized
@@ -246,7 +246,7 @@ impl<F: PrimeField> CircuitGate<F> {
             .evaluate_(cs.domain.d1, pt, &evals, &constants)
         {
             Ok(x) => {
-                if x == <F>::zero() {
+                if x == F::zero() {
                     Ok(())
                 } else {
                     Err(format!("Invalid {:?} constraint", self.typ))

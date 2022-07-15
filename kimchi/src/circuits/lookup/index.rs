@@ -249,16 +249,16 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
 
                             // it's 1 everywhere, except at the entries where
                             // the runtime table applies
-                            evals.extend(iter::repeat(<F>::one()).take(runtime_table_offset));
-                            evals.extend(iter::repeat(<F>::zero()).take(runtime_len));
+                            evals.extend(iter::repeat(F::one()).take(runtime_table_offset));
+                            evals.extend(iter::repeat(F::zero()).take(runtime_len));
                             evals.extend(
-                                iter::repeat(<F>::one())
+                                iter::repeat(F::one())
                                     .take(d1_size - runtime_table_offset - runtime_len),
                             );
 
                             // although the last ZK_ROWS are fine
                             for e in evals.iter_mut().rev().take(ZK_ROWS as usize) {
-                                *e = <F>::zero();
+                                *e = F::zero();
                             }
 
                             E::<F, D<F>>::from_vec_and_domain(evals, domain.d1)
@@ -271,7 +271,7 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                             use RuntimeTableCfg::*;
                             let (id, first_column) = match runtime_table {
                                 &Indexed(RuntimeTableSpec { id, len }) => {
-                                    let indexes = (0..(len as u32)).map(<F>::from).collect();
+                                    let indexes = (0..(len as u32)).map(F::from).collect();
                                     (id, indexes)
                                 }
                                 Custom { id, first_column } => (*id, first_column.clone()),
@@ -286,7 +286,7 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                             // important: we still need a placeholder column to make sure that
                             // if all other tables have a single column
                             // we don't use the second table as table ID column.
-                            let placeholders = vec![<F>::zero(); first_column.len()];
+                            let placeholders = vec![F::zero(); first_column.len()];
                             let data = vec![first_column, placeholders];
                             let table = LookupTable { id, data };
                             lookup_tables.push(table);
@@ -379,7 +379,7 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
 
                     //~~ - Fill in any unused columns with 0 (to match the dummy value)
                     for lookup_table in lookup_table.iter_mut().skip(table.data.len()) {
-                        lookup_table.extend(repeat_n(<F>::zero(), table_len))
+                        lookup_table.extend(repeat_n(F::zero(), table_len))
                     }
                 }
 
@@ -401,16 +401,16 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                 // table 0.
                 let dummy_lookup = JointLookup {
                     entry: vec![],
-                    table_id: <F>::zero(),
+                    table_id: F::zero(),
                 };
 
                 //~ 6. Pad the end of the concatened table with the dummy value.
                 lookup_table
                     .iter_mut()
-                    .for_each(|col| col.extend(repeat_n(<F>::zero(), max_num_entries - col.len())));
+                    .for_each(|col| col.extend(repeat_n(F::zero(), max_num_entries - col.len())));
 
                 //~ 7. Pad the end of the table id vector with 0s.
-                table_ids.extend(repeat_n(<F>::zero(), max_num_entries - table_ids.len()));
+                table_ids.extend(repeat_n(F::zero(), max_num_entries - table_ids.len()));
 
                 //~ 8. pre-compute polynomial and evaluation form for the look up tables
                 let mut lookup_table_polys: Vec<DP<F>> = vec![];

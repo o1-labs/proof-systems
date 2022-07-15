@@ -238,12 +238,12 @@ impl<F: PrimeField> CircuitGate<F> {
         let x21_inv = witness[10][row];
 
         if x1 == x2 {
-            ensure_eq!(same_x, <F>::one(), "Expected same_x = true");
+            ensure_eq!(same_x, F::one(), "Expected same_x = true");
         } else {
-            ensure_eq!(same_x, <F>::zero(), "Expected same_x = false");
+            ensure_eq!(same_x, F::zero(), "Expected same_x = false");
         }
 
-        if same_x == <F>::one() {
+        if same_x == F::one() {
             let x1_squared = x1.square();
             ensure_eq!(
                 (s + s) * y1,
@@ -262,22 +262,22 @@ impl<F: PrimeField> CircuitGate<F> {
             format!("y3 wrong {}: (expected {}, got {})", row, expected_y3, y3)
         );
 
-        let not_same_y = <F>::from((y1 != y2) as u64);
+        let not_same_y = F::from((y1 != y2) as u64);
         ensure_eq!(inf, same_x * not_same_y, "inf wrong");
 
         if y1 == y2 {
-            ensure_eq!(inf_z, <F>::zero(), "wrong inf z (y1 == y2)");
+            ensure_eq!(inf_z, F::zero(), "wrong inf z (y1 == y2)");
         } else {
-            let a = if same_x == <F>::one() {
+            let a = if same_x == F::one() {
                 (y2 - y1).inverse().unwrap()
             } else {
-                <F>::zero()
+                F::zero()
             };
             ensure_eq!(inf_z, a, "wrong inf z (y1 != y2)");
         }
 
         if x1 == x2 {
-            ensure_eq!(x21_inv, <F>::zero(), "wrong x21_inv (x1 == x2)");
+            ensure_eq!(x21_inv, F::zero(), "wrong x21_inv (x1 == x2)");
         } else {
             ensure_eq!(
                 x21_inv,

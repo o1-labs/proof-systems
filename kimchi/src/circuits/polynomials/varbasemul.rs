@@ -150,9 +150,9 @@ impl<F: PrimeField> CircuitGate<F> {
 
     pub fn vbmul(&self) -> F {
         if self.typ == GateType::VarBaseMul {
-            <F>::one()
+            F::one()
         } else {
-            <F>::zero()
+            F::zero()
         }
     }
 }

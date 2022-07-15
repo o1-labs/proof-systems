@@ -235,9 +235,9 @@ where
 {
     let n = d1.size();
     let lookup_rows = n - ZK_ROWS - 1;
-    let beta1: F = <F>::one() + beta;
+    let beta1: F = F::one() + beta;
     let gammabeta1 = gamma * beta1;
-    let mut lookup_aggreg = vec![<F>::one()];
+    let mut lookup_aggreg = vec![F::one()];
 
     lookup_aggreg.extend((0..lookup_rows).map(|row| {
         sorted
@@ -251,14 +251,14 @@ where
                 };
                 gammabeta1 + s[i1] + beta * s[i2]
             })
-            .fold(<F>::one(), |acc, x| acc * x)
+            .fold(F::one(), |acc, x| acc * x)
     }));
     ark_ff::fields::batch_inversion::<F>(&mut lookup_aggreg[1..]);
 
     let max_lookups_per_row = lookup_info.max_per_row;
 
     let complements_with_beta_term = {
-        let mut v = vec![<F>::one()];
+        let mut v = vec![F::one()];
         let x = gamma + dummy_lookup_value;
         for i in 1..(max_lookups_per_row + 1) {
             v.push(v[i - 1] * x)
@@ -311,7 +311,7 @@ where
     // check that the final evaluation is equal to 1
     if cfg!(debug_assertions) {
         let final_val = res.evals[d1.size() - (ZK_ROWS + 1)];
-        if final_val != <F>::one() {
+        if final_val != F::one() {
             panic!("aggregation incorrect: {}", final_val);
         }
     }

@@ -128,12 +128,12 @@ impl<F: PrimeField> CircuitGate<F> {
         let this: [F; COLUMNS] = array_init::array_init(|i| witness[i][row]);
         let next: [F; COLUMNS] = array_init::array_init(|i| witness[i][row + 1]);
 
-        let pt = <F>::from(123456u64);
+        let pt = F::from(123456u64);
 
         let constants = expr::Constants {
-            alpha: <F>::zero(),
-            beta: <F>::zero(),
-            gamma: <F>::zero(),
+            alpha: F::zero(),
+            beta: F::zero(),
+            gamma: F::zero(),
             joint_combiner: None,
             mds: &G::sponge_params().mds,
             endo_coefficient: cs.endo,
@@ -148,7 +148,7 @@ impl<F: PrimeField> CircuitGate<F> {
         for (i, c) in constraints.iter().enumerate() {
             match c.evaluate_(cs.domain.d1, pt, &evals, &constants) {
                 Ok(x) => {
-                    if x != <F>::zero() {
+                    if x != F::zero() {
                         return Err(format!("Bad endo equation {}", i));
                     }
                 }
@@ -161,9 +161,9 @@ impl<F: PrimeField> CircuitGate<F> {
 
     pub fn endomul(&self) -> F {
         if self.typ == GateType::EndoMul {
-            <F>::one()
+            F::one()
         } else {
-            <F>::zero()
+            F::zero()
         }
     }
 }

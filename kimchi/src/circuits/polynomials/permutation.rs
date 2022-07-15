@@ -267,12 +267,12 @@ impl<F: PrimeField> ConstraintSystem<F> {
         //~     a^{PERM2} \cdot \frac{z(x) - 1}{x - sid[n-k]}
         //~ $$
         let bnd = {
-            let one_poly = DensePolynomial::from_coefficients_slice(&[<F>::one()]);
+            let one_poly = DensePolynomial::from_coefficients_slice(&[F::one()]);
             let z_minus_1 = z - &one_poly;
 
             // TODO(mimoo): use self.sid[0] instead of 1
             // accumulator init := (z(x) - 1) / (x - 1)
-            let x_minus_1 = DensePolynomial::from_coefficients_slice(&[-<F>::one(), <F>::one()]);
+            let x_minus_1 = DensePolynomial::from_coefficients_slice(&[F::one(), F::one()]);
             let (bnd1, res) = DenseOrSparsePolynomial::divide_with_q_and_r(
                 &z_minus_1.clone().into(),
                 &x_minus_1.into(),
@@ -285,7 +285,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
             // accumulator end := (z(x) - 1) / (x - sid[n-3])
             let denominator = DensePolynomial::from_coefficients_slice(&[
                 -self.sid[self.domain.d1.size() - 3],
-                <F>::one(),
+                F::one(),
             ]);
             let (bnd2, res) = DenseOrSparsePolynomial::divide_with_q_and_r(
                 &z_minus_1.into(),
@@ -374,7 +374,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
         let n = self.domain.d1.size();
 
         // only works if first element is 1
-        assert_eq!(self.domain.d1.elements().next(), Some(<F>::one()));
+        assert_eq!(self.domain.d1.elements().next(), Some(F::one()));
 
         //~ To compute the permutation aggregation polynomial,
         //~ the prover interpolates the polynomial that has the following evaluations.
@@ -382,7 +382,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
         //~ The first evaluation represents the initial value of the accumulator:
         //~ $$z(g^0) = 1$$
 
-        let mut z: Vec<F> = vec![<F>::one(); n];
+        let mut z: Vec<F> = vec![F::one(); n];
 
         //~ For $i = 0, \cdot, n - 4$, where $n$ is the size of the domain,
         //~ evaluations are computed as:
@@ -423,7 +423,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
                 .iter()
                 .zip(self.sigmal1.iter())
                 .map(|(w, s)| w[j] + (s[j] * beta) + gamma)
-                .fold(<F>::one(), |x, y| x * y)
+                .fold(F::one(), |x, y| x * y)
         }
 
         ark_ff::fields::batch_inversion::<F>(&mut z[1..=n - 3]);
@@ -439,7 +439,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
 
         //~ If computed correctly, we should have $z(g^{n-3}) = 1$.
         //~
-        if z[n - 3] != <F>::one() {
+        if z[n - 3] != F::one() {
             return Err(ProverError::Permutation("final value"));
         };
 

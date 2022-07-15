@@ -191,7 +191,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
         public: &[F],
     ) -> Result<(), GateError> {
         // pad the witness
-        let pad = vec![<F>::zero(); self.domain.d1.size() - witness[0].len()];
+        let pad = vec![F::zero(); self.domain.d1.size() - witness[0].len()];
         let witness: [Vec<F>; COLUMNS] = array_init(|i| {
             let mut w = witness[i].to_vec();
             w.extend_from_slice(&pad);
@@ -226,7 +226,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
             }
 
             // for public gates, only the left wire is toggled
-            if row < self.public && gate.coeffs[0] != <F>::one() {
+            if row < self.public && gate.coeffs[0] != F::one() {
                 return Err(GateError::IncorrectPublic(row));
             }
 
@@ -366,7 +366,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         // -----------
 
         // compute permutation polynomials
-        let mut sigmal1: [Vec<F>; PERMUTS] = array_init(|_| vec![<F>::zero(); domain.d1.size()]);
+        let mut sigmal1: [Vec<F>; PERMUTS] = array_init(|_| vec![F::zero(); domain.d1.size()]);
 
         for (row, gate) in gates.iter().enumerate() {
             for (cell, sigma) in gate.wires.iter().zip(sigmal1.iter_mut()) {
@@ -448,9 +448,9 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
                 .iter()
                 .map(|gate| {
                     if matches!(gate.typ, GateType::Generic) {
-                        <F>::one()
+                        F::one()
                     } else {
-                        <F>::zero()
+                        F::zero()
                     }
                 })
                 .collect(),
@@ -479,13 +479,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
                     E::<F, D<F>>::from_vec_and_domain(
                         gates
                             .iter()
-                            .map(|gate| {
-                                if gate.typ == g {
-                                    <F>::one()
-                                } else {
-                                    <F>::zero()
-                                }
-                            })
+                            .map(|gate| if gate.typ == g { F::one() } else { F::zero() })
                             .collect(),
                         domain.d1,
                     )
@@ -515,7 +509,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         let coefficientsm: [_; COLUMNS] = array_init(|i| {
             let padded = gates
                 .iter()
-                .map(|gate| gate.coeffs.get(i).cloned().unwrap_or_else(<F>::zero))
+                .map(|gate| gate.coeffs.get(i).cloned().unwrap_or_else(F::zero))
                 .collect();
             let eval = E::from_vec_and_domain(padded, domain.d1);
             eval.interpolate()
@@ -533,7 +527,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         let sid = shifts.map[0].clone();
 
         // TODO: remove endo as a field
-        let endo = <F>::zero();
+        let endo = F::zero();
 
         let domain_constant_evaluation = OnceCell::new();
 

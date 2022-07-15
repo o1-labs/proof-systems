@@ -194,9 +194,9 @@ impl<F: PrimeField> CircuitGate<F> {
 
     pub fn ps(&self) -> F {
         if self.typ == GateType::Poseidon {
-            <F>::one()
+            F::one()
         } else {
-            <F>::zero()
+            F::zero()
         }
     }
 
@@ -207,7 +207,7 @@ impl<F: PrimeField> CircuitGate<F> {
                 if self.typ == GateType::Poseidon {
                     self.coeffs[SPONGE_WIDTH * round + col]
                 } else {
-                    <F>::zero()
+                    F::zero()
                 }
             })
         })

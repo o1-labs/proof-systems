@@ -105,30 +105,30 @@ impl<F: PrimeField> CircuitGate<F> {
         gate1: GenericGateSpec<F>,
         gate2: Option<GenericGateSpec<F>>,
     ) -> Self {
-        let mut coeffs = [<F>::zero(); GENERIC_COEFFS * 2];
+        let mut coeffs = [F::zero(); GENERIC_COEFFS * 2];
         match gate1 {
             GenericGateSpec::Add {
                 left_coeff,
                 right_coeff,
                 output_coeff,
             } => {
-                coeffs[0] = left_coeff.unwrap_or_else(<F>::one);
-                coeffs[1] = right_coeff.unwrap_or_else(<F>::one);
-                coeffs[2] = output_coeff.unwrap_or_else(|| -<F>::one());
+                coeffs[0] = left_coeff.unwrap_or_else(F::one);
+                coeffs[1] = right_coeff.unwrap_or_else(F::one);
+                coeffs[2] = output_coeff.unwrap_or_else(|| -F::one());
             }
             GenericGateSpec::Mul {
                 output_coeff,
                 mul_coeff,
             } => {
-                coeffs[2] = output_coeff.unwrap_or_else(|| -<F>::one());
-                coeffs[3] = mul_coeff.unwrap_or_else(<F>::one);
+                coeffs[2] = output_coeff.unwrap_or_else(|| -F::one());
+                coeffs[3] = mul_coeff.unwrap_or_else(F::one);
             }
             GenericGateSpec::Const(cst) => {
-                coeffs[0] = <F>::one();
+                coeffs[0] = F::one();
                 coeffs[4] = -cst;
             }
             GenericGateSpec::Pub => {
-                coeffs[0] = <F>::one();
+                coeffs[0] = F::one();
             }
         };
         match gate2 {
@@ -137,23 +137,23 @@ impl<F: PrimeField> CircuitGate<F> {
                 right_coeff,
                 output_coeff,
             }) => {
-                coeffs[5] = left_coeff.unwrap_or_else(<F>::one);
-                coeffs[6] = right_coeff.unwrap_or_else(<F>::one);
-                coeffs[7] = output_coeff.unwrap_or_else(|| -<F>::one());
+                coeffs[5] = left_coeff.unwrap_or_else(F::one);
+                coeffs[6] = right_coeff.unwrap_or_else(F::one);
+                coeffs[7] = output_coeff.unwrap_or_else(|| F::one());
             }
             Some(GenericGateSpec::Mul {
                 output_coeff,
                 mul_coeff,
             }) => {
-                coeffs[7] = output_coeff.unwrap_or_else(|| -<F>::one());
-                coeffs[8] = mul_coeff.unwrap_or_else(<F>::one);
+                coeffs[7] = output_coeff.unwrap_or_else(|| F::one());
+                coeffs[8] = mul_coeff.unwrap_or_else(F::one);
             }
             Some(GenericGateSpec::Const(cst)) => {
-                coeffs[5] = <F>::one();
+                coeffs[5] = F::one();
                 coeffs[9] = -cst;
             }
             Some(GenericGateSpec::Pub) => {
-                coeffs[5] = <F>::one();
+                coeffs[5] = F::one();
                 unimplemented!();
             }
             None => (),
@@ -180,7 +180,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
     ) -> Evaluations<F, D<F>> {
         let generic_gate = |alpha_pow, coeff_offset, register_offset| {
             let mut res = Evaluations::from_vec_and_domain(
-                vec![<F>::zero(); self.domain.d4.size()],
+                vec![F::zero(); self.domain.d4.size()],
                 self.domain.d4,
             );
 
@@ -295,7 +295,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
         let scalars = Self::gnrc_scalars(alphas, w_zeta, generic_zeta);
 
         //
-        let mut res = Evaluations::from_vec_and_domain(vec![<F>::zero(); n], d1);
+        let mut res = Evaluations::from_vec_and_domain(vec![F::zero(); n], d1);
 
         let scale = self.coefficients8[0].evals.len() / n;
 
@@ -330,7 +330,7 @@ pub mod testing {
             let this: [F; COLUMNS] = array_init(|i| witness[i][row]);
 
             // constants
-            let zero = <F>::zero();
+            let zero = F::zero();
 
             // check if it's the correct gate
             ensure_eq!(self.typ, GateType::Generic, "generic: incorrect gate");
@@ -353,9 +353,9 @@ pub mod testing {
                     + o_coeff * this[register_offset + 2];
                 let mul = m_coeff * this[register_offset] * this[register_offset + 1];
                 let public = if coeffs_offset == 0 {
-                    public.get(row).cloned().unwrap_or_else(<F>::zero)
+                    public.get(row).cloned().unwrap_or_else(F::zero)
                 } else {
-                    <F>::zero()
+                    F::zero()
                 };
                 ensure_eq!(
                     zero,

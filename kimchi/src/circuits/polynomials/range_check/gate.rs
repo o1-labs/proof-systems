@@ -158,7 +158,7 @@ impl<F: PrimeField> CircuitGate<F> {
             .unwrap();
         let mut witness = witness.clone();
         for w in &mut witness {
-            w.extend(std::iter::repeat(<F>::zero()).take(padding_length as usize));
+            w.extend(std::iter::repeat(F::zero()).take(padding_length as usize));
         }
 
         // Compute witness polynomial
@@ -169,8 +169,8 @@ impl<F: PrimeField> CircuitGate<F> {
 
         // Compute permutation polynomial
         let rng = &mut StdRng::from_seed([0u8; 32]);
-        let beta = <F>::rand(rng);
-        let gamma = <F>::rand(rng);
+        let beta = F::rand(rng);
+        let gamma = F::rand(rng);
         let z_poly = cs
             .perm_aggreg(&witness, &beta, &gamma, rng)
             .map_err(|_| GateError::InvalidCopyConstraint(self.typ))?;
@@ -211,10 +211,10 @@ impl<F: PrimeField> CircuitGate<F> {
         let env = {
             Environment {
                 constants: expr::Constants {
-                    alpha: <F>::rand(rng),
-                    beta: <F>::rand(rng),
-                    gamma: <F>::rand(rng),
-                    joint_combiner: Some(<F>::rand(rng)),
+                    alpha: F::rand(rng),
+                    beta: F::rand(rng),
+                    gamma: F::rand(rng),
+                    joint_combiner: Some(F::rand(rng)),
                     endo_coefficient: cs.endo,
                     mds: &G::sponge_params().mds,
                 },
@@ -287,15 +287,15 @@ fn set_up_lookup_env_data<F: PrimeField, G: KimchiCurve<ScalarField = F>>(
     // Set up joint-combiner and table-id-combiner
     let joint_lookup_used = matches!(lcs.configuration.lookup_used, LookupsUsed::Joint);
     let joint_combiner = if joint_lookup_used {
-        <F>::rand(rng)
+        F::rand(rng)
     } else {
-        <F>::zero()
+        F::zero()
     };
     let table_id_combiner: F = if lcs.table_ids8.as_ref().is_some() {
         joint_combiner.pow([lcs.configuration.lookup_info.max_joint_size as u64])
     } else {
         // TODO: just set this to None in case multiple tables are not used
-        <F>::zero()
+        F::zero()
     };
 
     // Compute the dummy lookup value as the combination of the last entry of the XOR table (so `(0, 0, 0)`).
@@ -316,7 +316,7 @@ fn set_up_lookup_env_data<F: PrimeField, G: KimchiCurve<ScalarField = F>>(
                 // If there is no `table_ids8` in the constraint system,
                 // every table ID is identically 0.
                 {
-                    <F>::zero()
+                    F::zero()
                 }
             };
 
@@ -452,9 +452,9 @@ pub fn selector_polynomials<F: PrimeField>(
                 .iter()
                 .map(|gate| {
                     if gate.typ == *gate_type {
-                        <F>::one()
+                        F::one()
                     } else {
-                        <F>::zero()
+                        F::zero()
                     }
                 })
                 .collect(),

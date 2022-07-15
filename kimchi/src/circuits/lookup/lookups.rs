@@ -107,7 +107,7 @@ impl LookupInfo {
 
         let mut selector_values = LookupSelectors::default();
         for kind in &self.kinds {
-            selector_values[*kind] = Some(vec![<F>::zero(); n]);
+            selector_values[*kind] = Some(vec![F::zero(); n]);
         }
 
         let mut gate_tables = HashSet::new();
@@ -116,7 +116,7 @@ impl LookupInfo {
             let selector = selector_values[lookup_pattern]
                 .as_mut()
                 .expect(&*format!("has selector for {:?}", lookup_pattern));
-            selector[i] = <F>::one();
+            selector[i] = F::one();
         };
 
         // TODO: is take(n) useful here? I don't see why we need this
