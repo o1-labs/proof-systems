@@ -42,7 +42,7 @@ pub struct ArithmeticSpongeParams<F: Field> {
 }
 
 #[derive(Clone)]
-pub struct ArithmeticSponge<F: Field + 'static, SC: SpongeConstants> {
+pub struct ArithmeticSponge<F: Field, SC: SpongeConstants> {
     pub sponge_state: SpongeState,
     rate: usize,
     // TODO(mimoo: an array enforcing the width is better no? or at least an assert somewhere)

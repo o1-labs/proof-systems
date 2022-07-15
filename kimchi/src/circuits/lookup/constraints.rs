@@ -553,9 +553,9 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>) -> Vec<E
 
 /// Checks that all the lookup constraints are satisfied.
 #[allow(clippy::too_many_arguments)]
-pub fn verify<F: PrimeField, I: Iterator<Item = F>, T: Fn() -> I>(
+pub fn verify<F: PrimeField, I: Iterator<Item = F>, TABLE: Fn() -> I>(
     dummy_lookup_value: F,
-    lookup_table: T,
+    lookup_table: TABLE,
     lookup_table_entries: usize,
     d1: D<F>,
     gates: &[CircuitGate<F>],

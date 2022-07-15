@@ -20,10 +20,7 @@ use std::sync::Arc;
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug)]
 //~spec:startcode
-pub struct ProverIndex<G: KimchiCurve>
-where
-    G: KimchiCurve,
-{
+pub struct ProverIndex<G: KimchiCurve> {
     /// constraints system polynomials
     #[serde(bound = "ConstraintSystem<G::ScalarField>: Serialize + DeserializeOwned")]
     pub cs: ConstraintSystem<G::ScalarField>,

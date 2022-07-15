@@ -1037,8 +1037,7 @@ where
 
         //~ 1. Setup the Fr-Sponge
         let fq_sponge_before_evaluations = fq_sponge.clone();
-        let params = G::sponge_params();
-        let mut fr_sponge = EFrSponge::new(params);
+        let mut fr_sponge = EFrSponge::new(G::sponge_params());
 
         //~ 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
         fr_sponge.absorb(&fq_sponge.digest());

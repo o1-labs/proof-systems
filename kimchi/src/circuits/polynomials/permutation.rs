@@ -45,7 +45,7 @@ use crate::{
     error::ProverError,
     proof::ProofEvaluations,
 };
-use ark_ff::{FftField, PrimeField, SquareRootField, UniformRand, Zero};
+use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
 use ark_poly::{
     univariate::{DenseOrSparsePolynomial, DensePolynomial},
     EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
@@ -382,7 +382,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
         //~ The first evaluation represents the initial value of the accumulator:
         //~ $$z(g^0) = 1$$
 
-        let mut z: Vec<F> = vec![F::one(); n];
+        let mut z = vec![F::one(); n];
 
         //~ For $i = 0, \cdot, n - 4$, where $n$ is the size of the domain,
         //~ evaluations are computed as:
@@ -445,8 +445,8 @@ impl<F: PrimeField> ConstraintSystem<F> {
 
         //~ Finally, randomize the last `EVAL_POINTS` evaluations $z(g^{n-2})$ and $z(g^{n-1})$,
         //~ in order to add zero-knowledge to the protocol.
-        z[n - 2] = UniformRand::rand(rng);
-        z[n - 1] = UniformRand::rand(rng);
+        z[n - 2] = F::rand(rng);
+        z[n - 1] = F::rand(rng);
 
         let res = Evaluations::<F, D<F>>::from_vec_and_domain(z, self.domain.d1).interpolate();
         Ok(res)

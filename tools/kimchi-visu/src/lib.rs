@@ -75,10 +75,7 @@ where
 }
 
 /// Produces a `circuit.html` in the current folder.
-pub fn visu<G>(index: &ProverIndex<G>, witness: Option<Witness<G::ScalarField>>)
-where
-    G: CommitmentCurve + KimchiCurve,
-{
+pub fn visu<G: KimchiCurve>(index: &ProverIndex<G>, witness: Option<Witness<G::ScalarField>>) {
     // serialize index
     let index = serde_json::to_string(index).expect("couldn't serialize index");
     let mut data = format!("const index = {index};");

@@ -162,7 +162,6 @@ impl<F: PrimeField> ConstraintSystem<F> {
     pub fn create(gates: Vec<CircuitGate<F>>) -> Builder<F> {
         Builder {
             gates,
-            //sponge_params,
             public: 0,
             lookup_tables: vec![],
             runtime_tables: None,

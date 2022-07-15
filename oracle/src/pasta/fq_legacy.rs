@@ -1457,6 +1457,7 @@ fn params() -> ArithmeticSpongeParams<Fq> {
     }
 }
 
+/// the legacy fq sponge params
 pub fn static_params() -> &'static ArithmeticSpongeParams<Fq> {
     static PARAMS: Lazy<ArithmeticSpongeParams<Fq>> = Lazy::new(params);
     &PARAMS
