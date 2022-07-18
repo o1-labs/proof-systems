@@ -3,7 +3,10 @@
 use ark_ff::PrimeField;
 use array_init::array_init;
 use num_bigint::BigUint;
-use o1_utils::{foreign_field::foreign_to_limbs, FieldHelpers};
+use o1_utils::{
+    foreign_field::{foreign_to_limbs, ForeignElement},
+    FieldHelpers,
+};
 
 use crate::circuits::polynomial::COLUMNS;
 
@@ -214,10 +217,8 @@ pub fn create_witness<F: PrimeField>(v0: F) -> [Vec<F>; COLUMNS] {
 
 /// Extend an existing witness with a multi-range-check gate for foreign field
 /// elements fe
-pub fn extend_witness<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], fe: BigUint) {
-    let limbs = foreign_to_limbs::<F>(fe);
-    println!("limbs {:?}", limbs);
-    let limbs_witness = create_multi_witness(limbs[0], limbs[1], limbs[2]);
+pub fn extend_witness<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], fe: ForeignElement<F, 3>) {
+    let limbs_witness = create_multi_witness(*fe.lo(), *fe.mi(), *fe.hi());
     for col in 0..COLUMNS {
         witness[col].extend(limbs_witness[col].iter())
     }

@@ -19,6 +19,7 @@ pub const FOREIGN_MOD: &[u8] = &[
 ];
 pub const FOREIGN_BITS: usize = 8 * FOREIGN_MOD.len(); // 256 bits
 
+#[derive(Debug, Clone, Copy)]
 pub struct ForeignElement<F, const N: usize> {
     /// limbs in little endian order
     pub limbs: [F; N],
@@ -49,30 +50,6 @@ impl<F: FftField, const N: usize> ForeignElement<F, N> {
         }
     }
 
-    pub fn lo(&self) -> F {
-        if N == 3 {
-            self.limbs[0]
-        } else {
-            F::zero()
-        }
-    }
-
-    pub fn mi(&self) -> F {
-        if N == 3 {
-            self.limbs[1]
-        } else {
-            F::zero()
-        }
-    }
-
-    pub fn hi(&self) -> F {
-        if N == 3 {
-            self.limbs[2]
-        } else {
-            F::zero()
-        }
-    }
-
     /// Obtains the big integer representation of the foreign field element
     pub fn to_big(&self) -> BigUint {
         let mut bytes = vec![];
@@ -100,6 +77,18 @@ impl<F: FftField> ForeignElement<F, 3> {
     /// Creates a new foreign element from an array containing 3 limbs
     pub fn new(limbs: [F; 3]) -> Self {
         Self { limbs, len: 3 }
+    }
+
+    pub fn lo(&self) -> &F {
+        &self.limbs[0]
+    }
+
+    pub fn mi(&self) -> &F {
+        &self.limbs[1]
+    }
+
+    pub fn hi(&self) -> &F {
+        &self.limbs[2]
     }
 }
 

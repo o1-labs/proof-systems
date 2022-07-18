@@ -14,10 +14,10 @@ use o1_utils::foreign_field::{
 
 //use super::compute_intermediate_products;
 
-pub fn create_witness<F: PrimeField, const N: usize>(
-    left_input: ForeignElement<F, N>,
-    right_input: ForeignElement<F, N>,
-    foreign_modulus: ForeignElement<F, N>,
+pub fn create_witness<F: PrimeField>(
+    left_input: ForeignElement<F, 3>,
+    right_input: ForeignElement<F, 3>,
+    foreign_modulus: ForeignElement<F, 3>,
 ) -> [Vec<F>; COLUMNS] {
     let two_to_limb = F::from(2u128.pow(LIMB_BITS));
 
@@ -37,35 +37,32 @@ pub fn create_witness<F: PrimeField, const N: usize>(
 
     // Compute addition of limbs of inputs (may exceed 88 bits, but at most once)
     let mut result = ForeignElement::<F, 3>::new([
-        left_input.lo() + right_input.lo(),
-        left_input.mi() + right_input.mi(),
-        left_input.hi() + right_input.hi(),
+        *left_input.lo() + *right_input.lo(),
+        *left_input.mi() + *right_input.mi(),
+        *left_input.hi() + *right_input.hi(),
     ]);
-    let mut result_lo = left_input_lo + right_input_lo;
-    let mut result_mi = left_input_mi + right_input_mi;
-    let mut result_hi = left_input_hi + right_input_hi;
 
     // If low limb of result exceeds limb-length, subtract modulus from low limb and add 1 carry to middle limb result
-    let mut result_carry_lo = if result_lo >= two_to_limb {
-        result_mi += F::one();
-        result_lo -= two_to_limb;
+    let mut result_carry_lo = if *result.lo() >= two_to_limb {
+        *result.mi() += F::one();
+        *result.lo() -= two_to_limb;
         F::one()
     } else {
         F::zero()
     };
 
     // If middle limb of result exceeds limb-length, subtract modulus from middle limb and add 1 carry to high limb result
-    let mut result_carry_mi = if result_mi >= two_to_limb {
-        result_hi += F::one();
-        result_mi -= two_to_limb;
+    let mut result_carry_mi = if *result.mi() >= two_to_limb {
+        *result.hi() += F::one();
+        *result.mi() -= two_to_limb;
         F::one()
     } else {
         F::zero()
     };
 
     // TODO: Almost sure we also need this step if we had 264 bits similar to size of modulus
-    let mut result_carry_hi = if result_hi >= two_to_limb {
-        result_hi -= two_to_limb;
+    let mut result_carry_hi = if *result.hi() >= two_to_limb {
+        *result.hi() -= two_to_limb;
         F::one()
     } else {
         F::zero()
@@ -75,10 +72,11 @@ pub fn create_witness<F: PrimeField, const N: usize>(
 
     // Compute field overflow bit (if any)
     // It must be the case that the concatenation of the three limbs is larger than the modulus
-    let field_overflows = result_hi > foreign_modulus_hi
-        || (result_hi == foreign_modulus_hi
-            && (result_mi > foreign_modulus_mi
-                || (result_mi == foreign_modulus_mi && (result_lo >= foreign_modulus_lo))));
+    let field_overflows = *result.hi() > *foreign_modulus.hi()
+        || (*result.hi() == *foreign_modulus.hi()
+            && (*result.mi() > *foreign_modulus.mi()
+                || (*result.mi() == *foreign_modulus.mi()
+                    && (*result.lo() >= *foreign_modulus.lo()))));
 
     // If there was field overflow, we need to adjust the values of the result limbs
     // to obtain the equation a + b = o · m + r -> with o = 1
@@ -89,30 +87,30 @@ pub fn create_witness<F: PrimeField, const N: usize>(
         // and then subtract 1 to the middle limb of the result (the above term)
         // to subtract 1 to the low carry of the result
         // and finally subtract the lower limb of the modulus from the lower limb of the result
-        if result_lo < foreign_modulus_lo {
-            result_lo += two_to_limb;
-            result_mi -= F::one();
+        if *result.lo() < *foreign_modulus.lo() {
+            *result.lo() += two_to_limb;
+            *result.mi() -= F::one();
             result_carry_lo -= F::one();
         }
-        result_lo -= foreign_modulus_lo;
+        *result.lo() -= *foreign_modulus.lo();
 
         // If the middle limb of the result is smaller than the middle limb of the modulus,
         // we start adding the term 10....0 with 88 zeros to the middle limb of the result
         // and then subtract 1 to the high limb of the result (the above term)
         // to subtract 1 to the middle carry of the result
         // and finally subtract the middle limb of the modulus from the middle limb of the result
-        if result_mi < foreign_modulus_mi {
-            result_mi += two_to_limb;
-            result_hi -= F::one();
+        if *result.mi() < *foreign_modulus.mi() {
+            *result.mi() += two_to_limb;
+            *result.hi() -= F::one();
             result_carry_mi -= F::one();
         }
-        result_mi -= foreign_modulus_mi;
+        *result.mi() -= *foreign_modulus.mi();
 
-        if result_hi < foreign_modulus_hi {
-            result_hi += two_to_limb;
+        if *result.hi() < *foreign_modulus.hi() {
+            *result.hi() += two_to_limb;
             result_carry_hi -= F::one();
         }
-        result_hi -= foreign_modulus_hi;
+        *result.hi() -= *foreign_modulus.hi();
 
         F::one()
     } else {
@@ -120,43 +118,31 @@ pub fn create_witness<F: PrimeField, const N: usize>(
     };
 
     println!("field_overflow: {:?}", field_overflow);
-    println!("maxsub lo {:?}", max_sub_foreign_modulus_lo);
-    println!("maxsub mi {:?}", max_sub_foreign_modulus_mi);
-    println!("maxsub hi {:?}", max_sub_foreign_modulus_hi);
+    println!("maxsub {}", max_sub_foreign_modulus);
 
-    let mut upper_bound_lo = result_lo + max_sub_foreign_modulus_lo;
-    let mut upper_bound_mi = result_mi + max_sub_foreign_modulus_mi;
-    let mut upper_bound_hi = result_hi + max_sub_foreign_modulus_hi;
+    let mut upper_bound = ForeignElement::<F, 3>::new([
+        *result.lo() - *max_sub_foreign_modulus.lo(),
+        *result.mi() - *max_sub_foreign_modulus.mi(),
+        *result.hi() - *max_sub_foreign_modulus.hi(),
+    ]);
 
     // If the lower upper bound sum exceeds the limb-length then subtract 2^88 and add one to the middle limb
-    let upper_bound_carry_lo = if upper_bound_lo > two_to_limb {
-        upper_bound_mi += F::one();
-        upper_bound_lo -= two_to_limb;
+    let upper_bound_carry_lo = if *upper_bound.lo() > two_to_limb {
+        *upper_bound.mi() += F::one();
+        *upper_bound.lo() -= two_to_limb;
         F::one()
     } else {
         F::zero()
     };
 
     // If the middle upper bound sum exceeds the limb-length then subtract 2^88 and add one to the high limb
-    let upper_bound_carry_mi = if upper_bound_mi > two_to_limb {
-        upper_bound_hi += F::one();
-        upper_bound_mi -= two_to_limb;
+    let upper_bound_carry_mi = if *upper_bound.mi() > two_to_limb {
+        *upper_bound.hi() += F::one();
+        *upper_bound.mi() -= two_to_limb;
         F::one()
     } else {
         F::zero()
     };
-
-    let result = limbs_to_foreign(&[result_lo, result_mi, result_hi]);
-    println!("result lo: {:?}", result_lo);
-    println!("result mi: {:?}", result_mi);
-    println!("result hi: {:?}", result_hi);
-
-    println!("result: {:?}", result);
-
-    let upper_bound = limbs_to_foreign(&[upper_bound_lo, upper_bound_mi, upper_bound_hi]);
-    println!("upper lo {:?}", upper_bound_lo);
-    println!("upper mi {:?}", upper_bound_lo);
-    println!("upper hi {:?}", upper_bound_lo);
 
     range_check::extend_witness(&mut witness, result);
     range_check::extend_witness(&mut witness, upper_bound);
