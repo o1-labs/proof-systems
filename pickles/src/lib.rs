@@ -20,3 +20,7 @@ mod transcript;
 mod commitment;
 
 mod util;
+
+/// Combines multiple instances of the Kimchi verifier
+/// and enforces the correct deferring of the variables.
+mod glue;

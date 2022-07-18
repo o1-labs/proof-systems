@@ -18,7 +18,7 @@ impl<F: FftField + PrimeField> LagrangePoly<F> {
         self.evals.len()
     }
 
-    // evaluates a lagrange polynomial at
+    // evaluates a lagrange polynomial at the point x
     //
     // see: https://o1-labs.github.io/proof-systems/kimchi/lagrange.html
     pub fn eval<C: Cs<F>>(&self, cs: &mut C, x: Var<F>, pnt: &VanishEval<F>) -> VarEval<F, 1> {

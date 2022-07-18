@@ -10,14 +10,14 @@ use crate::context::Public;
 pub(crate) struct Side<F: FftField + PrimeField, C: Cs<F>> {
     pub(crate) cs: C,
     pub(crate) constants: Constants<F>,
-    pub(crate) public: Vec<Public<F>>, // these are called "defered values" in pickles-ocaml
+    pub(crate) deferred: Vec<Public<F>>, // inputs provided to both sides (equal as bit strings)
 }
 
 impl<F: FftField + PrimeField, C: Cs<F>> Side<F, C> {
     fn new(cs: C, constants: Constants<F>) -> Self {
         Self {
             cs,
-            public: Default::default(),
+            deferred: Default::default(),
             constants,
         }
     }
@@ -41,7 +41,7 @@ where
     CsFp: Cs<Fp>,
     CsFr: Cs<Fr>,
 {
-    inner: Option<InnerContext<Fp, Fr, CsFp, CsFr>>,
+    pub(super) inner: Option<InnerContext<Fp, Fr, CsFp, CsFr>>,
 }
 
 impl<Fp, Fr, CsFp, CsFr> Deref for InnerContext<Fp, Fr, CsFp, CsFr>
@@ -186,6 +186,17 @@ where
     CsFp: Cs<Fp>,
     CsFr: Cs<Fr>,
 {
+    pub fn new(
+        cs_fp: CsFp,
+        cs_fr: CsFr,
+        consts_fp: Constants<Fp>,
+        consts_fr: Constants<Fr>,
+    ) -> Self {
+        Self {
+            inner: Some(InnerContext::new(cs_fp, cs_fr, consts_fp, consts_fr))
+        }
+    }
+
     /// Creates a scope in which the roles of the fields is flipped,
     /// this enables accessing "the other side" and automatically returning.
     ///

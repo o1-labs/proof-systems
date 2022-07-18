@@ -23,6 +23,12 @@ where
     G: AffineCurve,
     G::BaseField: FftField + PrimeField,
 {
+    pub fn eq<C: Cs<G::BaseField>>(&self, cs: &mut C, other: &Self) {
+        for i in 0..N {
+            self.chunks[i].eq(cs, &other.chunks[i]);
+        }
+    }
+
     /// "Collapses" a chunked commitment to a polynomial at the evaluation point $\zeta$ to an unchunked polynomial at $\zeta$.
     /// A chunked evaluation of $f(\zeta)$ with $N$ chunks is represented as:
     ///

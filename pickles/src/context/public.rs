@@ -94,15 +94,15 @@ where
 
             // add to "public input" on both side (in finalize we whill choose which):
             // this method does not distinguish between Tick/Tock
-            self.fp.public.push(fp);
-            self.fr.public.push(fr);
+            self.fp.deferred.push(fp);
+            self.fr.deferred.push(fr);
         }
 
         // convert Fr public inputs into destination type
         To::from_public(
             &mut self.fr.cs,
             &self.fr.constants,
-            &mut self.fr.public[self.fr.public.len() - fp_public.len()..]
+            &mut self.fr.deferred[self.fr.deferred.len() - fp_public.len()..]
                 .iter()
                 .cloned(),
         )

@@ -6,6 +6,8 @@ mod public;
 
 mod finalize;
 
+pub use finalize::finalize;
+
 pub use context::Context;
 
 pub use public::{FromPublic, Pass, Public, ToPublic};

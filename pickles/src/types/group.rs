@@ -35,6 +35,22 @@ where
     G: AffineCurve,
     G::BaseField: FftField + PrimeField,
 {
+    pub fn eq<C: Cs<G::BaseField>>(&self, cs: &mut C, other: &Self) {
+        cs.assert_eq(self.x, other.x);
+        cs.assert_eq(self.y, other.y);
+    }
+
+    ///
+    ///
+    pub fn from_fixed_base<C: Cs<G::BaseField>>(
+        cs: &mut C,
+        g: &G,
+        s: Var<G::BaseField>,
+        bits: usize,
+    ) -> Self {
+        todo!()
+    }
+
     pub fn glv_scale<C: Cs<G::BaseField>>(
         &self,
         cs: &mut C,

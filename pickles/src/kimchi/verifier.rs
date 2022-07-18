@@ -10,7 +10,6 @@ use kimchi::circuits::gate::GateType;
 use kimchi::circuits::wires::{COLUMNS, PERMUTS};
 
 use crate::kimchi::alphas::Alphas;
-use crate::kimchi::batch::combine_inner_product;
 use crate::kimchi::constraints;
 use crate::kimchi::index::{ConstIndex, Index};
 use crate::kimchi::proof::{PublicInput, VarEvaluations, VarProof};
@@ -153,7 +152,7 @@ where
         p_comm: Msg<VarPolyComm<G, 1>>,
         inputs: &PublicInput<G>, // commitment to public input
         proof: VarProof<G, 2>,
-    ) where
+    ) -> VarPolyComm<G, 1>  where
         CsFp: Cs<G::BaseField>,
         CsFr: Cs<G::ScalarField>,
     {
@@ -258,12 +257,13 @@ where
             let p_zetaw = tx.recv(ctx, p_zetaw);
             let e_zetaw = tx.recv(ctx, proof.evals.zetaw);
 
-            // setup Expr evaluator with evaluations provided by prover
+            // collect in evaluations type
             let evals = VarEvaluations {
                 zeta: e_zeta,
                 zetaw: e_zetaw,
             };
 
+            // setup Expr evaluator with evaluations provided by prover
             let mut evalutator = Evaluator::new(
                 zeta,
                 self.constant.domain.clone(),
@@ -495,5 +495,7 @@ where
         // combine all $\zeta$ openings using powers of $\alpha$
         let combined_comm = VarPolyComm::combine_with_glv(ctx.cs(), poly_comms, &alpha_glv);
         */
+
+        p_comm
     }
 }
