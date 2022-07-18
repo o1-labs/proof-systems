@@ -29,6 +29,7 @@ use ark_poly::{
 };
 use mina_curves::pasta::pallas;
 use num_bigint::BigUint;
+use o1_utils::foreign_field::ForeignElement;
 use o1_utils::{
     foreign_field::{foreign_to_limbs, vec_to_limbs, FOREIGN_MOD},
     FieldHelpers,
@@ -66,20 +67,22 @@ fn create_test_prover_index(public_size: usize) -> ProverIndex<mina_curves::past
 // Add zero to zero. This checks that small amounts also get packed into limbs
 fn test_zero_add() {
     let cs = create_test_constraint_system();
-    let foreign_modulus = vec_to_limbs(&foreign_to_limbs(BigUint::from_bytes_be(FOREIGN_MOD)));
-    let left_input = [
+
+    let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
+
+    let left_input = ForeignElement::<PallasField, 3>::new([
         PallasField::zero(),
         PallasField::zero(),
         PallasField::zero(),
-    ];
-    let right_input = [
+    ]);
+    let right_input = ForeignElement::<PallasField, 3>::new([
         PallasField::zero(),
         PallasField::zero(),
         PallasField::zero(),
-    ];
+    ]);
 
     let witness =
-        foreign_field_add::witness::create_witness(&left_input, &right_input, &foreign_modulus);
+        foreign_field_add::witness::create_witness(left_input, right_input, foreign_modulus);
 
     assert_eq!(
         cs.gates[16].verify_foreign_field_add(0, &witness, &cs),

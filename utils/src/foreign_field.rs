@@ -50,6 +50,11 @@ impl<F: FftField, const N: usize> ForeignElement<F, N> {
         }
     }
 
+    /// Initializes a new foreign element from a set of bytes in big endian
+    pub fn new_from_be(bytes: &[u8]) -> Self {
+        Self::new_from_big(BigUint::from_bytes_be(bytes))
+    }
+
     /// Obtains the big integer representation of the foreign field element
     pub fn to_big(&self) -> BigUint {
         let mut bytes = vec![];
