@@ -3,7 +3,6 @@
 use crate::circuits::{constraints::ConstraintSystem, wires::*};
 use ark_ff::FftField;
 use ark_ff::{bytes::ToBytes, SquareRootField};
-use ark_poly::univariate::DensePolynomial;
 use ark_poly::Evaluations;
 use ark_poly::Radix2EvaluationDomain as D;
 use num_traits::cast::ToPrimitive;

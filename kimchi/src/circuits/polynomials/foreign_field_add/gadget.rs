@@ -373,12 +373,13 @@ fn set_up_lookup_env_data<F: FftField>(
     })
 }
 
-fn circuit_gate_selector_index(typ: GateType) -> usize {
+/*fn circuit_gate_selector_index(typ: GateType) -> usize {
     match typ {
         GateType::ForeignFieldAdd => 0,
         _ => panic!("invalid gate type"),
     }
 }
+*/
 
 /// Get vector of foreign field multiplication circuit gate types
 pub fn circuit_gates() -> Vec<GateType> {

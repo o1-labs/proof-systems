@@ -146,8 +146,8 @@ pub fn create_witness<F: PrimeField>(
     let upper_bound =
         limbs_to_foreign_field_element(&[upper_bound_lo, upper_bound_mi, upper_bound_hi]);
 
-    range_check::extend_witness(&mut witness, result.clone());
-    range_check::extend_witness(&mut witness, upper_bound.clone());
+    range_check::extend_witness(&mut witness, result);
+    range_check::extend_witness(&mut witness, upper_bound);
 
     let result_carry = [result_carry_lo, result_carry_mi, result_carry_hi];
     let upper_bound_carry = [upper_bound_carry_lo, upper_bound_carry_mi];
