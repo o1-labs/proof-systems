@@ -99,6 +99,7 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
         (start_row + circuit_gates.len(), circuit_gates)
     }
 
+    /// Verifies the foreign field addition gadget
     pub fn verify_foreign_field_add(
         &self,
         _: usize,

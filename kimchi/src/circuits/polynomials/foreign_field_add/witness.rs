@@ -9,38 +9,38 @@ use array_init::array_init;
 use num_bigint::BigUint;
 //use num_integer::Integer;
 use o1_utils::foreign_field::{
-    foreign_field_element_to_limbs, limbs_to_foreign_field_element, vec_to_limbs, LIMB_BITS,
+    foreign_to_limbs, limbs_to_foreign, vec_to_limbs, ForeignElement, LIMB_BITS,
 };
 
 //use super::compute_intermediate_products;
 
-pub fn create_witness<F: PrimeField>(
-    left_input: BigUint,
-    right_input: BigUint,
-    foreign_modulus: BigUint,
+pub fn create_witness<F: PrimeField, const N: usize>(
+    left_input: ForeignElement<F, N>,
+    right_input: ForeignElement<F, N>,
+    foreign_modulus: ForeignElement<F, N>,
 ) -> [Vec<F>; COLUMNS] {
-    let two_to_limb = F::from(2u64).pow([LIMB_BITS]);
+    let two_to_limb = F::from(2u128.pow(LIMB_BITS));
 
     let mut witness = array_init(|_| vec![F::zero(); 0]);
 
     // Create multi-range-check witness for left_input and right_input
-    range_check::extend_witness(&mut witness, left_input.clone());
-    range_check::extend_witness(&mut witness, right_input.clone());
+    range_check::extend_witness(&mut witness, left_input);
+    range_check::extend_witness(&mut witness, right_input);
 
-    // Extract (3) limbs from inputs and modulus in little-endian order
-    let [left_input_lo, left_input_mi, left_input_hi] =
-        vec_to_limbs(&foreign_field_element_to_limbs::<F>(left_input));
-    let [right_input_lo, right_input_mi, right_input_hi] =
-        vec_to_limbs(&foreign_field_element_to_limbs::<F>(right_input));
-    let [foreign_modulus_lo, foreign_modulus_mi, foreign_modulus_hi] =
-        vec_to_limbs(&foreign_field_element_to_limbs::<F>(foreign_modulus));
-
+    println!("foreign_modulus {}", foreign_modulus);
     // Compute helper variables for the upper bound check
-    let max_sub_foreign_modulus_lo: F = two_to_limb - foreign_modulus_lo;
-    let max_sub_foreign_modulus_mi: F = two_to_limb - foreign_modulus_mi - F::one();
-    let max_sub_foreign_modulus_hi: F = two_to_limb - foreign_modulus_hi - F::one();
+    let max_sub_foreign_modulus = ForeignElement::<F, 3>::new([
+        two_to_limb - foreign_modulus.lo(),
+        two_to_limb - foreign_modulus.mi() - F::one(),
+        two_to_limb - foreign_modulus.hi() - F::one(),
+    ]);
 
     // Compute addition of limbs of inputs (may exceed 88 bits, but at most once)
+    let mut result = ForeignElement::<F, 3>::new([
+        left_input.lo() + right_input.lo(),
+        left_input.mi() + right_input.mi(),
+        left_input.hi() + right_input.hi(),
+    ]);
     let mut result_lo = left_input_lo + right_input_lo;
     let mut result_mi = left_input_mi + right_input_mi;
     let mut result_hi = left_input_hi + right_input_hi;
@@ -119,6 +119,11 @@ pub fn create_witness<F: PrimeField>(
         F::zero()
     };
 
+    println!("field_overflow: {:?}", field_overflow);
+    println!("maxsub lo {:?}", max_sub_foreign_modulus_lo);
+    println!("maxsub mi {:?}", max_sub_foreign_modulus_mi);
+    println!("maxsub hi {:?}", max_sub_foreign_modulus_hi);
+
     let mut upper_bound_lo = result_lo + max_sub_foreign_modulus_lo;
     let mut upper_bound_mi = result_mi + max_sub_foreign_modulus_mi;
     let mut upper_bound_hi = result_hi + max_sub_foreign_modulus_hi;
@@ -132,7 +137,7 @@ pub fn create_witness<F: PrimeField>(
         F::zero()
     };
 
-    // If the middle upper boudn sum exceeds the limb-length then subtract 2^88 and add one to the high limb
+    // If the middle upper bound sum exceeds the limb-length then subtract 2^88 and add one to the high limb
     let upper_bound_carry_mi = if upper_bound_mi > two_to_limb {
         upper_bound_hi += F::one();
         upper_bound_mi -= two_to_limb;
@@ -141,10 +146,17 @@ pub fn create_witness<F: PrimeField>(
         F::zero()
     };
 
-    let result = limbs_to_foreign_field_element(&[result_lo, result_mi, result_hi]);
+    let result = limbs_to_foreign(&[result_lo, result_mi, result_hi]);
+    println!("result lo: {:?}", result_lo);
+    println!("result mi: {:?}", result_mi);
+    println!("result hi: {:?}", result_hi);
 
-    let upper_bound =
-        limbs_to_foreign_field_element(&[upper_bound_lo, upper_bound_mi, upper_bound_hi]);
+    println!("result: {:?}", result);
+
+    let upper_bound = limbs_to_foreign(&[upper_bound_lo, upper_bound_mi, upper_bound_hi]);
+    println!("upper lo {:?}", upper_bound_lo);
+    println!("upper mi {:?}", upper_bound_lo);
+    println!("upper hi {:?}", upper_bound_lo);
 
     range_check::extend_witness(&mut witness, result);
     range_check::extend_witness(&mut witness, upper_bound);
