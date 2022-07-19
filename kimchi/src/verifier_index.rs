@@ -140,7 +140,7 @@ pub struct VerifierIndex<G: CommitmentCurve> {
 }
 //~spec:endcode
 
-impl<'a, G: CommitmentCurve> ProverIndex<G>
+impl<G: CommitmentCurve> ProverIndex<G>
 where
     G::BaseField: PrimeField,
 {

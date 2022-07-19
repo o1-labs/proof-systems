@@ -5,7 +5,7 @@ use o1_utils::FieldHelpers;
 use std::fmt;
 
 /// Signature structure
-#[derive(Clone, Copy, Eq, fmt::Debug, PartialEq)]
+#[derive(Clone, Eq, fmt::Debug, PartialEq)]
 pub struct Signature {
     /// Base field component
     pub rx: BaseField,

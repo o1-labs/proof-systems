@@ -171,7 +171,8 @@ where
             //~~ - Derive the scalar joint combiner challenge $j$ from $j'$ using the endomorphism.
             //~~   (TODO: specify endomorphism)
             let joint_combiner = ScalarChallenge(joint_combiner);
-            let joint_combiner = (joint_combiner, joint_combiner.to_field(&index.srs().endo_r));
+            let joint_combiner_field = joint_combiner.to_field(&index.srs().endo_r);
+            let joint_combiner = (joint_combiner, joint_combiner_field);
 
             //~~ - absorb the commitments to the sorted polynomials.
             for com in &lookup_commits.sorted {
@@ -372,7 +373,7 @@ where
                 alpha,
                 beta,
                 gamma,
-                joint_combiner: joint_combiner.map(|j| j.1),
+                joint_combiner: joint_combiner.as_ref().map(|j| j.1),
                 endo_coefficient: index.endo,
                 mds: index.fr_sponge_params.mds.clone(),
             };
@@ -587,7 +588,7 @@ where
                 alpha: oracles.alpha,
                 beta: oracles.beta,
                 gamma: oracles.gamma,
-                joint_combiner: oracles.joint_combiner.map(|j| j.1),
+                joint_combiner: oracles.joint_combiner.as_ref().map(|j| j.1),
                 endo_coefficient: index.endo,
                 mds: index.fr_sponge_params.mds.clone(),
             };
