@@ -495,6 +495,7 @@ where
     if proof.prev_challenges.len() != index.prev_challenges {
         return Err(VerifyError::IncorrectPrevChallengesLength(
             index.prev_challenges,
+            proof.prev_challenges.len(),
         ));
     }
 
