@@ -2,7 +2,6 @@ use std::fmt::Display;
 
 use crate::field_helpers::FieldHelpers;
 use ark_ff::FftField;
-use array_init::array_init;
 use num_bigint::BigUint;
 
 pub const LIMB_BITS: u32 = 88;

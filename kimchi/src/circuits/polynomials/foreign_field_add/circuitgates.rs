@@ -82,6 +82,7 @@ use crate::circuits::{
 };
 
 use ark_ff::FftField;
+use o1_utils::foreign_field::LIMB_BITS;
 
 /// Implementation of the ForeignFieldAdd gate
 pub struct FFAdd<F>(PhantomData<F>);
@@ -91,14 +92,14 @@ where
     F: FftField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldAdd);
-    const CONSTRAINTS: u32 = 11;
+    const CONSTRAINTS: u32 = 12;
 
     fn constraints() -> Vec<E<F>> {
         let foreign_modulus_lo = E::constant(ForeignFieldModulus(0));
         let foreign_modulus_mi = E::constant(ForeignFieldModulus(1));
         let foreign_modulus_hi = E::constant(ForeignFieldModulus(2));
 
-        let two_to_88 = constant(F::from(2u64).pow([88]));
+        let two_to_88 = constant(F::from(2u128.pow(LIMB_BITS)));
 
         //   2^(2*88) * m_2 + 2^(88) * m_1 + m_0
         // + 2^(2*88) * g_2 + 2^(88) * g_1 + g_0
@@ -127,10 +128,10 @@ where
         // Carry bits for limb overflows / underflows.
         let result_carry_lo = witness_curr::<F>(7);
         let result_carry_mi = witness_curr::<F>(8);
-        // TODO result_carry_hi
+        let result_carry_hi = witness_curr::<F>(9);
 
-        let upper_bound_carry_lo = witness_curr::<F>(9);
-        let upper_bound_carry_mi = witness_curr::<F>(10);
+        let upper_bound_carry_lo = witness_curr::<F>(10);
+        let upper_bound_carry_mi = witness_curr::<F>(11);
 
         let result_lo = witness_next::<F>(0);
         let result_mi = witness_next::<F>(1);
@@ -150,6 +151,9 @@ where
             result_carry_mi.clone()
                 * (result_carry_mi.clone() - 1u64.into())
                 * (result_carry_mi.clone() + 1u64.into()),
+            result_carry_hi.clone()
+                * (result_carry_hi.clone() - 1u64.into())
+                * (result_carry_hi.clone() + 1u64.into()),
         ];
 
         // r_0 = a_0 + b_0 - o * m_0 - 2^88 * c_0
@@ -161,9 +165,10 @@ where
             - field_overflow.clone() * foreign_modulus_mi
             - (result_carry_mi.clone() * two_to_88.clone())
             + result_carry_lo;
-        // r_2 = a_2 + b_2 - o * m_2 + c_1 // TODO: c_2
+        // r_2 = a_2 + b_2 - o * m_2 - 2^88 * c_2 + c_1 // TODO: c_2
         let result_calculated_hi =
-            left_input_hi + right_input_hi - field_overflow * foreign_modulus_hi + result_carry_mi;
+            left_input_hi + right_input_hi - field_overflow * foreign_modulus_hi + result_carry_mi
+                - two_to_88.clone() * result_carry_hi;
 
         // Result values match
         res.push(result_lo.clone() - result_calculated_lo);
@@ -186,9 +191,9 @@ where
             result_hi + max_sub_foreign_modulus_hi + upper_bound_carry_mi;
 
         // Upper bound values match
-        res.push(upper_bound_hi - upper_bound_calculated_hi);
-        res.push(upper_bound_mi - upper_bound_calculated_mi);
         res.push(upper_bound_lo - upper_bound_calculated_lo);
+        res.push(upper_bound_mi - upper_bound_calculated_mi);
+        res.push(upper_bound_hi - upper_bound_calculated_hi);
 
         res
     }
