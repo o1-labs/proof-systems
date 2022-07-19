@@ -610,6 +610,19 @@
 <span id="604">604</span>
 <span id="605">605</span>
 <span id="606">606</span>
+<span id="607">607</span>
+<span id="608">608</span>
+<span id="609">609</span>
+<span id="610">610</span>
+<span id="611">611</span>
+<span id="612">612</span>
+<span id="613">613</span>
+<span id="614">614</span>
+<span id="615">615</span>
+<span id="616">616</span>
+<span id="617">617</span>
+<span id="618">618</span>
+<span id="619">619</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk circuit constraint primitive.</span>
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">circuits</span>::{
@@ -651,6 +664,8 @@
     <span class="comment">// ------</span>
     <span class="doccomment">/// number of public inputs</span>
     <span class="kw">pub</span> <span class="ident">public</span>: <span class="ident">usize</span>,
+    <span class="doccomment">/// number of previous evaluation challenges, for recursive proving</span>
+    <span class="kw">pub</span> <span class="ident">prev_challenges</span>: <span class="ident">usize</span>,
     <span class="doccomment">/// evaluation domains</span>
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">bound</span> <span class="op">=</span> <span class="string">&quot;EvaluationDomains&lt;F&gt;: Serialize + DeserializeOwned&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">domain</span>: <span class="ident">EvaluationDomains</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
@@ -762,6 +777,7 @@
     <span class="ident">gates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">sponge_params</span>: <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
     <span class="ident">public</span>: <span class="ident">usize</span>,
+    <span class="ident">prev_challenges</span>: <span class="ident">usize</span>,
     <span class="ident">lookup_tables</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">LookupTable</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">runtime_tables</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RuntimeTableCfg</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">precomputations</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">DomainConstantEvaluations</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -772,6 +788,7 @@
     <span class="doccomment">/// Returns a [Builder&lt;F&gt;]</span>
     <span class="doccomment">/// It also defaults to the following values of the builder:</span>
     <span class="doccomment">/// - `public: 0`</span>
+    <span class="doccomment">/// - `prev_challenges: 0`</span>
     <span class="doccomment">/// - `lookup_tables: vec![]`,</span>
     <span class="doccomment">/// - `runtime_tables: None`,</span>
     <span class="doccomment">/// - `precomputations: None`,</span>
@@ -788,6 +805,7 @@
             <span class="ident">gates</span>,
             <span class="ident">sponge_params</span>,
             <span class="ident">public</span>: <span class="number">0</span>,
+            <span class="ident">prev_challenges</span>: <span class="number">0</span>,
             <span class="ident">lookup_tables</span>: <span class="macro">vec!</span>[],
             <span class="ident">runtime_tables</span>: <span class="prelude-val">None</span>,
             <span class="ident">precomputations</span>: <span class="prelude-val">None</span>,
@@ -904,6 +922,13 @@
     <span class="doccomment">/// If not invoked, it equals `0` by default.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">public</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">public</span>: <span class="ident">usize</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">public</span> <span class="op">=</span> <span class="ident">public</span>;
+        <span class="self">self</span>
+    }
+
+    <span class="doccomment">/// Set up the number of previous challenges, used for recusive proving.</span>
+    <span class="doccomment">/// If not invoked, it equals `0` by default.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">prev_challenges</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">prev_challenges</span>: <span class="ident">usize</span>) -&gt; <span class="self">Self</span> {
+        <span class="self">self</span>.<span class="ident">prev_challenges</span> <span class="op">=</span> <span class="ident">prev_challenges</span>;
         <span class="self">self</span>
     }
 
@@ -1156,6 +1181,7 @@
             <span class="ident">endomul_scalar8</span>,
             <span class="ident">domain</span>,
             <span class="ident">public</span>: <span class="self">self</span>.<span class="ident">public</span>,
+            <span class="ident">prev_challenges</span>: <span class="self">self</span>.<span class="ident">prev_challenges</span>,
             <span class="ident">sid</span>,
             <span class="ident">sigmal1</span>,
             <span class="ident">sigmal8</span>,

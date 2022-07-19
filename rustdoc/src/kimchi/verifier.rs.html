@@ -971,6 +971,13 @@
 <span id="965">965</span>
 <span id="966">966</span>
 <span id="967">967</span>
+<span id="968">968</span>
+<span id="969">969</span>
+<span id="970">970</span>
+<span id="971">971</span>
+<span id="972">972</span>
+<span id="973">973</span>
+<span id="974">974</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements zk-proof batch verifier functionality.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -1465,6 +1472,13 @@
     <span class="comment">//~ This allows us to potentially batch verify a number of partially verified proofs.</span>
     <span class="comment">//~ Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.</span>
     <span class="comment">//~</span>
+
+    <span class="kw">if</span> <span class="ident">proof</span>.<span class="ident">prev_challenges</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">index</span>.<span class="ident">prev_challenges</span> {
+        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">VerifyError::IncorrectPrevChallengesLength</span>(
+            <span class="ident">index</span>.<span class="ident">prev_challenges</span>,
+            <span class="ident">proof</span>.<span class="ident">prev_challenges</span>.<span class="ident">len</span>(),
+        ));
+    }
 
     <span class="comment">//~ 1. Commit to the negated public input polynomial.</span>
     <span class="kw">let</span> <span class="ident">lgr_comm</span> <span class="op">=</span> <span class="ident">index</span>

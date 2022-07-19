@@ -85,6 +85,9 @@
 <span id="79">79</span>
 <span id="80">80</span>
 <span id="81">81</span>
+<span id="82">82</span>
+<span id="83">83</span>
+<span id="84">84</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the [ProverError] type.</span>
 
 <span class="kw">use</span> <span class="ident">commitment_dlog::error::CommitmentError</span>;
@@ -127,6 +130,9 @@
 
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;the public input is of an unexpected size (expected {0})&quot;</span>)]</span>
     <span class="ident">IncorrectPubicInputLength</span>(<span class="ident">usize</span>),
+
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;the previous challenges have an unexpected length (expected {0}, got {})&quot;</span>)]</span>
+    <span class="ident">IncorrectPrevChallengesLength</span>(<span class="ident">usize</span>, <span class="ident">usize</span>),
 
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;the opening proof failed to verify&quot;</span>)]</span>
     <span class="ident">OpenProof</span>,

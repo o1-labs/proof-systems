@@ -138,6 +138,8 @@
 <span id="132">132</span>
 <span id="133">133</span>
 <span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the prover index as [ProverIndex].</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::alphas::Alphas</span>;
@@ -248,6 +250,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_index_for_test_with_lookups</span>(
         <span class="ident">gates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">public</span>: <span class="ident">usize</span>,
+        <span class="ident">prev_challenges</span>: <span class="ident">usize</span>,
         <span class="ident">lookup_tables</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">LookupTable</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">runtime_tables</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RuntimeTableCfg</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     ) -&gt; <span class="ident">ProverIndex</span><span class="op">&lt;</span><span class="ident">Affine</span><span class="op">&gt;</span> {
@@ -258,6 +261,7 @@
             .<span class="ident">lookup</span>(<span class="ident">lookup_tables</span>)
             .<span class="ident">runtime</span>(<span class="ident">runtime_tables</span>)
             .<span class="ident">public</span>(<span class="ident">public</span>)
+            .<span class="ident">prev_challenges</span>(<span class="ident">prev_challenges</span>)
             .<span class="ident">build</span>()
             .<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">srs</span> <span class="op">=</span> <span class="ident">SRS</span>::<span class="op">&lt;</span><span class="ident">Affine</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span>());
@@ -269,7 +273,7 @@
         <span class="ident">ProverIndex</span>::<span class="op">&lt;</span><span class="ident">Affine</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">cs</span>, <span class="ident">fq_sponge_params</span>, <span class="ident">endo_q</span>, <span class="ident">srs</span>)
     }
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_index_for_test</span>(<span class="ident">gates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">public</span>: <span class="ident">usize</span>) -&gt; <span class="ident">ProverIndex</span><span class="op">&lt;</span><span class="ident">Affine</span><span class="op">&gt;</span> {
-        <span class="ident">new_index_for_test_with_lookups</span>(<span class="ident">gates</span>, <span class="ident">public</span>, <span class="macro">vec!</span>[], <span class="prelude-val">None</span>)
+        <span class="ident">new_index_for_test_with_lookups</span>(<span class="ident">gates</span>, <span class="ident">public</span>, <span class="number">0</span>, <span class="macro">vec!</span>[], <span class="prelude-val">None</span>)
     }
 }
 </code></pre></div>

@@ -4316,6 +4316,8 @@ pub struct VerifierIndex&lt;G: CommitmentCurve&gt; {
     pub srs: OnceCell&lt;Arc&lt;SRS&lt;G&gt;&gt;&gt;,
     /// number of public inputs
     pub public: usize,
+    /// number of previous evaluation challenges, for recursive proving
+    pub prev_challenges: usize,
 
     // index polynomial commitments
     /// permutation commitment array

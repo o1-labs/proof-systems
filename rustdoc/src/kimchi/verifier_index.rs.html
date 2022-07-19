@@ -329,6 +329,9 @@
 <span id="323">323</span>
 <span id="324">324</span>
 <span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the verifier index as [VerifierIndex].</span>
 <span class="doccomment">//! You can derive this struct from the [ProverIndex] struct.</span>
 
@@ -399,6 +402,8 @@
     <span class="kw">pub</span> <span class="ident">srs</span>: <span class="ident">OnceCell</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">SRS</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="doccomment">/// number of public inputs</span>
     <span class="kw">pub</span> <span class="ident">public</span>: <span class="ident">usize</span>,
+    <span class="doccomment">/// number of previous evaluation challenges, for recursive proving</span>
+    <span class="kw">pub</span> <span class="ident">prev_challenges</span>: <span class="ident">usize</span>,
 
     <span class="comment">// index polynomial commitments</span>
     <span class="doccomment">/// permutation commitment array</span>
@@ -511,6 +516,7 @@
             <span class="ident">max_quot_size</span>: <span class="self">self</span>.<span class="ident">max_quot_size</span>,
             <span class="ident">powers_of_alpha</span>: <span class="self">self</span>.<span class="ident">powers_of_alpha</span>.<span class="ident">clone</span>(),
             <span class="ident">public</span>: <span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">public</span>,
+            <span class="ident">prev_challenges</span>: <span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">prev_challenges</span>,
             <span class="ident">srs</span>: {
                 <span class="kw">let</span> <span class="ident">cell</span> <span class="op">=</span> <span class="ident">OnceCell::new</span>();
                 <span class="ident">cell</span>.<span class="ident">set</span>(<span class="ident">Arc::clone</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">srs</span>)).<span class="ident">unwrap</span>();
