@@ -6,11 +6,9 @@ use crate::circuits::{
 };
 use ark_ff::PrimeField;
 use array_init::array_init;
-use num_bigint::BigUint;
+//use num_bigint::BigUint;
 //use num_integer::Integer;
-use o1_utils::foreign_field::{
-    foreign_to_limbs, limbs_to_foreign, vec_to_limbs, ForeignElement, LIMB_BITS,
-};
+use o1_utils::foreign_field::{ForeignElement, LIMB_BITS};
 
 //use super::compute_intermediate_products;
 
@@ -27,12 +25,13 @@ pub fn create_witness<F: PrimeField>(
     range_check::extend_witness(&mut witness, left_input);
     range_check::extend_witness(&mut witness, right_input);
 
-    println!("foreign_modulus {}", foreign_modulus);
     // Compute helper variables for the upper bound check
     let max_sub_foreign_modulus = ForeignElement::<F, 3>::new([
         two_to_limb - foreign_modulus.lo(),
-        two_to_limb - foreign_modulus.mi() - F::one(),
-        two_to_limb - foreign_modulus.hi() - F::one(),
+        two_to_limb - foreign_modulus.mi(),
+        two_to_limb - foreign_modulus.hi(),
+        //two_to_limb - foreign_modulus.mi() - F::one(),
+        //two_to_limb - foreign_modulus.hi() - F::one(),
     ]);
 
     // Compute addition of limbs of inputs (may exceed 88 bits, but at most once)
@@ -114,9 +113,6 @@ pub fn create_witness<F: PrimeField>(
         F::zero()
     };
 
-    println!("field_overflow: {:?}", field_overflow);
-    println!("maxsub {}", max_sub_foreign_modulus);
-
     let mut upper_bound_lo = result_lo - *max_sub_foreign_modulus.lo();
     let mut upper_bound_mi = result_mi - *max_sub_foreign_modulus.mi();
     let mut upper_bound_hi = result_hi - *max_sub_foreign_modulus.hi();
@@ -153,10 +149,13 @@ pub fn create_witness<F: PrimeField>(
         w.extend(std::iter::repeat(F::zero()).take(2));
     }
 
+    let offset = 16; // number of witness rows of the gadget before the first row of the addition gate
+
     // ForeignFieldAdd row
     init_foreign_field_add_row(
         &mut witness,
-        16,
+        0,
+        offset,
         field_overflow,
         result_carry,
         upper_bound_carry,
@@ -164,7 +163,8 @@ pub fn create_witness<F: PrimeField>(
     // Zero row
     init_foreign_field_add_row(
         &mut witness,
-        17,
+        1,
+        offset,
         F::zero(),
         array_init(|_| F::zero()),
         array_init(|_| F::zero()),
@@ -252,6 +252,7 @@ const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 2] = [
 fn init_foreign_field_add_row<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
     row: usize,
+    offset: usize,
     field_overflow: F,
     result_carry: [F; 3],
     upper_bound_carry: [F; 2],
@@ -262,13 +263,13 @@ fn init_foreign_field_add_row<F: PrimeField>(
                 handle_standard_witness_cell(
                     witness,
                     standard_cell,
-                    row,
+                    offset + row,
                     col,
                     F::zero(), /* unused by this gate */
                 )
             }
             WitnessCell::FieldElem(elem_cell) => {
-                witness[col][row] = {
+                witness[col][offset + row] = {
                     match elem_cell.kind {
                         FieldElemType::FieldOverflow => field_overflow,
                         FieldElemType::ResultCarry => result_carry[elem_cell.order as usize],

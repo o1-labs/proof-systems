@@ -5,6 +5,7 @@ use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
 use array_init::array_init;
+use o1_utils::foreign_field::{ForeignElement, FOREIGN_MOD};
 use rand::{prelude::StdRng, SeedableRng};
 
 use crate::{
@@ -169,6 +170,11 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
             runtime_table: None,
         });
 
+        // Initialize the foreign field modulus constant
+        let foreign_field_modulus = ForeignElement::<F, 3>::new_from_be(FOREIGN_MOD)
+            .limbs
+            .to_vec();
+
         // Set up the environment
         let env = {
             Environment {
@@ -179,7 +185,7 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
                     joint_combiner: Some(F::rand(rng)),
                     endo_coefficient: cs.endo,
                     mds: vec![], // TODO: maybe cs.fr_sponge_params.mds.clone()
-                    foreign_field_modulus: vec![],
+                    foreign_field_modulus,
                 },
                 witness: &witness_evals.d8.this.w,
                 coefficient: &cs.coefficients8,

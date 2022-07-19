@@ -100,16 +100,23 @@ impl<F: FftField> ForeignElement<F, 3> {
 impl<F: FftField, const N: usize> Display for ForeignElement<F, N> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut s = String::new();
-        s += "( ";
-        for limb in self.limbs {
-            s.push_str(&limb.to_string());
-            s += " , ";
+        let order = ["lo", "mi", "hi"];
+        s += "{ ";
+        for (i, limb) in self.limbs.iter().enumerate() {
+            let hex = limb.to_hex();
+            let len = LIMB_BITS / 8 * 2;
+            s += &(order[i % N].to_owned() + ": ");
+            s.push_str(&hex[0..len as usize]);
+            if i < N - 1 {
+                s += " , ";
+            }
         }
-        s += " )";
+        s += " }";
         write!(f, "{}", s)
     }
 }
 
+/*
 pub fn pad_zeros_le(le: &mut Vec<u8>, total: usize) {
     let len = le.len();
     if total > len {
@@ -147,3 +154,4 @@ pub fn limbs_to_foreign<F: FftField>(limbs: &[F]) -> BigUint {
     }
     BigUint::from_bytes_le(&bytes)
 }
+*/

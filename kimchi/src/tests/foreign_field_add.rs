@@ -29,9 +29,8 @@ use ark_poly::{
 };
 use mina_curves::pasta::pallas;
 use num_bigint::BigUint;
-use o1_utils::foreign_field::ForeignElement;
 use o1_utils::{
-    foreign_field::{foreign_to_limbs, vec_to_limbs, FOREIGN_MOD},
+    foreign_field::{ForeignElement, FOREIGN_MOD},
     FieldHelpers,
 };
 
@@ -71,7 +70,7 @@ fn test_zero_add() {
     let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
 
     let left_input = ForeignElement::<PallasField, 3>::new([
-        PallasField::zero(),
+        PallasField::one(),
         PallasField::zero(),
         PallasField::zero(),
     ]);
@@ -86,9 +85,7 @@ fn test_zero_add() {
 
     assert_eq!(
         cs.gates[16].verify_foreign_field_add(0, &witness, &cs),
-        Err(CircuitGateError::InvalidConstraint(
-            GateType::ForeignFieldAdd
-        ))
+        Ok(())
     );
 }
 

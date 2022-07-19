@@ -94,9 +94,9 @@ where
     const CONSTRAINTS: u32 = 11;
 
     fn constraints() -> Vec<E<F>> {
-        let foreign_modulus_hi = E::constant(ForeignFieldModulus(0));
+        let foreign_modulus_lo = E::constant(ForeignFieldModulus(0));
         let foreign_modulus_mi = E::constant(ForeignFieldModulus(1));
-        let foreign_modulus_lo = E::constant(ForeignFieldModulus(2));
+        let foreign_modulus_hi = E::constant(ForeignFieldModulus(2));
 
         let two_to_88 = constant(F::from(2u64).pow([88]));
 
