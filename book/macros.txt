@@ -1,0 +1,5 @@
+\sample:{\overset{?}{\ \gets \ }}
+\GG:{\mathbb{G}}
+\FF:{\mathbb{F}}
+\language:{\mathcal{L}}
+\relation:{\mathcal{R}}

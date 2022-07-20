@@ -46,6 +46,8 @@
 # Pickles & Inductive proof systems
 
 - [Overview](./fundamentals/zkbook_ips.md)
+- [Accumulation](./pickles/accumulation.md)
+- [Deferred Computation](./pickles/deferred.md)
 
 # RFCs
 

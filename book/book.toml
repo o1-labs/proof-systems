@@ -15,6 +15,7 @@ additional-js = ["mermaid.min.js", "mermaid-init.js"]
 
 # for LaTeX
 [preprocessor.katex]
+macros = "macros.txt" # crypto related macros (as close to cryptocode as possible)
 
 # for callouts
 [preprocessor.admonish]
