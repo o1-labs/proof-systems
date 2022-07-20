@@ -610,20 +610,8 @@
 <span id="604">604</span>
 <span id="605">605</span>
 <span id="606">606</span>
-<span id="607">607</span>
-<span id="608">608</span>
-<span id="609">609</span>
-<span id="610">610</span>
-<span id="611">611</span>
-<span id="612">612</span>
-<span id="613">613</span>
-<span id="614">614</span>
-<span id="615">615</span>
-<span id="616">616</span>
-<span id="617">617</span>
-<span id="618">618</span>
-<span id="619">619</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk circuit constraint primitive.</span>
+<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::lookup::runtime_tables::RuntimeTableCfg</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">circuits</span>::{
         <span class="ident">domain_constant_evaluation::DomainConstantEvaluations</span>,
@@ -635,9 +623,10 @@
         <span class="ident">polynomials::range_check</span>,
         <span class="ident">wires</span>::<span class="kw-2">*</span>,
     },
+    <span class="ident">curve::KimchiCurve</span>,
     <span class="ident">error::SetupError</span>,
 };
-<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">SquareRootField</span>, <span class="ident">Zero</span>};
+<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">PrimeField</span>, <span class="ident">SquareRootField</span>, <span class="ident">Zero</span>};
 <span class="kw">use</span> <span class="ident">ark_poly</span>::{
     <span class="ident">univariate::DensePolynomial</span> <span class="kw">as</span> <span class="ident">DP</span>, <span class="ident">EvaluationDomain</span>, <span class="ident">Evaluations</span> <span class="kw">as</span> <span class="ident">E</span>,
     <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>,
@@ -645,13 +634,9 @@
 <span class="kw">use</span> <span class="ident">array_init::array_init</span>;
 <span class="kw">use</span> <span class="ident">o1_utils::ExtendedEvaluations</span>;
 <span class="kw">use</span> <span class="ident">once_cell::sync::OnceCell</span>;
-<span class="kw">use</span> <span class="ident">oracle::poseidon::ArithmeticSpongeParams</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">de::DeserializeOwned</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">serde_with::serde_as</span>;
-<span class="kw">use</span> <span class="ident">std::collections::HashSet</span>;
-<span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
-
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::lookup::runtime_tables::RuntimeTableCfg</span>;
+<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">collections::HashSet</span>, <span class="ident">sync::Arc</span>};
 
 <span class="comment">//</span>
 <span class="comment">// ConstraintSystem</span>
@@ -659,7 +644,7 @@
 
 <span class="attribute">#[<span class="ident">serde_as</span>]</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> {
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> {
     <span class="comment">// Basics</span>
     <span class="comment">// ------</span>
     <span class="doccomment">/// number of public inputs</span>
@@ -748,15 +733,9 @@
     <span class="doccomment">/// coefficient for the group endomorphism</span>
     <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">endo</span>: <span class="ident">F</span>,
-
-    <span class="doccomment">/// random oracle argument parameters</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">fr_sponge_params</span>: <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-
     <span class="doccomment">/// lookup constraint system</span>
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">bound</span> <span class="op">=</span> <span class="string">&quot;LookupConstraintSystem&lt;F&gt;: Serialize + DeserializeOwned&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">lookup_constraint_system</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LookupConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-
     <span class="doccomment">/// precomputes</span>
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip</span>)]</span>
     <span class="ident">precomputations</span>: <span class="ident">OnceCell</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">DomainConstantEvaluations</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -773,9 +752,8 @@
     <span class="ident">Custom</span> { <span class="ident">row</span>: <span class="ident">usize</span>, <span class="ident">err</span>: <span class="ident">String</span> },
 }
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Builder</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> {
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Builder</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> {
     <span class="ident">gates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">sponge_params</span>: <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
     <span class="ident">public</span>: <span class="ident">usize</span>,
     <span class="ident">prev_challenges</span>: <span class="ident">usize</span>,
     <span class="ident">lookup_tables</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">LookupTable</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -783,7 +761,7 @@
     <span class="ident">precomputations</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">DomainConstantEvaluations</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">SquareRootField</span><span class="op">&gt;</span> <span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> <span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Initializes the [ConstraintSystem&lt;F&gt;] on input `gates` and `fr_sponge_params`.</span>
     <span class="doccomment">/// Returns a [Builder&lt;F&gt;]</span>
     <span class="doccomment">/// It also defaults to the following values of the builder:</span>
@@ -797,13 +775,9 @@
     <span class="doccomment">/// 1. Create your instance of your builder for the constraint system using `crate(gates, sponge params)`</span>
     <span class="doccomment">/// 2. Iterativelly invoke any desired number of steps: `public(), lookup(), runtime(), precomputations()``</span>
     <span class="doccomment">/// 3. Finally call the `build()` method and unwrap the `Result` to obtain your `ConstraintSystem`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create</span>(
-        <span class="ident">gates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">sponge_params</span>: <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">Builder</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create</span>(<span class="ident">gates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="ident">Builder</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
         <span class="ident">Builder</span> {
             <span class="ident">gates</span>,
-            <span class="ident">sponge_params</span>,
             <span class="ident">public</span>: <span class="number">0</span>,
             <span class="ident">prev_challenges</span>: <span class="number">0</span>,
             <span class="ident">lookup_tables</span>: <span class="macro">vec!</span>[],
@@ -827,7 +801,11 @@
     <span class="doccomment">/// assignements (witness) against the constraints</span>
     <span class="doccomment">///     witness: wire assignement witness</span>
     <span class="doccomment">///     RETURN: verification status</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">witness</span>: <span class="kw-2">&amp;</span>[<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>], <span class="ident">public</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">GateError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">KimchiCurve</span><span class="op">&lt;</span><span class="ident">ScalarField</span> <span class="op">=</span> <span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">witness</span>: <span class="kw-2">&amp;</span>[<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
+        <span class="ident">public</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>],
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">GateError</span><span class="op">&gt;</span> {
         <span class="comment">// pad the witness</span>
         <span class="kw">let</span> <span class="ident">pad</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="self">self</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span>() <span class="op">-</span> <span class="ident">witness</span>[<span class="number">0</span>].<span class="ident">len</span>()];
         <span class="kw">let</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
@@ -869,7 +847,7 @@
             }
 
             <span class="comment">// check the gate&#39;s satisfiability</span>
-            <span class="ident">gate</span>.<span class="ident">verify</span>(<span class="ident">row</span>, <span class="kw-2">&amp;</span><span class="ident">witness</span>, <span class="self">self</span>, <span class="ident">public</span>)
+            <span class="ident">gate</span>.<span class="ident">verify</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>(<span class="ident">row</span>, <span class="kw-2">&amp;</span><span class="ident">witness</span>, <span class="self">self</span>, <span class="ident">public</span>)
                 .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> <span class="ident">GateError::Custom</span> { <span class="ident">row</span>, <span class="ident">err</span> })<span class="question-mark">?</span>;
         }
 
@@ -917,7 +895,7 @@
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">SquareRootField</span><span class="op">&gt;</span> <span class="ident">Builder</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span> <span class="op">+</span> <span class="ident">SquareRootField</span><span class="op">&gt;</span> <span class="ident">Builder</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Set up the number of public inputs.</span>
     <span class="doccomment">/// If not invoked, it equals `0` by default.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">public</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">public</span>: <span class="ident">usize</span>) -&gt; <span class="self">Self</span> {
@@ -1198,7 +1176,7 @@
             <span class="ident">gates</span>,
             <span class="ident">shift</span>: <span class="ident">shifts</span>.<span class="ident">shifts</span>,
             <span class="ident">endo</span>,
-            <span class="ident">fr_sponge_params</span>: <span class="self">self</span>.<span class="ident">sponge_params</span>,
+            <span class="comment">//fr_sponge_params: self.sponge_params,</span>
             <span class="ident">lookup_constraint_system</span>,
             <span class="ident">precomputations</span>: <span class="ident">domain_constant_evaluation</span>,
         };
@@ -1218,17 +1196,13 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">tests</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">SquareRootField</span>};
     <span class="kw">use</span> <span class="ident">mina_curves::pasta::fp::Fp</span>;
 
-    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">SquareRootField</span><span class="op">&gt;</span> <span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-        <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">for_testing</span>(
-            <span class="ident">sponge_params</span>: <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-            <span class="ident">gates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        ) -&gt; <span class="self">Self</span> {
+    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span> <span class="op">+</span> <span class="ident">SquareRootField</span><span class="op">&gt;</span> <span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+        <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">for_testing</span>(<span class="ident">gates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
             <span class="kw">let</span> <span class="ident">public</span> <span class="op">=</span> <span class="number">0</span>;
             <span class="comment">// not sure if theres a smarter way instead of the double unwrap, but should be fine in the test</span>
-            <span class="ident">ConstraintSystem</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">gates</span>, <span class="ident">sponge_params</span>)
+            <span class="ident">ConstraintSystem</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">gates</span>)
                 .<span class="ident">public</span>(<span class="ident">public</span>)
                 .<span class="ident">build</span>()
                 .<span class="ident">unwrap</span>()
@@ -1237,11 +1211,11 @@
 
     <span class="kw">impl</span> <span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span> {
         <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">fp_for_testing</span>(<span class="ident">gates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-            <span class="kw">let</span> <span class="ident">fp_sponge_params</span> <span class="op">=</span> <span class="ident">oracle::pasta::fp_kimchi::params</span>();
-            <span class="ident"><span class="self">Self</span>::for_testing</span>(<span class="ident">fp_sponge_params</span>, <span class="ident">gates</span>)
+            <span class="comment">//let fp_sponge_params = oracle::pasta::fp_kimchi::params();</span>
+            <span class="ident"><span class="self">Self</span>::for_testing</span>(<span class="ident">gates</span>)
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (f8588549c 2022-07-18)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (9a7b7d5e5 2022-07-19)" ></div>
 </body></html>

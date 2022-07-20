@@ -55,6 +55,25 @@
 <span id="49">49</span>
 <span id="50">50</span>
 <span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
+<span id="65">65</span>
+<span id="66">66</span>
+<span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::pasta</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">ark_ec</span>::{
     <span class="ident">models::short_weierstrass_jacobian</span>::{<span class="ident">GroupAffine</span>, <span class="ident">GroupProjective</span>},
@@ -106,6 +125,25 @@
     <span class="ident">Fq</span>,
     <span class="string">&quot;11426906929455361843568202299992114520848200991084027513389447476559454104162&quot;</span>
 );
+
+<span class="doccomment">/// legacy curve, a copy of the normal curve to support legacy sponge params</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">Default</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LegacyVestaParameters</span>;
+
+<span class="kw">impl</span> <span class="ident">ModelParameters</span> <span class="kw">for</span> <span class="ident">LegacyVestaParameters</span> {
+    <span class="kw">type</span> <span class="ident">BaseField</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">VestaParameters</span> <span class="kw">as</span> <span class="ident">ModelParameters</span><span class="op">&gt;</span><span class="ident">::BaseField</span>;
+    <span class="kw">type</span> <span class="ident">ScalarField</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">VestaParameters</span> <span class="kw">as</span> <span class="ident">ModelParameters</span><span class="op">&gt;</span><span class="ident">::ScalarField</span>;
+}
+<span class="kw">impl</span> <span class="ident">SWModelParameters</span> <span class="kw">for</span> <span class="ident">LegacyVestaParameters</span> {
+    <span class="kw">const</span> <span class="ident">COEFF_A</span>: <span class="ident"><span class="self">Self</span>::BaseField</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">VestaParameters</span> <span class="kw">as</span> <span class="ident">SWModelParameters</span><span class="op">&gt;</span><span class="ident">::COEFF_A</span>;
+    <span class="kw">const</span> <span class="ident">COEFF_B</span>: <span class="ident"><span class="self">Self</span>::BaseField</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">VestaParameters</span> <span class="kw">as</span> <span class="ident">SWModelParameters</span><span class="op">&gt;</span><span class="ident">::COEFF_B</span>;
+    <span class="kw">const</span> <span class="ident">COFACTOR</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> [<span class="ident">u64</span>] <span class="op">=</span> <span class="op">&lt;</span><span class="ident">VestaParameters</span> <span class="kw">as</span> <span class="ident">SWModelParameters</span><span class="op">&gt;</span><span class="ident">::COFACTOR</span>;
+    <span class="kw">const</span> <span class="ident">COFACTOR_INV</span>: <span class="ident"><span class="self">Self</span>::ScalarField</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">VestaParameters</span> <span class="kw">as</span> <span class="ident">SWModelParameters</span><span class="op">&gt;</span><span class="ident">::COFACTOR_INV</span>;
+    <span class="kw">const</span> <span class="ident">AFFINE_GENERATOR_COEFFS</span>: (<span class="ident"><span class="self">Self</span>::BaseField</span>, <span class="ident"><span class="self">Self</span>::BaseField</span>) <span class="op">=</span>
+        <span class="op">&lt;</span><span class="ident">VestaParameters</span> <span class="kw">as</span> <span class="ident">SWModelParameters</span><span class="op">&gt;</span><span class="ident">::AFFINE_GENERATOR_COEFFS</span>;
+}
+
+<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">LegacyVesta</span> <span class="op">=</span> <span class="ident">GroupAffine</span><span class="op">&lt;</span><span class="ident">LegacyVestaParameters</span><span class="op">&gt;</span>;
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="mina_curves" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (f8588549c 2022-07-18)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="mina_curves" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (9a7b7d5e5 2022-07-19)" ></div>
 </body></html>

@@ -415,6 +415,10 @@
 <span id="409">409</span>
 <span id="410">410</span>
 <span id="411">411</span>
+<span id="412">412</span>
+<span id="413">413</span>
+<span id="414">414</span>
+<span id="415">415</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the Poseidon constraint polynomials.</span>
 
 <span class="comment">//~ The poseidon gate encodes 5 rounds of the poseidon permutation.</span>
@@ -442,19 +446,23 @@
 <span class="comment">//~ ```</span>
 <span class="comment">//~</span>
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::argument</span>::{<span class="ident">Argument</span>, <span class="ident">ArgumentType</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::expr</span>::{<span class="ident">prologue</span>::<span class="kw-2">*</span>, <span class="ident">Cache</span>, <span class="ident">ConstantExpr</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">CurrOrNext</span>, <span class="ident">GateType</span>};
-<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">Field</span>, <span class="ident">SquareRootField</span>};
-<span class="kw">use</span> <span class="ident">oracle::constants</span>::{<span class="ident">PlonkSpongeConstantsKimchi</span>, <span class="ident">SpongeConstants</span>};
-<span class="kw">use</span> <span class="ident">oracle::poseidon</span>::{<span class="ident">sbox</span>, <span class="ident">ArithmeticSponge</span>, <span class="ident">ArithmeticSpongeParams</span>, <span class="ident">Sponge</span>};
-<span class="kw">use</span> <span class="ident">std::marker::PhantomData</span>;
-<span class="kw">use</span> <span class="ident">std::ops::Range</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::{
+    <span class="ident">circuits</span>::{
+        <span class="ident">argument</span>::{<span class="ident">Argument</span>, <span class="ident">ArgumentType</span>},
+        <span class="ident">expr</span>::{<span class="ident">prologue</span>::<span class="kw-2">*</span>, <span class="ident">Cache</span>, <span class="ident">ConstantExpr</span>},
+        <span class="ident">gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">CurrOrNext</span>, <span class="ident">GateType</span>},
+        <span class="ident">polynomial::COLUMNS</span>,
+        <span class="ident">wires</span>::{<span class="ident">GateWires</span>, <span class="ident">Wire</span>},
+    },
+    <span class="ident">curve::KimchiCurve</span>,
+};
+<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">Field</span>, <span class="ident">PrimeField</span>};
+<span class="kw">use</span> <span class="ident">oracle</span>::{
+    <span class="ident">constants</span>::{<span class="ident">PlonkSpongeConstantsKimchi</span>, <span class="ident">SpongeConstants</span>},
+    <span class="ident">poseidon</span>::{<span class="ident">sbox</span>, <span class="ident">ArithmeticSponge</span>, <span class="ident">ArithmeticSpongeParams</span>, <span class="ident">Sponge</span>},
+};
+<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">marker::PhantomData</span>, <span class="ident">ops::Range</span>};
 <span class="kw">use</span> <span class="ident">CurrOrNext</span>::{<span class="ident">Curr</span>, <span class="ident">Next</span>};
-
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::constraints::ConstraintSystem</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::polynomial::COLUMNS</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::wires</span>::{<span class="ident">GateWires</span>, <span class="ident">Wire</span>};
 
 <span class="comment">//</span>
 <span class="comment">// Constants</span>
@@ -490,7 +498,7 @@
     <span class="ident">start</span>..(<span class="ident">start</span> <span class="op">+</span> <span class="ident">SPONGE_WIDTH</span>)
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">SquareRootField</span><span class="op">&gt;</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_poseidon</span>(
         <span class="ident">wires</span>: <span class="ident">GateWires</span>,
         <span class="comment">// Coefficients are passed in in the logical order</span>
@@ -549,12 +557,11 @@
     }
 
     <span class="doccomment">/// Checks if a witness verifies a poseidon gate</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_poseidon</span>(
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_poseidon</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">KimchiCurve</span><span class="op">&lt;</span><span class="ident">ScalarField</span> <span class="op">=</span> <span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">row</span>: <span class="ident">usize</span>,
         <span class="comment">// TODO(mimoo): we should just pass two rows instead of the whole witness</span>
         <span class="ident">witness</span>: <span class="kw-2">&amp;</span>[<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
-        <span class="ident">cs</span>: <span class="kw-2">&amp;</span><span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
         <span class="macro">ensure_eq!</span>(
             <span class="self">self</span>.<span class="ident">typ</span>,
@@ -577,10 +584,11 @@
 
         <span class="comment">// round constants</span>
         <span class="kw">let</span> <span class="ident">rc</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">rc</span>();
+        <span class="kw">let</span> <span class="ident">mds</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">G::sponge_params</span>().<span class="ident">mds</span>;
 
         <span class="comment">// for each round, check that the permutation was applied correctly</span>
         <span class="kw">for</span> <span class="ident">round</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">ROUNDS_PER_ROW</span> {
-            <span class="kw">for</span> (<span class="ident">i</span>, <span class="ident">mds_row</span>) <span class="kw">in</span> <span class="ident">cs</span>.<span class="ident">fr_sponge_params</span>.<span class="ident">mds</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
+            <span class="kw">for</span> (<span class="ident">i</span>, <span class="ident">mds_row</span>) <span class="kw">in</span> <span class="ident">mds</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
                 <span class="comment">// i-th(new_state) = i-th(rc) + mds(sbox(state))</span>
                 <span class="kw">let</span> <span class="ident">state</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">states</span>[<span class="ident">round</span>];
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_state</span> <span class="op">=</span> <span class="ident">rc</span>[<span class="ident">round</span>][<span class="ident">i</span>];
@@ -632,7 +640,7 @@
 <span class="doccomment">/// and with input `input`.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_witness</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(
     <span class="ident">row</span>: <span class="ident">usize</span>,
-    <span class="ident">params</span>: <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
+    <span class="ident">params</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
     <span class="ident">witness_cols</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
     <span class="ident">input</span>: [<span class="ident">F</span>; <span class="ident">SPONGE_WIDTH</span>],
 ) {
@@ -827,5 +835,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (f8588549c 2022-07-18)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (9a7b7d5e5 2022-07-19)" ></div>
 </body></html>

@@ -384,7 +384,7 @@
     <span class="ident">P::BaseField</span>: <span class="ident">PrimeField</span>,
     <span class="op">&lt;</span><span class="ident">P::BaseField</span> <span class="kw">as</span> <span class="ident">PrimeField</span><span class="op">&gt;</span><span class="ident">::BigInt</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="op">&lt;</span><span class="ident">P::ScalarField</span> <span class="kw">as</span> <span class="ident">PrimeField</span><span class="op">&gt;</span><span class="ident">::BigInt</span><span class="op">&gt;</span>,
 {
-    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">params</span>: <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">P::BaseField</span><span class="op">&gt;</span>) -&gt; <span class="ident">DefaultFqSponge</span><span class="op">&lt;</span><span class="ident">P</span>, <span class="ident">SC</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">params</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">P::BaseField</span><span class="op">&gt;</span>) -&gt; <span class="ident">DefaultFqSponge</span><span class="op">&lt;</span><span class="ident">P</span>, <span class="ident">SC</span><span class="op">&gt;</span> {
         <span class="ident">DefaultFqSponge</span> {
             <span class="ident">sponge</span>: <span class="ident">ArithmeticSponge::new</span>(<span class="ident">params</span>),
             <span class="ident">last_squeezed</span>: <span class="macro">vec!</span>[],
@@ -491,5 +491,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="oracle" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (f8588549c 2022-07-18)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="oracle" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (9a7b7d5e5 2022-07-19)" ></div>
 </body></html>

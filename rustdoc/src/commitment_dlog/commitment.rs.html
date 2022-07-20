@@ -2075,7 +2075,7 @@
     <span class="kw">use</span> <span class="ident">array_init::array_init</span>;
     <span class="kw">use</span> <span class="ident">mina_curves::pasta</span>::{<span class="ident">fp::Fp</span>, <span class="ident">vesta::Affine</span> <span class="kw">as</span> <span class="ident">VestaG</span>};
     <span class="kw">use</span> <span class="ident">oracle::constants::PlonkSpongeConstantsKimchi</span> <span class="kw">as</span> <span class="ident">SC</span>;
-    <span class="kw">use</span> <span class="ident">oracle</span>::{<span class="ident">pasta::fq_kimchi::params</span> <span class="kw">as</span> <span class="ident">spongeFqParams</span>, <span class="ident">sponge::DefaultFqSponge</span>};
+    <span class="kw">use</span> <span class="ident">oracle::sponge::DefaultFqSponge</span>;
     <span class="kw">use</span> <span class="ident">rand</span>::{<span class="ident">rngs::StdRng</span>, <span class="ident">SeedableRng</span>};
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
@@ -2126,7 +2126,7 @@
         <span class="comment">// create an aggregated opening proof</span>
         <span class="kw">let</span> (<span class="ident">u</span>, <span class="ident">v</span>) <span class="op">=</span> (<span class="ident">Fp::rand</span>(<span class="ident">rng</span>), <span class="ident">Fp::rand</span>(<span class="ident">rng</span>));
         <span class="kw">let</span> <span class="ident">group_map</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">VestaG</span> <span class="kw">as</span> <span class="ident">CommitmentCurve</span><span class="op">&gt;</span><span class="ident">::Map::setup</span>();
-        <span class="kw">let</span> <span class="ident">sponge</span> <span class="op">=</span> <span class="ident">DefaultFqSponge</span>::<span class="op">&lt;</span><span class="kw">_</span>, <span class="ident">SC</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="ident">spongeFqParams</span>());
+        <span class="kw">let</span> <span class="ident">sponge</span> <span class="op">=</span> <span class="ident">DefaultFqSponge</span>::<span class="op">&lt;</span><span class="kw">_</span>, <span class="ident">SC</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="ident">oracle::pasta::fq_kimchi::static_params</span>());
 
         <span class="kw">let</span> <span class="ident">polys</span> <span class="op">=</span> <span class="macro">vec!</span>[
             (<span class="kw-2">&amp;</span><span class="ident">poly1</span>, <span class="prelude-val">None</span>, <span class="ident">commitment</span>.<span class="ident">blinders</span>),
@@ -2313,5 +2313,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (f8588549c 2022-07-18)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (9a7b7d5e5 2022-07-19)" ></div>
 </body></html>

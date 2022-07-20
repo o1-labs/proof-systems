@@ -153,7 +153,7 @@
 
 <span class="doccomment">/// Computes the poseidon hash of several field elements.</span>
 <span class="doccomment">/// Uses the &#39;basic&#39; configuration with N states and M rounds.</span>
-<span class="kw">fn</span> <span class="ident">poseidon</span><span class="op">&lt;</span><span class="ident">SC</span>: <span class="ident">SpongeConstants</span><span class="op">&gt;</span>(<span class="ident">input</span>: <span class="kw-2">&amp;</span>[<span class="ident">Fp</span>], <span class="ident">params</span>: <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span>) -&gt; <span class="ident">Fp</span> {
+<span class="kw">fn</span> <span class="ident">poseidon</span><span class="op">&lt;</span><span class="ident">SC</span>: <span class="ident">SpongeConstants</span><span class="op">&gt;</span>(<span class="ident">input</span>: <span class="kw-2">&amp;</span>[<span class="ident">Fp</span>], <span class="ident">params</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span>) -&gt; <span class="ident">Fp</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">s</span> <span class="op">=</span> <span class="ident">Poseidon</span>::<span class="op">&lt;</span><span class="ident">Fp</span>, <span class="ident">SC</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="ident">params</span>);
     <span class="ident">s</span>.<span class="ident">absorb</span>(<span class="ident">input</span>);
     <span class="ident">s</span>.<span class="ident">squeeze</span>()
@@ -181,11 +181,11 @@
         <span class="kw">let</span> <span class="ident">output</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">param_type</span> {
             <span class="ident">ParamType::Legacy</span> =&gt; <span class="ident">poseidon</span>::<span class="op">&lt;</span><span class="ident">constants::PlonkSpongeConstantsLegacy</span><span class="op">&gt;</span>(
                 <span class="kw-2">&amp;</span><span class="ident">input</span>,
-                <span class="ident">pasta::fp_legacy::params</span>(),
+                <span class="ident">pasta::fp_legacy::static_params</span>(),
             ),
             <span class="ident">ParamType::Kimchi</span> =&gt; <span class="ident">poseidon</span>::<span class="op">&lt;</span><span class="ident">constants::PlonkSpongeConstantsKimchi</span><span class="op">&gt;</span>(
                 <span class="kw-2">&amp;</span><span class="ident">input</span>,
-                <span class="ident">pasta::fp_kimchi::params</span>(),
+                <span class="ident">pasta::fp_kimchi::static_params</span>(),
             ),
         };
 
@@ -225,5 +225,5 @@
     <span class="ident">TestVectors</span> { <span class="ident">name</span>, <span class="ident">test_vectors</span> }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="export_test_vectors" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (f8588549c 2022-07-18)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="export_test_vectors" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (9a7b7d5e5 2022-07-19)" ></div>
 </body></html>

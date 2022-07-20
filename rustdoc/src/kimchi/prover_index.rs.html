@@ -128,31 +128,20 @@
 <span id="122">122</span>
 <span id="123">123</span>
 <span id="124">124</span>
-<span id="125">125</span>
-<span id="126">126</span>
-<span id="127">127</span>
-<span id="128">128</span>
-<span id="129">129</span>
-<span id="130">130</span>
-<span id="131">131</span>
-<span id="132">132</span>
-<span id="133">133</span>
-<span id="134">134</span>
-<span id="135">135</span>
-<span id="136">136</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the prover index as [ProverIndex].</span>
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::alphas::Alphas</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
-    <span class="ident">constraints::ConstraintSystem</span>,
-    <span class="ident">expr</span>::{<span class="ident">Linearization</span>, <span class="ident">PolishToken</span>},
-    <span class="ident">wires</span>::<span class="kw-2">*</span>,
+<span class="kw">use</span> <span class="kw">crate</span>::{
+    <span class="ident">alphas::Alphas</span>,
+    <span class="ident">circuits</span>::{
+        <span class="ident">constraints::ConstraintSystem</span>,
+        <span class="ident">expr</span>::{<span class="ident">Linearization</span>, <span class="ident">PolishToken</span>},
+        <span class="ident">wires</span>::<span class="kw-2">*</span>,
+    },
+    <span class="ident">curve::KimchiCurve</span>,
+    <span class="ident">linearization::expr_linearization</span>,
 };
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::linearization::expr_linearization</span>;
-<span class="kw">use</span> <span class="ident">ark_ff::PrimeField</span>;
 <span class="kw">use</span> <span class="ident">ark_poly::EvaluationDomain</span>;
-<span class="kw">use</span> <span class="ident">commitment_dlog</span>::{<span class="ident">commitment::CommitmentCurve</span>, <span class="ident">srs::SRS</span>};
-<span class="kw">use</span> <span class="ident">oracle::poseidon::ArithmeticSpongeParams</span>;
+<span class="kw">use</span> <span class="ident">commitment_dlog::srs::SRS</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">de::DeserializeOwned</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">serde_with::serde_as</span>;
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
@@ -161,7 +150,7 @@
 <span class="attribute">#[<span class="ident">serde_as</span>]</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
 <span class="comment">//~spec:startcode</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProverIndex</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">CommitmentCurve</span><span class="op">&gt;</span> {
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProverIndex</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">KimchiCurve</span><span class="op">&gt;</span> {
     <span class="doccomment">/// constraints system polynomials</span>
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">bound</span> <span class="op">=</span> <span class="string">&quot;ConstraintSystem&lt;G::ScalarField&gt;: Serialize + DeserializeOwned&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">cs</span>: <span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span>,
@@ -183,21 +172,13 @@
 
     <span class="doccomment">/// maximal size of the quotient polynomial according to the supported constraints</span>
     <span class="kw">pub</span> <span class="ident">max_quot_size</span>: <span class="ident">usize</span>,
-
-    <span class="doccomment">/// random oracle argument parameters</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">fq_sponge_params</span>: <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">G::BaseField</span><span class="op">&gt;</span>,
 }
 <span class="comment">//~spec:endcode</span>
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">CommitmentCurve</span><span class="op">&gt;</span> <span class="ident">ProverIndex</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">G::BaseField</span>: <span class="ident">PrimeField</span>,
-{
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">KimchiCurve</span><span class="op">&gt;</span> <span class="ident">ProverIndex</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
     <span class="doccomment">/// this function compiles the index from constraints</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create</span>(
         <span class="kw-2">mut</span> <span class="ident">cs</span>: <span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span>,
-        <span class="ident">fq_sponge_params</span>: <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">G::BaseField</span><span class="op">&gt;</span>,
         <span class="ident">endo_q</span>: <span class="ident">G::ScalarField</span>,
         <span class="ident">srs</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">SRS</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     ) -&gt; <span class="self">Self</span> {
@@ -232,7 +213,6 @@
             <span class="ident">srs</span>,
             <span class="ident">max_poly_size</span>,
             <span class="ident">max_quot_size</span>,
-            <span class="ident">fq_sponge_params</span>,
         }
     }
 }
@@ -243,9 +223,8 @@
         <span class="ident">gate::CircuitGate</span>,
         <span class="ident">lookup</span>::{<span class="ident">runtime_tables::RuntimeTableCfg</span>, <span class="ident">tables::LookupTable</span>},
     };
-    <span class="kw">use</span> <span class="ident">ark_poly::EvaluationDomain</span>;
     <span class="kw">use</span> <span class="ident">commitment_dlog::srs::endos</span>;
-    <span class="kw">use</span> <span class="ident">mina_curves::pasta</span>::{<span class="ident">pallas::Affine</span> <span class="kw">as</span> <span class="ident">Other</span>, <span class="ident">vesta::Affine</span>, <span class="ident">Fp</span>};
+    <span class="kw">use</span> <span class="ident">mina_curves::pasta</span>::{<span class="ident">pallas::Affine</span> <span class="kw">as</span> <span class="ident">Pallas</span>, <span class="ident">vesta::Affine</span> <span class="kw">as</span> <span class="ident">Vesta</span>, <span class="ident">Fp</span>};
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_index_for_test_with_lookups</span>(
         <span class="ident">gates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -253,29 +232,26 @@
         <span class="ident">prev_challenges</span>: <span class="ident">usize</span>,
         <span class="ident">lookup_tables</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">LookupTable</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">runtime_tables</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RuntimeTableCfg</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">ProverIndex</span><span class="op">&lt;</span><span class="ident">Affine</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">fp_sponge_params</span> <span class="op">=</span> <span class="ident">oracle::pasta::fp_kimchi::params</span>();
-
+    ) -&gt; <span class="ident">ProverIndex</span><span class="op">&lt;</span><span class="ident">Vesta</span><span class="op">&gt;</span> {
         <span class="comment">// not sure if theres a smarter way instead of the double unwrap, but should be fine in the test</span>
-        <span class="kw">let</span> <span class="ident">cs</span> <span class="op">=</span> <span class="ident">ConstraintSystem</span>::<span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">gates</span>, <span class="ident">fp_sponge_params</span>)
+        <span class="kw">let</span> <span class="ident">cs</span> <span class="op">=</span> <span class="ident">ConstraintSystem</span>::<span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">gates</span>)
             .<span class="ident">lookup</span>(<span class="ident">lookup_tables</span>)
             .<span class="ident">runtime</span>(<span class="ident">runtime_tables</span>)
             .<span class="ident">public</span>(<span class="ident">public</span>)
             .<span class="ident">prev_challenges</span>(<span class="ident">prev_challenges</span>)
             .<span class="ident">build</span>()
             .<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">srs</span> <span class="op">=</span> <span class="ident">SRS</span>::<span class="op">&lt;</span><span class="ident">Affine</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span>());
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">srs</span> <span class="op">=</span> <span class="ident">SRS</span>::<span class="op">&lt;</span><span class="ident">Vesta</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span>());
         <span class="ident">srs</span>.<span class="ident">add_lagrange_basis</span>(<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>);
         <span class="kw">let</span> <span class="ident">srs</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">srs</span>);
 
-        <span class="kw">let</span> <span class="ident">fq_sponge_params</span> <span class="op">=</span> <span class="ident">oracle::pasta::fq_kimchi::params</span>();
-        <span class="kw">let</span> (<span class="ident">endo_q</span>, <span class="ident">_endo_r</span>) <span class="op">=</span> <span class="ident">endos</span>::<span class="op">&lt;</span><span class="ident">Other</span><span class="op">&gt;</span>();
-        <span class="ident">ProverIndex</span>::<span class="op">&lt;</span><span class="ident">Affine</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">cs</span>, <span class="ident">fq_sponge_params</span>, <span class="ident">endo_q</span>, <span class="ident">srs</span>)
+        <span class="kw">let</span> (<span class="ident">endo_q</span>, <span class="ident">_endo_r</span>) <span class="op">=</span> <span class="ident">endos</span>::<span class="op">&lt;</span><span class="ident">Pallas</span><span class="op">&gt;</span>();
+        <span class="ident">ProverIndex</span>::<span class="op">&lt;</span><span class="ident">Vesta</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">cs</span>, <span class="ident">endo_q</span>, <span class="ident">srs</span>)
     }
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_index_for_test</span>(<span class="ident">gates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">public</span>: <span class="ident">usize</span>) -&gt; <span class="ident">ProverIndex</span><span class="op">&lt;</span><span class="ident">Affine</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_index_for_test</span>(<span class="ident">gates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">public</span>: <span class="ident">usize</span>) -&gt; <span class="ident">ProverIndex</span><span class="op">&lt;</span><span class="ident">Vesta</span><span class="op">&gt;</span> {
         <span class="ident">new_index_for_test_with_lookups</span>(<span class="ident">gates</span>, <span class="ident">public</span>, <span class="number">0</span>, <span class="macro">vec!</span>[], <span class="prelude-val">None</span>)
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (f8588549c 2022-07-18)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (9a7b7d5e5 2022-07-19)" ></div>
 </body></html>

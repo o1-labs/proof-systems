@@ -576,6 +576,7 @@
 <span id="570">570</span>
 <span id="571">571</span>
 <span id="572">572</span>
+<span id="573">573</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the double generic gate.</span>
 
 <span class="comment">//~ The double generic gate contains two generic gates.</span>
@@ -617,7 +618,7 @@
     <span class="ident">polynomial::COLUMNS</span>,
     <span class="ident">wires::GateWires</span>,
 };
-<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">SquareRootField</span>, <span class="ident">Zero</span>};
+<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">PrimeField</span>, <span class="ident">Zero</span>};
 <span class="kw">use</span> <span class="ident">ark_poly</span>::{
     <span class="ident">univariate::DensePolynomial</span>, <span class="ident">EvaluationDomain</span>, <span class="ident">Evaluations</span>, <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>,
 };
@@ -666,7 +667,7 @@
     <span class="ident">Pub</span>,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="doccomment">/// This allows you to create two generic gates that will fit in one row, check [Self::create_generic_gadget] for a better to way to create these gates.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_generic</span>(<span class="ident">wires</span>: <span class="ident">GateWires</span>, <span class="ident">c</span>: [<span class="ident">F</span>; <span class="ident">GENERIC_COEFFS</span> <span class="op">*</span> <span class="number">2</span>]) -&gt; <span class="self">Self</span> {
         <span class="ident">CircuitGate</span> {
@@ -749,7 +750,7 @@
 <span class="comment">//~</span>
 <span class="comment">//~ where the $c_i$ are the [coefficients]().</span>
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">SquareRootField</span><span class="op">&gt;</span> <span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> <span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="doccomment">/// generic constraint quotient poly contribution computation</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">gnrc_quot</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -896,7 +897,7 @@
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::wires::Wire</span>;
     <span class="kw">use</span> <span class="ident">itertools::iterate</span>;
 
-    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
         <span class="doccomment">/// verifies that the generic gate constraints are solved by the witness</span>
         <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_generic</span>(
             <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -948,7 +949,7 @@
         }
     }
 
-    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">SquareRootField</span><span class="op">&gt;</span> <span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> <span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
         <span class="doccomment">/// Function to verify the generic polynomials with a witness.</span>
         <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_generic</span>(
             <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -992,7 +993,7 @@
     }
 
     <span class="doccomment">/// function to create a generic circuit</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_circuit</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">start_row</span>: <span class="ident">usize</span>, <span class="ident">public</span>: <span class="ident">usize</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_circuit</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span>(<span class="ident">start_row</span>: <span class="ident">usize</span>, <span class="ident">public</span>: <span class="ident">usize</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="comment">// create constraint system with a single generic gate</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">gates</span> <span class="op">=</span> <span class="macro">vec!</span>[];
 
@@ -1090,6 +1091,7 @@
     <span class="kw">use</span> <span class="ident">ark_poly</span>::{<span class="ident">EvaluationDomain</span>, <span class="ident">Polynomial</span>};
     <span class="kw">use</span> <span class="ident">array_init::array_init</span>;
     <span class="kw">use</span> <span class="ident">mina_curves::pasta::fp::Fp</span>;
+    <span class="kw">use</span> <span class="ident">mina_curves::pasta::vesta::Affine</span> <span class="kw">as</span> <span class="ident">Vesta</span>;
     <span class="kw">use</span> <span class="ident">rand::SeedableRng</span>;
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
@@ -1106,7 +1108,7 @@
         <span class="ident">testing::fill_in_witness</span>(<span class="number">0</span>, <span class="kw-2">&amp;mut</span> <span class="ident">witness</span>, <span class="kw-2">&amp;</span>[]);
 
         <span class="comment">// make sure we&#39;re done filling the witness correctly</span>
-        <span class="ident">cs</span>.<span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="ident">witness</span>, <span class="kw-2">&amp;</span>[]).<span class="ident">unwrap</span>();
+        <span class="ident">cs</span>.<span class="ident">verify</span>::<span class="op">&lt;</span><span class="ident">Vesta</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="ident">witness</span>, <span class="kw-2">&amp;</span>[]).<span class="ident">unwrap</span>();
 
         <span class="comment">// generate witness polynomials</span>
         <span class="kw">let</span> <span class="ident">witness_evals</span>: [<span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">Fp</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span>
@@ -1149,5 +1151,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (f8588549c 2022-07-18)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (9a7b7d5e5 2022-07-19)" ></div>
 </body></html>

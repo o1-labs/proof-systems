@@ -136,7 +136,7 @@
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">SC</span>: <span class="ident">SpongeConstants</span>, <span class="ident">H</span>: <span class="ident">Hashable</span><span class="op">&gt;</span> <span class="ident">Poseidon</span><span class="op">&lt;</span><span class="ident">SC</span>, <span class="ident">H</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">domain_param</span>: <span class="ident">H::D</span>, <span class="ident">sponge_params</span>: <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">domain_param</span>: <span class="ident">H::D</span>, <span class="ident">sponge_params</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">poseidon</span> <span class="op">=</span> <span class="ident">Poseidon</span>::<span class="op">&lt;</span><span class="ident">SC</span>, <span class="ident">H</span><span class="op">&gt;</span> {
             <span class="ident">sponge</span>: <span class="ident">ArithmeticSponge</span>::<span class="op">&lt;</span><span class="ident">Fp</span>, <span class="ident">SC</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="ident">sponge_params</span>),
             <span class="ident">sponge_state</span>: <span class="ident">SpongeState::Absorbed</span>(<span class="number">0</span>),
@@ -155,7 +155,7 @@
 
 <span class="doccomment">/// Create a legacy hasher context</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new_legacy</span><span class="op">&lt;</span><span class="ident">H</span>: <span class="ident">Hashable</span><span class="op">&gt;</span>(<span class="ident">domain_param</span>: <span class="ident">H::D</span>) -&gt; <span class="ident">PoseidonHasherLegacy</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span> {
-    <span class="ident">Poseidon</span>::<span class="op">&lt;</span><span class="ident">PlonkSpongeConstantsLegacy</span>, <span class="ident">H</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="ident">domain_param</span>, <span class="ident">pasta::fp_legacy::params</span>())
+    <span class="ident">Poseidon</span>::<span class="op">&lt;</span><span class="ident">PlonkSpongeConstantsLegacy</span>, <span class="ident">H</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="ident">domain_param</span>, <span class="ident">pasta::fp_legacy::static_params</span>())
 }
 
 <span class="doccomment">/// Poseidon hasher type with experimental kimchi plonk sponge constants</span>
@@ -163,7 +163,7 @@
 
 <span class="doccomment">/// Create an experimental kimchi hasher context</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new_kimchi</span><span class="op">&lt;</span><span class="ident">H</span>: <span class="ident">Hashable</span><span class="op">&gt;</span>(<span class="ident">domain_param</span>: <span class="ident">H::D</span>) -&gt; <span class="ident">PoseidonHasherKimchi</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span> {
-    <span class="ident">Poseidon</span>::<span class="op">&lt;</span><span class="ident">PlonkSpongeConstantsKimchi</span>, <span class="ident">H</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="ident">domain_param</span>, <span class="ident">pasta::fp_kimchi::params</span>())
+    <span class="ident">Poseidon</span>::<span class="op">&lt;</span><span class="ident">PlonkSpongeConstantsKimchi</span>, <span class="ident">H</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="ident">domain_param</span>, <span class="ident">pasta::fp_kimchi::static_params</span>())
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">SC</span>: <span class="ident">SpongeConstants</span>, <span class="ident">H</span>: <span class="ident">Hashable</span><span class="op">&gt;</span> <span class="ident">Hasher</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Poseidon</span><span class="op">&lt;</span><span class="ident">SC</span>, <span class="ident">H</span><span class="op">&gt;</span>
@@ -209,5 +209,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="mina_hasher" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (f8588549c 2022-07-18)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="mina_hasher" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (9a7b7d5e5 2022-07-19)" ></div>
 </body></html>

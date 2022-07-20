@@ -43,16 +43,18 @@
 <span id="37">37</span>
 <span id="38">38</span>
 <span id="39">39</span>
+<span id="40">40</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">ark_ec::AffineCurve</span>;
 <span class="kw">use</span> <span class="ident">ark_ff::Field</span>;
 <span class="kw">use</span> <span class="ident">commitment_dlog</span>::{<span class="ident">commitment::CommitmentCurve</span>, <span class="ident">srs::endos</span>};
+<span class="kw">use</span> <span class="ident">kimchi::curve::KimchiCurve</span>;
 <span class="kw">use</span> <span class="ident">mina_curves::pasta</span>::{<span class="ident">pallas::Affine</span> <span class="kw">as</span> <span class="ident">PallasAffine</span>, <span class="ident">vesta::Affine</span> <span class="kw">as</span> <span class="ident">VestaAffine</span>, <span class="ident">Fp</span>, <span class="ident">Fq</span>};
 <span class="kw">use</span> <span class="ident">oracle::poseidon::ArithmeticSpongeParams</span>;
 
 <span class="doccomment">/// The type of possible constants in the circuit</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Constants</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="ident">poseidon</span>: <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Constants</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span> <span class="op">+</span> <span class="lifetime">&#39;static</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="ident">poseidon</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">endo</span>: <span class="ident">F</span>,
     <span class="kw">pub</span> <span class="ident">base</span>: (<span class="ident">F</span>, <span class="ident">F</span>),
 }
@@ -64,7 +66,7 @@
         .<span class="ident">to_coordinates</span>()
         .<span class="ident">unwrap</span>();
     <span class="ident">Constants</span> {
-        <span class="ident">poseidon</span>: <span class="ident">oracle::pasta::fp_kimchi::params</span>(),
+        <span class="ident">poseidon</span>: <span class="ident">VestaAffine::sponge_params</span>(),
         <span class="ident">endo</span>: <span class="ident">endo_q</span>,
         <span class="ident">base</span>,
     }
@@ -77,11 +79,11 @@
         .<span class="ident">to_coordinates</span>()
         .<span class="ident">unwrap</span>();
     <span class="ident">Constants</span> {
-        <span class="ident">poseidon</span>: <span class="ident">oracle::pasta::fq_kimchi::params</span>(),
+        <span class="ident">poseidon</span>: <span class="ident">PallasAffine::sponge_params</span>(),
         <span class="ident">endo</span>: <span class="ident">endo_q</span>,
         <span class="ident">base</span>,
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="circuit_construction" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (f8588549c 2022-07-18)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="circuit_construction" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (9a7b7d5e5 2022-07-19)" ></div>
 </body></html>

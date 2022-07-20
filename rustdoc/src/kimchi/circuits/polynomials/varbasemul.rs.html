@@ -387,8 +387,6 @@
 <span id="381">381</span>
 <span id="382">382</span>
 <span id="383">383</span>
-<span id="384">384</span>
-<span id="385">385</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements short Weierstrass curve variable base scalar multiplication custom Plonk polynomials.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ```ignore</span>
@@ -401,17 +399,15 @@
 <span class="doccomment">//! See &lt;https://github.com/zcash/zcash/issues/3924&gt;</span>
 <span class="doccomment">//! and 3.1 of &lt;https://arxiv.org/pdf/math/0208038.pdf&gt; for details.</span>
 
-<span class="kw">use</span> <span class="ident">std::marker::PhantomData</span>;
-
-<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">One</span>};
-<span class="kw">use</span> <span class="ident">CurrOrNext</span>::{<span class="ident">Curr</span>, <span class="ident">Next</span>};
-
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
     <span class="ident">argument</span>::{<span class="ident">Argument</span>, <span class="ident">ArgumentType</span>},
     <span class="ident">expr</span>::{<span class="ident">prologue</span>::<span class="kw-2">*</span>, <span class="ident">Cache</span>, <span class="ident">Column</span>, <span class="ident">Variable</span>},
     <span class="ident">gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">CurrOrNext</span>, <span class="ident">GateType</span>},
     <span class="ident">wires</span>::{<span class="ident">GateWires</span>, <span class="ident">COLUMNS</span>},
 };
+<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">One</span>, <span class="ident">PrimeField</span>};
+<span class="kw">use</span> <span class="ident">std::marker::PhantomData</span>;
+<span class="kw">use</span> <span class="ident">CurrOrNext</span>::{<span class="ident">Curr</span>, <span class="ident">Next</span>};
 
 <span class="comment">//~ We implement custom Plonk constraints for short Weierstrass curve variable base scalar multiplication.</span>
 <span class="comment">//~</span>
@@ -520,7 +516,7 @@
 <span class="comment">//~ `0 = n&#39; - (b4 + 2 * (b3 + 2 * (b2 + 2 * (b1 + 2 * (b0 + 2*n)))))`</span>
 <span class="comment">//~</span>
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_vbmul</span>(<span class="ident">wires</span>: <span class="kw-2">&amp;</span>[<span class="ident">GateWires</span>; <span class="number">2</span>]) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
         <span class="macro">vec!</span>[
             <span class="ident">CircuitGate</span> {
@@ -775,5 +771,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (f8588549c 2022-07-18)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (9a7b7d5e5 2022-07-19)" ></div>
 </body></html>

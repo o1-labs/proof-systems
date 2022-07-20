@@ -4249,7 +4249,7 @@ only if a table with an ID different from zero was used.</p>
 <h3 id="prover-index"><a class="header" href="#prover-index">Prover Index</a></h3>
 <p>Both the prover and the verifier index, besides the common parts described above, are made out of pre-computations which can be used to speed up the protocol.
 These pre-computations are optimizations, in the context of normal proofs, but they are necessary for recursion.</p>
-<pre><code class="language-rs">pub struct ProverIndex&lt;G: CommitmentCurve&gt; {
+<pre><code class="language-rs">pub struct ProverIndex&lt;G: KimchiCurve&gt; {
     /// constraints system polynomials
     #[serde(bound = &quot;ConstraintSystem&lt;G::ScalarField&gt;: Serialize + DeserializeOwned&quot;)]
     pub cs: ConstraintSystem&lt;G::ScalarField&gt;,
@@ -4271,10 +4271,6 @@ These pre-computations are optimizations, in the context of normal proofs, but t
 
     /// maximal size of the quotient polynomial according to the supported constraints
     pub max_quot_size: usize,
-
-    /// random oracle argument parameters
-    #[serde(skip)]
-    pub fq_sponge_params: ArithmeticSpongeParams&lt;G::BaseField&gt;,
 }
 </code></pre>
 <h3 id="verifier-index"><a class="header" href="#verifier-index">Verifier Index</a></h3>
@@ -4303,7 +4299,7 @@ pub struct LookupVerifierIndex&lt;G: CommitmentCurve&gt; {
 
 #[serde_as]
 #[derive(Serialize, Deserialize)]
-pub struct VerifierIndex&lt;G: CommitmentCurve&gt; {
+pub struct VerifierIndex&lt;G: KimchiCurve&gt; {
     /// evaluation domain
     #[serde_as(as = &quot;o1_utils::serialization::SerdeAs&quot;)]
     pub domain: D&lt;G::ScalarField&gt;,
@@ -4379,12 +4375,6 @@ pub struct VerifierIndex&lt;G: CommitmentCurve&gt; {
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
     pub powers_of_alpha: Alphas&lt;G::ScalarField&gt;,
-
-    // random oracle argument parameters
-    #[serde(skip)]
-    pub fr_sponge_params: ArithmeticSpongeParams&lt;G::ScalarField&gt;,
-    #[serde(skip)]
-    pub fq_sponge_params: ArithmeticSpongeParams&lt;G::BaseField&gt;,
 }
 </code></pre>
 <h2 id="proof-construction--verification"><a class="header" href="#proof-construction--verification">Proof Construction &amp; Verification</a></h2>

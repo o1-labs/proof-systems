@@ -328,11 +328,15 @@
 <span id="322">322</span>
 <span id="323">323</span>
 <span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk constraint gate primitive.</span>
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{<span class="ident">constraints::ConstraintSystem</span>, <span class="ident">wires</span>::<span class="kw-2">*</span>};
-<span class="kw">use</span> <span class="ident">ark_ff::FftField</span>;
-<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">bytes::ToBytes</span>, <span class="ident">SquareRootField</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::{
+    <span class="ident">circuits</span>::{<span class="ident">constraints::ConstraintSystem</span>, <span class="ident">wires</span>::<span class="kw-2">*</span>},
+    <span class="ident">curve::KimchiCurve</span>,
+};
+<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">bytes::ToBytes</span>, <span class="ident">PrimeField</span>};
 <span class="kw">use</span> <span class="ident">num_traits::cast::ToPrimitive</span>;
 <span class="kw">use</span> <span class="ident">o1_utils::hasher::CryptoDigest</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
@@ -427,7 +431,7 @@
 <span class="attribute">#[<span class="ident">serde_as</span>]</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="doccomment">/// A single gate in a circuit.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> {
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> {
     <span class="doccomment">/// type of the gate</span>
     <span class="kw">pub</span> <span class="ident">typ</span>: <span class="ident">GateType</span>,
     <span class="doccomment">/// gate wiring (for each cell, what cell it is wired to)</span>
@@ -437,7 +441,7 @@
     <span class="kw">pub</span> <span class="ident">coeffs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> <span class="ident">ToBytes</span> <span class="kw">for</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> <span class="ident">ToBytes</span> <span class="kw">for</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="attribute">#[<span class="ident">inline</span>]</span>
     <span class="kw">fn</span> <span class="ident">write</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">w</span>: <span class="ident">W</span>) -&gt; <span class="ident">IoResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">typ</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="ident">ToPrimitive::to_u8</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">typ</span>).<span class="ident">unwrap</span>();
@@ -454,7 +458,7 @@
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">SquareRootField</span><span class="op">&gt;</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="doccomment">/// this function creates &quot;empty&quot; circuit gate</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">zero</span>(<span class="ident">wires</span>: <span class="ident">GateWires</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">CircuitGate</span> {
@@ -466,7 +470,7 @@
 
     <span class="doccomment">/// This function verifies the consistency of the wire</span>
     <span class="doccomment">/// assignments (witness) against the constraints</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify</span>(
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">KimchiCurve</span><span class="op">&lt;</span><span class="ident">ScalarField</span> <span class="op">=</span> <span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">row</span>: <span class="ident">usize</span>,
         <span class="ident">witness</span>: <span class="kw-2">&amp;</span>[<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
@@ -477,20 +481,20 @@
         <span class="kw">match</span> <span class="self">self</span>.<span class="ident">typ</span> {
             <span class="ident">Zero</span> =&gt; <span class="prelude-val">Ok</span>(()),
             <span class="ident">Generic</span> =&gt; <span class="self">self</span>.<span class="ident">verify_generic</span>(<span class="ident">row</span>, <span class="ident">witness</span>, <span class="ident">public</span>),
-            <span class="ident">Poseidon</span> =&gt; <span class="self">self</span>.<span class="ident">verify_poseidon</span>(<span class="ident">row</span>, <span class="ident">witness</span>, <span class="ident">cs</span>),
+            <span class="ident">Poseidon</span> =&gt; <span class="self">self</span>.<span class="ident">verify_poseidon</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>(<span class="ident">row</span>, <span class="ident">witness</span>),
             <span class="ident">CompleteAdd</span> =&gt; <span class="self">self</span>.<span class="ident">verify_complete_add</span>(<span class="ident">row</span>, <span class="ident">witness</span>),
             <span class="ident">VarBaseMul</span> =&gt; <span class="self">self</span>.<span class="ident">verify_vbmul</span>(<span class="ident">row</span>, <span class="ident">witness</span>),
-            <span class="ident">EndoMul</span> =&gt; <span class="self">self</span>.<span class="ident">verify_endomul</span>(<span class="ident">row</span>, <span class="ident">witness</span>, <span class="ident">cs</span>),
-            <span class="ident">EndoMulScalar</span> =&gt; <span class="self">self</span>.<span class="ident">verify_endomul_scalar</span>(<span class="ident">row</span>, <span class="ident">witness</span>, <span class="ident">cs</span>),
+            <span class="ident">EndoMul</span> =&gt; <span class="self">self</span>.<span class="ident">verify_endomul</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>(<span class="ident">row</span>, <span class="ident">witness</span>, <span class="ident">cs</span>),
+            <span class="ident">EndoMulScalar</span> =&gt; <span class="self">self</span>.<span class="ident">verify_endomul_scalar</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>(<span class="ident">row</span>, <span class="ident">witness</span>, <span class="ident">cs</span>),
             <span class="comment">// TODO: implement the verification for chacha</span>
             <span class="ident">ChaCha0</span> <span class="op">|</span> <span class="ident">ChaCha1</span> <span class="op">|</span> <span class="ident">ChaCha2</span> <span class="op">|</span> <span class="ident">ChaChaFinal</span> =&gt; <span class="prelude-val">Ok</span>(()),
             <span class="comment">// TODO: implement the verification for the lookup gate</span>
             <span class="ident">Lookup</span> =&gt; <span class="prelude-val">Ok</span>(()),
             <span class="ident">CairoClaim</span> <span class="op">|</span> <span class="ident">CairoInstruction</span> <span class="op">|</span> <span class="ident">CairoFlags</span> <span class="op">|</span> <span class="ident">CairoTransition</span> =&gt; {
-                <span class="self">self</span>.<span class="ident">verify_cairo_gate</span>(<span class="ident">row</span>, <span class="ident">witness</span>, <span class="ident">cs</span>)
+                <span class="self">self</span>.<span class="ident">verify_cairo_gate</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>(<span class="ident">row</span>, <span class="ident">witness</span>, <span class="ident">cs</span>)
             }
             <span class="ident">RangeCheck0</span> <span class="op">|</span> <span class="ident">RangeCheck1</span> =&gt; <span class="self">self</span>
-                .<span class="ident">verify_range_check</span>(<span class="ident">row</span>, <span class="ident">witness</span>, <span class="ident">cs</span>)
+                .<span class="ident">verify_range_check</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>(<span class="ident">row</span>, <span class="ident">witness</span>, <span class="ident">cs</span>)
                 .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">to_string</span>()),
         }
     }
@@ -498,11 +502,11 @@
 
 <span class="doccomment">/// A circuit is specified as a series of [CircuitGate].</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Circuit</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Circuit</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span>(
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">bound</span> <span class="op">=</span> <span class="string">&quot;CircuitGate&lt;F&gt;: Serialize&quot;</span>)]</span> <span class="kw">pub</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>],
 );
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> <span class="ident">CryptoDigest</span> <span class="kw">for</span> <span class="ident">Circuit</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">F</span><span class="op">&gt;</span> {
+<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> <span class="ident">CryptoDigest</span> <span class="kw">for</span> <span class="ident">Circuit</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">F</span><span class="op">&gt;</span> {
     <span class="kw">const</span> <span class="ident">PREFIX</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> [<span class="ident">u8</span>; <span class="number">15</span>] <span class="op">=</span> <span class="string">b&quot;kimchi-circuit0&quot;</span>;
 }
 
@@ -530,7 +534,7 @@
     <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">CamlF</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CamlCircuitGate</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>
     <span class="kw">where</span>
         <span class="ident">CamlF</span>: <span class="ident">From</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-        <span class="ident">F</span>: <span class="ident">FftField</span>,
+        <span class="ident">F</span>: <span class="ident">PrimeField</span>,
     {
         <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">cg</span>: <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
             <span class="self">Self</span> {
@@ -544,7 +548,7 @@
     <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">CamlF</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CamlCircuitGate</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>
     <span class="kw">where</span>
         <span class="ident">CamlF</span>: <span class="ident">From</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-        <span class="ident">F</span>: <span class="ident">FftField</span>,
+        <span class="ident">F</span>: <span class="ident">PrimeField</span>,
     {
         <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">cg</span>: <span class="kw-2">&amp;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
             <span class="self">Self</span> {
@@ -558,7 +562,7 @@
     <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">CamlF</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">CamlCircuitGate</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
     <span class="kw">where</span>
         <span class="ident">F</span>: <span class="ident">From</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
-        <span class="ident">F</span>: <span class="ident">FftField</span>,
+        <span class="ident">F</span>: <span class="ident">PrimeField</span>,
     {
         <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">ccg</span>: <span class="ident">CamlCircuitGate</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
             <span class="self">Self</span> {
@@ -653,5 +657,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (f8588549c 2022-07-18)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (9a7b7d5e5 2022-07-19)" ></div>
 </body></html>

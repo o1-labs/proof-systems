@@ -145,7 +145,7 @@
 <span class="doccomment">/// data into one or more field elements</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Sponge</span><span class="op">&lt;</span><span class="ident">Input</span>: <span class="ident">Field</span>, <span class="ident">Digest</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Create a new cryptographic sponge using arithmetic sponge `params`</span>
-    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">params</span>: <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">Input</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span>;
+    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">params</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">Input</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span>;
 
     <span class="doccomment">/// Absorb an array of field elements `x`</span>
     <span class="kw">fn</span> <span class="ident">absorb</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">x</span>: <span class="kw-2">&amp;</span>[<span class="ident">Input</span>]);
@@ -182,22 +182,22 @@
     <span class="ident">rate</span>: <span class="ident">usize</span>,
     <span class="comment">// TODO(mimoo: an array enforcing the width is better no? or at least an assert somewhere)</span>
     <span class="kw">pub</span> <span class="ident">state</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    <span class="ident">params</span>: <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
+    <span class="ident">params</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">constants</span>: <span class="ident">std::marker::PhantomData</span><span class="op">&lt;</span><span class="ident">SC</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span>, <span class="ident">SC</span>: <span class="ident">SpongeConstants</span><span class="op">&gt;</span> <span class="ident">ArithmeticSponge</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">SC</span><span class="op">&gt;</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">full_round</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">r</span>: <span class="ident">usize</span>) {
-        <span class="ident">full_round</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">SC</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">params</span>, <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">state</span>, <span class="ident">r</span>);
+        <span class="ident">full_round</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">SC</span><span class="op">&gt;</span>(<span class="self">self</span>.<span class="ident">params</span>, <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">state</span>, <span class="ident">r</span>);
     }
 
     <span class="kw">fn</span> <span class="ident">poseidon_block_cipher</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="ident">poseidon_block_cipher</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">SC</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">params</span>, <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">state</span>);
+        <span class="ident">poseidon_block_cipher</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">SC</span><span class="op">&gt;</span>(<span class="self">self</span>.<span class="ident">params</span>, <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">state</span>);
     }
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span>, <span class="ident">SC</span>: <span class="ident">SpongeConstants</span><span class="op">&gt;</span> <span class="ident">Sponge</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ArithmeticSponge</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">SC</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">params</span>: <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="ident">ArithmeticSponge</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">SC</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">params</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="ident">ArithmeticSponge</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">SC</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">capacity</span> <span class="op">=</span> <span class="ident">SC::SPONGE_CAPACITY</span>;
         <span class="kw">let</span> <span class="ident">rate</span> <span class="op">=</span> <span class="ident">SC::SPONGE_RATE</span>;
 
@@ -263,5 +263,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="oracle" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (f8588549c 2022-07-18)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="oracle" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (9a7b7d5e5 2022-07-19)" ></div>
 </body></html>

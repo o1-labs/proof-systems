@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":[["params",""]]};
+window.SIDEBAR_ITEMS = {"fn":[["static_params","the legacy fp sponge params"]]};
