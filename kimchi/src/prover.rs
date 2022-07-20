@@ -195,6 +195,11 @@ where
         //~ 1. Setup the Fq-Sponge.
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
 
+        //~ 1. Absorb the commitments of the previous challenges with the Fq-sponge.
+        for RecursionChallenge { comm, .. } in prev_challenges.iter() {
+            fq_sponge.absorb_g(&comm.unshifted);
+        }
+
         //~ 1. Compute the negated public input polynomial as
         //~    the polynomial that evaluates to $-p_i$ for the first `public_input_size` values of the domain,
         //~    and $0$ for the rest.

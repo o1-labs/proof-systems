@@ -1240,6 +1240,8 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     pub srs: OnceCell<Arc<SRS<G>>>,
     /// number of public inputs
     pub public: usize,
+    /// number of previous evaluation challenges, for recursive proving
+    pub prev_challenges: usize,
 
     // index polynomial commitments
     /// permutation commitment array
@@ -1541,6 +1543,7 @@ The prover then follows the following steps to create the proof:
 1. Pad the witness columns with Zero gates to make them the same length as the domain.
    Then, randomize the last `ZK_ROWS` of each columns.
 1. Setup the Fq-Sponge.
+1. Absorb the commitments of the previous challenges with the Fq-sponge.
 1. Compute the negated public input polynomial as
    the polynomial that evaluates to $-p_i$ for the first `public_input_size` values of the domain,
    and $0$ for the rest.
@@ -1669,6 +1672,7 @@ We define two helper algorithms below, used in the batch verification of proofs.
 We run the following algorithm:
 
 1. Setup the Fq-Sponge.
+1. Absorb the commitments of the previous challenges with the Fq-sponge.
 1. Absorb the commitment of the public input polynomial with the Fq-Sponge.
 1. Absorb the commitments to the registers / witness columns with the Fq-Sponge.
 1. If lookup is used:

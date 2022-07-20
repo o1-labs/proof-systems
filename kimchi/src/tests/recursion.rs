@@ -21,6 +21,7 @@ fn test_recursion() {
 
     // setup
     let test_runner = TestFramework::default()
+        .num_prev_challenges(1)
         .gates(gates)
         .witness(witness)
         .setup();

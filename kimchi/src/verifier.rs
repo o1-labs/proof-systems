@@ -127,6 +127,11 @@ where
         //~ 1. Setup the Fq-Sponge.
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
 
+        //~ 1. Absorb the commitments of the previous challenges with the Fq-sponge.
+        for RecursionChallenge { comm, .. } in self.prev_challenges.iter() {
+            fq_sponge.absorb_g(&comm.unshifted);
+        }
+
         //~ 1. Absorb the commitment of the public input polynomial with the Fq-Sponge.
         fq_sponge.absorb_g(&p_comm.unshifted);
 
@@ -487,6 +492,13 @@ where
     //~ This allows us to potentially batch verify a number of partially verified proofs.
     //~ Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
     //~
+
+    if proof.prev_challenges.len() != index.prev_challenges {
+        return Err(VerifyError::IncorrectPrevChallengesLength(
+            index.prev_challenges,
+            proof.prev_challenges.len(),
+        ));
+    }
 
     //~ 1. Commit to the negated public input polynomial.
     let lgr_comm = index
