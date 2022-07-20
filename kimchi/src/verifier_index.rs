@@ -68,6 +68,8 @@ pub struct VerifierIndex<G: KimchiCurve> {
     pub srs: OnceCell<Arc<SRS<G>>>,
     /// number of public inputs
     pub public: usize,
+    /// number of previous evaluation challenges, for recursive proving
+    pub prev_challenges: usize,
 
     // index polynomial commitments
     /// permutation commitment array
@@ -171,6 +173,7 @@ impl<G: KimchiCurve> ProverIndex<G> {
             max_quot_size: self.max_quot_size,
             powers_of_alpha: self.powers_of_alpha.clone(),
             public: self.cs.public,
+            prev_challenges: self.cs.prev_challenges,
             srs: {
                 let cell = OnceCell::new();
                 cell.set(Arc::clone(&self.srs)).unwrap();

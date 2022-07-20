@@ -523,7 +523,13 @@ mod tests {
             next_row += 1;
         }
 
-        new_index_for_test_with_lookups(gates, public_size, vec![range_check::lookup_table()], None)
+        new_index_for_test_with_lookups(
+            gates,
+            public_size,
+            0,
+            vec![range_check::lookup_table()],
+            None,
+        )
     }
 
     #[test]

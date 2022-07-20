@@ -99,6 +99,7 @@ pub mod testing {
     pub fn new_index_for_test_with_lookups(
         gates: Vec<CircuitGate<Fp>>,
         public: usize,
+        prev_challenges: usize,
         lookup_tables: Vec<LookupTable<Fp>>,
         runtime_tables: Option<Vec<RuntimeTableCfg<Fp>>>,
     ) -> ProverIndex<Vesta> {
@@ -107,6 +108,7 @@ pub mod testing {
             .lookup(lookup_tables)
             .runtime(runtime_tables)
             .public(public)
+            .prev_challenges(prev_challenges)
             .build()
             .unwrap();
         let mut srs = SRS::<Vesta>::create(cs.domain.d1.size());
@@ -116,7 +118,7 @@ pub mod testing {
         let (endo_q, _endo_r) = endos::<Pallas>();
         ProverIndex::<Vesta>::create(cs, endo_q, srs)
     }
-    pub fn new_index_for_test(gates: Vec<CircuitGate<Fp>>, public: usize) -> ProverIndex<Vesta> {
-        new_index_for_test_with_lookups(gates, public, vec![], None)
+    pub fn new_index_for_test(gates: Vec<CircuitGate<Fp>>, public: usize) -> ProverIndex<Affine> {
+        new_index_for_test_with_lookups(gates, public, 0, vec![], None)
     }
 }

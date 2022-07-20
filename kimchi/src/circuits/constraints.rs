@@ -37,6 +37,8 @@ pub struct ConstraintSystem<F: PrimeField> {
     // ------
     /// number of public inputs
     pub public: usize,
+    /// number of previous evaluation challenges, for recursive proving
+    pub prev_challenges: usize,
     /// evaluation domains
     #[serde(bound = "EvaluationDomains<F>: Serialize + DeserializeOwned")]
     pub domain: EvaluationDomains<F>,
@@ -141,6 +143,7 @@ pub enum GateError {
 pub struct Builder<F: PrimeField> {
     gates: Vec<CircuitGate<F>>,
     public: usize,
+    prev_challenges: usize,
     lookup_tables: Vec<LookupTable<F>>,
     runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
     precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
@@ -151,6 +154,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
     /// Returns a [Builder<F>]
     /// It also defaults to the following values of the builder:
     /// - `public: 0`
+    /// - `prev_challenges: 0`
     /// - `lookup_tables: vec![]`,
     /// - `runtime_tables: None`,
     /// - `precomputations: None`,
@@ -163,6 +167,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
         Builder {
             gates,
             public: 0,
+            prev_challenges: 0,
             lookup_tables: vec![],
             runtime_tables: None,
             precomputations: None,
@@ -283,6 +288,13 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
     /// If not invoked, it equals `0` by default.
     pub fn public(mut self, public: usize) -> Self {
         self.public = public;
+        self
+    }
+
+    /// Set up the number of previous challenges, used for recusive proving.
+    /// If not invoked, it equals `0` by default.
+    pub fn prev_challenges(mut self, prev_challenges: usize) -> Self {
+        self.prev_challenges = prev_challenges;
         self
     }
 
@@ -535,6 +547,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             endomul_scalar8,
             domain,
             public: self.public,
+            prev_challenges: self.prev_challenges,
             sid,
             sigmal1,
             sigmal8,
