@@ -39,7 +39,7 @@ use crate::circuits::{
     polynomial::COLUMNS,
     wires::GateWires,
 };
-use ark_ff::{FftField, SquareRootField, Zero};
+use ark_ff::{FftField, PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
@@ -88,7 +88,7 @@ pub enum GenericGateSpec<F> {
     Pub,
 }
 
-impl<F: FftField> CircuitGate<F> {
+impl<F: PrimeField> CircuitGate<F> {
     /// This allows you to create two generic gates that will fit in one row, check [Self::create_generic_gadget] for a better to way to create these gates.
     pub fn create_generic(wires: GateWires, c: [F; GENERIC_COEFFS * 2]) -> Self {
         CircuitGate {
@@ -171,7 +171,7 @@ impl<F: FftField> CircuitGate<F> {
 //~
 //~ where the $c_i$ are the [coefficients]().
 
-impl<F: FftField + SquareRootField> ConstraintSystem<F> {
+impl<F: PrimeField> ConstraintSystem<F> {
     /// generic constraint quotient poly contribution computation
     pub fn gnrc_quot(
         &self,
@@ -318,7 +318,7 @@ pub mod testing {
     use crate::circuits::wires::Wire;
     use itertools::iterate;
 
-    impl<F: FftField> CircuitGate<F> {
+    impl<F: PrimeField> CircuitGate<F> {
         /// verifies that the generic gate constraints are solved by the witness
         pub fn verify_generic(
             &self,
@@ -370,7 +370,7 @@ pub mod testing {
         }
     }
 
-    impl<F: FftField + SquareRootField> ConstraintSystem<F> {
+    impl<F: PrimeField> ConstraintSystem<F> {
         /// Function to verify the generic polynomials with a witness.
         pub fn verify_generic(
             &self,
@@ -414,7 +414,7 @@ pub mod testing {
     }
 
     /// function to create a generic circuit
-    pub fn create_circuit<F: FftField>(start_row: usize, public: usize) -> Vec<CircuitGate<F>> {
+    pub fn create_circuit<F: PrimeField>(start_row: usize, public: usize) -> Vec<CircuitGate<F>> {
         // create constraint system with a single generic gate
         let mut gates = vec![];
 
@@ -512,6 +512,7 @@ mod tests {
     use ark_poly::{EvaluationDomain, Polynomial};
     use array_init::array_init;
     use mina_curves::pasta::fp::Fp;
+    use mina_curves::pasta::vesta::Affine as Vesta;
     use rand::SeedableRng;
 
     #[test]
@@ -528,7 +529,7 @@ mod tests {
         testing::fill_in_witness(0, &mut witness, &[]);
 
         // make sure we're done filling the witness correctly
-        cs.verify(&witness, &[]).unwrap();
+        cs.verify::<Vesta>(&witness, &[]).unwrap();
 
         // generate witness polynomials
         let witness_evals: [Evaluations<Fp, D<Fp>>; COLUMNS] =

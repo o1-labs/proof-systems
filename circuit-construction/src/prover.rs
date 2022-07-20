@@ -1,3 +1,4 @@
+use crate::writer::{Cs, GateSpec, System, Var, WitnessGenerator};
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{FftField, One, PrimeField, SquareRootField, Zero};
 use array_init::array_init;
@@ -7,17 +8,13 @@ use commitment_dlog::{
 };
 use kimchi::{
     circuits::{constraints::ConstraintSystem, gate::GateType, wires::COLUMNS},
+    curve::KimchiCurve,
     plonk_sponge::FrSponge,
     proof::ProverProof,
     prover_index::ProverIndex,
 };
 use mina_curves::pasta::{fp::Fp, fq::Fq, pallas::Affine as Other, vesta::Affine};
-use oracle::{poseidon::ArithmeticSpongeParams, FqSponge};
-
-use crate::{
-    constants::Constants,
-    writer::{Cs, GateSpec, System, Var, WitnessGenerator},
-};
+use oracle::FqSponge;
 
 /// A [Cycle] represents the algebraic structure that
 /// allows for recursion using elliptic curves.
@@ -67,11 +64,11 @@ pub trait Cycle {
         + std::ops::MulAssign<Self::InnerField>;
 
     type Outer: CommitmentCurve<
-        Projective = Self::OuterProj,
-        Map = Self::OuterMap,
-        ScalarField = Self::InnerField,
-        BaseField = Self::OuterField,
-    >;
+            Projective = Self::OuterProj,
+            Map = Self::OuterMap,
+            ScalarField = Self::InnerField,
+            BaseField = Self::OuterField,
+        > + KimchiCurve;
 }
 
 /// Used to configure the base curve of Pallas
@@ -114,7 +111,7 @@ pub fn prove<G, H, EFqSponge, EFrSponge>(
 where
     H: FnMut(&mut WitnessGenerator<G::ScalarField>, Vec<Var<G::ScalarField>>),
     G::BaseField: PrimeField,
-    G: CommitmentCurve,
+    G: KimchiCurve,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
 {
@@ -161,8 +158,6 @@ where
 /// Creates the prover index on input an `srs`, used `constants`, parameters for Poseidon, number of public inputs, and a specific circuit
 pub fn generate_prover_index<C, H>(
     srs: std::sync::Arc<SRS<C::Outer>>,
-    constants: &Constants<C::InnerField>,
-    poseidon_params: &ArithmeticSpongeParams<C::OuterField>,
     public: usize,
     main: H,
 ) -> ProverIndex<C::Outer>
@@ -195,14 +190,13 @@ where
     // Other base field = self scalar field
     let (endo_q, _endo_r) = endos::<C::Inner>();
 
-    let constraint_system =
-        ConstraintSystem::<C::InnerField>::create(gates, constants.poseidon.clone())
-            .public(public)
-            .build()
-            // TODO: return a Result instead of panicking
-            .expect("couldn't construct constraint system");
+    let constraint_system = ConstraintSystem::<C::InnerField>::create(gates)
+        .public(public)
+        .build()
+        // TODO: return a Result instead of panicking
+        .expect("couldn't construct constraint system");
 
-    ProverIndex::<C::Outer>::create(constraint_system, poseidon_params.clone(), endo_q, srs)
+    ProverIndex::<C::Outer>::create(constraint_system, endo_q, srs)
 }
 
 /// Handling coordinates in an affine curve

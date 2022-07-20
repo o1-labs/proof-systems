@@ -1,7 +1,7 @@
-use std::iter;
-
-use crate::circuits::{domains::EvaluationDomains, gate::CircuitGate};
+use super::runtime_tables::{RuntimeTableCfg, RuntimeTableSpec};
 use crate::circuits::{
+    domains::EvaluationDomains,
+    gate::CircuitGate,
     lookup::{
         constraints::LookupConfiguration,
         lookups::{JointLookup, LookupInfo, LookupPattern},
@@ -9,7 +9,7 @@ use crate::circuits::{
     },
     polynomials::permutation::ZK_ROWS,
 };
-use ark_ff::{FftField, SquareRootField};
+use ark_ff::{FftField, PrimeField, SquareRootField};
 use ark_poly::{
     univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
     Radix2EvaluationDomain as D,
@@ -18,9 +18,8 @@ use itertools::repeat_n;
 use o1_utils::field_helpers::i32_to_field;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
+use std::iter;
 use thiserror::Error;
-
-use super::runtime_tables::{RuntimeTableCfg, RuntimeTableSpec};
 
 /// Represents an error found when computing the lookup constraint system
 #[derive(Debug, Error)]
@@ -194,7 +193,7 @@ pub struct LookupConstraintSystem<F: FftField> {
     pub configuration: LookupConfiguration<F>,
 }
 
-impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
+impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
     pub fn create(
         gates: &[CircuitGate<F>],
         lookup_tables: Vec<LookupTable<F>>,

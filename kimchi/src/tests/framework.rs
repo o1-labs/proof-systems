@@ -1,13 +1,19 @@
 //! Test Framework
 
-use crate::circuits::lookup::runtime_tables::{RuntimeTable, RuntimeTableCfg};
-use crate::circuits::lookup::tables::LookupTable;
-use crate::circuits::{gate::CircuitGate, wires::COLUMNS};
-use crate::proof::{ProverProof, RecursionChallenge};
-use crate::prover_index::testing::new_index_for_test_with_lookups;
-use crate::prover_index::ProverIndex;
-use crate::verifier::verify;
-use crate::verifier_index::VerifierIndex;
+use crate::{
+    circuits::{
+        gate::CircuitGate,
+        lookup::{
+            runtime_tables::{RuntimeTable, RuntimeTableCfg},
+            tables::LookupTable,
+        },
+        wires::COLUMNS,
+    },
+    proof::{ProverProof, RecursionChallenge},
+    prover_index::{testing::new_index_for_test_with_lookups, ProverIndex},
+    verifier::verify,
+    verifier_index::VerifierIndex,
+};
 use ark_ff::PrimeField;
 use commitment_dlog::commitment::CommitmentCurve;
 use groupmap::GroupMap;
@@ -20,8 +26,7 @@ use oracle::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use std::mem;
-use std::time::Instant;
+use std::{mem, time::Instant};
 
 // aliases
 
@@ -136,7 +141,10 @@ impl TestRunner {
         let witness = self.0.witness.unwrap();
 
         // verify the circuit satisfiability by the computed witness
-        prover.cs.verify(&witness, &self.0.public_inputs).unwrap();
+        prover
+            .cs
+            .verify::<Affine>(&witness, &self.0.public_inputs)
+            .unwrap();
 
         // add the proof to the batch
         let start = Instant::now();

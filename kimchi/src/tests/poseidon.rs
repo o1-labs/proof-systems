@@ -1,13 +1,16 @@
-use crate::circuits::{
-    gate::CircuitGate,
-    polynomials,
-    polynomials::poseidon::ROUNDS_PER_ROW,
-    wires::{Wire, COLUMNS},
+use crate::{
+    circuits::{
+        gate::CircuitGate,
+        polynomials,
+        polynomials::poseidon::ROUNDS_PER_ROW,
+        wires::{Wire, COLUMNS},
+    },
+    curve::KimchiCurve,
+    tests::framework::TestFramework,
 };
-use crate::tests::framework::TestFramework;
 use ark_ff::Zero;
 use array_init::array_init;
-use mina_curves::pasta::fp::Fp;
+use mina_curves::pasta::{fp::Fp, vesta::Affine as Vesta};
 use o1_utils::math;
 use oracle::constants::{PlonkSpongeConstantsKimchi, SpongeConstants};
 
@@ -29,7 +32,8 @@ fn test_poseidon() {
     println!(" number of rows for poseidon ={}", POS_ROWS_PER_HASH);
     assert_eq!(ROUNDS_PER_HASH % ROUNDS_PER_ROW, 0);
 
-    let round_constants = oracle::pasta::fp_kimchi::params().round_constants;
+    //let round_constants = oracle::pasta::fp_kimchi::params().round_constants;
+    let round_constants = &*Vesta::sponge_params().round_constants;
 
     // we keep track of an absolute row, and relative row within a gadget
     let mut abs_row = 0;
@@ -46,7 +50,7 @@ fn test_poseidon() {
         let (poseidon, row) = CircuitGate::<Fp>::create_poseidon_gadget(
             abs_row,
             [first_wire, last_wire],
-            &round_constants,
+            round_constants,
         );
         gates.extend(poseidon);
         abs_row = row;
@@ -66,7 +70,7 @@ fn test_poseidon() {
 
         polynomials::poseidon::generate_witness(
             first_row,
-            oracle::pasta::fp_kimchi::params(),
+            Vesta::sponge_params(),
             &mut witness,
             input,
         );

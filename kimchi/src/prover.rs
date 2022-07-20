@@ -21,6 +21,7 @@ use crate::{
         },
         wires::{COLUMNS, PERMUTS},
     },
+    curve::KimchiCurve,
     error::ProverError,
     plonk_sponge::FrSponge,
     proof::{
@@ -108,7 +109,7 @@ where
     runtime_second_col_d8: Option<Evaluations<F, D<F>>>,
 }
 
-impl<G: CommitmentCurve> ProverProof<G>
+impl<G: KimchiCurve> ProverProof<G>
 where
     G::BaseField: PrimeField,
 {
@@ -150,6 +151,8 @@ where
             return Err(ProverError::SRSTooSmall);
         }
 
+        let (_, endo_r) = G::endos();
+
         // TODO: rng should be passed as arg
         let rng = &mut rand::rngs::OsRng;
 
@@ -158,7 +161,7 @@ where
             let public = witness[0][0..index.cs.public].to_vec();
             index
                 .cs
-                .verify(&witness, &public)
+                .verify::<G>(&witness, &public)
                 .expect("incorrect witness");
         }
 
@@ -193,7 +196,7 @@ where
         }
 
         //~ 1. Setup the Fq-Sponge.
-        let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
+        let mut fq_sponge = EFqSponge::new(G::OtherCurve::sponge_params());
 
         //~ 1. Absorb the commitments of the previous challenges with the Fq-sponge.
         for RecursionChallenge { comm, .. } in prev_challenges.iter() {
@@ -355,8 +358,7 @@ where
             };
 
             //~~ - Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TOOD: specify)
-            let joint_combiner: G::ScalarField =
-                ScalarChallenge(joint_combiner).to_field(&index.srs.endo_r);
+            let joint_combiner: G::ScalarField = ScalarChallenge(joint_combiner).to_field(endo_r);
 
             //~~ - If multiple lookup tables are involved,
             //~~   set the `table_id_combiner` as the $j^i$ with $i$ the maximum width of any used table.
@@ -540,7 +542,7 @@ where
         let alpha_chal = ScalarChallenge(fq_sponge.challenge());
 
         //~ 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details)
-        let alpha: G::ScalarField = alpha_chal.to_field(&index.srs.endo_r);
+        let alpha: G::ScalarField = alpha_chal.to_field(endo_r);
 
         //~ 1. TODO: instantiate alpha?
         let mut all_alphas = index.powers_of_alpha.clone();
@@ -592,6 +594,7 @@ where
                 ));
             }
 
+            let mds = &G::sponge_params().mds;
             Environment {
                 constants: Constants {
                     alpha,
@@ -599,7 +602,7 @@ where
                     gamma,
                     joint_combiner: lookup_context.joint_combiner,
                     endo_coefficient: index.cs.endo,
-                    mds: index.cs.fr_sponge_params.mds.clone(),
+                    mds,
                 },
                 witness: &lagrange.d8.this.w,
                 coefficient: &index.cs.coefficients8,
@@ -810,7 +813,7 @@ where
         let zeta_chal = ScalarChallenge(fq_sponge.challenge());
 
         //~ 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
-        let zeta = zeta_chal.to_field(&index.srs.endo_r);
+        let zeta = zeta_chal.to_field(endo_r);
 
         let omega = index.cs.domain.d1.group_gen;
         let zeta_omega = zeta * omega;
@@ -1039,7 +1042,7 @@ where
 
         //~ 1. Setup the Fr-Sponge
         let fq_sponge_before_evaluations = fq_sponge.clone();
-        let mut fr_sponge = EFrSponge::new(index.cs.fr_sponge_params.clone());
+        let mut fr_sponge = EFrSponge::new(G::sponge_params());
 
         //~ 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
         fr_sponge.absorb(&fq_sponge.digest());
@@ -1073,13 +1076,13 @@ where
         let v_chal = fr_sponge.challenge();
 
         //~ 1. Derive $v$ from $v'$ using the endomorphism (TODO: specify)
-        let v = v_chal.to_field(&index.srs.endo_r);
+        let v = v_chal.to_field(endo_r);
 
         //~ 1. Sample $u'$ with the Fr-Sponge
         let u_chal = fr_sponge.challenge();
 
         //~ 1. Derive $u$ from $u'$ using the endomorphism (TODO: specify)
-        let u = u_chal.to_field(&index.srs.endo_r);
+        let u = u_chal.to_field(endo_r);
 
         //~ 1. Create a list of all polynomials that will require evaluations
         //~    (and evaluation proofs) in the protocol.

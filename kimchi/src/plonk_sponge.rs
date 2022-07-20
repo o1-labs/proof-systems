@@ -9,7 +9,7 @@ use crate::proof::ProofEvaluations;
 
 pub trait FrSponge<Fr: Field> {
     /// Creates a new Fr-Sponge.
-    fn new(p: ArithmeticSpongeParams<Fr>) -> Self;
+    fn new(p: &'static ArithmeticSpongeParams<Fr>) -> Self;
 
     /// Absorbs the field element into the sponge.
     fn absorb(&mut self, x: &Fr);
@@ -27,7 +27,7 @@ pub trait FrSponge<Fr: Field> {
 }
 
 impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
-    fn new(params: ArithmeticSpongeParams<Fr>) -> DefaultFrSponge<Fr, SC> {
+    fn new(params: &'static ArithmeticSpongeParams<Fr>) -> DefaultFrSponge<Fr, SC> {
         DefaultFrSponge {
             sponge: ArithmeticSponge::new(params),
             last_squeezed: vec![],

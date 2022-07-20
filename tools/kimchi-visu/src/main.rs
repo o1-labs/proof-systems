@@ -4,14 +4,15 @@ use kimchi::{
         polynomials::{generic::GenericGateSpec, poseidon::generate_witness},
         wires::Wire,
     },
+    curve::KimchiCurve,
     prover_index::testing::new_index_for_test,
 };
 use kimchi_visu::{visu, Witness};
-use mina_curves::pasta::Fp;
+use mina_curves::pasta::{vesta::Affine as Vesta, Fp};
 
 fn main() {
     let public = 3;
-    let poseidon_params = oracle::pasta::fp_kimchi::params();
+    let poseidon_params = Vesta::sponge_params();
 
     // create circuit
     let (gates, row) = {
