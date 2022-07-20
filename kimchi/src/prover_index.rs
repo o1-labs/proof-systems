@@ -118,7 +118,7 @@ pub mod testing {
         let (endo_q, _endo_r) = endos::<Pallas>();
         ProverIndex::<Vesta>::create(cs, endo_q, srs)
     }
-    pub fn new_index_for_test(gates: Vec<CircuitGate<Fp>>, public: usize) -> ProverIndex<Affine> {
+    pub fn new_index_for_test(gates: Vec<CircuitGate<Fp>>, public: usize) -> ProverIndex<Vesta> {
         new_index_for_test_with_lookups(gates, public, 0, vec![], None)
     }
 }
