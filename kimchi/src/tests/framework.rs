@@ -38,6 +38,7 @@ pub(crate) struct TestFramework {
     runtime_tables_setup: Option<Vec<RuntimeTableCfg<Fp>>>,
     runtime_tables: Vec<RuntimeTable<Fp>>,
     recursion: Vec<RecursionChallenge<Affine>>,
+    num_prev_challenges: usize,
 
     prover_index: Option<ProverIndex<Affine>>,
     verifier_index: Option<VerifierIndex<Affine>>,
@@ -61,6 +62,12 @@ impl TestFramework {
     #[must_use]
     pub(crate) fn public_inputs(mut self, public_inputs: Vec<Fp>) -> Self {
         self.public_inputs = public_inputs;
+        self
+    }
+
+    #[must_use]
+    pub(crate) fn num_prev_challenges(mut self, num_prev_challenges: usize) -> Self {
+        self.num_prev_challenges = num_prev_challenges;
         self
     }
 
@@ -90,6 +97,7 @@ impl TestFramework {
         let index = new_index_for_test_with_lookups(
             self.gates.take().unwrap(),
             self.public_inputs.len(),
+            self.num_prev_challenges,
             lookup_tables,
             runtime_tables_setup,
         );
