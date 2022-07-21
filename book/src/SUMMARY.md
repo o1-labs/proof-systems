@@ -43,11 +43,12 @@
     - [Permutation](./kimchi/permut.md)
     - [Lookup](./kimchi/lookup.md)
 
-# Pickles & Inductive proof systems
+# Pickles & Inductive Proof Systems
 
 - [Overview](./fundamentals/zkbook_ips.md)
 - [Accumulation](./pickles/accumulation.md)
-- [Deferred Computation](./pickles/deferred.md)
+- [Deferred Computation & "Passing"](./pickles/deferred.md)
+- [Passthough & Me-Only](./pickles/passthrough.md)
 
 # RFCs
 

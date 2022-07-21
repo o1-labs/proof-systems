@@ -10,7 +10,7 @@ Relevant resources include:
 - [Proof-Carrying Data from Accumulation Schemes](https://eprint.iacr.org/2020/499.pdf) by Benedikt Bünz, Alessandro Chiesa, Pratyush Mishra and Nicholas Spooner.
 - [Recursive Proof Composition without a Trusted Setup (Halo)](https://eprint.iacr.org/2019/1021.pdf) by Sean Bowe, Jack Grigg and Daira Hopwood.
 
-This page describes the most relevant parts of these papers and how it is implemented in Pickles.
+This page describes the most relevant parts of these papers and how it is implemented in Pickles/Kimchi.
 
 ## Accumulation schemes at a high level
 
@@ -53,7 +53,7 @@ sequenceDiagram
     Note right of Verifier: Obtains acc*.x
 ```
 
-As a design goal we want this "interactive reduction" (called the "accumulation verifier") to be highly efficient, in terms of:
+As a design goal we want this "interactive reduction" (the "accumulation verifier") to be highly efficient, in terms of:
 
 1. Rounds (corresponding to random oracle invocations in the compiled protocol
 2. Communication.
@@ -66,7 +66,7 @@ In this document we ignore zero-knowledge for ease of exposition, it is however 
 **Note:** technically, the languages we are interested in are trivial e.g. every commitment can be opened to every polynomial,
 however, we mean that no efficient adversary can find a witness for membership e.g. a valid opening.
 
-## Polynomial Commitment Scheme Claims
+## Language of Polynomial Commitment Openings
 
 Recall that the polynomial commitment scheme (PCS) in Kimchi is just the trivial scheme based on Pedersen commitments.
 For Kimchi we are interested in "accumulation for the language ($\relation_\mathsf{PCS}$) of polynomial commitment openings", meaning that:
@@ -95,30 +95,52 @@ In other words, we are going to reduce openings of polynomial commitments $\rela
 
 ## Recalling Folding Arguments
 
-Let us that by recalling how to construct an opening proof for the PCS above using a variant of the well-known recursive folding argument.
-Define $\vec{z} = (1, z, z^2, z^3, \ldots, z^{\ell-1})$.
+Let us start that by recalling how to construct an opening proof for the PCS above using a variant of the well-known recursive folding argument.
+Define $\vec{z} = (1, z, z^2, z^3, \ldots, z^{\ell-1})$, so that $v = \langle \vec{f}, \vec{z} \rangle$.
+Formally the relation of the inner product argument is:
+
+$$
+(
+\statement = (C, \vec{G}, H, \vec{z}, v),
+\witness = (\vec{f})
+)
+\in
+\relation_{\mathsf{IPA},\ell}
+\iff
+\left\{
+v =
+\langle
+\vec{f},
+\vec{z}
+\rangle \in \FF
+\land
+C = \langle \vec{f}, \vec{G} \rangle \in \GG
+\right\}
+$$
 
 ### Convert PCS Relation to Inner Product Relation
 
-First we start by adding the evaluation $v$ to the commitment "in a new coordinate": the verifier adds the opening to the commitment $C$, i.e.
+First we describe how to reduce $\relation_\mathsf{PCS}$ to $\relation_{\mathsf{IPA}, \ell}$.
+This is done by adding the evaluation $v$ to the commitment "in a new coordinate": the verifier adds the opening to the commitment $C$, i.e.
 
-1. Verifier picks $U \sample \GG$ and sends $U$ to the prover.
+1. Verifier picks $H \sample \GG$ and sends $H$ to the prover.
 
-2. Verifier updates $C' \gets C + [v] \cdot U$
+2. Verifier updates $C \gets C + [v] \cdot H$
 
-Intuitively we sample $U$ to avoid a malicious prover "putting something in the $U$-position", because he must commit to $v$ before seeing $U$.
-
+Intuitively we sample $H$ to avoid a malicious prover "putting something in the $H$-position", because he must commit to $v$ before seeing $H$, hence he has to guess $H$ before-hand.
 If the prover is honest, we should have a commitment of the form:
 
 $$
-C' =
-\langle \vec{f}, \vec{G} \rangle + [v] \cdot U
+C =
+\langle \vec{f}, \vec{G} \rangle + [v] \cdot H
 =
-\langle \vec{f}, \vec{G} \rangle + [\langle \vec{z}, \vec{f} \rangle] \cdot U
+\langle \vec{f}, \vec{G} \rangle + [\langle \vec{z}, \vec{f} \rangle] \cdot H
 \in \GG
 $$
 
 ### Recursive Folding
+
+**Note:** The folding argument described below is the particular variant implemented in Kimchi, although some of the variable names are different.
 
 The folding argument reduces a commitment to a polynomial with $\ell$ (a power of two)
 coefficients to a polynomial with $\ell / 2$ coefficients.
@@ -135,8 +157,30 @@ $$
 Where $\vec{f}_L = (f_1, \ldots, f_{\ell/2})$ and $\vec{f}_R = (f_{\ell/2 + 1}, \ldots, f_\ell)$,
 similarly for $\vec{z}$.
 
-Now consider a natural "randomized version" with a challenge $\alpha \in \FF$ of this inner product:
+Now consider a "randomized version" with a challenge $\alpha \in \FF$ of this inner product:
 
+$$
+    \begin{align}
+    \langle \vec{f}_L + \alpha^{-1} \cdot \vec{f}_R, \ \vec{z}_L + \alpha \cdot \vec{z}_R \rangle
+    &=
+    \alpha^{-1} \cdot  \langle \vec{f}_R, \vec{z}_L \rangle \\
+    &+ \underline{\color{magenta} \left(\langle \vec{f}_R, \vec{z}_R \rangle + \langle \vec{f}_L, \vec{z}_L \rangle\right)} \\
+    &+ \alpha \cdot \langle \vec{f}_L, \vec{z}_R \rangle
+    \end{align}
+$$
+
+<details>
+<summary>
+Additional intuition: How do you arrive at the expression above? (click to expand)
+</summary>
+<br>
+The trick is to ensure that
+$\langle \vec{f}_R, \vec{z}_R \rangle + \langle \vec{f}_L, \vec{z}_L \rangle = v$
+ends up in the same power of $\alpha$.
+
+The particular expression above is not special,
+alternatives can easily be found (exercise to the reader)
+and the inversion can be avoided, e.g. by instead using:
 $$
     \begin{align}
     \langle \vec{f}_L + \alpha \cdot \vec{f}_R, \ \alpha \cdot \vec{z}_L + \vec{z}_R \rangle
@@ -145,110 +189,301 @@ $$
     &+ \alpha^2 \cdot  \langle \vec{f}_R, \vec{z}_L \rangle
     \end{align}
 $$
+Which will have the same overall effect of isolating the interesting term (this time as the $\alpha$-coefficient).
+The particular variant above can be found in e.g. [Compressed $\Sigma$-Protocol Theory and Practical Application to Plug & Play Secure Algorithmics](https://eprint.iacr.org/2020/152.pdf)
+</details>
 
-The term we care about (underlined) is $\langle \vec{f}_R, \vec{z}_R \rangle + \langle \vec{f}_L, \vec{z}_L \rangle = v$, the other two terms are cross-term garbage.
-The trick in the folding argument is to let the prover provide the cross terms to "correct" (before seeing $\alpha$):
-the prover commits to the three terms (one of which is already provided) and the verifier computes a commitment to the new randomized inner product.
-i.e.
+The term we care about (underlined in magenta) is $\langle \vec{f}_R, \vec{z}_R \rangle + \langle \vec{f}_L, \vec{z}_L \rangle = v$, the other two terms are cross-term garbage.
+The solution is to let the prover provide commitments to the cross terms to "correct" this randomized splitting of the inner product <u>before</u> seeing $\alpha$:
+the prover commits to the three terms (one of which is already provided) and the verifier computes a commitment to the new randomized inner product. i.e.
 
-The prover sends:
-
-$$
-L = \langle 0 \Vert c_L, G \rangle + [\langle 0 \Vert c_L, z \rangle] \cdot U
-$$
+The prover sends commitment to $\langle \vec{f}_R, \vec{z}_L \rangle$ and $\langle \vec{f}_L, \vec{z}_R \rangle$ cross terms:
 
 $$
-R = \langle c_R \Vert 0, G \rangle + [\langle c_R \Vert 0, z \rangle] \cdot U
+L = \langle \vec{f}_R \Vert \vec{0}, \vec{G} \rangle + [\langle \vec{f}_R, \vec{z}_L \rangle] \cdot H
 $$
 
 <!--
-\\[
-L = \langle c_L, G_R \rangle + [\langle c_L, z_R \rangle] \cdot H'
-\\]
-
-\\[
-R = \langle c_R, G_L \rangle + [\langle c_R, z_L \rangle] \cdot H'
-\\]
-
-\\[
-\begin{align}
-C' &= L + [\alpha] \cdot C + [\alpha^2] \cdot R \\
-   &=
-   \langle z_R + \alpha z_L, G_L \rangle +
-   \langle z_L + \alpha z_R, G_R \rangle +
-   [\langle z_L, c_R \rangle + \alpha (\underline{\langle z_L, c_L \rangle + \langle z_R, c_R \rangle}) + \alpha^2 \langle z_R, c_L \rangle ] \cdot H' \\
-   &= \langle z_R + \alpha z_L, G_L \rangle +
-   \langle z_L + \alpha z_R, G_R \rangle +
-   [
-    \langle z_R + \alpha z_L, c_L \rangle
-    + \langle z_L + \alpha z_R, c_R \rangle] \cdot H' \\
-\end{align}
-\\]
-
+$$
+L = \langle \vec{f}_R, \vec{G}_L \rangle + [\langle \vec{f}_R, \vec{z}_L \rangle] \cdot H
+$$
 -->
 
-\\[
+$$
+R = \langle \vec{0} \Vert \vec{f}_L, \vec{G} \rangle + [\langle \vec{f}_L, \vec{z}_R \rangle] \cdot H
+$$
+
+The verifier samples $\alpha \sample \FF$ and defines:
+
+$$
 \begin{align}
-C' &= L + [\alpha] \cdot C + [\alpha^2] \cdot R \\
-   &= \langle (0 \Vert c_L) + \alpha \cdot (c_L \Vert c_R) + \alpha^2 \cdot (c_R \vert 0), G \rangle + [
-   \langle (0 \Vert c_L) + \alpha \cdot (c_L \Vert c_R) + \alpha^2 (c_R \vert 0), z \rangle
-   ] \cdot H' \\
-   &= \langle (\alpha \cdot c_L + \alpha^2 c_R) \Vert (c_L + \alpha c_R), G \rangle + [\langle (\alpha \cdot c_L + \alpha^2 c_R) \Vert (c_L + \alpha c_R), z \rangle] \cdot H' \\
-   &= \langle (\alpha c' \Vert c'), G \rangle + [\langle (\alpha c' \Vert c'), z \rangle] \cdot H'
+C' &= [\alpha^{-1}] \cdot L + C + [\alpha] \cdot R \\
+   &\ \\
+   &= {\langle \alpha^{-1} \cdot (\vec{f}_R \Vert \vec{0}) + (\vec{f}_L \Vert \vec{f}_R) + \alpha \cdot (\vec{0} \Vert \vec{f}_L), \vec{G} \rangle} \\
+   &+
+    \left[
+        {
+          \alpha^{-1} \cdot \langle \vec{f}_R, \vec{f}_L \rangle
+          +
+          {
+          \color{magenta}
+            \langle \vec{f}_L, \vec{z}_L \rangle
+            + \langle \vec{f}_R, \vec{z}_R \rangle
+            }
+        + \alpha \cdot \langle \vec{f}_L, \vec{z}_R \rangle
+    }\right] \cdot H \\
+   &\ \\
+   &=
+   {\color{blue} \left\langle
+        \left(
+        \vec{f}_L + \alpha^{-1} \vec{f}_R
+        \right)
+        \Vert
+        \left(
+        \alpha \cdot \vec{f}_L + \vec{f}_R
+        \right)
+        ,
+        \vec{G} \right\rangle} \\
+   &+
+   \left[
+    {
+    \color{green}
+    \langle
+    \vec{f}_L + \alpha^{-1} \cdot \vec{f}_R
+    ,
+    \vec{z}_L
+    \rangle
+    +
+    \langle
+    \alpha \cdot \vec{f}_L +\vec{f}_R
+    ,
+    \vec{z}_R
+    \rangle
+    }
+    \right] \cdot H
 \end{align}
-\\]
+$$
 
-Notice how the left side of the concatenation $\alpha \cdot c_L + \alpha^2 \cdot c_R = \alpha \cdot (c_L + \alpha c_R)$ is $\alpha$ times the right side $c' = c_L + \alpha \cdot c_R$, this means that you can open the commitment above by just supplying $(c_L + \alpha \cdot c_R)$. Naively this would be done by sending $c'$ and computing:
+The final observation in the folding argument is simply that:
 
-\\[
-C' = \langle (\alpha c' \Vert c'), G \rangle + [\langle (\alpha c' \Vert c'), z \rangle] \cdot H'
-\\]
+$$
+\alpha \vec{f}_L + \vec{f}_R
+=
+\alpha
+\cdot
+\left(
+{
+    \color{purple}
+    \vec{f}_L + \alpha^{-1} \cdot \vec{f}_R
+}
+\right)
+=
+\alpha
+\cdot
+{
+\color{purple}
+\vec{f}'
+}
+$$
 
-\\[
-C' = \langle (\alpha c' \Vert c'), G \rangle + [\langle c', z_L \alpha + z_R \rangle] \cdot H'
-\\]
+Hence we can replace occurrences of $\alpha \vec{f}_L + \vec{f}_R$ by $\alpha \vec{f}'$,
+with this look at the green term:
 
-However by defining:
+<!--
+Now the final puzzle-piece of the folding argument is to notice that:
+$$(\alpha \cdot \vec{f}_L + \vec{f}_R) = \alpha \cdot (\vec{f}_L + \alpha^{-1} \cdot \vec{f}_R)$$.
+$$(\vec{f}_L + \alpha \cdot \vec{f}_R) = \alpha \cdot (\alpha^{-1} \cdot \vec{f}_L + \vec{f}_R)$$.
+This enables us to rewrite:
+-->
 
-\\[
-G' = [\alpha] \cdot G_L + G_R
-\\]
-
-We get:
-
-\\[
-C' = \langle c', G' \rangle + [\underline{\langle (\alpha c' \Vert c'), z \rangle}] \cdot H'
-\\]
-
-
-Taking a look at the $\langle (\alpha c' \Vert c'), z \rangle$ term we get:
-\\[
+$$
 \begin{align}
-\underline{\langle (\alpha c' \Vert c'), z \rangle} &= \langle \alpha c', z_L \rangle + \langle c', z_R \rangle \\
-&= \langle c', \alpha z_L \rangle + \langle c', z_R \rangle \\
-&= \langle c', \alpha z_L + z_R \rangle
+    {
+    \color{green}
+    \langle
+    \vec{f}_L + \alpha^{-1} \cdot \vec{f}_R
+    ,
+    \vec{z}_L
+    \rangle
+    +
+    \langle
+    \alpha \cdot \vec{f}_L +\vec{f}_R
+    ,
+    \vec{z}_R
+    \rangle
+    }
+  &=
+    {
+    \langle
+    \vec{f}'
+    ,
+    \vec{z}_L
+    \rangle
+    +
+    \langle
+    \alpha \cdot \vec{f}'
+    ,
+    \vec{z}_R
+    \rangle
+    } \\
+   &=
+    {
+    \langle
+    {
+    \vec{f}'
+    }
+    ,
+    \vec{z}_L
+    \rangle
+    +
+    \langle
+    {
+    \vec{f}'
+    }
+    ,
+    \alpha
+    \cdot
+    \vec{z}_R
+    \rangle
+    } \\
+   &=
+    {
+    \langle
+    \vec{f}'
+    ,
+    \vec{z}_L
+    +
+    \alpha
+    \cdot
+    \vec{z}_R
+    \rangle
+    } \\
+    &=
+    \langle
+    \vec{f}',
+    \vec{z}'
+    \rangle
 \end{align}
-\\]
+$$
 
-Thus by defining:
+By defining $\vec{z}' = \vec{z}_L + \alpha \cdot \vec{z}_R$.
+We also rewrite the blue term in terms of $\vec{f}'$ similarly:
+$$
+\begin{align}
+   {\color{blue} \left\langle
+        \left(
+        \vec{f}_L + \alpha^{-1} \cdot \vec{f}_R
+        \right)
+        \Vert
+        \left(
+        \alpha \cdot \vec{f}_L + \vec{f}_R
+        \right)
+        ,
+        \vec{G} \right\rangle}
+    &=
+   {\langle
+        \vec{f}'
+        \Vert
+        (
+        \alpha \cdot \vec{f}'
+        )
+        ,
+        \vec{G} \rangle} \\
+    &=
+   {\langle
+        \vec{f}'
+        \Vert
+        \vec{f}'
+        ,
+        \vec{G}_L \Vert ([\alpha] \cdot \vec{G}_R) \rangle} \\
+    &=
+   \langle
+    \vec{f}'
+    ,
+    \vec{G}'
+   \rangle
+\end{align}
+$$
 
-\\[
-z' = z_L \cdot \alpha + z_R
-\\]
+By defining $\vec{G}' = \vec{G}_L + [\alpha] \cdot \vec{G}_R$.
+In summary by computing:
+$$
+\begin{align}
+C' &\gets [\alpha^{-1}] \cdot L + C + [\alpha] \cdot R \in \GG \\
+\vec{f}' &\gets \vec{f}_L + \alpha^{-1} \cdot \vec{f}_R \in \FF^{\ell / 2} \\
+\vec{z}' &\gets \vec{z}_L + \alpha \cdot \vec{z}_R \in \FF^{\ell / 2} \\
+\vec{G}' &\gets \vec{G}_L + [\alpha] \cdot \vec{G}_R \in \GG^{\ell / 2}
+\end{align}
+$$
 
-We finally obtain:
+We obtain a new instance of the inner product relation, but now of half the size. i.e.
 
-\\[
-C' = \langle c', G' \rangle + [\langle c', z' \rangle] \cdot H'
-\\]
+$$
+\begin{align}
+C' &= \langle \vec{f}', \vec{G}' \rangle + [v] \cdot H \\
+v &= \langle \vec{f}', \vec{z}' \rangle
+\end{align}
+$$
 
-Which is a **new instance** of the original inner product relation, but now of **half the size**!
+### Recursive Application for Log-Size Openings
 
-To reduce the size further just recursively apply this technique log(n) times...
+At this point the prover could send $\vec{z}'$, $\vec{f}'$ to the verifier who could verify the claim:
 
-At the end $G'$ is just a single group element at which point you trivially prove membership: by just sending the verifier $c'$ and $z'$ who then computes $C'$ from the provided values. Easy.
+1. Computing $\vec{G}'$ from $\alpha$ and $\vec{G}$
+2. Computing $C'$ from $\vec{f}'$, $v$ and $H$
+3. Checking $v \overset?= \langle \vec{f}', \vec{z}' \rangle$
 
-## The Halo Observation
+This would require half as much communication as the naive proof. Not bad.
+
+Note however that the process above can simply be applied again to the new $(C', \vec{G}', H, \vec{z}', v) \in \relation_{\mathsf{IPA}, \ell/2}$ instance as well.
+By doing so $\log_2(\ell)$ times the total communication is brought down to $2 \log_2(\ell)$ $\GG$-elements
+until the instance consists of $(\vec{C}, G', H, \vec{z}', v) \in \relation_{\mathsf{IPA}, 1}$
+at which point the prover simply provides $\vec{f}' \in \FF$.
+
+### Observation About Verifier Complexity
+
+Note that computing the new instance, i.e. computing the final $C'$ is poly-log in $\ell$: this is important, because
+<u> the only linear-time part of the verifier</u> is computing the final $G'$.
+
+## The Halo Observation: Letting the prover compute $U$.
+
+Let us denote by $U$ the final $G'$. For clarity, let us start by "unrolling" how $U$ is suppose to be computed:
+Let $\vec{G}^{(i)}$ denote $\vec{G}'$ after $i$ "foldings" (recursive applications of the proof above), with $\vec{G}^{(0)}$ being the original list of generators.
+Then:
+
+$$
+\begin{align}
+    \vec{G}^{(1)} &\gets \vec{G}^{(0)}_L + [\alpha_1] \cdot \vec{G}^{(0)}_R \\
+    \vec{G}^{(2)} &\gets \vec{G}^{(1)}_L + [\alpha_2] \cdot \vec{G}^{(1)}_R \\
+    \vec{G}^{(3)} &\gets \vec{G}^{(2)}_L + [\alpha_2] \cdot \vec{G}^{(2)}_R \\
+    &\ldots \\
+    U &\gets \vec{G}^{(\log_2 \ell - 1)}_L + [\alpha_{\log_2 \ell - 1}] \cdot \vec{G}^{(\log_2 \ell - 1)}_R \\
+\end{align}
+$$
+
+This defines the language:
+
+$$
+\relation_{\mathsf{h}, \vec{G}}(\statement = (U, \vec{\alpha}), \witness = \epsilon) \iff U \text{ is a correct folding of } \vec{G} \text{ with challenges } \vec{\alpha}
+$$
+
+**Note:** there is no witness for this relation: anyone who is given an instance can check the relation, by simply computing the folding himself.
+Instances are also small: they are defined only by $\vec{\alpha}$ which is $|\vec{\alpha}| = \log_2 \ell$ and the single group element $U \in \GG$.
+
+### Let The Prover Compute $U$
+
+To avoid the verifier computing $U$ (which takes $O(\ell)$ time), we are simply going to have the prover send $U$ to the verifier.
+
+Of course, by letting the prover provide $U$ he could provide a wrong $U$ and cheat...
+
+To mitigate this we will devise a way for the verifier to "check" that the $U$ provide is correctly computed from the $\vec{\alpha}'s$.
+To understand how we can devise such a check, start by observing that we can view
+the folding as a binary tree: at the leafs are the elements of $\vec{G}^{(0)}$, edges are labeled by
+
+<figure>
+<img src="https://i.imgur.com/RCOxqzw.png">
+<figcaption align = "center"><b>Fig 1.</b> Illustrates the final combination in the MSM for a CRS of 4 elements.</figcaption>
+</figure>
 
 A polynomial evaluation can be reduced to an inner product argument using a variant of the well-known folding argument, which we now reiterate for concreteness.
 
@@ -282,10 +517,6 @@ G' = U = \langle a, G \rangle
 
 To see this consider a simple example:
 
-<figure>
-<img src="https://i.imgur.com/RCOxqzw.png">
-<figcaption align = "center"><b>Fig 1.</b> Illustrates the final combination in the MSM for a CRS of 4 elements.</figcaption>
-</figure>
 
 See that the final $U$ is:
 

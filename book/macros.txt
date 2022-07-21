@@ -3,3 +3,5 @@
 \FF:{\mathbb{F}}
 \language:{\mathcal{L}}
 \relation:{\mathcal{R}}
+\witness:{\text{w}}
+\statement:{\text{x}}
