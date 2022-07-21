@@ -11,6 +11,20 @@ Relevant resources include:
 - [Recursive Proof Composition without a Trusted Setup (Halo)](https://eprint.iacr.org/2019/1021.pdf) by Sean Bowe, Jack Grigg and Daira Hopwood.
 
 This page describes the most relevant parts of these papers and how it is implemented in Pickles/Kimchi.
+It is not meant to document the low-level details of the code in Pickles, but to describe what the code aims to do.
+
+## The Goal of Accumulation
+
+<figure>
+<img src="./reductions.svg" alt="Commucation diagram of interactive/non-deterministic reductions between languages">
+<figcaption>
+<b>
+Fig 1.
+</b>
+Accumulation consists of a reduction from 1/more instances of the accumulator language to a single instance,
+in our particular scheme
+</figcaption>
+</figure>
 
 ## Accumulation schemes at a high level
 
@@ -69,7 +83,7 @@ however, we mean that no efficient adversary can find a witness for membership e
 ## Language of Polynomial Commitment Openings
 
 Recall that the polynomial commitment scheme (PCS) in Kimchi is just the trivial scheme based on Pedersen commitments.
-For Kimchi we are interested in "accumulation for the language ($\relation_\mathsf{PCS}$) of polynomial commitment openings", meaning that:
+For Kimchi we are interested in "accumulation for the language ($\relation_{\mathsf{PCS}, d}$) of polynomial commitment openings", meaning that:
 
 $$
 \left(
@@ -79,7 +93,7 @@ $$
 \in
 \relation_\mathsf{q}
 =
-\relation_\mathsf{PCS}
+\relation_{\mathsf{PCS},d}
 \iff
 \left\{
 \begin{align}
@@ -91,18 +105,16 @@ $$
 
 Where $\vec{f}$ is a list of coefficients for a polynomial $f(X) \coloneqq \sum_{i} f_i \cdot X^i$.
 
-In other words, we are going to reduce openings of polynomial commitments $\relation_\mathsf{PCS}$ to some other language $\relation_\mathsf{acc} = \mathcal{R}_\mathsf{IPA}$ which is described below...
+In other words, we are going to reduce openings of polynomial commitments $\relation_{\mathsf{PCS},d}$ to some other language $\relation_\mathsf{acc} = \mathcal{R}_\mathsf{IPA}$ which is described below...
 
-## Recalling Folding Arguments
+## Reduction: $\relation_{\mathsf{PCS},d} \to \relation_{\mathsf{IPA},\ell}$ (Add Evaluation)
 
-Let us start that by recalling how to construct an opening proof for the PCS above using a variant of the well-known recursive folding argument.
-Define $\vec{z} = (1, z, z^2, z^3, \ldots, z^{\ell-1})$, so that $v = \langle \vec{f}, \vec{z} \rangle$.
 Formally the relation of the inner product argument is:
 
 $$
 (
-\statement = (C, \vec{G}, H, \vec{z}, v),
-\witness = (\vec{f})
+\statement = (C, \vec{G}, H, \vec{z}),
+\witness = (\vec{f}, v)
 )
 \in
 \relation_{\mathsf{IPA},\ell}
@@ -114,20 +126,21 @@ v =
 \vec{z}
 \rangle \in \FF
 \land
-C = \langle \vec{f}, \vec{G} \rangle \in \GG
+C = \langle \vec{f}, \vec{G} \rangle + [v] \cdot H \in \GG
 \right\}
 $$
 
-### Convert PCS Relation to Inner Product Relation
+We can reduce $(\statement = (C, z, v),
+\witness = (\vec{f})) \in
+\relation_{\mathsf{PCS}, d}$ to $\relation_{\mathsf{IPA}, \ell}$ with $d = \ell$ as follows:
 
-First we describe how to reduce $\relation_\mathsf{PCS}$ to $\relation_{\mathsf{IPA}, \ell}$.
-This is done by adding the evaluation $v$ to the commitment "in a new coordinate": the verifier adds the opening to the commitment $C$, i.e.
-
-1. Verifier picks $H \sample \GG$ and sends $H$ to the prover.
-
-2. Verifier updates $C \gets C + [v] \cdot H$
+- Define $\vec{z} = (1, z, z^2, z^3, \ldots, z^{\ell-1})$, so that $v = \langle \vec{f}, \vec{z} \rangle$,
+- The verifier adds the evaluation $v$ to the commitment "in a new coordinate" as follows:
+    1. Verifier picks $H \sample \GG$ and sends $H$ to the prover.
+    2. Verifier updates $C \gets C + [v] \cdot H$
 
 Intuitively we sample $H$ to avoid a malicious prover "putting something in the $H$-position", because he must commit to $v$ before seeing $H$, hence he has to guess $H$ before-hand.
+
 If the prover is honest, we should have a commitment of the form:
 
 $$
@@ -138,7 +151,12 @@ C =
 \in \GG
 $$
 
-### Recursive Folding
+**Note:** In some variants of this reduction $H$ is chosen as $[\delta] \cdot J$ for a constant $J \in \GG$ where $\delta \sample \FF$ by the verifier,
+this also works, however we simply hash to the curve to sample $H$.
+
+## Reduction: $\relation_{\mathsf{IPA},\ell} \to \relation_{\mathsf{IPA},\ell/2}$ (Single Folding)
+
+Let us start that by recalling how to construct an opening proof for the PCS above using a variant of the well-known recursive folding argument.
 
 **Note:** The folding argument described below is the particular variant implemented in Kimchi, although some of the variable names are different.
 
@@ -412,20 +430,30 @@ $$
 C' &\gets [\alpha^{-1}] \cdot L + C + [\alpha] \cdot R \in \GG \\
 \vec{f}' &\gets \vec{f}_L + \alpha^{-1} \cdot \vec{f}_R \in \FF^{\ell / 2} \\
 \vec{z}' &\gets \vec{z}_L + \alpha \cdot \vec{z}_R \in \FF^{\ell / 2} \\
-\vec{G}' &\gets \vec{G}_L + [\alpha] \cdot \vec{G}_R \in \GG^{\ell / 2}
+\vec{G}' &\gets \vec{G}_L + [\alpha] \cdot \vec{G}_R \in \GG^{\ell / 2} \\
+v'       &\gets \langle \vec{f'}, \vec{z}' \rangle
 \end{align}
 $$
 
-We obtain a new instance of the inner product relation, but now of half the size. i.e.
+We obtain a new instance of the inner product relation (of half the size):
 
+$$
+(
+\statement = (C', \vec{G}', H, \vec{z}'),
+\witness = (\vec{f}', v')
+) \in
+\relation_{\mathsf{IPA}, \ell/2}
+$$
+
+<!--
+Since (as we just verified):
 $$
 \begin{align}
 C' &= \langle \vec{f}', \vec{G}' \rangle + [v] \cdot H \\
 v &= \langle \vec{f}', \vec{z}' \rangle
 \end{align}
 $$
-
-### Recursive Application for Log-Size Openings
+-->
 
 At this point the prover could send $\vec{z}'$, $\vec{f}'$ to the verifier who could verify the claim:
 
@@ -435,17 +463,129 @@ At this point the prover could send $\vec{z}'$, $\vec{f}'$ to the verifier who c
 
 This would require half as much communication as the naive proof. Not bad.
 
-Note however that the process above can simply be applied again to the new $(C', \vec{G}', H, \vec{z}', v) \in \relation_{\mathsf{IPA}, \ell/2}$ instance as well.
-By doing so $\log_2(\ell)$ times the total communication is brought down to $2 \log_2(\ell)$ $\GG$-elements
-until the instance consists of $(\vec{C}, G', H, \vec{z}', v) \in \relation_{\mathsf{IPA}, 1}$
+However, we can iteratively apply this transformation until we each an instance of constant size:
+
+## Reduction: $\relation_{\mathsf{IPA},\ell} \to \relation_{\mathsf{IPA},1}$ (Folding Argument)
+
+That the process above can simply be applied again to the new $(C', \vec{G}', H, \vec{z}', v) \in \relation_{\mathsf{IPA}, \ell/2}$ instance as well.
+By doing so $k = \log_2(\ell)$ times the total communication is brought down to $2 k$ $\GG$-elements
+until the instance consists of $(\vec{C}, G, H, \vec{z}, v) \in \relation_{\mathsf{IPA}, 1}$
 at which point the prover simply provides $\vec{f}' \in \FF$.
 
-### Observation About Verifier Complexity
 
-Note that computing the new instance, i.e. computing the final $C'$ is poly-log in $\ell$: this is important, because
-<u> the only linear-time part of the verifier</u> is computing the final $G'$.
+Because we need to refer to the terms in the intermediate reductions
+we let
+$\vec{G}^{(i)}$, $\vec{f}^{(i)}$, $\vec{z}^{(i)}$
+be the
+$\vec{G}'$, $\vec{f}'$, $\vec{z}'$ vectors respectively after $i$ recursive applications, with $\vec{G}^{(0)}$, $\vec{f}^{(0)}$, $\vec{z}^{(0)}$ being the original instance.
+We denote by $\alpha^{(i)}$ the challenge of the $i$'th application.
 
-## The Halo Observation: Letting the prover compute $U$.
+## Reduction: $\relation_{\mathsf{IPA},1} \to \relation_{\mathsf{Acc},\overset{\rightarrow}{G} }$ (Folding Argument Cont.)
+
+While the proof for $\relation_{\mathsf{IPA},\ell}$ above has $O(\log(\ell))$-size, the verifiers time-complexity is $O(\ell)$.
+
+Namely computing:
+
+- $\vec{G}^{(k)}$ from $\vec{G}^{(0)}$ using $\alpha^{(1)}, \ldots, \alpha^{(k)}$ takes $O(\ell)$.
+- $\vec{z}^{(k)}$ from $\vec{v}^{(0)}$ using $\alpha^{(1)}, \ldots, \alpha^{(k)}$ takes $O(\ell)$.
+
+The rest of the verifiers computation is only $O(\log(\ell))$, namely computing:
+
+- Sampling $\alpha \sample \FF$.
+- $C^{(i)} \gets [\alpha^{-1}] \cdot L^{(i)} + C^{(i-1)} + [\alpha] \cdot R^{(i)}$ for every $i$
+
+However, upon inspection, the naive claim that computing $\vec{z}^{(k)}$ takes $O(\ell)$ turns out not to be true:
+
+**Claim:**
+Define
+$
+h(X) \coloneqq \prod_{i = 0}^{k - 1} \left(1 + \alpha^{(k - i)} \cdot X^{2^i}\right)
+$ then
+$
+\vec{z}^{(k)} = h(z)
+$.
+This can be verified by looking at the expansion of $h(X)$.
+
+Since $h(X)$ can be evaluated in $O(k)$ time, computing $\vec{z}^{(k)}$ takes $O(\log \ell)$.
+
+The "Halo trick" resides in observing that this is also the case for $\vec{G}^{(k)}$, namely:
+
+$$
+\vec{G}^{(k)} = \langle \vec{h}, \vec{G} \rangle
+$$
+
+
+$$
+(
+\statement =
+,
+\witness =
+)
+\relation_{\mathsf{Acc}}
+$$
+
+
+For ease of notation (and consistency with [Proof-Carrying Data from Accumulation Schemes](https://eprint.iacr.org/2020/499.pdf))
+let us define
+
+$$U = \vec{G}^{(k)} \in \GG$$
+
+$$c = \vec{f}^{(k)} \in \FF$$
+
+$$
+v' = \vec{f} \cdot h(z)
+$$
+
+$$
+C = \langle \vec{h}, \vec{G} \rangle + [ v' ] \cdot H
+$$
+
+This defines the language:
+
+$$
+\relation_{\mathsf{Acc}, \vec{G}}(\statement = (U, \vec{\alpha}), \witness = \epsilon) \iff U \text{ is a correct folding of } \vec{G} \text{ with challenges } \vec{\alpha}
+$$
+
+$$
+\relation_{\mathsf{Acc}, \vec{G}}(\statement = (U, H, z, c, \vec{\alpha}), \witness = \epsilon) \iff
+\left\{
+    \begin{align}
+       h(X) &\coloneqq \prod_{i = 0}^{k - 1} \left(1 + \alpha^{(k - i)} \cdot X^{2^i}\right) \\
+    \land \ U &= \langle \vec{h}, \vec{G} \rangle + [ h(z) \cdot c ] \cdot H
+    \end{align}
+\right\}
+$$
+
+**Note:** since there is <u>no witness</u> for this relation anyone can verify the relation by simply computing the check.
+Instances are also small: the size is dominated by $\vec{\alpha}$ which is $|\vec{\alpha}| = \log_2 \ell$.
+
+### Unrolling the folding
+
+
+Observe that:
+
+$$
+\begin{align}
+\vec{z}^{(1)} &= \vec{z}^{(0)}_L + [\alpha^{(1)}] \cdot \vec{z}^{(0)}_R \\
+\vec{z}^{(2)} &= \vec{z}^{(1)}_L + [\alpha^{(2)}] \cdot \vec{z}^{(1)}_R \\
+\vec{z}^{(3)} &= \vec{z}^{(1)}_L + [\alpha^{(3)}] \cdot \vec{z}^{(2)}_R \\
+&\vdots \\
+\vec{z}^{(k)} &= \vec{z}^{(k-1)}_L + [\alpha^{(k)}] \cdot \vec{z}^{(k-1)}_R \\
+\end{align}
+$$
+
+<!--
+note that $\vec{z}^{(k)}
+= \sum_{j = 1}^{\ell} c_i \cdot z_i
+= \sum_{j = 1}^{\ell} c_i \cdot z^{i - 1}$ for some coefficients $c_i$ depending on $\alpha^{(1)}, \ldots, \alpha^{(k)}$,
+To see this consider an index $j \in [\ell]$ and
+To see this consider the expansion of the product: the coefficient $c_j$ for the $X^j$'th term
+let $b_0, \ldots, b_{k-1}$ be the binary expansion of $j$, i.e. $j = \sum_{i=0}^{k-1} b_i \cdot 2^i$,
+then $c_j = \sum_{b_i \neq 0} \alpha^{k - i}$, which corresponds exactly to the value that
+$z_j$
+-->
+
+Therefore the final evaluation can be computed as $v = h(z) \cdot \vec{f}$.
 
 Let us denote by $U$ the final $G'$. For clarity, let us start by "unrolling" how $U$ is suppose to be computed:
 Let $\vec{G}^{(i)}$ denote $\vec{G}'$ after $i$ "foldings" (recursive applications of the proof above), with $\vec{G}^{(0)}$ being the original list of generators.
@@ -461,14 +601,7 @@ $$
 \end{align}
 $$
 
-This defines the language:
 
-$$
-\relation_{\mathsf{h}, \vec{G}}(\statement = (U, \vec{\alpha}), \witness = \epsilon) \iff U \text{ is a correct folding of } \vec{G} \text{ with challenges } \vec{\alpha}
-$$
-
-**Note:** there is no witness for this relation: anyone who is given an instance can check the relation, by simply computing the folding himself.
-Instances are also small: they are defined only by $\vec{\alpha}$ which is $|\vec{\alpha}| = \log_2 \ell$ and the single group element $U \in \GG$.
 
 ### Let The Prover Compute $U$
 
