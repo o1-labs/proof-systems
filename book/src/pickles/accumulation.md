@@ -26,6 +26,10 @@ in our particular scheme
 </figcaption>
 </figure>
 
+## Interactive Reductions Between Languages
+
+In a trivial sense every interactive argument is a reduction from the original relation to the language of last-round messages.
+
 ## Accumulation schemes at a high level
 
 At a high-level accumulation schemes is about _interactively/non-deterministically_ reducing membership of two (or more) instances $\mathsf{qx} \in \language_\mathsf{q}$ (instance language), $\mathsf{acc}.x \in \language_\mathsf{acc}$ (accumulation language) to membership of $\mathsf{acc}^*.x \in \language_\mathsf{acc}$ such that if:
@@ -114,7 +118,7 @@ Formally the relation of the inner product argument is:
 $$
 (
 \statement = (C, \vec{G}, H, \vec{z}),
-\witness = (\vec{f}, v)
+\witness = (\vec{f})
 )
 \in
 \relation_{\mathsf{IPA},\ell}
@@ -126,7 +130,7 @@ v =
 \vec{z}
 \rangle \in \FF
 \land
-C = \langle \vec{f}, \vec{G} \rangle + [v] \cdot H \in \GG
+C = \langle \vec{f}, \vec{G} \rangle + [\langle \vec{f}, \vec{z} \rangle] \cdot H \in \GG
 \right\}
 $$
 
@@ -482,17 +486,15 @@ We denote by $\alpha^{(i)}$ the challenge of the $i$'th application.
 
 ## Reduction: $\relation_{\mathsf{IPA},1} \to \relation_{\mathsf{Acc},\overset{\rightarrow}{G} }$ (Folding Argument Cont.)
 
-While the proof for $\relation_{\mathsf{IPA},\ell}$ above has $O(\log(\ell))$-size, the verifiers time-complexity is $O(\ell)$.
+While the proof for $\relation_{\mathsf{IPA},\ell}$ above has $O(\log(\ell))$-size, the verifiers time-complexity is $O(\ell)$:
 
-Namely computing:
-
-- $\vec{G}^{(k)}$ from $\vec{G}^{(0)}$ using $\alpha^{(1)}, \ldots, \alpha^{(k)}$ takes $O(\ell)$.
-- $\vec{z}^{(k)}$ from $\vec{v}^{(0)}$ using $\alpha^{(1)}, \ldots, \alpha^{(k)}$ takes $O(\ell)$.
+- Computing $\vec{G}^{(k)}$ from $\vec{G}^{(0)}$ using $\vec{\alpha}$ takes $O(\ell)$.
+- Computing $\vec{z}^{(k)}$ from $\vec{v}^{(0)}$ using $\vec{\alpha}$ takes $O(\ell)$.
 
 The rest of the verifiers computation is only $O(\log(\ell))$, namely computing:
 
 - Sampling $\alpha \sample \FF$.
-- $C^{(i)} \gets [\alpha^{-1}] \cdot L^{(i)} + C^{(i-1)} + [\alpha] \cdot R^{(i)}$ for every $i$
+- Computing $C^{(i)} \gets [\alpha_i^{-1}] \cdot L^{(i)} + C^{(i-1)} + [\alpha_i] \cdot R^{(i)}$ for every $i$
 
 However, upon inspection, the naive claim that computing $\vec{z}^{(k)}$ takes $O(\ell)$ turns out not to be true:
 
@@ -500,64 +502,106 @@ However, upon inspection, the naive claim that computing $\vec{z}^{(k)}$ takes $
 Define
 $
 h(X) \coloneqq \prod_{i = 0}^{k - 1} \left(1 + \alpha^{(k - i)} \cdot X^{2^i}\right)
-$ then
+$, then
 $
 \vec{z}^{(k)} = h(z)
 $.
-This can be verified by looking at the expansion of $h(X)$.
+
+**Proof:**
+This can be verified by looking at the expansion of $h(X)$:
+observing that
 
 Since $h(X)$ can be evaluated in $O(k)$ time, computing $\vec{z}^{(k)}$ takes $O(\log \ell)$.
 
-The "Halo trick" resides in observing that this is also the case for $\vec{G}^{(k)}$, namely:
+The "Halo trick" resides in observing that this is also the case for $\vec{G}^{(k)}$:
+since it is folded the same way as $\vec{z}$. It is not hard to convince one-self (using the same type of argument as above) that:
 
 $$
 \vec{G}^{(k)} = \langle \vec{h}, \vec{G} \rangle
 $$
 
+Where $\vec{h}$ is the coefficients of $h(X)$ (like $\vec{f}$ is the coefficients of $f(X)$), i.e. $h(X) = \sum_{i = 1}^{\ell} h_i X^{i-1}$
+
+For notational convince (and to emphasise that they are 1 dimensional vectors), define/replace:
 
 $$
-(
-\statement =
-,
-\witness =
-)
-\relation_{\mathsf{Acc}}
+U = \vec{G}^{(k)} \in \GG, \ \ \ c = \vec{f}^{(k)} \in \FF, \ \ \ h(z) = \vec{z}^{(k)} \in \FF
 $$
 
-
-For ease of notation (and consistency with [Proof-Carrying Data from Accumulation Schemes](https://eprint.iacr.org/2020/499.pdf))
-let us define
-
-$$U = \vec{G}^{(k)} \in \GG$$
-
-$$c = \vec{f}^{(k)} \in \FF$$
+With this we define the "accumulator language" which states that "$U$" was computed correctly:
 
 $$
-v' = \vec{f} \cdot h(z)
-$$
-
-$$
-C = \langle \vec{h}, \vec{G} \rangle + [ v' ] \cdot H
-$$
-
-This defines the language:
-
-$$
-\relation_{\mathsf{Acc}, \vec{G}}(\statement = (U, \vec{\alpha}), \witness = \epsilon) \iff U \text{ is a correct folding of } \vec{G} \text{ with challenges } \vec{\alpha}
-$$
-
-$$
-\relation_{\mathsf{Acc}, \vec{G}}(\statement = (U, H, z, c, \vec{\alpha}), \witness = \epsilon) \iff
+\left(\statement = (U, \vec{\alpha}), \witness = \epsilon\right)
+\in
+\relation_{\mathsf{Acc}, \vec{G}}
+\iff
 \left\{
     \begin{align}
-       h(X) &\coloneqq \prod_{i = 0}^{k - 1} \left(1 + \alpha^{(k - i)} \cdot X^{2^i}\right) \\
-    \land \ U &= \langle \vec{h}, \vec{G} \rangle + [ h(z) \cdot c ] \cdot H
+       h(X) &\coloneqq \prod_{i = 0}^{k - 1} \left(1 + \alpha^{(k - i)} \cdot X^{2^i}\right)
+    \land \ U = \langle \vec{h}, \vec{G} \rangle
     \end{align}
 \right\}
 $$
 
-**Note:** since there is <u>no witness</u> for this relation anyone can verify the relation by simply computing the check.
+**Note:** since there is <u>no witness</u> for this relation anyone can verify the relation (in $O(\ell)$ time)
+by simply computing $\langle \vec{h}, \vec{G} \rangle$ in linear time.
 Instances are also small: the size is dominated by $\vec{\alpha}$ which is $|\vec{\alpha}| = \log_2 \ell$.
+
+Using the new notation rewrite $\relation_{\mathsf{IPA},1}$ as:
+
+$$
+\left(
+\statement = (C, U, H, h(z)),
+\witness = (c)
+\right)
+\in
+\relation_{\mathsf{IPA},1}
+\iff
+\left\{
+\begin{align}
+v &=
+c
+\cdot
+h(z) \\
+\land \ C &= [c] \cdot U + [v] \cdot H \in \GG
+\end{align}
+\right\}
+$$
+
+**Note:**
+It is the same relation, we just replaced some names and simplified a bit: inner products between 1-dimensional vectors are just multiplications. The reader should convince themselves of this.
+
+We now have all the components to reduce $\relation_{\mathsf{IPA},1} \to \relation_{\mathsf{Acc},\vec{G} }$ (with no soundness error) as follows:
+
+1. Prover sends $c, U$ to the verifier.
+2. Verifier does:
+    - Compute $v \gets h(x) \cdot c$
+    - Checks $C \overset?= [c] \cdot U + [ v ] \cdot H$
+3. Output
+$
+(\statement = (U, \vec{\alpha}), \witness = \epsilon)
+\in \relation_{\mathsf{Acc}, \vec{G}}
+$
+
+**Note:** The above can be optimized slight: the values of $U$ can be inferred from $H$, $v$ and $c$,
+hence the prover does not need to send $U$ explicitly.
+This optimization is not used in Kimchi/Pickles.
+
+## Reduction: $\relation_{\mathsf{Acc}, \overset{\rightarrow}{G}} \to \relation_{\mathsf{PCS}, d}$ (Accumulation)
+
+The expensive part in checking $
+(U, H, z, c, \vec{\alpha})
+\in
+\relation_{\mathsf{Acc}, \vec{G}}
+$ consists in computing
+$\langle \vec{h}, \vec{G} \rangle$
+given the $\vec{\alpha}$ describing $h(X)$,
+however, we observe that
+$\langle \vec{h}, \vec{G} \rangle$ is actually <u>a polynomial commitment</u> to $h(X)$.
+
+This suggest the following simple strategy for outsourcing the computation of $\langle \vec{h}, \vec{G} \rangle$ to the prover:
+
+1. Prover compuy
 
 ### Unrolling the folding
 
