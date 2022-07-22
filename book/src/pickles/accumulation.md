@@ -15,20 +15,71 @@ It is not meant to document the low-level details of the code in Pickles, but to
 
 ## The Goal of Accumulation
 
+## Interactive Reductions Between Relations
+
+The easiest way to understand accumulation is as a set of interactive reductions between relations.
+An interactive reduction $\relation \to \relation'$ proceeds as follows:
+
+- The prover/verifier starts with some statement $\statement$, the prover additionally holds $\witness$.
+- They then run some protocol between them.
+- After which, they both obtain $\statement'$ and the prover obtains $\witness'$
+
+With the security/completeness guarantee that:
+
+$$
+(\statement, \witness) \in \relation
+\iff
+(\statement', \witness') \in \relation'
+$$
+
+Except with negligible probability.
+In other words: we have reduced membership of $\relation$ to membership of $\relation'$
+using an interaction between the parties: the reduction may be probabilistic.
+
 <figure>
 <img src="./reductions.svg" alt="Commucation diagram of interactive/non-deterministic reductions between languages">
 <figcaption>
 <b>
 Fig 1.
 </b>
-Accumulation consists of a reduction from 1/more instances of the accumulator language to a single instance,
-in our particular scheme
+An overview the particular reductions/languages (described below) we require.
 </figcaption>
 </figure>
 
-## Interactive Reductions Between Languages
+**Note:** There are many examples of such reductions, an example familiar to the reader is PlonK:
+which reduces circuit-satisfiability $\relation$ ($\statement$ is the public inputs and $\witness$ is the wire assignments)
+to openings of polynomial commitments $\relation'$ ($\statement'$ are polynomial commitments and evaluation points, $\witness$ is the opening of the commitment).
 
-In a trivial sense every interactive argument is a reduction from the original relation to the language of last-round messages.
+<details>
+<summary>
+More Theory/Reflections about Interactive Reductions (click to expand)
+</summary>
+<br>
+
+As noted in
+[Compressed $\Sigma$-Protocol Theory and Practical Application to Plug & Play Secure Algorithmics](https://eprint.iacr.org/2020/152.pdf)
+every Proof-of-Knowledge (PoK) with $k$-rounds for a relation $\relation$ can instead be seen as a reduction to some relation $\relation'$
+with $k-1$ rounds as follows:
+
+- Letting $\statement'$ be the view of the verifier.
+- $\witness'$ be a $k$'th-round message which could make the verifier accept.
+
+Hence the relation $\relation'$ is the set of verifier views (except for the last round) and the last missing message which would make the verifier accept if sent.
+
+This simple, yet beautiful, observation turns out to be <u>extremely useful</u>: rather than explicitly sending the last-round message (which may be large/take the verifier a long time to check), the prover can instead prove that <u>he knows</u> a last-round message which <u>would make the verifier accept</u>, after all, sending the witness $\witness'$ is a particularly simple/inefficient PoK for $(\statement', \witness') \in \relation'$.
+
+The reductions in this document are all of this form (including the folding argument):
+receiving/verifying the last-round message would require too many resources of the verifier,
+hence we instead replace it with yet another reduction to yet another language (e.g. of half the size).
+
+Hence we end up with a chain of reductions: going from the languages of the last-round messages.
+
+An "accumulation scheme" is just an example of such a chain of reductions which happens to contain a cycle.
+Meaning the language is "self-reducing" via a series of interactive reductions.
+
+</details>
+
+<!--
 
 ## Accumulation schemes at a high level
 
@@ -77,12 +128,9 @@ As a design goal we want this "interactive reduction" (the "accumulation verifie
 2. Communication.
 3. Computation for the verifier.
 
-<!--
-In this document we ignore zero-knowledge for ease of exposition, it is however mostly trivial, e.g. to open a polynomial $f(z) = v$ pick a polnyomial $g$ st. $g(z) = 0$ and compute a linear combination.
--->
-
 **Note:** technically, the languages we are interested in are trivial e.g. every commitment can be opened to every polynomial,
 however, we mean that no efficient adversary can find a witness for membership e.g. a valid opening.
+-->
 
 ## Language of Polynomial Commitment Openings
 
@@ -91,12 +139,10 @@ For Kimchi we are interested in "accumulation for the language ($\relation_{\mat
 
 $$
 \left(
-\mathsf{qx} = (C, z, v),
-\mathsf{qw} = (\vec{f})
+\statement = (C, z, v),
+\witness= (\vec{f})
 \right)
 \in
-\relation_\mathsf{q}
-=
 \relation_{\mathsf{PCS},d}
 \iff
 \left\{
@@ -109,7 +155,7 @@ $$
 
 Where $\vec{f}$ is a list of coefficients for a polynomial $f(X) \coloneqq \sum_{i} f_i \cdot X^i$.
 
-In other words, we are going to reduce openings of polynomial commitments $\relation_{\mathsf{PCS},d}$ to some other language $\relation_\mathsf{acc} = \mathcal{R}_\mathsf{IPA}$ which is described below...
+This is the language we are interested in reducing: providing a trivial proof, i.e. sending $\vec{f}$ requires linear communication and time.
 
 ## Reduction: $\relation_{\mathsf{PCS},d} \to \relation_{\mathsf{IPA},\ell}$ (Add Evaluation)
 
@@ -482,7 +528,7 @@ we let
 $\vec{G}^{(i)}$, $\vec{f}^{(i)}$, $\vec{z}^{(i)}$
 be the
 $\vec{G}'$, $\vec{f}'$, $\vec{z}'$ vectors respectively after $i$ recursive applications, with $\vec{G}^{(0)}$, $\vec{f}^{(0)}$, $\vec{z}^{(0)}$ being the original instance.
-We denote by $\alpha^{(i)}$ the challenge of the $i$'th application.
+We denote by $\alpha_i$ the challenge of the $i$'th application.
 
 ## Reduction: $\relation_{\mathsf{IPA},1} \to \relation_{\mathsf{Acc},\overset{\rightarrow}{G} }$ (Folding Argument Cont.)
 
@@ -501,8 +547,9 @@ However, upon inspection, the naive claim that computing $\vec{z}^{(k)}$ takes $
 **Claim:**
 Define
 $
-h(X) \coloneqq \prod_{i = 0}^{k - 1} \left(1 + \alpha^{(k - i)} \cdot X^{2^i}\right)
-$, then
+h(X) \coloneqq \prod_{i = 0}^{k - 1} \left(1 + \alpha_{k - i} \cdot X^{2^i}\right)
+$,
+then
 $
 \vec{z}^{(k)} = h(z)
 $.
@@ -537,7 +584,7 @@ $$
 \iff
 \left\{
     \begin{align}
-       h(X) &\coloneqq \prod_{i = 0}^{k - 1} \left(1 + \alpha^{(k - i)} \cdot X^{2^i}\right)
+       h(X) &\coloneqq \prod_{i = 0}^{k - 1} \left(1 + \alpha_{k - i} \cdot X^{2^i}\right)
     \land \ U = \langle \vec{h}, \vec{G} \rangle
     \end{align}
 \right\}
@@ -547,7 +594,10 @@ $$
 by simply computing $\langle \vec{h}, \vec{G} \rangle$ in linear time.
 Instances are also small: the size is dominated by $\vec{\alpha}$ which is $|\vec{\alpha}| = \log_2 \ell$.
 
-Using the new notation rewrite $\relation_{\mathsf{IPA},1}$ as:
+**In The Code:** in the Kimchi code $\vec{\alpha}$ is called `prev_challenges` and $U$ is called `comm`,
+the instance $\statement$ is defined by the `RecursionChallenge` struct.
+
+Now, using the new notation rewrite $\relation_{\mathsf{IPA},1}$ as:
 
 $$
 \left(
@@ -575,7 +625,7 @@ We now have all the components to reduce $\relation_{\mathsf{IPA},1} \to \relati
 
 1. Prover sends $c, U$ to the verifier.
 2. Verifier does:
-    - Compute $v \gets h(x) \cdot c$
+    - Compute $v \gets h(z) \cdot c$
     - Checks $C \overset?= [c] \cdot U + [ v ] \cdot H$
 3. Output
 $
