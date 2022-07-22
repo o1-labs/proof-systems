@@ -57,14 +57,6 @@ pub fn create_witness<F: PrimeField>(
         F::zero()
     };
 
-    // TODO: Almost sure we also need this step if we had 264 bits similar to size of modulus
-    let mut result_carry_hi = if result_hi >= two_to_limb {
-        result_hi -= two_to_limb;
-        F::one()
-    } else {
-        F::zero()
-    };
-
     // Using the BigUint library, the following should be easier. We would compute result at the beginning and obtain the field overflow trivially
 
     // Compute field overflow bit (if any)
@@ -104,7 +96,6 @@ pub fn create_witness<F: PrimeField>(
 
         if result_hi < *foreign_modulus.hi() {
             result_hi += two_to_limb;
-            result_carry_hi -= F::one();
         }
         result_hi -= *foreign_modulus.hi();
 
@@ -141,7 +132,7 @@ pub fn create_witness<F: PrimeField>(
     range_check::extend_witness(&mut witness, result);
     range_check::extend_witness(&mut witness, upper_bound);
 
-    let result_carry = [result_carry_lo, result_carry_mi, result_carry_hi];
+    let result_carry = [result_carry_lo, result_carry_mi];
     let upper_bound_carry = [upper_bound_carry_lo, upper_bound_carry_mi];
 
     // Create foreign field addition and zero witness rows
@@ -151,23 +142,13 @@ pub fn create_witness<F: PrimeField>(
 
     let offset = 16; // number of witness rows of the gadget before the first row of the addition gate
 
-    // ForeignFieldAdd row
-    init_foreign_field_add_row(
+    // ForeignFieldAdd row and Zero row
+    init_foreign_field_add_rows(
         &mut witness,
-        0,
         offset,
         field_overflow,
         result_carry,
         upper_bound_carry,
-    );
-    // Zero row
-    init_foreign_field_add_row(
-        &mut witness,
-        1,
-        offset,
-        F::zero(),
-        array_init(|_| F::zero()),
-        array_init(|_| F::zero()),
     );
 
     witness
@@ -198,10 +179,9 @@ pub fn check_witness<F: PrimeField>(
     // Carry bits for limb overflows / underflows.
     let result_carry_lo = witness[7][16];
     let result_carry_mi = witness[8][16];
-    let result_carry_hi = witness[9][16];
 
-    let upper_bound_carry_lo = witness[10][16];
-    let upper_bound_carry_mi = witness[11][16];
+    let upper_bound_carry_lo = witness[9][16];
+    let upper_bound_carry_mi = witness[10][16];
 
     let result_lo = witness[0][17];
     let result_mi = witness[1][17];
@@ -221,10 +201,6 @@ pub fn check_witness<F: PrimeField>(
         F::zero(),
         result_carry_mi * (result_carry_mi - F::one()) * (result_carry_mi + F::one())
     );
-    assert_eq!(
-        F::zero(),
-        result_carry_hi * (result_carry_hi - F::one()) * (result_carry_hi + F::one())
-    );
 
     let result_calculated_lo = left_input_lo + right_input_lo
         - field_overflow * foreign_modulus_lo
@@ -233,9 +209,8 @@ pub fn check_witness<F: PrimeField>(
         - field_overflow * foreign_modulus_mi
         - (result_carry_mi * two_to_88)
         + result_carry_lo;
-    let result_calculated_hi = left_input_hi + right_input_hi - field_overflow * foreign_modulus_hi
-        + result_carry_mi
-        - two_to_88 * result_carry_hi;
+    let result_calculated_hi =
+        left_input_hi + right_input_hi - field_overflow * foreign_modulus_hi + result_carry_mi;
 
     assert_eq!(result_lo, result_calculated_lo);
     assert_eq!(result_mi, result_calculated_mi);
@@ -313,9 +288,9 @@ const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 2] = [
         FieldElemWitnessCell::create(FieldElemType::FieldOverflow, FieldElemOrder::No), // field_overflow
         FieldElemWitnessCell::create(FieldElemType::ResultCarry, FieldElemOrder::Lo), // result_carry_lo
         FieldElemWitnessCell::create(FieldElemType::ResultCarry, FieldElemOrder::Mi), // result_carry_mi
-        FieldElemWitnessCell::create(FieldElemType::ResultCarry, FieldElemOrder::Hi), // result_carry_hi
         FieldElemWitnessCell::create(FieldElemType::UpperBoundCarry, FieldElemOrder::Lo), // upper_bound_carry_lo
         FieldElemWitnessCell::create(FieldElemType::UpperBoundCarry, FieldElemOrder::Mi), // upper_bound_carry_mi
+        WitnessCell::Standard(ZeroWitnessCell::create()),
         WitnessCell::Standard(ZeroWitnessCell::create()),
         WitnessCell::Standard(ZeroWitnessCell::create()),
         WitnessCell::Standard(ZeroWitnessCell::create()),
@@ -340,32 +315,33 @@ const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 2] = [
     ],
 ];
 
-fn init_foreign_field_add_row<F: PrimeField>(
+fn init_foreign_field_add_rows<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
-    row: usize,
     offset: usize,
     field_overflow: F,
-    result_carry: [F; 3],
+    result_carry: [F; 2],
     upper_bound_carry: [F; 2],
 ) {
-    for col in 0..COLUMNS {
-        match &WITNESS_SHAPE[row][col] {
-            WitnessCell::Standard(standard_cell) => {
-                handle_standard_witness_cell(
-                    witness,
-                    standard_cell,
-                    offset + row,
-                    col,
-                    F::zero(), /* unused by this gate */
-                )
-            }
-            WitnessCell::FieldElem(elem_cell) => {
-                witness[col][offset + row] = {
-                    match elem_cell.kind {
-                        FieldElemType::FieldOverflow => field_overflow,
-                        FieldElemType::ResultCarry => result_carry[elem_cell.order as usize],
-                        FieldElemType::UpperBoundCarry => {
-                            upper_bound_carry[elem_cell.order as usize]
+    for row in 0..2 {
+        for col in 0..COLUMNS {
+            match &WITNESS_SHAPE[row][col] {
+                WitnessCell::Standard(standard_cell) => {
+                    handle_standard_witness_cell(
+                        witness,
+                        standard_cell,
+                        offset + row,
+                        col,
+                        F::zero(), /* unused by this gate */
+                    )
+                }
+                WitnessCell::FieldElem(elem_cell) => {
+                    witness[col][offset + row] = {
+                        match elem_cell.kind {
+                            FieldElemType::FieldOverflow => field_overflow,
+                            FieldElemType::ResultCarry => result_carry[elem_cell.order as usize],
+                            FieldElemType::UpperBoundCarry => {
+                                upper_bound_carry[elem_cell.order as usize]
+                            }
                         }
                     }
                 }

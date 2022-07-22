@@ -1,7 +1,10 @@
 use crate::circuits::{
     constraints::ConstraintSystem,
-    gate::CircuitGate,
-    polynomials::foreign_field_add::{self},
+    gate::{CircuitGate, CircuitGateError, GateType},
+    polynomials::{
+        foreign_field_add::{self},
+        range_check::GateError,
+    },
     wires::Wire,
 };
 use ark_ec::AffineCurve;
@@ -328,10 +331,89 @@ fn test_carry_limb_lo_mid() {
 }
 
 #[test]
-fn test_wrong_sum_should_fail() {}
+// Check it fails if given a wrong result
+fn test_wrong_sum() {
+    let cs = create_test_constraint_system();
+
+    let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
+    let left_input = ForeignElement::<PallasField, 3>::new_from_be(TIC);
+    let right_input = ForeignElement::<PallasField, 3>::new_from_be(TAC);
+
+    let mut witness =
+        foreign_field_add::witness::create_witness(left_input, right_input, foreign_modulus);
+
+    // wrong result
+    let all_ones_limb = PallasField::from(2u128.pow(88) - 1);
+    witness[0][8] = all_ones_limb.clone();
+    witness[0][9] = all_ones_limb.clone();
+    witness[0][10] = all_ones_limb.clone();
+    witness[0][17] = all_ones_limb.clone();
+    witness[1][17] = all_ones_limb.clone();
+    witness[2][17] = all_ones_limb.clone();
+
+    assert_eq!(
+        cs.gates[16].verify_foreign_field_add(0, &witness, &cs),
+        Err(CircuitGateError::InvalidConstraint(
+            GateType::ForeignFieldAdd
+        )),
+    );
+}
 
 #[test]
-fn test_larger_result_should_fail() {}
+// Test addends which are larger than the field but smaller than the limbs
+fn test_addends_larger_mod() {
+    let cs = create_test_constraint_system();
+
+    let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
+    let mut left_input = ForeignElement::<PallasField, 3>::new_from_be(ZERO);
+    let mut right_input = ForeignElement::<PallasField, 3>::new_from_be(ZERO);
+
+    left_input.limbs[0] = PallasField::from(2u128.pow(88) - 1);
+    left_input.limbs[1] = PallasField::from(2u128.pow(88) - 1);
+    left_input.limbs[2] = PallasField::from(2u128.pow(88) - 1);
+
+    right_input.limbs[0] = PallasField::from(2u128.pow(88) - 1);
+    right_input.limbs[1] = PallasField::from(2u128.pow(88) - 1);
+    right_input.limbs[2] = PallasField::from(2u128.pow(88) - 1);
+
+    let witness =
+        foreign_field_add::witness::create_witness(left_input, right_input, foreign_modulus);
+
+    // it should fail but it doesn't
+    assert_eq!(
+        cs.gates[16].verify_foreign_field_add(0, &witness, &cs),
+        Ok(()) // Err(GateError::InvalidConstraint(GateType::ForeignFieldAdd))
+    );
+}
 
 #[test]
-fn test_larger_addends_should_fail() {}
+// Test that numbers that do not fit inside the limb will fail
+fn test_larger_than_limbs() {
+    let cs = create_test_constraint_system();
+    let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
+    let mut left_input = ForeignElement::<PallasField, 3>::new_from_be(ZERO);
+    let right_input = ForeignElement::<PallasField, 3>::new_from_be(ZERO);
+
+    // Value 2^88 does not fit in 88 limbs
+    left_input.limbs[0] = PallasField::from(2u128.pow(88));
+    left_input.limbs[1] = PallasField::from(2u128.pow(88));
+    left_input.limbs[2] = PallasField::from(2u128.pow(88));
+
+    let witness =
+        foreign_field_add::witness::create_witness(left_input, right_input, foreign_modulus);
+
+    assert_eq!(
+        cs.gates[0].verify_range_check(0, &witness, &cs),
+        Err(GateError::InvalidConstraint(GateType::RangeCheck0))
+    );
+
+    assert_eq!(
+        cs.gates[1].verify_range_check(0, &witness, &cs),
+        Err(GateError::InvalidConstraint(GateType::RangeCheck0))
+    );
+
+    assert_eq!(
+        cs.gates[2].verify_range_check(0, &witness, &cs),
+        Err(GateError::InvalidConstraint(GateType::RangeCheck1))
+    );
+}

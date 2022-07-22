@@ -43,9 +43,9 @@
 ///    |   6 | 'o'               |             |
 ///    |   7 | 'c0'              |             |
 ///    |   8 | 'c1'              |             |
-///    |   9 | TODO: 'c2'        |             |
-///    |  10 | 'k0'              |             |
-///    |  11 | 'k1'              |             |
+///    |   9 | ´k0´              |             |
+///    |  10 | 'k1'              |             |
+///    |  11 |                   |             |
 ///    |  12 |                   |             |
 ///    |  13 |                   |             |
 ///    |  14 |                   |             |
@@ -65,7 +65,7 @@
 ///     field_overflow  -> o
 ///     result_carry_lo -> c0
 ///     result_carry_mi -> c1  
-///                     -> c2
+///
 ///     upper_bound_carry_lo -> k0   
 ///     upper_bound_carry_mi -> k1   
 ///
@@ -92,7 +92,7 @@ where
     F: FftField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldAdd);
-    const CONSTRAINTS: u32 = 12;
+    const CONSTRAINTS: u32 = 11;
 
     fn constraints() -> Vec<E<F>> {
         let foreign_modulus_lo = E::constant(ForeignFieldModulus(0));
@@ -128,10 +128,9 @@ where
         // Carry bits for limb overflows / underflows.
         let result_carry_lo = witness_curr::<F>(7);
         let result_carry_mi = witness_curr::<F>(8);
-        let result_carry_hi = witness_curr::<F>(9);
 
-        let upper_bound_carry_lo = witness_curr::<F>(10);
-        let upper_bound_carry_mi = witness_curr::<F>(11);
+        let upper_bound_carry_lo = witness_curr::<F>(9);
+        let upper_bound_carry_mi = witness_curr::<F>(10);
 
         let result_lo = witness_next::<F>(0);
         let result_mi = witness_next::<F>(1);
@@ -151,9 +150,6 @@ where
             result_carry_mi.clone()
                 * (result_carry_mi.clone() - 1u64.into())
                 * (result_carry_mi.clone() + 1u64.into()),
-            result_carry_hi.clone()
-                * (result_carry_hi.clone() - 1u64.into())
-                * (result_carry_hi.clone() + 1u64.into()),
         ];
 
         // r_0 = a_0 + b_0 - o * m_0 - 2^88 * c_0
@@ -167,8 +163,7 @@ where
             + result_carry_lo;
         // r_2 = a_2 + b_2 - o * m_2 - 2^88 * c_2 + c_1 // TODO: c_2
         let result_calculated_hi =
-            left_input_hi + right_input_hi - field_overflow * foreign_modulus_hi + result_carry_mi
-                - two_to_88.clone() * result_carry_hi;
+            left_input_hi + right_input_hi - field_overflow * foreign_modulus_hi + result_carry_mi;
 
         // Result values match
         res.push(result_lo.clone() - result_calculated_lo);

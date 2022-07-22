@@ -568,12 +568,18 @@ impl<F: FftField + SquareRootField> Builder<F> {
 
         // Foreign field addition constraint selector polynomial
         let foreign_field_add_selector_poly = {
-            if !circuit_gates_used
-                .is_disjoint(&foreign_field_add::circuit_gates().into_iter().collect())
-            {
+            if !circuit_gates_used.is_disjoint(
+                &foreign_field_add::gadget::circuit_gates()
+                    .into_iter()
+                    .collect(),
+            ) {
                 Some(
-                    selector_polynomials(&foreign_field_add::circuit_gates(), &gates, &domain)[0]
-                        .clone(),
+                    selector_polynomials(
+                        &foreign_field_add::gadget::circuit_gates(),
+                        &gates,
+                        &domain,
+                    )[0]
+                    .clone(),
                 )
             } else {
                 None

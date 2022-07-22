@@ -25,7 +25,7 @@ use crate::{
     },
 };
 
-use super::FFAdd;
+use super::circuitgates::FFAdd;
 
 impl<F: FftField + SquareRootField> CircuitGate<F> {
     /// Create foreign field addition gate
