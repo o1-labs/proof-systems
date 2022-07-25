@@ -361,7 +361,7 @@ fn test_wrong_sum() {
 
 #[test]
 // Test addends which are larger than the field but smaller than the limbs
-fn test_addends_larger_mod() {
+fn test_larger_sum() {
     let cs = create_test_constraint_system();
 
     let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
@@ -379,10 +379,16 @@ fn test_addends_larger_mod() {
     let witness =
         foreign_field_add::witness::create_witness(left_input, right_input, foreign_modulus);
 
-    // it should fail but it doesn't
+    // highest limb of the result
     assert_eq!(
-        cs.gates[16].verify_foreign_field_add(0, &witness, &cs),
-        Ok(()) // Err(GateError::InvalidConstraint(GateType::ForeignFieldAdd))
+        cs.gates[10].verify_range_check(0, &witness, &cs),
+        Err(GateError::InvalidConstraint(GateType::RangeCheck1))
+    );
+
+    // highest limb of upper bound
+    assert_eq!(
+        cs.gates[14].verify_range_check(0, &witness, &cs),
+        Err(GateError::InvalidConstraint(GateType::RangeCheck1))
     );
 }
 
