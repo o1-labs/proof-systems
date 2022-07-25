@@ -1,10 +1,13 @@
 //! This module implements the data structures of a proof.
 
+use std::iter;
+
 use crate::circuits::wires::{COLUMNS, PERMUTS};
 use ark_ec::AffineCurve;
 use ark_ff::Field;
 use array_init::array_init;
 use commitment_dlog::{commitment::PolyComm, evaluation_proof::OpeningProof};
+use itertools::chain;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 
@@ -154,6 +157,16 @@ impl<F> ProofEvaluations<F>
 where
     F: Field,
 {
+    pub fn iter(&self) -> impl Iterator<Item = F> {
+        chain![
+            iter::once(self.z),
+            iter::once(self.generic_selector),
+            iter::once(self.poseidon_selector),
+            self.w,
+            self.s
+        ]
+    }
+
     pub fn dummy_with_witness_evaluations(w: [F; COLUMNS]) -> ProofEvaluations<F> {
         ProofEvaluations {
             w,

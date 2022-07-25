@@ -13,7 +13,7 @@ pub trait Sponge<Input: Field, Digest> {
     fn new(params: &'static ArithmeticSpongeParams<Input>) -> Self;
 
     /// Absorb an array of field elements `x`
-    fn absorb(&mut self, x: &[Input]);
+    fn absorb<'a>(&mut self, x: impl IntoIterator<Item = &'a Input>);
 
     /// Squeeze an output from the sponge
     fn squeeze(&mut self) -> Digest;
@@ -81,8 +81,8 @@ impl<F: Field, SC: SpongeConstants> Sponge<F, F> for ArithmeticSponge<F, SC> {
         }
     }
 
-    fn absorb(&mut self, x: &[F]) {
-        for x in x.iter() {
+    fn absorb<'a>(&mut self, xs: impl IntoIterator<Item = &'a F>) {
+        for x in xs {
             match self.sponge_state {
                 SpongeState::Absorbed(n) => {
                     if n == self.rate {

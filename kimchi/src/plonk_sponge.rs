@@ -1,4 +1,5 @@
 use ark_ff::{Field, PrimeField};
+use itertools::Itertools;
 use oracle::sponge::{DefaultFrSponge, ScalarChallenge};
 use oracle::{
     constants::PlonkSpongeConstantsKimchi as SC,
@@ -58,56 +59,12 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
         let zeta_evals = &evals[0];
         let zeta_omega_evals = &evals[1];
 
-        let mut points = vec![
-            zeta_evals.z,
-            zeta_omega_evals.z,
-            zeta_evals.generic_selector,
-            zeta_omega_evals.generic_selector,
-            zeta_evals.poseidon_selector,
-            zeta_omega_evals.poseidon_selector,
-            zeta_evals.w[0],
-            zeta_omega_evals.w[0],
-            zeta_evals.w[1],
-            zeta_omega_evals.w[1],
-            zeta_evals.w[2],
-            zeta_omega_evals.w[2],
-            zeta_evals.w[3],
-            zeta_omega_evals.w[3],
-            zeta_evals.w[4],
-            zeta_omega_evals.w[4],
-            zeta_evals.w[5],
-            zeta_omega_evals.w[5],
-            zeta_evals.w[6],
-            zeta_omega_evals.w[6],
-            zeta_evals.w[7],
-            zeta_omega_evals.w[7],
-            zeta_evals.w[8],
-            zeta_omega_evals.w[8],
-            zeta_evals.w[9],
-            zeta_omega_evals.w[9],
-            zeta_evals.w[10],
-            zeta_omega_evals.w[10],
-            zeta_evals.w[11],
-            zeta_omega_evals.w[11],
-            zeta_evals.w[12],
-            zeta_omega_evals.w[12],
-            zeta_evals.w[13],
-            zeta_omega_evals.w[13],
-            zeta_evals.w[14],
-            zeta_omega_evals.w[14],
-            zeta_evals.s[0],
-            zeta_omega_evals.s[0],
-            zeta_evals.s[1],
-            zeta_omega_evals.s[1],
-            zeta_evals.s[2],
-            zeta_omega_evals.s[2],
-            zeta_evals.s[3],
-            zeta_omega_evals.s[3],
-            zeta_evals.s[4],
-            zeta_omega_evals.s[4],
-            zeta_evals.s[5],
-            zeta_omega_evals.s[5],
-        ];
+        // we interleave points from each evaluations,
+        // it makes it easier to absorb them in the verifier circuit
+        let mut points: Vec<_> = zeta_evals
+            .iter()
+            .interleave(zeta_omega_evals.iter())
+            .collect();
 
         // TODO: shouldn't we check in the index that lookup is set? where do we verify that lookup stuff is set in the proof if it's set in the verifier index?
         if let Some((l0, l1)) = zeta_evals
