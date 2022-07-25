@@ -655,7 +655,8 @@ where
             if !index.cs.range_check_selector_polys.is_empty() {
                 // Range check gate
                 for gate_type in range_check::gadget::circuit_gates() {
-                    let expr = range_check::gadget::circuit_gate_constraints(gate_type, &all_alphas);
+                    let expr =
+                        range_check::gadget::circuit_gate_constraints(gate_type, &all_alphas);
 
                     let evals = expr.evaluations(&env);
 
