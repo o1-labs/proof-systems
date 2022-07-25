@@ -1376,56 +1376,59 @@ A proof consists of the following data structures:
 /// Evaluations of lookup polynomials
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize)]
-#[serde(bound(
-    serialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::SerializeAs<Field>",
-    deserialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::DeserializeAs<'de, Field>"
-))]
-pub struct LookupEvaluations<Field> {
+pub struct LookupEvaluations<F>
+where
+    F: Field,
+{
     /// sorted lookup table polynomial
-    #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
-    pub sorted: Vec<Field>,
-    /// lookup aggregation polynomial
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub aggreg: Field,
+    pub sorted: Vec<F>,
+
+    /// lookup aggregation polynomial
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub aggreg: F,
+
     // TODO: May be possible to optimize this away?
     /// lookup table polynomial
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub table: Field,
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub table: F,
 
     /// Optionally, a runtime table polynomial.
-    #[serde_as(as = "Option<Vec<o1_utils::serialization::SerdeAs>>")]
-    pub runtime: Option<Field>,
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    pub runtime: Option<F>,
 }
 
-// TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
 /// Polynomial evaluations contained in a `ProverProof`.
-/// - **Chunked evaluations** `Field` is instantiated with vectors with a length that equals the length of the chunk
-/// - **Non chunked evaluations** `Field` is instantiated with a field, so they are single-sized#[serde_as]
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize)]
-#[serde(bound(
-    serialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::SerializeAs<Field>",
-    deserialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::DeserializeAs<'de, Field>"
-))]
-pub struct ProofEvaluations<Field> {
+pub struct ProofEvaluations<F>
+where
+    F: Field,
+{
     /// witness polynomials
-    #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; COLUMNS]")]
-    pub w: [Field; COLUMNS],
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
+    pub w: [F; COLUMNS],
+
     /// permutation polynomial
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub z: Field,
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub z: F,
+
     /// permutation polynomials
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
-    #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; PERMUTS - 1]")]
-    pub s: [Field; PERMUTS - 1],
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS - 1]")]
+    pub s: [F; PERMUTS - 1],
+
     /// lookup-related evaluations
-    pub lookup: Option<LookupEvaluations<Field>>,
+    #[serde(bound = "LookupEvaluations<F>: Serialize + DeserializeOwned")]
+    pub lookup: Option<LookupEvaluations<F>>,
+
     /// evaluation of the generic selector polynomial
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub generic_selector: Field,
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub generic_selector: F,
+
     /// evaluation of the poseidon selector polynomial
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub poseidon_selector: Field,
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub poseidon_selector: F,
 }
 
 /// Commitments linked to the lookup feature
@@ -1459,7 +1462,9 @@ pub struct ProverCommitments<G: AffineCurve> {
 /// The proof that the prover creates from a [ProverIndex](super::prover_index::ProverIndex) and a `witness`.
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize)]
-#[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
+#[serde(
+    bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize, G::ScalarField: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize"
+)]
 pub struct ProverProof<G: AffineCurve> {
     /// All the polynomial commitments required in the proof
     pub commitments: ProverCommitments<G>,
@@ -1469,7 +1474,7 @@ pub struct ProverProof<G: AffineCurve> {
 
     /// Two evaluations over a number of committed polynomials
     // TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }
-    pub evals: [ProofEvaluations<Vec<G::ScalarField>>; 2],
+    pub evals: [ProofEvaluations<G::ScalarField>; 2],
 
     /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
@@ -1595,7 +1600,7 @@ The prover then follows the following steps to create the proof:
 	- the aggregation polynomial
 	- the sorted polynomials
 	- the table polynonial
-1. Chunk evaluate the following polynomials at both $\zeta$ and $\zeta \omega$:
+1. Evaluate the following polynomials at both $\zeta$ and $\zeta \omega$:
 	- $s_i$
 	- $w_i$
 	- $z$
@@ -1603,18 +1608,6 @@ The prover then follows the following steps to create the proof:
 	- generic selector
 	- poseidon selector
 
-   By "chunk evaluate" we mean that the evaluation of each polynomial can potentially be a vector of values.
-   This is because the index's `max_poly_size` parameter dictates the maximum size of a polynomial in the protocol.
-   If a polynomial $f$ exceeds this size, it must be split into several polynomials like so:
-   $$f(x) = f_0(x) + x^n f_1(x) + x^{2n} f_2(x) + \cdots$$
-
-   And the evaluation of such a polynomial is the following list for $x \in {\zeta, \zeta\omega}$:
-
-   $$(f_0(x), f_1(x), f_2(x), \ldots)$$
-
-   TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)
-1. Evaluate the same polynomials without chunking them
-   (so that each polynomial should correspond to a single value this time).
 1. Compute the ft polynomial.
    This is to implement [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html).
 1. construct the blinding part of the ft polynomial commitment
@@ -1710,9 +1703,6 @@ Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
 
 1. Commit to the negated public input polynomial.
 1. Run the [Fiat-Shamir argument](#fiat-shamir-argument).
-1. Combine the chunked polynomials' evaluations
-   (TODO: most likely only the quotient polynomial is chunked)
-   with the right powers of $\zeta^n$ and $(\zeta * \omega)^n$.
 4. Compute the commitment to the linearized polynomial $f$.
    To do this, add the constraints of all of the gates, of the permutation,
    and optionally of the lookup.
