@@ -19,6 +19,7 @@ endosclmul = "../../../kimchi/src/circuits/polynomials/endosclmul.rs"
 generic = "../../../kimchi/src/circuits/polynomials/generic.rs"
 poseidon = "../../../kimchi/src/circuits/polynomials/poseidon.rs"
 varbasemul = "../../../kimchi/src/circuits/polynomials/varbasemul.rs"
+foreign_field_mul = "../../../kimchi/src/circuits/polynomials/foreign_field_mul/circuitgates.rs"
 
 # lookup
 tables = "../../../kimchi/src/circuits/lookup/tables/mod.rs"
