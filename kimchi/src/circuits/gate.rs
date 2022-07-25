@@ -204,10 +204,9 @@ impl<F: PrimeField> CircuitGate<F> {
             RangeCheck0 | RangeCheck1 => self
                 .verify_range_check::<G>(row, witness, cs)
                 .map_err(|e| e.to_string()),
-            ForeignFieldAdd => {
-                // TODO
-                Ok(())
-            }
+            ForeignFieldAdd => self
+                .verify_foreign_field_add::<G>(row, witness, cs)
+                .map_err(|e| e.to_string()),
         }
     }
 

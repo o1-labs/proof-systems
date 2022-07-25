@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
+use ark_ff::{FftField, PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
@@ -28,7 +28,7 @@ use crate::{
 
 use super::circuitgates::ForeignFieldAdd;
 
-impl<F: PrimeField + SquareRootField> CircuitGate<F> {
+impl<F: PrimeField> CircuitGate<F> {
     /// Create foreign field addition gate
     ///     Inputs the starting row
     ///     Outputs tuple (next_row, circuit_gates) where

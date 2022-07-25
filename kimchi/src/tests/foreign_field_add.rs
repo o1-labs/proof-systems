@@ -95,10 +95,12 @@ fn test_zero_add() {
 
     let witness = create_witness(left_input, right_input, foreign_modulus);
 
-    assert_eq!(
-        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
-        Ok(())
-    );
+    for row in 0..17 {
+        assert_eq!(
+            cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
+            Ok(())
+        );
+    }
 }
 
 #[test]
@@ -112,10 +114,12 @@ fn test_zero_sum_foreign() {
 
     let witness = create_witness(left_input, right_input, foreign_modulus);
 
-    assert_eq!(
-        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
-        Ok(())
-    );
+    for row in 0..17 {
+        assert_eq!(
+            cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
+            Ok(())
+        );
+    }
 
     assert_eq!(witness[0][17], PallasField::zero());
     assert_eq!(witness[1][17], PallasField::zero());
@@ -137,10 +141,12 @@ fn test_zero_sum_native() {
 
     let witness = create_witness(left_input, right_input, foreign_modulus);
 
-    assert_eq!(
-        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
-        Ok(())
-    );
+    for row in 0..17 {
+        assert_eq!(
+            cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
+            Ok(())
+        );
+    }
 
     // Check result is the native modulus
     let native_limbs = ForeignElement::<PallasField, 3>::new_from_big(native_modulus);
@@ -160,10 +166,12 @@ fn test_one_plus_one() {
 
     let witness = create_witness(left_input, right_input, foreign_modulus);
 
-    assert_eq!(
-        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
-        Ok(())
-    );
+    for row in 0..17 {
+        assert_eq!(
+            cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
+            Ok(())
+        );
+    }
 
     // check result is 2
     assert_eq!(witness[0][17], PallasField::one() + PallasField::one());
@@ -183,10 +191,12 @@ fn test_max_number() {
 
     let witness = create_witness(left_input, right_input, foreign_modulus);
 
-    assert_eq!(
-        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
-        Ok(())
-    );
+    for row in 0..17 {
+        assert_eq!(
+            cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
+            Ok(())
+        );
+    }
 
     // compute result in the foreign field after taking care of the exceeding bits
     let sum = BigUint::from_bytes_be(MAX) + BigUint::from_bytes_be(MAX);
@@ -214,11 +224,12 @@ fn test_zero_minus_one() {
 
     let witness = create_witness(left_input, right_input, foreign_modulus);
 
-    assert_eq!(
-        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
-        Ok(())
-    );
-
+    for row in 0..17 {
+        assert_eq!(
+            cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
+            Ok(())
+        );
+    }
     // check what is the value of the carry bits
     // only getting it to be zero
     //assert_eq!(witness[7][16], -PallasField::one());
@@ -237,10 +248,12 @@ fn test_no_carry_limbs() {
 
     let witness = create_witness(left_input, right_input, foreign_modulus);
 
-    assert_eq!(
-        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
-        Ok(())
-    );
+    for row in 0..17 {
+        assert_eq!(
+            cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
+            Ok(())
+        );
+    }
 
     // check carry_lo is zero
     assert_eq!(witness[7][16], PallasField::zero());
@@ -262,10 +275,12 @@ fn test_carry_limb_lo() {
 
     let witness = create_witness(left_input, right_input, foreign_modulus);
 
-    assert_eq!(
-        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
-        Ok(())
-    );
+    for row in 0..17 {
+        assert_eq!(
+            cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
+            Ok(())
+        );
+    }
 
     // check carry_lo is one
     assert_eq!(witness[7][16], PallasField::one());
@@ -283,10 +298,12 @@ fn test_carry_limb_mid() {
 
     let witness = create_witness(left_input, right_input, foreign_modulus);
 
-    assert_eq!(
-        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
-        Ok(())
-    );
+    for row in 0..17 {
+        assert_eq!(
+            cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
+            Ok(())
+        );
+    }
 
     // check carry_lo is one
     assert_eq!(witness[7][16], PallasField::zero());
@@ -304,10 +321,12 @@ fn test_carry_limb_lo_mid() {
 
     let witness = create_witness(left_input, right_input, foreign_modulus);
 
-    assert_eq!(
-        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
-        Ok(())
-    );
+    for row in 0..17 {
+        assert_eq!(
+            cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
+            Ok(())
+        );
+    }
 
     // check carry_lo is one
     assert_eq!(witness[7][16], PallasField::one());
