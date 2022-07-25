@@ -1140,10 +1140,12 @@ where
         //~~ - the 6 sigmas
         //~~ - optionally, the runtime table
         polynomials.extend(vec![(&public_poly, None, non_hiding(1))]);
+
         polynomials.extend(vec![(&ft, None, blinding_ft)]);
         polynomials.extend(vec![(&z_poly, None, z_comm.blinders)]);
         polynomials.extend(vec![(&index.cs.genericm, None, non_hiding(1))]);
         polynomials.extend(vec![(&index.cs.psm, None, non_hiding(1))]);
+        /*
         polynomials.extend(
             witness_poly
                 .iter()
@@ -1200,6 +1202,7 @@ where
                 polynomials.push((runtime_table, None, runtime_table_comm.blinders.clone()));
             }
         }
+        */
 
         //~ 1. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
         let proof = index.srs.open(

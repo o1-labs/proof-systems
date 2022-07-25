@@ -766,6 +766,7 @@ where
         degree_bound: None,
     });
 
+    /*
     //~~ - witness commitments
     for (i, comm) in proof.commitments.w_comm.iter().enumerate() {
         evaluations.push(Evaluation {
@@ -887,6 +888,7 @@ where
             });
         }
     }
+    */
 
     // prepare for the opening proof verification
     let evaluation_points = vec![oracles.zeta, oracles.zeta * index.domain.group_gen];
