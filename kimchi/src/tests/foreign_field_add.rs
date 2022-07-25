@@ -1,10 +1,7 @@
 use crate::circuits::{
     constraints::ConstraintSystem,
     gate::{CircuitGate, CircuitGateError, GateType},
-    polynomials::{
-        foreign_field_add::{self},
-        range_check::GateError,
-    },
+    polynomials::foreign_field_add::witness::create_witness,
     wires::Wire,
 };
 use ark_ec::AffineCurve;
@@ -96,8 +93,7 @@ fn test_zero_add() {
     let left_input = ForeignElement::<PallasField, 3>::new_from_be(ZERO);
     let right_input = ForeignElement::<PallasField, 3>::new_from_be(ZERO);
 
-    let witness =
-        foreign_field_add::witness::create_witness(left_input, right_input, foreign_modulus);
+    let witness = create_witness(left_input, right_input, foreign_modulus);
 
     assert_eq!(
         cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
@@ -114,8 +110,7 @@ fn test_zero_sum_foreign() {
     let right_input = ForeignElement::<PallasField, 3>::new_from_be(FOR_MOD_TOP);
     let left_input = ForeignElement::<PallasField, 3>::new_from_be(FOR_MOD_BOT);
 
-    let witness =
-        foreign_field_add::witness::create_witness(left_input, right_input, foreign_modulus);
+    let witness = create_witness(left_input, right_input, foreign_modulus);
 
     assert_eq!(
         cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
@@ -140,8 +135,7 @@ fn test_zero_sum_native() {
     let left_input = ForeignElement::<PallasField, 3>::new_from_be(ONE);
     let right_input = ForeignElement::<PallasField, 3>::new_from_big(mod_minus_one);
 
-    let witness =
-        foreign_field_add::witness::create_witness(left_input, right_input, foreign_modulus);
+    let witness = create_witness(left_input, right_input, foreign_modulus);
 
     assert_eq!(
         cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
@@ -164,8 +158,7 @@ fn test_one_plus_one() {
     let left_input = ForeignElement::<PallasField, 3>::new_from_be(ONE);
     let right_input = ForeignElement::<PallasField, 3>::new_from_be(ONE);
 
-    let witness =
-        foreign_field_add::witness::create_witness(left_input, right_input, foreign_modulus);
+    let witness = create_witness(left_input, right_input, foreign_modulus);
 
     assert_eq!(
         cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
@@ -188,8 +181,7 @@ fn test_max_number() {
     let left_input = ForeignElement::<PallasField, 3>::new_from_be(MAX);
     let right_input = ForeignElement::<PallasField, 3>::new_from_be(MAX);
 
-    let witness =
-        foreign_field_add::witness::create_witness(left_input, right_input, foreign_modulus);
+    let witness = create_witness(left_input, right_input, foreign_modulus);
 
     assert_eq!(
         cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
@@ -220,8 +212,7 @@ fn test_zero_minus_one() {
     let left_input = ForeignElement::<PallasField, 3>::new_from_be(ZERO);
     let right_input = ForeignElement::<PallasField, 3>::new_from_be(&neg_one_be);
 
-    let witness =
-        foreign_field_add::witness::create_witness(left_input, right_input, foreign_modulus);
+    let witness = create_witness(left_input, right_input, foreign_modulus);
 
     assert_eq!(
         cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
@@ -244,8 +235,7 @@ fn test_no_carry_limbs() {
     let left_input = ForeignElement::<PallasField, 3>::new_from_be(TIC);
     let right_input = ForeignElement::<PallasField, 3>::new_from_be(TAC);
 
-    let witness =
-        foreign_field_add::witness::create_witness(left_input, right_input, foreign_modulus);
+    let witness = create_witness(left_input, right_input, foreign_modulus);
 
     assert_eq!(
         cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
@@ -270,8 +260,7 @@ fn test_carry_limb_lo() {
     let left_input = ForeignElement::<PallasField, 3>::new_from_be(TIC);
     let right_input = ForeignElement::<PallasField, 3>::new_from_be(TAC_LO);
 
-    let witness =
-        foreign_field_add::witness::create_witness(left_input, right_input, foreign_modulus);
+    let witness = create_witness(left_input, right_input, foreign_modulus);
 
     assert_eq!(
         cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
@@ -292,8 +281,7 @@ fn test_carry_limb_mid() {
     let left_input = ForeignElement::<PallasField, 3>::new_from_be(TIC);
     let right_input = ForeignElement::<PallasField, 3>::new_from_be(TAC_MI);
 
-    let witness =
-        foreign_field_add::witness::create_witness(left_input, right_input, foreign_modulus);
+    let witness = create_witness(left_input, right_input, foreign_modulus);
 
     assert_eq!(
         cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
@@ -314,8 +302,7 @@ fn test_carry_limb_lo_mid() {
     let left_input = ForeignElement::<PallasField, 3>::new_from_be(TIC);
     let right_input = ForeignElement::<PallasField, 3>::new_from_be(TAC_TWO);
 
-    let witness =
-        foreign_field_add::witness::create_witness(left_input, right_input, foreign_modulus);
+    let witness = create_witness(left_input, right_input, foreign_modulus);
 
     assert_eq!(
         cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
@@ -337,8 +324,7 @@ fn test_wrong_sum() {
     let left_input = ForeignElement::<PallasField, 3>::new_from_be(TIC);
     let right_input = ForeignElement::<PallasField, 3>::new_from_be(TAC);
 
-    let mut witness =
-        foreign_field_add::witness::create_witness(left_input, right_input, foreign_modulus);
+    let mut witness = create_witness(left_input, right_input, foreign_modulus);
 
     // wrong result
     let all_ones_limb = PallasField::from(2u128.pow(88) - 1);
@@ -374,19 +360,18 @@ fn test_larger_sum() {
     right_input.limbs[1] = PallasField::from(2u128.pow(88) - 1);
     right_input.limbs[2] = PallasField::from(2u128.pow(88) - 1);
 
-    let witness =
-        foreign_field_add::witness::create_witness(left_input, right_input, foreign_modulus);
+    let witness = create_witness(left_input, right_input, foreign_modulus);
 
     // highest limb of the result
     assert_eq!(
         cs.gates[10].verify_range_check::<Vesta>(0, &witness, &cs),
-        Err(GateError::InvalidConstraint(GateType::RangeCheck1))
+        Err(CircuitGateError::InvalidConstraint(GateType::RangeCheck1))
     );
 
     // highest limb of upper bound
     assert_eq!(
         cs.gates[14].verify_range_check::<Vesta>(0, &witness, &cs),
-        Err(GateError::InvalidConstraint(GateType::RangeCheck1))
+        Err(CircuitGateError::InvalidConstraint(GateType::RangeCheck1))
     );
 }
 
@@ -403,21 +388,20 @@ fn test_larger_than_limbs() {
     left_input.limbs[1] = PallasField::from(2u128.pow(88));
     left_input.limbs[2] = PallasField::from(2u128.pow(88));
 
-    let witness =
-        foreign_field_add::witness::create_witness(left_input, right_input, foreign_modulus);
+    let witness = create_witness(left_input, right_input, foreign_modulus);
 
     assert_eq!(
         cs.gates[0].verify_range_check::<Vesta>(0, &witness, &cs),
-        Err(GateError::InvalidConstraint(GateType::RangeCheck0))
+        Err(CircuitGateError::InvalidConstraint(GateType::RangeCheck0))
     );
 
     assert_eq!(
         cs.gates[1].verify_range_check::<Vesta>(0, &witness, &cs),
-        Err(GateError::InvalidConstraint(GateType::RangeCheck0))
+        Err(CircuitGateError::InvalidConstraint(GateType::RangeCheck0))
     );
 
     assert_eq!(
         cs.gates[2].verify_range_check::<Vesta>(0, &witness, &cs),
-        Err(GateError::InvalidConstraint(GateType::RangeCheck1))
+        Err(CircuitGateError::InvalidConstraint(GateType::RangeCheck1))
     );
 }

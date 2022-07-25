@@ -90,9 +90,9 @@ use std::marker::PhantomData;
 //~```
 
 /// Implementation of the ForeignFieldAdd gate
-pub struct FFAdd<F>(PhantomData<F>);
+pub struct ForeignFieldAdd<F>(PhantomData<F>);
 
-impl<F> Argument<F> for FFAdd<F>
+impl<F> Argument<F> for ForeignFieldAdd<F>
 where
     F: FftField,
 {

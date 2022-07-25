@@ -1,7 +1,8 @@
 use crate::circuits::{
     polynomial::COLUMNS,
     polynomials::range_check::{
-        self, handle_standard_witness_cell, CopyWitnessCell, ZeroWitnessCell,
+        self,
+        witness::{extend_witness, handle_standard_witness_cell, CopyWitnessCell, ZeroWitnessCell},
     },
 };
 use ark_ff::PrimeField;
@@ -22,8 +23,8 @@ pub fn create_witness<F: PrimeField>(
     let mut witness = array_init(|_| vec![F::zero(); 0]);
 
     // Create multi-range-check witness for left_input and right_input
-    range_check::extend_witness(&mut witness, left_input);
-    range_check::extend_witness(&mut witness, right_input);
+    extend_witness(&mut witness, left_input);
+    extend_witness(&mut witness, right_input);
 
     // Compute helper variables for the upper bound check
     let max_sub_foreign_modulus = ForeignElement::<F, 3>::new([
@@ -129,8 +130,8 @@ pub fn create_witness<F: PrimeField>(
     let result = ForeignElement::<F, 3>::new([result_lo, result_mi, result_hi]);
     let upper_bound = ForeignElement::<F, 3>::new([upper_bound_lo, upper_bound_mi, upper_bound_hi]);
 
-    range_check::extend_witness(&mut witness, result);
-    range_check::extend_witness(&mut witness, upper_bound);
+    extend_witness(&mut witness, result);
+    extend_witness(&mut witness, upper_bound);
 
     let result_carry = [result_carry_lo, result_carry_mi];
     let upper_bound_carry = [upper_bound_carry_lo, upper_bound_carry_mi];
@@ -161,7 +162,7 @@ pub fn create_witness<F: PrimeField>(
 //
 // TODO: Currently located in range check, but could be moved elsewhere
 pub enum WitnessCell {
-    Standard(range_check::WitnessCell),
+    Standard(range_check::witness::WitnessCell),
     FieldElem(FieldElemWitnessCell),
 }
 

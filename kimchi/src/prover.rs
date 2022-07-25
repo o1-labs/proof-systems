@@ -13,7 +13,7 @@ use crate::{
             complete_add::CompleteAdd,
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
-            foreign_field_add::circuitgates::FFAdd,
+            foreign_field_add::circuitgates::ForeignFieldAdd,
             generic, permutation,
             permutation::ZK_ROWS,
             poseidon::Poseidon,
@@ -590,7 +590,7 @@ where
                     }
                 });
             if !index.cs.range_check_selector_polys.is_empty() {
-                index_evals.extend(range_check::circuit_gates().iter().enumerate().map(
+                index_evals.extend(range_check::gadget::circuit_gates().iter().enumerate().map(
                     |(i, gate_type)| (*gate_type, &index.cs.range_check_selector_polys[i].eval8),
                 ));
             }
@@ -654,8 +654,8 @@ where
 
             if !index.cs.range_check_selector_polys.is_empty() {
                 // Range check gate
-                for gate_type in range_check::circuit_gates() {
-                    let expr = range_check::circuit_gate_constraints(gate_type, &all_alphas);
+                for gate_type in range_check::gadget::circuit_gates() {
+                    let expr = range_check::gadget::circuit_gate_constraints(gate_type, &all_alphas);
 
                     let evals = expr.evaluations(&env);
 
@@ -772,7 +772,8 @@ where
             // foreign field addition
             {
                 if index.cs.foreign_field_add_selector_poly.is_some() {
-                    let foreign_add = FFAdd::combined_constraints(&all_alphas).evaluations(&env);
+                    let foreign_add =
+                        ForeignFieldAdd::combined_constraints(&all_alphas).evaluations(&env);
                     t4 += &foreign_add;
                     check_constraint!(index, foreign_add);
                 }

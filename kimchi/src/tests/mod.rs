@@ -7,6 +7,7 @@ mod framework;
 mod generic;
 mod lookup;
 mod poseidon;
+mod range_check;
 mod recursion;
 mod serde;
 mod turshi;
