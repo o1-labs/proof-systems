@@ -396,23 +396,20 @@ where
             es.push((p_eval.clone(), None));
             es.push((vec![ft_eval0, ft_eval1], None));
             es.push((
+                self.evals.iter().map(|e| vec![e.z]).collect::<Vec<_>>(),
+                None,
+            ));
+            es.push((
                 self.evals
                     .iter()
-                    .map(|e| vec![e.z.clone()])
+                    .map(|e| vec![e.generic_selector])
                     .collect::<Vec<_>>(),
                 None,
             ));
             es.push((
                 self.evals
                     .iter()
-                    .map(|e| vec![e.generic_selector.clone()])
-                    .collect::<Vec<_>>(),
-                None,
-            ));
-            es.push((
-                self.evals
-                    .iter()
-                    .map(|e| vec![e.poseidon_selector.clone()])
+                    .map(|e| vec![e.poseidon_selector])
                     .collect::<Vec<_>>(),
                 None,
             ));
@@ -420,10 +417,7 @@ where
                 (0..COLUMNS)
                     .map(|c| {
                         (
-                            self.evals
-                                .iter()
-                                .map(|e| vec![e.w[c].clone()])
-                                .collect::<Vec<_>>(),
+                            self.evals.iter().map(|e| vec![e.w[c]]).collect::<Vec<_>>(),
                             None,
                         )
                     })
@@ -433,10 +427,7 @@ where
                 (0..PERMUTS - 1)
                     .map(|c| {
                         (
-                            self.evals
-                                .iter()
-                                .map(|e| vec![e.s[c].clone()])
-                                .collect::<Vec<_>>(),
+                            self.evals.iter().map(|e| vec![e.s[c]]).collect::<Vec<_>>(),
                             None,
                         )
                     })
@@ -728,7 +719,7 @@ where
     //~~ - permutation commitment
     evaluations.push(Evaluation {
         commitment: proof.commitments.z_comm.clone(),
-        evaluations: proof.evals.iter().map(|e| vec![e.z.clone()]).collect(),
+        evaluations: proof.evals.iter().map(|e| vec![e.z]).collect(),
         degree_bound: None,
     });
 
@@ -739,7 +730,7 @@ where
             evaluations: proof
                 .evals
                 .iter()
-                .map(|e| vec![e.generic_selector.clone()])
+                .map(|e| vec![e.generic_selector])
                 .collect(),
             degree_bound: None,
         });
@@ -751,7 +742,7 @@ where
             evaluations: proof
                 .evals
                 .iter()
-                .map(|e| vec![e.poseidon_selector.clone()])
+                .map(|e| vec![e.poseidon_selector])
                 .collect(),
             degree_bound: None,
         });
@@ -761,7 +752,7 @@ where
     for (i, comm) in proof.commitments.w_comm.iter().enumerate() {
         evaluations.push(Evaluation {
             commitment: comm.clone(),
-            evaluations: proof.evals.iter().map(|e| vec![e.w[i].clone()]).collect(),
+            evaluations: proof.evals.iter().map(|e| vec![e.w[i]]).collect(),
             degree_bound: None,
         });
     }
@@ -773,13 +764,7 @@ where
             .iter()
             .zip(
                 (0..PERMUTS - 1)
-                    .map(|i| {
-                        proof
-                            .evals
-                            .iter()
-                            .map(|e| vec![e.s[i].clone()])
-                            .collect::<Vec<_>>()
-                    })
+                    .map(|i| proof.evals.iter().map(|e| vec![e.s[i]]).collect::<Vec<_>>())
                     .collect::<Vec<_>>(),
             )
             .map(|(c, e)| Evaluation {
@@ -827,10 +812,7 @@ where
         // add evaluations of the aggreg polynomial
         evaluations.push(Evaluation {
             commitment: lookup_comms.aggreg.clone(),
-            evaluations: vec![
-                vec![lookup_eval0.aggreg.clone()],
-                vec![lookup_eval1.aggreg.clone()],
-            ],
+            evaluations: vec![vec![lookup_eval0.aggreg], vec![lookup_eval1.aggreg]],
             degree_bound: None,
         });
 
@@ -855,10 +837,7 @@ where
         // add evaluation of the table polynomial
         evaluations.push(Evaluation {
             commitment: table_comm,
-            evaluations: vec![
-                vec![lookup_eval0.table.clone()],
-                vec![lookup_eval1.table.clone()],
-            ],
+            evaluations: vec![vec![lookup_eval0.table], vec![lookup_eval1.table]],
             degree_bound: None,
         });
 
