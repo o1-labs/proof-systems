@@ -37,10 +37,7 @@ where
     pub runtime: Option<F>,
 }
 
-// TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
 /// Polynomial evaluations contained in a `ProverProof`.
-/// - **Chunked evaluations** `Field` is instantiated with vectors with a length that equals the length of the chunk
-/// - **Non chunked evaluations** `Field` is instantiated with a field, so they are single-sized
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize)]
 pub struct ProofEvaluations<F>
