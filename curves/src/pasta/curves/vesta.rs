@@ -1,6 +1,6 @@
 use crate::pasta::*;
 use ark_ec::{
-    models::short_weierstrass_jacobian::{GroupAffine, GroupProjective},
+    models::short_weierstrass_jacobian::{GroupProjective, GroupVesta},
     ModelParameters, SWModelParameters,
 };
 use ark_ff::{field_new, Zero};
@@ -13,7 +13,7 @@ impl ModelParameters for VestaParameters {
     type ScalarField = Fp;
 }
 
-pub type Affine = GroupAffine<VestaParameters>;
+pub type Vesta = GroupVesta<VestaParameters>;
 pub type Projective = GroupProjective<VestaParameters>;
 
 impl SWModelParameters for VestaParameters {
@@ -29,8 +29,8 @@ impl SWModelParameters for VestaParameters {
     /// COFACTOR_INV = 1
     const COFACTOR_INV: Fp = field_new!(Fp, "1");
 
-    /// AFFINE_GENERATOR_COEFFS = (G1_GENERATOR_X, G1_GENERATOR_Y)
-    const AFFINE_GENERATOR_COEFFS: (Self::BaseField, Self::BaseField) =
+    /// Vesta_GENERATOR_COEFFS = (G1_GENERATOR_X, G1_GENERATOR_Y)
+    const Vesta_GENERATOR_COEFFS: (Self::BaseField, Self::BaseField) =
         (G_GENERATOR_X, G_GENERATOR_Y);
 
     #[inline(always)]
@@ -63,8 +63,8 @@ impl SWModelParameters for LegacyVestaParameters {
     const COEFF_B: Self::BaseField = <VestaParameters as SWModelParameters>::COEFF_B;
     const COFACTOR: &'static [u64] = <VestaParameters as SWModelParameters>::COFACTOR;
     const COFACTOR_INV: Self::ScalarField = <VestaParameters as SWModelParameters>::COFACTOR_INV;
-    const AFFINE_GENERATOR_COEFFS: (Self::BaseField, Self::BaseField) =
-        <VestaParameters as SWModelParameters>::AFFINE_GENERATOR_COEFFS;
+    const Vesta_GENERATOR_COEFFS: (Self::BaseField, Self::BaseField) =
+        <VestaParameters as SWModelParameters>::Vesta_GENERATOR_COEFFS;
 }
 
-pub type LegacyVesta = GroupAffine<LegacyVestaParameters>;
+pub type LegacyVesta = GroupVesta<LegacyVestaParameters>;
