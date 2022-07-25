@@ -110,8 +110,9 @@ u_1 &= r_1 + g_1 - k_1 \cdot 2^{88} + k_0\\
 u_2 &= r_2 + g_2 + k_1\\
 \end{align}
 
-Finally, we perform a range check on the sum $u$, and we would know that $0 \leq r < f$. 
+Finally, we perform a range check on the sum $u$, and we would know that $r < f$. 
 
+But now we also have to check that $0\leq r$ or, equivalently, $g\leq u$. Isn't the first check trivial because $r$ is a field element?
 
 
 ### Subtractions
