@@ -238,7 +238,7 @@ fn init_foreign_field_add_rows<F: PrimeField>(
     result_carry: [F; 2],
     upper_bound_carry: [F; 2],
 ) {
-    for row in 0..2 {
+    for (row, _) in WITNESS_SHAPE.iter().enumerate() {
         for col in 0..COLUMNS {
             match &WITNESS_SHAPE[row][col] {
                 WitnessCell::Standard(standard_cell) => {
