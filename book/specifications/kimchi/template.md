@@ -258,6 +258,14 @@ TODO: for each gate describe how to create it?
 
 {sections.varbasemul}
 
+#### Range Check
+
+{sections.range_check}
+
+#### Foreign Field Addition
+
+{sections.foreign_field_add}
+
 ## Setup
 
 In this section we specify the setup that goes into creating two indexes from a circuit:

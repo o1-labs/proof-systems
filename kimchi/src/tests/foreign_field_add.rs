@@ -9,7 +9,7 @@ use crate::circuits::{
 };
 use ark_ec::AffineCurve;
 use ark_ff::{One, Zero};
-use mina_curves::pasta::pallas;
+use mina_curves::pasta::{pallas, vesta::Affine as Vesta};
 use num_bigint::BigUint;
 use o1_utils::{
     foreign_field::{ForeignElement, FOREIGN_MOD},
@@ -84,9 +84,7 @@ fn create_test_constraint_system() -> ConstraintSystem<PallasField> {
         next_row += 1;
     }
 
-    ConstraintSystem::create(gates, oracle::pasta::fp_kimchi::params())
-        .build()
-        .unwrap()
+    ConstraintSystem::create(gates).build().unwrap()
 }
 
 #[test]
@@ -102,7 +100,7 @@ fn test_zero_add() {
         foreign_field_add::witness::create_witness(left_input, right_input, foreign_modulus);
 
     assert_eq!(
-        cs.gates[16].verify_foreign_field_add(0, &witness, &cs),
+        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
         Ok(())
     );
 }
@@ -120,7 +118,7 @@ fn test_zero_sum_foreign() {
         foreign_field_add::witness::create_witness(left_input, right_input, foreign_modulus);
 
     assert_eq!(
-        cs.gates[16].verify_foreign_field_add(0, &witness, &cs),
+        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
         Ok(())
     );
 
@@ -146,7 +144,7 @@ fn test_zero_sum_native() {
         foreign_field_add::witness::create_witness(left_input, right_input, foreign_modulus);
 
     assert_eq!(
-        cs.gates[16].verify_foreign_field_add(0, &witness, &cs),
+        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
         Ok(())
     );
 
@@ -170,7 +168,7 @@ fn test_one_plus_one() {
         foreign_field_add::witness::create_witness(left_input, right_input, foreign_modulus);
 
     assert_eq!(
-        cs.gates[16].verify_foreign_field_add(0, &witness, &cs),
+        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
         Ok(())
     );
 
@@ -194,7 +192,7 @@ fn test_max_number() {
         foreign_field_add::witness::create_witness(left_input, right_input, foreign_modulus);
 
     assert_eq!(
-        cs.gates[16].verify_foreign_field_add(0, &witness, &cs),
+        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
         Ok(())
     );
 
@@ -226,7 +224,7 @@ fn test_zero_minus_one() {
         foreign_field_add::witness::create_witness(left_input, right_input, foreign_modulus);
 
     assert_eq!(
-        cs.gates[16].verify_foreign_field_add(0, &witness, &cs),
+        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
         Ok(())
     );
 
@@ -250,7 +248,7 @@ fn test_no_carry_limbs() {
         foreign_field_add::witness::create_witness(left_input, right_input, foreign_modulus);
 
     assert_eq!(
-        cs.gates[16].verify_foreign_field_add(0, &witness, &cs),
+        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
         Ok(())
     );
 
@@ -276,7 +274,7 @@ fn test_carry_limb_lo() {
         foreign_field_add::witness::create_witness(left_input, right_input, foreign_modulus);
 
     assert_eq!(
-        cs.gates[16].verify_foreign_field_add(0, &witness, &cs),
+        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
         Ok(())
     );
 
@@ -298,14 +296,14 @@ fn test_carry_limb_mid() {
         foreign_field_add::witness::create_witness(left_input, right_input, foreign_modulus);
 
     assert_eq!(
-        cs.gates[16].verify_foreign_field_add(0, &witness, &cs),
+        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
         Ok(())
     );
 
     // check carry_lo is one
-    assert_eq!(witness[7][16], PallasField::one());
+    assert_eq!(witness[7][16], PallasField::zero());
     // check carry_mi is zero
-    assert_eq!(witness[8][16], PallasField::zero());
+    assert_eq!(witness[8][16], PallasField::one());
 }
 
 #[test]
@@ -320,7 +318,7 @@ fn test_carry_limb_lo_mid() {
         foreign_field_add::witness::create_witness(left_input, right_input, foreign_modulus);
 
     assert_eq!(
-        cs.gates[16].verify_foreign_field_add(0, &witness, &cs),
+        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
         Ok(())
     );
 
@@ -352,7 +350,7 @@ fn test_wrong_sum() {
     witness[2][17] = all_ones_limb.clone();
 
     assert_eq!(
-        cs.gates[16].verify_foreign_field_add(0, &witness, &cs),
+        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
         Err(CircuitGateError::InvalidConstraint(
             GateType::ForeignFieldAdd
         )),
@@ -381,13 +379,13 @@ fn test_larger_sum() {
 
     // highest limb of the result
     assert_eq!(
-        cs.gates[10].verify_range_check(0, &witness, &cs),
+        cs.gates[10].verify_range_check::<Vesta>(0, &witness, &cs),
         Err(GateError::InvalidConstraint(GateType::RangeCheck1))
     );
 
     // highest limb of upper bound
     assert_eq!(
-        cs.gates[14].verify_range_check(0, &witness, &cs),
+        cs.gates[14].verify_range_check::<Vesta>(0, &witness, &cs),
         Err(GateError::InvalidConstraint(GateType::RangeCheck1))
     );
 }
@@ -409,17 +407,17 @@ fn test_larger_than_limbs() {
         foreign_field_add::witness::create_witness(left_input, right_input, foreign_modulus);
 
     assert_eq!(
-        cs.gates[0].verify_range_check(0, &witness, &cs),
+        cs.gates[0].verify_range_check::<Vesta>(0, &witness, &cs),
         Err(GateError::InvalidConstraint(GateType::RangeCheck0))
     );
 
     assert_eq!(
-        cs.gates[1].verify_range_check(0, &witness, &cs),
+        cs.gates[1].verify_range_check::<Vesta>(0, &witness, &cs),
         Err(GateError::InvalidConstraint(GateType::RangeCheck0))
     );
 
     assert_eq!(
-        cs.gates[2].verify_range_check(0, &witness, &cs),
+        cs.gates[2].verify_range_check::<Vesta>(0, &witness, &cs),
         Err(GateError::InvalidConstraint(GateType::RangeCheck1))
     );
 }

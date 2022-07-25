@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use ark_ff::{FftField, SquareRootField, Zero};
+use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
@@ -23,11 +23,12 @@ use crate::{
         polynomial::COLUMNS,
         wires::{GateWires, Wire},
     },
+    curve::KimchiCurve,
 };
 
 use super::circuitgates::FFAdd;
 
-impl<F: FftField + SquareRootField> CircuitGate<F> {
+impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// Create foreign field addition gate
     ///     Inputs the starting row
     ///     Outputs tuple (next_row, circuit_gates) where
@@ -101,7 +102,7 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
     }
 
     /// Verifies the foreign field addition gadget
-    pub fn verify_foreign_field_add(
+    pub fn verify_foreign_field_add<G: KimchiCurve<ScalarField = F>>(
         &self,
         _: usize,
         witness: &[Vec<F>; COLUMNS],
@@ -184,7 +185,7 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
                     gamma: F::rand(rng),
                     joint_combiner: Some(F::rand(rng)),
                     endo_coefficient: cs.endo,
-                    mds: vec![], // TODO: maybe cs.fr_sponge_params.mds.clone()
+                    mds: &G::sponge_params().mds,
                     foreign_field_modulus,
                 },
                 witness: &witness_evals.d8.this.w,
@@ -257,7 +258,7 @@ struct LookupEnvironmentData<F: FftField> {
 // computing the dummy lookup value, creating the combined lookup table, computing the sorted plookup
 // evaluations and the plookup aggregation evaluations.
 // Note: This function assumes the cs contains a lookup constraint system.
-fn set_up_lookup_env_data<F: FftField>(
+fn set_up_lookup_env_data<F: PrimeField>(
     gate_type: GateType,
     cs: &ConstraintSystem<F>,
     witness: &[Vec<F>; COLUMNS],

@@ -1,13 +1,14 @@
 use ark_ec::AffineCurve;
 use ark_ff::Field;
 use commitment_dlog::{commitment::CommitmentCurve, srs::endos};
+use kimchi::curve::KimchiCurve;
 use mina_curves::pasta::{pallas::Affine as PallasAffine, vesta::Affine as VestaAffine, Fp, Fq};
 use oracle::poseidon::ArithmeticSpongeParams;
 
 /// The type of possible constants in the circuit
 #[derive(Clone)]
-pub struct Constants<F: Field> {
-    pub poseidon: ArithmeticSpongeParams<F>,
+pub struct Constants<F: Field + 'static> {
+    pub poseidon: &'static ArithmeticSpongeParams<F>,
     pub endo: F,
     pub base: (F, F),
 }
@@ -19,7 +20,7 @@ pub fn fp_constants() -> Constants<Fp> {
         .to_coordinates()
         .unwrap();
     Constants {
-        poseidon: oracle::pasta::fp_kimchi::params(),
+        poseidon: VestaAffine::sponge_params(),
         endo: endo_q,
         base,
     }
@@ -32,7 +33,7 @@ pub fn fq_constants() -> Constants<Fq> {
         .to_coordinates()
         .unwrap();
     Constants {
-        poseidon: oracle::pasta::fq_kimchi::params(),
+        poseidon: PallasAffine::sponge_params(),
         endo: endo_q,
         base,
     }

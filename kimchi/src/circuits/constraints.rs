@@ -1,4 +1,5 @@
 //! This module implements Plonk circuit constraint primitive.
+use super::{gate::SelectorPolynomial, lookup::runtime_tables::RuntimeTableCfg};
 use crate::{
     circuits::{
         domain_constant_evaluation::DomainConstantEvaluations,
@@ -10,9 +11,10 @@ use crate::{
         polynomials::{foreign_field_add, range_check},
         wires::*,
     },
+    curve::KimchiCurve,
     error::SetupError,
 };
-use ark_ff::{FftField, SquareRootField, Zero};
+use ark_ff::{PrimeField, SquareRootField, Zero};
 use ark_poly::{
     univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
     Radix2EvaluationDomain as D,
@@ -20,13 +22,9 @@ use ark_poly::{
 use array_init::array_init;
 use o1_utils::ExtendedEvaluations;
 use once_cell::sync::OnceCell;
-use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
-use std::collections::HashSet;
-use std::sync::Arc;
-
-use super::{gate::SelectorPolynomial, lookup::runtime_tables::RuntimeTableCfg};
+use std::{collections::HashSet, sync::Arc};
 
 //
 // ConstraintSystem
@@ -34,11 +32,13 @@ use super::{gate::SelectorPolynomial, lookup::runtime_tables::RuntimeTableCfg};
 
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct ConstraintSystem<F: FftField> {
+pub struct ConstraintSystem<F: PrimeField> {
     // Basics
     // ------
     /// number of public inputs
     pub public: usize,
+    /// number of previous evaluation challenges, for recursive proving
+    pub prev_challenges: usize,
     /// evaluation domains
     #[serde(bound = "EvaluationDomains<F>: Serialize + DeserializeOwned")]
     pub domain: EvaluationDomains<F>,
@@ -112,11 +112,11 @@ pub struct ConstraintSystem<F: FftField> {
     pub endomul_scalar8: E<F, D<F>>,
 
     /// Range check gate selector polynomials
-    #[serde(bound = "Vec<range_check::SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
-    pub range_check_selector_polys: Vec<range_check::SelectorPolynomial<F>>,
+    #[serde(bound = "Vec<SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
+    pub range_check_selector_polys: Vec<SelectorPolynomial<F>>,
 
     /// Foreign field addition gate selector polynomial
-    #[serde(bound = "Option<range_check::SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
+    #[serde(bound = "Option<SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
     pub foreign_field_add_selector_poly: Option<SelectorPolynomial<F>>,
 
     /// Foreign field modulus
@@ -129,15 +129,9 @@ pub struct ConstraintSystem<F: FftField> {
     /// coefficient for the group endomorphism
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub endo: F,
-
-    /// random oracle argument parameters
-    #[serde(skip)]
-    pub fr_sponge_params: ArithmeticSpongeParams<F>,
-
     /// lookup constraint system
     #[serde(bound = "LookupConstraintSystem<F>: Serialize + DeserializeOwned")]
     pub lookup_constraint_system: Option<LookupConstraintSystem<F>>,
-
     /// precomputes
     #[serde(skip)]
     precomputations: OnceCell<Arc<DomainConstantEvaluations<F>>>,
@@ -154,10 +148,10 @@ pub enum GateError {
     Custom { row: usize, err: String },
 }
 
-pub struct Builder<F: FftField> {
+pub struct Builder<F: PrimeField> {
     gates: Vec<CircuitGate<F>>,
-    sponge_params: ArithmeticSpongeParams<F>,
     public: usize,
+    prev_challenges: usize,
     lookup_tables: Vec<LookupTable<F>>,
     runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
     precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
@@ -165,7 +159,7 @@ pub struct Builder<F: FftField> {
 }
 
 /// Create selector polynomial for a circuit gate
-pub fn selector_polynomial<F: FftField>(
+pub fn selector_polynomial<F: PrimeField>(
     gate_type: GateType,
     gates: &[CircuitGate<F>],
     domain: &EvaluationDomains<F>,
@@ -193,7 +187,7 @@ pub fn selector_polynomial<F: FftField>(
 }
 
 /// Create selector polynomials for a gate (i.e. a collection of circuit gates)
-pub fn selector_polynomials<F: FftField>(
+pub fn selector_polynomials<F: PrimeField>(
     gate_types: &[GateType],
     gates: &[CircuitGate<F>],
     domain: &EvaluationDomains<F>,
@@ -205,11 +199,12 @@ pub fn selector_polynomials<F: FftField>(
     )
 }
 
-impl<F: FftField + SquareRootField> ConstraintSystem<F> {
+impl<F: PrimeField> ConstraintSystem<F> {
     /// Initializes the [ConstraintSystem<F>] on input `gates` and `fr_sponge_params`.
     /// Returns a [Builder<F>]
     /// It also defaults to the following values of the builder:
     /// - `public: 0`
+    /// - `prev_challenges: 0`
     /// - `lookup_tables: vec![]`,
     /// - `runtime_tables: None`,
     /// - `precomputations: None`,
@@ -218,14 +213,11 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// 1. Create your instance of your builder for the constraint system using `crate(gates, sponge params)`
     /// 2. Iterativelly invoke any desired number of steps: `public(), lookup(), runtime(), precomputations()``
     /// 3. Finally call the `build()` method and unwrap the `Result` to obtain your `ConstraintSystem`
-    pub fn create(
-        gates: Vec<CircuitGate<F>>,
-        sponge_params: ArithmeticSpongeParams<F>,
-    ) -> Builder<F> {
+    pub fn create(gates: Vec<CircuitGate<F>>) -> Builder<F> {
         Builder {
             gates,
-            sponge_params,
             public: 0,
+            prev_challenges: 0,
             lookup_tables: vec![],
             runtime_tables: None,
             precomputations: None,
@@ -248,7 +240,11 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// assignements (witness) against the constraints
     ///     witness: wire assignement witness
     ///     RETURN: verification status
-    pub fn verify(&self, witness: &[Vec<F>; COLUMNS], public: &[F]) -> Result<(), GateError> {
+    pub fn verify<G: KimchiCurve<ScalarField = F>>(
+        &self,
+        witness: &[Vec<F>; COLUMNS],
+        public: &[F],
+    ) -> Result<(), GateError> {
         // pad the witness
         let pad = vec![F::zero(); self.domain.d1.size() - witness[0].len()];
         let witness: [Vec<F>; COLUMNS] = array_init(|i| {
@@ -290,7 +286,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             }
 
             // check the gate's satisfiability
-            gate.verify(row, &witness, self, public)
+            gate.verify::<G>(row, &witness, self, public)
                 .map_err(|err| GateError::Custom { row, err })?;
         }
 
@@ -338,11 +334,18 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     }
 }
 
-impl<F: FftField + SquareRootField> Builder<F> {
+impl<F: PrimeField + SquareRootField> Builder<F> {
     /// Set up the number of public inputs.
     /// If not invoked, it equals `0` by default.
     pub fn public(mut self, public: usize) -> Self {
         self.public = public;
+        self
+    }
+
+    /// Set up the number of previous challenges, used for recusive proving.
+    /// If not invoked, it equals `0` by default.
+    pub fn prev_challenges(mut self, prev_challenges: usize) -> Self {
+        self.prev_challenges = prev_challenges;
         self
     }
 
@@ -622,6 +625,7 @@ impl<F: FftField + SquareRootField> Builder<F> {
             endomul_scalar8,
             domain,
             public: self.public,
+            prev_challenges: self.prev_challenges,
             sid,
             sigmal1,
             sigmal8,
@@ -640,7 +644,7 @@ impl<F: FftField + SquareRootField> Builder<F> {
             gates,
             shift: shifts.shifts,
             endo,
-            fr_sponge_params: self.sponge_params,
+            //fr_sponge_params: self.sponge_params,
             lookup_constraint_system,
             precomputations: domain_constant_evaluation,
         };
@@ -660,17 +664,13 @@ impl<F: FftField + SquareRootField> Builder<F> {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use ark_ff::{FftField, SquareRootField};
     use mina_curves::pasta::fp::Fp;
 
-    impl<F: FftField + SquareRootField> ConstraintSystem<F> {
-        pub fn for_testing(
-            sponge_params: ArithmeticSpongeParams<F>,
-            gates: Vec<CircuitGate<F>>,
-        ) -> Self {
+    impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
+        pub fn for_testing(gates: Vec<CircuitGate<F>>) -> Self {
             let public = 0;
             // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
-            ConstraintSystem::<F>::create(gates, sponge_params)
+            ConstraintSystem::<F>::create(gates)
                 .public(public)
                 .build()
                 .unwrap()
@@ -679,8 +679,8 @@ pub mod tests {
 
     impl ConstraintSystem<Fp> {
         pub fn fp_for_testing(gates: Vec<CircuitGate<Fp>>) -> Self {
-            let fp_sponge_params = oracle::pasta::fp_kimchi::params();
-            Self::for_testing(fp_sponge_params, gates)
+            //let fp_sponge_params = oracle::pasta::fp_kimchi::params();
+            Self::for_testing(gates)
         }
     }
 }

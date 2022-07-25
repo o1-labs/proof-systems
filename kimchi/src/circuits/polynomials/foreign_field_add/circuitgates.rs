@@ -1,88 +1,93 @@
-///```text
-/// This module implements foreign field addition.
-///
-///
-/// let a_0, a_1, a_2 be 88-bit limbs of the left element
-/// let b_0, b_1, b_2 be 88-bit limbs of the right element
-/// let m_0, m_1, m_2 be 88-bit limbs of the modulus
-///
-/// Then the limbs of the result are
-/// r_0 = a_0 + b_0 - o * m_0 - 2^88 * c_0
-/// r_1 = a_1 + b_1 - o * m_1 - 2^88 * c_1 + c_0
-/// r_2 = a_2 + b_2 - o * m_2 - 2^88 * ___ + c_1
-///
-/// o = 0 or 1 handles overflows in the field
-/// c_i = -1, 0, 1 are auxiliary variables that handle carries between limbs
-///
-/// We need to do an additional range check to make sure that the result is < the modulus, by
-/// adding 2^(3*88) - m. (This can be computed easily from the limbs of m.) Represent this as limbs
-/// g_0, g_1, g_2.
-/// The upper-bound check can be calculated as
-/// u_2 = r_2 + g_2 + k_1
-/// u_1 = r_1 + g_1 - k_1 * 2^88 + k_0
-/// u_0 = r_0 + g_0 - k_0 * 2^88
-///
-/// k_i = 0 or 1 are auxiliary variables that handle carries between limbs
-///
-/// Then, range check r and o. The range check of o can be skipped if there are multiple additions
-/// and r is an intermediate value that is unused elsewhere (since the final r must have had the
-/// right number of moduluses subtracted along the way).
-///
-/// You could lay this out as a double-width gate, e.g.
-/// a_0 a_1 a_2 b_0 b_1 b_2 o c_0 c_1 ___ k_0 k_1
-/// r_0 r_1 r_2 u_0 u_1 u_2
-///
-///    | col | 'ForeignFieldAdd' | 'Zero'      |
-///    | --- | ----------------- | ----------- |
-///    |   0 | 'a0' (copy)       | 'r0' (copy) |
-///    |   1 | 'a1' (copy)       | 'r1' (copy) |
-///    |   2 | 'a2' (copy)       | 'r2' (copy) |
-///    |   3 | 'b0' (copy)       | 'u0' (copy) |
-///    |   4 | 'b1' (copy)       | 'u1' (copy) |
-///    |   5 | 'b2' (copy)       | 'u2' (copy) |
-///    |   6 | 'o'               |             |
-///    |   7 | 'c0'              |             |
-///    |   8 | 'c1'              |             |
-///    |   9 | ´k0´              |             |
-///    |  10 | 'k1'              |             |
-///    |  11 |                   |             |
-///    |  12 |                   |             |
-///    |  13 |                   |             |
-///    |  14 |                   |             |
-///
-///  Documentation:
-///
-///   For more details please see https://hackmd.io/7qnPOasqTTmElac8Xghnrw?view
-///
-///   Mapping:
-///     To make things clearer, the following mapping between the variable names
-///     used in the code and those of the document can be helpful.
-///
-///     left_input_lo -> a0  right_input_lo -> b0  result_lo -> r0  upper_bound_lo -> u0
-///     left_input_mi -> a1  right_input_mi -> b1  result_mi -> r1  upper_bound_mi -> u1
-///     left_input_hi -> a2  right_input_hi -> b2  result_hi -> r2  upper_bound_hi -> u2
-///
-///     field_overflow  -> o
-///     result_carry_lo -> c0
-///     result_carry_mi -> c1  
-///
-///     upper_bound_carry_lo -> k0   
-///     upper_bound_carry_mi -> k1   
-///
-///     max_sub_foreign_modulus_lo -> g_0 = 2^88 - m_0
-///     max_sub_foreign_modulus_mi -> g_1 = 2^88 - m_1 - 1
-///     max_sub_foreign_modulus_hi -> g_2 = 2^88 - m_2 - 1
-///```
-use std::marker::PhantomData;
+//! Foreign field addition gate.
 
 use crate::circuits::{
     argument::{Argument, ArgumentType},
     expr::{prologue::*, ConstantExpr::ForeignFieldModulus},
     gate::GateType,
 };
-
 use ark_ff::FftField;
 use o1_utils::foreign_field::LIMB_BITS;
+use std::marker::PhantomData;
+
+//~ Let $a_0, a_1, a_2$ be 88-bit limbs of the left element
+//~
+//~ Let $b_0, b_1, b_2$ be 88-bit limbs of the right element
+//~
+//~ Let $m_0, m_1, m_2$ be 88-bit limbs of the modulus
+//~
+//~ Then the limbs of the result are
+//~
+//~ - $ r_0 = a_0 + b_0 - o * m_0 - 2^{88} * c_0 $
+//~ - $ r_1 = a_1 + b_1 - o * m_1 - 2^{88} * c_1 + c_0 $
+//~ - $ r_2 = a_2 + b_2 - o * m_2 + c_1 $
+//~
+//~ $o = 0$ or $1$ handles overflows in the field
+//~
+//~ $c_i = -1, 0, 1$ are auxiliary variables that handle carries between limbs
+//~
+//~ We need to do an additional range check to make sure that the result is less than the modulus, by
+//~ adding $2^{3*88} - m$. (This can be computed easily from the limbs of m.) Represent this as limbs
+//~ $g_0, g_1, g_2$.
+//~ The upper-bound check can be calculated as
+//~ - $u_2 = r_2 + g_2 + k_1$
+//~ - $u_1 = r_1 + g_1 - k_1 * 2^{88} + k_0$
+//~ - $u_0 = r_0 + g_0 - k_0 * 2^{88}$
+//~
+//~ $k_i = 0$ or $1$ are auxiliary variables that handle carries between limbs
+//~
+//~ Then, range check $r$ and $u$. The range check of $u$ can be skipped if there are multiple additions
+//~ and $r$ is an intermediate value that is unused elsewhere (since the final $r$ must have had the
+//~ right number of moduluses subtracted along the way).
+//~
+//~ You could lay this out as a double-width gate, e.g.
+//~
+//~ ```text
+//~ a_0 a_1 a_2 b_0 b_1 b_2 o c_0 c_1 k_0 k_1
+//~ r_0 r_1 r_2 u_0 u_1 u_2
+//~
+//~ | col | ForeignFieldAdd | Zero      |
+//~ | --- | --------------- | --------- |
+//~ |   0 | a0 (copy)       | r0 (copy) |
+//~ |   1 | a1 (copy)       | r1 (copy) |
+//~ |   2 | a2 (copy)       | r2 (copy) |
+//~ |   3 | b0 (copy)       | u0 (copy) |
+//~ |   4 | b1 (copy)       | u1 (copy) |
+//~ |   5 | b2 (copy)       | u2 (copy) |
+//~ |   6 | o               |           |
+//~ |   7 | c0              |           |
+//~ |   8 | c1              |           |
+//~ |   9 | k0              |           |
+//~ |  10 | k1              |           |
+//~ |  11 |                 |           |
+//~ |  12 |                 |           |
+//~ |  13 |                 |           |
+//~ |  14 |                 |           |
+//~ ````
+//~
+//~  Documentation:
+//~
+//~   For more details please see the [FFadd RFC](../rfcs/ffadd.md)
+//~
+//~   Mapping:
+//~     To make things clearer, the following mapping between the variable names
+//~     used in the code and those of the document can be helpful.
+//~
+//~ ```text
+//~     left_input_lo -> a0  right_input_lo -> b0  result_lo -> r0  upper_bound_lo -> u0
+//~     left_input_mi -> a1  right_input_mi -> b1  result_mi -> r1  upper_bound_mi -> u1
+//~     left_input_hi -> a2  right_input_hi -> b2  result_hi -> r2  upper_bound_hi -> u2
+//~
+//~     field_overflow  -> o
+//~     result_carry_lo -> c0
+//~     result_carry_mi -> c1
+//~
+//~     upper_bound_carry_lo -> k0
+//~     upper_bound_carry_mi -> k1
+//~
+//~     max_sub_foreign_modulus_lo -> g_0 = 2^88 - m_0
+//~     max_sub_foreign_modulus_mi -> g_1 = 2^88 - m_1 - 1
+//~     max_sub_foreign_modulus_hi -> g_2 = 2^88 - m_2 - 1
+//~```
 
 /// Implementation of the ForeignFieldAdd gate
 pub struct FFAdd<F>(PhantomData<F>);
@@ -170,7 +175,7 @@ where
         res.push(result_mi.clone() - result_calculated_mi);
         res.push(result_hi.clone() - result_calculated_hi);
 
-        // Upper bound check's carry bits are 0 or 1
+        // Upper bound check`s carry bits are 0 or 1
         res.push(upper_bound_carry_lo.clone() * (upper_bound_carry_lo.clone() - 1u64.into()));
         res.push(upper_bound_carry_mi.clone() * (upper_bound_carry_mi.clone() - 1u64.into()));
 

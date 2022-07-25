@@ -1,4 +1,6 @@
 use crate::prologue::*;
+use kimchi::curve::KimchiCurve;
+use mina_curves::pasta::vesta::Affine as VestaAffine;
 
 type SpongeQ = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
 type SpongeR = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>;
@@ -46,6 +48,7 @@ const PUBLIC_INPUT_LENGTH: usize = 3;
 
 #[test]
 fn test_example_circuit() {
+    use mina_curves::pasta::vesta::Affine as Vesta;
     // create SRS
     let srs = {
         let mut srs = SRS::<VestaAffine>::create(1 << 7); // 2^7 = 128
@@ -54,16 +57,11 @@ fn test_example_circuit() {
     };
 
     let proof_system_constants = fp_constants();
-    let fq_poseidon = oracle::pasta::fq_kimchi::params();
 
     // generate circuit and index
-    let prover_index = generate_prover_index::<FpInner, _>(
-        srs,
-        &proof_system_constants,
-        &fq_poseidon,
-        PUBLIC_INPUT_LENGTH,
-        |sys, p| circuit::<_, PallasAffine, _>(&proof_system_constants, None, sys, p),
-    );
+    let prover_index = generate_prover_index::<FpInner, _>(srs, PUBLIC_INPUT_LENGTH, |sys, p| {
+        circuit::<_, PallasAffine, _>(&proof_system_constants, None, sys, p)
+    });
 
     let group_map = <VestaAffine as CommitmentCurve>::Map::setup();
 
@@ -84,7 +82,7 @@ fn test_example_circuit() {
         .into_affine();
     let hash = {
         let mut s: ArithmeticSponge<_, PlonkSpongeConstantsKimchi> =
-            ArithmeticSponge::new(proof_system_constants.poseidon.clone());
+            ArithmeticSponge::new(Vesta::sponge_params());
         s.absorb(&[preimage]);
         s.squeeze()
     };

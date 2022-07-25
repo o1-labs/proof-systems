@@ -474,12 +474,14 @@ mod tests {
             lookup::lookups::{LookupInfo, LookupPattern},
             wires::*,
         },
+        curve::KimchiCurve,
         proof::{LookupEvaluations, ProofEvaluations},
     };
     use ark_ff::UniformRand;
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
     use array_init::array_init;
     use mina_curves::pasta::fp::Fp as F;
+    use mina_curves::pasta::vesta::Affine as Vesta;
     use rand::{rngs::StdRng, SeedableRng};
     use std::fmt::{Display, Formatter};
 
@@ -568,7 +570,7 @@ mod tests {
             gamma: F::rand(rng),
             joint_combiner: None,
             endo_coefficient: F::zero(),
-            mds: vec![],
+            mds: &Vesta::sponge_params().mds,
             foreign_field_modulus: vec![],
         };
 

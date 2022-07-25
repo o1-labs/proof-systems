@@ -1027,6 +1027,253 @@ This equation is translated as the constraint:
 
 
 
+#### Range Check
+
+Range check circuit gates:
+
+   The range check gate is comprised of three circuit gates (RangeCheck0, RangeCheck1
+   and Zero) and can perform range checks on up to three 88-bit values: v0, v1 and v2.
+
+   Byte-order:
+     * Each value is in little-endian byte order
+     * Limbs are mapped to columns in big-endian order (i.e. the lowest columns
+       contain the highest bits)
+     * We also have the highest bits covered by copy constraints and plookups, so that
+       we can copy the highest two constraints to zero and get a 64-bit lookup, which
+       are envisioned as a common case
+
+   The values are decomposed into limbs as follows.
+
+```text
+   L is a 12-bit lookup (or copy) limb,
+   C is a 2-bit "crumb" limb.
+
+        <----6----> <------8------>
+   v0 = L L L L L L C C C C C C C C
+   v1 = L L L L L L C C C C C C C C
+        <--4--> <------------------20----------------->
+   v2 = L L L L C C C C C C C C C C C C C C C C C C C C
+```
+Witness structure:
+
+  Row  Contents
+    0   v0
+    1   v1
+    2   v2
+    3   v0,v1,v2
+
+  * The first 2 rows contain v0 and v1 and their respective decompositions
+    into 12-bit and 2-bit limbs
+  * The 3rd row contains v2 and part of its decomposition: four 12-bit limbs and
+    the 1st 10 crumbs
+  * The final row contains v0's and v1's 5th and 6th 12-bit limbs as well as the
+    remaining 10 crumbs of v2
+
+Constraints:
+
+  For efficiency, the values are constrained differently according to their type.
+   * 12-bit limbs are constrained with plookups
+   * 2-bit crumbs are constrained with degree-4 constraints
+
+Layout:
+
+ This is how three 88-bit inputs v0, v1 and v2 are layed out and constrained.
+
+```text
+  * vipj is the jth 12-bit limb of value vi
+  * vicj is the jth 2-bit crumb limb of value vi
+
+Gate:   RangeCheck0    RangeCheck0    RangeCheck1    Zero
+   Rows -->
+        0              1              2              3
+   0 | v0           | v1           | v2           | 0
+   1 | copy    v0p0 | copy    v1p0 | crumb   v2c0 | crumb   v2c10 <- MSB
+   2 | copy    v0p1 | copy    v1p1 | crumb   v2c1 | crumb   v2c11
+   3 | plookup v0p2 | plookup v1p2 | plookup v2p0 | plookup  v0p0
+   4 | plookup v0p3 | plookup v1p3 | plookup v2p1 | plookup  v0p1
+   5 | plookup v0p4 | plookup v1p4 | plookup v2p2 | plookup  v1p0
+   6 | plookup v0p5 | plookup v1p5 | plookup v2p3 | plookup  v1p1
+   7 | crumb   v0c0 | crumb   v1c0 | crumb   v2c2 | crumb   v2c12
+   8 | crumb   v0c1 | crumb   v1c1 | crumb   v2c3 | crumb   v2c13
+   9 | crumb   v0c2 | crumb   v1c2 | crumb   v2c4 | crumb   v2c14
+  10 | crumb   v0c3 | crumb   v1c3 | crumb   v2c5 | crumb   v2c15
+  11 | crumb   v0c4 | crumb   v1c4 | crumb   v2c6 | crumb   v2c16
+  12 | crumb   v0c5 | crumb   v1c5 | crumb   v2c7 | crumb   v2c17
+  13 | crumb   v0p6 | copy    v1c6 | crumb   v2c8 | crumb   v2c18
+  14 | crumb   v0p7 | copy    v1c7 | crumb   v2c9 | crumb   v2c19 <- LSB
+
+```
+  The 12-bit chunks are constrained with plookups and the 2-bit crumbs
+  constrained with degree-4 constraints of the form $x · (x - 1) · (x - 2) · (x - 3)$.
+
+  Note that copy denotes a plookup that is deferred to the 4th gate (i.e. Zero).
+  This is because of the limitation that we have at most 4 lookups per row.
+  The copies are constrained using the permutation argument.
+
+Gate types:
+
+  Different rows are constrained using different CircuitGate types
+
+```text
+  Row   CircuitGate   Purpose
+    0   RangeCheck0   Partially constrain v0
+    1   RangeCheck0   Partially constrain v1
+    2   RangeCheck1   Fully constrain v2 (and trigger plookups constraints on row 3)
+    3   Zero          Complete the constraining of v0 and v1 using lookups
+```
+
+ Nb. each CircuitGate type corresponds to a unique polynomial and thus
+      is assigned its own unique powers of alpha
+
+RangeCheck0 - Range check constraints
+
+  * This circuit gate is used to partially constrain values v0 and v1
+  * The rest of v0 and v1 are constrained by the lookups in the Zero gate row
+  * This gate operates on the Curr row
+
+It uses three different types of constraints
+  * copy    - copy to another cell (12-bits)
+  * plookup - plookup (12-bits)
+  * crumb   - degree-4 constraint (2-bits)
+
+Given value v the layout looks like this
+
+```text
+Column | Curr
+     0 | v
+     1 | copy    vp0
+     2 | copy    vp1
+     3 | plookup vp2
+     4 | plookup vp3
+     5 | plookup vp4
+     6 | plookup vp5
+     7 | crumb   vc0
+     8 | crumb   vc1
+     9 | crumb   vc2
+    10 | crumb   vc3
+    11 | crumb   vc4
+    12 | crumb   vc5
+    13 | crumb   vc6
+    14 | crumb   vc7
+```
+
+where the notation vpi and vci defined in the "Layout" section above.
+RangeCheck1 - Range check constraints
+
+  * This circuit gate is used to fully constrain v2
+  * It operates on the Curr and Next rows
+
+It uses two different types of constraints
+  * plookup - plookup (12-bits)
+  * crumb   - degree-4 constraint (2-bits)
+
+Given value v2 the layout looks like this
+
+```text
+Column | Curr         | Next
+     0 | v2           | (ignored)
+     1 | crumb   v2c0 | crumb v2c10
+     2 | crumb   v2c1 | crumb v2c11
+     3 | plookup v2p0 | (ignored)
+     4 | plookup v2p1 | (ignored)
+     5 | plookup v2p2 | (ignored)
+     6 | plookup v2p3 | (ignored)
+     7 | crumb   v2c2 | crumb v2c12
+     8 | crumb   v2c3 | crumb v2c13
+     9 | crumb   v2c4 | crumb v2c14
+    10 | crumb   v2c5 | crumb v2c15
+    11 | crumb   v2c6 | crumb v2c16
+    12 | crumb   v2c7 | crumb v2c17
+    13 | crumb   v2c8 | crumb v2c18
+    14 | crumb   v2c9 | crumb v2c19
+```
+
+where the notation v2i and v2i defined in the "Layout" section above.
+
+
+#### Foreign Field Addition
+
+Let $a_0, a_1, a_2$ be 88-bit limbs of the left element
+
+Let $b_0, b_1, b_2$ be 88-bit limbs of the right element
+
+Let $m_0, m_1, m_2$ be 88-bit limbs of the modulus
+
+Then the limbs of the result are
+
+- $ r_0 = a_0 + b_0 - o * m_0 - 2^{88} * c_0 $
+- $ r_1 = a_1 + b_1 - o * m_1 - 2^{88} * c_1 + c_0 $
+- $ r_2 = a_2 + b_2 - o * m_2 + c_1 $
+
+$o = 0$ or $1$ handles overflows in the field
+
+$c_i = -1, 0, 1$ are auxiliary variables that handle carries between limbs
+
+We need to do an additional range check to make sure that the result is less than the modulus, by
+adding $2^{3*88} - m$. (This can be computed easily from the limbs of m.) Represent this as limbs
+$g_0, g_1, g_2$.
+The upper-bound check can be calculated as
+- $u_2 = r_2 + g_2 + k_1$
+- $u_1 = r_1 + g_1 - k_1 * 2^{88} + k_0$
+- $u_0 = r_0 + g_0 - k_0 * 2^{88}$
+
+$k_i = 0$ or $1$ are auxiliary variables that handle carries between limbs
+
+Then, range check $r$ and $u$. The range check of $u$ can be skipped if there are multiple additions
+and $r$ is an intermediate value that is unused elsewhere (since the final $r$ must have had the
+right number of moduluses subtracted along the way).
+
+You could lay this out as a double-width gate, e.g.
+
+```text
+a_0 a_1 a_2 b_0 b_1 b_2 o c_0 c_1 k_0 k_1
+r_0 r_1 r_2 u_0 u_1 u_2
+
+| col | ForeignFieldAdd | Zero      |
+| --- | --------------- | --------- |
+|   0 | a0 (copy)       | r0 (copy) |
+|   1 | a1 (copy)       | r1 (copy) |
+|   2 | a2 (copy)       | r2 (copy) |
+|   3 | b0 (copy)       | u0 (copy) |
+|   4 | b1 (copy)       | u1 (copy) |
+|   5 | b2 (copy)       | u2 (copy) |
+|   6 | o               |           |
+|   7 | c0              |           |
+|   8 | c1              |           |
+|   9 | k0              |           |
+|  10 | k1              |           |
+|  11 |                 |           |
+|  12 |                 |           |
+|  13 |                 |           |
+|  14 |                 |           |
+````
+
+ Documentation:
+
+  For more details please see the [FFadd RFC](../rfcs/ffadd.md)
+
+  Mapping:
+    To make things clearer, the following mapping between the variable names
+    used in the code and those of the document can be helpful.
+
+```text
+    left_input_lo -> a0  right_input_lo -> b0  result_lo -> r0  upper_bound_lo -> u0
+    left_input_mi -> a1  right_input_mi -> b1  result_mi -> r1  upper_bound_mi -> u1
+    left_input_hi -> a2  right_input_hi -> b2  result_hi -> r2  upper_bound_hi -> u2
+
+    field_overflow  -> o
+    result_carry_lo -> c0
+    result_carry_mi -> c1
+
+    upper_bound_carry_lo -> k0
+    upper_bound_carry_mi -> k1
+
+    max_sub_foreign_modulus_lo -> g_0 = 2^88 - m_0
+    max_sub_foreign_modulus_mi -> g_1 = 2^88 - m_1 - 1
+    max_sub_foreign_modulus_hi -> g_2 = 2^88 - m_2 - 1
+```
+
+
 ## Setup
 
 In this section we specify the setup that goes into creating two indexes from a circuit:
@@ -1168,7 +1415,7 @@ Both the prover and the verifier index, besides the common parts described above
 These pre-computations are optimizations, in the context of normal proofs, but they are necessary for recursion.
 
 ```rs
-pub struct ProverIndex<G: CommitmentCurve> {
+pub struct ProverIndex<G: KimchiCurve> {
     /// constraints system polynomials
     #[serde(bound = "ConstraintSystem<G::ScalarField>: Serialize + DeserializeOwned")]
     pub cs: ConstraintSystem<G::ScalarField>,
@@ -1190,10 +1437,6 @@ pub struct ProverIndex<G: CommitmentCurve> {
 
     /// maximal size of the quotient polynomial according to the supported constraints
     pub max_quot_size: usize,
-
-    /// random oracle argument parameters
-    #[serde(skip)]
-    pub fq_sponge_params: ArithmeticSpongeParams<G::BaseField>,
 }
 ```
 
@@ -1227,7 +1470,7 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 
 #[serde_as]
 #[derive(Serialize, Deserialize)]
-pub struct VerifierIndex<G: CommitmentCurve> {
+pub struct VerifierIndex<G: KimchiCurve> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub domain: D<G::ScalarField>,
@@ -1240,6 +1483,8 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     pub srs: OnceCell<Arc<SRS<G>>>,
     /// number of public inputs
     pub public: usize,
+    /// number of previous evaluation challenges, for recursive proving
+    pub prev_challenges: usize,
 
     // index polynomial commitments
     /// permutation commitment array
@@ -1305,12 +1550,6 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
     pub powers_of_alpha: Alphas<G::ScalarField>,
-
-    // random oracle argument parameters
-    #[serde(skip)]
-    pub fr_sponge_params: ArithmeticSpongeParams<G::ScalarField>,
-    #[serde(skip)]
-    pub fq_sponge_params: ArithmeticSpongeParams<G::BaseField>,
 
     // Foreign field modulus
     #[serde(skip)]
@@ -1549,6 +1788,7 @@ The prover then follows the following steps to create the proof:
 1. Pad the witness columns with Zero gates to make them the same length as the domain.
    Then, randomize the last `ZK_ROWS` of each columns.
 1. Setup the Fq-Sponge.
+1. Absorb the commitments of the previous challenges with the Fq-sponge.
 1. Compute the negated public input polynomial as
    the polynomial that evaluates to $-p_i$ for the first `public_input_size` values of the domain,
    and $0$ for the rest.
@@ -1677,6 +1917,7 @@ We define two helper algorithms below, used in the batch verification of proofs.
 We run the following algorithm:
 
 1. Setup the Fq-Sponge.
+1. Absorb the commitments of the previous challenges with the Fq-sponge.
 1. Absorb the commitment of the public input polynomial with the Fq-Sponge.
 1. Absorb the commitments to the registers / witness columns with the Fq-Sponge.
 1. If lookup is used:
