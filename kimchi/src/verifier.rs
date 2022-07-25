@@ -149,14 +149,14 @@ where
                 .commitments
                 .lookup
                 .as_ref()
-                .ok_or(VerifyError::LookupCommitmentMissing)?;
+                .ok_or(VerifyError::ProofCommitmentLookupMismatch(true, false))?;
 
             // if runtime is used, absorb the commitment
             if l.runtime_tables_selector.is_some() {
                 let runtime_commit = lookup_commits
                     .runtime
                     .as_ref()
-                    .ok_or(VerifyError::IncorrectRuntimeProof)?;
+                    .ok_or(VerifyError::ProofRuntimeTableMismatch(true, false))?;
                 fq_sponge.absorb_g(&runtime_commit.unshifted);
             }
 
@@ -495,11 +495,55 @@ where
     //~ Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
     //~
 
-    if proof.prev_challenges.len() != index.prev_challenges {
-        return Err(VerifyError::IncorrectPrevChallengesLength(
-            index.prev_challenges,
-            proof.prev_challenges.len(),
-        ));
+    //~ 1. make sure that the proof is well-formed:
+    {
+        let lookup_in_index = index.lookup_index.is_some();
+        let runtime_tables_enabled = index
+            .lookup_index
+            .map(|li| li.runtime_tables_selector.is_some())
+            .unwrap_or(false);
+
+        //~~ - make sure that if the index contains lookup,
+        //~~   then the proof has lookup commitments
+        let lookup_in_proof = proof.commitments.lookup.is_some();
+        if lookup_in_proof != lookup_in_index {
+            return Err(VerifyError::ProofCommitmentLookupMismatch(
+                lookup_in_index,
+                lookup_in_proof,
+            ));
+        }
+
+        for eval in proof.evals {
+            //~~ - as well as lookup evaluations
+            let lookup_in_eval = eval.lookup.is_some();
+            if lookup_in_eval != lookup_in_index {
+                return Err(VerifyError::ProofEvalLookupMismatch(
+                    lookup_in_index,
+                    lookup_in_eval,
+                ));
+            }
+
+            if let Some(lookup) = &eval.lookup {
+                //~~ - if the index has runtime tables,
+                //~~   then check that the proof has runtime evaluations as well
+                let runtime_tables_in_proof = lookup.runtime.is_some();
+                if runtime_tables_in_proof != runtime_tables_enabled {
+                    return Err(VerifyError::ProofRuntimeTableMismatch(
+                        runtime_tables_enabled,
+                        runtime_tables_in_proof,
+                    ));
+                }
+            }
+        }
+
+        //~~ - make sure that the number of previous challenges in the proof
+        //~~   is the number expected by the verifier index.
+        if proof.prev_challenges.len() != index.prev_challenges {
+            return Err(VerifyError::IncorrectPrevChallengesLength(
+                index.prev_challenges,
+                proof.prev_challenges.len(),
+            ));
+        }
     }
 
     //~ 1. Commit to the negated public input polynomial.

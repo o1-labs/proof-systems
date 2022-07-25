@@ -47,11 +47,13 @@ pub enum VerifyError {
     #[error("the opening proof failed to verify")]
     OpenProof,
 
-    #[error("lookup used in circuit, but proof is missing lookup commitments")]
-    LookupCommitmentMissing,
+    #[error(
+        "proof and index mismatch. lookup used in index: {0}, lookup commitments in proof: {1}"
+    )]
+    ProofCommitmentLookupMismatch(bool, bool),
 
-    #[error("lookup used in circuit, but proof is missing lookup evaluations")]
-    LookupEvalsMissing,
+    #[error("proof and index mismatch. lookup used in index: {0}, lookup evals in proof: {1}")]
+    ProofEvalLookupMismatch(bool, bool),
 
     #[error("lookup used in circuit, but proof has inconsistent number of lookup evaluations and commitments")]
     ProofInconsistentLookup,
@@ -63,7 +65,7 @@ pub enum VerifyError {
     SRSTooSmall,
 
     #[error("runtime tables are used, but missing from the proof")]
-    IncorrectRuntimeProof,
+    ProofRuntimeTableMismatch(bool, bool),
 }
 
 /// Errors that can arise when preparing the setup
