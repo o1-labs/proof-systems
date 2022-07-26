@@ -7,11 +7,7 @@ use crate::circuits::{
 };
 use ark_ff::PrimeField;
 use array_init::array_init;
-//use num_bigint::BigUint;
-//use num_integer::Integer;
 use o1_utils::foreign_field::{ForeignElement, LIMB_BITS};
-
-//use super::compute_intermediate_products;
 
 pub fn create_witness<F: PrimeField>(
     left_input: ForeignElement<F, 3>,
