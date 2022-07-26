@@ -25,8 +25,6 @@ pub fn create_witness<F: PrimeField>(
     // Compute helper variables for the upper bound check
     let max_sub_foreign_modulus = ForeignElement::<F, 3>::new([
         two_to_limb - foreign_modulus.lo(),
-        //two_to_limb - foreign_modulus.mi(),
-        //two_to_limb - foreign_modulus.hi(),
         two_to_limb - foreign_modulus.mi() - F::one(),
         two_to_limb - foreign_modulus.hi() - F::one(),
     ]);
