@@ -2214,7 +2214,7 @@ pub mod test {
     use ark_ff::UniformRand;
     use array_init::array_init;
     use mina_curves::pasta::fp::Fp;
-    use mina_curves::pasta::vesta::Affine as Vesta;
+    use mina_curves::pasta::vesta::Vesta;
     use rand::{prelude::StdRng, SeedableRng};
 
     #[test]
