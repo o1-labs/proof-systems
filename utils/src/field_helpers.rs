@@ -25,6 +25,9 @@ pub trait FieldHelpers<F> {
     /// Deserialize from bits
     fn from_bits(bits: &[bool]) -> Result<F>;
 
+    /// Deserialize from big unsigned integer
+    fn from_big(big: BigUint) -> Result<F>;
+
     /// Serialize to bytes
     fn to_bytes(&self) -> Vec<u8>;
 
@@ -33,6 +36,9 @@ pub trait FieldHelpers<F> {
 
     /// Serialize to bits
     fn to_bits(&self) -> Vec<bool>;
+
+    /// Field element as a BigUint
+    fn to_big(self) -> BigUint;
 
     /// Field size in bytes
     fn size_in_bytes() -> usize
@@ -94,6 +100,20 @@ impl<F: Field> FieldHelpers<F> for F {
             }
             bits
         })
+    }
+
+    fn from_big(big: BigUint) -> Result<F> {
+        let mut bytes = big.to_bytes_le();
+
+        // Pad with zeros if necessary because the BigUint to_bytes_le function gives the smallest possible vector of bytes
+        bytes.resize(32, 0);
+
+        F::deserialize(&mut &bytes[..]).map_err(|_| FieldHelpersError::DeserializeBytes)
+    }
+
+    fn to_big(self) -> BigUint {
+        let bytes = self.to_bytes();
+        BigUint::from_bytes_le(&bytes)
     }
 }
 
@@ -227,6 +247,18 @@ mod tests {
         assert_eq!(
             BaseField::from_bits(&[true, false, false]).expect("Failed to deserialize field bytes"),
             BaseField::one()
+        );
+    }
+
+    #[test]
+    fn field_big() {
+        let fe = BaseField::from(1024u32);
+        let big = fe.to_big();
+        assert_eq!(big, BigUint::new(vec![1024]));
+
+        assert_eq!(
+            BaseField::from_big(big).expect("Failed to deserialize big integer"),
+            BaseField::from(1024u32)
         );
     }
 }
