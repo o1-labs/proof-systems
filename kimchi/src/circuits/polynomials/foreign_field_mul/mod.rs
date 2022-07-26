@@ -1,5 +1,5 @@
 mod circuitgates;
-pub mod gate;
+pub mod gadget;
 pub mod witness;
 
 pub use circuitgates::*;

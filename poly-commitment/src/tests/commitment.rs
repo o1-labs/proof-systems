@@ -107,7 +107,8 @@ where
     // setup
     let mut rng = rand::thread_rng();
     let group_map = <Affine as CommitmentCurve>::Map::setup();
-    let fq_sponge = DefaultFqSponge::<VestaParameters, SC>::new(oracle::pasta::fq_kimchi::params());
+    let fq_sponge =
+        DefaultFqSponge::<VestaParameters, SC>::new(oracle::pasta::fq_kimchi::static_params());
 
     // create an SRS optimized for polynomials of degree 2^7 - 1
     let srs = SRS::<Affine>::create(1 << 7);

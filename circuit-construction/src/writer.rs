@@ -63,7 +63,7 @@ impl<F: FftField> GateSpec<F> {
 /// and the vector of [GateSpec] created so far.
 /// It also keeps track of the queue of generic gates and cached constants.
 #[derive(Default)]
-pub struct System<F: FftField> {
+pub struct System<F> {
     pub next_variable: usize,
     pub generic_gate_queue: Vec<GateSpec<F>>,
     // pub equivalence_classes: HashMap<Var, Vec<Position>>,
@@ -761,7 +761,7 @@ pub trait Cs<F: PrimeField> {
     fn poseidon(&mut self, constants: &Constants<F>, input: Vec<Var<F>>) -> Vec<Var<F>> {
         use kimchi::circuits::polynomials::poseidon::*;
 
-        let params = &constants.poseidon;
+        let params = constants.poseidon;
         let rc = &params.round_constants;
         let width = PlonkSpongeConstantsKimchi::SPONGE_WIDTH;
 
@@ -903,8 +903,7 @@ impl<F: PrimeField> WitnessGenerator<F> {
 }
 
 impl<F: PrimeField> Cs<F> for System<F> {
-    /// Creates a new empty variable with the next available index
-    fn var<G>(&mut self, _: G) -> Var<F> {
+    fn var<V>(&mut self, _: V) -> Var<F> {
         let v = self.next_variable;
         self.next_variable += 1;
         Var {
@@ -918,7 +917,6 @@ impl<F: PrimeField> Cs<F> for System<F> {
         self.gates.len()
     }
 
-    /// Introduces a gate `g` to the current collection of `gates` in the circuit.
     fn gate(&mut self, g: GateSpec<F>) {
         self.gates.push(g);
     }

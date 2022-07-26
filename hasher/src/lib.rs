@@ -15,7 +15,7 @@ use o1_utils::FieldHelpers;
 
 /// The domain parameter trait is used during hashing to convey extra
 /// arguments to domain string generation.  It is also used by generic signing code.
-pub trait DomainParameter: Clone + Copy {
+pub trait DomainParameter: Clone {
     /// Conversion into vector of bytes
     fn into_bytes(self) -> Vec<u8>;
 }

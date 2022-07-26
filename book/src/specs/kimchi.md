@@ -1248,7 +1248,7 @@ Both the prover and the verifier index, besides the common parts described above
 These pre-computations are optimizations, in the context of normal proofs, but they are necessary for recursion.
 
 ```rs
-pub struct ProverIndex<G: CommitmentCurve> {
+pub struct ProverIndex<G: KimchiCurve> {
     /// constraints system polynomials
     #[serde(bound = "ConstraintSystem<G::ScalarField>: Serialize + DeserializeOwned")]
     pub cs: ConstraintSystem<G::ScalarField>,
@@ -1270,10 +1270,6 @@ pub struct ProverIndex<G: CommitmentCurve> {
 
     /// maximal size of the quotient polynomial according to the supported constraints
     pub max_quot_size: usize,
-
-    /// random oracle argument parameters
-    #[serde(skip)]
-    pub fq_sponge_params: ArithmeticSpongeParams<G::BaseField>,
 }
 ```
 
@@ -1307,7 +1303,7 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 
 #[serde_as]
 #[derive(Serialize, Deserialize)]
-pub struct VerifierIndex<G: CommitmentCurve> {
+pub struct VerifierIndex<G: KimchiCurve> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub domain: D<G::ScalarField>,
@@ -1320,6 +1316,8 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     pub srs: OnceCell<Arc<SRS<G>>>,
     /// number of public inputs
     pub public: usize,
+    /// number of previous evaluation challenges, for recursive proving
+    pub prev_challenges: usize,
 
     // index polynomial commitments
     /// permutation commitment array
@@ -1385,12 +1383,7 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
     pub powers_of_alpha: Alphas<G::ScalarField>,
-
-    // random oracle argument parameters
-    #[serde(skip)]
-    pub fr_sponge_params: ArithmeticSpongeParams<G::ScalarField>,
-    #[serde(skip)]
-    pub fq_sponge_params: ArithmeticSpongeParams<G::BaseField>,
+    
     // Foreign field modulus
     #[serde(skip)]
     pub foreign_field_modulus: Vec<G::ScalarField>,
@@ -1628,6 +1621,7 @@ The prover then follows the following steps to create the proof:
 1. Pad the witness columns with Zero gates to make them the same length as the domain.
    Then, randomize the last `ZK_ROWS` of each columns.
 1. Setup the Fq-Sponge.
+1. Absorb the commitments of the previous challenges with the Fq-sponge.
 1. Compute the negated public input polynomial as
    the polynomial that evaluates to $-p_i$ for the first `public_input_size` values of the domain,
    and $0$ for the rest.
@@ -1756,6 +1750,7 @@ We define two helper algorithms below, used in the batch verification of proofs.
 We run the following algorithm:
 
 1. Setup the Fq-Sponge.
+1. Absorb the commitments of the previous challenges with the Fq-sponge.
 1. Absorb the commitment of the public input polynomial with the Fq-Sponge.
 1. Absorb the commitments to the registers / witness columns with the Fq-Sponge.
 1. If lookup is used:

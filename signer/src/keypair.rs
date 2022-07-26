@@ -10,7 +10,7 @@ use rand::{self, CryptoRng, RngCore};
 use thiserror::Error;
 
 /// Keypair error
-#[derive(Error, Debug, Clone, Copy, PartialEq)]
+#[derive(Error, Debug, Clone, PartialEq)]
 pub enum KeypairError {
     /// Invalid secret key hex
     #[error("invalid secret key hex")]
@@ -26,7 +26,7 @@ pub enum KeypairError {
 pub type Result<T> = std::result::Result<T, KeypairError>;
 
 /// Keypair structure
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Keypair {
     /// Secret key
     pub(crate) secret: SecKey,
@@ -47,12 +47,13 @@ impl Keypair {
     /// Generate a random keypair
     pub fn rand(rng: &mut (impl RngCore + CryptoRng)) -> Self {
         let sec_key: SecKey = SecKey::rand(rng);
+        let scalar = sec_key.into_scalar();
         let public: CurvePoint = CurvePoint::prime_subgroup_generator()
-            .mul(sec_key.into_scalar())
+            .mul(scalar)
             .into_affine();
 
         // Safe in this case b/c point must be on curve
-        Self::from_parts_unsafe(sec_key.into_scalar(), public)
+        Self::from_parts_unsafe(scalar, public)
     }
 
     /// Deserialize a keypair from secret key hex

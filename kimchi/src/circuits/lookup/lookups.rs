@@ -7,7 +7,7 @@ use crate::circuits::{
         XOR_TABLE_ID,
     },
 };
-use ark_ff::{FftField, Field, One, Zero};
+use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Evaluations as E, Radix2EvaluationDomain as D};
 use o1_utils::field_helpers::i32_to_field;
 use serde::{Deserialize, Serialize};
@@ -64,7 +64,7 @@ impl LookupInfo {
         }
     }
 
-    pub fn create_from_gates<F: FftField>(
+    pub fn create_from_gates<F: PrimeField>(
         gates: &[CircuitGate<F>],
         uses_runtime_tables: bool,
     ) -> Option<Self> {
@@ -98,7 +98,7 @@ impl LookupInfo {
 
     /// Each entry in `kinds` has a corresponding selector polynomial that controls whether that
     /// lookup kind should be enforced at a given row. This computes those selector polynomials.
-    pub fn selector_polynomials_and_tables<F: FftField>(
+    pub fn selector_polynomials_and_tables<F: PrimeField>(
         &self,
         domain: &EvaluationDomains<F>,
         gates: &[CircuitGate<F>],
@@ -149,7 +149,7 @@ impl LookupInfo {
     }
 
     /// For each row in the circuit, which lookup-constraints should be enforced at that row.
-    pub fn by_row<F: FftField>(&self, gates: &[CircuitGate<F>]) -> Vec<Vec<JointLookupSpec<F>>> {
+    pub fn by_row<F: PrimeField>(&self, gates: &[CircuitGate<F>]) -> Vec<Vec<JointLookupSpec<F>>> {
         let mut kinds = vec![vec![]; gates.len() + 1];
         for i in 0..gates.len() {
             let typ = gates[i].typ;

@@ -2,21 +2,19 @@
 //! endomorphism optimised variable base
 //! scalar multiplication custom Plonk polynomials.
 
-use std::marker::PhantomData;
-
-use ark_ff::{FftField, Field, One};
-
-use crate::circuits::constraints::ConstraintSystem;
-use crate::circuits::gate::CircuitGate;
-use crate::circuits::wires::GateWires;
-use crate::circuits::{
-    argument::{Argument, ArgumentType},
-    expr,
-    expr::{constraints::boolean, prologue::*, Cache, ConstantExpr},
-    gate::GateType,
-    wires::COLUMNS,
+use crate::{
+    circuits::{
+        argument::{Argument, ArgumentType},
+        constraints::ConstraintSystem,
+        expr::{self, constraints::boolean, prologue::*, Cache, ConstantExpr},
+        gate::{CircuitGate, GateType},
+        wires::{GateWires, COLUMNS},
+    },
+    curve::KimchiCurve,
+    proof::ProofEvaluations,
 };
-use crate::proof::ProofEvaluations;
+use ark_ff::{FftField, Field, One, PrimeField};
+use std::marker::PhantomData;
 
 //~ We implement custom gate constraints for short Weierstrass curve
 //~ endomorphism optimised variable base scalar multiplication.
@@ -110,7 +108,7 @@ use crate::proof::ProofEvaluations;
 
 /// Implementation of group endomorphism optimised
 /// variable base scalar multiplication custom Plonk constraints.
-impl<F: FftField> CircuitGate<F> {
+impl<F: PrimeField> CircuitGate<F> {
     pub fn create_endomul(wires: GateWires) -> Self {
         CircuitGate {
             typ: GateType::EndoMul,
@@ -119,7 +117,7 @@ impl<F: FftField> CircuitGate<F> {
         }
     }
 
-    pub fn verify_endomul(
+    pub fn verify_endomul<G: KimchiCurve<ScalarField = F>>(
         &self,
         row: usize,
         witness: &[Vec<F>; COLUMNS],
@@ -137,12 +135,12 @@ impl<F: FftField> CircuitGate<F> {
             beta: F::zero(),
             gamma: F::zero(),
             joint_combiner: None,
-            mds: vec![],
+            mds: &G::sponge_params().mds,
             endo_coefficient: cs.endo,
             foreign_field_modulus: vec![],
         };
 
-        let evals: [ProofEvaluations<F>; 2] = [
+        let evals: [ProofEvaluations<G::ScalarField>; 2] = [
             ProofEvaluations::dummy_with_witness_evaluations(this),
             ProofEvaluations::dummy_with_witness_evaluations(next),
         ];

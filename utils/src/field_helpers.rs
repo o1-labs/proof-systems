@@ -4,7 +4,7 @@ use std::ops::Neg;
 use thiserror::Error;
 
 // Field helpers error
-#[derive(Error, Debug, Clone, Copy, PartialEq)]
+#[derive(Error, Debug, Clone, PartialEq)]
 pub enum FieldHelpersError {
     #[error("failed to deserialize field bytes")]
     DeserializeBytes,
@@ -29,13 +29,13 @@ pub trait FieldHelpers<F> {
     fn from_big(big: BigUint) -> Result<F>;
 
     /// Serialize to bytes
-    fn to_bytes(self) -> Vec<u8>;
+    fn to_bytes(&self) -> Vec<u8>;
 
     /// Serialize to hex
-    fn to_hex(self) -> String;
+    fn to_hex(&self) -> String;
 
     /// Serialize to bits
-    fn to_bits(self) -> Vec<bool>;
+    fn to_bits(&self) -> Vec<bool>;
 
     /// Field element as a BigUint
     fn to_big(self) -> BigUint;
@@ -103,11 +103,11 @@ impl<F: Field> FieldHelpers<F> for F {
         bytes
     }
 
-    fn to_hex(self) -> String {
+    fn to_hex(&self) -> String {
         hex::encode(self.to_bytes())
     }
 
-    fn to_bits(self) -> Vec<bool> {
+    fn to_bits(&self) -> Vec<bool> {
         self.to_bytes().iter().fold(vec![], |mut bits, byte| {
             let mut byte = *byte;
             for _ in 0..8 {
@@ -174,7 +174,7 @@ mod tests {
         let field_hex = "f2eee8d8f6e5fb182c610cae6c5393fce69dc4d900e7b4923b074e54ad00fb36";
         assert_eq!(
             BaseField::to_hex(
-                BaseField::from_hex(field_hex).expect("Failed to deserialize field hex")
+                &BaseField::from_hex(field_hex).expect("Failed to deserialize field hex")
             ),
             field_hex
         );
@@ -198,7 +198,7 @@ mod tests {
 
         assert_eq!(
             BaseField::to_hex(
-                BaseField::from_bytes(&[
+                &BaseField::from_bytes(&[
                     46, 174, 218, 228, 42, 116, 97, 213, 149, 45, 39, 185, 126, 202, 208, 104, 182,
                     152, 235, 185, 78, 138, 14, 76, 69, 56, 139, 182, 19, 222, 126, 8
                 ])
