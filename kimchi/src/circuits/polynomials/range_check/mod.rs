@@ -2,5 +2,5 @@
 
 mod circuitgates;
 
-pub mod gadget;
+pub mod gate;
 pub mod witness;

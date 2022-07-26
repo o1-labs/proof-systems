@@ -589,7 +589,7 @@ where
                     }
                 });
             if !index.cs.range_check_selector_polys.is_empty() {
-                index_evals.extend(range_check::gadget::circuit_gates().iter().enumerate().map(
+                index_evals.extend(range_check::gate::circuit_gates().iter().enumerate().map(
                     |(i, gate_type)| (*gate_type, &index.cs.range_check_selector_polys[i].eval8),
                 ));
             }
@@ -653,9 +653,8 @@ where
 
             if !index.cs.range_check_selector_polys.is_empty() {
                 // Range check gate
-                for gate_type in range_check::gadget::circuit_gates() {
-                    let expr =
-                        range_check::gadget::circuit_gate_constraints(gate_type, &all_alphas);
+                for gate_type in range_check::gate::circuit_gates() {
+                    let expr = range_check::gate::circuit_gate_constraints(gate_type, &all_alphas);
 
                     let evals = expr.evaluations(&env);
 
