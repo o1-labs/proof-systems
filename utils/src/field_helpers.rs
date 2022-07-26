@@ -1,9 +1,12 @@
+//! Useful helper methods to extend [ark_ff::Field].
+
 use ark_ff::{BigInteger, Field, FpParameters, PrimeField};
 use num_bigint::BigUint;
 use std::ops::Neg;
 use thiserror::Error;
 
-// Field helpers error
+/// Field helpers error
+#[allow(missing_docs)]
 #[derive(Error, Debug, Clone, PartialEq)]
 pub enum FieldHelpersError {
     #[error("failed to deserialize field bytes")]
@@ -11,6 +14,8 @@ pub enum FieldHelpersError {
     #[error("failed to decode hex")]
     DecodeHex,
 }
+
+/// Result alias using [FieldHelpersError]
 pub type Result<T> = std::result::Result<T, FieldHelpersError>;
 
 /// Field element helpers
@@ -97,6 +102,7 @@ impl<F: Field> FieldHelpers<F> for F {
     }
 }
 
+/// Converts an [i32] into a [Field]
 pub fn i32_to_field<F: From<u64> + Neg<Output = F>>(i: i32) -> F {
     if i >= 0 {
         F::from(i as u64)
