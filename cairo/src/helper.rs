@@ -55,7 +55,7 @@ mod tests {
     use o1_utils::FieldHelpers;
 
     /// Affine curve point type
-    pub use pallas::Affine as CurvePoint;
+    pub use pallas::Pallas as CurvePoint;
     /// Base field element type
     pub type BaseField = <CurvePoint as AffineCurve>::BaseField;
 

@@ -16,7 +16,7 @@ use commitment_dlog::{commitment::CommitmentCurve, srs::SRS};
 use groupmap::GroupMap;
 use mina_curves::pasta::{
     fp::Fp,
-    vesta::{Affine as Vesta, VestaParameters},
+    vesta::{Vesta, VestaParameters},
 };
 use oracle::{
     constants::PlonkSpongeConstantsKimchi,

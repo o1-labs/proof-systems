@@ -512,7 +512,7 @@ mod tests {
     use ark_poly::{EvaluationDomain, Polynomial};
     use array_init::array_init;
     use mina_curves::pasta::fp::Fp;
-    use mina_curves::pasta::vesta::Affine as Vesta;
+    use mina_curves::pasta::vesta::Vesta;
     use rand::SeedableRng;
 
     #[test]
