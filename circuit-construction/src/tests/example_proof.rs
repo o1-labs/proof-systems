@@ -48,6 +48,7 @@ const PUBLIC_INPUT_LENGTH: usize = 3;
 
 #[test]
 fn test_example_circuit() {
+    use mina_curves::pasta::pallas::Pallas;
     use mina_curves::pasta::vesta::Vesta;
     // create SRS
     let srs = {
