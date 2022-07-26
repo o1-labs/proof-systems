@@ -249,4 +249,16 @@ mod tests {
             BaseField::one()
         );
     }
+
+    #[test]
+    fn field_big() {
+        let fe = BaseField::from(1024u32);
+        let big = fe.to_big();
+        assert_eq!(big, BigUint::new(vec![1024]));
+
+        assert_eq!(
+            BaseField::from_big(big).expect("Failed to deserialize big integer"),
+            BaseField::from(1024u32)
+        );
+    }
 }
