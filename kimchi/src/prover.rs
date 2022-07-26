@@ -589,7 +589,7 @@ where
                     }
                 });
             if !index.cs.range_check_selector_polys.is_empty() {
-                index_evals.extend(range_check::circuit_gates().iter().enumerate().map(
+                index_evals.extend(range_check::gadget::circuit_gates().iter().enumerate().map(
                     |(i, gate_type)| (*gate_type, &index.cs.range_check_selector_polys[i].eval8),
                 ));
             }
@@ -603,6 +603,7 @@ where
                     joint_combiner: lookup_context.joint_combiner,
                     endo_coefficient: index.cs.endo,
                     mds,
+                    foreign_field_modulus: index.cs.foreign_field_modulus.clone(),
                 },
                 witness: &lagrange.d8.this.w,
                 coefficient: &index.cs.coefficients8,
@@ -652,8 +653,9 @@ where
 
             if !index.cs.range_check_selector_polys.is_empty() {
                 // Range check gate
-                for gate_type in range_check::circuit_gates() {
-                    let expr = range_check::circuit_gate_constraints(gate_type, &all_alphas);
+                for gate_type in range_check::gadget::circuit_gates() {
+                    let expr =
+                        range_check::gadget::circuit_gate_constraints(gate_type, &all_alphas);
 
                     let evals = expr.evaluations(&env);
 
