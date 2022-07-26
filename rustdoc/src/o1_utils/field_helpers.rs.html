@@ -236,12 +236,21 @@
 <span id="230">230</span>
 <span id="231">231</span>
 <span id="232">232</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">BigInteger</span>, <span class="ident">Field</span>, <span class="ident">FpParameters</span>, <span class="ident">PrimeField</span>};
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Useful helper methods to extend [ark_ff::Field].</span>
+
+<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">BigInteger</span>, <span class="ident">Field</span>, <span class="ident">FpParameters</span>, <span class="ident">PrimeField</span>};
 <span class="kw">use</span> <span class="ident">num_bigint::BigUint</span>;
 <span class="kw">use</span> <span class="ident">std::ops::Neg</span>;
 <span class="kw">use</span> <span class="ident">thiserror::Error</span>;
 
-<span class="comment">// Field helpers error</span>
+<span class="doccomment">/// Field helpers error</span>
+<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">missing_docs</span>)]</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">FieldHelpersError</span> {
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;failed to deserialize field bytes&quot;</span>)]</span>
@@ -249,6 +258,8 @@
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;failed to decode hex&quot;</span>)]</span>
     <span class="ident">DecodeHex</span>,
 }
+
+<span class="doccomment">/// Result alias using [FieldHelpersError]</span>
 <span class="kw">pub</span> <span class="kw">type</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">std::result::Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">FieldHelpersError</span><span class="op">&gt;</span>;
 
 <span class="doccomment">/// Field element helpers</span>
@@ -335,6 +346,7 @@
     }
 }
 
+<span class="doccomment">/// Converts an [i32] into a [Field]</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">i32_to_field</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">From</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">Neg</span><span class="op">&lt;</span><span class="ident">Output</span> <span class="op">=</span> <span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="ident">i</span>: <span class="ident">i32</span>) -&gt; <span class="ident">F</span> {
     <span class="kw">if</span> <span class="ident">i</span> <span class="op">&gt;</span><span class="op">=</span> <span class="number">0</span> {
         <span class="ident">F::from</span>(<span class="ident">i</span> <span class="kw">as</span> <span class="ident">u64</span>)
@@ -469,5 +481,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="o1_utils" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (9a7b7d5e5 2022-07-19)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="o1_utils" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (6dbae3ad1 2022-07-25)" ></div>
 </body></html>

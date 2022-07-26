@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["FieldHelpersError",""]],"fn":[["i32_to_field",""]],"trait":[["FieldHelpers","Field element helpers Unless otherwise stated everything is in little-endian byte order."]],"type":[["Result",""]]};
+window.SIDEBAR_ITEMS = {"enum":[["FieldHelpersError","Field helpers error"]],"fn":[["i32_to_field","Converts an [i32] into a [Field]"]],"trait":[["FieldHelpers","Field element helpers Unless otherwise stated everything is in little-endian byte order."]],"type":[["Result","Result alias using [FieldHelpersError]"]]};
