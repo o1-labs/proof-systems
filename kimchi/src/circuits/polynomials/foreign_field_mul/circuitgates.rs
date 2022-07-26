@@ -1,78 +1,5 @@
-/// Foreign field multiplication circuit gates
-///
-/// These circuit gates are used to constrain that
-///
-///     left_input * right_input = quotient * foreign_modulus + remainder
-///
-/// Documentation:
-///
-///   For more details please see https://hackmd.io/37M7qiTaSIKaZjCC5OnM1w?view
-///
-///   Mapping:
-///     To make things clearer, the following mapping between the variable names
-///     used in the code and those of the document can be helpful.
-///
-///     left_input_hi => a2  right_input_hi => b2  quotient_hi => q2  remainder_hi => r2
-///     left_input_mi => a1  right_input_mi => b1  quotient_mi => q1  remainder_mi => r1
-///     left_input_lo => a0  right_input_lo => b0  quotient_lo => q0  remainder_lo => r0
-///
-///     product_mi_bottom => p10  product_mi_top_limb => p110  product_mi_top_extra => p111
-///     carry_bottom       => v0   carry_top_limb       => v10   carry_top_extra => v11
-///
-///   Suffixes:
-///     The variable names in this code uses descriptive suffixes to convey information about the
-///     positions of the bits referred to.
-///
-///       - When a variable is split into 3 limbs we use: lo, mid, hi (where high is the most significant)
-///       - When a variable is split in 2 halves we use: bottom, top  (where top is the most significant)
-///       - When the bits of a variable are split into a limb and some extra bits we use: limb,
-///         extra (where extra is the most significant)
-///
-/// Inputs:
-///   * foreign_modulus        := foreign field modulus (currently stored in constraint system)
-///   * left_input $~\in F_f$  := left foreign field element multiplicand
-///   * right_input $~\in F_f$ := right foreign field element multiplicand
-///
-///   N.b. the native field modulus is obtainable from F, the native field's trait bound below.
-///
-/// Witness:
-///   * quotient $~\in F_f$  := foreign field quotient
-///   * remainder $~\in F_f$ := foreign field remainder
-///   * carry_bottom         := a two bit carry
-///   * carry_top_limb       := low 88 bits of carry_top
-///   * carry_top_extra      := high 3 bits of carry_top
-///
-/// Layout:
-///
-///   Row(s) | Gate              | Witness
-///      0-3 | multi-range-check | left_input multiplicand
-///      4-7 | multi-range-check | right_input multiplicand
-///     8-11 | multi-range-check | quotient
-///    12-15 | multi-range-check | remainder
-///    16-19 | multi-range-check | product_mi_bottom, product_mi_top_limb, carry_top_limb
-///       20 | ForeignFieldMul   | (see below)
-///       21 | Zero              | (see below)
-///
-/// The last two rows are layed out like this
-///
-///    | col | `ForeignFieldMul`         | `Zero`                  |
-///    | --- | ------------------------- | ----------------------- |
-///    |   0 | `left_input_lo`  (copy)   | `left_input_hi`  (copy) |
-///    |   1 | `left_input_mi`  (copy)   | `right_input_lo` (copy) |
-///    |   2 | `carry_shift`    (lookup) | `right_input_mi` (copy) |
-///    |   3 | `quotient_shift` (lookup) | `right_input_hi` (copy) |
-///    |   4 | `quotient_lo`    (copy)   | `remainder_lo`   (copy) |
-///    |   5 | `quotient_mi`    (copy)   | `remainder_mi`   (copy) |
-///    |   6 | `quotient_hi`    (copy)   | `remainder_hi`   (copy) |
-///    |   7 | `product_mi_bottom`       |                         |
-///    |   8 | `product_mi_top_limb`     |                         |
-///    |   9 | `product_mi_top_extra`    |                         |
-///    |  10 | `carry_bottom`            |                         |
-///    |  11 | `carry_top_limb`          |                         |
-///    |  12 | `carry_top_extra`         |                         |
-///    |  13 |                           |                         |
-///    |  14 |                           |                         |
-///
+//! Foreign field multiplication circuit gates
+
 use std::marker::PhantomData;
 
 use ark_ff::FftField;
@@ -82,6 +9,83 @@ use crate::circuits::{
     expr::{constraints::crumb, witness_curr, witness_next, ConstantExpr, E},
     gate::GateType,
 };
+
+//~ These circuit gates are used to constrain that
+//~
+//~ $$left_input * right_input = quotient * foreign_modulus + remainder$$
+//~
+//~ Documentation:
+//~
+//~   For more details please see the [FFMul RFC](../rfcs/ffadd.md)
+//~
+//~   Mapping:
+//~     To make things clearer, the following mapping between the variable names
+//~     used in the code and those of the document can be helpful.
+//~
+//~ ```text
+//~     left_input_hi => a2  right_input_hi => b2  quotient_hi => q2  remainder_hi => r2
+//~     left_input_mi => a1  right_input_mi => b1  quotient_mi => q1  remainder_mi => r1
+//~     left_input_lo => a0  right_input_lo => b0  quotient_lo => q0  remainder_lo => r0
+//~
+//~     product_mi_bot => p10  product_mi_top_limb => p110  product_mi_top_extra => p111
+//~     carry_bot         => v0   carry_top_limb      => v10   carry_top_extra => v11
+//~ ````
+//~
+//~   Suffixes:
+//~     The variable names in this code uses descriptive suffixes to convey information about the
+//~     positions of the bits referred to.
+//~
+//~       - When a variable is split into 3 limbs we use: lo, mid, hi (where high is the most significant)
+//~       - When a variable is split in 2 halves we use: bottom, top  (where top is the most significant)
+//~       - When the bits of a variable are split into a limb and some extra bits we use: limb,
+//~         extra (where extra is the most significant)
+//~
+//~ Inputs:
+//~   * foreign_modulus        := foreign field modulus (currently stored in constraint system)
+//~   * left_input $~\in F_f$  := left foreign field element multiplicand
+//~   * right_input $~\in F_f$ := right foreign field element multiplicand
+//~
+//~   N.b. the native field modulus is obtainable from F, the native field's trait bound below.
+//~
+//~ Witness:
+//~   * quotient $~\in F_f$  := foreign field quotient
+//~   * remainder $~\in F_f$ := foreign field remainder
+//~   * carry_bot            := a two bit carry
+//~   * carry_top_limb       := low 88 bits of carry_top
+//~   * carry_top_extra      := high 3 bits of carry_top
+//~
+//~ Layout:
+//~
+//~ ```text
+//~   Row(s) | Gate              | Witness
+//~      0-3 | multi-range-check | left_input multiplicand
+//~      4-7 | multi-range-check | right_input multiplicand
+//~     8-11 | multi-range-check | quotient
+//~    12-15 | multi-range-check | remainder
+//~    16-19 | multi-range-check | product_mi_bot, product_mi_top_limb, carry_top_limb
+//~       20 | ForeignFieldMul   | (see below)
+//~       21 | Zero              | (see below)
+//~ ```
+//~
+//~ The last two rows are layed out like this
+//~
+//~ | col | `ForeignFieldMul`         | `Zero`                  |
+//~ | --- | ------------------------- | ----------------------- |
+//~ |   0 | `left_input_lo`  (copy)   | `left_input_hi`  (copy) |
+//~ |   1 | `left_input_mi`  (copy)   | `right_input_lo` (copy) |
+//~ |   2 | `carry_shift`    (lookup) | `right_input_mi` (copy) |
+//~ |   3 | `quotient_shift` (lookup) | `right_input_hi` (copy) |
+//~ |   4 | `quotient_lo`    (copy)   | `remainder_lo`   (copy) |
+//~ |   5 | `quotient_mi`    (copy)   | `remainder_mi`   (copy) |
+//~ |   6 | `quotient_hi`    (copy)   | `remainder_hi`   (copy) |
+//~ |   7 | `product_mi_bot`          |                         |
+//~ |   8 | `product_mi_top_limb`     |                         |
+//~ |   9 | `product_mi_top_extra`    |                         |
+//~ |  10 | `carry_bot`               |                         |
+//~ |  11 | `carry_top_limb`          |                         |
+//~ |  12 | `carry_top_extra`         |                         |
+//~ |  13 |                           |                         |
+//~ |  14 |                           |                         |
 
 /// Compute nonzero intermediate products
 ///
@@ -181,12 +185,12 @@ where
         let quotient_shift = witness_curr(3);
 
         // -> define decomposition values of the intermediate multiplication
-        let product_mi_bottom = witness_curr(7);
+        let product_mi_bot = witness_curr(7);
         let product_mi_top_limb = witness_curr(8);
         let product_mi_top_extra = witness_curr(9);
 
         // -> define witness values for the zero sum
-        let carry_bottom = witness_curr(10);
+        let carry_bot = witness_curr(10);
         let carry_top_limb = witness_curr(11);
         let carry_top_extra = witness_curr(12);
 
@@ -233,17 +237,17 @@ where
         //                 p1 = p1'
         //                   <=>
         //    product_mi_top = 2^88 * product_mi_top_extra + product_mi_top_limb
-        //    product_mi_sum = 2^88 * product_mi_top + product_mi_bottom
+        //    product_mi_sum = 2^88 * product_mi_top + product_mi_bot
         //    product_mi_sum = product_mi
         //                   <=>
-        //    product_mi = 2^88 * (  2^88 * product_mi_top_extra + product_mi_top_limb ) + product_mi_bottom
+        //    product_mi = 2^88 * (  2^88 * product_mi_top_extra + product_mi_top_limb ) + product_mi_bot
         //
         let product_mi_top = two_to_88.clone() * product_mi_top_extra.clone() + product_mi_top_limb;
-        let product_mi_sum = two_to_88.clone() * product_mi_top.clone() + product_mi_bottom.clone();
+        let product_mi_sum = two_to_88.clone() * product_mi_top.clone() + product_mi_bot.clone();
         constraints.push(product_mi - product_mi_sum);
 
-        // 2) Constrain carry witness value carry_bottom \in [0, 2^2)
-        constraints.push(crumb(&carry_bottom));
+        // 2) Constrain carry witness value carry_bot \in [0, 2^2)
+        constraints.push(crumb(&carry_bot));
 
         // 3) Constrain intermediate product fragment product_mi_top_extra \in [0, 2^2)
         constraints.push(crumb(&product_mi_top_extra));
@@ -255,16 +259,16 @@ where
         //    shifting 8 bits the quotient_hi value
         constraints.push(quotient_shift - two_to_8 * quotient_hi);
 
-        // 6) Constrain carry_bottom witness value to prove zero_bottom's LSB are zero
-        //    For details on zero_bottom and why this is valid, please see
+        // 6) Constrain carry_bot witness value to prove zero_bot's LSB are zero
+        //    For details on zero_bot and why this is valid, please see
         //        https://hackmd.io/37M7qiTaSIKaZjCC5OnM1w?view#Intermediate-products
         //
         //                  2^176 * v_0 = u_0         = p0 - r0 + 2^88 (p10 - r1)
-        //    <=>  2^176 * carry_bottom = zero_bottom = product_lo - remainder_lo + 2^88 ( product_mi_bottom - remainder_mi )
+        //    <=>  2^176 * carry_bot = zero_bot = product_lo - remainder_lo + 2^88 ( product_mi_bot - remainder_mi )
         //
-        let zero_bottom =
-            product_lo - remainder_lo + two_to_88.clone() * (product_mi_bottom - remainder_mi);
-        constraints.push(zero_bottom - two_to_176 * carry_bottom.clone());
+        let zero_bot =
+            product_lo - remainder_lo + two_to_88.clone() * (product_mi_bot - remainder_mi);
+        constraints.push(zero_bot - two_to_176 * carry_bot.clone());
 
         // 7) Constraint carry_top to prove zero_top's bits are zero
         //    For details on zero_top and why this is valid, please see
@@ -274,10 +278,10 @@ where
         //        2^88 * v1 = u1 = v0 + p11 + p2 - r2
         //                 <=>
         //        carry_top = 2^3 * carry_top_extra + carry_top_limb
-        // 2^88 * carry_top = zero_top = carry_bottom + product_mi_top + product_hi - remainder_hi
+        // 2^88 * carry_top = zero_top = carry_bot + product_mi_top + product_hi - remainder_hi
         //
         let carry_top = eight * carry_top_extra + carry_top_limb;
-        let zero_top = carry_bottom + product_mi_top + product_hi - remainder_hi;
+        let zero_top = carry_bot + product_mi_top + product_hi - remainder_hi;
         constraints.push(zero_top - two_to_88 * carry_top);
 
         // 8-9) Plookup constraints on columns 2 and 3 of the Next row
