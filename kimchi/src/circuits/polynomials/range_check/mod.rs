@@ -1,4 +1,4 @@
-//! Range check gate
+//! Range check gate module
 
 mod circuitgates;
 
