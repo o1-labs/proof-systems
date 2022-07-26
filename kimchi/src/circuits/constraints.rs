@@ -115,10 +115,6 @@ pub struct ConstraintSystem<F: PrimeField> {
     #[serde(bound = "Vec<SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
     pub range_check_selector_polys: Vec<SelectorPolynomial<F>>,
 
-    /// Foreign field modulus
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub foreign_field_modulus: Vec<F>,
-
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub shift: [F; PERMUTS],
@@ -616,7 +612,6 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             mull8,
             emull,
             range_check_selector_polys,
-            foreign_field_modulus: self.foreign_field_modulus,
             gates,
             shift: shifts.shifts,
             endo,

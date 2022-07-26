@@ -131,10 +131,6 @@ pub struct VerifierIndex<G: KimchiCurve> {
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
     pub powers_of_alpha: Alphas<G::ScalarField>,
-
-    // Foreign field modulus
-    #[serde(skip)]
-    pub foreign_field_modulus: Vec<G::ScalarField>,
 }
 //~spec:endcode
 
@@ -239,7 +235,6 @@ impl<G: KimchiCurve> ProverIndex<G> {
             endo: self.cs.endo,
             lookup_index,
             linearization: self.linearization.clone(),
-            foreign_field_modulus: self.cs.foreign_field_modulus.clone(),
         }
     }
 }

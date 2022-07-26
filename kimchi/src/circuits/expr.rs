@@ -60,8 +60,6 @@ pub struct Constants<F: 'static> {
     pub endo_coefficient: F,
     /// The MDS matrix
     pub mds: &'static Vec<Vec<F>>,
-    /// The modulus for foreign field operations
-    pub foreign_field_modulus: Vec<F>,
 }
 
 /// The polynomials specific to the lookup argument.
@@ -239,7 +237,6 @@ pub enum ConstantExpr<F> {
     // separate constant expression types.
     EndoCoefficient,
     Mds { row: usize, col: usize },
-    ForeignFieldModulus(usize),
     Literal(F),
     Pow(Box<ConstantExpr<F>>, u64),
     // TODO: I think having separate Add, Sub, Mul constructors is faster than
@@ -261,7 +258,6 @@ impl<F: Copy> ConstantExpr<F> {
                 row: *row,
                 col: *col,
             }),
-            ConstantExpr::ForeignFieldModulus(i) => res.push(PolishToken::ForeignFieldModulus(*i)),
             ConstantExpr::Add(x, y) => {
                 x.as_ref().to_polish_(res);
                 y.as_ref().to_polish_(res);
@@ -309,7 +305,6 @@ impl<F: Field> ConstantExpr<F> {
             JointCombiner => c.joint_combiner.expect("joint lookup was not expected"),
             EndoCoefficient => c.endo_coefficient,
             Mds { row, col } => c.mds[*row][*col],
-            ForeignFieldModulus(i) => c.foreign_field_modulus[*i],
             Literal(x) => *x,
             Pow(x, p) => x.value(c).pow(&[*p as u64]),
             Mul(x, y) => x.value(c) * y.value(c),
@@ -430,7 +425,6 @@ pub enum PolishToken<F> {
     JointCombiner,
     EndoCoefficient,
     Mds { row: usize, col: usize },
-    ForeignFieldModulus(usize),
     Literal(F),
     Cell(Variable),
     Dup,
@@ -491,7 +485,6 @@ impl<F: FftField> PolishToken<F> {
                 }
                 EndoCoefficient => stack.push(c.endo_coefficient),
                 Mds { row, col } => stack.push(c.mds[*row][*col]),
-                ForeignFieldModulus(i) => stack.push(c.foreign_field_modulus[*i]),
                 VanishesOnLast4Rows => stack.push(eval_vanishes_on_last_4_rows(d, pt)),
                 UnnormalizedLagrangeBasis(i) => {
                     stack.push(unnormalized_lagrange_basis(&d, *i, &pt))
@@ -2024,7 +2017,6 @@ impl<F: PrimeField> ConstantExpr<F> {
             JointCombiner => "joint_combiner".to_string(),
             EndoCoefficient => "endo_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
-            ForeignFieldModulus(i) => format!("foreign_field_modulus({i})"),
             Literal(x) => format!("field(\"0x{}\")", x.into_repr()),
             Pow(x, n) => match x.as_ref() {
                 Alpha => format!("alpha_pow({n})"),
@@ -2045,7 +2037,6 @@ impl<F: PrimeField> ConstantExpr<F> {
             JointCombiner => "joint\\_combiner".to_string(),
             EndoCoefficient => "endo\\_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
-            ForeignFieldModulus(i) => format!("foreign_field_modulus({i})"),
             Literal(x) => format!("\\mathbb{{F}}({})", x.into_repr().into()),
             Pow(x, n) => match x.as_ref() {
                 Alpha => format!("\\alpha^{{{n}}}"),
@@ -2277,7 +2268,6 @@ pub mod test {
                 joint_combiner: None,
                 endo_coefficient: one,
                 mds: &Vesta::sponge_params().mds,
-                foreign_field_modulus: vec![],
             },
             witness: &domain_evals.d8.this.w,
             coefficient: &constraint_system.coefficients8,
