@@ -48,7 +48,7 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
     }
 
     if range_check {
-        expr += range_check::combined_constraints(&powers_of_alpha);
+        expr += range_check::gate::combined_constraints(&powers_of_alpha);
     }
 
     // permutation

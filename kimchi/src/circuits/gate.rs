@@ -5,11 +5,14 @@ use crate::{
     curve::KimchiCurve,
 };
 use ark_ff::{bytes::ToBytes, PrimeField};
+use ark_poly::Evaluations;
+use ark_poly::Radix2EvaluationDomain as D;
 use num_traits::cast::ToPrimitive;
 use o1_utils::hasher::CryptoDigest;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::io::{Result as IoResult, Write};
+use thiserror::Error;
 
 /// A row accessible from a given row, corresponds to the fact that we open all polynomials
 /// at `zeta` **and** `omega * zeta`.
@@ -91,10 +94,47 @@ pub enum GateType {
     CairoInstruction = 13,
     CairoFlags = 14,
     CairoTransition = 15,
-    // Range check (16-24)
+    /// Range check (16-24)
     RangeCheck0 = 16,
     RangeCheck1 = 17,
+    // ForeignFieldMul = 18,
+    // ForeignFieldAdd = 19,
 }
+
+/// Selector polynomial
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct SelectorPolynomial<F: PrimeField> {
+    /// Evaluation form (evaluated over domain d8)
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub eval8: Evaluations<F, D<F>>,
+}
+
+/// Gate error
+#[derive(Error, Debug, Clone, Copy, PartialEq)]
+pub enum CircuitGateError {
+    /// Invalid constraint
+    #[error("Invalid circuit gate type {0:?}")]
+    InvalidCircuitGateType(GateType),
+    /// Invalid constraint
+    #[error("Invalid {0:?} constraint")]
+    InvalidConstraint(GateType),
+    /// Invalid copy constraint
+    #[error("Invalid {0:?} copy constraint")]
+    InvalidCopyConstraint(GateType),
+    /// Invalid lookup constraint - sorted evaluations
+    #[error("Invalid {0:?} lookup constraint - sorted evaluations")]
+    InvalidLookupConstraintSorted(GateType),
+    /// Invalid lookup constraint - sorted evaluations
+    #[error("Invalid {0:?} lookup constraint - aggregation polynomial")]
+    InvalidLookupConstraintAggregation(GateType),
+    /// Missing lookup constraint system
+    #[error("Failed to get lookup constraint system for {0:?}")]
+    MissingLookupConstraintSystem(GateType),
+}
+
+/// Gate result
+pub type CircuitGateResult<T> = std::result::Result<T, CircuitGateError>;
 
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -165,6 +205,24 @@ impl<F: PrimeField> CircuitGate<F> {
                 .verify_range_check::<G>(row, witness, cs)
                 .map_err(|e| e.to_string()),
         }
+    }
+}
+
+pub trait Connect {
+    fn connect_cell_pair(&mut self, cell1: (usize, usize), cell2: (usize, usize));
+}
+
+impl<F: PrimeField> Connect for Vec<CircuitGate<F>> {
+    /// Connect the pair of cells specified by the cell1 and cell2 parameters
+    /// cell_pre --> cell_new && cell_new --> wire_tmp
+    ///
+    /// Note: This function assumes that the targeted cells are freshly instantiated
+    ///       with self-connections.  If the two cells are transitively already part
+    ///       of the same permutation then this would split it.
+    fn connect_cell_pair(&mut self, cell_pre: (usize, usize), cell_new: (usize, usize)) {
+        let wire_tmp = self[cell_pre.0].wires[cell_pre.1];
+        self[cell_pre.0].wires[cell_pre.1] = self[cell_new.0].wires[cell_new.1];
+        self[cell_new.0].wires[cell_new.1] = wire_tmp;
     }
 }
 

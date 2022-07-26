@@ -2,11 +2,12 @@
 
 use ark_ff::PrimeField;
 use array_init::array_init;
-use o1_utils::FieldHelpers;
+//use num_bigint::BigUint;
+use o1_utils::{foreign_field::ForeignElement, FieldHelpers};
 
 use crate::circuits::polynomial::COLUMNS;
 
-enum WitnessCell {
+pub enum WitnessCell {
     Copy(CopyWitnessCell),
     Value,
     Limb(LimbWitnessCell),
@@ -14,27 +15,27 @@ enum WitnessCell {
 }
 
 // Witness cell copied from another
-struct CopyWitnessCell {
+pub struct CopyWitnessCell {
     row: usize,
     col: usize,
 }
 
 impl CopyWitnessCell {
-    const fn create(row: usize, col: usize) -> WitnessCell {
+    pub const fn create(row: usize, col: usize) -> WitnessCell {
         WitnessCell::Copy(CopyWitnessCell { row, col })
     }
 }
 
 // Witness cell for a range check field element limb
-struct ValueWitnessCell;
+pub struct ValueWitnessCell;
 impl ValueWitnessCell {
-    const fn create() -> WitnessCell {
+    pub const fn create() -> WitnessCell {
         WitnessCell::Value
     }
 }
 
 // Witness cell for a range check field element sub-limb
-struct LimbWitnessCell {
+pub struct LimbWitnessCell {
     row: usize,   // Cell row
     col: usize,   // Cell col
     start: usize, // Starting bit offset
@@ -43,7 +44,7 @@ struct LimbWitnessCell {
 
 impl LimbWitnessCell {
     // Params: source (row, col), starting bit offset and ending bit offset (exclusive)
-    const fn create(row: usize, col: usize, start: usize, end: usize) -> WitnessCell {
+    pub const fn create(row: usize, col: usize, start: usize, end: usize) -> WitnessCell {
         WitnessCell::Limb(LimbWitnessCell {
             row,
             col,
@@ -53,10 +54,10 @@ impl LimbWitnessCell {
     }
 }
 
-// An cell containing zero
-struct ZeroWitnessCell;
+// A cell containing zero
+pub struct ZeroWitnessCell;
 impl ZeroWitnessCell {
-    const fn create() -> WitnessCell {
+    pub const fn create() -> WitnessCell {
         WitnessCell::Zero
     }
 }
@@ -72,7 +73,7 @@ impl ZeroWitnessCell {
 //     For example, we can convert the RangeCheck0 circuit gate into
 //     a 64-bit lookup by adding two copy constraints to constrain
 //     columns 1 and 2 to zero.
-const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 4] = [
+pub const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 4] = [
     /* row 1, RangeCheck0 row */
     range_check_row(0),
     /* row 2, RangeCheck0 row */
@@ -151,35 +152,45 @@ const fn range_check_row(row: usize) -> [WitnessCell; COLUMNS] {
     ]
 }
 
-fn value_to_limb<F: PrimeField>(fe: F, start: usize, end: usize) -> F {
+pub fn value_to_limb<F: PrimeField>(fe: F, start: usize, end: usize) -> F {
     F::from_bits(&fe.to_bits()[start..end]).expect("failed to deserialize field bits")
 }
 
-fn init_range_check_row<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], row: usize, value: F) {
-    for col in 0..COLUMNS {
-        match &WITNESS_SHAPE[row][col] {
-            WitnessCell::Copy(copy_cell) => {
-                witness[col][row] = witness[copy_cell.col][copy_cell.row];
-            }
-            WitnessCell::Value => {
-                witness[col][row] = value;
-            }
-            WitnessCell::Limb(limb_cell) => {
-                witness[col][row] = value_to_limb(
-                    witness[limb_cell.col][limb_cell.row], // limb cell (row, col)
-                    limb_cell.start,                       // starting bit
-                    limb_cell.end,                         // ending bit (exclusive)
-                );
-            }
-            WitnessCell::Zero => {
-                witness[col][row] = F::zero();
-            }
+pub fn handle_standard_witness_cell<F: PrimeField>(
+    witness: &mut [Vec<F>; COLUMNS],
+    witness_cell: &WitnessCell,
+    row: usize,
+    col: usize,
+    value: F,
+) {
+    match witness_cell {
+        WitnessCell::Copy(copy_cell) => {
+            witness[col][row] = witness[copy_cell.col][copy_cell.row];
+        }
+        WitnessCell::Value => {
+            witness[col][row] = value;
+        }
+        WitnessCell::Limb(limb_cell) => {
+            witness[col][row] = value_to_limb(
+                witness[limb_cell.col][limb_cell.row], // limb cell (row, col)
+                limb_cell.start,                       // starting bit
+                limb_cell.end,                         // ending bit (exclusive)
+            );
+        }
+        WitnessCell::Zero => {
+            witness[col][row] = F::zero();
         }
     }
 }
 
+fn init_range_check_row<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], row: usize, value: F) {
+    for col in 0..COLUMNS {
+        handle_standard_witness_cell(witness, &WITNESS_SHAPE[row][col], row, col, value);
+    }
+}
+
 /// Create a multi range check witness
-/// Input: three values: v0, v1 and v2
+/// Input: three 88-bit values: v0, v1 and v2
 pub fn create_multi_witness<F: PrimeField>(v0: F, v1: F, v2: F) -> [Vec<F>; COLUMNS] {
     let mut witness: [Vec<F>; COLUMNS] = array_init(|_| vec![F::zero(); 4]);
 
@@ -192,11 +203,20 @@ pub fn create_multi_witness<F: PrimeField>(v0: F, v1: F, v2: F) -> [Vec<F>; COLU
 }
 
 /// Create a single range check witness
-/// Input: three values: v0, v1 and v2
+/// Input: 88-bit value v0
 pub fn create_witness<F: PrimeField>(v0: F) -> [Vec<F>; COLUMNS] {
     let mut witness: [Vec<F>; COLUMNS] = array_init(|_| vec![F::zero(); 4]);
 
     init_range_check_row(&mut witness, 0, v0);
 
     witness
+}
+
+/// Extend an existing witness with a multi-range-check gate for foreign field
+/// elements fe
+pub fn extend_witness<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], fe: ForeignElement<F, 3>) {
+    let limbs_witness = create_multi_witness(*fe.lo(), *fe.mi(), *fe.hi());
+    for col in 0..COLUMNS {
+        witness[col].extend(limbs_witness[col].iter())
+    }
 }
