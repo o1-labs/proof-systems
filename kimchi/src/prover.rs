@@ -1062,7 +1062,7 @@ where
         let prev_challenge_digest = {
             // Note: we absorb in a new sponge here to limit the scope in which we need the
             // more-expensive 'optional sponge'.
-            let mut fr_sponge = EFrSponge::new(index.cs.fr_sponge_params.clone());
+            let mut fr_sponge = EFrSponge::new(G::sponge_params());
             for prev_challenge in prev_challenges.iter() {
                 let evals = prev_challenge.evals(
                     index.max_poly_size,

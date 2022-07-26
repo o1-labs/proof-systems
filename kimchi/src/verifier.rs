@@ -209,7 +209,7 @@ where
         let prev_challenge_digest = {
             // Note: we absorb in a new sponge here to limit the scope in which we need the
             // more-expensive 'optional sponge'.
-            let mut fr_sponge = EFrSponge::new(index.fr_sponge_params.clone());
+            let mut fr_sponge = EFrSponge::new(G::sponge_params());
             for (_, prev_chal_eval) in polys.iter() {
                 fr_sponge.absorb_multiple(&prev_chal_eval[0]);
                 fr_sponge.absorb_multiple(&prev_chal_eval[1]);
