@@ -26,11 +26,12 @@
 //
 //~ Witness structure:
 //~
-//~   Row  Contents
-//~     0   v0
-//~     1   v1
-//~     2   v2
-//~     3   v0,v1,v2
+//~   | Row | Contents |
+//~   | --- | ---------|
+//~   |  0  | v0       |
+//~   |  1  | v1       |
+//~   |  2  | v2       |
+//~   |  3  | v0,v1,v2 |
 //~
 //~   * The first 2 rows contain v0 and v1 and their respective decompositions
 //~     into 12-bit and 2-bit limbs
@@ -38,12 +39,14 @@
 //~     the 1st 10 crumbs
 //~   * The final row contains v0's and v1's 5th and 6th 12-bit limbs as well as the
 //~     remaining 10 crumbs of v2
+//~   * Note: because we are constrained to 4 lookups per row, we are forced to postpone
+//~     some lookups to an extra row
 //~
 //~ Constraints:
 //~
 //~   For efficiency, the values are constrained differently according to their type.
 //~    * 12-bit limbs are constrained with plookups
-//~    * 2-bit crumbs are constrained with degree-4 constraints
+//~    * 2-bit crumbs are constrained with degree-4 constraints $x(x-1)(x-2)(x-3)$
 //~
 //~ Layout:
 //~
@@ -74,7 +77,7 @@
 //~
 //~ ```
 //~   The 12-bit chunks are constrained with plookups and the 2-bit crumbs
-//~   constrained with degree-4 constraints of the form $x · (x - 1) · (x - 2) · (x - 3)$.
+//~   constrained with degree-4 constraints of the form $x * (x - 1) * (x - 2) * (x - 3)$.
 //~
 //~   Note that copy denotes a plookup that is deferred to the 4th gate (i.e. Zero).
 //~   This is because of the limitation that we have at most 4 lookups per row.
