@@ -31,6 +31,8 @@ use crate::{
 
 use super::circuitgates::{RangeCheck0, RangeCheck1};
 
+pub const GATE_COUNT: usize = 2;
+
 impl<F: PrimeField> CircuitGate<F> {
     /// Create range check gate for constraining three 88-bit values.
     ///     Inputs the starting row
@@ -143,7 +145,8 @@ impl<F: PrimeField> CircuitGate<F> {
         let mut index_evals = HashMap::new();
         index_evals.insert(
             self.typ,
-            &cs.range_check_selector_polys[circuit_gate_selector_index(self.typ)].eval8,
+            &cs.range_check_selector_polys.as_ref().unwrap()[circuit_gate_selector_index(self.typ)]
+                .eval8,
         );
 
         // Set up lookup environment
@@ -363,8 +366,8 @@ fn circuit_gate_selector_index(typ: GateType) -> usize {
 }
 
 /// Get vector of range check circuit gate types
-pub fn circuit_gates() -> Vec<GateType> {
-    vec![GateType::RangeCheck0, GateType::RangeCheck1]
+pub fn circuit_gates() -> [GateType; GATE_COUNT] {
+    [GateType::RangeCheck0, GateType::RangeCheck1]
 }
 
 /// Number of constraints for a given range check circuit gate type
@@ -394,14 +397,15 @@ pub fn combined_constraints<F: FftField>(alphas: &Alphas<F>) -> E<F> {
 pub fn selector_polynomials<F: PrimeField>(
     gates: &[CircuitGate<F>],
     domain: &EvaluationDomains<F>,
-) -> Vec<SelectorPolynomial<F>> {
-    Vec::from_iter(circuit_gates().iter().map(|gate_type| {
+) -> [SelectorPolynomial<F>; GATE_COUNT] {
+    array_init(|i| {
+        let gate_type = circuit_gates()[i];
         // Coefficient form
         let coeff = Evaluations::<F, D<F>>::from_vec_and_domain(
             gates
                 .iter()
                 .map(|gate| {
-                    if gate.typ == *gate_type {
+                    if gate.typ == gate_type {
                         F::one()
                     } else {
                         F::zero()
@@ -416,7 +420,7 @@ pub fn selector_polynomials<F: PrimeField>(
         let eval8 = coeff.evaluate_over_domain_by_ref(domain.d8);
 
         SelectorPolynomial { eval8 }
-    }))
+    })
 }
 
 /// Get the range check lookup table
