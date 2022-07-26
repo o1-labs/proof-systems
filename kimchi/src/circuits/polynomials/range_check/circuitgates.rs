@@ -1,7 +1,7 @@
-//~ Range check circuit gates:
+//~ Range check gadget:
 //~
 //~    The range check gate is comprised of three circuit gates (RangeCheck0, RangeCheck1
-//~    and Zero) and can perform range checks on up to three 88-bit values: v0, v1 and v2.
+//~    and Zero) and can perform range checks on three values of up to 88 bits: v0, v1 and v2.
 //~
 //~    Byte-order:
 //~      * Each value is in little-endian byte order
