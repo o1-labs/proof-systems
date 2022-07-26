@@ -1276,7 +1276,6 @@ You could lay this out as a double-width gate, e.g.
 
 
 
-
 ## Setup
 
 In this section we specify the setup that goes into creating two indexes from a circuit:
