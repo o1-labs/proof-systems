@@ -69,10 +69,8 @@ where
     /// Split a foreign field element into a vector of `LIMB_BITS` bits field elements of type `F` in little-endian.
     /// Right now it is written so that it gives `LIMB_COUNT` limbs, even if it fits in less bits.
     fn big_to_vec(fe: BigUint) -> Vec<F> {
-        //let mut bytes = fe.to_bytes_le();
         let bytes = fe.to_bytes_le();
-        //pad_zeros_le(&mut bytes, LIMB_BITS as usize * LIMB_COUNT / 8);
-        let chunks: Vec<&[u8]> = bytes.chunks((LIMB_BITS / 8).try_into().unwrap()).collect();
+        let chunks: Vec<&[u8]> = bytes.chunks(LIMB_BITS / 8).collect();
         chunks
             .iter()
             .map(|chunk| F::from_random_bytes(chunk).expect("failed to deserialize"))
