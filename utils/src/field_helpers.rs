@@ -114,11 +114,10 @@ pub fn i32_to_field<F: From<u64> + Neg<Output = F>>(i: i32) -> F {
 #[cfg(test)]
 mod tests {
     use ark_ec::AffineCurve;
-    use ark_ff::{One, PrimeField};
-    use mina_curves::pasta::pallas;
-
+    use ark_ff::One;
     // Affine curve point type
-    pub use pallas::Affine as CurvePoint;
+    use mina_curves::pasta::pallas::Affine as CurvePoint;
+
     // Base field element type
     pub type BaseField = <CurvePoint as AffineCurve>::BaseField;
 
