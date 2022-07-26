@@ -13,7 +13,7 @@ use crate::{
             complete_add::CompleteAdd,
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
-            foreign_field_add::circuitgates::ForeignFieldAdd,
+            foreign_field_add::{self, circuitgates::ForeignFieldAdd},
             generic, permutation,
             permutation::ZK_ROWS,
             poseidon::Poseidon,
@@ -593,6 +593,15 @@ where
                 index_evals.extend(range_check::gadget::circuit_gates().iter().enumerate().map(
                     |(i, gate_type)| (*gate_type, &index.cs.range_check_selector_polys[i].eval8),
                 ));
+            }
+
+            if let Some(selector) = index.cs.foreign_field_add_selector_poly.as_ref() {
+                index_evals.extend(
+                    foreign_field_add::gadget::circuit_gates()
+                        .iter()
+                        .enumerate()
+                        .map(|(_, gate_type)| (*gate_type, &selector.eval8)),
+                );
             }
 
             let mds = &G::sponge_params().mds;
