@@ -133,16 +133,16 @@ pub fn i32_to_field<F: From<u64> + Neg<Output = F>>(i: i32) -> F {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     use ark_ec::AffineCurve;
-    use ark_ff::{One, PrimeField};
+    use ark_ff::One;
     use mina_curves::pasta::pallas;
 
-    // Affine curve point type
-    pub use pallas::Affine as CurvePoint;
-    // Base field element type
+    /// Affine curve point type
+    pub use pallas::Pallas as CurvePoint;
+    /// Base field element type
     pub type BaseField = <CurvePoint as AffineCurve>::BaseField;
-
-    use super::*;
 
     #[test]
     fn field_hex() {

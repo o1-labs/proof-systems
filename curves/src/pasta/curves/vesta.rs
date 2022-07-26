@@ -13,7 +13,7 @@ impl ModelParameters for VestaParameters {
     type ScalarField = Fp;
 }
 
-pub type Affine = GroupAffine<VestaParameters>;
+pub type Vesta = GroupAffine<VestaParameters>;
 pub type Projective = GroupProjective<VestaParameters>;
 
 impl SWModelParameters for VestaParameters {

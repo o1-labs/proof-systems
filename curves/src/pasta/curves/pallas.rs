@@ -13,7 +13,7 @@ impl ModelParameters for PallasParameters {
     type ScalarField = Fq;
 }
 
-pub type Affine = GroupAffine<PallasParameters>;
+pub type Pallas = GroupAffine<PallasParameters>;
 pub type Projective = GroupProjective<PallasParameters>;
 
 impl SWModelParameters for PallasParameters {

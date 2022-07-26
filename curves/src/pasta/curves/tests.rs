@@ -21,7 +21,7 @@ fn test_pallas_projective_group() {
 
 #[test]
 fn test_pallas_generator() {
-    let generator = pallas::Affine::prime_subgroup_generator();
+    let generator = pallas::Pallas::prime_subgroup_generator();
     assert!(generator.is_on_curve());
     assert!(generator.is_in_correct_subgroup_assuming_on_curve());
 }
