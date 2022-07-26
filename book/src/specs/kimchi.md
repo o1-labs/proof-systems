@@ -1031,11 +1031,11 @@ This equation is translated as the constraint:
 
 These circuit gates are used to constrain that
 
-    $$left_input * right_input = quotient * foreign_modulus + remainder$$
+$$left_input * right_input = quotient * foreign_modulus + remainder$$
 
 Documentation:
 
-  For more details please see https://hackmd.io/37M7qiTaSIKaZjCC5OnM1w?view
+  For more details please see the [FFMul RFC](../rfcs/ffadd.md)
 
   Mapping:
     To make things clearer, the following mapping between the variable names
