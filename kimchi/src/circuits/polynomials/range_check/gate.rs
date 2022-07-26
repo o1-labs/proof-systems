@@ -494,13 +494,13 @@ mod tests {
     use ark_ec::AffineCurve;
     use ark_ff::{Field, One, Zero};
     use mina_curves::pasta::pallas;
-    use mina_curves::pasta::vesta::Affine as Vesta;
+    use mina_curves::pasta::vesta::Vesta;
     use mina_curves::pasta::Fp;
     use o1_utils::FieldHelpers;
 
     use array_init::array_init;
 
-    type PallasField = <pallas::Affine as AffineCurve>::BaseField;
+    type PallasField = <pallas::Pallas as AffineCurve>::BaseField;
 
     fn create_test_constraint_system() -> ConstraintSystem<Fp> {
         let (mut next_row, mut gates) = CircuitGate::<Fp>::create_multi_range_check(0);
@@ -1376,7 +1376,7 @@ mod tests {
         prover_index.cs.verify::<Vesta>(&witness, &[]).unwrap();
 
         // Generate proof
-        let group_map = <pasta_curves::vesta::Affine as CommitmentCurve>::Map::setup();
+        let group_map = <pasta_curves::vesta::Vesta as CommitmentCurve>::Map::setup();
         let proof = ProverProof::create::<BaseSponge, ScalarSponge>(
             &group_map,
             witness,
@@ -1389,7 +1389,7 @@ mod tests {
         let verifier_index = prover_index.verifier_index();
 
         // Verify proof
-        let res = verify::<pasta_curves::vesta::Affine, BaseSponge, ScalarSponge>(
+        let res = verify::<pasta_curves::vesta::Vesta, BaseSponge, ScalarSponge>(
             &group_map,
             &verifier_index,
             &proof,

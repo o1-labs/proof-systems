@@ -481,7 +481,7 @@ mod tests {
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
     use array_init::array_init;
     use mina_curves::pasta::fp::Fp as F;
-    use mina_curves::pasta::vesta::Affine as Vesta;
+    use mina_curves::pasta::vesta::Vesta;
     use rand::{rngs::StdRng, SeedableRng};
     use std::fmt::{Display, Formatter};
 

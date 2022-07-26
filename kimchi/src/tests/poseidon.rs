@@ -10,7 +10,7 @@ use crate::{
 };
 use ark_ff::Zero;
 use array_init::array_init;
-use mina_curves::pasta::{fp::Fp, vesta::Affine as Vesta};
+use mina_curves::pasta::{fp::Fp, vesta::Vesta};
 use o1_utils::math;
 use oracle::constants::{PlonkSpongeConstantsKimchi, SpongeConstants};
 

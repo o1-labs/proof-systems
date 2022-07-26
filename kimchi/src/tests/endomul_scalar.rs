@@ -9,7 +9,7 @@ use crate::{
 use ark_ff::{BigInteger, BitIteratorLE, PrimeField, UniformRand};
 use array_init::array_init;
 use commitment_dlog::srs::endos;
-use mina_curves::pasta::{fp::Fp as F, vesta::Affine};
+use mina_curves::pasta::{fp::Fp as F, vesta::Vesta};
 use oracle::sponge::ScalarChallenge;
 use rand::{rngs::StdRng, SeedableRng};
 
@@ -36,7 +36,7 @@ fn endomul_scalar_test() {
         }
     }
 
-    let (_, endo_scalar_coeff) = endos::<Affine>();
+    let (_, endo_scalar_coeff) = endos::<Vesta>();
 
     let mut witness: [Vec<F>; COLUMNS] = array_init(|_| vec![]);
 

@@ -13,7 +13,7 @@ use kimchi::{
     proof::ProverProof,
     prover_index::ProverIndex,
 };
-use mina_curves::pasta::{fp::Fp, fq::Fq, pallas::Affine as Other, vesta::Affine};
+use mina_curves::pasta::{fp::Fp, fq::Fq, pallas::Pallas as Other, vesta::Vesta};
 use oracle::FqSponge;
 
 /// A [Cycle] represents the algebraic structure that
@@ -78,25 +78,25 @@ pub struct FqInner;
 
 impl Cycle for FpInner {
     type InnerMap = <Other as CommitmentCurve>::Map;
-    type OuterMap = <Affine as CommitmentCurve>::Map;
+    type OuterMap = <Vesta as CommitmentCurve>::Map;
 
     type InnerField = Fp;
     type OuterField = Fq;
     type Inner = Other;
-    type Outer = Affine;
+    type Outer = Vesta;
     type InnerProj = <Other as AffineCurve>::Projective;
-    type OuterProj = <Affine as AffineCurve>::Projective;
+    type OuterProj = <Vesta as AffineCurve>::Projective;
 }
 
 impl Cycle for FqInner {
-    type InnerMap = <Affine as CommitmentCurve>::Map;
+    type InnerMap = <Vesta as CommitmentCurve>::Map;
     type OuterMap = <Other as CommitmentCurve>::Map;
 
     type InnerField = Fq;
     type OuterField = Fp;
-    type Inner = Affine;
+    type Inner = Vesta;
     type Outer = Other;
-    type InnerProj = <Affine as AffineCurve>::Projective;
+    type InnerProj = <Vesta as AffineCurve>::Projective;
     type OuterProj = <Other as AffineCurve>::Projective;
 }
 
