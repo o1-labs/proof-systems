@@ -135,7 +135,7 @@
 <span class="kw">use</span> <span class="ident">commitment_dlog::commitment::CommitmentCurve</span>;
 <span class="kw">use</span> <span class="ident">groupmap</span>::{<span class="ident">BWParameters</span>, <span class="ident">GroupMap</span>};
 <span class="kw">use</span> <span class="ident">mina_curves::pasta::vesta::VestaParameters</span>;
-<span class="kw">use</span> <span class="ident">mina_curves::pasta</span>::{<span class="ident">fp::Fp</span>, <span class="ident">vesta::Affine</span>};
+<span class="kw">use</span> <span class="ident">mina_curves::pasta</span>::{<span class="ident">fp::Fp</span>, <span class="ident">vesta::Vesta</span>};
 <span class="kw">use</span> <span class="ident">oracle</span>::{
     <span class="ident">constants::PlonkSpongeConstantsKimchi</span>,
     <span class="ident">sponge</span>::{<span class="ident">DefaultFqSponge</span>, <span class="ident">DefaultFrSponge</span>},
@@ -150,8 +150,8 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BenchmarkCtx</span> {
     <span class="ident">num_gates</span>: <span class="ident">usize</span>,
     <span class="ident">group_map</span>: <span class="ident">BWParameters</span><span class="op">&lt;</span><span class="ident">VestaParameters</span><span class="op">&gt;</span>,
-    <span class="ident">index</span>: <span class="ident">ProverIndex</span><span class="op">&lt;</span><span class="ident">Affine</span><span class="op">&gt;</span>,
-    <span class="ident">verifier_index</span>: <span class="ident">VerifierIndex</span><span class="op">&lt;</span><span class="ident">Affine</span><span class="op">&gt;</span>,
+    <span class="ident">index</span>: <span class="ident">ProverIndex</span><span class="op">&lt;</span><span class="ident">Vesta</span><span class="op">&gt;</span>,
+    <span class="ident">verifier_index</span>: <span class="ident">VerifierIndex</span><span class="op">&lt;</span><span class="ident">Vesta</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">BenchmarkCtx</span> {
@@ -175,7 +175,7 @@
         }
 
         <span class="comment">// group map</span>
-        <span class="kw">let</span> <span class="ident">group_map</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">Affine</span> <span class="kw">as</span> <span class="ident">CommitmentCurve</span><span class="op">&gt;</span><span class="ident">::Map::setup</span>();
+        <span class="kw">let</span> <span class="ident">group_map</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">Vesta</span> <span class="kw">as</span> <span class="ident">CommitmentCurve</span><span class="op">&gt;</span><span class="ident">::Map::setup</span>();
 
         <span class="comment">// create the index</span>
         <span class="kw">let</span> <span class="ident">index</span> <span class="op">=</span> <span class="ident">new_index_for_test</span>(<span class="ident">gates</span>, <span class="number">0</span>);
@@ -193,7 +193,7 @@
     }
 
     <span class="doccomment">/// Produces a proof</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_proof</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">Affine</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_proof</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">Vesta</span><span class="op">&gt;</span> {
         <span class="comment">// create witness</span>
         <span class="kw">let</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">vec!</span>[<span class="number">1u32</span>.<span class="ident">into</span>(); <span class="self">self</span>.<span class="ident">num_gates</span>]);
 
@@ -202,13 +202,13 @@
             .<span class="ident">unwrap</span>()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">batch_verification</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">batch</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">Affine</span><span class="op">&gt;</span><span class="op">&gt;</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">batch_verification</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">batch</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">Vesta</span><span class="op">&gt;</span><span class="op">&gt;</span>) {
         <span class="comment">// verify the proof</span>
         <span class="kw">let</span> <span class="ident">batch</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">batch</span>
             .<span class="ident">iter</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">proof</span><span class="op">|</span> (<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">verifier_index</span>, <span class="ident">proof</span>))
             .<span class="ident">collect</span>();
-        <span class="ident">batch_verify</span>::<span class="op">&lt;</span><span class="ident">Affine</span>, <span class="ident">BaseSponge</span>, <span class="ident">ScalarSponge</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">group_map</span>, <span class="kw-2">&amp;</span><span class="ident">batch</span>).<span class="ident">unwrap</span>();
+        <span class="ident">batch_verify</span>::<span class="op">&lt;</span><span class="ident">Vesta</span>, <span class="ident">BaseSponge</span>, <span class="ident">ScalarSponge</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">group_map</span>, <span class="kw-2">&amp;</span><span class="ident">batch</span>).<span class="ident">unwrap</span>();
     }
 }
 

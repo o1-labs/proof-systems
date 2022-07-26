@@ -224,7 +224,7 @@
         <span class="ident">lookup</span>::{<span class="ident">runtime_tables::RuntimeTableCfg</span>, <span class="ident">tables::LookupTable</span>},
     };
     <span class="kw">use</span> <span class="ident">commitment_dlog::srs::endos</span>;
-    <span class="kw">use</span> <span class="ident">mina_curves::pasta</span>::{<span class="ident">pallas::Affine</span> <span class="kw">as</span> <span class="ident">Pallas</span>, <span class="ident">vesta::Affine</span> <span class="kw">as</span> <span class="ident">Vesta</span>, <span class="ident">Fp</span>};
+    <span class="kw">use</span> <span class="ident">mina_curves::pasta</span>::{<span class="ident">pallas::Pallas</span>, <span class="ident">vesta::Vesta</span>, <span class="ident">Fp</span>};
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_index_for_test_with_lookups</span>(
         <span class="ident">gates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="op">&gt;</span>,

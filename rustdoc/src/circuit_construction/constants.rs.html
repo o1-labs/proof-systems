@@ -48,7 +48,7 @@
 <span class="kw">use</span> <span class="ident">ark_ff::Field</span>;
 <span class="kw">use</span> <span class="ident">commitment_dlog</span>::{<span class="ident">commitment::CommitmentCurve</span>, <span class="ident">srs::endos</span>};
 <span class="kw">use</span> <span class="ident">kimchi::curve::KimchiCurve</span>;
-<span class="kw">use</span> <span class="ident">mina_curves::pasta</span>::{<span class="ident">pallas::Affine</span> <span class="kw">as</span> <span class="ident">PallasAffine</span>, <span class="ident">vesta::Affine</span> <span class="kw">as</span> <span class="ident">VestaAffine</span>, <span class="ident">Fp</span>, <span class="ident">Fq</span>};
+<span class="kw">use</span> <span class="ident">mina_curves::pasta</span>::{<span class="ident">pallas::Pallas</span> <span class="kw">as</span> <span class="ident">PallasAffine</span>, <span class="ident">vesta::Vesta</span> <span class="kw">as</span> <span class="ident">VestaAffine</span>, <span class="ident">Fp</span>, <span class="ident">Fq</span>};
 <span class="kw">use</span> <span class="ident">oracle::poseidon::ArithmeticSpongeParams</span>;
 
 <span class="doccomment">/// The type of possible constants in the circuit</span>
