@@ -14,6 +14,7 @@ use kimchi::{
             varbasemul::VarbaseMul,
         },
     },
+    curve::KimchiCurve,
     prover_index::ProverIndex,
 };
 use serde::Serialize;
@@ -74,10 +75,7 @@ where
 }
 
 /// Produces a `circuit.html` in the current folder.
-pub fn visu<G>(index: &ProverIndex<G>, witness: Option<Witness<G::ScalarField>>)
-where
-    G: CommitmentCurve,
-{
+pub fn visu<G: KimchiCurve>(index: &ProverIndex<G>, witness: Option<Witness<G::ScalarField>>) {
     // serialize index
     let index = serde_json::to_string(index).expect("couldn't serialize index");
     let mut data = format!("const index = {index};");
@@ -85,7 +83,7 @@ where
     // serialize witness
     if let Some(witness) = witness {
         let witness = serde_json::to_string(&witness).expect("couldn't serialize witness");
-        data.push_str(&format!("const witness = {witness};"));
+        data = format!("{data}const witness = {witness};");
     } else {
         data.push_str("const witness = null;");
     }
@@ -93,7 +91,7 @@ where
     // serialize constraints
     let constraints = latex_constraints::<G>();
     let constraints = serde_json::to_string(&constraints).expect("couldn't serialize constraints");
-    data.push_str(&format!("const constraints = {constraints};"));
+    data = format!("{data}const constraints = {constraints};");
 
     // create template
     let template_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/assets/template.html");

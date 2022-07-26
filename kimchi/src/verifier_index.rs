@@ -1,16 +1,18 @@
 //! This module implements the verifier index as [VerifierIndex].
 //! You can derive this struct from the [ProverIndex] struct.
 
-use crate::alphas::Alphas;
-use crate::circuits::lookup::{index::LookupSelectors, lookups::LookupsUsed};
-use crate::circuits::polynomials::permutation::zk_polynomial;
-use crate::circuits::polynomials::permutation::zk_w3;
-use crate::circuits::{
-    expr::{Linearization, PolishToken},
-    wires::*,
+use crate::{
+    alphas::Alphas,
+    circuits::{
+        expr::{Linearization, PolishToken},
+        lookup::{index::LookupSelectors, lookups::LookupsUsed},
+        polynomials::permutation::{zk_polynomial, zk_w3},
+        wires::*,
+    },
+    curve::KimchiCurve,
+    error::VerifierIndexError,
+    prover_index::ProverIndex,
 };
-use crate::error::VerifierIndexError;
-use crate::prover_index::ProverIndex;
 use ark_ff::PrimeField;
 use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D};
 use array_init::array_init;
@@ -19,13 +21,11 @@ use commitment_dlog::{
     srs::SRS,
 };
 use once_cell::sync::OnceCell;
-use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
-use std::io::SeekFrom::Start;
 use std::{
     fs::{File, OpenOptions},
-    io::{BufReader, BufWriter, Seek},
+    io::{BufReader, BufWriter, Seek, SeekFrom::Start},
     path::Path,
     sync::Arc,
 };
@@ -55,7 +55,7 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 
 #[serde_as]
 #[derive(Serialize, Deserialize)]
-pub struct VerifierIndex<G: CommitmentCurve> {
+pub struct VerifierIndex<G: KimchiCurve> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub domain: D<G::ScalarField>,
@@ -131,19 +131,10 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
     pub powers_of_alpha: Alphas<G::ScalarField>,
-
-    // random oracle argument parameters
-    #[serde(skip)]
-    pub fr_sponge_params: ArithmeticSpongeParams<G::ScalarField>,
-    #[serde(skip)]
-    pub fq_sponge_params: ArithmeticSpongeParams<G::BaseField>,
 }
 //~spec:endcode
 
-impl<'a, G: CommitmentCurve> ProverIndex<G>
-where
-    G::BaseField: PrimeField,
-{
+impl<G: KimchiCurve> ProverIndex<G> {
     /// Produces the [VerifierIndex] from the prover's [ProverIndex].
     pub fn verifier_index(&self) -> VerifierIndex<G> {
         let domain = self.cs.domain.d1;
@@ -244,18 +235,16 @@ where
             endo: self.cs.endo,
             lookup_index,
             linearization: self.linearization.clone(),
-            fr_sponge_params: self.cs.fr_sponge_params.clone(),
-            fq_sponge_params: self.fq_sponge_params.clone(),
         }
     }
 }
 
-impl<G: CommitmentCurve> VerifierIndex<G>
-where
-    G::BaseField: PrimeField,
-{
+impl<G: KimchiCurve> VerifierIndex<G> {
     /// Gets srs from [VerifierIndex] lazily
-    pub fn srs(&self) -> &Arc<SRS<G>> {
+    pub fn srs(&self) -> &Arc<SRS<G>>
+    where
+        G::BaseField: PrimeField,
+    {
         self.srs.get_or_init(|| {
             let mut srs = SRS::<G>::create(self.max_poly_size);
             srs.add_lagrange_basis(self.domain);
@@ -280,8 +269,6 @@ where
         offset: Option<u64>,
         // TODO: we shouldn't have to pass these
         endo: G::ScalarField,
-        fq_sponge_params: ArithmeticSpongeParams<G::BaseField>,
-        fr_sponge_params: ArithmeticSpongeParams<G::ScalarField>,
     ) -> Result<Self, String> {
         // open file
         let file = File::open(path).map_err(|e| e.to_string())?;
@@ -305,8 +292,6 @@ where
         };
 
         verifier_index.endo = endo;
-        verifier_index.fq_sponge_params = fq_sponge_params;
-        verifier_index.fr_sponge_params = fr_sponge_params;
 
         Ok(verifier_index)
     }

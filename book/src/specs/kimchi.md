@@ -1168,7 +1168,7 @@ Both the prover and the verifier index, besides the common parts described above
 These pre-computations are optimizations, in the context of normal proofs, but they are necessary for recursion.
 
 ```rs
-pub struct ProverIndex<G: CommitmentCurve> {
+pub struct ProverIndex<G: KimchiCurve> {
     /// constraints system polynomials
     #[serde(bound = "ConstraintSystem<G::ScalarField>: Serialize + DeserializeOwned")]
     pub cs: ConstraintSystem<G::ScalarField>,
@@ -1190,10 +1190,6 @@ pub struct ProverIndex<G: CommitmentCurve> {
 
     /// maximal size of the quotient polynomial according to the supported constraints
     pub max_quot_size: usize,
-
-    /// random oracle argument parameters
-    #[serde(skip)]
-    pub fq_sponge_params: ArithmeticSpongeParams<G::BaseField>,
 }
 ```
 
@@ -1227,7 +1223,7 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 
 #[serde_as]
 #[derive(Serialize, Deserialize)]
-pub struct VerifierIndex<G: CommitmentCurve> {
+pub struct VerifierIndex<G: KimchiCurve> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub domain: D<G::ScalarField>,
@@ -1303,12 +1299,6 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
     pub powers_of_alpha: Alphas<G::ScalarField>,
-
-    // random oracle argument parameters
-    #[serde(skip)]
-    pub fr_sponge_params: ArithmeticSpongeParams<G::ScalarField>,
-    #[serde(skip)]
-    pub fq_sponge_params: ArithmeticSpongeParams<G::BaseField>,
 }
 ```
 

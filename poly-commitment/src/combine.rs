@@ -441,7 +441,7 @@ pub fn affine_window_combine_one_endo<P: SWModelParameters>(
     let b: Vec<_> = g1.chunks(CHUNK_SIZE).zip(g2.chunks(CHUNK_SIZE)).collect();
     let v: Vec<_> = b
         .into_par_iter()
-        .map(|(v1, v2)| affine_window_combine_one_endo_base(endo_coeff, v1, v2, chal))
+        .map(|(v1, v2)| affine_window_combine_one_endo_base(endo_coeff, v1, v2, chal.clone()))
         .collect();
     v.concat()
 }

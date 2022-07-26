@@ -12,6 +12,7 @@ use crate::{
         scalars::RandomOracles,
         wires::*,
     },
+    curve::KimchiCurve,
     error::VerifyError,
     plonk_sponge::FrSponge,
     proof::{ProverProof, RecursionChallenge},
@@ -58,7 +59,7 @@ where
     pub combined_inner_product: G::ScalarField,
 }
 
-impl<G: CommitmentCurve> ProverProof<G>
+impl<G: KimchiCurve> ProverProof<G>
 where
     G::BaseField: PrimeField,
 {
@@ -77,9 +78,10 @@ where
         //~ We run the following algorithm:
         //~
         let n = index.domain.size;
+        let (_, endo_r) = G::endos();
 
         //~ 1. Setup the Fq-Sponge.
-        let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
+        let mut fq_sponge = EFqSponge::new(G::OtherCurve::sponge_params());
 
         //~ 1. Absorb the commitments of the previous challenges with the Fq-sponge.
         for RecursionChallenge { comm, .. } in self.prev_challenges.iter() {
@@ -125,7 +127,8 @@ where
             //~~ - Derive the scalar joint combiner challenge $j$ from $j'$ using the endomorphism.
             //~~   (TODO: specify endomorphism)
             let joint_combiner = ScalarChallenge(joint_combiner);
-            let joint_combiner = (joint_combiner, joint_combiner.to_field(&index.srs().endo_r));
+            let joint_combiner_field = joint_combiner.to_field(endo_r);
+            let joint_combiner = (joint_combiner, joint_combiner_field);
 
             //~~ - absorb the commitments to the sorted polynomials.
             for com in &lookup_commits.sorted {
@@ -155,7 +158,7 @@ where
         let alpha_chal = ScalarChallenge(fq_sponge.challenge());
 
         //~ 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
-        let alpha = alpha_chal.to_field(&index.srs().endo_r);
+        let alpha = alpha_chal.to_field(endo_r);
 
         //~ 1. Enforce that the length of the $t$ commitment is of size `PERMUTS`.
         if self.commitments.t_comm.unshifted.len() != PERMUTS {
@@ -169,11 +172,11 @@ where
         let zeta_chal = ScalarChallenge(fq_sponge.challenge());
 
         //~ 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
-        let zeta = zeta_chal.to_field(&index.srs().endo_r);
+        let zeta = zeta_chal.to_field(endo_r);
 
         //~ 1. Setup the Fr-Sponge.
         let digest = fq_sponge.clone().digest();
-        let mut fr_sponge = EFrSponge::new(index.fr_sponge_params.clone());
+        let mut fr_sponge = EFrSponge::new(G::sponge_params());
 
         //~ 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
         fr_sponge.absorb(&digest);
@@ -280,13 +283,13 @@ where
         let v_chal = fr_sponge.challenge();
 
         //~ 1. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
-        let v = v_chal.to_field(&index.srs().endo_r);
+        let v = v_chal.to_field(endo_r);
 
         //~ 1. Sample $u'$ with the Fr-Sponge.
         let u_chal = fr_sponge.challenge();
 
         //~ 1. Derive $u$ from $u'$ using the endomorphism (TODO: specify).
-        let u = u_chal.to_field(&index.srs().endo_r);
+        let u = u_chal.to_field(endo_r);
 
         //~ 1. Create a list of all polynomials that have an evaluation proof.
 
@@ -346,9 +349,9 @@ where
                 alpha,
                 beta,
                 gamma,
-                joint_combiner: joint_combiner.map(|j| j.1),
+                joint_combiner: joint_combiner.as_ref().map(|j| j.1),
                 endo_coefficient: index.endo,
-                mds: index.fr_sponge_params.mds.clone(),
+                mds: &G::sponge_params().mds,
             };
             ft_eval0 -= PolishToken::evaluate(
                 &index.linearization.constant_term,
@@ -453,7 +456,7 @@ fn to_batch<'a, G, EFqSponge, EFrSponge>(
     proof: &'a ProverProof<G>,
 ) -> Result<BatchEvaluationProof<'a, G, EFqSponge>>
 where
-    G: CommitmentCurve,
+    G: KimchiCurve,
     G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
@@ -469,6 +472,7 @@ where
     if proof.prev_challenges.len() != index.prev_challenges {
         return Err(VerifyError::IncorrectPrevChallengesLength(
             index.prev_challenges,
+            proof.prev_challenges.len(),
         ));
     }
 
@@ -529,7 +533,7 @@ where
         let alphas = all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
 
         let mut commitments = vec![&index.sigma_comm[PERMUTS - 1]];
-        let mut scalars = vec![ConstraintSystem::perm_scalars(
+        let mut scalars = vec![ConstraintSystem::<G::ScalarField>::perm_scalars(
             &evals,
             oracles.beta,
             oracles.gamma,
@@ -542,8 +546,11 @@ where
             let alphas =
                 all_alphas.get_alphas(ArgumentType::Gate(GateType::Generic), generic::CONSTRAINTS);
 
-            let generic_scalars =
-                &ConstraintSystem::gnrc_scalars(alphas, &evals[0].w, evals[0].generic_selector);
+            let generic_scalars = &ConstraintSystem::<G::ScalarField>::gnrc_scalars(
+                alphas,
+                &evals[0].w,
+                evals[0].generic_selector,
+            );
 
             let generic_com = index.coefficients_comm.iter().take(generic_scalars.len());
 
@@ -560,9 +567,9 @@ where
                 alpha: oracles.alpha,
                 beta: oracles.beta,
                 gamma: oracles.gamma,
-                joint_combiner: oracles.joint_combiner.map(|j| j.1),
+                joint_combiner: oracles.joint_combiner.as_ref().map(|j| j.1),
                 endo_coefficient: index.endo,
-                mds: index.fr_sponge_params.mds.clone(),
+                mds: &G::sponge_params().mds,
             };
 
             for (col, tokens) in &index.linearization.index_terms {
@@ -883,7 +890,7 @@ pub fn verify<G, EFqSponge, EFrSponge>(
     proof: &ProverProof<G>,
 ) -> Result<()>
 where
-    G: CommitmentCurve,
+    G: KimchiCurve,
     G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
@@ -901,7 +908,7 @@ pub fn batch_verify<G, EFqSponge, EFrSponge>(
     proofs: &[(&VerifierIndex<G>, &ProverProof<G>)],
 ) -> Result<()>
 where
-    G: CommitmentCurve,
+    G: KimchiCurve,
     G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,

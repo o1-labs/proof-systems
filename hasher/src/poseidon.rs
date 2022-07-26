@@ -28,7 +28,7 @@ pub struct Poseidon<SC: SpongeConstants, H: Hashable> {
 }
 
 impl<SC: SpongeConstants, H: Hashable> Poseidon<SC, H> {
-    fn new(domain_param: H::D, sponge_params: ArithmeticSpongeParams<Fp>) -> Self {
+    fn new(domain_param: H::D, sponge_params: &'static ArithmeticSpongeParams<Fp>) -> Self {
         let mut poseidon = Poseidon::<SC, H> {
             sponge: ArithmeticSponge::<Fp, SC>::new(sponge_params),
             sponge_state: SpongeState::Absorbed(0),
@@ -47,7 +47,7 @@ pub type PoseidonHasherLegacy<H> = Poseidon<PlonkSpongeConstantsLegacy, H>;
 
 /// Create a legacy hasher context
 pub(crate) fn new_legacy<H: Hashable>(domain_param: H::D) -> PoseidonHasherLegacy<H> {
-    Poseidon::<PlonkSpongeConstantsLegacy, H>::new(domain_param, pasta::fp_legacy::params())
+    Poseidon::<PlonkSpongeConstantsLegacy, H>::new(domain_param, pasta::fp_legacy::static_params())
 }
 
 /// Poseidon hasher type with experimental kimchi plonk sponge constants
@@ -55,7 +55,7 @@ pub type PoseidonHasherKimchi<H> = Poseidon<PlonkSpongeConstantsKimchi, H>;
 
 /// Create an experimental kimchi hasher context
 pub(crate) fn new_kimchi<H: Hashable>(domain_param: H::D) -> PoseidonHasherKimchi<H> {
-    Poseidon::<PlonkSpongeConstantsKimchi, H>::new(domain_param, pasta::fp_kimchi::params())
+    Poseidon::<PlonkSpongeConstantsKimchi, H>::new(domain_param, pasta::fp_kimchi::static_params())
 }
 
 impl<SC: SpongeConstants, H: Hashable> Hasher<H> for Poseidon<SC, H>

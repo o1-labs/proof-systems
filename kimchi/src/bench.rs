@@ -13,7 +13,7 @@ use array_init::array_init;
 use commitment_dlog::commitment::CommitmentCurve;
 use groupmap::{BWParameters, GroupMap};
 use mina_curves::pasta::vesta::VestaParameters;
-use mina_curves::pasta::{fp::Fp, vesta::Affine};
+use mina_curves::pasta::{fp::Fp, vesta::Vesta};
 use oracle::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
@@ -28,8 +28,8 @@ type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 pub struct BenchmarkCtx {
     num_gates: usize,
     group_map: BWParameters<VestaParameters>,
-    index: ProverIndex<Affine>,
-    verifier_index: VerifierIndex<Affine>,
+    index: ProverIndex<Vesta>,
+    verifier_index: VerifierIndex<Vesta>,
 }
 
 impl BenchmarkCtx {
@@ -53,7 +53,7 @@ impl BenchmarkCtx {
         }
 
         // group map
-        let group_map = <Affine as CommitmentCurve>::Map::setup();
+        let group_map = <Vesta as CommitmentCurve>::Map::setup();
 
         // create the index
         let index = new_index_for_test(gates, 0);
@@ -71,7 +71,7 @@ impl BenchmarkCtx {
     }
 
     /// Produces a proof
-    pub fn create_proof(&self) -> ProverProof<Affine> {
+    pub fn create_proof(&self) -> ProverProof<Vesta> {
         // create witness
         let witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![1u32.into(); self.num_gates]);
 
@@ -80,13 +80,13 @@ impl BenchmarkCtx {
             .unwrap()
     }
 
-    pub fn batch_verification(&self, batch: Vec<ProverProof<Affine>>) {
+    pub fn batch_verification(&self, batch: Vec<ProverProof<Vesta>>) {
         // verify the proof
         let batch: Vec<_> = batch
             .iter()
             .map(|proof| (&self.verifier_index, proof))
             .collect();
-        batch_verify::<Affine, BaseSponge, ScalarSponge>(&self.group_map, &batch).unwrap();
+        batch_verify::<Vesta, BaseSponge, ScalarSponge>(&self.group_map, &batch).unwrap();
     }
 }
 

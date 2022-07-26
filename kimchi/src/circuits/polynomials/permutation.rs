@@ -45,7 +45,7 @@ use crate::{
     error::ProverError,
     proof::ProofEvaluations,
 };
-use ark_ff::{FftField, SquareRootField, Zero};
+use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
 use ark_poly::{
     univariate::{DenseOrSparsePolynomial, DensePolynomial},
     EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
@@ -186,7 +186,7 @@ where
     }
 }
 
-impl<F: FftField + SquareRootField> ConstraintSystem<F> {
+impl<F: PrimeField> ConstraintSystem<F> {
     /// permutation quotient poly contribution computation
     #[allow(clippy::type_complexity)]
     pub fn perm_quot(
