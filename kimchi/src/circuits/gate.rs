@@ -209,22 +209,6 @@ impl<F: PrimeField> CircuitGate<F> {
                 .map_err(|e| e.to_string()),
         }
     }
-
-    /*
-    // Connect the pair of cells in different wires vectors, specified by the
-    // self, col and other, cell parameters
-    //
-    // cell1 --> cell2 && cell2 --> cell1
-    //
-    // Cell format is: (row, col)
-    //
-    // Note: This function assumes that the targeted cells are freshly instantiated
-    //       with self-connections.  If the two cells are transitively already part
-    //       of the same permutation then this would split it.
-    pub fn connect_cell_pair(&mut self, col: usize, other: &mut [GateWires], cell: (usize, usize)) {
-        std::mem::swap(&mut self.wires[col], &mut other[cell.0][cell.1]);
-    }
-    */
 }
 
 pub trait Connect {
@@ -232,12 +216,12 @@ pub trait Connect {
 }
 
 impl<F: PrimeField> Connect for Vec<CircuitGate<F>> {
-    // Connect the pair of cells specified by the cell1 and cell2 parameters
-    // cell_pre --> cell_new && cell_new --> wire_tmp
-    //
-    // Note: This function assumes that the targeted cells are freshly instantiated
-    //       with self-connections.  If the two cells are transitively already part
-    //       of the same permutation then this would split it.
+    /// Connect the pair of cells specified by the cell1 and cell2 parameters
+    /// cell_pre --> cell_new && cell_new --> wire_tmp
+    ///
+    /// Note: This function assumes that the targeted cells are freshly instantiated
+    ///       with self-connections.  If the two cells are transitively already part
+    ///       of the same permutation then this would split it.
     fn connect_cell_pair(&mut self, cell_pre: (usize, usize), cell_new: (usize, usize)) {
         let wire_tmp = self[cell_pre.0].wires[cell_pre.1];
         self[cell_pre.0].wires[cell_pre.1] = self[cell_new.0].wires[cell_new.1];
