@@ -1,5 +1,4 @@
 //! This module implements Plonk circuit constraint primitive.
-use super::lookup::runtime_tables::RuntimeTableCfg;
 use super::{gate::SelectorPolynomial, lookup::runtime_tables::RuntimeTableCfg};
 use crate::{
     circuits::{
@@ -116,13 +115,13 @@ pub struct ConstraintSystem<F: PrimeField> {
     #[serde(bound = "Vec<SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
     pub range_check_selector_polys: Vec<SelectorPolynomial<F>>,
 
-    /// Foreign field modulus parameter
+    /// Foreign field multiplication gate selector polynomial
+    #[serde(bound = "Option<SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
+    pub foreign_field_mul_selector_poly: Option<SelectorPolynomial<F>>,
+
+    /// Foreign field modulus
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub foreign_field_modulus: Vec<F>,
-
-    /// Foreign field multiplication gate selector polynomials
-    #[serde(bound = "Vec<SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
-    pub foreign_field_mul_selector_polys: Vec<SelectorPolynomial<F>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -160,7 +159,7 @@ pub struct Builder<F: PrimeField> {
 }
 
 /// Create selector polynomial for a circuit gate
-pub fn selector_polynomial<F: FftField>(
+pub fn selector_polynomial<F: PrimeField>(
     gate_type: GateType,
     gates: &[CircuitGate<F>],
     domain: &EvaluationDomains<F>,
@@ -184,11 +183,11 @@ pub fn selector_polynomial<F: FftField>(
     // Evaluation form (evaluated over d8)
     let eval8 = coeff.evaluate_over_domain_by_ref(domain.d8);
 
-    SelectorPolynomial { coeff, eval8 }
+    SelectorPolynomial { eval8 }
 }
 
 /// Create selector polynomials for a gate (i.e. a collection of circuit gates)
-pub fn selector_polynomials<F: FftField>(
+pub fn selector_polynomials<F: PrimeField>(
     gate_types: &[GateType],
     gates: &[CircuitGate<F>],
     domain: &EvaluationDomains<F>,
@@ -562,22 +561,32 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
 
         // Range check constraint selector polynomials
         let range_check_selector_polys = {
-            if !circuit_gates_used.is_disjoint(&range_check::circuit_gates().into_iter().collect())
+            if !circuit_gates_used
+                .is_disjoint(&range_check::gadget::circuit_gates().into_iter().collect())
             {
-                selector_polynomials(&range_check::circuit_gates(), &gates, &domain)
+                range_check::gadget::selector_polynomials(&gates, &domain)
             } else {
                 vec![]
             }
         };
 
-        // Foreign field multiplication constraint selector polynomials
-        let foreign_field_mul_selector_polys = {
-            if !circuit_gates_used
-                .is_disjoint(&foreign_field_mul::circuit_gates().into_iter().collect())
-            {
-                selector_polynomials(&foreign_field_mul::circuit_gates(), &gates, &domain)
+        // Foreign field multiplication constraint selector polynomial
+        let foreign_field_mul_selector_poly = {
+            if !circuit_gates_used.is_disjoint(
+                &foreign_field_mul::gadget::circuit_gates()
+                    .into_iter()
+                    .collect(),
+            ) {
+                Some(
+                    selector_polynomials(
+                        &foreign_field_mul::gadget::circuit_gates(),
+                        &gates,
+                        &domain,
+                    )[0]
+                    .clone(),
+                )
             } else {
-                vec![]
+                None
             }
         };
 
@@ -631,8 +640,8 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             mull8,
             emull,
             range_check_selector_polys,
+            foreign_field_mul_selector_poly,
             foreign_field_modulus: self.foreign_field_modulus,
-            foreign_field_mul_selector_polys,
             gates,
             shift: shifts.shifts,
             endo,

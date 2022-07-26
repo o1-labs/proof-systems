@@ -6,7 +6,7 @@ use crate::circuits::{
 };
 use ark_ec::AffineCurve;
 use ark_ff::Zero;
-use mina_curves::pasta::pallas;
+use mina_curves::pasta::{pallas, vesta::Affine as Vesta};
 use o1_utils::foreign_field::{ForeignElement, FOREIGN_MOD};
 
 type PallasField = <pallas::Affine as AffineCurve>::BaseField;
@@ -20,9 +20,7 @@ fn create_test_constraint_system() -> ConstraintSystem<PallasField> {
         next_row += 1;
     }
 
-    ConstraintSystem::create(gates, oracle::pasta::fp_kimchi::params())
-        .build()
-        .unwrap()
+    ConstraintSystem::create(gates).build().unwrap()
 }
 
 #[test]
@@ -47,10 +45,9 @@ fn test_zero_mul() {
         foreign_field_mul::witness::create_witness(left_input, right_input, foreign_modulus);
 
     assert_eq!(
-        cs.gates[20].verify_foreign_field_mul(0, &witness, &cs),
+        cs.gates[20].verify_foreign_field_mul::<Vesta>(0, &witness, &cs),
         Ok(())
     );
-
 }
 
 #[test]

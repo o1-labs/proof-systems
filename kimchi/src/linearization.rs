@@ -8,7 +8,7 @@ use crate::circuits::polynomials::chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFina
 use crate::circuits::polynomials::complete_add::CompleteAdd;
 use crate::circuits::polynomials::endomul_scalar::EndomulScalar;
 use crate::circuits::polynomials::endosclmul::EndosclMul;
-use crate::circuits::polynomials::foreign_field_mul;
+use crate::circuits::polynomials::foreign_field_mul::circuitgates::ForeignFieldMul;
 use crate::circuits::polynomials::permutation;
 use crate::circuits::polynomials::poseidon::Poseidon;
 use crate::circuits::polynomials::range_check;
@@ -50,11 +50,11 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
     }
 
     if range_check {
-        expr += range_check::combined_constraints(&powers_of_alpha);
+        expr += range_check::gadget::combined_constraints(&powers_of_alpha);
     }
 
     if foreign_field_mul {
-        expr += foreign_field_mul::combined_constraints(&powers_of_alpha);
+        expr += ForeignFieldMul::combined_constraints(&powers_of_alpha);
     }
 
     // permutation

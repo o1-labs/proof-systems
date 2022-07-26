@@ -60,7 +60,7 @@ pub struct Constants<F: 'static> {
     pub endo_coefficient: F,
     /// The MDS matrix
     pub mds: &'static Vec<Vec<F>>,
-    /// Foreign field modulus
+    /// The modulus for foreign field operations
     pub foreign_field_modulus: Vec<F>,
 }
 

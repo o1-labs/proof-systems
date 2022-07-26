@@ -5,7 +5,6 @@ use crate::{
     curve::KimchiCurve,
 };
 use ark_ff::{bytes::ToBytes, PrimeField};
-use ark_poly::univariate::DensePolynomial;
 use ark_poly::Evaluations;
 use ark_poly::Radix2EvaluationDomain as D;
 use num_traits::cast::ToPrimitive;
@@ -95,20 +94,17 @@ pub enum GateType {
     CairoInstruction = 13,
     CairoFlags = 14,
     CairoTransition = 15,
-    // Range check
+    /// Range check (16-24)
     RangeCheck0 = 16,
     RangeCheck1 = 17,
-    // Foreign mul
     ForeignFieldMul = 18,
+    //ForeignFieldAdd = 19,
 }
 
 /// Selector polynomial
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct SelectorPolynomial<F: FftField> {
-    /// Coefficient form
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub coeff: DensePolynomial<F>,
+pub struct SelectorPolynomial<F: PrimeField> {
     /// Evaluation form (evaluated over domain d8)
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub eval8: Evaluations<F, D<F>>,
@@ -209,9 +205,27 @@ impl<F: PrimeField> CircuitGate<F> {
                 .verify_range_check::<G>(row, witness, cs)
                 .map_err(|e| e.to_string()),
             ForeignFieldMul => self
-                .verify_foreign_field_mul(row, witness, cs)
+                .verify_foreign_field_mul::<G>(row, witness, cs)
                 .map_err(|e| e.to_string()),
         }
+    }
+}
+
+pub trait Connect {
+    fn connect_cell_pair(&mut self, cell1: (usize, usize), cell2: (usize, usize));
+}
+
+impl<F: PrimeField> Connect for Vec<CircuitGate<F>> {
+    /// Connect the pair of cells specified by the cell1 and cell2 parameters
+    /// cell_pre --> cell_new && cell_new --> wire_tmp
+    ///
+    /// Note: This function assumes that the targeted cells are freshly instantiated
+    ///       with self-connections.  If the two cells are transitively already part
+    ///       of the same permutation then this would split it.
+    fn connect_cell_pair(&mut self, cell_pre: (usize, usize), cell_new: (usize, usize)) {
+        let wire_tmp = self[cell_pre.0].wires[cell_pre.1];
+        self[cell_pre.0].wires[cell_pre.1] = self[cell_new.0].wires[cell_new.1];
+        self[cell_new.0].wires[cell_new.1] = wire_tmp;
     }
 }
 

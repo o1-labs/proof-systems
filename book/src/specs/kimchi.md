@@ -1359,7 +1359,7 @@ pub struct VerifierIndex<G: KimchiCurve> {
 
     // Foreign field multiplication gates polynomial commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
-    pub foreign_field_mul_comm: Vec<PolyComm<G>>,
+    pub foreign_field_mul_comm: Option<PolyComm<G>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -1383,7 +1383,7 @@ pub struct VerifierIndex<G: KimchiCurve> {
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
     pub powers_of_alpha: Alphas<G::ScalarField>,
-    
+
     // Foreign field modulus
     #[serde(skip)]
     pub foreign_field_modulus: Vec<G::ScalarField>,

@@ -111,7 +111,7 @@ pub struct VerifierIndex<G: KimchiCurve> {
 
     // Foreign field multiplication gates polynomial commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
-    pub foreign_field_mul_comm: Vec<PolyComm<G>>,
+    pub foreign_field_mul_comm: Option<PolyComm<G>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -231,13 +231,12 @@ impl<G: KimchiCurve> ProverIndex<G> {
 
             foreign_field_mul_comm: self
                 .cs
-                .foreign_field_mul_selector_polys
-                .iter()
+                .foreign_field_mul_selector_poly
+                .as_ref()
                 .map(|poly| {
                     self.srs
                         .commit_evaluations_non_hiding(domain, &poly.eval8, None)
-                })
-                .collect(),
+                }),
 
             shift: self.cs.shift,
             zkpm: {

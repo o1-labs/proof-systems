@@ -589,19 +589,17 @@ where
                     }
                 });
             if !index.cs.range_check_selector_polys.is_empty() {
-                index_evals.extend(range_check::circuit_gates().iter().enumerate().map(
+                index_evals.extend(range_check::gadget::circuit_gates().iter().enumerate().map(
                     |(i, gate_type)| (*gate_type, &index.cs.range_check_selector_polys[i].eval8),
                 ));
             }
-            if !index.cs.foreign_field_mul_selector_polys.is_empty() {
-                index_evals.extend(foreign_field_mul::circuit_gates().iter().enumerate().map(
-                    |(i, gate_type)| {
-                        (
-                            *gate_type,
-                            &index.cs.foreign_field_mul_selector_polys[i].eval8,
-                        )
-                    },
-                ));
+            if let Some(selector) = index.cs.foreign_field_mul_selector_poly.as_ref() {
+                index_evals.extend(
+                    foreign_field_mul::gadget::circuit_gates()
+                        .iter()
+                        .enumerate()
+                        .map(|(_, gate_type)| (*gate_type, &selector.eval8)),
+                );
             }
 
             let mds = &G::sponge_params().mds;
@@ -663,8 +661,9 @@ where
 
             if !index.cs.range_check_selector_polys.is_empty() {
                 // Range check gate
-                for gate_type in range_check::circuit_gates() {
-                    let expr = range_check::circuit_gate_constraints(gate_type, &all_alphas);
+                for gate_type in range_check::gadget::circuit_gates() {
+                    let expr =
+                        range_check::gadget::circuit_gate_constraints(gate_type, &all_alphas);
 
                     let evals = expr.evaluations(&env);
 
@@ -692,12 +691,13 @@ where
                 }
             }
 
-            if !index.cs.foreign_field_mul_selector_polys.is_empty() {
+            if index.cs.foreign_field_mul_selector_poly.is_some() {
                 assert!(!index.cs.foreign_field_modulus.is_empty());
 
                 // foreign field multiplication
-                for gate_type in foreign_field_mul::circuit_gates() {
-                    let expr = foreign_field_mul::circuit_gate_constraints(gate_type, &all_alphas);
+                for gate_type in foreign_field_mul::gadget::circuit_gates() {
+                    let expr =
+                        foreign_field_mul::gadget::circuit_gate_constraints(gate_type, &all_alphas);
 
                     let evals = expr.evaluations(&env);
 

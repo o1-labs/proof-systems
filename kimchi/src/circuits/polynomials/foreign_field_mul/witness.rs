@@ -3,7 +3,11 @@
 use crate::circuits::{
     polynomial::COLUMNS,
     polynomials::range_check::{
-        self, handle_standard_witness_cell, value_to_limb, CopyWitnessCell, ZeroWitnessCell,
+        self,
+        witness::{
+            extend_witness, handle_standard_witness_cell, value_to_limb, CopyWitnessCell,
+            ZeroWitnessCell,
+        },
     },
 };
 use ark_ff::PrimeField;
@@ -14,7 +18,7 @@ use o1_utils::{
     FieldHelpers,
 };
 
-use super::compute_intermediate_products;
+use super::circuitgates::compute_intermediate_products;
 
 // Extend standard WitnessCell to support foreign field multiplication
 // specific cell types
@@ -24,7 +28,7 @@ use super::compute_intermediate_products;
 //
 // TODO: Currently located in range check, but could be moved elsewhere
 pub enum WitnessCell {
-    Standard(range_check::WitnessCell),
+    Standard(range_check::witness::WitnessCell),
     Shift(ShiftWitnessCell),
     ValueLimb(ValueLimbWitnessCell),
 }
@@ -168,16 +172,16 @@ pub fn create_witness<F: PrimeField>(
     let mut witness = array_init(|_| vec![F::zero(); 0]);
 
     // Create multi-range-check witness for left_input and right_input
-    range_check::extend_witness(&mut witness, left_input);
-    range_check::extend_witness(&mut witness, right_input);
+    extend_witness(&mut witness, left_input);
+    extend_witness(&mut witness, right_input);
 
     // Compute quotient and remainder and add to witness
     let (quotient_big, remainder_big) =
         (left_input.to_big() * right_input.to_big()).div_rem(&foreign_modulus.to_big());
     let quotient = ForeignElement::new_from_big(quotient_big);
     let remainder = ForeignElement::new_from_big(remainder_big);
-    range_check::extend_witness(&mut witness, quotient);
-    range_check::extend_witness(&mut witness, remainder);
+    extend_witness(&mut witness, quotient);
+    extend_witness(&mut witness, remainder);
 
     // Compute nonzero intermediate products (uses the same code as constraints!)
     let (product_lo, product_mi, product_hi) = compute_intermediate_products(
@@ -210,7 +214,7 @@ pub fn create_witness<F: PrimeField>(
     let carry_top_limb = F::from_big(carry_top_limb).expect("BigUint does not fit in F");
 
     // Define the row for the multi-range check for the product_mi_bot, product_mi_top_limb, and carry_top_limb
-    range_check::extend_witness(
+    extend_witness(
         &mut witness,
         ForeignElement::new([product_mi_bot, product_mi_top_limb, carry_top_limb]),
     );

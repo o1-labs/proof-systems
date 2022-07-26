@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use ark_ff::{FftField, SquareRootField, Zero};
+use ark_ff::{FftField, PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
@@ -23,11 +23,12 @@ use crate::{
         polynomial::COLUMNS,
         wires::{GateWires, Wire},
     },
+    curve::KimchiCurve,
 };
 
-use super::ForeignFieldMul;
+use super::circuitgates::ForeignFieldMul;
 
-impl<F: FftField + SquareRootField> CircuitGate<F> {
+impl<F: PrimeField> CircuitGate<F> {
     /// Create foreign field multiplication gate
     ///     Inputs the starting row
     ///     Outputs tuple (next_row, circuit_gates) where
@@ -97,7 +98,7 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
         (start_row + circuit_gates.len(), circuit_gates)
     }
 
-    pub fn verify_foreign_field_mul(
+    pub fn verify_foreign_field_mul<G: KimchiCurve<ScalarField = F>>(
         &self,
         _: usize,
         witness: &[Vec<F>; COLUMNS],
@@ -139,7 +140,7 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
         let mut index_evals = HashMap::new();
         index_evals.insert(
             self.typ,
-            &cs.foreign_field_mul_selector_polys[circuit_gate_selector_index(self.typ)].eval8,
+            &cs.foreign_field_mul_selector_poly.as_ref().unwrap().eval8,
         );
 
         // Set up lookup environment
@@ -180,7 +181,7 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
                     gamma: F::rand(rng),
                     joint_combiner: Some(F::rand(rng)),
                     endo_coefficient: cs.endo,
-                    mds: vec![], // TODO: maybe cs.fr_sponge_params.mds.clone()
+                    mds: &G::sponge_params().mds,
                     foreign_field_modulus,
                 },
                 witness: &witness_evals.d8.this.w,
@@ -253,7 +254,7 @@ struct LookupEnvironmentData<F: FftField> {
 // computing the dummy lookup value, creating the combined lookup table, computing the sorted plookup
 // evaluations and the plookup aggregation evaluations.
 // Note: This function assumes the cs contains a lookup constraint system.
-fn set_up_lookup_env_data<F: FftField>(
+fn set_up_lookup_env_data<F: PrimeField>(
     gate_type: GateType,
     cs: &ConstraintSystem<F>,
     witness: &[Vec<F>; COLUMNS],
@@ -376,7 +377,7 @@ fn set_up_lookup_env_data<F: FftField>(
     })
 }
 
-fn circuit_gate_selector_index(typ: GateType) -> usize {
+pub fn circuit_gate_selector_index(typ: GateType) -> usize {
     match typ {
         GateType::ForeignFieldMul => 0,
         _ => panic!("invalid gate type"),

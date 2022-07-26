@@ -79,23 +79,7 @@ impl<F: Field> FieldHelpers<F> for F {
         F::deserialize(&mut &bytes[..]).map_err(|_| FieldHelpersError::DeserializeBytes)
     }
 
-    fn from_big(big: BigUint) -> Result<F> {
-        let mut bytes = big.to_bytes_le();
-        // Pad with zeros if necessary because the BigUint to_bytes_le function gives the smallest possible vector of bytes
-        if bytes.len() < 32 {
-            for _ in 0..32 - bytes.len() {
-                bytes.push(0);
-            }
-        }
-        F::deserialize(&mut &bytes[..]).map_err(|_| FieldHelpersError::DeserializeBytes)
-    }
-
-    fn to_big(self) -> BigUint {
-        let bytes = self.to_bytes();
-        BigUint::from_bytes_le(&bytes)
-    }
-
-    fn to_bytes(self) -> Vec<u8> {
+    fn to_bytes(&self) -> Vec<u8> {
         let mut bytes: Vec<u8> = vec![];
         self.serialize(&mut bytes)
             .expect("Failed to serialize field");
@@ -116,6 +100,20 @@ impl<F: Field> FieldHelpers<F> for F {
             }
             bits
         })
+    }
+
+    fn from_big(big: BigUint) -> Result<F> {
+        let mut bytes = big.to_bytes_le();
+
+        // Pad with zeros if necessary because the BigUint to_bytes_le function gives the smallest possible vector of bytes
+        bytes.resize(32, 0);
+
+        F::deserialize(&mut &bytes[..]).map_err(|_| FieldHelpersError::DeserializeBytes)
+    }
+
+    fn to_big(self) -> BigUint {
+        let bytes = self.to_bytes();
+        BigUint::from_bytes_le(&bytes)
     }
 }
 
