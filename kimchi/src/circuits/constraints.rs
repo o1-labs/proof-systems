@@ -237,8 +237,8 @@ impl<F: PrimeField> ConstraintSystem<F> {
     }
 
     /// This function verifies the consistency of the wire
-    /// assignements (witness) against the constraints
-    ///     witness: wire assignement witness
+    /// assignments (witness) against the constraints
+    ///     witness: wire assignment witness
     ///     RETURN: verification status
     pub fn verify<G: KimchiCurve<ScalarField = F>>(
         &self,
