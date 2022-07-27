@@ -1564,6 +1564,14 @@ TODO: why not do this first, and then commit? Why commit from evaluation directl
 <li>
 <p>If using lookup:</p>
 <ul>
+<li>if using runtime table:
+<ul>
+<li>check that all the provided runtime tables have length and IDs that match the runtime table configuration of the index
+we expect the given runtime tables to be sorted as configured, this makes it easier afterwards</li>
+<li>calculate the contribution to the second column of the lookup table
+(the runtime vector)</li>
+</ul>
+</li>
 <li>If queries involve a lookup table with multiple columns
 then squeeze the Fq-Sponge to obtain the joint combiner challenge <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.946332em;vertical-align:-0.19444em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.05724em;">j</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span>,
 otherwise set the joint combiner challenge <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.946332em;vertical-align:-0.19444em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.05724em;">j</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span> to <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">0</span></span></span></span>.</li>
@@ -1730,6 +1738,15 @@ First, include the previous challenges, in case we are in a recursive prover.</p
 <li>the 15 registers/witness columns</li>
 <li>the 6 sigmas</li>
 <li>optionally, the runtime table</li>
+</ul>
+</li>
+<li>
+<p>if using lookup:</p>
+<ul>
+<li>add the lookup sorted polynomials</li>
+<li>add the lookup aggreg polynomial</li>
+<li>add the combined table polynomial</li>
+<li>if present, add the runtime table polynomial</li>
 </ul>
 </li>
 <li>
