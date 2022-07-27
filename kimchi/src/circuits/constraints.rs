@@ -112,8 +112,11 @@ pub struct ConstraintSystem<F: PrimeField> {
     pub endomul_scalar8: E<F, D<F>>,
 
     /// Range check gate selector polynomials
-    #[serde(bound = "Vec<SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
-    pub range_check_selector_polys: Vec<SelectorPolynomial<F>>,
+    #[serde(
+        bound = "[SelectorPolynomial<F>; range_check::gadget::GATE_COUNT]: Serialize + DeserializeOwned"
+    )]
+    pub range_check_selector_polys:
+        Option<[SelectorPolynomial<F>; range_check::gadget::GATE_COUNT]>,
 
     /// Foreign field addition gate selector polynomial
     #[serde(bound = "Option<SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
@@ -564,9 +567,9 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             if !circuit_gates_used
                 .is_disjoint(&range_check::gadget::circuit_gates().into_iter().collect())
             {
-                range_check::gadget::selector_polynomials(&gates, &domain)
+                Some(range_check::gadget::selector_polynomials(&gates, &domain))
             } else {
-                vec![]
+                None
             }
         };
 

@@ -6,7 +6,10 @@ use crate::{
     circuits::{
         expr::{Linearization, PolishToken},
         lookup::{index::LookupSelectors, lookups::LookupsUsed},
-        polynomials::permutation::{zk_polynomial, zk_w3},
+        polynomials::{
+            permutation::{zk_polynomial, zk_w3},
+            range_check,
+        },
         wires::*,
     },
     curve::KimchiCurve,
@@ -105,9 +108,8 @@ pub struct VerifierIndex<G: KimchiCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub chacha_comm: Option<[PolyComm<G>; 4]>,
 
-    // Range check gates polynomial commitments
-    #[serde(bound = "Vec<PolyComm<G>>: Serialize + DeserializeOwned")]
-    pub range_check_comm: Vec<PolyComm<G>>,
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub range_check_comm: Option<[PolyComm<G>; range_check::gadget::GATE_COUNT]>,
 
     // Foreign field addition gates polynomial commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
@@ -219,15 +221,12 @@ impl<G: KimchiCurve> ProverIndex<G> {
                 array_init(|i| self.srs.commit_evaluations_non_hiding(domain, &c[i], None))
             }),
 
-            range_check_comm: self
-                .cs
-                .range_check_selector_polys
-                .iter()
-                .map(|poly| {
+            range_check_comm: self.cs.range_check_selector_polys.as_ref().map(|poly| {
+                array_init(|i| {
                     self.srs
-                        .commit_evaluations_non_hiding(domain, &poly.eval8, None)
+                        .commit_evaluations_non_hiding(domain, &poly[i].eval8, None)
                 })
-                .collect(),
+            }),
 
             foreign_field_add_comm: self
                 .cs

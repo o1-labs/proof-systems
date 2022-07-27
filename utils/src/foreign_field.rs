@@ -1,11 +1,15 @@
+//! Describes helpers for foreign field arithmetics
+
 use std::fmt::Display;
 
 use crate::field_helpers::FieldHelpers;
 use ark_ff::FftField;
 use num_bigint::BigUint;
 
+/// Limb length for foreign field elements
 pub const LIMB_BITS: u32 = 88;
 
+/// Number of desired limbs for foreign field elements
 pub const LIMB_COUNT: usize = 3;
 
 /// The foreign field modulus of secp256k1 is the prime number (in big endian)
@@ -16,9 +20,12 @@ pub const FOREIGN_MOD: &[u8] = &[
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0xFF, 0xFF, 0xFC, 0x2F,
 ];
+
+/// Bit length of the foreign field modulus
 pub const FOREIGN_BITS: usize = 8 * FOREIGN_MOD.len(); // 256 bits
 
 #[derive(Debug, Clone, Copy)]
+/// Represents a foreign field element
 pub struct ForeignElement<F, const N: usize> {
     /// limbs in little endian order
     pub limbs: [F; N],
@@ -88,14 +95,17 @@ impl<F: FftField> ForeignElement<F, 3> {
         Self { limbs, len: 3 }
     }
 
+    /// Returns a reference to the lowest limb of the foreign element
     pub fn lo(&self) -> &F {
         &self.limbs[0]
     }
 
+    /// Returns a reference to the middle limb of the foreign element
     pub fn mi(&self) -> &F {
         &self.limbs[1]
     }
 
+    /// Returns a reference to the highest limb of the foreign element
     pub fn hi(&self) -> &F {
         &self.limbs[2]
     }

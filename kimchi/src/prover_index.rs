@@ -64,7 +64,7 @@ impl<G: KimchiCurve> ProverIndex<G> {
         // pre-compute the linearization
         let (linearization, powers_of_alpha) = expr_linearization(
             cs.chacha8.is_some(),
-            !cs.range_check_selector_polys.is_empty(),
+            cs.range_check_selector_polys.is_some(),
             cs.lookup_constraint_system
                 .as_ref()
                 .map(|lcs| &lcs.configuration),

@@ -685,8 +685,8 @@ where
                             CairoClaim | CairoInstruction | CairoFlags | CairoTransition => {
                                 unimplemented!()
                             }
-                            RangeCheck0 => &index.range_check_comm[0],
-                            RangeCheck1 => &index.range_check_comm[1],
+                            RangeCheck0 => &index.range_check_comm.as_ref().unwrap()[0],
+                            RangeCheck1 => &index.range_check_comm.as_ref().unwrap()[1],
                             ForeignFieldAdd => index.foreign_field_add_comm.as_ref().unwrap(),
                         };
                         scalars.push(scalar);
