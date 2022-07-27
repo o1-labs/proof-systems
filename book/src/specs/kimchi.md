@@ -1274,8 +1274,8 @@ pub struct VerifierIndex<G: KimchiCurve> {
     pub chacha_comm: Option<[PolyComm<G>; 4]>,
 
     // Range check gates polynomial commitments
-    #[serde(bound = "Vec<PolyComm<G>>: Serialize + DeserializeOwned")]
-    pub range_check_comm: Vec<PolyComm<G>>,
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub range_check_comm: Option<[PolyComm<G>; range_check::gadget::GATE_COUNT]>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -1299,10 +1299,6 @@ pub struct VerifierIndex<G: KimchiCurve> {
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
     pub powers_of_alpha: Alphas<G::ScalarField>,
-
-    // Foreign field modulus
-    #[serde(skip)]
-    pub foreign_field_modulus: Vec<G::ScalarField>,
 }
 ```
 
