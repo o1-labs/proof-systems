@@ -14,7 +14,7 @@ pub fn create_witness<F: PrimeField>(
     right_input: ForeignElement<F, 3>,
     foreign_modulus: ForeignElement<F, 3>,
 ) -> [Vec<F>; COLUMNS] {
-    let two_to_limb = F::from(2u128.pow(LIMB_BITS));
+    let two_to_limb = F::from(2u128.pow(LIMB_BITS as u32));
 
     let mut witness = array_init(|_| vec![F::zero(); 0]);
 

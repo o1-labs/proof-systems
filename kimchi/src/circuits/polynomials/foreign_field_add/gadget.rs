@@ -172,9 +172,7 @@ impl<F: PrimeField> CircuitGate<F> {
         });
 
         // Initialize the foreign field modulus constant
-        let foreign_field_modulus = ForeignElement::<F, 3>::new_from_be(FOREIGN_MOD)
-            .limbs
-            .to_vec();
+        let foreign_field_modulus = Some(ForeignElement::<F, 3>::new_from_be(FOREIGN_MOD));
 
         // Set up the environment
         let env = {

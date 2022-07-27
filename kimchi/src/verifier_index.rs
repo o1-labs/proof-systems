@@ -23,6 +23,7 @@ use commitment_dlog::{
     commitment::{CommitmentCurve, PolyComm},
     srs::SRS,
 };
+use o1_utils::foreign_field::ForeignElement;
 use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
@@ -139,8 +140,8 @@ pub struct VerifierIndex<G: KimchiCurve> {
     pub powers_of_alpha: Alphas<G::ScalarField>,
 
     // Foreign field modulus
-    #[serde(skip)]
-    pub foreign_field_modulus: Vec<G::ScalarField>,
+    #[serde_as(as = "Option<ForeignElement<o1_utils::serialization::SerdeAs, 3>>")]
+    pub foreign_field_modulus: Option<ForeignElement<G::ScalarField, 3>>,
 }
 //~spec:endcode
 

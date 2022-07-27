@@ -13,6 +13,7 @@ use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
 use itertools::Itertools;
+use o1_utils::foreign_field::ForeignElement;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::iter::FromIterator;
@@ -61,7 +62,7 @@ pub struct Constants<F: 'static> {
     /// The MDS matrix
     pub mds: &'static Vec<Vec<F>>,
     /// The modulus for foreign field operations
-    pub foreign_field_modulus: Vec<F>,
+    pub foreign_field_modulus: Option<ForeignElement<F, 3>>,
 }
 
 /// The polynomials specific to the lookup argument.
@@ -309,7 +310,7 @@ impl<F: Field> ConstantExpr<F> {
             JointCombiner => c.joint_combiner.expect("joint lookup was not expected"),
             EndoCoefficient => c.endo_coefficient,
             Mds { row, col } => c.mds[*row][*col],
-            ForeignFieldModulus(i) => c.foreign_field_modulus[*i],
+            ForeignFieldModulus(i) => c.foreign_field_modulus.unwrap().limbs[*i],
             Literal(x) => *x,
             Pow(x, p) => x.value(c).pow(&[*p as u64]),
             Mul(x, y) => x.value(c) * y.value(c),
@@ -491,7 +492,7 @@ impl<F: FftField> PolishToken<F> {
                 }
                 EndoCoefficient => stack.push(c.endo_coefficient),
                 Mds { row, col } => stack.push(c.mds[*row][*col]),
-                ForeignFieldModulus(i) => stack.push(c.foreign_field_modulus[*i]),
+                ForeignFieldModulus(i) => stack.push(c.foreign_field_modulus.unwrap().limbs[*i]),
                 VanishesOnLast4Rows => stack.push(eval_vanishes_on_last_4_rows(d, pt)),
                 UnnormalizedLagrangeBasis(i) => {
                     stack.push(unnormalized_lagrange_basis(&d, *i, &pt))

@@ -2,12 +2,14 @@
 
 use std::fmt::Display;
 
-use crate::field_helpers::FieldHelpers;
+use crate::{field_helpers::FieldHelpers, serialization::SerdeAs};
 use ark_ff::FftField;
 use num_bigint::BigUint;
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 
 /// Limb length for foreign field elements
-pub const LIMB_BITS: u32 = 88;
+pub const LIMB_BITS: usize = 88;
 
 /// Number of desired limbs for foreign field elements
 pub const LIMB_COUNT: usize = 3;
@@ -24,10 +26,12 @@ pub const FOREIGN_MOD: &[u8] = &[
 /// Bit length of the foreign field modulus
 pub const FOREIGN_BITS: usize = 8 * FOREIGN_MOD.len(); // 256 bits
 
-#[derive(Debug, Clone, Copy)]
+#[serde_as]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 /// Represents a foreign field element
 pub struct ForeignElement<F, const N: usize> {
     /// limbs in little endian order
+    #[serde_as(as = "[SerdeAs; N]")]
     pub limbs: [F; N],
     /// number of limbs used for the foreign field element
     pub len: usize,
@@ -35,12 +39,16 @@ pub struct ForeignElement<F, const N: usize> {
 
 impl<F: FftField, const N: usize> ForeignElement<F, N> {
     /// Initializes a new foreign element from a big unsigned integer
+    /// Panics if the BigUint is too large to fit in the `N` limbs
     pub fn new_from_big(big: BigUint) -> Self {
         let vec = ForeignElement::<F, N>::big_to_vec(big);
 
         // create an array of N native elements containing the limbs
         // until the array is full in big endian, so most significant
         // limbs may be zero if the big number is smaller
+        if vec.len() > N {
+            panic!("BigUint element is too large for N limbs");
+        }
         let limbs = {
             let mut ini = [F::zero(); N];
             for i in 0..N {
@@ -78,9 +86,7 @@ impl<F: FftField, const N: usize> ForeignElement<F, N> {
     /// Split a foreign field element into a vector of `LIMB_BITS` bits field elements of type `F` in little-endian.
     /// Right now it is written so that it gives `LIMB_COUNT` limbs, even if it fits in less bits.
     fn big_to_vec(fe: BigUint) -> Vec<F> {
-        //let mut bytes = fe.to_bytes_le();
         let bytes = fe.to_bytes_le();
-        //pad_zeros_le(&mut bytes, LIMB_BITS as usize * LIMB_COUNT / 8);
         let chunks: Vec<&[u8]> = bytes.chunks((LIMB_BITS / 8).try_into().unwrap()).collect();
         chunks
             .iter()

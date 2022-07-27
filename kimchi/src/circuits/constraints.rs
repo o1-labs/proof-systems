@@ -20,7 +20,10 @@ use ark_poly::{
     Radix2EvaluationDomain as D,
 };
 use array_init::array_init;
-use o1_utils::ExtendedEvaluations;
+use o1_utils::{
+    foreign_field::{ForeignElement, LIMB_COUNT},
+    ExtendedEvaluations,
+};
 use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
@@ -123,8 +126,8 @@ pub struct ConstraintSystem<F: PrimeField> {
     pub foreign_field_add_selector_poly: Option<SelectorPolynomial<F>>,
 
     /// Foreign field modulus
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub foreign_field_modulus: Vec<F>,
+    #[serde(bound = "Option<ForeignElement<F, LIMB_COUNT>>: Serialize + DeserializeOwned")]
+    pub foreign_field_modulus: Option<ForeignElement<F, LIMB_COUNT>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -158,7 +161,7 @@ pub struct Builder<F: PrimeField> {
     lookup_tables: Vec<LookupTable<F>>,
     runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
     precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
-    foreign_field_modulus: Vec<F>,
+    foreign_field_modulus: Option<ForeignElement<F, LIMB_COUNT>>,
 }
 
 /// Create selector polynomial for a circuit gate
@@ -224,7 +227,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
             lookup_tables: vec![],
             runtime_tables: None,
             precomputations: None,
-            foreign_field_modulus: vec![],
+            foreign_field_modulus: None,
         }
     }
 
@@ -386,8 +389,11 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
 
     /// Set up the foreign field modulus.
     /// If not invoked, it is `vec![]` by default.
-    pub fn foreign_field_modulus(mut self, foreign_field_modulus: Vec<F>) -> Self {
-        self.foreign_field_modulus = foreign_field_modulus;
+    pub fn foreign_field_modulus(
+        mut self,
+        foreign_field_modulus: ForeignElement<F, LIMB_COUNT>,
+    ) -> Self {
+        self.foreign_field_modulus = Some(foreign_field_modulus);
         self
     }
 

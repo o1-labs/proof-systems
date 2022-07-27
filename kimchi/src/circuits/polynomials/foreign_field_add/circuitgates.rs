@@ -106,7 +106,7 @@ where
         let foreign_modulus_mi = E::constant(ForeignFieldModulus(1));
         let foreign_modulus_hi = E::constant(ForeignFieldModulus(2));
 
-        let two_to_88 = constant(F::from(2u128.pow(LIMB_BITS)));
+        let two_to_88 = constant(F::from(2u128.pow(LIMB_BITS as u32)));
 
         //   2^(2*88) * m_2 + 2^(88) * m_1 + m_0
         // + 2^(2*88) * g_2 + 2^(88) * g_1 + g_0
