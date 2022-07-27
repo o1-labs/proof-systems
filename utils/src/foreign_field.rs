@@ -15,7 +15,7 @@ pub const LIMB_COUNT: usize = 3;
 /// The foreign field modulus of secp256k1 is the prime number (in big endian)
 /// FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFE FFFFFC2F
 /// given by the computation 2^256 - 2^32 - 2^9 - 2^8 - 2^7 - 2^6 - 2^4 - 1
-/// more information here  https://en.bitcoin.it/wiki/Secp256k1
+/// more information here  <https://en.bitcoin.it/wiki/Secp256k1>
 pub const FOREIGN_MOD: &[u8] = &[
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0xFF, 0xFF, 0xFC, 0x2F,

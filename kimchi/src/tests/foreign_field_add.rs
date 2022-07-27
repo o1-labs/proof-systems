@@ -6,14 +6,14 @@ use crate::circuits::{
 };
 use ark_ec::AffineCurve;
 use ark_ff::{One, Zero};
-use mina_curves::pasta::{pallas, vesta::Affine as Vesta};
+use mina_curves::pasta::{pallas, vesta::Vesta};
 use num_bigint::BigUint;
 use o1_utils::{
     foreign_field::{ForeignElement, FOREIGN_MOD},
     FieldHelpers,
 };
 
-type PallasField = <pallas::Affine as AffineCurve>::BaseField;
+type PallasField = <pallas::Pallas as AffineCurve>::BaseField;
 
 /// Maximum value in the foreign field
 // BigEndian -> FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFE FFFFFC2E
