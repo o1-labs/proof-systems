@@ -205,7 +205,7 @@ where
             })
             .collect();
 
-        //~ 1. Absorb evaluations for the previous recusion challenges.
+        //~ 1. Absorb evaluations for the previous recursion challenges.
         let prev_challenge_digest = {
             // Note: we absorb in a new sponge here to limit the scope in which we need the
             // more-expensive 'optional sponge'.
