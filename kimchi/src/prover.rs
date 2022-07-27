@@ -1047,6 +1047,18 @@ where
         //~ 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
         fr_sponge.absorb(&fq_sponge.digest());
 
+        //~ 1. Absorb the previous recursion challenges.
+        let prev_challenge_digest = {
+            // Note: we absorb in a new sponge here to limit the scope in which we need the
+            // more-expensive 'optional sponge'.
+            let mut fr_sponge = EFrSponge::new(G::sponge_params());
+            for RecursionChallenge { chals, .. } in &prev_challenges {
+                fr_sponge.absorb_multiple(chals);
+            }
+            fr_sponge.digest()
+        };
+        fr_sponge.absorb(&prev_challenge_digest);
+
         //~ 1. Compute evaluations for the previous recursion challenges.
         let polys = prev_challenges
             .iter()
@@ -1057,24 +1069,6 @@ where
                 )
             })
             .collect::<Vec<_>>();
-
-        //~ 1. Absorb evaluations for the previous recursion challenges.
-        let prev_challenge_digest = {
-            // Note: we absorb in a new sponge here to limit the scope in which we need the
-            // more-expensive 'optional sponge'.
-            let mut fr_sponge = EFrSponge::new(G::sponge_params());
-            for prev_challenge in prev_challenges.iter() {
-                let evals = prev_challenge.evals(
-                    index.max_poly_size,
-                    &[zeta, zeta_omega],
-                    &[zeta_to_srs_len, zeta_omega_to_srs_len],
-                );
-                fr_sponge.absorb_multiple(&evals[0]);
-                fr_sponge.absorb_multiple(&evals[1]);
-            }
-            fr_sponge.digest()
-        };
-        fr_sponge.absorb(&prev_challenge_digest);
 
         //~ 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
         let public_evals = if public_poly.is_zero() {

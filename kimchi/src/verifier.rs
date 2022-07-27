@@ -205,14 +205,13 @@ where
             })
             .collect();
 
-        //~ 1. Absorb evaluations for the previous recursion challenges.
+        //~ 1. Absorb the previous recursion challenges.
         let prev_challenge_digest = {
             // Note: we absorb in a new sponge here to limit the scope in which we need the
             // more-expensive 'optional sponge'.
             let mut fr_sponge = EFrSponge::new(G::sponge_params());
-            for (_, prev_chal_eval) in polys.iter() {
-                fr_sponge.absorb_multiple(&prev_chal_eval[0]);
-                fr_sponge.absorb_multiple(&prev_chal_eval[1]);
+            for RecursionChallenge { chals, .. } in &self.prev_challenges {
+                fr_sponge.absorb_multiple(&chals);
             }
             fr_sponge.digest()
         };
