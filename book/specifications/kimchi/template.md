@@ -258,6 +258,10 @@ TODO: for each gate describe how to create it?
 
 {sections.varbasemul}
 
+#### Range Check
+
+{sections.range_check}
+
 #### Foreign Field Multiplication
 
 {sections.foreign_field_mul}

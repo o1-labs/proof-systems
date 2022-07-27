@@ -64,7 +64,7 @@ impl<G: KimchiCurve> ProverIndex<G> {
         // pre-compute the linearization
         let (linearization, powers_of_alpha) = expr_linearization(
             cs.chacha8.is_some(),
-            !cs.range_check_selector_polys.is_empty(),
+            cs.range_check_selector_polys.is_some(),
             cs.lookup_constraint_system
                 .as_ref()
                 .map(|lcs| &lcs.configuration),
@@ -95,7 +95,7 @@ pub mod testing {
         lookup::{runtime_tables::RuntimeTableCfg, tables::LookupTable},
     };
     use commitment_dlog::srs::endos;
-    use mina_curves::pasta::{pallas::Affine as Pallas, vesta::Affine as Vesta, Fp};
+    use mina_curves::pasta::{pallas::Pallas, vesta::Vesta, Fp};
 
     pub fn new_index_for_test_with_lookups(
         gates: Vec<CircuitGate<Fp>>,

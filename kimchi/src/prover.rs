@@ -588,9 +588,15 @@ where
                         index_evals.insert(*g, &c[i]);
                     }
                 });
-            if !index.cs.range_check_selector_polys.is_empty() {
+
+            if index.cs.range_check_selector_polys.is_some() {
                 index_evals.extend(range_check::gadget::circuit_gates().iter().enumerate().map(
-                    |(i, gate_type)| (*gate_type, &index.cs.range_check_selector_polys[i].eval8),
+                    |(i, gate_type)| {
+                        (
+                            *gate_type,
+                            &index.cs.range_check_selector_polys.as_ref().unwrap()[i].eval8,
+                        )
+                    },
                 ));
             }
             if let Some(selector) = index.cs.foreign_field_mul_selector_poly.as_ref() {
@@ -659,7 +665,7 @@ where
                 (perm, bnd)
             };
 
-            if !index.cs.range_check_selector_polys.is_empty() {
+            if index.cs.range_check_selector_polys.is_some() {
                 // Range check gate
                 for gate_type in range_check::gadget::circuit_gates() {
                     let expr =

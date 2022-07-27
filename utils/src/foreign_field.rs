@@ -1,11 +1,15 @@
+//! Describes helpers for foreign field arithmetics
+
 use std::fmt::Display;
 
 use crate::field_helpers::FieldHelpers;
 use ark_ff::FftField;
 use num_bigint::BigUint;
 
+/// Limb length for foreign field elements
 pub const LIMB_BITS: usize = 88;
 
+/// Number of desired limbs for foreign field elements
 pub const LIMB_COUNT: usize = 3;
 
 /// The foreign field modulus of secp256k1 is the prime number (in big endian)
@@ -16,9 +20,12 @@ pub const FOREIGN_MOD: &[u8] = &[
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0xFF, 0xFF, 0xFC, 0x2F,
 ];
+
+/// Bit length of the foreign field modulus
 pub const FOREIGN_BITS: usize = 8 * FOREIGN_MOD.len(); // 256 bits
 
 #[derive(Debug, Clone, Copy)]
+/// Represents a foreign field element
 pub struct ForeignElement<F, const N: usize> {
     /// limbs in little endian order
     pub limbs: [F; N],
@@ -26,10 +33,7 @@ pub struct ForeignElement<F, const N: usize> {
     pub len: usize,
 }
 
-impl<F: FftField, const N: usize> ForeignElement<F, N>
-where
-    F: std::ops::Mul<Output = F> + std::ops::Sub<Output = F> + std::ops::Add<Output = F> + Clone,
-{
+impl<F: FftField, const N: usize> ForeignElement<F, N> {
     /// Initializes a new foreign element from a big unsigned integer
     pub fn new_from_big(big: BigUint) -> Self {
         let vec = ForeignElement::<F, N>::big_to_vec(big);
@@ -69,8 +73,10 @@ where
     /// Split a foreign field element into a vector of `LIMB_BITS` bits field elements of type `F` in little-endian.
     /// Right now it is written so that it gives `LIMB_COUNT` limbs, even if it fits in less bits.
     fn big_to_vec(fe: BigUint) -> Vec<F> {
+        //let mut bytes = fe.to_bytes_le();
         let bytes = fe.to_bytes_le();
-        let chunks: Vec<&[u8]> = bytes.chunks(LIMB_BITS / 8).collect();
+        //pad_zeros_le(&mut bytes, LIMB_BITS as usize * LIMB_COUNT / 8);
+        let chunks: Vec<&[u8]> = bytes.chunks((LIMB_BITS / 8).try_into().unwrap()).collect();
         chunks
             .iter()
             .map(|chunk| F::from_random_bytes(chunk).expect("failed to deserialize"))
@@ -84,14 +90,17 @@ impl<F: FftField> ForeignElement<F, 3> {
         Self { limbs, len: 3 }
     }
 
+    /// Returns a reference to the lowest limb of the foreign element
     pub fn lo(&self) -> &F {
         &self.limbs[0]
     }
 
+    /// Returns a reference to the middle limb of the foreign element
     pub fn mi(&self) -> &F {
         &self.limbs[1]
     }
 
+    /// Returns a reference to the highest limb of the foreign element
     pub fn hi(&self) -> &F {
         &self.limbs[2]
     }
