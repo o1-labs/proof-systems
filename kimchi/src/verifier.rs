@@ -21,8 +21,7 @@ use crate::{
 use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Polynomial};
 use commitment_dlog::commitment::{
-    b_poly, b_poly_coefficients, combined_inner_product, BatchEvaluationProof, CommitmentCurve,
-    Evaluation, PolyComm,
+    b_poly, b_poly_coefficients, combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
 };
 use itertools::izip;
 use oracle::{sponge::ScalarChallenge, FqSponge};

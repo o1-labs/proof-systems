@@ -41,29 +41,30 @@ pub mod caml {
     use commitment_dlog::commitment::shift_scalar;
 
     use crate::{
-        circuits::scalars::caml::CamlRandomOracles, error::VerifyError, plonk_sponge::FrSponge,
-        proof::ProverProof, verifier_index::VerifierIndex,
+        circuits::scalars::caml::CamlRandomOracles, curve::KimchiCurve, error::VerifyError,
+        plonk_sponge::FrSponge, proof::ProverProof, verifier_index::VerifierIndex,
     };
 
     use super::*;
 
-    pub struct CamlOracles<F> {
-        pub o: CamlRandomOracles<F>,
-        pub p_eval: (F, F),
-        pub opening_prechallenges: Vec<F>,
-        pub digest_before_evaluations: F,
+    pub struct CamlOracles<CamlF> {
+        pub o: CamlRandomOracles<CamlF>,
+        pub p_eval: (CamlF, CamlF),
+        pub opening_prechallenges: Vec<CamlF>,
+        pub digest_before_evaluations: CamlF,
     }
 
-    pub fn create_caml_oracles<G, EFqSponge, EFrSponge, CurveParams>(
+    pub fn create_caml_oracles<G, CamlF, EFqSponge, EFrSponge, CurveParams>(
         lgr_comm: Vec<PolyComm<G>>,
         index: VerifierIndex<G>,
         proof: ProverProof<G>,
-    ) -> Result<CamlOracles<G::ScalarField>, VerifyError>
+    ) -> Result<CamlOracles<CamlF>, VerifyError>
     where
-        G: CommitmentCurve,
+        G: KimchiCurve,
         G::BaseField: PrimeField,
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
         EFrSponge: FrSponge<G::ScalarField>,
+        CamlF: From<G::ScalarField>,
     {
         let lgr_comm: Vec<PolyComm<G>> = lgr_comm.into_iter().take(proof.public.len()).collect();
         let lgr_comm_refs: Vec<_> = lgr_comm.iter().collect();
