@@ -106,6 +106,7 @@
 <span id="100">100</span>
 <span id="101">101</span>
 <span id="102">102</span>
+<span id="103">103</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This type and logic only exists for the OCaml side.</span>
 <span class="doccomment">//! As we move more code to the Rust side,</span>
 <span class="doccomment">//! we hope to be able to remove this code in the future.</span>
@@ -155,6 +156,7 @@
 
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
+    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">ocaml_gen::Struct</span>)]</span>
     <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlOracles</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span> {
         <span class="kw">pub</span> <span class="ident">o</span>: <span class="ident">CamlRandomOracles</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
         <span class="kw">pub</span> <span class="ident">p_eval</span>: (<span class="ident">CamlF</span>, <span class="ident">CamlF</span>),
