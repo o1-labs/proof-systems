@@ -367,8 +367,8 @@ fn circuit_gate_selector_index(typ: GateType) -> usize {
 }
 
 /// Get vector of range check circuit gate types
-pub fn circuit_gates() -> Vec<GateType> {
-    vec![GateType::RangeCheck0, GateType::RangeCheck1]
+pub fn circuit_gates() -> [GateType; GATE_COUNT] {
+    [GateType::RangeCheck0, GateType::RangeCheck1]
 }
 
 /// Number of constraints for a given range check circuit gate type

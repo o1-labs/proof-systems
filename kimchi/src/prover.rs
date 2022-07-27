@@ -673,7 +673,6 @@ where
                     let expr =
                         range_check::gadget::circuit_gate_constraints(gate_type, &all_alphas);
                     let evals = expr.evaluations(&env);
-
                     if evals.domain().size == t4.domain().size {
                         t4 += &evals;
                     } else if evals.domain().size == t8.domain().size {

@@ -95,7 +95,7 @@ pub mod testing {
         lookup::{runtime_tables::RuntimeTableCfg, tables::LookupTable},
     };
     use commitment_dlog::srs::endos;
-    use mina_curves::pasta::{pallas::Affine as Pallas, vesta::Affine as Vesta, Fp};
+    use mina_curves::pasta::{pallas::Pallas, vesta::Vesta, Fp};
 
     pub fn new_index_for_test_with_lookups(
         gates: Vec<CircuitGate<Fp>>,

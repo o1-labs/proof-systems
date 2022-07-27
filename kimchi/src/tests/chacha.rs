@@ -17,7 +17,7 @@ use commitment_dlog::commitment::CommitmentCurve;
 use groupmap::GroupMap;
 use mina_curves::pasta::{
     fp::Fp,
-    vesta::{Affine, VestaParameters},
+    vesta::{Vesta, VestaParameters},
 };
 use o1_utils::math;
 use oracle::{
@@ -83,7 +83,7 @@ fn chacha_prover() {
         }
     }
 
-    let group_map = <Affine as CommitmentCurve>::Map::setup();
+    let group_map = <Vesta as CommitmentCurve>::Map::setup();
 
     let start = Instant::now();
     let proof =
@@ -95,7 +95,7 @@ fn chacha_prover() {
     println!("{}{:?}", "Verifier index time: ".yellow(), start.elapsed());
 
     let start = Instant::now();
-    match verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &verifier_index, &proof) {
+    match verify::<Vesta, BaseSponge, ScalarSponge>(&group_map, &verifier_index, &proof) {
         Err(error) => panic!("Failure verifying the prover's proofs in batch: {}", error),
         Ok(_) => {
             println!("{}{:?}", "Verifier time: ".yellow(), start.elapsed());
