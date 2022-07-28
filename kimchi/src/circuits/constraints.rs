@@ -20,6 +20,7 @@ use ark_poly::{
     Radix2EvaluationDomain as D,
 };
 use array_init::array_init;
+use num_bigint::BigUint;
 use o1_utils::{
     foreign_field::{ForeignElement, LIMB_COUNT},
     ExtendedEvaluations,
@@ -387,13 +388,11 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         self
     }
 
-    /// Set up the foreign field modulus.
-    /// If not invoked, it is `vec![]` by default.
-    pub fn foreign_field_modulus(
-        mut self,
-        foreign_field_modulus: ForeignElement<F, LIMB_COUNT>,
-    ) -> Self {
-        self.foreign_field_modulus = Some(foreign_field_modulus);
+    /// Set up the foreign field modulus passed as a BigUint
+    /// If not invoked, it is `None` by default.
+    pub fn foreign_field_modulus(mut self, foreign_field_modulus: BigUint) -> Self {
+        self.foreign_field_modulus =
+            Some(ForeignElement::<F, 3>::new_from_big(foreign_field_modulus));
         self
     }
 
