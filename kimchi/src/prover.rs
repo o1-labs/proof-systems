@@ -619,7 +619,7 @@ where
                     joint_combiner: lookup_context.joint_combiner,
                     endo_coefficient: index.cs.endo,
                     mds,
-                    foreign_field_modulus: index.cs.foreign_field_modulus.clone(),
+                    foreign_field_modulus: index.cs.foreign_field_modulus,
                 },
                 witness: &lagrange.d8.this.w,
                 coefficient: &index.cs.coefficients8,

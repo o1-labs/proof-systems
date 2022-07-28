@@ -254,7 +254,7 @@ impl<G: KimchiCurve> ProverIndex<G> {
             endo: self.cs.endo,
             lookup_index,
             linearization: self.linearization.clone(),
-            foreign_field_modulus: self.cs.foreign_field_modulus.clone(),
+            foreign_field_modulus: self.cs.foreign_field_modulus,
         }
     }
 }

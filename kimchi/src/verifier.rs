@@ -378,7 +378,7 @@ where
                 joint_combiner: joint_combiner.as_ref().map(|j| j.1),
                 endo_coefficient: index.endo,
                 mds: &G::sponge_params().mds,
-                foreign_field_modulus: index.foreign_field_modulus.clone(),
+                foreign_field_modulus: index.foreign_field_modulus,
             };
             ft_eval0 -= PolishToken::evaluate(
                 &index.linearization.constant_term,
