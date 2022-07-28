@@ -83,7 +83,7 @@ impl<F: FftField, const N: usize> ForeignElement<F, N> {
     /// Right now it is written so that it gives `LIMB_COUNT` limbs, even if it fits in less bits.
     fn big_to_vec(fe: BigUint) -> Vec<F> {
         let bytes = fe.to_bytes_le();
-        let chunks: Vec<&[u8]> = bytes.chunks((LIMB_BITS / 8).try_into().unwrap()).collect();
+        let chunks: Vec<&[u8]> = bytes.chunks(LIMB_BITS / 8).collect();
         chunks
             .iter()
             .map(|chunk| F::from_random_bytes(chunk).expect("failed to deserialize"))

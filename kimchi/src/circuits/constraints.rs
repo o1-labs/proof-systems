@@ -390,6 +390,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
 
     /// Set up the foreign field modulus passed as a BigUint
     /// If not invoked, it is `None` by default.
+    /// Panics if the BigUint being passed needs more than 3 limbs of 88 bits each.
     pub fn foreign_field_modulus(mut self, foreign_field_modulus: BigUint) -> Self {
         self.foreign_field_modulus =
             Some(ForeignElement::<F, 3>::new_from_big(foreign_field_modulus));
@@ -580,22 +581,12 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         };
 
         // Foreign field addition constraint selector polynomial
+        let ffadd_gates = foreign_field_add::gadget::circuit_gates();
         let foreign_field_add_selector_poly = {
-            if !circuit_gates_used.is_disjoint(
-                &foreign_field_add::gadget::circuit_gates()
-                    .into_iter()
-                    .collect(),
-            ) {
-                Some(
-                    selector_polynomials(
-                        &foreign_field_add::gadget::circuit_gates(),
-                        &gates,
-                        &domain,
-                    )[0]
-                    .clone(),
-                )
-            } else {
+            if circuit_gates_used.is_disjoint(&ffadd_gates.into_iter().collect()) {
                 None
+            } else {
+                Some(selector_polynomial(ffadd_gates[0], &gates, &domain))
             }
         };
 

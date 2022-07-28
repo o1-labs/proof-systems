@@ -28,6 +28,9 @@ use crate::{
 
 use super::circuitgates::ForeignFieldAdd;
 
+/// Number of gates used by the foreign field addition gadget
+pub const GATE_COUNT: usize = 1;
+
 impl<F: PrimeField> CircuitGate<F> {
     /// Create foreign field addition gate
     ///     Inputs the starting row
@@ -368,9 +371,9 @@ fn set_up_lookup_env_data<F: PrimeField>(
 }
 */
 
-/// Get vector of foreign field multiplication circuit gate types
-pub fn circuit_gates() -> Vec<GateType> {
-    vec![GateType::ForeignFieldAdd]
+/// Get array of foreign field addition circuit gate types
+pub fn circuit_gates() -> [GateType; GATE_COUNT] {
+    [GateType::ForeignFieldAdd]
 }
 
 /// Get combined constraints for a given foreign field multiplication circuit gate
