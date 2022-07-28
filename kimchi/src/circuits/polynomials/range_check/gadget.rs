@@ -13,18 +13,15 @@ use crate::{
     circuits::{
         argument::{Argument, ArgumentType},
         constraints::ConstraintSystem,
-        domains::EvaluationDomains,
         expr::{self, l0_1, Environment, LookupEnvironment, E},
-        gate::{
-            CircuitGate, CircuitGateError, CircuitGateResult, Connect, GateType, SelectorPolynomial,
-        },
+        gate::{CircuitGate, CircuitGateError, CircuitGateResult, Connect, GateType},
         lookup::{
             self,
             lookups::{LookupInfo, LookupsUsed},
             tables::{GateLookupTable, LookupTable},
         },
         polynomial::COLUMNS,
-        wires::{GateWires, Wire},
+        wires::Wire,
     },
     curve::KimchiCurve,
 };
@@ -40,27 +37,25 @@ impl<F: PrimeField> CircuitGate<F> {
     ///       next_row      - next row after this gate
     ///       circuit_gates - vector of circuit gates comprising this gate
     pub fn create_multi_range_check(start_row: usize) -> (usize, Vec<Self>) {
-        let wires: Vec<GateWires> = (0..4).map(|i| Wire::new(start_row + i)).collect();
-
         let mut circuit_gates = vec![
             CircuitGate {
                 typ: GateType::RangeCheck0,
-                wires: wires[0],
+                wires: Wire::new(start_row),
                 coeffs: vec![],
             },
             CircuitGate {
                 typ: GateType::RangeCheck0,
-                wires: wires[1],
+                wires: Wire::new(start_row + 1),
                 coeffs: vec![],
             },
             CircuitGate {
                 typ: GateType::RangeCheck1,
-                wires: wires[2],
+                wires: Wire::new(start_row + 2),
                 coeffs: vec![],
             },
             CircuitGate {
                 typ: GateType::Zero,
-                wires: wires[3],
+                wires: Wire::new(start_row + 3),
                 coeffs: vec![],
             },
         ];
@@ -392,36 +387,6 @@ pub fn circuit_gate_constraints<F: FftField>(typ: GateType, alphas: &Alphas<F>) 
 /// Get the combined constraints for all range check circuit gate types
 pub fn combined_constraints<F: FftField>(alphas: &Alphas<F>) -> E<F> {
     RangeCheck0::combined_constraints(alphas) + RangeCheck1::combined_constraints(alphas)
-}
-
-/// Create range check circuit gates selector polynomials
-pub fn selector_polynomials<F: PrimeField>(
-    gates: &[CircuitGate<F>],
-    domain: &EvaluationDomains<F>,
-) -> [SelectorPolynomial<F>; GATE_COUNT] {
-    array_init(|i| {
-        let gate_type = circuit_gates()[i];
-        // Coefficient form
-        let coeff = Evaluations::<F, D<F>>::from_vec_and_domain(
-            gates
-                .iter()
-                .map(|gate| {
-                    if gate.typ == gate_type {
-                        F::one()
-                    } else {
-                        F::zero()
-                    }
-                })
-                .collect(),
-            domain.d1,
-        )
-        .interpolate();
-
-        // Evaluation form (evaluated over d8)
-        let eval8 = coeff.evaluate_over_domain_by_ref(domain.d8);
-
-        SelectorPolynomial { eval8 }
-    })
 }
 
 /// Get the range check lookup table

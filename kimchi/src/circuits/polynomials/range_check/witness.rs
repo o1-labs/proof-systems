@@ -2,7 +2,7 @@
 
 use ark_ff::PrimeField;
 use array_init::array_init;
-use o1_utils::{foreign_field::ForeignElement, FieldHelpers};
+use o1_utils::{FieldHelpers, ForeignElement};
 
 use crate::circuits::polynomial::COLUMNS;
 

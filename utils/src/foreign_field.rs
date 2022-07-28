@@ -49,15 +49,11 @@ impl<F: FftField, const N: usize> ForeignElement<F, N> {
         if vec.len() > N {
             panic!("BigUint element is too large for N limbs");
         }
-        let limbs = {
-            let mut ini = [F::zero(); N];
-            for i in 0..N {
-                if i < vec.len() {
-                    ini[i] = vec[i]
-                }
-            }
-            ini
-        };
+        let mut limbs = [F::zero(); N];
+        for (i, term) in vec.iter().enumerate() {
+            limbs[i] = *term;
+        }
+
         Self {
             limbs,
             len: limbs.len(),
