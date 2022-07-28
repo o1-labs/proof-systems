@@ -40,27 +40,25 @@ impl<F: PrimeField> CircuitGate<F> {
     ///       next_row      - next row after this gate
     ///       circuit_gates - vector of circuit gates comprising this gate
     pub fn create_multi_range_check(start_row: usize) -> (usize, Vec<Self>) {
-        let wires: Vec<GateWires> = (0..4).map(|i| Wire::new(start_row + i)).collect();
-
         let mut circuit_gates = vec![
             CircuitGate {
                 typ: GateType::RangeCheck0,
-                wires: wires[0],
+                wires: Wire::new(start_row),
                 coeffs: vec![],
             },
             CircuitGate {
                 typ: GateType::RangeCheck0,
-                wires: wires[1],
+                wires: Wire::new(start_row + 1),
                 coeffs: vec![],
             },
             CircuitGate {
                 typ: GateType::RangeCheck1,
-                wires: wires[2],
+                wires: Wire::new(start_row + 2),
                 coeffs: vec![],
             },
             CircuitGate {
                 typ: GateType::Zero,
-                wires: wires[3],
+                wires: Wire::new(start_row + 3),
                 coeffs: vec![],
             },
         ];

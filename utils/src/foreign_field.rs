@@ -7,7 +7,7 @@ use ark_ff::FftField;
 use num_bigint::BigUint;
 
 /// Limb length for foreign field elements
-pub const LIMB_BITS: u32 = 88;
+pub const LIMB_BITS: usize = 88;
 
 /// Number of desired limbs for foreign field elements
 pub const LIMB_COUNT: usize = 3;
@@ -15,7 +15,7 @@ pub const LIMB_COUNT: usize = 3;
 /// The foreign field modulus of secp256k1 is the prime number (in big endian)
 /// FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFE FFFFFC2F
 /// given by the computation 2^256 - 2^32 - 2^9 - 2^8 - 2^7 - 2^6 - 2^4 - 1
-/// more information here  https://en.bitcoin.it/wiki/Secp256k1
+/// more information here  <https://en.bitcoin.it/wiki/Secp256k1>
 pub const FOREIGN_MOD: &[u8] = &[
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0xFF, 0xFF, 0xFC, 0x2F,
@@ -35,12 +35,16 @@ pub struct ForeignElement<F, const N: usize> {
 
 impl<F: FftField, const N: usize> ForeignElement<F, N> {
     /// Initializes a new foreign element from a big unsigned integer
+    /// Panics if the BigUint is too large to fit in the `N` limbs
     pub fn new_from_big(big: BigUint) -> Self {
         let vec = ForeignElement::<F, N>::big_to_vec(big);
 
         // create an array of N native elements containing the limbs
         // until the array is full in big endian, so most significant
         // limbs may be zero if the big number is smaller
+        if vec.len() > N {
+            panic!("BigUint element is too large for N limbs");
+        }
         let limbs = {
             let mut ini = [F::zero(); N];
             for i in 0..N {
@@ -78,9 +82,7 @@ impl<F: FftField, const N: usize> ForeignElement<F, N> {
     /// Split a foreign field element into a vector of `LIMB_BITS` bits field elements of type `F` in little-endian.
     /// Right now it is written so that it gives `LIMB_COUNT` limbs, even if it fits in less bits.
     fn big_to_vec(fe: BigUint) -> Vec<F> {
-        //let mut bytes = fe.to_bytes_le();
         let bytes = fe.to_bytes_le();
-        //pad_zeros_le(&mut bytes, LIMB_BITS as usize * LIMB_COUNT / 8);
         let chunks: Vec<&[u8]> = bytes.chunks((LIMB_BITS / 8).try_into().unwrap()).collect();
         chunks
             .iter()
