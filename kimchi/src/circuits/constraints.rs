@@ -546,13 +546,14 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         };
 
         // Range check constraint selector polynomials
+        let range_gates = range_check::gadget::circuit_gates();
         let range_check_selector_polys = {
-            if !circuit_gates_used
-                .is_disjoint(&range_check::gadget::circuit_gates().into_iter().collect())
-            {
-                Some(range_check::gadget::selector_polynomials(&gates, &domain))
-            } else {
+            if circuit_gates_used.is_disjoint(&range_gates.into_iter().collect()) {
                 None
+            } else {
+                Some(array_init(|i| {
+                    selector_polynomial(range_gates[i], &gates, &domain)
+                }))
             }
         };
 
