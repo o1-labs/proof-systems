@@ -23,7 +23,7 @@ use array_init::array_init;
 use num_bigint::BigUint;
 use o1_utils::{
     foreign_field::{ForeignElement, LIMB_COUNT},
-    ExtendedEvaluations,
+    ExtendedEvaluations, FieldHelpers,
 };
 use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -390,8 +390,12 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
 
     /// Set up the foreign field modulus passed as a BigUint
     /// If not invoked, it is `None` by default.
-    /// Panics if the BigUint being passed needs more than 3 limbs of 88 bits each.
+    /// Panics if the BigUint being passed needs more than 3 limbs of 88 bits each
+    /// or if the foreign modulus being passed is smaller than the native modulus.
     pub fn foreign_field_modulus(mut self, foreign_field_modulus: BigUint) -> Self {
+        if foreign_field_modulus <= F::modulus_biguint() {
+            panic!("Foreign field modulus must be greater than the native modulus");
+        }
         self.foreign_field_modulus =
             Some(ForeignElement::<F, 3>::new_from_big(foreign_field_modulus));
         self
