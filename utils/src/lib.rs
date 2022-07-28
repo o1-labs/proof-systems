@@ -15,3 +15,4 @@ pub mod serialization;
 pub use dense_polynomial::ExtendedDensePolynomial;
 pub use evaluations::ExtendedEvaluations;
 pub use field_helpers::FieldHelpers;
+pub use foreign_field::{ForeignElement, LIMB_COUNT};
