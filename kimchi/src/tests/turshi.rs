@@ -1,5 +1,7 @@
-use crate::circuits::gate::CircuitGate;
-use crate::circuits::polynomials::turshi::{testing::*, witness::*};
+use crate::circuits::{
+    gate::CircuitGate,
+    polynomials::turshi::{testing::*, witness::*},
+};
 use cairo::{CairoMemory, CairoProgram};
 use mina_curves::pasta::fp::Fp as F;
 

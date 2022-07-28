@@ -61,8 +61,9 @@ where
 #[test]
 fn poseidon_test_vectors_legacy() {
     fn hash(input: &[Fp]) -> Fp {
-        let mut hash =
-            Poseidon::<Fp, PlonkSpongeConstantsLegacy>::new(SpongeParametersLegacy::params());
+        let mut hash = Poseidon::<Fp, PlonkSpongeConstantsLegacy>::new(
+            SpongeParametersLegacy::static_params(),
+        );
         hash.absorb(input);
         hash.squeeze()
     }
@@ -72,8 +73,9 @@ fn poseidon_test_vectors_legacy() {
 #[test]
 fn poseidon_test_vectors_kimchi() {
     fn hash(input: &[Fp]) -> Fp {
-        let mut hash =
-            Poseidon::<Fp, PlonkSpongeConstantsKimchi>::new(SpongeParametersKimchi::params());
+        let mut hash = Poseidon::<Fp, PlonkSpongeConstantsKimchi>::new(
+            SpongeParametersKimchi::static_params(),
+        );
         hash.absorb(input);
         hash.squeeze()
     }

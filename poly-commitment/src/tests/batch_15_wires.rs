@@ -10,7 +10,7 @@ use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use colored::Colorize;
 use groupmap::GroupMap;
 use mina_curves::pasta::{
-    vesta::{Affine, VestaParameters},
+    vesta::{Vesta, VestaParameters},
     Fp,
 };
 use o1_utils::ExtendedDensePolynomial as _;
@@ -29,10 +29,12 @@ where
     let mut random = rand::thread_rng();
 
     let size = 1 << 7;
-    let srs = SRS::<Affine>::create(size);
+    let srs = SRS::<Vesta>::create(size);
 
-    let group_map = <Affine as CommitmentCurve>::Map::setup();
-    let sponge = DefaultFqSponge::<VestaParameters, SC>::new(oracle::pasta::fq_kimchi::params());
+    let group_map = <Vesta as CommitmentCurve>::Map::setup();
+
+    let sponge =
+        DefaultFqSponge::<VestaParameters, SC>::new(oracle::pasta::fq_kimchi::static_params());
 
     let mut commit = Duration::new(0, 0);
     let mut open = Duration::new(0, 0);

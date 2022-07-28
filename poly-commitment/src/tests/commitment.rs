@@ -8,7 +8,7 @@ use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use colored::Colorize;
 use groupmap::GroupMap;
 use mina_curves::pasta::{
-    vesta::{Affine, VestaParameters},
+    vesta::{Vesta, VestaParameters},
     Fp,
 };
 use o1_utils::ExtendedDensePolynomial as _;
@@ -25,7 +25,7 @@ use std::time::{Duration, Instant};
 /// A commitment
 pub struct Commitment {
     /// the commitment itself, potentially in chunks
-    chunked_commitment: PolyComm<Affine>,
+    chunked_commitment: PolyComm<Vesta>,
     /// an optional degree bound
     bound: Option<usize>,
 }
@@ -68,14 +68,12 @@ pub struct AggregatedEvaluationProof {
     /// an Fq-sponge
     fq_sponge: DefaultFqSponge<VestaParameters, SC>,
     /// the actual evaluation proof
-    proof: OpeningProof<Affine>,
+    proof: OpeningProof<Vesta>,
 }
 
 impl AggregatedEvaluationProof {
     /// This function converts an aggregated evaluation proof into something the verify API understands
-    pub fn verify_type(
-        &self,
-    ) -> BatchEvaluationProof<Affine, DefaultFqSponge<VestaParameters, SC>> {
+    pub fn verify_type(&self) -> BatchEvaluationProof<Vesta, DefaultFqSponge<VestaParameters, SC>> {
         let mut coms = vec![];
         for eval_com in &self.eval_commitments {
             assert_eq!(self.eval_points.len(), eval_com.chunked_evals.len());
@@ -106,11 +104,12 @@ where
 {
     // setup
     let mut rng = rand::thread_rng();
-    let group_map = <Affine as CommitmentCurve>::Map::setup();
-    let fq_sponge = DefaultFqSponge::<VestaParameters, SC>::new(oracle::pasta::fq_kimchi::params());
+    let group_map = <Vesta as CommitmentCurve>::Map::setup();
+    let fq_sponge =
+        DefaultFqSponge::<VestaParameters, SC>::new(oracle::pasta::fq_kimchi::static_params());
 
     // create an SRS optimized for polynomials of degree 2^7 - 1
-    let srs = SRS::<Affine>::create(1 << 7);
+    let srs = SRS::<Vesta>::create(1 << 7);
 
     // TODO: move to bench
     let mut time_commit = Duration::new(0, 0);

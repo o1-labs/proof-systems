@@ -25,19 +25,23 @@
 //~ ```
 //~
 
-use crate::circuits::argument::{Argument, ArgumentType};
-use crate::circuits::expr::{prologue::*, Cache, ConstantExpr};
-use crate::circuits::gate::{CircuitGate, CurrOrNext, GateType};
-use ark_ff::{FftField, Field, SquareRootField};
-use oracle::constants::{PlonkSpongeConstantsKimchi, SpongeConstants};
-use oracle::poseidon::{sbox, ArithmeticSponge, ArithmeticSpongeParams, Sponge};
-use std::marker::PhantomData;
-use std::ops::Range;
+use crate::{
+    circuits::{
+        argument::{Argument, ArgumentType},
+        expr::{prologue::*, Cache, ConstantExpr},
+        gate::{CircuitGate, CurrOrNext, GateType},
+        polynomial::COLUMNS,
+        wires::{GateWires, Wire},
+    },
+    curve::KimchiCurve,
+};
+use ark_ff::{FftField, Field, PrimeField};
+use oracle::{
+    constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
+    poseidon::{sbox, ArithmeticSponge, ArithmeticSpongeParams, Sponge},
+};
+use std::{marker::PhantomData, ops::Range};
 use CurrOrNext::{Curr, Next};
-
-use crate::circuits::constraints::ConstraintSystem;
-use crate::circuits::polynomial::COLUMNS;
-use crate::circuits::wires::{GateWires, Wire};
 
 //
 // Constants
@@ -73,7 +77,7 @@ pub const fn round_to_cols(i: usize) -> Range<usize> {
     start..(start + SPONGE_WIDTH)
 }
 
-impl<F: FftField + SquareRootField> CircuitGate<F> {
+impl<F: PrimeField> CircuitGate<F> {
     pub fn create_poseidon(
         wires: GateWires,
         // Coefficients are passed in in the logical order
@@ -132,12 +136,11 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
     }
 
     /// Checks if a witness verifies a poseidon gate
-    pub fn verify_poseidon(
+    pub fn verify_poseidon<G: KimchiCurve<ScalarField = F>>(
         &self,
         row: usize,
         // TODO(mimoo): we should just pass two rows instead of the whole witness
         witness: &[Vec<F>; COLUMNS],
-        cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
         ensure_eq!(
             self.typ,
@@ -160,10 +163,11 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
 
         // round constants
         let rc = self.rc();
+        let mds = &G::sponge_params().mds;
 
         // for each round, check that the permutation was applied correctly
         for round in 0..ROUNDS_PER_ROW {
-            for (i, mds_row) in cs.fr_sponge_params.mds.iter().enumerate() {
+            for (i, mds_row) in mds.iter().enumerate() {
                 // i-th(new_state) = i-th(rc) + mds(sbox(state))
                 let state = &states[round];
                 let mut new_state = rc[round][i];
@@ -215,7 +219,7 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
 /// and with input `input`.
 pub fn generate_witness<F: Field>(
     row: usize,
-    params: ArithmeticSpongeParams<F>,
+    params: &'static ArithmeticSpongeParams<F>,
     witness_cols: &mut [Vec<F>; COLUMNS],
     input: [F; SPONGE_WIDTH],
 ) {

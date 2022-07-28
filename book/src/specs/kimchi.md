@@ -1168,7 +1168,7 @@ Both the prover and the verifier index, besides the common parts described above
 These pre-computations are optimizations, in the context of normal proofs, but they are necessary for recursion.
 
 ```rs
-pub struct ProverIndex<G: CommitmentCurve> {
+pub struct ProverIndex<G: KimchiCurve> {
     /// constraints system polynomials
     #[serde(bound = "ConstraintSystem<G::ScalarField>: Serialize + DeserializeOwned")]
     pub cs: ConstraintSystem<G::ScalarField>,
@@ -1190,10 +1190,6 @@ pub struct ProverIndex<G: CommitmentCurve> {
 
     /// maximal size of the quotient polynomial according to the supported constraints
     pub max_quot_size: usize,
-
-    /// random oracle argument parameters
-    #[serde(skip)]
-    pub fq_sponge_params: ArithmeticSpongeParams<G::BaseField>,
 }
 ```
 
@@ -1227,7 +1223,7 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 
 #[serde_as]
 #[derive(Serialize, Deserialize)]
-pub struct VerifierIndex<G: CommitmentCurve> {
+pub struct VerifierIndex<G: KimchiCurve> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub domain: D<G::ScalarField>,
@@ -1303,12 +1299,6 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
     pub powers_of_alpha: Alphas<G::ScalarField>,
-
-    // random oracle argument parameters
-    #[serde(skip)]
-    pub fr_sponge_params: ArithmeticSpongeParams<G::ScalarField>,
-    #[serde(skip)]
-    pub fq_sponge_params: ArithmeticSpongeParams<G::BaseField>,
 }
 ```
 
@@ -1561,6 +1551,11 @@ The prover then follows the following steps to create the proof:
 1. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
    TODO: why not do this first, and then commit? Why commit from evaluation directly?
 1. If using lookup:
+	- if using runtime table:
+		- check that all the provided runtime tables have length and IDs that match the runtime table configuration of the index
+		  we expect the given runtime tables to be sorted as configured, this makes it easier afterwards
+		- calculate the contribution to the second column of the lookup table
+		  (the runtime vector)
 	- If queries involve a lookup table with multiple columns
 	  then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
 	  otherwise set the joint combiner challenge $j'$ to $0$.
@@ -1657,6 +1652,11 @@ The prover then follows the following steps to create the proof:
 	- the 15 registers/witness columns
 	- the 6 sigmas
 	- optionally, the runtime table
+1. if using lookup:
+	- add the lookup sorted polynomials
+	- add the lookup aggreg polynomial
+	- add the combined table polynomial
+	- if present, add the runtime table polynomial
 1. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
 
 
