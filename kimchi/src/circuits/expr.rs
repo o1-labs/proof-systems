@@ -47,7 +47,7 @@ pub enum ExprError {
 }
 
 /// The collection of constants required to evaluate an `Expr`.
-pub struct Constants<F: 'static> {
+pub struct Constants<F: 'static + Field> {
     /// The challenge alpha from the PLONK IOP.
     pub alpha: F,
     /// The challenge beta from the PLONK IOP.
@@ -2278,7 +2278,7 @@ pub mod test {
                 joint_combiner: None,
                 endo_coefficient: one,
                 mds: &Vesta::sponge_params().mds,
-                foreign_field_modulus: vec![],
+                foreign_field_modulus: None,
             },
             witness: &domain_evals.d8.this.w,
             coefficient: &constraint_system.coefficients8,

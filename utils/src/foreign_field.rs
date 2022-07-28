@@ -3,7 +3,7 @@
 use std::fmt::Display;
 
 use crate::{field_helpers::FieldHelpers, serialization::SerdeAs};
-use ark_ff::FftField;
+use ark_ff::{FftField, Field};
 use num_bigint::BigUint;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
@@ -29,7 +29,7 @@ pub const FOREIGN_BITS: usize = 8 * FOREIGN_MOD.len(); // 256 bits
 #[serde_as]
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 /// Represents a foreign field element
-pub struct ForeignElement<F, const N: usize> {
+pub struct ForeignElement<F: Field, const N: usize> {
     /// limbs in little endian order
     #[serde_as(as = "[SerdeAs; N]")]
     pub limbs: [F; N],

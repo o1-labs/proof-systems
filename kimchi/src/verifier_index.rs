@@ -23,7 +23,7 @@ use commitment_dlog::{
     commitment::{CommitmentCurve, PolyComm},
     srs::SRS,
 };
-use o1_utils::foreign_field::ForeignElement;
+use o1_utils::foreign_field::{ForeignElement, LIMB_COUNT};
 use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
@@ -112,6 +112,12 @@ pub struct VerifierIndex<G: KimchiCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub range_check_comm: Option<[PolyComm<G>; range_check::gadget::GATE_COUNT]>,
 
+    // Foreign field modulus
+    #[serde(
+        bound = "Option<ForeignElement<G::ScalarField, LIMB_COUNT>>: Serialize + DeserializeOwned"
+    )]
+    pub foreign_field_modulus: Option<ForeignElement<G::ScalarField, LIMB_COUNT>>,
+
     // Foreign field addition gates polynomial commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub foreign_field_add_comm: Option<PolyComm<G>>,
@@ -138,10 +144,6 @@ pub struct VerifierIndex<G: KimchiCurve> {
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
     pub powers_of_alpha: Alphas<G::ScalarField>,
-
-    // Foreign field modulus
-    #[serde_as(as = "Option<ForeignElement<o1_utils::serialization::SerdeAs, 3>>")]
-    pub foreign_field_modulus: Option<ForeignElement<G::ScalarField, 3>>,
 }
 //~spec:endcode
 

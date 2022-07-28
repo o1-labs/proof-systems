@@ -121,13 +121,13 @@ pub struct ConstraintSystem<F: PrimeField> {
     pub range_check_selector_polys:
         Option<[SelectorPolynomial<F>; range_check::gadget::GATE_COUNT]>,
 
-    /// Foreign field addition gate selector polynomial
-    #[serde(bound = "Option<SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
-    pub foreign_field_add_selector_poly: Option<SelectorPolynomial<F>>,
-
     /// Foreign field modulus
     #[serde(bound = "Option<ForeignElement<F, LIMB_COUNT>>: Serialize + DeserializeOwned")]
     pub foreign_field_modulus: Option<ForeignElement<F, LIMB_COUNT>>,
+
+    /// Foreign field addition gate selector polynomial
+    #[serde(bound = "Option<SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
+    pub foreign_field_add_selector_poly: Option<SelectorPolynomial<F>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
