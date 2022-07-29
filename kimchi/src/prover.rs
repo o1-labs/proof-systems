@@ -17,7 +17,7 @@ use crate::{
             generic, permutation,
             permutation::ZK_ROWS,
             poseidon::Poseidon,
-            range_check,
+            range_check::{self},
             varbasemul::VarbaseMul,
         },
         wires::{COLUMNS, PERMUTS},
@@ -723,43 +723,26 @@ where
                 }
             }
 
-            // Range check gate
+            // range check gates
             if index.cs.range_check_selector_polys.is_some() {
-                for range_gate in range_check::gadget::circuit_gates() {
-                    let expr =
-                        range_check::gadget::circuit_gate_constraints(range_gate, &all_alphas);
-                    let evals = expr.evaluations(&env);
-                    if evals.domain().size == t4.domain().size {
-                        t4 += &evals;
-                    } else if evals.domain().size == t8.domain().size {
-                        t8 += &evals;
-                    } else {
-                        panic!(
-                            "Bad evaluation domain size {} for {:?}",
-                            evals.domain().size,
-                            range_gate
-                        );
-                    }
-
-                    if cfg!(test) {
-                        let (_, res) = evals
-                            .interpolate()
-                            .divide_by_vanishing_poly(index.cs.domain.d1)
-                            .unwrap();
-                        if !res.is_zero() {
-                            panic!("Nonzero vanishing polynomial division for {:?}", range_gate);
-                        }
-                    }
+                for gate_type in range_check::gadget::circuit_gates() {
+                    let range =
+                        range_check::gadget::circuit_gate_constraints(gate_type, &all_alphas)
+                            .evaluations(&env);
+                    assert_eq!(range.domain().size, t8.domain().size);
+                    t8 += &range;
+                    check_constraint!(index, range);
                 }
             }
 
             // foreign field addition
             {
                 if index.cs.foreign_field_add_selector_poly.is_some() {
-                    let foreign_add =
+                    let ffadd =
                         ForeignFieldAdd::combined_constraints(&all_alphas).evaluations(&env);
-                    t4 += &foreign_add;
-                    check_constraint!(index, foreign_add);
+                    assert_eq!(ffadd.domain().size, t4.domain().size);
+                    t4 += &ffadd;
+                    check_constraint!(index, ffadd);
                 }
             }
 
