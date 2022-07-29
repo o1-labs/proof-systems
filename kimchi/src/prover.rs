@@ -655,38 +655,6 @@ where
                 (perm, bnd)
             };
 
-            if index.cs.range_check_selector_polys.is_some() {
-                // Range check gate
-                for gate_type in range_check::gadget::circuit_gates() {
-                    let expr =
-                        range_check::gadget::circuit_gate_constraints(gate_type, &all_alphas);
-
-                    let evals = expr.evaluations(&env);
-
-                    if evals.domain().size == t4.domain().size {
-                        t4 += &evals;
-                    } else if evals.domain().size == t8.domain().size {
-                        t8 += &evals;
-                    } else {
-                        panic!(
-                            "Bad evaluation domain size {} for {:?}",
-                            evals.domain().size,
-                            gate_type
-                        );
-                    }
-
-                    if cfg!(test) {
-                        let (_, res) = evals
-                            .interpolate()
-                            .divide_by_vanishing_poly(index.cs.domain.d1)
-                            .unwrap();
-                        if !res.is_zero() {
-                            panic!("Nonzero vanishing polynomial division for {:?}", gate_type);
-                        }
-                    }
-                }
-            }
-
             // scalar multiplication
             {
                 let mul8 = VarbaseMul::combined_constraints(&all_alphas).evaluations(&env);
@@ -740,6 +708,18 @@ where
                     check_constraint!(index, chacha1);
                     check_constraint!(index, chacha2);
                     check_constraint!(index, chacha_final);
+                }
+            }
+
+            // range check gates
+            if index.cs.range_check_selector_polys.is_some() {
+                for gate_type in range_check::gadget::circuit_gates() {
+                    let range =
+                        range_check::gadget::circuit_gate_constraints(gate_type, &all_alphas)
+                            .evaluations(&env);
+                    assert_eq!(range.domain().size, t8.domain().size);
+                    t8 += &range;
+                    check_constraint!(index, range);
                 }
             }
 
