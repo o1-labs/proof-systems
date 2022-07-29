@@ -2,9 +2,11 @@
 
 use std::fmt::Display;
 
-use crate::field_helpers::FieldHelpers;
-use ark_ff::FftField;
+use crate::{field_helpers::FieldHelpers, serialization::SerdeAs};
+use ark_ff::{FftField, Field};
 use num_bigint::BigUint;
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 
 /// Limb length for foreign field elements
 pub const LIMB_BITS: usize = 88;
@@ -24,10 +26,12 @@ pub const FOREIGN_MOD: &[u8] = &[
 /// Bit length of the foreign field modulus
 pub const FOREIGN_BITS: usize = 8 * FOREIGN_MOD.len(); // 256 bits
 
-#[derive(Debug, Clone, Copy)]
+#[serde_as]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 /// Represents a foreign field element
-pub struct ForeignElement<F, const N: usize> {
+pub struct ForeignElement<F: Field, const N: usize> {
     /// limbs in little endian order
+    #[serde_as(as = "[SerdeAs; N]")]
     pub limbs: [F; N],
     /// number of limbs used for the foreign field element
     pub len: usize,

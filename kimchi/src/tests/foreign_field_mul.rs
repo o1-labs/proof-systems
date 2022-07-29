@@ -6,10 +6,10 @@ use crate::circuits::{
 };
 use ark_ec::AffineCurve;
 use ark_ff::Zero;
-use mina_curves::pasta::{pallas, vesta::Affine as Vesta};
+use mina_curves::pasta::{pallas, vesta::Vesta};
 use o1_utils::foreign_field::{ForeignElement, FOREIGN_MOD};
 
-type PallasField = <pallas::Affine as AffineCurve>::BaseField;
+type PallasField = <pallas::Pallas as AffineCurve>::BaseField;
 
 fn create_test_constraint_system() -> ConstraintSystem<PallasField> {
     let (mut next_row, mut gates) = CircuitGate::<PallasField>::create_foreign_field_mul(0);

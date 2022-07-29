@@ -13,6 +13,7 @@ use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
 use itertools::Itertools;
+use o1_utils::foreign_field::ForeignElement;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::iter::FromIterator;
@@ -46,7 +47,7 @@ pub enum ExprError {
 }
 
 /// The collection of constants required to evaluate an `Expr`.
-pub struct Constants<F: 'static> {
+pub struct Constants<F: 'static + Field> {
     /// The challenge alpha from the PLONK IOP.
     pub alpha: F,
     /// The challenge beta from the PLONK IOP.
@@ -61,7 +62,7 @@ pub struct Constants<F: 'static> {
     /// The MDS matrix
     pub mds: &'static Vec<Vec<F>>,
     /// The modulus for foreign field operations
-    pub foreign_field_modulus: Vec<F>,
+    pub foreign_field_modulus: Option<ForeignElement<F, 3>>,
 }
 
 /// The polynomials specific to the lookup argument.
@@ -309,7 +310,7 @@ impl<F: Field> ConstantExpr<F> {
             JointCombiner => c.joint_combiner.expect("joint lookup was not expected"),
             EndoCoefficient => c.endo_coefficient,
             Mds { row, col } => c.mds[*row][*col],
-            ForeignFieldModulus(i) => c.foreign_field_modulus[*i],
+            ForeignFieldModulus(i) => c.foreign_field_modulus.unwrap().limbs[*i],
             Literal(x) => *x,
             Pow(x, p) => x.value(c).pow(&[*p as u64]),
             Mul(x, y) => x.value(c) * y.value(c),
@@ -491,7 +492,7 @@ impl<F: FftField> PolishToken<F> {
                 }
                 EndoCoefficient => stack.push(c.endo_coefficient),
                 Mds { row, col } => stack.push(c.mds[*row][*col]),
-                ForeignFieldModulus(i) => stack.push(c.foreign_field_modulus[*i]),
+                ForeignFieldModulus(i) => stack.push(c.foreign_field_modulus.unwrap().limbs[*i]),
                 VanishesOnLast4Rows => stack.push(eval_vanishes_on_last_4_rows(d, pt)),
                 UnnormalizedLagrangeBasis(i) => {
                     stack.push(unnormalized_lagrange_basis(&d, *i, &pt))
@@ -2045,7 +2046,7 @@ impl<F: PrimeField> ConstantExpr<F> {
             JointCombiner => "joint\\_combiner".to_string(),
             EndoCoefficient => "endo\\_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
-            ForeignFieldModulus(i) => format!("foreign_field_modulus({i})"),
+            ForeignFieldModulus(i) => format!("foreign\\_field\\_modulus({i})"),
             Literal(x) => format!("\\mathbb{{F}}({})", x.into_repr().into()),
             Pow(x, n) => match x.as_ref() {
                 Alpha => format!("\\alpha^{{{n}}}"),
@@ -2277,7 +2278,7 @@ pub mod test {
                 joint_combiner: None,
                 endo_coefficient: one,
                 mds: &Vesta::sponge_params().mds,
-                foreign_field_modulus: vec![],
+                foreign_field_modulus: None,
             },
             witness: &domain_evals.d8.this.w,
             coefficient: &constraint_system.coefficients8,

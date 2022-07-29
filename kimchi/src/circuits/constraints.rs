@@ -20,7 +20,11 @@ use ark_poly::{
     Radix2EvaluationDomain as D,
 };
 use array_init::array_init;
-use o1_utils::ExtendedEvaluations;
+use num_bigint::BigUint;
+use o1_utils::{
+    foreign_field::{ForeignElement, LIMB_COUNT},
+    ExtendedEvaluations, FieldHelpers,
+};
 use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
@@ -118,13 +122,13 @@ pub struct ConstraintSystem<F: PrimeField> {
     pub range_check_selector_polys:
         Option<[SelectorPolynomial<F>; range_check::gadget::GATE_COUNT]>,
 
+    /// Foreign field modulus
+    #[serde(bound = "Option<ForeignElement<F, LIMB_COUNT>>: Serialize + DeserializeOwned")]
+    pub foreign_field_modulus: Option<ForeignElement<F, LIMB_COUNT>>,
+
     /// Foreign field multiplication gate selector polynomial
     #[serde(bound = "Option<SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
     pub foreign_field_mul_selector_poly: Option<SelectorPolynomial<F>>,
-
-    /// Foreign field modulus
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub foreign_field_modulus: Vec<F>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -158,7 +162,7 @@ pub struct Builder<F: PrimeField> {
     lookup_tables: Vec<LookupTable<F>>,
     runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
     precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
-    foreign_field_modulus: Vec<F>,
+    foreign_field_modulus: Option<ForeignElement<F, LIMB_COUNT>>,
 }
 
 /// Create selector polynomial for a circuit gate
@@ -224,7 +228,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
             lookup_tables: vec![],
             runtime_tables: None,
             precomputations: None,
-            foreign_field_modulus: vec![],
+            foreign_field_modulus: None,
         }
     }
 
@@ -384,10 +388,16 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         self
     }
 
-    /// Set up the foreign field modulus.
-    /// If not invoked, it is `vec![]` by default.
-    pub fn foreign_field_modulus(mut self, foreign_field_modulus: Vec<F>) -> Self {
-        self.foreign_field_modulus = foreign_field_modulus;
+    /// Set up the foreign field modulus passed as a BigUint
+    /// If not invoked, it is `None` by default.
+    /// Panics if the BigUint being passed needs more than 3 limbs of 88 bits each
+    /// or if the foreign modulus being passed is smaller than the native modulus.
+    pub fn foreign_field_modulus(mut self, foreign_field_modulus: BigUint) -> Self {
+        if foreign_field_modulus <= F::modulus_biguint() {
+            panic!("Foreign field modulus must be greater than the native modulus");
+        }
+        self.foreign_field_modulus =
+            Some(ForeignElement::<F, 3>::new_from_big(foreign_field_modulus));
         self
     }
 
@@ -575,22 +585,12 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         };
 
         // Foreign field multiplication constraint selector polynomial
+        let ffmul_gates = foreign_field_mul::gadget::circuit_gates();
         let foreign_field_mul_selector_poly = {
-            if !circuit_gates_used.is_disjoint(
-                &foreign_field_mul::gadget::circuit_gates()
-                    .into_iter()
-                    .collect(),
-            ) {
-                Some(
-                    selector_polynomials(
-                        &foreign_field_mul::gadget::circuit_gates(),
-                        &gates,
-                        &domain,
-                    )[0]
-                    .clone(),
-                )
-            } else {
+            if circuit_gates_used.is_disjoint(&ffmul_gates.into_iter().collect()) {
                 None
+            } else {
+                Some(selector_polynomial(ffmul_gates[0], &gates, &domain))
             }
         };
 

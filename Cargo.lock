@@ -944,6 +944,7 @@ dependencies = [
  "ark-ff",
  "ark-poly",
  "ark-serialize",
+ "array-init",
  "bcs",
  "hex",
  "mina-curves",

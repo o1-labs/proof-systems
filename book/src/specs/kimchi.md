@@ -434,9 +434,9 @@ $$c_0 \cdot l + c_1 \cdot r + c_2 \cdot o + c_3 \cdot (l \times r) + c_4$$
 
 The layout of the gate is the following:
 
-|   0   |   1   |   2   |   3   |   4   |   5   |   6   |   7   |   8   |   9   |  10   |  11   |  12   |  13   |  14   |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-|  l1   |  r1   |  o1   |  l2   |  r2   |  o2   |       |       |       |       |       |       |       |       |       |
+|  0 |  1 |  2 |  3 |  4 |  5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
+|:--:|:--:|:--:|:--:|:--:|:--:|:-:|:-:|:-:|:-:|:--:|:--:|:--:|:--:|:--:|
+| l1 | r1 | o1 | l2 | r2 | o2 |   |   |   |   |    |    |    |    |    |
 
 where l1, r1, and o1 (resp. l2, r2, o2)
 are the left, right, and output registers
@@ -444,9 +444,9 @@ of the first (resp. second) generic gate.
 
 The selectors are stored in the coefficient table as:
 
-|   0   |   1   |   2   |   3   |   4   |   5   |   6   |   7   |   8   |   9   |  10   |  11   |  12   |  13   |  14   |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-|  l1   |  r1   |  o1   |  m1   |  c1   |  l2   |  r2   |  o2   |  m2   |  c2   |       |       |       |       |       |
+|  0 |  1 |  2 |  3 |  4 |  5 | 6  |  7 |  8 |  9 | 10 | 11 | 12 | 13 | 14 |
+|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| l1 | r1 | o1 | m1 | c1 | l2 | r2 | o2 | m2 | c2 |    |    |    |    |    |
 
 with m1 (resp. m2) the mul selector for the first (resp. second) gate,
 and c1 (resp. c2) the constant selector for the first (resp. second) gate.
@@ -468,10 +468,10 @@ and the next state, after permutation, is represented by `(s1, s1, s1)`.
 
 Below is how we store each state in the register table:
 
-|   0   |   1   |   2   |   3   |   4   |   5   |   6   |   7   |   8   |   9   |  10   |  11   |  12   |  13   |  14   |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-|  s0   |  s0   |  s0   |  s4   |  s4   |  s4   |  s1   |  s1   |  s1   |  s2   |  s2   |  s2   |  s3   |  s3   |  s3   |
-|  s5   |  s5   |  s5   |       |       |       |       |       |       |       |       |       |       |       |       |
+|  0 |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |  9 | 10 | 11 | 12 | 13 | 14 |
+|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| s0 | s0 | s0 | s4 | s4 | s4 | s1 | s1 | s1 | s2 | s2 | s2 | s3 | s3 | s3 |
+| s5 | s5 | s5 |    |    |    |    |    |    |    |    |    |    |    |    |
 
 The last state is stored on the next row. This last state is either used:
 
@@ -491,9 +491,9 @@ We define the S-box operation as $w^S$ for $S$ the `SPONGE_BOX` constant.
 
 We store the 15 round constants $r_i$ required for the 5 rounds (3 per round) in the coefficient table:
 
-|   0   |   1   |   2   |   3   |   4   |   5   |   6   |   7   |   8   |   9   |  10   |  11   |  12   |  13   |  14   |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-|  r0   |  r1   |  r2   |  r3   |  r4   |  r5   |  r6   |  r7   |  r8   |  r9   |  r10  |  r11  |  r12  |  r13  |  r14  |
+|  0 |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |  9 | 10 | 11 | 12 | 13 | 14 |
+|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| r0 | r1 | r2 | r3 | r4 | r5 | r6 | r7 | r8 | r9 | r10 | r11 | r12 | r13 | r14 |
 
 The initial state, stored in the first three registers, are not constrained.
 The following 4 states (of 3 field elements), including 1 in the next row,
@@ -569,10 +569,10 @@ L(x, x', y, y', z, k)
 In general, such a line will be laid out as the two rows
 
 
-| 0   | 1   | 2       | 3        | 4        | 5        | 6        | 7       | 8       | 9       | 10      | 11  | 12  | 13  | 14  |
-| --- | --- | ------- | -------- | -------- | -------- | -------- | ------- | ------- | ------- | ------- | --- | --- | --- | --- |
-| x   | y   | z       | (y^x')_0 | (y^x')_1 | (y^x')_2 | (y^x')_3 | (x+z)_0 | (x+z)_1 | (x+z)_2 | (x+z)_3 | y_0 | y_1 | y_2 | y_3 |
-| x'  | y'  | (x+z)_8 | (y^x')_4 | (y^x')_5 | (y^x')_6 | (y^x')_7 | (x+z)_4 | (x+z)_5 | (x+z)_6 | (x+z)_7 | y_4 | y_5 | y_6 | y_7 |
+| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
+|---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|
+| x | y | z | (y^x')_0 | (y^x')_1 | (y^x')_2 | (y^x')_3 | (x+z)_0 | (x+z)_1 | (x+z)_2 | (x+z)_3 | y_0 | y_1 | y_2 | y_3 |
+| x' | y' | (x+z)_8 | (y^x')_4 | (y^x')_5 | (y^x')_6 | (y^x')_7 | (x+z)_4 | (x+z)_5 | (x+z)_6 | (x+z)_7 | y_4 | y_5 | y_6 | y_7 |
 
 where A_i indicates the i^th nybble (four-bit chunk) of the value A.
 
@@ -580,10 +580,10 @@ $(x+z)_8$ is special, since we know it is actually at most 1 bit (representing t
 
 So the first line `L(a, a', d, d', b, 8)` for example becomes the two rows
 
-| 0   | 1   | 2       | 3        | 4        | 5        | 6        | 7       | 8       | 9       | 10      | 11  | 12  | 13  | 14  |
-| --- | --- | ------- | -------- | -------- | -------- | -------- | ------- | ------- | ------- | ------- | --- | --- | --- | --- |
-| a   | d   | b       | (d^a')_0 | (d^a')_1 | (d^a')_2 | (d^a')_3 | (a+b)_0 | (a+b)_1 | (a+b)_2 | (a+b)_3 | d_0 | d_1 | d_2 | d_3 |
-| a'  | d'  | (a+b)_8 | (d^a')_4 | (d^a')_5 | (d^a')_6 | (d^a')_7 | (a+b)_4 | (a+b)_5 | (a+b)_6 | (a+b)_7 | d_4 | d_5 | d_6 | d_7 |
+| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
+|---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|
+| a | d | b | (d^a')_0 | (d^a')_1 | (d^a')_2 | (d^a')_3 | (a+b)_0 | (a+b)_1 | (a+b)_2 | (a+b)_3 | d_0 | d_1 | d_2 | d_3 |
+| a' | d' | (a+b)_8 | (d^a')_4 | (d^a')_5 | (d^a')_6 | (d^a')_7 | (a+b)_4 | (a+b)_5 | (a+b)_6 | (a+b)_7 | d_4 | d_5 | d_6 | d_7 |
 
 along with the equations
 
@@ -633,10 +633,10 @@ or re-writing in terms of our original nybbles $A_i$,
 
 For neatness, letting $(x, y, z) = (c', b', d'')$, the first 2 rows for the final line will be:
 
-| 0   | 1   | 2       | 3        | 4        | 5        | 6        | 7       | 8       | 9       | 10      | 11  | 12  | 13  | 14  |
-| --- | --- | ------- | -------- | -------- | -------- | -------- | ------- | ------- | ------- | ------- | --- | --- | --- | --- |
-| x   | y   | z       | (y^x')_0 | (y^x')_1 | (y^x')_2 | (y^x')_3 | (x+z)_0 | (x+z)_1 | (x+z)_2 | (x+z)_3 | y_0 | y_1 | y_2 | y_3 |
-| x'  | _   | (x+z)_8 | (y^x')_4 | (y^x')_5 | (y^x')_6 | (y^x')_7 | (x+z)_4 | (x+z)_5 | (x+z)_6 | (x+z)_7 | y_4 | y_5 | y_6 | y_7 |
+| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
+|---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|
+| x | y | z | (y^x')_0 | (y^x')_1 | (y^x')_2 | (y^x')_3 | (x+z)_0 | (x+z)_1 | (x+z)_2 | (x+z)_3 | y_0 | y_1 | y_2 | y_3 |
+| x' | _ | (x+z)_8 | (y^x')_4 | (y^x')_5 | (y^x')_6 | (y^x')_7 | (x+z)_4 | (x+z)_5 | (x+z)_6 | (x+z)_7 | y_4 | y_5 | y_6 | y_7 |
 
 but then we also need to perform the bit-rotate by 1.
 
@@ -646,10 +646,10 @@ or allow access to the previous row.
 
 Let $lo(n)$ be the low bit of the nybble n. The 2 rows will be
 
-| 0   | 1        | 2        | 3        | 4        | 5            | 6            | 7            | 8            | 9   | 10  | 11  | 12  | 13  | 14  |
-| --- | -------- | -------- | -------- | -------- | ------------ | ------------ | ------------ | ------------ | --- | --- | --- | --- | --- | --- |
-| y'  | (y^x')_0 | (y^x')_1 | (y^x')_2 | (y^x')_3 | lo((y^x')_0) | lo((y^x')_1) | lo((y^x')_2) | lo((y^x')_3) |
-| _   | (y^x')_4 | (y^x')_5 | (y^x')_6 | (y^x')_7 | lo((y^x')_4) | lo((y^x')_5) | lo((y^x')_6) | lo((y^x')_7) |
+| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
+|---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|
+| y' | (y^x')_0 | (y^x')_1 | (y^x')_2 | (y^x')_3 | lo((y^x')_0) | lo((y^x')_1) | lo((y^x')_2) | lo((y^x')_3) |
+| _ | (y^x')_4 | (y^x')_5 | (y^x')_6 | (y^x')_7 | lo((y^x')_4) | lo((y^x')_5) | lo((y^x')_6) | lo((y^x')_7) |
 
 On each of them we'll do the plookups
 
@@ -675,9 +675,9 @@ And we'll check that y' is the sum of the shifted nybbles.
 
 The layout is
 
-|   0   |   1   |   2   |   3   |   4   |   5   |   6   |   7    |   8   |   9   |   10    |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :----: | :---: | :---: | :-----: |
-|  x1   |  y1   |  x2   |  y2   |  x3   |  y3   |  inf  | same_x |   s   | inf_z | x21_inv |
+|  0 |  1 |  2 |  3 |  4 |  5 |  6  |    7   | 8 |   9   |    10   |
+|:--:|:--:|:--:|:--:|:--:|:--:|:---:|:------:|:-:|:-----:|:-------:|
+| x1 | y1 | x2 | y2 | x3 | y3 | inf | same_x | s | inf_z | x21_inv |
 
 where
 - `(x1, y1), (x2, y2)` are the inputs and `(x3, y3)` the output.
@@ -779,9 +779,9 @@ and `d_func` is given by
 
 We lay it out the witness as
 
-| 0   | 1   | 2   | 3   | 4   | 5   | 6   | 7   | 8   | 9   | 10  | 11  | 12  | 13  | 14  | Type |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---- |
-| n0  | n8  | a0  | b0  | a8  | b8  | x0  | x1  | x2  | x3  | x4  | x5  | x6  | x7  |     | ENDO |
+|  0 |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |  9 | 10 | 11 | 12 | 13 | 14 | Type |
+|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|------|
+| n0 | n8 | a0 | b0 | a8 | b8 | x0 | x1 | x2 | x3 | x4 | x5 | x6 | x7 |    | ENDO |
 
 where each `xi` is a two-bit "crumb".
 
@@ -847,10 +847,10 @@ for the operation $(P±T)+P$:
 In particular, the constraints of this gate take care of 4 bits of the scalar within a single EVBSM row.
 When the scalar is longer (which will usually be the case), multiple EVBSM rows will be concatenated.
 
-| Row | 0   | 1   | 2   | 3   | 4   | 5   | 6   | 7   | 8   | 9   | 10  | 11  | 12  | 13  | 14  | Type  |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ----- |
-| i   | xT  | yT  | Ø   | Ø   | xP  | yP  | n   | xR  | yR  | s1  | s3  | b1  | b2  | b3  | b4  | EVBSM |
-| i+1 | =   | =   |     |     | xS  | yS  | n'  | xR' | yR' | s1' | s3' | b1' | b2' | b3' | b4' | EVBSM |
+|  Row  |  0 |  1 |  2 |  3 |  4 |  5 |  6 |   7 |   8 |   9 |  10 |  11 |  12 |  13 |  14 |  Type |
+|-------|----|----|----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|-------|
+|     i | xT | yT |  Ø |  Ø | xP | yP | n  |  xR |  yR |  s1 | s3  | b1  |  b2 |  b3 |  b4 | EVBSM |
+|   i+1 |  = |  = |    |    | xS | yS | n' | xR' | yR' | s1' | s3' | b1' | b2' | b3' | b4' | EVBSM |
 
 The layout of this gate (and the next row) allows for this chained behavior where the output point
 of the current row $S$ gets accumulated as one of the inputs of the following row, becoming $P$ in
@@ -955,10 +955,10 @@ return (d_0 == 0) ? Q - P : Q
 The layout of the witness requires 2 rows.
 The i-th row will be a `VBSM` gate whereas the next row will be a `ZERO` gate.
 
-| Row | 0   | 1   | 2   | 3   | 4   | 5   | 6   | 7   | 8   | 9   | 10  | 11  | 12  | 13  | 14  | Type |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---- |
-| i   | xT  | yT  | x0  | y0  | n   | n'  |     | x1  | y1  | x2  | y2  | x3  | y3  | x4  | y4  | VBSM |
-| i+1 | x5  | y5  | b0  | b1  | b2  | b3  | b4  | s0  | s1  | s2  | s3  | s4  |     |     |     | ZERO |
+|  Row  |  0 |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |  9 | 10 | 11 | 12 | 13 | 14 | Type |
+|-------|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|------|
+|     i | xT | yT | x0 | y0 |  n | n' |    | x1 | y1 | x2 | y2 | x3 | y3 | x4 | y4 | VBSM |
+|   i+1 | x5 | y5 | b0 | b1 | b2 | b3 | b4 | s0 | s1 | s2 | s3 | s4 |    |    |    | ZERO |
 
 The gate constraints take care of 5 bits of the scalar multiplication.
 Each single bit consists of 4 constraints.
@@ -1025,6 +1025,8 @@ This equation is translated as the constraint:
 * Binary decomposition:
 `0 = n' - (b4 + 2 * (b3 + 2 * (b2 + 2 * (b1 + 2 * (b0 + 2*n)))))`
 
+
+
 #### Range Check
 
 The range check gate is comprised of three circuit gates (RangeCheck0, RangeCheck1
@@ -1052,11 +1054,11 @@ The values are decomposed into limbs as follows.
 ##### Witness structure:
 
 | Row | Contents |
-| --- | -------- |
-| 0   | v0       |
-| 1   | v1       |
-| 2   | v2       |
-| 3   | v0,v1,v2 |
+| --- | ---------|
+|  0  | v0       |
+|  1  | v1       |
+|  2  | v2       |
+|  3  | v0,v1,v2 |
 
 * The first 2 rows contain v0 and v1 and their respective decompositions
   into 12-bit and 2-bit limbs
@@ -1085,22 +1087,22 @@ This is how three 88-bit inputs `v0`, `v1` and `v2` are layed out and constraine
 
 | Gates | `RangeCheck0`  | `RangeCheck0`  | `RangeCheck1`  | `Zero`          |
 | ----- | -------------- | -------------- | -------------- | --------------- |
-| Rows  | 0              | 1              | 2              | 3               |
+| Rows  |          0     |          1     |          2     |          3      |
 | Cols  |                |                |                |                 |
-| 0     | `v0`           | `v1`           | `v2`           | `0`             |
-| MS:1  | copy    `v0p0` | copy    `v1p0` | crumb   `v2c0` | crumb   `v2c10` |
-| 2     | copy    `v0p1` | copy    `v1p1` | crumb   `v2c1` | crumb   `v2c11` |
-| 3     | plookup `v0p2` | plookup `v1p2` | plookup `v2p0` | plookup `v0p0`  |
-| 4     | plookup `v0p3` | plookup `v1p3` | plookup `v2p1` | plookup `v0p1`  |
-| 5     | plookup `v0p4` | plookup `v1p4` | plookup `v2p2` | plookup `v1p0`  |
-| 6     | plookup `v0p5` | plookup `v1p5` | plookup `v2p3` | plookup `v1p1`  |
-| 7     | crumb   `v0c0` | crumb   `v1c0` | crumb   `v2c2` | crumb   `v2c12` |
-| 8     | crumb   `v0c1` | crumb   `v1c1` | crumb   `v2c3` | crumb   `v2c13` |
-| 9     | crumb   `v0c2` | crumb   `v1c2` | crumb   `v2c4` | crumb   `v2c14` |
-| 10    | crumb   `v0c3` | crumb   `v1c3` | crumb   `v2c5` | crumb   `v2c15` |
-| 11    | crumb   `v0c4` | crumb   `v1c4` | crumb   `v2c6` | crumb   `v2c16` |
-| 12    | crumb   `v0c5` | crumb   `v1c5` | crumb   `v2c7` | crumb   `v2c17` |
-| 13    | crumb   `v0p6` | copy    `v1c6` | crumb   `v2c8` | crumb   `v2c18` |
+|     0 |         `v0`   |         `v1`   |         `v2`   |         `0`     |
+|  MS:1 | copy    `v0p0` | copy    `v1p0` | crumb   `v2c0` | crumb   `v2c10` |
+|     2 | copy    `v0p1` | copy    `v1p1` | crumb   `v2c1` | crumb   `v2c11` |
+|     3 | plookup `v0p2` | plookup `v1p2` | plookup `v2p0` | plookup `v0p0`  |
+|     4 | plookup `v0p3` | plookup `v1p3` | plookup `v2p1` | plookup `v0p1`  |
+|     5 | plookup `v0p4` | plookup `v1p4` | plookup `v2p2` | plookup `v1p0`  |
+|     6 | plookup `v0p5` | plookup `v1p5` | plookup `v2p3` | plookup `v1p1`  |
+|     7 | crumb   `v0c0` | crumb   `v1c0` | crumb   `v2c2` | crumb   `v2c12` |
+|     8 | crumb   `v0c1` | crumb   `v1c1` | crumb   `v2c3` | crumb   `v2c13` |
+|     9 | crumb   `v0c2` | crumb   `v1c2` | crumb   `v2c4` | crumb   `v2c14` |
+|    10 | crumb   `v0c3` | crumb   `v1c3` | crumb   `v2c5` | crumb   `v2c15` |
+|    11 | crumb   `v0c4` | crumb   `v1c4` | crumb   `v2c6` | crumb   `v2c16` |
+|    12 | crumb   `v0c5` | crumb   `v1c5` | crumb   `v2c7` | crumb   `v2c17` |
+|    13 | crumb   `v0p6` | copy    `v1c6` | crumb   `v2c8` | crumb   `v2c18` |
 | LS:14 | crumb   `v0p7` | copy    `v1c7` | crumb   `v2c9` | crumb   `v2c19` |
 
 The 12-bit chunks are constrained with plookups and the 2-bit crumbs
@@ -1116,10 +1118,10 @@ Different rows are constrained using different CircuitGate types
 
  | Row | `CircuitGate` | Purpose                                                        |
  | --- | ------------- | -------------------------------------------------------------- |
- | 0   | `RangeCheck0` | Partially constrain v0                                         |
- | 1   | `RangeCheck0` | Partially constrain v1                                         |
- | 2   | `RangeCheck1` | Fully constrain v2 (and trigger plookups constraints on row 3) |
- | 3   | `Zero`        | Complete the constraining of v0 and v1 using lookups           |
+ |   0 | `RangeCheck0` | Partially constrain v0                                         |
+ |   1 | `RangeCheck0` | Partially constrain v1                                         |
+ |   2 | `RangeCheck1` | Fully constrain v2 (and trigger plookups constraints on row 3) |
+ |   3 | `Zero`        | Complete the constraining of v0 and v1 using lookups           |
 
 ```admonition::notice
  Each CircuitGate type corresponds to a unique polynomial and thus is assigned
@@ -1140,21 +1142,21 @@ Given value `v` the layout looks like this
 
 | Column | `Curr`        |
 | ------ | ------------- |
-| 0      | `v`           |
-| 1      | copy    `vp0` |
-| 2      | copy    `vp1` |
-| 3      | plookup `vp2` |
-| 4      | plookup `vp3` |
-| 5      | plookup `vp4` |
-| 6      | plookup `vp5` |
-| 7      | crumb   `vc0` |
-| 8      | crumb   `vc1` |
-| 9      | crumb   `vc2` |
-| 10     | crumb   `vc3` |
-| 11     | crumb   `vc4` |
-| 12     | crumb   `vc5` |
-| 13     | crumb   `vc6` |
-| 14     | crumb   `vc7` |
+|      0 |         `v`   |
+|      1 | copy    `vp0` |
+|      2 | copy    `vp1` |
+|      3 | plookup `vp2` |
+|      4 | plookup `vp3` |
+|      5 | plookup `vp4` |
+|      6 | plookup `vp5` |
+|      7 | crumb   `vc0` |
+|      8 | crumb   `vc1` |
+|      9 | crumb   `vc2` |
+|     10 | crumb   `vc3` |
+|     11 | crumb   `vc4` |
+|     12 | crumb   `vc5` |
+|     13 | crumb   `vc6` |
+|     14 | crumb   `vc7` |
 
 where the notation `vpi` and `vci` defined in the "Layout" section above.
 ##### RangeCheck1 - Range check constraints
@@ -1170,23 +1172,24 @@ Given value `v2` the layout looks like this
 
 | Column | `Curr`         | `Next`        |
 | ------ | -------------- | ------------- |
-| 0      | `v2`           | (ignored)     |
-| 1      | crumb   `v2c0` | crumb `v2c10` |
-| 2      | crumb   `v2c1` | crumb `v2c11` |
-| 3      | plookup `v2p0` | (ignored)     |
-| 4      | plookup `v2p1` | (ignored)     |
-| 5      | plookup `v2p2` | (ignored)     |
-| 6      | plookup `v2p3` | (ignored)     |
-| 7      | crumb   `v2c2` | crumb `v2c12` |
-| 8      | crumb   `v2c3` | crumb `v2c13` |
-| 9      | crumb   `v2c4` | crumb `v2c14` |
-| 10     | crumb   `v2c5` | crumb `v2c15` |
-| 11     | crumb   `v2c6` | crumb `v2c16` |
-| 12     | crumb   `v2c7` | crumb `v2c17` |
-| 13     | crumb   `v2c8` | crumb `v2c18` |
-| 14     | crumb   `v2c9` | crumb `v2c19` |
+|      0 |         `v2`   | (ignored)     |
+|      1 | crumb   `v2c0` | crumb `v2c10` |
+|      2 | crumb   `v2c1` | crumb `v2c11` |
+|      3 | plookup `v2p0` | (ignored)     |
+|      4 | plookup `v2p1` | (ignored)     |
+|      5 | plookup `v2p2` | (ignored)     |
+|      6 | plookup `v2p3` | (ignored)     |
+|      7 | crumb   `v2c2` | crumb `v2c12` |
+|      8 | crumb   `v2c3` | crumb `v2c13` |
+|      9 | crumb   `v2c4` | crumb `v2c14` |
+|     10 | crumb   `v2c5` | crumb `v2c15` |
+|     11 | crumb   `v2c6` | crumb `v2c16` |
+|     12 | crumb   `v2c7` | crumb `v2c17` |
+|     13 | crumb   `v2c8` | crumb `v2c18` |
+|     14 | crumb   `v2c9` | crumb `v2c19` |
 
 where the notation v2i and v2i defined in the "Layout" section above.
+
 
 #### Foreign Field Multiplication
 
@@ -1251,21 +1254,22 @@ The last two rows are layed out like this
 
 | col | `ForeignFieldMul`         | `Zero`                  |
 | --- | ------------------------- | ----------------------- |
-| 0   | `left_input_lo`  (copy)   | `left_input_hi`  (copy) |
-| 1   | `left_input_mi`  (copy)   | `right_input_lo` (copy) |
-| 2   | `carry_shift`    (lookup) | `right_input_mi` (copy) |
-| 3   | `quotient_shift` (lookup) | `right_input_hi` (copy) |
-| 4   | `quotient_lo`    (copy)   | `remainder_lo`   (copy) |
-| 5   | `quotient_mi`    (copy)   | `remainder_mi`   (copy) |
-| 6   | `quotient_hi`    (copy)   | `remainder_hi`   (copy) |
-| 7   | `product_mi_bot`          |                         |
-| 8   | `product_mi_top_limb`     |                         |
-| 9   | `product_mi_top_extra`    |                         |
-| 10  | `carry_bot`               |                         |
-| 11  | `carry_top_limb`          |                         |
-| 12  | `carry_top_extra`         |                         |
-| 13  |                           |                         |
-| 14  |                           |                         |
+|   0 | `left_input_lo`  (copy)   | `left_input_hi`  (copy) |
+|   1 | `left_input_mi`  (copy)   | `right_input_lo` (copy) |
+|   2 | `carry_shift`    (lookup) | `right_input_mi` (copy) |
+|   3 | `quotient_shift` (lookup) | `right_input_hi` (copy) |
+|   4 | `quotient_lo`    (copy)   | `remainder_lo`   (copy) |
+|   5 | `quotient_mi`    (copy)   | `remainder_mi`   (copy) |
+|   6 | `quotient_hi`    (copy)   | `remainder_hi`   (copy) |
+|   7 | `product_mi_bot`          |                         |
+|   8 | `product_mi_top_limb`     |                         |
+|   9 | `product_mi_top_extra`    |                         |
+|  10 | `carry_bot`               |                         |
+|  11 | `carry_top_limb`          |                         |
+|  12 | `carry_top_extra`         |                         |
+|  13 |                           |                         |
+|  14 |                           |                         |
+
 
 ## Setup
 
@@ -1513,9 +1517,14 @@ pub struct VerifierIndex<G: KimchiCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub chacha_comm: Option<[PolyComm<G>; 4]>,
 
-    // Range check gates polynomial commitments
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub range_check_comm: Option<[PolyComm<G>; range_check::gadget::GATE_COUNT]>,
+
+    // Foreign field modulus
+    #[serde(
+        bound = "Option<ForeignElement<G::ScalarField, LIMB_COUNT>>: Serialize + DeserializeOwned"
+    )]
+    pub foreign_field_modulus: Option<ForeignElement<G::ScalarField, LIMB_COUNT>>,
 
     // Foreign field multiplication gates polynomial commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
@@ -1543,10 +1552,6 @@ pub struct VerifierIndex<G: KimchiCurve> {
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
     pub powers_of_alpha: Alphas<G::ScalarField>,
-
-    // Foreign field modulus
-    #[serde(skip)]
-    pub foreign_field_modulus: Vec<G::ScalarField>,
 }
 ```
 

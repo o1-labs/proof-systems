@@ -97,8 +97,8 @@ pub enum GateType {
     /// Range check (16-24)
     RangeCheck0 = 16,
     RangeCheck1 = 17,
-    ForeignFieldMul = 18,
-    //ForeignFieldAdd = 19,
+    //ForeignFieldAdd = 25,
+    ForeignFieldMul = 26,
 }
 
 /// Selector polynomial

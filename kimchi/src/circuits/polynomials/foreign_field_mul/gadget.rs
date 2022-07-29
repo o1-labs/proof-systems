@@ -28,6 +28,9 @@ use crate::{
 
 use super::circuitgates::ForeignFieldMul;
 
+/// Number of gates used for foreign field multiplication
+pub const GATE_COUNT: usize = 1;
+
 impl<F: PrimeField> CircuitGate<F> {
     /// Create foreign field multiplication gate
     ///     Inputs the starting row
@@ -168,9 +171,8 @@ impl<F: PrimeField> CircuitGate<F> {
         });
 
         // Initialize the foreign field modulus constant
-        let foreign_field_modulus = ForeignElement::<F, 3>::new_from_be(FOREIGN_MOD)
-            .limbs
-            .to_vec();
+        // TODO: (querolita) new_from_be could return an option instead of panicking?
+        let foreign_field_modulus = Some(ForeignElement::<F, 3>::new_from_be(FOREIGN_MOD));
 
         // Set up the environment
         let env = {
@@ -385,8 +387,8 @@ pub fn circuit_gate_selector_index(typ: GateType) -> usize {
 }
 
 /// Get vector of foreign field multiplication circuit gate types
-pub fn circuit_gates() -> Vec<GateType> {
-    vec![GateType::ForeignFieldMul]
+pub fn circuit_gates() -> [GateType; GATE_COUNT] {
+    [GateType::ForeignFieldMul]
 }
 
 /// Get combined constraints for a given foreign field multiplication circuit gate

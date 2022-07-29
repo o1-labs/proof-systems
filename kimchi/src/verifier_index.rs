@@ -23,6 +23,7 @@ use commitment_dlog::{
     commitment::{CommitmentCurve, PolyComm},
     srs::SRS,
 };
+use o1_utils::foreign_field::{ForeignElement, LIMB_COUNT};
 use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
@@ -108,9 +109,14 @@ pub struct VerifierIndex<G: KimchiCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub chacha_comm: Option<[PolyComm<G>; 4]>,
 
-    // Range check gates polynomial commitments
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub range_check_comm: Option<[PolyComm<G>; range_check::gadget::GATE_COUNT]>,
+
+    // Foreign field modulus
+    #[serde(
+        bound = "Option<ForeignElement<G::ScalarField, LIMB_COUNT>>: Serialize + DeserializeOwned"
+    )]
+    pub foreign_field_modulus: Option<ForeignElement<G::ScalarField, LIMB_COUNT>>,
 
     // Foreign field multiplication gates polynomial commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
@@ -138,10 +144,6 @@ pub struct VerifierIndex<G: KimchiCurve> {
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
     pub powers_of_alpha: Alphas<G::ScalarField>,
-
-    // Foreign field modulus
-    #[serde(skip)]
-    pub foreign_field_modulus: Vec<G::ScalarField>,
 }
 //~spec:endcode
 
@@ -252,7 +254,7 @@ impl<G: KimchiCurve> ProverIndex<G> {
             endo: self.cs.endo,
             lookup_index,
             linearization: self.linearization.clone(),
-            foreign_field_modulus: self.cs.foreign_field_modulus.clone(),
+            foreign_field_modulus: self.cs.foreign_field_modulus,
         }
     }
 }
