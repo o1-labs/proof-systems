@@ -175,6 +175,7 @@ impl<F: PrimeField> CircuitGate<F> {
         });
 
         // Initialize the foreign field modulus constant
+        // TODO: (querolita) new_from_be could return an option instead of panicking?
         let foreign_field_modulus = Some(ForeignElement::<F, 3>::new_from_be(FOREIGN_MOD));
 
         // Set up the environment

@@ -24,7 +24,7 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
     chacha: bool,
     range_check: bool,
     lookup_constraint_system: Option<&LookupConfiguration<F>>,
-    foreign_field_addition: bool,
+    foreign_field_add: bool,
 ) -> (Expr<ConstantExpr<F>>, Alphas<F>) {
     // register powers of alpha so that we don't reuse them across mutually inclusive constraints
     let mut powers_of_alpha = Alphas::<F>::default();
@@ -53,7 +53,7 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
         expr += range_check::gadget::combined_constraints(&powers_of_alpha);
     }
 
-    if foreign_field_addition {
+    if foreign_field_add {
         expr += ForeignFieldAdd::combined_constraints(&powers_of_alpha);
     }
 
