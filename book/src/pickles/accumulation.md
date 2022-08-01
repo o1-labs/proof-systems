@@ -3,7 +3,7 @@
 ## Introduction
 
 The trick below was originally described in [Halo](https://eprint.iacr.org/2020/499.pdf),
-however we are going to rely on the abstraction of "accumulation schemes" described by Bünz, Chiesa, Mishra and Spooner in [Proof-Carrying Data from Accumulation Schemes](/https://eprint.iacr.org/2020/499.pdf), in particular the scheme in Appendix A. 2.
+however we are going to base this post on the abstraction of "accumulation schemes" described by Bünz, Chiesa, Mishra and Spooner in [Proof-Carrying Data from Accumulation Schemes](/https://eprint.iacr.org/2020/499.pdf), in particular the scheme in Appendix A. 2.
 
 Relevant resources include:
 
@@ -11,13 +11,13 @@ Relevant resources include:
 - [Recursive Proof Composition without a Trusted Setup (Halo)](https://eprint.iacr.org/2019/1021.pdf) by Sean Bowe, Jack Grigg and Daira Hopwood.
 
 This page describes the most relevant parts of these papers and how it is implemented in Pickles/Kimchi.
-It is not meant to document the low-level details of the code in Pickles, but to describe what the code aims to do.
-
-## The Goal of Accumulation
+It is not meant to document the low-level details of the code in Pickles, but to describe what the code aims to do,
+allowing someone reviewing / working on this part of the codebase to gain context.
 
 ## Interactive Reductions Between Relations
 
-The easiest way to understand accumulation is as a set of interactive reductions between relations.
+The easiest way to understand "accumulation" is as a set of interactive reductions between relations.
+
 An interactive reduction $\relation \to \relation'$ proceeds as follows:
 
 - The prover/verifier starts with some statement $\statement$, the prover additionally holds $\witness$.
@@ -34,10 +34,15 @@ $$
 
 Except with negligible probability.
 In other words: we have reduced membership of $\relation$ to membership of $\relation'$
-using an interaction between the parties: the reduction may be probabilistic.
+using interaction between the parties: the reduction may be probabilistic.
+Foreshadowing here is a diagram/overview of the reductions
+(the relations will be described as we go)
+used in Pickles:
 
 <figure>
-<img src="./reductions.svg" alt="Commucation diagram of interactive/non-deterministic reductions between languages">
+<div style="text-align: center;">
+<img src="./reductions.svg" alt="Commucation diagram of interactive/non-deterministic reductions between languages" width="70%">
+</div>
 <figcaption>
 <b>
 Fig 1.
@@ -46,9 +51,24 @@ An overview the particular reductions/languages (described below) we require.
 </figcaption>
 </figure>
 
-**Note:** There are many examples of such reductions, an example familiar to the reader is PlonK:
-which reduces circuit-satisfiability $\relation$ ($\statement$ is the public inputs and $\witness$ is the wire assignments)
-to openings of polynomial commitments $\relation'$ ($\statement'$ are polynomial commitments and evaluation points, $\witness$ is the opening of the commitment).
+As you can see from Fig. 1, we have a cycle of reductions (following the arrows) e.g. we can reduce a relation "$\relation_{\mathsf{Acc}, \vec{G}}$" to itself by applying all 4 reductions. This may seem useless: why reduce a relation to itself?
+
+However the crucial point is the "in-degree" (e.g. n-to-1) of these reductions:
+take a look at the diagram and note that
+<u>any</u> number of $\relation_{\mathsf{Acc}, \vec{G}}$ instances can be reduced to a <u>single</u> $\relation_{\mathsf{PCS},d}$ instance!
+This $\relation_{\mathsf{PCS},d}$ instance can then be converted to a single $\relation_{\mathsf{Acc},\vec{G}}$
+by applying the reductions (moving "around the diagram"):
+
+$$
+\relation_{\mathsf{PCS},d} \to
+\relation_{\mathsf{IPA},\ell}  \to
+\relation_{\mathsf{IPA},1} \to
+\relation_{\mathsf{Acc},\vec{G}}
+$$
+
+**Note:** There are many examples of interactive reductions, an example familiar to the reader is PlonK itself:
+which reduces circuit-satisfiability $\relation_{C}$ ($\statement$ is the public inputs and $\witness$ is the wire assignments)
+to openings of polynomial commitments $\relation_{\mathsf{PCS}, d}$ ($\statement'$ are polynomial commitments and evaluation points, $\witness$ is the opening of the commitment).
 
 <details>
 <summary>
@@ -69,15 +89,17 @@ Hence the relation $\relation'$ is the set of verifier views (except for the las
 This simple, yet beautiful, observation turns out to be <u>extremely useful</u>: rather than explicitly sending the last-round message (which may be large/take the verifier a long time to check), the prover can instead prove that <u>he knows</u> a last-round message which <u>would make the verifier accept</u>, after all, sending the witness $\witness'$ is a particularly simple/inefficient PoK for $(\statement', \witness') \in \relation'$.
 
 The reductions in this document are all of this form (including the folding argument):
-receiving/verifying the last-round message would require too many resources of the verifier,
-hence we instead replace it with yet another reduction to yet another language (e.g. of half the size).
+receiving/verifying the last-round message would require too many resources (time/communication) of the verifier,
+hence we instead replace it with yet another reduction to yet another language (e.g. where the witness is now half the size).
 
 Hence we end up with a chain of reductions: going from the languages of the last-round messages.
-
-An "accumulation scheme" is just an example of such a chain of reductions which happens to contain a cycle.
+An "accumulation scheme" is just an example of such a chain of reductions which happens to be a cycle.
 Meaning the language is "self-reducing" via a series of interactive reductions.
 
 </details>
+
+**A Note On Fiat-Shamir:** All the protocols described here are public coin and hence in implementation
+the Fiat-Shamir transform is applied to avoid interaction: the verifiers challenges are sampled using a hash function (e.g. Poseidon) modelled as a reprogrammable random oracle.
 
 <!--
 
@@ -155,9 +177,13 @@ $$
 
 Where $\vec{f}$ is a list of coefficients for a polynomial $f(X) \coloneqq \sum_{i} f_i \cdot X^i$.
 
-This is the language we are interested in reducing: providing a trivial proof, i.e. sending $\vec{f}$ requires linear communication and time.
+This is the language we are interested in reducing: providing a trivial proof, i.e. sending $\vec{f}$ requires linear communication and time of the verifier,
+we want a poly-log verifier.
+The communication complexity will be solved by a well-known folding argument, however to reduce computation we are going to need the "Halo trick".
 
-## Reduction: $\relation_{\mathsf{PCS},d} \to \relation_{\mathsf{IPA},\ell}$ (Add Evaluation)
+First a reduction from PCS to an inner product relation.
+
+## Reduction: $\relation_{\mathsf{PCS},d} \to \relation_{\mathsf{IPA},\ell}$
 
 Formally the relation of the inner product argument is:
 
@@ -184,12 +210,12 @@ We can reduce $(\statement = (C, z, v),
 \witness = (\vec{f})) \in
 \relation_{\mathsf{PCS}, d}$ to $\relation_{\mathsf{IPA}, \ell}$ with $d = \ell$ as follows:
 
-- Define $\vec{z} = (1, z, z^2, z^3, \ldots, z^{\ell-1})$, so that $v = \langle \vec{f}, \vec{z} \rangle$,
+- Define $\vec{z} = (1, z, z^2, z^3, \ldots, z^{\ell-1})$, so that $v = f(z) = \langle \vec{f}, \vec{z} \rangle$,
 - The verifier adds the evaluation $v$ to the commitment "in a new coordinate" as follows:
     1. Verifier picks $H \sample \GG$ and sends $H$ to the prover.
     2. Verifier updates $C \gets C + [v] \cdot H$
 
-Intuitively we sample $H$ to avoid a malicious prover "putting something in the $H$-position", because he must commit to $v$ before seeing $H$, hence he has to guess $H$ before-hand.
+Intuitively we sample a fresh $H$ to avoid a malicious prover "putting something in the $H$-position", because he must send $v$ before seeing $H$, hence he would need to guess $H$ before-hand.
 
 If the prover is honest, we should have a commitment of the form:
 
@@ -202,16 +228,14 @@ C =
 $$
 
 **Note:** In some variants of this reduction $H$ is chosen as $[\delta] \cdot J$ for a constant $J \in \GG$ where $\delta \sample \FF$ by the verifier,
-this also works, however we simply hash to the curve to sample $H$.
+this also works, however we (in Kimchi) simply hash to the curve to sample $H$.
 
-## Reduction: $\relation_{\mathsf{IPA},\ell} \to \relation_{\mathsf{IPA},\ell/2}$ (Single Folding)
 
-Let us start that by recalling how to construct an opening proof for the PCS above using a variant of the well-known recursive folding argument.
+## Reduction: $\relation_{\mathsf{IPA},\ell} \to \relation_{\mathsf{IPA},\ell/2}$
 
 **Note:** The folding argument described below is the particular variant implemented in Kimchi, although some of the variable names are different.
 
-The folding argument reduces a commitment to a polynomial with $\ell$ (a power of two)
-coefficients to a polynomial with $\ell / 2$ coefficients.
+The folding argument reduces a inner product with $\ell$ (a power of two) coefficients to an inner product relation with $\ell / 2$ coefficients.
 To see how it works let us rewrite the inner product in terms of a first and second part:
 
 $$
@@ -243,11 +267,11 @@ Additional intuition: How do you arrive at the expression above? (click to expan
 </summary>
 <br>
 The trick is to ensure that
-$\langle \vec{f}_R, \vec{z}_R \rangle + \langle \vec{f}_L, \vec{z}_L \rangle = v$
+$\langle \vec{f}_R, \vec{z}_R \rangle + \langle \vec{f}_L, \vec{z}_L \rangle = \langle \vec{f}, \vec{z} \rangle = v$
 ends up in the same power of $\alpha$.
 
-The particular expression above is not special,
-alternatives can easily be found (exercise to the reader)
+The particular expression above is not special and arguably not the most elegant:
+simpler alternatives can easily be found
 and the inversion can be avoided, e.g. by instead using:
 $$
     \begin{align}
@@ -259,6 +283,7 @@ $$
 $$
 Which will have the same overall effect of isolating the interesting term (this time as the $\alpha$-coefficient).
 The particular variant above can be found in e.g. [Compressed $\Sigma$-Protocol Theory and Practical Application to Plug & Play Secure Algorithmics](https://eprint.iacr.org/2020/152.pdf)
+and proving extraction is somewhat easier than the variant used in Kimchi.
 </details>
 
 The term we care about (underlined in magenta) is $\langle \vec{f}_R, \vec{z}_R \rangle + \langle \vec{f}_L, \vec{z}_L \rangle = v$, the other two terms are cross-term garbage.
@@ -511,17 +536,16 @@ At this point the prover could send $\vec{z}'$, $\vec{f}'$ to the verifier who c
 2. Computing $C'$ from $\vec{f}'$, $v$ and $H$
 3. Checking $v \overset?= \langle \vec{f}', \vec{z}' \rangle$
 
-This would require half as much communication as the naive proof. Not bad.
+This would require half as much communication as the naive proof. A modest improvement.
 
 However, we can iteratively apply this transformation until we each an instance of constant size:
 
-## Reduction: $\relation_{\mathsf{IPA},\ell} \to \relation_{\mathsf{IPA},1}$ (Folding Argument)
+## Reduction: $\relation_{\mathsf{IPA},\ell} \to \relation_{\mathsf{IPA},1}$
 
 That the process above can simply be applied again to the new $(C', \vec{G}', H, \vec{z}', v) \in \relation_{\mathsf{IPA}, \ell/2}$ instance as well.
 By doing so $k = \log_2(\ell)$ times the total communication is brought down to $2 k$ $\GG$-elements
 until the instance consists of $(\vec{C}, G, H, \vec{z}, v) \in \relation_{\mathsf{IPA}, 1}$
 at which point the prover simply provides $\vec{f}' \in \FF$.
-
 
 Because we need to refer to the terms in the intermediate reductions
 we let
@@ -530,7 +554,7 @@ be the
 $\vec{G}'$, $\vec{f}'$, $\vec{z}'$ vectors respectively after $i$ recursive applications, with $\vec{G}^{(0)}$, $\vec{f}^{(0)}$, $\vec{z}^{(0)}$ being the original instance.
 We denote by $\alpha_i$ the challenge of the $i$'th application.
 
-## Reduction: $\relation_{\mathsf{IPA},1} \to \relation_{\mathsf{Acc},\overset{\rightarrow}{G} }$ (Folding Argument Cont.)
+## Reduction: $\relation_{\mathsf{IPA},1} \to \relation_{\mathsf{Acc},\overset{\rightarrow}{G} }$
 
 While the proof for $\relation_{\mathsf{IPA},\ell}$ above has $O(\log(\ell))$-size, the verifiers time-complexity is $O(\ell)$:
 
@@ -552,13 +576,23 @@ $,
 then
 $
 \vec{z}^{(k)} = h(z)
-$.
+$ for all $z$.
 
 **Proof:**
-This can be verified by looking at the expansion of $h(X)$:
-observing that
+This can be verified by looking at the expansion of $h(X)$.
+In slightly more detail:
+an equivalent claim is that $z^{(k)} = \sum_{i=1}^{\ell} h_i \cdot z^{i-1}$
+where $h(X) = \sum_{i=1}^\ell h_i \cdot X^{i-1}$.
+Let $\vec{b}$ be the bit-decomposition of the index $i$ and observe that:
+$$
+h_i = \sum_{b_j} b_j \cdot \alpha_{k-i}, \text{ where } i = \sum_{j} b_j \cdot 2^j
+$$
+Which is simply a special case of the binomial theorem for the product:
+$$(1 + \alpha_1) \cdot (1 + \alpha_2) \cdots (1 + \alpha_k)$$
 
-Since $h(X)$ can be evaluated in $O(k)$ time, computing $\vec{z}^{(k)}$ takes $O(\log \ell)$.
+Since $h(X)$ can be evaluated in $O(k)$ time, computing $\vec{z}^{(k)}$ therefore takes just $O(\log \ell)$ time!
+
+#### The "Halo Trick"
 
 The "Halo trick" resides in observing that this is also the case for $\vec{G}^{(k)}$:
 since it is folded the same way as $\vec{z}$. It is not hard to convince one-self (using the same type of argument as above) that:
@@ -637,254 +671,78 @@ $
 hence the prover does not need to send $U$ explicitly.
 This optimization is not used in Kimchi/Pickles.
 
-## Reduction: $\relation_{\mathsf{Acc}, \overset{\rightarrow}{G}} \to \relation_{\mathsf{PCS}, d}$ (Accumulation)
+## Reduction: $\relation_{\mathsf{Acc}, \overset{\rightarrow}{G}} \to \relation_{\mathsf{PCS}, d}$
+
+Tying the final knot in the diagram.
 
 The expensive part in checking $
-(U, H, z, c, \vec{\alpha})
+(U, \vec{\alpha})
 \in
 \relation_{\mathsf{Acc}, \vec{G}}
 $ consists in computing
 $\langle \vec{h}, \vec{G} \rangle$
-given the $\vec{\alpha}$ describing $h(X)$,
-however, we observe that
-$\langle \vec{h}, \vec{G} \rangle$ is actually <u>a polynomial commitment</u> to $h(X)$.
+given the $\vec{\alpha}$ describing $h(X)$: first expanding $\vec{\alpha}$ into $\vec{h}$, then computing the MSM.
+However, by observing that
+$U = \langle \vec{h}, \vec{G} \rangle$ is actually <u>a polynomial commitment</u> to $h(X)$, which we can evaluate at any point using $O(\log \ell)$ operations,
+we arrive at a simple strategy for reducing any number of such claims to a single polynomial commitment opening:
 
-This suggest the following simple strategy for outsourcing the computation of $\langle \vec{h}, \vec{G} \rangle$ to the prover:
-
-1. Prover compuy
-
-### Unrolling the folding
-
-
-Observe that:
+1. Prover sends $U^{(1)}, \ldots, U^{(n)}$ to the verifier.
+2. Verifier samples $\zeta \sample \FF$, $u \sample \FF$ and computes:
 
 $$
 \begin{align}
-\vec{z}^{(1)} &= \vec{z}^{(0)}_L + [\alpha^{(1)}] \cdot \vec{z}^{(0)}_R \\
-\vec{z}^{(2)} &= \vec{z}^{(1)}_L + [\alpha^{(2)}] \cdot \vec{z}^{(1)}_R \\
-\vec{z}^{(3)} &= \vec{z}^{(1)}_L + [\alpha^{(3)}] \cdot \vec{z}^{(2)}_R \\
-&\vdots \\
-\vec{z}^{(k)} &= \vec{z}^{(k-1)}_L + [\alpha^{(k)}] \cdot \vec{z}^{(k-1)}_R \\
+y &= \sum_i \ \alpha^{i-1} \cdot h^{(i)}(u) \in \FF \\
+C &= \sum_i \ [\alpha^{i-1}] \cdot U^{(i)} \in \GG
 \end{align}
 $$
 
-<!--
-note that $\vec{z}^{(k)}
-= \sum_{j = 1}^{\ell} c_i \cdot z_i
-= \sum_{j = 1}^{\ell} c_i \cdot z^{i - 1}$ for some coefficients $c_i$ depending on $\alpha^{(1)}, \ldots, \alpha^{(k)}$,
-To see this consider an index $j \in [\ell]$ and
-To see this consider the expansion of the product: the coefficient $c_j$ for the $X^j$'th term
-let $b_0, \ldots, b_{k-1}$ be the binary expansion of $j$, i.e. $j = \sum_{i=0}^{k-1} b_i \cdot 2^i$,
-then $c_j = \sum_{b_i \neq 0} \alpha^{k - i}$, which corresponds exactly to the value that
-$z_j$
--->
-
-Therefore the final evaluation can be computed as $v = h(z) \cdot \vec{f}$.
-
-Let us denote by $U$ the final $G'$. For clarity, let us start by "unrolling" how $U$ is suppose to be computed:
-Let $\vec{G}^{(i)}$ denote $\vec{G}'$ after $i$ "foldings" (recursive applications of the proof above), with $\vec{G}^{(0)}$ being the original list of generators.
-Then:
+And outputs the following claim:
 
 $$
-\begin{align}
-    \vec{G}^{(1)} &\gets \vec{G}^{(0)}_L + [\alpha_1] \cdot \vec{G}^{(0)}_R \\
-    \vec{G}^{(2)} &\gets \vec{G}^{(1)}_L + [\alpha_2] \cdot \vec{G}^{(1)}_R \\
-    \vec{G}^{(3)} &\gets \vec{G}^{(2)}_L + [\alpha_2] \cdot \vec{G}^{(2)}_R \\
-    &\ldots \\
-    U &\gets \vec{G}^{(\log_2 \ell - 1)}_L + [\alpha_{\log_2 \ell - 1}] \cdot \vec{G}^{(\log_2 \ell - 1)}_R \\
-\end{align}
+(C, u, y) \in \language_{\mathsf{PCS},\ell}
 $$
 
+i.e. the polynomial commitment $C$ opens to $y$ at $u$. The prover has the witness:
 
+$$
+f(X) = \sum_i \ \alpha^{i-1} \cdot h^{(i)}(X)
+$$
 
-### Let The Prover Compute $U$
+Why is this a sound reduction: if one of the $U^{(i)}$ does not commit to $h^{(i)}$ then they disagree except on at most $\ell$ points,
+hence $f^{(i)}(u) \neq h^{(i)}(u)$ with probability $\ell/|\FF|$.
+Taking a union bound over all $n$ terms leads to soundness error $\frac{n \ell}{|\FF|}$.
 
-To avoid the verifier computing $U$ (which takes $O(\ell)$ time), we are simply going to have the prover send $U$ to the verifier.
+The reduction above requires $n$ $\GG$ operations and $O(n \log \ell)$ $\FF$ operations.
 
-Of course, by letting the prover provide $U$ he could provide a wrong $U$ and cheat...
-
-To mitigate this we will devise a way for the verifier to "check" that the $U$ provide is correctly computed from the $\vec{\alpha}'s$.
-To understand how we can devise such a check, start by observing that we can view
-the folding as a binary tree: at the leafs are the elements of $\vec{G}^{(0)}$, edges are labeled by
-
-<figure>
-<img src="https://i.imgur.com/RCOxqzw.png">
-<figcaption align = "center"><b>Fig 1.</b> Illustrates the final combination in the MSM for a CRS of 4 elements.</figcaption>
-</figure>
-
-A polynomial evaluation can be reduced to an inner product argument using a variant of the well-known folding argument, which we now reiterate for concreteness.
-
-In the protocol above, the only computationally expensive thing the verifier has to compute is:
-
-\\[
-G' = [\alpha] \cdot G_L + G_R
-\\]
-
-The rest is sub-linear (in particular computing $C'$)
-
-The naive approach has him doing this every round of the protocol. However, this can be defered to one big final multi-scalar exponentiation relying on all the challenges $\alpha_1, \ldots, \alpha_R$ to reduce concrete cost (e.g. using Pippenger).
-
-**Side Note:** This is one of the primary reasons why verifying e.g. a Bulletproof is concretely much faster than creating a Bulletproof.
-
-So how does this final MSM (Multi-Scalar Multi-exponentiation) look?
-
-Well it is **very structured** and this is the **Halo observation** in a nut-shell!
-
-If you define the polynomial:
-
-\\[
-h(X) = \prod_{i=0} \left(1 + \alpha_{R - i} \cdot X^{2^i}\right) = \sum_{i=0} a_i X^i
-\\]
-
-Then the final $G'$ (called $U$) is actually a commitment to (the coefficients $a$) of $h$ i.e.
-
-\\[
-G' = U = \langle a, G \rangle
-\\]
-
-To see this consider a simple example:
-
-
-See that the final $U$ is:
-
-\\[
-\begin{align}
-U &= [\alpha_2] \cdot ([\alpha_1] \cdot G_1 + [1] \cdot G_3) + [1] \cdot ([\alpha_1] \cdot G_2 + G_4) \\
-&= [\alpha_2 \alpha_1] G_1 + [\alpha_2] G_3 + [\alpha_1] G_2 + G_4
-\end{align}
-\\]
-
-Which is exacly the expansion of $h(X)$.
-
-From now on I will refer to the language above as IPA claims:
-
-\\[
-    (h(X), U) \in
-    \mathcal{L}_{\mathsf{IPA}} \iff \left\{
-    (c) :
-    \begin{align}
-    U &= \langle c, G \rangle \\
-    h(X) &= \sum_{i = 0} c_i \cdot X^i
-    \end{align}
-    \right\}
-\\]
-
-
-Where $h(X)$ is in the format above. Unlike PCS claims there are no evaluation and the polynomial (small description) is provided to the verifier.
-
-This will be useful because it allows us to "reduce polynomial commitments to polynomial commitments" and back again using the folding argument, ad infinitum, as we shall see.
-
-### "Compiling" (Or More) IPA Instances Into PCS
-
-Now suppose we have two instances of the claim:
-
-\\[
-\mathsf{A}_1 =
-(h_1(X), U_1) \in \mathcal{L}_{\mathsf{IPA}} \\
-\mathsf{A}_2 = (h_2(X), U_2) \in \mathcal{L}_{\mathsf{IPA}}
-\\]
-
-The verifier could check the claims, however, this is expensive (it takes linear time) and the verifier should be succinct...
-
-So what we can do instead is to compute a linear combination and end up with once instance again. To do so the verifier will convert the claims above to openings of polynomial commitments, in more detail:
-
-1. The verifier sends $\beta$, $z$ to the prover
-2. Compute:
-\\[
-C = U_1 + [\beta] \cdot U_2 \\
-v = h_1(z) + \beta \cdot h_2(z)
-\\]
-
-Note that **even though h(X)** is large it is succinct to compute it at any point.
-
-The verifier outputs the PCS claim:
-
-\\[
-    (C, z, v) \in \mathcal{L}_{\mathsf{PCS}}
-\\]
-
-i.e. $C$ is a commitment to a polynomial $f(X)$ st. $f(z) = v$.
-
-At this point we can compress any number of such IPA claims into a single PCS claim!
-How do we show the PCS claim? We use the PCS to IPA transformation (folding argument) from before.  This yields again a single instance of the IPA claim: $(h'(X), U')$.
-
-Pictorially this recurring reduction looks as follows:
+**In The Code:** additional polynomial commitments (i.e. from PlonK) can be added to the randomized sums $(C, u)$ above and opened at $\zeta$ as well,
+this is done in Kimchi/Pickles: the $\zeta$ and $u$ above is the same as in the Kimchi code.
+The combined $y$ (including both the $h(\cdot)$ evaluations and PlonK openings) is called `combined_inner_product` in Kimchi.
 
 <figure>
-<img src="https://i.imgur.com/V1jGNMQ.png">
-<figcaption align = "center"><b>Fig 2.</b> Combine two (or more) IPA instances into a single PCS instance, then convert the PCS instance back into an IPA instance.</figcaption>
+<img src="./reductions-plonk.svg" alt="Commucation diagram of interactive/non-deterministic reductions between languages">
+<figcaption>
+<b>
+Fig 2.
+</b>
+Cycle of reductions with the added polynomial relations being checked from PlonK.
+</figcaption>
 </figure>
 
-### At The End: Decider Checks IPA Claim Trivially
+This $\relation_{\mathsf{PCS},\ell}$ instance reduced back into a single $\relation_{\mathsf{Acc},\vec{G}}$ instance,
+which is included with the proof.
 
-At all times we are going to have an accumulator of the form:
+**Multiple Accumulators (the case of PCD):** From the section above it may seem like there is always going to be a single $\relation_{\mathsf{Acc},\vec{G}}$ instance, this is indeed the case if the proof only verifies a single proof called Incremental Verifiable Computation (IVC) in the academic literature, however, if the proof itself verifies <u>multiple</u> proofs, called Proof-Carrying Data (PCD), then there will be multiple accumulators:
+Every "input proof" includes an accumulator ($\relation_{\mathsf{Acc},\vec{G}}$ instance),
+all these are combined into the new (single) $\relation_{\mathsf{Acc},\vec{G}}$ instance included in the new proof.
 
-\\[
-\mathsf{A}_1 =
-(h_1(X), U_1) \in \mathcal{L}_{\mathsf{IPA}}
-\\]
+## Accumulation Verifier
 
-At the end, the "decider" verifies this in the trivial way.
+The section above implicitly describes the work the verifier must do,
+but for the sake of completeness let us explicitly describe what the verifier must do to verify a Fiat-Shamir compiled proof of the transformations above.
+This constitutes "the accumulation" verifier which must be implemented "in-circuit" (in addition to the "Kimchi verifier"):
 
-<!-- ![Accumulation](https://c.tenor.com/md3foOULKGIAAAAC/magic.gif) -->
+## No Cycles of Curves?
 
-## What Is Show During Recursion
-
-During the recursion, the next proof proves:
-
-1. The correct accumulation in the input proofs (the verifier for $\pi_1$ and $\pi_2$).
-2. Converts the accumulators $\mathsf{A}_1, \mathsf{A}_2$ into PCS claims using the same $\zeta$ used in the Kimchi (opening of witness columns).
-3. Aggregate all PCS claims using a linear combination
-4. Convert the PCS claim to an IPA claim using the folding argument.
-
-It looks something like this:
-
-<figure>
-<img src="https://i.imgur.com/9qtefpg.png">
-<figcaption align = "center"><b>Fig 3.</b> New proof proves correct accumulation of previous proofs and accumulates the accumulators of the previous proofs with the new openings.</figcaption>
-</figure>
-
-Soundness now follows by recurrence:
-
-0. The $n$'th PCS claims are valid (checked directly by the verifier)
-1. Therefore, we can rely on the soundness of the $n$'th SNARK (PlonK/Kimchi)
-2. The $n$'th SNARK proves that accumulation of PCS claims in step $(n-1)$ was correct.
-3. Hence with overwhemling probabily the $(n-1)$'th PCS claims are valid
-4. Therefore, we can rely on the soundness of the $(n-1)$'th SNARK
-5. The $(n-1)$'th SNARK proves that accumulation of PCS claims in step $(n-2)$ was correct.
-6. ...
-
-In other words soundness of the last SNARK proves soundness of the reduction above and since the reduced result was correct, the inputs are correct with overwhelming probability. Therefore by correctness of step $n$ we get correctness of step $n-1$ and so on.
-
-## Notation and Kimchi/Pickles
-
-The new evaluation point $z$ in Kimchi is called $\zeta$ and is the same as used by the PlonK-like proof system.
-
-In Kimchi the proof type is as follows:
-
-```rust
-/// The proof that the prover creates from a [ProverIndex] and a `witness`.
-#[derive(Clone)]
-pub struct ProverProof<G: AffineCurve> {
-    /// All the polynomial commitments required in the proof
-    pub commitments: ProverCommitments<G>,
-
-    /// batched commitment opening proof
-    pub proof: OpeningProof<G>,
-
-    /// Two evaluations over a number of committed polynomials
-    // TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }
-    pub evals: [ProofEvaluations<Vec<ScalarField<G>>>; 2],
-
-    /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
-    pub ft_eval1: ScalarField<G>,
-
-    /// The public input
-    pub public: Vec<ScalarField<G>>,
-
-    /// The challenges underlying the optional polynomials folded into the proof
-    pub prev_challenges: Vec<(Vec<ScalarField<G>>, PolyComm<G>)>,
-}
-```
-
-The `prev_challenges` field refers to the challenges in the accumulator (the $\alpha$'s) which defines $h(X)$. the `PolyComm<G>` is the $U$ from above: the commitment to $h(X)$.
+Note that the "cycles of curves" (e.g. Pasta cycle) does not show up in this part of the code:
+a <u>separate accumulator</u> is needed for each curve and the final verifier must check both accumulators to deem the combined recursive proof valid.
+This takes the form of `passthough` data in pickles.
