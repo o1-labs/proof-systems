@@ -129,9 +129,9 @@ fn init_foreign_field_mul_rows<F: PrimeField>(
     carry_bot: F,
     carry_top: F,
 ) {
-    for row in 0..2 {
+    for (row, wit) in WITNESS_SHAPE.iter().enumerate() {
         for col in 0..COLUMNS {
-            match &WITNESS_SHAPE[row][col] {
+            match &wit[col] {
                 WitnessCell::Standard(standard_cell) => {
                     handle_standard_witness_cell(
                         witness,
@@ -178,6 +178,7 @@ pub fn create_witness<F: PrimeField>(
     // Compute quotient and remainder and add to witness
     let (quotient_big, remainder_big) =
         (left_input.to_big() * right_input.to_big()).div_rem(&foreign_modulus.to_big());
+
     let quotient = ForeignElement::new_from_big(quotient_big);
     let remainder = ForeignElement::new_from_big(remainder_big);
     extend_witness(&mut witness, quotient);

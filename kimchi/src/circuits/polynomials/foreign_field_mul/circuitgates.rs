@@ -1,71 +1,62 @@
 //! Foreign field multiplication circuit gates
 
-use std::marker::PhantomData;
-
-use ark_ff::FftField;
-
-use crate::circuits::{
-    argument::{Argument, ArgumentType},
-    expr::{constraints::crumb, witness_curr, witness_next, ConstantExpr, E},
-    gate::GateType,
-};
-
 //~ These circuit gates are used to constrain that
 //~
 //~ $$left_input * right_input = quotient * foreign_modulus + remainder$$
 //~
-//~ Documentation:
+//~ ##### Documentation:
 //~
-//~   For more details please see the [FFMul RFC](../rfcs/ffadd.md)
+//~ For more details please see the [FFMul RFC](../rfcs/ffadd.md)
 //~
-//~   Mapping:
-//~     To make things clearer, the following mapping between the variable names
-//~     used in the code and those of the document can be helpful.
+//~ ##### Mapping:
+//~ To make things clearer, the following mapping between the variable names
+//~ used in the code and those of the document can be helpful.
 //~
 //~ ```text
-//~     left_input_hi => a2  right_input_hi => b2  quotient_hi => q2  remainder_hi => r2
-//~     left_input_mi => a1  right_input_mi => b1  quotient_mi => q1  remainder_mi => r1
-//~     left_input_lo => a0  right_input_lo => b0  quotient_lo => q0  remainder_lo => r0
+//~ left_input_hi => a2  right_input_hi => b2  quotient_hi => q2  remainder_hi => r2
+//~ left_input_mi => a1  right_input_mi => b1  quotient_mi => q1  remainder_mi => r1
+//~ left_input_lo => a0  right_input_lo => b0  quotient_lo => q0  remainder_lo => r0
 //~
-//~     product_mi_bot => p10  product_mi_top_limb => p110  product_mi_top_extra => p111
-//~     carry_bot         => v0   carry_top_limb      => v10   carry_top_extra => v11
+//~ product_mi_bot => p10  product_mi_top_limb => p110  product_mi_top_extra => p111
+//~ carry_bot      => v0   carry_top_limb      => v10   carry_top_extra      => v11
 //~ ````
 //~
-//~   Suffixes:
-//~     The variable names in this code uses descriptive suffixes to convey information about the
-//~     positions of the bits referred to.
+//~ ##### Suffixes:
+//~ The variable names in this code uses descriptive suffixes to convey information about the
+//~ positions of the bits referred to.
 //~
-//~       - When a variable is split into 3 limbs we use: lo, mid, hi (where high is the most significant)
-//~       - When a variable is split in 2 halves we use: bottom, top  (where top is the most significant)
-//~       - When the bits of a variable are split into a limb and some extra bits we use: limb,
-//~         extra (where extra is the most significant)
+//~ - When a variable is split into 3 limbs we use: lo, mid, hi (where high is the most significant)
+//~ - When a variable is split in 2 halves we use: bottom, top  (where top is the most significant)
+//~ - When the bits of a variable are split into a limb and some extra bits we use: limb,
+//~   extra (where extra is the most significant)
 //~
-//~ Inputs:
-//~   * foreign_modulus        := foreign field modulus (currently stored in constraint system)
-//~   * left_input $~\in F_f$  := left foreign field element multiplicand
-//~   * right_input $~\in F_f$ := right foreign field element multiplicand
+//~ ##### Inputs:
+//~ * foreign_modulus        := foreign field modulus (currently stored in constraint system)
+//~ * left_input $~\in F_f$  := left foreign field element multiplicand
+//~ * right_input $~\in F_f$ := right foreign field element multiplicand
 //~
-//~   N.b. the native field modulus is obtainable from F, the native field's trait bound below.
-//~
-//~ Witness:
-//~   * quotient $~\in F_f$  := foreign field quotient
-//~   * remainder $~\in F_f$ := foreign field remainder
-//~   * carry_bot            := a two bit carry
-//~   * carry_top_limb       := low 88 bits of carry_top
-//~   * carry_top_extra      := high 3 bits of carry_top
-//~
-//~ Layout:
-//~
-//~ ```text
-//~   Row(s) | Gate              | Witness
-//~      0-3 | multi-range-check | left_input multiplicand
-//~      4-7 | multi-range-check | right_input multiplicand
-//~     8-11 | multi-range-check | quotient
-//~    12-15 | multi-range-check | remainder
-//~    16-19 | multi-range-check | product_mi_bot, product_mi_top_limb, carry_top_limb
-//~       20 | ForeignFieldMul   | (see below)
-//~       21 | Zero              | (see below)
+//~ ```admonition::notice
+//~ N.b. the native field modulus is obtainable from F, the native field's trait bound below.
 //~ ```
+//~
+//~ ##### Witness:
+//~ * quotient $~\in F_f$  := foreign field quotient
+//~ * remainder $~\in F_f$ := foreign field remainder
+//~ * carry_bot            := a two bit carry
+//~ * carry_top_limb       := low 88 bits of carry_top
+//~ * carry_top_extra      := high 3 bits of carry_top
+//~
+//~ ##### Layout:
+//~
+//~ |  Row(s) | Gates             | Witness
+//~ |---------|-------------------|------------------------------------------------------------ |
+//~ |     0-3 | multi-range-check | `left_input` multiplicand                                   |
+//~ |     4-7 | multi-range-check | `right_input` multiplicand                                  |
+//~ |    8-11 | multi-range-check | `quotient`                                                  |
+//~ |   12-15 | multi-range-check | `remainder`                                                 |
+//~ |   16-19 | multi-range-check | `product_mi_bot`, `product_mi_top_limb`, `carry_top_limb`   |
+//~ |      20 | `ForeignFieldMul` | (see below)                                                 |
+//~ |      21 | `Zero`            | (see below)                                                 |
 //~
 //~ The last two rows are layed out like this
 //~
@@ -87,11 +78,19 @@ use crate::circuits::{
 //~ |  13 |                           |                         |
 //~ |  14 |                           |                         |
 
+use crate::circuits::{
+    argument::{Argument, ArgumentType},
+    expr::{constraints::crumb, witness_curr, witness_next, ConstantExpr, E},
+    gate::GateType,
+};
+use ark_ff::FftField;
+use std::marker::PhantomData;
+
 /// Compute nonzero intermediate products
 ///
 /// For details see this section of the design document
 ///
-///     https://hackmd.io/37M7qiTaSIKaZjCC5OnM1w?view#Intermediate-products
+/// <https://hackmd.io/37M7qiTaSIKaZjCC5OnM1w?view#Intermediate-products>
 ///
 /// Note: Thanks to the below trait bound, this code is reusable
 ///       as constraint code or as witness generation code
@@ -261,7 +260,7 @@ where
 
         // 6) Constrain carry_bot witness value to prove zero_bot's LSB are zero
         //    For details on zero_bot and why this is valid, please see
-        //        https://hackmd.io/37M7qiTaSIKaZjCC5OnM1w?view#Intermediate-products
+        //        <https://hackmd.io/37M7qiTaSIKaZjCC5OnM1w?view#Intermediate-products>
         //
         //                  2^176 * v_0 = u_0         = p0 - r0 + 2^88 (p10 - r1)
         //    <=>  2^176 * carry_bot = zero_bot = product_lo - remainder_lo + 2^88 ( product_mi_bot - remainder_mi )
@@ -272,7 +271,7 @@ where
 
         // 7) Constraint carry_top to prove zero_top's bits are zero
         //    For details on zero_top and why this is valid, please see
-        //        https://hackmd.io/37M7qiTaSIKaZjCC5OnM1w?view#Intermediate-products
+        //        <https://hackmd.io/37M7qiTaSIKaZjCC5OnM1w?view#Intermediate-products<
         //
         //              v_1 = v_{10} + 2^3 * v_{11}$
         //        2^88 * v1 = u1 = v0 + p11 + p2 - r2

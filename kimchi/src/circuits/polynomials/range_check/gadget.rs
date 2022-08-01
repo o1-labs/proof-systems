@@ -158,6 +158,7 @@ impl<F: PrimeField> CircuitGate<F> {
             &gamma,
             &lcs.configuration.lookup_info,
         )?;
+
         let lookup_env = Some(LookupEnvironment {
             aggreg: &lookup_env_data.aggreg8,
             sorted: &lookup_env_data.sorted8,

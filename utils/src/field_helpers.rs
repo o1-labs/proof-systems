@@ -110,9 +110,9 @@ impl<F: Field> FieldHelpers<F> for F {
     fn from_big(big: BigUint) -> Result<F> {
         let mut bytes = big.to_bytes_le();
 
-        // Pad with zeros if necessary because the BigUint to_bytes_le function gives the smallest possible vector of bytes
-        if bytes.len() < 32 {
-            bytes.resize(32, 0);
+        // Pad with zeros until multiple of 32 if necessary because the BigUint to_bytes_le function gives the smallest possible vector of bytes
+        if bytes.len() % 32 != 0 {
+            bytes.resize(32 + bytes.len() / 32, 0);
         }
 
         F::deserialize(&mut &bytes[..]).map_err(|_| FieldHelpersError::DeserializeBytes)

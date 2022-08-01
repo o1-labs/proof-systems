@@ -17,10 +17,7 @@ use crate::{
             generic, permutation,
             permutation::ZK_ROWS,
             poseidon::Poseidon,
-            range_check::{
-                self,
-                circuitgates::{RangeCheck0, RangeCheck1},
-            },
+            range_check::{self},
             varbasemul::VarbaseMul,
         },
         wires::{COLUMNS, PERMUTS},
