@@ -1809,6 +1809,11 @@ The prover then follows the following steps to create the proof:
 1. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
    TODO: why not do this first, and then commit? Why commit from evaluation directly?
 1. If using lookup:
+	- if using runtime table:
+		- check that all the provided runtime tables have length and IDs that match the runtime table configuration of the index
+		  we expect the given runtime tables to be sorted as configured, this makes it easier afterwards
+		- calculate the contribution to the second column of the lookup table
+		  (the runtime vector)
 	- If queries involve a lookup table with multiple columns
 	  then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
 	  otherwise set the joint combiner challenge $j'$ to $0$.
@@ -1905,6 +1910,11 @@ The prover then follows the following steps to create the proof:
 	- the 15 registers/witness columns
 	- the 6 sigmas
 	- optionally, the runtime table
+1. if using lookup:
+	- add the lookup sorted polynomials
+	- add the lookup aggreg polynomial
+	- add the combined table polynomial
+	- if present, add the runtime table polynomial
 1. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
 
 
