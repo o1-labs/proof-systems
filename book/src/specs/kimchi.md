@@ -1197,58 +1197,59 @@ These circuit gates are used to constrain that
 
 $$left_input * right_input = quotient * foreign_modulus + remainder$$
 
-Documentation:
+##### Documentation:
 
-  For more details please see the [FFMul RFC](../rfcs/ffadd.md)
+For more details please see the [FFMul RFC](../rfcs/ffadd.md)
 
-  Mapping:
-    To make things clearer, the following mapping between the variable names
-    used in the code and those of the document can be helpful.
+##### Mapping:
+To make things clearer, the following mapping between the variable names
+used in the code and those of the document can be helpful.
 
 ```text
-    left_input_hi => a2  right_input_hi => b2  quotient_hi => q2  remainder_hi => r2
-    left_input_mi => a1  right_input_mi => b1  quotient_mi => q1  remainder_mi => r1
-    left_input_lo => a0  right_input_lo => b0  quotient_lo => q0  remainder_lo => r0
+left_input_hi => a2  right_input_hi => b2  quotient_hi => q2  remainder_hi => r2
+left_input_mi => a1  right_input_mi => b1  quotient_mi => q1  remainder_mi => r1
+left_input_lo => a0  right_input_lo => b0  quotient_lo => q0  remainder_lo => r0
 
-    product_mi_bot => p10  product_mi_top_limb => p110  product_mi_top_extra => p111
-    carry_bot         => v0   carry_top_limb      => v10   carry_top_extra => v11
+product_mi_bot => p10  product_mi_top_limb => p110  product_mi_top_extra => p111
+carry_bot      => v0   carry_top_limb      => v10   carry_top_extra      => v11
 ````
 
-  Suffixes:
-    The variable names in this code uses descriptive suffixes to convey information about the
-    positions of the bits referred to.
+##### Suffixes:
+The variable names in this code uses descriptive suffixes to convey information about the
+positions of the bits referred to.
 
-      - When a variable is split into 3 limbs we use: lo, mid, hi (where high is the most significant)
-      - When a variable is split in 2 halves we use: bottom, top  (where top is the most significant)
-      - When the bits of a variable are split into a limb and some extra bits we use: limb,
-        extra (where extra is the most significant)
+- When a variable is split into 3 limbs we use: lo, mid, hi (where high is the most significant)
+- When a variable is split in 2 halves we use: bottom, top  (where top is the most significant)
+- When the bits of a variable are split into a limb and some extra bits we use: limb,
+  extra (where extra is the most significant)
 
-Inputs:
-  * foreign_modulus        := foreign field modulus (currently stored in constraint system)
-  * left_input $~\in F_f$  := left foreign field element multiplicand
-  * right_input $~\in F_f$ := right foreign field element multiplicand
+##### Inputs:
+* foreign_modulus        := foreign field modulus (currently stored in constraint system)
+* left_input $~\in F_f$  := left foreign field element multiplicand
+* right_input $~\in F_f$ := right foreign field element multiplicand
 
-  N.b. the native field modulus is obtainable from F, the native field's trait bound below.
-
-Witness:
-  * quotient $~\in F_f$  := foreign field quotient
-  * remainder $~\in F_f$ := foreign field remainder
-  * carry_bot            := a two bit carry
-  * carry_top_limb       := low 88 bits of carry_top
-  * carry_top_extra      := high 3 bits of carry_top
-
-Layout:
-
-```text
-  Row(s) | Gate              | Witness
-     0-3 | multi-range-check | left_input multiplicand
-     4-7 | multi-range-check | right_input multiplicand
-    8-11 | multi-range-check | quotient
-   12-15 | multi-range-check | remainder
-   16-19 | multi-range-check | product_mi_bot, product_mi_top_limb, carry_top_limb
-      20 | ForeignFieldMul   | (see below)
-      21 | Zero              | (see below)
+```admonition::notice
+N.b. the native field modulus is obtainable from F, the native field's trait bound below.
 ```
+
+##### Witness:
+* quotient $~\in F_f$  := foreign field quotient
+* remainder $~\in F_f$ := foreign field remainder
+* carry_bot            := a two bit carry
+* carry_top_limb       := low 88 bits of carry_top
+* carry_top_extra      := high 3 bits of carry_top
+
+##### Layout:
+
+|  Row(s) | Gates             | Witness
+|---------|-------------------|------------------------------------------------------------ |
+|     0-3 | multi-range-check | `left_input` multiplicand                                   |
+|     4-7 | multi-range-check | `right_input` multiplicand                                  |
+|    8-11 | multi-range-check | `quotient`                                                  |
+|   12-15 | multi-range-check | `remainder`                                                 |
+|   16-19 | multi-range-check | `product_mi_bot`, `product_mi_top_limb`, `carry_top_limb`   |
+|      20 | `ForeignFieldMul` | (see below)                                                 |
+|      21 | `Zero`            | (see below)                                                 |
 
 The last two rows are layed out like this
 
@@ -1804,6 +1805,11 @@ The prover then follows the following steps to create the proof:
 1. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
    TODO: why not do this first, and then commit? Why commit from evaluation directly?
 1. If using lookup:
+	- if using runtime table:
+		- check that all the provided runtime tables have length and IDs that match the runtime table configuration of the index
+		  we expect the given runtime tables to be sorted as configured, this makes it easier afterwards
+		- calculate the contribution to the second column of the lookup table
+		  (the runtime vector)
 	- If queries involve a lookup table with multiple columns
 	  then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
 	  otherwise set the joint combiner challenge $j'$ to $0$.
@@ -1900,6 +1906,11 @@ The prover then follows the following steps to create the proof:
 	- the 15 registers/witness columns
 	- the 6 sigmas
 	- optionally, the runtime table
+1. if using lookup:
+	- add the lookup sorted polynomials
+	- add the lookup aggreg polynomial
+	- add the combined table polynomial
+	- if present, add the runtime table polynomial
 1. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
 
 
