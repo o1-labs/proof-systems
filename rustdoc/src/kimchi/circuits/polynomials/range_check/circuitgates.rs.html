@@ -1,10 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/range_check/circuitgates.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>circuitgates.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../../storage.js"></script><script defer src="../../../../../source-script.js"></script><script defer src="../../../../../source-files.js"></script><script defer src="../../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../../kimchi/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></div>
-        </a><h2 class="location"></h2>
-    </nav>
-    <nav class="sidebar"><a class="sidebar-logo" href="../../../../../kimchi/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../../kimchi/index.html"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1">
-                                <a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../wheel.svg"></a></div>
-                        </div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/range_check/circuitgates.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>circuitgates.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../../storage.js"></script><script defer src="../../../../../source-script.js"></script><script defer src="../../../../../source-files.js"></script><script defer src="../../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../../kimchi/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../../kimchi/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../../kimchi/index.html"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -322,98 +316,116 @@
 <span id="316">316</span>
 <span id="317">317</span>
 <span id="318">318</span>
-</pre><pre class="rust"><code><span class="doccomment">///```text</span>
-<span class="doccomment">/// Range check circuit gates:</span>
-<span class="doccomment">///</span>
-<span class="doccomment">///    The range check gate is comprised of three circuit gates (RangeCheck0, RangeCheck1</span>
-<span class="doccomment">///    and Zero) and can perform range checks on up to three 88-bit values: v0, v1 and v2.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">///    Byte-order:</span>
-<span class="doccomment">///      * Each value is in little-endian byte order</span>
-<span class="doccomment">///      * Limbs are mapped to columns in big-endian order (i.e. the lowest columns</span>
-<span class="doccomment">///        contain the highest bits)</span>
-<span class="doccomment">///      * We also have the highest bits covered by copy constraints and plookups, so that</span>
-<span class="doccomment">///        we can copy the highest two constraints to zero and get a 64-bit lookup, which</span>
-<span class="doccomment">///        are envisioned as a common case</span>
-<span class="doccomment">///</span>
-<span class="doccomment">///    The values are decomposed into limbs as follows.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">///    L is a 12-bit lookup (or copy) limb,</span>
-<span class="doccomment">///    C is a 2-bit &quot;crumb&quot; limb.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">///         &lt;----6----&gt; &lt;------8------&gt;</span>
-<span class="doccomment">///    v0 = L L L L L L C C C C C C C C</span>
-<span class="doccomment">///    v1 = L L L L L L C C C C C C C C</span>
-<span class="doccomment">///         &lt;--4--&gt; &lt;------------------20-----------------&gt;</span>
-<span class="doccomment">///    v2 = L L L L C C C C C C C C C C C C C C C C C C C C</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Witness structure:</span>
-<span class="doccomment">///</span>
-<span class="doccomment">///   Row  Contents</span>
-<span class="doccomment">///     0   v0</span>
-<span class="doccomment">///     1   v1</span>
-<span class="doccomment">///     2   v2</span>
-<span class="doccomment">///     3   v0,v1,v2</span>
-<span class="doccomment">///</span>
-<span class="doccomment">///   * The first 2 rows contain v0 and v1 and their respective decompositions</span>
-<span class="doccomment">///     into 12-bit and 2-bit limbs</span>
-<span class="doccomment">///   * The 3rd row contains v2 and part of its decomposition: four 12-bit limbs and</span>
-<span class="doccomment">///     the 1st 10 crumbs</span>
-<span class="doccomment">///   * The final row contains v0&#39;s and v1&#39;s 5th and 6th 12-bit limbs as well as the</span>
-<span class="doccomment">///     remaining 10 crumbs of v2</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Constraints:</span>
-<span class="doccomment">///</span>
-<span class="doccomment">///   For efficiency, the values are constrained differently according to their type.</span>
-<span class="doccomment">///    * 12-bit limbs are constrained with plookups</span>
-<span class="doccomment">///    * 2-bit crumbs are constrained with degree-4 constraints</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Layout:</span>
-<span class="doccomment">///</span>
-<span class="doccomment">///  This is how three 88-bit inputs v0, v1 and v2 are layed out and constrained.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">///   * vipj is the jth 12-bit limb of value vi</span>
-<span class="doccomment">///   * vicj is the jth 2-bit crumb limb of value vi</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Gate:   RangeCheck0    RangeCheck0    RangeCheck1    Zero</span>
-<span class="doccomment">///    Rows --&gt;</span>
-<span class="doccomment">///         0              1              2              3</span>
-<span class="doccomment">///    0 | v0           | v1           | v2           | 0</span>
-<span class="doccomment">///    1 | copy    v0p0 | copy    v1p0 | crumb   v2c0 | crumb   v2c10 &lt;- MSB</span>
-<span class="doccomment">///    2 | copy    v0p1 | copy    v1p1 | crumb   v2c1 | crumb   v2c11</span>
-<span class="doccomment">///    3 | plookup v0p2 | plookup v1p2 | plookup v2p0 | plookup  v0p0</span>
-<span class="doccomment">///    4 | plookup v0p3 | plookup v1p3 | plookup v2p1 | plookup  v0p1</span>
-<span class="doccomment">///    5 | plookup v0p4 | plookup v1p4 | plookup v2p2 | plookup  v1p0</span>
-<span class="doccomment">///    6 | plookup v0p5 | plookup v1p5 | plookup v2p3 | plookup  v1p1</span>
-<span class="doccomment">///    7 | crumb   v0c0 | crumb   v1c0 | crumb   v2c2 | crumb   v2c12</span>
-<span class="doccomment">///    8 | crumb   v0c1 | crumb   v1c1 | crumb   v2c3 | crumb   v2c13</span>
-<span class="doccomment">///    9 | crumb   v0c2 | crumb   v1c2 | crumb   v2c4 | crumb   v2c14</span>
-<span class="doccomment">///   10 | crumb   v0c3 | crumb   v1c3 | crumb   v2c5 | crumb   v2c15</span>
-<span class="doccomment">///   11 | crumb   v0c4 | crumb   v1c4 | crumb   v2c6 | crumb   v2c16</span>
-<span class="doccomment">///   12 | crumb   v0c5 | crumb   v1c5 | crumb   v2c7 | crumb   v2c17</span>
-<span class="doccomment">///   13 | crumb   v0p6 | copy    v1c6 | crumb   v2c8 | crumb   v2c18</span>
-<span class="doccomment">///   14 | crumb   v0p7 | copy    v1c7 | crumb   v2c9 | crumb   v2c19 &lt;- LSB</span>
-<span class="doccomment">///</span>
-<span class="doccomment">///   The 12-bit chunks are constrained with plookups and the 2-bit crumbs</span>
-<span class="doccomment">///   constrained with degree-4 constraints of the form x*(x - 1)*(x - 2)*(x - 3).</span>
-<span class="doccomment">///</span>
-<span class="doccomment">///   Note that copy denotes a plookup that is deferred to the 4th gate (i.e. Zero).</span>
-<span class="doccomment">///   This is because of the limitation that we have at most 4 lookups per row.</span>
-<span class="doccomment">///   The copies are constrained using the permutation argument.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Gate types:</span>
-<span class="doccomment">///</span>
-<span class="doccomment">///   Different rows are constrained using different CircuitGate types</span>
-<span class="doccomment">///</span>
-<span class="doccomment">///   Row   CircuitGate   Purpose</span>
-<span class="doccomment">///     0   RangeCheck0   Partially constrain v0</span>
-<span class="doccomment">///     1   RangeCheck0   Partially constrain v1</span>
-<span class="doccomment">///     2   RangeCheck1   Fully constrain v2 (and trigger plookups constraints on row 3)</span>
-<span class="doccomment">///     3   Zero          Complete the constraining of v0 and v1 using lookups</span>
-<span class="doccomment">///</span>
-<span class="doccomment">///  Nb. each CircuitGate type corresponds to a unique polynomial and thus</span>
-<span class="doccomment">///       is assigned its own unique powers of alpha</span>
-<span class="doccomment">///```</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+</pre><pre class="rust"><code><span class="comment">//~ The range check gate is comprised of three circuit gates (RangeCheck0, RangeCheck1</span>
+<span class="comment">//~ and Zero) and can perform range checks on three values of up to 88 bits: v0, v1 and v2.</span>
+<span class="comment">//~</span>
+<span class="comment">//~ ##### Byte-order:</span>
+<span class="comment">//~ * Each value is in little-endian byte order</span>
+<span class="comment">//~ * Limbs are mapped to columns in big-endian order (i.e. the lowest columns</span>
+<span class="comment">//~   contain the highest bits)</span>
+<span class="comment">//~ * We also have the highest bits covered by copy constraints and plookups, so that</span>
+<span class="comment">//~   we can copy the highest two constraints to zero and get a 64-bit lookup, which</span>
+<span class="comment">//~   are envisioned as a common case</span>
+<span class="comment">//~</span>
+<span class="comment">//~ The values are decomposed into limbs as follows.</span>
+<span class="comment">//~ - `L` is a 12-bit lookup (or copy) limb,</span>
+<span class="comment">//~ - `C` is a 2-bit &quot;crumb&quot; limb.</span>
+<span class="comment">//~</span>
+<span class="comment">//~ ```text</span>
+<span class="comment">//~         &lt;----6----&gt; &lt;------8------&gt;</span>
+<span class="comment">//~    v0 = L L L L L L C C C C C C C C</span>
+<span class="comment">//~    v1 = L L L L L L C C C C C C C C</span>
+<span class="comment">//~         &lt;--4--&gt; &lt;------------------20-----------------&gt;</span>
+<span class="comment">//~    v2 = L L L L C C C C C C C C C C C C C C C C C C C C</span>
+<span class="comment">//~ ```</span>
+<span class="comment">//</span>
+<span class="comment">//~ ##### Witness structure:</span>
+<span class="comment">//~</span>
+<span class="comment">//~ | Row | Contents |</span>
+<span class="comment">//~ | --- | ---------|</span>
+<span class="comment">//~ |  0  | v0       |</span>
+<span class="comment">//~ |  1  | v1       |</span>
+<span class="comment">//~ |  2  | v2       |</span>
+<span class="comment">//~ |  3  | v0,v1,v2 |</span>
+<span class="comment">//~</span>
+<span class="comment">//~ * The first 2 rows contain v0 and v1 and their respective decompositions</span>
+<span class="comment">//~   into 12-bit and 2-bit limbs</span>
+<span class="comment">//~ * The 3rd row contains v2 and part of its decomposition: four 12-bit limbs and</span>
+<span class="comment">//~   the 1st 10 crumbs</span>
+<span class="comment">//~ * The final row contains v0&#39;s and v1&#39;s 5th and 6th 12-bit limbs as well as the</span>
+<span class="comment">//~   remaining 10 crumbs of v2</span>
+<span class="comment">//~</span>
+<span class="comment">//~ ```admonition::notice</span>
+<span class="comment">//~ because we are constrained to 4 lookups per row, we are forced to postpone</span>
+<span class="comment">//~ some lookups to an extra row</span>
+<span class="comment">//~ ```</span>
+<span class="comment">//~</span>
+<span class="comment">//~ ##### Constraints:</span>
+<span class="comment">//~</span>
+<span class="comment">//~ For efficiency, the values are constrained differently according to their type.</span>
+<span class="comment">//~ * 12-bit limbs are constrained with plookups</span>
+<span class="comment">//~ * 2-bit crumbs are constrained with degree-4 constraints $x(x-1)(x-2)(x-3)$</span>
+<span class="comment">//~</span>
+<span class="comment">//~ ##### Layout:</span>
+<span class="comment">//~</span>
+<span class="comment">//~ This is how three 88-bit inputs `v0`, `v1` and `v2` are layed out and constrained.</span>
+<span class="comment">//~</span>
+<span class="comment">//~ * `vipj` is the jth 12-bit limb of value `vi`</span>
+<span class="comment">//~ * `vicj` is the jth 2-bit crumb limb of value `vi`</span>
+<span class="comment">//~</span>
+<span class="comment">//~ | Gates | `RangeCheck0`  | `RangeCheck0`  | `RangeCheck1`  | `Zero`          |</span>
+<span class="comment">//~ | ----- | -------------- | -------------- | -------------- | --------------- |</span>
+<span class="comment">//~ | Rows  |          0     |          1     |          2     |          3      |</span>
+<span class="comment">//~ | Cols  |                |                |                |                 |</span>
+<span class="comment">//~ |     0 |         `v0`   |         `v1`   |         `v2`   |         `0`     |</span>
+<span class="comment">//~ |  MS:1 | copy    `v0p0` | copy    `v1p0` | crumb   `v2c0` | crumb   `v2c10` |</span>
+<span class="comment">//~ |     2 | copy    `v0p1` | copy    `v1p1` | crumb   `v2c1` | crumb   `v2c11` |</span>
+<span class="comment">//~ |     3 | plookup `v0p2` | plookup `v1p2` | plookup `v2p0` | plookup `v0p0`  |</span>
+<span class="comment">//~ |     4 | plookup `v0p3` | plookup `v1p3` | plookup `v2p1` | plookup `v0p1`  |</span>
+<span class="comment">//~ |     5 | plookup `v0p4` | plookup `v1p4` | plookup `v2p2` | plookup `v1p0`  |</span>
+<span class="comment">//~ |     6 | plookup `v0p5` | plookup `v1p5` | plookup `v2p3` | plookup `v1p1`  |</span>
+<span class="comment">//~ |     7 | crumb   `v0c0` | crumb   `v1c0` | crumb   `v2c2` | crumb   `v2c12` |</span>
+<span class="comment">//~ |     8 | crumb   `v0c1` | crumb   `v1c1` | crumb   `v2c3` | crumb   `v2c13` |</span>
+<span class="comment">//~ |     9 | crumb   `v0c2` | crumb   `v1c2` | crumb   `v2c4` | crumb   `v2c14` |</span>
+<span class="comment">//~ |    10 | crumb   `v0c3` | crumb   `v1c3` | crumb   `v2c5` | crumb   `v2c15` |</span>
+<span class="comment">//~ |    11 | crumb   `v0c4` | crumb   `v1c4` | crumb   `v2c6` | crumb   `v2c16` |</span>
+<span class="comment">//~ |    12 | crumb   `v0c5` | crumb   `v1c5` | crumb   `v2c7` | crumb   `v2c17` |</span>
+<span class="comment">//~ |    13 | crumb   `v0p6` | copy    `v1c6` | crumb   `v2c8` | crumb   `v2c18` |</span>
+<span class="comment">//~ | LS:14 | crumb   `v0p7` | copy    `v1c7` | crumb   `v2c9` | crumb   `v2c19` |</span>
+<span class="comment">//~</span>
+<span class="comment">//~ The 12-bit chunks are constrained with plookups and the 2-bit crumbs</span>
+<span class="comment">//~ constrained with degree-4 constraints of the form $x (x - 1) (x - 2) (x - 3)$.</span>
+<span class="comment">//~</span>
+<span class="comment">//~ Note that copy denotes a plookup that is deferred to the 4th gate (i.e. `Zero`).</span>
+<span class="comment">//~ This is because of the limitation that we have at most 4 lookups per row.</span>
+<span class="comment">//~ The copies are constrained using the permutation argument.</span>
+<span class="comment">//~</span>
+<span class="comment">//~ ##### Gate types:</span>
+<span class="comment">//~</span>
+<span class="comment">//~ Different rows are constrained using different CircuitGate types</span>
+<span class="comment">//~</span>
+<span class="comment">//~  | Row | `CircuitGate` | Purpose                                                        |</span>
+<span class="comment">//~  | --- | ------------- | -------------------------------------------------------------- |</span>
+<span class="comment">//~  |   0 | `RangeCheck0` | Partially constrain v0                                         |</span>
+<span class="comment">//~  |   1 | `RangeCheck0` | Partially constrain v1                                         |</span>
+<span class="comment">//~  |   2 | `RangeCheck1` | Fully constrain v2 (and trigger plookups constraints on row 3) |</span>
+<span class="comment">//~  |   3 | `Zero`        | Complete the constraining of v0 and v1 using lookups           |</span>
+<span class="comment">//~</span>
+<span class="comment">//~ ```admonition::notice</span>
+<span class="comment">//~  Each CircuitGate type corresponds to a unique polynomial and thus is assigned</span>
+<span class="comment">//~  its own unique powers of alpha</span>
+<span class="comment">//~ ```</span>
+
 <span class="kw">use</span> <span class="ident">std::marker::PhantomData</span>;
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
@@ -424,37 +436,38 @@
 };
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">One</span>, <span class="ident">Zero</span>};
 
-<span class="doccomment">/// RangeCheck0 - Range check constraints</span>
-<span class="doccomment">///</span>
-<span class="doccomment">///   * This circuit gate is used to partially constrain values v0 and v1</span>
-<span class="doccomment">///   * The rest of v0 and v1 are constrained by the lookups in the Zero gate row</span>
-<span class="doccomment">///   * This gate operates on the Curr row</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// It uses three different types of constraints</span>
-<span class="doccomment">///   * copy    - copy to another cell (12-bits)</span>
-<span class="doccomment">///   * plookup - plookup (12-bits)</span>
-<span class="doccomment">///   * crumb   - degree-4 constraint (2-bits)</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Given value v the layout looks like this</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Column | Curr</span>
-<span class="doccomment">///      0 | v</span>
-<span class="doccomment">///      1 | copy    vp0</span>
-<span class="doccomment">///      2 | copy    vp1</span>
-<span class="doccomment">///      3 | plookup vp2</span>
-<span class="doccomment">///      4 | plookup vp3</span>
-<span class="doccomment">///      5 | plookup vp4</span>
-<span class="doccomment">///      6 | plookup vp5</span>
-<span class="doccomment">///      7 | crumb   vc0</span>
-<span class="doccomment">///      8 | crumb   vc1</span>
-<span class="doccomment">///      9 | crumb   vc2</span>
-<span class="doccomment">///     10 | crumb   vc3</span>
-<span class="doccomment">///     11 | crumb   vc4</span>
-<span class="doccomment">///     12 | crumb   vc5</span>
-<span class="doccomment">///     13 | crumb   vc6</span>
-<span class="doccomment">///     14 | crumb   vc7</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// where the notation vpi and vci defined in the &quot;Layout&quot; section above.</span>
+<span class="comment">//~ ##### `RangeCheck0` - Range check constraints</span>
+<span class="comment">//~</span>
+<span class="comment">//~ * This circuit gate is used to partially constrain values `v0` and `v1`</span>
+<span class="comment">//~ * The rest of `v0` and `v1` are constrained by the lookups in the `Zero` gate row</span>
+<span class="comment">//~ * This gate operates on the `Curr` row</span>
+<span class="comment">//~</span>
+<span class="comment">//~ It uses three different types of constraints</span>
+<span class="comment">//~ * copy    - copy to another cell (12-bits)</span>
+<span class="comment">//~ * plookup - plookup (12-bits)</span>
+<span class="comment">//~ * crumb   - degree-4 constraint (2-bits)</span>
+<span class="comment">//~</span>
+<span class="comment">//~ Given value `v` the layout looks like this</span>
+<span class="comment">//~</span>
+<span class="comment">//~ | Column | `Curr`        |</span>
+<span class="comment">//~ | ------ | ------------- |</span>
+<span class="comment">//~ |      0 |         `v`   |</span>
+<span class="comment">//~ |      1 | copy    `vp0` |</span>
+<span class="comment">//~ |      2 | copy    `vp1` |</span>
+<span class="comment">//~ |      3 | plookup `vp2` |</span>
+<span class="comment">//~ |      4 | plookup `vp3` |</span>
+<span class="comment">//~ |      5 | plookup `vp4` |</span>
+<span class="comment">//~ |      6 | plookup `vp5` |</span>
+<span class="comment">//~ |      7 | crumb   `vc0` |</span>
+<span class="comment">//~ |      8 | crumb   `vc1` |</span>
+<span class="comment">//~ |      9 | crumb   `vc2` |</span>
+<span class="comment">//~ |     10 | crumb   `vc3` |</span>
+<span class="comment">//~ |     11 | crumb   `vc4` |</span>
+<span class="comment">//~ |     12 | crumb   `vc5` |</span>
+<span class="comment">//~ |     13 | crumb   `vc6` |</span>
+<span class="comment">//~ |     14 | crumb   `vc7` |</span>
+<span class="comment">//~</span>
+<span class="comment">//~ where the notation `vpi` and `vci` defined in the &quot;Layout&quot; section above.</span>
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RangeCheck0</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">PhantomData</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>);
@@ -514,35 +527,36 @@
     }
 }
 
-<span class="doccomment">/// RangeCheck1 - Range check constraints</span>
-<span class="doccomment">///</span>
-<span class="doccomment">///   * This circuit gate is used to fully constrain v2</span>
-<span class="doccomment">///   * It operates on the Curr and Next rows</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// It uses two different types of constraints</span>
-<span class="doccomment">///   * plookup - plookup (12-bits)</span>
-<span class="doccomment">///   * crumb   - degree-4 constraint (2-bits)</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Given value v2 the layout looks like this</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Column | Curr         | Next</span>
-<span class="doccomment">///      0 | v2           | (ignored)</span>
-<span class="doccomment">///      1 | crumb   v2c0 | crumb v2c10</span>
-<span class="doccomment">///      2 | crumb   v2c1 | crumb v2c11</span>
-<span class="doccomment">///      3 | plookup v2p0 | (ignored)</span>
-<span class="doccomment">///      4 | plookup v2p1 | (ignored)</span>
-<span class="doccomment">///      5 | plookup v2p2 | (ignored)</span>
-<span class="doccomment">///      6 | plookup v2p3 | (ignored)</span>
-<span class="doccomment">///      7 | crumb   v2c2 | crumb v2c12</span>
-<span class="doccomment">///      8 | crumb   v2c3 | crumb v2c13</span>
-<span class="doccomment">///      9 | crumb   v2c4 | crumb v2c14</span>
-<span class="doccomment">///     10 | crumb   v2c5 | crumb v2c15</span>
-<span class="doccomment">///     11 | crumb   v2c6 | crumb v2c16</span>
-<span class="doccomment">///     12 | crumb   v2c7 | crumb v2c17</span>
-<span class="doccomment">///     13 | crumb   v2c8 | crumb v2c18</span>
-<span class="doccomment">///     14 | crumb   v2c9 | crumb v2c19</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// where the notation v2i and v2i defined in the &quot;Layout&quot; section above.</span>
+<span class="comment">//~ ##### RangeCheck1 - Range check constraints</span>
+<span class="comment">//~</span>
+<span class="comment">//~ * This circuit gate is used to fully constrain `v2`</span>
+<span class="comment">//~ * It operates on the `Curr` and `Next` rows</span>
+<span class="comment">//~</span>
+<span class="comment">//~ It uses two different types of constraints</span>
+<span class="comment">//~ * plookup - plookup (12-bits)</span>
+<span class="comment">//~ * crumb   - degree-4 constraint (2-bits)</span>
+<span class="comment">//~</span>
+<span class="comment">//~ Given value `v2` the layout looks like this</span>
+<span class="comment">//~</span>
+<span class="comment">//~ | Column | `Curr`         | `Next`        |</span>
+<span class="comment">//~ | ------ | -------------- | ------------- |</span>
+<span class="comment">//~ |      0 |         `v2`   | (ignored)     |</span>
+<span class="comment">//~ |      1 | crumb   `v2c0` | crumb `v2c10` |</span>
+<span class="comment">//~ |      2 | crumb   `v2c1` | crumb `v2c11` |</span>
+<span class="comment">//~ |      3 | plookup `v2p0` | (ignored)     |</span>
+<span class="comment">//~ |      4 | plookup `v2p1` | (ignored)     |</span>
+<span class="comment">//~ |      5 | plookup `v2p2` | (ignored)     |</span>
+<span class="comment">//~ |      6 | plookup `v2p3` | (ignored)     |</span>
+<span class="comment">//~ |      7 | crumb   `v2c2` | crumb `v2c12` |</span>
+<span class="comment">//~ |      8 | crumb   `v2c3` | crumb `v2c13` |</span>
+<span class="comment">//~ |      9 | crumb   `v2c4` | crumb `v2c14` |</span>
+<span class="comment">//~ |     10 | crumb   `v2c5` | crumb `v2c15` |</span>
+<span class="comment">//~ |     11 | crumb   `v2c6` | crumb `v2c16` |</span>
+<span class="comment">//~ |     12 | crumb   `v2c7` | crumb `v2c17` |</span>
+<span class="comment">//~ |     13 | crumb   `v2c8` | crumb `v2c18` |</span>
+<span class="comment">//~ |     14 | crumb   `v2c9` | crumb `v2c19` |</span>
+<span class="comment">//~</span>
+<span class="comment">//~ where the notation v2i and v2i defined in the &quot;Layout&quot; section above.</span>
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RangeCheck1</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">PhantomData</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>);
@@ -641,5 +655,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (4d6d601c8 2022-07-26)" ></div>
-</body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (f9cba6374 2022-07-31)" ></div></body></html>

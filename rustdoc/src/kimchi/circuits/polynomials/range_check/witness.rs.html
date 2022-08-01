@@ -1,10 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/range_check/witness.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>witness.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../../storage.js"></script><script defer src="../../../../../source-script.js"></script><script defer src="../../../../../source-files.js"></script><script defer src="../../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../../kimchi/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></div>
-        </a><h2 class="location"></h2>
-    </nav>
-    <nav class="sidebar"><a class="sidebar-logo" href="../../../../../kimchi/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../../kimchi/index.html"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1">
-                                <a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../wheel.svg"></a></div>
-                        </div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/range_check/witness.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>witness.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../../storage.js"></script><script defer src="../../../../../source-script.js"></script><script defer src="../../../../../source-files.js"></script><script defer src="../../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../../kimchi/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../../kimchi/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../../kimchi/index.html"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -206,6 +200,15 @@
 <span id="200">200</span>
 <span id="201">201</span>
 <span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Range check witness computation</span>
 
 <span class="kw">use</span> <span class="ident">ark_ff::PrimeField</span>;
@@ -214,35 +217,39 @@
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::polynomial::COLUMNS</span>;
 
-<span class="kw">enum</span> <span class="ident">WitnessCell</span> {
+<span class="doccomment">/// Witness cell for range check gadget</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">WitnessCell</span> {
     <span class="ident">Copy</span>(<span class="ident">CopyWitnessCell</span>),
     <span class="ident">Value</span>,
     <span class="ident">Limb</span>(<span class="ident">LimbWitnessCell</span>),
     <span class="ident">Zero</span>,
 }
 
-<span class="comment">// Witness cell copied from another</span>
-<span class="kw">struct</span> <span class="ident">CopyWitnessCell</span> {
+<span class="doccomment">/// Witness cell copied from another</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CopyWitnessCell</span> {
     <span class="ident">row</span>: <span class="ident">usize</span>,
     <span class="ident">col</span>: <span class="ident">usize</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">CopyWitnessCell</span> {
-    <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">create</span>(<span class="ident">row</span>: <span class="ident">usize</span>, <span class="ident">col</span>: <span class="ident">usize</span>) -&gt; <span class="ident">WitnessCell</span> {
+    <span class="doccomment">/// Create a copy witness cell</span>
+    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">create</span>(<span class="ident">row</span>: <span class="ident">usize</span>, <span class="ident">col</span>: <span class="ident">usize</span>) -&gt; <span class="ident">WitnessCell</span> {
         <span class="ident">WitnessCell::Copy</span>(<span class="ident">CopyWitnessCell</span> { <span class="ident">row</span>, <span class="ident">col</span> })
     }
 }
 
-<span class="comment">// Witness cell for a range check field element limb</span>
-<span class="kw">struct</span> <span class="ident">ValueWitnessCell</span>;
+<span class="doccomment">/// Witness cell for a range check field element limb</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ValueWitnessCell</span>;
+
 <span class="kw">impl</span> <span class="ident">ValueWitnessCell</span> {
-    <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">create</span>() -&gt; <span class="ident">WitnessCell</span> {
+    <span class="doccomment">/// Create a value witness cell</span>
+    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">create</span>() -&gt; <span class="ident">WitnessCell</span> {
         <span class="ident">WitnessCell::Value</span>
     }
 }
 
-<span class="comment">// Witness cell for a range check field element sub-limb</span>
-<span class="kw">struct</span> <span class="ident">LimbWitnessCell</span> {
+<span class="doccomment">/// Witness cell for a range check field element sub-limb</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LimbWitnessCell</span> {
     <span class="ident">row</span>: <span class="ident">usize</span>,   <span class="comment">// Cell row</span>
     <span class="ident">col</span>: <span class="ident">usize</span>,   <span class="comment">// Cell col</span>
     <span class="ident">start</span>: <span class="ident">usize</span>, <span class="comment">// Starting bit offset</span>
@@ -250,8 +257,9 @@
 }
 
 <span class="kw">impl</span> <span class="ident">LimbWitnessCell</span> {
-    <span class="comment">// Params: source (row, col), starting bit offset and ending bit offset (exclusive)</span>
-    <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">create</span>(<span class="ident">row</span>: <span class="ident">usize</span>, <span class="ident">col</span>: <span class="ident">usize</span>, <span class="ident">start</span>: <span class="ident">usize</span>, <span class="ident">end</span>: <span class="ident">usize</span>) -&gt; <span class="ident">WitnessCell</span> {
+    <span class="doccomment">/// Creates a limb witness cell.</span>
+    <span class="doccomment">/// Params: source (row, col), starting bit offset and ending bit offset (exclusive)</span>
+    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">create</span>(<span class="ident">row</span>: <span class="ident">usize</span>, <span class="ident">col</span>: <span class="ident">usize</span>, <span class="ident">start</span>: <span class="ident">usize</span>, <span class="ident">end</span>: <span class="ident">usize</span>) -&gt; <span class="ident">WitnessCell</span> {
         <span class="ident">WitnessCell::Limb</span>(<span class="ident">LimbWitnessCell</span> {
             <span class="ident">row</span>,
             <span class="ident">col</span>,
@@ -261,26 +269,28 @@
     }
 }
 
-<span class="comment">// An cell containing zero</span>
-<span class="kw">struct</span> <span class="ident">ZeroWitnessCell</span>;
+<span class="doccomment">/// A cell containing zero</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ZeroWitnessCell</span>;
+
 <span class="kw">impl</span> <span class="ident">ZeroWitnessCell</span> {
-    <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">create</span>() -&gt; <span class="ident">WitnessCell</span> {
+    <span class="doccomment">/// Create a zero witness cell</span>
+    <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">create</span>() -&gt; <span class="ident">WitnessCell</span> {
         <span class="ident">WitnessCell::Zero</span>
     }
 }
 
-<span class="comment">// Witness layout</span>
-<span class="comment">//   * The values and cell contents are in little-endian order.</span>
-<span class="comment">//     This is important for compatibility with other gates, where</span>
-<span class="comment">//     elements of the first 7 columns could be copied and reused by them.</span>
-<span class="comment">//     So they should be in the usual little-endian witness byte order.</span>
-<span class="comment">//   * Limbs are mapped to columns so that those containing the MSBs</span>
-<span class="comment">//     are in lower numbered columns (i.e. big-endian column mapping).</span>
-<span class="comment">//     This is important so that copy constraints are possible on the MSBs.</span>
-<span class="comment">//     For example, we can convert the RangeCheck0 circuit gate into</span>
-<span class="comment">//     a 64-bit lookup by adding two copy constraints to constrain</span>
-<span class="comment">//     columns 1 and 2 to zero.</span>
-<span class="kw">const</span> <span class="ident">WITNESS_SHAPE</span>: [[<span class="ident">WitnessCell</span>; <span class="ident">COLUMNS</span>]; <span class="number">4</span>] <span class="op">=</span> [
+<span class="doccomment">/// Witness layout</span>
+<span class="doccomment">///   * The values and cell contents are in little-endian order.</span>
+<span class="doccomment">///     This is important for compatibility with other gates, where</span>
+<span class="doccomment">///     elements of the first 7 columns could be copied and reused by them.</span>
+<span class="doccomment">///     So they should be in the usual little-endian witness byte order.</span>
+<span class="doccomment">///   * Limbs are mapped to columns so that those containing the MSBs</span>
+<span class="doccomment">///     are in lower numbered columns (i.e. big-endian column mapping).</span>
+<span class="doccomment">///     This is important so that copy constraints are possible on the MSBs.</span>
+<span class="doccomment">///     For example, we can convert the RangeCheck0 circuit gate into</span>
+<span class="doccomment">///     a 64-bit lookup by adding two copy constraints to constrain</span>
+<span class="doccomment">///     columns 1 and 2 to zero.</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">WITNESS_SHAPE</span>: [[<span class="ident">WitnessCell</span>; <span class="ident">COLUMNS</span>]; <span class="number">4</span>] <span class="op">=</span> [
     <span class="comment">/* row 1, RangeCheck0 row */</span>
     <span class="ident">range_check_row</span>(<span class="number">0</span>),
     <span class="comment">/* row 2, RangeCheck0 row */</span>
@@ -331,7 +341,7 @@
     ],
 ];
 
-<span class="comment">// The row layout for RangeCheck0</span>
+<span class="doccomment">/// The row layout for RangeCheck0</span>
 <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">range_check_row</span>(<span class="ident">row</span>: <span class="ident">usize</span>) -&gt; [<span class="ident">WitnessCell</span>; <span class="ident">COLUMNS</span>] {
     [
         <span class="ident">ValueWitnessCell::create</span>(),
@@ -359,10 +369,12 @@
     ]
 }
 
-<span class="kw">fn</span> <span class="ident">value_to_limb</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span>(<span class="ident">fe</span>: <span class="ident">F</span>, <span class="ident">start</span>: <span class="ident">usize</span>, <span class="ident">end</span>: <span class="ident">usize</span>) -&gt; <span class="ident">F</span> {
+<span class="doccomment">/// transforms a field to a limb from a start bit to an end bit</span>
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">value_to_limb</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span>(<span class="ident">fe</span>: <span class="ident">F</span>, <span class="ident">start</span>: <span class="ident">usize</span>, <span class="ident">end</span>: <span class="ident">usize</span>) -&gt; <span class="ident">F</span> {
     <span class="ident">F::from_bits</span>(<span class="kw-2">&amp;</span><span class="ident">fe</span>.<span class="ident">to_bits</span>()[<span class="ident">start</span>..<span class="ident">end</span>]).<span class="ident">expect</span>(<span class="string">&quot;failed to deserialize field bits&quot;</span>)
 }
 
+<span class="doccomment">/// initializes a range check row</span>
 <span class="kw">fn</span> <span class="ident">init_range_check_row</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span>(<span class="ident">witness</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>], <span class="ident">row</span>: <span class="ident">usize</span>, <span class="ident">value</span>: <span class="ident">F</span>) {
     <span class="kw">for</span> <span class="ident">col</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">COLUMNS</span> {
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">WITNESS_SHAPE</span>[<span class="ident">row</span>][<span class="ident">col</span>] {
@@ -387,7 +399,7 @@
 }
 
 <span class="doccomment">/// Create a multi range check witness</span>
-<span class="doccomment">/// Input: three values: v0, v1 and v2</span>
+<span class="doccomment">/// Input: three 88-bit values: v0, v1 and v2</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_multi_witness</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span>(<span class="ident">v0</span>: <span class="ident">F</span>, <span class="ident">v1</span>: <span class="ident">F</span>, <span class="ident">v2</span>: <span class="ident">F</span>) -&gt; [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="number">4</span>]);
 
@@ -400,7 +412,7 @@
 }
 
 <span class="doccomment">/// Create a single range check witness</span>
-<span class="doccomment">/// Input: three values: v0, v1 and v2</span>
+<span class="doccomment">/// Input: 88-bit value v0</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_witness</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span>(<span class="ident">v0</span>: <span class="ident">F</span>) -&gt; [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="number">4</span>]);
 
@@ -409,5 +421,4 @@
     <span class="ident">witness</span>
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (4d6d601c8 2022-07-26)" ></div>
-</body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (f9cba6374 2022-07-31)" ></div></body></html>

@@ -187,6 +187,7 @@
 <li><a href="#endo-scalar">Endo Scalar</a></li>
 <li><a href="#endo-scalar-multiplication">Endo Scalar Multiplication</a></li>
 <li><a href="#scalar-multiplication">Scalar Multiplication</a></li>
+<li><a href="#range-check">Range Check</a></li>
 </ul>
 </li>
 </ul>
@@ -1025,6 +1026,158 @@ This equation is translated as the constraint:</p>
 <li>Binary decomposition:
 <code>0 = n' - (b4 + 2 * (b3 + 2 * (b2 + 2 * (b1 + 2 * (b0 + 2*n)))))</code></li>
 </ul>
+<h4 id="range-check"><a class="header" href="#range-check">Range Check</a></h4>
+<p>The range check gate is comprised of three circuit gates (RangeCheck0, RangeCheck1
+and Zero) and can perform range checks on three values of up to 88 bits: v0, v1 and v2.</p>
+<p>##### Byte-order:</p>
+<ul>
+<li>Each value is in little-endian byte order</li>
+<li>Limbs are mapped to columns in big-endian order (i.e. the lowest columns
+contain the highest bits)</li>
+<li>We also have the highest bits covered by copy constraints and plookups, so that
+we can copy the highest two constraints to zero and get a 64-bit lookup, which
+are envisioned as a common case</li>
+</ul>
+<p>The values are decomposed into limbs as follows.</p>
+<ul>
+<li><code>L</code> is a 12-bit lookup (or copy) limb,</li>
+<li><code>C</code> is a 2-bit “crumb” limb.</li>
+</ul>
+<pre><code class="language-text">        &lt;----6----&gt; &lt;------8------&gt;
+   v0 = L L L L L L C C C C C C C C
+   v1 = L L L L L L C C C C C C C C
+        &lt;--4--&gt; &lt;------------------20-----------------&gt;
+   v2 = L L L L C C C C C C C C C C C C C C C C C C C C
+</code></pre>
+<h5 id="witness-structure"><a class="header" href="#witness-structure">Witness structure:</a></h5>
+<div class="table-wrapper"><table><thead><tr><th>Row</th><th>Contents</th></tr></thead><tbody>
+<tr><td>0</td><td>v0</td></tr>
+<tr><td>1</td><td>v1</td></tr>
+<tr><td>2</td><td>v2</td></tr>
+<tr><td>3</td><td>v0,v1,v2</td></tr>
+</tbody></table>
+</div>
+<ul>
+<li>The first 2 rows contain v0 and v1 and their respective decompositions
+into 12-bit and 2-bit limbs</li>
+<li>The 3rd row contains v2 and part of its decomposition: four 12-bit limbs and
+the 1st 10 crumbs</li>
+<li>The final row contains v0’s and v1’s 5th and 6th 12-bit limbs as well as the
+remaining 10 crumbs of v2</li>
+</ul>
+<pre><code class="language-admonition::notice">because we are constrained to 4 lookups per row, we are forced to postpone
+some lookups to an extra row
+</code></pre>
+<h5 id="constraints-1"><a class="header" href="#constraints-1">Constraints:</a></h5>
+<p>For efficiency, the values are constrained differently according to their type.</p>
+<ul>
+<li>12-bit limbs are constrained with plookups</li>
+<li>2-bit crumbs are constrained with degree-4 constraints <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">x</span><span class="mopen">(</span><span class="mord mathnormal">x</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord">1</span><span class="mclose">)</span><span class="mopen">(</span><span class="mord mathnormal">x</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord">2</span><span class="mclose">)</span><span class="mopen">(</span><span class="mord mathnormal">x</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord">3</span><span class="mclose">)</span></span></span></span></li>
+</ul>
+<h5 id="layout"><a class="header" href="#layout">Layout:</a></h5>
+<p>This is how three 88-bit inputs <code>v0</code>, <code>v1</code> and <code>v2</code> are layed out and constrained.</p>
+<ul>
+<li><code>vipj</code> is the jth 12-bit limb of value <code>vi</code></li>
+<li><code>vicj</code> is the jth 2-bit crumb limb of value <code>vi</code></li>
+</ul>
+<div class="table-wrapper"><table><thead><tr><th>Gates</th><th><code>RangeCheck0</code></th><th><code>RangeCheck0</code></th><th><code>RangeCheck1</code></th><th><code>Zero</code></th></tr></thead><tbody>
+<tr><td>Rows</td><td>0</td><td>1</td><td>2</td><td>3</td></tr>
+<tr><td>Cols</td><td></td><td></td><td></td><td></td></tr>
+<tr><td>0</td><td><code>v0</code></td><td><code>v1</code></td><td><code>v2</code></td><td><code>0</code></td></tr>
+<tr><td>MS:1</td><td>copy    <code>v0p0</code></td><td>copy    <code>v1p0</code></td><td>crumb   <code>v2c0</code></td><td>crumb   <code>v2c10</code></td></tr>
+<tr><td>2</td><td>copy    <code>v0p1</code></td><td>copy    <code>v1p1</code></td><td>crumb   <code>v2c1</code></td><td>crumb   <code>v2c11</code></td></tr>
+<tr><td>3</td><td>plookup <code>v0p2</code></td><td>plookup <code>v1p2</code></td><td>plookup <code>v2p0</code></td><td>plookup <code>v0p0</code></td></tr>
+<tr><td>4</td><td>plookup <code>v0p3</code></td><td>plookup <code>v1p3</code></td><td>plookup <code>v2p1</code></td><td>plookup <code>v0p1</code></td></tr>
+<tr><td>5</td><td>plookup <code>v0p4</code></td><td>plookup <code>v1p4</code></td><td>plookup <code>v2p2</code></td><td>plookup <code>v1p0</code></td></tr>
+<tr><td>6</td><td>plookup <code>v0p5</code></td><td>plookup <code>v1p5</code></td><td>plookup <code>v2p3</code></td><td>plookup <code>v1p1</code></td></tr>
+<tr><td>7</td><td>crumb   <code>v0c0</code></td><td>crumb   <code>v1c0</code></td><td>crumb   <code>v2c2</code></td><td>crumb   <code>v2c12</code></td></tr>
+<tr><td>8</td><td>crumb   <code>v0c1</code></td><td>crumb   <code>v1c1</code></td><td>crumb   <code>v2c3</code></td><td>crumb   <code>v2c13</code></td></tr>
+<tr><td>9</td><td>crumb   <code>v0c2</code></td><td>crumb   <code>v1c2</code></td><td>crumb   <code>v2c4</code></td><td>crumb   <code>v2c14</code></td></tr>
+<tr><td>10</td><td>crumb   <code>v0c3</code></td><td>crumb   <code>v1c3</code></td><td>crumb   <code>v2c5</code></td><td>crumb   <code>v2c15</code></td></tr>
+<tr><td>11</td><td>crumb   <code>v0c4</code></td><td>crumb   <code>v1c4</code></td><td>crumb   <code>v2c6</code></td><td>crumb   <code>v2c16</code></td></tr>
+<tr><td>12</td><td>crumb   <code>v0c5</code></td><td>crumb   <code>v1c5</code></td><td>crumb   <code>v2c7</code></td><td>crumb   <code>v2c17</code></td></tr>
+<tr><td>13</td><td>crumb   <code>v0p6</code></td><td>copy    <code>v1c6</code></td><td>crumb   <code>v2c8</code></td><td>crumb   <code>v2c18</code></td></tr>
+<tr><td>LS:14</td><td>crumb   <code>v0p7</code></td><td>copy    <code>v1c7</code></td><td>crumb   <code>v2c9</code></td><td>crumb   <code>v2c19</code></td></tr>
+</tbody></table>
+</div>
+<p>The 12-bit chunks are constrained with plookups and the 2-bit crumbs
+constrained with degree-4 constraints of the form <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">x</span><span class="mopen">(</span><span class="mord mathnormal">x</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord">1</span><span class="mclose">)</span><span class="mopen">(</span><span class="mord mathnormal">x</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord">2</span><span class="mclose">)</span><span class="mopen">(</span><span class="mord mathnormal">x</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord">3</span><span class="mclose">)</span></span></span></span>.</p>
+<p>Note that copy denotes a plookup that is deferred to the 4th gate (i.e. <code>Zero</code>).
+This is because of the limitation that we have at most 4 lookups per row.
+The copies are constrained using the permutation argument.</p>
+<p>##### Gate types:</p>
+<p>Different rows are constrained using different CircuitGate types</p>
+<p>| Row | <code>CircuitGate</code> | Purpose                                                        |
+| — | ———–– | ––––––––––––––––––––––––––––––– |
+|   0 | <code>RangeCheck0</code> | Partially constrain v0                                         |
+|   1 | <code>RangeCheck0</code> | Partially constrain v1                                         |
+|   2 | <code>RangeCheck1</code> | Fully constrain v2 (and trigger plookups constraints on row 3) |
+|   3 | <code>Zero</code>        | Complete the constraining of v0 and v1 using lookups           |</p>
+<pre><code class="language-admonition::notice"> Each CircuitGate type corresponds to a unique polynomial and thus is assigned
+ its own unique powers of alpha
+</code></pre>
+<h5 id="rangecheck0---range-check-constraints"><a class="header" href="#rangecheck0---range-check-constraints"><code>RangeCheck0</code> - Range check constraints</a></h5>
+<ul>
+<li>This circuit gate is used to partially constrain values <code>v0</code> and <code>v1</code></li>
+<li>The rest of <code>v0</code> and <code>v1</code> are constrained by the lookups in the <code>Zero</code> gate row</li>
+<li>This gate operates on the <code>Curr</code> row</li>
+</ul>
+<p>It uses three different types of constraints</p>
+<ul>
+<li>copy    - copy to another cell (12-bits)</li>
+<li>plookup - plookup (12-bits)</li>
+<li>crumb   - degree-4 constraint (2-bits)</li>
+</ul>
+<p>Given value <code>v</code> the layout looks like this</p>
+<div class="table-wrapper"><table><thead><tr><th>Column</th><th><code>Curr</code></th></tr></thead><tbody>
+<tr><td>0</td><td><code>v</code></td></tr>
+<tr><td>1</td><td>copy    <code>vp0</code></td></tr>
+<tr><td>2</td><td>copy    <code>vp1</code></td></tr>
+<tr><td>3</td><td>plookup <code>vp2</code></td></tr>
+<tr><td>4</td><td>plookup <code>vp3</code></td></tr>
+<tr><td>5</td><td>plookup <code>vp4</code></td></tr>
+<tr><td>6</td><td>plookup <code>vp5</code></td></tr>
+<tr><td>7</td><td>crumb   <code>vc0</code></td></tr>
+<tr><td>8</td><td>crumb   <code>vc1</code></td></tr>
+<tr><td>9</td><td>crumb   <code>vc2</code></td></tr>
+<tr><td>10</td><td>crumb   <code>vc3</code></td></tr>
+<tr><td>11</td><td>crumb   <code>vc4</code></td></tr>
+<tr><td>12</td><td>crumb   <code>vc5</code></td></tr>
+<tr><td>13</td><td>crumb   <code>vc6</code></td></tr>
+<tr><td>14</td><td>crumb   <code>vc7</code></td></tr>
+</tbody></table>
+</div>
+<p>where the notation <code>vpi</code> and <code>vci</code> defined in the “Layout” section above.</p>
+<h5 id="rangecheck1---range-check-constraints"><a class="header" href="#rangecheck1---range-check-constraints">RangeCheck1 - Range check constraints</a></h5>
+<ul>
+<li>This circuit gate is used to fully constrain <code>v2</code></li>
+<li>It operates on the <code>Curr</code> and <code>Next</code> rows</li>
+</ul>
+<p>It uses two different types of constraints</p>
+<ul>
+<li>plookup - plookup (12-bits)</li>
+<li>crumb   - degree-4 constraint (2-bits)</li>
+</ul>
+<p>Given value <code>v2</code> the layout looks like this</p>
+<div class="table-wrapper"><table><thead><tr><th>Column</th><th><code>Curr</code></th><th><code>Next</code></th></tr></thead><tbody>
+<tr><td>0</td><td><code>v2</code></td><td>(ignored)</td></tr>
+<tr><td>1</td><td>crumb   <code>v2c0</code></td><td>crumb <code>v2c10</code></td></tr>
+<tr><td>2</td><td>crumb   <code>v2c1</code></td><td>crumb <code>v2c11</code></td></tr>
+<tr><td>3</td><td>plookup <code>v2p0</code></td><td>(ignored)</td></tr>
+<tr><td>4</td><td>plookup <code>v2p1</code></td><td>(ignored)</td></tr>
+<tr><td>5</td><td>plookup <code>v2p2</code></td><td>(ignored)</td></tr>
+<tr><td>6</td><td>plookup <code>v2p3</code></td><td>(ignored)</td></tr>
+<tr><td>7</td><td>crumb   <code>v2c2</code></td><td>crumb <code>v2c12</code></td></tr>
+<tr><td>8</td><td>crumb   <code>v2c3</code></td><td>crumb <code>v2c13</code></td></tr>
+<tr><td>9</td><td>crumb   <code>v2c4</code></td><td>crumb <code>v2c14</code></td></tr>
+<tr><td>10</td><td>crumb   <code>v2c5</code></td><td>crumb <code>v2c15</code></td></tr>
+<tr><td>11</td><td>crumb   <code>v2c6</code></td><td>crumb <code>v2c16</code></td></tr>
+<tr><td>12</td><td>crumb   <code>v2c7</code></td><td>crumb <code>v2c17</code></td></tr>
+<tr><td>13</td><td>crumb   <code>v2c8</code></td><td>crumb <code>v2c18</code></td></tr>
+<tr><td>14</td><td>crumb   <code>v2c9</code></td><td>crumb <code>v2c19</code></td></tr>
+</tbody></table>
+</div>
+<p>where the notation v2i and v2i defined in the “Layout” section above.</p>
 <h2 id="setup"><a class="header" href="#setup">Setup</a></h2>
 <p>In this section we specify the setup that goes into creating two indexes from a circuit:</p>
 <ul>
@@ -1276,8 +1429,8 @@ pub struct VerifierIndex&lt;G: KimchiCurve&gt; {
     pub chacha_comm: Option&lt;[PolyComm&lt;G&gt;; 4]&gt;,
 
     // Range check gates polynomial commitments
-    #[serde(bound = &quot;Vec&lt;PolyComm&lt;G&gt;&gt;: Serialize + DeserializeOwned&quot;)]
-    pub range_check_comm: Vec&lt;PolyComm&lt;G&gt;&gt;,
+    #[serde(bound = &quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;)]
+    pub range_check_comm: Option&lt;[PolyComm&lt;G&gt;; range_check::gadget::GATE_COUNT]&gt;,
 
     /// wire coordinate shifts
     #[serde_as(as = &quot;[o1_utils::serialization::SerdeAs; PERMUTS]&quot;)]

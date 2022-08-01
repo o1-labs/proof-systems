@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["GateError","Represents an error found when verifying a witness with a gate"]],"struct":[["Builder",""],["ConstraintSystem",""]]};
+window.SIDEBAR_ITEMS = {"enum":[["GateError","Represents an error found when verifying a witness with a gate"]],"fn":[["selector_polynomial","Create selector polynomial for a circuit gate"],["selector_polynomials","Create selector polynomials for a gate (i.e. a collection of circuit gates)"]],"struct":[["Builder",""],["ConstraintSystem",""]]};
