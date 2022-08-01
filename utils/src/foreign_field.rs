@@ -2,9 +2,11 @@
 
 use std::fmt::Display;
 
-use crate::field_helpers::FieldHelpers;
-use ark_ff::FftField;
+use crate::{field_helpers::FieldHelpers, serialization::SerdeAs};
+use ark_ff::{FftField, Field};
 use num_bigint::BigUint;
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 
 /// Limb length for foreign field elements
 pub const LIMB_BITS: usize = 88;
@@ -24,10 +26,12 @@ pub const FOREIGN_MOD: &[u8] = &[
 /// Bit length of the foreign field modulus
 pub const FOREIGN_BITS: usize = 8 * FOREIGN_MOD.len(); // 256 bits
 
-#[derive(Debug, Clone, Copy)]
+#[serde_as]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 /// Represents a foreign field element
-pub struct ForeignElement<F, const N: usize> {
+pub struct ForeignElement<F: Field, const N: usize> {
     /// limbs in little endian order
+    #[serde_as(as = "[SerdeAs; N]")]
     pub limbs: [F; N],
     /// number of limbs used for the foreign field element
     pub len: usize,
@@ -45,6 +49,7 @@ impl<F: FftField, const N: usize> ForeignElement<F, N> {
         if vec.len() > N {
             panic!("BigUint element is too large for N limbs");
         }
+
         let mut limbs = [F::zero(); N];
         for (i, term) in vec.iter().enumerate() {
             limbs[i] = *term;
@@ -69,8 +74,10 @@ impl<F: FftField, const N: usize> ForeignElement<F, N> {
     /// Obtains the big integer representation of the foreign field element
     pub fn to_big(&self) -> BigUint {
         let mut bytes = vec![];
+        // limbs are stored in little endian
         for limb in self.limbs {
-            bytes.extend_from_slice(&limb.to_bytes());
+            let crumb = &limb.to_bytes()[0..LIMB_BITS / 8];
+            bytes.extend_from_slice(crumb);
         }
         BigUint::from_bytes_le(&bytes)
     }
@@ -125,5 +132,48 @@ impl<F: FftField, const N: usize> Display for ForeignElement<F, N> {
         }
         s += " }";
         write!(f, "{}", s)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ark_ec::AffineCurve;
+    use ark_ff::One;
+    use mina_curves::pasta::pallas;
+
+    /// Affine curve point type
+    pub use pallas::Pallas as CurvePoint;
+    /// Base field element type
+    pub type BaseField = <CurvePoint as AffineCurve>::BaseField;
+    #[test]
+    fn test_big_be() {
+        let bytes = FOREIGN_MOD;
+        let big = BigUint::from_bytes_be(bytes);
+        assert_eq!(
+            ForeignElement::<BaseField, 3>::new_from_be(bytes),
+            ForeignElement::<BaseField, 3>::new_from_big(big)
+        );
+    }
+
+    #[test]
+    fn test_to_big() {
+        let bytes = FOREIGN_MOD;
+        let big = BigUint::from_bytes_be(bytes);
+        let fe = ForeignElement::<BaseField, 3>::new_from_be(bytes);
+        assert_eq!(fe.to_big(), big);
+    }
+
+    #[test]
+    fn test_from_big() {
+        let one = ForeignElement::<BaseField, 3>::new_from_be(&[0x01]);
+        assert_eq!(BaseField::from_big(one.to_big()).unwrap(), BaseField::one());
+
+        let max_big = BaseField::modulus_biguint() - 1u32;
+        let max_fe = ForeignElement::<BaseField, 3>::new_from_big(max_big.clone());
+        assert_eq!(
+            BaseField::from_big(max_fe.to_big()).unwrap(),
+            BaseField::from_bytes(&max_big.to_bytes_le()).unwrap(),
+        );
     }
 }
