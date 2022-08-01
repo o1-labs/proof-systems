@@ -588,15 +588,14 @@ where
                         index_evals.insert(*g, &c[i]);
                     }
                 });
-            if index.cs.range_check_selector_polys.is_some() {
-                index_evals.extend(range_check::gadget::circuit_gates().iter().enumerate().map(
-                    |(i, gate_type)| {
-                        (
-                            *gate_type,
-                            &index.cs.range_check_selector_polys.as_ref().unwrap()[i].eval8,
-                        )
-                    },
-                ));
+
+            if let Some(polys) = &index.cs.range_check_selector_polys {
+                index_evals.extend(
+                    range_check::gadget::circuit_gates()
+                        .iter()
+                        .enumerate()
+                        .map(|(i, gate_type)| (*gate_type, &polys[i].eval8)),
+                );
             }
 
             let mds = &G::sponge_params().mds;
