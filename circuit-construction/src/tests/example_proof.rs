@@ -1,6 +1,5 @@
 use crate::prologue::*;
 use kimchi::curve::KimchiCurve;
-use mina_curves::pasta::vesta::Vesta as VestaAffine;
 
 type SpongeQ = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
 type SpongeR = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>;

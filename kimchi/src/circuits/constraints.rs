@@ -1,5 +1,5 @@
 //! This module implements Plonk circuit constraint primitive.
-use super::lookup::runtime_tables::RuntimeTableCfg;
+use super::{gate::SelectorPolynomial, lookup::runtime_tables::RuntimeTableCfg};
 use crate::{
     circuits::{
         domain_constant_evaluation::DomainConstantEvaluations,
@@ -112,8 +112,11 @@ pub struct ConstraintSystem<F: PrimeField> {
     pub endomul_scalar8: E<F, D<F>>,
 
     /// Range check gate selector polynomials
-    #[serde(bound = "Vec<range_check::SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
-    pub range_check_selector_polys: Vec<range_check::SelectorPolynomial<F>>,
+    #[serde(
+        bound = "[SelectorPolynomial<F>; range_check::gadget::GATE_COUNT]: Serialize + DeserializeOwned"
+    )]
+    pub range_check_selector_polys:
+        Option<[SelectorPolynomial<F>; range_check::gadget::GATE_COUNT]>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -147,6 +150,47 @@ pub struct Builder<F: PrimeField> {
     lookup_tables: Vec<LookupTable<F>>,
     runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
     precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
+}
+
+/// Create selector polynomial for a circuit gate
+pub fn selector_polynomial<F: PrimeField>(
+    gate_type: GateType,
+    gates: &[CircuitGate<F>],
+    domain: &EvaluationDomains<F>,
+) -> SelectorPolynomial<F> {
+    // Coefficient form
+    let coeff = E::<F, D<F>>::from_vec_and_domain(
+        gates
+            .iter()
+            .map(|gate| {
+                if gate.typ == gate_type {
+                    F::one()
+                } else {
+                    F::zero()
+                }
+            })
+            .collect(),
+        domain.d1,
+    )
+    .interpolate();
+
+    // Evaluation form (evaluated over d8)
+    let eval8 = coeff.evaluate_over_domain_by_ref(domain.d8);
+
+    SelectorPolynomial { eval8 }
+}
+
+/// Create selector polynomials for a gate (i.e. a collection of circuit gates)
+pub fn selector_polynomials<F: PrimeField>(
+    gate_types: &[GateType],
+    gates: &[CircuitGate<F>],
+    domain: &EvaluationDomains<F>,
+) -> Vec<SelectorPolynomial<F>> {
+    Vec::from_iter(
+        gate_types
+            .iter()
+            .map(|gate_type| selector_polynomial(*gate_type, gates, domain)),
+    )
 }
 
 impl<F: PrimeField> ConstraintSystem<F> {
@@ -186,8 +230,8 @@ impl<F: PrimeField> ConstraintSystem<F> {
     }
 
     /// This function verifies the consistency of the wire
-    /// assignements (witness) against the constraints
-    ///     witness: wire assignement witness
+    /// assignments (witness) against the constraints
+    ///     witness: wire assignment witness
     ///     RETURN: verification status
     pub fn verify<G: KimchiCurve<ScalarField = F>>(
         &self,
@@ -502,12 +546,14 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         };
 
         // Range check constraint selector polynomials
+        let range_gates = range_check::gadget::circuit_gates();
         let range_check_selector_polys = {
-            if !circuit_gates_used.is_disjoint(&range_check::circuit_gates().into_iter().collect())
-            {
-                range_check::selector_polynomials(&gates, &domain)
+            if circuit_gates_used.is_disjoint(&range_gates.into_iter().collect()) {
+                None
             } else {
-                vec![]
+                Some(array_init(|i| {
+                    selector_polynomial(range_gates[i], &gates, &domain)
+                }))
             }
         };
 
