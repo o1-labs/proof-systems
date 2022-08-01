@@ -7,9 +7,9 @@ P_p = \langle \vec{e}, \vec{H} \rangle \in \mathbb{E}_p(\mathbb{F}_q) \\
 P_q = \langle \vec{e}, \vec{G} \rangle \in \mathbb{E}_q(\mathbb{F}_p)
 $$
 
-Respectively.
+Respectively. See [Pasta Curves](/specs/pasta.html) for more details.
 
-When refering to the $\mathbb{F}_q$-side we mean the proof system for circuit over the field $\mathbb{F}_q$.
+When referring to the $\mathbb{F}_q$-side we mean the proof system for circuit over the field $\mathbb{F}_q$.
 
 ## Public Inputs / Why Passing
 

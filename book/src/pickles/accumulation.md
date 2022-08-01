@@ -16,13 +16,27 @@ allowing someone reviewing / working on this part of the codebase to gain contex
 
 ## Interactive Reductions Between Relations
 
-The easiest way to understand "accumulation" is as a set of interactive reductions between relations.
 
+The easiest way to understand "accumulation schemes" is as a set of interactive reductions between relations.
 An interactive reduction $\relation \to \relation'$ proceeds as follows:
 
 - The prover/verifier starts with some statement $\statement$, the prover additionally holds $\witness$.
 - They then run some protocol between them.
 - After which, they both obtain $\statement'$ and the prover obtains $\witness'$
+
+Pictorially:
+
+<figure>
+<div style="text-align: center;">
+<img src="./interactive-reduction.png" alt="Commucation diagram of interactive/non-deterministic reductions between languages" width="100%">
+</div>
+<figcaption>
+<b>
+Fig 1.
+</b>
+An overview the particular reductions/languages (described below) we require.
+</figcaption>
+</figure>
 
 With the security/completeness guarantee that:
 
@@ -33,8 +47,9 @@ $$
 $$
 
 Except with negligible probability.
+
 In other words: we have reduced membership of $\relation$ to membership of $\relation'$
-using interaction between the parties: the reduction may be probabilistic.
+using interaction between the parties: unlike a classical Karp-Levin reduction the soundness/completeness may rely on random coins and multiple rounds.
 Foreshadowing here is a diagram/overview of the reductions
 (the relations will be described as we go)
 used in Pickles:
@@ -45,13 +60,13 @@ used in Pickles:
 </div>
 <figcaption>
 <b>
-Fig 1.
+Fig 2.
 </b>
 An overview the particular reductions/languages (described below) we require.
 </figcaption>
 </figure>
 
-As you can see from Fig. 1, we have a cycle of reductions (following the arrows) e.g. we can reduce a relation "$\relation_{\mathsf{Acc}, \vec{G}}$" to itself by applying all 4 reductions. This may seem useless: why reduce a relation to itself?
+As you can see from Fig. 2, we have a cycle of reductions (following the arrows) e.g. we can reduce a relation "$\relation_{\mathsf{Acc}, \vec{G}}$" to itself by applying all 4 reductions. This may seem useless: why reduce a relation to itself?
 
 However the crucial point is the "in-degree" (e.g. n-to-1) of these reductions:
 take a look at the diagram and note that
@@ -154,7 +169,7 @@ As a design goal we want this "interactive reduction" (the "accumulation verifie
 however, we mean that no efficient adversary can find a witness for membership e.g. a valid opening.
 -->
 
-## Language of Polynomial Commitment Openings
+## Polynomial Commitment Openings $\relation_{\mathsf{PCS},d}$
 
 Recall that the polynomial commitment scheme (PCS) in Kimchi is just the trivial scheme based on Pedersen commitments.
 For Kimchi we are interested in "accumulation for the language ($\relation_{\mathsf{PCS}, d}$) of polynomial commitment openings", meaning that:
@@ -188,10 +203,10 @@ First a reduction from PCS to an inner product relation.
 Formally the relation of the inner product argument is:
 
 $$
-(
+\left(
 \statement = (C, \vec{G}, H, \vec{z}),
 \witness = (\vec{f})
-)
+\right)
 \in
 \relation_{\mathsf{IPA},\ell}
 \iff
@@ -206,8 +221,8 @@ C = \langle \vec{f}, \vec{G} \rangle + [\langle \vec{f}, \vec{z} \rangle] \cdot 
 \right\}
 $$
 
-We can reduce $(\statement = (C, z, v),
-\witness = (\vec{f})) \in
+We can reduce $\left(\statement = (C, z, v),
+\witness = (\vec{f})\right) \in
 \relation_{\mathsf{PCS}, d}$ to $\relation_{\mathsf{IPA}, \ell}$ with $d = \ell$ as follows:
 
 - Define $\vec{z} = (1, z, z^2, z^3, \ldots, z^{\ell-1})$, so that $v = f(z) = \langle \vec{f}, \vec{z} \rangle$,
@@ -563,7 +578,7 @@ While the proof for $\relation_{\mathsf{IPA},\ell}$ above has $O(\log(\ell))$-si
 
 The rest of the verifiers computation is only $O(\log(\ell))$, namely computing:
 
-- Sampling $\alpha \sample \FF$.
+- Sampling all the challenges $\alpha \sample \FF$.
 - Computing $C^{(i)} \gets [\alpha_i^{-1}] \cdot L^{(i)} + C^{(i-1)} + [\alpha_i] \cdot R^{(i)}$ for every $i$
 
 However, upon inspection, the naive claim that computing $\vec{z}^{(k)}$ takes $O(\ell)$ turns out not to be true:
@@ -667,9 +682,11 @@ $
 \in \relation_{\mathsf{Acc}, \vec{G}}
 $
 
+<!--
 **Note:** The above can be optimized slight: the values of $U$ can be inferred from $H$, $v$ and $c$,
 hence the prover does not need to send $U$ explicitly.
 This optimization is not used in Kimchi/Pickles.
+-->
 
 ## Reduction: $\relation_{\mathsf{Acc}, \overset{\rightarrow}{G}} \to \relation_{\mathsf{PCS}, d}$
 
@@ -710,39 +727,93 @@ $$
 
 Why is this a sound reduction: if one of the $U^{(i)}$ does not commit to $h^{(i)}$ then they disagree except on at most $\ell$ points,
 hence $f^{(i)}(u) \neq h^{(i)}(u)$ with probability $\ell/|\FF|$.
-Taking a union bound over all $n$ terms leads to soundness error $\frac{n \ell}{|\FF|}$.
+Taking a union bound over all $n$ terms leads to soundness error $\frac{n \ell}{|\FF|}$ -- negligible.
 
 The reduction above requires $n$ $\GG$ operations and $O(n \log \ell)$ $\FF$ operations.
 
-**In The Code:** additional polynomial commitments (i.e. from PlonK) can be added to the randomized sums $(C, u)$ above and opened at $\zeta$ as well,
-this is done in Kimchi/Pickles: the $\zeta$ and $u$ above is the same as in the Kimchi code.
-The combined $y$ (including both the $h(\cdot)$ evaluations and PlonK openings) is called `combined_inner_product` in Kimchi.
+**Addition of Polynomial Relations:** additional polynomial commitments (i.e. from PlonK) can be added to the randomized sums $(C, y)$ above and opened at $\zeta$ as well: in which case the prover proves the claimed openings at $\zeta$ before sampling the challenge $u$.
+This is done in Kimchi/Pickles: the $\zeta$ and $u$ above is the same as in the Kimchi code.
+The combined $y$ (including both the $h(\cdot)$ evaluations and polynomial commitment openings at $\zeta$ and $\zeta \omega$) is called `combined_inner_product` in Kimchi.
 
 <figure>
 <img src="./reductions-plonk.svg" alt="Commucation diagram of interactive/non-deterministic reductions between languages">
 <figcaption>
 <b>
-Fig 2.
+Fig 3.
 </b>
-Cycle of reductions with the added polynomial relations being checked from PlonK.
+Cycle of reductions with the added polynomial relations from PlonK.
 </figcaption>
 </figure>
 
 This $\relation_{\mathsf{PCS},\ell}$ instance reduced back into a single $\relation_{\mathsf{Acc},\vec{G}}$ instance,
 which is included with the proof.
 
-**Multiple Accumulators (the case of PCD):** From the section above it may seem like there is always going to be a single $\relation_{\mathsf{Acc},\vec{G}}$ instance, this is indeed the case if the proof only verifies a single proof called Incremental Verifiable Computation (IVC) in the academic literature, however, if the proof itself verifies <u>multiple</u> proofs, called Proof-Carrying Data (PCD), then there will be multiple accumulators:
-Every "input proof" includes an accumulator ($\relation_{\mathsf{Acc},\vec{G}}$ instance),
-all these are combined into the new (single) $\relation_{\mathsf{Acc},\vec{G}}$ instance included in the new proof.
+**Multiple Accumulators (the case of PCD):** From the section above it may seem like there is always going to be a single $\relation_{\mathsf{Acc},\vec{G}}$ instance, this is indeed the case if the proof only verifies a <u>single</u> proof,
+"Incremental Verifiable Computation" (IVC) in the literature.
+If the proof verifies <u>multiple</u> proofs, "Proof-Carrying Data" (PCD), then there will be multiple accumulators:
+every "input proof" includes an accumulator ($\relation_{\mathsf{Acc},\vec{G}}$ instance),
+all these are combined into the new (single) $\relation_{\mathsf{Acc},\vec{G}}$ instance included in the new proof:
+this way, if one of the original proofs included an invalid accumulator and therefore did not verify, the new proof will also include an invalid accumulator and not verify with overwhelming probability.
+
+Pictorially this looks something like:
+
+<figure>
+<img src="./multiple-accumulator.svg" alt="Commucation diagram of interactive/non-deterministic reductions between languages">
+<figcaption>
+<b>
+Fig 4.
+</b> Multiple accumulators from previous input proofs (part of the witness) and the polynomial relations for the new proof are combined and reduced into the new accumulator.
+</figcaption>
+</figure>
+
+Note that the new proof contains the accumulators of the "input" proofs even though the proofs themselves are part of the witness.
+These accumulators are the `RecursionChallenge` structs included in a Kimchi proof.
+The verifier check the PlonK proof (which proves accumulation for each "input proof"), this results in some number of polynomial relations,
+these are combined with the accumulators for the "input" proofs to produce the new accumulator.
 
 ## Accumulation Verifier
 
 The section above implicitly describes the work the verifier must do,
 but for the sake of completeness let us explicitly describe what the verifier must do to verify a Fiat-Shamir compiled proof of the transformations above.
-This constitutes "the accumulation" verifier which must be implemented "in-circuit" (in addition to the "Kimchi verifier"):
+This constitutes "the accumulation" verifier which must be implemented "in-circuit" (in addition to the "Kimchi verifier").
+Let $\mathcal{C} \subseteq \FF$ be the challenge space (128-bit GLV decomposed challenges):
+
+0. PlonK verifier on $\pi$ outputs polynomial relations (in Purple in Fig. 4).
+1. Checking $\relation_{\mathsf{Acc}, \vec{G}}$ and polynomial relations (from PlonK) to $\relation_{\mathsf{PCS},d}$ (the dotted arrows):
+    1. Sample $\zeta \sample \mathcal{C}$ (evaluation point) using the Poseidon sponge.
+    2. Read claimed evaluations at $\zeta$ and $\omega \zeta$ (`ProofEvaluations`).
+    2. Sample $u \sample \mathcal{C}$ (combination challenge) using the Poseidon sponge.
+    3. Compute $C \in \GG$ with $u$ from:
+        - $U^{(1)}, \ldots, U^{(n)}$ (`RecursionChallenge.comm` $\in \GG$)
+        - Polynomial commitments from PlonK (`ProverCommitments`)
+    4. Compute $y$ (`combined_inner_product`) with $u$ from:
+        - The evaluations of $h^{(1)}(\zeta), \ldots, h^{(n)}(\zeta)$
+            - Computed from $\alpha^{(1)}, \ldots, \alpha^{(n)}$ (`RecursionChallenge.prev_challenges` $\in \FF^\ell$)
+        - Polynomial openings from PlonK (`ProofEvaluations`)
+2. Checking $\relation_{\mathsf{PCS}, d} \to \relation_{\mathsf{IPA},\ell}$.
+    1. Sample $H \sample \GG$ using the Poseidon sponge: hash to curve.
+3. Checking $\relation_{\mathsf{IPA}, \ell} \to \relation_{\mathsf{IPA},1}$. Run the correctness of the folding argument:
+    1. For every step of the folding:
+        1. Receive $L^{(i)}, R^{(i)} \in \GG$ (see the vector `OpeningProof.lr` in Kimchi).
+        2. Sample $\alpha_i \sample \mathcal{C}$
+        3. Compute $C^{(i)} = [\alpha_i^{-1}] \cdot L + C^{(i-1)} + [\alpha_i] \cdot R$: <br>
+           (**Note:** to avoid the inversion the element $P = [\alpha_i^{-1}] \cdot L$ is witnessed
+           and the verifier checks $[\alpha_i] \cdot P = [\alpha_i] \cdot ([\alpha^{-1}] \cdot L) = L$.
+           To understand why computing the field inversion would be expensive
+           see [deferred computation](deferred.html)
+           )
+
+3. Checking
+
+    - The polynomial commitments in the
+    - $u \in [0, 2^{128})$ challenge (provided in GLV form).
+3. Compute $y$ from:
+
+Note that the accumulator verifier must be proven (in addition to the Kimchi/PlonK verifier) for each input proof,
+when recursing.
 
 ## No Cycles of Curves?
 
 Note that the "cycles of curves" (e.g. Pasta cycle) does not show up in this part of the code:
 a <u>separate accumulator</u> is needed for each curve and the final verifier must check both accumulators to deem the combined recursive proof valid.
-This takes the form of `passthough` data in pickles.
+This takes the form of [`passthough` data](passthrough.html) in pickles.

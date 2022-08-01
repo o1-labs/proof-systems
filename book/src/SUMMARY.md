@@ -47,7 +47,7 @@
 
 - [Overview](./fundamentals/zkbook_ips.md)
 - [Accumulation](./pickles/accumulation.md)
-- [Deferred Computation & "Passing"](./pickles/deferred.md)
+- [Deferred Computation](./pickles/deferred.md)
 - [Passthough & Me-Only](./pickles/passthrough.md)
 
 # RFCs
