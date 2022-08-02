@@ -20,9 +20,9 @@
     <span class="kw">type</span> <span class="ident">D</span> <span class="op">=</span> <span class="ident">u32</span>;
 
     <span class="kw">fn</span> <span class="ident">to_roinput</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ROInput</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>();
-        <span class="ident">roi</span>.<span class="ident">append_u32</span>(<span class="self">self</span>.<span class="ident">x</span>).<span class="ident">append_u64</span>(<span class="self">self</span>.<span class="ident">y</span>);
-        <span class="ident">roi</span>
+        <span class="ident">ROInput::new</span>()
+            .<span class="ident">append_u32</span>(<span class="self">self</span>.<span class="ident">x</span>)
+            .<span class="ident">append_u64</span>(<span class="self">self</span>.<span class="ident">y</span>)
     }
 
     <span class="kw">fn</span> <span class="ident">domain_string</span>(<span class="ident">seed</span>: <span class="ident">u32</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
@@ -69,12 +69,9 @@
     <span class="kw">type</span> <span class="ident">D</span> <span class="op">=</span> ();
 
     <span class="kw">fn</span> <span class="ident">to_roinput</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ROInput</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>();
-
-        <span class="ident">roi</span>.<span class="ident">append_u32</span>(<span class="self">self</span>.<span class="ident">foo</span>);
-        <span class="ident">roi</span>.<span class="ident">append_u64</span>(<span class="self">self</span>.<span class="ident">bar</span>);
-
-        <span class="ident">roi</span>
+        <span class="ident">ROInput::new</span>()
+            .<span class="ident">append_u32</span>(<span class="self">self</span>.<span class="ident">foo</span>)
+            .<span class="ident">append_u64</span>(<span class="self">self</span>.<span class="ident">bar</span>)
     }
 
     <span class="kw">fn</span> <span class="ident">domain_string</span>(<span class="kw">_</span>: <span class="ident"><span class="self">Self</span>::D</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
@@ -97,12 +94,9 @@
     <span class="kw">type</span> <span class="ident">D</span> <span class="op">=</span> <span class="ident">u64</span>;
 
     <span class="kw">fn</span> <span class="ident">to_roinput</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ROInput</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>();
-
-        <span class="ident">roi</span>.<span class="ident">append_field</span>(<span class="self">self</span>.<span class="ident">left</span>);
-        <span class="ident">roi</span>.<span class="ident">append_field</span>(<span class="self">self</span>.<span class="ident">right</span>);
-
-        <span class="ident">roi</span>
+        <span class="ident">ROInput::new</span>()
+            .<span class="ident">append_field</span>(<span class="self">self</span>.<span class="ident">left</span>)
+            .<span class="ident">append_field</span>(<span class="self">self</span>.<span class="ident">right</span>)
     }
 
     <span class="kw">fn</span> <span class="ident">domain_string</span>(<span class="ident">height</span>: <span class="ident"><span class="self">Self</span>::D</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
@@ -145,10 +139,9 @@ structures, the <code>to_roinput()</code> implementation needs to combine <code>
     <span class="kw">type</span> <span class="ident">D</span> <span class="op">=</span> ();
 
     <span class="kw">fn</span> <span class="ident">to_roinput</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ROInput</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>();
-        <span class="ident">roi</span>.<span class="ident">append_u32</span>(<span class="self">self</span>.<span class="ident">x</span>);
-        <span class="ident">roi</span>.<span class="ident">append_u32</span>(<span class="self">self</span>.<span class="ident">y</span>);
-        <span class="ident">roi</span>
+        <span class="ident">ROInput::new</span>()
+            .<span class="ident">append_u32</span>(<span class="self">self</span>.<span class="ident">x</span>)
+            .<span class="ident">append_u32</span>(<span class="self">self</span>.<span class="ident">y</span>)
     }
 
     <span class="kw">fn</span> <span class="ident">domain_string</span>(<span class="kw">_</span>: <span class="ident"><span class="self">Self</span>::D</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
@@ -167,13 +160,12 @@ structures, the <code>to_roinput()</code> implementation needs to combine <code>
     <span class="kw">type</span> <span class="ident">D</span> <span class="op">=</span> ();
 
     <span class="kw">fn</span> <span class="ident">to_roinput</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ROInput</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>();
-        <span class="comment">// Way 1: Append Hashable input</span>
-        <span class="ident">roi</span>.<span class="ident">append_hashable</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">a1</span>);
-        <span class="comment">// Way 2: Append ROInput</span>
-        <span class="ident">roi</span>.<span class="ident">append_roinput</span>(<span class="self">self</span>.<span class="ident">a2</span>.<span class="ident">to_roinput</span>());
-        <span class="ident">roi</span>.<span class="ident">append_u32</span>(<span class="self">self</span>.<span class="ident">z</span>);
-        <span class="ident">roi</span>
+        <span class="ident">ROInput::new</span>()
+            <span class="comment">// Way 1: Append Hashable input</span>
+            .<span class="ident">append_hashable</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">a1</span>)
+            <span class="comment">// Way 2: Append ROInput</span>
+            .<span class="ident">append_roinput</span>(<span class="self">self</span>.<span class="ident">a2</span>.<span class="ident">to_roinput</span>())
+            .<span class="ident">append_u32</span>(<span class="self">self</span>.<span class="ident">z</span>)
     }
 
     <span class="kw">fn</span> <span class="ident">domain_string</span>(<span class="kw">_</span>: <span class="ident"><span class="self">Self</span>::D</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
@@ -193,4 +185,4 @@ arguments to domain string generation.  It is also used by generic signing code.
 </div></div><div class="item-row"><div class="item-left module-item"><a class="trait" href="trait.Hasher.html" title="mina_hasher::Hasher trait">Hasher</a></div><div class="item-right docblock-short"><p>Interface for hashing <a href="trait.Hashable.html" title="Hashable"><code>Hashable</code></a> inputs</p>
 </div></div></div><h2 id="functions" class="small-section-header"><a href="#functions">Functions</a></h2><div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="fn" href="fn.create_kimchi.html" title="mina_hasher::create_kimchi fn">create_kimchi</a></div><div class="item-right docblock-short"><p>Create an experimental kimchi hasher context</p>
 </div></div><div class="item-row"><div class="item-left module-item"><a class="fn" href="fn.create_legacy.html" title="mina_hasher::create_legacy fn">create_legacy</a></div><div class="item-right docblock-short"><p>Create a legacy hasher context</p>
-</div></div></div><h2 id="types" class="small-section-header"><a href="#types">Type Definitions</a></h2><div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="type" href="type.Fp.html" title="mina_hasher::Fp type">Fp</a></div><div class="item-right docblock-short"></div></div></div></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="mina_hasher" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (f9cba6374 2022-07-31)" ></div></body></html>
+</div></div></div><h2 id="types" class="small-section-header"><a href="#types">Type Definitions</a></h2><div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="type" href="type.Fp.html" title="mina_hasher::Fp type">Fp</a></div><div class="item-right docblock-short"></div></div></div></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="mina_hasher" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (fe3342816 2022-08-01)" ></div></body></html>
