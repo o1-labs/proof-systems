@@ -70,20 +70,20 @@ As you can see from Fig. 2, we have a cycle of reductions (following the arrows)
 
 However the crucial point is the "in-degree" (e.g. n-to-1) of these reductions:
 take a look at the diagram and note that
-<u>any</u> number of $\relation_{\mathsf{Acc}, \vec{G}}$ instances can be reduced to a <u>single</u> $\relation_{\mathsf{PCS},d}$ instance!
-This $\relation_{\mathsf{PCS},d}$ instance can then be converted to a single $\relation_{\mathsf{Acc},\vec{G}}$
-by applying the reductions (moving "around the diagram"):
+<u>any</u> number of $\relAcc$ instances can be reduced to a <u>single</u> $\relPCS{\degree}$ instance!
+This $\relPCS{d}$ instance can then be converted to a single $\relAcc$
+by applying the reductions (moving "around the diagram" by running one protocol after the other):
 
 $$
-\relation_{\mathsf{PCS},d} \to
-\relation_{\mathsf{IPA},\ell}  \to
-\relation_{\mathsf{IPA},1} \to
-\relation_{\mathsf{Acc},\vec{G}}
+\relPCS{\degree} \to
+\relIPA{\ell}  \to
+\relIPA{1} \to
+\relAcc
 $$
 
 **Note:** There are many examples of interactive reductions, an example familiar to the reader is PlonK itself:
 which reduces circuit-satisfiability $\relation_{C}$ ($\statement$ is the public inputs and $\witness$ is the wire assignments)
-to openings of polynomial commitments $\relation_{\mathsf{PCS}, d}$ ($\statement'$ are polynomial commitments and evaluation points, $\witness$ is the opening of the commitment).
+to openings of polynomial commitments $\relPCS{d}$ ($\statement'$ are polynomial commitments and evaluation points, $\witness$ is the opening of the commitment).
 
 <details>
 <summary>
@@ -116,7 +116,7 @@ Meaning the language is "self-reducing" via a series of interactive reductions.
 **A Note On Fiat-Shamir:** All the protocols described here are public coin and hence in implementation
 the Fiat-Shamir transform is applied to avoid interaction: the verifiers challenges are sampled using a hash function (e.g. Poseidon) modelled as a reprogrammable random oracle.
 
-## Polynomial Commitment Openings $\relation_{\mathsf{PCS},d}$
+## Polynomial Commitment Openings $\relPCS{d}$
 
 Recall that the polynomial commitment scheme (PCS) in Kimchi is just the trivial scheme based on Pedersen commitments.
 For Kimchi we are interested in "accumulation for the language ($\relation_{\mathsf{PCS}, d}$) of polynomial commitment openings", meaning that:
@@ -158,13 +158,15 @@ $$
 \relation_{\mathsf{IPA},\ell}
 \iff
 \left\{
-v =
+\begin{align}
+\openy &=
 \langle
 \vec{f},
 \vec{\openx}
-\rangle \in \FF
-\land
-\comm = \langle \vec{f}, \vec{G} \rangle + [\langle \vec{f}, \vec{\openx} \rangle] \cdot H \in \GG
+\rangle \in \FF \\
+\land \\
+\comm &= \langle \vec{f}, \vec{G} \rangle + [\openy] \cdot \genOpen \in \GG
+\end{align}
 \right\}
 $$
 
@@ -173,12 +175,11 @@ We can reduce $\left(\statement = (\comm, \openx, \openy),
 \relation_{\mathsf{PCS}, d}$ to $\relation_{\mathsf{IPA}, \ell}$ with $d = \ell$ as follows:
 
 - Define $\vec{\openx} = (1, \openx, \openx^2, \openx^3, \ldots, \openx^{\ell-1})$, so that $\openy = f(\openx) = \langle \vec{f}, \vec{\openx} \rangle$,
-- The verifier adds the evaluation $v$ to the commitment "in a new coordinate" as follows:
-    1. Verifier picks $H \sample \GG$ and sends $H$ to the prover.
-    2. Verifier updates $C \gets C + [\openy] \cdot H$
+- The verifier adds the evaluation $\openy$ to the commitment "in a new coordinate" as follows:
+    1. Verifier picks $\genOpen \sample \GG$ and sends $H$ to the prover.
+    2. Verifier updates $\comm \gets \comm + [\openy] \cdot \genOpen$
 
-Intuitively we sample a fresh $H$ to avoid a malicious prover "putting something in the $H$-position", because he must send $v$ before seeing $H$, hence he would need to guess $H$ before-hand.
-
+Intuitively we sample a fresh $\genOpen$ to avoid a malicious prover "putting something in the $H$-position", because he must send $\openy$ before seeing $\genOpen$, hence he would need to guess $\genOpen$ before-hand.
 If the prover is honest, we should have a commitment of the form:
 
 $$
@@ -479,18 +480,18 @@ At this point the prover could send $\vec{\openx}'$, $\vec{f}'$ to the verifier 
 
 1. Computing $\vec{G}'$ from $\chalfold$ and $\vec{G}$
 2. Computing $C'$ from $\vec{f}'$, $v$ and $H$
-3. Checking $v \overset?= \langle \vec{f}', \vec{\openx}' \rangle$
+3. Checking $\openy' \overset?= \langle \vec{f}', \vec{\openx}' \rangle$
 
-This would require half as much communication as the naive proof. A modest improvement.
+This would require half as much communication as the naive proof. A modest improvement...
 
-However, we can iteratively apply this transformation until we each an instance of constant size:
+However, we can iteratively apply this transformation until we reach an instance of constant size:
 
-## Reduction: $\relation_{\mathsf{IPA},\ell} \to \relation_{\mathsf{IPA},1}$
+## Reduction: $\relIPA{\ell} \to \ldots \to \relIPA{1}$
 
 That the process above can simply be applied again to the new $(C', \vec{G}', H, \vec{\openx}', v) \in \relation_{\mathsf{IPA}, \ell/2}$ instance as well.
 By doing so $k = \log_2(\ell)$ times the total communication is brought down to $2 k$ $\GG$-elements
-until the instance consists of $(\vec{C}, G, H, \vec{\openx}, v) \in \relation_{\mathsf{IPA}, 1}$
-at which point the prover simply provides $\vec{f}' \in \FF$.
+until the instance consists of $(\comm, \vec{G}, \genOpen, \vec{\openx}) \in \relIPA{1}$
+at which point the prover simply provides the witness $\vec{f}' \in \FF$.
 
 Because we need to refer to the terms in the intermediate reductions
 we let
@@ -501,7 +502,7 @@ We denote by $\chalfold_i$ the challenge of the $i$'th application.
 
 ## Reduction: $\relation_{\mathsf{IPA},1} \to \relation_{\mathsf{Acc},\overset{\rightarrow}{G} }$
 
-While the proof for $\relation_{\mathsf{IPA},\ell}$ above has $O(\log(\ell))$-size, the verifiers time-complexity is $O(\ell)$:
+While the proof for $\relIPA{\ell}$ above has $O(\log(\ell))$-size, the verifiers time-complexity is $O(\ell)$:
 
 - Computing $\vec{G}^{(k)}$ from $\vec{G}^{(0)}$ using $\vec{\chalfold}$ takes $O(\ell)$.
 - Computing $\vec{\openx}^{(k)}$ from $\vec{\openx}^{(0)}$ using $\vec{\chalfold}$ takes $O(\ell)$.
@@ -516,18 +517,18 @@ However, upon inspection, the naive claim that computing $\vec{\openx}^{(k)}$ ta
 **Claim:**
 Define
 $
-h(X) \coloneqq \prod_{i = 0}^{k - 1} \left(1 + \chalfold_{k - i} \cdot X^{2^i}\right)
+\hpoly(X) \coloneqq \prod_{i = 0}^{k - 1} \left(1 + \chalfold_{k - i} \cdot X^{2^i}\right)
 $,
 then
 $
-\vec{\openx}^{(k)} = h(\openx)
+\vec{\openx}^{(k)} = \hpoly(\openx)
 $ for all $\openx$.
 
 **Proof:**
-This can be verified by looking at the expansion of $h(X)$.
+This can be verified by looking at the expansion of $\hpoly(X)$.
 In slightly more detail:
 an equivalent claim is that $\openx^{(k)} = \sum_{i=1}^{\ell} h_i \cdot \openx^{i-1}$
-where $h(X) = \sum_{i=1}^\ell h_i \cdot X^{i-1}$.
+where $\hpoly(X) = \sum_{i=1}^\ell h_i \cdot X^{i-1}$.
 Let $\vec{b}$ be the bit-decomposition of the index $i$ and observe that:
 $$
 h_i = \sum_{b_j} b_j \cdot \chalfold_{k-i}, \text{ where } i = \sum_{j} b_j \cdot 2^j
@@ -535,7 +536,8 @@ $$
 Which is simply a special case of the binomial theorem for the product:
 $$(1 + \chalfold_1) \cdot (1 + \chalfold_2) \cdots (1 + \chalfold_k)$$
 
-Since $h(X)$ can be evaluated in $O(k)$ time, computing $\vec{\openx}^{(k)}$ therefore takes just $O(\log \ell)$ time!
+Looking at $\hpoly$ it can clearly can be evaluated in $O(k = \log \ell)$ time,
+computing $\vec{\openx}^{(k)}$ therefore takes just $O(\log \ell)$ time!
 
 #### The "Halo Trick"
 
@@ -574,13 +576,13 @@ by simply computing $\langle \vec{h}, \vec{G} \rangle$ in linear time.
 Instances are also small: the size is dominated by $\vec{\chalfold}$ which is $|\vec{\chalfold}| = \log_2 \ell$.
 
 **In The Code:** in the Kimchi code $\vec{\accChal}$ is called `prev_challenges` and $\accCom$ is called `comm`,
-the instance $\statement$ is defined by the `RecursionChallenge` struct.
+all defined in the `RecursionChallenge` struct.
 
 Now, using the new notation rewrite $\relation_{\mathsf{IPA},1}$ as:
 
 $$
 \left(
-\statement = (\comm, \accCom, H, h(\openx)),
+\statement = (\comm, \accCom, \genOpen, h(\openx)),
 \witness = (c)
 \right)
 \in
@@ -589,25 +591,27 @@ $$
 \left\{
 \begin{align}
 \openy &= c \cdot h(\openx) \\
-\land \ \comm &= [c] \cdot \accCom + [\openy] \cdot H \in \GG
+\land \ \comm &= [c] \cdot \accCom + [\openy] \cdot \genOpen \in \GG
 \end{align}
 \right\}
 $$
 
 **Note:**
-It is the same relation, we just replaced some names and simplified a bit: inner products between 1-dimensional vectors are just multiplications. The reader should convince themselves of this.
+It is the same relation, we just replaced some names
+($c = \vec{f}^{(k)}$, $\vec{\openx}^{(k)} = \hpoly(\openx)$)
+and simplified a bit:
+inner products between 1-dimensional vectors are just multiplications.
 
-We now have all the components to reduce $\relation_{\mathsf{IPA},1} \to \relation_{\mathsf{Acc},\vec{G} }$ (with no soundness error) as follows:
+We now have all the components to reduce $\relIPA{1} \to \relAcc$ (with no soundness error) as follows:
 
 1. Prover sends $c, \accCom$ to the verifier.
 2. Verifier does:
     - Compute $\openy \gets h(\openx) \cdot c$
-    - Checks $\comm \overset?= [c] \cdot \accCom + [\openy] \cdot H$
+    - Checks $\comm \overset?= [c] \cdot \accCom + [\openy] \cdot \genOpen$
 3. Output
-$
-(\statement = (\accCom, \vec{\chalfold}), \witness = \epsilon)
-\in \relation_{\mathsf{Acc}, \vec{G}}
-$
+$(\statement = (\accCom, \vec{\accChal}), \witness = \epsilon) \in \relAcc$
+
+**Note:** The above can be optimized, in particular there is no need for the prover to send $\accCom$.
 
 ## Reduction: $\relation_{\mathsf{Acc}, \overset{\rightarrow}{G}} \to \relation_{\mathsf{PCS}, d}$
 
@@ -666,17 +670,16 @@ Cycle of reductions with the added polynomial relations from PlonK.
 </figcaption>
 </figure>
 
-This $\relation_{\mathsf{PCS},\ell}$ instance reduced back into a single $\relation_{\mathsf{Acc},\vec{G}}$ instance,
+This $\relation_{\mathsf{PCS},\ell}$ instance reduced back into a single $\relAcc$ instance,
 which is included with the proof.
 
-**Multiple Accumulators (the case of PCD):** From the section above it may seem like there is always going to be a single $\relation_{\mathsf{Acc},\vec{G}}$ instance, this is indeed the case if the proof only verifies a <u>single</u> proof,
-"Incremental Verifiable Computation" (IVC) in the literature.
+**Multiple Accumulators (the case of PCD):**
+From the section above it may seem like there is always going to be a single $\relAcc$ instance,
+this is indeed the case if the proof only verifies a <u>single</u> proof, "Incremental Verifiable Computation" (IVC) in the literature.
 If the proof verifies <u>multiple</u> proofs, "Proof-Carrying Data" (PCD), then there will be multiple accumulators:
-every "input proof" includes an accumulator ($\relation_{\mathsf{Acc},\vec{G}}$ instance),
-all these are combined into the new (single) $\relation_{\mathsf{Acc},\vec{G}}$ instance included in the new proof:
+every "input proof" includes an accumulator ($\relAcc$ instance),
+all these are combined into the new (single) $\relAcc$ instance included in the new proof:
 this way, if one of the original proofs included an invalid accumulator and therefore did not verify, the new proof will also include an invalid accumulator and not verify with overwhelming probability.
-
-Pictorially this looks something like:
 
 <figure>
 <img src="./multiple-accumulator.svg" alt="Commucation diagram of interactive/non-deterministic reductions between languages">
@@ -687,7 +690,10 @@ Fig 4.
 </figcaption>
 </figure>
 
-Note that the new proof contains the accumulators of the "input" proofs even though the proofs themselves are part of the witness.
+Note that the new proof contains the (single) accumulator of each "input" proof, even though the proofs themselves are part of the witness:
+this is because verifying each input proof results in an accumulator (which could then be checked directly -- however this is expensive):
+the "result" of verifying a proof is an accumulator (instance of $\relAcc$) -- which can be verified directly or further "accumulated".
+
 These accumulators are the `RecursionChallenge` structs included in a Kimchi proof.
 The verifier check the PlonK proof (which proves accumulation for each "input proof"), this results in some number of polynomial relations,
 these are combined with the accumulators for the "input" proofs to produce the new accumulator.
@@ -700,60 +706,68 @@ This constitutes "the accumulation" verifier which must be implemented "in-circu
 the section below also describes how to incorporate the additional evaluation point $\chaleval \cdot \omega$ ("the step", used by Kimchi to enforce constraints between adjacent rows).
 Let $\mathcal{C} \subseteq \FF$ be the challenge space (128-bit GLV decomposed challenges):
 
-0. PlonK verifier on $\pi$ outputs polynomial relations (in Purple in Fig. 4).
+1. PlonK verifier on $\pi$ outputs polynomial relations (in Purple in Fig. 4).
 1. Checking $\relation_{\mathsf{Acc}, \vec{G}}$ and polynomial relations (from PlonK) to $\relation_{\mathsf{PCS},d}$ (the dotted arrows):
     1. Sample $\chaleval \sample \mathcal{C}$ (evaluation point) using the Poseidon sponge.
-    2. Read claimed evaluations at $\chaleval$ and $\omega \chaleval$ (`ProofEvaluations`).
-    2. Sample $\chalu \sample \mathcal{C}$ (commitment combination challenge) using the Poseidon sponge.
-    2. Sample $\chalv \sample \mathcal{C}$ (evaluation combination challenge) using the Poseidon sponge.
-    3. Compute $C \in \GG$ with $\chalu$ from:
+    1. Read claimed evaluations at $\chaleval$ and $\omega \chaleval$ (`ProofEvaluations`).
+    1. Sample $\chalu \sample \mathcal{C}$ (commitment combination challenge) using the Poseidon sponge.
+    1. Sample $\chalv \sample \mathcal{C}$ (evaluation combination challenge) using the Poseidon sponge.
+    1. Compute $C \in \GG$ with $\chalu$ from:
         - $\accCom^{(1)}, \ldots, \accCom^{(n)}$ (`RecursionChallenge.comm` $\in \GG$)
         - Polynomial commitments from PlonK (`ProverCommitments`)
-    4. Compute $\openy$ (`combined_inner_product`) with $\chalu$ and $\chalv$ from:
+    1. Compute $\openy_{\chaleval}$ (part of `combined_inner_product`) with $\chalu$ from:
         - The evaluations of $h^{(1)}(\chaleval), \ldots, h^{(n)}(\chaleval)$
-        - The evaluations of $h^{(1)}(\chaleval\omega), \ldots, h^{(n)}(\chaleval\omega)$
         - Polynomial openings from PlonK (`ProofEvaluations`) at $\chaleval$
+    1. Compute $\openy_{\chaleval\omega}$ (part of `combined_inner_product`) with $\chalu$ from:
+        - The evaluations of $h^{(1)}(\chaleval\omega), \ldots, h^{(n)}(\chaleval\omega)$
         - Polynomial openings from PlonK (`ProofEvaluations`) at $\chaleval \cdot \omega$
-        $$
-        \openy = \openy_{\chaleval} + v \cdot \openy_{\chaleval\omega}
-        $$
-        See [Different functionalities](/plonk/inner_product_api.html) for more details.
-2. Checking $\relation_{\mathsf{PCS}, d} \to \relation_{\mathsf{IPA},\ell}$.
+
+        At this point we have two PCS claims, these are combined in the next transform.
+        <details>
+        At this point we have two claims:
+            $$
+            \begin{align}
+            (\comm, \chaleval, \openy_{\chaleval}) &\in \langPCS{\degree} \\
+            (\comm, \chaleval\omega, \openy_{\chaleval\omega}) &\in \langPCS{\degree}
+            \end{align}
+            $$
+        These are combined using a random linear combination with $\chalv$ in the inner product argument
+        (see [Different functionalities](/plonk/inner_product_api.html) for details).
+        </details>
+
+1. Checking $\relation_{\mathsf{PCS}, d} \to \relation_{\mathsf{IPA},\ell}$.
     1. Sample $\genOpen \sample \GG$ using the Poseidon sponge: hash to curve.
-    2. Update $\comm' \gets \comm + [\openy] \cdot \genOpen$.
-3. Checking $\relation_{\mathsf{IPA}, \ell} \to \relation_{\mathsf{IPA},1}$: <br>
+    1. Compute $\openy \gets \openy_{\chaleval} + \chalv \cdot \openy_{\chaleval\omega}$.
+    1. Update $\comm' \gets \comm + [\openy] \cdot \genOpen$.
+1. Checking $\relation_{\mathsf{IPA}, \ell} \to \relation_{\mathsf{IPA},1}$: <br>
    Check the correctness of the folding argument, for every $i = 1, \ldots, k$:
     1. Receive $L^{(i)}, R^{(i)} \in \GG$ (see the vector `OpeningProof.lr` in Kimchi).
-    2. Sample $\chalfold_i \sample \mathcal{C}$
-    3. Compute $C^{(i)} = [\chalfold_i^{-1}] \cdot L + C^{(i-1)} + [\chalfold_i] \cdot R$ (using GLV endomorphism) <br>
+    1. Sample $\chalfold_i \sample \mathcal{C}$
+    1. Compute $C^{(i)} = [\chalfold_i^{-1}] \cdot L + C^{(i-1)} + [\chalfold_i] \cdot R$ (using GLV endomorphism) <br>
        (**Note:** to avoid the inversion the element $P = [\chalfold_i^{-1}] \cdot L$ is witnessed
        and the verifier checks $[\chalfold_i] \cdot P = [\chalfold_i] \cdot ([\chalfold_i^{-1}] \cdot L) = L$.
        To understand why computing the field inversion would be expensive
        see [deferred computation](deferred.html))
-3. Checking $\relation_{\mathsf{IPA},1} \to \relation_{\mathsf{Acc}, \vec{G}}$:
+1. Checking $\relation_{\mathsf{IPA},1} \to \relation_{\mathsf{Acc}, \vec{G}}$
     1. Receive $c$ form the prover.
-    2. Define $\hpoly$ from $\vec{\chalfold}$ (folding challenges).
-    3. Compute $\openy' \gets c \cdot (\hpoly(\chaleval) + \chalv \cdot \hpoly(\chaleval \omega))$, this works since:
+    1. Define $\hpoly$ from $\vec{\chalfold}$ (folding challenges).
+    1. Compute $\openy' \gets c \cdot (\hpoly(\chaleval) + \chalv \cdot \hpoly(\chaleval \omega))$, this works since:
        $$
-       \openy^{(0)} =
-       (
-        1 + \chalv \cdot 1,
-        \openy_{\chaleval} + \chalv \cdot \openy_{\chaleval\omega},
-        \openy_{\chaleval}^2 + v \cdot \openy_{\chaleval\omega},
-        \ldots
-        \openy_{\chaleval}^{\ell-1} + v \cdot \openy_{\chaleval\omega}^{\ell-1},
-       )
+       \openx^{(\rounds)} =
+       \openx^{(\rounds)}_{\chaleval} + \chalv \cdot \openx^{(\rounds)}_{\chaleval\omega}
        $$
+       See [Different functionalities](/plonk/inner_product_api.html) for more details or
+       [the relevant code](https://github.com/o1-labs/proof-systems/blob/76c678d3db9878730f8a4eead65d1e038a509916/poly-commitment/src/commitment.rs#L785).
+    1. Compute $\accCom \gets \comm^{(k)} - [\openy'] \cdot \genOpen$    (i.e. st. $\comm^{(k)} = \accCom + [\openy'] \cdot \genOpen$)
 
-    4. Compute $\accCom \gets \comm^{(k)} - [\openy'] \cdot \genOpen$    (i.e. st. $\comm^{(k)} = \accCom + [\openy'] \cdot \genOpen$)
 
-Note that the accumulator verifier must be proven (in addition to the Kimchi/PlonK verifier) for each input proof,
-when recursing.
-
-[Kimchi](https://o1-labs.github.io/proof-systems/specs/kimchi.html#proof-creation)
+Note that the accumulator verifier must be proven (in addition to the Kimchi/PlonK verifier) for each input proof.
 
 ## No Cycles of Curves?
 
 Note that the "cycles of curves" (e.g. Pasta cycle) does not show up in this part of the code:
 a <u>separate accumulator</u> is needed for each curve and the final verifier must check both accumulators to deem the combined recursive proof valid.
 This takes the form of [`passthough` data](passthrough.html) in pickles.
+
+Note however, that the accumulation verifier makes use of both $\GG$-operations and $\FF$-operations,
+therefore it (like the Kimchi verifier) also requires [deferred computation](deferred.html).

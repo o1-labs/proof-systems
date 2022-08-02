@@ -21,3 +21,14 @@
 \genOpen:{H}
 
 \hpoly:{h}
+
+\relAcc:{\relation_{\mathsf{Acc},\vec{G}}}
+\relPCS:{\relation_{\mathsf{PCD},#1}}
+\relIPA:{\relation_{\mathsf{IPA},#1}}
+
+
+\langPCS:{\language_{\mathsf{PCD},#1}}
+
+\rounds:{k}
+\degree:{d}
+
