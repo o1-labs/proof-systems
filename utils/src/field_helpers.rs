@@ -13,6 +13,8 @@ pub enum FieldHelpersError {
     DeserializeBytes,
     #[error("failed to decode hex")]
     DecodeHex,
+    #[error("failed to convert BigUint into field element")]
+    FromBigToField,
 }
 
 /// Result alias using [FieldHelpersError]
@@ -30,9 +32,6 @@ pub trait FieldHelpers<F> {
     /// Deserialize from bits
     fn from_bits(bits: &[bool]) -> Result<F>;
 
-    /// Deserialize from big unsigned integer
-    fn from_big(big: BigUint) -> Result<F>;
-
     /// Serialize to bytes
     fn to_bytes(&self) -> Vec<u8>;
 
@@ -41,9 +40,6 @@ pub trait FieldHelpers<F> {
 
     /// Serialize to bits
     fn to_bits(&self) -> Vec<bool>;
-
-    /// Field element as a BigUint
-    fn to_big(self) -> BigUint;
 
     /// Field size in bytes
     fn size_in_bytes() -> usize
@@ -106,23 +102,18 @@ impl<F: Field> FieldHelpers<F> for F {
             bits
         })
     }
+}
 
+/// Field element wrapper for [BigUint]
+pub trait FieldFromBig<F> {
+    /// Deserialize from big unsigned integer
+    fn from_big(big: BigUint) -> Result<F>;
+}
+
+impl<F: PrimeField> FieldFromBig<F> for F {
     fn from_big(big: BigUint) -> Result<F> {
-        let mut bytes = big.to_bytes_le();
-
-        // Pad with zeros until multiple of 32 if necessary because the BigUint to_bytes_le function gives the smallest possible vector of bytes
-        if bytes.len() % 32 != 0 {
-            // smallest larger multiple of 32 bytes
-            let goal = 32 * (1 + bytes.len() / 32);
-            bytes.extend(std::iter::repeat(0).take(goal - bytes.len()));
-        }
-
-        F::deserialize(&mut &bytes[..]).map_err(|_| FieldHelpersError::DeserializeBytes)
-    }
-
-    fn to_big(self) -> BigUint {
-        let bytes = self.to_bytes();
-        BigUint::from_bytes_le(&bytes)
+        big.try_into()
+            .map_err(|_| FieldHelpersError::FromBigToField)
     }
 }
 
@@ -262,13 +253,37 @@ mod tests {
 
     #[test]
     fn field_big() {
-        let fe = BaseField::from(1024u32);
-        let big = fe.to_big();
-        assert_eq!(big, BigUint::new(vec![1024]));
+        let fe_1024 = BaseField::from(1024u32);
+        let big_1024 = fe_1024.into();
+        assert_eq!(big_1024, BigUint::new(vec![1024]));
 
         assert_eq!(
-            BaseField::from_big(big).expect("Failed to deserialize big integer"),
-            BaseField::from(1024u32)
+            BaseField::from_big(big_1024).expect("Failed to deserialize big uint"),
+            fe_1024
+        );
+
+        let be_zero_32bytes = vec![0x00, 0x00, 0x00, 0x00, 0x00];
+        let be_zero_1byte = vec![0x00];
+        let big_zero_32 = BigUint::from_bytes_be(&be_zero_32bytes);
+        let big_zero_1 = BigUint::from_bytes_be(&be_zero_1byte);
+        let field_zero = BaseField::from(0u32);
+
+        assert_eq!(
+            BigUint::from_bytes_be(&field_zero.into_repr().to_bytes_be()),
+            BigUint::from_bytes_be(&be_zero_32bytes)
+        );
+
+        assert_eq!(
+            BaseField::from_big(BigUint::from_bytes_be(&be_zero_32bytes))
+                .expect("Failed to convert big uint"),
+            field_zero
+        );
+
+        assert_eq!(big_zero_32, big_zero_1);
+
+        assert_eq!(
+            BaseField::from_big(big_zero_32).expect("Failed"),
+            BaseField::from_big(big_zero_1).expect("Failed")
         );
 
         assert_eq!(

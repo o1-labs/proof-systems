@@ -12,10 +12,11 @@ use crate::circuits::{
 };
 use ark_ff::PrimeField;
 use array_init::array_init;
+use num_bigint::BigUint;
 use num_integer::Integer;
 use o1_utils::{
+    field_helpers::{FieldFromBig, FieldHelpers},
     foreign_field::{ForeignElement, LIMB_BITS},
-    FieldHelpers,
 };
 
 use super::circuitgates::compute_intermediate_products;
@@ -201,13 +202,16 @@ pub fn create_witness<F: PrimeField>(
     );
 
     // Define some helpers
-    let two_to_88 = F::from(2u128.pow(LIMB_BITS as u32)).to_big();
+    let product_lo_big: BigUint = product_lo.into();
+    let product_mi_big: BigUint = product_mi.into();
+    let product_hi_big: BigUint = product_hi.into();
+    let remainder_hi_big: BigUint = (*remainder.hi()).into();
+    let two_to_88: BigUint = F::from(2u128.pow(LIMB_BITS as u32)).into();
     let two_to_176 = two_to_88.clone() * two_to_88.clone();
-    let (carry_bot, _) = product_lo.to_big().div_rem(&two_to_176);
-    let (product_mi_top, product_mi_bot) = product_mi.to_big().div_rem(&two_to_88);
+    let (carry_bot, _) = product_lo_big.div_rem(&two_to_176);
+    let (product_mi_top, product_mi_bot) = product_mi_big.div_rem(&two_to_88);
     let (_, product_mi_top_limb) = product_mi_top.div_rem(&two_to_88);
-    let carry_top =
-        carry_bot.clone() + product_mi_top + product_hi.to_big() - remainder.hi().to_big();
+    let carry_top: BigUint = carry_bot.clone() + product_mi_top + product_hi_big - remainder_hi_big;
     let (_, carry_top_limb) = carry_top.div_rem(&two_to_88);
 
     let product_mi_bot = F::from_big(product_mi_bot).expect("BigUint does not fit in F");
