@@ -137,6 +137,8 @@ pub fn compute_intermediate_products<
         - quotient_hi * foreign_modulus_lo
         - quotient_mi * foreign_modulus_hi; // TODO: Check algebra sign
 
+    println!("intermediate products inside");
+
     (product_lo, product_mi, product_hi)
 }
 
@@ -198,7 +200,7 @@ where
         //
 
         // Powers of 2 for range constraints
-        let eight = E::from(8);
+        let _eight: E<F> = E::from(8);
         let two_to_8 = E::from(256);
         let two_to_9 = E::from(512);
         let two_to_88 = E::from(2).pow(88);
@@ -273,13 +275,13 @@ where
         //    For details on zero_top and why this is valid, please see
         //        <https://hackmd.io/37M7qiTaSIKaZjCC5OnM1w?view#Intermediate-products<
         //
-        //              v_1 = v_{10} + 2^3 * v_{11}$
+        //              v_1 = v_{10} + 2^88 * v_{11}$
         //        2^88 * v1 = u1 = v0 + p11 + p2 - r2
         //                 <=>
-        //        carry_top = 2^3 * carry_top_extra + carry_top_limb
+        //        carry_top = 2^88 * carry_top_extra + carry_top_limb
         // 2^88 * carry_top = zero_top = carry_bot + product_mi_top + product_hi - remainder_hi
         //
-        let carry_top = eight * carry_top_extra + carry_top_limb;
+        let carry_top = two_to_88.clone() * carry_top_extra + carry_top_limb;
         let zero_top = carry_bot + product_mi_top + product_hi - remainder_hi;
         constraints.push(zero_top - two_to_88 * carry_top);
 

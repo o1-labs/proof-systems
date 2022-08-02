@@ -49,8 +49,8 @@ impl ShiftWitnessCell {
 
 // Witness cell containing a limb of a value
 pub enum ValueType {
-    ProductMid,
-    CarryBottom,
+    ProductMi,
+    CarryBot,
     CarryTop,
 }
 pub struct ValueLimbWitnessCell {
@@ -89,15 +89,15 @@ const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 2] = [
     [
         WitnessCell::Standard(CopyWitnessCell::create(0, 0)), // left_input_lo
         WitnessCell::Standard(CopyWitnessCell::create(1, 0)), // left_input_mi
-        ShiftWitnessCell::create(20, 0, 9),                   // carry_shift
-        ShiftWitnessCell::create(10, 0, 8),                   // quotient_shift
+        ShiftWitnessCell::create(20, 10, 9),                  // carry_shift from carry_bot
+        ShiftWitnessCell::create(20, 6, 8),                   // quotient_shift from quotient_hi
         WitnessCell::Standard(CopyWitnessCell::create(8, 0)), // quotient_lo
         WitnessCell::Standard(CopyWitnessCell::create(9, 0)), // quotient_mi
         WitnessCell::Standard(CopyWitnessCell::create(10, 0)), // quotient_hi
-        ValueLimbWitnessCell::create(ValueType::ProductMid, 0, LIMB_BITS), // product_mi_bot
-        ValueLimbWitnessCell::create(ValueType::ProductMid, LIMB_BITS, 2 * LIMB_BITS), // product_mi_top_limb
-        ValueLimbWitnessCell::create(ValueType::ProductMid, 2 * LIMB_BITS, 2 * LIMB_BITS + 2), // product_mi_top_extra
-        ValueLimbWitnessCell::create(ValueType::CarryBottom, 0, 2), // carry_bot
+        ValueLimbWitnessCell::create(ValueType::ProductMi, 0, LIMB_BITS), // product_mi_bot
+        ValueLimbWitnessCell::create(ValueType::ProductMi, LIMB_BITS, 2 * LIMB_BITS), // product_mi_top_limb
+        ValueLimbWitnessCell::create(ValueType::ProductMi, 2 * LIMB_BITS, 2 * LIMB_BITS + 2), // product_mi_top_extra
+        ValueLimbWitnessCell::create(ValueType::CarryBot, 0, 2), // carry_bot
         ValueLimbWitnessCell::create(ValueType::CarryTop, 0, LIMB_BITS), // carry_top_limb
         ValueLimbWitnessCell::create(ValueType::CarryTop, LIMB_BITS, LIMB_BITS + 3), // carry_top_extra
         WitnessCell::Standard(ZeroWitnessCell::create()),
@@ -147,12 +147,12 @@ fn init_foreign_field_mul_rows<F: PrimeField>(
                         * witness[shift_cell.col][shift_cell.row];
                 }
                 WitnessCell::ValueLimb(value_limb_cell) => {
-                    witness[col][row] = value_to_limb(
+                    witness[col][offset + row] = value_to_limb(
                         match value_limb_cell.kind {
                             // value
-                            ValueType::CarryBottom => carry_bot,
+                            ValueType::CarryBot => carry_bot,
                             ValueType::CarryTop => carry_top,
-                            ValueType::ProductMid => product_mi,
+                            ValueType::ProductMi => product_mi,
                         },
                         value_limb_cell.start, // starting bit
                         value_limb_cell.end,   // ending bit (exclusive)
@@ -213,14 +213,27 @@ pub fn create_witness<F: PrimeField>(
     let product_lo_big: BigUint = product_lo.into();
     let product_mi_big: BigUint = product_mi.into();
     let product_hi_big: BigUint = product_hi.into();
+    println!("product_hi_big: {:?}", product_hi_big.to_bytes_be());
+    println!("product_hi: {:?}", product_hi);
     let remainder_hi_big: BigUint = (*remainder.hi()).into();
     let two_to_88: BigUint = F::from(2u128.pow(LIMB_BITS as u32)).into();
     let two_to_176 = two_to_88.clone() * two_to_88.clone();
     let (carry_bot, _) = product_lo_big.div_rem(&two_to_176);
     let (product_mi_top, product_mi_bot) = product_mi_big.div_rem(&two_to_88);
     let (_, product_mi_top_limb) = product_mi_top.div_rem(&two_to_88);
-    let carry_top: BigUint = carry_bot.clone() + product_mi_top + product_hi_big - remainder_hi_big;
+    let carry_top: BigUint =
+        carry_bot.clone() + product_mi_top.clone() + product_hi_big - remainder_hi_big;
     let (_, carry_top_limb) = carry_top.div_rem(&two_to_88);
+
+    println!("carry_bot: {:?}", carry_bot.to_bytes_be());
+    println!("product_mi_top: {:?}", product_mi_top.to_bytes_be());
+    println!("product_mi_bot: {:?}", product_mi_bot.to_bytes_be());
+    println!(
+        "product_mi_top_limb: {:?}",
+        product_mi_top_limb.to_bytes_be()
+    );
+    println!("carry_top: {:?}", carry_top.to_bytes_be());
+    println!("carry_top_limb: {:?}", carry_top.to_bytes_be());
 
     let product_mi_bot = F::from_big(product_mi_bot).expect("big_f does not fit in F");
     let product_mi_top_limb = F::from_big(product_mi_top_limb).expect("big_f does not fit in F");
@@ -240,21 +253,35 @@ pub fn create_witness<F: PrimeField>(
     let carry_bot = F::from_big(carry_bot).expect("big_f does not fit in F");
     let carry_top = F::from_big(carry_top).expect("big_f does not fit in F");
 
+    println!("product mi: {:?}", product_mi_big.to_bytes_be());
+
     // ForeignFieldMul and Zero row
     init_foreign_field_mul_rows(&mut witness, 20, product_mi, carry_bot, carry_top);
 
     witness
 }
 
+fn view<F: PrimeField>(witness: &[Vec<F>; COLUMNS]) {
+    let rows = witness[0].len();
+    for row in 20..rows {
+        for col in 0..COLUMNS {
+            println!("row {}, col{}: {:?}", row, col, witness[col][row].to_hex());
+        }
+        println!();
+    }
+}
+
 pub fn check_witness<F: PrimeField>(
     witness: &[Vec<F>; COLUMNS],
     foreign_mod: ForeignElement<F, 3>,
 ) -> Result<(), String> {
+    view(witness);
+
     let [foreign_modulus_lo, foreign_modulus_mi, foreign_modulus_hi] = foreign_mod.limbs;
 
     let left_input_lo = witness[0][20];
     let left_input_mi = witness[1][20];
-    let left_input_hi = witness[3][21];
+    let left_input_hi = witness[0][21];
 
     let right_input_lo = witness[1][21];
     let right_input_mi = witness[2][21];
@@ -293,14 +320,18 @@ pub fn check_witness<F: PrimeField>(
         foreign_modulus_hi,
     );
 
-    let eight = F::from(8u32);
+    let _eight = F::from(8u32);
     let two_to_8 = F::from(2u32.pow(8));
     let two_to_9 = F::from(2u32.pow(9));
     let two_to_88 = F::from(2u128.pow(88));
     let two_to_176 = two_to_88.clone() * two_to_88.clone();
 
+    println!("product_hi: {:?}", product_hi);
+
     let product_mi_top = two_to_88.clone() * product_mi_top_extra.clone() + product_mi_top_limb;
+    println!("product_mi_top: {:?}", product_mi_top);
     let product_mi_sum = two_to_88.clone() * product_mi_top.clone() + product_mi_bot.clone();
+    println!("product_mi_sum: {:?}", product_mi_sum);
 
     println!("middle intermediate");
     assert_eq!(F::zero(), product_mi - product_mi_sum);
@@ -312,6 +343,8 @@ pub fn check_witness<F: PrimeField>(
     assert_eq!(F::zero(), crumb(&product_mi_top_extra));
 
     println!("carry shift");
+    println!("carry shift {:?}", carry_shift);
+    println!("carry top extra {:?}", carry_top_extra);
     assert_eq!(F::zero(), carry_shift - two_to_9 * carry_top_extra.clone());
 
     println!("quo shift");
@@ -321,10 +354,18 @@ pub fn check_witness<F: PrimeField>(
     let zero_bot = product_lo - remainder_lo + two_to_88.clone() * (product_mi_bot - remainder_mi);
     assert_eq!(F::zero(), zero_bot - two_to_176 * carry_bot.clone());
 
-    let carry_top = eight * carry_top_extra + carry_top_limb;
+    let carry_top = two_to_88.clone() * carry_top_extra + carry_top_limb;
     let zero_top = carry_bot + product_mi_top + product_hi - remainder_hi;
 
+    println!("carry_bot {:?}", carry_bot);
+    println!("prod mi top {:?}", product_mi_top);
+    println!("prod hi {:?}", product_hi);
+    println!("rem hi {:?}", remainder_hi);
+    println!("carry_top  {:?}", carry_top);
+
     println!("zero top");
+    println!("zero top {}", zero_top.to_hex());
+    println!("carry top {}", carry_top.to_hex());
     assert_eq!(F::zero(), zero_top - two_to_88 * carry_top);
 
     Ok(())

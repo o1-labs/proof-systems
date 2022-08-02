@@ -168,15 +168,12 @@ mod tests {
     #[test]
     fn test_from_big() {
         let one = ForeignElement::<BaseField, 3>::new_from_be(&[0x01]);
-        assert_eq!(
-            BaseField::from_biguint(one.to_big()).unwrap(),
-            BaseField::one()
-        );
+        assert_eq!(BaseField::from_big(one.to_big()).unwrap(), BaseField::one());
 
         let max_big = BaseField::modulus_biguint() - 1u32;
         let max_fe = ForeignElement::<BaseField, 3>::new_from_big(max_big.clone());
         assert_eq!(
-            BaseField::from_biguint(max_fe.to_big()).unwrap(),
+            BaseField::from_big(max_fe.to_big()).unwrap(),
             BaseField::from_bytes(&max_big.to_bytes_le()).unwrap(),
         );
     }

@@ -109,18 +109,19 @@ fn test_one_mul() {
     let witness =
         foreign_field_mul::witness::create_witness(left_input, right_input, foreign_modulus);
 
+    println!("NOW CHECKING");
+
     assert_eq!(
         Ok(()),
         foreign_field_mul::witness::check_witness(&witness, foreign_modulus)
     );
-
-    /*for row in 0..20 {
+    /*
+    for row in 0..20 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
         );
-    } */
-    println!("above is ok");
+    }*/
 
     // check quotient is zero and remainder is MAX_FOR
     assert_eq!(witness[4][20], PallasField::zero());
@@ -145,12 +146,12 @@ fn test_max_native_square() {
         foreign_modulus,
     );
 
-    for row in 0..20 {
-        assert_eq!(
-            cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
-            Ok(())
-        );
-    }
+    println!("NOW CHECKING");
+
+    assert_eq!(
+        Ok(()),
+        foreign_field_mul::witness::check_witness(&witness, foreign_modulus)
+    );
 
     let multiplicand = left_input.to_big();
     let square = multiplicand.pow(2u32);
@@ -180,12 +181,10 @@ fn test_max_foreign_square() {
         foreign_modulus,
     );
 
-    for row in 0..20 {
-        assert_eq!(
-            cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
-            Ok(())
-        );
-    }
+    assert_eq!(
+        Ok(()),
+        foreign_field_mul::witness::check_witness(&witness, foreign_modulus)
+    );
 
     let multiplicand = left_input.to_big();
     let square = multiplicand.pow(2u32);
@@ -212,12 +211,10 @@ fn test_max_native_multiplicands() {
     let witness =
         foreign_field_mul::witness::create_witness(left_input, right_input, foreign_modulus);
 
-    for row in 0..20 {
-        assert_eq!(
-            cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
-            Ok(())
-        );
-    }
+    assert_eq!(
+        Ok(()),
+        foreign_field_mul::witness::check_witness(&witness, foreign_modulus)
+    );
 }
 
 #[test]
@@ -232,10 +229,8 @@ fn test_max_foreign_multiplicands() {
     let witness =
         foreign_field_mul::witness::create_witness(left_input, right_input, foreign_modulus);
 
-    for row in 0..20 {
-        assert_eq!(
-            cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
-            Ok(())
-        );
-    }
+    assert_eq!(
+        Ok(()),
+        foreign_field_mul::witness::check_witness(&witness, foreign_modulus)
+    );
 }
