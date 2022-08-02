@@ -1,7 +1,7 @@
 //! Useful helper methods to extend [ark_ff::Field].
 
-use ark_ff::{BigInteger, Field, FpParameters, PrimeField};
-use num_bigint::{BigUint, ToBigUint};
+use ark_ff::{BigInteger, BigInteger256, Field, FpParameters, PrimeField};
+use num_bigint::{BigInt, BigUint, Sign, ToBigUint};
 use std::ops::Neg;
 use thiserror::Error;
 
@@ -31,7 +31,7 @@ pub trait FieldHelpers<F> {
     fn from_bits(bits: &[bool]) -> Result<F>;
 
     /// Deserialize from big unsigned integer
-    fn from_big(big: BigUint) -> Result<F>;
+    fn from_big_f(big: BigUint) -> Result<F>;
 
     /// Serialize to bytes
     fn to_bytes(&self) -> Vec<u8>;
@@ -42,8 +42,8 @@ pub trait FieldHelpers<F> {
     /// Serialize to bits
     fn to_bits(&self) -> Vec<bool>;
 
-    /// Field element as a BigUint
-    fn to_big(self) -> BigUint;
+    /// Serialize field element as a BigUint
+    fn to_big_f(self) -> BigUint;
 
     /// Field size in bytes
     fn size_in_bytes() -> usize
@@ -107,7 +107,7 @@ impl<F: Field> FieldHelpers<F> for F {
         })
     }
 
-    fn from_big(big: BigUint) -> Result<F> {
+    fn from_big_f(big: BigUint) -> Result<F> {
         let mut bytes = big.to_bytes_le();
 
         // Pad with zeros until multiple of 32 if necessary because the BigUint to_bytes_le function gives the smallest possible vector of bytes
@@ -120,9 +120,46 @@ impl<F: Field> FieldHelpers<F> for F {
         F::deserialize(&mut &bytes[..]).map_err(|_| FieldHelpersError::DeserializeBytes)
     }
 
-    fn to_big(self) -> BigUint {
+    fn to_big_f(self) -> BigUint {
         let bytes = self.to_bytes();
         BigUint::from_bytes_le(&bytes)
+    }
+}
+
+/// Field element helpers for [BigUint]
+pub trait BigUintFieldHelpers<F> {
+    /// Deserialize from big unsigned integer
+    fn from_biguint(big: BigUint) -> Result<F>;
+
+    /// Serialize field element as a BigUint
+    fn to_biguint(self) -> BigUint;
+}
+
+impl<F: PrimeField> BigUintFieldHelpers<F> for F {
+    fn from_biguint(big: BigUint) -> Result<F> {
+        //let a = F::from_repr(BigInteger::try_from(big).unwrap().into());
+
+        //F::from_repr(big.try_into()).ok_or(FieldHelpersError::DeserializeBytes);
+
+        //let hello = F::from_repr(<F as PrimeField>::BigInt::try_from(big));
+
+        big.try_into()
+            .map_err(|_| FieldHelpersError::DeserializeBytes)
+
+        //F::try_from(
+        //    big.try_into()
+        //        .map_err(|_| FieldHelpersError::DeserializeBytes)?,
+        //)
+        //        .map_err(|_| FieldHelpersError::DeserializeBytes)
+
+        //<F as PrimeField>::from_repr(BigInteger256::try_from(big).unwrap())
+
+        //F::from_repr(BigInt::from_bytes_be(Sign::Positive, &big.to_bytes_be()))
+        //    .ok_or(FieldHelpersError::DeserializeBytes)
+    }
+
+    fn to_biguint(self) -> BigUint {
+        self.into_repr().into()
     }
 }
 
@@ -263,11 +300,11 @@ mod tests {
     #[test]
     fn field_big() {
         let fe = BaseField::from(1024u32);
-        let big = fe.to_big();
+        let big = fe.to_biguint();
         assert_eq!(big, BigUint::new(vec![1024]));
 
         assert_eq!(
-            BaseField::from_big(big).expect("Failed to deserialize big uint"),
+            BaseField::from_biguint(big).expect("Failed to deserialize big uint"),
             BaseField::from(1024u32)
         );
 
@@ -277,7 +314,7 @@ mod tests {
         );
 
         assert_eq!(
-            BaseField::from_big(BigUint::from_bytes_be(&vec![0x00, 0x00, 0x00, 0x00, 0x00]))
+            BaseField::from_biguint(BigUint::from_bytes_be(&vec![0x00, 0x00, 0x00, 0x00, 0x00]))
                 .expect("Failed to convert big uint"),
             BaseField::from(0u32)
         );
