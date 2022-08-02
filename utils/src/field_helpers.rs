@@ -1,7 +1,7 @@
 //! Useful helper methods to extend [ark_ff::Field].
 
 use ark_ff::{BigInteger, Field, FpParameters, PrimeField};
-use num_bigint::{BigUint, ToBigUint};
+use num_bigint::BigUint;
 use std::ops::Neg;
 use thiserror::Error;
 
@@ -114,6 +114,43 @@ impl<F: PrimeField> FieldFromBig<F> for F {
     fn from_big(big: BigUint) -> Result<F> {
         big.try_into()
             .map_err(|_| FieldHelpersError::FromBigToField)
+    }
+}
+
+/// Field element helpers for [BigUint]
+pub trait BigUintFieldHelpers<F> {
+    /// Deserialize from big unsigned integer
+    fn from_biguint(big: BigUint) -> Result<F>;
+
+    /// Serialize field element as a BigUint
+    fn to_biguint(self) -> BigUint;
+}
+
+impl<F: PrimeField> BigUintFieldHelpers<F> for F {
+    fn from_biguint(big: BigUint) -> Result<F> {
+        //let a = F::from_repr(BigInteger::try_from(big).unwrap().into());
+
+        //F::from_repr(big.try_into()).ok_or(FieldHelpersError::DeserializeBytes);
+
+        //let hello = F::from_repr(<F as PrimeField>::BigInt::try_from(big));
+
+        big.try_into()
+            .map_err(|_| FieldHelpersError::DeserializeBytes)
+
+        //F::try_from(
+        //    big.try_into()
+        //        .map_err(|_| FieldHelpersError::DeserializeBytes)?,
+        //)
+        //        .map_err(|_| FieldHelpersError::DeserializeBytes)
+
+        //<F as PrimeField>::from_repr(BigInteger256::try_from(big).unwrap())
+
+        //F::from_repr(BigInt::from_bytes_be(Sign::Positive, &big.to_bytes_be()))
+        //    .ok_or(FieldHelpersError::DeserializeBytes)
+    }
+
+    fn to_biguint(self) -> BigUint {
+        self.into_repr().into()
     }
 }
 
@@ -289,6 +326,12 @@ mod tests {
         assert_eq!(
             BigUint::from_bytes_be(&BaseField::from(0u32).into_repr().to_bytes_be()),
             BigUint::from_bytes_be(&vec![0x00, 0x00, 0x00, 0x00, 0x00])
-        )
+        );
+
+        assert_eq!(
+            BaseField::from_biguint(BigUint::from_bytes_be(&vec![0x00, 0x00, 0x00, 0x00, 0x00]))
+                .expect("Failed to convert big uint"),
+            BaseField::from(0u32)
+        );
     }
 }

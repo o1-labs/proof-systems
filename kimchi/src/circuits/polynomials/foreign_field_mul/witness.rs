@@ -185,6 +185,11 @@ pub fn create_witness<F: PrimeField>(
     extend_witness(&mut witness, quotient);
     extend_witness(&mut witness, remainder);
 
+    println!("left_input: {}", left_input);
+    println!("right_input: {}", right_input);
+    println!("quotient: {}", quotient);
+    println!("remainder: {}", remainder);
+
     // Compute nonzero intermediate products (uses the same code as constraints!)
     let (product_lo, product_mi, product_hi) = compute_intermediate_products(
         *left_input.lo(),
@@ -200,6 +205,9 @@ pub fn create_witness<F: PrimeField>(
         *foreign_modulus.mi(),
         *foreign_modulus.hi(),
     );
+    println!("product_lo: {}", product_lo);
+    println!("product_mi: {}", product_mi);
+    println!("product_hi: {}", product_hi);
 
     // Define some helpers
     let product_lo_big: BigUint = product_lo.into();
@@ -214,9 +222,9 @@ pub fn create_witness<F: PrimeField>(
     let carry_top: BigUint = carry_bot.clone() + product_mi_top + product_hi_big - remainder_hi_big;
     let (_, carry_top_limb) = carry_top.div_rem(&two_to_88);
 
-    let product_mi_bot = F::from_big(product_mi_bot).expect("BigUint does not fit in F");
-    let product_mi_top_limb = F::from_big(product_mi_top_limb).expect("BigUint does not fit in F");
-    let carry_top_limb = F::from_big(carry_top_limb).expect("BigUint does not fit in F");
+    let product_mi_bot = F::from_big(product_mi_bot).expect("big_f does not fit in F");
+    let product_mi_top_limb = F::from_big(product_mi_top_limb).expect("big_f does not fit in F");
+    let carry_top_limb = F::from_big(carry_top_limb).expect("big_f does not fit in F");
 
     // Define the row for the multi-range check for the product_mi_bot, product_mi_top_limb, and carry_top_limb
     extend_witness(
@@ -229,11 +237,99 @@ pub fn create_witness<F: PrimeField>(
         w.extend(std::iter::repeat(F::zero()).take(2));
     }
 
-    let carry_bot = F::from_big(carry_bot).expect("BigUint does not fit in F");
-    let carry_top = F::from_big(carry_top).expect("BigUint does not fit in F");
+    let carry_bot = F::from_big(carry_bot).expect("big_f does not fit in F");
+    let carry_top = F::from_big(carry_top).expect("big_f does not fit in F");
 
     // ForeignFieldMul and Zero row
     init_foreign_field_mul_rows(&mut witness, 20, product_mi, carry_bot, carry_top);
 
     witness
+}
+
+pub fn check_witness<F: PrimeField>(
+    witness: &[Vec<F>; COLUMNS],
+    foreign_mod: ForeignElement<F, 3>,
+) -> Result<(), String> {
+    let [foreign_modulus_lo, foreign_modulus_mi, foreign_modulus_hi] = foreign_mod.limbs;
+
+    let left_input_lo = witness[0][20];
+    let left_input_mi = witness[1][20];
+    let left_input_hi = witness[3][21];
+
+    let right_input_lo = witness[1][21];
+    let right_input_mi = witness[2][21];
+    let right_input_hi = witness[3][21];
+
+    let carry_shift = witness[2][20];
+    let quotient_shift = witness[3][20];
+
+    let quotient_lo = witness[4][20];
+    let quotient_mi = witness[5][20];
+    let quotient_hi = witness[6][20];
+
+    let remainder_lo = witness[4][21];
+    let remainder_mi = witness[5][21];
+    let remainder_hi = witness[6][21];
+
+    let product_mi_bot = witness[7][20];
+    let product_mi_top_limb = witness[8][20];
+    let product_mi_top_extra = witness[9][20];
+    let carry_bot = witness[10][20];
+    let carry_top_limb = witness[11][20];
+    let carry_top_extra = witness[12][20];
+
+    let (product_lo, product_mi, product_hi) = compute_intermediate_products(
+        left_input_lo,
+        left_input_mi,
+        left_input_hi,
+        right_input_lo,
+        right_input_mi,
+        right_input_hi,
+        quotient_lo,
+        quotient_mi,
+        quotient_hi,
+        foreign_modulus_lo,
+        foreign_modulus_mi,
+        foreign_modulus_hi,
+    );
+
+    let eight = F::from(8u32);
+    let two_to_8 = F::from(2u32.pow(8));
+    let two_to_9 = F::from(2u32.pow(9));
+    let two_to_88 = F::from(2u128.pow(88));
+    let two_to_176 = two_to_88.clone() * two_to_88.clone();
+
+    let product_mi_top = two_to_88.clone() * product_mi_top_extra.clone() + product_mi_top_limb;
+    let product_mi_sum = two_to_88.clone() * product_mi_top.clone() + product_mi_bot.clone();
+
+    println!("middle intermediate");
+    assert_eq!(F::zero(), product_mi - product_mi_sum);
+
+    println!("carry botom");
+    assert_eq!(F::zero(), crumb(&carry_bot));
+
+    println!("mi top extra");
+    assert_eq!(F::zero(), crumb(&product_mi_top_extra));
+
+    println!("carry shift");
+    assert_eq!(F::zero(), carry_shift - two_to_9 * carry_top_extra.clone());
+
+    println!("quo shift");
+    assert_eq!(F::zero(), quotient_shift - two_to_8 * quotient_hi);
+
+    println!("zero bot");
+    let zero_bot = product_lo - remainder_lo + two_to_88.clone() * (product_mi_bot - remainder_mi);
+    assert_eq!(F::zero(), zero_bot - two_to_176 * carry_bot.clone());
+
+    let carry_top = eight * carry_top_extra + carry_top_limb;
+    let zero_top = carry_bot + product_mi_top + product_hi - remainder_hi;
+
+    println!("zero top");
+    assert_eq!(F::zero(), zero_top - two_to_88 * carry_top);
+
+    Ok(())
+}
+
+pub fn crumb<F: PrimeField>(x: &F) -> F {
+    x.clone() * (x.clone() - F::one()) * (x.clone() - F::from(2u64)) * (x.clone() - F::from(3u64))
 }

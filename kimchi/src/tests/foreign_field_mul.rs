@@ -7,7 +7,7 @@ use crate::circuits::{
 use ark_ec::AffineCurve;
 use ark_ff::Zero;
 use mina_curves::pasta::{pallas, vesta::Vesta};
-use o1_utils::foreign_field::{ForeignElement, FOREIGN_MOD};
+use o1_utils::foreign_field::{self, ForeignElement, FOREIGN_MOD};
 
 type PallasField = <pallas::Pallas as AffineCurve>::BaseField;
 
@@ -82,10 +82,12 @@ fn test_zero_mul() {
     let witness =
         foreign_field_mul::witness::create_witness(left_input, right_input, foreign_modulus);
 
-    assert_eq!(
-        cs.gates[20].verify_foreign_field_mul::<Vesta>(0, &witness, &cs),
-        Ok(())
-    );
+    for row in 0..20 {
+        assert_eq!(
+            cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
+            Ok(())
+        );
+    }
 
     // check quotient and remainder values are zero
     assert_eq!(witness[4][20], PallasField::zero());
@@ -99,7 +101,7 @@ fn test_zero_mul() {
 #[test]
 // Test multiplication of largest foreign element and one
 fn test_one_mul() {
-    let cs = create_test_constraint_system();
+    //let cs = create_test_constraint_system();
     let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
     let left_input = ForeignElement::<PallasField, 3>::new_from_be(MAX_FOR);
     let right_input = ForeignElement::<PallasField, 3>::new_from_be(ONE);
@@ -107,12 +109,18 @@ fn test_one_mul() {
     let witness =
         foreign_field_mul::witness::create_witness(left_input, right_input, foreign_modulus);
 
-    for row in 0..20 {
+    assert_eq!(
+        Ok(()),
+        foreign_field_mul::witness::check_witness(&witness, foreign_modulus)
+    );
+
+    /*for row in 0..20 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
         );
-    }
+    } */
+    println!("above is ok");
 
     // check quotient is zero and remainder is MAX_FOR
     assert_eq!(witness[4][20], PallasField::zero());
