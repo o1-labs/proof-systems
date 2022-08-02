@@ -2,7 +2,7 @@
 //!
 //! Definition of public key structure and helpers
 
-use ark_ff::{BigInteger, PrimeField};
+use ark_ff::{BigInteger, PrimeField, Zero};
 use bs58;
 use core::fmt;
 use sha2::{Digest, Sha256};
@@ -148,6 +148,15 @@ pub struct CompressedPubKey {
 
     /// Parity of y-coordinate
     pub is_odd: bool,
+}
+
+impl Default for CompressedPubKey {
+    fn default() -> Self {
+        Self {
+            x: BaseField::zero(),
+            is_odd: false,
+        }
+    }
 }
 
 fn into_address(x: &BaseField, is_odd: bool) -> String {
