@@ -742,7 +742,7 @@ Let $\mathcal{C} \subseteq \FF$ be the challenge space (128-bit GLV decomposed c
 1. Checking $\relation_{\mathsf{IPA}, \ell} \to \relation_{\mathsf{IPA},1}$: <br>
    Check the correctness of the folding argument, for every $i = 1, \ldots, k$:
     1. Receive $L^{(i)}, R^{(i)} \in \GG$ (see the vector `OpeningProof.lr` in Kimchi).
-    1. Sample $\chalfold_i \sample \mathcal{C}$
+    1. Sample $\chalfold_i \sample \mathcal{C}$ using the Poseidon sponge.
     1. Compute $C^{(i)} = [\chalfold_i^{-1}] \cdot L + C^{(i-1)} + [\chalfold_i] \cdot R$ (using GLV endomorphism) <br>
        (**Note:** to avoid the inversion the element $P = [\chalfold_i^{-1}] \cdot L$ is witnessed
        and the verifier checks $[\chalfold_i] \cdot P = [\chalfold_i] \cdot ([\chalfold_i^{-1}] \cdot L) = L$.
@@ -750,7 +750,7 @@ Let $\mathcal{C} \subseteq \FF$ be the challenge space (128-bit GLV decomposed c
        see [deferred computation](deferred.html))
 1. Checking $\relation_{\mathsf{IPA},1} \to \relation_{\mathsf{Acc}, \vec{G}}$
     1. Receive $c$ form the prover.
-    1. Define $\hpoly$ from $\vec{\chalfold}$ (folding challenges).
+    1. Define $\hpoly$ from $\vec{\chalfold}$ (folding challenges, computed above).
     1. Compute $\openy' \gets c \cdot (\hpoly(\chaleval) + \chalv \cdot \hpoly(\chaleval \omega))$, this works since:
        $$
        \openx^{(\rounds)} =

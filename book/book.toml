@@ -1,5 +1,5 @@
 [book]
-authors = ["Izaak Meckler", "Vanishree Rao", "Matthew Ryan", "Joseph Spadavecchia", "David Wong", "Vitaly Zelov", "Mathias Hall-Andersen"]
+authors = ["Izaak Meckler", "Vanishree Rao", "Mathias Hall-Andersen", "Matthew Ryan", "Joseph Spadavecchia", "David Wong", "Vitaly Zelov"]
 language = "en"
 multilingual = false
 src = "src"
