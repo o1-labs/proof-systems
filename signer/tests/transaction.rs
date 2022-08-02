@@ -28,30 +28,26 @@ impl Hashable for Transaction {
     type D = NetworkId;
 
     fn to_roinput(&self) -> ROInput {
-        let mut roi = ROInput::new();
-
-        roi.append_field(self.fee_payer_pk.x);
-        roi.append_field(self.source_pk.x);
-        roi.append_field(self.receiver_pk.x);
-
-        roi.append_u64(self.fee);
-        roi.append_u64(self.fee_token);
-        roi.append_bool(self.fee_payer_pk.is_odd);
-        roi.append_u32(self.nonce);
-        roi.append_u32(self.valid_until);
-        roi.append_bytes(&self.memo);
+        let mut roi = ROInput::new()
+            .append_field(self.fee_payer_pk.x)
+            .append_field(self.source_pk.x)
+            .append_field(self.receiver_pk.x)
+            .append_u64(self.fee)
+            .append_u64(self.fee_token)
+            .append_bool(self.fee_payer_pk.is_odd)
+            .append_u32(self.nonce)
+            .append_u32(self.valid_until)
+            .append_bytes(&self.memo);
 
         for tag_bit in self.tag {
-            roi.append_bool(tag_bit);
+            roi = roi.append_bool(tag_bit);
         }
 
-        roi.append_bool(self.source_pk.is_odd);
-        roi.append_bool(self.receiver_pk.is_odd);
-        roi.append_u64(self.token_id);
-        roi.append_u64(self.amount);
-        roi.append_bool(self.token_locked);
-
-        roi
+        roi.append_bool(self.source_pk.is_odd)
+            .append_bool(self.receiver_pk.is_odd)
+            .append_u64(self.token_id)
+            .append_u64(self.amount)
+            .append_bool(self.token_locked)
     }
 
     fn domain_string(network_id: NetworkId) -> Option<String> {

@@ -24,9 +24,9 @@ impl Hashable for Example {
     type D = u32;
 
     fn to_roinput(&self) -> ROInput {
-        let mut roi = ROInput::new();
-        roi.append_u32(self.x).append_u64(self.y);
-        roi
+        ROInput::new()
+            .append_u32(self.x)
+            .append_u64(self.y)
     }
 
     fn domain_string(seed: u32) -> Option<String> {
@@ -78,12 +78,9 @@ impl Hashable for Foo {
     type D = ();
 
     fn to_roinput(&self) -> ROInput {
-        let mut roi = ROInput::new();
-
-        roi.append_u32(self.foo);
-        roi.append_u64(self.bar);
-
-        roi
+        ROInput::new()
+            .append_u32(self.foo)
+            .append_u64(self.bar)
     }
 
     fn domain_string(_: Self::D) -> Option<String> {
@@ -110,12 +107,9 @@ impl Hashable for ExampleMerkleNode {
     type D = u64;
 
     fn to_roinput(&self) -> ROInput {
-        let mut roi = ROInput::new();
-
-        roi.append_field(self.left);
-        roi.append_field(self.right);
-
-        roi
+        ROInput::new()
+            .append_field(self.left)
+            .append_field(self.right)
     }
 
     fn domain_string(height: Self::D) -> Option<String> {
@@ -163,10 +157,9 @@ impl Hashable for A {
     type D = ();
 
     fn to_roinput(&self) -> ROInput {
-        let mut roi = ROInput::new();
-        roi.append_u32(self.x);
-        roi.append_u32(self.y);
-        roi
+        ROInput::new()
+            .append_u32(self.x)
+            .append_u32(self.y)
     }
 
     fn domain_string(_: Self::D) -> Option<String> {
@@ -185,13 +178,12 @@ impl Hashable for B {
     type D = ();
 
     fn to_roinput(&self) -> ROInput {
-        let mut roi = ROInput::new();
-        // Way 1: Append Hashable input
-        roi.append_hashable(&self.a1);
-        // Way 2: Append ROInput
-        roi.append_roinput(self.a2.to_roinput());
-        roi.append_u32(self.z);
-        roi
+        ROInput::new()
+            // Way 1: Append Hashable input
+            .append_hashable(&self.a1)
+            // Way 2: Append ROInput
+            .append_roinput(self.a2.to_roinput())
+            .append_u32(self.z)
     }
 
     fn domain_string(_: Self::D) -> Option<String> {
