@@ -150,15 +150,6 @@ pub struct CompressedPubKey {
     pub is_odd: bool,
 }
 
-impl Default for CompressedPubKey {
-    fn default() -> Self {
-        Self {
-            x: BaseField::zero(),
-            is_odd: false,
-        }
-    }
-}
-
 fn into_address(x: &BaseField, is_odd: bool) -> String {
     let mut raw: Vec<u8> = vec![
         0xcb, // version for base58 check
@@ -189,6 +180,15 @@ impl CompressedPubKey {
     /// Deserialize Mina address into compressed public key (via an uncompressed PubKey)
     pub fn from_address(address: &str) -> Result<Self> {
         Ok(PubKey::from_address(address)?.into_compressed())
+    }
+
+    /// The empty [CompressedPubKey] value that is used as `public_key` in empty account
+    /// and [None] value for calculating the hash of [Option<CompressedPubKey>], etc.
+    pub fn empty() -> Self {
+        Self {
+            x: BaseField::zero(),
+            is_odd: false,
+        }
     }
 }
 
