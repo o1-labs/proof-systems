@@ -13,6 +13,8 @@ pub enum FieldHelpersError {
     DeserializeBytes,
     #[error("failed to decode hex")]
     DecodeHex,
+    #[error("failed to convert BigUint into field element")]
+    FromBigToField,
 }
 
 /// Result alias using [FieldHelpersError]
@@ -102,23 +104,16 @@ impl<F: Field> FieldHelpers<F> for F {
     }
 }
 
-/// Field element helpers for [BigUint]
-pub trait BigFieldHelpers<F> {
+/// Field element wrapper for [BigUint]
+pub trait FieldFromBig<F> {
     /// Deserialize from big unsigned integer
     fn from_big(big: BigUint) -> Result<F>;
-
-    /// Serialize field element as a big unsigned integer
-    fn to_big(self) -> BigUint;
 }
 
-impl<F: PrimeField> BigFieldHelpers<F> for F {
+impl<F: PrimeField> FieldFromBig<F> for F {
     fn from_big(big: BigUint) -> Result<F> {
         big.try_into()
-            .map_err(|_| FieldHelpersError::DeserializeBytes)
-    }
-
-    fn to_big(self) -> BigUint {
-        self.into_repr().into()
+            .map_err(|_| FieldHelpersError::FromBigToField)
     }
 }
 
@@ -259,7 +254,7 @@ mod tests {
     #[test]
     fn field_big() {
         let fe_1024 = BaseField::from(1024u32);
-        let big_1024 = fe_1024.to_big();
+        let big_1024 = fe_1024.into();
         assert_eq!(big_1024, BigUint::new(vec![1024]));
 
         assert_eq!(

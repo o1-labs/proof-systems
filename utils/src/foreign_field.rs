@@ -2,10 +2,7 @@
 
 use std::fmt::Display;
 
-use crate::{
-    field_helpers::{BigFieldHelpers, FieldHelpers},
-    serialization::SerdeAs,
-};
+use crate::{field_helpers::FieldHelpers, serialization::SerdeAs};
 use ark_ff::{FftField, Field, PrimeField};
 use num_bigint::BigUint;
 use serde::{Deserialize, Serialize};
@@ -40,7 +37,7 @@ pub struct ForeignElement<F: Field, const N: usize> {
     pub len: usize,
 }
 
-impl<F: FftField, const N: usize> ForeignElement<F, N> {
+impl<F: PrimeField, const N: usize> ForeignElement<F, N> {
     /// Initializes a new foreign element from a big unsigned integer
     /// Panics if the BigUint is too large to fit in the `N` limbs
     pub fn new_from_big(big: BigUint) -> Self {
@@ -70,11 +67,8 @@ impl<F: FftField, const N: usize> ForeignElement<F, N> {
     }
 
     /// Initializes a new foreign element from an element in the native field
-    pub fn new_from_field(field: F) -> Self
-    where
-        F: PrimeField,
-    {
-        Self::new_from_big(field.to_big())
+    pub fn new_from_field(field: F) -> Self {
+        Self::new_from_big(field.into())
     }
 
     /// Obtains the big integer representation of the foreign field element
@@ -144,6 +138,7 @@ impl<F: FftField, const N: usize> Display for ForeignElement<F, N> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::field_helpers::FieldFromBig;
     use ark_ec::AffineCurve;
     use ark_ff::One;
     use mina_curves::pasta::pallas;
