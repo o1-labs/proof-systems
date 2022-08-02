@@ -743,7 +743,8 @@ where
                     check_constraint!(index, ffmul);
                 }
             }
-=======
+
+            // lookup
             {
                 if let Some(lcs) = index.cs.lookup_constraint_system.as_ref() {
                     let constraints = lookup::constraints::constraints(&lcs.configuration);
@@ -753,6 +754,8 @@ where
                         all_alphas.get_alphas(ArgumentType::Lookup, constraints_len);
 
                     // as lookup constraints are computed with the expression framework,
+                    // each of them can result in Evaluations of different domains
+                    for (ii, (constraint, alpha_pow)) in
                         constraints.into_iter().zip_eq(lookup_alphas).enumerate()
                     {
                         let mut eval = constraint.evaluations(&env);

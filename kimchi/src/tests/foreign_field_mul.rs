@@ -24,6 +24,13 @@ static MAX_FOR: &[u8] = &[
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0xFF, 0xFF, 0xFC, 0x2E,
 ];
 
+/// Maximum value whose square fits in foreign field
+// 340282366920938463463374607431768211455
+// BigEndian -> FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF
+static SQR_FOR: &[u8] = &[
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+];
+
 /// Maximum value in the native field
 // BigEndian -> 40000000 00000000 00000000 00000000 224698FC 094CF91B 992D30ED 00000000
 // =  64,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
@@ -34,8 +41,8 @@ static MAX_NAT: &[u8] = &[
 ];
 
 /// Maximum value whose square fits in native field
-/// 170141183460469231731687303715884105728
-/// BigEndian -> 80000000 00000000 00000000 00000000
+// 170141183460469231731687303715884105728
+// BigEndian -> 80000000 00000000 00000000 00000000
 static SQR_NAT: &[u8] = &[
     0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 ];
@@ -70,11 +77,7 @@ fn test_zero_mul() {
         PallasField::zero(),
         PallasField::zero(),
     ]);
-    let right_input = ForeignElement::<PallasField, 3>::new([
-        PallasField::zero(),
-        PallasField::zero(),
-        PallasField::zero(),
-    ]);
+    let right_input = ForeignElement::<PallasField, 3>::new_from_be(ZERO);
 
     let witness =
         foreign_field_mul::witness::create_witness(left_input, right_input, foreign_modulus);
@@ -93,6 +96,32 @@ fn test_zero_mul() {
     assert_eq!(witness[6][21], PallasField::zero());
 }
 
+#[test]
+// Test multiplication of largest foreign element and one
+fn test_one_mul() {
+    let cs = create_test_constraint_system();
+    let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
+    let left_input = ForeignElement::<PallasField, 3>::new_from_be(MAX_FOR);
+    let right_input = ForeignElement::<PallasField, 3>::new_from_be(ONE);
+
+    let witness =
+        foreign_field_mul::witness::create_witness(left_input, right_input, foreign_modulus);
+
+    for row in 0..20 {
+        assert_eq!(
+            cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
+            Ok(())
+        );
+    }
+
+    // check quotient is zero and remainder is MAX_FOR
+    assert_eq!(witness[4][20], PallasField::zero());
+    assert_eq!(witness[5][20], PallasField::zero());
+    assert_eq!(witness[6][20], PallasField::zero());
+    assert_eq!(witness[4][21], *left_input.lo());
+    assert_eq!(witness[5][21], *left_input.mi());
+    assert_eq!(witness[6][21], *left_input.hi());
+}
 #[test]
 // Test maximum values whose squaring fits in the native field
 // m^2 = q * f + r -> q should be 0 and r should be m^2 < n < f
@@ -129,9 +158,44 @@ fn test_max_native_square() {
 }
 
 #[test]
+// Test maximum values whose squaring fits in the foreign field
+// g^2 = q * f + r -> q should be 0 and r should be g^2 < f
+fn test_max_foreign_square() {
+    let cs = create_test_constraint_system();
+    let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
+    let left_input = ForeignElement::<PallasField, 3>::new_from_be(SQR_FOR);
+    let right_input = ForeignElement::<PallasField, 3>::new_from_be(SQR_FOR);
+
+    let witness = foreign_field_mul::witness::create_witness(
+        left_input.clone(),
+        right_input,
+        foreign_modulus,
+    );
+
+    for row in 0..20 {
+        assert_eq!(
+            cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
+            Ok(())
+        );
+    }
+
+    let multiplicand = left_input.to_big();
+    let square = multiplicand.pow(2u32);
+    let product = ForeignElement::<PallasField, 3>::new_from_big(square);
+
+    // check quotient is zero and remainder is the square
+    assert_eq!(witness[4][20], PallasField::zero());
+    assert_eq!(witness[5][20], PallasField::zero());
+    assert_eq!(witness[6][20], PallasField::zero());
+    assert_eq!(witness[4][21], *product.lo());
+    assert_eq!(witness[5][21], *product.mi());
+    assert_eq!(witness[6][21], *product.hi());
+}
+
+#[test]
 // Test squaring of the maximum native field values
 // (n - 1) * (n - 1) = q * f + r
-fn test_max_native_multiplicand() {
+fn test_max_native_multiplicands() {
     let cs = create_test_constraint_system();
     let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
     let left_input = ForeignElement::<PallasField, 3>::new_from_be(MAX_NAT);
@@ -151,7 +215,7 @@ fn test_max_native_multiplicand() {
 #[test]
 // Test squaring of the maximum foreign field values
 // ( f - 1) * (f - 1) = f^2 - 2f + 1 = f * (f - 2) + 1
-fn test_max_foreign_values() {
+fn test_max_foreign_multiplicands() {
     let cs = create_test_constraint_system();
     let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
     let left_input = ForeignElement::<PallasField, 3>::new_from_be(MAX_FOR);
@@ -160,10 +224,7 @@ fn test_max_foreign_values() {
     let witness =
         foreign_field_mul::witness::create_witness(left_input, right_input, foreign_modulus);
 
-    assert_eq!(cs.gates[20].verify::<Vesta>(20, &witness, &cs, &[]), Ok(()));
-
     for row in 0..20 {
-        println!("row: {}", row);
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())

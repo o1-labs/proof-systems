@@ -1,7 +1,7 @@
 //! Useful helper methods to extend [ark_ff::Field].
 
 use ark_ff::{BigInteger, Field, FpParameters, PrimeField};
-use num_bigint::BigUint;
+use num_bigint::{BigUint, ToBigUint};
 use std::ops::Neg;
 use thiserror::Error;
 
@@ -113,7 +113,7 @@ impl<F: Field> FieldHelpers<F> for F {
         // Pad with zeros until multiple of 32 if necessary because the BigUint to_bytes_le function gives the smallest possible vector of bytes
         if bytes.len() % 32 != 0 {
             // smallest larger multiple of 32 bytes
-            let goal = 32 + bytes.len() / 32;
+            let goal = 32 * (1 + bytes.len() / 32);
             bytes.extend(std::iter::repeat(0).take(goal - bytes.len()));
         }
 
@@ -270,5 +270,10 @@ mod tests {
             BaseField::from_big(big).expect("Failed to deserialize big integer"),
             BaseField::from(1024u32)
         );
+
+        assert_eq!(
+            BigUint::from_bytes_be(&BaseField::from(0u32).into_repr().to_bytes_be()),
+            BigUint::from_bytes_be(&vec![0x00, 0x00, 0x00, 0x00, 0x00])
+        )
     }
 }
