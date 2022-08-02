@@ -177,12 +177,13 @@
 <span id="177">177</span>
 <span id="178">178</span>
 <span id="179">179</span>
+<span id="180">180</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Describes helpers for foreign field arithmetics</span>
 
 <span class="kw">use</span> <span class="ident">std::fmt::Display</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">field_helpers::FieldHelpers</span>, <span class="ident">serialization::SerdeAs</span>};
-<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">Field</span>};
+<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">Field</span>, <span class="ident">PrimeField</span>};
 <span class="kw">use</span> <span class="ident">num_bigint::BigUint</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">serde_with::serde_as</span>;
@@ -216,7 +217,7 @@
     <span class="kw">pub</span> <span class="ident">len</span>: <span class="ident">usize</span>,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span>, <span class="kw">const</span> <span class="ident">N</span>: <span class="ident">usize</span><span class="op">&gt;</span> <span class="ident">ForeignElement</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">N</span><span class="op">&gt;</span> {
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span>, <span class="kw">const</span> <span class="ident">N</span>: <span class="ident">usize</span><span class="op">&gt;</span> <span class="ident">ForeignElement</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">N</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Initializes a new foreign element from a big unsigned integer</span>
     <span class="doccomment">/// Panics if the BigUint is too large to fit in the `N` limbs</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_from_big</span>(<span class="ident">big</span>: <span class="ident">BigUint</span>) -&gt; <span class="self">Self</span> {
@@ -247,7 +248,7 @@
 
     <span class="doccomment">/// Initializes a new foreign element from an element in the native field</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_from_field</span>(<span class="ident">field</span>: <span class="ident">F</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new_from_big</span>(<span class="ident">field</span>.<span class="ident">to_big</span>())
+        <span class="ident"><span class="self">Self</span>::new_from_big</span>(<span class="ident">field</span>.<span class="ident">into</span>())
     }
 
     <span class="doccomment">/// Obtains the big integer representation of the foreign field element</span>
@@ -317,6 +318,7 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::field_helpers::FieldFromBig</span>;
     <span class="kw">use</span> <span class="ident">ark_ec::AffineCurve</span>;
     <span class="kw">use</span> <span class="ident">ark_ff::One</span>;
     <span class="kw">use</span> <span class="ident">mina_curves::pasta::pallas</span>;
