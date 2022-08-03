@@ -321,18 +321,111 @@ impl<G: KimchiCurve> VerifierIndex<G> {
         &self,
     ) -> G::BaseField {
         let mut fq_sponge = EFqSponge::new(G::OtherCurve::sponge_params());
-        for comm in self.sigma_comm.iter() {
+        // We fully expand this to make the compiler check that we aren't missing any commitments
+        let VerifierIndex {
+            domain: _,
+            max_poly_size: _,
+            max_quot_size: _,
+            srs: _,
+            public: _,
+            prev_challenges: _,
+
+            // Always present
+            sigma_comm,
+            coefficients_comm,
+            generic_comm,
+            psm_comm,
+            complete_add_comm,
+            mul_comm,
+            emul_comm,
+            endomul_scalar_comm,
+
+            // Optional gates
+            chacha_comm,
+            range_check_comm,
+
+            // Lookup index; optional
+            lookup_index,
+
+            shift: _,
+            zkpm: _,
+            w: _,
+            endo: _,
+
+            linearization: _,
+            powers_of_alpha: _,
+        } = &self;
+
+        // Always present
+
+        for comm in sigma_comm.iter() {
             fq_sponge.absorb_g(&comm.unshifted)
         }
-        for comm in self.coefficients_comm.iter() {
+        for comm in coefficients_comm.iter() {
             fq_sponge.absorb_g(&comm.unshifted)
         }
-        fq_sponge.absorb_g(&self.generic_comm.unshifted);
-        fq_sponge.absorb_g(&self.psm_comm.unshifted);
-        fq_sponge.absorb_g(&self.complete_add_comm.unshifted);
-        fq_sponge.absorb_g(&self.mul_comm.unshifted);
-        fq_sponge.absorb_g(&self.emul_comm.unshifted);
-        fq_sponge.absorb_g(&self.endomul_scalar_comm.unshifted);
+        fq_sponge.absorb_g(&generic_comm.unshifted);
+        fq_sponge.absorb_g(&psm_comm.unshifted);
+        fq_sponge.absorb_g(&complete_add_comm.unshifted);
+        fq_sponge.absorb_g(&mul_comm.unshifted);
+        fq_sponge.absorb_g(&emul_comm.unshifted);
+        fq_sponge.absorb_g(&endomul_scalar_comm.unshifted);
+
+        // Optional gates
+
+        if let Some(chacha_comm) = chacha_comm {
+            for chacha_comm in chacha_comm {
+                fq_sponge.absorb_g(&chacha_comm.unshifted);
+            }
+        }
+        if let Some(range_check_comm) = range_check_comm {
+            for range_check_comm in range_check_comm {
+                fq_sponge.absorb_g(&range_check_comm.unshifted);
+            }
+        }
+
+        // Lookup index; optional
+
+        if let Some(LookupVerifierIndex {
+            lookup_used: _,
+            lookup_table,
+            table_ids,
+            runtime_tables_selector,
+
+            lookup_selectors:
+                LookupSelectors {
+                    chacha,
+                    chacha_final,
+                    lookup_gate,
+                    range_check_gate,
+                },
+
+            max_joint_size: _,
+        }) = lookup_index
+        {
+            for entry in lookup_table {
+                fq_sponge.absorb_g(&entry.unshifted);
+            }
+            if let Some(table_ids) = table_ids {
+                fq_sponge.absorb_g(&table_ids.unshifted);
+            }
+            if let Some(runtime_tables_selector) = runtime_tables_selector {
+                fq_sponge.absorb_g(&runtime_tables_selector.unshifted);
+            }
+
+            if let Some(chacha) = chacha {
+                fq_sponge.absorb_g(&chacha.unshifted);
+            }
+            if let Some(chacha_final) = chacha_final {
+                fq_sponge.absorb_g(&chacha_final.unshifted);
+            }
+            if let Some(lookup_gate) = lookup_gate {
+                fq_sponge.absorb_g(&lookup_gate.unshifted);
+            }
+            if let Some(range_check_gate) = range_check_gate {
+                fq_sponge.absorb_g(&range_check_gate.unshifted);
+            }
+        }
         fq_sponge.digest_fq()
     }
 }
