@@ -6,35 +6,39 @@ use o1_utils::FieldHelpers;
 
 use crate::circuits::polynomial::COLUMNS;
 
-enum WitnessCell {
+/// Witness cell for range check gadget
+pub enum WitnessCell {
     Copy(CopyWitnessCell),
     Value,
     Limb(LimbWitnessCell),
     Zero,
 }
 
-// Witness cell copied from another
-struct CopyWitnessCell {
+/// Witness cell copied from another
+pub struct CopyWitnessCell {
     row: usize,
     col: usize,
 }
 
 impl CopyWitnessCell {
-    const fn create(row: usize, col: usize) -> WitnessCell {
+    /// Create a copy witness cell
+    pub const fn create(row: usize, col: usize) -> WitnessCell {
         WitnessCell::Copy(CopyWitnessCell { row, col })
     }
 }
 
-// Witness cell for a range check field element limb
-struct ValueWitnessCell;
+/// Witness cell for a range check field element limb
+pub struct ValueWitnessCell;
+
 impl ValueWitnessCell {
-    const fn create() -> WitnessCell {
+    /// Create a value witness cell
+    pub const fn create() -> WitnessCell {
         WitnessCell::Value
     }
 }
 
-// Witness cell for a range check field element sub-limb
-struct LimbWitnessCell {
+/// Witness cell for a range check field element sub-limb
+pub struct LimbWitnessCell {
     row: usize,   // Cell row
     col: usize,   // Cell col
     start: usize, // Starting bit offset
@@ -42,8 +46,9 @@ struct LimbWitnessCell {
 }
 
 impl LimbWitnessCell {
-    // Params: source (row, col), starting bit offset and ending bit offset (exclusive)
-    const fn create(row: usize, col: usize, start: usize, end: usize) -> WitnessCell {
+    /// Creates a limb witness cell.
+    /// Params: source (row, col), starting bit offset and ending bit offset (exclusive)
+    pub const fn create(row: usize, col: usize, start: usize, end: usize) -> WitnessCell {
         WitnessCell::Limb(LimbWitnessCell {
             row,
             col,
@@ -53,26 +58,28 @@ impl LimbWitnessCell {
     }
 }
 
-// An cell containing zero
-struct ZeroWitnessCell;
+/// A cell containing zero
+pub struct ZeroWitnessCell;
+
 impl ZeroWitnessCell {
-    const fn create() -> WitnessCell {
+    /// Create a zero witness cell
+    pub const fn create() -> WitnessCell {
         WitnessCell::Zero
     }
 }
 
-// Witness layout
-//   * The values and cell contents are in little-endian order.
-//     This is important for compatibility with other gates, where
-//     elements of the first 7 columns could be copied and reused by them.
-//     So they should be in the usual little-endian witness byte order.
-//   * Limbs are mapped to columns so that those containing the MSBs
-//     are in lower numbered columns (i.e. big-endian column mapping).
-//     This is important so that copy constraints are possible on the MSBs.
-//     For example, we can convert the RangeCheck0 circuit gate into
-//     a 64-bit lookup by adding two copy constraints to constrain
-//     columns 1 and 2 to zero.
-const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 4] = [
+/// Witness layout
+///   * The values and cell contents are in little-endian order.
+///     This is important for compatibility with other gates, where
+///     elements of the first 7 columns could be copied and reused by them.
+///     So they should be in the usual little-endian witness byte order.
+///   * Limbs are mapped to columns so that those containing the MSBs
+///     are in lower numbered columns (i.e. big-endian column mapping).
+///     This is important so that copy constraints are possible on the MSBs.
+///     For example, we can convert the RangeCheck0 circuit gate into
+///     a 64-bit lookup by adding two copy constraints to constrain
+///     columns 1 and 2 to zero.
+pub const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 4] = [
     /* row 1, RangeCheck0 row */
     range_check_row(0),
     /* row 2, RangeCheck0 row */
@@ -123,7 +130,7 @@ const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 4] = [
     ],
 ];
 
-// The row layout for RangeCheck0
+/// The row layout for RangeCheck0
 const fn range_check_row(row: usize) -> [WitnessCell; COLUMNS] {
     [
         ValueWitnessCell::create(),
@@ -151,10 +158,12 @@ const fn range_check_row(row: usize) -> [WitnessCell; COLUMNS] {
     ]
 }
 
-fn value_to_limb<F: PrimeField>(fe: F, start: usize, end: usize) -> F {
+/// transforms a field to a limb from a start bit to an end bit
+pub fn value_to_limb<F: PrimeField>(fe: F, start: usize, end: usize) -> F {
     F::from_bits(&fe.to_bits()[start..end]).expect("failed to deserialize field bits")
 }
 
+/// initializes a range check row
 fn init_range_check_row<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], row: usize, value: F) {
     for col in 0..COLUMNS {
         match &WITNESS_SHAPE[row][col] {
@@ -179,7 +188,7 @@ fn init_range_check_row<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], row: usi
 }
 
 /// Create a multi range check witness
-/// Input: three values: v0, v1 and v2
+/// Input: three 88-bit values: v0, v1 and v2
 pub fn create_multi_witness<F: PrimeField>(v0: F, v1: F, v2: F) -> [Vec<F>; COLUMNS] {
     let mut witness: [Vec<F>; COLUMNS] = array_init(|_| vec![F::zero(); 4]);
 
@@ -192,7 +201,7 @@ pub fn create_multi_witness<F: PrimeField>(v0: F, v1: F, v2: F) -> [Vec<F>; COLU
 }
 
 /// Create a single range check witness
-/// Input: three values: v0, v1 and v2
+/// Input: 88-bit value v0
 pub fn create_witness<F: PrimeField>(v0: F) -> [Vec<F>; COLUMNS] {
     let mut witness: [Vec<F>; COLUMNS] = array_init(|_| vec![F::zero(); 4]);
 

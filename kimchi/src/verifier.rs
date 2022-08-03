@@ -1,7 +1,6 @@
 //! This module implements zk-proof batch verifier functionality.
 
 use crate::{
-    alphas::Alphas,
     circuits::{
         argument::ArgumentType,
         constraints::ConstraintSystem,
@@ -14,6 +13,7 @@ use crate::{
     },
     curve::KimchiCurve,
     error::VerifyError,
+    oracles::OraclesResult,
     plonk_sponge::FrSponge,
     proof::{ProverProof, RecursionChallenge},
     verifier_index::VerifierIndex,
@@ -21,7 +21,7 @@ use crate::{
 use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Polynomial};
 use commitment_dlog::commitment::{
-    combined_inner_product, BatchEvaluationProof, CommitmentCurve, Evaluation, PolyComm,
+    combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
 };
 use itertools::izip;
 use oracle::{sponge::ScalarChallenge, FqSponge};
@@ -29,35 +29,6 @@ use rand::thread_rng;
 
 /// The result of a proof verification.
 pub type Result<T> = std::result::Result<T, VerifyError>;
-
-/// The result of running the oracle protocol
-pub struct OraclesResult<G, EFqSponge>
-where
-    G: CommitmentCurve,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-{
-    /// A sponge that acts on the base field of a curve
-    pub fq_sponge: EFqSponge,
-    /// the last evaluation of the Fq-Sponge in this protocol
-    pub digest: G::ScalarField,
-    /// the challenges produced in the protocol
-    pub oracles: RandomOracles<G::ScalarField>,
-    /// the computed powers of alpha
-    pub all_alphas: Alphas<G::ScalarField>,
-    /// public polynomial evaluations
-    pub p_eval: Vec<Vec<G::ScalarField>>,
-    /// zeta^n and (zeta * omega)^n
-    pub powers_of_eval_points_for_chunks: [G::ScalarField; 2],
-    /// recursion data
-    #[allow(clippy::type_complexity)]
-    pub polys: Vec<(PolyComm<G>, Vec<Vec<G::ScalarField>>)>,
-    /// pre-computed zeta^n
-    pub zeta1: G::ScalarField,
-    /// The evaluation f(zeta) - t(zeta) * Z_H(zeta)
-    pub ft_eval0: G::ScalarField,
-    /// Used by the OCaml side
-    pub combined_inner_product: G::ScalarField,
-}
 
 impl<G: KimchiCurve> ProverProof<G>
 where
@@ -211,7 +182,7 @@ where
             // more-expensive 'optional sponge'.
             let mut fr_sponge = EFrSponge::new(G::sponge_params());
             for RecursionChallenge { chals, .. } in &self.prev_challenges {
-                fr_sponge.absorb_multiple(&chals);
+                fr_sponge.absorb_multiple(chals);
             }
             fr_sponge.digest()
         };
@@ -656,8 +627,8 @@ where
                             CairoClaim | CairoInstruction | CairoFlags | CairoTransition => {
                                 unimplemented!()
                             }
-                            RangeCheck0 => &index.range_check_comm[0],
-                            RangeCheck1 => &index.range_check_comm[1],
+                            RangeCheck0 => &index.range_check_comm.as_ref().unwrap()[0],
+                            RangeCheck1 => &index.range_check_comm.as_ref().unwrap()[1],
                         };
                         scalars.push(scalar);
                         commitments.push(c);

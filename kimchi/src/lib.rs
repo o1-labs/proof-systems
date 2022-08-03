@@ -16,6 +16,7 @@ pub mod circuits;
 pub mod curve;
 pub mod error;
 pub mod linearization;
+pub mod oracles;
 pub mod plonk_sponge;
 pub mod proof;
 pub mod prover;

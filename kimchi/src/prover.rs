@@ -282,10 +282,10 @@ where
 
         //~ 1. If using lookup:
         if let Some(lcs) = &index.cs.lookup_constraint_system {
-            // if using runtime table
+            //~~ - if using runtime table:
             if let Some(cfg_runtime_tables) = &lcs.runtime_tables {
-                // check that all the provided runtime tables have length and IDs that match the runtime table configuration of the index
-                // we expect the given runtime tables to be sorted as configured, this makes it easier afterwards
+                //~~~ - check that all the provided runtime tables have length and IDs that match the runtime table configuration of the index
+                //~~~   we expect the given runtime tables to be sorted as configured, this makes it easier afterwards
                 let expected_runtime: Vec<_> = cfg_runtime_tables
                     .iter()
                     .map(|rt| (rt.id, rt.len))
@@ -298,8 +298,8 @@ where
                     return Err(ProverError::RuntimeTablesInconsistent);
                 }
 
-                // calculate the contribution to the second column of the lookup table
-                // (the runtime vector)
+                //~~~ - calculate the contribution to the second column of the lookup table
+                //~~~   (the runtime vector)
                 let (runtime_table_contribution, runtime_table_contribution_d8) = {
                     let mut offset = lcs
                         .runtime_table_offset
@@ -588,10 +588,14 @@ where
                         index_evals.insert(*g, &c[i]);
                     }
                 });
-            if !index.cs.range_check_selector_polys.is_empty() {
-                index_evals.extend(range_check::circuit_gates().iter().enumerate().map(
-                    |(i, gate_type)| (*gate_type, &index.cs.range_check_selector_polys[i].eval8),
-                ));
+
+            if let Some(polys) = &index.cs.range_check_selector_polys {
+                index_evals.extend(
+                    range_check::gadget::circuit_gates()
+                        .iter()
+                        .enumerate()
+                        .map(|(i, gate_type)| (*gate_type, &polys[i].eval8)),
+                );
             }
 
             let mds = &G::sponge_params().mds;
@@ -650,37 +654,6 @@ where
                 (perm, bnd)
             };
 
-            if !index.cs.range_check_selector_polys.is_empty() {
-                // Range check gate
-                for gate_type in range_check::circuit_gates() {
-                    let expr = range_check::circuit_gate_constraints(gate_type, &all_alphas);
-
-                    let evals = expr.evaluations(&env);
-
-                    if evals.domain().size == t4.domain().size {
-                        t4 += &evals;
-                    } else if evals.domain().size == t8.domain().size {
-                        t8 += &evals;
-                    } else {
-                        panic!(
-                            "Bad evaluation domain size {} for {:?}",
-                            evals.domain().size,
-                            gate_type
-                        );
-                    }
-
-                    if cfg!(test) {
-                        let (_, res) = evals
-                            .interpolate()
-                            .divide_by_vanishing_poly(index.cs.domain.d1)
-                            .unwrap();
-                        if !res.is_zero() {
-                            panic!("Nonzero vanishing polynomial division for {:?}", gate_type);
-                        }
-                    }
-                }
-            }
-
             // scalar multiplication
             {
                 let mul8 = VarbaseMul::combined_constraints(&all_alphas).evaluations(&env);
@@ -734,6 +707,18 @@ where
                     check_constraint!(index, chacha1);
                     check_constraint!(index, chacha2);
                     check_constraint!(index, chacha_final);
+                }
+            }
+
+            // range check gates
+            if index.cs.range_check_selector_polys.is_some() {
+                for gate_type in range_check::gadget::circuit_gates() {
+                    let range =
+                        range_check::gadget::circuit_gate_constraints(gate_type, &all_alphas)
+                            .evaluations(&env);
+                    assert_eq!(range.domain().size, t8.domain().size);
+                    t8 += &range;
+                    check_constraint!(index, range);
                 }
             }
 
@@ -1147,9 +1132,9 @@ where
                 .collect::<Vec<_>>(),
         );
 
-        // if using lookup
+        //~ 1. if using lookup:
         if let Some(lcs) = &index.cs.lookup_constraint_system {
-            // add the sorted polynomials
+            //~~ - add the lookup sorted polynomials
             let sorted_poly = lookup_context.sorted_coeffs.as_ref().unwrap();
             let sorted_comms = lookup_context.sorted_comms.as_ref().unwrap();
 
@@ -1157,12 +1142,12 @@ where
                 polynomials.push((poly, None, comm.blinders.clone()));
             }
 
-            // add the aggreg polynomial
+            //~~ - add the lookup aggreg polynomial
             let aggreg_poly = lookup_context.aggreg_coeffs.as_ref().unwrap();
             let aggreg_comm = lookup_context.aggreg_comm.as_ref().unwrap();
             polynomials.push((aggreg_poly, None, aggreg_comm.blinders.clone()));
 
-            // add the combined table polynomial
+            //~~ - add the combined table polynomial
             let table_blinding = if lcs.runtime_selector.is_some() {
                 let runtime_comm = lookup_context.runtime_table_comm.as_ref().unwrap();
                 let joint_combiner = lookup_context.joint_combiner.as_ref().unwrap();
@@ -1181,7 +1166,7 @@ where
 
             polynomials.push((joint_lookup_table, None, table_blinding));
 
-            // add the runtime table polynomial
+            //~~ - if present, add the runtime table polynomial
             if lcs.runtime_selector.is_some() {
                 let runtime_table_comm = lookup_context.runtime_table_comm.as_ref().unwrap();
                 let runtime_table = lookup_context.runtime_table.as_ref().unwrap();
