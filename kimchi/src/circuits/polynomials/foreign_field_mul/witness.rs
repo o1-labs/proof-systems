@@ -89,7 +89,7 @@ const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 2] = [
     [
         WitnessCell::Standard(CopyWitnessCell::create(0, 0)), // left_input_lo
         WitnessCell::Standard(CopyWitnessCell::create(1, 0)), // left_input_mi
-        ShiftWitnessCell::create(20, 10, 9),                  // carry_shift from carry_bot
+        ShiftWitnessCell::create(20, 12, 9),                  // carry_shift from carry_top_extra
         ShiftWitnessCell::create(20, 6, 8),                   // quotient_shift from quotient_hi
         WitnessCell::Standard(CopyWitnessCell::create(8, 0)), // quotient_lo
         WitnessCell::Standard(CopyWitnessCell::create(9, 0)), // quotient_mi
@@ -221,7 +221,6 @@ pub fn create_witness<F: PrimeField>(
     let (carry_bot, _) = product_lo_big.div_rem(&two_to_176);
     let (product_mi_top, product_mi_bot) = product_mi_big.div_rem(&two_to_88);
     let (_, product_mi_top_limb) = product_mi_top.div_rem(&two_to_88);
-    println!("until here");
     let carry_top: F = F::from_big(carry_bot.clone()).unwrap()
         + F::from_big(product_mi_top.clone()).unwrap()
         + product_hi
@@ -240,7 +239,6 @@ pub fn create_witness<F: PrimeField>(
         "product_mi_top_limb: {:?}",
         product_mi_top_limb.to_bytes_be()
     );
-    println!("carry_top: {:?}", carry_top_big);
     println!("carry_top_limb: {:?}", carry_top_limb.to_bytes_be());
 
     let product_mi_bot = F::from_big(product_mi_bot).expect("big_f does not fit in F");
