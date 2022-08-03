@@ -221,7 +221,7 @@ fn test_max_native_multiplicands() {
 // Test squaring of the maximum foreign field values
 // ( f - 1) * (f - 1) = f^2 - 2f + 1 = f * (f - 2) + 1
 fn test_max_foreign_multiplicands() {
-    let cs = create_test_constraint_system();
+    let _cs = create_test_constraint_system();
     let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
     let left_input = ForeignElement::<PallasField, 3>::new_from_be(MAX_FOR);
     let right_input = ForeignElement::<PallasField, 3>::new_from_be(MAX_FOR);

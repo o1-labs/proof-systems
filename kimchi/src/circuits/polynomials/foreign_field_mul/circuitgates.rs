@@ -96,7 +96,11 @@ use std::marker::PhantomData;
 ///       as constraint code or as witness generation code
 #[allow(clippy::too_many_arguments)] // Our use of many arguments is intentional
 pub fn compute_intermediate_products<
-    F: std::ops::Mul<Output = F> + std::ops::Sub<Output = F> + std::ops::Add<Output = F> + Clone,
+    F: std::ops::Mul<Output = F>
+        + std::ops::Sub<Output = F>
+        + std::ops::Neg<Output = F>
+        + std::ops::Add<Output = F>
+        + Clone,
 >(
     left_input_lo: F,
     left_input_mi: F,
@@ -128,16 +132,14 @@ pub fn compute_intermediate_products<
         - quotient_lo.clone() * foreign_modulus_lo.clone();
     let product_mi = left_input_lo.clone() * right_input_mi.clone()
         + left_input_mi.clone() * right_input_lo.clone()
-        - quotient_lo.clone() * foreign_modulus_mi
+        - quotient_lo.clone() * foreign_modulus_mi.clone()
         - quotient_mi.clone() * foreign_modulus_lo.clone(); // TODO: Check algebra sign
     let product_hi = left_input_lo * right_input_hi
         + left_input_hi * right_input_lo
         + left_input_mi * right_input_mi
         - quotient_lo * foreign_modulus_hi.clone()
         - quotient_hi * foreign_modulus_lo
-        - quotient_mi * foreign_modulus_hi; // TODO: Check algebra sign
-
-    println!("intermediate products inside");
+        - quotient_mi * foreign_modulus_mi; // TODO: Check algebra sign
 
     (product_lo, product_mi, product_hi)
 }

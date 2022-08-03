@@ -131,7 +131,8 @@ fn init_foreign_field_mul_rows<F: PrimeField>(
     carry_top: F,
 ) {
     for (row, wit) in WITNESS_SHAPE.iter().enumerate() {
-        for col in 0..COLUMNS {
+        // must go in reverse order because otherwise the shift cells will be uninitialized
+        for col in (0..COLUMNS).rev() {
             match &wit[col] {
                 WitnessCell::Standard(standard_cell) => {
                     handle_standard_witness_cell(
@@ -213,17 +214,24 @@ pub fn create_witness<F: PrimeField>(
     let product_lo_big: BigUint = product_lo.into();
     let product_mi_big: BigUint = product_mi.into();
     let product_hi_big: BigUint = product_hi.into();
-    println!("product_hi_big: {:?}", product_hi_big.to_bytes_be());
-    println!("product_hi: {:?}", product_hi);
+
     let remainder_hi_big: BigUint = (*remainder.hi()).into();
     let two_to_88: BigUint = F::from(2u128.pow(LIMB_BITS as u32)).into();
     let two_to_176 = two_to_88.clone() * two_to_88.clone();
     let (carry_bot, _) = product_lo_big.div_rem(&two_to_176);
     let (product_mi_top, product_mi_bot) = product_mi_big.div_rem(&two_to_88);
     let (_, product_mi_top_limb) = product_mi_top.div_rem(&two_to_88);
-    let carry_top: BigUint =
-        carry_bot.clone() + product_mi_top.clone() + product_hi_big - remainder_hi_big;
-    let (_, carry_top_limb) = carry_top.div_rem(&two_to_88);
+    println!("until here");
+    let carry_top: F = F::from_big(carry_bot.clone()).unwrap()
+        + F::from_big(product_mi_top.clone()).unwrap()
+        + product_hi
+        - *remainder.hi();
+    //let carry_top: BigUint =
+    //    carry_bot.clone() + product_mi_top.clone() + product_hi_big - remainder_hi_big;
+    let carry_top_big: BigUint = carry_top.into();
+    let (_, carry_top_limb) = carry_top_big.div_rem(&two_to_88);
+
+    println!("carry_top: {:?}", carry_top_big.to_bytes_be());
 
     println!("carry_bot: {:?}", carry_bot.to_bytes_be());
     println!("product_mi_top: {:?}", product_mi_top.to_bytes_be());
@@ -232,8 +240,8 @@ pub fn create_witness<F: PrimeField>(
         "product_mi_top_limb: {:?}",
         product_mi_top_limb.to_bytes_be()
     );
-    println!("carry_top: {:?}", carry_top.to_bytes_be());
-    println!("carry_top_limb: {:?}", carry_top.to_bytes_be());
+    println!("carry_top: {:?}", carry_top_big);
+    println!("carry_top_limb: {:?}", carry_top_limb.to_bytes_be());
 
     let product_mi_bot = F::from_big(product_mi_bot).expect("big_f does not fit in F");
     let product_mi_top_limb = F::from_big(product_mi_top_limb).expect("big_f does not fit in F");
@@ -251,7 +259,6 @@ pub fn create_witness<F: PrimeField>(
     }
 
     let carry_bot = F::from_big(carry_bot).expect("big_f does not fit in F");
-    let carry_top = F::from_big(carry_top).expect("big_f does not fit in F");
 
     println!("product mi: {:?}", product_mi_big.to_bytes_be());
 
@@ -348,6 +355,8 @@ pub fn check_witness<F: PrimeField>(
     assert_eq!(F::zero(), carry_shift - two_to_9 * carry_top_extra.clone());
 
     println!("quo shift");
+    println!("quo shift {:?}", quotient_shift);
+    println!("quo hi {:?}", quotient_hi);
     assert_eq!(F::zero(), quotient_shift - two_to_8 * quotient_hi);
 
     println!("zero bot");

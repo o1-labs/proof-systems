@@ -11,10 +11,10 @@ This document outlines the steps needed to constrain foreign field multiplicatio
 1. [x] Choose $t$ such that $2^tn > f^2$
 > $t = 2\log_2(f) - \log_2(n)$
 
-| $n$ | $f$ | $t$ |
--|-|-
-Pasta (255) | secp256k1 (256) | 257
-Pasta (255) | Pasta (255) | 255
+| $n$         | $f$             | $t$ |
+| ----------- | --------------- | --- |
+| Pasta (255) | secp256k1 (256) | 257 |
+| Pasta (255) | Pasta (255)     | 255 |
 
 Note: Note that for this scheme to work we also need $t$ such that $2^tn > p^2 + p$.
 
@@ -80,11 +80,11 @@ Notice that $X^2=Y$, so the above simplifies to
 
 Recall that $t = 264$ and observe that $XY = 2^t$ and $Y^2 = 2^t2^{88}$.  Therefore, the terms with $XY$ or $Y^2$ are a multiple of modulus and, thus, congruent to zero $\mod 2^t$. So we are left with 3 intermediate products that we call $p_0, p_1, p_2$:
 
-| Term | Scale | Product |
-| - | - | - |
-| $p_0$ | $1$ | $a_0b_0 + q_0g_0$ |
-| $p_1$ | $X$ | $a_0b_1 + a_1b_0 + q_0g_1 + q_1g_0$ |
-| $p_2$ | $Y$ | $a_0b_2 + a_2b_0 + q_0g_2 + q_2g_0 + a_1b_1 + q_1g_1$ |
+| Term  | Scale | Product                                               |
+| ----- | ----- | ----------------------------------------------------- |
+| $p_0$ | $1$   | $a_0b_0 + q_0g_0$                                     |
+| $p_1$ | $X$   | $a_0b_1 + a_1b_0 + q_0g_1 + q_1g_0$                   |
+| $p_2$ | $Y$   | $a_0b_2 + a_2b_0 + q_0g_2 + q_2g_0 + a_1b_1 + q_1g_1$ |
 
 So far, we have introduced these checked computations to our constraints
 > 1. Computation of $p_0, p_1, p_2$
@@ -117,8 +117,8 @@ The diagram below shows the right hand side of this equality (i.e. the value $p 
 |-------------|-------------|-------------|-------------|-------------|
                             |              
 |--------------p0-----------|---| 2L + 1
-                            |
-              |-------------|-p1--------------| 2L + 2
+                            |     |
+                            | --- |  |p1--------------| 2L + 2
                     p10➚    |        p11➚
                             |----------------p2---------------| 2L + 3
                             |
@@ -216,12 +216,12 @@ The range checks on $p_0, p_1$ and $p_2$ follow from the range checks on $a,b$ a
 
 So we have 3.a, 3.b, 4, 7, 8.a, 8.b.
 
-| Range check | Gate type(s) | Witness | Rows |
--|-|-|-
-7   | $(v_0 - 3)(v_0 - 2)(v_0 - 1)v_0$ | $v_0$ | < 1 |
-3.a   | $(p_{111} - 3)(p_{111} - 2)(p_{111} - 1)q$ | $p_{111}$ | < 1 |
-8.b   | degree-8 constraint or plookup | $v_{11}$ | 1 |
-3.b, 4, 8.a | multi-range-check | $p_{10}, p_{110}, v_{10}$ | 4 |
+| Range check | Gate type(s)                               | Witness                   | Rows |
+| ----------- | ------------------------------------------ | ------------------------- | ---- |
+| 7           | $(v_0 - 3)(v_0 - 2)(v_0 - 1)v_0$           | $v_0$                     | < 1  |
+| 3.a         | $(p_{111} - 3)(p_{111} - 2)(p_{111} - 1)q$ | $p_{111}$                 | < 1  |
+| 8.b         | degree-8 constraint or plookup             | $v_{11}$                  | 1    |
+| 3.b, 4, 8.a | multi-range-check                          | $p_{10}, p_{110}, v_{10}$ | 4    |
 
 So we have 1 multi-range-check, 1 single-range-check and 2 low-degree range checks. This consumes just over 5 rows.
 
@@ -359,7 +359,7 @@ And some more range constraints
 
 - [x] Check that $v_0 \in [0, 3]$ with a degree-4 constraint `ForeignFieldMul`
 - [x] Check that $v_1 \in [0, 2^{\ell + 3})$
-    - [x] Check/substitute/let $v_1 = v_{11} \cdot 8 + v_{10}$ `ForeignFieldMul`
+    - [x] Check/substitute/let $v_1 = v_{11} \cdot 2^{88} + v_{10}$ `ForeignFieldMul`
     - [x] Check $v_{11} \in [0,7]$ `ForeignFieldMul`
     - [x] Check $v_{10} < 2^\ell$ with range constraint `multi-range-check-4`
     
@@ -372,24 +372,24 @@ a0, a1, a2, b0, b1, b2, q0, q1, q2, r0, r1, r2
 ```
 Since we need 12 copied values for the constraints the constraints must span 2 rows.  N.b. the $f$ and $g$ values are gobally accessible in the `ConstraintSystem`
 
-|                 | Curr              | Next |
-|-|-|-|
-| **Column**      | `ForeignFieldMul` | `Zero` |
-0  | $a_0$ (copy) | $a_2$ (copy)
-1  | $a_1$ (copy) | $b_0$ (copy)
-2  | $\mathsf{shift}_{v_{11}}$ (plookup)  |  $b_1$ (copy)
-3  |$\mathsf{shift}_{q_2}$ (plookup)  |  $b_2$ (copy)
-4  | $q_0$ (copy) | $r_0$ (copy)
-5  | $q_1$ (copy) | $r_1$ (copy)
-6  | $q_2$ (copy) | $r_2$ (copy)
-7  | $p_{10}$  | 
-8  | $p_{110}$ | 
-9  | $p_{111}$ | 
-10 | $v_0$     |
-11 | $v_{10}$  |
-12 | $v_{11}$  |
-13 |           |
-14 |           |
+|            | Curr                                | Next         |
+| ---------- | ----------------------------------- | ------------ |
+| **Column** | `ForeignFieldMul`                   | `Zero`       |
+| 0          | $a_0$ (copy)                        | $a_2$ (copy) |
+| 1          | $a_1$ (copy)                        | $b_0$ (copy) |
+| 2          | $\mathsf{shift}_{v_{11}}$ (plookup) | $b_1$ (copy) |
+| 3          | $\mathsf{shift}_{q_2}$ (plookup)    | $b_2$ (copy) |
+| 4          | $q_0$ (copy)                        | $r_0$ (copy) |
+| 5          | $q_1$ (copy)                        | $r_1$ (copy) |
+| 6          | $q_2$ (copy)                        | $r_2$ (copy) |
+| 7          | $p_{10}$                            |
+| 8          | $p_{110}$                           |
+| 9          | $p_{111}$                           |
+| 10         | $v_0$                               |
+| 11         | $v_{10}$                            |
+| 12         | $v_{11}$                            |
+| 13         |                                     |
+| 14         |                                     |
 
 where $\mathsf{shift}_{v_{11}} = 2^9v_{11}$ and $\mathsf{shift}_{q_2} = 2^8q_2$.
 
@@ -403,7 +403,7 @@ and the following constraints
 
 1. $p_1 = 2^{\ell}p_{11} + p_{10}$
 2. $p_{11} = 2^{\ell}p_{111} + p_{110}$
-3. $v_1 = 2^3v_{11} + v_{10}$
+3. $v_1 = 2^{88}v_{11} + v_{10}$
 4. $2^{2\ell}v_0 = p_0 + 2^{\ell}p_{10} - r_0 - 2^{\ell}r_1$
 5. $2^{\ell}v_1 = v_0 + p_{11} + p_2 - r_2$
 6. $v_0 \in [0, 2^2)$
@@ -417,8 +417,8 @@ As mentioned above, constraints (1), (2), and (3) can be combined inside (5) to 
 
 1. $p_1 = 2^{\ell}(2^{\ell}p_{111} + p_{110}) + p_{10}$
 2. $2^{2\ell}v_0 = p_0 + 2^{\ell}p_{10} - r_0 - 2^{\ell}r_1$
-3. $2^{\ell}(2^3v_{11} + v_{10}) = v_0 + (2^{\ell}p_{111} + p_{110}) + p_2 - r_2$
-4. $2^9(2^3v_{11} + v_{10}) = \mathsf{shift}_{v_{11}}$
+3. $2^{\ell}(2^{88}v_{11} + v_{10}) = v_0 + (2^{\ell}p_{111} + p_{110}) + p_2 - r_2$
+4. $2^9v_{11} = \mathsf{shift}_{v_{11}}$
 5. $2^8 q_2 = \mathsf{shift}_{q_2}$
 6. $v_0 \in [0, 2^2)$
 7. $p_{111} \in [0, 2^2)$
@@ -435,15 +435,15 @@ These 2 gates are preceeded by 5 multi-range-check gates.
 
 ## Layout
 
-| Row(s) | Gate type(s) | Witness |
--|-|-
-0-3 | `multi-range-check` | $a$ |
-4-7 | `multi-range-check` | $b$ |
-8-11 | `multi-range-check` | $q$ |
-12-15 | `multi-range-check` | $r$ |
-16-19 | `multi-range-check` | $p_{10}, p_{110}, v_{10}$ |
-20 | `ForeignFieldMul` |  |
-21 | `Zero` |  |
+| Row(s) | Gate type(s)        | Witness                   |
+| ------ | ------------------- | ------------------------- |
+| 0-3    | `multi-range-check` | $a$                       |
+| 4-7    | `multi-range-check` | $b$                       |
+| 8-11   | `multi-range-check` | $q$                       |
+| 12-15  | `multi-range-check` | $r$                       |
+| 16-19  | `multi-range-check` | $p_{10}, p_{110}, v_{10}$ |
+| 20     | `ForeignFieldMul`   |                           |
+| 21     | `Zero`              |                           |
 
 <!--
 ## Another approach
@@ -482,12 +482,12 @@ If they are zero, then we don't need to range check them.
 
 **Cost:** Here we have 4 range checks, but range check (4) is a trivial degree 2 constraint.  So, there are actually 3 range checks.  Range checks (3) and (6) fit into a single multi-range-check gate and (7) requires a single range check gate followed by a degree 4 constraint.  So the constraints would look like this
 
-| Range check | Gate type(s) | Witness | Rows |
--|-|-|-
-4   | $(p_{01} - 1)p_{01}$ | $p_{01}$ | < 1 |
-7   | $(p_{10} - 3)(p_{10} - 2)(p_{10} - 1)p_{10}$ | $p_{10}$ | < 1 |
-3,6 | multi-range-check    | $p_{00}, p_{11}$ | 4 |
-7   | single-range-check (`RangeCheck0`) | $p_{10}$ | 1 |
+| Range check | Gate type(s)                                 | Witness          | Rows |
+| ----------- | -------------------------------------------- | ---------------- | ---- |
+| 4           | $(p_{01} - 1)p_{01}$                         | $p_{01}$         | < 1  |
+| 7           | $(p_{10} - 3)(p_{10} - 2)(p_{10} - 1)p_{10}$ | $p_{10}$         | < 1  |
+| 3,6         | multi-range-check                            | $p_{00}, p_{11}$ | 4    |
+| 7           | single-range-check (`RangeCheck0`)           | $p_{10}$         | 1    |
 
 These range-checks should be the dominant cost.
 
