@@ -913,9 +913,9 @@ mod tests {
     use crate::srs::SRS;
     use ark_poly::{Polynomial, UVPolynomial};
     use array_init::array_init;
-    use mina_curves::pasta::{fp::Fp, vesta::Affine as VestaG};
+    use mina_curves::pasta::{fp::Fp, vesta::Vesta as VestaG};
     use oracle::constants::PlonkSpongeConstantsKimchi as SC;
-    use oracle::{pasta::fq_kimchi::params as spongeFqParams, sponge::DefaultFqSponge};
+    use oracle::sponge::DefaultFqSponge;
     use rand::{rngs::StdRng, SeedableRng};
 
     #[test]
@@ -966,7 +966,7 @@ mod tests {
         // create an aggregated opening proof
         let (u, v) = (Fp::rand(rng), Fp::rand(rng));
         let group_map = <VestaG as CommitmentCurve>::Map::setup();
-        let sponge = DefaultFqSponge::<_, SC>::new(spongeFqParams());
+        let sponge = DefaultFqSponge::<_, SC>::new(oracle::pasta::fq_kimchi::static_params());
 
         let polys = vec![
             (&poly1, None, commitment.blinders),

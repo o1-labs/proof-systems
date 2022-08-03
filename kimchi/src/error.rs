@@ -41,8 +41,8 @@ pub enum VerifyError {
     #[error("the public input is of an unexpected size (expected {0})")]
     IncorrectPubicInputLength(usize),
 
-    #[error("the previous challenges have an unexpected length (expected {0})")]
-    IncorrectPrevChallengesLength(usize),
+    #[error("the previous challenges have an unexpected length (expected {0}, got {})")]
+    IncorrectPrevChallengesLength(usize, usize),
 
     #[error("the opening proof failed to verify")]
     OpenProof,

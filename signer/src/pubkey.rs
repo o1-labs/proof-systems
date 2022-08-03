@@ -2,7 +2,7 @@
 //!
 //! Definition of public key structure and helpers
 
-use ark_ff::{BigInteger, PrimeField};
+use ark_ff::{BigInteger, PrimeField, Zero};
 use bs58;
 use core::fmt;
 use sha2::{Digest, Sha256};
@@ -13,7 +13,7 @@ use crate::{BaseField, CurvePoint};
 use o1_utils::FieldHelpers;
 
 /// Public key errors
-#[derive(Error, Debug, Clone, Copy, PartialEq)]
+#[derive(Error, Debug, Clone, PartialEq)]
 pub enum PubKeyError {
     /// Invalid address length
     #[error("invalid address length")]
@@ -48,7 +48,7 @@ pub const MINA_ADDRESS_LEN: usize = 55;
 const MINA_ADDRESS_RAW_LEN: usize = 40;
 
 /// Public key
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PubKey(CurvePoint);
 
 impl PubKey {
@@ -102,14 +102,19 @@ impl PubKey {
         Ok(PubKey::from_point_unsafe(pt))
     }
 
+    /// Borrow public key as curve point
+    pub fn point(&self) -> &CurvePoint {
+        &self.0
+    }
+
     /// Convert public key into curve point
     pub fn into_point(self) -> CurvePoint {
         self.0
     }
 
     /// Convert public key into compressed public key
-    pub fn into_compressed(self) -> CompressedPubKey {
-        let point = self.into_point();
+    pub fn into_compressed(&self) -> CompressedPubKey {
+        let point = self.0;
         CompressedPubKey {
             x: point.x,
             is_odd: point.y.into_repr().is_odd(),
@@ -117,15 +122,15 @@ impl PubKey {
     }
 
     /// Serialize public key into corresponding Mina address
-    pub fn into_address(self) -> String {
-        let point = self.into_point();
-        into_address(point.x, point.y.into_repr().is_odd())
+    pub fn into_address(&self) -> String {
+        let point = self.point();
+        into_address(&point.x, point.y.into_repr().is_odd())
     }
 }
 
 impl fmt::Display for PubKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let point = self.into_point();
+        let point = self.point();
         let mut x_bytes = point.x.to_bytes();
         let mut y_bytes = point.y.to_bytes();
         x_bytes.reverse();
@@ -136,7 +141,7 @@ impl fmt::Display for PubKey {
 }
 
 /// Compressed public keys consist of x-coordinate and y-coordinate parity.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CompressedPubKey {
     /// X-coordinate
     pub x: BaseField,
@@ -145,7 +150,7 @@ pub struct CompressedPubKey {
     pub is_odd: bool,
 }
 
-fn into_address(x: BaseField, is_odd: bool) -> String {
+fn into_address(x: &BaseField, is_odd: bool) -> String {
     let mut raw: Vec<u8> = vec![
         0xcb, // version for base58 check
         0x01, // non_zero_curve_point version
@@ -168,13 +173,22 @@ fn into_address(x: BaseField, is_odd: bool) -> String {
 
 impl CompressedPubKey {
     /// Serialize compressed public key into corresponding Mina address
-    pub fn into_address(self) -> String {
-        into_address(self.x, self.is_odd)
+    pub fn into_address(&self) -> String {
+        into_address(&self.x, self.is_odd)
     }
 
     /// Deserialize Mina address into compressed public key (via an uncompressed PubKey)
     pub fn from_address(address: &str) -> Result<Self> {
         Ok(PubKey::from_address(address)?.into_compressed())
+    }
+
+    /// The empty [CompressedPubKey] value that is used as `public_key` in empty account
+    /// and [None] value for calculating the hash of [Option<CompressedPubKey>], etc.
+    pub fn empty() -> Self {
+        Self {
+            x: BaseField::zero(),
+            is_odd: false,
+        }
     }
 }
 

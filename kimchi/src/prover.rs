@@ -21,6 +21,7 @@ use crate::{
         },
         wires::{COLUMNS, PERMUTS},
     },
+    curve::KimchiCurve,
     error::ProverError,
     plonk_sponge::FrSponge,
     proof::{
@@ -108,7 +109,7 @@ where
     runtime_second_col_d8: Option<Evaluations<F, D<F>>>,
 }
 
-impl<G: CommitmentCurve> ProverProof<G>
+impl<G: KimchiCurve> ProverProof<G>
 where
     G::BaseField: PrimeField,
 {
@@ -150,6 +151,8 @@ where
             return Err(ProverError::SRSTooSmall);
         }
 
+        let (_, endo_r) = G::endos();
+
         // TODO: rng should be passed as arg
         let rng = &mut rand::rngs::OsRng;
 
@@ -158,7 +161,7 @@ where
             let public = witness[0][0..index.cs.public].to_vec();
             index
                 .cs
-                .verify(&witness, &public)
+                .verify::<G>(&witness, &public)
                 .expect("incorrect witness");
         }
 
@@ -193,8 +196,7 @@ where
         }
 
         //~ 1. Setup the Fq-Sponge.
-        let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
-
+        let mut fq_sponge = EFqSponge::new(G::OtherCurve::sponge_params());
 
         //~ 1. Absorb the digest of the VerifierIndex.
         let verifier_index_digest = index.verifier_index_digest::<EFqSponge>();
@@ -284,10 +286,10 @@ where
 
         //~ 1. If using lookup:
         if let Some(lcs) = &index.cs.lookup_constraint_system {
-            // if using runtime table
+            //~~ - if using runtime table:
             if let Some(cfg_runtime_tables) = &lcs.runtime_tables {
-                // check that all the provided runtime tables have length and IDs that match the runtime table configuration of the index
-                // we expect the given runtime tables to be sorted as configured, this makes it easier afterwards
+                //~~~ - check that all the provided runtime tables have length and IDs that match the runtime table configuration of the index
+                //~~~   we expect the given runtime tables to be sorted as configured, this makes it easier afterwards
                 let expected_runtime: Vec<_> = cfg_runtime_tables
                     .iter()
                     .map(|rt| (rt.id, rt.len))
@@ -300,8 +302,8 @@ where
                     return Err(ProverError::RuntimeTablesInconsistent);
                 }
 
-                // calculate the contribution to the second column of the lookup table
-                // (the runtime vector)
+                //~~~ - calculate the contribution to the second column of the lookup table
+                //~~~   (the runtime vector)
                 let (runtime_table_contribution, runtime_table_contribution_d8) = {
                     let mut offset = lcs
                         .runtime_table_offset
@@ -360,8 +362,7 @@ where
             };
 
             //~~ - Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TOOD: specify)
-            let joint_combiner: G::ScalarField =
-                ScalarChallenge(joint_combiner).to_field(&index.srs.endo_r);
+            let joint_combiner: G::ScalarField = ScalarChallenge(joint_combiner).to_field(endo_r);
 
             //~~ - If multiple lookup tables are involved,
             //~~   set the `table_id_combiner` as the $j^i$ with $i$ the maximum width of any used table.
@@ -545,7 +546,7 @@ where
         let alpha_chal = ScalarChallenge(fq_sponge.challenge());
 
         //~ 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details)
-        let alpha: G::ScalarField = alpha_chal.to_field(&index.srs.endo_r);
+        let alpha: G::ScalarField = alpha_chal.to_field(endo_r);
 
         //~ 1. TODO: instantiate alpha?
         let mut all_alphas = index.powers_of_alpha.clone();
@@ -591,12 +592,17 @@ where
                         index_evals.insert(*g, &c[i]);
                     }
                 });
-            if !index.cs.range_check_selector_polys.is_empty() {
-                index_evals.extend(range_check::circuit_gates().iter().enumerate().map(
-                    |(i, gate_type)| (*gate_type, &index.cs.range_check_selector_polys[i].eval8),
-                ));
+
+            if let Some(polys) = &index.cs.range_check_selector_polys {
+                index_evals.extend(
+                    range_check::gadget::circuit_gates()
+                        .iter()
+                        .enumerate()
+                        .map(|(i, gate_type)| (*gate_type, &polys[i].eval8)),
+                );
             }
 
+            let mds = &G::sponge_params().mds;
             Environment {
                 constants: Constants {
                     alpha,
@@ -604,7 +610,7 @@ where
                     gamma,
                     joint_combiner: lookup_context.joint_combiner,
                     endo_coefficient: index.cs.endo,
-                    mds: index.cs.fr_sponge_params.mds.clone(),
+                    mds,
                 },
                 witness: &lagrange.d8.this.w,
                 coefficient: &index.cs.coefficients8,
@@ -651,37 +657,6 @@ where
 
                 (perm, bnd)
             };
-
-            if !index.cs.range_check_selector_polys.is_empty() {
-                // Range check gate
-                for gate_type in range_check::circuit_gates() {
-                    let expr = range_check::circuit_gate_constraints(gate_type, &all_alphas);
-
-                    let evals = expr.evaluations(&env);
-
-                    if evals.domain().size == t4.domain().size {
-                        t4 += &evals;
-                    } else if evals.domain().size == t8.domain().size {
-                        t8 += &evals;
-                    } else {
-                        panic!(
-                            "Bad evaluation domain size {} for {:?}",
-                            evals.domain().size,
-                            gate_type
-                        );
-                    }
-
-                    if cfg!(test) {
-                        let (_, res) = evals
-                            .interpolate()
-                            .divide_by_vanishing_poly(index.cs.domain.d1)
-                            .unwrap();
-                        if !res.is_zero() {
-                            panic!("Nonzero vanishing polynomial division for {:?}", gate_type);
-                        }
-                    }
-                }
-            }
 
             // scalar multiplication
             {
@@ -736,6 +711,18 @@ where
                     check_constraint!(index, chacha1);
                     check_constraint!(index, chacha2);
                     check_constraint!(index, chacha_final);
+                }
+            }
+
+            // range check gates
+            if index.cs.range_check_selector_polys.is_some() {
+                for gate_type in range_check::gadget::circuit_gates() {
+                    let range =
+                        range_check::gadget::circuit_gate_constraints(gate_type, &all_alphas)
+                            .evaluations(&env);
+                    assert_eq!(range.domain().size, t8.domain().size);
+                    t8 += &range;
+                    check_constraint!(index, range);
                 }
             }
 
@@ -815,7 +802,7 @@ where
         let zeta_chal = ScalarChallenge(fq_sponge.challenge());
 
         //~ 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
-        let zeta = zeta_chal.to_field(&index.srs.endo_r);
+        let zeta = zeta_chal.to_field(endo_r);
 
         let omega = index.cs.domain.d1.group_gen;
         let zeta_omega = zeta * omega;
@@ -1044,10 +1031,22 @@ where
 
         //~ 1. Setup the Fr-Sponge
         let fq_sponge_before_evaluations = fq_sponge.clone();
-        let mut fr_sponge = EFrSponge::new(index.cs.fr_sponge_params.clone());
+        let mut fr_sponge = EFrSponge::new(G::sponge_params());
 
         //~ 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
         fr_sponge.absorb(&fq_sponge.digest());
+
+        //~ 1. Absorb the previous recursion challenges.
+        let prev_challenge_digest = {
+            // Note: we absorb in a new sponge here to limit the scope in which we need the
+            // more-expensive 'optional sponge'.
+            let mut fr_sponge = EFrSponge::new(G::sponge_params());
+            for RecursionChallenge { chals, .. } in &prev_challenges {
+                fr_sponge.absorb_multiple(chals);
+            }
+            fr_sponge.digest()
+        };
+        fr_sponge.absorb(&prev_challenge_digest);
 
         //~ 1. Compute evaluations for the previous recursion challenges.
         let polys = prev_challenges
@@ -1059,24 +1058,6 @@ where
                 )
             })
             .collect::<Vec<_>>();
-
-        //~ 1. Absorb evaluations for the previous recusion challenges.
-        let prev_challenge_digest = {
-            // Note: we absorb in a new sponge here to limit the scope in which we need the
-            // more-expensive 'optional sponge'.
-            let mut fr_sponge = EFrSponge::new(index.cs.fr_sponge_params.clone());
-            for prev_challenge in prev_challenges.iter() {
-                let evals = prev_challenge.evals(
-                    index.max_poly_size,
-                    &[zeta, zeta_omega],
-                    &[zeta_to_srs_len, zeta_omega_to_srs_len],
-                );
-                fr_sponge.absorb_multiple(&evals[0]);
-                fr_sponge.absorb_multiple(&evals[1]);
-            }
-            fr_sponge.digest()
-        };
-        fr_sponge.absorb(&prev_challenge_digest);
 
         //~ 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
         let public_evals = if public_poly.is_zero() {
@@ -1106,13 +1087,13 @@ where
         let v_chal = fr_sponge.challenge();
 
         //~ 1. Derive $v$ from $v'$ using the endomorphism (TODO: specify)
-        let v = v_chal.to_field(&index.srs.endo_r);
+        let v = v_chal.to_field(endo_r);
 
         //~ 1. Sample $u'$ with the Fr-Sponge
         let u_chal = fr_sponge.challenge();
 
         //~ 1. Derive $u$ from $u'$ using the endomorphism (TODO: specify)
-        let u = u_chal.to_field(&index.srs.endo_r);
+        let u = u_chal.to_field(endo_r);
 
         //~ 1. Create a list of all polynomials that will require evaluations
         //~    (and evaluation proofs) in the protocol.
@@ -1155,9 +1136,9 @@ where
                 .collect::<Vec<_>>(),
         );
 
-        // if using lookup
+        //~ 1. if using lookup:
         if let Some(lcs) = &index.cs.lookup_constraint_system {
-            // add the sorted polynomials
+            //~~ - add the lookup sorted polynomials
             let sorted_poly = lookup_context.sorted_coeffs.as_ref().unwrap();
             let sorted_comms = lookup_context.sorted_comms.as_ref().unwrap();
 
@@ -1165,12 +1146,12 @@ where
                 polynomials.push((poly, None, comm.blinders.clone()));
             }
 
-            // add the aggreg polynomial
+            //~~ - add the lookup aggreg polynomial
             let aggreg_poly = lookup_context.aggreg_coeffs.as_ref().unwrap();
             let aggreg_comm = lookup_context.aggreg_comm.as_ref().unwrap();
             polynomials.push((aggreg_poly, None, aggreg_comm.blinders.clone()));
 
-            // add the combined table polynomial
+            //~~ - add the combined table polynomial
             let table_blinding = if lcs.runtime_selector.is_some() {
                 let runtime_comm = lookup_context.runtime_table_comm.as_ref().unwrap();
                 let joint_combiner = lookup_context.joint_combiner.as_ref().unwrap();
@@ -1189,7 +1170,7 @@ where
 
             polynomials.push((joint_lookup_table, None, table_blinding));
 
-            // add the runtime table polynomial
+            //~~ - if present, add the runtime table polynomial
             if lcs.runtime_selector.is_some() {
                 let runtime_table_comm = lookup_context.runtime_table_comm.as_ref().unwrap();
                 let runtime_table = lookup_context.runtime_table.as_ref().unwrap();

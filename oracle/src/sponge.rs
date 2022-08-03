@@ -11,7 +11,7 @@ const HIGH_ENTROPY_LIMBS: usize = 2;
 
 // TODO: move to a different file / module
 /// A challenge which is used as a scalar on a group element in the verifier
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct ScalarChallenge<F>(pub F);
 
 pub fn endo_coefficient<F: PrimeField>() -> F {
@@ -135,7 +135,7 @@ where
     P::BaseField: PrimeField,
     <P::BaseField as PrimeField>::BigInt: Into<<P::ScalarField as PrimeField>::BigInt>,
 {
-    fn new(params: ArithmeticSpongeParams<P::BaseField>) -> DefaultFqSponge<P, SC> {
+    fn new(params: &'static ArithmeticSpongeParams<P::BaseField>) -> DefaultFqSponge<P, SC> {
         DefaultFqSponge {
             sponge: ArithmeticSponge::new(params),
             last_squeezed: vec![],

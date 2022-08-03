@@ -10,17 +10,15 @@
 //! See <https://github.com/zcash/zcash/issues/3924>
 //! and 3.1 of <https://arxiv.org/pdf/math/0208038.pdf> for details.
 
-use std::marker::PhantomData;
-
-use ark_ff::{FftField, One};
-use CurrOrNext::{Curr, Next};
-
 use crate::circuits::{
     argument::{Argument, ArgumentType},
     expr::{prologue::*, Cache, Column, Variable},
     gate::{CircuitGate, CurrOrNext, GateType},
     wires::{GateWires, COLUMNS},
 };
+use ark_ff::{FftField, One, PrimeField};
+use std::marker::PhantomData;
+use CurrOrNext::{Curr, Next};
 
 //~ We implement custom Plonk constraints for short Weierstrass curve variable base scalar multiplication.
 //~
@@ -129,7 +127,7 @@ use crate::circuits::{
 //~ `0 = n' - (b4 + 2 * (b3 + 2 * (b2 + 2 * (b1 + 2 * (b0 + 2*n)))))`
 //~
 
-impl<F: FftField> CircuitGate<F> {
+impl<F: PrimeField> CircuitGate<F> {
     pub fn create_vbmul(wires: &[GateWires; 2]) -> Vec<Self> {
         vec![
             CircuitGate {

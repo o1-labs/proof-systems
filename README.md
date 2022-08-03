@@ -73,10 +73,9 @@ let public_inputs = vec![1i32.into()];
 let group_map = <VestaAffine as CommitmentCurve>::Map::setup();
 
 // generate circuit and index
+
 let prover_index = generate_prover_index::<FpInner, _>(
     srs,
-    &fp_constants(),
-    &oracle::pasta::fq_kimchi::params(),
     // to determine how many placeholders to generate for public inputs
     public_inputs.len(),
     // use the circuit callback to generate gate constraints 
@@ -114,17 +113,17 @@ At the time of this writing:
 **Proving time**
 
 | number of gates | seconds |
-|:---------------:|:-------:|
-|       2^11      |   0.6s  |
-|       2^15      |   3.3s  |
-|       2^16      |   6.3s  |
+| :-------------: | :-----: |
+|      2^11       |  0.6s   |
+|      2^15       |  3.3s   |
+|      2^16       |  6.3s   |
 
 **Verification time**
 
 | number of gates | seconds |
-|:---------------:|:-------:|
-|       2^15      |   0.1s  |
-|       2^16      |   0.1s  |
+| :-------------: | :-----: |
+|      2^15       |  0.1s   |
+|      2^16       |  0.1s   |
 
 ## Organization
 

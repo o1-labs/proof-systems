@@ -1,17 +1,19 @@
 //! This module implements the prover index as [ProverIndex].
 
-use crate::alphas::Alphas;
-use crate::circuits::{
-    constraints::ConstraintSystem,
-    expr::{Linearization, PolishToken},
-    wires::*,
+use crate::{
+    alphas::Alphas,
+    circuits::{
+        constraints::ConstraintSystem,
+        expr::{Linearization, PolishToken},
+        wires::*,
+    },
+    curve::KimchiCurve,
+    linearization::expr_linearization,
+    verifier_index::VerifierIndex,
 };
-use crate::linearization::expr_linearization;
-use crate::verifier_index::VerifierIndex;
-use ark_ff::PrimeField;
 use ark_poly::EvaluationDomain;
-use commitment_dlog::{commitment::CommitmentCurve, srs::SRS};
-use oracle::{poseidon::ArithmeticSpongeParams, FqSponge};
+use commitment_dlog::srs::SRS;
+use oracle::FqSponge;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::sync::Arc;
@@ -20,7 +22,7 @@ use std::sync::Arc;
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug)]
 //~spec:startcode
-pub struct ProverIndex<G: CommitmentCurve> {
+pub struct ProverIndex<G: KimchiCurve> {
     /// constraints system polynomials
     #[serde(bound = "ConstraintSystem<G::ScalarField>: Serialize + DeserializeOwned")]
     pub cs: ConstraintSystem<G::ScalarField>,
@@ -43,10 +45,6 @@ pub struct ProverIndex<G: CommitmentCurve> {
     /// maximal size of the quotient polynomial according to the supported constraints
     pub max_quot_size: usize,
 
-    /// random oracle argument parameters
-    #[serde(skip)]
-    pub fq_sponge_params: ArithmeticSpongeParams<G::BaseField>,
-
     /// The verifier index corresponding to this prover index
     #[serde(skip)]
     pub verifier_index: Option<VerifierIndex<G>>,
@@ -57,14 +55,10 @@ pub struct ProverIndex<G: CommitmentCurve> {
 }
 //~spec:endcode
 
-impl<'a, G: CommitmentCurve> ProverIndex<G>
-where
-    G::BaseField: PrimeField,
-{
+impl<G: KimchiCurve> ProverIndex<G> {
     /// this function compiles the index from constraints
     pub fn create(
         mut cs: ConstraintSystem<G::ScalarField>,
-        fq_sponge_params: ArithmeticSpongeParams<G::BaseField>,
         endo_q: G::ScalarField,
         srs: Arc<SRS<G>>,
     ) -> Self {
@@ -80,7 +74,7 @@ where
         // pre-compute the linearization
         let (linearization, powers_of_alpha) = expr_linearization(
             cs.chacha8.is_some(),
-            !cs.range_check_selector_polys.is_empty(),
+            cs.range_check_selector_polys.is_some(),
             cs.lookup_constraint_system
                 .as_ref()
                 .map(|lcs| &lcs.configuration),
@@ -99,7 +93,6 @@ where
             srs,
             max_poly_size,
             max_quot_size,
-            fq_sponge_params,
             verifier_index: None,
             verifier_index_digest: None,
         }
@@ -149,9 +142,8 @@ pub mod testing {
         gate::CircuitGate,
         lookup::{runtime_tables::RuntimeTableCfg, tables::LookupTable},
     };
-    use ark_poly::EvaluationDomain;
     use commitment_dlog::srs::endos;
-    use mina_curves::pasta::{pallas::Affine as Other, vesta::Affine, Fp};
+    use mina_curves::pasta::{pallas::Pallas, vesta::Vesta, Fp};
 
     pub fn new_index_for_test_with_lookups(
         gates: Vec<CircuitGate<Fp>>,
@@ -159,26 +151,23 @@ pub mod testing {
         prev_challenges: usize,
         lookup_tables: Vec<LookupTable<Fp>>,
         runtime_tables: Option<Vec<RuntimeTableCfg<Fp>>>,
-    ) -> ProverIndex<Affine> {
-        let fp_sponge_params = oracle::pasta::fp_kimchi::params();
-
+    ) -> ProverIndex<Vesta> {
         // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
-        let cs = ConstraintSystem::<Fp>::create(gates, fp_sponge_params)
+        let cs = ConstraintSystem::<Fp>::create(gates)
             .lookup(lookup_tables)
             .runtime(runtime_tables)
             .public(public)
             .prev_challenges(prev_challenges)
             .build()
             .unwrap();
-        let mut srs = SRS::<Affine>::create(cs.domain.d1.size());
+        let mut srs = SRS::<Vesta>::create(cs.domain.d1.size());
         srs.add_lagrange_basis(cs.domain.d1);
         let srs = Arc::new(srs);
 
-        let fq_sponge_params = oracle::pasta::fq_kimchi::params();
-        let (endo_q, _endo_r) = endos::<Other>();
-        ProverIndex::<Affine>::create(cs, fq_sponge_params, endo_q, srs)
+        let (endo_q, _endo_r) = endos::<Pallas>();
+        ProverIndex::<Vesta>::create(cs, endo_q, srs)
     }
-    pub fn new_index_for_test(gates: Vec<CircuitGate<Fp>>, public: usize) -> ProverIndex<Affine> {
+    pub fn new_index_for_test(gates: Vec<CircuitGate<Fp>>, public: usize) -> ProverIndex<Vesta> {
         new_index_for_test_with_lookups(gates, public, 0, vec![], None)
     }
 }

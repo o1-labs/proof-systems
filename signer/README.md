@@ -22,7 +22,7 @@ use transaction::Transaction;
 let keypair = Keypair::rand(&mut rand::rngs::OsRng);
 
 let tx = Transaction::new_payment(
-                keypair.public,
+                keypair.public.clone(),
                 PubKey::from_address("B62qicipYxyEHu7QjUqS7QvBipTs5CzgkYZZZkPoKVYBu6tnDUcE9Zt").expect("invalid receiver address"),
                 1729000000000,
                 2000000000,

@@ -14,9 +14,7 @@ fn interfaces() {
         type D = u64;
 
         fn to_roinput(&self) -> ROInput {
-            let mut roi = ROInput::new();
-            roi.append_u32(self.x).append_u64(self.y);
-            roi
+            ROInput::new().append_u32(self.x).append_u64(self.y)
         }
 
         fn domain_string(id: u64) -> Option<String> {

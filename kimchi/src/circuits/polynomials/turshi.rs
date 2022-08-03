@@ -78,22 +78,25 @@
 //!- op1: content of second operand of right part
 //!- res: result of the operation in the right part
 
-use crate::alphas::Alphas;
-use crate::circuits::argument::{Argument, ArgumentType};
-use crate::circuits::constraints::ConstraintSystem;
-use crate::circuits::expr::{self, Column};
-use crate::circuits::expr::{witness_curr, witness_next, Cache, ConstantExpr, Expr, E};
-use crate::circuits::gate::{CircuitGate, GateType};
-use crate::circuits::wires::{GateWires, Wire, COLUMNS};
-use crate::proof::ProofEvaluations;
-use ark_ff::{FftField, Field, One, SquareRootField};
+use crate::{
+    alphas::Alphas,
+    circuits::{
+        argument::{Argument, ArgumentType},
+        constraints::ConstraintSystem,
+        expr::{self, witness_curr, witness_next, Cache, Column, ConstantExpr, Expr, E},
+        gate::{CircuitGate, GateType},
+        wires::{GateWires, Wire, COLUMNS},
+    },
+    curve::KimchiCurve,
+    proof::ProofEvaluations,
+};
+use ark_ff::{FftField, Field, One, PrimeField};
 use array_init::array_init;
 use cairo::{
     runner::{CairoInstruction, CairoProgram, Pointers},
     word::{FlagBits, Offsets},
 };
-use rand::prelude::StdRng;
-use rand::SeedableRng;
+use rand::{prelude::StdRng, SeedableRng};
 use std::marker::PhantomData;
 
 const NUM_FLAGS: usize = 16;
@@ -101,7 +104,7 @@ pub const CIRCUIT_GATE_COUNT: usize = 4;
 
 // GATE-RELATED
 
-impl<F: FftField + SquareRootField> CircuitGate<F> {
+impl<F: PrimeField> CircuitGate<F> {
     /// This function creates a CairoClaim gate
     pub fn create_cairo_claim(wires: GateWires) -> Self {
         CircuitGate {
@@ -181,7 +184,7 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
     }
 
     /// verifies that the Cairo gate constraints are solved by the witness depending on its type
-    pub fn verify_cairo_gate(
+    pub fn verify_cairo_gate<G: KimchiCurve<ScalarField = F>>(
         &self,
         row: usize,
         witness: &[Vec<F>; COLUMNS],
@@ -232,7 +235,7 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
             gamma: F::rand(rng),
             joint_combiner: None,
             endo_coefficient: cs.endo,
-            mds: vec![],
+            mds: &G::sponge_params().mds,
         };
 
         let pt = F::rand(rng);
@@ -412,7 +415,7 @@ pub mod testing {
     use super::*;
 
     /// verifies that the Cairo gate constraints are solved by the witness depending on its type
-    pub fn ensure_cairo_gate<F: FftField>(
+    pub fn ensure_cairo_gate<F: PrimeField>(
         gate: &CircuitGate<F>,
         row: usize,
         witness: &[Vec<F>; COLUMNS],
