@@ -109,7 +109,7 @@ impl<G: KimchiCurve> ProverIndex<G> {
             return verifier_index_digest;
         }
 
-        if let None = &self.verifier_index {
+        if self.verifier_index.is_none() {
             self.verifier_index = Some(self.verifier_index());
         }
 
