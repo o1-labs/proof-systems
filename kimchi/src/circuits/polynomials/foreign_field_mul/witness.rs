@@ -15,7 +15,7 @@ use array_init::array_init;
 use num_bigint::BigUint;
 use num_integer::Integer;
 use o1_utils::{
-    field_helpers::{FieldFromBig, FieldHelpers},
+    field_helpers::FieldFromBig,
     foreign_field::{ForeignElement, LIMB_BITS},
 };
 
@@ -186,11 +186,6 @@ pub fn create_witness<F: PrimeField>(
     extend_witness(&mut witness, quotient);
     extend_witness(&mut witness, remainder);
 
-    println!("left_input: {}", left_input);
-    println!("right_input: {}", right_input);
-    println!("quotient: {}", quotient);
-    println!("remainder: {}", remainder);
-
     // Compute nonzero intermediate products (uses the same code as constraints!)
     let (product_lo, product_mi, product_hi) = compute_intermediate_products(
         *left_input.lo(),
@@ -206,40 +201,26 @@ pub fn create_witness<F: PrimeField>(
         *foreign_modulus.mi(),
         *foreign_modulus.hi(),
     );
-    println!("product_lo: {}", product_lo);
-    println!("product_mi: {}", product_mi);
-    println!("product_hi: {}", product_hi);
 
     // Define some helpers
-    let product_lo_big: BigUint = product_lo.into();
     let product_mi_big: BigUint = product_mi.into();
-    let product_hi_big: BigUint = product_hi.into();
 
-    let remainder_hi_big: BigUint = (*remainder.hi()).into();
-    let two_to_88: BigUint = F::from(2u128.pow(LIMB_BITS as u32)).into();
-    let two_to_176 = two_to_88.clone() * two_to_88.clone();
-    let (carry_bot, _) = product_lo_big.div_rem(&two_to_176);
-    let (product_mi_top, product_mi_bot) = product_mi_big.div_rem(&two_to_88);
-    let (_, product_mi_top_limb) = product_mi_top.div_rem(&two_to_88);
+    let two_to_88: F = F::from(2u128.pow(LIMB_BITS as u32));
+    let two_to_88_big: BigUint = two_to_88.into();
+    let two_to_176 = two_to_88_big.clone() * two_to_88_big.clone();
+    let (product_mi_top, product_mi_bot) = product_mi_big.div_rem(&two_to_88_big.clone());
+
+    let zero_bot = product_lo - *remainder.lo()
+        + two_to_88 * (F::from_big(product_mi_bot.clone()).unwrap() - *remainder.mi());
+    let zero_bot_big: BigUint = zero_bot.into();
+    let (carry_bot, _) = zero_bot_big.div_rem(&two_to_176);
+    let (_, product_mi_top_limb) = product_mi_top.div_rem(&two_to_88_big.clone());
     let carry_top: F = F::from_big(carry_bot.clone()).unwrap()
         + F::from_big(product_mi_top.clone()).unwrap()
         + product_hi
         - *remainder.hi();
-    //let carry_top: BigUint =
-    //    carry_bot.clone() + product_mi_top.clone() + product_hi_big - remainder_hi_big;
     let carry_top_big: BigUint = carry_top.into();
-    let (_, carry_top_limb) = carry_top_big.div_rem(&two_to_88);
-
-    println!("carry_top: {:?}", carry_top_big.to_bytes_be());
-
-    println!("carry_bot: {:?}", carry_bot.to_bytes_be());
-    println!("product_mi_top: {:?}", product_mi_top.to_bytes_be());
-    println!("product_mi_bot: {:?}", product_mi_bot.to_bytes_be());
-    println!(
-        "product_mi_top_limb: {:?}",
-        product_mi_top_limb.to_bytes_be()
-    );
-    println!("carry_top_limb: {:?}", carry_top_limb.to_bytes_be());
+    let (_, carry_top_limb) = carry_top_big.div_rem(&two_to_88_big.clone());
 
     let product_mi_bot = F::from_big(product_mi_bot).expect("big_f does not fit in F");
     let product_mi_top_limb = F::from_big(product_mi_top_limb).expect("big_f does not fit in F");
@@ -258,15 +239,13 @@ pub fn create_witness<F: PrimeField>(
 
     let carry_bot = F::from_big(carry_bot).expect("big_f does not fit in F");
 
-    println!("product mi: {:?}", product_mi_big.to_bytes_be());
-
     // ForeignFieldMul and Zero row
     init_foreign_field_mul_rows(&mut witness, 20, product_mi, carry_bot, carry_top);
 
     witness
 }
 
-fn view<F: PrimeField>(witness: &[Vec<F>; COLUMNS]) {
+/*fn view<F: PrimeField>(witness: &[Vec<F>; COLUMNS]) {
     let rows = witness[0].len();
     for row in 20..rows {
         for col in 0..COLUMNS {
@@ -274,14 +253,12 @@ fn view<F: PrimeField>(witness: &[Vec<F>; COLUMNS]) {
         }
         println!();
     }
-}
+}*/
 
 pub fn check_witness<F: PrimeField>(
     witness: &[Vec<F>; COLUMNS],
     foreign_mod: ForeignElement<F, 3>,
 ) -> Result<(), String> {
-    view(witness);
-
     let [foreign_modulus_lo, foreign_modulus_mi, foreign_modulus_hi] = foreign_mod.limbs;
 
     let left_input_lo = witness[0][20];
@@ -331,48 +308,25 @@ pub fn check_witness<F: PrimeField>(
     let two_to_88 = F::from(2u128.pow(88));
     let two_to_176 = two_to_88.clone() * two_to_88.clone();
 
-    println!("product_hi: {:?}", product_hi);
-
     let product_mi_top = two_to_88.clone() * product_mi_top_extra.clone() + product_mi_top_limb;
-    println!("product_mi_top: {:?}", product_mi_top);
     let product_mi_sum = two_to_88.clone() * product_mi_top.clone() + product_mi_bot.clone();
-    println!("product_mi_sum: {:?}", product_mi_sum);
 
-    println!("middle intermediate");
     assert_eq!(F::zero(), product_mi - product_mi_sum);
 
-    println!("carry botom");
     assert_eq!(F::zero(), crumb(&carry_bot));
 
-    println!("mi top extra");
     assert_eq!(F::zero(), crumb(&product_mi_top_extra));
 
-    println!("carry shift");
-    println!("carry shift {:?}", carry_shift);
-    println!("carry top extra {:?}", carry_top_extra);
     assert_eq!(F::zero(), carry_shift - two_to_9 * carry_top_extra.clone());
 
-    println!("quo shift");
-    println!("quo shift {:?}", quotient_shift);
-    println!("quo hi {:?}", quotient_hi);
     assert_eq!(F::zero(), quotient_shift - two_to_8 * quotient_hi);
 
-    println!("zero bot");
     let zero_bot = product_lo - remainder_lo + two_to_88.clone() * (product_mi_bot - remainder_mi);
     assert_eq!(F::zero(), zero_bot - two_to_176 * carry_bot.clone());
 
     let carry_top = two_to_88.clone() * carry_top_extra + carry_top_limb;
     let zero_top = carry_bot + product_mi_top + product_hi - remainder_hi;
 
-    println!("carry_bot {:?}", carry_bot);
-    println!("prod mi top {:?}", product_mi_top);
-    println!("prod hi {:?}", product_hi);
-    println!("rem hi {:?}", remainder_hi);
-    println!("carry_top  {:?}", carry_top);
-
-    println!("zero top");
-    println!("zero top {}", zero_top.to_hex());
-    println!("carry top {}", carry_top.to_hex());
     assert_eq!(F::zero(), zero_top - two_to_88 * carry_top);
 
     Ok(())
