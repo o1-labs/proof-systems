@@ -21,7 +21,7 @@ use crate::{
 use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Polynomial};
 use commitment_dlog::commitment::{
-    b_poly, b_poly_coefficients, combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
+    combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
 };
 use itertools::izip;
 use oracle::{sponge::ScalarChallenge, FqSponge};
@@ -34,51 +34,6 @@ impl<G: KimchiCurve> ProverProof<G>
 where
     G::BaseField: PrimeField,
 {
-    pub fn prev_chal_evals(
-        &self,
-        index: &VerifierIndex<G>,
-        evaluation_points: &[G::ScalarField],
-        powers_of_eval_points_for_chunks: &[G::ScalarField],
-    ) -> Vec<Vec<Vec<G::ScalarField>>> {
-        self.prev_challenges
-            .iter()
-            .map(|RecursionChallenge { chals, comm: _ }| {
-                // No need to check the correctness of poly explicitly. Its correctness is assured by the
-                // checking of the inner product argument.
-                let b_len = 1 << chals.len();
-                let mut b: Option<Vec<G::ScalarField>> = None;
-
-                (0..2)
-                    .map(|i| {
-                        let full = b_poly(chals, evaluation_points[i]);
-                        if index.max_poly_size == b_len {
-                            return vec![full];
-                        }
-                        let mut betaacc = G::ScalarField::one();
-                        let diff = (index.max_poly_size..b_len)
-                            .map(|j| {
-                                let b_j = match &b {
-                                    None => {
-                                        let t = b_poly_coefficients(chals);
-                                        let res = t[j];
-                                        b = Some(t);
-                                        res
-                                    }
-                                    Some(b) => b[j],
-                                };
-
-                                let ret = betaacc * b_j;
-                                betaacc *= &evaluation_points[i];
-                                ret
-                            })
-                            .fold(G::ScalarField::zero(), |x, y| x + y);
-                        vec![full - (diff * powers_of_eval_points_for_chunks[i]), diff]
-                    })
-                    .collect()
-            })
-            .collect()
-    }
-
     /// This function runs the random oracle argument
     pub fn oracles<
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
@@ -200,6 +155,38 @@ where
         // prepare some often used values
         let zeta1 = zeta.pow(&[n]);
         let zetaw = zeta * index.domain.group_gen;
+        let evaluation_points = [zeta, zetaw];
+        let powers_of_eval_points_for_chunks = [
+            zeta.pow(&[index.max_poly_size as u64]),
+            zetaw.pow(&[index.max_poly_size as u64]),
+        ];
+
+        //~ 1. Compute evaluations for the previous recursion challenges.
+        let polys: Vec<(PolyComm<G>, _)> = self
+            .prev_challenges
+            .iter()
+            .map(|challenge| {
+                let evals = challenge.evals(
+                    index.max_poly_size,
+                    &evaluation_points,
+                    &powers_of_eval_points_for_chunks,
+                );
+                let RecursionChallenge { chals: _, comm } = challenge;
+                (comm.clone(), evals)
+            })
+            .collect();
+
+        //~ 1. Absorb the previous recursion challenges.
+        let prev_challenge_digest = {
+            // Note: we absorb in a new sponge here to limit the scope in which we need the
+            // more-expensive 'optional sponge'.
+            let mut fr_sponge = EFrSponge::new(G::sponge_params());
+            for RecursionChallenge { chals, .. } in &self.prev_challenges {
+                fr_sponge.absorb_multiple(chals);
+            }
+            fr_sponge.digest()
+        };
+        fr_sponge.absorb(&prev_challenge_digest);
 
         // retrieve ranges for the powers of alphas
         let mut all_alphas = index.powers_of_alpha.clone();
@@ -258,7 +245,9 @@ where
         //~~ - poseidon selector
         //~~ - the 15 register/witness
         //~~ - 6 sigmas evaluations (the last one is not evaluated)
-        fr_sponge.absorb_evaluations([&p_eval[0], &p_eval[1]], [&self.evals[0], &self.evals[1]]);
+        fr_sponge.absorb_multiple(&p_eval[0]);
+        fr_sponge.absorb_multiple(&p_eval[1]);
+        fr_sponge.absorb_evaluations([&self.evals[0], &self.evals[1]]);
 
         //~ 1. Sample $v'$ with the Fr-Sponge.
         let v_chal = fr_sponge.challenge();
@@ -273,21 +262,6 @@ where
         let u = u_chal.to_field(endo_r);
 
         //~ 1. Create a list of all polynomials that have an evaluation proof.
-        let evaluation_points = [zeta, zetaw];
-        let powers_of_eval_points_for_chunks = [
-            zeta.pow(&[index.max_poly_size as u64]),
-            zetaw.pow(&[index.max_poly_size as u64]),
-        ];
-
-        let polys: Vec<(PolyComm<G>, _)> = self
-            .prev_challenges
-            .iter()
-            .zip(self.prev_chal_evals(index, &evaluation_points, &powers_of_eval_points_for_chunks))
-            .map(|(challenge, evals)| {
-                let RecursionChallenge { chals: _, comm } = challenge;
-                (comm.clone(), evals)
-            })
-            .collect();
 
         let evals = vec![
             self.evals[0].combine(powers_of_eval_points_for_chunks[0]),

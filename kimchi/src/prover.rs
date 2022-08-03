@@ -933,7 +933,7 @@ where
         };
 
         let zeta_to_srs_len = zeta.pow(&[index.max_poly_size as u64]);
-        let zeta_omega_to_srs_len = zeta.pow(&[index.max_poly_size as u64]);
+        let zeta_omega_to_srs_len = zeta_omega.pow(&[index.max_poly_size as u64]);
         let zeta_to_domain_size = zeta.pow(&[d1_size as u64]);
 
         //~ 1. Evaluate the same polynomials without chunking them
@@ -1032,6 +1032,29 @@ where
         //~ 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
         fr_sponge.absorb(&fq_sponge.digest());
 
+        //~ 1. Absorb the previous recursion challenges.
+        let prev_challenge_digest = {
+            // Note: we absorb in a new sponge here to limit the scope in which we need the
+            // more-expensive 'optional sponge'.
+            let mut fr_sponge = EFrSponge::new(G::sponge_params());
+            for RecursionChallenge { chals, .. } in &prev_challenges {
+                fr_sponge.absorb_multiple(chals);
+            }
+            fr_sponge.digest()
+        };
+        fr_sponge.absorb(&prev_challenge_digest);
+
+        //~ 1. Compute evaluations for the previous recursion challenges.
+        let polys = prev_challenges
+            .iter()
+            .map(|RecursionChallenge { chals, comm }| {
+                (
+                    DensePolynomial::from_coefficients_vec(b_poly_coefficients(chals)),
+                    comm.unshifted.len(),
+                )
+            })
+            .collect::<Vec<_>>();
+
         //~ 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
         let public_evals = if public_poly.is_zero() {
             [Vec::new(), Vec::new()]
@@ -1052,10 +1075,9 @@ where
         //~~ - poseidon selector
         //~~ - the 15 register/witness
         //~~ - 6 sigmas evaluations (the last one is not evaluated)
-        fr_sponge.absorb_evaluations(
-            [&public_evals[0], &public_evals[1]],
-            [&chunked_evals[0], &chunked_evals[1]],
-        );
+        fr_sponge.absorb_multiple(&public_evals[0]);
+        fr_sponge.absorb_multiple(&public_evals[1]);
+        fr_sponge.absorb_evaluations([&chunked_evals[0], &chunked_evals[1]]);
 
         //~ 1. Sample $v'$ with the Fr-Sponge
         let v_chal = fr_sponge.challenge();
@@ -1076,16 +1098,6 @@ where
             unshifted: vec![G::ScalarField::zero(); d1_size],
             shifted: None,
         };
-
-        let polys = prev_challenges
-            .iter()
-            .map(|RecursionChallenge { chals, comm }| {
-                (
-                    DensePolynomial::from_coefficients_vec(b_poly_coefficients(chals)),
-                    comm.unshifted.len(),
-                )
-            })
-            .collect::<Vec<_>>();
 
         let mut polynomials = polys
             .iter()
