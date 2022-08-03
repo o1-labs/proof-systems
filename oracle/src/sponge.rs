@@ -157,6 +157,8 @@ where
     }
 
     fn absorb_fq(&mut self, x: &[P::BaseField]) {
+        self.last_squeezed = vec![];
+
         self.sponge.absorb(x)
     }
 
