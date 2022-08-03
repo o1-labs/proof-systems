@@ -6,11 +6,11 @@ use commitment_dlog::srs::SRS;
 
 use crate::types::{VarPoint, VarPolyComm};
 
-use crate::kimchi::index;
+use crate::kimchi::index::Index;
 
 use crate::context::{Context, finalize};
 
-/// Adds the nessary constraints for recursion
+/// Adds the nessary constraints for recursion to each constraint system
 /// 
 pub fn recursion<C, Cp, Cr>(
     cp: Cp, // application logic included (Step side)
@@ -21,8 +21,7 @@ pub fn recursion<C, Cp, Cr>(
     srs: &SRS<C::Outer>,
     domain: Domain<C::InnerField>,
     fp_proof_p_comm: &VarPolyComm<C::Outer, 1>, // the commitment to the public input of the proof verified on the Fr side
-) -> ()
-where
+) where
     C: Cycle,
     Cp: Cs<C::InnerField>, // Step proof system
     Cr: Cs<C::OuterField>, // Wrap proof system
@@ -39,10 +38,13 @@ where
 
     // add Kimchi verifiers on Step side (for antecedents)
 
-    // add single Kimchi verifier on Wrap side (just for immediately recursing on the Fp proof)
+    // flip context (role of Fp and Fr)
+    let mut ctx = ctx.flipped();
 
-    // enforce equality between Wrap side public inputs and deferred values
+    // add single Kimchi verifier on Wrap side (just for immediately recursing on the Fp proof)   
     let fp_p_comm = unimplemented!();
+
+    let index: Index<C::Outer> = unimplemented!();
 
     /*
     index::Index::verify(
@@ -52,7 +54,10 @@ where
         proof: VarProof<G, 2>,
     )
     */
-    
-    // enforce binding between passed variables
+
+    // flip context (role of Fp and Fr) again
+    let mut ctx = ctx.flipped();
+
+    // enforce equality between Wrap side public inputs and deferred values
     finalize::<C, Cp, Cr>(ctx, srs, domain, fp_p_comm);
 }

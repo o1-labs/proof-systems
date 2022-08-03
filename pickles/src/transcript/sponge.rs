@@ -39,10 +39,10 @@ pub trait Challenge<F: FftField + PrimeField> {
     fn generate<C: Cs<F>>(cs: &mut C, sponge: &mut VarSponge<F>) -> Self;
 }
 
-// Can generate a variable from the same field
+// Can generate a variable from the same field (full size)
 impl<F: FftField + PrimeField> Challenge<F> for Var<F> {
     fn generate<C: Cs<F>>(cs: &mut C, sponge: &mut VarSponge<F>) -> Self {
-        unimplemented!()
+        todo!()
     }
 }
 
@@ -69,6 +69,6 @@ impl<F: FftField + PrimeField, T: Absorb<F>, const N: usize> Absorb<F> for [T; N
 // Can absorb a variable from the same field
 impl<F: FftField + PrimeField> Absorb<F> for Var<F> {
     fn absorb<C: Cs<F>>(&self, cs: &mut C, sponge: &mut VarSponge<F>) {
-        unimplemented!()
+        todo!()
     }
 }

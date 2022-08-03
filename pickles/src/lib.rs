@@ -2,7 +2,7 @@
 mod expr;
 
 /// Generic kimchi types/methods
-mod kimchi;
+pub mod kimchi;
 
 /// Accumulation for IPA
 mod ipa;
@@ -12,7 +12,7 @@ mod types;
 
 /// Represents a union of two constraint systems
 /// and the consistency between public inputs "exported/passed" between the two sides
-mod context;
+pub mod context;
 
 /// Fiat-Shamir abstraction
 mod transcript;

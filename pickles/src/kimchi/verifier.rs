@@ -450,13 +450,13 @@ where
         // $$
         let ft_comm: VarPolyComm<G, 1> = {
             // collapse at  $\zeta$
-            let t_collapsed: VarPolyComm<G, 1> = t_comm.collapse(ctx.cs(), &shift_zeta);
+            let t_collapsed: VarPolyComm<G, 1> = t_comm.combine(ctx.cs(), &shift_zeta);
 
             // multiply by $Z_H(X)$
             let t_collapsed: VarPolyComm<G, 2> = t_collapsed.mul_vanish(ctx.cs());
 
             // collapse at $\zeta$ again
-            let t_collapsed: VarPolyComm<G, 1> = t_collapsed.collapse(ctx.cs(), &shift_zeta);
+            let t_collapsed: VarPolyComm<G, 1> = t_collapsed.combine(ctx.cs(), &shift_zeta);
 
             f_comm.sub(ctx.cs(), &t_collapsed) // f_comm is already a single chunk, hence collapse is a no-op
         };
@@ -479,12 +479,6 @@ where
 
         // combine/aggregate openings
 
-        // combine openings using random challenge
-        // DISCUSS: v (xi) is NEVER USED in kimchi: the power is always 0..., since there is always one chunk!
-        // The evaluation points are also never used since the shift is always None.
-        // hence "combined_inner_product" simplifies to this.
-        //
-        // Why does this work when the evaluations are at different points: \zeta, \zeta\omega ?
         /*
         let combined_opening: VarEval<_, 1> = VarEval::combine(
             ctx.cs(),
@@ -492,7 +486,7 @@ where
             v
         );
 
-        // combine all $\zeta$ openings using powers of $\alpha$
+        // combine all $\zeta$ openings using powers of $v$
         let combined_comm = VarPolyComm::combine_with_glv(ctx.cs(), poly_comms, &alpha_glv);
         */
 

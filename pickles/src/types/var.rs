@@ -5,7 +5,7 @@ use crate::types::Scalar;
 use crate::util::{field_is_bigger, from_bits};
 
 use ark_ec::AffineCurve;
-use ark_ff::{BigInteger, FftField, FpParameters, PrimeField};
+use ark_ff::{BigInteger, FftField, PrimeField};
 
 // a variable over the scalar field can be passed/converted to a scalar in the base field
 impl<G> Pass<Scalar<G>> for Var<G::ScalarField>

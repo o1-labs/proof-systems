@@ -43,7 +43,7 @@ where
     /// The same ShiftEval should be used to collapse the corresponding chunked openings of this commitment.
     ///
     /// If the polynomial already has 1 chunk, this is a no-op.
-    pub fn collapse<C: Cs<G::BaseField>>(
+    pub fn combine<C: Cs<G::BaseField>>(
         &self,
         cs: &mut C,
         zeta_n: &Scalar<G>,

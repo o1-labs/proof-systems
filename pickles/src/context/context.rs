@@ -96,12 +96,6 @@ where
     }
 }
 
-/// A variable of bounded size
-///
-pub trait Bounded<F: FftField + PrimeField>: Into<Var<F>> + From<(Var<F>, Option<Var<F>>)> {
-    const SIZE: usize;
-}
-
 impl<Fp, CsFp> AsRef<Side<Fp, CsFp>> for Option<Side<Fp, CsFp>>
 where
     Fp: FftField + PrimeField,

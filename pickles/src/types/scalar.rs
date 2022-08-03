@@ -1,11 +1,10 @@
 use circuit_construction::{Constants, Cs};
 
-use crate::context::{FromPublic, Public, ToPublic};
+use crate::context::{FromPublic, Public};
 use crate::types::DecomposedVar;
-use crate::util::field_is_bigger;
 
 use ark_ec::AffineCurve;
-use ark_ff::{BigInteger, FftField, FpParameters, PrimeField};
+use ark_ff::{FftField, PrimeField};
 
 use super::VarPoint;
 

@@ -4,14 +4,14 @@ use ark_ff::{FftField, PrimeField};
 use ark_poly::univariate::DensePolynomial;
 use ark_poly::Radix2EvaluationDomain as Domain;
 
-use kimchi::circuits::wires::{COLUMNS, PERMUTS};
-
 use crate::transcript::{Absorb, Msg, VarSponge};
 use crate::types::VarPolyComm;
+use crate::context::{ToPublic, Public};
 
 use circuit_construction::{Constants, Cs};
 
-use kimchi::circuits::expr::{ConstantExpr, Expr, Linearization, PolishToken};
+use kimchi::circuits::wires::{COLUMNS, PERMUTS};
+use kimchi::circuits::expr::{ConstantExpr, Expr, Linearization};
 
 use std::iter;
 
@@ -123,4 +123,19 @@ where
 {
     pub relation: Msg<VarIndex<G>>,
     pub constant: ConstIndex<G::ScalarField>,
+}
+
+impl <G> ToPublic<G::BaseField, G::ScalarField> for VarIndex<G>
+where
+    G: AffineCurve,
+    G::BaseField: FftField + PrimeField, 
+{
+    // the indexes are added as public inputs to the verifier circuit
+    fn to_public<Cp: Cs<G::BaseField>>(
+        self, 
+        cs: &mut Cp, 
+        cnst: &Constants<G::BaseField>
+    ) -> Vec<Public<G::BaseField>> {
+        todo!()
+    }
 }
