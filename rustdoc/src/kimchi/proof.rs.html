@@ -449,14 +449,61 @@
 <span id="449">449</span>
 <span id="450">450</span>
 <span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
+<span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
+<span id="494">494</span>
+<span id="495">495</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the data structures of a proof.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::wires</span>::{<span class="ident">COLUMNS</span>, <span class="ident">PERMUTS</span>};
 <span class="kw">use</span> <span class="ident">ark_ec::AffineCurve</span>;
-<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">Zero</span>};
+<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">One</span>, <span class="ident">Zero</span>};
 <span class="kw">use</span> <span class="ident">ark_poly::univariate::DensePolynomial</span>;
 <span class="kw">use</span> <span class="ident">array_init::array_init</span>;
-<span class="kw">use</span> <span class="ident">commitment_dlog</span>::{<span class="ident">commitment::PolyComm</span>, <span class="ident">evaluation_proof::OpeningProof</span>};
+<span class="kw">use</span> <span class="ident">commitment_dlog</span>::{
+    <span class="ident">commitment</span>::{<span class="ident">b_poly</span>, <span class="ident">b_poly_coefficients</span>, <span class="ident">PolyComm</span>},
+    <span class="ident">evaluation_proof::OpeningProof</span>,
+};
 <span class="kw">use</span> <span class="ident">o1_utils::ExtendedDensePolynomial</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">serde_with::serde_as</span>;
@@ -631,6 +678,47 @@
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">AffineCurve</span><span class="op">&gt;</span> <span class="ident">RecursionChallenge</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">chals</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span>, <span class="ident">comm</span>: <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>) -&gt; <span class="ident">RecursionChallenge</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
         <span class="ident">RecursionChallenge</span> { <span class="ident">chals</span>, <span class="ident">comm</span> }
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">evals</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">max_poly_size</span>: <span class="ident">usize</span>,
+        <span class="ident">evaluation_points</span>: <span class="kw-2">&amp;</span>[<span class="ident">G::ScalarField</span>],
+        <span class="ident">powers_of_eval_points_for_chunks</span>: <span class="kw-2">&amp;</span>[<span class="ident">G::ScalarField</span>],
+    ) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">RecursionChallenge</span> { <span class="ident">chals</span>, <span class="ident">comm</span>: <span class="kw">_</span> } <span class="op">=</span> <span class="self">self</span>;
+        <span class="comment">// No need to check the correctness of poly explicitly. Its correctness is assured by the</span>
+        <span class="comment">// checking of the inner product argument.</span>
+        <span class="kw">let</span> <span class="ident">b_len</span> <span class="op">=</span> <span class="number">1</span> <span class="op">&lt;</span><span class="op">&lt;</span> <span class="ident">chals</span>.<span class="ident">len</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">b</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="prelude-val">None</span>;
+
+        (<span class="number">0</span>..<span class="number">2</span>)
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
+                <span class="kw">let</span> <span class="ident">full</span> <span class="op">=</span> <span class="ident">b_poly</span>(<span class="ident">chals</span>, <span class="ident">evaluation_points</span>[<span class="ident">i</span>]);
+                <span class="kw">if</span> <span class="ident">max_poly_size</span> <span class="op">==</span> <span class="ident">b_len</span> {
+                    <span class="kw">return</span> <span class="macro">vec!</span>[<span class="ident">full</span>];
+                }
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">betaacc</span> <span class="op">=</span> <span class="ident">G::ScalarField::one</span>();
+                <span class="kw">let</span> <span class="ident">diff</span> <span class="op">=</span> (<span class="ident">max_poly_size</span>..<span class="ident">b_len</span>)
+                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">j</span><span class="op">|</span> {
+                        <span class="kw">let</span> <span class="ident">b_j</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">b</span> {
+                            <span class="prelude-val">None</span> =&gt; {
+                                <span class="kw">let</span> <span class="ident">t</span> <span class="op">=</span> <span class="ident">b_poly_coefficients</span>(<span class="ident">chals</span>);
+                                <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">t</span>[<span class="ident">j</span>];
+                                <span class="ident">b</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">t</span>);
+                                <span class="ident">res</span>
+                            }
+                            <span class="prelude-val">Some</span>(<span class="ident">b</span>) =&gt; <span class="ident">b</span>[<span class="ident">j</span>],
+                        };
+
+                        <span class="kw">let</span> <span class="ident">ret</span> <span class="op">=</span> <span class="ident">betaacc</span> <span class="op">*</span> <span class="ident">b_j</span>;
+                        <span class="ident">betaacc</span> <span class="kw-2">*</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">evaluation_points</span>[<span class="ident">i</span>];
+                        <span class="ident">ret</span>
+                    })
+                    .<span class="ident">fold</span>(<span class="ident">G::ScalarField::zero</span>(), <span class="op">|</span><span class="ident">x</span>, <span class="ident">y</span><span class="op">|</span> <span class="ident">x</span> <span class="op">+</span> <span class="ident">y</span>);
+                <span class="macro">vec!</span>[<span class="ident">full</span> <span class="op">-</span> (<span class="ident">diff</span> <span class="op">*</span> <span class="ident">powers_of_eval_points_for_chunks</span>[<span class="ident">i</span>]), <span class="ident">diff</span>]
+            })
+            .<span class="ident">collect</span>()
     }
 }
 
@@ -901,4 +989,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (fe3342816 2022-08-01)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (1b57946a4 2022-08-03)" ></div></body></html>

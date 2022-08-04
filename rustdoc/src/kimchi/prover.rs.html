@@ -1445,6 +1445,22 @@
 <span id="1445">1445</span>
 <span id="1446">1446</span>
 <span id="1447">1447</span>
+<span id="1448">1448</span>
+<span id="1449">1449</span>
+<span id="1450">1450</span>
+<span id="1451">1451</span>
+<span id="1452">1452</span>
+<span id="1453">1453</span>
+<span id="1454">1454</span>
+<span id="1455">1455</span>
+<span id="1456">1456</span>
+<span id="1457">1457</span>
+<span id="1458">1458</span>
+<span id="1459">1459</span>
+<span id="1460">1460</span>
+<span id="1461">1461</span>
+<span id="1462">1462</span>
+<span id="1463">1463</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements prover&#39;s zk-proof primitive.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -1644,6 +1660,10 @@
 
         <span class="comment">//~ 1. Setup the Fq-Sponge.</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">fq_sponge</span> <span class="op">=</span> <span class="ident">EFqSponge::new</span>(<span class="ident">G::OtherCurve::sponge_params</span>());
+
+        <span class="comment">//~ 1. Absorb the digest of the VerifierIndex.</span>
+        <span class="kw">let</span> <span class="ident">verifier_index_digest</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">verifier_index_digest</span>::<span class="op">&lt;</span><span class="ident">EFqSponge</span><span class="op">&gt;</span>();
+        <span class="ident">fq_sponge</span>.<span class="ident">absorb_fq</span>(<span class="kw-2">&amp;</span>[<span class="ident">verifier_index_digest</span>]);
 
         <span class="comment">//~ 1. Absorb the commitments of the previous challenges with the Fq-sponge.</span>
         <span class="kw">for</span> <span class="ident">RecursionChallenge</span> { <span class="ident">comm</span>, .. } <span class="kw">in</span> <span class="ident">prev_challenges</span>.<span class="ident">iter</span>() {
@@ -2380,7 +2400,7 @@
         };
 
         <span class="kw">let</span> <span class="ident">zeta_to_srs_len</span> <span class="op">=</span> <span class="ident">zeta</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="ident">index</span>.<span class="ident">max_poly_size</span> <span class="kw">as</span> <span class="ident">u64</span>]);
-        <span class="kw">let</span> <span class="ident">zeta_omega_to_srs_len</span> <span class="op">=</span> <span class="ident">zeta</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="ident">index</span>.<span class="ident">max_poly_size</span> <span class="kw">as</span> <span class="ident">u64</span>]);
+        <span class="kw">let</span> <span class="ident">zeta_omega_to_srs_len</span> <span class="op">=</span> <span class="ident">zeta_omega</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="ident">index</span>.<span class="ident">max_poly_size</span> <span class="kw">as</span> <span class="ident">u64</span>]);
         <span class="kw">let</span> <span class="ident">zeta_to_domain_size</span> <span class="op">=</span> <span class="ident">zeta</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="ident">d1_size</span> <span class="kw">as</span> <span class="ident">u64</span>]);
 
         <span class="comment">//~ 1. Evaluate the same polynomials without chunking them</span>
@@ -2479,6 +2499,29 @@
         <span class="comment">//~ 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.</span>
         <span class="ident">fr_sponge</span>.<span class="ident">absorb</span>(<span class="kw-2">&amp;</span><span class="ident">fq_sponge</span>.<span class="ident">digest</span>());
 
+        <span class="comment">//~ 1. Absorb the previous recursion challenges.</span>
+        <span class="kw">let</span> <span class="ident">prev_challenge_digest</span> <span class="op">=</span> {
+            <span class="comment">// Note: we absorb in a new sponge here to limit the scope in which we need the</span>
+            <span class="comment">// more-expensive &#39;optional sponge&#39;.</span>
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">fr_sponge</span> <span class="op">=</span> <span class="ident">EFrSponge::new</span>(<span class="ident">G::sponge_params</span>());
+            <span class="kw">for</span> <span class="ident">RecursionChallenge</span> { <span class="ident">chals</span>, .. } <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">prev_challenges</span> {
+                <span class="ident">fr_sponge</span>.<span class="ident">absorb_multiple</span>(<span class="ident">chals</span>);
+            }
+            <span class="ident">fr_sponge</span>.<span class="ident">digest</span>()
+        };
+        <span class="ident">fr_sponge</span>.<span class="ident">absorb</span>(<span class="kw-2">&amp;</span><span class="ident">prev_challenge_digest</span>);
+
+        <span class="comment">//~ 1. Compute evaluations for the previous recursion challenges.</span>
+        <span class="kw">let</span> <span class="ident">polys</span> <span class="op">=</span> <span class="ident">prev_challenges</span>
+            .<span class="ident">iter</span>()
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">RecursionChallenge</span> { <span class="ident">chals</span>, <span class="ident">comm</span> }<span class="op">|</span> {
+                (
+                    <span class="ident">DensePolynomial::from_coefficients_vec</span>(<span class="ident">b_poly_coefficients</span>(<span class="ident">chals</span>)),
+                    <span class="ident">comm</span>.<span class="ident">unshifted</span>.<span class="ident">len</span>(),
+                )
+            })
+            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>();
+
         <span class="comment">//~ 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.</span>
         <span class="kw">let</span> <span class="ident">public_evals</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">public_poly</span>.<span class="ident">is_zero</span>() {
             [<span class="ident">Vec::new</span>(), <span class="ident">Vec::new</span>()]
@@ -2499,10 +2542,9 @@
         <span class="comment">//~~ - poseidon selector</span>
         <span class="comment">//~~ - the 15 register/witness</span>
         <span class="comment">//~~ - 6 sigmas evaluations (the last one is not evaluated)</span>
-        <span class="ident">fr_sponge</span>.<span class="ident">absorb_evaluations</span>(
-            [<span class="kw-2">&amp;</span><span class="ident">public_evals</span>[<span class="number">0</span>], <span class="kw-2">&amp;</span><span class="ident">public_evals</span>[<span class="number">1</span>]],
-            [<span class="kw-2">&amp;</span><span class="ident">chunked_evals</span>[<span class="number">0</span>], <span class="kw-2">&amp;</span><span class="ident">chunked_evals</span>[<span class="number">1</span>]],
-        );
+        <span class="ident">fr_sponge</span>.<span class="ident">absorb_multiple</span>(<span class="kw-2">&amp;</span><span class="ident">public_evals</span>[<span class="number">0</span>]);
+        <span class="ident">fr_sponge</span>.<span class="ident">absorb_multiple</span>(<span class="kw-2">&amp;</span><span class="ident">public_evals</span>[<span class="number">1</span>]);
+        <span class="ident">fr_sponge</span>.<span class="ident">absorb_evaluations</span>([<span class="kw-2">&amp;</span><span class="ident">chunked_evals</span>[<span class="number">0</span>], <span class="kw-2">&amp;</span><span class="ident">chunked_evals</span>[<span class="number">1</span>]]);
 
         <span class="comment">//~ 1. Sample $v&#39;$ with the Fr-Sponge</span>
         <span class="kw">let</span> <span class="ident">v_chal</span> <span class="op">=</span> <span class="ident">fr_sponge</span>.<span class="ident">challenge</span>();
@@ -2523,16 +2565,6 @@
             <span class="ident">unshifted</span>: <span class="macro">vec!</span>[<span class="ident">G::ScalarField::zero</span>(); <span class="ident">d1_size</span>],
             <span class="ident">shifted</span>: <span class="prelude-val">None</span>,
         };
-
-        <span class="kw">let</span> <span class="ident">polys</span> <span class="op">=</span> <span class="ident">prev_challenges</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">RecursionChallenge</span> { <span class="ident">chals</span>, <span class="ident">comm</span> }<span class="op">|</span> {
-                (
-                    <span class="ident">DensePolynomial::from_coefficients_vec</span>(<span class="ident">b_poly_coefficients</span>(<span class="ident">chals</span>)),
-                    <span class="ident">comm</span>.<span class="ident">unshifted</span>.<span class="ident">len</span>(),
-                )
-            })
-            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>();
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">polynomials</span> <span class="op">=</span> <span class="ident">polys</span>
             .<span class="ident">iter</span>()
@@ -2893,4 +2925,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (fe3342816 2022-08-01)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0-nightly (1b57946a4 2022-08-03)" ></div></body></html>
