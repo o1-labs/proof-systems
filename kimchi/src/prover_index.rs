@@ -9,9 +9,11 @@ use crate::{
     },
     curve::KimchiCurve,
     linearization::expr_linearization,
+    verifier_index::VerifierIndex,
 };
 use ark_poly::EvaluationDomain;
 use commitment_dlog::srs::SRS;
+use oracle::FqSponge;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::sync::Arc;
@@ -42,6 +44,14 @@ pub struct ProverIndex<G: KimchiCurve> {
 
     /// maximal size of the quotient polynomial according to the supported constraints
     pub max_quot_size: usize,
+
+    /// The verifier index corresponding to this prover index
+    #[serde(skip)]
+    pub verifier_index: Option<VerifierIndex<G>>,
+
+    /// The verifier index digest corresponding to this prover index
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    pub verifier_index_digest: Option<G::BaseField>,
 }
 //~spec:endcode
 
@@ -83,6 +93,45 @@ impl<G: KimchiCurve> ProverIndex<G> {
             srs,
             max_poly_size,
             max_quot_size,
+            verifier_index: None,
+            verifier_index_digest: None,
+        }
+    }
+
+    /// Retrieve or compute the digest for the corresponding verifier index.
+    /// If the digest is not already cached inside the index, store it.
+    pub fn compute_verifier_index_digest<
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+    >(
+        &mut self,
+    ) -> G::BaseField {
+        if let Some(verifier_index_digest) = self.verifier_index_digest {
+            return verifier_index_digest;
+        }
+
+        if self.verifier_index.is_none() {
+            self.verifier_index = Some(self.verifier_index());
+        }
+
+        let verifier_index_digest = self.verifier_index_digest::<EFqSponge>();
+        self.verifier_index_digest = Some(verifier_index_digest);
+        verifier_index_digest
+    }
+
+    /// Retrieve or compute the digest for the corresponding verifier index.
+    pub fn verifier_index_digest<EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>>(
+        &self,
+    ) -> G::BaseField {
+        if let Some(verifier_index_digest) = self.verifier_index_digest {
+            return verifier_index_digest;
+        }
+
+        match &self.verifier_index {
+            None => {
+                let verifier_index = self.verifier_index();
+                verifier_index.digest::<EFqSponge>()
+            }
+            Some(verifier_index) => verifier_index.digest::<EFqSponge>(),
         }
     }
 }
