@@ -31,6 +31,9 @@ hex = "0.4"
 strum = "0.24.0"
 strum_macros = "0.24.0"
 
+# TODO: audit this
+disjoint-set = "0.0.2"
+
 cairo = { path = "../cairo" }
 commitment_dlog = { path = "../poly-commitment" }
 groupmap = { path = "../groupmap" }
