@@ -3,6 +3,7 @@ pub mod complete_add;
 pub mod endomul_scalar;
 pub mod endosclmul;
 pub mod generic;
+pub mod keccak;
 pub mod permutation;
 pub mod poseidon;
 pub mod range_check;

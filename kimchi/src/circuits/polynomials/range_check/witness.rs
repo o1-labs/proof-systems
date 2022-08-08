@@ -163,27 +163,38 @@ pub fn value_to_limb<F: PrimeField>(fe: F, start: usize, end: usize) -> F {
     F::from_bits(&fe.to_bits()[start..end]).expect("failed to deserialize field bits")
 }
 
-/// initializes a range check row
-fn init_range_check_row<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], row: usize, value: F) {
-    for col in 0..COLUMNS {
-        match &WITNESS_SHAPE[row][col] {
-            WitnessCell::Copy(copy_cell) => {
-                witness[col][row] = witness[copy_cell.col][copy_cell.row];
-            }
-            WitnessCell::Value => {
-                witness[col][row] = value;
-            }
-            WitnessCell::Limb(limb_cell) => {
-                witness[col][row] = value_to_limb(
-                    witness[limb_cell.col][limb_cell.row], // limb cell (row, col)
-                    limb_cell.start,                       // starting bit
-                    limb_cell.end,                         // ending bit (exclusive)
-                );
-            }
-            WitnessCell::Zero => {
-                witness[col][row] = F::zero();
-            }
+/// handles range-check witness cells
+pub fn handle_standard_witness_cell<F: PrimeField>(
+    witness: &mut [Vec<F>; COLUMNS],
+    witness_cell: &WitnessCell,
+    row: usize,
+    col: usize,
+    value: F,
+) {
+    match witness_cell {
+        WitnessCell::Copy(copy_cell) => {
+            witness[col][row] = witness[copy_cell.col][copy_cell.row];
         }
+        WitnessCell::Value => {
+            witness[col][row] = value;
+        }
+        WitnessCell::Limb(limb_cell) => {
+            witness[col][row] = value_to_limb(
+                witness[limb_cell.col][limb_cell.row], // limb cell (row, col)
+                limb_cell.start,                       // starting bit
+                limb_cell.end,                         // ending bit (exclusive)
+            );
+        }
+        WitnessCell::Zero => {
+            witness[col][row] = F::zero();
+        }
+    }
+}
+
+/// initialize a range_check_row
+pub fn init_range_check_row<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], row: usize, value: F) {
+    for col in 0..COLUMNS {
+        handle_standard_witness_cell(witness, &WITNESS_SHAPE[row][col], row, col, value);
     }
 }
 
