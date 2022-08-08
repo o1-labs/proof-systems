@@ -17,8 +17,8 @@
 //~ left_input_mi => a1  right_input_mi => b1  quotient_mi => q1  remainder_mi => r1
 //~ left_input_lo => a0  right_input_lo => b0  quotient_lo => q0  remainder_lo => r0
 //~
-//~ product_mi_bot => p10  product_mi_top_limb => p110  product_mi_top_extra => p111
-//~ carry_bot      => v0   carry_top_limb      => v10   carry_top_extra      => v11
+//~ product_mi_bot => p10   product_mi_top_limb => p110   product_mi_top_over => p111
+//~ carry_bot      => v0    carry_top_limb      => v10    carry_top_over      => v11
 //~ ````
 //~
 //~ ##### Suffixes:
@@ -27,8 +27,8 @@
 //~
 //~ - When a variable is split into 3 limbs we use: lo, mid, hi (where high is the most significant)
 //~ - When a variable is split in 2 halves we use: bottom, top  (where top is the most significant)
-//~ - When the bits of a variable are split into a limb and some extra bits we use: limb,
-//~   extra (where extra is the most significant)
+//~ - When the bits of a variable are split into a limb and some over bits we use: limb,
+//~   over (where over is the most significant)
 //~
 //~ ##### Inputs:
 //~ * foreign_modulus        := foreign field modulus (currently stored in constraint system)
@@ -44,7 +44,7 @@
 //~ * remainder $~\in F_f$ := foreign field remainder
 //~ * carry_bot            := a two bit carry
 //~ * carry_top_limb       := low 88 bits of carry_top
-//~ * carry_top_extra      := high 3 bits of carry_top
+//~ * carry_top_over       := high 3 bits of carry_top
 //~
 //~ ##### Layout:
 //~
@@ -62,19 +62,19 @@
 //~
 //~ | col | `ForeignFieldMul`         | `Zero`                  |
 //~ | --- | ------------------------- | ----------------------- |
-//~ |   0 | `left_input_lo`  (copy)   | `left_input_hi`  (copy) |
-//~ |   1 | `left_input_mi`  (copy)   | `right_input_lo` (copy) |
-//~ |   2 | `carry_shift`    (lookup) | `right_input_mi` (copy) |
-//~ |   3 | `quotient_shift` (lookup) | `right_input_hi` (copy) |
-//~ |   4 | `quotient_lo`    (copy)   | `remainder_lo`   (copy) |
-//~ |   5 | `quotient_mi`    (copy)   | `remainder_mi`   (copy) |
-//~ |   6 | `quotient_hi`    (copy)   | `remainder_hi`   (copy) |
+//~ |   0 | `left_input_lo`  (copy)   | `right_input_hi` (copy) |
+//~ |   1 | `left_input_mi`  (copy)   | `quotient_lo`    (copy) |
+//~ |   2 | `left_input_hi`  (copy)   | `quotient_mi`    (copy) |
+//~ |   3 | `right_input_lo` (copy)   | `quotient_hi`    (copy) |
+//~ |   4 | `right_input_mi` (copy)   | `remainder_lo`   (copy) |
+//~ |   5 | `carry_shift`    (lookup) | `remainder_mi`   (copy) |
+//~ |   6 | `product_shift`  (lookup) | `remainder_hi`   (copy) |
 //~ |   7 | `product_mi_bot`          |                         |
 //~ |   8 | `product_mi_top_limb`     |                         |
-//~ |   9 | `product_mi_top_extra`    |                         |
+//~ |   9 | `product_mi_top_over`     |                         |
 //~ |  10 | `carry_bot`               |                         |
 //~ |  11 | `carry_top_limb`          |                         |
-//~ |  12 | `carry_top_extra`         |                         |
+//~ |  12 | `carry_top_over`          |                         |
 //~ |  13 |                           |                         |
 //~ |  14 |                           |                         |
 
@@ -128,18 +128,21 @@ pub fn compute_intermediate_products<
     //                     + left_input_mi * right_input_mi - quotient_lo * foreign_modulus_hi
     //                     - quotient_hi * foreign_modulus_lo - quotient_mi * foreign_modulus_mi
     //
+    let sub_foreign_modulus_lo = -foreign_modulus_lo;
+    let sub_foreign_modulus_mi = -foreign_modulus_mi;
+    let sub_foreign_modulus_hi = -foreign_modulus_hi;
     let product_lo = left_input_lo.clone() * right_input_lo.clone()
-        - quotient_lo.clone() * foreign_modulus_lo.clone();
+        + quotient_lo.clone() * sub_foreign_modulus_lo.clone();
     let product_mi = left_input_lo.clone() * right_input_mi.clone()
         + left_input_mi.clone() * right_input_lo.clone()
-        - quotient_lo.clone() * foreign_modulus_mi.clone()
-        - quotient_mi.clone() * foreign_modulus_lo.clone(); // TODO: Check algebra sign
+        + quotient_lo.clone() * sub_foreign_modulus_mi.clone()
+        + quotient_mi.clone() * sub_foreign_modulus_lo.clone(); // TODO: Check algebra sign
     let product_hi = left_input_lo * right_input_hi
         + left_input_hi * right_input_lo
         + left_input_mi * right_input_mi
-        - quotient_lo * foreign_modulus_hi.clone()
-        - quotient_hi * foreign_modulus_lo
-        - quotient_mi * foreign_modulus_mi; // TODO: Check algebra sign
+        + quotient_lo * sub_foreign_modulus_hi.clone()
+        + quotient_hi * sub_foreign_modulus_lo
+        + quotient_mi * sub_foreign_modulus_mi; // TODO: Check algebra sign
 
     (product_lo, product_mi, product_hi)
 }
@@ -168,34 +171,34 @@ where
         // -> define top, middle and lower limbs of the foreign field element `a`
         let left_input_lo = witness_curr(0);
         let left_input_mi = witness_curr(1);
-        let left_input_hi = witness_next(0);
+        let left_input_hi = witness_curr(2);
 
         // -> define top, middle and lower limbs of the foreign field element `b`
-        let right_input_lo = witness_next(1);
-        let right_input_mi = witness_next(2);
-        let right_input_hi = witness_next(3);
+        let right_input_lo = witness_curr(3);
+        let right_input_mi = witness_curr(4);
+        let right_input_hi = witness_next(0);
 
         // -> define top, middle and lower limbs of the quotient and remainder
-        let quotient_lo = witness_curr(4);
-        let quotient_mi = witness_curr(5);
-        let quotient_hi = witness_curr(6);
+        let quotient_lo = witness_next(1);
+        let quotient_mi = witness_next(2);
+        let quotient_hi = witness_next(3);
         let remainder_lo = witness_next(4);
         let remainder_mi = witness_next(5);
         let remainder_hi = witness_next(6);
 
         // -> define shifted values of the quotient and witness values
-        let carry_shift = witness_curr(2);
-        let quotient_shift = witness_curr(3);
+        let carry_shift = witness_curr(5);
+        let product_shift = witness_curr(6);
 
         // -> define decomposition values of the intermediate multiplication
         let product_mi_bot = witness_curr(7);
         let product_mi_top_limb = witness_curr(8);
-        let product_mi_top_extra = witness_curr(9);
+        let product_mi_top_over = witness_curr(9);
 
         // -> define witness values for the zero sum
         let carry_bot = witness_curr(10);
         let carry_top_limb = witness_curr(11);
-        let carry_top_extra = witness_curr(12);
+        let carry_top_over = witness_curr(12);
 
         //
         // Define some helpers to be used in the constraints
@@ -239,28 +242,28 @@ where
         //                p1' = 2^88 * p11 + p10
         //                 p1 = p1'
         //                   <=>
-        //    product_mi_top = 2^88 * product_mi_top_extra + product_mi_top_limb
+        //    product_mi_top = 2^88 * product_mi_top_over + product_mi_top_limb
         //    product_mi_sum = 2^88 * product_mi_top + product_mi_bot
         //    product_mi_sum = product_mi
         //                   <=>
-        //    product_mi = 2^88 * (  2^88 * product_mi_top_extra + product_mi_top_limb ) + product_mi_bot
+        //    product_mi = 2^88 * ( 2^88 * product_mi_top_over + product_mi_top_limb ) + product_mi_bot
         //
-        let product_mi_top = two_to_88.clone() * product_mi_top_extra.clone() + product_mi_top_limb;
+        let product_mi_top = two_to_88.clone() * product_mi_top_over.clone() + product_mi_top_limb;
         let product_mi_sum = two_to_88.clone() * product_mi_top.clone() + product_mi_bot.clone();
         constraints.push(product_mi - product_mi_sum);
 
         // 2) Constrain carry witness value carry_bot \in [0, 2^2)
         constraints.push(crumb(&carry_bot));
 
-        // 3) Constrain intermediate product fragment product_mi_top_extra \in [0, 2^2)
-        constraints.push(crumb(&product_mi_top_extra));
+        // 3) Constrain intermediate product fragment product_mi_top_over \in [0, 2^2)
+        constraints.push(crumb(&product_mi_top_over));
 
-        // 4) Constrain carry_shift comes from shifting 9 bits the carry_top_extra value
-        constraints.push(carry_shift - two_to_9 * carry_top_extra.clone());
+        // 4) Constrain carry_shift comes from shifting 9 bits the carry_top_over value
+        constraints.push(carry_shift - two_to_8 * carry_top_over.clone());
 
-        // 5) Check zero prefix of quotient, meaning that quotient_shift comes from
+        // 5) Check zero prefix of quotient, meaning that product_shift comes from
         //    shifting 8 bits the quotient_hi value
-        constraints.push(quotient_shift - two_to_8 * quotient_hi);
+        constraints.push(product_shift - two_to_9 * product_mi_top_over);
 
         // 6) Constrain carry_bot witness value to prove zero_bot's LSB are zero
         //    For details on zero_bot and why this is valid, please see
@@ -280,10 +283,10 @@ where
         //              v_1 = v_{10} + 2^88 * v_{11}$
         //        2^88 * v1 = u1 = v0 + p11 + p2 - r2
         //                 <=>
-        //        carry_top = 2^88 * carry_top_extra + carry_top_limb
+        //        carry_top = 2^88 * carry_top_over + carry_top_limb
         // 2^88 * carry_top = zero_top = carry_bot + product_mi_top + product_hi - remainder_hi
         //
-        let carry_top = two_to_88.clone() * carry_top_extra + carry_top_limb;
+        let carry_top = two_to_88.clone() * carry_top_over + carry_top_limb;
         let zero_top = carry_bot + product_mi_top + product_hi - remainder_hi;
         constraints.push(zero_top - two_to_88 * carry_top);
 

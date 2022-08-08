@@ -30,6 +30,20 @@ use super::circuitgates::ForeignFieldMul;
 
 /// Number of gates used for foreign field multiplication
 pub const GATE_COUNT: usize = 1;
+fn view<F: PrimeField>(witness: &[Vec<F>; COLUMNS]) {
+    let rows = witness[0].len();
+    for row in 20..rows {
+        for col in 0..COLUMNS {
+            println!(
+                "row {}, col{}: {:?}",
+                row,
+                col,
+                o1_utils::FieldHelpers::to_hex(&witness[col][row])
+            );
+        }
+        println!();
+    }
+}
 
 impl<F: PrimeField> CircuitGate<F> {
     /// Create foreign field multiplication gate
@@ -63,21 +77,21 @@ impl<F: PrimeField> CircuitGate<F> {
         connect_cell_pair(&mut circuit_gates[0].wires, 0, &mut wires, (0, 0));
         // Copy left_input_mid -> Curr(1)
         connect_cell_pair(&mut circuit_gates[1].wires, 0, &mut wires, (0, 1));
-        // Copy quotient_lo -> Curr(4)
-        connect_cell_pair(&mut circuit_gates[8].wires, 0, &mut wires, (0, 4));
-        // Copy quotient_mid -> Curr(5)
-        connect_cell_pair(&mut circuit_gates[9].wires, 0, &mut wires, (0, 5));
-        // Copy quotient_hi -> Curr(6)
-        connect_cell_pair(&mut circuit_gates[10].wires, 0, &mut wires, (0, 6));
+        // Copy left_input_hi -> Curr(2)
+        connect_cell_pair(&mut circuit_gates[2].wires, 0, &mut wires, (0, 2));
+        // Copy right_input_lo -> Curr(3)
+        connect_cell_pair(&mut circuit_gates[4].wires, 0, &mut wires, (0, 3));
+        // Copy right_input_mid -> Curr(4)
+        connect_cell_pair(&mut circuit_gates[5].wires, 0, &mut wires, (0, 4));
+        // Copy right_input_hi -> Next(0)
+        connect_cell_pair(&mut circuit_gates[6].wires, 0, &mut wires, (1, 0));
 
-        // Copy left_input_hi -> Next(0)
-        connect_cell_pair(&mut circuit_gates[2].wires, 0, &mut wires, (1, 0));
-        // Copy right_input_lo -> Next(1)
-        connect_cell_pair(&mut circuit_gates[4].wires, 0, &mut wires, (1, 1));
-        // Copy right_input_mid -> Next(2)
-        connect_cell_pair(&mut circuit_gates[5].wires, 0, &mut wires, (1, 2));
-        // Copy right_input_hi -> Next(3)
-        connect_cell_pair(&mut circuit_gates[6].wires, 0, &mut wires, (1, 3));
+        // Copy quotient_lo -> Next(1)
+        connect_cell_pair(&mut circuit_gates[8].wires, 0, &mut wires, (1, 1));
+        // Copy quotient_mid -> Next(2)
+        connect_cell_pair(&mut circuit_gates[9].wires, 0, &mut wires, (1, 2));
+        // Copy quotient_hi -> Next(3)
+        connect_cell_pair(&mut circuit_gates[10].wires, 0, &mut wires, (1, 3));
         // Copy remainder_lo -> Next(4)
         connect_cell_pair(&mut circuit_gates[12].wires, 0, &mut wires, (1, 4));
         // Copy remainder_mid -> Next(5)
@@ -128,7 +142,8 @@ impl<F: PrimeField> CircuitGate<F> {
             Evaluations::<F, D<F>>::from_vec_and_domain(witness[i].clone(), cs.domain.d1)
                 .interpolate()
         });
-
+        view(&witness);
+        println!("before invalid mul");
         // Compute permutation polynomial
         let rng = &mut StdRng::from_seed([0u8; 32]);
         let beta = F::rand(rng);
@@ -136,6 +151,7 @@ impl<F: PrimeField> CircuitGate<F> {
         let z_poly = cs
             .perm_aggreg(&witness, &beta, &gamma, rng)
             .map_err(|_| CircuitGateError::InvalidCopyConstraint(self.typ))?;
+        println!("after invalid mul");
 
         // Compute witness polynomial evaluations
         let witness_evals = cs.evaluate(&witness_poly, &z_poly);

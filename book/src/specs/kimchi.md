@@ -346,6 +346,7 @@ pub const XOR_TABLE_ID: i32 = 0;
 
 /// The range check table ID.
 pub const RANGE_CHECK_TABLE_ID: i32 = 1;
+
 ```
 
 
@@ -1210,8 +1211,8 @@ left_input_hi => a2  right_input_hi => b2  quotient_hi => q2  remainder_hi => r2
 left_input_mi => a1  right_input_mi => b1  quotient_mi => q1  remainder_mi => r1
 left_input_lo => a0  right_input_lo => b0  quotient_lo => q0  remainder_lo => r0
 
-product_mi_bot => p10  product_mi_top_limb => p110  product_mi_top_extra => p111
-carry_bot      => v0   carry_top_limb      => v10   carry_top_extra      => v11
+product_mi_bot => p10   product_mi_top_limb => p110   product_mi_top_over => p111
+carry_bot      => v0    carry_top_limb      => v10    carry_top_over      => v11
 ````
 
 ##### Suffixes:
@@ -1220,8 +1221,8 @@ positions of the bits referred to.
 
 - When a variable is split into 3 limbs we use: lo, mid, hi (where high is the most significant)
 - When a variable is split in 2 halves we use: bottom, top  (where top is the most significant)
-- When the bits of a variable are split into a limb and some extra bits we use: limb,
-  extra (where extra is the most significant)
+- When the bits of a variable are split into a limb and some over bits we use: limb,
+  over (where over is the most significant)
 
 ##### Inputs:
 * foreign_modulus        := foreign field modulus (currently stored in constraint system)
@@ -1237,7 +1238,7 @@ N.b. the native field modulus is obtainable from F, the native field's trait bou
 * remainder $~\in F_f$ := foreign field remainder
 * carry_bot            := a two bit carry
 * carry_top_limb       := low 88 bits of carry_top
-* carry_top_extra      := high 3 bits of carry_top
+* carry_top_over       := high 3 bits of carry_top
 
 ##### Layout:
 
@@ -1255,19 +1256,19 @@ The last two rows are layed out like this
 
 | col | `ForeignFieldMul`         | `Zero`                  |
 | --- | ------------------------- | ----------------------- |
-|   0 | `left_input_lo`  (copy)   | `left_input_hi`  (copy) |
-|   1 | `left_input_mi`  (copy)   | `right_input_lo` (copy) |
-|   2 | `carry_shift`    (lookup) | `right_input_mi` (copy) |
-|   3 | `quotient_shift` (lookup) | `right_input_hi` (copy) |
-|   4 | `quotient_lo`    (copy)   | `remainder_lo`   (copy) |
-|   5 | `quotient_mi`    (copy)   | `remainder_mi`   (copy) |
-|   6 | `quotient_hi`    (copy)   | `remainder_hi`   (copy) |
+|   0 | `left_input_lo`  (copy)   | `right_input_hi` (copy) |
+|   1 | `left_input_mi`  (copy)   | `quotient_lo`    (copy) |
+|   2 | `left_input_hi`  (copy)   | `quotient_mi`    (copy) |
+|   3 | `right_input_lo` (copy)   | `quotient_hi`    (copy) |
+|   4 | `right_input_mi` (copy)   | `remainder_lo`   (copy) |
+|   5 | `carry_shift`    (lookup) | `remainder_mi`   (copy) |
+|   6 | `product_shift`  (lookup) | `remainder_hi`   (copy) |
 |   7 | `product_mi_bot`          |                         |
 |   8 | `product_mi_top_limb`     |                         |
-|   9 | `product_mi_top_extra`    |                         |
+|   9 | `product_mi_top_over`     |                         |
 |  10 | `carry_bot`               |                         |
 |  11 | `carry_top_limb`          |                         |
-|  12 | `carry_top_extra`         |                         |
+|  12 | `carry_top_over`          |                         |
 |  13 |                           |                         |
 |  14 |                           |                         |
 

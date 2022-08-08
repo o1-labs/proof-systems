@@ -15,7 +15,7 @@ use array_init::array_init;
 use num_bigint::BigUint;
 use num_integer::Integer;
 use o1_utils::{
-    field_helpers::FieldFromBig,
+    field_helpers::{FieldFromBig, FieldHelpers},
     foreign_field::{ForeignElement, LIMB_BITS},
 };
 
@@ -25,7 +25,7 @@ use super::circuitgates::compute_intermediate_products;
 // specific cell types
 //
 //     * Shift     := value is copied from another cell and right shifted (little-endian)
-//     * ValueLimb := contiguous range of bits extracted a value
+//     * ValueLimb := contiguous range of bits overcted a value
 //
 // TODO: Currently located in range check, but could be moved elsewhere
 pub enum WitnessCell {
@@ -89,26 +89,26 @@ const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 2] = [
     [
         WitnessCell::Standard(CopyWitnessCell::create(0, 0)), // left_input_lo
         WitnessCell::Standard(CopyWitnessCell::create(1, 0)), // left_input_mi
-        ShiftWitnessCell::create(20, 12, 9),                  // carry_shift from carry_top_extra
-        ShiftWitnessCell::create(20, 6, 8),                   // quotient_shift from quotient_hi
-        WitnessCell::Standard(CopyWitnessCell::create(8, 0)), // quotient_lo
-        WitnessCell::Standard(CopyWitnessCell::create(9, 0)), // quotient_mi
-        WitnessCell::Standard(CopyWitnessCell::create(10, 0)), // quotient_hi
+        WitnessCell::Standard(CopyWitnessCell::create(2, 0)), // left_input_hi
+        WitnessCell::Standard(CopyWitnessCell::create(4, 0)), // right_input_lo
+        WitnessCell::Standard(CopyWitnessCell::create(5, 0)), // right_input_mi
+        ShiftWitnessCell::create(20, 12, 8),                  // carry_shift from carry_top_over
+        ShiftWitnessCell::create(20, 9, 9), // product_shift from product_mi_top_over
         ValueLimbWitnessCell::create(ValueType::ProductMi, 0, LIMB_BITS), // product_mi_bot
         ValueLimbWitnessCell::create(ValueType::ProductMi, LIMB_BITS, 2 * LIMB_BITS), // product_mi_top_limb
-        ValueLimbWitnessCell::create(ValueType::ProductMi, 2 * LIMB_BITS, 2 * LIMB_BITS + 2), // product_mi_top_extra
+        ValueLimbWitnessCell::create(ValueType::ProductMi, 2 * LIMB_BITS, 2 * LIMB_BITS + 2), // product_mi_top_over
         ValueLimbWitnessCell::create(ValueType::CarryBot, 0, 2), // carry_bot
         ValueLimbWitnessCell::create(ValueType::CarryTop, 0, LIMB_BITS), // carry_top_limb
-        ValueLimbWitnessCell::create(ValueType::CarryTop, LIMB_BITS, LIMB_BITS + 3), // carry_top_extra
+        ValueLimbWitnessCell::create(ValueType::CarryTop, LIMB_BITS, LIMB_BITS + 3), // carry_top_over
         WitnessCell::Standard(ZeroWitnessCell::create()),
         WitnessCell::Standard(ZeroWitnessCell::create()),
     ],
     // Zero row
     [
-        WitnessCell::Standard(CopyWitnessCell::create(2, 0)), // left_input_hi
-        WitnessCell::Standard(CopyWitnessCell::create(4, 0)), // right_input_lo
-        WitnessCell::Standard(CopyWitnessCell::create(5, 0)), // right_input_mi
         WitnessCell::Standard(CopyWitnessCell::create(6, 0)), // right_input_hi
+        WitnessCell::Standard(CopyWitnessCell::create(8, 0)), // quotient_lo
+        WitnessCell::Standard(CopyWitnessCell::create(9, 0)), // quotient_mi
+        WitnessCell::Standard(CopyWitnessCell::create(10, 0)), // quotient_hi
         WitnessCell::Standard(CopyWitnessCell::create(12, 0)), // remainder_lo
         WitnessCell::Standard(CopyWitnessCell::create(13, 0)), // remainder_mi
         WitnessCell::Standard(CopyWitnessCell::create(14, 0)), // remainder_hi
@@ -202,6 +202,8 @@ pub fn create_witness<F: PrimeField>(
         *foreign_modulus.hi(),
     );
 
+    println!("creating witness");
+    println!("product_mi: {:?}", product_mi.to_hex());
     // Define some helpers
     let product_mi_big: BigUint = product_mi.into();
 
@@ -242,10 +244,12 @@ pub fn create_witness<F: PrimeField>(
     // ForeignFieldMul and Zero row
     init_foreign_field_mul_rows(&mut witness, 20, product_mi, carry_bot, carry_top);
 
+    view(&witness);
+
     witness
 }
 
-/*fn view<F: PrimeField>(witness: &[Vec<F>; COLUMNS]) {
+fn view<F: PrimeField>(witness: &[Vec<F>; COLUMNS]) {
     let rows = witness[0].len();
     for row in 20..rows {
         for col in 0..COLUMNS {
@@ -253,7 +257,7 @@ pub fn create_witness<F: PrimeField>(
         }
         println!();
     }
-}*/
+}
 
 pub fn check_witness<F: PrimeField>(
     witness: &[Vec<F>; COLUMNS],
@@ -263,18 +267,18 @@ pub fn check_witness<F: PrimeField>(
 
     let left_input_lo = witness[0][20];
     let left_input_mi = witness[1][20];
-    let left_input_hi = witness[0][21];
+    let left_input_hi = witness[2][20];
 
-    let right_input_lo = witness[1][21];
-    let right_input_mi = witness[2][21];
-    let right_input_hi = witness[3][21];
+    let right_input_lo = witness[3][20];
+    let right_input_mi = witness[4][20];
+    let right_input_hi = witness[0][21];
 
-    let carry_shift = witness[2][20];
-    let quotient_shift = witness[3][20];
+    let carry_shift = witness[5][20];
+    let product_shift = witness[6][20];
 
-    let quotient_lo = witness[4][20];
-    let quotient_mi = witness[5][20];
-    let quotient_hi = witness[6][20];
+    let quotient_lo = witness[1][21];
+    let quotient_mi = witness[2][21];
+    let quotient_hi = witness[3][21];
 
     let remainder_lo = witness[4][21];
     let remainder_mi = witness[5][21];
@@ -282,10 +286,10 @@ pub fn check_witness<F: PrimeField>(
 
     let product_mi_bot = witness[7][20];
     let product_mi_top_limb = witness[8][20];
-    let product_mi_top_extra = witness[9][20];
+    let product_mi_top_over = witness[9][20];
     let carry_bot = witness[10][20];
     let carry_top_limb = witness[11][20];
-    let carry_top_extra = witness[12][20];
+    let carry_top_over = witness[12][20];
 
     let (product_lo, product_mi, product_hi) = compute_intermediate_products(
         left_input_lo,
@@ -302,31 +306,51 @@ pub fn check_witness<F: PrimeField>(
         foreign_modulus_hi,
     );
 
-    let _eight = F::from(8u32);
     let two_to_8 = F::from(2u32.pow(8));
     let two_to_9 = F::from(2u32.pow(9));
     let two_to_88 = F::from(2u128.pow(88));
     let two_to_176 = two_to_88.clone() * two_to_88.clone();
 
-    let product_mi_top = two_to_88.clone() * product_mi_top_extra.clone() + product_mi_top_limb;
+    println!("CHECK product mi");
+    let product_mi_top = two_to_88.clone() * product_mi_top_over.clone() + product_mi_top_limb;
     let product_mi_sum = two_to_88.clone() * product_mi_top.clone() + product_mi_bot.clone();
+    println!("product_mi:     {:?}", product_mi.to_hex());
+    println!("product_mi_sum: {:?}", product_mi_sum.to_hex());
+    println!("quotient_lo:    {:?}", quotient_lo.to_bytes().reverse());
+    println!("quotient_mi:    {:?}", quotient_mi.to_bytes().reverse());
+    println!(
+        "foreign_mod_lo: {:?}",
+        foreign_modulus_lo.to_bytes().reverse()
+    );
+    println!(
+        "foreign_mod_mi: {:?}",
+        foreign_modulus_mi.to_bytes().reverse()
+    );
+    //assert_eq!(F::zero(), product_mi - product_mi_sum);
 
-    assert_eq!(F::zero(), product_mi - product_mi_sum);
-
+    println!("CHECK crumb carry bot");
     assert_eq!(F::zero(), crumb(&carry_bot));
 
-    assert_eq!(F::zero(), crumb(&product_mi_top_extra));
+    println!("CHECK crumb product mi top over");
+    assert_eq!(F::zero(), crumb(&product_mi_top_over));
 
-    assert_eq!(F::zero(), carry_shift - two_to_9 * carry_top_extra.clone());
+    println!("CHECK carry shift");
+    assert_eq!(F::zero(), carry_shift - two_to_8 * carry_top_over.clone());
 
-    assert_eq!(F::zero(), quotient_shift - two_to_8 * quotient_hi);
+    println!("CHECK product shift");
+    assert_eq!(F::zero(), product_shift - two_to_9 * product_mi_top_over);
 
+    println!("CHECK zero bot");
     let zero_bot = product_lo - remainder_lo + two_to_88.clone() * (product_mi_bot - remainder_mi);
+    println!("product_lo:     {:?}", product_lo.to_hex());
+    println!("remainder_lo:   {:?}", remainder_lo.to_hex());
+    println!("product_mi_bot: {:?}", product_mi_bot.to_hex());
+    println!("remainder_mi  : {:?}", remainder_mi.to_hex());
     assert_eq!(F::zero(), zero_bot - two_to_176 * carry_bot.clone());
 
-    let carry_top = two_to_88.clone() * carry_top_extra + carry_top_limb;
+    println!("CHECK zero top");
+    let carry_top = two_to_88.clone() * carry_top_over + carry_top_limb;
     let zero_top = carry_bot + product_mi_top + product_hi - remainder_hi;
-
     assert_eq!(F::zero(), zero_top - two_to_88 * carry_top);
 
     Ok(())
