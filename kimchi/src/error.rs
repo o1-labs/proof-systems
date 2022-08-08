@@ -38,6 +38,12 @@ pub enum VerifyError {
     #[error("the commitment to {0} is of an unexpected size")]
     IncorrectCommitmentLength(&'static str),
 
+    #[error("the public input is of an unexpected size (expected {0})")]
+    IncorrectPubicInputLength(usize),
+
+    #[error("the previous challenges have an unexpected length (expected {0}, got {})")]
+    IncorrectPrevChallengesLength(usize, usize),
+
     #[error("the opening proof failed to verify")]
     OpenProof,
 

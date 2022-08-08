@@ -1,3 +1,4 @@
+use crate::writer::{Cs, GateSpec, System, Var, WitnessGenerator};
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{FftField, One, PrimeField, SquareRootField, Zero};
 use array_init::array_init;
@@ -7,18 +8,16 @@ use commitment_dlog::{
 };
 use kimchi::{
     circuits::{constraints::ConstraintSystem, gate::GateType, wires::COLUMNS},
+    curve::KimchiCurve,
     plonk_sponge::FrSponge,
     proof::ProverProof,
     prover_index::ProverIndex,
 };
-use mina_curves::pasta::{fp::Fp, fq::Fq, pallas::Affine as Other, vesta::Affine};
-use oracle::{poseidon::ArithmeticSpongeParams, FqSponge};
+use mina_curves::pasta::{fp::Fp, fq::Fq, pallas::Pallas as Other, vesta::Vesta};
+use oracle::FqSponge;
 
-use crate::{
-    constants::Constants,
-    writer::{Cs, GateSpec, System, Var, WitnessGenerator},
-};
-
+/// A [Cycle] represents the algebraic structure that
+/// allows for recursion using elliptic curves.
 pub trait Cycle {
     type InnerField: FftField
         + PrimeField
@@ -65,41 +64,43 @@ pub trait Cycle {
         + std::ops::MulAssign<Self::InnerField>;
 
     type Outer: CommitmentCurve<
-        Projective = Self::OuterProj,
-        Map = Self::OuterMap,
-        ScalarField = Self::InnerField,
-        BaseField = Self::OuterField,
-    >;
+            Projective = Self::OuterProj,
+            Map = Self::OuterMap,
+            ScalarField = Self::InnerField,
+            BaseField = Self::OuterField,
+        > + KimchiCurve;
 }
 
+/// Used to configure the base curve of Pallas
 pub struct FpInner;
+/// Used to configure the base curve of Vesta
 pub struct FqInner;
 
 impl Cycle for FpInner {
     type InnerMap = <Other as CommitmentCurve>::Map;
-    type OuterMap = <Affine as CommitmentCurve>::Map;
+    type OuterMap = <Vesta as CommitmentCurve>::Map;
 
     type InnerField = Fp;
     type OuterField = Fq;
     type Inner = Other;
-    type Outer = Affine;
+    type Outer = Vesta;
     type InnerProj = <Other as AffineCurve>::Projective;
-    type OuterProj = <Affine as AffineCurve>::Projective;
+    type OuterProj = <Vesta as AffineCurve>::Projective;
 }
 
 impl Cycle for FqInner {
-    type InnerMap = <Affine as CommitmentCurve>::Map;
+    type InnerMap = <Vesta as CommitmentCurve>::Map;
     type OuterMap = <Other as CommitmentCurve>::Map;
 
     type InnerField = Fq;
     type OuterField = Fp;
-    type Inner = Affine;
+    type Inner = Vesta;
     type Outer = Other;
-    type InnerProj = <Affine as AffineCurve>::Projective;
+    type InnerProj = <Vesta as AffineCurve>::Projective;
     type OuterProj = <Other as AffineCurve>::Projective;
 }
 
-/// Given an index, a group map, custom blinders for the witness, a public input vector, and a circuit `main`, create a proof.
+/// Given an index, a group map, custom blinders for the witness, a public input vector, and a circuit `main`, it creates a proof.
 pub fn prove<G, H, EFqSponge, EFrSponge>(
     index: &ProverIndex<G>,
     group_map: &G::Map,
@@ -110,7 +111,7 @@ pub fn prove<G, H, EFqSponge, EFrSponge>(
 where
     H: FnMut(&mut WitnessGenerator<G::ScalarField>, Vec<Var<G::ScalarField>>),
     G::BaseField: PrimeField,
-    G: CommitmentCurve,
+    G: KimchiCurve,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
 {
@@ -154,10 +155,9 @@ where
     .unwrap()
 }
 
+/// Creates the prover index on input an `srs`, used `constants`, parameters for Poseidon, number of public inputs, and a specific circuit
 pub fn generate_prover_index<C, H>(
     srs: std::sync::Arc<SRS<C::Outer>>,
-    constants: &Constants<C::InnerField>,
-    poseidon_params: &ArithmeticSpongeParams<C::OuterField>,
     public: usize,
     main: H,
 ) -> ProverIndex<C::Outer>
@@ -190,17 +190,18 @@ where
     // Other base field = self scalar field
     let (endo_q, _endo_r) = endos::<C::Inner>();
 
-    let constraint_system =
-        ConstraintSystem::<C::InnerField>::create(gates, constants.poseidon.clone())
-            .public(public)
-            .build()
-            // TODO: return a Result instead of panicking
-            .expect("couldn't construct constraint system");
+    let constraint_system = ConstraintSystem::<C::InnerField>::create(gates)
+        .public(public)
+        .build()
+        // TODO: return a Result instead of panicking
+        .expect("couldn't construct constraint system");
 
-    ProverIndex::<C::Outer>::create(constraint_system, poseidon_params.clone(), endo_q, srs)
+    ProverIndex::<C::Outer>::create(constraint_system, endo_q, srs)
 }
 
+/// Handling coordinates in an affine curve
 pub trait CoordinateCurve: AffineCurve {
+    /// Returns the coordinates in the curve as two points of the base field
     fn to_coords(&self) -> Option<(Self::BaseField, Self::BaseField)>;
 }
 

@@ -1,4 +1,5 @@
 use crate::prologue::*;
+use kimchi::curve::KimchiCurve;
 
 type SpongeQ = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
 type SpongeR = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>;
@@ -46,32 +47,29 @@ const PUBLIC_INPUT_LENGTH: usize = 3;
 
 #[test]
 fn test_example_circuit() {
+    use mina_curves::pasta::pallas::Pallas;
+    use mina_curves::pasta::vesta::Vesta;
     // create SRS
     let srs = {
-        let mut srs = SRS::<VestaAffine>::create(1 << 7); // 2^7 = 128
+        let mut srs = SRS::<Vesta>::create(1 << 7); // 2^7 = 128
         srs.add_lagrange_basis(Radix2EvaluationDomain::new(srs.g.len()).unwrap());
         Arc::new(srs)
     };
 
     let proof_system_constants = fp_constants();
-    let fq_poseidon = oracle::pasta::fq_kimchi::params();
 
     // generate circuit and index
-    let prover_index = generate_prover_index::<FpInner, _>(
-        srs,
-        &proof_system_constants,
-        &fq_poseidon,
-        PUBLIC_INPUT_LENGTH,
-        |sys, p| circuit::<_, PallasAffine, _>(&proof_system_constants, None, sys, p),
-    );
+    let prover_index = generate_prover_index::<FpInner, _>(srs, PUBLIC_INPUT_LENGTH, |sys, p| {
+        circuit::<_, Pallas, _>(&proof_system_constants, None, sys, p)
+    });
 
-    let group_map = <VestaAffine as CommitmentCurve>::Map::setup();
+    let group_map = <Vesta as CommitmentCurve>::Map::setup();
 
     let mut rng = rand::thread_rng();
 
     // create witness
-    let private_key = <PallasAffine as AffineCurve>::ScalarField::rand(&mut rng);
-    let preimage = <PallasAffine as AffineCurve>::BaseField::rand(&mut rng);
+    let private_key = <Pallas as AffineCurve>::ScalarField::rand(&mut rng);
+    let preimage = <Pallas as AffineCurve>::BaseField::rand(&mut rng);
 
     let witness = Witness {
         s: private_key,
@@ -79,23 +77,23 @@ fn test_example_circuit() {
     };
 
     // create public input
-    let public_key = PallasAffine::prime_subgroup_generator()
+    let public_key = Pallas::prime_subgroup_generator()
         .mul(private_key)
         .into_affine();
     let hash = {
         let mut s: ArithmeticSponge<_, PlonkSpongeConstantsKimchi> =
-            ArithmeticSponge::new(proof_system_constants.poseidon.clone());
+            ArithmeticSponge::new(Vesta::sponge_params());
         s.absorb(&[preimage]);
         s.squeeze()
     };
 
     // generate proof
-    let proof = prove::<VestaAffine, _, SpongeQ, SpongeR>(
+    let proof = prove::<Vesta, _, SpongeQ, SpongeR>(
         &prover_index,
         &group_map,
         None,
         vec![public_key.x, public_key.y, hash],
-        |sys, p| circuit::<Fp, PallasAffine, _>(&proof_system_constants, Some(&witness), sys, p),
+        |sys, p| circuit::<Fp, Pallas, _>(&proof_system_constants, Some(&witness), sys, p),
     );
 
     // verify proof

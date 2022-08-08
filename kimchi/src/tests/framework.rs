@@ -1,27 +1,32 @@
 //! Test Framework
 
-use crate::circuits::lookup::runtime_tables::{RuntimeTable, RuntimeTableCfg};
-use crate::circuits::lookup::tables::LookupTable;
-use crate::circuits::{gate::CircuitGate, wires::COLUMNS};
-use crate::proof::{ProverProof, RecursionChallenge};
-use crate::prover_index::testing::new_index_for_test_with_lookups;
-use crate::prover_index::ProverIndex;
-use crate::verifier::verify;
-use crate::verifier_index::VerifierIndex;
+use crate::{
+    circuits::{
+        gate::CircuitGate,
+        lookup::{
+            runtime_tables::{RuntimeTable, RuntimeTableCfg},
+            tables::LookupTable,
+        },
+        wires::COLUMNS,
+    },
+    proof::{ProverProof, RecursionChallenge},
+    prover_index::{testing::new_index_for_test_with_lookups, ProverIndex},
+    verifier::verify,
+    verifier_index::VerifierIndex,
+};
 use ark_ff::PrimeField;
 use commitment_dlog::commitment::CommitmentCurve;
 use groupmap::GroupMap;
 use mina_curves::pasta::{
     fp::Fp,
-    vesta::{Affine, VestaParameters},
+    vesta::{Vesta, VestaParameters},
 };
 use num_bigint::BigUint;
 use oracle::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use std::mem;
-use std::time::Instant;
+use std::{mem, time::Instant};
 
 // aliases
 
@@ -37,10 +42,11 @@ pub(crate) struct TestFramework {
     lookup_tables: Vec<LookupTable<Fp>>,
     runtime_tables_setup: Option<Vec<RuntimeTableCfg<Fp>>>,
     runtime_tables: Vec<RuntimeTable<Fp>>,
-    recursion: Vec<RecursionChallenge<Affine>>,
+    recursion: Vec<RecursionChallenge<Vesta>>,
+    num_prev_challenges: usize,
 
-    prover_index: Option<ProverIndex<Affine>>,
-    verifier_index: Option<VerifierIndex<Affine>>,
+    prover_index: Option<ProverIndex<Vesta>>,
+    verifier_index: Option<VerifierIndex<Vesta>>,
 }
 
 pub(crate) struct TestRunner(TestFramework);
@@ -61,6 +67,12 @@ impl TestFramework {
     #[must_use]
     pub(crate) fn public_inputs(mut self, public_inputs: Vec<Fp>) -> Self {
         self.public_inputs = public_inputs;
+        self
+    }
+
+    #[must_use]
+    pub(crate) fn num_prev_challenges(mut self, num_prev_challenges: usize) -> Self {
+        self.num_prev_challenges = num_prev_challenges;
         self
     }
 
@@ -90,6 +102,7 @@ impl TestFramework {
         let index = new_index_for_test_with_lookups(
             self.gates.take().unwrap(),
             self.public_inputs.len(),
+            self.num_prev_challenges,
             lookup_tables,
             runtime_tables_setup,
         );
@@ -113,12 +126,12 @@ impl TestRunner {
     }
 
     #[must_use]
-    pub(crate) fn recursion(mut self, recursion: Vec<RecursionChallenge<Affine>>) -> Self {
+    pub(crate) fn recursion(mut self, recursion: Vec<RecursionChallenge<Vesta>>) -> Self {
         self.0.recursion = recursion;
         self
     }
 
-    pub(crate) fn prover_index(&self) -> &ProverIndex<Affine> {
+    pub(crate) fn prover_index(&self) -> &ProverIndex<Vesta> {
         self.0.prover_index.as_ref().unwrap()
     }
 
@@ -128,12 +141,15 @@ impl TestRunner {
         let witness = self.0.witness.unwrap();
 
         // verify the circuit satisfiability by the computed witness
-        prover.cs.verify(&witness, &self.0.public_inputs).unwrap();
+        prover
+            .cs
+            .verify::<Vesta>(&witness, &self.0.public_inputs)
+            .unwrap();
 
         // add the proof to the batch
         let start = Instant::now();
 
-        let group_map = <Affine as CommitmentCurve>::Map::setup();
+        let group_map = <Vesta as CommitmentCurve>::Map::setup();
 
         let proof = ProverProof::create_recursive::<BaseSponge, ScalarSponge>(
             &group_map,
@@ -148,7 +164,7 @@ impl TestRunner {
 
         // verify the proof
         let start = Instant::now();
-        verify::<Affine, BaseSponge, ScalarSponge>(
+        verify::<Vesta, BaseSponge, ScalarSponge>(
             &group_map,
             &self.0.verifier_index.unwrap(),
             &proof,

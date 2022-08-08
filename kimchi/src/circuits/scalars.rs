@@ -28,9 +28,9 @@ impl<F: Field> Default for RandomOracles<F> {
             zeta: F::zero(),
             v: F::zero(),
             u: F::zero(),
-            alpha_chal: c,
-            zeta_chal: c,
-            v_chal: c,
+            alpha_chal: c.clone(),
+            zeta_chal: c.clone(),
+            v_chal: c.clone(),
             u_chal: c,
             joint_combiner: None,
         }

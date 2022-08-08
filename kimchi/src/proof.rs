@@ -2,10 +2,13 @@
 
 use crate::circuits::wires::{COLUMNS, PERMUTS};
 use ark_ec::AffineCurve;
-use ark_ff::{FftField, Zero};
+use ark_ff::{FftField, One, Zero};
 use ark_poly::univariate::DensePolynomial;
 use array_init::array_init;
-use commitment_dlog::{commitment::PolyComm, evaluation_proof::OpeningProof};
+use commitment_dlog::{
+    commitment::{b_poly, b_poly_coefficients, PolyComm},
+    evaluation_proof::OpeningProof,
+};
 use o1_utils::ExtendedDensePolynomial;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
@@ -180,6 +183,47 @@ impl<F> ProofEvaluations<F> {
 impl<G: AffineCurve> RecursionChallenge<G> {
     pub fn new(chals: Vec<G::ScalarField>, comm: PolyComm<G>) -> RecursionChallenge<G> {
         RecursionChallenge { chals, comm }
+    }
+
+    pub fn evals(
+        &self,
+        max_poly_size: usize,
+        evaluation_points: &[G::ScalarField],
+        powers_of_eval_points_for_chunks: &[G::ScalarField],
+    ) -> Vec<Vec<G::ScalarField>> {
+        let RecursionChallenge { chals, comm: _ } = self;
+        // No need to check the correctness of poly explicitly. Its correctness is assured by the
+        // checking of the inner product argument.
+        let b_len = 1 << chals.len();
+        let mut b: Option<Vec<G::ScalarField>> = None;
+
+        (0..2)
+            .map(|i| {
+                let full = b_poly(chals, evaluation_points[i]);
+                if max_poly_size == b_len {
+                    return vec![full];
+                }
+                let mut betaacc = G::ScalarField::one();
+                let diff = (max_poly_size..b_len)
+                    .map(|j| {
+                        let b_j = match &b {
+                            None => {
+                                let t = b_poly_coefficients(chals);
+                                let res = t[j];
+                                b = Some(t);
+                                res
+                            }
+                            Some(b) => b[j],
+                        };
+
+                        let ret = betaacc * b_j;
+                        betaacc *= &evaluation_points[i];
+                        ret
+                    })
+                    .fold(G::ScalarField::zero(), |x, y| x + y);
+                vec![full - (diff * powers_of_eval_points_for_chunks[i]), diff]
+            })
+            .collect()
     }
 }
 

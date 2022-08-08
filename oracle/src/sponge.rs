@@ -11,7 +11,7 @@ const HIGH_ENTROPY_LIMBS: usize = 2;
 
 // TODO: move to a different file / module
 /// A challenge which is used as a scalar on a group element in the verifier
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct ScalarChallenge<F>(pub F);
 
 pub fn endo_coefficient<F: PrimeField>() -> F {
@@ -135,7 +135,7 @@ where
     P::BaseField: PrimeField,
     <P::BaseField as PrimeField>::BigInt: Into<<P::ScalarField as PrimeField>::BigInt>,
 {
-    fn new(params: ArithmeticSpongeParams<P::BaseField>) -> DefaultFqSponge<P, SC> {
+    fn new(params: &'static ArithmeticSpongeParams<P::BaseField>) -> DefaultFqSponge<P, SC> {
         DefaultFqSponge {
             sponge: ArithmeticSponge::new(params),
             last_squeezed: vec![],
@@ -154,6 +154,12 @@ where
                 self.sponge.absorb(&[g.y]);
             }
         }
+    }
+
+    fn absorb_fq(&mut self, x: &[P::BaseField]) {
+        self.last_squeezed = vec![];
+
+        self.sponge.absorb(x)
     }
 
     fn absorb_fr(&mut self, x: &[P::ScalarField]) {
@@ -197,6 +203,10 @@ where
         // Previously the attacker's odds were 1/q, now it's (q-p)/q.
         // Since log2(q-p) ~ 86 and log2(q) ~ 254 the odds of a successful attack are negligible.
         P::ScalarField::from_repr(x.into()).unwrap_or_else(P::ScalarField::zero)
+    }
+
+    fn digest_fq(mut self) -> P::BaseField {
+        self.squeeze_field()
     }
 
     fn challenge(&mut self) -> P::ScalarField {
