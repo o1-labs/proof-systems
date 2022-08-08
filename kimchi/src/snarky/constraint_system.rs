@@ -1,13 +1,17 @@
 use crate::circuits::gate::{CircuitGate, GateType};
+use crate::circuits::polynomials::poseidon::{ROUNDS_PER_HASH, SPONGE_WIDTH};
 use crate::circuits::wires::{Wire, COLUMNS, PERMUTS};
 use ark_ff::FftField;
+use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
+
+use super::constants::Constants;
 
 /** A gate interface, parameterized by a field. */
 pub trait GateVector<Field: FftField> {
     fn create() -> Self;
-    fn add(self: &mut Self, gate: CircuitGate<Field>);
-    fn get(self: &Self, idx: usize) -> CircuitGate<Field>;
+    fn add(&mut self, gate: CircuitGate<Field>);
+    fn get(&self, idx: usize) -> CircuitGate<Field>;
 }
 
 /** A row indexing in a constraint system.
@@ -20,7 +24,7 @@ enum Row {
 }
 
 impl Row {
-    fn to_absolute(self: &Self, public_input_size: usize) -> usize {
+    fn to_absolute(&self, public_input_size: usize) -> usize {
         match self {
             Row::PublicInput(i) => *i,
             Row::AfterPublicInput(i) => *i + public_input_size,
@@ -37,46 +41,8 @@ struct Position<Row> {
     col: usize,
 }
 
-impl<Row> Position<Row> {
-    /** Generates a full row of positions that each points to itself. */
-    fn create_cols(row: Row) -> Vec<Self>
-    where
-        Row: Clone,
-    {
-        (0..PERMUTS)
-            .map(|col| Position {
-                row: row.clone(),
-                col,
-            })
-            .collect()
-    }
-
-    /** Given a number of columns, append enough column wires to get an entire row.
-    The wire appended will simply point to themselves, so as to not take part in the
-    permutation argument. */
-    fn append_cols(row: Row, cols: &mut Vec<Position<Row>>)
-    where
-        Row: Clone,
-    {
-        let padding_offset = cols.len();
-        assert!(padding_offset <= PERMUTS);
-        let padding_len = PERMUTS - padding_offset;
-        cols.extend((0..padding_len).map(|i| Position {
-            row: row.clone(),
-            col: i + padding_offset,
-        }))
-    }
-
-    /** Converts an array of [Constants.columns] to [Constants.permutation_cols].
-    This is useful to truncate arrays of cells to the ones that only matter for the permutation argument.
-    */
-    fn cols_to_perms<A: Clone>(x: Vec<A>) -> Vec<A> {
-        x[0..PERMUTS].to_vec()
-    }
-}
-
 impl Position<usize> {
-    fn to_rust_wire(self: Self) -> Wire {
+    fn to_rust_wire(self) -> Wire {
         Wire {
             row: self.row,
             col: self.col,
@@ -94,7 +60,7 @@ struct GateSpec<Row, Field> {
 
 impl<Row, Field> GateSpec<Row, Field> {
     /** Applies a function [f] to the [row] of [t] and all the rows of its [wired_to]. */
-    fn map_rows<Row2, F: Fn(Row) -> Row2>(self: Self, f: F) -> GateSpec<Row2, Field> {
+    fn map_rows<Row2, F: Fn(Row) -> Row2>(self, f: F) -> GateSpec<Row2, Field> {
         let GateSpec {
             kind,
             wired_to,
@@ -112,7 +78,7 @@ impl<Row, Field> GateSpec<Row, Field> {
 }
 
 impl<Field: FftField> GateSpec<usize, Field> {
-    fn to_rust_gate(self: Self) -> CircuitGate<Field> {
+    fn to_rust_gate(self) -> CircuitGate<Field> {
         let GateSpec {
             kind,
             wired_to,
@@ -243,7 +209,13 @@ enum Circuit<Field, RustGates> {
 }
 
 /** The constraint system. */
-pub struct SnarkyConstraintSystem<Field, RustGates> {
+pub struct SnarkyConstraintSystem<Field, RustGates>
+where
+    Field: ark_ff::Field,
+{
+    // TODO: once we have a trait we can get these via the Curve (if we parameterize SnarkyConstraintSystem on the curve)
+    constants: Constants<Field>,
+
     /** Map of cells that share the same value (enforced by to the permutation). */
     equivalence_classes: HashMap<V, Vec<Position<Row>>>,
     next_internal_var: usize,
@@ -288,7 +260,7 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
       the function will return a hashtable that maps pos1 to pos3,
       pos3 to pos7, and pos7 to pos1.
     */
-    fn equivalence_classes_to_hashtbl(self: &mut Self) -> HashMap<Position<Row>, Position<Row>> {
+    fn equivalence_classes_to_hashtbl(&mut self) -> HashMap<Position<Row>, Position<Row>> {
         let mut equivalence_classes: HashMap<usize, HashSet<Position<Row>>> = HashMap::new();
         for (key, data) in self.equivalence_classes.iter() {
             let u = self.union_finds.find(*key).unwrap();
@@ -312,10 +284,7 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
     /** Compute the witness, given the constraint system `sys`
        and a function that converts the indexed secret inputs to their concrete values.
     */
-    pub fn compute_witness<F: Fn(usize) -> Field>(
-        self: &Self,
-        external_values: F,
-    ) -> Vec<Vec<Field>> {
+    pub fn compute_witness<F: Fn(usize) -> Field>(&self, external_values: F) -> Vec<Vec<Field>> {
         let mut internal_values = HashMap::new();
         let public_input_size = self.public_input_size.unwrap();
         let num_rows = public_input_size + self.next_row;
@@ -357,11 +326,11 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
         res
     }
 
-    fn union_find(self: &mut Self, value: V) {
+    fn union_find(&mut self, value: V) {
         self.union_finds.make_set(value)
     }
 
-    fn create_internal(self: &mut Self, constant: Option<Field>, lc: Vec<(Field, V)>) -> V {
+    fn create_internal(&mut self, constant: Option<Field>, lc: Vec<(Field, V)>) -> V {
         let v = InternalVar(self.next_internal_var);
         self.next_internal_var += 1;
         self.union_find(V::Internal(v));
@@ -369,8 +338,10 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
         V::Internal(v)
     }
 
-    pub fn create() -> Self {
+    pub fn create(constants: Constants<Field>) -> Self {
         Self {
+            // TODO: if we expect a `Field: KimchiParams` we can simply do `Field::constants()` here. But we might want to wait for Fabrizio's trait? Also we should keep this close to the OCaml stuff if we want to avoid pains when we plug this in
+            constants: constants,
             public_input_size: None,
             next_internal_var: 0,
             internal_vars: HashMap::new(),
@@ -386,22 +357,22 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
     }
 
     /** Returns the number of auxiliary inputs. */
-    pub fn get_auxiliary_input_size(self: &Self) -> usize {
+    pub fn get_auxiliary_input_size(&self) -> usize {
         self.auxiliary_input_size
     }
 
     /** Returns the number of public inputs. */
-    pub fn get_primary_input_size(self: &Self) -> usize {
+    pub fn get_primary_input_size(&self) -> usize {
         self.public_input_size.unwrap()
     }
 
     /** Non-public part of the witness. */
-    pub fn set_auxiliary_input_size(self: &mut Self, x: usize) {
+    pub fn set_auxiliary_input_size(&mut self, x: usize) {
         self.auxiliary_input_size = x
     }
 
     /** Sets the number of public-input. It should only be called once. */
-    pub fn set_public_input_size(self: &mut Self, x: usize) {
+    pub fn set_public_input_size(&mut self, x: usize) {
         self.public_input_size = Some(x)
     }
 
@@ -409,7 +380,7 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
     A key is an external or internal variable.
     The row must be given relative to the start of the circuit
     (so at the start of the public-input rows). */
-    fn wire_(self: &mut Self, key: V, row: Row, col: usize) {
+    fn wire_(&mut self, key: V, row: Row, col: usize) {
         self.union_find(key);
         self.equivalence_classes
             .entry(key)
@@ -418,12 +389,12 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
     }
 
     /** Same as wire', except that the row must be given relatively to the end of the public-input rows. */
-    fn wire(self: &mut Self, key: V, row: usize, col: usize) {
+    fn wire(&mut self, key: V, row: usize, col: usize) {
         self.wire_(key, Row::AfterPublicInput(row), col)
     }
 
     /** Adds a row/gate/constraint to a constraint system `sys`. */
-    fn add_row(self: &mut Self, vars: Vec<Option<V>>, kind: GateType, coeffs: Vec<Field>) {
+    fn add_row(&mut self, vars: Vec<Option<V>>, kind: GateType, coeffs: Vec<Field>) {
         /* As we're adding a row, we're adding new cells.
            If these cells (the first 7) contain variables,
            make sure that they are wired
@@ -449,7 +420,7 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
         self.rows.push(vars);
     }
 
-    pub fn finalize(self: &mut Self) {
+    pub fn finalize(&mut self) {
         if let Circuit::Compiled(_, _) = self.gates {
             return;
         } else if let Some(_) = &self.pending_generic_gate {
@@ -543,7 +514,7 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
         }
     }
 
-    pub fn finalize_and_get_gates(self: &mut Self) -> &mut Gates {
+    pub fn finalize_and_get_gates(&mut self) -> &mut Gates {
         self.finalize();
         match &mut self.gates {
             Circuit::Compiled(_, gates) => gates,
@@ -583,10 +554,10 @@ fn accumulate_terms<Field: FftField>(terms: Vec<(Field, usize)>) -> HashMap<usiz
     acc
 }
 
-pub trait SnarkyCvar {
+pub trait SnarkyCvar: Clone {
     type Field;
 
-    fn to_constant_and_terms(self: &Self) -> (Option<Self::Field>, Vec<(Self::Field, usize)>);
+    fn to_constant_and_terms(&self) -> (Option<Self::Field>, Vec<(Self::Field, usize)>);
 }
 
 pub fn canonicalize<Cvar>(x: Cvar) -> Option<(Vec<(Cvar::Field, usize)>, usize, bool)>
@@ -616,7 +587,7 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
     every other generic gate.
     */
     fn add_generic_constraint(
-        self: &mut Self,
+        &mut self,
         l: Option<V>,
         r: Option<V>,
         o: Option<V>,
@@ -650,7 +621,7 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
     - return (1, internal_var_2)
 
     It assumes that the list of terms is not empty. */
-    fn completely_reduce<Terms>(self: &mut Self, terms: Terms) -> (Field, V)
+    fn completely_reduce<Terms>(&mut self, terms: Terms) -> (Field, V)
     where
         Terms: IntoIterator<Item = (Field, usize)>,
         <Terms as IntoIterator>::IntoIter: DoubleEndedIterator,
@@ -683,7 +654,7 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
       It returns the output variable as (1, `Var res),
       unless the output is a constant, in which case it returns (c, `Constant).
     */
-    fn reduce_lincom<Cvar>(self: &mut Self, x: Cvar) -> (Field, ConstantOrVar)
+    fn reduce_lincom<Cvar>(&mut self, x: Cvar) -> (Field, ConstantOrVar)
     where
         Cvar: SnarkyCvar<Field = Field>,
     {
@@ -737,10 +708,58 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
         }
     }
 
-    pub fn add_basic_snarky_constraint<Cvar>(
-        self: &mut Self,
-        constraint: BasicSnarkyConstraint<Cvar>,
-    ) where
+    /// reduce any [Cvar] to a single internal variable [V]
+    fn reduce_to_var<Cvar>(&mut self, x: Cvar) -> V
+    where
+        Cvar: SnarkyCvar<Field = Field>,
+    {
+        match self.reduce_lincom(x) {
+            (s, ConstantOrVar::Var(x)) => {
+                if s == Field::one() {
+                    x
+                } else {
+                    let sx = self.create_internal(Some(s), vec![(s, x)]);
+                    // s * x - sx = 0
+                    self.add_generic_constraint(
+                        Some(x),
+                        None,
+                        Some(sx),
+                        vec![
+                            s,
+                            Field::zero(),
+                            Field::one().neg(),
+                            Field::zero(),
+                            Field::zero(),
+                        ],
+                    );
+                    sx
+                }
+            }
+            (s, ConstantOrVar::Constant) => match self.cached_constants.get(&s) {
+                Some(x) => *x,
+                None => {
+                    let x = self.create_internal(None, vec![]);
+                    self.add_generic_constraint(
+                        Some(x),
+                        None,
+                        None,
+                        vec![
+                            Field::one(),
+                            Field::zero(),
+                            Field::zero(),
+                            Field::zero(),
+                            s.neg(),
+                        ],
+                    );
+                    self.cached_constants.insert(s, x);
+                    x
+                }
+            },
+        }
+    }
+
+    pub fn add_basic_snarky_constraint<Cvar>(&mut self, constraint: BasicSnarkyConstraint<Cvar>)
+    where
         Cvar: SnarkyCvar<Field = Field>,
     {
         match constraint {
@@ -977,7 +996,7 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
         }
     }
 
-    pub fn add_constraint<Cvar>(self: &mut Self, constraint: KimchiConstraint<Cvar, Field>)
+    pub fn add_constraint<Cvar>(&mut self, constraint: KimchiConstraint<Cvar, Field>)
     where
         Cvar: SnarkyCvar<Field = Field>,
     {
@@ -1041,7 +1060,238 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
                     vec![coeff(l), coeff(r), coeff(o), m, c],
                 )
             }
-            _ => unimplemented!(),
+            // TODO: the code in circuit-writer was better
+            // TODO: also `rounds` would be a better name than `state`
+            KimchiConstraint::Poseidon { state } => {
+                // we expect state to be a vector of all the intermediary round states
+                // (in addition to the initial and final states)
+                assert_eq!(state.len(), ROUNDS_PER_HASH * ROUNDS_PER_HASH);
+
+                // where each state is three field elements
+                assert!(state.iter().all(|x| x.len() == SPONGE_WIDTH));
+
+                // reduce the state
+                let state: Vec<Vec<_>> = state
+                    .into_iter()
+                    .map(|vars| vars.into_iter().map(|x| self.reduce_to_var(x)).collect())
+                    .collect();
+
+                // retrieve the final state
+                let mut rev_state = state.into_iter().rev();
+                let final_state = rev_state.next().unwrap();
+                let state = rev_state.rev();
+
+                // iterate ROUNDS_PER_ROW rounds at a time
+                for mut round_state in &state.enumerate().chunks(5) {
+                    let (round_0, state_0) = round_state.next().unwrap();
+                    let (round_1, state_1) = round_state.next().unwrap();
+                    let (round_2, state_2) = round_state.next().unwrap();
+                    let (round_3, state_3) = round_state.next().unwrap();
+                    let (round_4, state_4) = round_state.next().unwrap();
+
+                    let vars = vec![
+                        Some(state_0[0]),
+                        Some(state_0[1]),
+                        Some(state_0[2]),
+                        // the last state is in 2nd position
+                        Some(state_4[0]),
+                        Some(state_4[1]),
+                        Some(state_4[2]),
+                        Some(state_1[0]),
+                        Some(state_1[1]),
+                        Some(state_1[2]),
+                        Some(state_2[0]),
+                        Some(state_2[1]),
+                        Some(state_2[2]),
+                        Some(state_3[0]),
+                        Some(state_3[1]),
+                        Some(state_3[2]),
+                    ];
+                    let coeffs = vec![
+                        self.constants.poseidon.round_constants[round_0][0],
+                        self.constants.poseidon.round_constants[round_0][1],
+                        self.constants.poseidon.round_constants[round_0][2],
+                        self.constants.poseidon.round_constants[round_1][0],
+                        self.constants.poseidon.round_constants[round_1][1],
+                        self.constants.poseidon.round_constants[round_1][2],
+                        self.constants.poseidon.round_constants[round_2][0],
+                        self.constants.poseidon.round_constants[round_2][1],
+                        self.constants.poseidon.round_constants[round_2][2],
+                        self.constants.poseidon.round_constants[round_3][0],
+                        self.constants.poseidon.round_constants[round_3][1],
+                        self.constants.poseidon.round_constants[round_3][2],
+                        self.constants.poseidon.round_constants[round_4][0],
+                        self.constants.poseidon.round_constants[round_4][1],
+                        self.constants.poseidon.round_constants[round_4][2],
+                    ];
+                    self.add_row(vars, GateType::Poseidon, coeffs);
+                }
+
+                // add_last_row adds the last row containing the output
+                let vars = vec![
+                    Some(final_state[0]),
+                    Some(final_state[1]),
+                    Some(final_state[2]),
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                ];
+                self.add_row(vars, GateType::Zero, vec![]);
+            }
+            KimchiConstraint::EcAddComplete {
+                p1,
+                p2,
+                p3,
+                inf,
+                same_x,
+                slope,
+                inf_z,
+                x21_inv,
+            } => {
+                let mut reduce_curve_point =
+                    |(x, y)| (self.reduce_to_var(x), self.reduce_to_var(y));
+                // 0   1   2   3   4   5   6   7      8   9
+                // x1  y1  x2  y2  x3  y3  inf same_x s   inf_z  x21_inv
+                let (x1, y1) = reduce_curve_point(p1);
+                let (x2, y2) = reduce_curve_point(p2);
+                let (x3, y3) = reduce_curve_point(p3);
+
+                let vars = vec![
+                    Some(x1),
+                    Some(y1),
+                    Some(x2),
+                    Some(y2),
+                    Some(x3),
+                    Some(y3),
+                    Some(self.reduce_to_var(inf)),
+                    Some(self.reduce_to_var(same_x)),
+                    Some(self.reduce_to_var(slope)),
+                    Some(self.reduce_to_var(inf_z)),
+                    Some(self.reduce_to_var(x21_inv)),
+                ];
+                self.add_row(vars, GateType::CompleteAdd, vec![]);
+            }
+            KimchiConstraint::EcScale { state } => {
+                for ScaleRound {
+                    accs,
+                    bits,
+                    ss,
+                    base,
+                    n_prev,
+                    n_next,
+                } in state
+                {
+                    // 0   1   2   3   4   5   6   7   8   9   10  11  12  13  14
+                    // xT  yT  x0  y0  n   n'      x1  y1  x2  y2  x3  y3  x4  y4
+                    // x5  y5  b0  b1  b2  b3  b4  s0  s1  s2  s3  s4
+                    let curr_row = vec![
+                        Some(self.reduce_to_var(base.0)),
+                        Some(self.reduce_to_var(base.1)),
+                        Some(self.reduce_to_var(accs[0].0.clone())),
+                        Some(self.reduce_to_var(accs[0].1.clone())),
+                        Some(self.reduce_to_var(n_prev)),
+                        Some(self.reduce_to_var(n_next)),
+                        None,
+                        Some(self.reduce_to_var(accs[1].0.clone())),
+                        Some(self.reduce_to_var(accs[1].1.clone())),
+                        Some(self.reduce_to_var(accs[2].0.clone())),
+                        Some(self.reduce_to_var(accs[2].1.clone())),
+                        Some(self.reduce_to_var(accs[3].0.clone())),
+                        Some(self.reduce_to_var(accs[3].1.clone())),
+                        Some(self.reduce_to_var(accs[4].0.clone())),
+                        Some(self.reduce_to_var(accs[4].1.clone())),
+                    ];
+
+                    self.add_row(curr_row, GateType::VarBaseMul, vec![]);
+
+                    let next_row = vec![
+                        Some(self.reduce_to_var(accs[5].0.clone())),
+                        Some(self.reduce_to_var(accs[5].1.clone())),
+                        Some(self.reduce_to_var(bits[0].clone())),
+                        Some(self.reduce_to_var(bits[1].clone())),
+                        Some(self.reduce_to_var(bits[2].clone())),
+                        Some(self.reduce_to_var(bits[3].clone())),
+                        Some(self.reduce_to_var(bits[4].clone())),
+                        Some(self.reduce_to_var(ss[0].clone())),
+                        Some(self.reduce_to_var(ss[1].clone())),
+                        Some(self.reduce_to_var(ss[2].clone())),
+                        Some(self.reduce_to_var(ss[3].clone())),
+                        Some(self.reduce_to_var(ss[4].clone())),
+                    ];
+
+                    self.add_row(next_row, GateType::Zero, vec![]);
+                }
+            }
+            KimchiConstraint::EcEndoscale {
+                state,
+                xs,
+                ys,
+                n_acc,
+            } => {
+                for round in state {
+                    let vars = vec![
+                        Some(self.reduce_to_var(round.xt)),
+                        Some(self.reduce_to_var(round.yt)),
+                        None,
+                        None,
+                        Some(self.reduce_to_var(round.xp)),
+                        Some(self.reduce_to_var(round.yp)),
+                        Some(self.reduce_to_var(round.n_acc)),
+                        Some(self.reduce_to_var(round.xr)),
+                        Some(self.reduce_to_var(round.yr)),
+                        Some(self.reduce_to_var(round.s1)),
+                        Some(self.reduce_to_var(round.s3)),
+                        Some(self.reduce_to_var(round.b1)),
+                        Some(self.reduce_to_var(round.b2)),
+                        Some(self.reduce_to_var(round.b3)),
+                        Some(self.reduce_to_var(round.b4)),
+                    ];
+
+                    self.add_row(vars, GateType::EndoMul, vec![]);
+                }
+
+                // last row
+                let vars = vec![
+                    None,
+                    None,
+                    None,
+                    None,
+                    Some(self.reduce_to_var(xs)),
+                    Some(self.reduce_to_var(ys)),
+                    Some(self.reduce_to_var(n_acc)),
+                ];
+                self.add_row(vars, GateType::Zero, vec![]);
+            }
+            KimchiConstraint::EcEndoscalar { state } => {
+                for round in state {
+                    let vars = vec![
+                        Some(self.reduce_to_var(round.n0)),
+                        Some(self.reduce_to_var(round.n8)),
+                        Some(self.reduce_to_var(round.a0)),
+                        Some(self.reduce_to_var(round.b0)),
+                        Some(self.reduce_to_var(round.a8)),
+                        Some(self.reduce_to_var(round.b8)),
+                        Some(self.reduce_to_var(round.x0)),
+                        Some(self.reduce_to_var(round.x1)),
+                        Some(self.reduce_to_var(round.x2)),
+                        Some(self.reduce_to_var(round.x3)),
+                        Some(self.reduce_to_var(round.x4)),
+                        Some(self.reduce_to_var(round.x5)),
+                        Some(self.reduce_to_var(round.x6)),
+                        Some(self.reduce_to_var(round.x7)),
+                    ];
+                    self.add_row(vars, GateType::EndoMulScalar, vec![]);
+                }
+            }
         }
     }
 }
