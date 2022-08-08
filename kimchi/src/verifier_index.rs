@@ -398,6 +398,7 @@ impl<G: KimchiCurve> VerifierIndex<G> {
                     chacha_final,
                     lookup_gate,
                     range_check_gate,
+                    keccak_xor,
                 },
 
             max_joint_size: _,
@@ -424,6 +425,9 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             }
             if let Some(range_check_gate) = range_check_gate {
                 fq_sponge.absorb_g(&range_check_gate.unshifted);
+            }
+            if let Some(keccak_xor) = keccak_xor {
+                fq_sponge.absorb_g(&keccak_xor.unshifted);
             }
         }
         fq_sponge.digest_fq()
