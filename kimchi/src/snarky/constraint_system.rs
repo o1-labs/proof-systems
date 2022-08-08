@@ -1,14 +1,14 @@
 use crate::circuits::gate::{CircuitGate, GateType};
 use crate::circuits::polynomials::poseidon::{ROUNDS_PER_HASH, SPONGE_WIDTH};
 use crate::circuits::wires::{Wire, COLUMNS, PERMUTS};
-use ark_ff::FftField;
+use ark_ff::PrimeField;
 use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
 
 use super::constants::Constants;
 
 /** A gate interface, parameterized by a field. */
-pub trait GateVector<Field: FftField> {
+pub trait GateVector<Field: PrimeField> {
     fn create() -> Self;
     fn add(&mut self, gate: CircuitGate<Field>);
     fn get(&self, idx: usize) -> CircuitGate<Field>;
@@ -78,7 +78,7 @@ impl<Row, Field> GateSpec<Row, Field> {
     }
 }
 
-impl<Field: FftField> GateSpec<usize, Field> {
+impl<Field: PrimeField> GateSpec<usize, Field> {
     fn to_rust_gate(self) -> CircuitGate<Field> {
         let GateSpec {
             kind,
@@ -254,7 +254,7 @@ where
     union_finds: disjoint_set::DisjointSet<V>,
 }
 
-impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Gates> {
+impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Gates> {
     /** Converts the set of permutations (equivalence_classes) to
       a hash table that maps each position to the next one.
       For example, if one of the equivalence class is [pos1, pos3, pos7],
@@ -530,7 +530,7 @@ impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Ga
     Returns `(last_scalar, last_variable, terms, terms_length)`
     where terms does not contain the last scalar and last variable observed.
 */
-fn accumulate_terms<Field: FftField>(terms: Vec<(Field, usize)>) -> HashMap<usize, Field> {
+fn accumulate_terms<Field: PrimeField>(terms: Vec<(Field, usize)>) -> HashMap<usize, Field> {
     let mut acc = HashMap::new();
     for (x, i) in terms.into_iter() {
         match acc.entry(i) {
@@ -561,7 +561,7 @@ pub trait SnarkyCvar: Clone {
 pub fn canonicalize<Cvar>(x: Cvar) -> Option<(Vec<(Cvar::Field, usize)>, usize, bool)>
 where
     Cvar: SnarkyCvar,
-    Cvar::Field: FftField,
+    Cvar::Field: PrimeField,
 {
     let (c, mut terms) = x.to_constant_and_terms();
     /* Note: [(c, 0)] represents the field element [c] multiplied by the 0th
@@ -579,7 +579,7 @@ where
     Some((terms_list, num_terms, has_constant_term))
 }
 
-impl<Field: FftField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Gates> {
+impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Gates> {
     /** Adds a generic constraint to the constraint system.
     As there are two generic gates per row, we queue
     every other generic gate.
