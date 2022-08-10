@@ -28,22 +28,8 @@ use crate::{
 
 use super::circuitgates::ForeignFieldMul;
 
-/// Number of gates used for foreign field multiplication
+/// Number of gates in this gadget
 pub const GATE_COUNT: usize = 1;
-fn view<F: PrimeField>(witness: &[Vec<F>; COLUMNS]) {
-    let rows = witness[0].len();
-    for row in 20..rows {
-        for col in 0..COLUMNS {
-            println!(
-                "row {}, col{}: {:?}",
-                row,
-                col,
-                o1_utils::FieldHelpers::to_hex(&witness[col][row])
-            );
-        }
-        println!();
-    }
-}
 
 impl<F: PrimeField> CircuitGate<F> {
     /// Create foreign field multiplication gate
@@ -142,8 +128,6 @@ impl<F: PrimeField> CircuitGate<F> {
             Evaluations::<F, D<F>>::from_vec_and_domain(witness[i].clone(), cs.domain.d1)
                 .interpolate()
         });
-        view(&witness);
-        println!("before invalid mul");
         // Compute permutation polynomial
         let rng = &mut StdRng::from_seed([0u8; 32]);
         let beta = F::rand(rng);
@@ -151,7 +135,6 @@ impl<F: PrimeField> CircuitGate<F> {
         let z_poly = cs
             .perm_aggreg(&witness, &beta, &gamma, rng)
             .map_err(|_| CircuitGateError::InvalidCopyConstraint(self.typ))?;
-        println!("after invalid mul");
 
         // Compute witness polynomial evaluations
         let witness_evals = cs.evaluate(&witness_poly, &z_poly);

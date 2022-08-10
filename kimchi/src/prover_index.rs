@@ -96,6 +96,7 @@ pub mod testing {
     };
     use commitment_dlog::srs::endos;
     use mina_curves::pasta::{pallas::Pallas, vesta::Vesta, Fp};
+    use num_bigint::BigUint;
 
     pub fn new_index_for_test_with_lookups(
         gates: Vec<CircuitGate<Fp>>,
@@ -103,6 +104,7 @@ pub mod testing {
         prev_challenges: usize,
         lookup_tables: Vec<LookupTable<Fp>>,
         runtime_tables: Option<Vec<RuntimeTableCfg<Fp>>>,
+        foreign_modulus: Option<BigUint>,
     ) -> ProverIndex<Vesta> {
         // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
         let cs = ConstraintSystem::<Fp>::create(gates)
@@ -110,6 +112,7 @@ pub mod testing {
             .runtime(runtime_tables)
             .public(public)
             .prev_challenges(prev_challenges)
+            .foreign_field_modulus(foreign_modulus)
             .build()
             .unwrap();
         let mut srs = SRS::<Vesta>::create(cs.domain.d1.size());
@@ -120,6 +123,6 @@ pub mod testing {
         ProverIndex::<Vesta>::create(cs, endo_q, srs)
     }
     pub fn new_index_for_test(gates: Vec<CircuitGate<Fp>>, public: usize) -> ProverIndex<Vesta> {
-        new_index_for_test_with_lookups(gates, public, 0, vec![], None)
+        new_index_for_test_with_lookups(gates, public, 0, vec![], None, None)
     }
 }

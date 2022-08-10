@@ -392,12 +392,18 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
     /// If not invoked, it is `None` by default.
     /// Panics if the BigUint being passed needs more than 3 limbs of 88 bits each
     /// or if the foreign modulus being passed is smaller than the native modulus.
-    pub fn foreign_field_modulus(mut self, foreign_field_modulus: BigUint) -> Self {
-        if foreign_field_modulus <= F::modulus_biguint() {
-            panic!("Foreign field modulus must be greater than the native modulus");
-        }
-        self.foreign_field_modulus =
-            Some(ForeignElement::<F, 3>::new_from_big(foreign_field_modulus));
+    pub fn foreign_field_modulus(mut self, foreign_field_modulus: Option<BigUint>) -> Self {
+        self.foreign_field_modulus = {
+            if let Some(modulus) = foreign_field_modulus {
+                if modulus <= F::modulus_biguint() {
+                    panic!("Foreign field modulus must be greater than the native modulus");
+                }
+                Some(ForeignElement::<F, 3>::new_from_big(modulus))
+            } else {
+                None
+            }
+        };
+
         self
     }
 

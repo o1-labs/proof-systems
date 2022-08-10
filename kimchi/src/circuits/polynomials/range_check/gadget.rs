@@ -30,21 +30,6 @@ use super::circuitgates::{RangeCheck0, RangeCheck1};
 
 pub const GATE_COUNT: usize = 2;
 
-fn view<F: PrimeField>(witness: &[Vec<F>; COLUMNS]) {
-    let rows = witness[0].len();
-    for row in 20..rows {
-        for col in 0..COLUMNS {
-            println!(
-                "row {}, col{}: {:?}",
-                row,
-                col,
-                o1_utils::FieldHelpers::to_hex(&witness[col][row])
-            );
-        }
-        println!();
-    }
-}
-
 impl<F: PrimeField> CircuitGate<F> {
     /// Create range check gate for constraining three 88-bit values.
     ///     Inputs the starting row
@@ -141,9 +126,6 @@ impl<F: PrimeField> CircuitGate<F> {
                 .interpolate()
         });
 
-        println!("before invalid range");
-
-        view(&witness);
         // Compute permutation polynomial
         let rng = &mut StdRng::from_seed([0u8; 32]);
         let beta = F::rand(rng);
@@ -151,7 +133,6 @@ impl<F: PrimeField> CircuitGate<F> {
         let z_poly = cs
             .perm_aggreg(&witness, &beta, &gamma, rng)
             .map_err(|_| CircuitGateError::InvalidCopyConstraint(self.typ))?;
-        println!("after invalid range");
 
         // Compute witness polynomial evaluations
         let witness_evals = cs.evaluate(&witness_poly, &z_poly);

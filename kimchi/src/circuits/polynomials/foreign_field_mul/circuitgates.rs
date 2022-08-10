@@ -83,9 +83,9 @@ use crate::circuits::{
     expr::{constraints::crumb, witness_curr, witness_next, ConstantExpr, E},
     gate::GateType,
 };
-use ark_ff::{FftField, Field};
+use ark_ff::FftField;
 use num_traits::One;
-use o1_utils::{foreign_field::LIMB_BITS, ForeignElement};
+use o1_utils::foreign_field::LIMB_BITS;
 use std::marker::PhantomData;
 
 /// Compute nonzero intermediate products with the bitstring format.
@@ -132,24 +132,18 @@ pub fn compute_intermediate_products<
     //                     + left_input_mi * right_input_mi - quotient_lo * foreign_modulus_hi
     //                     - quotient_hi * foreign_modulus_lo - quotient_mi * foreign_modulus_mi
     //
-    let add_lo = left_input_lo.clone() * right_input_lo.clone();
-    let sub_lo = quotient_lo.clone() * foreign_modulus_lo.clone();
-
-    let sub_foreign_modulus_lo = -foreign_modulus_lo.clone();
-    let sub_foreign_modulus_mi = -foreign_modulus_mi.clone();
-    let sub_foreign_modulus_hi = -foreign_modulus_hi.clone();
     let product_lo = left_input_lo.clone() * right_input_lo.clone()
         - quotient_lo.clone() * foreign_modulus_lo.clone();
     let product_mi = left_input_lo.clone() * right_input_mi.clone()
         + left_input_mi.clone() * right_input_lo.clone()
         - quotient_lo.clone() * foreign_modulus_mi.clone()
-        - quotient_mi.clone() * foreign_modulus_lo.clone(); // TODO: Check algebra sign
+        - quotient_mi.clone() * foreign_modulus_lo.clone();
     let product_hi = left_input_lo * right_input_hi
         + left_input_hi * right_input_lo
         + left_input_mi * right_input_mi
         - quotient_lo * foreign_modulus_hi.clone()
         - quotient_hi * foreign_modulus_lo
-        - quotient_mi * foreign_modulus_mi; // TODO: Check algebra sign
+        - quotient_mi * foreign_modulus_mi;
 
     (product_lo, product_mi, product_hi)
 }
@@ -234,22 +228,7 @@ where
         let foreign_modulus_hi = E::constant(ConstantExpr::ForeignFieldModulus(2));
 
         // Intermediate products for better readability of the constraints
-        /*let (product_lo, product_mi, product_hi) = compute_intermediate_products(
-            left_input_lo,
-            left_input_mi,
-            left_input_hi,
-            right_input_lo,
-            right_input_mi,
-            right_input_hi,
-            quotient_lo,
-            quotient_mi,
-            quotient_hi.clone(),
-            foreign_modulus_lo,
-            foreign_modulus_mi,
-            foreign_modulus_hi,
-
-        ); */
-
+        // TODO: use a function with traits to reuse for Expr and Field as when we didnt have aux
         let (product_lo, product_mi, product_hi) = {
             let add_lo = left_input_lo.clone() + right_input_lo.clone();
             let sub_lo = quotient_lo.clone() + foreign_modulus_lo.clone();

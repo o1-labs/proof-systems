@@ -42,6 +42,7 @@ pub(crate) struct TestFramework {
     lookup_tables: Vec<LookupTable<Fp>>,
     runtime_tables_setup: Option<Vec<RuntimeTableCfg<Fp>>>,
     runtime_tables: Vec<RuntimeTable<Fp>>,
+    foreign_modulus: Option<BigUint>,
     recursion: Vec<RecursionChallenge<Vesta>>,
     num_prev_challenges: usize,
 
@@ -98,6 +99,7 @@ impl TestFramework {
 
         let lookup_tables = mem::replace(&mut self.lookup_tables, vec![]);
         let runtime_tables_setup = mem::replace(&mut self.runtime_tables_setup, None);
+        let foreign_modulus = mem::replace(&mut self.foreign_modulus, None);
 
         let index = new_index_for_test_with_lookups(
             self.gates.take().unwrap(),
@@ -105,6 +107,7 @@ impl TestFramework {
             self.num_prev_challenges,
             lookup_tables,
             runtime_tables_setup,
+            foreign_modulus,
         );
         println!(
             "- time to create prover index: {:?}s",

@@ -12,14 +12,12 @@ use crate::circuits::{
 };
 use ark_ff::{Field, PrimeField};
 use array_init::array_init;
-use num_bigint::{BigInt, BigUint, ToBigInt};
+use num_bigint::BigUint;
 use num_integer::Integer;
 use o1_utils::{
-    field_helpers::{FieldFromBig, FieldHelpers},
+    field_helpers::FieldFromBig,
     foreign_field::{ForeignElement, LIMB_BITS},
 };
-
-use super::circuitgates::compute_intermediate_products;
 
 // Extend standard WitnessCell to support foreign field multiplication
 // specific cell types
@@ -181,62 +179,6 @@ pub fn create_witness<F: PrimeField>(
     extend_witness(&mut witness, quotient);
     extend_witness(&mut witness, remainder);
 
-    println!("left:   {:02X?}", left_input.to_big().to_bytes_be());
-    println!("right:  {:02X?}", right_input.to_big().to_bytes_be());
-    println!("formod: {:02X?}", foreign_modulus.to_big().to_bytes_be());
-    println!("quot:   {:02X?}", quotient.to_big().to_bytes_be());
-    println!("rem:    {:02X?}", remainder.to_big().to_bytes_be());
-
-    /*
-        // checking bigint
-        {
-            let foreign_modulus_lo = <F as PrimeField>::into_repr(&foreign_modulus.lo());
-            let foreign_modulus_mi = <F as PrimeField>::into_repr(&foreign_modulus.mi());
-            let foreign_modulus_hi = <F as PrimeField>::into_repr(&foreign_modulus.hi());
-            let left_input_lo = <F as PrimeField>::into_repr(&left_input.lo());
-            let left_input_mi = <F as PrimeField>::into_repr(&left_input.mi());
-            let left_input_hi = <F as PrimeField>::into_repr(&left_input.hi());
-            let right_input_lo = <F as PrimeField>::into_repr(&right_input.lo());
-            let right_input_mi = <F as PrimeField>::into_repr(&right_input.mi());
-            let right_input_hi = <F as PrimeField>::into_repr(&right_input.hi());
-            let quotient_lo = <F as PrimeField>::into_repr(&quotient.lo());
-            let quotient_mi = <F as PrimeField>::into_repr(&quotient.mi());
-            let quotient_hi = <F as PrimeField>::into_repr(&quotient.hi());
-            let remainder_lo = <F as PrimeField>::into_repr(&remainder.lo());
-            let remainder_mi = <F as PrimeField>::into_repr(&remainder.mi());
-            let remainder_hi = <F as PrimeField>::into_repr(&remainder.hi());
-
-            let product_lo = left_input_lo.clone() * right_input_lo.clone()
-                - quotient_lo.clone() * foreign_modulus_lo.clone();
-            let product_mi = left_input_lo.clone() * right_input_mi.clone()
-                + left_input_mi.clone() * right_input_lo.clone()
-                - quotient_lo.clone() * foreign_modulus_mi.clone()
-                - quotient_mi.clone() * foreign_modulus_lo.clone();
-            let product_hi = left_input_lo * right_input_hi
-                + left_input_hi.clone() * right_input_lo.clone()
-                + left_input_mi.clone() * right_input_mi.clone()
-                - quotient_lo.clone() * foreign_modulus_hi.clone()
-                - quotient_hi.clone() * foreign_modulus_lo.clone()
-                - quotient_mi.clone() * foreign_modulus_mi.clone();
-        }
-    */
-    // Compute nonzero intermediate products (uses the same code as constraints!)
-    /*let (product_lo, product_mi, product_hi) = compute_intermediate_products(
-            *left_input.lo(),
-            *left_input.mi(),
-            *left_input.hi(),
-            *right_input.lo(),
-            *right_input.mi(),
-            *right_input.hi(),
-            *quotient.lo(),
-            *quotient.mi(),
-            *quotient.hi(),
-            *foreign_modulus.lo(),
-            *foreign_modulus.mi(),
-            *foreign_modulus.hi(),
-        );
-    */
-
     let two = F::from(2u32);
     let two_to_limb = two.pow(&[LIMB_BITS as u64]);
     let power_lo_top = two.clone(); // 2^{2L+1}
@@ -246,8 +188,6 @@ pub fn create_witness<F: PrimeField>(
     let (product_lo, product_mi, product_hi, aux_lo, aux_mi, aux_hi) =
         compute_auxiliar(left_input, right_input, quotient, foreign_modulus);
 
-    println!("creating witness");
-    println!("product_mi: {:?}", product_mi.to_hex());
     // Define some helpers
     let product_mi_big: BigUint = product_mi.into();
 
@@ -259,12 +199,8 @@ pub fn create_witness<F: PrimeField>(
     let zero_bot = product_lo - *remainder.lo()
         + two_to_88 * (F::from_big(product_mi_bot.clone()).unwrap() - *remainder.mi());
     let zero_bot_big: BigUint = zero_bot.into();
-    println!("zero_bot: {:?}", zero_bot.to_hex());
     let (carry_bot, _) = zero_bot_big.div_rem(&two_to_176);
-    println!(
-        "carry_bot: {:?}",
-        F::from_big(carry_bot.clone()).unwrap().to_hex()
-    );
+
     let (_, product_mi_top_limb) = product_mi_top.div_rem(&two_to_88_big.clone());
     let zero_top: F = F::from_big(carry_bot.clone()).unwrap()
         + F::from_big(product_mi_top.clone()).unwrap()
@@ -273,7 +209,6 @@ pub fn create_witness<F: PrimeField>(
         - aux_lo * power_lo_top
         - aux_mi * power_mi_top;
     let zero_top_big: BigUint = zero_top.into();
-    println!("zero_top: {:?}", zero_top.to_hex());
     let (carry_top_big, _) = zero_top_big.div_rem(&two_to_88_big.clone());
     let carry_top: F = F::from_big(carry_top_big.clone()).unwrap();
     let (_carry_top_over, carry_top_limb) = carry_top_big.div_rem(&two_to_88_big.clone());
@@ -281,13 +216,6 @@ pub fn create_witness<F: PrimeField>(
     let product_mi_bot = F::from_big(product_mi_bot).expect("big_f does not fit in F");
     let product_mi_top_limb = F::from_big(product_mi_top_limb).expect("big_f does not fit in F");
     let carry_top_limb = F::from_big(carry_top_limb).expect("big_f does not fit in F");
-
-    let xy_term = *left_input.mi() * *right_input.hi() + *left_input.hi() * *right_input.mi()
-        - *quotient.mi() * *foreign_modulus.hi()
-        - *quotient.hi() * *foreign_modulus.mi();
-    let y2_term = *left_input.hi() * *right_input.hi() - *quotient.hi() * *foreign_modulus.hi();
-    println!("xy_term:    {:?}", xy_term.to_hex());
-    println!("y2_term:    {:?}", y2_term.to_hex());
 
     // Define the row for the multi-range check for the product_mi_bot, product_mi_top_limb, and carry_top_limb
     extend_witness(
@@ -312,26 +240,13 @@ pub fn create_witness<F: PrimeField>(
         [aux_lo, aux_mi, aux_hi],
     );
 
-    view(&witness);
     witness
-}
-
-fn view<F: PrimeField>(witness: &[Vec<F>; COLUMNS]) {
-    let rows = witness[0].len();
-    for row in 20..rows {
-        for col in 0..COLUMNS {
-            println!("row {}, col{}: {:?}", row, col, witness[col][row].to_hex());
-        }
-        println!();
-    }
 }
 
 pub fn check_witness<F: PrimeField>(
     witness: &[Vec<F>; COLUMNS],
     foreign_mod: ForeignElement<F, 3>,
 ) -> Result<(), String> {
-    let [foreign_modulus_lo, foreign_modulus_mi, foreign_modulus_hi] = foreign_mod.limbs;
-
     let left_input_lo = witness[0][20];
     let left_input_mi = witness[1][20];
     let left_input_hi = witness[2][20];
@@ -353,7 +268,7 @@ pub fn check_witness<F: PrimeField>(
 
     let aux_lo = witness[7][21];
     let aux_mi = witness[8][21];
-    let aux_hi = witness[9][21];
+    let _aux_hi = witness[9][21];
 
     let product_mi_bot = witness[7][20];
     let product_mi_top_limb = witness[8][20];
@@ -379,73 +294,26 @@ pub fn check_witness<F: PrimeField>(
     let two_to_88 = F::from(2u128.pow(88));
     let two_to_176 = two_to_88.clone() * two_to_88.clone();
 
-    println!("CHECK product mi");
     let product_mi_top = two_to_88.clone() * product_mi_top_over.clone() + product_mi_top_limb;
     let product_mi_sum = two_to_88.clone() * product_mi_top.clone() + product_mi_bot.clone();
-    println!("product_mi:     {:?}", product_mi.to_hex());
-    println!("product_mi_sum: {:?}", product_mi_sum.to_hex());
-    println!("quotient_lo:    {:?}", quotient_lo.to_bytes().reverse());
-    println!("quotient_mi:    {:?}", quotient_mi.to_bytes().reverse());
-    println!(
-        "foreign_mod_lo: {:?}",
-        foreign_modulus_lo.to_bytes().reverse()
-    );
-    println!(
-        "foreign_mod_mi: {:?}",
-        foreign_modulus_mi.to_bytes().reverse()
-    );
     assert_eq!(F::zero(), product_mi - product_mi_sum);
 
-    println!("CHECK crumb carry bot");
     assert_eq!(F::zero(), crumb(&carry_bot));
 
-    println!("CHECK crumb product mi top over");
     assert_eq!(F::zero(), crumb(&product_mi_top_over));
 
-    println!("CHECK carry shift");
     assert_eq!(F::zero(), carry_shift - two_to_8 * carry_top_over.clone());
 
-    println!("CHECK product shift");
     assert_eq!(F::zero(), product_shift - two_to_9 * product_mi_top_over);
 
-    println!("CHECK zero bot");
     let zero_bot = product_lo - remainder_lo + two_to_88.clone() * (product_mi_bot - remainder_mi);
-    let two_to_264 = two_to_88.clone() * two_to_176.clone();
-    let two_to_352 = two_to_88.clone() * two_to_264.clone();
-    let xy_term = left_input_mi * right_input_hi + left_input_hi * right_input_mi
-        - quotient_mi * foreign_modulus_hi
-        - quotient_hi * foreign_modulus_mi;
-    let y2_term = left_input_hi * right_input_hi - quotient_hi * foreign_modulus_hi;
-    let y2xy = two_to_264 * xy_term + two_to_352 * y2_term;
-    let y2xy_zero = zero_bot.clone() + y2xy;
-    println!("aux_lo:         {:?}", aux_lo.to_hex());
-    println!("aux_mi:         {:?}", aux_mi.to_hex());
-    println!("aux_hi:         {:?}", aux_hi.to_hex());
-    println!("zero_bot:       {:?}", zero_bot.to_hex());
-    println!("xy_term:        {:?}", xy_term.to_hex());
-    println!("y2_term:        {:?}", y2_term.to_hex());
-    println!("y2xy:           {:?}", y2xy.to_hex());
-    println!("y2xy_zero:      {:?}", y2xy_zero.to_hex());
-    println!("product_lo:     {:?}", product_lo.to_hex());
-    println!("remainder_lo:   {:?}", remainder_lo.to_hex());
-    println!("product_mi_bot: {:?}", product_mi_bot.to_hex());
-    println!("remainder_mi:   {:?}", remainder_mi.to_hex());
-    let subtraction = zero_bot - two_to_176 * carry_bot.clone();
-    println!("subtraction:    {:?}", subtraction.to_hex());
-    assert_eq!(F::zero(), subtraction);
+    assert_eq!(F::zero(), zero_bot - two_to_176 * carry_bot.clone());
 
-    println!("CHECK zero top");
     let carry_top = two_to_88.clone() * carry_top_over + carry_top_limb;
     let zero_top = carry_bot + product_mi_top + product_hi
         - remainder_hi
         - aux_lo * power_lo_top
         - aux_mi * power_mi_top;
-    println!("carry_top:      {:?}", carry_top.to_hex());
-    println!("zero_top:       {:?}", zero_top.to_hex());
-    println!(
-        "two88*carrytop: {:?}",
-        (two_to_88.clone() * carry_top.clone()).to_hex()
-    );
     assert_eq!(F::zero(), zero_top - two_to_88 * carry_top);
 
     Ok(())

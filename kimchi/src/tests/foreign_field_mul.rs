@@ -1,6 +1,5 @@
 use crate::{
     circuits::{
-        constraints::ConstraintSystem,
         gate::CircuitGate,
         polynomials::foreign_field_mul::{self},
         wires::Wire,
@@ -11,6 +10,7 @@ use crate::{
 use ark_ec::AffineCurve;
 use ark_ff::Zero;
 use mina_curves::pasta::{pallas, vesta::Vesta, Fp};
+use num_bigint::BigUint;
 use o1_utils::foreign_field::{ForeignElement, FOREIGN_MOD};
 
 type PallasField = <pallas::Pallas as AffineCurve>::BaseField;
@@ -58,20 +58,8 @@ static ZERO: &[u8] = &[0x00];
 /// The one byte
 static ONE: &[u8] = &[0x01];
 
-fn create_test_constraint_system() -> ConstraintSystem<PallasField> {
-    let (mut next_row, mut gates) = CircuitGate::<PallasField>::create_foreign_field_mul(0);
-
-    // Temporary workaround for lookup-table/domain-size issue
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::new(next_row)));
-        next_row += 1;
-    }
-
-    ConstraintSystem::create(gates).build().unwrap()
-}
-
 fn create_test_prover_index(public_size: usize) -> ProverIndex<Vesta> {
-    let (mut next_row, mut gates) = CircuitGate::<Fp>::create_multi_range_check(0);
+    let (mut next_row, mut gates) = CircuitGate::<Fp>::create_foreign_field_mul(0);
 
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
@@ -85,13 +73,14 @@ fn create_test_prover_index(public_size: usize) -> ProverIndex<Vesta> {
         0,
         vec![foreign_field_mul::gadget::lookup_table()],
         None,
+        Some(BigUint::from_bytes_be(FOREIGN_MOD)),
     )
 }
 
 #[test]
 // Multiply zeroes. This checks that small amounts also get packed into limbs
 fn test_zero_mul() {
-    //let prover_index = create_test_prover_index(0);
+    let prover_index = create_test_prover_index(0);
 
     let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
 
@@ -109,12 +98,13 @@ fn test_zero_mul() {
         Ok(()),
         foreign_field_mul::witness::check_witness(&witness, foreign_modulus)
     );
-    /*for row in 0..20 {
+
+    for row in 0..20 {
         assert_eq!(
             prover_index.cs.gates[row].verify::<Vesta>(row, &witness, &prover_index.cs, &[]),
             Ok(())
         );
-    }*/
+    }
 
     // check quotient and remainder values are zero
     assert_eq!(witness[1][21], PallasField::zero());
