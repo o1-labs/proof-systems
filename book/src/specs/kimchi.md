@@ -1436,6 +1436,14 @@ pub struct ProverIndex<G: KimchiCurve> {
 
     /// maximal size of the quotient polynomial according to the supported constraints
     pub max_quot_size: usize,
+
+    /// The verifier index corresponding to this prover index
+    #[serde(skip)]
+    pub verifier_index: Option<VerifierIndex<G>>,
+
+    /// The verifier index digest corresponding to this prover index
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    pub verifier_index_digest: Option<G::BaseField>,
 }
 ```
 
@@ -1446,7 +1454,7 @@ Same as the prover index, we have a number of pre-computations as part of the ve
 
 ```rs
 #[serde_as]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LookupVerifierIndex<G: CommitmentCurve> {
     pub lookup_used: LookupsUsed,
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
@@ -1468,7 +1476,7 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 }
 
 #[serde_as]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct VerifierIndex<G: KimchiCurve> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
@@ -1788,6 +1796,7 @@ The prover then follows the following steps to create the proof:
 1. Pad the witness columns with Zero gates to make them the same length as the domain.
    Then, randomize the last `ZK_ROWS` of each columns.
 1. Setup the Fq-Sponge.
+1. Absorb the digest of the VerifierIndex.
 1. Absorb the commitments of the previous challenges with the Fq-sponge.
 1. Compute the negated public input polynomial as
    the polynomial that evaluates to $-p_i$ for the first `public_input_size` values of the domain,
@@ -1882,6 +1891,8 @@ The prover then follows the following steps to create the proof:
 1. Evaluate the ft polynomial at $\zeta\omega$ only.
 1. Setup the Fr-Sponge
 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
+1. Absorb the previous recursion challenges.
+1. Compute evaluations for the previous recursion challenges.
 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
 1. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
@@ -1927,6 +1938,7 @@ We define two helper algorithms below, used in the batch verification of proofs.
 We run the following algorithm:
 
 1. Setup the Fq-Sponge.
+1. Absorb the digest of the VerifierIndex.
 1. Absorb the commitments of the previous challenges with the Fq-sponge.
 1. Absorb the commitment of the public input polynomial with the Fq-Sponge.
 1. Absorb the commitments to the registers / witness columns with the Fq-Sponge.
@@ -1949,6 +1961,8 @@ We run the following algorithm:
 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
 1. Setup the Fr-Sponge.
 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
+1. Compute evaluations for the previous recursion challenges.
+1. Absorb the previous recursion challenges.
 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
 
    NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
