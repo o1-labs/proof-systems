@@ -69,9 +69,9 @@
 //~ |   4 | `right_input_mi` (copy)   | `remainder_lo`   (copy) |
 //~ |   5 | `carry_shift`    (lookup) | `remainder_mi`   (copy) |
 //~ |   6 | `product_shift`  (lookup) | `remainder_hi`   (copy) |
-//~ |   7 | `product_mi_bot`          |                         |
-//~ |   8 | `product_mi_top_limb`     |                         |
-//~ |   9 | `product_mi_top_over`     |                         |
+//~ |   7 | `product_mi_bot`          | `aux_lo`                |
+//~ |   8 | `product_mi_top_limb`     | `aux_mi`                |
+//~ |   9 | `product_mi_top_over`     | `aux_hi`                |
 //~ |  10 | `carry_bot`               |                         |
 //~ |  11 | `carry_top_limb`          |                         |
 //~ |  12 | `carry_top_over`          |                         |
@@ -83,10 +83,12 @@ use crate::circuits::{
     expr::{constraints::crumb, witness_curr, witness_next, ConstantExpr, E},
     gate::GateType,
 };
-use ark_ff::FftField;
+use ark_ff::{FftField, Field};
+use num_traits::One;
+use o1_utils::{foreign_field::LIMB_BITS, ForeignElement};
 use std::marker::PhantomData;
 
-/// Compute nonzero intermediate products
+/// Compute nonzero intermediate products with the bitstring format.
 ///
 /// For details see this section of the design document
 ///
@@ -100,7 +102,9 @@ pub fn compute_intermediate_products<
         + std::ops::Sub<Output = F>
         + std::ops::Neg<Output = F>
         + std::ops::Add<Output = F>
-        + Clone,
+        + std::cmp::PartialOrd
+        + Clone
+        + One,
 >(
     left_input_lo: F,
     left_input_mi: F,
@@ -128,21 +132,24 @@ pub fn compute_intermediate_products<
     //                     + left_input_mi * right_input_mi - quotient_lo * foreign_modulus_hi
     //                     - quotient_hi * foreign_modulus_lo - quotient_mi * foreign_modulus_mi
     //
-    let sub_foreign_modulus_lo = -foreign_modulus_lo;
-    let sub_foreign_modulus_mi = -foreign_modulus_mi;
-    let sub_foreign_modulus_hi = -foreign_modulus_hi;
+    let add_lo = left_input_lo.clone() * right_input_lo.clone();
+    let sub_lo = quotient_lo.clone() * foreign_modulus_lo.clone();
+
+    let sub_foreign_modulus_lo = -foreign_modulus_lo.clone();
+    let sub_foreign_modulus_mi = -foreign_modulus_mi.clone();
+    let sub_foreign_modulus_hi = -foreign_modulus_hi.clone();
     let product_lo = left_input_lo.clone() * right_input_lo.clone()
-        + quotient_lo.clone() * sub_foreign_modulus_lo.clone();
+        - quotient_lo.clone() * foreign_modulus_lo.clone();
     let product_mi = left_input_lo.clone() * right_input_mi.clone()
         + left_input_mi.clone() * right_input_lo.clone()
-        + quotient_lo.clone() * sub_foreign_modulus_mi.clone()
-        + quotient_mi.clone() * sub_foreign_modulus_lo.clone(); // TODO: Check algebra sign
+        - quotient_lo.clone() * foreign_modulus_mi.clone()
+        - quotient_mi.clone() * foreign_modulus_lo.clone(); // TODO: Check algebra sign
     let product_hi = left_input_lo * right_input_hi
         + left_input_hi * right_input_lo
         + left_input_mi * right_input_mi
-        + quotient_lo * sub_foreign_modulus_hi.clone()
-        + quotient_hi * sub_foreign_modulus_lo
-        + quotient_mi * sub_foreign_modulus_mi; // TODO: Check algebra sign
+        - quotient_lo * foreign_modulus_hi.clone()
+        - quotient_hi * foreign_modulus_lo
+        - quotient_mi * foreign_modulus_mi; // TODO: Check algebra sign
 
     (product_lo, product_mi, product_hi)
 }
@@ -186,6 +193,10 @@ where
         let remainder_mi = witness_next(5);
         let remainder_hi = witness_next(6);
 
+        let aux_lo = witness_next(7);
+        let aux_mi = witness_next(8);
+        let aux_hi = witness_next(9);
+
         // -> define shifted values of the quotient and witness values
         let carry_shift = witness_curr(5);
         let product_shift = witness_curr(6);
@@ -205,7 +216,13 @@ where
         //
 
         // Powers of 2 for range constraints
-        let _eight: E<F> = E::from(8);
+        let two = E::from(2u64);
+        let two_to_limb = two.clone().pow(LIMB_BITS as u64);
+        let power_lo = two_to_limb.clone() * two_to_limb.clone() * two.clone(); // 2^{2L+1}
+        let power_mi = power_lo.clone() * two.clone(); // 2^{2L+2}
+        let power_hi = power_mi.clone() * two.clone(); // 2^{2L+3}
+        let power_lo_top = two.clone();
+        let power_mi_top = two.clone() * two.clone() * two_to_limb.clone();
         let two_to_8 = E::from(256);
         let two_to_9 = E::from(512);
         let two_to_88 = E::from(2).pow(88);
@@ -217,7 +234,7 @@ where
         let foreign_modulus_hi = E::constant(ConstantExpr::ForeignFieldModulus(2));
 
         // Intermediate products for better readability of the constraints
-        let (product_lo, product_mi, product_hi) = compute_intermediate_products(
+        /*let (product_lo, product_mi, product_hi) = compute_intermediate_products(
             left_input_lo,
             left_input_mi,
             left_input_hi,
@@ -230,7 +247,31 @@ where
             foreign_modulus_lo,
             foreign_modulus_mi,
             foreign_modulus_hi,
-        );
+
+        ); */
+
+        let (product_lo, product_mi, product_hi) = {
+            let add_lo = left_input_lo.clone() + right_input_lo.clone();
+            let sub_lo = quotient_lo.clone() + foreign_modulus_lo.clone();
+
+            let add_mi = left_input_lo.clone() * right_input_mi.clone()
+                + left_input_mi.clone() * right_input_lo.clone();
+            let sub_mi = quotient_lo.clone() * foreign_modulus_mi.clone()
+                + quotient_mi.clone() * foreign_modulus_lo.clone();
+
+            let add_hi = left_input_lo * right_input_hi
+                + left_input_hi * right_input_lo
+                + left_input_mi * right_input_mi;
+            let sub_hi = quotient_lo * foreign_modulus_hi.clone()
+                + quotient_hi * foreign_modulus_lo
+                + quotient_mi * foreign_modulus_mi;
+
+            let product_lo = add_lo - sub_lo + aux_lo.clone() * power_lo;
+            let product_mi = add_mi - sub_mi + aux_mi.clone() * power_mi;
+            let product_hi = add_hi - sub_hi + aux_hi * power_hi;
+
+            (product_lo, product_mi, product_hi)
+        };
 
         //
         // Define constraints
@@ -287,7 +328,10 @@ where
         // 2^88 * carry_top = zero_top = carry_bot + product_mi_top + product_hi - remainder_hi
         //
         let carry_top = two_to_88.clone() * carry_top_over + carry_top_limb;
-        let zero_top = carry_bot + product_mi_top + product_hi - remainder_hi;
+        let zero_top = carry_bot + product_mi_top + product_hi
+            - remainder_hi
+            - aux_lo * power_lo_top
+            - aux_mi * power_mi_top;
         constraints.push(zero_top - two_to_88 * carry_top);
 
         // 8-9) Plookup constraints on columns 2 and 3 of the Next row

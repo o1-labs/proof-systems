@@ -445,6 +445,46 @@ These 2 gates are preceeded by 5 multi-range-check gates.
 | 20     | `ForeignFieldMul`   |                           |
 | 21     | `Zero`              |                           |
 
+# Underflows
+
+In the above, we have used arithmetics from the point of view of the bitstrings behind these limbs. Nonetheless, they will ultimately be interpreted as native field elements. This entails no problems when we are dealing with "positive" values. However, when we subtract a "larger" value from a "smaller" value, the result will be negative. And these numbers cause wraps around the native modulus. In other words, the "minus" sign that we would normally encode in integers, gets translated as a huge field element that overflows the limb length. 
+
+For this reason, when we come across subtraction (which we do when computing the intermediate products), we must include some additional conditionals to ensure that we do not cause underflows. We will include in the witness three auxiliary values (one per intermediate product) to take care of this. Whenever the subtracted part is larger than the summand, we will add a power of two (a 1 bit followed by a sufficient number of 0 bits) to the operation to obtain the correct bitstring up to the suffix that we are intersted in. Then, this amount will be deduced from the next intermediate product with a correct shift to make sure that the result is aligned. 
+
+A bit more visually, we will modify the per-limb operations as follows:
+
+```text
+0             L             2L            3L            4L
+|-------------|-------------|-------------|-------------|-------------|
+                            :              
+|--------------p0-----------:-| 2L + 1
+                            :
+00------------------------00:01 <- aux0
+                            :
+                            :
+              |-------------:-p1------------| 2L + 2
+                    p10➚    :        p11➚
+                            :
+              00--------------------------00:001 <- aux1
+                            :
+                            |----------------p2-------------| 2L + 3
+                            :
+                            00----------------------------00:0001 <- aux2
+                            :
+|-----r0------|             :
+                            :
+              |-----r1------|
+                            :
+                            |-----r2------|
+\__________________________/ \______________________________/
+             ≈ u0                           ≈ u1
+```
+This means, 
+- if `aux0` is set to `1`, then $2^{2L + 1}$ will be added to `p0` and `2` will be subtracted from the top term.
+- if `aux1` is set to `1`, then $2^{2L + 2}$ will be added to `p1` and $2^{L+2}$ will be subtracted from the top term.
+- if `aux2` is set to `1`, then $2^{2L + 3}$ will be added to `p2` and $2^{L+3}$.
+
+
 <!--
 ## Another approach
 

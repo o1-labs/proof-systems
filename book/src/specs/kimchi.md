@@ -1263,9 +1263,9 @@ The last two rows are layed out like this
 |   4 | `right_input_mi` (copy)   | `remainder_lo`   (copy) |
 |   5 | `carry_shift`    (lookup) | `remainder_mi`   (copy) |
 |   6 | `product_shift`  (lookup) | `remainder_hi`   (copy) |
-|   7 | `product_mi_bot`          |                         |
-|   8 | `product_mi_top_limb`     |                         |
-|   9 | `product_mi_top_over`     |                         |
+|   7 | `product_mi_bot`          | `aux_lo`                |
+|   8 | `product_mi_top_limb`     | `aux_mi`                |
+|   9 | `product_mi_top_over`     | `aux_hi`                |
 |  10 | `carry_bot`               |                         |
 |  11 | `carry_top_limb`          |                         |
 |  12 | `carry_top_over`          |                         |

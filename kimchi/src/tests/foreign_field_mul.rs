@@ -91,7 +91,7 @@ fn create_test_prover_index(public_size: usize) -> ProverIndex<Vesta> {
 #[test]
 // Multiply zeroes. This checks that small amounts also get packed into limbs
 fn test_zero_mul() {
-    let prover_index = create_test_prover_index(0);
+    //let prover_index = create_test_prover_index(0);
 
     let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
 
@@ -105,12 +105,16 @@ fn test_zero_mul() {
     let witness =
         foreign_field_mul::witness::create_witness(left_input, right_input, foreign_modulus);
 
-    for row in 0..20 {
+    assert_eq!(
+        Ok(()),
+        foreign_field_mul::witness::check_witness(&witness, foreign_modulus)
+    );
+    /*for row in 0..20 {
         assert_eq!(
             prover_index.cs.gates[row].verify::<Vesta>(row, &witness, &prover_index.cs, &[]),
             Ok(())
         );
-    }
+    }*/
 
     // check quotient and remainder values are zero
     assert_eq!(witness[1][21], PallasField::zero());
@@ -124,7 +128,7 @@ fn test_zero_mul() {
 #[test]
 // Test multiplication of largest foreign element and one
 fn test_one_mul() {
-    let prover_index = create_test_prover_index(0);
+    //let prover_index = create_test_prover_index(0);
 
     let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
     let left_input = ForeignElement::<PallasField, 3>::new_from_be(MAX_FOR);
@@ -158,7 +162,7 @@ fn test_one_mul() {
 // Test maximum values whose squaring fits in the native field
 // m^2 = q * f + r -> q should be 0 and r should be m^2 < n < f
 fn test_max_native_square() {
-    let prover_index = create_test_prover_index(0);
+    //let prover_index = create_test_prover_index(0);
     let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
     let left_input = ForeignElement::<PallasField, 3>::new_from_be(SQR_NAT);
     let right_input = ForeignElement::<PallasField, 3>::new_from_be(SQR_NAT);
@@ -199,7 +203,7 @@ fn test_max_native_square() {
 // Test maximum values whose squaring fits in the foreign field
 // g^2 = q * f + r -> q should be 0 and r should be g^2 < f
 fn test_max_foreign_square() {
-    let prover_index = create_test_prover_index(0);
+    //let prover_index = create_test_prover_index(0);
     let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
     let left_input = ForeignElement::<PallasField, 3>::new_from_be(SQR_FOR);
     let right_input = ForeignElement::<PallasField, 3>::new_from_be(SQR_FOR);
@@ -273,7 +277,7 @@ fn test_max_native_multiplicands() {
 // Test squaring of the maximum foreign field values
 // ( f - 1) * (f - 1) = f^2 - 2f + 1 = f * (f - 2) + 1
 fn test_max_foreign_multiplicands() {
-    let prover_index = create_test_prover_index(0);
+    //let prover_index = create_test_prover_index(0);
     let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
     let left_input = ForeignElement::<PallasField, 3>::new_from_be(MAX_FOR);
     let right_input = ForeignElement::<PallasField, 3>::new_from_be(MAX_FOR);
