@@ -278,9 +278,9 @@ pub fn check_witness<F: PrimeField>(
 
     let two = F::from(2u32);
     let two_to_limb = two.pow(&[LIMB_BITS as u64]);
-    let power_lo_top = two.clone(); // 2^{2L+1}
-    let power_mi_top = two_to_limb.clone() * two.clone() * two.clone(); // 2^
-                                                                        //let power_hi_top = power_mi.clone() * two.clone(); // 2^{2L+3}
+    let power_lo_top = two; // 2^{2L+1}
+    let power_mi_top = two_to_limb * two * two; // 2^
+                                                //let power_hi_top = power_mi.clone() * two.clone(); // 2^{2L+3}
 
     let left_input = ForeignElement::new([left_input_lo, left_input_mi, left_input_hi]);
     let right_input = ForeignElement::new([right_input_lo, right_input_mi, right_input_hi]);
@@ -291,24 +291,24 @@ pub fn check_witness<F: PrimeField>(
     let two_to_8 = F::from(2u32.pow(8));
     let two_to_9 = F::from(2u32.pow(9));
     let two_to_88 = F::from(2u128.pow(88));
-    let two_to_176 = two_to_88.clone() * two_to_88.clone();
+    let two_to_176 = two_to_88 * two_to_88;
 
-    let product_mi_top = two_to_88.clone() * product_mi_top_over.clone() + product_mi_top_limb;
-    let product_mi_sum = two_to_88.clone() * product_mi_top.clone() + product_mi_bot.clone();
+    let product_mi_top = two_to_88 * product_mi_top_over + product_mi_top_limb;
+    let product_mi_sum = two_to_88 * product_mi_top + product_mi_bot;
     assert_eq!(F::zero(), product_mi - product_mi_sum);
 
     assert_eq!(F::zero(), crumb(carry_bot));
 
     assert_eq!(F::zero(), crumb(product_mi_top_over));
 
-    assert_eq!(F::zero(), carry_shift - two_to_8 * carry_top_over.clone());
+    assert_eq!(F::zero(), carry_shift - two_to_8 * carry_top_over);
 
     assert_eq!(F::zero(), product_shift - two_to_9 * product_mi_top_over);
 
-    let zero_bot = product_lo - remainder_lo + two_to_88.clone() * (product_mi_bot - remainder_mi);
-    assert_eq!(F::zero(), zero_bot - two_to_176 * carry_bot.clone());
+    let zero_bot = product_lo - remainder_lo + two_to_88 * (product_mi_bot - remainder_mi);
+    assert_eq!(F::zero(), zero_bot - two_to_176 * carry_bot);
 
-    let carry_top = two_to_88.clone() * carry_top_over + carry_top_limb;
+    let carry_top = two_to_88 * carry_top_over + carry_top_limb;
     let zero_top = carry_bot + product_mi_top + product_hi
         - remainder_hi
         - aux_lo * power_lo_top
