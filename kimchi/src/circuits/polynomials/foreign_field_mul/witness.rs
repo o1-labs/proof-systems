@@ -342,30 +342,28 @@ pub fn compute_auxiliar<F: Field>(
 
     let two = F::from(2u32);
     let two_to_limb = two.pow(&[LIMB_BITS as u64]);
-    let power_lo = two_to_limb.clone() * two_to_limb.clone() * two.clone(); // 2^{2L+1}
-    let power_mi = power_lo.clone() * two.clone(); // 2^{2L+2}
-    let power_hi = power_mi.clone() * two.clone(); // 2^{2L+3}
+    let power_lo = two_to_limb * two_to_limb * two; // 2^{2L+1}
+    let power_mi = power_lo * two; // 2^{2L+2}
+    let power_hi = power_mi * two; // 2^{2L+3}
 
     let mut aux_lo = F::zero();
     let mut aux_mi = F::zero();
     let mut aux_hi = F::zero();
 
-    let add_lo = left_input_lo.clone() * right_input_lo.clone();
-    let sub_lo = quotient_lo.clone() * foreign_modulus_lo.clone();
+    let add_lo = left_input_lo * right_input_lo;
+    let sub_lo = quotient_lo * foreign_modulus_lo;
     if add_lo < sub_lo {
         aux_lo = F::one();
     }
-    let add_mi = left_input_lo.clone() * right_input_mi.clone()
-        + left_input_mi.clone() * right_input_lo.clone();
-    let sub_mi = quotient_lo.clone() * foreign_modulus_mi.clone()
-        + quotient_mi.clone() * foreign_modulus_lo.clone();
+    let add_mi = left_input_lo * right_input_mi + left_input_mi * right_input_lo;
+    let sub_mi = quotient_lo * foreign_modulus_mi + quotient_mi * foreign_modulus_lo;
     if add_mi < sub_mi {
         aux_mi = F::one();
     }
     let add_hi = left_input_lo * right_input_hi
         + left_input_hi * right_input_lo
         + left_input_mi * right_input_mi;
-    let sub_hi = quotient_lo * foreign_modulus_hi.clone()
+    let sub_hi = quotient_lo * foreign_modulus_hi
         + quotient_hi * foreign_modulus_lo
         + quotient_mi * foreign_modulus_mi;
     if add_hi < sub_hi {
