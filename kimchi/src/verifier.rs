@@ -41,7 +41,7 @@ where
     >(
         &self,
         index: &VerifierIndex<G>,
-        p_comm: &PolyComm<G>,
+        public_comm: &PolyComm<G>,
     ) -> Result<OraclesResult<G, EFqSponge>> {
         //~
         //~ #### Fiat-Shamir argument
@@ -64,7 +64,7 @@ where
         }
 
         //~ 1. Absorb the commitment of the public input polynomial with the Fq-Sponge.
-        fq_sponge.absorb_g(&p_comm.unshifted);
+        fq_sponge.absorb_g(&public_comm.unshifted);
 
         //~ 1. Absorb the commitments to the registers / witness columns with the Fq-Sponge.
         self.commitments
@@ -210,8 +210,8 @@ where
         //~ 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
         //~
         //~    NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
-        let p_eval = if !self.public.is_empty() {
-            vec![
+        let public_evals = if !self.public.is_empty() {
+            [
                 vec![
                     (self
                         .public
@@ -236,8 +236,10 @@ where
                 ],
             ]
         } else {
-            vec![Vec::<G::ScalarField>::new(), Vec::<G::ScalarField>::new()]
+            [Vec::<G::ScalarField>::new(), Vec::<G::ScalarField>::new()]
         };
+
+        println!("verifier public eval: {:?}", public_evals);
 
         //~ 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
         fr_sponge.absorb(&self.ft_eval1);
@@ -249,8 +251,8 @@ where
         //~~ - poseidon selector
         //~~ - the 15 register/witness
         //~~ - 6 sigmas evaluations (the last one is not evaluated)
-        fr_sponge.absorb_multiple(&p_eval[0]);
-        fr_sponge.absorb_multiple(&p_eval[1]);
+        fr_sponge.absorb_multiple(&public_evals[0]);
+        fr_sponge.absorb_multiple(&public_evals[1]);
         fr_sponge.absorb_evaluations([&self.evals[0], &self.evals[1]]);
 
         //~ 1. Sample $v'$ with the Fr-Sponge.
@@ -297,8 +299,8 @@ where
                 .map(|(w, s)| (beta * s) + w + gamma)
                 .fold(init, |x, y| x * y);
 
-            ft_eval0 -= if !p_eval[0].is_empty() {
-                p_eval[0][0]
+            ft_eval0 -= if !public_evals[0].is_empty() {
+                public_evals[0][0]
             } else {
                 G::ScalarField::zero()
             };
@@ -346,7 +348,7 @@ where
             #[allow(clippy::type_complexity)]
             let mut es: Vec<(Vec<Vec<G::ScalarField>>, Option<usize>)> =
                 polys.iter().map(|(_, e)| (e.clone(), None)).collect();
-            es.push((p_eval.clone(), None));
+            es.push((public_evals.to_vec(), None));
             es.push((vec![ft_eval0, ft_eval1], None));
             es.push((
                 self.evals.iter().map(|e| e.z.clone()).collect::<Vec<_>>(),
@@ -415,7 +417,7 @@ where
             digest,
             oracles,
             all_alphas,
-            p_eval,
+            public_evals,
             powers_of_eval_points_for_chunks,
             polys,
             zeta1,
@@ -469,20 +471,20 @@ where
         return Err(VerifyError::IncorrectPubicInputLength(index.public));
     }
     let elm: Vec<_> = proof.public.iter().map(|s| -*s).collect();
-    let p_comm = PolyComm::<G>::multi_scalar_mul(&com_ref, &elm);
+    let mut public_comm = PolyComm::<G>::multi_scalar_mul(&com_ref, &elm);
 
     //~ 1. Run the [Fiat-Shamir argument](#fiat-shamir-argument).
     let OraclesResult {
         fq_sponge,
         oracles,
         all_alphas,
-        p_eval,
+        public_evals,
         powers_of_eval_points_for_chunks,
         polys,
         zeta1: zeta_to_domain_size,
         ft_eval0,
         ..
-    } = proof.oracles::<EFqSponge, EFrSponge>(index, &p_comm)?;
+    } = proof.oracles::<EFqSponge, EFrSponge>(index, &public_comm)?;
 
     //~ 1. Combine the chunked polynomials' evaluations
     //~    (TODO: most likely only the quotient polynomial is chunked)
@@ -667,8 +669,8 @@ where
 
     //~~ - public input commitment
     evaluations.push(Evaluation {
-        commitment: p_comm,
-        evaluations: p_eval,
+        commitment: public_comm,
+        evaluations: public_evals,
         degree_bound: None,
     });
 
