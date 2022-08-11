@@ -218,7 +218,14 @@ where
         .interpolate();
 
         //~ 1. Commit (non-hiding) to the negated public input polynomial.
-        let public_comm = index.srs.commit_non_hiding(&public_poly, None);
+        let mut public_comm = index.srs.commit_non_hiding(&public_poly, None);
+
+        // to make sure that the public commitment is never empty (in case all public inputs are zeros),
+        // we make the public input the blinding factor
+        // see https://github.com/o1-labs/proof-systems/issues/701
+        if public_comm.is_empty() {
+            public_comm.unshifted = vec![index.srs.h];
+        }
 
         //~ 1. Absorb the commitment to the public polynomial with the Fq-Sponge.
         //~
@@ -1060,14 +1067,10 @@ where
             .collect::<Vec<_>>();
 
         //~ 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
-        let public_evals = if public_poly.is_zero() {
-            [Vec::new(), Vec::new()]
-        } else {
-            [
-                vec![public_poly.evaluate(&zeta)],
-                vec![public_poly.evaluate(&zeta_omega)],
-            ]
-        };
+        let public_evals = [
+            vec![public_poly.evaluate(&zeta)],
+            vec![public_poly.evaluate(&zeta_omega)],
+        ];
 
         //~ 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
         fr_sponge.absorb(&ft_eval1);

@@ -473,6 +473,13 @@ where
     let elm: Vec<_> = proof.public.iter().map(|s| -*s).collect();
     let mut public_comm = PolyComm::<G>::multi_scalar_mul(&com_ref, &elm);
 
+    // to make sure that the public commitment is never empty (in case all public inputs are zeros),
+    // we make the public input the blinding factor
+    // see https://github.com/o1-labs/proof-systems/issues/701
+    if public_comm.unshifted[0].is_zero() {
+        public_comm.unshifted = vec![index.srs().h];
+    }
+
     //~ 1. Run the [Fiat-Shamir argument](#fiat-shamir-argument).
     let OraclesResult {
         fq_sponge,
@@ -670,7 +677,7 @@ where
     //~~ - public input commitment
     evaluations.push(Evaluation {
         commitment: public_comm,
-        evaluations: public_evals,
+        evaluations: public_evals.to_vec(),
         degree_bound: None,
     });
 
