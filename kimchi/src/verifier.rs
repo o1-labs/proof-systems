@@ -476,7 +476,7 @@ where
     // to make sure that the public commitment is never empty (in case all public inputs are zeros),
     // we make the public input the blinding factor
     // see https://github.com/o1-labs/proof-systems/issues/701
-    if public_comm.unshifted[0].is_zero() {
+    if public_comm.is_empty() || public_comm.unshifted[0].is_zero() {
         public_comm.unshifted = vec![index.srs().h];
     }
 
