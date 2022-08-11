@@ -364,6 +364,8 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             // Optional gates
             chacha_comm,
             range_check_comm,
+            foreign_field_mul_comm,
+            foreign_field_modulus,
 
             // Lookup index; optional
             lookup_index,
@@ -419,6 +421,7 @@ impl<G: KimchiCurve> VerifierIndex<G> {
                     chacha_final,
                     lookup_gate,
                     range_check_gate,
+                    ffmul_gate,
                 },
 
             max_joint_size: _,
