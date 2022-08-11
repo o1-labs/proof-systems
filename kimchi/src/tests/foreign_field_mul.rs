@@ -100,7 +100,7 @@ fn test_zero_mul() {
         foreign_field_mul::witness::check_witness(&witness, foreign_modulus)
     );
 
-    for row in 0..20 {
+    for row in 0..22 {
         assert_eq!(
             prover_index.cs.gates[row].verify::<Vesta>(row, &witness, &prover_index.cs, &[]),
             Ok(())
@@ -209,7 +209,7 @@ fn test_max_foreign_square() {
         foreign_field_mul::witness::check_witness(&witness, foreign_modulus)
     );
     /*
-        for row in 0..20 {
+        for row in 0..22 {
             assert_eq!(
                 prover_index.cs.gates[row].verify::<Vesta>(row, &witness, &prover_index.cs, &[]),
                 Ok(())
@@ -241,26 +241,18 @@ fn test_max_native_multiplicands() {
     let witness =
         foreign_field_mul::witness::create_witness(left_input, right_input, foreign_modulus);
 
-    /*assert_eq!(
-        prover_index.cs.gates[20].verify_foreign_field_mul::<Vesta>(0, &witness, &prover_index.cs),
-        Ok(())
-    );*/
-
     // fails zer
     assert_eq!(
         Ok(()),
         foreign_field_mul::witness::check_witness(&witness, foreign_modulus)
     );
 
-    /*for row in 0..20 {
+    /*for row in 0..22 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
         );
     }*/
-
-    // fails check witness
-    // fails test rangecheck 0 as well
 }
 
 #[test]
@@ -275,25 +267,8 @@ fn test_max_foreign_multiplicands() {
     let witness =
         foreign_field_mul::witness::create_witness(left_input, right_input, foreign_modulus);
 
-    // fails invalid copy constraint ffmul
     assert_eq!(
         Ok(()),
         foreign_field_mul::witness::check_witness(&witness, foreign_modulus)
     );
-
-    /*
-    for row in 0..20 {
-        assert_eq!(
-            prover_index.cs.gates[row].verify::<Vesta>(row, &witness, &prover_index.cs, &[]),
-            Ok(())
-        );
-    }*/
-    /* *
-        assert_eq!(
-            prover_index.cs.gates[20].verify_foreign_field_mul::<Vesta>(0, &witness, &prover_index.cs),
-            Ok(())
-        );
-    */
-    // fails lookup
-    // fails rangecheck0
 }

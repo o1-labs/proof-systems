@@ -14,14 +14,14 @@ use crate::{
         argument::{Argument, ArgumentType},
         constraints::ConstraintSystem,
         expr::{self, l0_1, Environment, LookupEnvironment, E},
-        gate::{CircuitGate, CircuitGateError, CircuitGateResult, GateType},
+        gate::{CircuitGate, CircuitGateError, CircuitGateResult, Connect, GateType},
         lookup::{
             self,
             lookups::{LookupInfo, LookupsUsed},
             tables::{GateLookupTable, LookupTable},
         },
         polynomial::COLUMNS,
-        wires::{GateWires, Wire},
+        wires::Wire,
     },
     curve::KimchiCurve,
 };
@@ -48,6 +48,19 @@ impl<F: PrimeField> CircuitGate<F> {
             next_row = subsequent_row
         }
 
+        circuit_gates.append(&mut vec![
+            CircuitGate {
+                typ: GateType::ForeignFieldMul,
+                wires: Wire::new(next_row),
+                coeffs: vec![],
+            },
+            CircuitGate {
+                typ: GateType::Zero,
+                wires: Wire::new(next_row + 1),
+                coeffs: vec![],
+            },
+        ]);
+
         // circuit_gates = [
         //        [0..3]   -> 4 RangeCheck gates for left_input
         //        [4..7]   -> 4 RangeCheck gates for right_input
@@ -56,47 +69,30 @@ impl<F: PrimeField> CircuitGate<F> {
         //        [16..19] -> 4 RangeCheck gates for product_mid_bottom, product_mid_top_limb, carry_top_limb
         // ]
 
-        // Foreign field multiplication gates
-        let mut wires: Vec<GateWires> = (0..2).map(|i| Wire::new(next_row + i)).collect();
-
         // Copy left_input_lo -> Curr(0)
-        connect_cell_pair(&mut circuit_gates[0].wires, 0, &mut wires, (0, 0));
+        circuit_gates.connect_cell_pair((0, 0), (next_row, 0));
         // Copy left_input_mid -> Curr(1)
-        connect_cell_pair(&mut circuit_gates[1].wires, 0, &mut wires, (0, 1));
+        circuit_gates.connect_cell_pair((1, 0), (next_row, 1));
         // Copy left_input_hi -> Curr(2)
-        connect_cell_pair(&mut circuit_gates[2].wires, 0, &mut wires, (0, 2));
+        circuit_gates.connect_cell_pair((2, 0), (next_row, 2));
         // Copy right_input_lo -> Curr(3)
-        connect_cell_pair(&mut circuit_gates[4].wires, 0, &mut wires, (0, 3));
+        circuit_gates.connect_cell_pair((4, 0), (next_row, 3));
         // Copy right_input_mid -> Curr(4)
-        connect_cell_pair(&mut circuit_gates[5].wires, 0, &mut wires, (0, 4));
+        circuit_gates.connect_cell_pair((5, 0), (next_row, 4));
         // Copy right_input_hi -> Next(0)
-        connect_cell_pair(&mut circuit_gates[6].wires, 0, &mut wires, (1, 0));
-
+        circuit_gates.connect_cell_pair((6, 0), (next_row + 1, 0));
         // Copy quotient_lo -> Next(1)
-        connect_cell_pair(&mut circuit_gates[8].wires, 0, &mut wires, (1, 1));
+        circuit_gates.connect_cell_pair((8, 0), (next_row + 1, 1));
         // Copy quotient_mid -> Next(2)
-        connect_cell_pair(&mut circuit_gates[9].wires, 0, &mut wires, (1, 2));
+        circuit_gates.connect_cell_pair((9, 0), (next_row + 1, 2));
         // Copy quotient_hi -> Next(3)
-        connect_cell_pair(&mut circuit_gates[10].wires, 0, &mut wires, (1, 3));
+        circuit_gates.connect_cell_pair((10, 0), (next_row + 1, 3));
         // Copy remainder_lo -> Next(4)
-        connect_cell_pair(&mut circuit_gates[12].wires, 0, &mut wires, (1, 4));
+        circuit_gates.connect_cell_pair((12, 0), (next_row + 1, 4));
         // Copy remainder_mid -> Next(5)
-        connect_cell_pair(&mut circuit_gates[13].wires, 0, &mut wires, (1, 5));
+        circuit_gates.connect_cell_pair((13, 0), (next_row + 1, 5));
         // Copy remainder_hi -> Next(6)
-        connect_cell_pair(&mut circuit_gates[14].wires, 0, &mut wires, (1, 6));
-
-        circuit_gates.append(&mut vec![
-            CircuitGate {
-                typ: GateType::ForeignFieldMul,
-                wires: wires[0],
-                coeffs: vec![],
-            },
-            CircuitGate {
-                typ: GateType::Zero,
-                wires: wires[1],
-                coeffs: vec![],
-            },
-        ]);
+        circuit_gates.connect_cell_pair((14, 0), (next_row + 1, 6));
 
         (start_row + circuit_gates.len(), circuit_gates)
     }
@@ -220,25 +216,6 @@ impl<F: PrimeField> CircuitGate<F> {
             Err(CircuitGateError::InvalidConstraint(self.typ))
         }
     }
-}
-
-// Connect the pair of cells in different wires vectors, specified by the
-// wires1, col1 and wires2, cell2 parameters
-//
-// cell1 --> cell2 && cell2 --> cell1
-//
-// Cell format is: (row, col)
-//
-// Note: This function assumes that the targeted cells are freshly instantiated
-//       with self-connections.  If the two cells are transitively already part
-//       of the same permutation then this would split it.
-fn connect_cell_pair(
-    wires1: &mut GateWires,
-    col1: usize,
-    wires2: &mut [GateWires],
-    cell2: (usize, usize),
-) {
-    std::mem::swap(&mut wires1[col1], &mut wires2[cell2.0][cell2.1]);
 }
 
 // Data required by the lookup environment

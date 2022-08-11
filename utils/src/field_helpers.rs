@@ -128,25 +128,8 @@ pub trait BigUintFieldHelpers<F> {
 
 impl<F: PrimeField> BigUintFieldHelpers<F> for F {
     fn from_biguint(big: BigUint) -> Result<F> {
-        //let a = F::from_repr(BigInteger::try_from(big).unwrap().into());
-
-        //F::from_repr(big.try_into()).ok_or(FieldHelpersError::DeserializeBytes);
-
-        //let hello = F::from_repr(<F as PrimeField>::BigInt::try_from(big));
-
         big.try_into()
             .map_err(|_| FieldHelpersError::DeserializeBytes)
-
-        //F::try_from(
-        //    big.try_into()
-        //        .map_err(|_| FieldHelpersError::DeserializeBytes)?,
-        //)
-        //        .map_err(|_| FieldHelpersError::DeserializeBytes)
-
-        //<F as PrimeField>::from_repr(BigInteger256::try_from(big).unwrap())
-
-        //F::from_repr(BigInt::from_bytes_be(Sign::Positive, &big.to_bytes_be()))
-        //    .ok_or(FieldHelpersError::DeserializeBytes)
     }
 
     fn to_biguint(self) -> BigUint {
