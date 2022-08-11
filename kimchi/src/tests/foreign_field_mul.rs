@@ -62,6 +62,7 @@ fn create_test_prover_index(public_size: usize) -> ProverIndex<Vesta> {
     let (mut next_row, mut gates) = CircuitGate::<Fp>::create_foreign_field_mul(0);
 
     // Temporary workaround for lookup-table/domain-size issue
+    // TODO: shouldnt this be 1 << 12
     for _ in 0..(1 << 13) {
         gates.push(CircuitGate::zero(Wire::new(next_row)));
         next_row += 1;
@@ -131,7 +132,6 @@ fn test_one_mul() {
         Ok(()),
         foreign_field_mul::witness::check_witness(&witness, foreign_modulus)
     );
-
     /*
     for row in 0..20 {
         assert_eq!(

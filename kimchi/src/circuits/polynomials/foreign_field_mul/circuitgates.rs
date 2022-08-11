@@ -80,7 +80,10 @@
 
 use crate::circuits::{
     argument::{Argument, ArgumentType},
-    expr::{constraints::crumb, witness_curr, witness_next, ConstantExpr, E},
+    expr::{
+        constraints::{boolean, crumb},
+        witness_curr, witness_next, ConstantExpr, E,
+    },
     gate::GateType,
 };
 use ark_ff::FftField;
@@ -159,7 +162,7 @@ where
     F: FftField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldMul);
-    const CONSTRAINTS: u32 = 7;
+    const CONSTRAINTS: u32 = 10;
 
     fn constraints() -> Vec<E<F>> {
         let mut constraints = vec![];
@@ -247,7 +250,7 @@ where
 
             let product_lo = add_lo - sub_lo + aux_lo.clone() * power_lo;
             let product_mi = add_mi - sub_mi + aux_mi.clone() * power_mi;
-            let product_hi = add_hi - sub_hi + aux_hi * power_hi;
+            let product_hi = add_hi - sub_hi + aux_hi.clone() * power_hi;
 
             (product_lo, product_mi, product_hi)
         };
@@ -255,6 +258,11 @@ where
         //
         // Define constraints
         //
+
+        // 0) Booleanity of auxiliary values
+        constraints.push(boolean(&aux_lo.clone()));
+        constraints.push(boolean(&aux_mi.clone()));
+        constraints.push(boolean(&aux_hi.clone()));
 
         // 1) Constrain decomposition of middle intermediate product
         //

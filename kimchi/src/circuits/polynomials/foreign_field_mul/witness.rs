@@ -267,7 +267,7 @@ pub fn check_witness<F: PrimeField>(
 
     let aux_lo = witness[7][21];
     let aux_mi = witness[8][21];
-    let _aux_hi = witness[9][21];
+    let aux_hi = witness[9][21];
 
     let product_mi_bot = witness[7][20];
     let product_mi_top_limb = witness[8][20];
@@ -292,6 +292,10 @@ pub fn check_witness<F: PrimeField>(
     let two_to_9 = F::from(2u32.pow(9));
     let two_to_88 = F::from(2u128.pow(88));
     let two_to_176 = two_to_88 * two_to_88;
+
+    assert_eq!(F::zero(), aux_lo * (aux_lo - F::one()));
+    assert_eq!(F::zero(), aux_mi * (aux_mi - F::one()));
+    assert_eq!(F::zero(), aux_hi * (aux_hi - F::one()));
 
     let product_mi_top = two_to_88 * product_mi_top_over + product_mi_top_limb;
     let product_mi_sum = two_to_88 * product_mi_top + product_mi_bot;
