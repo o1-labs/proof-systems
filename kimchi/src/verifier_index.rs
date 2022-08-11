@@ -110,16 +110,17 @@ pub struct VerifierIndex<G: KimchiCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub chacha_comm: Option<[PolyComm<G>; 4]>,
 
+    /// Range check polynomial commitments
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub range_check_comm: Option<[PolyComm<G>; range_check::gadget::GATE_COUNT]>,
 
-    // Foreign field modulus
+    /// Foreign field modulus
     #[serde(
         bound = "Option<ForeignElement<G::ScalarField, LIMB_COUNT>>: Serialize + DeserializeOwned"
     )]
     pub foreign_field_modulus: Option<ForeignElement<G::ScalarField, LIMB_COUNT>>,
 
-    // Foreign field multiplication gates polynomial commitments
+    /// Foreign field multiplication gates polynomial commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub foreign_field_mul_comm: Option<PolyComm<G>>,
 
@@ -406,6 +407,11 @@ impl<G: KimchiCurve> VerifierIndex<G> {
                 fq_sponge.absorb_g(&range_check_comm.unshifted);
             }
         }
+        if foreign_field_modulus.is_some() {
+            if let Some(foreign_field_mul) = foreign_field_mul_comm {
+                fq_sponge.absorb_g(&foreign_field_mul.unshifted);
+            }
+        }
 
         // Lookup index; optional
 
@@ -448,6 +454,9 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             }
             if let Some(range_check_gate) = range_check_gate {
                 fq_sponge.absorb_g(&range_check_gate.unshifted);
+            }
+            if let Some(ffmul_gate) = ffmul_gate {
+                fq_sponge.absorb_g(&ffmul_gate.unshifted);
             }
         }
         fq_sponge.digest_fq()

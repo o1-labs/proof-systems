@@ -181,9 +181,9 @@ pub fn create_witness<F: PrimeField>(
 
     let two = F::from(2u32);
     let two_to_limb = two.pow(&[LIMB_BITS as u64]);
-    let power_lo_top = two.clone(); // 2^{2L+1}
-    let power_mi_top = two_to_limb.clone() * two.clone() * two.clone(); // 2^{2L+2}
-                                                                        //let power_hi_top = power_mi.clone() * two.clone(); // 2^{2L+3}
+    let power_lo_top = two; // 2^{2L+1}
+    let power_mi_top = two_to_limb * two * two; // 2^{2L+2}
+                                                //let power_hi_top = power_mi.clone() * two.clone(); // 2^{2L+3}
 
     let (product_lo, product_mi, product_hi, aux_lo, aux_mi, aux_hi) =
         compute_auxiliar(left_input, right_input, quotient, foreign_modulus);
@@ -194,24 +194,23 @@ pub fn create_witness<F: PrimeField>(
     let two_to_88: F = F::from(2u128.pow(LIMB_BITS as u32));
     let two_to_88_big: BigUint = two_to_88.into();
     let two_to_176 = two_to_88_big.clone() * two_to_88_big.clone();
-    let (product_mi_top, product_mi_bot) = product_mi_big.div_rem(&two_to_88_big.clone());
+    let (product_mi_top, product_mi_bot) = product_mi_big.div_rem(&two_to_88_big);
 
     let zero_bot = product_lo - *remainder.lo()
         + two_to_88 * (F::from_big(product_mi_bot.clone()).unwrap() - *remainder.mi());
     let zero_bot_big: BigUint = zero_bot.into();
     let (carry_bot, _) = zero_bot_big.div_rem(&two_to_176);
 
-    let (_, product_mi_top_limb) = product_mi_top.div_rem(&two_to_88_big.clone());
-    let zero_top: F = F::from_big(carry_bot.clone()).unwrap()
-        + F::from_big(product_mi_top.clone()).unwrap()
-        + product_hi
-        - *remainder.hi()
-        - aux_lo * power_lo_top
-        - aux_mi * power_mi_top;
+    let (_, product_mi_top_limb) = product_mi_top.div_rem(&two_to_88_big);
+    let zero_top: F =
+        F::from_big(carry_bot.clone()).unwrap() + F::from_big(product_mi_top).unwrap() + product_hi
+            - *remainder.hi()
+            - aux_lo * power_lo_top
+            - aux_mi * power_mi_top;
     let zero_top_big: BigUint = zero_top.into();
-    let (carry_top_big, _) = zero_top_big.div_rem(&two_to_88_big.clone());
+    let (carry_top_big, _) = zero_top_big.div_rem(&two_to_88_big);
     let carry_top: F = F::from_big(carry_top_big.clone()).unwrap();
-    let (_carry_top_over, carry_top_limb) = carry_top_big.div_rem(&two_to_88_big.clone());
+    let (_carry_top_over, carry_top_limb) = carry_top_big.div_rem(&two_to_88_big);
 
     let product_mi_bot = F::from_big(product_mi_bot).expect("big_f does not fit in F");
     let product_mi_top_limb = F::from_big(product_mi_top_limb).expect("big_f does not fit in F");
@@ -298,9 +297,9 @@ pub fn check_witness<F: PrimeField>(
     let product_mi_sum = two_to_88.clone() * product_mi_top.clone() + product_mi_bot.clone();
     assert_eq!(F::zero(), product_mi - product_mi_sum);
 
-    assert_eq!(F::zero(), crumb(&carry_bot));
+    assert_eq!(F::zero(), crumb(carry_bot));
 
-    assert_eq!(F::zero(), crumb(&product_mi_top_over));
+    assert_eq!(F::zero(), crumb(product_mi_top_over));
 
     assert_eq!(F::zero(), carry_shift - two_to_8 * carry_top_over.clone());
 
@@ -319,8 +318,8 @@ pub fn check_witness<F: PrimeField>(
     Ok(())
 }
 
-pub fn crumb<F: PrimeField>(x: &F) -> F {
-    x.clone() * (x.clone() - F::one()) * (x.clone() - F::from(2u64)) * (x.clone() - F::from(3u64))
+pub fn crumb<F: PrimeField>(x: F) -> F {
+    x * (x - F::one()) * (x - F::from(2u64)) * (x - F::from(3u64))
 }
 
 /// Compute nonzero intermediate products with the bitstring format.

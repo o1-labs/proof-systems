@@ -141,7 +141,7 @@ pub fn compute_intermediate_products<
     let product_hi = left_input_lo * right_input_hi
         + left_input_hi * right_input_lo
         + left_input_mi * right_input_mi
-        - quotient_lo * foreign_modulus_hi.clone()
+        - quotient_lo * foreign_modulus_hi
         - quotient_hi * foreign_modulus_lo
         - quotient_mi * foreign_modulus_mi;
 
@@ -216,7 +216,7 @@ where
         let power_mi = power_lo.clone() * two.clone(); // 2^{2L+2}
         let power_hi = power_mi.clone() * two.clone(); // 2^{2L+3}
         let power_lo_top = two.clone();
-        let power_mi_top = two.clone() * two.clone() * two_to_limb.clone();
+        let power_mi_top = two.clone() * two * two_to_limb;
         let two_to_8 = E::from(256);
         let two_to_9 = E::from(512);
         let two_to_88 = E::from(2).pow(88);
@@ -241,7 +241,7 @@ where
             let add_hi = left_input_lo * right_input_hi
                 + left_input_hi * right_input_lo
                 + left_input_mi * right_input_mi;
-            let sub_hi = quotient_lo * foreign_modulus_hi.clone()
+            let sub_hi = quotient_lo * foreign_modulus_hi
                 + quotient_hi * foreign_modulus_lo
                 + quotient_mi * foreign_modulus_mi;
 
