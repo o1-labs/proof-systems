@@ -119,7 +119,7 @@ fn test_zero_mul() {
 #[test]
 // Test multiplication of largest foreign element and one
 fn test_one_mul() {
-    //let prover_index = create_test_prover_index(0);
+    let prover_index = create_test_prover_index(0);
 
     let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
     let left_input = ForeignElement::<PallasField, 3>::new_from_be(MAX_FOR);
@@ -132,13 +132,13 @@ fn test_one_mul() {
         Ok(()),
         foreign_field_mul::witness::check_witness(&witness, foreign_modulus)
     );
-    /*
-    for row in 0..20 {
+
+    for row in 0..=19 {
         assert_eq!(
             prover_index.cs.gates[row].verify::<Vesta>(row, &witness, &prover_index.cs, &[]),
             Ok(())
         );
-    }*/
+    }
 
     // check quotient is zero and remainder is MAX_FOR
     assert_eq!(witness[1][21], PallasField::zero());
@@ -240,12 +240,12 @@ fn test_max_native_multiplicands() {
 
     let witness =
         foreign_field_mul::witness::create_witness(left_input, right_input, foreign_modulus);
-    
-        /*assert_eq!(
-            prover_index.cs.gates[20].verify_foreign_field_mul::<Vesta>(0, &witness, &prover_index.cs),
-            Ok(())
-        );*/
-    
+
+    /*assert_eq!(
+        prover_index.cs.gates[20].verify_foreign_field_mul::<Vesta>(0, &witness, &prover_index.cs),
+        Ok(())
+    );*/
+
     // fails zer
     assert_eq!(
         Ok(()),

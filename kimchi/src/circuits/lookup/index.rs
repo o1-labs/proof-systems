@@ -26,7 +26,7 @@ use thiserror::Error;
 pub enum LookupError {
     #[error("One of the lookup tables has columns of different lengths")]
     InconsistentTableLength,
-    #[error("The combined lookup table is larger than allowed by the domain size. Obsered: {length}, expected: {maximum_allowed}")]
+    #[error("The combined lookup table is larger than allowed by the domain size. Observed: {length}, expected: {maximum_allowed}")]
     LookupTableTooLong {
         length: usize,
         maximum_allowed: usize,
