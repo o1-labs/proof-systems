@@ -260,9 +260,9 @@ where
         //
 
         // 0) Booleanity of auxiliary values
-        constraints.push(boolean(&aux_lo.clone()));
-        constraints.push(boolean(&aux_mi.clone()));
-        constraints.push(boolean(&aux_hi.clone()));
+        constraints.push(boolean(&aux_lo));
+        constraints.push(boolean(&aux_mi));
+        constraints.push(boolean(&aux_hi));
 
         // 1) Constrain decomposition of middle intermediate product
         //

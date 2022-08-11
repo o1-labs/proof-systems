@@ -240,12 +240,12 @@ fn test_max_native_multiplicands() {
 
     let witness =
         foreign_field_mul::witness::create_witness(left_input, right_input, foreign_modulus);
-    /*
-        assert_eq!(
+    
+        /*assert_eq!(
             prover_index.cs.gates[20].verify_foreign_field_mul::<Vesta>(0, &witness, &prover_index.cs),
             Ok(())
-        );
-    */
+        );*/
+    
     // fails zer
     assert_eq!(
         Ok(()),
