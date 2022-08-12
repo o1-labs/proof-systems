@@ -500,6 +500,34 @@ where
 }
 
 impl<G: CommitmentCurve> SRS<G> {
+    /// Commits a polynomial, and adds the blinding factor to it.
+    /// It is not a blinding commitment, as the blinding factor is scaled by 1 instead of a random value.
+    /// This is useful for when the polynomial can be zero,
+    /// in which case the commitment would be the point at infinity if no blinding factor was added.
+    /// (And points at infinity are annoying to handle in circuits.)
+    pub fn commit_public(&self, poly: &DensePolynomial<G::ScalarField>) -> BlindedCommitment<G> {
+        // commit
+        let mut commitment = self.commit_non_hiding(poly, None);
+
+        // add the H point
+        if poly.is_zero() || commitment.unshifted.is_empty() {
+            assert!(poly.is_zero() && commitment.unshifted.is_empty());
+            commitment.unshifted.push(self.h);
+        } else {
+            commitment.unshifted[0] = commitment.unshifted[0] + self.h;
+        }
+
+        let blinders = PolyComm {
+            unshifted: vec![G::ScalarField::one()],
+            shifted: None,
+        };
+
+        BlindedCommitment {
+            commitment,
+            blinders,
+        }
+    }
+
     /// Commits a polynomial, potentially splitting the result in multiple commitments.
     pub fn commit(
         &self,

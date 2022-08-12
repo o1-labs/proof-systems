@@ -236,10 +236,8 @@ where
                 ],
             ]
         } else {
-            [Vec::<G::ScalarField>::new(), Vec::<G::ScalarField>::new()]
+            [vec![G::ScalarField::zero()], vec![G::ScalarField::zero()]]
         };
-
-        println!("verifier public eval: {:?}", public_evals);
 
         //~ 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
         fr_sponge.absorb(&self.ft_eval1);
@@ -478,6 +476,8 @@ where
     // see https://github.com/o1-labs/proof-systems/issues/701
     if public_comm.is_empty() || public_comm.unshifted[0].is_zero() {
         public_comm.unshifted = vec![index.srs().h];
+    } else {
+        public_comm.unshifted[0] = public_comm.unshifted[0].add(index.srs().h);
     }
 
     //~ 1. Run the [Fiat-Shamir argument](#fiat-shamir-argument).

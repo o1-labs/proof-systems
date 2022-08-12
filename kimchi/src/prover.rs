@@ -218,21 +218,14 @@ where
         .interpolate();
 
         //~ 1. Commit (non-hiding) to the negated public input polynomial.
-        let mut public_comm = index.srs.commit_non_hiding(&public_poly, None);
-
-        // to make sure that the public commitment is never empty (in case all public inputs are zeros),
-        // we make the public input the blinding factor
-        // see https://github.com/o1-labs/proof-systems/issues/701
-        if public_comm.is_empty() || public_comm.unshifted[0].is_zero() {
-            public_comm.unshifted = vec![index.srs.h];
-        }
+        let mut public_comm = index.srs.commit_public(&public_poly);
 
         //~ 1. Absorb the commitment to the public polynomial with the Fq-Sponge.
         //~
         //~    Note: unlike the original PLONK protocol,
         //~    the prover also provides evaluations of the public polynomial to help the verifier circuit.
         //~    This is why we need to absorb the commitment to the public polynomial at this point.
-        fq_sponge.absorb_g(&public_comm.unshifted);
+        fq_sponge.absorb_g(&public_comm.commitment.unshifted);
 
         //~ 1. Commit to the witness columns by creating `COLUMNS` hidding commitments.
         //~
@@ -1106,6 +1099,11 @@ where
             shifted: None,
         };
 
+        let public_hiding = PolyComm {
+            unshifted: vec![G::ScalarField::one()],
+            shifted: None,
+        };
+
         let mut polynomials = polys
             .iter()
             .map(|(p, d1_size)| (p, None, non_hiding(*d1_size)))
@@ -1120,7 +1118,7 @@ where
         //~~ - the 15 registers/witness columns
         //~~ - the 6 sigmas
         //~~ - optionally, the runtime table
-        polynomials.extend(vec![(&public_poly, None, non_hiding(1))]);
+        polynomials.extend(vec![(&public_poly, None, public_comm.blinders)]);
         polynomials.extend(vec![(&ft, None, blinding_ft)]);
         polynomials.extend(vec![(&z_poly, None, z_comm.blinders)]);
         polynomials.extend(vec![(&index.cs.genericm, None, non_hiding(1))]);
