@@ -2266,10 +2266,10 @@ pub mod test {
         curve::KimchiCurve,
     };
     use ark_ff::UniformRand;
-    use array_init::array_init;
     use mina_curves::pasta::fp::Fp;
     use mina_curves::pasta::vesta::Vesta;
     use rand::{prelude::StdRng, SeedableRng};
+    use std::array;
 
     #[test]
     #[should_panic]
@@ -2310,7 +2310,7 @@ pub mod test {
         ));
         let constraint_system = ConstraintSystem::fp_for_testing(gates);
 
-        let witness_cols: [_; COLUMNS] = array_init(|_| DensePolynomial::zero());
+        let witness_cols: [_; COLUMNS] = array::from_fn(|_| DensePolynomial::zero());
         let permutation = DensePolynomial::zero();
         let domain_evals = constraint_system.evaluate(&witness_cols, &permutation);
 

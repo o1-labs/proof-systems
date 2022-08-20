@@ -884,11 +884,11 @@ mod tests {
 
     use crate::srs::SRS;
     use ark_poly::{Polynomial, UVPolynomial};
-    use array_init::array_init;
     use mina_curves::pasta::{fp::Fp, vesta::Vesta as VestaG};
     use oracle::constants::PlonkSpongeConstantsKimchi as SC;
     use oracle::sponge::DefaultFqSponge;
     use rand::{rngs::StdRng, SeedableRng};
+    use std::array;
 
     #[test]
     fn test_lagrange_commitments() {
@@ -922,7 +922,7 @@ mod tests {
     #[test]
     fn test_opening_proof() {
         // create two polynomials
-        let coeffs: [Fp; 10] = array_init(|i| Fp::from(i as u32));
+        let coeffs: [Fp; 10] = array::from_fn(|i| Fp::from(i as u32));
         let poly1 = DensePolynomial::<Fp>::from_coefficients_slice(&coeffs);
         let poly2 = DensePolynomial::<Fp>::from_coefficients_slice(&coeffs[..5]);
 

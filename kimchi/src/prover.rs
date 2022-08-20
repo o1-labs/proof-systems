@@ -36,7 +36,6 @@ use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
     Radix2EvaluationDomain as D, UVPolynomial,
 };
-use array_init::array_init;
 use commitment_dlog::commitment::{
     b_poly_coefficients, BlindedCommitment, CommitmentCurve, PolyComm,
 };
@@ -45,6 +44,7 @@ use o1_utils::ExtendedDensePolynomial as _;
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand::{CryptoRng, RngCore};
 use rayon::prelude::*;
+use std::array;
 use std::collections::HashMap;
 
 /// The result of a proof creation or verification.
@@ -276,7 +276,7 @@ where
 
         //~ 1. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
         //~    TODO: why not do this first, and then commit? Why commit from evaluation directly?
-        let witness_poly: [DensePolynomial<G::ScalarField>; COLUMNS] = array_init(|i| {
+        let witness_poly: [DensePolynomial<G::ScalarField>; COLUMNS] = array::from_fn(|i| {
             Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
                 witness[i].clone(),
                 index.cs.domain.d1,
@@ -639,12 +639,12 @@ where
         //~    TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)
         let chunked_evals = {
             let chunked_evals_zeta = ProofEvaluations::<Vec<G::ScalarField>> {
-                s: array_init(|i| {
+                s: array::from_fn(|i| {
                     index.cs.sigmam[0..PERMUTS - 1][i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta)
                 }),
-                w: array_init(|i| {
+                w: array::from_fn(|i| {
                     witness_poly[i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta)
@@ -669,13 +669,13 @@ where
                     .evaluate_chunks(zeta),
             };
             let chunked_evals_zeta_omega = ProofEvaluations::<Vec<G::ScalarField>> {
-                s: array_init(|i| {
+                s: array::from_fn(|i| {
                     index.cs.sigmam[0..PERMUTS - 1][i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta_omega)
                 }),
 
-                w: array_init(|i| {
+                w: array::from_fn(|i| {
                     witness_poly[i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta_omega)
@@ -715,8 +715,8 @@ where
                 .iter()
                 .zip(power_of_eval_points_for_chunks.iter()) // (zeta , zeta_omega)
                 .map(|(es, &e1)| ProofEvaluations::<G::ScalarField> {
-                    s: array_init(|i| DensePolynomial::eval_polynomial(&es.s[i], e1)),
-                    w: array_init(|i| DensePolynomial::eval_polynomial(&es.w[i], e1)),
+                    s: array::from_fn(|i| DensePolynomial::eval_polynomial(&es.s[i], e1)),
+                    w: array::from_fn(|i| DensePolynomial::eval_polynomial(&es.w[i], e1)),
                     z: DensePolynomial::eval_polynomial(&es.z, e1),
                     lookup: es.lookup.as_ref().map(|l| LookupEvaluations {
                         table: DensePolynomial::eval_polynomial(&l.table, e1),
@@ -968,7 +968,7 @@ where
 
         Ok(Self {
             commitments: ProverCommitments {
-                w_comm: array_init(|i| w_comm[i].commitment.clone()),
+                w_comm: array::from_fn(|i| w_comm[i].commitment.clone()),
                 z_comm: z_comm.commitment,
                 t_comm: t_comm.commitment,
                 lookup,
