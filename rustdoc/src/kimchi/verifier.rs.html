@@ -1320,7 +1320,7 @@
                     .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
             );
 
-            combined_inner_product::&lt;G&gt;(<span class="kw-2">&amp;</span>evaluation_points, <span class="kw-2">&amp;</span>v, <span class="kw-2">&amp;</span>u, <span class="kw-2">&amp;</span>es, index.srs().g.len())
+            combined_inner_product(<span class="kw-2">&amp;</span>evaluation_points, <span class="kw-2">&amp;</span>v, <span class="kw-2">&amp;</span>u, <span class="kw-2">&amp;</span>es, index.srs().g.len())
         };
 
         <span class="kw">let </span>oracles = RandomOracles {

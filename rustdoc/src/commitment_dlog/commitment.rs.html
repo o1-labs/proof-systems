@@ -1574,16 +1574,16 @@
 /// Note that if one of the polynomial comes specified with a degree bound,
 /// the evaluation for the last segment is potentially shifted to meet the proof.
 </span><span class="attribute">#[allow(clippy::type_complexity)]
-</span><span class="kw">pub fn </span>combined_inner_product&lt;G: CommitmentCurve&gt;(
-    evaluation_points: <span class="kw-2">&amp;</span>[G::ScalarField],
-    xi: <span class="kw-2">&amp;</span>G::ScalarField,
-    r: <span class="kw-2">&amp;</span>G::ScalarField,
+</span><span class="kw">pub fn </span>combined_inner_product&lt;F: PrimeField&gt;(
+    evaluation_points: <span class="kw-2">&amp;</span>[F],
+    xi: <span class="kw-2">&amp;</span>F,
+    r: <span class="kw-2">&amp;</span>F,
     <span class="comment">// TODO(mimoo): needs a type that can get you evaluations or segments
-    </span>polys: <span class="kw-2">&amp;</span>[(Vec&lt;Vec&lt;G::ScalarField&gt;&gt;, <span class="prelude-ty">Option</span>&lt;usize&gt;)],
+    </span>polys: <span class="kw-2">&amp;</span>[(Vec&lt;Vec&lt;F&gt;&gt;, <span class="prelude-ty">Option</span>&lt;usize&gt;)],
     srs_length: usize,
-) -&gt; G::ScalarField {
-    <span class="kw">let </span><span class="kw-2">mut </span>res = G::ScalarField::zero();
-    <span class="kw">let </span><span class="kw-2">mut </span>xi_i = G::ScalarField::one();
+) -&gt; F {
+    <span class="kw">let </span><span class="kw-2">mut </span>res = F::zero();
+    <span class="kw">let </span><span class="kw-2">mut </span>xi_i = F::one();
 
     <span class="kw">for </span>(evals_tr, shifted) <span class="kw">in </span>polys.iter().filter(|(evals_tr, <span class="kw">_</span>)| !evals_tr[<span class="number">0</span>].is_empty()) {
         <span class="comment">// transpose the evaluations
@@ -1593,7 +1593,7 @@
 
         <span class="comment">// iterating over the polynomial segments
         </span><span class="kw">for </span>eval <span class="kw">in </span>evals.iter() {
-            <span class="kw">let </span>term = DensePolynomial::&lt;G::ScalarField&gt;::eval_polynomial(eval, <span class="kw-2">*</span>r);
+            <span class="kw">let </span>term = DensePolynomial::&lt;F&gt;::eval_polynomial(eval, <span class="kw-2">*</span>r);
 
             res += <span class="kw-2">&amp;</span>(xi_i * term);
             xi_i <span class="kw-2">*</span>= xi;
@@ -1602,7 +1602,7 @@
         <span class="kw">if let </span><span class="prelude-val">Some</span>(m) = shifted {
             <span class="comment">// xi^i sum_j r^j elm_j^{N - m} f(elm_j)
             </span><span class="kw">let </span>last_evals = <span class="kw">if </span><span class="kw-2">*</span>m &gt; evals.len() * srs_length {
-                <span class="macro">vec!</span>[G::ScalarField::zero(); evaluation_points.len()]
+                <span class="macro">vec!</span>[F::zero(); evaluation_points.len()]
             } <span class="kw">else </span>{
                 evals[evals.len() - <span class="number">1</span>].clone()
             };
@@ -1612,7 +1612,7 @@
                 .map(|(elm, f_elm)| elm.pow(<span class="kw-2">&amp;</span>[(srs_length - (<span class="kw-2">*</span>m) % srs_length) <span class="kw">as </span>u64]) * f_elm)
                 .collect();
 
-            res += <span class="kw-2">&amp;</span>(xi_i * DensePolynomial::&lt;G::ScalarField&gt;::eval_polynomial(<span class="kw-2">&amp;</span>shifted_evals, <span class="kw-2">*</span>r));
+            res += <span class="kw-2">&amp;</span>(xi_i * DensePolynomial::&lt;F&gt;::eval_polynomial(<span class="kw-2">&amp;</span>shifted_evals, <span class="kw-2">*</span>r));
             xi_i <span class="kw-2">*</span>= xi;
         }
     }
@@ -1919,7 +1919,7 @@
                         },
                     )
                     .collect();
-                combined_inner_product::&lt;G&gt;(evaluation_points, xi, r, <span class="kw-2">&amp;</span>es, <span class="self">self</span>.g.len())
+                combined_inner_product(evaluation_points, xi, r, <span class="kw-2">&amp;</span>es, <span class="self">self</span>.g.len())
             };
 
             sponge.absorb_fr(<span class="kw-2">&amp;</span>[shift_scalar::&lt;G&gt;(combined_inner_product0)]);
