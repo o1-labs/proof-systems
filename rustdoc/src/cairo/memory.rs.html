@@ -136,143 +136,143 @@
 <span id="136">136</span>
 <span id="137">137</span>
 <span id="138">138</span>
-</pre><pre class="rust"><code><span class="doccomment">//! This module represents the Cairo memory, containing the</span>
-<span class="doccomment">//! compiled Cairo program that occupies the first few entries</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This module represents the Cairo memory, containing the
+//! compiled Cairo program that occupies the first few entries
 
-<span class="kw">use</span> <span class="ident">std::fmt</span>::{<span class="ident">Display</span>, <span class="ident">Formatter</span>, <span class="prelude-ty">Result</span>};
-<span class="kw">use</span> <span class="ident">std::ops</span>::{<span class="ident">Index</span>, <span class="ident">IndexMut</span>};
+</span><span class="kw">use </span>std::fmt::{Display, Formatter, <span class="prelude-ty">Result</span>};
+<span class="kw">use </span>std::ops::{Index, IndexMut};
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::helper</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::word::CairoWord</span>;
-<span class="kw">use</span> <span class="ident">ark_ff::Field</span>;
-<span class="kw">use</span> <span class="ident">core::iter::repeat</span>;
+<span class="kw">use </span><span class="kw">crate</span>::helper::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::word::CairoWord;
+<span class="kw">use </span>ark_ff::Field;
+<span class="kw">use </span>core::iter::repeat;
 
-<span class="doccomment">/// This data structure stores the memory of the program</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CairoMemory</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// length of the public memory</span>
-    <span class="ident">codelen</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// full memory vector, None if non initialized</span>
-    <span class="ident">data</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">CairoWord</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+<span class="doccomment">/// This data structure stores the memory of the program
+</span><span class="kw">pub struct </span>CairoMemory&lt;F&gt; {
+    <span class="doccomment">/// length of the public memory
+    </span>codelen: usize,
+    <span class="doccomment">/// full memory vector, None if non initialized
+    </span>data: Vec&lt;<span class="prelude-ty">Option</span>&lt;CairoWord&lt;F&gt;&gt;&gt;,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span> <span class="ident">Index</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CairoMemory</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="kw">type</span> <span class="ident">Output</span> <span class="op">=</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">CairoWord</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>;
-    <span class="kw">fn</span> <span class="ident">index</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">idx</span>: <span class="ident">F</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident"><span class="self">Self</span>::Output</span> {
-        <span class="comment">// Safely convert idx from F to usize (since this is a memory address</span>
-        <span class="comment">// idx should not be too big, this should be safe)</span>
-        <span class="kw">let</span> <span class="ident">addr</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">idx</span>.<span class="ident">to_u64</span>();
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">data</span>[<span class="ident">addr</span> <span class="kw">as</span> <span class="ident">usize</span>]
+<span class="kw">impl</span>&lt;F: Field&gt; Index&lt;F&gt; <span class="kw">for </span>CairoMemory&lt;F&gt; {
+    <span class="kw">type </span>Output = <span class="prelude-ty">Option</span>&lt;CairoWord&lt;F&gt;&gt;;
+    <span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: F) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
+        <span class="comment">// Safely convert idx from F to usize (since this is a memory address
+        // idx should not be too big, this should be safe)
+        </span><span class="kw">let </span>addr: u64 = idx.to_u64();
+        <span class="kw-2">&amp;</span><span class="self">self</span>.data[addr <span class="kw">as </span>usize]
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span> <span class="ident">IndexMut</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CairoMemory</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">index_mut</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">idx</span>: <span class="ident">F</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="ident"><span class="self">Self</span>::Output</span> {
-        <span class="kw">let</span> <span class="ident">addr</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">idx</span>.<span class="ident">to_u64</span>();
-        <span class="self">self</span>.<span class="ident">resize</span>(<span class="ident">addr</span>); <span class="comment">// Resize if necessary</span>
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">data</span>[<span class="ident">addr</span> <span class="kw">as</span> <span class="ident">usize</span>]
+<span class="kw">impl</span>&lt;F: Field&gt; IndexMut&lt;F&gt; <span class="kw">for </span>CairoMemory&lt;F&gt; {
+    <span class="kw">fn </span>index_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, idx: F) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Output {
+        <span class="kw">let </span>addr: u64 = idx.to_u64();
+        <span class="self">self</span>.resize(addr); <span class="comment">// Resize if necessary
+        </span><span class="kw-2">&amp;mut </span><span class="self">self</span>.data[addr <span class="kw">as </span>usize]
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span> <span class="ident">Display</span> <span class="kw">for</span> <span class="ident">CairoMemory</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span> {
-        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">1</span>..<span class="self">self</span>.<span class="ident">len</span>() {
-            <span class="comment">// Visualize content of memory excluding the 0th dummy entry</span>
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">elem</span>) <span class="op">=</span> <span class="self">self</span>[<span class="ident">F::from</span>(<span class="ident">i</span>)] {
-                <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;{0:&gt;6}: 0x{1:}&quot;</span>, <span class="ident">i</span>, <span class="ident">elem</span>.<span class="ident">word</span>().<span class="ident">to_hex_be</span>())
-                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">core::fmt::Error</span>)<span class="question-mark">?</span>;
-            } <span class="kw">else</span> {
-                <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;{0:&gt;6}: None&quot;</span>, <span class="ident">i</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">core::fmt::Error</span>)<span class="question-mark">?</span>;
+<span class="kw">impl</span>&lt;F: Field&gt; Display <span class="kw">for </span>CairoMemory&lt;F&gt; {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <span class="prelude-ty">Result </span>{
+        <span class="kw">for </span>i <span class="kw">in </span><span class="number">1</span>..<span class="self">self</span>.len() {
+            <span class="comment">// Visualize content of memory excluding the 0th dummy entry
+            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(elem) = <span class="self">self</span>[F::from(i)] {
+                <span class="macro">writeln!</span>(f, <span class="string">&quot;{0:&gt;6}: 0x{1:}&quot;</span>, i, elem.word().to_hex_be())
+                    .map_err(|<span class="kw">_</span>| core::fmt::Error)<span class="question-mark">?</span>;
+            } <span class="kw">else </span>{
+                <span class="macro">writeln!</span>(f, <span class="string">&quot;{0:&gt;6}: None&quot;</span>, i).map_err(|<span class="kw">_</span>| core::fmt::Error)<span class="question-mark">?</span>;
             }
         }
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span> <span class="ident">CairoMemory</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Create a new memory structure from a vector of field elements</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">input</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="ident">CairoMemory</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-        <span class="comment">// Initialized with the public memory (compiled instructions only)</span>
-        <span class="comment">// starts intentionally with a zero word for ease of testing</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">aux</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">F::zero</span>()];
-        <span class="ident">aux</span>.<span class="ident">extend</span>(<span class="ident">input</span>);
-        <span class="ident">CairoMemory</span> {
-            <span class="ident">codelen</span>: <span class="ident">aux</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>,
-            <span class="ident">data</span>: <span class="ident">aux</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="prelude-val">Some</span>(<span class="ident">CairoWord::new</span>(<span class="ident">i</span>))).<span class="ident">collect</span>(),
+<span class="kw">impl</span>&lt;F: Field&gt; CairoMemory&lt;F&gt; {
+    <span class="doccomment">/// Create a new memory structure from a vector of field elements
+    </span><span class="kw">pub fn </span>new(input: Vec&lt;F&gt;) -&gt; CairoMemory&lt;F&gt; {
+        <span class="comment">// Initialized with the public memory (compiled instructions only)
+        // starts intentionally with a zero word for ease of testing
+        </span><span class="kw">let </span><span class="kw-2">mut </span>aux = <span class="macro">vec!</span>[F::zero()];
+        aux.extend(input);
+        CairoMemory {
+            codelen: aux.len() - <span class="number">1</span>,
+            data: aux.into_iter().map(|i| <span class="prelude-val">Some</span>(CairoWord::new(i))).collect(),
         }
     }
 
-    <span class="doccomment">/// Get size of the public memory</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_codelen</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="self">self</span>.<span class="ident">codelen</span>
+    <span class="doccomment">/// Get size of the public memory
+    </span><span class="kw">pub fn </span>get_codelen(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.codelen
     }
 
-    <span class="doccomment">/// Get size of the full memory including dummy 0th entry</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u64</span> {
-        <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u64</span>
+    <span class="doccomment">/// Get size of the full memory including dummy 0th entry
+    </span><span class="kw">pub fn </span>len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
+        <span class="self">self</span>.data.len() <span class="kw">as </span>u64
     }
 
-    <span class="doccomment">/// Returns whether the memory is empty (either length 0, or with the dummy first entry)</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_empty</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">len</span>() <span class="op">&lt;</span> <span class="number">2</span>
-    }
+    <span class="doccomment">/// Returns whether the memory is empty (either length 0, or with the dummy first entry)
+    </span><span class="kw">pub fn </span>is_empty(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.data.len() &lt; <span class="number">2
+    </span>}
 
-    <span class="doccomment">/// Resizes memory with enough additional None slots if necessary before writing or reading</span>
-    <span class="kw">fn</span> <span class="ident">resize</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">addr</span>: <span class="ident">u64</span>) {
-        <span class="comment">// if you want to access an index of the memory but its size is less or equal than this</span>
-        <span class="comment">// you will need to extend the vector with enough spaces (taking into account that</span>
-        <span class="comment">// vectors start by index 0, the 0 address is dummy, and size starts in 1)</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">additional</span>) <span class="op">=</span> <span class="ident">addr</span>.<span class="ident">checked_sub</span>(<span class="self">self</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>) {
-            <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">extend</span>(<span class="ident">repeat</span>(<span class="prelude-val">None</span>).<span class="ident">take</span>(<span class="ident">additional</span> <span class="kw">as</span> <span class="ident">usize</span>));
+    <span class="doccomment">/// Resizes memory with enough additional None slots if necessary before writing or reading
+    </span><span class="kw">fn </span>resize(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: u64) {
+        <span class="comment">// if you want to access an index of the memory but its size is less or equal than this
+        // you will need to extend the vector with enough spaces (taking into account that
+        // vectors start by index 0, the 0 address is dummy, and size starts in 1)
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(additional) = addr.checked_sub(<span class="self">self</span>.len() - <span class="number">1</span>) {
+            <span class="self">self</span>.data.extend(repeat(<span class="prelude-val">None</span>).take(additional <span class="kw">as </span>usize));
         }
     }
 
-    <span class="doccomment">/// Write u64 element in memory address</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">addr</span>: <span class="ident">F</span>, <span class="ident">elem</span>: <span class="ident">F</span>) {
-        <span class="self">self</span>[<span class="ident">addr</span>] <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">CairoWord::new</span>(<span class="ident">elem</span>));
+    <span class="doccomment">/// Write u64 element in memory address
+    </span><span class="kw">pub fn </span>write(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: F, elem: F) {
+        <span class="self">self</span>[addr] = <span class="prelude-val">Some</span>(CairoWord::new(elem));
     }
 
-    <span class="doccomment">/// Read element in memory address</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">read</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">addr</span>: <span class="ident">F</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">resize</span>(<span class="ident">addr</span>.<span class="ident">to_u64</span>()); <span class="comment">// Resize if necessary</span>
-        <span class="self">self</span>[<span class="ident">addr</span>].<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">word</span>())
+    <span class="doccomment">/// Read element in memory address
+    </span><span class="kw">pub fn </span>read(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: F) -&gt; <span class="prelude-ty">Option</span>&lt;F&gt; {
+        <span class="self">self</span>.resize(addr.to_u64()); <span class="comment">// Resize if necessary
+        </span><span class="self">self</span>[addr].map(|x| x.word())
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident">ark_ff::One</span>;
-    <span class="kw">use</span> <span class="ident">mina_curves::pasta::fp::Fp</span> <span class="kw">as</span> <span class="ident">F</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span>ark_ff::One;
+    <span class="kw">use </span>mina_curves::pasta::fp::Fp <span class="kw">as </span>F;
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_cairo_bytecode</span>() {
-        <span class="comment">// This test starts with the public memory corresponding to a simple Cairo program</span>
-        <span class="comment">// func main{}():</span>
-        <span class="comment">//    tempvar x = 10;</span>
-        <span class="comment">//    return()</span>
-        <span class="comment">// end</span>
-        <span class="comment">// And checks that memory writing and reading works as expected by completing</span>
-        <span class="comment">// the total memory of executing the program</span>
-        <span class="kw">let</span> <span class="ident">instrs</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="number">0x480680017fff8000</span>, <span class="number">10</span>, <span class="number">0x208b7fff7fff7ffe</span>]
-            .<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">i</span>: <span class="kw-2">&amp;</span><span class="ident">i64</span><span class="op">|</span> <span class="ident">F::from</span>(<span class="ident">i</span>))
-            .<span class="ident">collect</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">memory</span> <span class="op">=</span> <span class="ident">CairoMemory::new</span>(<span class="ident">instrs</span>);
-        <span class="ident">memory</span>.<span class="ident">write</span>(<span class="ident">F::from</span>(<span class="ident">memory</span>.<span class="ident">len</span>()), <span class="ident">F::from</span>(<span class="number">7u64</span>));
-        <span class="ident">memory</span>.<span class="ident">write</span>(<span class="ident">F::from</span>(<span class="ident">memory</span>.<span class="ident">len</span>()), <span class="ident">F::from</span>(<span class="number">7u64</span>));
-        <span class="ident">memory</span>.<span class="ident">write</span>(<span class="ident">F::from</span>(<span class="ident">memory</span>.<span class="ident">len</span>()), <span class="ident">F::from</span>(<span class="number">10u64</span>));
-        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">memory</span>);
-        <span class="comment">// Check content of an address</span>
-        <span class="macro">assert_eq!</span>(
-            <span class="ident">memory</span>.<span class="ident">read</span>(<span class="ident">F::one</span>()).<span class="ident">unwrap</span>(),
-            <span class="ident">F::from</span>(<span class="number">0x480680017fff8000u64</span>)
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_cairo_bytecode() {
+        <span class="comment">// This test starts with the public memory corresponding to a simple Cairo program
+        // func main{}():
+        //    tempvar x = 10;
+        //    return()
+        // end
+        // And checks that memory writing and reading works as expected by completing
+        // the total memory of executing the program
+        </span><span class="kw">let </span>instrs = <span class="macro">vec!</span>[<span class="number">0x480680017fff8000</span>, <span class="number">10</span>, <span class="number">0x208b7fff7fff7ffe</span>]
+            .iter()
+            .map(|<span class="kw-2">&amp;</span>i: <span class="kw-2">&amp;</span>i64| F::from(i))
+            .collect();
+        <span class="kw">let </span><span class="kw-2">mut </span>memory = CairoMemory::new(instrs);
+        memory.write(F::from(memory.len()), F::from(<span class="number">7u64</span>));
+        memory.write(F::from(memory.len()), F::from(<span class="number">7u64</span>));
+        memory.write(F::from(memory.len()), F::from(<span class="number">10u64</span>));
+        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, memory);
+        <span class="comment">// Check content of an address
+        </span><span class="macro">assert_eq!</span>(
+            memory.read(F::one()).unwrap(),
+            F::from(<span class="number">0x480680017fff8000u64</span>)
         );
-        <span class="comment">// Check that the program contained 3 words</span>
-        <span class="macro">assert_eq!</span>(<span class="number">3</span>, <span class="ident">memory</span>.<span class="ident">get_codelen</span>());
-        <span class="comment">// Check we have 6 words, excluding the dummy entry</span>
-        <span class="macro">assert_eq!</span>(<span class="number">6</span>, <span class="ident">memory</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>);
-        <span class="ident">memory</span>.<span class="ident">read</span>(<span class="ident">F::from</span>(<span class="number">10u32</span>));
+        <span class="comment">// Check that the program contained 3 words
+        </span><span class="macro">assert_eq!</span>(<span class="number">3</span>, memory.get_codelen());
+        <span class="comment">// Check we have 6 words, excluding the dummy entry
+        </span><span class="macro">assert_eq!</span>(<span class="number">6</span>, memory.len() - <span class="number">1</span>);
+        memory.read(F::from(<span class="number">10u32</span>));
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="cairo" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="cairo" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

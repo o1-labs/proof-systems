@@ -64,71 +64,71 @@
 <span id="64">64</span>
 <span id="65">65</span>
 <span id="66">66</span>
-</pre><pre class="rust"><code><span class="doccomment">//! This contains the [DomainConstantEvaluations] which is used to provide precomputations to a [ConstraintSystem](super::constraints::ConstraintSystem).</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This contains the [DomainConstantEvaluations] which is used to provide precomputations to a [ConstraintSystem](super::constraints::ConstraintSystem).
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::domains::EvaluationDomains</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::polynomials::permutation::zk_polynomial</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::polynomials::permutation::ZK_ROWS</span>;
-<span class="kw">use</span> <span class="ident">ark_ff::FftField</span>;
-<span class="kw">use</span> <span class="ident">ark_poly::EvaluationDomain</span>;
-<span class="kw">use</span> <span class="ident">ark_poly::UVPolynomial</span>;
-<span class="kw">use</span> <span class="ident">ark_poly</span>::{<span class="ident">univariate::DensePolynomial</span> <span class="kw">as</span> <span class="ident">DP</span>, <span class="ident">Evaluations</span> <span class="kw">as</span> <span class="ident">E</span>, <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>};
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">serde_with::serde_as</span>;
+</span><span class="kw">use </span><span class="kw">crate</span>::circuits::domains::EvaluationDomains;
+<span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::permutation::zk_polynomial;
+<span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::permutation::ZK_ROWS;
+<span class="kw">use </span>ark_ff::FftField;
+<span class="kw">use </span>ark_poly::EvaluationDomain;
+<span class="kw">use </span>ark_poly::UVPolynomial;
+<span class="kw">use </span>ark_poly::{univariate::DensePolynomial <span class="kw">as </span>DP, Evaluations <span class="kw">as </span>E, Radix2EvaluationDomain <span class="kw">as </span>D};
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>serde_with::serde_as;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::polynomials::permutation::vanishes_on_last_4_rows</span>;
+<span class="kw">use </span><span class="kw">super</span>::polynomials::permutation::vanishes_on_last_4_rows;
 
-<span class="attribute">#[<span class="ident">serde_as</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="doccomment">/// pre-computed polynomials that depend only on the chosen field and domain</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DomainConstantEvaluations</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// 1-st Lagrange evaluated over domain.d8</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">poly_x_d1</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// 0-th Lagrange evaluated over domain.d4</span>
-    <span class="comment">// TODO(mimoo): be consistent with the paper/spec, call it L1 here or call it L0 there</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">constant_1_d4</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// 0-th Lagrange evaluated over domain.d8</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">constant_1_d8</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// the polynomial that vanishes on the last four rows</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">vanishes_on_last_4_rows</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// zero-knowledge polynomial over domain.d8</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">zkpl</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">zkpm</span>: <span class="ident">DP</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
+<span class="attribute">#[serde_as]
+#[derive(Clone, Serialize, Deserialize, Debug)]
+</span><span class="doccomment">/// pre-computed polynomials that depend only on the chosen field and domain
+</span><span class="kw">pub struct </span>DomainConstantEvaluations&lt;F: FftField&gt; {
+    <span class="doccomment">/// 1-st Lagrange evaluated over domain.d8
+    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="kw">pub </span>poly_x_d1: E&lt;F, D&lt;F&gt;&gt;,
+    <span class="doccomment">/// 0-th Lagrange evaluated over domain.d4
+    </span><span class="comment">// TODO(mimoo): be consistent with the paper/spec, call it L1 here or call it L0 there
+    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="kw">pub </span>constant_1_d4: E&lt;F, D&lt;F&gt;&gt;,
+    <span class="doccomment">/// 0-th Lagrange evaluated over domain.d8
+    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="kw">pub </span>constant_1_d8: E&lt;F, D&lt;F&gt;&gt;,
+    <span class="doccomment">/// the polynomial that vanishes on the last four rows
+    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="kw">pub </span>vanishes_on_last_4_rows: E&lt;F, D&lt;F&gt;&gt;,
+    <span class="doccomment">/// zero-knowledge polynomial over domain.d8
+    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="kw">pub </span>zkpl: E&lt;F, D&lt;F&gt;&gt;,
+    <span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="kw">pub </span>zkpm: DP&lt;F&gt;,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> <span class="ident">DomainConstantEvaluations</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create</span>(<span class="ident">domain</span>: <span class="ident">EvaluationDomains</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">poly_x_d1</span> <span class="op">=</span> <span class="ident">DP::from_coefficients_slice</span>(<span class="kw-2">&amp;</span>[<span class="ident">F::zero</span>(), <span class="ident">F::one</span>()])
-            .<span class="ident">evaluate_over_domain_by_ref</span>(<span class="ident">domain</span>.<span class="ident">d8</span>);
-        <span class="kw">let</span> <span class="ident">constant_1_d4</span> <span class="op">=</span>
-            <span class="ident">E</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::from_vec_and_domain</span>(<span class="macro">vec!</span>[<span class="ident">F::one</span>(); <span class="ident">domain</span>.<span class="ident">d4</span>.<span class="ident">size</span>()], <span class="ident">domain</span>.<span class="ident">d4</span>);
-        <span class="kw">let</span> <span class="ident">constant_1_d8</span> <span class="op">=</span>
-            <span class="ident">E</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::from_vec_and_domain</span>(<span class="macro">vec!</span>[<span class="ident">F::one</span>(); <span class="ident">domain</span>.<span class="ident">d8</span>.<span class="ident">size</span>()], <span class="ident">domain</span>.<span class="ident">d8</span>);
+<span class="kw">impl</span>&lt;F: FftField&gt; DomainConstantEvaluations&lt;F&gt; {
+    <span class="kw">pub fn </span>create(domain: EvaluationDomains&lt;F&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
+        <span class="kw">let </span>poly_x_d1 = DP::from_coefficients_slice(<span class="kw-2">&amp;</span>[F::zero(), F::one()])
+            .evaluate_over_domain_by_ref(domain.d8);
+        <span class="kw">let </span>constant_1_d4 =
+            E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(<span class="macro">vec!</span>[F::one(); domain.d4.size()], domain.d4);
+        <span class="kw">let </span>constant_1_d8 =
+            E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(<span class="macro">vec!</span>[F::one(); domain.d8.size()], domain.d8);
 
-        <span class="kw">let</span> <span class="ident">vanishes_on_last_4_rows</span> <span class="op">=</span>
-            <span class="ident">vanishes_on_last_4_rows</span>(<span class="ident">domain</span>.<span class="ident">d1</span>).<span class="ident">evaluate_over_domain</span>(<span class="ident">domain</span>.<span class="ident">d8</span>);
+        <span class="kw">let </span>vanishes_on_last_4_rows =
+            vanishes_on_last_4_rows(domain.d1).evaluate_over_domain(domain.d8);
 
-        <span class="macro">assert!</span>(<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span> <span class="op">&gt;</span> <span class="ident">ZK_ROWS</span>);
+        <span class="macro">assert!</span>(domain.d1.size &gt; ZK_ROWS);
 
-        <span class="comment">// x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3</span>
-        <span class="kw">let</span> <span class="ident">zkpm</span> <span class="op">=</span> <span class="ident">zk_polynomial</span>(<span class="ident">domain</span>.<span class="ident">d1</span>);
-        <span class="kw">let</span> <span class="ident">zkpl</span> <span class="op">=</span> <span class="ident">zkpm</span>.<span class="ident">evaluate_over_domain_by_ref</span>(<span class="ident">domain</span>.<span class="ident">d8</span>);
+        <span class="comment">// x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3
+        </span><span class="kw">let </span>zkpm = zk_polynomial(domain.d1);
+        <span class="kw">let </span>zkpl = zkpm.evaluate_over_domain_by_ref(domain.d8);
 
-        <span class="prelude-val">Some</span>(<span class="ident">DomainConstantEvaluations</span> {
-            <span class="ident">poly_x_d1</span>,
-            <span class="ident">constant_1_d4</span>,
-            <span class="ident">constant_1_d8</span>,
-            <span class="ident">vanishes_on_last_4_rows</span>,
-            <span class="ident">zkpl</span>,
-            <span class="ident">zkpm</span>,
+        <span class="prelude-val">Some</span>(DomainConstantEvaluations {
+            poly_x_d1,
+            constant_1_d4,
+            constant_1_d8,
+            vanishes_on_last_4_rows,
+            zkpl,
+            zkpm,
         })
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

@@ -8,26 +8,26 @@
 </ul>
 <p>Here is an example of how to use the signer interface to sign and verify Mina transactions.</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="attribute">#[<span class="ident">path</span> <span class="op">=</span> <span class="string">&quot;../tests/transaction.rs&quot;</span>]</span>
-<span class="kw">mod</span> <span class="ident">transaction</span>;
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="attribute">#[path = <span class="string">&quot;../tests/transaction.rs&quot;</span>]
+</span><span class="kw">mod </span>transaction;
 
-<span class="kw">use</span> <span class="ident">rand</span>;
-<span class="kw">use</span> <span class="ident">mina_signer</span>::{<span class="ident">NetworkId</span>, <span class="ident">Keypair</span>, <span class="ident">PubKey</span>, <span class="ident">Signer</span>};
-<span class="kw">use</span> <span class="ident">transaction::Transaction</span>;
+<span class="kw">use </span>rand;
+<span class="kw">use </span>mina_signer::{NetworkId, Keypair, PubKey, Signer};
+<span class="kw">use </span>transaction::Transaction;
 
-<span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">Keypair::rand</span>(<span class="kw-2">&amp;mut</span> <span class="ident">rand::rngs::OsRng</span>);
+<span class="kw">let </span>keypair = Keypair::rand(<span class="kw-2">&amp;mut </span>rand::rngs::OsRng);
 
-<span class="kw">let</span> <span class="ident">tx</span> <span class="op">=</span> <span class="ident">Transaction::new_payment</span>(
-                <span class="ident">keypair</span>.<span class="ident">public</span>.<span class="ident">clone</span>(),
-                <span class="ident">PubKey::from_address</span>(<span class="string">&quot;B62qicipYxyEHu7QjUqS7QvBipTs5CzgkYZZZkPoKVYBu6tnDUcE9Zt&quot;</span>).<span class="ident">expect</span>(<span class="string">&quot;invalid receiver address&quot;</span>),
+<span class="kw">let </span>tx = Transaction::new_payment(
+                keypair.public.clone(),
+                PubKey::from_address(<span class="string">&quot;B62qicipYxyEHu7QjUqS7QvBipTs5CzgkYZZZkPoKVYBu6tnDUcE9Zt&quot;</span>).expect(<span class="string">&quot;invalid receiver address&quot;</span>),
                 <span class="number">1729000000000</span>,
                 <span class="number">2000000000</span>,
                 <span class="number">271828</span>,
             );
 
-<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ctx</span> <span class="op">=</span> <span class="ident">mina_signer::create_legacy</span>::<span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span>(<span class="ident">NetworkId::TESTNET</span>);
-<span class="kw">let</span> <span class="ident">sig</span> <span class="op">=</span> <span class="ident">ctx</span>.<span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>, <span class="kw-2">&amp;</span><span class="ident">tx</span>);
-<span class="macro">assert!</span>(<span class="ident">ctx</span>.<span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="ident">sig</span>, <span class="kw-2">&amp;</span><span class="ident">keypair</span>.<span class="ident">public</span>, <span class="kw-2">&amp;</span><span class="ident">tx</span>));</code></pre></div>
+<span class="kw">let </span><span class="kw-2">mut </span>ctx = mina_signer::create_legacy::&lt;Transaction&gt;(NetworkId::TESTNET);
+<span class="kw">let </span>sig = ctx.sign(<span class="kw-2">&amp;</span>keypair, <span class="kw-2">&amp;</span>tx);
+<span class="macro">assert!</span>(ctx.verify(<span class="kw-2">&amp;</span>sig, <span class="kw-2">&amp;</span>keypair.public, <span class="kw-2">&amp;</span>tx));</code></pre></div>
 <p>These examples use the test <a href="https://github.com/o1-labs/proof-systems/tree/master/signer/tests/transaction.rs"><code>Transaction</code></a> structure found in the <a href="https://github.com/o1-labs/proof-systems/tree/master/signer/tests"><code>./tests</code></a> directory.  This is a complete reference implementation of the Mina payment and delegation transaction structures found on mainnet and testnet.</p>
 <p><strong>Note:</strong> In order to sign something it must be hashed.  This framework allows you to define how types are hashed by implementing the <a href="../mina_hasher/trait.Hashable.html"><code>Hashable</code></a> trait– see the <a href="../mina_hasher/index.html"><code>mina_hasher</code></a> documentation</p>
 <p>For more details about the ``mina_signer`, please see rustdoc mina-signer documentation.</p>
@@ -47,4 +47,4 @@
 </div></div></div><h2 id="types" class="small-section-header"><a href="#types">Type Definitions</a></h2><div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="type" href="type.BaseField.html" title="mina_signer::BaseField type">BaseField</a></div><div class="item-right docblock-short"><p>Base field element type</p>
 </div></div><div class="item-row"><div class="item-left module-item"><a class="type" href="type.CurvePoint.html" title="mina_signer::CurvePoint type">CurvePoint</a></div><div class="item-right docblock-short"><p>Affine curve point type</p>
 </div></div><div class="item-row"><div class="item-left module-item"><a class="type" href="type.ScalarField.html" title="mina_signer::ScalarField type">ScalarField</a></div><div class="item-right docblock-short"><p>Scalar field element type</p>
-</div></div></div></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="mina_signer" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</div></div></div></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="mina_signer" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

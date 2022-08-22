@@ -10,23 +10,23 @@ The prior means that <code>Hashable</code> only supports types whose size is not
 system are unique and that all structures hashed are of fixed size.</p>
 <p>Here is an example of how to implement the <code>Hashable</code> trait for am <code>Example</code> type.</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">mina_hasher</span>::{<span class="ident">Hashable</span>, <span class="ident">ROInput</span>};
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>mina_hasher::{Hashable, ROInput};
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
-<span class="kw">struct</span> <span class="ident">Example</span>;
+<span class="attribute">#[derive(Clone)]
+</span><span class="kw">struct </span>Example;
 
-<span class="kw">impl</span> <span class="ident">Hashable</span> <span class="kw">for</span> <span class="ident">Example</span> {
-    <span class="kw">type</span> <span class="ident">D</span> <span class="op">=</span> ();
+<span class="kw">impl </span>Hashable <span class="kw">for </span>Example {
+    <span class="kw">type </span>D = ();
 
-    <span class="kw">fn</span> <span class="ident">to_roinput</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ROInput</span> {
-        <span class="kw">let</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>();
-        <span class="comment">// Serialize example members</span>
-        <span class="comment">// ...</span>
-        <span class="ident">roi</span>
+    <span class="kw">fn </span>to_roinput(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ROInput {
+        <span class="kw">let </span>roi = ROInput::new();
+        <span class="comment">// Serialize example members
+        // ...
+        </span>roi
     }
 
-    <span class="kw">fn</span> <span class="ident">domain_string</span>(<span class="kw">_</span>: <span class="ident"><span class="self">Self</span>::D</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
-       <span class="macro">format!</span>(<span class="string">&quot;Example&quot;</span>).<span class="ident">into</span>()
+    <span class="kw">fn </span>domain_string(<span class="kw">_</span>: <span class="self">Self</span>::D) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
+       <span class="macro">format!</span>(<span class="string">&quot;Example&quot;</span>).into()
    }
 }</code></pre></div>
 <p>See example in <a href="roinput/struct.ROInput.html" title="ROInput"><code>ROInput</code></a> documentation</p>
@@ -39,4 +39,4 @@ more details). The domain string may be parameterized by the contents of
 the generic <code>domain_param</code> argument.</p>
 <p><strong>Note:</strong> You should always return <code>Some(String)</code>. A <code>None</code> return value
 is only used for testing.</p>
-</div></details></div><h2 id="implementors" class="small-section-header">Implementors<a href="#implementors" class="anchor"></a></h2><div class="item-list" id="implementors-list"></div><script type="text/javascript" src="../implementors/mina_hasher/trait.Hashable.js" data-ignore-extern-crates="" async></script></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="mina_hasher" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</div></details></div><h2 id="implementors" class="small-section-header">Implementors<a href="#implementors" class="anchor"></a></h2><div class="item-list" id="implementors-list"></div><script type="text/javascript" src="../implementors/mina_hasher/trait.Hashable.js" data-ignore-extern-crates="" async></script></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="mina_hasher" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

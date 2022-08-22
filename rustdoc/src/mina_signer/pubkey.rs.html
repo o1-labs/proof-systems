@@ -213,210 +213,210 @@
 <span id="213">213</span>
 <span id="214">214</span>
 <span id="215">215</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Public key structures and algorithms</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Definition of public key structure and helpers</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Public key structures and algorithms
+//!
+//! Definition of public key structure and helpers
 
-<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">BigInteger</span>, <span class="ident">PrimeField</span>, <span class="ident">Zero</span>};
-<span class="kw">use</span> <span class="ident">bs58</span>;
-<span class="kw">use</span> <span class="ident">core::fmt</span>;
-<span class="kw">use</span> <span class="ident">sha2</span>::{<span class="ident">Digest</span>, <span class="ident">Sha256</span>};
-<span class="kw">use</span> <span class="ident">std::ops::Neg</span>;
-<span class="kw">use</span> <span class="ident">thiserror::Error</span>;
+</span><span class="kw">use </span>ark_ff::{BigInteger, PrimeField, Zero};
+<span class="kw">use </span>bs58;
+<span class="kw">use </span>core::fmt;
+<span class="kw">use </span>sha2::{Digest, Sha256};
+<span class="kw">use </span>std::ops::Neg;
+<span class="kw">use </span>thiserror::Error;
 
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">BaseField</span>, <span class="ident">CurvePoint</span>};
-<span class="kw">use</span> <span class="ident">o1_utils::FieldHelpers</span>;
+<span class="kw">use crate</span>::{BaseField, CurvePoint};
+<span class="kw">use </span>o1_utils::FieldHelpers;
 
-<span class="doccomment">/// Public key errors</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">PubKeyError</span> {
-    <span class="doccomment">/// Invalid address length</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;invalid address length&quot;</span>)]</span>
-    <span class="ident">AddressLength</span>,
-    <span class="doccomment">/// Invalid address base58</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;invalid address base58&quot;</span>)]</span>
-    <span class="ident">AddressBase58</span>,
-    <span class="doccomment">/// Invalid raw address bytes length</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;invalid raw address bytes length&quot;</span>)]</span>
-    <span class="ident">AddressRawByteLength</span>,
-    <span class="doccomment">/// Invalid address checksum</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;invalid address checksum&quot;</span>)]</span>
-    <span class="ident">AddressChecksum</span>,
-    <span class="doccomment">/// Invalid address version</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;invalid address version&quot;</span>)]</span>
-    <span class="ident">AddressVersion</span>,
-    <span class="doccomment">/// Invalid x-coordinate bytes</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;invalid x-coordinate bytes&quot;</span>)]</span>
-    <span class="ident">XCoordinateBytes</span>,
-    <span class="doccomment">/// Invalid x-coordinate</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;invalid x-coordinate&quot;</span>)]</span>
-    <span class="ident">XCoordinate</span>,
-    <span class="doccomment">/// Point not on curve</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;point not on curve&quot;</span>)]</span>
-    <span class="ident">NonCurvePoint</span>,
+<span class="doccomment">/// Public key errors
+</span><span class="attribute">#[derive(Error, Debug, Clone, PartialEq)]
+</span><span class="kw">pub enum </span>PubKeyError {
+    <span class="doccomment">/// Invalid address length
+    </span><span class="attribute">#[error(<span class="string">&quot;invalid address length&quot;</span>)]
+    </span>AddressLength,
+    <span class="doccomment">/// Invalid address base58
+    </span><span class="attribute">#[error(<span class="string">&quot;invalid address base58&quot;</span>)]
+    </span>AddressBase58,
+    <span class="doccomment">/// Invalid raw address bytes length
+    </span><span class="attribute">#[error(<span class="string">&quot;invalid raw address bytes length&quot;</span>)]
+    </span>AddressRawByteLength,
+    <span class="doccomment">/// Invalid address checksum
+    </span><span class="attribute">#[error(<span class="string">&quot;invalid address checksum&quot;</span>)]
+    </span>AddressChecksum,
+    <span class="doccomment">/// Invalid address version
+    </span><span class="attribute">#[error(<span class="string">&quot;invalid address version&quot;</span>)]
+    </span>AddressVersion,
+    <span class="doccomment">/// Invalid x-coordinate bytes
+    </span><span class="attribute">#[error(<span class="string">&quot;invalid x-coordinate bytes&quot;</span>)]
+    </span>XCoordinateBytes,
+    <span class="doccomment">/// Invalid x-coordinate
+    </span><span class="attribute">#[error(<span class="string">&quot;invalid x-coordinate&quot;</span>)]
+    </span>XCoordinate,
+    <span class="doccomment">/// Point not on curve
+    </span><span class="attribute">#[error(<span class="string">&quot;point not on curve&quot;</span>)]
+    </span>NonCurvePoint,
 }
-<span class="doccomment">/// Public key Result</span>
-<span class="kw">pub</span> <span class="kw">type</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">std::result::Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">PubKeyError</span><span class="op">&gt;</span>;
+<span class="doccomment">/// Public key Result
+</span><span class="kw">pub type </span><span class="prelude-ty">Result</span>&lt;T&gt; = std::result::Result&lt;T, PubKeyError&gt;;
 
-<span class="doccomment">/// Length of Mina addresses</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MINA_ADDRESS_LEN</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">55</span>;
-<span class="kw">const</span> <span class="ident">MINA_ADDRESS_RAW_LEN</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">40</span>;
+<span class="doccomment">/// Length of Mina addresses
+</span><span class="kw">pub const </span>MINA_ADDRESS_LEN: usize = <span class="number">55</span>;
+<span class="kw">const </span>MINA_ADDRESS_RAW_LEN: usize = <span class="number">40</span>;
 
-<span class="doccomment">/// Public key</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PubKey</span>(<span class="ident">CurvePoint</span>);
+<span class="doccomment">/// Public key
+</span><span class="attribute">#[derive(Clone, Debug, PartialEq, Eq)]
+</span><span class="kw">pub struct </span>PubKey(CurvePoint);
 
-<span class="kw">impl</span> <span class="ident">PubKey</span> {
-    <span class="doccomment">/// Create a public key from curve point</span>
-    <span class="doccomment">/// Note: Does not check point is on curve</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_point_unsafe</span>(<span class="ident">point</span>: <span class="ident">CurvePoint</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span>(<span class="ident">point</span>)
+<span class="kw">impl </span>PubKey {
+    <span class="doccomment">/// Create a public key from curve point
+    /// Note: Does not check point is on curve
+    </span><span class="kw">pub fn </span>from_point_unsafe(point: CurvePoint) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>(point)
     }
 
-    <span class="doccomment">/// Deserialize Mina address into public key</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_address</span>(<span class="ident">address</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="ident">address</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">MINA_ADDRESS_LEN</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">PubKeyError::AddressLength</span>);
+    <span class="doccomment">/// Deserialize Mina address into public key
+    </span><span class="kw">pub fn </span>from_address(address: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt; {
+        <span class="kw">if </span>address.len() != MINA_ADDRESS_LEN {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(PubKeyError::AddressLength);
         }
 
-        <span class="kw">let</span> <span class="ident">bytes</span> <span class="op">=</span> <span class="ident">bs58::decode</span>(<span class="ident">address</span>)
-            .<span class="ident">into_vec</span>()
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">PubKeyError::AddressBase58</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>bytes = bs58::decode(address)
+            .into_vec()
+            .map_err(|<span class="kw">_</span>| PubKeyError::AddressBase58)<span class="question-mark">?</span>;
 
-        <span class="kw">if</span> <span class="ident">bytes</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">MINA_ADDRESS_RAW_LEN</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">PubKeyError::AddressRawByteLength</span>);
+        <span class="kw">if </span>bytes.len() != MINA_ADDRESS_RAW_LEN {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(PubKeyError::AddressRawByteLength);
         }
 
-        <span class="kw">let</span> (<span class="ident">raw</span>, <span class="ident">checksum</span>) <span class="op">=</span> (<span class="kw-2">&amp;</span><span class="ident">bytes</span>[..<span class="ident">bytes</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">4</span>], <span class="kw-2">&amp;</span><span class="ident">bytes</span>[<span class="ident">bytes</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">4</span>..]);
-        <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="ident">Sha256::digest</span>(<span class="kw-2">&amp;</span><span class="ident">Sha256::digest</span>(<span class="ident">raw</span>)[..]);
-        <span class="kw">if</span> <span class="ident">checksum</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hash</span>[..<span class="number">4</span>] {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">PubKeyError::AddressChecksum</span>);
+        <span class="kw">let </span>(raw, checksum) = (<span class="kw-2">&amp;</span>bytes[..bytes.len() - <span class="number">4</span>], <span class="kw-2">&amp;</span>bytes[bytes.len() - <span class="number">4</span>..]);
+        <span class="kw">let </span>hash = Sha256::digest(<span class="kw-2">&amp;</span>Sha256::digest(raw)[..]);
+        <span class="kw">if </span>checksum != <span class="kw-2">&amp;</span>hash[..<span class="number">4</span>] {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(PubKeyError::AddressChecksum);
         }
 
-        <span class="kw">let</span> (<span class="ident">version</span>, <span class="ident">x_bytes</span>, <span class="ident">y_parity</span>) <span class="op">=</span> (
-            <span class="kw-2">&amp;</span><span class="ident">raw</span>[..<span class="number">3</span>],
-            <span class="kw-2">&amp;</span><span class="ident">raw</span>[<span class="number">3</span>..<span class="ident">bytes</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">5</span>],
-            <span class="ident">raw</span>[<span class="ident">bytes</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">5</span>] <span class="op">==</span> <span class="number">0x01</span>,
+        <span class="kw">let </span>(version, x_bytes, y_parity) = (
+            <span class="kw-2">&amp;</span>raw[..<span class="number">3</span>],
+            <span class="kw-2">&amp;</span>raw[<span class="number">3</span>..bytes.len() - <span class="number">5</span>],
+            raw[bytes.len() - <span class="number">5</span>] == <span class="number">0x01</span>,
         );
-        <span class="kw">if</span> <span class="ident">version</span> <span class="op">!</span><span class="op">=</span> [<span class="number">0xcb</span>, <span class="number">0x01</span>, <span class="number">0x01</span>] {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">PubKeyError::AddressVersion</span>);
+        <span class="kw">if </span>version != [<span class="number">0xcb</span>, <span class="number">0x01</span>, <span class="number">0x01</span>] {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(PubKeyError::AddressVersion);
         }
 
-        <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">BaseField::from_bytes</span>(<span class="ident">x_bytes</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">PubKeyError::XCoordinateBytes</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">pt</span> <span class="op">=</span> <span class="ident">CurvePoint::get_point_from_x</span>(<span class="ident">x</span>, <span class="ident">y_parity</span>).<span class="ident">ok_or</span>(<span class="ident">PubKeyError::XCoordinate</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>x = BaseField::from_bytes(x_bytes).map_err(|<span class="kw">_</span>| PubKeyError::XCoordinateBytes)<span class="question-mark">?</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>pt = CurvePoint::get_point_from_x(x, y_parity).ok_or(PubKeyError::XCoordinate)<span class="question-mark">?</span>;
 
-        <span class="kw">if</span> <span class="ident">pt</span>.<span class="ident">y</span>.<span class="ident">into_repr</span>().<span class="ident">is_even</span>() <span class="op">==</span> <span class="ident">y_parity</span> {
-            <span class="ident">pt</span>.<span class="ident">y</span> <span class="op">=</span> <span class="ident">pt</span>.<span class="ident">y</span>.<span class="ident">neg</span>();
+        <span class="kw">if </span>pt.y.into_repr().is_even() == y_parity {
+            pt.y = pt.y.neg();
         }
 
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">pt</span>.<span class="ident">is_on_curve</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">PubKeyError::NonCurvePoint</span>);
+        <span class="kw">if </span>!pt.is_on_curve() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(PubKeyError::NonCurvePoint);
         }
 
-        <span class="comment">// Safe now because we checked point pt is on curve</span>
-        <span class="prelude-val">Ok</span>(<span class="ident">PubKey::from_point_unsafe</span>(<span class="ident">pt</span>))
+        <span class="comment">// Safe now because we checked point pt is on curve
+        </span><span class="prelude-val">Ok</span>(PubKey::from_point_unsafe(pt))
     }
 
-    <span class="doccomment">/// Borrow public key as curve point</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">point</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">CurvePoint</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>
-    }
+    <span class="doccomment">/// Borrow public key as curve point
+    </span><span class="kw">pub fn </span>point(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>CurvePoint {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0
+    </span>}
 
-    <span class="doccomment">/// Convert public key into curve point</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_point</span>(<span class="self">self</span>) -&gt; <span class="ident">CurvePoint</span> {
-        <span class="self">self</span>.<span class="number">0</span>
-    }
+    <span class="doccomment">/// Convert public key into curve point
+    </span><span class="kw">pub fn </span>into_point(<span class="self">self</span>) -&gt; CurvePoint {
+        <span class="self">self</span>.<span class="number">0
+    </span>}
 
-    <span class="doccomment">/// Convert public key into compressed public key</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_compressed</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">CompressedPubKey</span> {
-        <span class="kw">let</span> <span class="ident">point</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>;
-        <span class="ident">CompressedPubKey</span> {
-            <span class="ident">x</span>: <span class="ident">point</span>.<span class="ident">x</span>,
-            <span class="ident">is_odd</span>: <span class="ident">point</span>.<span class="ident">y</span>.<span class="ident">into_repr</span>().<span class="ident">is_odd</span>(),
+    <span class="doccomment">/// Convert public key into compressed public key
+    </span><span class="kw">pub fn </span>into_compressed(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; CompressedPubKey {
+        <span class="kw">let </span>point = <span class="self">self</span>.<span class="number">0</span>;
+        CompressedPubKey {
+            x: point.x,
+            is_odd: point.y.into_repr().is_odd(),
         }
     }
 
-    <span class="doccomment">/// Serialize public key into corresponding Mina address</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_address</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">String</span> {
-        <span class="kw">let</span> <span class="ident">point</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">point</span>();
-        <span class="ident">into_address</span>(<span class="kw-2">&amp;</span><span class="ident">point</span>.<span class="ident">x</span>, <span class="ident">point</span>.<span class="ident">y</span>.<span class="ident">into_repr</span>().<span class="ident">is_odd</span>())
+    <span class="doccomment">/// Serialize public key into corresponding Mina address
+    </span><span class="kw">pub fn </span>into_address(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
+        <span class="kw">let </span>point = <span class="self">self</span>.point();
+        into_address(<span class="kw-2">&amp;</span>point.x, point.y.into_repr().is_odd())
     }
 }
 
-<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">PubKey</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="kw">let</span> <span class="ident">point</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">point</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">x_bytes</span> <span class="op">=</span> <span class="ident">point</span>.<span class="ident">x</span>.<span class="ident">to_bytes</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">y_bytes</span> <span class="op">=</span> <span class="ident">point</span>.<span class="ident">y</span>.<span class="ident">to_bytes</span>();
-        <span class="ident">x_bytes</span>.<span class="ident">reverse</span>();
-        <span class="ident">y_bytes</span>.<span class="ident">reverse</span>();
+<span class="kw">impl </span>fmt::Display <span class="kw">for </span>PubKey {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        <span class="kw">let </span>point = <span class="self">self</span>.point();
+        <span class="kw">let </span><span class="kw-2">mut </span>x_bytes = point.x.to_bytes();
+        <span class="kw">let </span><span class="kw-2">mut </span>y_bytes = point.y.to_bytes();
+        x_bytes.reverse();
+        y_bytes.reverse();
 
-        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{}{}&quot;</span>, <span class="ident">hex::encode</span>(<span class="ident">x_bytes</span>), <span class="ident">hex::encode</span>(<span class="ident">y_bytes</span>))
+        <span class="macro">write!</span>(f, <span class="string">&quot;{}{}&quot;</span>, hex::encode(x_bytes), hex::encode(y_bytes))
     }
 }
 
-<span class="doccomment">/// Compressed public keys consist of x-coordinate and y-coordinate parity.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CompressedPubKey</span> {
-    <span class="doccomment">/// X-coordinate</span>
-    <span class="kw">pub</span> <span class="ident">x</span>: <span class="ident">BaseField</span>,
+<span class="doccomment">/// Compressed public keys consist of x-coordinate and y-coordinate parity.
+</span><span class="attribute">#[derive(Clone, Debug, PartialEq, Eq)]
+</span><span class="kw">pub struct </span>CompressedPubKey {
+    <span class="doccomment">/// X-coordinate
+    </span><span class="kw">pub </span>x: BaseField,
 
-    <span class="doccomment">/// Parity of y-coordinate</span>
-    <span class="kw">pub</span> <span class="ident">is_odd</span>: <span class="ident">bool</span>,
+    <span class="doccomment">/// Parity of y-coordinate
+    </span><span class="kw">pub </span>is_odd: bool,
 }
 
-<span class="kw">fn</span> <span class="ident">into_address</span>(<span class="ident">x</span>: <span class="kw-2">&amp;</span><span class="ident">BaseField</span>, <span class="ident">is_odd</span>: <span class="ident">bool</span>) -&gt; <span class="ident">String</span> {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">raw</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[
-        <span class="number">0xcb</span>, <span class="comment">// version for base58 check</span>
-        <span class="number">0x01</span>, <span class="comment">// non_zero_curve_point version</span>
-        <span class="number">0x01</span>, <span class="comment">// compressed_poly version</span>
-    ];
+<span class="kw">fn </span>into_address(x: <span class="kw-2">&amp;</span>BaseField, is_odd: bool) -&gt; String {
+    <span class="kw">let </span><span class="kw-2">mut </span>raw: Vec&lt;u8&gt; = <span class="macro">vec!</span>[
+        <span class="number">0xcb</span>, <span class="comment">// version for base58 check
+        </span><span class="number">0x01</span>, <span class="comment">// non_zero_curve_point version
+        </span><span class="number">0x01</span>, <span class="comment">// compressed_poly version
+    </span>];
 
-    <span class="comment">// pub key x-coordinate</span>
-    <span class="ident">raw</span>.<span class="ident">extend</span>(<span class="ident">x</span>.<span class="ident">to_bytes</span>());
+    <span class="comment">// pub key x-coordinate
+    </span>raw.extend(x.to_bytes());
 
-    <span class="comment">// pub key y-coordinate parity</span>
-    <span class="ident">raw</span>.<span class="ident">push</span>(<span class="ident">is_odd</span> <span class="kw">as</span> <span class="ident">u8</span>);
+    <span class="comment">// pub key y-coordinate parity
+    </span>raw.push(is_odd <span class="kw">as </span>u8);
 
-    <span class="comment">// 4-byte checksum</span>
-    <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="ident">Sha256::digest</span>(<span class="kw-2">&amp;</span><span class="ident">Sha256::digest</span>(<span class="kw-2">&amp;</span><span class="ident">raw</span>[..])[..]);
-    <span class="ident">raw</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">hash</span>[..<span class="number">4</span>]);
+    <span class="comment">// 4-byte checksum
+    </span><span class="kw">let </span>hash = Sha256::digest(<span class="kw-2">&amp;</span>Sha256::digest(<span class="kw-2">&amp;</span>raw[..])[..]);
+    raw.extend(<span class="kw-2">&amp;</span>hash[..<span class="number">4</span>]);
 
-    <span class="comment">// The raw buffer is MINA_ADDRESS_RAW_LEN (= 40) bytes in length</span>
-    <span class="ident">bs58::encode</span>(<span class="ident">raw</span>).<span class="ident">into_string</span>()
+    <span class="comment">// The raw buffer is MINA_ADDRESS_RAW_LEN (= 40) bytes in length
+    </span>bs58::encode(raw).into_string()
 }
 
-<span class="kw">impl</span> <span class="ident">CompressedPubKey</span> {
-    <span class="doccomment">/// Serialize compressed public key into corresponding Mina address</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_address</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">String</span> {
-        <span class="ident">into_address</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">x</span>, <span class="self">self</span>.<span class="ident">is_odd</span>)
+<span class="kw">impl </span>CompressedPubKey {
+    <span class="doccomment">/// Serialize compressed public key into corresponding Mina address
+    </span><span class="kw">pub fn </span>into_address(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
+        into_address(<span class="kw-2">&amp;</span><span class="self">self</span>.x, <span class="self">self</span>.is_odd)
     }
 
-    <span class="doccomment">/// Deserialize Mina address into compressed public key (via an uncompressed PubKey)</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_address</span>(<span class="ident">address</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">PubKey::from_address</span>(<span class="ident">address</span>)<span class="question-mark">?</span>.<span class="ident">into_compressed</span>())
+    <span class="doccomment">/// Deserialize Mina address into compressed public key (via an uncompressed PubKey)
+    </span><span class="kw">pub fn </span>from_address(address: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt; {
+        <span class="prelude-val">Ok</span>(PubKey::from_address(address)<span class="question-mark">?</span>.into_compressed())
     }
 
-    <span class="doccomment">/// The empty [CompressedPubKey] value that is used as `public_key` in empty account</span>
-    <span class="doccomment">/// and [None] value for calculating the hash of [Option&lt;CompressedPubKey&gt;], etc.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">empty</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">x</span>: <span class="ident">BaseField::zero</span>(),
-            <span class="ident">is_odd</span>: <span class="bool-val">false</span>,
+    <span class="doccomment">/// The empty [CompressedPubKey] value that is used as `public_key` in empty account
+    /// and [None] value for calculating the hash of [Option&lt;CompressedPubKey&gt;], etc.
+    </span><span class="kw">pub fn </span>empty() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            x: BaseField::zero(),
+            is_odd: <span class="bool-val">false</span>,
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">from_address</span>() {
-        <span class="macro">macro_rules!</span> <span class="ident">assert_from_address_check</span> {
-            (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">address</span>:<span class="ident">expr</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">pk</span> <span class="op">=</span> <span class="ident">PubKey::from_address</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">address</span>).<span class="ident">expect</span>(<span class="string">&quot;failed to create pubkey&quot;</span>);
-                <span class="macro">assert_eq!</span>(<span class="ident">pk</span>.<span class="ident">into_address</span>(), <span class="macro-nonterminal">$</span><span class="macro-nonterminal">address</span>);
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>from_address() {
+        <span class="macro">macro_rules! </span>assert_from_address_check {
+            (<span class="macro-nonterminal">$address</span>:expr) =&gt; {
+                <span class="kw">let </span>pk = PubKey::from_address(<span class="macro-nonterminal">$address</span>).expect(<span class="string">&quot;failed to create pubkey&quot;</span>);
+                <span class="macro">assert_eq!</span>(pk.into_address(), <span class="macro-nonterminal">$address</span>);
             };
         }
 
@@ -429,4 +429,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="mina_signer" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="mina_signer" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

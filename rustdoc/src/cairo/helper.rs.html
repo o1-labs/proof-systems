@@ -82,89 +82,89 @@
 <span id="82">82</span>
 <span id="83">83</span>
 <span id="84">84</span>
-</pre><pre class="rust"><code><span class="doccomment">//! This module inlcudes some field helpers that are useful for Cairo</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This module inlcudes some field helpers that are useful for Cairo
 
-<span class="kw">use</span> <span class="ident">ark_ff::Field</span>;
-<span class="kw">use</span> <span class="ident">o1_utils::FieldHelpers</span>;
+</span><span class="kw">use </span>ark_ff::Field;
+<span class="kw">use </span>o1_utils::FieldHelpers;
 
-<span class="comment">//(TODO move to utils inside FieldHelpers)</span>
+<span class="comment">//(TODO move to utils inside FieldHelpers)
 
-<span class="doccomment">/// Field element helpers for Cairo</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">CairoFieldHelpers</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Return field element as byte, if it fits. Otherwise returns least significant byte</span>
-    <span class="kw">fn</span> <span class="ident">lsb</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u8</span>;
+</span><span class="doccomment">/// Field element helpers for Cairo
+</span><span class="kw">pub trait </span>CairoFieldHelpers&lt;F&gt; {
+    <span class="doccomment">/// Return field element as byte, if it fits. Otherwise returns least significant byte
+    </span><span class="kw">fn </span>lsb(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u8;
 
-    <span class="doccomment">/// Return `pos`-th 16-bit chunk as another field element</span>
-    <span class="kw">fn</span> <span class="ident">u16_chunk</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">pos</span>: <span class="ident">usize</span>) -&gt; <span class="ident">F</span>;
+    <span class="doccomment">/// Return `pos`-th 16-bit chunk as another field element
+    </span><span class="kw">fn </span>u16_chunk(<span class="kw-2">&amp;</span><span class="self">self</span>, pos: usize) -&gt; F;
 
-    <span class="doccomment">/// Return first 64 bits of the field element</span>
-    <span class="kw">fn</span> <span class="ident">to_u64</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u64</span>;
+    <span class="doccomment">/// Return first 64 bits of the field element
+    </span><span class="kw">fn </span>to_u64(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64;
 
-    <span class="doccomment">/// Return a field element in hexadecimal in big endian</span>
-    <span class="kw">fn</span> <span class="ident">to_hex_be</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">String</span>;
+    <span class="doccomment">/// Return a field element in hexadecimal in big endian
+    </span><span class="kw">fn </span>to_hex_be(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String;
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span> <span class="ident">CairoFieldHelpers</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">F</span> {
-    <span class="kw">fn</span> <span class="ident">lsb</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u8</span> {
-        <span class="self">self</span>.<span class="ident">to_bytes</span>()[<span class="number">0</span>]
+<span class="kw">impl</span>&lt;F: Field&gt; CairoFieldHelpers&lt;F&gt; <span class="kw">for </span>F {
+    <span class="kw">fn </span>lsb(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u8 {
+        <span class="self">self</span>.to_bytes()[<span class="number">0</span>]
     }
 
-    <span class="kw">fn</span> <span class="ident">u16_chunk</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">pos</span>: <span class="ident">usize</span>) -&gt; <span class="ident">F</span> {
-        <span class="kw">let</span> <span class="ident">bytes</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">to_bytes</span>();
-        <span class="kw">let</span> <span class="ident">chunk</span> <span class="op">=</span> <span class="ident">u16::from</span>(<span class="ident">bytes</span>[<span class="number">2</span> <span class="op">*</span> <span class="ident">pos</span>]) <span class="op">+</span> <span class="ident">u16::from</span>(<span class="ident">bytes</span>[<span class="number">2</span> <span class="op">*</span> <span class="ident">pos</span> <span class="op">+</span> <span class="number">1</span>]) <span class="op">*</span> <span class="number">2u16</span>.<span class="ident">pow</span>(<span class="number">8</span>);
-        <span class="ident">F::from</span>(<span class="ident">chunk</span>)
+    <span class="kw">fn </span>u16_chunk(<span class="kw-2">&amp;</span><span class="self">self</span>, pos: usize) -&gt; F {
+        <span class="kw">let </span>bytes = <span class="self">self</span>.to_bytes();
+        <span class="kw">let </span>chunk = u16::from(bytes[<span class="number">2 </span>* pos]) + u16::from(bytes[<span class="number">2 </span>* pos + <span class="number">1</span>]) * <span class="number">2u16</span>.pow(<span class="number">8</span>);
+        F::from(chunk)
     }
 
-    <span class="kw">fn</span> <span class="ident">to_u64</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u64</span> {
-        <span class="kw">let</span> <span class="ident">bytes</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">to_bytes</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">acc</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
-        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">8</span> {
-            <span class="ident">acc</span> <span class="op">+</span><span class="op">=</span> <span class="number">2u64</span>.<span class="ident">pow</span>(<span class="ident">i</span> <span class="op">*</span> <span class="number">8</span>) <span class="op">*</span> (<span class="ident">bytes</span>[<span class="ident">i</span> <span class="kw">as</span> <span class="ident">usize</span>] <span class="kw">as</span> <span class="ident">u64</span>);
+    <span class="kw">fn </span>to_u64(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
+        <span class="kw">let </span>bytes = <span class="self">self</span>.to_bytes();
+        <span class="kw">let </span><span class="kw-2">mut </span>acc: u64 = <span class="number">0</span>;
+        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">8 </span>{
+            acc += <span class="number">2u64</span>.pow(i * <span class="number">8</span>) * (bytes[i <span class="kw">as </span>usize] <span class="kw">as </span>u64);
         }
-        <span class="ident">acc</span>
+        acc
     }
 
-    <span class="kw">fn</span> <span class="ident">to_hex_be</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">String</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">bytes</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">to_bytes</span>();
-        <span class="ident">bytes</span>.<span class="ident">reverse</span>();
-        <span class="ident">hex::encode</span>(<span class="ident">bytes</span>)
+    <span class="kw">fn </span>to_hex_be(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
+        <span class="kw">let </span><span class="kw-2">mut </span>bytes = <span class="self">self</span>.to_bytes();
+        bytes.reverse();
+        hex::encode(bytes)
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident">ark_ec::AffineCurve</span>;
-    <span class="kw">use</span> <span class="ident">mina_curves::pasta::pallas</span>;
-    <span class="kw">use</span> <span class="ident">o1_utils::FieldHelpers</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span>ark_ec::AffineCurve;
+    <span class="kw">use </span>mina_curves::pasta::pallas;
+    <span class="kw">use </span>o1_utils::FieldHelpers;
 
-    <span class="doccomment">/// Affine curve point type</span>
-    <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">pallas::Pallas</span> <span class="kw">as</span> <span class="ident">CurvePoint</span>;
-    <span class="doccomment">/// Base field element type</span>
-    <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">BaseField</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">CurvePoint</span> <span class="kw">as</span> <span class="ident">AffineCurve</span><span class="op">&gt;</span><span class="ident">::BaseField</span>;
+    <span class="doccomment">/// Affine curve point type
+    </span><span class="kw">pub use </span>pallas::Pallas <span class="kw">as </span>CurvePoint;
+    <span class="doccomment">/// Base field element type
+    </span><span class="kw">pub type </span>BaseField = &lt;CurvePoint <span class="kw">as </span>AffineCurve&gt;::BaseField;
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_field_to_bits</span>() {
-        <span class="kw">let</span> <span class="ident">fe</span> <span class="op">=</span> <span class="ident">BaseField::from</span>(<span class="number">256u32</span>);
-        <span class="kw">let</span> <span class="ident">bits</span> <span class="op">=</span> <span class="ident">fe</span>.<span class="ident">to_bits</span>();
-        <span class="macro">println!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">bits</span>[<span class="number">0</span>..<span class="number">16</span>]);
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_field_to_bits() {
+        <span class="kw">let </span>fe = BaseField::from(<span class="number">256u32</span>);
+        <span class="kw">let </span>bits = fe.to_bits();
+        <span class="macro">println!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="kw-2">&amp;</span>bits[<span class="number">0</span>..<span class="number">16</span>]);
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_field_to_chunks</span>() {
-        <span class="kw">let</span> <span class="ident">fe</span> <span class="op">=</span> <span class="ident">BaseField::from</span>(<span class="number">0x480680017fff8000u64</span>);
-        <span class="kw">let</span> <span class="ident">chunk</span> <span class="op">=</span> <span class="ident">fe</span>.<span class="ident">u16_chunk</span>(<span class="number">1</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">chunk</span>, <span class="ident">BaseField::from</span>(<span class="number">0x7fff</span>));
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_field_to_chunks() {
+        <span class="kw">let </span>fe = BaseField::from(<span class="number">0x480680017fff8000u64</span>);
+        <span class="kw">let </span>chunk = fe.u16_chunk(<span class="number">1</span>);
+        <span class="macro">assert_eq!</span>(chunk, BaseField::from(<span class="number">0x7fff</span>));
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_hex_and_u64</span>() {
-        <span class="kw">let</span> <span class="ident">fe</span> <span class="op">=</span> <span class="ident">BaseField::from</span>(<span class="number">0x480680017fff8000u64</span>);
-        <span class="kw">let</span> <span class="ident">change</span> <span class="op">=</span> <span class="ident">BaseField::from_hex</span>(<span class="kw-2">&amp;</span><span class="ident">fe</span>.<span class="ident">to_hex</span>()).<span class="ident">unwrap</span>();
-        <span class="macro">assert_eq!</span>(<span class="ident">fe</span>, <span class="ident">change</span>);
-        <span class="kw">let</span> <span class="ident">word</span> <span class="op">=</span> <span class="ident">change</span>.<span class="ident">to_u64</span>();
-        <span class="macro">assert_eq!</span>(<span class="ident">word</span>, <span class="number">0x480680017fff8000u64</span>);
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_hex_and_u64() {
+        <span class="kw">let </span>fe = BaseField::from(<span class="number">0x480680017fff8000u64</span>);
+        <span class="kw">let </span>change = BaseField::from_hex(<span class="kw-2">&amp;</span>fe.to_hex()).unwrap();
+        <span class="macro">assert_eq!</span>(fe, change);
+        <span class="kw">let </span>word = change.to_u64();
+        <span class="macro">assert_eq!</span>(word, <span class="number">0x480680017fff8000u64</span>);
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="cairo" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="cairo" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

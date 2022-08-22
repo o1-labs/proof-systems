@@ -1032,1039 +1032,1039 @@
 <span id="1032">1032</span>
 <span id="1033">1033</span>
 <span id="1034">1034</span>
-</pre><pre class="rust"><code><span class="doccomment">//!This implements the constraints of the Cairo gates</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Cairo programs can have the following assembly-like instructions:</span>
-<span class="doccomment">//! - Memory access: \[x\]</span>
-<span class="doccomment">//! - Assert equal: &lt;left_hand_op&gt; = &lt;right_hand_op&gt;</span>
-<span class="doccomment">//! · val</span>
-<span class="doccomment">//! · \[reg1 + off_op1\]</span>
-<span class="doccomment">//! · \[reg0 + off_op0\] +|* \[reg1 + off_op1\]</span>
-<span class="doccomment">//! · \[reg0 + off_op0\] +|* val</span>
-<span class="doccomment">//! · \[\[reg0 + off_op0\] + off_op1\]</span>
-<span class="doccomment">//! - Jumps</span>
-<span class="doccomment">//! · jmp abs &lt;address&gt;     // unconditional absolute jump</span>
-<span class="doccomment">//! · jmp rel &lt;offset&gt;      // unconditional relative jump</span>
-<span class="doccomment">//! · jmp rel &lt;offset&gt; if &lt;op&gt; != 0    // conditional jump</span>
-<span class="doccomment">//! - Functions</span>
-<span class="doccomment">//! · call abs &lt;address&gt;    // calls a function (absolute location)</span>
-<span class="doccomment">//! · call rel &lt;offset&gt;     // calls a function (relative location)</span>
-<span class="doccomment">//! · ret                   // returns to execution after the call</span>
-<span class="doccomment">//! - Increments</span>
-<span class="doccomment">//! · ap += &lt;op&gt;</span>
-<span class="doccomment">//! · ap++</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! A Cairo program runs accross a number of state transitions.</span>
-<span class="doccomment">//! Each state transition has the following structure:</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! * Has access to a read-only memory</span>
-<span class="doccomment">//! * Input: 3 types of registers</span>
-<span class="doccomment">//!  - pc (= program counter):  address of current instruction</span>
-<span class="doccomment">//!  - ap (= allocation pointer): first free memory address</span>
-<span class="doccomment">//!  - fp (= frame pointer): beginning of stack (for function arguments)</span>
-<span class="doccomment">//! * Output:</span>
-<span class="doccomment">//!  - next_pc: address of next instruction</span>
-<span class="doccomment">//!  - next_ap: address of next free memory slot</span>
-<span class="doccomment">//!  - next_fp: pointer to stack (can remain the same as fp)</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//!Cairo words are field elements of characteristic &gt; 2^64</span>
-<span class="doccomment">//!Cairo instructions are stored as words (63 or 64 bits - actual instruction or immediate value)</span>
-<span class="doccomment">//!Instructions with immediate values are stored in 2 words</span>
-<span class="doccomment">//!- The first word stores instruction</span>
-<span class="doccomment">//!- The second word stores the value</span>
-<span class="doccomment">//!Words of instructions consist of</span>
-<span class="doccomment">//!* 3 signed offsets of 16 bits each, in the range [-2^15,2^15) biased representation</span>
-<span class="doccomment">//! - off_dst (= offset from destination address): used to compute address of assignment</span>
-<span class="doccomment">//! - off_op0 (= offset from first operand): used to compute address of first operand in instruction</span>
-<span class="doccomment">//! - off_op1 (= offset from second operand): used to compute address of second operand in instruction</span>
-<span class="doccomment">//!* 15 bits of flags divided into 7 groups</span>
-<span class="doccomment">//!  When multiple bits, at most one can be 1 and the rest must be 0</span>
-<span class="doccomment">//! - dst_reg \[0\] = fDST_REG : indicates what pointer off_dst refers to ( 0 =&gt; ap , 1 =&gt; fp )</span>
-<span class="doccomment">//! - op0_reg \[1\] = fOP0_REG : indicates what pointer off_op0 refers to ( 0 =&gt; ap , 1 =&gt; fp )</span>
-<span class="doccomment">//! - op1_src \[2..4\] : encodes the type of second operand</span>
-<span class="doccomment">//!  · 0: indicates off_op1 is b in the double indexing \[\[ point + a \] + b \]</span>
-<span class="doccomment">//!  · 1: indicates off_op1 is an immediate value = fOP1_VAL = 1</span>
-<span class="doccomment">//!  · 2: indicates offset off_op1 relative to fp = fOP1_FP = 1</span>
-<span class="doccomment">//!  · 4: indicates offset off_op1 relative to ap = fOP1_AP = 1</span>
-<span class="doccomment">//! - res_logic \[5..6\]: defines (if any) arithmetic operation in right part</span>
-<span class="doccomment">//!  · 0: right part is single operand</span>
-<span class="doccomment">//!  · 1: right part is addition = fRES_ADD = 1</span>
-<span class="doccomment">//!  · 2: right part is multiplication = fRES_MUL = 1</span>
-<span class="doccomment">//! - pc_update \[7..9\]: defines the type of update for the pc</span>
-<span class="doccomment">//!  · 0 = regular increase by size of current instruction</span>
-<span class="doccomment">//!  · 1 = absolute jump to res address = fPC_ABS_JMP = 1</span>
-<span class="doccomment">//!  · 2 = relative jump of step res = fPC_REL_JMP = 1</span>
-<span class="doccomment">//!  · 4 = conditional jump (jnz) with step in op1 = fPC_JNZ = 1</span>
-<span class="doccomment">//! - ap_update \[10..11\]: defines the type of update for the ap</span>
-<span class="doccomment">//!  · 0: means the new ap is the same, same free position</span>
-<span class="doccomment">//!  · 1: means there is an ap+=&lt;op&gt; instruction = fAP_INC = 1</span>
-<span class="doccomment">//!  · 2: means there is an ap++ instruction = fAP_ADD1 = 1</span>
-<span class="doccomment">//! - opcode \[12..14\]: encodes type of assembly instruction</span>
-<span class="doccomment">//!  · 0: jumps or increments instruction</span>
-<span class="doccomment">//!  · 1: call instruction = fOPC_CALL = 1</span>
-<span class="doccomment">//!  · 2: return instruction = fOPC_RET = 1</span>
-<span class="doccomment">//!  · 4: assert equal instruction (assignment to value or check equality) = fOPC_ASSEQ = 1</span>
-<span class="doccomment">//!* in little-endian form = leftmost least significant bit</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//!The transition function uses 4 auxiliary values:</span>
-<span class="doccomment">//!- dst: left part of instruction, destination</span>
-<span class="doccomment">//!- op0: content of first operand of right part</span>
-<span class="doccomment">//!- op1: content of second operand of right part</span>
-<span class="doccomment">//!- res: result of the operation in the right part</span>
+</pre><pre class="rust"><code><span class="doccomment">//!This implements the constraints of the Cairo gates
+//!
+//! Cairo programs can have the following assembly-like instructions:
+//! - Memory access: \[x\]
+//! - Assert equal: &lt;left_hand_op&gt; = &lt;right_hand_op&gt;
+//! · val
+//! · \[reg1 + off_op1\]
+//! · \[reg0 + off_op0\] +|* \[reg1 + off_op1\]
+//! · \[reg0 + off_op0\] +|* val
+//! · \[\[reg0 + off_op0\] + off_op1\]
+//! - Jumps
+//! · jmp abs &lt;address&gt;     // unconditional absolute jump
+//! · jmp rel &lt;offset&gt;      // unconditional relative jump
+//! · jmp rel &lt;offset&gt; if &lt;op&gt; != 0    // conditional jump
+//! - Functions
+//! · call abs &lt;address&gt;    // calls a function (absolute location)
+//! · call rel &lt;offset&gt;     // calls a function (relative location)
+//! · ret                   // returns to execution after the call
+//! - Increments
+//! · ap += &lt;op&gt;
+//! · ap++
+//!
+//! A Cairo program runs accross a number of state transitions.
+//! Each state transition has the following structure:
+//!
+//! * Has access to a read-only memory
+//! * Input: 3 types of registers
+//!  - pc (= program counter):  address of current instruction
+//!  - ap (= allocation pointer): first free memory address
+//!  - fp (= frame pointer): beginning of stack (for function arguments)
+//! * Output:
+//!  - next_pc: address of next instruction
+//!  - next_ap: address of next free memory slot
+//!  - next_fp: pointer to stack (can remain the same as fp)
+//!
+//!Cairo words are field elements of characteristic &gt; 2^64
+//!Cairo instructions are stored as words (63 or 64 bits - actual instruction or immediate value)
+//!Instructions with immediate values are stored in 2 words
+//!- The first word stores instruction
+//!- The second word stores the value
+//!Words of instructions consist of
+//!* 3 signed offsets of 16 bits each, in the range [-2^15,2^15) biased representation
+//! - off_dst (= offset from destination address): used to compute address of assignment
+//! - off_op0 (= offset from first operand): used to compute address of first operand in instruction
+//! - off_op1 (= offset from second operand): used to compute address of second operand in instruction
+//!* 15 bits of flags divided into 7 groups
+//!  When multiple bits, at most one can be 1 and the rest must be 0
+//! - dst_reg \[0\] = fDST_REG : indicates what pointer off_dst refers to ( 0 =&gt; ap , 1 =&gt; fp )
+//! - op0_reg \[1\] = fOP0_REG : indicates what pointer off_op0 refers to ( 0 =&gt; ap , 1 =&gt; fp )
+//! - op1_src \[2..4\] : encodes the type of second operand
+//!  · 0: indicates off_op1 is b in the double indexing \[\[ point + a \] + b \]
+//!  · 1: indicates off_op1 is an immediate value = fOP1_VAL = 1
+//!  · 2: indicates offset off_op1 relative to fp = fOP1_FP = 1
+//!  · 4: indicates offset off_op1 relative to ap = fOP1_AP = 1
+//! - res_logic \[5..6\]: defines (if any) arithmetic operation in right part
+//!  · 0: right part is single operand
+//!  · 1: right part is addition = fRES_ADD = 1
+//!  · 2: right part is multiplication = fRES_MUL = 1
+//! - pc_update \[7..9\]: defines the type of update for the pc
+//!  · 0 = regular increase by size of current instruction
+//!  · 1 = absolute jump to res address = fPC_ABS_JMP = 1
+//!  · 2 = relative jump of step res = fPC_REL_JMP = 1
+//!  · 4 = conditional jump (jnz) with step in op1 = fPC_JNZ = 1
+//! - ap_update \[10..11\]: defines the type of update for the ap
+//!  · 0: means the new ap is the same, same free position
+//!  · 1: means there is an ap+=&lt;op&gt; instruction = fAP_INC = 1
+//!  · 2: means there is an ap++ instruction = fAP_ADD1 = 1
+//! - opcode \[12..14\]: encodes type of assembly instruction
+//!  · 0: jumps or increments instruction
+//!  · 1: call instruction = fOPC_CALL = 1
+//!  · 2: return instruction = fOPC_RET = 1
+//!  · 4: assert equal instruction (assignment to value or check equality) = fOPC_ASSEQ = 1
+//!* in little-endian form = leftmost least significant bit
+//!
+//!The transition function uses 4 auxiliary values:
+//!- dst: left part of instruction, destination
+//!- op0: content of first operand of right part
+//!- op1: content of second operand of right part
+//!- res: result of the operation in the right part
 
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">alphas::Alphas</span>,
-    <span class="ident">circuits</span>::{
-        <span class="ident">argument</span>::{<span class="ident">Argument</span>, <span class="ident">ArgumentType</span>},
-        <span class="ident">constraints::ConstraintSystem</span>,
-        <span class="ident">expr</span>::{<span class="self">self</span>, <span class="ident">witness_curr</span>, <span class="ident">witness_next</span>, <span class="ident">Cache</span>, <span class="ident">Column</span>, <span class="ident">ConstantExpr</span>, <span class="ident">Expr</span>, <span class="ident">E</span>},
-        <span class="ident">gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">GateType</span>},
-        <span class="ident">wires</span>::{<span class="ident">GateWires</span>, <span class="ident">Wire</span>, <span class="ident">COLUMNS</span>},
+</span><span class="kw">use crate</span>::{
+    alphas::Alphas,
+    circuits::{
+        argument::{Argument, ArgumentType},
+        constraints::ConstraintSystem,
+        expr::{<span class="self">self</span>, witness_curr, witness_next, Cache, Column, ConstantExpr, Expr, E},
+        gate::{CircuitGate, GateType},
+        wires::{GateWires, Wire, COLUMNS},
     },
-    <span class="ident">curve::KimchiCurve</span>,
-    <span class="ident">proof::ProofEvaluations</span>,
+    curve::KimchiCurve,
+    proof::ProofEvaluations,
 };
-<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">Field</span>, <span class="ident">One</span>, <span class="ident">PrimeField</span>};
-<span class="kw">use</span> <span class="ident">array_init::array_init</span>;
-<span class="kw">use</span> <span class="ident">cairo</span>::{
-    <span class="ident">runner</span>::{<span class="ident">CairoInstruction</span>, <span class="ident">CairoProgram</span>, <span class="ident">Pointers</span>},
-    <span class="ident">word</span>::{<span class="ident">FlagBits</span>, <span class="ident">Offsets</span>},
+<span class="kw">use </span>ark_ff::{FftField, Field, One, PrimeField};
+<span class="kw">use </span>array_init::array_init;
+<span class="kw">use </span>cairo::{
+    runner::{CairoInstruction, CairoProgram, Pointers},
+    word::{FlagBits, Offsets},
 };
-<span class="kw">use</span> <span class="ident">rand</span>::{<span class="ident">prelude::StdRng</span>, <span class="ident">SeedableRng</span>};
-<span class="kw">use</span> <span class="ident">std::marker::PhantomData</span>;
+<span class="kw">use </span>rand::{prelude::StdRng, SeedableRng};
+<span class="kw">use </span>std::marker::PhantomData;
 
-<span class="kw">const</span> <span class="ident">NUM_FLAGS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">16</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">CIRCUIT_GATE_COUNT</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">4</span>;
+<span class="kw">const </span>NUM_FLAGS: usize = <span class="number">16</span>;
+<span class="kw">pub const </span>CIRCUIT_GATE_COUNT: usize = <span class="number">4</span>;
 
-<span class="comment">// GATE-RELATED</span>
+<span class="comment">// GATE-RELATED
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// This function creates a CairoClaim gate</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_cairo_claim</span>(<span class="ident">wires</span>: <span class="ident">GateWires</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">CircuitGate</span> {
-            <span class="ident">typ</span>: <span class="ident">GateType::CairoClaim</span>,
-            <span class="ident">wires</span>,
-            <span class="ident">coeffs</span>: <span class="macro">vec!</span>[],
+</span><span class="kw">impl</span>&lt;F: PrimeField&gt; CircuitGate&lt;F&gt; {
+    <span class="doccomment">/// This function creates a CairoClaim gate
+    </span><span class="kw">pub fn </span>create_cairo_claim(wires: GateWires) -&gt; <span class="self">Self </span>{
+        CircuitGate {
+            typ: GateType::CairoClaim,
+            wires,
+            coeffs: <span class="macro">vec!</span>[],
         }
     }
-    <span class="doccomment">/// This function creates a CairoInstruction gate</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_cairo_instruction</span>(<span class="ident">wires</span>: <span class="ident">GateWires</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">CircuitGate</span> {
-            <span class="ident">typ</span>: <span class="ident">GateType::CairoInstruction</span>,
-            <span class="ident">wires</span>,
-            <span class="ident">coeffs</span>: <span class="macro">vec!</span>[],
-        }
-    }
-
-    <span class="doccomment">/// This function creates a CairoFlags gate</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_cairo_flags</span>(<span class="ident">wires</span>: <span class="ident">GateWires</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">CircuitGate</span> {
-            <span class="ident">typ</span>: <span class="ident">GateType::CairoFlags</span>,
-            <span class="ident">wires</span>,
-            <span class="ident">coeffs</span>: <span class="macro">vec!</span>[],
+    <span class="doccomment">/// This function creates a CairoInstruction gate
+    </span><span class="kw">pub fn </span>create_cairo_instruction(wires: GateWires) -&gt; <span class="self">Self </span>{
+        CircuitGate {
+            typ: GateType::CairoInstruction,
+            wires,
+            coeffs: <span class="macro">vec!</span>[],
         }
     }
 
-    <span class="doccomment">/// This function creates a CairoTransition gate</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_cairo_transition</span>(<span class="ident">wires</span>: <span class="ident">GateWires</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">CircuitGate</span> {
-            <span class="ident">typ</span>: <span class="ident">GateType::CairoTransition</span>,
-            <span class="ident">wires</span>,
-            <span class="ident">coeffs</span>: <span class="macro">vec!</span>[],
+    <span class="doccomment">/// This function creates a CairoFlags gate
+    </span><span class="kw">pub fn </span>create_cairo_flags(wires: GateWires) -&gt; <span class="self">Self </span>{
+        CircuitGate {
+            typ: GateType::CairoFlags,
+            wires,
+            coeffs: <span class="macro">vec!</span>[],
         }
     }
 
-    <span class="doccomment">/// Gadget generator of the whole cairo circuits from an absolute row and number of instructions</span>
-    <span class="doccomment">/// Returns a vector of gates, and the next available row after the gadget</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_cairo_gadget</span>(
-        <span class="comment">// the absolute row in the circuit</span>
-        <span class="ident">row</span>: <span class="ident">usize</span>,
-        <span class="comment">// number of instructions</span>
-        <span class="ident">num</span>: <span class="ident">usize</span>,
-    ) -&gt; (<span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">usize</span>) {
-        <span class="comment">// 0: 1 row for final check CairoClaim gate</span>
-        <span class="comment">// 4i+1: 1 row per instruction for CairoInstruction gate</span>
-        <span class="comment">// 4i+2: 1 row per instruction for Flags argument</span>
-        <span class="comment">// 4i+3: 1 row per instruction for CairoTransition gate</span>
-        <span class="comment">// 4i+4: 1 row per instruction for Cairo Auxiliary gate</span>
-        <span class="comment">// ...</span>
-        <span class="comment">// 4n-3: 1 row for last instruction</span>
-        <span class="comment">// 4n-2: 1 row for Auxiliary argument (no constraints)</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">gates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="kw">if</span> <span class="ident">num</span> <span class="op">&gt;</span> <span class="number">0</span> {
-            <span class="kw">let</span> <span class="ident">claim_gate</span> <span class="op">=</span> <span class="ident">Wire::new</span>(<span class="ident">row</span>);
-            <span class="ident">gates</span>.<span class="ident">push</span>(<span class="ident">CircuitGate::create_cairo_claim</span>(<span class="ident">claim_gate</span>));
+    <span class="doccomment">/// This function creates a CairoTransition gate
+    </span><span class="kw">pub fn </span>create_cairo_transition(wires: GateWires) -&gt; <span class="self">Self </span>{
+        CircuitGate {
+            typ: GateType::CairoTransition,
+            wires,
+            coeffs: <span class="macro">vec!</span>[],
         }
-        <span class="kw">let</span> <span class="ident">last</span> <span class="op">=</span> <span class="ident">num</span> <span class="op">-</span> <span class="number">1</span>;
-        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">last</span> {
-            <span class="kw">let</span> <span class="ident">ins_gate</span> <span class="op">=</span> <span class="ident">Wire::new</span>(<span class="ident">row</span> <span class="op">+</span> <span class="number">4</span> <span class="op">*</span> <span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>);
-            <span class="kw">let</span> <span class="ident">flg_gate</span> <span class="op">=</span> <span class="ident">Wire::new</span>(<span class="ident">row</span> <span class="op">+</span> <span class="number">4</span> <span class="op">*</span> <span class="ident">i</span> <span class="op">+</span> <span class="number">2</span>);
-            <span class="kw">let</span> <span class="ident">tra_gate</span> <span class="op">=</span> <span class="ident">Wire::new</span>(<span class="ident">row</span> <span class="op">+</span> <span class="number">4</span> <span class="op">*</span> <span class="ident">i</span> <span class="op">+</span> <span class="number">3</span>);
-            <span class="kw">let</span> <span class="ident">aux_gate</span> <span class="op">=</span> <span class="ident">Wire::new</span>(<span class="ident">row</span> <span class="op">+</span> <span class="number">4</span> <span class="op">*</span> <span class="ident">i</span> <span class="op">+</span> <span class="number">4</span>);
-            <span class="ident">gates</span>.<span class="ident">push</span>(<span class="ident">CircuitGate::create_cairo_instruction</span>(<span class="ident">ins_gate</span>));
-            <span class="ident">gates</span>.<span class="ident">push</span>(<span class="ident">CircuitGate::create_cairo_flags</span>(<span class="ident">flg_gate</span>));
-            <span class="ident">gates</span>.<span class="ident">push</span>(<span class="ident">CircuitGate::create_cairo_transition</span>(<span class="ident">tra_gate</span>));
-            <span class="ident">gates</span>.<span class="ident">push</span>(<span class="ident">CircuitGate::zero</span>(<span class="ident">aux_gate</span>));
-        }
-        <span class="comment">// next available row after the full</span>
-        <span class="kw">let</span> <span class="ident">next</span> <span class="op">=</span> <span class="ident">row</span> <span class="op">+</span> <span class="number">4</span> <span class="op">*</span> <span class="ident">last</span> <span class="op">+</span> <span class="number">3</span>;
-        <span class="comment">// the final instruction</span>
-        <span class="kw">let</span> <span class="ident">ins_gate</span> <span class="op">=</span> <span class="ident">Wire::new</span>(<span class="ident">next</span> <span class="op">-</span> <span class="number">2</span>);
-        <span class="kw">let</span> <span class="ident">aux_gate</span> <span class="op">=</span> <span class="ident">Wire::new</span>(<span class="ident">next</span> <span class="op">-</span> <span class="number">1</span>);
-        <span class="ident">gates</span>.<span class="ident">push</span>(<span class="ident">CircuitGate::create_cairo_instruction</span>(<span class="ident">ins_gate</span>));
-        <span class="ident">gates</span>.<span class="ident">push</span>(<span class="ident">CircuitGate::zero</span>(<span class="ident">aux_gate</span>));
-
-        (<span class="ident">gates</span>, <span class="ident">next</span>)
     }
 
-    <span class="doccomment">/// verifies that the Cairo gate constraints are solved by the witness depending on its type</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_cairo_gate</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">KimchiCurve</span><span class="op">&lt;</span><span class="ident">ScalarField</span> <span class="op">=</span> <span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>(
+    <span class="doccomment">/// Gadget generator of the whole cairo circuits from an absolute row and number of instructions
+    /// Returns a vector of gates, and the next available row after the gadget
+    </span><span class="kw">pub fn </span>create_cairo_gadget(
+        <span class="comment">// the absolute row in the circuit
+        </span>row: usize,
+        <span class="comment">// number of instructions
+        </span>num: usize,
+    ) -&gt; (Vec&lt;<span class="self">Self</span>&gt;, usize) {
+        <span class="comment">// 0: 1 row for final check CairoClaim gate
+        // 4i+1: 1 row per instruction for CairoInstruction gate
+        // 4i+2: 1 row per instruction for Flags argument
+        // 4i+3: 1 row per instruction for CairoTransition gate
+        // 4i+4: 1 row per instruction for Cairo Auxiliary gate
+        // ...
+        // 4n-3: 1 row for last instruction
+        // 4n-2: 1 row for Auxiliary argument (no constraints)
+        </span><span class="kw">let </span><span class="kw-2">mut </span>gates: Vec&lt;CircuitGate&lt;F&gt;&gt; = Vec::new();
+        <span class="kw">if </span>num &gt; <span class="number">0 </span>{
+            <span class="kw">let </span>claim_gate = Wire::new(row);
+            gates.push(CircuitGate::create_cairo_claim(claim_gate));
+        }
+        <span class="kw">let </span>last = num - <span class="number">1</span>;
+        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..last {
+            <span class="kw">let </span>ins_gate = Wire::new(row + <span class="number">4 </span>* i + <span class="number">1</span>);
+            <span class="kw">let </span>flg_gate = Wire::new(row + <span class="number">4 </span>* i + <span class="number">2</span>);
+            <span class="kw">let </span>tra_gate = Wire::new(row + <span class="number">4 </span>* i + <span class="number">3</span>);
+            <span class="kw">let </span>aux_gate = Wire::new(row + <span class="number">4 </span>* i + <span class="number">4</span>);
+            gates.push(CircuitGate::create_cairo_instruction(ins_gate));
+            gates.push(CircuitGate::create_cairo_flags(flg_gate));
+            gates.push(CircuitGate::create_cairo_transition(tra_gate));
+            gates.push(CircuitGate::zero(aux_gate));
+        }
+        <span class="comment">// next available row after the full
+        </span><span class="kw">let </span>next = row + <span class="number">4 </span>* last + <span class="number">3</span>;
+        <span class="comment">// the final instruction
+        </span><span class="kw">let </span>ins_gate = Wire::new(next - <span class="number">2</span>);
+        <span class="kw">let </span>aux_gate = Wire::new(next - <span class="number">1</span>);
+        gates.push(CircuitGate::create_cairo_instruction(ins_gate));
+        gates.push(CircuitGate::zero(aux_gate));
+
+        (gates, next)
+    }
+
+    <span class="doccomment">/// verifies that the Cairo gate constraints are solved by the witness depending on its type
+    </span><span class="kw">pub fn </span>verify_cairo_gate&lt;G: KimchiCurve&lt;ScalarField = F&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">row</span>: <span class="ident">usize</span>,
-        <span class="ident">witness</span>: <span class="kw-2">&amp;</span>[<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
-        <span class="ident">cs</span>: <span class="kw-2">&amp;</span><span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="comment">// assignments</span>
-        <span class="kw">let</span> <span class="ident">curr</span>: [<span class="ident">F</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">witness</span>[<span class="ident">i</span>][<span class="ident">row</span>]);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">next</span>: [<span class="ident">F</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">F::zero</span>());
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">typ</span> <span class="op">!</span><span class="op">=</span> <span class="ident">GateType::Zero</span> {
-            <span class="ident">next</span> <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">witness</span>[<span class="ident">i</span>][<span class="ident">row</span> <span class="op">+</span> <span class="number">1</span>]);
+        row: usize,
+        witness: <span class="kw-2">&amp;</span>[Vec&lt;F&gt;; COLUMNS],
+        cs: <span class="kw-2">&amp;</span>ConstraintSystem&lt;F&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
+        <span class="comment">// assignments
+        </span><span class="kw">let </span>curr: [F; COLUMNS] = array_init(|i| witness[i][row]);
+        <span class="kw">let </span><span class="kw-2">mut </span>next: [F; COLUMNS] = array_init(|<span class="kw">_</span>| F::zero());
+        <span class="kw">if </span><span class="self">self</span>.typ != GateType::Zero {
+            next = array_init(|i| witness[i][row + <span class="number">1</span>]);
         }
 
-        <span class="comment">// column polynomials</span>
-        <span class="kw">let</span> <span class="ident">polys</span> <span class="op">=</span> {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">h</span> <span class="op">=</span> <span class="ident">std::collections::HashSet::new</span>();
-            <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">COLUMNS</span> {
-                <span class="ident">h</span>.<span class="ident">insert</span>(<span class="ident">Column::Witness</span>(<span class="ident">i</span>)); <span class="comment">// column witness polynomials</span>
-            }
-            <span class="comment">// gate selector polynomials</span>
-            <span class="ident">h</span>.<span class="ident">insert</span>(<span class="ident">Column::Index</span>(<span class="ident">GateType::CairoClaim</span>));
-            <span class="ident">h</span>.<span class="ident">insert</span>(<span class="ident">Column::Index</span>(<span class="ident">GateType::CairoInstruction</span>));
-            <span class="ident">h</span>.<span class="ident">insert</span>(<span class="ident">Column::Index</span>(<span class="ident">GateType::CairoFlags</span>));
-            <span class="ident">h</span>.<span class="ident">insert</span>(<span class="ident">Column::Index</span>(<span class="ident">GateType::CairoTransition</span>));
-            <span class="ident">h</span>
+        <span class="comment">// column polynomials
+        </span><span class="kw">let </span>polys = {
+            <span class="kw">let </span><span class="kw-2">mut </span>h = std::collections::HashSet::new();
+            <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..COLUMNS {
+                h.insert(Column::Witness(i)); <span class="comment">// column witness polynomials
+            </span>}
+            <span class="comment">// gate selector polynomials
+            </span>h.insert(Column::Index(GateType::CairoClaim));
+            h.insert(Column::Index(GateType::CairoInstruction));
+            h.insert(Column::Index(GateType::CairoFlags));
+            h.insert(Column::Index(GateType::CairoTransition));
+            h
         };
 
-        <span class="comment">// assign powers of alpha to these gates</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">alphas</span> <span class="op">=</span> <span class="ident">Alphas</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::default</span>();
-        <span class="ident">alphas</span>.<span class="ident">register</span>(<span class="ident">ArgumentType::Gate</span>(<span class="self">self</span>.<span class="ident">typ</span>), <span class="ident">Instruction</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::CONSTRAINTS</span>);
+        <span class="comment">// assign powers of alpha to these gates
+        </span><span class="kw">let </span><span class="kw-2">mut </span>alphas = Alphas::&lt;F&gt;::default();
+        alphas.register(ArgumentType::Gate(<span class="self">self</span>.typ), Instruction::&lt;F&gt;::CONSTRAINTS);
 
-        <span class="comment">// Get constraints for this circuit gate</span>
-        <span class="kw">let</span> <span class="ident">constraints</span> <span class="op">=</span> <span class="ident">circuit_gate_combined_constraints</span>(<span class="self">self</span>.<span class="ident">typ</span>, <span class="kw-2">&amp;</span><span class="ident">alphas</span>);
+        <span class="comment">// Get constraints for this circuit gate
+        </span><span class="kw">let </span>constraints = circuit_gate_combined_constraints(<span class="self">self</span>.typ, <span class="kw-2">&amp;</span>alphas);
 
-        <span class="comment">// Linearize</span>
-        <span class="kw">let</span> <span class="ident">linearized</span> <span class="op">=</span> <span class="ident">constraints</span>.<span class="ident">linearize</span>(<span class="ident">polys</span>).<span class="ident">unwrap</span>();
+        <span class="comment">// Linearize
+        </span><span class="kw">let </span>linearized = constraints.linearize(polys).unwrap();
 
-        <span class="comment">// Setup proof evaluations</span>
-        <span class="kw">let</span> <span class="ident">rng</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">StdRng::from_seed</span>([<span class="number">0u8</span>; <span class="number">32</span>]);
-        <span class="kw">let</span> <span class="ident">evals</span> <span class="op">=</span> <span class="macro">vec!</span>[
-            <span class="ident">ProofEvaluations::dummy_with_witness_evaluations</span>(<span class="ident">curr</span>),
-            <span class="ident">ProofEvaluations::dummy_with_witness_evaluations</span>(<span class="ident">next</span>),
+        <span class="comment">// Setup proof evaluations
+        </span><span class="kw">let </span>rng = <span class="kw-2">&amp;mut </span>StdRng::from_seed([<span class="number">0u8</span>; <span class="number">32</span>]);
+        <span class="kw">let </span>evals = <span class="macro">vec!</span>[
+            ProofEvaluations::dummy_with_witness_evaluations(curr),
+            ProofEvaluations::dummy_with_witness_evaluations(next),
         ];
 
-        <span class="comment">// Setup circuit constants</span>
-        <span class="kw">let</span> <span class="ident">constants</span> <span class="op">=</span> <span class="ident">expr::Constants</span> {
-            <span class="ident">alpha</span>: <span class="ident">F::rand</span>(<span class="ident">rng</span>),
-            <span class="ident">beta</span>: <span class="ident">F::rand</span>(<span class="ident">rng</span>),
-            <span class="ident">gamma</span>: <span class="ident">F::rand</span>(<span class="ident">rng</span>),
-            <span class="ident">joint_combiner</span>: <span class="prelude-val">None</span>,
-            <span class="ident">endo_coefficient</span>: <span class="ident">cs</span>.<span class="ident">endo</span>,
-            <span class="ident">mds</span>: <span class="kw-2">&amp;</span><span class="ident">G::sponge_params</span>().<span class="ident">mds</span>,
+        <span class="comment">// Setup circuit constants
+        </span><span class="kw">let </span>constants = expr::Constants {
+            alpha: F::rand(rng),
+            beta: F::rand(rng),
+            gamma: F::rand(rng),
+            joint_combiner: <span class="prelude-val">None</span>,
+            endo_coefficient: cs.endo,
+            mds: <span class="kw-2">&amp;</span>G::sponge_params().mds,
         };
 
-        <span class="kw">let</span> <span class="ident">pt</span> <span class="op">=</span> <span class="ident">F::rand</span>(<span class="ident">rng</span>);
+        <span class="kw">let </span>pt = F::rand(rng);
 
-        <span class="comment">// Evaluate constraints</span>
-        <span class="kw">match</span> <span class="ident">linearized</span>
-            .<span class="ident">constant_term</span>
-            .<span class="ident">evaluate_</span>(<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>, <span class="ident">pt</span>, <span class="kw-2">&amp;</span><span class="ident">evals</span>, <span class="kw-2">&amp;</span><span class="ident">constants</span>)
+        <span class="comment">// Evaluate constraints
+        </span><span class="kw">match </span>linearized
+            .constant_term
+            .evaluate_(cs.domain.d1, pt, <span class="kw-2">&amp;</span>evals, <span class="kw-2">&amp;</span>constants)
         {
-            <span class="prelude-val">Ok</span>(<span class="ident">x</span>) =&gt; {
-                <span class="kw">if</span> <span class="ident">x</span> <span class="op">==</span> <span class="ident">F::zero</span>() {
+            <span class="prelude-val">Ok</span>(x) =&gt; {
+                <span class="kw">if </span>x == F::zero() {
                     <span class="prelude-val">Ok</span>(())
-                } <span class="kw">else</span> {
-                    <span class="prelude-val">Err</span>(<span class="macro">format!</span>(<span class="string">&quot;Invalid {:?} constraint&quot;</span>, <span class="self">self</span>.<span class="ident">typ</span>))
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">Err</span>(<span class="macro">format!</span>(<span class="string">&quot;Invalid {:?} constraint&quot;</span>, <span class="self">self</span>.typ))
                 }
             }
-            <span class="prelude-val">Err</span>(<span class="ident">x</span>) =&gt; {
-                <span class="macro">println!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">x</span>);
-                <span class="prelude-val">Err</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to evaluate {:?} constraint&quot;</span>, <span class="self">self</span>.<span class="ident">typ</span>))
+            <span class="prelude-val">Err</span>(x) =&gt; {
+                <span class="macro">println!</span>(<span class="string">&quot;{:?}&quot;</span>, x);
+                <span class="prelude-val">Err</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to evaluate {:?} constraint&quot;</span>, <span class="self">self</span>.typ))
             }
         }
     }
 }
 
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">witness</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+<span class="kw">pub mod </span>witness {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-    <span class="doccomment">/// Returns the witness of an execution of a Cairo program in CircuitGate format</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">cairo_witness</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">prog</span>: <span class="kw-2">&amp;</span><span class="ident">CairoProgram</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] {
-        <span class="comment">// 0: 1 row for final check CairoClaim gate</span>
-        <span class="comment">// 4i+1: 1 row per instruction for CairoInstruction gate</span>
-        <span class="comment">// 4i+2: 1 row per instruction for Flags argument</span>
-        <span class="comment">// 4i+3: 1 row per instruction for CairoTransition gate</span>
-        <span class="comment">// 4i+4: 1 row per instruction for Auxiliary gate (Zero)</span>
-        <span class="comment">// ...</span>
-        <span class="comment">// 4n-3: 1 row for last instruction</span>
-        <span class="comment">// 4n-2: 1 row for Auxiliary argument (no constraints)</span>
-        <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">prog</span>.<span class="ident">trace</span>().<span class="ident">len</span>();
-        <span class="kw">let</span> <span class="ident">rows</span> <span class="op">=</span> <span class="number">4</span> <span class="op">*</span> <span class="ident">n</span> <span class="op">-</span> <span class="number">1</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">table</span>: <span class="ident">Vec</span><span class="op">&lt;</span>[<span class="ident">F</span>; <span class="ident">COLUMNS</span>]<span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="ident">table</span>.<span class="ident">resize</span>(<span class="ident">rows</span>, [<span class="ident">F::zero</span>(); <span class="ident">COLUMNS</span>]);
-        <span class="kw">for</span> (<span class="ident">i</span>, <span class="ident">inst</span>) <span class="kw">in</span> <span class="ident">prog</span>.<span class="ident">trace</span>().<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-            <span class="kw">if</span> <span class="ident">i</span> <span class="op">==</span> <span class="number">0</span> {
-                <span class="kw">let</span> <span class="ident">claim_wit</span> <span class="op">=</span> <span class="ident">claim_witness</span>(<span class="ident">prog</span>);
-                <span class="ident">table</span>[<span class="ident">i</span>] <span class="op">=</span> <span class="ident">claim_wit</span>;
+    <span class="doccomment">/// Returns the witness of an execution of a Cairo program in CircuitGate format
+    </span><span class="kw">pub fn </span>cairo_witness&lt;F: Field&gt;(prog: <span class="kw-2">&amp;</span>CairoProgram&lt;F&gt;) -&gt; [Vec&lt;F&gt;; COLUMNS] {
+        <span class="comment">// 0: 1 row for final check CairoClaim gate
+        // 4i+1: 1 row per instruction for CairoInstruction gate
+        // 4i+2: 1 row per instruction for Flags argument
+        // 4i+3: 1 row per instruction for CairoTransition gate
+        // 4i+4: 1 row per instruction for Auxiliary gate (Zero)
+        // ...
+        // 4n-3: 1 row for last instruction
+        // 4n-2: 1 row for Auxiliary argument (no constraints)
+        </span><span class="kw">let </span>n = prog.trace().len();
+        <span class="kw">let </span>rows = <span class="number">4 </span>* n - <span class="number">1</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>table: Vec&lt;[F; COLUMNS]&gt; = Vec::new();
+        table.resize(rows, [F::zero(); COLUMNS]);
+        <span class="kw">for </span>(i, inst) <span class="kw">in </span>prog.trace().iter().enumerate() {
+            <span class="kw">if </span>i == <span class="number">0 </span>{
+                <span class="kw">let </span>claim_wit = claim_witness(prog);
+                table[i] = claim_wit;
             }
-            <span class="kw">let</span> <span class="ident">ins_wit</span> <span class="op">=</span> <span class="ident">instruction_witness</span>(<span class="ident">inst</span>);
-            <span class="kw">let</span> <span class="ident">flg_wit</span> <span class="op">=</span> <span class="ident">flag_witness</span>(<span class="ident">inst</span>);
-            <span class="ident">table</span>[<span class="number">4</span> <span class="op">*</span> <span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>] <span class="op">=</span> <span class="ident">ins_wit</span>;
-            <span class="ident">table</span>[<span class="number">4</span> <span class="op">*</span> <span class="ident">i</span> <span class="op">+</span> <span class="number">2</span>] <span class="op">=</span> <span class="ident">flg_wit</span>;
-            <span class="kw">if</span> <span class="ident">i</span> <span class="op">!</span><span class="op">=</span> <span class="ident">n</span> <span class="op">-</span> <span class="number">1</span> {
-                <span class="comment">// all but last instruction</span>
-                <span class="kw">let</span> <span class="ident">tra_wit</span> <span class="op">=</span> <span class="ident">transition_witness</span>(<span class="ident">inst</span>, <span class="kw-2">&amp;</span><span class="ident">prog</span>.<span class="ident">trace</span>()[<span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>]);
-                <span class="kw">let</span> <span class="ident">aux_wit</span> <span class="op">=</span> <span class="ident">auxiliary_witness</span>(<span class="kw-2">&amp;</span><span class="ident">prog</span>.<span class="ident">trace</span>()[<span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>]);
-                <span class="ident">table</span>[<span class="number">4</span> <span class="op">*</span> <span class="ident">i</span> <span class="op">+</span> <span class="number">3</span>] <span class="op">=</span> <span class="ident">tra_wit</span>;
-                <span class="ident">table</span>[<span class="number">4</span> <span class="op">*</span> <span class="ident">i</span> <span class="op">+</span> <span class="number">4</span>] <span class="op">=</span> <span class="ident">aux_wit</span>;
-            }
-        }
-
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">Default::default</span>();
-        <span class="kw">for</span> <span class="ident">col</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">COLUMNS</span> {
-            <span class="comment">// initialize column with zeroes</span>
-            <span class="ident">witness</span>[<span class="ident">col</span>].<span class="ident">resize</span>(<span class="ident">table</span>.<span class="ident">len</span>(), <span class="ident">F::zero</span>());
-            <span class="kw">for</span> (<span class="ident">row</span>, <span class="ident">wit</span>) <span class="kw">in</span> <span class="ident">table</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-                <span class="ident">witness</span>[<span class="ident">col</span>][<span class="ident">row</span>] <span class="op">=</span> <span class="ident">wit</span>[<span class="ident">col</span>];
+            <span class="kw">let </span>ins_wit = instruction_witness(inst);
+            <span class="kw">let </span>flg_wit = flag_witness(inst);
+            table[<span class="number">4 </span>* i + <span class="number">1</span>] = ins_wit;
+            table[<span class="number">4 </span>* i + <span class="number">2</span>] = flg_wit;
+            <span class="kw">if </span>i != n - <span class="number">1 </span>{
+                <span class="comment">// all but last instruction
+                </span><span class="kw">let </span>tra_wit = transition_witness(inst, <span class="kw-2">&amp;</span>prog.trace()[i + <span class="number">1</span>]);
+                <span class="kw">let </span>aux_wit = auxiliary_witness(<span class="kw-2">&amp;</span>prog.trace()[i + <span class="number">1</span>]);
+                table[<span class="number">4 </span>* i + <span class="number">3</span>] = tra_wit;
+                table[<span class="number">4 </span>* i + <span class="number">4</span>] = aux_wit;
             }
         }
-        <span class="ident">witness</span>
+
+        <span class="kw">let </span><span class="kw-2">mut </span>witness: [Vec&lt;F&gt;; COLUMNS] = Default::default();
+        <span class="kw">for </span>col <span class="kw">in </span><span class="number">0</span>..COLUMNS {
+            <span class="comment">// initialize column with zeroes
+            </span>witness[col].resize(table.len(), F::zero());
+            <span class="kw">for </span>(row, wit) <span class="kw">in </span>table.iter().enumerate() {
+                witness[col][row] = wit[col];
+            }
+        }
+        witness
     }
 
-    <span class="kw">fn</span> <span class="ident">claim_witness</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">prog</span>: <span class="kw-2">&amp;</span><span class="ident">CairoProgram</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; [<span class="ident">F</span>; <span class="ident">COLUMNS</span>] {
-        <span class="kw">let</span> <span class="ident">last</span> <span class="op">=</span> <span class="ident">prog</span>.<span class="ident">trace</span>().<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>;
+    <span class="kw">fn </span>claim_witness&lt;F: Field&gt;(prog: <span class="kw-2">&amp;</span>CairoProgram&lt;F&gt;) -&gt; [F; COLUMNS] {
+        <span class="kw">let </span>last = prog.trace().len() - <span class="number">1</span>;
         [
-            <span class="ident">prog</span>.<span class="ident">ini</span>().<span class="ident">pc</span>(),         <span class="comment">// initial pc from public input</span>
-            <span class="ident">prog</span>.<span class="ident">ini</span>().<span class="ident">ap</span>(),         <span class="comment">// initial ap from public input</span>
-            <span class="ident">prog</span>.<span class="ident">fin</span>().<span class="ident">pc</span>(),         <span class="comment">// final pc from public input</span>
-            <span class="ident">prog</span>.<span class="ident">fin</span>().<span class="ident">ap</span>(),         <span class="comment">// final ap from public input</span>
-            <span class="ident">prog</span>.<span class="ident">trace</span>()[<span class="ident">last</span>].<span class="ident">pc</span>(), <span class="comment">// real last pc</span>
-            <span class="ident">prog</span>.<span class="ident">trace</span>()[<span class="ident">last</span>].<span class="ident">ap</span>(), <span class="comment">// real last ap</span>
-            <span class="ident">F::zero</span>(),
-            <span class="ident">F::zero</span>(),
-            <span class="ident">F::zero</span>(),
-            <span class="ident">F::zero</span>(),
-            <span class="ident">F::zero</span>(),
-            <span class="ident">F::zero</span>(),
-            <span class="ident">F::zero</span>(),
-            <span class="ident">F::zero</span>(),
-            <span class="ident">F::zero</span>(),
+            prog.ini().pc(),         <span class="comment">// initial pc from public input
+            </span>prog.ini().ap(),         <span class="comment">// initial ap from public input
+            </span>prog.fin().pc(),         <span class="comment">// final pc from public input
+            </span>prog.fin().ap(),         <span class="comment">// final ap from public input
+            </span>prog.trace()[last].pc(), <span class="comment">// real last pc
+            </span>prog.trace()[last].ap(), <span class="comment">// real last ap
+            </span>F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
         ]
     }
 
-    <span class="kw">fn</span> <span class="ident">instruction_witness</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">inst</span>: <span class="kw-2">&amp;</span><span class="ident">CairoInstruction</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; [<span class="ident">F</span>; <span class="ident">COLUMNS</span>] {
+    <span class="kw">fn </span>instruction_witness&lt;F: Field&gt;(inst: <span class="kw-2">&amp;</span>CairoInstruction&lt;F&gt;) -&gt; [F; COLUMNS] {
         [
-            <span class="ident">inst</span>.<span class="ident">pc</span>(),
-            <span class="ident">inst</span>.<span class="ident">ap</span>(),
-            <span class="ident">inst</span>.<span class="ident">fp</span>(),
-            <span class="ident">inst</span>.<span class="ident">size</span>(),
-            <span class="ident">inst</span>.<span class="ident">res</span>(),
-            <span class="ident">inst</span>.<span class="ident">dst</span>(),
-            <span class="ident">inst</span>.<span class="ident">op1</span>(),
-            <span class="ident">inst</span>.<span class="ident">op0</span>(),
-            <span class="ident">inst</span>.<span class="ident">off_dst</span>(),
-            <span class="ident">inst</span>.<span class="ident">off_op1</span>(),
-            <span class="ident">inst</span>.<span class="ident">off_op0</span>(),
-            <span class="ident">inst</span>.<span class="ident">adr_dst</span>(),
-            <span class="ident">inst</span>.<span class="ident">adr_op1</span>(),
-            <span class="ident">inst</span>.<span class="ident">adr_op0</span>(),
-            <span class="ident">inst</span>.<span class="ident">instr</span>(),
+            inst.pc(),
+            inst.ap(),
+            inst.fp(),
+            inst.size(),
+            inst.res(),
+            inst.dst(),
+            inst.op1(),
+            inst.op0(),
+            inst.off_dst(),
+            inst.off_op1(),
+            inst.off_op0(),
+            inst.adr_dst(),
+            inst.adr_op1(),
+            inst.adr_op0(),
+            inst.instr(),
         ]
     }
 
-    <span class="kw">fn</span> <span class="ident">flag_witness</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">inst</span>: <span class="kw-2">&amp;</span><span class="ident">CairoInstruction</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; [<span class="ident">F</span>; <span class="ident">COLUMNS</span>] {
+    <span class="kw">fn </span>flag_witness&lt;F: Field&gt;(inst: <span class="kw-2">&amp;</span>CairoInstruction&lt;F&gt;) -&gt; [F; COLUMNS] {
         [
-            <span class="ident">inst</span>.<span class="ident">f_dst_fp</span>(),
-            <span class="ident">inst</span>.<span class="ident">f_op0_fp</span>(),
-            <span class="ident">inst</span>.<span class="ident">f_op1_val</span>(),
-            <span class="ident">inst</span>.<span class="ident">f_op1_fp</span>(),
-            <span class="ident">inst</span>.<span class="ident">f_op1_ap</span>(),
-            <span class="ident">inst</span>.<span class="ident">f_res_add</span>(),
-            <span class="ident">inst</span>.<span class="ident">f_res_mul</span>(),
-            <span class="ident">inst</span>.<span class="ident">f_pc_abs</span>(),
-            <span class="ident">inst</span>.<span class="ident">f_pc_rel</span>(),
-            <span class="ident">inst</span>.<span class="ident">f_pc_jnz</span>(),
-            <span class="ident">inst</span>.<span class="ident">f_ap_add</span>(),
-            <span class="ident">inst</span>.<span class="ident">f_ap_one</span>(),
-            <span class="ident">inst</span>.<span class="ident">f_opc_call</span>(),
-            <span class="ident">inst</span>.<span class="ident">f_opc_ret</span>(),
-            <span class="ident">inst</span>.<span class="ident">f_opc_aeq</span>(),
+            inst.f_dst_fp(),
+            inst.f_op0_fp(),
+            inst.f_op1_val(),
+            inst.f_op1_fp(),
+            inst.f_op1_ap(),
+            inst.f_res_add(),
+            inst.f_res_mul(),
+            inst.f_pc_abs(),
+            inst.f_pc_rel(),
+            inst.f_pc_jnz(),
+            inst.f_ap_add(),
+            inst.f_ap_one(),
+            inst.f_opc_call(),
+            inst.f_opc_ret(),
+            inst.f_opc_aeq(),
         ]
     }
 
-    <span class="kw">fn</span> <span class="ident">transition_witness</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(
-        <span class="ident">curr</span>: <span class="kw-2">&amp;</span><span class="ident">CairoInstruction</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-        <span class="ident">next</span>: <span class="kw-2">&amp;</span><span class="ident">CairoInstruction</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    ) -&gt; [<span class="ident">F</span>; <span class="ident">COLUMNS</span>] {
+    <span class="kw">fn </span>transition_witness&lt;F: Field&gt;(
+        curr: <span class="kw-2">&amp;</span>CairoInstruction&lt;F&gt;,
+        next: <span class="kw-2">&amp;</span>CairoInstruction&lt;F&gt;,
+    ) -&gt; [F; COLUMNS] {
         [
-            <span class="ident">curr</span>.<span class="ident">pc</span>(),
-            <span class="ident">curr</span>.<span class="ident">ap</span>(),
-            <span class="ident">curr</span>.<span class="ident">fp</span>(),
-            <span class="ident">curr</span>.<span class="ident">size</span>(),
-            <span class="ident">curr</span>.<span class="ident">res</span>(),
-            <span class="ident">curr</span>.<span class="ident">dst</span>(),
-            <span class="ident">curr</span>.<span class="ident">op1</span>(),
-            <span class="ident">next</span>.<span class="ident">pc</span>(),
-            <span class="ident">next</span>.<span class="ident">ap</span>(),
-            <span class="ident">next</span>.<span class="ident">fp</span>(),
-            <span class="ident">F::zero</span>(),
-            <span class="ident">F::zero</span>(),
-            <span class="ident">F::zero</span>(),
-            <span class="ident">F::zero</span>(),
-            <span class="ident">F::zero</span>(),
+            curr.pc(),
+            curr.ap(),
+            curr.fp(),
+            curr.size(),
+            curr.res(),
+            curr.dst(),
+            curr.op1(),
+            next.pc(),
+            next.ap(),
+            next.fp(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
         ]
     }
 
-    <span class="kw">fn</span> <span class="ident">auxiliary_witness</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">next</span>: <span class="kw-2">&amp;</span><span class="ident">CairoInstruction</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; [<span class="ident">F</span>; <span class="ident">COLUMNS</span>] {
+    <span class="kw">fn </span>auxiliary_witness&lt;F: Field&gt;(next: <span class="kw-2">&amp;</span>CairoInstruction&lt;F&gt;) -&gt; [F; COLUMNS] {
         [
-            <span class="ident">next</span>.<span class="ident">pc</span>(),
-            <span class="ident">next</span>.<span class="ident">ap</span>(),
-            <span class="ident">next</span>.<span class="ident">fp</span>(),
-            <span class="ident">F::zero</span>(),
-            <span class="ident">F::zero</span>(),
-            <span class="ident">F::zero</span>(),
-            <span class="ident">F::zero</span>(),
-            <span class="ident">F::zero</span>(),
-            <span class="ident">F::zero</span>(),
-            <span class="ident">F::zero</span>(),
-            <span class="ident">F::zero</span>(),
-            <span class="ident">F::zero</span>(),
-            <span class="ident">F::zero</span>(),
-            <span class="ident">F::zero</span>(),
-            <span class="ident">F::zero</span>(),
+            next.pc(),
+            next.ap(),
+            next.fp(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
+            F::zero(),
         ]
     }
 }
 
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">testing</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+<span class="kw">pub mod </span>testing {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-    <span class="doccomment">/// verifies that the Cairo gate constraints are solved by the witness depending on its type</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ensure_cairo_gate</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span>(
-        <span class="ident">gate</span>: <span class="kw-2">&amp;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-        <span class="ident">row</span>: <span class="ident">usize</span>,
-        <span class="ident">witness</span>: <span class="kw-2">&amp;</span>[<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
-        <span class="comment">//_cs: &amp;ConstraintSystem&lt;F&gt;,</span>
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="comment">// assignments</span>
-        <span class="kw">let</span> <span class="ident">this</span>: [<span class="ident">F</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">witness</span>[<span class="ident">i</span>][<span class="ident">row</span>]);
+    <span class="doccomment">/// verifies that the Cairo gate constraints are solved by the witness depending on its type
+    </span><span class="kw">pub fn </span>ensure_cairo_gate&lt;F: PrimeField&gt;(
+        gate: <span class="kw-2">&amp;</span>CircuitGate&lt;F&gt;,
+        row: usize,
+        witness: <span class="kw-2">&amp;</span>[Vec&lt;F&gt;; COLUMNS],
+        <span class="comment">//_cs: &amp;ConstraintSystem&lt;F&gt;,
+    </span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
+        <span class="comment">// assignments
+        </span><span class="kw">let </span>this: [F; COLUMNS] = array_init(|i| witness[i][row]);
 
-        <span class="kw">match</span> <span class="ident">gate</span>.<span class="ident">typ</span> {
-            <span class="ident">GateType::CairoClaim</span> =&gt; {
-                <span class="kw">let</span> <span class="ident">next</span>: [<span class="ident">F</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">witness</span>[<span class="ident">i</span>][<span class="ident">row</span> <span class="op">+</span> <span class="number">1</span>]);
-                <span class="ident">ensure_claim</span>(<span class="kw-2">&amp;</span><span class="ident">this</span>, <span class="kw-2">&amp;</span><span class="ident">next</span>) <span class="comment">// CircuitGate::ensure_transition(&amp;this),</span>
+        <span class="kw">match </span>gate.typ {
+            GateType::CairoClaim =&gt; {
+                <span class="kw">let </span>next: [F; COLUMNS] = array_init(|i| witness[i][row + <span class="number">1</span>]);
+                ensure_claim(<span class="kw-2">&amp;</span>this, <span class="kw-2">&amp;</span>next) <span class="comment">// CircuitGate::ensure_transition(&amp;this),
+            </span>}
+            GateType::CairoInstruction =&gt; {
+                <span class="kw">let </span>next: [F; COLUMNS] = array_init(|i| witness[i][row + <span class="number">1</span>]);
+                ensure_instruction(<span class="kw-2">&amp;</span>this, <span class="kw-2">&amp;</span>next)
             }
-            <span class="ident">GateType::CairoInstruction</span> =&gt; {
-                <span class="kw">let</span> <span class="ident">next</span>: [<span class="ident">F</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">witness</span>[<span class="ident">i</span>][<span class="ident">row</span> <span class="op">+</span> <span class="number">1</span>]);
-                <span class="ident">ensure_instruction</span>(<span class="kw-2">&amp;</span><span class="ident">this</span>, <span class="kw-2">&amp;</span><span class="ident">next</span>)
+            GateType::CairoFlags =&gt; {
+                <span class="kw">let </span>next: [F; COLUMNS] = array_init(|i| witness[i][row + <span class="number">1</span>]);
+                ensure_flags(<span class="kw-2">&amp;</span>this, <span class="kw-2">&amp;</span>next)
             }
-            <span class="ident">GateType::CairoFlags</span> =&gt; {
-                <span class="kw">let</span> <span class="ident">next</span>: [<span class="ident">F</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">witness</span>[<span class="ident">i</span>][<span class="ident">row</span> <span class="op">+</span> <span class="number">1</span>]);
-                <span class="ident">ensure_flags</span>(<span class="kw-2">&amp;</span><span class="ident">this</span>, <span class="kw-2">&amp;</span><span class="ident">next</span>)
+            GateType::CairoTransition =&gt; {
+                <span class="kw">let </span>next: [F; COLUMNS] = array_init(|i| witness[i][row + <span class="number">1</span>]);
+                ensure_transition(<span class="kw-2">&amp;</span>this, <span class="kw-2">&amp;</span>next)
             }
-            <span class="ident">GateType::CairoTransition</span> =&gt; {
-                <span class="kw">let</span> <span class="ident">next</span>: [<span class="ident">F</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">witness</span>[<span class="ident">i</span>][<span class="ident">row</span> <span class="op">+</span> <span class="number">1</span>]);
-                <span class="ident">ensure_transition</span>(<span class="kw-2">&amp;</span><span class="ident">this</span>, <span class="kw-2">&amp;</span><span class="ident">next</span>)
-            }
-            <span class="ident">GateType::Zero</span> =&gt; <span class="prelude-val">Ok</span>(()),
-            <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(
-                <span class="string">&quot;Incorrect GateType: expected CairoInstruction, CairoFlags, CairoTransition, or CairoClaim&quot;</span>
-                    .<span class="ident">to_string</span>(),
+            GateType::Zero =&gt; <span class="prelude-val">Ok</span>(()),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(
+                <span class="string">&quot;Incorrect GateType: expected CairoInstruction, CairoFlags, CairoTransition, or CairoClaim&quot;
+                    </span>.to_string(),
             ),
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">ensure_instruction</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">vars</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>], <span class="ident">flags</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">pc</span> <span class="op">=</span> <span class="ident">vars</span>[<span class="number">0</span>];
-        <span class="kw">let</span> <span class="ident">ap</span> <span class="op">=</span> <span class="ident">vars</span>[<span class="number">1</span>];
-        <span class="kw">let</span> <span class="ident">fp</span> <span class="op">=</span> <span class="ident">vars</span>[<span class="number">2</span>];
-        <span class="kw">let</span> <span class="ident">size</span> <span class="op">=</span> <span class="ident">vars</span>[<span class="number">3</span>];
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">vars</span>[<span class="number">4</span>];
-        <span class="kw">let</span> <span class="ident">dst</span> <span class="op">=</span> <span class="ident">vars</span>[<span class="number">5</span>];
-        <span class="kw">let</span> <span class="ident">op1</span> <span class="op">=</span> <span class="ident">vars</span>[<span class="number">6</span>];
-        <span class="kw">let</span> <span class="ident">op0</span> <span class="op">=</span> <span class="ident">vars</span>[<span class="number">7</span>];
-        <span class="kw">let</span> <span class="ident">off_dst</span> <span class="op">=</span> <span class="ident">vars</span>[<span class="number">8</span>];
-        <span class="kw">let</span> <span class="ident">off_op1</span> <span class="op">=</span> <span class="ident">vars</span>[<span class="number">9</span>];
-        <span class="kw">let</span> <span class="ident">off_op0</span> <span class="op">=</span> <span class="ident">vars</span>[<span class="number">10</span>];
-        <span class="kw">let</span> <span class="ident">adr_dst</span> <span class="op">=</span> <span class="ident">vars</span>[<span class="number">11</span>];
-        <span class="kw">let</span> <span class="ident">adr_op1</span> <span class="op">=</span> <span class="ident">vars</span>[<span class="number">12</span>];
-        <span class="kw">let</span> <span class="ident">adr_op0</span> <span class="op">=</span> <span class="ident">vars</span>[<span class="number">13</span>];
-        <span class="kw">let</span> <span class="ident">instr</span> <span class="op">=</span> <span class="ident">vars</span>[<span class="number">14</span>];
+    <span class="kw">fn </span>ensure_instruction&lt;F: FftField&gt;(vars: <span class="kw-2">&amp;</span>[F], flags: <span class="kw-2">&amp;</span>[F]) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
+        <span class="kw">let </span>pc = vars[<span class="number">0</span>];
+        <span class="kw">let </span>ap = vars[<span class="number">1</span>];
+        <span class="kw">let </span>fp = vars[<span class="number">2</span>];
+        <span class="kw">let </span>size = vars[<span class="number">3</span>];
+        <span class="kw">let </span>res = vars[<span class="number">4</span>];
+        <span class="kw">let </span>dst = vars[<span class="number">5</span>];
+        <span class="kw">let </span>op1 = vars[<span class="number">6</span>];
+        <span class="kw">let </span>op0 = vars[<span class="number">7</span>];
+        <span class="kw">let </span>off_dst = vars[<span class="number">8</span>];
+        <span class="kw">let </span>off_op1 = vars[<span class="number">9</span>];
+        <span class="kw">let </span>off_op0 = vars[<span class="number">10</span>];
+        <span class="kw">let </span>adr_dst = vars[<span class="number">11</span>];
+        <span class="kw">let </span>adr_op1 = vars[<span class="number">12</span>];
+        <span class="kw">let </span>adr_op0 = vars[<span class="number">13</span>];
+        <span class="kw">let </span>instr = vars[<span class="number">14</span>];
 
-        <span class="kw">let</span> <span class="ident">f_dst_fp</span> <span class="op">=</span> <span class="ident">flags</span>[<span class="number">0</span>];
-        <span class="kw">let</span> <span class="ident">f_op0_fp</span> <span class="op">=</span> <span class="ident">flags</span>[<span class="number">1</span>];
-        <span class="kw">let</span> <span class="ident">f_op1_val</span> <span class="op">=</span> <span class="ident">flags</span>[<span class="number">2</span>];
-        <span class="kw">let</span> <span class="ident">f_op1_fp</span> <span class="op">=</span> <span class="ident">flags</span>[<span class="number">3</span>];
-        <span class="kw">let</span> <span class="ident">f_op1_ap</span> <span class="op">=</span> <span class="ident">flags</span>[<span class="number">4</span>];
-        <span class="kw">let</span> <span class="ident">f_res_add</span> <span class="op">=</span> <span class="ident">flags</span>[<span class="number">5</span>];
-        <span class="kw">let</span> <span class="ident">f_res_mul</span> <span class="op">=</span> <span class="ident">flags</span>[<span class="number">6</span>];
-        <span class="kw">let</span> <span class="ident">f_pc_abs</span> <span class="op">=</span> <span class="ident">flags</span>[<span class="number">7</span>];
-        <span class="kw">let</span> <span class="ident">f_pc_rel</span> <span class="op">=</span> <span class="ident">flags</span>[<span class="number">8</span>];
-        <span class="kw">let</span> <span class="ident">f_pc_jnz</span> <span class="op">=</span> <span class="ident">flags</span>[<span class="number">9</span>];
-        <span class="kw">let</span> <span class="ident">f_ap_inc</span> <span class="op">=</span> <span class="ident">flags</span>[<span class="number">10</span>];
-        <span class="kw">let</span> <span class="ident">f_ap_one</span> <span class="op">=</span> <span class="ident">flags</span>[<span class="number">11</span>];
-        <span class="kw">let</span> <span class="ident">f_opc_call</span> <span class="op">=</span> <span class="ident">flags</span>[<span class="number">12</span>];
-        <span class="kw">let</span> <span class="ident">f_opc_ret</span> <span class="op">=</span> <span class="ident">flags</span>[<span class="number">13</span>];
-        <span class="kw">let</span> <span class="ident">f_opc_aeq</span> <span class="op">=</span> <span class="ident">flags</span>[<span class="number">14</span>];
+        <span class="kw">let </span>f_dst_fp = flags[<span class="number">0</span>];
+        <span class="kw">let </span>f_op0_fp = flags[<span class="number">1</span>];
+        <span class="kw">let </span>f_op1_val = flags[<span class="number">2</span>];
+        <span class="kw">let </span>f_op1_fp = flags[<span class="number">3</span>];
+        <span class="kw">let </span>f_op1_ap = flags[<span class="number">4</span>];
+        <span class="kw">let </span>f_res_add = flags[<span class="number">5</span>];
+        <span class="kw">let </span>f_res_mul = flags[<span class="number">6</span>];
+        <span class="kw">let </span>f_pc_abs = flags[<span class="number">7</span>];
+        <span class="kw">let </span>f_pc_rel = flags[<span class="number">8</span>];
+        <span class="kw">let </span>f_pc_jnz = flags[<span class="number">9</span>];
+        <span class="kw">let </span>f_ap_inc = flags[<span class="number">10</span>];
+        <span class="kw">let </span>f_ap_one = flags[<span class="number">11</span>];
+        <span class="kw">let </span>f_opc_call = flags[<span class="number">12</span>];
+        <span class="kw">let </span>f_opc_ret = flags[<span class="number">13</span>];
+        <span class="kw">let </span>f_opc_aeq = flags[<span class="number">14</span>];
 
-        <span class="kw">let</span> <span class="ident">zero</span> <span class="op">=</span> <span class="ident">F::zero</span>();
-        <span class="kw">let</span> <span class="ident">one</span> <span class="op">=</span> <span class="ident">F::one</span>();
+        <span class="kw">let </span>zero = F::zero();
+        <span class="kw">let </span>one = F::one();
 
-        <span class="comment">// FLAGS RELATED</span>
+        <span class="comment">// FLAGS RELATED
 
-        <span class="comment">// check last flag is a zero</span>
-        <span class="comment">// f15 == 0</span>
-        <span class="comment">//ensure_eq!(zero, f15, &quot;last flag is nonzero&quot;);</span>
+        // check last flag is a zero
+        // f15 == 0
+        //ensure_eq!(zero, f15, &quot;last flag is nonzero&quot;);
 
-        <span class="comment">// check booleanity of flags</span>
-        <span class="comment">// fi * (1-fi) == 0 for i=[0..15)</span>
-        <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="ident">flag</span> <span class="kw">in</span> <span class="ident">flags</span>.<span class="ident">iter</span>().<span class="ident">take</span>(<span class="ident">NUM_FLAGS</span> <span class="op">-</span> <span class="number">1</span>) {
-            <span class="macro">ensure_eq!</span>(<span class="ident">zero</span>, <span class="ident">flag</span> <span class="op">*</span> (<span class="ident">one</span> <span class="op">-</span> <span class="ident">flag</span>), <span class="string">&quot;non-boolean flags&quot;</span>);
+        // check booleanity of flags
+        // fi * (1-fi) == 0 for i=[0..15)
+        </span><span class="kw">for </span><span class="kw-2">&amp;</span>flag <span class="kw">in </span>flags.iter().take(NUM_FLAGS - <span class="number">1</span>) {
+            <span class="macro">ensure_eq!</span>(zero, flag * (one - flag), <span class="string">&quot;non-boolean flags&quot;</span>);
         }
 
-        <span class="comment">// well formness of instruction</span>
-        <span class="kw">let</span> <span class="ident">shape</span> <span class="op">=</span> {
-            <span class="kw">let</span> <span class="ident">shift</span> <span class="op">=</span> <span class="ident">F::from</span>(<span class="number">2u32</span>.<span class="ident">pow</span>(<span class="number">15</span>)); <span class="comment">// 2^15;</span>
-            <span class="kw">let</span> <span class="ident">pow16</span> <span class="op">=</span> <span class="ident">shift</span>.<span class="ident">double</span>(); <span class="comment">// 2^16</span>
-            <span class="kw">let</span> <span class="ident">dst_sft</span> <span class="op">=</span> <span class="ident">off_dst</span> <span class="op">+</span> <span class="ident">shift</span>;
-            <span class="kw">let</span> <span class="ident">op0_sft</span> <span class="op">=</span> <span class="ident">off_op0</span> <span class="op">+</span> <span class="ident">shift</span>;
-            <span class="kw">let</span> <span class="ident">op1_sft</span> <span class="op">=</span> <span class="ident">off_op1</span> <span class="op">+</span> <span class="ident">shift</span>;
-            <span class="comment">// recompose instruction as: flags[14..0] | op1_sft | op0_sft | dst_sft</span>
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">aux</span> <span class="op">=</span> <span class="ident">flags</span>[<span class="number">14</span>];
-            <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> (<span class="number">0</span>..<span class="number">14</span>).<span class="ident">rev</span>() {
-                <span class="ident">aux</span> <span class="op">=</span> <span class="ident">aux</span> <span class="op">*</span> <span class="ident">F::from</span>(<span class="number">2u32</span>) <span class="op">+</span> <span class="ident">flags</span>[<span class="ident">i</span>];
+        <span class="comment">// well formness of instruction
+        </span><span class="kw">let </span>shape = {
+            <span class="kw">let </span>shift = F::from(<span class="number">2u32</span>.pow(<span class="number">15</span>)); <span class="comment">// 2^15;
+            </span><span class="kw">let </span>pow16 = shift.double(); <span class="comment">// 2^16
+            </span><span class="kw">let </span>dst_sft = off_dst + shift;
+            <span class="kw">let </span>op0_sft = off_op0 + shift;
+            <span class="kw">let </span>op1_sft = off_op1 + shift;
+            <span class="comment">// recompose instruction as: flags[14..0] | op1_sft | op0_sft | dst_sft
+            </span><span class="kw">let </span><span class="kw-2">mut </span>aux = flags[<span class="number">14</span>];
+            <span class="kw">for </span>i <span class="kw">in </span>(<span class="number">0</span>..<span class="number">14</span>).rev() {
+                aux = aux * F::from(<span class="number">2u32</span>) + flags[i];
             }
-            <span class="comment">// complete with &quot;flags&quot; * 2^48 + op1_sft * 2^32 + op0_sft * 2^16 + dst_sft</span>
-            ((<span class="ident">aux</span> <span class="op">*</span> <span class="ident">pow16</span> <span class="op">+</span> <span class="ident">op1_sft</span>) <span class="op">*</span> <span class="ident">pow16</span> <span class="op">+</span> <span class="ident">op0_sft</span>) <span class="op">*</span> <span class="ident">pow16</span> <span class="op">+</span> <span class="ident">dst_sft</span>
+            <span class="comment">// complete with &quot;flags&quot; * 2^48 + op1_sft * 2^32 + op0_sft * 2^16 + dst_sft
+            </span>((aux * pow16 + op1_sft) * pow16 + op0_sft) * pow16 + dst_sft
         };
         <span class="macro">ensure_eq!</span>(
-            <span class="ident">zero</span>,
-            <span class="ident">instr</span> <span class="op">-</span> <span class="ident">shape</span>,
-            <span class="string">&quot;wrong decomposition of the instruction&quot;</span>
-        );
+            zero,
+            instr - shape,
+            <span class="string">&quot;wrong decomposition of the instruction&quot;
+        </span>);
 
-        <span class="comment">// check no two flags of same set are nonzero</span>
-        <span class="kw">let</span> <span class="ident">op1_set</span> <span class="op">=</span> <span class="ident">f_op1_ap</span> <span class="op">+</span> <span class="ident">f_op1_fp</span> <span class="op">+</span> <span class="ident">f_op1_val</span>;
-        <span class="kw">let</span> <span class="ident">res_set</span> <span class="op">=</span> <span class="ident">f_res_mul</span> <span class="op">+</span> <span class="ident">f_res_add</span>;
-        <span class="kw">let</span> <span class="ident">pc_set</span> <span class="op">=</span> <span class="ident">f_pc_jnz</span> <span class="op">+</span> <span class="ident">f_pc_rel</span> <span class="op">+</span> <span class="ident">f_pc_abs</span>;
-        <span class="kw">let</span> <span class="ident">ap_set</span> <span class="op">=</span> <span class="ident">f_ap_one</span> <span class="op">+</span> <span class="ident">f_ap_inc</span>;
-        <span class="kw">let</span> <span class="ident">opcode_set</span> <span class="op">=</span> <span class="ident">f_opc_aeq</span> <span class="op">+</span> <span class="ident">f_opc_ret</span> <span class="op">+</span> <span class="ident">f_opc_call</span>;
+        <span class="comment">// check no two flags of same set are nonzero
+        </span><span class="kw">let </span>op1_set = f_op1_ap + f_op1_fp + f_op1_val;
+        <span class="kw">let </span>res_set = f_res_mul + f_res_add;
+        <span class="kw">let </span>pc_set = f_pc_jnz + f_pc_rel + f_pc_abs;
+        <span class="kw">let </span>ap_set = f_ap_one + f_ap_inc;
+        <span class="kw">let </span>opcode_set = f_opc_aeq + f_opc_ret + f_opc_call;
         <span class="macro">ensure_eq!</span>(
-            <span class="ident">zero</span>,
-            <span class="ident">op1_set</span> <span class="op">*</span> (<span class="ident">one</span> <span class="op">-</span> <span class="ident">op1_set</span>),
-            <span class="string">&quot;invalid format of `op1_src`&quot;</span>
-        );
+            zero,
+            op1_set * (one - op1_set),
+            <span class="string">&quot;invalid format of `op1_src`&quot;
+        </span>);
 
         <span class="macro">ensure_eq!</span>(
-            <span class="ident">zero</span>,
-            <span class="ident">res_set</span> <span class="op">*</span> (<span class="ident">one</span> <span class="op">-</span> <span class="ident">res_set</span>),
-            <span class="string">&quot;invalid format of `res_log`&quot;</span>
-        );
-        <span class="macro">ensure_eq!</span>(<span class="ident">zero</span>, <span class="ident">pc_set</span> <span class="op">*</span> (<span class="ident">one</span> <span class="op">-</span> <span class="ident">pc_set</span>), <span class="string">&quot;invalid format of `pc_up`&quot;</span>);
-        <span class="macro">ensure_eq!</span>(<span class="ident">zero</span>, <span class="ident">ap_set</span> <span class="op">*</span> (<span class="ident">one</span> <span class="op">-</span> <span class="ident">ap_set</span>), <span class="string">&quot;invalid format of `ap_up`&quot;</span>);
+            zero,
+            res_set * (one - res_set),
+            <span class="string">&quot;invalid format of `res_log`&quot;
+        </span>);
+        <span class="macro">ensure_eq!</span>(zero, pc_set * (one - pc_set), <span class="string">&quot;invalid format of `pc_up`&quot;</span>);
+        <span class="macro">ensure_eq!</span>(zero, ap_set * (one - ap_set), <span class="string">&quot;invalid format of `ap_up`&quot;</span>);
         <span class="macro">ensure_eq!</span>(
-            <span class="ident">zero</span>,
-            <span class="ident">opcode_set</span> <span class="op">*</span> (<span class="ident">one</span> <span class="op">-</span> <span class="ident">opcode_set</span>),
-            <span class="string">&quot;invalid format of `opcode`&quot;</span>
-        );
+            zero,
+            opcode_set * (one - opcode_set),
+            <span class="string">&quot;invalid format of `opcode`&quot;
+        </span>);
 
-        <span class="comment">// OPERANDS RELATED</span>
+        <span class="comment">// OPERANDS RELATED
 
-        <span class="comment">// * Destination address</span>
-        <span class="comment">// if dst_reg = 0 : dst_dir = ap + off_dst</span>
-        <span class="comment">// if dst_reg = 1 : dst_dir = fp + off_dst</span>
+        // * Destination address
+        // if dst_reg = 0 : dst_dir = ap + off_dst
+        // if dst_reg = 1 : dst_dir = fp + off_dst
+        </span><span class="macro">ensure_eq!</span>(
+            adr_dst,
+            f_dst_fp * fp + (one - f_dst_fp) * ap + off_dst,
+            <span class="string">&quot;invalid destination address&quot;
+        </span>);
+
+        <span class="comment">// * First operand address
+        // if op0_reg = 0 : op0_dir = ap + off_dst
+        // if op0_reg = 1 : op0_dir = fp + off_dst
+        </span><span class="macro">ensure_eq!</span>(
+            adr_op0,
+            f_op0_fp * fp + (one - f_op0_fp) * ap + off_op0,
+            <span class="string">&quot;invalid first operand address&quot;
+        </span>);
+
+        <span class="comment">// * Second operand address
+        </span><span class="macro">ensure_eq!</span>(
+            adr_op1, <span class="comment">//                                        op1_dir = ..
+            </span>(f_op1_ap * ap                                  <span class="comment">// if op1_src == 4 : ap
+            </span>+ f_op1_fp * fp                                 <span class="comment">// if op1_src == 2 : fp
+            </span>+ f_op1_val * pc                                <span class="comment">// if op1_src == 1 : pc
+            </span>+ (one - f_op1_fp - f_op1_ap - f_op1_val) * op0 <span class="comment">// if op1_src == 0 : op0
+            </span>+ off_op1), <span class="comment">//                                                           + off_op1
+            </span><span class="string">&quot;invalid second operand address&quot;
+        </span>);
+
+        <span class="comment">// OPERATIONS RELATED
+
+        // * Check value of result
+        </span><span class="macro">ensure_eq!</span>(
+            (one - f_pc_jnz) * res, <span class="comment">//               if  pc_up != 4 : res = ..  // no res in conditional jumps
+            </span>f_res_mul * op0 * op1                 <span class="comment">// if res_log = 2 : op0 * op1
+            </span>+ f_res_add * (op0 + op1)             <span class="comment">// if res_log = 1 : op0 + op1
+            </span>+ (one - f_res_add - f_res_mul) * op1, <span class="comment">// if res_log = 0 : op1
+            </span><span class="string">&quot;invalid result&quot;
+        </span>);
+
+        <span class="comment">// * Check storage of current fp for a call instruction
+        </span><span class="macro">ensure_eq!</span>(
+            zero,
+            f_opc_call * (dst - fp),
+            <span class="string">&quot;current fp after call not stored&quot;
+        </span>); <span class="comment">// if opcode = 1 : dst = fp
+
+        // * Check storage of next instruction after a call instruction
+        </span><span class="macro">ensure_eq!</span>(
+            zero,
+            f_opc_call * (op0 - (pc + size)),
+            <span class="string">&quot;next instruction after call not stored&quot;
+        </span>); <span class="comment">// if opcode = 1 : op0 = pc + size
+
+        // * Check destination = result after assert-equal
+        </span><span class="macro">ensure_eq!</span>(zero, f_opc_aeq * (dst - res), <span class="string">&quot;false assert equal&quot;</span>); <span class="comment">// if opcode = 4 : dst = res
+
+        </span><span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="kw">fn </span>ensure_flags&lt;F: FftField&gt;(curr: <span class="kw-2">&amp;</span>[F], next: <span class="kw-2">&amp;</span>[F]) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
+        <span class="kw">let </span>f_pc_abs = curr[<span class="number">7</span>];
+        <span class="kw">let </span>f_pc_rel = curr[<span class="number">8</span>];
+        <span class="kw">let </span>f_pc_jnz = curr[<span class="number">9</span>];
+        <span class="kw">let </span>f_ap_inc = curr[<span class="number">10</span>];
+        <span class="kw">let </span>f_ap_one = curr[<span class="number">11</span>];
+        <span class="kw">let </span>f_opc_call = curr[<span class="number">12</span>];
+        <span class="kw">let </span>f_opc_ret = curr[<span class="number">13</span>];
+        <span class="kw">let </span>pc = next[<span class="number">0</span>];
+        <span class="kw">let </span>ap = next[<span class="number">1</span>];
+        <span class="kw">let </span>fp = next[<span class="number">2</span>];
+        <span class="kw">let </span>size = next[<span class="number">3</span>];
+        <span class="kw">let </span>res = next[<span class="number">4</span>];
+        <span class="kw">let </span>dst = next[<span class="number">5</span>];
+        <span class="kw">let </span>op1 = next[<span class="number">6</span>];
+        <span class="kw">let </span>pcup = next[<span class="number">7</span>];
+        <span class="kw">let </span>apup = next[<span class="number">8</span>];
+        <span class="kw">let </span>fpup = next[<span class="number">9</span>];
+
+        <span class="kw">let </span>zero = F::zero();
+        <span class="kw">let </span>one = F::one();
+        <span class="kw">let </span>two = F::from(<span class="number">2u16</span>);
+
+        <span class="comment">// REGISTERS RELATED
+
+        // * Check next allocation pointer
+        </span><span class="macro">ensure_eq!</span>(
+            apup, <span class="comment">//               next_ap =
+            </span>ap                   <span class="comment">//             ap +
+            </span>+ f_ap_inc * res      <span class="comment">//  if ap_up == 1 : res
+            </span>+ f_ap_one           <span class="comment">//  if ap_up == 2 : 1
+            </span>+ f_opc_call.double(), <span class="comment">// if opcode == 1 : 2
+            </span><span class="string">&quot;wrong ap update&quot;
+        </span>);
+
+        <span class="comment">// * Check next frame pointer
+        </span><span class="macro">ensure_eq!</span>(
+            fpup, <span class="comment">//                                       next_fp =
+            </span>f_opc_call * (ap + two)      <span class="comment">// if opcode == 1      : ap + 2
+            </span>+ f_opc_ret * dst                    <span class="comment">// if opcode == 2      : dst
+            </span>+ (one - f_opc_call - f_opc_ret) * fp, <span class="comment">// if opcode == 4 or 0 : fp
+            </span><span class="string">&quot;wrong fp update&quot;
+        </span>);
+
+        <span class="comment">// * Check next program counter
+        </span><span class="macro">ensure_eq!</span>(
+            zero,
+            f_pc_jnz * (dst * res - one) * (pcup - (pc + size)), <span class="comment">// &lt;=&gt; pc_up = 4 and dst = 0 : next_pc = pc + size // no jump
+            </span><span class="string">&quot;wrong pc update&quot;
+        </span>);
         <span class="macro">ensure_eq!</span>(
-            <span class="ident">adr_dst</span>,
-            <span class="ident">f_dst_fp</span> <span class="op">*</span> <span class="ident">fp</span> <span class="op">+</span> (<span class="ident">one</span> <span class="op">-</span> <span class="ident">f_dst_fp</span>) <span class="op">*</span> <span class="ident">ap</span> <span class="op">+</span> <span class="ident">off_dst</span>,
-            <span class="string">&quot;invalid destination address&quot;</span>
-        );
-
-        <span class="comment">// * First operand address</span>
-        <span class="comment">// if op0_reg = 0 : op0_dir = ap + off_dst</span>
-        <span class="comment">// if op0_reg = 1 : op0_dir = fp + off_dst</span>
-        <span class="macro">ensure_eq!</span>(
-            <span class="ident">adr_op0</span>,
-            <span class="ident">f_op0_fp</span> <span class="op">*</span> <span class="ident">fp</span> <span class="op">+</span> (<span class="ident">one</span> <span class="op">-</span> <span class="ident">f_op0_fp</span>) <span class="op">*</span> <span class="ident">ap</span> <span class="op">+</span> <span class="ident">off_op0</span>,
-            <span class="string">&quot;invalid first operand address&quot;</span>
-        );
-
-        <span class="comment">// * Second operand address</span>
-        <span class="macro">ensure_eq!</span>(
-            <span class="ident">adr_op1</span>, <span class="comment">//                                        op1_dir = ..</span>
-            (<span class="ident">f_op1_ap</span> <span class="op">*</span> <span class="ident">ap</span>                                  <span class="comment">// if op1_src == 4 : ap</span>
-            <span class="op">+</span> <span class="ident">f_op1_fp</span> <span class="op">*</span> <span class="ident">fp</span>                                 <span class="comment">// if op1_src == 2 : fp</span>
-            <span class="op">+</span> <span class="ident">f_op1_val</span> <span class="op">*</span> <span class="ident">pc</span>                                <span class="comment">// if op1_src == 1 : pc</span>
-            <span class="op">+</span> (<span class="ident">one</span> <span class="op">-</span> <span class="ident">f_op1_fp</span> <span class="op">-</span> <span class="ident">f_op1_ap</span> <span class="op">-</span> <span class="ident">f_op1_val</span>) <span class="op">*</span> <span class="ident">op0</span> <span class="comment">// if op1_src == 0 : op0</span>
-            <span class="op">+</span> <span class="ident">off_op1</span>), <span class="comment">//                                                           + off_op1</span>
-            <span class="string">&quot;invalid second operand address&quot;</span>
-        );
-
-        <span class="comment">// OPERATIONS RELATED</span>
-
-        <span class="comment">// * Check value of result</span>
-        <span class="macro">ensure_eq!</span>(
-            (<span class="ident">one</span> <span class="op">-</span> <span class="ident">f_pc_jnz</span>) <span class="op">*</span> <span class="ident">res</span>, <span class="comment">//               if  pc_up != 4 : res = ..  // no res in conditional jumps</span>
-            <span class="ident">f_res_mul</span> <span class="op">*</span> <span class="ident">op0</span> <span class="op">*</span> <span class="ident">op1</span>                 <span class="comment">// if res_log = 2 : op0 * op1</span>
-            <span class="op">+</span> <span class="ident">f_res_add</span> <span class="op">*</span> (<span class="ident">op0</span> <span class="op">+</span> <span class="ident">op1</span>)             <span class="comment">// if res_log = 1 : op0 + op1</span>
-            <span class="op">+</span> (<span class="ident">one</span> <span class="op">-</span> <span class="ident">f_res_add</span> <span class="op">-</span> <span class="ident">f_res_mul</span>) <span class="op">*</span> <span class="ident">op1</span>, <span class="comment">// if res_log = 0 : op1</span>
-            <span class="string">&quot;invalid result&quot;</span>
-        );
-
-        <span class="comment">// * Check storage of current fp for a call instruction</span>
-        <span class="macro">ensure_eq!</span>(
-            <span class="ident">zero</span>,
-            <span class="ident">f_opc_call</span> <span class="op">*</span> (<span class="ident">dst</span> <span class="op">-</span> <span class="ident">fp</span>),
-            <span class="string">&quot;current fp after call not stored&quot;</span>
-        ); <span class="comment">// if opcode = 1 : dst = fp</span>
-
-        <span class="comment">// * Check storage of next instruction after a call instruction</span>
-        <span class="macro">ensure_eq!</span>(
-            <span class="ident">zero</span>,
-            <span class="ident">f_opc_call</span> <span class="op">*</span> (<span class="ident">op0</span> <span class="op">-</span> (<span class="ident">pc</span> <span class="op">+</span> <span class="ident">size</span>)),
-            <span class="string">&quot;next instruction after call not stored&quot;</span>
-        ); <span class="comment">// if opcode = 1 : op0 = pc + size</span>
-
-        <span class="comment">// * Check destination = result after assert-equal</span>
-        <span class="macro">ensure_eq!</span>(<span class="ident">zero</span>, <span class="ident">f_opc_aeq</span> <span class="op">*</span> (<span class="ident">dst</span> <span class="op">-</span> <span class="ident">res</span>), <span class="string">&quot;false assert equal&quot;</span>); <span class="comment">// if opcode = 4 : dst = res</span>
+            zero,
+            f_pc_jnz * dst * (pcup - (pc + op1))                  <span class="comment">// &lt;=&gt; pc_up = 4 and dst != 0 : next_pc = pc + op1  // condition holds
+            </span>+ (one - f_pc_jnz) * pcup                             <span class="comment">// &lt;=&gt; pc_up = {0,1,2} : next_pc = ... // not a conditional jump
+                </span>- (one - f_pc_abs - f_pc_rel - f_pc_jnz) * (pc + size) <span class="comment">// &lt;=&gt; pc_up = 0 : next_pc = pc + size // common case
+                </span>- f_pc_abs * res                                     <span class="comment">// &lt;=&gt; pc_up = 1 : next_pc = res       // absolute jump
+                </span>- f_pc_rel * (pc + res), <span class="comment">//                             &lt;=&gt; pc_up = 2 : next_pc = pc + res  // relative jump
+            </span><span class="string">&quot;wrong pc update&quot;
+        </span>);
 
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">fn</span> <span class="ident">ensure_flags</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">curr</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>], <span class="ident">next</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">f_pc_abs</span> <span class="op">=</span> <span class="ident">curr</span>[<span class="number">7</span>];
-        <span class="kw">let</span> <span class="ident">f_pc_rel</span> <span class="op">=</span> <span class="ident">curr</span>[<span class="number">8</span>];
-        <span class="kw">let</span> <span class="ident">f_pc_jnz</span> <span class="op">=</span> <span class="ident">curr</span>[<span class="number">9</span>];
-        <span class="kw">let</span> <span class="ident">f_ap_inc</span> <span class="op">=</span> <span class="ident">curr</span>[<span class="number">10</span>];
-        <span class="kw">let</span> <span class="ident">f_ap_one</span> <span class="op">=</span> <span class="ident">curr</span>[<span class="number">11</span>];
-        <span class="kw">let</span> <span class="ident">f_opc_call</span> <span class="op">=</span> <span class="ident">curr</span>[<span class="number">12</span>];
-        <span class="kw">let</span> <span class="ident">f_opc_ret</span> <span class="op">=</span> <span class="ident">curr</span>[<span class="number">13</span>];
-        <span class="kw">let</span> <span class="ident">pc</span> <span class="op">=</span> <span class="ident">next</span>[<span class="number">0</span>];
-        <span class="kw">let</span> <span class="ident">ap</span> <span class="op">=</span> <span class="ident">next</span>[<span class="number">1</span>];
-        <span class="kw">let</span> <span class="ident">fp</span> <span class="op">=</span> <span class="ident">next</span>[<span class="number">2</span>];
-        <span class="kw">let</span> <span class="ident">size</span> <span class="op">=</span> <span class="ident">next</span>[<span class="number">3</span>];
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">next</span>[<span class="number">4</span>];
-        <span class="kw">let</span> <span class="ident">dst</span> <span class="op">=</span> <span class="ident">next</span>[<span class="number">5</span>];
-        <span class="kw">let</span> <span class="ident">op1</span> <span class="op">=</span> <span class="ident">next</span>[<span class="number">6</span>];
-        <span class="kw">let</span> <span class="ident">pcup</span> <span class="op">=</span> <span class="ident">next</span>[<span class="number">7</span>];
-        <span class="kw">let</span> <span class="ident">apup</span> <span class="op">=</span> <span class="ident">next</span>[<span class="number">8</span>];
-        <span class="kw">let</span> <span class="ident">fpup</span> <span class="op">=</span> <span class="ident">next</span>[<span class="number">9</span>];
+    <span class="kw">fn </span>ensure_transition&lt;F: FftField&gt;(curr: <span class="kw-2">&amp;</span>[F], next: <span class="kw-2">&amp;</span>[F]) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
+        <span class="kw">let </span>pcup = curr[<span class="number">7</span>];
+        <span class="kw">let </span>apup = curr[<span class="number">8</span>];
+        <span class="kw">let </span>fpup = curr[<span class="number">9</span>];
+        <span class="kw">let </span>next_pc = next[<span class="number">0</span>];
+        <span class="kw">let </span>next_ap = next[<span class="number">1</span>];
+        <span class="kw">let </span>next_fp = next[<span class="number">2</span>];
 
-        <span class="kw">let</span> <span class="ident">zero</span> <span class="op">=</span> <span class="ident">F::zero</span>();
-        <span class="kw">let</span> <span class="ident">one</span> <span class="op">=</span> <span class="ident">F::one</span>();
-        <span class="kw">let</span> <span class="ident">two</span> <span class="op">=</span> <span class="ident">F::from</span>(<span class="number">2u16</span>);
+        <span class="comment">// REGISTERS RELATED
 
-        <span class="comment">// REGISTERS RELATED</span>
+        // * Check next allocation pointer
+        </span><span class="macro">ensure_eq!</span>(next_ap, apup, <span class="string">&quot;wrong next allocation pointer&quot;</span>);
 
-        <span class="comment">// * Check next allocation pointer</span>
-        <span class="macro">ensure_eq!</span>(
-            <span class="ident">apup</span>, <span class="comment">//               next_ap =</span>
-            <span class="ident">ap</span>                   <span class="comment">//             ap +</span>
-            <span class="op">+</span> <span class="ident">f_ap_inc</span> <span class="op">*</span> <span class="ident">res</span>      <span class="comment">//  if ap_up == 1 : res</span>
-            <span class="op">+</span> <span class="ident">f_ap_one</span>           <span class="comment">//  if ap_up == 2 : 1</span>
-            <span class="op">+</span> <span class="ident">f_opc_call</span>.<span class="ident">double</span>(), <span class="comment">// if opcode == 1 : 2</span>
-            <span class="string">&quot;wrong ap update&quot;</span>
-        );
+        <span class="comment">// * Check next frame pointer
+        </span><span class="macro">ensure_eq!</span>(next_fp, fpup, <span class="string">&quot;wrong next frame pointer&quot;</span>);
 
-        <span class="comment">// * Check next frame pointer</span>
-        <span class="macro">ensure_eq!</span>(
-            <span class="ident">fpup</span>, <span class="comment">//                                       next_fp =</span>
-            <span class="ident">f_opc_call</span> <span class="op">*</span> (<span class="ident">ap</span> <span class="op">+</span> <span class="ident">two</span>)      <span class="comment">// if opcode == 1      : ap + 2</span>
-            <span class="op">+</span> <span class="ident">f_opc_ret</span> <span class="op">*</span> <span class="ident">dst</span>                    <span class="comment">// if opcode == 2      : dst</span>
-            <span class="op">+</span> (<span class="ident">one</span> <span class="op">-</span> <span class="ident">f_opc_call</span> <span class="op">-</span> <span class="ident">f_opc_ret</span>) <span class="op">*</span> <span class="ident">fp</span>, <span class="comment">// if opcode == 4 or 0 : fp</span>
-            <span class="string">&quot;wrong fp update&quot;</span>
-        );
-
-        <span class="comment">// * Check next program counter</span>
-        <span class="macro">ensure_eq!</span>(
-            <span class="ident">zero</span>,
-            <span class="ident">f_pc_jnz</span> <span class="op">*</span> (<span class="ident">dst</span> <span class="op">*</span> <span class="ident">res</span> <span class="op">-</span> <span class="ident">one</span>) <span class="op">*</span> (<span class="ident">pcup</span> <span class="op">-</span> (<span class="ident">pc</span> <span class="op">+</span> <span class="ident">size</span>)), <span class="comment">// &lt;=&gt; pc_up = 4 and dst = 0 : next_pc = pc + size // no jump</span>
-            <span class="string">&quot;wrong pc update&quot;</span>
-        );
-        <span class="macro">ensure_eq!</span>(
-            <span class="ident">zero</span>,
-            <span class="ident">f_pc_jnz</span> <span class="op">*</span> <span class="ident">dst</span> <span class="op">*</span> (<span class="ident">pcup</span> <span class="op">-</span> (<span class="ident">pc</span> <span class="op">+</span> <span class="ident">op1</span>))                  <span class="comment">// &lt;=&gt; pc_up = 4 and dst != 0 : next_pc = pc + op1  // condition holds</span>
-            <span class="op">+</span> (<span class="ident">one</span> <span class="op">-</span> <span class="ident">f_pc_jnz</span>) <span class="op">*</span> <span class="ident">pcup</span>                             <span class="comment">// &lt;=&gt; pc_up = {0,1,2} : next_pc = ... // not a conditional jump</span>
-                <span class="op">-</span> (<span class="ident">one</span> <span class="op">-</span> <span class="ident">f_pc_abs</span> <span class="op">-</span> <span class="ident">f_pc_rel</span> <span class="op">-</span> <span class="ident">f_pc_jnz</span>) <span class="op">*</span> (<span class="ident">pc</span> <span class="op">+</span> <span class="ident">size</span>) <span class="comment">// &lt;=&gt; pc_up = 0 : next_pc = pc + size // common case</span>
-                <span class="op">-</span> <span class="ident">f_pc_abs</span> <span class="op">*</span> <span class="ident">res</span>                                     <span class="comment">// &lt;=&gt; pc_up = 1 : next_pc = res       // absolute jump</span>
-                <span class="op">-</span> <span class="ident">f_pc_rel</span> <span class="op">*</span> (<span class="ident">pc</span> <span class="op">+</span> <span class="ident">res</span>), <span class="comment">//                             &lt;=&gt; pc_up = 2 : next_pc = pc + res  // relative jump</span>
-            <span class="string">&quot;wrong pc update&quot;</span>
-        );
+        <span class="comment">// * Check next program counter
+        </span><span class="macro">ensure_eq!</span>(next_pc, pcup, <span class="string">&quot;wrong next program counter&quot;</span>);
 
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">fn</span> <span class="ident">ensure_transition</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">curr</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>], <span class="ident">next</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">pcup</span> <span class="op">=</span> <span class="ident">curr</span>[<span class="number">7</span>];
-        <span class="kw">let</span> <span class="ident">apup</span> <span class="op">=</span> <span class="ident">curr</span>[<span class="number">8</span>];
-        <span class="kw">let</span> <span class="ident">fpup</span> <span class="op">=</span> <span class="ident">curr</span>[<span class="number">9</span>];
-        <span class="kw">let</span> <span class="ident">next_pc</span> <span class="op">=</span> <span class="ident">next</span>[<span class="number">0</span>];
-        <span class="kw">let</span> <span class="ident">next_ap</span> <span class="op">=</span> <span class="ident">next</span>[<span class="number">1</span>];
-        <span class="kw">let</span> <span class="ident">next_fp</span> <span class="op">=</span> <span class="ident">next</span>[<span class="number">2</span>];
+    <span class="kw">fn </span>ensure_claim&lt;F: FftField&gt;(claim: <span class="kw-2">&amp;</span>[F], next: <span class="kw-2">&amp;</span>[F]) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
+        <span class="kw">let </span>pc_ini = claim[<span class="number">0</span>];
+        <span class="kw">let </span>ap_ini = claim[<span class="number">1</span>];
+        <span class="kw">let </span>pc_fin = claim[<span class="number">2</span>];
+        <span class="kw">let </span>ap_fin = claim[<span class="number">3</span>];
+        <span class="kw">let </span>pc_n = claim[<span class="number">4</span>];
+        <span class="kw">let </span>ap_n = claim[<span class="number">5</span>];
+        <span class="kw">let </span>pc0 = next[<span class="number">0</span>];
+        <span class="kw">let </span>ap0 = next[<span class="number">1</span>];
+        <span class="kw">let </span>fp0 = next[<span class="number">2</span>];
 
-        <span class="comment">// REGISTERS RELATED</span>
-
-        <span class="comment">// * Check next allocation pointer</span>
-        <span class="macro">ensure_eq!</span>(<span class="ident">next_ap</span>, <span class="ident">apup</span>, <span class="string">&quot;wrong next allocation pointer&quot;</span>);
-
-        <span class="comment">// * Check next frame pointer</span>
-        <span class="macro">ensure_eq!</span>(<span class="ident">next_fp</span>, <span class="ident">fpup</span>, <span class="string">&quot;wrong next frame pointer&quot;</span>);
-
-        <span class="comment">// * Check next program counter</span>
-        <span class="macro">ensure_eq!</span>(<span class="ident">next_pc</span>, <span class="ident">pcup</span>, <span class="string">&quot;wrong next program counter&quot;</span>);
-
-        <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="kw">fn</span> <span class="ident">ensure_claim</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">claim</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>], <span class="ident">next</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">pc_ini</span> <span class="op">=</span> <span class="ident">claim</span>[<span class="number">0</span>];
-        <span class="kw">let</span> <span class="ident">ap_ini</span> <span class="op">=</span> <span class="ident">claim</span>[<span class="number">1</span>];
-        <span class="kw">let</span> <span class="ident">pc_fin</span> <span class="op">=</span> <span class="ident">claim</span>[<span class="number">2</span>];
-        <span class="kw">let</span> <span class="ident">ap_fin</span> <span class="op">=</span> <span class="ident">claim</span>[<span class="number">3</span>];
-        <span class="kw">let</span> <span class="ident">pc_n</span> <span class="op">=</span> <span class="ident">claim</span>[<span class="number">4</span>];
-        <span class="kw">let</span> <span class="ident">ap_n</span> <span class="op">=</span> <span class="ident">claim</span>[<span class="number">5</span>];
-        <span class="kw">let</span> <span class="ident">pc0</span> <span class="op">=</span> <span class="ident">next</span>[<span class="number">0</span>];
-        <span class="kw">let</span> <span class="ident">ap0</span> <span class="op">=</span> <span class="ident">next</span>[<span class="number">1</span>];
-        <span class="kw">let</span> <span class="ident">fp0</span> <span class="op">=</span> <span class="ident">next</span>[<span class="number">2</span>];
-
-        <span class="comment">// * Check initial pc, ap, fp and final pc, ap</span>
-        <span class="macro">ensure_eq!</span>(<span class="ident">F::zero</span>(), <span class="ident">pc0</span> <span class="op">-</span> <span class="ident">pc_ini</span>, <span class="string">&quot;wrong initial pc&quot;</span>);
-        <span class="macro">ensure_eq!</span>(<span class="ident">F::zero</span>(), <span class="ident">ap0</span> <span class="op">-</span> <span class="ident">ap_ini</span>, <span class="string">&quot;wrong initial ap&quot;</span>);
-        <span class="macro">ensure_eq!</span>(<span class="ident">F::zero</span>(), <span class="ident">fp0</span> <span class="op">-</span> <span class="ident">ap_ini</span>, <span class="string">&quot;wrong initial fp&quot;</span>);
-        <span class="macro">ensure_eq!</span>(<span class="ident">F::zero</span>(), <span class="ident">pc_n</span> <span class="op">-</span> <span class="ident">pc_fin</span>, <span class="string">&quot;wrong final pc&quot;</span>);
-        <span class="macro">ensure_eq!</span>(<span class="ident">F::zero</span>(), <span class="ident">ap_n</span> <span class="op">-</span> <span class="ident">ap_fin</span>, <span class="string">&quot;wrong final ap&quot;</span>);
+        <span class="comment">// * Check initial pc, ap, fp and final pc, ap
+        </span><span class="macro">ensure_eq!</span>(F::zero(), pc0 - pc_ini, <span class="string">&quot;wrong initial pc&quot;</span>);
+        <span class="macro">ensure_eq!</span>(F::zero(), ap0 - ap_ini, <span class="string">&quot;wrong initial ap&quot;</span>);
+        <span class="macro">ensure_eq!</span>(F::zero(), fp0 - ap_ini, <span class="string">&quot;wrong initial fp&quot;</span>);
+        <span class="macro">ensure_eq!</span>(F::zero(), pc_n - pc_fin, <span class="string">&quot;wrong final pc&quot;</span>);
+        <span class="macro">ensure_eq!</span>(F::zero(), ap_n - ap_fin, <span class="string">&quot;wrong final ap&quot;</span>);
 
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="comment">//~ The Kimchi 15 columns could be:</span>
-<span class="comment">//~ GateType     Claim       Instruction   Zero | (Flags+Transition+Aux)</span>
-<span class="comment">//~    row   -&gt;  0           4i+1          4i+2       4i+3        4n-2</span>
-<span class="comment">//~             ---------------------------------------------------------------------------------</span>
-<span class="comment">//~     0  ·  ®  pc_ini      pc            fDST_FP    © pc        © next_pc</span>
-<span class="comment">//~     1  ·  ®  ap_ini      ap            fOP0_FP    © ap        © next_ap</span>
-<span class="comment">//~  c  2  ·  ®  pc_fin      fp            fOP1_VAL   © fp        © next_fp</span>
-<span class="comment">//~  o  3  ·  ®  ap_fin      size          fOP1_FP    © size</span>
-<span class="comment">//~  l  4  ·  ©  pc\[n-1\]   res           fOP1_AP    © res</span>
-<span class="comment">//~  |  5  ·  ©  ap\[n-1\]   dst           fRES_ADD   © dst</span>
-<span class="comment">//~  v  6  ·                 op1           fRES_MUL   © op1</span>
-<span class="comment">//~     7                    op0           fPC_ABS    pcup</span>
-<span class="comment">//~     8                    off_dst       fPC_REL    apup</span>
-<span class="comment">//~     9                    off_op1       fPC_JNZ    fpup</span>
-<span class="comment">//~     10                   off_op0       fAP_ADD</span>
-<span class="comment">//~     11                   adr_dst       fAP_ONE</span>
-<span class="comment">//~     12                   adr_op1       fOPC_CALL</span>
-<span class="comment">//~     13                   adr_op0       fOPC_RET</span>
-<span class="comment">//~     14                   instr</span>
+<span class="comment">//~ The Kimchi 15 columns could be:
+//~ GateType     Claim       Instruction   Zero | (Flags+Transition+Aux)
+//~    row   -&gt;  0           4i+1          4i+2       4i+3        4n-2
+//~             ---------------------------------------------------------------------------------
+//~     0  ·  ®  pc_ini      pc            fDST_FP    © pc        © next_pc
+//~     1  ·  ®  ap_ini      ap            fOP0_FP    © ap        © next_ap
+//~  c  2  ·  ®  pc_fin      fp            fOP1_VAL   © fp        © next_fp
+//~  o  3  ·  ®  ap_fin      size          fOP1_FP    © size
+//~  l  4  ·  ©  pc\[n-1\]   res           fOP1_AP    © res
+//~  |  5  ·  ©  ap\[n-1\]   dst           fRES_ADD   © dst
+//~  v  6  ·                 op1           fRES_MUL   © op1
+//~     7                    op0           fPC_ABS    pcup
+//~     8                    off_dst       fPC_REL    apup
+//~     9                    off_op1       fPC_JNZ    fpup
+//~     10                   off_op0       fAP_ADD
+//~     11                   adr_dst       fAP_ONE
+//~     12                   adr_op1       fOPC_CALL
+//~     13                   adr_op0       fOPC_RET
+//~     14                   instr
 
-<span class="comment">// CONSTRAINTS-RELATED</span>
+// CONSTRAINTS-RELATED
 
-<span class="doccomment">/// Returns the expression corresponding to the literal &quot;2&quot;</span>
-<span class="kw">fn</span> <span class="ident">two</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>() -&gt; <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="ident">Expr::Constant</span>(<span class="ident">ConstantExpr::Literal</span>(<span class="number">2u16</span>.<span class="ident">into</span>())) <span class="comment">// 2</span>
-}
+</span><span class="doccomment">/// Returns the expression corresponding to the literal &quot;2&quot;
+</span><span class="kw">fn </span>two&lt;F: Field&gt;() -&gt; E&lt;F&gt; {
+    Expr::Constant(ConstantExpr::Literal(<span class="number">2u16</span>.into())) <span class="comment">// 2
+</span>}
 
-<span class="doccomment">/// Combines the constraints for the Cairo gates depending on its type</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">circuit_gate_combined_constraints</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">typ</span>: <span class="ident">GateType</span>, <span class="ident">alphas</span>: <span class="kw-2">&amp;</span><span class="ident">Alphas</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="kw">match</span> <span class="ident">typ</span> {
-        <span class="ident">GateType::CairoClaim</span> =&gt; <span class="ident">Claim::combined_constraints</span>(<span class="ident">alphas</span>),
-        <span class="ident">GateType::CairoInstruction</span> =&gt; <span class="ident">Instruction::combined_constraints</span>(<span class="ident">alphas</span>),
-        <span class="ident">GateType::CairoFlags</span> =&gt; <span class="ident">Flags::combined_constraints</span>(<span class="ident">alphas</span>),
-        <span class="ident">GateType::CairoTransition</span> =&gt; <span class="ident">Transition::combined_constraints</span>(<span class="ident">alphas</span>),
-        <span class="ident">GateType::Zero</span> =&gt; <span class="ident">E::literal</span>(<span class="ident">F::zero</span>()),
-        <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;invalid gate type&quot;</span>),
+<span class="doccomment">/// Combines the constraints for the Cairo gates depending on its type
+</span><span class="kw">pub fn </span>circuit_gate_combined_constraints&lt;F: FftField&gt;(typ: GateType, alphas: <span class="kw-2">&amp;</span>Alphas&lt;F&gt;) -&gt; E&lt;F&gt; {
+    <span class="kw">match </span>typ {
+        GateType::CairoClaim =&gt; Claim::combined_constraints(alphas),
+        GateType::CairoInstruction =&gt; Instruction::combined_constraints(alphas),
+        GateType::CairoFlags =&gt; Flags::combined_constraints(alphas),
+        GateType::CairoTransition =&gt; Transition::combined_constraints(alphas),
+        GateType::Zero =&gt; E::literal(F::zero()),
+        <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;invalid gate type&quot;</span>),
     }
 }
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Claim</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">PhantomData</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>);
+<span class="kw">pub struct </span>Claim&lt;F&gt;(PhantomData&lt;F&gt;);
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="ident">Argument</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Claim</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">F</span>: <span class="ident">FftField</span>,
+<span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>Claim&lt;F&gt;
+<span class="kw">where
+    </span>F: FftField,
 {
-    <span class="kw">const</span> <span class="ident">ARGUMENT_TYPE</span>: <span class="ident">ArgumentType</span> <span class="op">=</span> <span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::CairoClaim</span>);
-    <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">5</span>;
+    <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CairoClaim);
+    <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">5</span>;
 
-    <span class="doccomment">/// Generates the constraints for the Cairo initial claim and first memory checks</span>
-    <span class="doccomment">///     Accesses Curr and Next rows</span>
-    <span class="kw">fn</span> <span class="ident">constraints</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">pc_ini</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">0</span>); <span class="comment">// copy from public input</span>
-        <span class="kw">let</span> <span class="ident">ap_ini</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">1</span>); <span class="comment">// copy from public input</span>
-        <span class="kw">let</span> <span class="ident">pc_fin</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">2</span>); <span class="comment">// copy from public input</span>
-        <span class="kw">let</span> <span class="ident">ap_fin</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">3</span>); <span class="comment">// copy from public input</span>
-        <span class="kw">let</span> <span class="ident">pc_n</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">4</span>); <span class="comment">// copy from public input</span>
-        <span class="kw">let</span> <span class="ident">ap_n</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">5</span>); <span class="comment">// copy from public input</span>
+    <span class="doccomment">/// Generates the constraints for the Cairo initial claim and first memory checks
+    ///     Accesses Curr and Next rows
+    </span><span class="kw">fn </span>constraints() -&gt; Vec&lt;E&lt;F&gt;&gt; {
+        <span class="kw">let </span>pc_ini = witness_curr(<span class="number">0</span>); <span class="comment">// copy from public input
+        </span><span class="kw">let </span>ap_ini = witness_curr(<span class="number">1</span>); <span class="comment">// copy from public input
+        </span><span class="kw">let </span>pc_fin = witness_curr(<span class="number">2</span>); <span class="comment">// copy from public input
+        </span><span class="kw">let </span>ap_fin = witness_curr(<span class="number">3</span>); <span class="comment">// copy from public input
+        </span><span class="kw">let </span>pc_n = witness_curr(<span class="number">4</span>); <span class="comment">// copy from public input
+        </span><span class="kw">let </span>ap_n = witness_curr(<span class="number">5</span>); <span class="comment">// copy from public input
 
-        <span class="comment">// load address / value pairs from next row</span>
-        <span class="kw">let</span> <span class="ident">pc0</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">0</span>);
-        <span class="kw">let</span> <span class="ident">ap0</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">1</span>);
-        <span class="kw">let</span> <span class="ident">fp0</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">2</span>);
+        // load address / value pairs from next row
+        </span><span class="kw">let </span>pc0 = witness_next(<span class="number">0</span>);
+        <span class="kw">let </span>ap0 = witness_next(<span class="number">1</span>);
+        <span class="kw">let </span>fp0 = witness_next(<span class="number">2</span>);
 
-        <span class="comment">// Initial claim</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">constraints</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">ConstantExpr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">ap0</span> <span class="op">-</span> <span class="ident">ap_ini</span>.<span class="ident">clone</span>()]; <span class="comment">// ap0 = ini_ap</span>
-        <span class="ident">constraints</span>.<span class="ident">push</span>(<span class="ident">fp0</span> <span class="op">-</span> <span class="ident">ap_ini</span>); <span class="comment">// fp0 = ini_ap</span>
-        <span class="ident">constraints</span>.<span class="ident">push</span>(<span class="ident">pc0</span> <span class="op">-</span> <span class="ident">pc_ini</span>); <span class="comment">// pc0 = ini_pc</span>
+        <span class="comment">// Initial claim
+        </span><span class="kw">let </span><span class="kw-2">mut </span>constraints: Vec&lt;Expr&lt;ConstantExpr&lt;F&gt;&gt;&gt; = <span class="macro">vec!</span>[ap0 - ap_ini.clone()]; <span class="comment">// ap0 = ini_ap
+        </span>constraints.push(fp0 - ap_ini); <span class="comment">// fp0 = ini_ap
+        </span>constraints.push(pc0 - pc_ini); <span class="comment">// pc0 = ini_pc
 
-        <span class="comment">// Final claim</span>
-        <span class="ident">constraints</span>.<span class="ident">push</span>(<span class="ident">ap_n</span> <span class="op">-</span> <span class="ident">ap_fin</span>);
-        <span class="ident">constraints</span>.<span class="ident">push</span>(<span class="ident">pc_n</span> <span class="op">-</span> <span class="ident">pc_fin</span>);
+        // Final claim
+        </span>constraints.push(ap_n - ap_fin);
+        constraints.push(pc_n - pc_fin);
 
-        <span class="ident">constraints</span>
+        constraints
     }
 }
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Instruction</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">PhantomData</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>);
+<span class="kw">pub struct </span>Instruction&lt;F&gt;(PhantomData&lt;F&gt;);
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="ident">Argument</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Instruction</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">F</span>: <span class="ident">FftField</span>,
+<span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>Instruction&lt;F&gt;
+<span class="kw">where
+    </span>F: FftField,
 {
-    <span class="kw">const</span> <span class="ident">ARGUMENT_TYPE</span>: <span class="ident">ArgumentType</span> <span class="op">=</span> <span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::CairoInstruction</span>);
-    <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">28</span>;
+    <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CairoInstruction);
+    <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">28</span>;
 
-    <span class="doccomment">/// Generates the constraints for the Cairo instruction</span>
-    <span class="doccomment">///     Accesses Curr and Next rows</span>
-    <span class="kw">fn</span> <span class="ident">constraints</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="comment">// load all variables of the witness corresponding to Cairoinstruction gates</span>
-        <span class="kw">let</span> <span class="ident">pc</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">0</span>);
-        <span class="kw">let</span> <span class="ident">ap</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">1</span>);
-        <span class="kw">let</span> <span class="ident">fp</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">2</span>);
-        <span class="kw">let</span> <span class="ident">size</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">3</span>);
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">4</span>);
-        <span class="kw">let</span> <span class="ident">dst</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">5</span>);
-        <span class="kw">let</span> <span class="ident">op1</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">6</span>);
-        <span class="kw">let</span> <span class="ident">op0</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">7</span>);
-        <span class="kw">let</span> <span class="ident">off_dst</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">8</span>);
-        <span class="kw">let</span> <span class="ident">off_op1</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">9</span>);
-        <span class="kw">let</span> <span class="ident">off_op0</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">10</span>);
-        <span class="kw">let</span> <span class="ident">adr_dst</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">11</span>);
-        <span class="kw">let</span> <span class="ident">adr_op1</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">12</span>);
-        <span class="kw">let</span> <span class="ident">adr_op0</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">13</span>);
-        <span class="kw">let</span> <span class="ident">instr</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">14</span>);
-        <span class="comment">// Load flags from the following row</span>
-        <span class="kw">let</span> <span class="ident">f_dst_fp</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">0</span>);
-        <span class="kw">let</span> <span class="ident">f_op0_fp</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">1</span>);
-        <span class="kw">let</span> <span class="ident">f_op1_val</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">2</span>);
-        <span class="kw">let</span> <span class="ident">f_op1_fp</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">3</span>);
-        <span class="kw">let</span> <span class="ident">f_op1_ap</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">4</span>);
-        <span class="kw">let</span> <span class="ident">f_res_add</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">5</span>);
-        <span class="kw">let</span> <span class="ident">f_res_mul</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">6</span>);
-        <span class="kw">let</span> <span class="ident">f_pc_abs</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">7</span>);
-        <span class="kw">let</span> <span class="ident">f_pc_rel</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">8</span>);
-        <span class="kw">let</span> <span class="ident">f_pc_jnz</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">9</span>);
-        <span class="kw">let</span> <span class="ident">f_ap_add</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">10</span>);
-        <span class="kw">let</span> <span class="ident">f_ap_one</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">11</span>);
-        <span class="kw">let</span> <span class="ident">f_opc_call</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">12</span>);
-        <span class="kw">let</span> <span class="ident">f_opc_ret</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">13</span>);
-        <span class="kw">let</span> <span class="ident">f_opc_aeq</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">14</span>);
+    <span class="doccomment">/// Generates the constraints for the Cairo instruction
+    ///     Accesses Curr and Next rows
+    </span><span class="kw">fn </span>constraints() -&gt; Vec&lt;E&lt;F&gt;&gt; {
+        <span class="comment">// load all variables of the witness corresponding to Cairoinstruction gates
+        </span><span class="kw">let </span>pc = witness_curr(<span class="number">0</span>);
+        <span class="kw">let </span>ap = witness_curr(<span class="number">1</span>);
+        <span class="kw">let </span>fp = witness_curr(<span class="number">2</span>);
+        <span class="kw">let </span>size = witness_curr(<span class="number">3</span>);
+        <span class="kw">let </span>res = witness_curr(<span class="number">4</span>);
+        <span class="kw">let </span>dst = witness_curr(<span class="number">5</span>);
+        <span class="kw">let </span>op1 = witness_curr(<span class="number">6</span>);
+        <span class="kw">let </span>op0 = witness_curr(<span class="number">7</span>);
+        <span class="kw">let </span>off_dst = witness_curr(<span class="number">8</span>);
+        <span class="kw">let </span>off_op1 = witness_curr(<span class="number">9</span>);
+        <span class="kw">let </span>off_op0 = witness_curr(<span class="number">10</span>);
+        <span class="kw">let </span>adr_dst = witness_curr(<span class="number">11</span>);
+        <span class="kw">let </span>adr_op1 = witness_curr(<span class="number">12</span>);
+        <span class="kw">let </span>adr_op0 = witness_curr(<span class="number">13</span>);
+        <span class="kw">let </span>instr = witness_curr(<span class="number">14</span>);
+        <span class="comment">// Load flags from the following row
+        </span><span class="kw">let </span>f_dst_fp = witness_next(<span class="number">0</span>);
+        <span class="kw">let </span>f_op0_fp = witness_next(<span class="number">1</span>);
+        <span class="kw">let </span>f_op1_val = witness_next(<span class="number">2</span>);
+        <span class="kw">let </span>f_op1_fp = witness_next(<span class="number">3</span>);
+        <span class="kw">let </span>f_op1_ap = witness_next(<span class="number">4</span>);
+        <span class="kw">let </span>f_res_add = witness_next(<span class="number">5</span>);
+        <span class="kw">let </span>f_res_mul = witness_next(<span class="number">6</span>);
+        <span class="kw">let </span>f_pc_abs = witness_next(<span class="number">7</span>);
+        <span class="kw">let </span>f_pc_rel = witness_next(<span class="number">8</span>);
+        <span class="kw">let </span>f_pc_jnz = witness_next(<span class="number">9</span>);
+        <span class="kw">let </span>f_ap_add = witness_next(<span class="number">10</span>);
+        <span class="kw">let </span>f_ap_one = witness_next(<span class="number">11</span>);
+        <span class="kw">let </span>f_opc_call = witness_next(<span class="number">12</span>);
+        <span class="kw">let </span>f_opc_ret = witness_next(<span class="number">13</span>);
+        <span class="kw">let </span>f_opc_aeq = witness_next(<span class="number">14</span>);
 
-        <span class="comment">// collect flags in its natural ordering</span>
-        <span class="kw">let</span> <span class="ident">flags</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">ConstantExpr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span>
-            (<span class="number">0</span>..<span class="ident">NUM_FLAGS</span> <span class="op">-</span> <span class="number">1</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">witness_next</span>(<span class="ident">i</span>)).<span class="ident">collect</span>();
+        <span class="comment">// collect flags in its natural ordering
+        </span><span class="kw">let </span>flags: Vec&lt;Expr&lt;ConstantExpr&lt;F&gt;&gt;&gt; =
+            (<span class="number">0</span>..NUM_FLAGS - <span class="number">1</span>).map(|i| witness_next(i)).collect();
 
-        <span class="comment">// LIST OF CONSTRAINTS</span>
-        <span class="comment">// -------------------</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">constraints</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">ConstantExpr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cache</span> <span class="op">=</span> <span class="ident">Cache::default</span>();
+        <span class="comment">// LIST OF CONSTRAINTS
+        // -------------------
+        </span><span class="kw">let </span><span class="kw-2">mut </span>constraints: Vec&lt;Expr&lt;ConstantExpr&lt;F&gt;&gt;&gt; = <span class="macro">vec!</span>[];
+        <span class="kw">let </span><span class="kw-2">mut </span>cache = Cache::default();
 
-        <span class="comment">// INSTRUCTIONS RELATED</span>
+        <span class="comment">// INSTRUCTIONS RELATED
 
-        <span class="comment">// * Check last flag is always zero is redundant with wellformness check</span>
+        // * Check last flag is always zero is redundant with wellformness check
 
-        <span class="comment">// * Check booleanity of all flags</span>
-        <span class="comment">// fi * (1-fi) == 0 for i=[0..15)</span>
-        <span class="kw">for</span> <span class="ident">flag</span> <span class="kw">in</span> <span class="ident">flags</span>.<span class="ident">iter</span>().<span class="ident">take</span>(<span class="ident">NUM_FLAGS</span> <span class="op">-</span> <span class="number">1</span>) {
-            <span class="ident">constraints</span>.<span class="ident">push</span>(<span class="ident">flag</span>.<span class="ident">clone</span>() <span class="op">*</span> (<span class="ident">E::one</span>() <span class="op">-</span> <span class="ident">flag</span>.<span class="ident">clone</span>()));
+        // * Check booleanity of all flags
+        // fi * (1-fi) == 0 for i=[0..15)
+        </span><span class="kw">for </span>flag <span class="kw">in </span>flags.iter().take(NUM_FLAGS - <span class="number">1</span>) {
+            constraints.push(flag.clone() * (E::one() - flag.clone()));
         }
 
-        <span class="comment">// * Check no two flagbits of the same flagset are nonzero</span>
-        <span class="comment">// TODO(querolita): perhaps these are redundant considering all of the logics below</span>
-        <span class="kw">let</span> <span class="ident">op1_src</span> <span class="op">=</span> <span class="ident">cache</span>.<span class="ident">cache</span>(<span class="ident">f_op1_ap</span>.<span class="ident">clone</span>() <span class="op">+</span> <span class="ident">f_op1_fp</span>.<span class="ident">clone</span>() <span class="op">+</span> <span class="ident">f_op1_val</span>.<span class="ident">clone</span>());
-        <span class="kw">let</span> <span class="ident">res_log</span> <span class="op">=</span> <span class="ident">cache</span>.<span class="ident">cache</span>(<span class="ident">f_res_mul</span>.<span class="ident">clone</span>() <span class="op">+</span> <span class="ident">f_res_add</span>.<span class="ident">clone</span>());
-        <span class="kw">let</span> <span class="ident">pc_up</span> <span class="op">=</span> <span class="ident">cache</span>.<span class="ident">cache</span>(<span class="ident">f_pc_jnz</span>.<span class="ident">clone</span>() <span class="op">+</span> <span class="ident">f_pc_rel</span> <span class="op">+</span> <span class="ident">f_pc_abs</span>);
-        <span class="kw">let</span> <span class="ident">ap_up</span> <span class="op">=</span> <span class="ident">cache</span>.<span class="ident">cache</span>(<span class="ident">f_ap_one</span> <span class="op">+</span> <span class="ident">f_ap_add</span>);
-        <span class="kw">let</span> <span class="ident">opcode</span> <span class="op">=</span> <span class="ident">cache</span>.<span class="ident">cache</span>(<span class="ident">f_opc_aeq</span>.<span class="ident">clone</span>() <span class="op">+</span> <span class="ident">f_opc_ret</span> <span class="op">+</span> <span class="ident">f_opc_call</span>.<span class="ident">clone</span>());
-        <span class="ident">constraints</span>.<span class="ident">push</span>(<span class="ident">op1_src</span>.<span class="ident">clone</span>() <span class="op">*</span> (<span class="ident">E::one</span>() <span class="op">-</span> <span class="ident">op1_src</span>));
-        <span class="ident">constraints</span>.<span class="ident">push</span>(<span class="ident">res_log</span>.<span class="ident">clone</span>() <span class="op">*</span> (<span class="ident">E::one</span>() <span class="op">-</span> <span class="ident">res_log</span>));
-        <span class="ident">constraints</span>.<span class="ident">push</span>(<span class="ident">pc_up</span>.<span class="ident">clone</span>() <span class="op">*</span> (<span class="ident">E::one</span>() <span class="op">-</span> <span class="ident">pc_up</span>));
-        <span class="ident">constraints</span>.<span class="ident">push</span>(<span class="ident">ap_up</span>.<span class="ident">clone</span>() <span class="op">*</span> (<span class="ident">E::one</span>() <span class="op">-</span> <span class="ident">ap_up</span>));
-        <span class="ident">constraints</span>.<span class="ident">push</span>(<span class="ident">opcode</span>.<span class="ident">clone</span>() <span class="op">*</span> (<span class="ident">E::one</span>() <span class="op">-</span> <span class="ident">opcode</span>));
+        <span class="comment">// * Check no two flagbits of the same flagset are nonzero
+        // TODO(querolita): perhaps these are redundant considering all of the logics below
+        </span><span class="kw">let </span>op1_src = cache.cache(f_op1_ap.clone() + f_op1_fp.clone() + f_op1_val.clone());
+        <span class="kw">let </span>res_log = cache.cache(f_res_mul.clone() + f_res_add.clone());
+        <span class="kw">let </span>pc_up = cache.cache(f_pc_jnz.clone() + f_pc_rel + f_pc_abs);
+        <span class="kw">let </span>ap_up = cache.cache(f_ap_one + f_ap_add);
+        <span class="kw">let </span>opcode = cache.cache(f_opc_aeq.clone() + f_opc_ret + f_opc_call.clone());
+        constraints.push(op1_src.clone() * (E::one() - op1_src));
+        constraints.push(res_log.clone() * (E::one() - res_log));
+        constraints.push(pc_up.clone() * (E::one() - pc_up));
+        constraints.push(ap_up.clone() * (E::one() - ap_up));
+        constraints.push(opcode.clone() * (E::one() - opcode));
 
-        <span class="comment">// * Shape of instruction</span>
-        <span class="kw">let</span> <span class="ident">shape</span> <span class="op">=</span> {
-            <span class="kw">let</span> <span class="ident">shift</span> <span class="op">=</span> <span class="ident">cache</span>.<span class="ident">cache</span>(<span class="ident">E::Pow</span>(<span class="ident">Box::new</span>(<span class="ident">two</span>()), <span class="number">15</span>)); <span class="comment">// 2^15;</span>
-            <span class="kw">let</span> <span class="ident">pow16</span> <span class="op">=</span> <span class="ident">cache</span>.<span class="ident">cache</span>(<span class="ident">Expr::Double</span>(<span class="ident">Box::new</span>(<span class="ident">shift</span>.<span class="ident">clone</span>()))); <span class="comment">// 2^16</span>
-            <span class="kw">let</span> <span class="ident">dst_sft</span> <span class="op">=</span> <span class="ident">off_dst</span>.<span class="ident">clone</span>() <span class="op">+</span> <span class="ident">shift</span>.<span class="ident">clone</span>();
-            <span class="kw">let</span> <span class="ident">op0_sft</span> <span class="op">=</span> <span class="ident">off_op0</span>.<span class="ident">clone</span>() <span class="op">+</span> <span class="ident">shift</span>.<span class="ident">clone</span>();
-            <span class="kw">let</span> <span class="ident">op1_sft</span> <span class="op">=</span> <span class="ident">off_op1</span>.<span class="ident">clone</span>() <span class="op">+</span> <span class="ident">shift</span>;
-            <span class="comment">// recompose instruction as: flags[14..0] | op1_sft | op0_sft | dst_sft</span>
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">aux</span>: <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">ConstantExpr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">flags</span>[<span class="number">14</span>].<span class="ident">clone</span>();
-            <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> (<span class="number">0</span>..<span class="number">14</span>).<span class="ident">rev</span>() {
-                <span class="ident">aux</span> <span class="op">=</span> <span class="ident">aux</span> <span class="op">*</span> <span class="ident">two</span>() <span class="op">+</span> <span class="ident">flags</span>[<span class="ident">i</span>].<span class="ident">clone</span>();
+        <span class="comment">// * Shape of instruction
+        </span><span class="kw">let </span>shape = {
+            <span class="kw">let </span>shift = cache.cache(E::Pow(Box::new(two()), <span class="number">15</span>)); <span class="comment">// 2^15;
+            </span><span class="kw">let </span>pow16 = cache.cache(Expr::Double(Box::new(shift.clone()))); <span class="comment">// 2^16
+            </span><span class="kw">let </span>dst_sft = off_dst.clone() + shift.clone();
+            <span class="kw">let </span>op0_sft = off_op0.clone() + shift.clone();
+            <span class="kw">let </span>op1_sft = off_op1.clone() + shift;
+            <span class="comment">// recompose instruction as: flags[14..0] | op1_sft | op0_sft | dst_sft
+            </span><span class="kw">let </span><span class="kw-2">mut </span>aux: Expr&lt;ConstantExpr&lt;F&gt;&gt; = flags[<span class="number">14</span>].clone();
+            <span class="kw">for </span>i <span class="kw">in </span>(<span class="number">0</span>..<span class="number">14</span>).rev() {
+                aux = aux * two() + flags[i].clone();
             }
-            <span class="comment">// complete with &quot;flags&quot; * 2^48 + op1_sft * 2^32 + op0_sft * 2^16 + dst_sft</span>
-            <span class="ident">aux</span> <span class="op">=</span> ((<span class="ident">aux</span> <span class="op">*</span> <span class="ident">pow16</span>.<span class="ident">clone</span>() <span class="op">+</span> <span class="ident">op1_sft</span>) <span class="op">*</span> <span class="ident">pow16</span>.<span class="ident">clone</span>() <span class="op">+</span> <span class="ident">op0_sft</span>) <span class="op">*</span> <span class="ident">pow16</span> <span class="op">+</span> <span class="ident">dst_sft</span>;
-            <span class="ident">aux</span>
+            <span class="comment">// complete with &quot;flags&quot; * 2^48 + op1_sft * 2^32 + op0_sft * 2^16 + dst_sft
+            </span>aux = ((aux * pow16.clone() + op1_sft) * pow16.clone() + op0_sft) * pow16 + dst_sft;
+            aux
         };
-        <span class="ident">constraints</span>.<span class="ident">push</span>(<span class="ident">instr</span> <span class="op">-</span> <span class="ident">shape</span>);
+        constraints.push(instr - shape);
 
-        <span class="comment">// OPERANDS RELATED</span>
+        <span class="comment">// OPERANDS RELATED
 
-        <span class="comment">// * Destination address</span>
-        <span class="comment">// if dst_fp = 0 : dst_dir = ap + off_dst</span>
-        <span class="comment">// if dst_fp = 1 : dst_dir = fp + off_dst</span>
-        <span class="ident">constraints</span>.<span class="ident">push</span>(
-            <span class="ident">f_dst_fp</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">fp</span>.<span class="ident">clone</span>() <span class="op">+</span> (<span class="ident">E::one</span>() <span class="op">-</span> <span class="ident">f_dst_fp</span>) <span class="op">*</span> <span class="ident">ap</span>.<span class="ident">clone</span>() <span class="op">+</span> <span class="ident">off_dst</span> <span class="op">-</span> <span class="ident">adr_dst</span>,
+        // * Destination address
+        // if dst_fp = 0 : dst_dir = ap + off_dst
+        // if dst_fp = 1 : dst_dir = fp + off_dst
+        </span>constraints.push(
+            f_dst_fp.clone() * fp.clone() + (E::one() - f_dst_fp) * ap.clone() + off_dst - adr_dst,
         );
 
-        <span class="comment">// * First operand address</span>
-        <span class="comment">// if op0_fp = 0 : op0_dir = ap + off_dst</span>
-        <span class="comment">// if op0_fp = 1 : op0_dir = fp + off_dst</span>
-        <span class="ident">constraints</span>.<span class="ident">push</span>(
-            <span class="ident">f_op0_fp</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">fp</span>.<span class="ident">clone</span>() <span class="op">+</span> (<span class="ident">E::one</span>() <span class="op">-</span> <span class="ident">f_op0_fp</span>) <span class="op">*</span> <span class="ident">ap</span>.<span class="ident">clone</span>() <span class="op">+</span> <span class="ident">off_op0</span> <span class="op">-</span> <span class="ident">adr_op0</span>,
+        <span class="comment">// * First operand address
+        // if op0_fp = 0 : op0_dir = ap + off_dst
+        // if op0_fp = 1 : op0_dir = fp + off_dst
+        </span>constraints.push(
+            f_op0_fp.clone() * fp.clone() + (E::one() - f_op0_fp) * ap.clone() + off_op0 - adr_op0,
         );
 
-        <span class="comment">// * Second operand address</span>
-        <span class="ident">constraints</span>.<span class="ident">push</span>(
-            <span class="ident">adr_op1</span>                                                                                  <span class="comment">//         op1_dir = ..</span>
-          <span class="op">-</span> (<span class="ident">f_op1_ap</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">ap</span>                                                     <span class="comment">// if op1_src == 4 : ap</span>
-          <span class="op">+</span> <span class="ident">f_op1_fp</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">fp</span>.<span class="ident">clone</span>()                                                      <span class="comment">// if op1_src == 2 : fp</span>
-          <span class="op">+</span> <span class="ident">f_op1_val</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">pc</span>.<span class="ident">clone</span>()                                                     <span class="comment">// if op1_src == 1 : pc</span>
-          <span class="op">+</span> (<span class="ident">E::one</span>() <span class="op">-</span> <span class="ident">f_op1_fp</span> <span class="op">-</span> <span class="ident">f_op1_ap</span> <span class="op">-</span> <span class="ident">f_op1_val</span>) <span class="op">*</span> <span class="ident">op0</span>.<span class="ident">clone</span>() <span class="comment">// if op1_src == 0 : op0</span>
-          <span class="op">+</span> <span class="ident">off_op1</span>), <span class="comment">//                                                                                        + off_op1</span>
-        );
+        <span class="comment">// * Second operand address
+        </span>constraints.push(
+            adr_op1                                                                                  <span class="comment">//         op1_dir = ..
+          </span>- (f_op1_ap.clone() * ap                                                     <span class="comment">// if op1_src == 4 : ap
+          </span>+ f_op1_fp.clone() * fp.clone()                                                      <span class="comment">// if op1_src == 2 : fp
+          </span>+ f_op1_val.clone() * pc.clone()                                                     <span class="comment">// if op1_src == 1 : pc
+          </span>+ (E::one() - f_op1_fp - f_op1_ap - f_op1_val) * op0.clone() <span class="comment">// if op1_src == 0 : op0
+          </span>+ off_op1), <span class="comment">//                                                                                        + off_op1
+        </span>);
 
-        <span class="comment">// OPERATIONS-RELATED</span>
+        <span class="comment">// OPERATIONS-RELATED
 
-        <span class="comment">// * Check value of result</span>
-        <span class="ident">constraints</span>.<span class="ident">push</span>(
-            (<span class="ident">E::one</span>() <span class="op">-</span> <span class="ident">f_pc_jnz</span>) <span class="op">*</span> <span class="ident">res</span>.<span class="ident">clone</span>()                              <span class="comment">// if pc_up != 4 : res = ..        // no res in conditional jumps</span>
-          <span class="op">-</span> (<span class="ident">f_res_mul</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">op0</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">op1</span>.<span class="ident">clone</span>()                     <span class="comment">//      if res_log = 2 : op0 * op1</span>
-          <span class="op">+</span> <span class="ident">f_res_add</span>.<span class="ident">clone</span>() <span class="op">*</span> (<span class="ident">op0</span>.<span class="ident">clone</span>() <span class="op">+</span> <span class="ident">op1</span>.<span class="ident">clone</span>())                    <span class="comment">//      if res_log = 1 : op0 + op1</span>
-          <span class="op">+</span> (<span class="ident">E::one</span>() <span class="op">-</span> <span class="ident">f_res_add</span> <span class="op">-</span> <span class="ident">f_res_mul</span>) <span class="op">*</span> <span class="ident">op1</span>), <span class="comment">//      if res_log = 0 : op1</span>
-        );
+        // * Check value of result
+        </span>constraints.push(
+            (E::one() - f_pc_jnz) * res.clone()                              <span class="comment">// if pc_up != 4 : res = ..        // no res in conditional jumps
+          </span>- (f_res_mul.clone() * op0.clone() * op1.clone()                     <span class="comment">//      if res_log = 2 : op0 * op1
+          </span>+ f_res_add.clone() * (op0.clone() + op1.clone())                    <span class="comment">//      if res_log = 1 : op0 + op1
+          </span>+ (E::one() - f_res_add - f_res_mul) * op1), <span class="comment">//      if res_log = 0 : op1
+        </span>);
 
-        <span class="comment">// * Check storage of current fp for a call instruction</span>
-        <span class="comment">// &lt;=&gt; assert_eq!(dst, fp);</span>
-        <span class="ident">constraints</span>.<span class="ident">push</span>(<span class="ident">f_opc_call</span>.<span class="ident">clone</span>() <span class="op">*</span> (<span class="ident">dst</span>.<span class="ident">clone</span>() <span class="op">-</span> <span class="ident">fp</span>)); <span class="comment">// if opcode = 1 : dst = fp</span>
+        <span class="comment">// * Check storage of current fp for a call instruction
+        // &lt;=&gt; assert_eq!(dst, fp);
+        </span>constraints.push(f_opc_call.clone() * (dst.clone() - fp)); <span class="comment">// if opcode = 1 : dst = fp
 
-        <span class="comment">// * Check storage of next instruction after a call instruction</span>
-        <span class="comment">// &lt;=&gt; assert_eq!(op0, pc + size); // checks [ap+1] contains instruction after call</span>
-        <span class="ident">constraints</span>.<span class="ident">push</span>(<span class="ident">f_opc_call</span> <span class="op">*</span> (<span class="ident">op0</span> <span class="op">-</span> (<span class="ident">pc</span> <span class="op">+</span> <span class="ident">size</span>))); <span class="comment">// if opcode = 1 : op0 = pc + size</span>
+        // * Check storage of next instruction after a call instruction
+        // &lt;=&gt; assert_eq!(op0, pc + size); // checks [ap+1] contains instruction after call
+        </span>constraints.push(f_opc_call * (op0 - (pc + size))); <span class="comment">// if opcode = 1 : op0 = pc + size
 
-        <span class="comment">// * Check destination = result after assert-equal</span>
-        <span class="comment">// &lt;=&gt; assert_eq!(res, dst);</span>
-        <span class="ident">constraints</span>.<span class="ident">push</span>(<span class="ident">f_opc_aeq</span> <span class="op">*</span> (<span class="ident">dst</span> <span class="op">-</span> <span class="ident">res</span>)); <span class="comment">// if opcode = 4 : dst = res</span>
+        // * Check destination = result after assert-equal
+        // &lt;=&gt; assert_eq!(res, dst);
+        </span>constraints.push(f_opc_aeq * (dst - res)); <span class="comment">// if opcode = 4 : dst = res
 
-        <span class="ident">constraints</span>
+        </span>constraints
     }
 }
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Flags</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">PhantomData</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>);
+<span class="kw">pub struct </span>Flags&lt;F&gt;(PhantomData&lt;F&gt;);
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="ident">Argument</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Flags</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">F</span>: <span class="ident">FftField</span>,
+<span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>Flags&lt;F&gt;
+<span class="kw">where
+    </span>F: FftField,
 {
-    <span class="kw">const</span> <span class="ident">ARGUMENT_TYPE</span>: <span class="ident">ArgumentType</span> <span class="op">=</span> <span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::CairoFlags</span>);
-    <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">4</span>;
+    <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CairoFlags);
+    <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">4</span>;
 
-    <span class="doccomment">/// Generates the constraints for the Cairo flags</span>
-    <span class="doccomment">///     Accesses Curr and Next rows</span>
-    <span class="kw">fn</span> <span class="ident">constraints</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="comment">// Load current row</span>
-        <span class="kw">let</span> <span class="ident">f_pc_abs</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">7</span>);
-        <span class="kw">let</span> <span class="ident">f_pc_rel</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">8</span>);
-        <span class="kw">let</span> <span class="ident">f_pc_jnz</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">9</span>);
-        <span class="kw">let</span> <span class="ident">f_ap_add</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">10</span>);
-        <span class="kw">let</span> <span class="ident">f_ap_one</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">11</span>);
-        <span class="kw">let</span> <span class="ident">f_opc_call</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">12</span>);
-        <span class="kw">let</span> <span class="ident">f_opc_ret</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">13</span>);
-        <span class="comment">// Load next row</span>
-        <span class="kw">let</span> <span class="ident">pc</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">0</span>);
-        <span class="kw">let</span> <span class="ident">ap</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">1</span>);
-        <span class="kw">let</span> <span class="ident">fp</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">2</span>);
-        <span class="kw">let</span> <span class="ident">size</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">3</span>);
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">4</span>);
-        <span class="kw">let</span> <span class="ident">dst</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">5</span>);
-        <span class="kw">let</span> <span class="ident">op1</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">6</span>);
-        <span class="kw">let</span> <span class="ident">pcup</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">7</span>);
-        <span class="kw">let</span> <span class="ident">apup</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">8</span>);
-        <span class="kw">let</span> <span class="ident">fpup</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">9</span>);
+    <span class="doccomment">/// Generates the constraints for the Cairo flags
+    ///     Accesses Curr and Next rows
+    </span><span class="kw">fn </span>constraints() -&gt; Vec&lt;E&lt;F&gt;&gt; {
+        <span class="comment">// Load current row
+        </span><span class="kw">let </span>f_pc_abs = witness_curr(<span class="number">7</span>);
+        <span class="kw">let </span>f_pc_rel = witness_curr(<span class="number">8</span>);
+        <span class="kw">let </span>f_pc_jnz = witness_curr(<span class="number">9</span>);
+        <span class="kw">let </span>f_ap_add = witness_curr(<span class="number">10</span>);
+        <span class="kw">let </span>f_ap_one = witness_curr(<span class="number">11</span>);
+        <span class="kw">let </span>f_opc_call = witness_curr(<span class="number">12</span>);
+        <span class="kw">let </span>f_opc_ret = witness_curr(<span class="number">13</span>);
+        <span class="comment">// Load next row
+        </span><span class="kw">let </span>pc = witness_next(<span class="number">0</span>);
+        <span class="kw">let </span>ap = witness_next(<span class="number">1</span>);
+        <span class="kw">let </span>fp = witness_next(<span class="number">2</span>);
+        <span class="kw">let </span>size = witness_next(<span class="number">3</span>);
+        <span class="kw">let </span>res = witness_next(<span class="number">4</span>);
+        <span class="kw">let </span>dst = witness_next(<span class="number">5</span>);
+        <span class="kw">let </span>op1 = witness_next(<span class="number">6</span>);
+        <span class="kw">let </span>pcup = witness_next(<span class="number">7</span>);
+        <span class="kw">let </span>apup = witness_next(<span class="number">8</span>);
+        <span class="kw">let </span>fpup = witness_next(<span class="number">9</span>);
 
-        <span class="comment">// REGISTERS-RELATED</span>
-        <span class="comment">// * Check next allocation pointer</span>
-        <span class="comment">//  next_ap =</span>
-        <span class="comment">//             ap +</span>
-        <span class="comment">//  if ap_up == 1  : res</span>
-        <span class="comment">//  if ap_up == 2  : 1</span>
-        <span class="comment">// if opcode == 1  : 2</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">constraints</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">ConstantExpr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[
-            <span class="ident">apup</span> <span class="op">-</span> (<span class="ident">ap</span>.<span class="ident">clone</span>() <span class="op">+</span> <span class="ident">f_ap_add</span> <span class="op">*</span> <span class="ident">res</span>.<span class="ident">clone</span>() <span class="op">+</span> <span class="ident">f_ap_one</span> <span class="op">+</span> <span class="ident">f_opc_call</span>.<span class="ident">clone</span>().<span class="ident">double</span>()),
+        <span class="comment">// REGISTERS-RELATED
+        // * Check next allocation pointer
+        //  next_ap =
+        //             ap +
+        //  if ap_up == 1  : res
+        //  if ap_up == 2  : 1
+        // if opcode == 1  : 2
+        </span><span class="kw">let </span><span class="kw-2">mut </span>constraints: Vec&lt;Expr&lt;ConstantExpr&lt;F&gt;&gt;&gt; = <span class="macro">vec!</span>[
+            apup - (ap.clone() + f_ap_add * res.clone() + f_ap_one + f_opc_call.clone().double()),
         ];
 
-        <span class="comment">// * Check next frame pointer</span>
-        <span class="ident">constraints</span>.<span class="ident">push</span>(
-            <span class="ident">fpup</span>                                               <span class="comment">//             next_fp =</span>
-                <span class="op">-</span> (<span class="ident">f_opc_call</span>.<span class="ident">clone</span>() <span class="op">*</span> (<span class="ident">ap</span> <span class="op">+</span> <span class="ident">two</span>())           <span class="comment">// if opcode == 1      : ap + 2</span>
-                <span class="op">+</span> <span class="ident">f_opc_ret</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">dst</span>.<span class="ident">clone</span>()              <span class="comment">// if opcode == 2      : dst</span>
-                <span class="op">+</span> (<span class="ident">E::one</span>() <span class="op">-</span> <span class="ident">f_opc_call</span> <span class="op">-</span> <span class="ident">f_opc_ret</span>) <span class="op">*</span> <span class="ident">fp</span> ), <span class="comment">// if opcode == 4 or 0 : fp</span>
-        );
+        <span class="comment">// * Check next frame pointer
+        </span>constraints.push(
+            fpup                                               <span class="comment">//             next_fp =
+                </span>- (f_opc_call.clone() * (ap + two())           <span class="comment">// if opcode == 1      : ap + 2
+                </span>+ f_opc_ret.clone() * dst.clone()              <span class="comment">// if opcode == 2      : dst
+                </span>+ (E::one() - f_opc_call - f_opc_ret) * fp ), <span class="comment">// if opcode == 4 or 0 : fp
+        </span>);
 
-        <span class="comment">// * Check next program counter (pc update)</span>
-        <span class="ident">constraints</span>.<span class="ident">push</span>(
-            <span class="ident">f_pc_jnz</span>.<span class="ident">clone</span>()
-                <span class="op">*</span> (<span class="ident">dst</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">res</span>.<span class="ident">clone</span>() <span class="op">-</span> <span class="ident">E::one</span>())
-                <span class="op">*</span> (<span class="ident">pcup</span>.<span class="ident">clone</span>() <span class="op">-</span> (<span class="ident">pc</span>.<span class="ident">clone</span>() <span class="op">+</span> <span class="ident">size</span>.<span class="ident">clone</span>())),
-        ); <span class="comment">// &lt;=&gt; pc_up = 4 and dst = 0 : next_pc = pc + size // no jump</span>
-        <span class="ident">constraints</span>.<span class="ident">push</span>(
-            <span class="ident">f_pc_jnz</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">dst</span> <span class="op">*</span> (<span class="ident">pcup</span>.<span class="ident">clone</span>() <span class="op">-</span> (<span class="ident">pc</span>.<span class="ident">clone</span>() <span class="op">+</span> <span class="ident">op1</span>))                         <span class="comment">// &lt;=&gt; pc_up = 4 and dst != 0 : next_pc = pc + op1  // condition holds</span>
-                    <span class="op">+</span> (<span class="ident">E::one</span>() <span class="op">-</span> <span class="ident">f_pc_jnz</span>.<span class="ident">clone</span>()) <span class="op">*</span> <span class="ident">pcup</span>                                                       <span class="comment">// &lt;=&gt; pc_up = {0,1,2}        : next_pc = ... // not a conditional jump</span>
-                        <span class="op">-</span> (<span class="ident">E::one</span>() <span class="op">-</span> <span class="ident">f_pc_abs</span>.<span class="ident">clone</span>() <span class="op">-</span> <span class="ident">f_pc_rel</span>.<span class="ident">clone</span>() <span class="op">-</span> <span class="ident">f_pc_jnz</span>) <span class="op">*</span> (<span class="ident">pc</span>.<span class="ident">clone</span>() <span class="op">+</span> <span class="ident">size</span>) <span class="comment">// &lt;=&gt; pc_up = 0              : next_pc = pc + size // common case</span>
-                        <span class="op">-</span> <span class="ident">f_pc_abs</span> <span class="op">*</span> <span class="ident">res</span>.<span class="ident">clone</span>()                                                                    <span class="comment">// &lt;=&gt; pc_up = 1              : next_pc = res       // absolute jump</span>
-                        <span class="op">-</span> <span class="ident">f_pc_rel</span> <span class="op">*</span> (<span class="ident">pc</span> <span class="op">+</span> <span class="ident">res</span>), <span class="comment">//                                                    &lt;=&gt; pc_up = 2              : next_pc = pc + res  // relative jump</span>
-        );
-        <span class="ident">constraints</span>
+        <span class="comment">// * Check next program counter (pc update)
+        </span>constraints.push(
+            f_pc_jnz.clone()
+                * (dst.clone() * res.clone() - E::one())
+                * (pcup.clone() - (pc.clone() + size.clone())),
+        ); <span class="comment">// &lt;=&gt; pc_up = 4 and dst = 0 : next_pc = pc + size // no jump
+        </span>constraints.push(
+            f_pc_jnz.clone() * dst * (pcup.clone() - (pc.clone() + op1))                         <span class="comment">// &lt;=&gt; pc_up = 4 and dst != 0 : next_pc = pc + op1  // condition holds
+                    </span>+ (E::one() - f_pc_jnz.clone()) * pcup                                                       <span class="comment">// &lt;=&gt; pc_up = {0,1,2}        : next_pc = ... // not a conditional jump
+                        </span>- (E::one() - f_pc_abs.clone() - f_pc_rel.clone() - f_pc_jnz) * (pc.clone() + size) <span class="comment">// &lt;=&gt; pc_up = 0              : next_pc = pc + size // common case
+                        </span>- f_pc_abs * res.clone()                                                                    <span class="comment">// &lt;=&gt; pc_up = 1              : next_pc = res       // absolute jump
+                        </span>- f_pc_rel * (pc + res), <span class="comment">//                                                    &lt;=&gt; pc_up = 2              : next_pc = pc + res  // relative jump
+        </span>);
+        constraints
     }
 }
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Transition</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">PhantomData</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>);
+<span class="kw">pub struct </span>Transition&lt;F&gt;(PhantomData&lt;F&gt;);
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="ident">Argument</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Transition</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">F</span>: <span class="ident">FftField</span>,
+<span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>Transition&lt;F&gt;
+<span class="kw">where
+    </span>F: FftField,
 {
-    <span class="kw">const</span> <span class="ident">ARGUMENT_TYPE</span>: <span class="ident">ArgumentType</span> <span class="op">=</span> <span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::CairoTransition</span>);
-    <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">3</span>;
+    <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CairoTransition);
+    <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">3</span>;
 
-    <span class="doccomment">/// Generates the constraints for the Cairo transition</span>
-    <span class="doccomment">///     Accesses Curr and Next rows (Next only first 3 entries)</span>
-    <span class="kw">fn</span> <span class="ident">constraints</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="comment">// load computed updated registers</span>
-        <span class="kw">let</span> <span class="ident">pcup</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">7</span>);
-        <span class="kw">let</span> <span class="ident">apup</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">8</span>);
-        <span class="kw">let</span> <span class="ident">fpup</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">9</span>);
-        <span class="comment">// load next registers</span>
-        <span class="kw">let</span> <span class="ident">next_pc</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">0</span>);
-        <span class="kw">let</span> <span class="ident">next_ap</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">1</span>);
-        <span class="kw">let</span> <span class="ident">next_fp</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">2</span>);
+    <span class="doccomment">/// Generates the constraints for the Cairo transition
+    ///     Accesses Curr and Next rows (Next only first 3 entries)
+    </span><span class="kw">fn </span>constraints() -&gt; Vec&lt;E&lt;F&gt;&gt; {
+        <span class="comment">// load computed updated registers
+        </span><span class="kw">let </span>pcup = witness_curr(<span class="number">7</span>);
+        <span class="kw">let </span>apup = witness_curr(<span class="number">8</span>);
+        <span class="kw">let </span>fpup = witness_curr(<span class="number">9</span>);
+        <span class="comment">// load next registers
+        </span><span class="kw">let </span>next_pc = witness_next(<span class="number">0</span>);
+        <span class="kw">let </span>next_ap = witness_next(<span class="number">1</span>);
+        <span class="kw">let </span>next_fp = witness_next(<span class="number">2</span>);
 
-        <span class="comment">// * Check equality (like a copy constraint)</span>
+        <span class="comment">// * Check equality (like a copy constraint)
 
-        <span class="kw">let</span> <span class="ident">constraints</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">ConstantExpr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span>
-            <span class="macro">vec!</span>[<span class="ident">next_pc</span> <span class="op">-</span> <span class="ident">pcup</span>, <span class="ident">next_ap</span> <span class="op">-</span> <span class="ident">apup</span>, <span class="ident">next_fp</span> <span class="op">-</span> <span class="ident">fpup</span>];
+        </span><span class="kw">let </span>constraints: Vec&lt;Expr&lt;ConstantExpr&lt;F&gt;&gt;&gt; =
+            <span class="macro">vec!</span>[next_pc - pcup, next_ap - apup, next_fp - fpup];
 
-        <span class="ident">constraints</span>
+        constraints
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

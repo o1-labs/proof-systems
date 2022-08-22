@@ -125,132 +125,132 @@
 <span id="125">125</span>
 <span id="126">126</span>
 <span id="127">127</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Implements a tool to visualize a circuit as an HTML page.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Implements a tool to visualize a circuit as an HTML page.
 
-<span class="kw">use</span> <span class="ident">ark_ff::PrimeField</span>;
-<span class="kw">use</span> <span class="ident">commitment_dlog::commitment::CommitmentCurve</span>;
-<span class="kw">use</span> <span class="ident">kimchi</span>::{
-    <span class="ident">circuits</span>::{
-        <span class="ident">argument::Argument</span>,
-        <span class="ident">polynomials</span>::{
-            <span class="ident">chacha</span>::{<span class="ident">ChaCha0</span>, <span class="ident">ChaCha1</span>, <span class="ident">ChaCha2</span>, <span class="ident">ChaChaFinal</span>},
-            <span class="ident">complete_add::CompleteAdd</span>,
-            <span class="ident">endomul_scalar::EndomulScalar</span>,
-            <span class="ident">endosclmul::EndosclMul</span>,
-            <span class="ident">poseidon::Poseidon</span>,
-            <span class="ident">varbasemul::VarbaseMul</span>,
+</span><span class="kw">use </span>ark_ff::PrimeField;
+<span class="kw">use </span>commitment_dlog::commitment::CommitmentCurve;
+<span class="kw">use </span>kimchi::{
+    circuits::{
+        argument::Argument,
+        polynomials::{
+            chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal},
+            complete_add::CompleteAdd,
+            endomul_scalar::EndomulScalar,
+            endosclmul::EndosclMul,
+            poseidon::Poseidon,
+            varbasemul::VarbaseMul,
         },
     },
-    <span class="ident">curve::KimchiCurve</span>,
-    <span class="ident">prover_index::ProverIndex</span>,
+    curve::KimchiCurve,
+    prover_index::ProverIndex,
 };
-<span class="kw">use</span> <span class="ident">serde::Serialize</span>;
-<span class="kw">use</span> <span class="ident">std</span>::{
-    <span class="ident">collections::HashMap</span>,
-    <span class="ident">fmt::Display</span>,
-    <span class="ident">fs</span>::{<span class="self">self</span>, <span class="ident">File</span>},
-    <span class="ident">io::Write</span>,
-    <span class="ident">path::Path</span>,
+<span class="kw">use </span>serde::Serialize;
+<span class="kw">use </span>std::{
+    collections::HashMap,
+    fmt::Display,
+    fs::{<span class="self">self</span>, File},
+    io::Write,
+    path::Path,
 };
-<span class="kw">use</span> <span class="ident">tinytemplate::TinyTemplate</span>;
+<span class="kw">use </span>tinytemplate::TinyTemplate;
 
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">witness</span>;
+<span class="kw">pub mod </span>witness;
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">witness::Witness</span>;
+<span class="kw">pub use </span>witness::Witness;
 
-<span class="doccomment">/// Contains variable used in the template</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>)]</span>
-<span class="kw">struct</span> <span class="ident">Context</span> {
-    <span class="ident">js</span>: <span class="ident">String</span>,
-    <span class="ident">data</span>: <span class="ident">String</span>,
+<span class="doccomment">/// Contains variable used in the template
+</span><span class="attribute">#[derive(Serialize)]
+</span><span class="kw">struct </span>Context {
+    js: String,
+    data: String,
 }
 
-<span class="doccomment">/// Allows us to quickly implement a LaTeX encoder for each gate</span>
-<span class="kw">trait</span> <span class="ident">LaTeX</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>: <span class="ident">Argument</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">F</span>: <span class="ident">PrimeField</span>,
+<span class="doccomment">/// Allows us to quickly implement a LaTeX encoder for each gate
+</span><span class="kw">trait </span>LaTeX&lt;F&gt;: Argument&lt;F&gt;
+<span class="kw">where
+    </span>F: PrimeField,
 {
-    <span class="kw">fn</span> <span class="ident">latex</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="ident"><span class="self">Self</span>::constraints</span>().<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">c</span>.<span class="ident">latex_str</span>()).<span class="ident">collect</span>()
+    <span class="kw">fn </span>latex() -&gt; Vec&lt;Vec&lt;String&gt;&gt; {
+        <span class="self">Self</span>::constraints().iter().map(|c| c.latex_str()).collect()
     }
 }
 
-<span class="doccomment">/// Implement [LaTeX] for all gates</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">F</span><span class="op">&gt;</span> <span class="ident">LaTeX</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">T</span>
-<span class="kw">where</span>
-    <span class="ident">T</span>: <span class="ident">Argument</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    <span class="ident">F</span>: <span class="ident">PrimeField</span> <span class="op">+</span> <span class="ident">Display</span>,
+<span class="doccomment">/// Implement [LaTeX] for all gates
+</span><span class="kw">impl</span>&lt;T, F&gt; LaTeX&lt;F&gt; <span class="kw">for </span>T
+<span class="kw">where
+    </span>T: Argument&lt;F&gt;,
+    F: PrimeField + Display,
 {
 }
 
-<span class="doccomment">///</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">latex_constraints</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>() -&gt; <span class="ident">HashMap</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">G</span>: <span class="ident">CommitmentCurve</span>,
+<span class="doccomment">///
+</span><span class="kw">pub fn </span>latex_constraints&lt;G&gt;() -&gt; HashMap&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str, Vec&lt;Vec&lt;String&gt;&gt;&gt;
+<span class="kw">where
+    </span>G: CommitmentCurve,
 {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">map</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
-    <span class="ident">map</span>.<span class="ident">insert</span>(<span class="string">&quot;Poseidon&quot;</span>, <span class="ident">Poseidon</span>::<span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span><span class="ident">::latex</span>());
-    <span class="ident">map</span>.<span class="ident">insert</span>(<span class="string">&quot;CompleteAdd&quot;</span>, <span class="ident">CompleteAdd</span>::<span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span><span class="ident">::latex</span>());
-    <span class="ident">map</span>.<span class="ident">insert</span>(<span class="string">&quot;VarBaseMul&quot;</span>, <span class="ident">VarbaseMul</span>::<span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span><span class="ident">::latex</span>());
-    <span class="ident">map</span>.<span class="ident">insert</span>(<span class="string">&quot;EndoMul&quot;</span>, <span class="ident">EndosclMul</span>::<span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span><span class="ident">::latex</span>());
-    <span class="ident">map</span>.<span class="ident">insert</span>(<span class="string">&quot;EndoMulScalar&quot;</span>, <span class="ident">EndomulScalar</span>::<span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span><span class="ident">::latex</span>());
-    <span class="ident">map</span>.<span class="ident">insert</span>(<span class="string">&quot;ChaCha0&quot;</span>, <span class="ident">ChaCha0</span>::<span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span><span class="ident">::latex</span>());
-    <span class="ident">map</span>.<span class="ident">insert</span>(<span class="string">&quot;ChaCha1&quot;</span>, <span class="ident">ChaCha1</span>::<span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span><span class="ident">::latex</span>());
-    <span class="ident">map</span>.<span class="ident">insert</span>(<span class="string">&quot;ChaCha2&quot;</span>, <span class="ident">ChaCha2</span>::<span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span><span class="ident">::latex</span>());
-    <span class="ident">map</span>.<span class="ident">insert</span>(<span class="string">&quot;ChaChaFinal&quot;</span>, <span class="ident">ChaChaFinal</span>::<span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span><span class="ident">::latex</span>());
-    <span class="ident">map</span>
+    <span class="kw">let </span><span class="kw-2">mut </span>map = HashMap::new();
+    map.insert(<span class="string">&quot;Poseidon&quot;</span>, Poseidon::&lt;G::ScalarField&gt;::latex());
+    map.insert(<span class="string">&quot;CompleteAdd&quot;</span>, CompleteAdd::&lt;G::ScalarField&gt;::latex());
+    map.insert(<span class="string">&quot;VarBaseMul&quot;</span>, VarbaseMul::&lt;G::ScalarField&gt;::latex());
+    map.insert(<span class="string">&quot;EndoMul&quot;</span>, EndosclMul::&lt;G::ScalarField&gt;::latex());
+    map.insert(<span class="string">&quot;EndoMulScalar&quot;</span>, EndomulScalar::&lt;G::ScalarField&gt;::latex());
+    map.insert(<span class="string">&quot;ChaCha0&quot;</span>, ChaCha0::&lt;G::ScalarField&gt;::latex());
+    map.insert(<span class="string">&quot;ChaCha1&quot;</span>, ChaCha1::&lt;G::ScalarField&gt;::latex());
+    map.insert(<span class="string">&quot;ChaCha2&quot;</span>, ChaCha2::&lt;G::ScalarField&gt;::latex());
+    map.insert(<span class="string">&quot;ChaChaFinal&quot;</span>, ChaChaFinal::&lt;G::ScalarField&gt;::latex());
+    map
 }
 
-<span class="doccomment">/// Produces a `circuit.html` in the current folder.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">visu</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">KimchiCurve</span><span class="op">&gt;</span>(<span class="ident">index</span>: <span class="kw-2">&amp;</span><span class="ident">ProverIndex</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">witness</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Witness</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span><span class="op">&gt;</span>) {
-    <span class="comment">// serialize index</span>
-    <span class="kw">let</span> <span class="ident">index</span> <span class="op">=</span> <span class="ident">serde_json::to_string</span>(<span class="ident">index</span>).<span class="ident">expect</span>(<span class="string">&quot;couldn&#39;t serialize index&quot;</span>);
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">data</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;const index = {index};&quot;</span>);
+<span class="doccomment">/// Produces a `circuit.html` in the current folder.
+</span><span class="kw">pub fn </span>visu&lt;G: KimchiCurve&gt;(index: <span class="kw-2">&amp;</span>ProverIndex&lt;G&gt;, witness: <span class="prelude-ty">Option</span>&lt;Witness&lt;G::ScalarField&gt;&gt;) {
+    <span class="comment">// serialize index
+    </span><span class="kw">let </span>index = serde_json::to_string(index).expect(<span class="string">&quot;couldn&#39;t serialize index&quot;</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>data = <span class="macro">format!</span>(<span class="string">&quot;const index = {index};&quot;</span>);
 
-    <span class="comment">// serialize witness</span>
-    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">witness</span>) <span class="op">=</span> <span class="ident">witness</span> {
-        <span class="kw">let</span> <span class="ident">witness</span> <span class="op">=</span> <span class="ident">serde_json::to_string</span>(<span class="kw-2">&amp;</span><span class="ident">witness</span>).<span class="ident">expect</span>(<span class="string">&quot;couldn&#39;t serialize witness&quot;</span>);
-        <span class="ident">data</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;{data}const witness = {witness};&quot;</span>);
-    } <span class="kw">else</span> {
-        <span class="ident">data</span>.<span class="ident">push_str</span>(<span class="string">&quot;const witness = null;&quot;</span>);
+    <span class="comment">// serialize witness
+    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(witness) = witness {
+        <span class="kw">let </span>witness = serde_json::to_string(<span class="kw-2">&amp;</span>witness).expect(<span class="string">&quot;couldn&#39;t serialize witness&quot;</span>);
+        data = <span class="macro">format!</span>(<span class="string">&quot;{data}const witness = {witness};&quot;</span>);
+    } <span class="kw">else </span>{
+        data.push_str(<span class="string">&quot;const witness = null;&quot;</span>);
     }
 
-    <span class="comment">// serialize constraints</span>
-    <span class="kw">let</span> <span class="ident">constraints</span> <span class="op">=</span> <span class="ident">latex_constraints</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>();
-    <span class="kw">let</span> <span class="ident">constraints</span> <span class="op">=</span> <span class="ident">serde_json::to_string</span>(<span class="kw-2">&amp;</span><span class="ident">constraints</span>).<span class="ident">expect</span>(<span class="string">&quot;couldn&#39;t serialize constraints&quot;</span>);
-    <span class="ident">data</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;{data}const constraints = {constraints};&quot;</span>);
+    <span class="comment">// serialize constraints
+    </span><span class="kw">let </span>constraints = latex_constraints::&lt;G&gt;();
+    <span class="kw">let </span>constraints = serde_json::to_string(<span class="kw-2">&amp;</span>constraints).expect(<span class="string">&quot;couldn&#39;t serialize constraints&quot;</span>);
+    data = <span class="macro">format!</span>(<span class="string">&quot;{data}const constraints = {constraints};&quot;</span>);
 
-    <span class="comment">// create template</span>
-    <span class="kw">let</span> <span class="ident">template_path</span> <span class="op">=</span> <span class="ident">Path::new</span>(<span class="macro">env!</span>(<span class="string">&quot;CARGO_MANIFEST_DIR&quot;</span>)).<span class="ident">join</span>(<span class="string">&quot;src/assets/template.html&quot;</span>);
-    <span class="kw">let</span> <span class="ident">template</span> <span class="op">=</span> <span class="ident">fs::read_to_string</span>(<span class="kw-2">&amp;</span><span class="ident">template_path</span>).<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+    <span class="comment">// create template
+    </span><span class="kw">let </span>template_path = Path::new(<span class="macro">env!</span>(<span class="string">&quot;CARGO_MANIFEST_DIR&quot;</span>)).join(<span class="string">&quot;src/assets/template.html&quot;</span>);
+    <span class="kw">let </span>template = fs::read_to_string(<span class="kw-2">&amp;</span>template_path).unwrap_or_else(|e| {
         <span class="macro">format!</span>(
             <span class="string">&quot;could not read template file {}: {e}&quot;</span>,
-            <span class="ident">template_path</span>.<span class="ident">display</span>()
+            template_path.display()
         )
     });
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tt</span> <span class="op">=</span> <span class="ident">TinyTemplate::new</span>();
-    <span class="ident">tt</span>.<span class="ident">set_default_formatter</span>(<span class="kw-2">&amp;</span><span class="ident">tinytemplate::format_unescaped</span>);
-    <span class="ident">tt</span>.<span class="ident">add_template</span>(<span class="string">&quot;circuit&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">template</span>)
-        .<span class="ident">expect</span>(<span class="string">&quot;could not create template&quot;</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>tt = TinyTemplate::new();
+    tt.set_default_formatter(<span class="kw-2">&amp;</span>tinytemplate::format_unescaped);
+    tt.add_template(<span class="string">&quot;circuit&quot;</span>, <span class="kw-2">&amp;</span>template)
+        .expect(<span class="string">&quot;could not create template&quot;</span>);
 
-    <span class="comment">// render</span>
-    <span class="kw">let</span> <span class="ident">html_output</span> <span class="op">=</span> <span class="ident">std::env::current_dir</span>()
-        .<span class="ident">expect</span>(<span class="string">&quot;no current directory?&quot;</span>)
-        .<span class="ident">join</span>(<span class="string">&quot;circuit.html&quot;</span>);
+    <span class="comment">// render
+    </span><span class="kw">let </span>html_output = std::env::current_dir()
+        .expect(<span class="string">&quot;no current directory?&quot;</span>)
+        .join(<span class="string">&quot;circuit.html&quot;</span>);
 
-    <span class="kw">let</span> <span class="ident">js_path</span> <span class="op">=</span> <span class="ident">Path::new</span>(<span class="macro">env!</span>(<span class="string">&quot;CARGO_MANIFEST_DIR&quot;</span>)).<span class="ident">join</span>(<span class="string">&quot;src/assets/script.js&quot;</span>);
-    <span class="kw">let</span> <span class="ident">js</span> <span class="op">=</span> <span class="ident">fs::read_to_string</span>(<span class="kw-2">&amp;</span><span class="ident">js_path</span>)
-        .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="macro">format!</span>(<span class="string">&quot;could not read js file {}: {e}&quot;</span>, <span class="ident">js_path</span>.<span class="ident">display</span>()));
+    <span class="kw">let </span>js_path = Path::new(<span class="macro">env!</span>(<span class="string">&quot;CARGO_MANIFEST_DIR&quot;</span>)).join(<span class="string">&quot;src/assets/script.js&quot;</span>);
+    <span class="kw">let </span>js = fs::read_to_string(<span class="kw-2">&amp;</span>js_path)
+        .unwrap_or_else(|e| <span class="macro">format!</span>(<span class="string">&quot;could not read js file {}: {e}&quot;</span>, js_path.display()));
 
-    <span class="kw">let</span> <span class="ident">context</span> <span class="op">=</span> <span class="ident">Context</span> { <span class="ident">js</span>, <span class="ident">data</span> };
+    <span class="kw">let </span>context = Context { js, data };
 
-    <span class="kw">let</span> <span class="ident">rendered</span> <span class="op">=</span> <span class="ident">tt</span>
-        .<span class="ident">render</span>(<span class="string">&quot;circuit&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">context</span>)
-        .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="macro">panic!</span>(<span class="string">&quot;template file can&#39;t be rendered: {}&quot;</span>, <span class="ident">e</span>));
+    <span class="kw">let </span>rendered = tt
+        .render(<span class="string">&quot;circuit&quot;</span>, <span class="kw-2">&amp;</span>context)
+        .unwrap_or_else(|e| <span class="macro">panic!</span>(<span class="string">&quot;template file can&#39;t be rendered: {}&quot;</span>, e));
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">file</span> <span class="op">=</span> <span class="ident">File::create</span>(<span class="ident">html_output</span>).<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="macro">panic!</span>(<span class="string">&quot;{e}&quot;</span>));
-    <span class="macro">write!</span>(<span class="kw-2">&amp;mut</span> <span class="ident">file</span>, <span class="string">&quot;{rendered}&quot;</span>).<span class="ident">expect</span>(<span class="string">&quot;couldn&#39;t write the file on disk&quot;</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>file = File::create(html_output).unwrap_or_else(|e| <span class="macro">panic!</span>(<span class="string">&quot;{e}&quot;</span>));
+    <span class="macro">write!</span>(<span class="kw-2">&amp;mut </span>file, <span class="string">&quot;{rendered}&quot;</span>).expect(<span class="string">&quot;couldn&#39;t write the file on disk&quot;</span>);
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi_visu" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi_visu" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

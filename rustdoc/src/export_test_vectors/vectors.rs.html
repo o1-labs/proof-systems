@@ -108,115 +108,115 @@
 <span id="108">108</span>
 <span id="109">109</span>
 <span id="110">110</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">Mode</span>, <span class="ident">ParamType</span>};
-<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">fields::PrimeField</span> <span class="kw">as</span> <span class="kw">_</span>, <span class="ident">UniformRand</span> <span class="kw">as</span> <span class="kw">_</span>};
-<span class="kw">use</span> <span class="ident">ark_serialize::CanonicalSerialize</span> <span class="kw">as</span> <span class="kw">_</span>;
-<span class="kw">use</span> <span class="ident">mina_curves::pasta::Fp</span>;
-<span class="kw">use</span> <span class="ident">num_bigint::BigUint</span>;
-<span class="kw">use</span> <span class="ident">oracle</span>::{
-    <span class="ident">constants</span>::{<span class="self">self</span>, <span class="ident">SpongeConstants</span>},
-    <span class="ident">pasta</span>,
-    <span class="ident">poseidon</span>::{<span class="ident">ArithmeticSponge</span> <span class="kw">as</span> <span class="ident">Poseidon</span>, <span class="ident">ArithmeticSpongeParams</span>, <span class="ident">Sponge</span> <span class="kw">as</span> <span class="kw">_</span>},
+</pre><pre class="rust"><code><span class="kw">use super</span>::{Mode, ParamType};
+<span class="kw">use </span>ark_ff::{fields::PrimeField <span class="kw">as _</span>, UniformRand <span class="kw">as _</span>};
+<span class="kw">use </span>ark_serialize::CanonicalSerialize <span class="kw">as _</span>;
+<span class="kw">use </span>mina_curves::pasta::Fp;
+<span class="kw">use </span>num_bigint::BigUint;
+<span class="kw">use </span>oracle::{
+    constants::{<span class="self">self</span>, SpongeConstants},
+    pasta,
+    poseidon::{ArithmeticSponge <span class="kw">as </span>Poseidon, ArithmeticSpongeParams, Sponge <span class="kw">as _</span>},
 };
-<span class="kw">use</span> <span class="ident">rand</span>::{<span class="ident">prelude</span>::<span class="kw-2">*</span>, <span class="ident">Rng</span>};
-<span class="kw">use</span> <span class="ident">serde::Serialize</span>;
+<span class="kw">use </span>rand::{prelude::<span class="kw-2">*</span>, Rng};
+<span class="kw">use </span>serde::Serialize;
 
-<span class="comment">//</span>
-<span class="comment">// generate different test vectors depending on [ParamType]</span>
-<span class="comment">//</span>
+<span class="comment">//
+// generate different test vectors depending on [ParamType]
+//
 
-<span class="comment">//</span>
-<span class="comment">// structs</span>
-<span class="comment">//</span>
+//
+// structs
+//
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">TestVectors</span> {
-    <span class="ident">name</span>: <span class="ident">String</span>,
-    <span class="ident">test_vectors</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">TestVector</span><span class="op">&gt;</span>,
+</span><span class="attribute">#[derive(Debug, Serialize)]
+</span><span class="kw">pub struct </span>TestVectors {
+    name: String,
+    test_vectors: Vec&lt;TestVector&gt;,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">TestVector</span> {
-    <span class="ident">input</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="ident">output</span>: <span class="ident">String</span>,
+<span class="attribute">#[derive(Debug, Serialize)]
+</span><span class="kw">pub struct </span>TestVector {
+    input: Vec&lt;String&gt;,
+    output: String,
 }
 
-<span class="comment">//</span>
-<span class="comment">// logic</span>
-<span class="comment">//</span>
+<span class="comment">//
+// logic
+//
 
-<span class="doccomment">/// Computes the poseidon hash of several field elements.</span>
-<span class="doccomment">/// Uses the &#39;basic&#39; configuration with N states and M rounds.</span>
-<span class="kw">fn</span> <span class="ident">poseidon</span><span class="op">&lt;</span><span class="ident">SC</span>: <span class="ident">SpongeConstants</span><span class="op">&gt;</span>(<span class="ident">input</span>: <span class="kw-2">&amp;</span>[<span class="ident">Fp</span>], <span class="ident">params</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span>) -&gt; <span class="ident">Fp</span> {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">s</span> <span class="op">=</span> <span class="ident">Poseidon</span>::<span class="op">&lt;</span><span class="ident">Fp</span>, <span class="ident">SC</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="ident">params</span>);
-    <span class="ident">s</span>.<span class="ident">absorb</span>(<span class="ident">input</span>);
-    <span class="ident">s</span>.<span class="ident">squeeze</span>()
+</span><span class="doccomment">/// Computes the poseidon hash of several field elements.
+/// Uses the &#39;basic&#39; configuration with N states and M rounds.
+</span><span class="kw">fn </span>poseidon&lt;SC: SpongeConstants&gt;(input: <span class="kw-2">&amp;</span>[Fp], params: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>ArithmeticSpongeParams&lt;Fp&gt;) -&gt; Fp {
+    <span class="kw">let </span><span class="kw-2">mut </span>s = Poseidon::&lt;Fp, SC&gt;::new(params);
+    s.absorb(input);
+    s.squeeze()
 }
 
-<span class="doccomment">/// generates a vector of `length` field elements</span>
-<span class="kw">fn</span> <span class="ident">rand_fields</span>(<span class="ident">rng</span>: <span class="kw-2">&amp;mut</span> <span class="kw">impl</span> <span class="ident">Rng</span>, <span class="ident">length</span>: <span class="ident">u8</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">fields</span> <span class="op">=</span> <span class="macro">vec!</span>[];
-    <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">length</span> {
-        <span class="kw">let</span> <span class="ident">fe</span> <span class="op">=</span> <span class="ident">Fp::rand</span>(<span class="ident">rng</span>);
-        <span class="ident">fields</span>.<span class="ident">push</span>(<span class="ident">fe</span>)
+<span class="doccomment">/// generates a vector of `length` field elements
+</span><span class="kw">fn </span>rand_fields(rng: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>Rng, length: u8) -&gt; Vec&lt;Fp&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>fields = <span class="macro">vec!</span>[];
+    <span class="kw">for _ in </span><span class="number">0</span>..length {
+        <span class="kw">let </span>fe = Fp::rand(rng);
+        fields.push(fe)
     }
-    <span class="ident">fields</span>
+    fields
 }
 
-<span class="doccomment">/// creates a set of test vectors</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate</span>(<span class="ident">mode</span>: <span class="ident">Mode</span>, <span class="ident">param_type</span>: <span class="ident">ParamType</span>) -&gt; <span class="ident">TestVectors</span> {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rng</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">rand::rngs::StdRng::from_seed</span>([<span class="number">0u8</span>; <span class="number">32</span>]);
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">test_vectors</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+<span class="doccomment">/// creates a set of test vectors
+</span><span class="kw">pub fn </span>generate(mode: Mode, param_type: ParamType) -&gt; TestVectors {
+    <span class="kw">let </span><span class="kw-2">mut </span>rng = <span class="kw-2">&amp;mut </span>rand::rngs::StdRng::from_seed([<span class="number">0u8</span>; <span class="number">32</span>]);
+    <span class="kw">let </span><span class="kw-2">mut </span>test_vectors = <span class="macro">vec!</span>[];
 
-    <span class="comment">// generate inputs of different lengths</span>
-    <span class="kw">for</span> <span class="ident">length</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">6</span> {
-        <span class="comment">// generate input &amp; hash</span>
-        <span class="kw">let</span> <span class="ident">input</span> <span class="op">=</span> <span class="ident">rand_fields</span>(<span class="kw-2">&amp;mut</span> <span class="ident">rng</span>, <span class="ident">length</span>);
-        <span class="kw">let</span> <span class="ident">output</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">param_type</span> {
-            <span class="ident">ParamType::Legacy</span> =&gt; <span class="ident">poseidon</span>::<span class="op">&lt;</span><span class="ident">constants::PlonkSpongeConstantsLegacy</span><span class="op">&gt;</span>(
-                <span class="kw-2">&amp;</span><span class="ident">input</span>,
-                <span class="ident">pasta::fp_legacy::static_params</span>(),
+    <span class="comment">// generate inputs of different lengths
+    </span><span class="kw">for </span>length <span class="kw">in </span><span class="number">0</span>..<span class="number">6 </span>{
+        <span class="comment">// generate input &amp; hash
+        </span><span class="kw">let </span>input = rand_fields(<span class="kw-2">&amp;mut </span>rng, length);
+        <span class="kw">let </span>output = <span class="kw">match </span>param_type {
+            ParamType::Legacy =&gt; poseidon::&lt;constants::PlonkSpongeConstantsLegacy&gt;(
+                <span class="kw-2">&amp;</span>input,
+                pasta::fp_legacy::static_params(),
             ),
-            <span class="ident">ParamType::Kimchi</span> =&gt; <span class="ident">poseidon</span>::<span class="op">&lt;</span><span class="ident">constants::PlonkSpongeConstantsKimchi</span><span class="op">&gt;</span>(
-                <span class="kw-2">&amp;</span><span class="ident">input</span>,
-                <span class="ident">pasta::fp_kimchi::static_params</span>(),
+            ParamType::Kimchi =&gt; poseidon::&lt;constants::PlonkSpongeConstantsKimchi&gt;(
+                <span class="kw-2">&amp;</span>input,
+                pasta::fp_kimchi::static_params(),
             ),
         };
 
-        <span class="comment">// serialize input &amp; output</span>
-        <span class="kw">let</span> <span class="ident">input</span> <span class="op">=</span> <span class="ident">input</span>
-            .<span class="ident">into_iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">elem</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">input_bytes</span> <span class="op">=</span> <span class="macro">vec!</span>[];
-                <span class="ident">elem</span>.<span class="ident">into_repr</span>()
-                    .<span class="ident">serialize</span>(<span class="kw-2">&amp;mut</span> <span class="ident">input_bytes</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;canonical serialiation should work&quot;</span>);
-                <span class="kw">match</span> <span class="ident">mode</span> {
-                    <span class="ident">Mode::Hex</span> =&gt; <span class="ident">hex::encode</span>(<span class="kw-2">&amp;</span><span class="ident">input_bytes</span>),
-                    <span class="ident">Mode::B10</span> =&gt; <span class="ident">BigUint::from_bytes_le</span>(<span class="kw-2">&amp;</span><span class="ident">input_bytes</span>).<span class="ident">to_string</span>(),
+        <span class="comment">// serialize input &amp; output
+        </span><span class="kw">let </span>input = input
+            .into_iter()
+            .map(|elem| {
+                <span class="kw">let </span><span class="kw-2">mut </span>input_bytes = <span class="macro">vec!</span>[];
+                elem.into_repr()
+                    .serialize(<span class="kw-2">&amp;mut </span>input_bytes)
+                    .expect(<span class="string">&quot;canonical serialiation should work&quot;</span>);
+                <span class="kw">match </span>mode {
+                    Mode::Hex =&gt; hex::encode(<span class="kw-2">&amp;</span>input_bytes),
+                    Mode::B10 =&gt; BigUint::from_bytes_le(<span class="kw-2">&amp;</span>input_bytes).to_string(),
                 }
             })
-            .<span class="ident">collect</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">output_bytes</span> <span class="op">=</span> <span class="macro">vec!</span>[];
-        <span class="ident">output</span>
-            .<span class="ident">into_repr</span>()
-            .<span class="ident">serialize</span>(<span class="kw-2">&amp;mut</span> <span class="ident">output_bytes</span>)
-            .<span class="ident">expect</span>(<span class="string">&quot;canonical serialization should work&quot;</span>);
+            .collect();
+        <span class="kw">let </span><span class="kw-2">mut </span>output_bytes = <span class="macro">vec!</span>[];
+        output
+            .into_repr()
+            .serialize(<span class="kw-2">&amp;mut </span>output_bytes)
+            .expect(<span class="string">&quot;canonical serialization should work&quot;</span>);
 
-        <span class="comment">// add vector</span>
-        <span class="ident">test_vectors</span>.<span class="ident">push</span>(<span class="ident">TestVector</span> {
-            <span class="ident">input</span>,
-            <span class="ident">output</span>: <span class="ident">hex::encode</span>(<span class="kw-2">&amp;</span><span class="ident">output_bytes</span>),
+        <span class="comment">// add vector
+        </span>test_vectors.push(TestVector {
+            input,
+            output: hex::encode(<span class="kw-2">&amp;</span>output_bytes),
         })
     }
 
-    <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">param_type</span> {
-        <span class="ident">ParamType::Legacy</span> =&gt; <span class="string">&quot;legacy&quot;</span>,
-        <span class="ident">ParamType::Kimchi</span> =&gt; <span class="string">&quot;kimchi&quot;</span>,
+    <span class="kw">let </span>name = <span class="kw">match </span>param_type {
+        ParamType::Legacy =&gt; <span class="string">&quot;legacy&quot;</span>,
+        ParamType::Kimchi =&gt; <span class="string">&quot;kimchi&quot;</span>,
     }
-    .<span class="ident">into</span>();
+    .into();
 
-    <span class="ident">TestVectors</span> { <span class="ident">name</span>, <span class="ident">test_vectors</span> }
+    TestVectors { name, test_vectors }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="export_test_vectors" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="export_test_vectors" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

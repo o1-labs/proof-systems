@@ -179,186 +179,186 @@
 <span id="179">179</span>
 <span id="180">180</span>
 <span id="181">181</span>
-</pre><pre class="rust"><code><span class="attribute">#![<span class="ident">deny</span>(<span class="ident">missing_docs</span>)]</span>
-<span class="attribute">#![<span class="ident">doc</span> <span class="op">=</span> <span class="macro">include_str!</span>(<span class="string">&quot;../README.md&quot;</span>)]</span>
+</pre><pre class="rust"><code><span class="attribute">#![deny(missing_docs)]
+#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../README.md&quot;</span>)]
 
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">poseidon</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">roinput</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">mina_curves::pasta::Fp</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">poseidon</span>::{<span class="ident">PoseidonHasherKimchi</span>, <span class="ident">PoseidonHasherLegacy</span>};
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">roinput::ROInput</span>;
+</span><span class="kw">pub mod </span>poseidon;
+<span class="kw">pub mod </span>roinput;
+<span class="kw">pub use </span>mina_curves::pasta::Fp;
+<span class="kw">pub use </span>poseidon::{PoseidonHasherKimchi, PoseidonHasherLegacy};
+<span class="kw">pub use </span>roinput::ROInput;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests;
 
-<span class="kw">use</span> <span class="ident">ark_ff::PrimeField</span>;
-<span class="kw">use</span> <span class="ident">o1_utils::FieldHelpers</span>;
+<span class="kw">use </span>ark_ff::PrimeField;
+<span class="kw">use </span>o1_utils::FieldHelpers;
 
-<span class="doccomment">/// The domain parameter trait is used during hashing to convey extra</span>
-<span class="doccomment">/// arguments to domain string generation.  It is also used by generic signing code.</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">DomainParameter</span>: <span class="ident">Clone</span> {
-    <span class="doccomment">/// Conversion into vector of bytes</span>
-    <span class="kw">fn</span> <span class="ident">into_bytes</span>(<span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>;
+<span class="doccomment">/// The domain parameter trait is used during hashing to convey extra
+/// arguments to domain string generation.  It is also used by generic signing code.
+</span><span class="kw">pub trait </span>DomainParameter: Clone {
+    <span class="doccomment">/// Conversion into vector of bytes
+    </span><span class="kw">fn </span>into_bytes(<span class="self">self</span>) -&gt; Vec&lt;u8&gt;;
 }
 
-<span class="kw">impl</span> <span class="ident">DomainParameter</span> <span class="kw">for</span> () {
-    <span class="kw">fn</span> <span class="ident">into_bytes</span>(<span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
+<span class="kw">impl </span>DomainParameter <span class="kw">for </span>() {
+    <span class="kw">fn </span>into_bytes(<span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
         <span class="macro">vec!</span>[]
     }
 }
 
-<span class="kw">impl</span> <span class="ident">DomainParameter</span> <span class="kw">for</span> <span class="ident">u32</span> {
-    <span class="kw">fn</span> <span class="ident">into_bytes</span>(<span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">to_le_bytes</span>().<span class="ident">to_vec</span>()
+<span class="kw">impl </span>DomainParameter <span class="kw">for </span>u32 {
+    <span class="kw">fn </span>into_bytes(<span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
+        <span class="self">self</span>.to_le_bytes().to_vec()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">DomainParameter</span> <span class="kw">for</span> <span class="ident">u64</span> {
-    <span class="kw">fn</span> <span class="ident">into_bytes</span>(<span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">to_le_bytes</span>().<span class="ident">to_vec</span>()
+<span class="kw">impl </span>DomainParameter <span class="kw">for </span>u64 {
+    <span class="kw">fn </span>into_bytes(<span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
+        <span class="self">self</span>.to_le_bytes().to_vec()
     }
 }
 
-<span class="doccomment">/// Interface for hashable objects</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Mina uses fixed-length hashing with domain separation for each type of object hashed.</span>
-<span class="doccomment">/// The prior means that `Hashable` only supports types whose size is not variable.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// **Important:** The developer MUST assure that all domain strings used throughout the</span>
-<span class="doccomment">/// system are unique and that all structures hashed are of fixed size.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Here is an example of how to implement the `Hashable` trait for am `Example` type.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```rust</span>
-<span class="doccomment">/// use mina_hasher::{Hashable, ROInput};</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// #[derive(Clone)]</span>
-<span class="doccomment">/// struct Example;</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// impl Hashable for Example {</span>
-<span class="doccomment">///     type D = ();</span>
-<span class="doccomment">///</span>
-<span class="doccomment">///     fn to_roinput(&amp;self) -&gt; ROInput {</span>
-<span class="doccomment">///         let roi = ROInput::new();</span>
-<span class="doccomment">///         // Serialize example members</span>
-<span class="doccomment">///         // ...</span>
-<span class="doccomment">///         roi</span>
-<span class="doccomment">///     }</span>
-<span class="doccomment">///</span>
-<span class="doccomment">///     fn domain_string(_: Self::D) -&gt; Option&lt;String&gt; {</span>
-<span class="doccomment">///        format!(&quot;Example&quot;).into()</span>
-<span class="doccomment">///    }</span>
-<span class="doccomment">/// }</span>
-<span class="doccomment">/// ```</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// See example in [`ROInput`] documentation</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Hashable</span>: <span class="ident">Clone</span> {
-    <span class="doccomment">/// Generic domain string argument type</span>
-    <span class="kw">type</span> <span class="ident">D</span>: <span class="ident">DomainParameter</span>;
+<span class="doccomment">/// Interface for hashable objects
+///
+/// Mina uses fixed-length hashing with domain separation for each type of object hashed.
+/// The prior means that `Hashable` only supports types whose size is not variable.
+///
+/// **Important:** The developer MUST assure that all domain strings used throughout the
+/// system are unique and that all structures hashed are of fixed size.
+///
+/// Here is an example of how to implement the `Hashable` trait for am `Example` type.
+///
+/// ```rust
+/// use mina_hasher::{Hashable, ROInput};
+///
+/// #[derive(Clone)]
+/// struct Example;
+///
+/// impl Hashable for Example {
+///     type D = ();
+///
+///     fn to_roinput(&amp;self) -&gt; ROInput {
+///         let roi = ROInput::new();
+///         // Serialize example members
+///         // ...
+///         roi
+///     }
+///
+///     fn domain_string(_: Self::D) -&gt; Option&lt;String&gt; {
+///        format!(&quot;Example&quot;).into()
+///    }
+/// }
+/// ```
+///
+/// See example in [`ROInput`] documentation
+</span><span class="kw">pub trait </span>Hashable: Clone {
+    <span class="doccomment">/// Generic domain string argument type
+    </span><span class="kw">type </span>D: DomainParameter;
 
-    <span class="doccomment">/// Serialization to random oracle input</span>
-    <span class="kw">fn</span> <span class="ident">to_roinput</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ROInput</span>;
+    <span class="doccomment">/// Serialization to random oracle input
+    </span><span class="kw">fn </span>to_roinput(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ROInput;
 
-    <span class="doccomment">/// Generate unique domain string of length `&lt;= 20`.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The length bound is guarded by an assertion, but uniqueness must</span>
-    <span class="doccomment">/// be enforced by the developer implementing the traits (see [`Hashable`] for</span>
-    <span class="doccomment">/// more details). The domain string may be parameterized by the contents of</span>
-    <span class="doccomment">/// the generic `domain_param` argument.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// **Note:** You should always return `Some(String)`. A `None` return value</span>
-    <span class="doccomment">/// is only used for testing.</span>
-    <span class="kw">fn</span> <span class="ident">domain_string</span>(<span class="ident">domain_param</span>: <span class="ident"><span class="self">Self</span>::D</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Generate unique domain string of length `&lt;= 20`.
+    ///
+    /// The length bound is guarded by an assertion, but uniqueness must
+    /// be enforced by the developer implementing the traits (see [`Hashable`] for
+    /// more details). The domain string may be parameterized by the contents of
+    /// the generic `domain_param` argument.
+    ///
+    /// **Note:** You should always return `Some(String)`. A `None` return value
+    /// is only used for testing.
+    </span><span class="kw">fn </span>domain_string(domain_param: <span class="self">Self</span>::D) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt;;
 }
 
-<span class="doccomment">/// Interface for hashing [`Hashable`] inputs</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Mina uses a unique hasher configured with domain separation for each type of object hashed.</span>
-<span class="doccomment">/// The underlying hash parameters are large and costly to initialize, so the [`Hasher`] interface</span>
-<span class="doccomment">/// provides a reusable context for efficient hashing with domain separation.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Example usage</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```rust</span>
-<span class="doccomment">/// use mina_hasher::{create_legacy, Fp, Hashable, Hasher, ROInput};</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// #[derive(Clone)]</span>
-<span class="doccomment">/// struct Something;</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// impl Hashable for Something {</span>
-<span class="doccomment">///     type D = u32;</span>
-<span class="doccomment">///</span>
-<span class="doccomment">///     fn to_roinput(&amp;self) -&gt; ROInput {</span>
-<span class="doccomment">///         let mut roi = ROInput::new();</span>
-<span class="doccomment">///         // ... serialize contents of self</span>
-<span class="doccomment">///         roi</span>
-<span class="doccomment">///     }</span>
-<span class="doccomment">///</span>
-<span class="doccomment">///     fn domain_string(id: Self::D) -&gt; Option&lt;String&gt; {</span>
-<span class="doccomment">///         format!(&quot;Something {}&quot;, id).into()</span>
-<span class="doccomment">///     }</span>
-<span class="doccomment">/// }</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// let mut hasher = create_legacy::&lt;Something&gt;(123);</span>
-<span class="doccomment">/// let output: Fp = hasher.hash(&amp;Something { });</span>
-<span class="doccomment">/// ```</span>
-<span class="doccomment">///</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Hasher</span><span class="op">&lt;</span><span class="ident">H</span>: <span class="ident">Hashable</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Set the initial state based on domain separation string</span>
-    <span class="doccomment">/// generated from `H::domain_string(domain_param)`</span>
-    <span class="kw">fn</span> <span class="ident">init</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">domain_param</span>: <span class="ident">H::D</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">Hasher</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>;
+<span class="doccomment">/// Interface for hashing [`Hashable`] inputs
+///
+/// Mina uses a unique hasher configured with domain separation for each type of object hashed.
+/// The underlying hash parameters are large and costly to initialize, so the [`Hasher`] interface
+/// provides a reusable context for efficient hashing with domain separation.
+///
+/// Example usage
+///
+/// ```rust
+/// use mina_hasher::{create_legacy, Fp, Hashable, Hasher, ROInput};
+///
+/// #[derive(Clone)]
+/// struct Something;
+///
+/// impl Hashable for Something {
+///     type D = u32;
+///
+///     fn to_roinput(&amp;self) -&gt; ROInput {
+///         let mut roi = ROInput::new();
+///         // ... serialize contents of self
+///         roi
+///     }
+///
+///     fn domain_string(id: Self::D) -&gt; Option&lt;String&gt; {
+///         format!(&quot;Something {}&quot;, id).into()
+///     }
+/// }
+///
+/// let mut hasher = create_legacy::&lt;Something&gt;(123);
+/// let output: Fp = hasher.hash(&amp;Something { });
+/// ```
+///
+</span><span class="kw">pub trait </span>Hasher&lt;H: Hashable&gt; {
+    <span class="doccomment">/// Set the initial state based on domain separation string
+    /// generated from `H::domain_string(domain_param)`
+    </span><span class="kw">fn </span>init(<span class="kw-2">&amp;mut </span><span class="self">self</span>, domain_param: H::D) -&gt; <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>Hasher&lt;H&gt;;
 
-    <span class="doccomment">/// Restore the initial state that was set most recently</span>
-    <span class="kw">fn</span> <span class="ident">reset</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">Hasher</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Restore the initial state that was set most recently
+    </span><span class="kw">fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>Hasher&lt;H&gt;;
 
-    <span class="doccomment">/// Consume hash `input`</span>
-    <span class="kw">fn</span> <span class="ident">update</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="ident">H</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">Hasher</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Consume hash `input`
+    </span><span class="kw">fn </span>update(<span class="kw-2">&amp;mut </span><span class="self">self</span>, input: <span class="kw-2">&amp;</span>H) -&gt; <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>Hasher&lt;H&gt;;
 
-    <span class="doccomment">/// Obtain has result output</span>
-    <span class="kw">fn</span> <span class="ident">digest</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">Fp</span>;
+    <span class="doccomment">/// Obtain has result output
+    </span><span class="kw">fn </span>digest(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; Fp;
 
-    <span class="doccomment">/// Hash input and obtain result output</span>
-    <span class="kw">fn</span> <span class="ident">hash</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="ident">H</span>) -&gt; <span class="ident">Fp</span> {
-        <span class="self">self</span>.<span class="ident">reset</span>();
-        <span class="self">self</span>.<span class="ident">update</span>(<span class="ident">input</span>);
-        <span class="kw">let</span> <span class="ident">output</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">digest</span>();
-        <span class="self">self</span>.<span class="ident">reset</span>();
-        <span class="ident">output</span>
+    <span class="doccomment">/// Hash input and obtain result output
+    </span><span class="kw">fn </span>hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, input: <span class="kw-2">&amp;</span>H) -&gt; Fp {
+        <span class="self">self</span>.reset();
+        <span class="self">self</span>.update(input);
+        <span class="kw">let </span>output = <span class="self">self</span>.digest();
+        <span class="self">self</span>.reset();
+        output
     }
 
-    <span class="doccomment">/// Initialize state, hash input and obtain result output</span>
-    <span class="kw">fn</span> <span class="ident">init_and_hash</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">domain_param</span>: <span class="ident">H::D</span>, <span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="ident">H</span>) -&gt; <span class="ident">Fp</span> {
-        <span class="self">self</span>.<span class="ident">init</span>(<span class="ident">domain_param</span>);
-        <span class="self">self</span>.<span class="ident">update</span>(<span class="ident">input</span>);
-        <span class="kw">let</span> <span class="ident">output</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">digest</span>();
-        <span class="self">self</span>.<span class="ident">reset</span>();
-        <span class="ident">output</span>
+    <span class="doccomment">/// Initialize state, hash input and obtain result output
+    </span><span class="kw">fn </span>init_and_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, domain_param: H::D, input: <span class="kw-2">&amp;</span>H) -&gt; Fp {
+        <span class="self">self</span>.init(domain_param);
+        <span class="self">self</span>.update(input);
+        <span class="kw">let </span>output = <span class="self">self</span>.digest();
+        <span class="self">self</span>.reset();
+        output
     }
 }
 
-<span class="doccomment">/// Transform domain prefix string to field element</span>
-<span class="kw">fn</span> <span class="ident">domain_prefix_to_field</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span>(<span class="ident">prefix</span>: <span class="ident">String</span>) -&gt; <span class="ident">F</span> {
-    <span class="kw">const</span> <span class="ident">MAX_DOMAIN_STRING_LEN</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">20</span>;
-    <span class="macro">assert!</span>(<span class="ident">prefix</span>.<span class="ident">len</span>() <span class="op">&lt;</span><span class="op">=</span> <span class="ident">MAX_DOMAIN_STRING_LEN</span>);
-    <span class="kw">let</span> <span class="ident">prefix</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">prefix</span>[..<span class="ident">std::cmp::min</span>(<span class="ident">prefix</span>.<span class="ident">len</span>(), <span class="ident">MAX_DOMAIN_STRING_LEN</span>)];
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">bytes</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;{:*&lt;MAX_DOMAIN_STRING_LEN$}&quot;</span>, <span class="ident">prefix</span>)
-        .<span class="ident">as_bytes</span>()
-        .<span class="ident">to_vec</span>();
-    <span class="ident">bytes</span>.<span class="ident">resize</span>(<span class="ident">F::size_in_bytes</span>(), <span class="number">0</span>);
-    <span class="ident">F::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">bytes</span>).<span class="ident">expect</span>(<span class="string">&quot;invalid domain bytes&quot;</span>)
+<span class="doccomment">/// Transform domain prefix string to field element
+</span><span class="kw">fn </span>domain_prefix_to_field&lt;F: PrimeField&gt;(prefix: String) -&gt; F {
+    <span class="kw">const </span>MAX_DOMAIN_STRING_LEN: usize = <span class="number">20</span>;
+    <span class="macro">assert!</span>(prefix.len() &lt;= MAX_DOMAIN_STRING_LEN);
+    <span class="kw">let </span>prefix = <span class="kw-2">&amp;</span>prefix[..std::cmp::min(prefix.len(), MAX_DOMAIN_STRING_LEN)];
+    <span class="kw">let </span><span class="kw-2">mut </span>bytes = <span class="macro">format!</span>(<span class="string">&quot;{:*&lt;MAX_DOMAIN_STRING_LEN$}&quot;</span>, prefix)
+        .as_bytes()
+        .to_vec();
+    bytes.resize(F::size_in_bytes(), <span class="number">0</span>);
+    F::from_bytes(<span class="kw-2">&amp;</span>bytes).expect(<span class="string">&quot;invalid domain bytes&quot;</span>)
 }
 
-<span class="doccomment">/// Create a legacy hasher context</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_legacy</span><span class="op">&lt;</span><span class="ident">H</span>: <span class="ident">Hashable</span><span class="op">&gt;</span>(<span class="ident">domain_param</span>: <span class="ident">H::D</span>) -&gt; <span class="ident">PoseidonHasherLegacy</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span> {
-    <span class="ident">poseidon::new_legacy</span>::<span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="ident">domain_param</span>)
+<span class="doccomment">/// Create a legacy hasher context
+</span><span class="kw">pub fn </span>create_legacy&lt;H: Hashable&gt;(domain_param: H::D) -&gt; PoseidonHasherLegacy&lt;H&gt; {
+    poseidon::new_legacy::&lt;H&gt;(domain_param)
 }
 
-<span class="doccomment">/// Create an experimental kimchi hasher context</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_kimchi</span><span class="op">&lt;</span><span class="ident">H</span>: <span class="ident">Hashable</span><span class="op">&gt;</span>(<span class="ident">domain_param</span>: <span class="ident">H::D</span>) -&gt; <span class="ident">PoseidonHasherKimchi</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">H::D</span>: <span class="ident">DomainParameter</span>,
+<span class="doccomment">/// Create an experimental kimchi hasher context
+</span><span class="kw">pub fn </span>create_kimchi&lt;H: Hashable&gt;(domain_param: H::D) -&gt; PoseidonHasherKimchi&lt;H&gt;
+<span class="kw">where
+    </span>H::D: DomainParameter,
 {
-    <span class="ident">poseidon::new_kimchi</span>::<span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="ident">domain_param</span>)
+    poseidon::new_kimchi::&lt;H&gt;(domain_param)
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="mina_hasher" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="mina_hasher" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

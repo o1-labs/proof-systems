@@ -17,24 +17,24 @@
 <span id="17">17</span>
 <span id="18">18</span>
 <span id="19">19</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Range check table</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Range check table
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::lookup::tables</span>::{<span class="ident">LookupTable</span>, <span class="ident">RANGE_CHECK_TABLE_ID</span>};
-<span class="kw">use</span> <span class="ident">ark_ff::Field</span>;
+</span><span class="kw">use </span><span class="kw">crate</span>::circuits::lookup::tables::{LookupTable, RANGE_CHECK_TABLE_ID};
+<span class="kw">use </span>ark_ff::Field;
 
-<span class="doccomment">/// The range check will be performed on 12-bit values, i.e. those in `[0, 2^12]`</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">RANGE_CHECK_UPPERBOUND</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1</span> <span class="op">&lt;</span><span class="op">&lt;</span> <span class="number">12</span>;
+<span class="doccomment">/// The range check will be performed on 12-bit values, i.e. those in `[0, 2^12]`
+</span><span class="kw">pub const </span>RANGE_CHECK_UPPERBOUND: u32 = <span class="number">1 </span>&lt;&lt; <span class="number">12</span>;
 
-<span class="doccomment">/// A single-column table containing the numbers from 0 to [RANGE_CHECK_UPPERBOUND] (inclusive)</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">range_check_table</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>() -&gt; <span class="ident">LookupTable</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">F</span>: <span class="ident">Field</span>,
+<span class="doccomment">/// A single-column table containing the numbers from 0 to [RANGE_CHECK_UPPERBOUND] (inclusive)
+</span><span class="kw">pub fn </span>range_check_table&lt;F&gt;() -&gt; LookupTable&lt;F&gt;
+<span class="kw">where
+    </span>F: Field,
 {
-    <span class="kw">let</span> <span class="ident">table</span> <span class="op">=</span> <span class="macro">vec!</span>[(<span class="number">0</span>..<span class="ident">RANGE_CHECK_UPPERBOUND</span>).<span class="ident">map</span>(<span class="ident">F::from</span>).<span class="ident">collect</span>()];
-    <span class="ident">LookupTable</span> {
-        <span class="ident">id</span>: <span class="ident">RANGE_CHECK_TABLE_ID</span>,
-        <span class="ident">data</span>: <span class="ident">table</span>,
+    <span class="kw">let </span>table = <span class="macro">vec!</span>[(<span class="number">0</span>..RANGE_CHECK_UPPERBOUND).map(F::from).collect()];
+    LookupTable {
+        id: RANGE_CHECK_TABLE_ID,
+        data: table,
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

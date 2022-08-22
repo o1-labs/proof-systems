@@ -7,14 +7,14 @@
 <span id="7">7</span>
 <span id="8">8</span>
 <span id="9">9</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">thiserror::Error</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>thiserror::Error;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CommitmentError</span> {
-    <span class="attribute">#[<span class="ident">error</span>(
-        <span class="string">&quot;the length of the given blinders ({0}) don&#39;t match the length of the commitment ({1})&quot;</span>
-    )]</span>
-    <span class="ident">BlindersDontMatch</span>(<span class="ident">usize</span>, <span class="ident">usize</span>),
+<span class="attribute">#[derive(Error, Debug, Clone, Copy)]
+</span><span class="kw">pub enum </span>CommitmentError {
+    <span class="attribute">#[error(
+        <span class="string">&quot;the length of the given blinders ({0}) don&#39;t match the length of the commitment ({1})&quot;
+    </span>)]
+    </span>BlindersDontMatch(usize, usize),
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

@@ -42,49 +42,49 @@
 <span id="42">42</span>
 <span id="43">43</span>
 <span id="44">44</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">ark_ec::AffineCurve</span>;
-<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">Field</span>, <span class="ident">PrimeField</span>};
-<span class="kw">use</span> <span class="ident">commitment_dlog</span>::{<span class="ident">commitment::CommitmentCurve</span>, <span class="ident">srs::endos</span>};
-<span class="kw">use</span> <span class="ident">mina_curves::pasta</span>::{<span class="ident">pallas::Pallas</span> <span class="kw">as</span> <span class="ident">PallasAffine</span>, <span class="ident">vesta::Vesta</span> <span class="kw">as</span> <span class="ident">VestaAffine</span>, <span class="ident">Fp</span>, <span class="ident">Fq</span>};
-<span class="kw">use</span> <span class="ident">oracle::poseidon::ArithmeticSpongeParams</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>ark_ec::AffineCurve;
+<span class="kw">use </span>ark_ff::{Field, PrimeField};
+<span class="kw">use </span>commitment_dlog::{commitment::CommitmentCurve, srs::endos};
+<span class="kw">use </span>mina_curves::pasta::{pallas::Pallas <span class="kw">as </span>PallasAffine, vesta::Vesta <span class="kw">as </span>VestaAffine, Fp, Fq};
+<span class="kw">use </span>oracle::poseidon::ArithmeticSpongeParams;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Constants</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="ident">poseidon</span>: <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">endo</span>: <span class="ident">F</span>,
-    <span class="kw">pub</span> <span class="ident">base</span>: (<span class="ident">F</span>, <span class="ident">F</span>),
+<span class="attribute">#[derive(Clone)]
+</span><span class="kw">pub struct </span>Constants&lt;F: Field&gt; {
+    <span class="kw">pub </span>poseidon: ArithmeticSpongeParams&lt;F&gt;,
+    <span class="kw">pub </span>endo: F,
+    <span class="kw">pub </span>base: (F, F),
 }
 
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">KimchiParams</span>: <span class="ident">PrimeField</span> {
-    <span class="kw">fn</span> <span class="ident">constants</span>() -&gt; <span class="ident">Constants</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>;
+<span class="kw">pub trait </span>KimchiParams: PrimeField {
+    <span class="kw">fn </span>constants() -&gt; Constants&lt;<span class="self">Self</span>&gt;;
 }
 
-<span class="kw">impl</span> <span class="ident">KimchiParams</span> <span class="kw">for</span> <span class="ident">Fp</span> {
-    <span class="kw">fn</span> <span class="ident">constants</span>() -&gt; <span class="ident">Constants</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> (<span class="ident">endo_q</span>, <span class="ident">_endo_r</span>) <span class="op">=</span> <span class="ident">endos</span>::<span class="op">&lt;</span><span class="ident">PallasAffine</span><span class="op">&gt;</span>();
-        <span class="kw">let</span> <span class="ident">base</span> <span class="op">=</span> <span class="ident">PallasAffine::prime_subgroup_generator</span>()
-            .<span class="ident">to_coordinates</span>()
-            .<span class="ident">unwrap</span>();
-        <span class="ident">Constants</span> {
-            <span class="ident">poseidon</span>: <span class="ident">oracle::pasta::fp_kimchi::params</span>(),
-            <span class="ident">endo</span>: <span class="ident">endo_q</span>,
-            <span class="ident">base</span>,
+<span class="kw">impl </span>KimchiParams <span class="kw">for </span>Fp {
+    <span class="kw">fn </span>constants() -&gt; Constants&lt;Fp&gt; {
+        <span class="kw">let </span>(endo_q, _endo_r) = endos::&lt;PallasAffine&gt;();
+        <span class="kw">let </span>base = PallasAffine::prime_subgroup_generator()
+            .to_coordinates()
+            .unwrap();
+        Constants {
+            poseidon: oracle::pasta::fp_kimchi::params(),
+            endo: endo_q,
+            base,
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">KimchiParams</span> <span class="kw">for</span> <span class="ident">Fq</span> {
-    <span class="kw">fn</span> <span class="ident">constants</span>() -&gt; <span class="ident">Constants</span><span class="op">&lt;</span><span class="ident">Fq</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> (<span class="ident">endo_q</span>, <span class="ident">_endo_r</span>) <span class="op">=</span> <span class="ident">endos</span>::<span class="op">&lt;</span><span class="ident">VestaAffine</span><span class="op">&gt;</span>();
-        <span class="kw">let</span> <span class="ident">base</span> <span class="op">=</span> <span class="ident">VestaAffine::prime_subgroup_generator</span>()
-            .<span class="ident">to_coordinates</span>()
-            .<span class="ident">unwrap</span>();
-        <span class="ident">Constants</span> {
-            <span class="ident">poseidon</span>: <span class="ident">oracle::pasta::fq_kimchi::params</span>(),
-            <span class="ident">endo</span>: <span class="ident">endo_q</span>,
-            <span class="ident">base</span>,
+<span class="kw">impl </span>KimchiParams <span class="kw">for </span>Fq {
+    <span class="kw">fn </span>constants() -&gt; Constants&lt;Fq&gt; {
+        <span class="kw">let </span>(endo_q, _endo_r) = endos::&lt;VestaAffine&gt;();
+        <span class="kw">let </span>base = VestaAffine::prime_subgroup_generator()
+            .to_coordinates()
+            .unwrap();
+        Constants {
+            poseidon: oracle::pasta::fq_kimchi::params(),
+            endo: endo_q,
+            base,
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

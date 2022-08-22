@@ -109,116 +109,116 @@
 <span id="109">109</span>
 <span id="110">110</span>
 <span id="111">111</span>
-</pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk prover polynomial evaluations primitive.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk prover polynomial evaluations primitive.
 
-<span class="kw">use</span> <span class="ident">ark_ff::Field</span>;
-<span class="kw">use</span> <span class="ident">oracle::sponge::ScalarChallenge</span>;
+</span><span class="kw">use </span>ark_ff::Field;
+<span class="kw">use </span>oracle::sponge::ScalarChallenge;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RandomOracles</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="ident">joint_combiner</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">ScalarChallenge</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">F</span>)<span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">beta</span>: <span class="ident">F</span>,
-    <span class="kw">pub</span> <span class="ident">gamma</span>: <span class="ident">F</span>,
-    <span class="kw">pub</span> <span class="ident">alpha_chal</span>: <span class="ident">ScalarChallenge</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">alpha</span>: <span class="ident">F</span>,
-    <span class="kw">pub</span> <span class="ident">zeta</span>: <span class="ident">F</span>,
-    <span class="kw">pub</span> <span class="ident">v</span>: <span class="ident">F</span>,
-    <span class="kw">pub</span> <span class="ident">u</span>: <span class="ident">F</span>,
-    <span class="kw">pub</span> <span class="ident">zeta_chal</span>: <span class="ident">ScalarChallenge</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">v_chal</span>: <span class="ident">ScalarChallenge</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">u_chal</span>: <span class="ident">ScalarChallenge</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Clone, Debug)]
+</span><span class="kw">pub struct </span>RandomOracles&lt;F: Field&gt; {
+    <span class="kw">pub </span>joint_combiner: <span class="prelude-ty">Option</span>&lt;(ScalarChallenge&lt;F&gt;, F)&gt;,
+    <span class="kw">pub </span>beta: F,
+    <span class="kw">pub </span>gamma: F,
+    <span class="kw">pub </span>alpha_chal: ScalarChallenge&lt;F&gt;,
+    <span class="kw">pub </span>alpha: F,
+    <span class="kw">pub </span>zeta: F,
+    <span class="kw">pub </span>v: F,
+    <span class="kw">pub </span>u: F,
+    <span class="kw">pub </span>zeta_chal: ScalarChallenge&lt;F&gt;,
+    <span class="kw">pub </span>v_chal: ScalarChallenge&lt;F&gt;,
+    <span class="kw">pub </span>u_chal: ScalarChallenge&lt;F&gt;,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">RandomOracles</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">c</span> <span class="op">=</span> <span class="ident">ScalarChallenge</span>(<span class="ident">F::zero</span>());
-        <span class="self">Self</span> {
-            <span class="ident">beta</span>: <span class="ident">F::zero</span>(),
-            <span class="ident">gamma</span>: <span class="ident">F::zero</span>(),
-            <span class="ident">alpha</span>: <span class="ident">F::zero</span>(),
-            <span class="ident">zeta</span>: <span class="ident">F::zero</span>(),
-            <span class="ident">v</span>: <span class="ident">F::zero</span>(),
-            <span class="ident">u</span>: <span class="ident">F::zero</span>(),
-            <span class="ident">alpha_chal</span>: <span class="ident">c</span>.<span class="ident">clone</span>(),
-            <span class="ident">zeta_chal</span>: <span class="ident">c</span>.<span class="ident">clone</span>(),
-            <span class="ident">v_chal</span>: <span class="ident">c</span>.<span class="ident">clone</span>(),
-            <span class="ident">u_chal</span>: <span class="ident">c</span>,
-            <span class="ident">joint_combiner</span>: <span class="prelude-val">None</span>,
+<span class="kw">impl</span>&lt;F: Field&gt; Default <span class="kw">for </span>RandomOracles&lt;F&gt; {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>c = ScalarChallenge(F::zero());
+        <span class="self">Self </span>{
+            beta: F::zero(),
+            gamma: F::zero(),
+            alpha: F::zero(),
+            zeta: F::zero(),
+            v: F::zero(),
+            u: F::zero(),
+            alpha_chal: c.clone(),
+            zeta_chal: c.clone(),
+            v_chal: c.clone(),
+            u_chal: c,
+            joint_combiner: <span class="prelude-val">None</span>,
         }
     }
 }
 
-<span class="comment">//</span>
-<span class="comment">// OCaml types</span>
-<span class="comment">//</span>
+<span class="comment">//
+// OCaml types
+//
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;ocaml_types&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">caml</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident">oracle::sponge::caml::CamlScalarChallenge</span>;
+</span><span class="attribute">#[cfg(feature = <span class="string">&quot;ocaml_types&quot;</span>)]
+</span><span class="kw">pub mod </span>caml {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span>oracle::sponge::caml::CamlScalarChallenge;
 
-    <span class="comment">//</span>
-    <span class="comment">// RandomOracles&lt;F&gt; &lt;-&gt; CamlRandomOracles&lt;CamlF&gt;</span>
-    <span class="comment">//</span>
+    <span class="comment">//
+    // RandomOracles&lt;F&gt; &lt;-&gt; CamlRandomOracles&lt;CamlF&gt;
+    //
 
-    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">ocaml_gen::Struct</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlRandomOracles</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span> {
-        <span class="kw">pub</span> <span class="ident">joint_combiner</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">CamlScalarChallenge</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>, <span class="ident">CamlF</span>)<span class="op">&gt;</span>,
-        <span class="kw">pub</span> <span class="ident">beta</span>: <span class="ident">CamlF</span>,
-        <span class="kw">pub</span> <span class="ident">gamma</span>: <span class="ident">CamlF</span>,
-        <span class="kw">pub</span> <span class="ident">alpha_chal</span>: <span class="ident">CamlScalarChallenge</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
-        <span class="kw">pub</span> <span class="ident">alpha</span>: <span class="ident">CamlF</span>,
-        <span class="kw">pub</span> <span class="ident">zeta</span>: <span class="ident">CamlF</span>,
-        <span class="kw">pub</span> <span class="ident">v</span>: <span class="ident">CamlF</span>,
-        <span class="kw">pub</span> <span class="ident">u</span>: <span class="ident">CamlF</span>,
-        <span class="kw">pub</span> <span class="ident">zeta_chal</span>: <span class="ident">CamlScalarChallenge</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
-        <span class="kw">pub</span> <span class="ident">v_chal</span>: <span class="ident">CamlScalarChallenge</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
-        <span class="kw">pub</span> <span class="ident">u_chal</span>: <span class="ident">CamlScalarChallenge</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
+    </span><span class="attribute">#[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    </span><span class="kw">pub struct </span>CamlRandomOracles&lt;CamlF&gt; {
+        <span class="kw">pub </span>joint_combiner: <span class="prelude-ty">Option</span>&lt;(CamlScalarChallenge&lt;CamlF&gt;, CamlF)&gt;,
+        <span class="kw">pub </span>beta: CamlF,
+        <span class="kw">pub </span>gamma: CamlF,
+        <span class="kw">pub </span>alpha_chal: CamlScalarChallenge&lt;CamlF&gt;,
+        <span class="kw">pub </span>alpha: CamlF,
+        <span class="kw">pub </span>zeta: CamlF,
+        <span class="kw">pub </span>v: CamlF,
+        <span class="kw">pub </span>u: CamlF,
+        <span class="kw">pub </span>zeta_chal: CamlScalarChallenge&lt;CamlF&gt;,
+        <span class="kw">pub </span>v_chal: CamlScalarChallenge&lt;CamlF&gt;,
+        <span class="kw">pub </span>u_chal: CamlScalarChallenge&lt;CamlF&gt;,
     }
 
-    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">CamlF</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">RandomOracles</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CamlRandomOracles</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">F</span>: <span class="ident">Field</span>,
-        <span class="ident">CamlF</span>: <span class="ident">From</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
+    <span class="kw">impl</span>&lt;F, CamlF&gt; From&lt;RandomOracles&lt;F&gt;&gt; <span class="kw">for </span>CamlRandomOracles&lt;CamlF&gt;
+    <span class="kw">where
+        </span>F: Field,
+        CamlF: From&lt;F&gt;,
     {
-        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">ro</span>: <span class="ident">RandomOracles</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-            <span class="self">Self</span> {
-                <span class="ident">joint_combiner</span>: <span class="ident">ro</span>.<span class="ident">joint_combiner</span>.<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">l</span>, <span class="ident">r</span>)<span class="op">|</span> (<span class="ident">l</span>.<span class="ident">into</span>(), <span class="ident">r</span>.<span class="ident">into</span>())),
-                <span class="ident">beta</span>: <span class="ident">ro</span>.<span class="ident">beta</span>.<span class="ident">into</span>(),
-                <span class="ident">gamma</span>: <span class="ident">ro</span>.<span class="ident">gamma</span>.<span class="ident">into</span>(),
-                <span class="ident">alpha_chal</span>: <span class="ident">ro</span>.<span class="ident">alpha_chal</span>.<span class="ident">into</span>(),
-                <span class="ident">alpha</span>: <span class="ident">ro</span>.<span class="ident">alpha</span>.<span class="ident">into</span>(),
-                <span class="ident">zeta</span>: <span class="ident">ro</span>.<span class="ident">zeta</span>.<span class="ident">into</span>(),
-                <span class="ident">v</span>: <span class="ident">ro</span>.<span class="ident">v</span>.<span class="ident">into</span>(),
-                <span class="ident">u</span>: <span class="ident">ro</span>.<span class="ident">u</span>.<span class="ident">into</span>(),
-                <span class="ident">zeta_chal</span>: <span class="ident">ro</span>.<span class="ident">zeta_chal</span>.<span class="ident">into</span>(),
-                <span class="ident">v_chal</span>: <span class="ident">ro</span>.<span class="ident">v_chal</span>.<span class="ident">into</span>(),
-                <span class="ident">u_chal</span>: <span class="ident">ro</span>.<span class="ident">u_chal</span>.<span class="ident">into</span>(),
+        <span class="kw">fn </span>from(ro: RandomOracles&lt;F&gt;) -&gt; <span class="self">Self </span>{
+            <span class="self">Self </span>{
+                joint_combiner: ro.joint_combiner.map(|(l, r)| (l.into(), r.into())),
+                beta: ro.beta.into(),
+                gamma: ro.gamma.into(),
+                alpha_chal: ro.alpha_chal.into(),
+                alpha: ro.alpha.into(),
+                zeta: ro.zeta.into(),
+                v: ro.v.into(),
+                u: ro.u.into(),
+                zeta_chal: ro.zeta_chal.into(),
+                v_chal: ro.v_chal.into(),
+                u_chal: ro.u_chal.into(),
             }
         }
     }
 
-    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">CamlF</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">CamlRandomOracles</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">RandomOracles</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">CamlF</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-        <span class="ident">F</span>: <span class="ident">Field</span>,
+    <span class="kw">impl</span>&lt;F, CamlF&gt; From&lt;CamlRandomOracles&lt;CamlF&gt;&gt; <span class="kw">for </span>RandomOracles&lt;F&gt;
+    <span class="kw">where
+        </span>CamlF: Into&lt;F&gt;,
+        F: Field,
     {
-        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">caml_ro</span>: <span class="ident">CamlRandomOracles</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-            <span class="ident">RandomOracles</span> {
-                <span class="ident">joint_combiner</span>: <span class="ident">caml_ro</span>.<span class="ident">joint_combiner</span>.<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">l</span>, <span class="ident">r</span>)<span class="op">|</span> (<span class="ident">l</span>.<span class="ident">into</span>(), <span class="ident">r</span>.<span class="ident">into</span>())),
-                <span class="ident">beta</span>: <span class="ident">caml_ro</span>.<span class="ident">beta</span>.<span class="ident">into</span>(),
-                <span class="ident">gamma</span>: <span class="ident">caml_ro</span>.<span class="ident">gamma</span>.<span class="ident">into</span>(),
-                <span class="ident">alpha_chal</span>: <span class="ident">caml_ro</span>.<span class="ident">alpha_chal</span>.<span class="ident">into</span>(),
-                <span class="ident">alpha</span>: <span class="ident">caml_ro</span>.<span class="ident">alpha</span>.<span class="ident">into</span>(),
-                <span class="ident">zeta</span>: <span class="ident">caml_ro</span>.<span class="ident">zeta</span>.<span class="ident">into</span>(),
-                <span class="ident">v</span>: <span class="ident">caml_ro</span>.<span class="ident">v</span>.<span class="ident">into</span>(),
-                <span class="ident">u</span>: <span class="ident">caml_ro</span>.<span class="ident">u</span>.<span class="ident">into</span>(),
-                <span class="ident">zeta_chal</span>: <span class="ident">caml_ro</span>.<span class="ident">zeta_chal</span>.<span class="ident">into</span>(),
-                <span class="ident">v_chal</span>: <span class="ident">caml_ro</span>.<span class="ident">v_chal</span>.<span class="ident">into</span>(),
-                <span class="ident">u_chal</span>: <span class="ident">caml_ro</span>.<span class="ident">u_chal</span>.<span class="ident">into</span>(),
+        <span class="kw">fn </span>from(caml_ro: CamlRandomOracles&lt;CamlF&gt;) -&gt; <span class="self">Self </span>{
+            RandomOracles {
+                joint_combiner: caml_ro.joint_combiner.map(|(l, r)| (l.into(), r.into())),
+                beta: caml_ro.beta.into(),
+                gamma: caml_ro.gamma.into(),
+                alpha_chal: caml_ro.alpha_chal.into(),
+                alpha: caml_ro.alpha.into(),
+                zeta: caml_ro.zeta.into(),
+                v: caml_ro.v.into(),
+                u: caml_ro.u.into(),
+                zeta_chal: caml_ro.zeta_chal.into(),
+                v_chal: caml_ro.v_chal.into(),
+                u_chal: caml_ro.u_chal.into(),
             }
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

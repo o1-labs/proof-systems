@@ -289,296 +289,296 @@
 <span id="289">289</span>
 <span id="290">290</span>
 <span id="291">291</span>
-</pre><pre class="rust"><code><span class="doccomment">//! This module implements a complete EC addition gate.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This module implements a complete EC addition gate.
 
-<span class="comment">//~ The layout is</span>
-<span class="comment">//~</span>
-<span class="comment">//~ |  0 |  1 |  2 |  3 |  4 |  5 |  6  |    7   | 8 |   9   |    10   |</span>
-<span class="comment">//~ |:--:|:--:|:--:|:--:|:--:|:--:|:---:|:------:|:-:|:-----:|:-------:|</span>
-<span class="comment">//~ | x1 | y1 | x2 | y2 | x3 | y3 | inf | same_x | s | inf_z | x21_inv |</span>
-<span class="comment">//~</span>
-<span class="comment">//~ where</span>
-<span class="comment">//~ - `(x1, y1), (x2, y2)` are the inputs and `(x3, y3)` the output.</span>
-<span class="comment">//~ - `inf` is a boolean that is true iff the result (x3, y3) is the point at infinity.</span>
-<span class="comment">//~</span>
-<span class="comment">//~ The rest of the values are inaccessible from the permutation argument, but</span>
-<span class="comment">//~ - `same_x` is a boolean that is true iff `x1 == x2`.</span>
-<span class="comment">//~</span>
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
-    <span class="ident">argument</span>::{<span class="ident">Argument</span>, <span class="ident">ArgumentType</span>},
-    <span class="ident">expr</span>::{<span class="ident">prologue</span>::<span class="kw-2">*</span>, <span class="ident">Cache</span>},
-    <span class="ident">gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">GateType</span>},
-    <span class="ident">wires::COLUMNS</span>,
+</span><span class="comment">//~ The layout is
+//~
+//~ |  0 |  1 |  2 |  3 |  4 |  5 |  6  |    7   | 8 |   9   |    10   |
+//~ |:--:|:--:|:--:|:--:|:--:|:--:|:---:|:------:|:-:|:-----:|:-------:|
+//~ | x1 | y1 | x2 | y2 | x3 | y3 | inf | same_x | s | inf_z | x21_inv |
+//~
+//~ where
+//~ - `(x1, y1), (x2, y2)` are the inputs and `(x3, y3)` the output.
+//~ - `inf` is a boolean that is true iff the result (x3, y3) is the point at infinity.
+//~
+//~ The rest of the values are inaccessible from the permutation argument, but
+//~ - `same_x` is a boolean that is true iff `x1 == x2`.
+//~
+</span><span class="kw">use </span><span class="kw">crate</span>::circuits::{
+    argument::{Argument, ArgumentType},
+    expr::{prologue::<span class="kw-2">*</span>, Cache},
+    gate::{CircuitGate, GateType},
+    wires::COLUMNS,
 };
-<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">Field</span>, <span class="ident">One</span>, <span class="ident">PrimeField</span>};
-<span class="kw">use</span> <span class="ident">std::marker::PhantomData</span>;
+<span class="kw">use </span>ark_ff::{FftField, Field, One, PrimeField};
+<span class="kw">use </span>std::marker::PhantomData;
 
-<span class="doccomment">/// This enforces that</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// r = (z == 0) ? 1 : 0</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Additionally, if r == 0, then z_inv = 1 / z.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// If r == 1 however (i.e., if z == 0), then z_inv is unconstrained.</span>
-<span class="kw">fn</span> <span class="ident">zero_check</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">z</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">z_inv</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">r</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-    <span class="macro">vec!</span>[<span class="ident">z_inv</span> <span class="op">*</span> <span class="ident">z</span>.<span class="ident">clone</span>() <span class="op">-</span> (<span class="ident">E::one</span>() <span class="op">-</span> <span class="ident">r</span>.<span class="ident">clone</span>()), <span class="ident">r</span> <span class="op">*</span> <span class="ident">z</span>]
+<span class="doccomment">/// This enforces that
+///
+/// r = (z == 0) ? 1 : 0
+///
+/// Additionally, if r == 0, then z_inv = 1 / z.
+///
+/// If r == 1 however (i.e., if z == 0), then z_inv is unconstrained.
+</span><span class="kw">fn </span>zero_check&lt;F: Field&gt;(z: E&lt;F&gt;, z_inv: E&lt;F&gt;, r: E&lt;F&gt;) -&gt; Vec&lt;E&lt;F&gt;&gt; {
+    <span class="macro">vec!</span>[z_inv * z.clone() - (E::one() - r.clone()), r * z]
 }
 
-<span class="comment">//~ The following constraints are generated:</span>
-<span class="comment">//~</span>
-<span class="comment">//~ constraint 1:</span>
-<span class="comment">//~ * $x_{0} = w_{2} - w_{0}$</span>
-<span class="comment">//~ * $(w_{10} \cdot x_{0} - \mathbb{F}(1) - w_{7})$</span>
-<span class="comment">//~</span>
-<span class="comment">//~ constraint 2:</span>
-<span class="comment">//~</span>
-<span class="comment">//~ * $x_{0} = w_{2} - w_{0}$</span>
-<span class="comment">//~ * $w_{7} \cdot x_{0}$</span>
-<span class="comment">//~</span>
-<span class="comment">//~ constraint 3:</span>
-<span class="comment">//~</span>
-<span class="comment">//~ * $x_{0} = w_{2} - w_{0}$</span>
-<span class="comment">//~ * $x_{1} = w_{3} - w_{1}$</span>
-<span class="comment">//~ * $x_{2} = w_{0} \cdot w_{0}$</span>
-<span class="comment">//~ * $w_{7} \cdot (2 \cdot w_{8} \cdot w_{1} - 2 \cdot x_{2} - x_{2}) + (\mathbb{F}(1) - w_{7}) \cdot (x_{0} \cdot w_{8} - x_{1})$</span>
-<span class="comment">//~</span>
-<span class="comment">//~ constraint 4:</span>
-<span class="comment">//~</span>
-<span class="comment">//~ * $w_{0} + w_{2} + w_{4} - w_{8} \cdot w_{8}$</span>
-<span class="comment">//~</span>
-<span class="comment">//~ constraint 5:</span>
-<span class="comment">//~</span>
-<span class="comment">//~ * $w_{8} \cdot (w_{0} - w_{4}) - w_{1} - w_{5}$</span>
-<span class="comment">//~</span>
-<span class="comment">//~ constraint 6:</span>
-<span class="comment">//~</span>
-<span class="comment">//~ * $x_{1} = w_{3} - w_{1}$</span>
-<span class="comment">//~ * $x_{1} \cdot (w_{7} - w_{6})$</span>
-<span class="comment">//~</span>
-<span class="comment">//~ constraint 7:</span>
-<span class="comment">//~</span>
-<span class="comment">//~ * $x_{1} = w_{3} - w_{1}$</span>
-<span class="comment">//~ * $x_{1} \cdot w_{9} - w_{6}$</span>
-<span class="comment">//~</span>
+<span class="comment">//~ The following constraints are generated:
+//~
+//~ constraint 1:
+//~ * $x_{0} = w_{2} - w_{0}$
+//~ * $(w_{10} \cdot x_{0} - \mathbb{F}(1) - w_{7})$
+//~
+//~ constraint 2:
+//~
+//~ * $x_{0} = w_{2} - w_{0}$
+//~ * $w_{7} \cdot x_{0}$
+//~
+//~ constraint 3:
+//~
+//~ * $x_{0} = w_{2} - w_{0}$
+//~ * $x_{1} = w_{3} - w_{1}$
+//~ * $x_{2} = w_{0} \cdot w_{0}$
+//~ * $w_{7} \cdot (2 \cdot w_{8} \cdot w_{1} - 2 \cdot x_{2} - x_{2}) + (\mathbb{F}(1) - w_{7}) \cdot (x_{0} \cdot w_{8} - x_{1})$
+//~
+//~ constraint 4:
+//~
+//~ * $w_{0} + w_{2} + w_{4} - w_{8} \cdot w_{8}$
+//~
+//~ constraint 5:
+//~
+//~ * $w_{8} \cdot (w_{0} - w_{4}) - w_{1} - w_{5}$
+//~
+//~ constraint 6:
+//~
+//~ * $x_{1} = w_{3} - w_{1}$
+//~ * $x_{1} \cdot (w_{7} - w_{6})$
+//~
+//~ constraint 7:
+//~
+//~ * $x_{1} = w_{3} - w_{1}$
+//~ * $x_{1} \cdot w_{9} - w_{6}$
+//~
 
-<span class="doccomment">/// Implementation of the CompleteAdd gate</span>
-<span class="doccomment">/// It uses the constraints</span>
-<span class="doccomment">///</span>
-<span class="doccomment">///   (x2 - x1) * s = y2 - y1</span>
-<span class="doccomment">///   s^2 = x1 + x2 + x3</span>
-<span class="doccomment">///   y3 = s (x1 - x3) - y1</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// for addition and</span>
-<span class="doccomment">///</span>
-<span class="doccomment">///   2 * s * y1 = 3 * x1^2</span>
-<span class="doccomment">///   s^2 = 2 x1 + x3</span>
-<span class="doccomment">///   y3 = s (x1 - x3) - y1</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// for doubling.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// See [here](https://en.wikipedia.org/wiki/Elliptic_curve#The_group_law) for the formulas used.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CompleteAdd</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">PhantomData</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>);
+</span><span class="doccomment">/// Implementation of the CompleteAdd gate
+/// It uses the constraints
+///
+///   (x2 - x1) * s = y2 - y1
+///   s^2 = x1 + x2 + x3
+///   y3 = s (x1 - x3) - y1
+///
+/// for addition and
+///
+///   2 * s * y1 = 3 * x1^2
+///   s^2 = 2 x1 + x3
+///   y3 = s (x1 - x3) - y1
+///
+/// for doubling.
+///
+/// See [here](https://en.wikipedia.org/wiki/Elliptic_curve#The_group_law) for the formulas used.
+</span><span class="kw">pub struct </span>CompleteAdd&lt;F&gt;(PhantomData&lt;F&gt;);
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="ident">Argument</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CompleteAdd</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">F</span>: <span class="ident">FftField</span>,
+<span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>CompleteAdd&lt;F&gt;
+<span class="kw">where
+    </span>F: FftField,
 {
-    <span class="kw">const</span> <span class="ident">ARGUMENT_TYPE</span>: <span class="ident">ArgumentType</span> <span class="op">=</span> <span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::CompleteAdd</span>);
-    <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">7</span>;
+    <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CompleteAdd);
+    <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">7</span>;
 
-    <span class="kw">fn</span> <span class="ident">constraints</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="comment">// This function makes 2 + 1 + 1 + 1 + 2 = 7 constraints</span>
-        <span class="kw">let</span> <span class="ident">x1</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">0</span>);
-        <span class="kw">let</span> <span class="ident">y1</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">1</span>);
-        <span class="kw">let</span> <span class="ident">x2</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">2</span>);
-        <span class="kw">let</span> <span class="ident">y2</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">3</span>);
-        <span class="kw">let</span> <span class="ident">x3</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">4</span>);
-        <span class="kw">let</span> <span class="ident">y3</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">5</span>);
+    <span class="kw">fn </span>constraints() -&gt; Vec&lt;E&lt;F&gt;&gt; {
+        <span class="comment">// This function makes 2 + 1 + 1 + 1 + 2 = 7 constraints
+        </span><span class="kw">let </span>x1 = witness_curr(<span class="number">0</span>);
+        <span class="kw">let </span>y1 = witness_curr(<span class="number">1</span>);
+        <span class="kw">let </span>x2 = witness_curr(<span class="number">2</span>);
+        <span class="kw">let </span>y2 = witness_curr(<span class="number">3</span>);
+        <span class="kw">let </span>x3 = witness_curr(<span class="number">4</span>);
+        <span class="kw">let </span>y3 = witness_curr(<span class="number">5</span>);
 
-        <span class="kw">let</span> <span class="ident">inf</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">6</span>);
-        <span class="comment">// same_x is 1 if x1 == x2, 0 otherwise</span>
-        <span class="kw">let</span> <span class="ident">same_x</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">7</span>);
+        <span class="kw">let </span>inf = witness_curr(<span class="number">6</span>);
+        <span class="comment">// same_x is 1 if x1 == x2, 0 otherwise
+        </span><span class="kw">let </span>same_x = witness_curr(<span class="number">7</span>);
 
-        <span class="kw">let</span> <span class="ident">s</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">8</span>);
+        <span class="kw">let </span>s = witness_curr(<span class="number">8</span>);
 
-        <span class="comment">// This variable is used to constrain inf</span>
-        <span class="kw">let</span> <span class="ident">inf_z</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">9</span>);
+        <span class="comment">// This variable is used to constrain inf
+        </span><span class="kw">let </span>inf_z = witness_curr(<span class="number">9</span>);
 
-        <span class="comment">// This variable is used to constrain same_x</span>
-        <span class="kw">let</span> <span class="ident">x21_inv</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">10</span>);
+        <span class="comment">// This variable is used to constrain same_x
+        </span><span class="kw">let </span>x21_inv = witness_curr(<span class="number">10</span>);
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cache</span> <span class="op">=</span> <span class="ident">Cache::default</span>();
+        <span class="kw">let </span><span class="kw-2">mut </span>cache = Cache::default();
 
-        <span class="kw">let</span> <span class="ident">x21</span> <span class="op">=</span> <span class="ident">cache</span>.<span class="ident">cache</span>(<span class="ident">x2</span>.<span class="ident">clone</span>() <span class="op">-</span> <span class="ident">x1</span>.<span class="ident">clone</span>());
-        <span class="kw">let</span> <span class="ident">y21</span> <span class="op">=</span> <span class="ident">cache</span>.<span class="ident">cache</span>(<span class="ident">y2</span> <span class="op">-</span> <span class="ident">y1</span>.<span class="ident">clone</span>());
+        <span class="kw">let </span>x21 = cache.cache(x2.clone() - x1.clone());
+        <span class="kw">let </span>y21 = cache.cache(y2 - y1.clone());
 
-        <span class="comment">// same_x is now constrained</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">zero_check</span>(<span class="ident">x21</span>.<span class="ident">clone</span>(), <span class="ident">x21_inv</span>, <span class="ident">same_x</span>.<span class="ident">clone</span>());
+        <span class="comment">// same_x is now constrained
+        </span><span class="kw">let </span><span class="kw-2">mut </span>res = zero_check(x21.clone(), x21_inv, same_x.clone());
 
-        <span class="comment">// this constrains s so that</span>
-        <span class="comment">// if same_x:</span>
-        <span class="comment">//   2 * s * y1 = 3 * x1^2</span>
-        <span class="comment">// else:</span>
-        <span class="comment">//   (x2 - x1) * s = y2 - y1</span>
-        {
-            <span class="kw">let</span> <span class="ident">x1_squared</span> <span class="op">=</span> <span class="ident">cache</span>.<span class="ident">cache</span>(<span class="ident">x1</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">x1</span>.<span class="ident">clone</span>());
-            <span class="kw">let</span> <span class="ident">dbl_case</span> <span class="op">=</span>
-                <span class="ident">s</span>.<span class="ident">clone</span>().<span class="ident">double</span>() <span class="op">*</span> <span class="ident">y1</span>.<span class="ident">clone</span>() <span class="op">-</span> <span class="ident">x1_squared</span>.<span class="ident">clone</span>().<span class="ident">double</span>() <span class="op">-</span> <span class="ident">x1_squared</span>;
-            <span class="kw">let</span> <span class="ident">add_case</span> <span class="op">=</span> <span class="ident">x21</span> <span class="op">*</span> <span class="ident">s</span>.<span class="ident">clone</span>() <span class="op">-</span> <span class="ident">y21</span>.<span class="ident">clone</span>();
+        <span class="comment">// this constrains s so that
+        // if same_x:
+        //   2 * s * y1 = 3 * x1^2
+        // else:
+        //   (x2 - x1) * s = y2 - y1
+        </span>{
+            <span class="kw">let </span>x1_squared = cache.cache(x1.clone() * x1.clone());
+            <span class="kw">let </span>dbl_case =
+                s.clone().double() * y1.clone() - x1_squared.clone().double() - x1_squared;
+            <span class="kw">let </span>add_case = x21 * s.clone() - y21.clone();
 
-            <span class="ident">res</span>.<span class="ident">push</span>(<span class="ident">same_x</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">dbl_case</span> <span class="op">+</span> (<span class="ident">E::one</span>() <span class="op">-</span> <span class="ident">same_x</span>.<span class="ident">clone</span>()) <span class="op">*</span> <span class="ident">add_case</span>);
+            res.push(same_x.clone() * dbl_case + (E::one() - same_x.clone()) * add_case);
         }
 
-        <span class="comment">// Unconditionally constrain</span>
-        <span class="comment">//</span>
-        <span class="comment">// s^2 = x1 + x2 + x3</span>
-        <span class="comment">//</span>
-        <span class="comment">// This constrains x3.</span>
-        <span class="ident">res</span>.<span class="ident">push</span>(<span class="ident">x1</span>.<span class="ident">clone</span>() <span class="op">+</span> <span class="ident">x2</span> <span class="op">+</span> <span class="ident">x3</span>.<span class="ident">clone</span>() <span class="op">-</span> <span class="ident">s</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">s</span>.<span class="ident">clone</span>());
+        <span class="comment">// Unconditionally constrain
+        //
+        // s^2 = x1 + x2 + x3
+        //
+        // This constrains x3.
+        </span>res.push(x1.clone() + x2 + x3.clone() - s.clone() * s.clone());
 
-        <span class="comment">// Unconditionally constrain</span>
-        <span class="comment">// y3 = -y1 + s(x1 - x3)</span>
-        <span class="comment">//</span>
-        <span class="comment">// This constrains y3.</span>
-        <span class="ident">res</span>.<span class="ident">push</span>(<span class="ident">s</span> <span class="op">*</span> (<span class="ident">x1</span> <span class="op">-</span> <span class="ident">x3</span>) <span class="op">-</span> <span class="ident">y1</span> <span class="op">-</span> <span class="ident">y3</span>);
+        <span class="comment">// Unconditionally constrain
+        // y3 = -y1 + s(x1 - x3)
+        //
+        // This constrains y3.
+        </span>res.push(s * (x1 - x3) - y1 - y3);
 
-        <span class="comment">// It only remains to constrain inf</span>
-        <span class="comment">//</span>
-        <span class="comment">// The result is the point at infinity only if x1 == x2 but y1 != y2. I.e.,</span>
-        <span class="comment">//</span>
-        <span class="comment">// inf = same_x &amp;&amp; !(y1 == y2)</span>
-        <span class="comment">//</span>
-        <span class="comment">// We can do this using a modified version of the zero_check constraints</span>
-        <span class="comment">//</span>
-        <span class="comment">// Let Y = (y1 == y2).</span>
-        <span class="comment">//</span>
-        <span class="comment">// The zero_check constraints for Y (introducing a new z_inv variable) would be</span>
-        <span class="comment">//</span>
-        <span class="comment">// (y2 - y1) Y = 0</span>
-        <span class="comment">// (y2 - y1) z_inv = 1 - Y</span>
-        <span class="comment">//</span>
-        <span class="comment">// By definition,</span>
-        <span class="comment">//</span>
-        <span class="comment">// inf = same_x * (1 - Y) = same_x - Y same_x</span>
-        <span class="comment">//</span>
-        <span class="comment">// rearranging gives</span>
-        <span class="comment">//</span>
-        <span class="comment">// Y same_x = same_x - inf</span>
-        <span class="comment">//</span>
-        <span class="comment">// so multiplying the above constraints through by same_x yields constraints on inf.</span>
-        <span class="comment">//</span>
-        <span class="comment">// (y2 - y1) same_x Y = 0</span>
-        <span class="comment">// (y2 - y1) same_x z_inv = inf</span>
-        <span class="comment">//</span>
-        <span class="comment">// i.e.,</span>
-        <span class="comment">//</span>
-        <span class="comment">// (y2 - y1) (same_x - inf) = 0</span>
-        <span class="comment">// (y2 - y1) same_x z_inv = inf</span>
-        <span class="comment">//</span>
-        <span class="comment">// Now, since z_inv was an arbitrary variable, unused elsewhere, we&#39;ll set</span>
-        <span class="comment">// inf_z to take on the value of same_x * z_inv, and thus we have equations</span>
-        <span class="comment">//</span>
-        <span class="comment">// (y2 - y1) (same_x - inf) = 0</span>
-        <span class="comment">// (y2 - y1) inf_z = inf</span>
-        <span class="comment">//</span>
-        <span class="comment">// Let&#39;s check that these equations are correct.</span>
-        <span class="comment">//</span>
-        <span class="comment">// Case 1: [y1 == y2]</span>
-        <span class="comment">//   In this case the expected result is inf = 0, since for the result to be the point at</span>
-        <span class="comment">//   infinity we need y1 = -y2 (note here we assume y1 != 0, which is the case for prime order</span>
-        <span class="comment">//   curves).</span>
-        <span class="comment">//</span>
-        <span class="comment">//   y2 - y1 = 0, so the second equation becomes inf = 0, which is correct.</span>
-        <span class="comment">//</span>
-        <span class="comment">//   We can set inf_z = 0 in this case.</span>
-        <span class="comment">//</span>
-        <span class="comment">// Case 2: [y1 != y2]</span>
-        <span class="comment">//   In this case, the expected result is 1 if x1 == x2, and 0 if x1 != x2.</span>
-        <span class="comment">//   I.e., inf = same_x.</span>
-        <span class="comment">//</span>
-        <span class="comment">//   y2 - y1 != 0, so the first equation implies same_x - inf = 0.</span>
-        <span class="comment">//   I.e., inf = same_x, as desired.</span>
-        <span class="comment">//</span>
-        <span class="comment">//   In this case, we set</span>
-        <span class="comment">//   inf_z = if same_x then 1 / (y2 - y1) else 0</span>
+        <span class="comment">// It only remains to constrain inf
+        //
+        // The result is the point at infinity only if x1 == x2 but y1 != y2. I.e.,
+        //
+        // inf = same_x &amp;&amp; !(y1 == y2)
+        //
+        // We can do this using a modified version of the zero_check constraints
+        //
+        // Let Y = (y1 == y2).
+        //
+        // The zero_check constraints for Y (introducing a new z_inv variable) would be
+        //
+        // (y2 - y1) Y = 0
+        // (y2 - y1) z_inv = 1 - Y
+        //
+        // By definition,
+        //
+        // inf = same_x * (1 - Y) = same_x - Y same_x
+        //
+        // rearranging gives
+        //
+        // Y same_x = same_x - inf
+        //
+        // so multiplying the above constraints through by same_x yields constraints on inf.
+        //
+        // (y2 - y1) same_x Y = 0
+        // (y2 - y1) same_x z_inv = inf
+        //
+        // i.e.,
+        //
+        // (y2 - y1) (same_x - inf) = 0
+        // (y2 - y1) same_x z_inv = inf
+        //
+        // Now, since z_inv was an arbitrary variable, unused elsewhere, we&#39;ll set
+        // inf_z to take on the value of same_x * z_inv, and thus we have equations
+        //
+        // (y2 - y1) (same_x - inf) = 0
+        // (y2 - y1) inf_z = inf
+        //
+        // Let&#39;s check that these equations are correct.
+        //
+        // Case 1: [y1 == y2]
+        //   In this case the expected result is inf = 0, since for the result to be the point at
+        //   infinity we need y1 = -y2 (note here we assume y1 != 0, which is the case for prime order
+        //   curves).
+        //
+        //   y2 - y1 = 0, so the second equation becomes inf = 0, which is correct.
+        //
+        //   We can set inf_z = 0 in this case.
+        //
+        // Case 2: [y1 != y2]
+        //   In this case, the expected result is 1 if x1 == x2, and 0 if x1 != x2.
+        //   I.e., inf = same_x.
+        //
+        //   y2 - y1 != 0, so the first equation implies same_x - inf = 0.
+        //   I.e., inf = same_x, as desired.
+        //
+        //   In this case, we set
+        //   inf_z = if same_x then 1 / (y2 - y1) else 0
 
-        <span class="ident">res</span>.<span class="ident">push</span>(<span class="ident">y21</span>.<span class="ident">clone</span>() <span class="op">*</span> (<span class="ident">same_x</span> <span class="op">-</span> <span class="ident">inf</span>.<span class="ident">clone</span>()));
-        <span class="ident">res</span>.<span class="ident">push</span>(<span class="ident">y21</span> <span class="op">*</span> <span class="ident">inf_z</span> <span class="op">-</span> <span class="ident">inf</span>);
+        </span>res.push(y21.clone() * (same_x - inf.clone()));
+        res.push(y21 * inf_z - inf);
 
-        <span class="ident">res</span>
+        res
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Check the correctness of witness values for a complete-add gate.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_complete_add</span>(
+<span class="kw">impl</span>&lt;F: PrimeField&gt; CircuitGate&lt;F&gt; {
+    <span class="doccomment">/// Check the correctness of witness values for a complete-add gate.
+    </span><span class="kw">pub fn </span>verify_complete_add(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">row</span>: <span class="ident">usize</span>,
-        <span class="ident">witness</span>: <span class="kw-2">&amp;</span>[<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">x1</span> <span class="op">=</span> <span class="ident">witness</span>[<span class="number">0</span>][<span class="ident">row</span>];
-        <span class="kw">let</span> <span class="ident">y1</span> <span class="op">=</span> <span class="ident">witness</span>[<span class="number">1</span>][<span class="ident">row</span>];
-        <span class="kw">let</span> <span class="ident">x2</span> <span class="op">=</span> <span class="ident">witness</span>[<span class="number">2</span>][<span class="ident">row</span>];
-        <span class="kw">let</span> <span class="ident">y2</span> <span class="op">=</span> <span class="ident">witness</span>[<span class="number">3</span>][<span class="ident">row</span>];
-        <span class="kw">let</span> <span class="ident">x3</span> <span class="op">=</span> <span class="ident">witness</span>[<span class="number">4</span>][<span class="ident">row</span>];
-        <span class="kw">let</span> <span class="ident">y3</span> <span class="op">=</span> <span class="ident">witness</span>[<span class="number">5</span>][<span class="ident">row</span>];
-        <span class="kw">let</span> <span class="ident">inf</span> <span class="op">=</span> <span class="ident">witness</span>[<span class="number">6</span>][<span class="ident">row</span>];
-        <span class="kw">let</span> <span class="ident">same_x</span> <span class="op">=</span> <span class="ident">witness</span>[<span class="number">7</span>][<span class="ident">row</span>];
-        <span class="kw">let</span> <span class="ident">s</span> <span class="op">=</span> <span class="ident">witness</span>[<span class="number">8</span>][<span class="ident">row</span>];
-        <span class="kw">let</span> <span class="ident">inf_z</span> <span class="op">=</span> <span class="ident">witness</span>[<span class="number">9</span>][<span class="ident">row</span>];
-        <span class="kw">let</span> <span class="ident">x21_inv</span> <span class="op">=</span> <span class="ident">witness</span>[<span class="number">10</span>][<span class="ident">row</span>];
+        row: usize,
+        witness: <span class="kw-2">&amp;</span>[Vec&lt;F&gt;; COLUMNS],
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
+        <span class="kw">let </span>x1 = witness[<span class="number">0</span>][row];
+        <span class="kw">let </span>y1 = witness[<span class="number">1</span>][row];
+        <span class="kw">let </span>x2 = witness[<span class="number">2</span>][row];
+        <span class="kw">let </span>y2 = witness[<span class="number">3</span>][row];
+        <span class="kw">let </span>x3 = witness[<span class="number">4</span>][row];
+        <span class="kw">let </span>y3 = witness[<span class="number">5</span>][row];
+        <span class="kw">let </span>inf = witness[<span class="number">6</span>][row];
+        <span class="kw">let </span>same_x = witness[<span class="number">7</span>][row];
+        <span class="kw">let </span>s = witness[<span class="number">8</span>][row];
+        <span class="kw">let </span>inf_z = witness[<span class="number">9</span>][row];
+        <span class="kw">let </span>x21_inv = witness[<span class="number">10</span>][row];
 
-        <span class="kw">if</span> <span class="ident">x1</span> <span class="op">==</span> <span class="ident">x2</span> {
-            <span class="macro">ensure_eq!</span>(<span class="ident">same_x</span>, <span class="ident">F::one</span>(), <span class="string">&quot;Expected same_x = true&quot;</span>);
-        } <span class="kw">else</span> {
-            <span class="macro">ensure_eq!</span>(<span class="ident">same_x</span>, <span class="ident">F::zero</span>(), <span class="string">&quot;Expected same_x = false&quot;</span>);
+        <span class="kw">if </span>x1 == x2 {
+            <span class="macro">ensure_eq!</span>(same_x, F::one(), <span class="string">&quot;Expected same_x = true&quot;</span>);
+        } <span class="kw">else </span>{
+            <span class="macro">ensure_eq!</span>(same_x, F::zero(), <span class="string">&quot;Expected same_x = false&quot;</span>);
         }
 
-        <span class="kw">if</span> <span class="ident">same_x</span> <span class="op">==</span> <span class="ident">F::one</span>() {
-            <span class="kw">let</span> <span class="ident">x1_squared</span> <span class="op">=</span> <span class="ident">x1</span>.<span class="ident">square</span>();
+        <span class="kw">if </span>same_x == F::one() {
+            <span class="kw">let </span>x1_squared = x1.square();
             <span class="macro">ensure_eq!</span>(
-                (<span class="ident">s</span> <span class="op">+</span> <span class="ident">s</span>) <span class="op">*</span> <span class="ident">y1</span>,
-                (<span class="ident">x1_squared</span>.<span class="ident">double</span>() <span class="op">+</span> <span class="ident">x1_squared</span>),
-                <span class="string">&quot;double s wrong&quot;</span>
-            );
-        } <span class="kw">else</span> {
-            <span class="macro">ensure_eq!</span>((<span class="ident">x2</span> <span class="op">-</span> <span class="ident">x1</span>) <span class="op">*</span> <span class="ident">s</span>, <span class="ident">y2</span> <span class="op">-</span> <span class="ident">y1</span>, <span class="string">&quot;add s wrong&quot;</span>);
+                (s + s) * y1,
+                (x1_squared.double() + x1_squared),
+                <span class="string">&quot;double s wrong&quot;
+            </span>);
+        } <span class="kw">else </span>{
+            <span class="macro">ensure_eq!</span>((x2 - x1) * s, y2 - y1, <span class="string">&quot;add s wrong&quot;</span>);
         }
 
-        <span class="macro">ensure_eq!</span>(<span class="ident">s</span>.<span class="ident">square</span>(), <span class="ident">x1</span> <span class="op">+</span> <span class="ident">x2</span> <span class="op">+</span> <span class="ident">x3</span>, <span class="string">&quot;x3 wrong&quot;</span>);
-        <span class="kw">let</span> <span class="ident">expected_y3</span> <span class="op">=</span> <span class="ident">s</span> <span class="op">*</span> (<span class="ident">x1</span> <span class="op">-</span> <span class="ident">x3</span>) <span class="op">-</span> <span class="ident">y1</span>;
+        <span class="macro">ensure_eq!</span>(s.square(), x1 + x2 + x3, <span class="string">&quot;x3 wrong&quot;</span>);
+        <span class="kw">let </span>expected_y3 = s * (x1 - x3) - y1;
         <span class="macro">ensure_eq!</span>(
-            <span class="ident">y3</span>,
-            <span class="ident">expected_y3</span>,
-            <span class="macro">format!</span>(<span class="string">&quot;y3 wrong {}: (expected {}, got {})&quot;</span>, <span class="ident">row</span>, <span class="ident">expected_y3</span>, <span class="ident">y3</span>)
+            y3,
+            expected_y3,
+            <span class="macro">format!</span>(<span class="string">&quot;y3 wrong {}: (expected {}, got {})&quot;</span>, row, expected_y3, y3)
         );
 
-        <span class="kw">let</span> <span class="ident">not_same_y</span> <span class="op">=</span> <span class="ident">F::from</span>((<span class="ident">y1</span> <span class="op">!</span><span class="op">=</span> <span class="ident">y2</span>) <span class="kw">as</span> <span class="ident">u64</span>);
-        <span class="macro">ensure_eq!</span>(<span class="ident">inf</span>, <span class="ident">same_x</span> <span class="op">*</span> <span class="ident">not_same_y</span>, <span class="string">&quot;inf wrong&quot;</span>);
+        <span class="kw">let </span>not_same_y = F::from((y1 != y2) <span class="kw">as </span>u64);
+        <span class="macro">ensure_eq!</span>(inf, same_x * not_same_y, <span class="string">&quot;inf wrong&quot;</span>);
 
-        <span class="kw">if</span> <span class="ident">y1</span> <span class="op">==</span> <span class="ident">y2</span> {
-            <span class="macro">ensure_eq!</span>(<span class="ident">inf_z</span>, <span class="ident">F::zero</span>(), <span class="string">&quot;wrong inf z (y1 == y2)&quot;</span>);
-        } <span class="kw">else</span> {
-            <span class="kw">let</span> <span class="ident">a</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">same_x</span> <span class="op">==</span> <span class="ident">F::one</span>() {
-                (<span class="ident">y2</span> <span class="op">-</span> <span class="ident">y1</span>).<span class="ident">inverse</span>().<span class="ident">unwrap</span>()
-            } <span class="kw">else</span> {
-                <span class="ident">F::zero</span>()
+        <span class="kw">if </span>y1 == y2 {
+            <span class="macro">ensure_eq!</span>(inf_z, F::zero(), <span class="string">&quot;wrong inf z (y1 == y2)&quot;</span>);
+        } <span class="kw">else </span>{
+            <span class="kw">let </span>a = <span class="kw">if </span>same_x == F::one() {
+                (y2 - y1).inverse().unwrap()
+            } <span class="kw">else </span>{
+                F::zero()
             };
-            <span class="macro">ensure_eq!</span>(<span class="ident">inf_z</span>, <span class="ident">a</span>, <span class="string">&quot;wrong inf z (y1 != y2)&quot;</span>);
+            <span class="macro">ensure_eq!</span>(inf_z, a, <span class="string">&quot;wrong inf z (y1 != y2)&quot;</span>);
         }
 
-        <span class="kw">if</span> <span class="ident">x1</span> <span class="op">==</span> <span class="ident">x2</span> {
-            <span class="macro">ensure_eq!</span>(<span class="ident">x21_inv</span>, <span class="ident">F::zero</span>(), <span class="string">&quot;wrong x21_inv (x1 == x2)&quot;</span>);
-        } <span class="kw">else</span> {
+        <span class="kw">if </span>x1 == x2 {
+            <span class="macro">ensure_eq!</span>(x21_inv, F::zero(), <span class="string">&quot;wrong x21_inv (x1 == x2)&quot;</span>);
+        } <span class="kw">else </span>{
             <span class="macro">ensure_eq!</span>(
-                <span class="ident">x21_inv</span>,
-                (<span class="ident">x2</span> <span class="op">-</span> <span class="ident">x1</span>).<span class="ident">inverse</span>().<span class="ident">unwrap</span>(),
-                <span class="string">&quot;wrong x21_inv (x1 != x2)&quot;</span>
-            );
+                x21_inv,
+                (x2 - x1).inverse().unwrap(),
+                <span class="string">&quot;wrong x21_inv (x1 != x2)&quot;
+            </span>);
         }
 
         <span class="prelude-val">Ok</span>(())
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

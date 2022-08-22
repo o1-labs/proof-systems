@@ -33,40 +33,40 @@
 <span id="33">33</span>
 <span id="34">34</span>
 <span id="35">35</span>
-</pre><pre class="rust"><code><span class="attribute">#![<span class="ident">doc</span> <span class="op">=</span> <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]</span>
+</pre><pre class="rust"><code><span class="attribute">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
 
-<span class="doccomment">/// Definition of possible constants in circuits</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">constants</span>;
-<span class="doccomment">/// This contains the prover functions, ranging from curves definitions to prover index and proof generation</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">prover</span>;
-<span class="doccomment">/// This is the actual writer with all of the available functions to set up a circuit and its corresponding constraint system</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">writer</span>;
+</span><span class="doccomment">/// Definition of possible constants in circuits
+</span><span class="kw">pub mod </span>constants;
+<span class="doccomment">/// This contains the prover functions, ranging from curves definitions to prover index and proof generation
+</span><span class="kw">pub mod </span>prover;
+<span class="doccomment">/// This is the actual writer with all of the available functions to set up a circuit and its corresponding constraint system
+</span><span class="kw">pub mod </span>writer;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests;
 
-<span class="doccomment">/// This contains the Kimchi dependencies being used</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">prologue</span> {
-    <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::constants</span>::{<span class="ident">fp_constants</span>, <span class="ident">fq_constants</span>, <span class="ident">Constants</span>};
-    <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::prover</span>::{<span class="ident">generate_prover_index</span>, <span class="ident">prove</span>, <span class="ident">CoordinateCurve</span>, <span class="ident">FpInner</span>};
-    <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::writer</span>::{<span class="ident">Cs</span>, <span class="ident">Var</span>};
-    <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">ark_ec</span>::{<span class="ident">AffineCurve</span>, <span class="ident">ProjectiveCurve</span>};
-    <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">PrimeField</span>, <span class="ident">UniformRand</span>};
-    <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">ark_poly</span>::{<span class="ident">EvaluationDomain</span>, <span class="ident">Radix2EvaluationDomain</span>};
-    <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">commitment_dlog</span>::{<span class="ident">commitment::CommitmentCurve</span>, <span class="ident">srs::SRS</span>};
-    <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">groupmap::GroupMap</span>;
-    <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">kimchi::verifier::verify</span>;
-    <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">mina_curves::pasta</span>::{
-        <span class="ident">fp::Fp</span>,
-        <span class="ident">pallas::Pallas</span> <span class="kw">as</span> <span class="ident">PallasAffine</span>,
-        <span class="ident">vesta</span>::{<span class="ident">Vesta</span> <span class="kw">as</span> <span class="ident">VestaAffine</span>, <span class="ident">VestaParameters</span>},
+<span class="doccomment">/// This contains the Kimchi dependencies being used
+</span><span class="kw">pub mod </span>prologue {
+    <span class="kw">pub use </span><span class="kw">super</span>::constants::{fp_constants, fq_constants, Constants};
+    <span class="kw">pub use </span><span class="kw">super</span>::prover::{generate_prover_index, prove, CoordinateCurve, FpInner};
+    <span class="kw">pub use </span><span class="kw">super</span>::writer::{Cs, Var};
+    <span class="kw">pub use </span>ark_ec::{AffineCurve, ProjectiveCurve};
+    <span class="kw">pub use </span>ark_ff::{FftField, PrimeField, UniformRand};
+    <span class="kw">pub use </span>ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
+    <span class="kw">pub use </span>commitment_dlog::{commitment::CommitmentCurve, srs::SRS};
+    <span class="kw">pub use </span>groupmap::GroupMap;
+    <span class="kw">pub use </span>kimchi::verifier::verify;
+    <span class="kw">pub use </span>mina_curves::pasta::{
+        fp::Fp,
+        pallas::Pallas <span class="kw">as </span>PallasAffine,
+        vesta::{Vesta <span class="kw">as </span>VestaAffine, VestaParameters},
     };
-    <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">oracle</span>::{
-        <span class="ident">constants</span>::<span class="kw-2">*</span>,
-        <span class="ident">poseidon</span>::{<span class="ident">ArithmeticSponge</span>, <span class="ident">Sponge</span>},
-        <span class="ident">sponge</span>::{<span class="ident">DefaultFqSponge</span>, <span class="ident">DefaultFrSponge</span>},
+    <span class="kw">pub use </span>oracle::{
+        constants::<span class="kw-2">*</span>,
+        poseidon::{ArithmeticSponge, Sponge},
+        sponge::{DefaultFqSponge, DefaultFrSponge},
     };
-    <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
+    <span class="kw">pub use </span>std::sync::Arc;
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="circuit_construction" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="circuit_construction" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

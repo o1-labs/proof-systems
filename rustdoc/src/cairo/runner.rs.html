@@ -696,630 +696,630 @@
 <span id="696">696</span>
 <span id="697">697</span>
 <span id="698">698</span>
-</pre><pre class="rust"><code><span class="doccomment">//! This module represents a run of a Cairo program as a series of consecutive</span>
-<span class="doccomment">//! execution steps, each of which define the execution logic of Cairo instructions</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This module represents a run of a Cairo program as a series of consecutive
+//! execution steps, each of which define the execution logic of Cairo instructions
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::flags</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::memory::CairoMemory</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::word</span>::{<span class="ident">CairoWord</span>, <span class="ident">FlagBits</span>, <span class="ident">FlagSets</span>, <span class="ident">Offsets</span>};
-<span class="kw">use</span> <span class="ident">ark_ff::Field</span>;
+</span><span class="kw">use </span><span class="kw">crate</span>::flags::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::memory::CairoMemory;
+<span class="kw">use </span><span class="kw">crate</span>::word::{CairoWord, FlagBits, FlagSets, Offsets};
+<span class="kw">use </span>ark_ff::Field;
 
-<span class="doccomment">/// A structure to store program counter, allocation pointer and frame pointer</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CairoState</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Program counter: points to address in memory</span>
-    <span class="ident">pc</span>: <span class="ident">F</span>,
-    <span class="doccomment">/// Allocation pointer: points to first free space in memory</span>
-    <span class="ident">ap</span>: <span class="ident">F</span>,
-    <span class="doccomment">/// Frame pointer: points to the beginning of the stack in memory (for arguments)</span>
-    <span class="ident">fp</span>: <span class="ident">F</span>,
+<span class="doccomment">/// A structure to store program counter, allocation pointer and frame pointer
+</span><span class="attribute">#[derive(Clone, Copy)]
+</span><span class="kw">pub struct </span>CairoState&lt;F&gt; {
+    <span class="doccomment">/// Program counter: points to address in memory
+    </span>pc: F,
+    <span class="doccomment">/// Allocation pointer: points to first free space in memory
+    </span>ap: F,
+    <span class="doccomment">/// Frame pointer: points to the beginning of the stack in memory (for arguments)
+    </span>fp: F,
 }
 
-<span class="doccomment">/// This trait contains functions to obtain the Cairo pointers (program counter, allocation pointer and frame pointer)</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Pointers</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Returns the program counter</span>
-    <span class="kw">fn</span> <span class="ident">pc</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span>;
+<span class="doccomment">/// This trait contains functions to obtain the Cairo pointers (program counter, allocation pointer and frame pointer)
+</span><span class="kw">pub trait </span>Pointers&lt;F&gt; {
+    <span class="doccomment">/// Returns the program counter
+    </span><span class="kw">fn </span>pc(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F;
 
-    <span class="doccomment">/// Returns the allocation pointer</span>
-    <span class="kw">fn</span> <span class="ident">ap</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span>;
+    <span class="doccomment">/// Returns the allocation pointer
+    </span><span class="kw">fn </span>ap(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F;
 
-    <span class="doccomment">/// Returns the frame pointer</span>
-    <span class="kw">fn</span> <span class="ident">fp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span>;
+    <span class="doccomment">/// Returns the frame pointer
+    </span><span class="kw">fn </span>fp(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F;
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span> <span class="ident">CairoState</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Creates a new triple of pointers</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">pc</span>: <span class="ident">F</span>, <span class="ident">ap</span>: <span class="ident">F</span>, <span class="ident">fp</span>: <span class="ident">F</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">CairoState</span> { <span class="ident">pc</span>, <span class="ident">ap</span>, <span class="ident">fp</span> }
+<span class="kw">impl</span>&lt;F: Field&gt; CairoState&lt;F&gt; {
+    <span class="doccomment">/// Creates a new triple of pointers
+    </span><span class="kw">pub fn </span>new(pc: F, ap: F, fp: F) -&gt; <span class="self">Self </span>{
+        CairoState { pc, ap, fp }
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span> <span class="ident">Pointers</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CairoState</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">pc</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">pc</span>
+<span class="kw">impl</span>&lt;F: Field&gt; Pointers&lt;F&gt; <span class="kw">for </span>CairoState&lt;F&gt; {
+    <span class="kw">fn </span>pc(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.pc
     }
 
-    <span class="kw">fn</span> <span class="ident">ap</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">ap</span>
+    <span class="kw">fn </span>ap(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.ap
     }
 
-    <span class="kw">fn</span> <span class="ident">fp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">fp</span>
+    <span class="kw">fn </span>fp(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.fp
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
-<span class="doccomment">/// A structure to store auxiliary variables throughout computation</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CairoContext</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Destination</span>
-    <span class="ident">dst</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// First operand</span>
-    <span class="ident">op0</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Second operand</span>
-    <span class="ident">op1</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Result</span>
-    <span class="ident">res</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Destination address</span>
-    <span class="ident">adr_dst</span>: <span class="ident">F</span>,
-    <span class="doccomment">/// First operand address</span>
-    <span class="ident">adr_op0</span>: <span class="ident">F</span>,
-    <span class="doccomment">/// Second operand address</span>
-    <span class="ident">adr_op1</span>: <span class="ident">F</span>,
-    <span class="doccomment">/// Size of the instruction</span>
-    <span class="ident">size</span>: <span class="ident">F</span>,
+<span class="attribute">#[derive(Clone, Copy)]
+</span><span class="doccomment">/// A structure to store auxiliary variables throughout computation
+</span><span class="kw">pub struct </span>CairoContext&lt;F&gt; {
+    <span class="doccomment">/// Destination
+    </span>dst: <span class="prelude-ty">Option</span>&lt;F&gt;,
+    <span class="doccomment">/// First operand
+    </span>op0: <span class="prelude-ty">Option</span>&lt;F&gt;,
+    <span class="doccomment">/// Second operand
+    </span>op1: <span class="prelude-ty">Option</span>&lt;F&gt;,
+    <span class="doccomment">/// Result
+    </span>res: <span class="prelude-ty">Option</span>&lt;F&gt;,
+    <span class="doccomment">/// Destination address
+    </span>adr_dst: F,
+    <span class="doccomment">/// First operand address
+    </span>adr_op0: F,
+    <span class="doccomment">/// Second operand address
+    </span>adr_op1: F,
+    <span class="doccomment">/// Size of the instruction
+    </span>size: F,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">CairoContext</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// This function creates an instance of a default [CairoContext] struct</span>
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">dst</span>: <span class="prelude-val">None</span>,
-            <span class="ident">op0</span>: <span class="prelude-val">None</span>,
-            <span class="ident">op1</span>: <span class="prelude-val">None</span>,
-            <span class="ident">res</span>: <span class="prelude-val">None</span>,
-            <span class="ident">adr_dst</span>: <span class="ident">F::zero</span>(),
-            <span class="ident">adr_op0</span>: <span class="ident">F::zero</span>(),
-            <span class="ident">adr_op1</span>: <span class="ident">F::zero</span>(),
-            <span class="ident">size</span>: <span class="ident">F::zero</span>(),
+<span class="kw">impl</span>&lt;F: Field&gt; Default <span class="kw">for </span>CairoContext&lt;F&gt; {
+    <span class="doccomment">/// This function creates an instance of a default [CairoContext] struct
+    </span><span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            dst: <span class="prelude-val">None</span>,
+            op0: <span class="prelude-val">None</span>,
+            op1: <span class="prelude-val">None</span>,
+            res: <span class="prelude-val">None</span>,
+            adr_dst: F::zero(),
+            adr_op0: F::zero(),
+            adr_op1: F::zero(),
+            size: F::zero(),
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
-<span class="doccomment">/// This structure stores all the needed information relative to an instruction at a given step of computation</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CairoInstruction</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// instruction word</span>
-    <span class="ident">word</span>: <span class="ident">CairoWord</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// pointers</span>
-    <span class="ident">ptrs</span>: <span class="ident">CairoState</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// auxiliary variables</span>
-    <span class="ident">vars</span>: <span class="ident">CairoContext</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Clone, Copy)]
+</span><span class="doccomment">/// This structure stores all the needed information relative to an instruction at a given step of computation
+</span><span class="kw">pub struct </span>CairoInstruction&lt;F&gt; {
+    <span class="doccomment">/// instruction word
+    </span>word: CairoWord&lt;F&gt;,
+    <span class="doccomment">/// pointers
+    </span>ptrs: CairoState&lt;F&gt;,
+    <span class="doccomment">/// auxiliary variables
+    </span>vars: CairoContext&lt;F&gt;,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span> <span class="ident">CairoInstruction</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Creates a [CairoInstruction]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">word</span>: <span class="ident">CairoWord</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">ptrs</span>: <span class="ident">CairoState</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">vars</span>: <span class="ident">CairoContext</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> { <span class="ident">word</span>, <span class="ident">ptrs</span>, <span class="ident">vars</span> }
+<span class="kw">impl</span>&lt;F: Field&gt; CairoInstruction&lt;F&gt; {
+    <span class="doccomment">/// Creates a [CairoInstruction]
+    </span><span class="kw">pub fn </span>new(word: CairoWord&lt;F&gt;, ptrs: CairoState&lt;F&gt;, vars: CairoContext&lt;F&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ word, ptrs, vars }
     }
 
-    <span class="doccomment">/// Returns the field element corresponding to the [CairoInstruction]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">instr</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">word</span>.<span class="ident">word</span>()
+    <span class="doccomment">/// Returns the field element corresponding to the [CairoInstruction]
+    </span><span class="kw">pub fn </span>instr(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.word.word()
     }
 
-    <span class="doccomment">/// Returns the size of the instruction</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">size</span>
+    <span class="doccomment">/// Returns the size of the instruction
+    </span><span class="kw">pub fn </span>size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.vars.size
     }
 
-    <span class="doccomment">/// Returns the result of the instruction</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">res</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">res</span>.<span class="ident">expect</span>(<span class="string">&quot;None res&quot;</span>)
+    <span class="doccomment">/// Returns the result of the instruction
+    </span><span class="kw">pub fn </span>res(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.vars.res.expect(<span class="string">&quot;None res&quot;</span>)
     }
 
-    <span class="doccomment">/// Returns the destination of the instruction</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">dst</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">dst</span>.<span class="ident">expect</span>(<span class="string">&quot;None dst&quot;</span>)
+    <span class="doccomment">/// Returns the destination of the instruction
+    </span><span class="kw">pub fn </span>dst(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.vars.dst.expect(<span class="string">&quot;None dst&quot;</span>)
     }
 
-    <span class="doccomment">/// Returns the first operand of the instruction</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">op0</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">op0</span>.<span class="ident">expect</span>(<span class="string">&quot;None op0&quot;</span>)
+    <span class="doccomment">/// Returns the first operand of the instruction
+    </span><span class="kw">pub fn </span>op0(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.vars.op0.expect(<span class="string">&quot;None op0&quot;</span>)
     }
 
-    <span class="doccomment">/// Returns the second operand of the instruction</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">op1</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">op1</span>.<span class="ident">expect</span>(<span class="string">&quot;None op1&quot;</span>)
+    <span class="doccomment">/// Returns the second operand of the instruction
+    </span><span class="kw">pub fn </span>op1(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.vars.op1.expect(<span class="string">&quot;None op1&quot;</span>)
     }
 
-    <span class="doccomment">/// Returns the destination address of the instruction</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">adr_dst</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">adr_dst</span>
+    <span class="doccomment">/// Returns the destination address of the instruction
+    </span><span class="kw">pub fn </span>adr_dst(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.vars.adr_dst
     }
 
-    <span class="doccomment">/// Returns the first operand address of the instruction</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">adr_op0</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">adr_op0</span>
+    <span class="doccomment">/// Returns the first operand address of the instruction
+    </span><span class="kw">pub fn </span>adr_op0(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.vars.adr_op0
     }
 
-    <span class="doccomment">/// Returns the second operand address of the instruction</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">adr_op1</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">adr_op1</span>
-    }
-}
-
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span> <span class="ident">Pointers</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CairoInstruction</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">pc</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">ptrs</span>.<span class="ident">pc</span> <span class="comment">// Returns the current program counter</span>
-    }
-
-    <span class="kw">fn</span> <span class="ident">ap</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">ptrs</span>.<span class="ident">ap</span> <span class="comment">//Returns the current allocation pointer</span>
-    }
-
-    <span class="kw">fn</span> <span class="ident">fp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">ptrs</span>.<span class="ident">fp</span> <span class="comment">// Returns the current program counter</span>
+    <span class="doccomment">/// Returns the second operand address of the instruction
+    </span><span class="kw">pub fn </span>adr_op1(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.vars.adr_op1
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span> <span class="ident">Offsets</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CairoInstruction</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">off_dst</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">word</span>.<span class="ident">off_dst</span>()
+<span class="kw">impl</span>&lt;F: Field&gt; Pointers&lt;F&gt; <span class="kw">for </span>CairoInstruction&lt;F&gt; {
+    <span class="kw">fn </span>pc(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.ptrs.pc <span class="comment">// Returns the current program counter
+    </span>}
+
+    <span class="kw">fn </span>ap(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.ptrs.ap <span class="comment">//Returns the current allocation pointer
+    </span>}
+
+    <span class="kw">fn </span>fp(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.ptrs.fp <span class="comment">// Returns the current program counter
+    </span>}
+}
+
+<span class="kw">impl</span>&lt;F: Field&gt; Offsets&lt;F&gt; <span class="kw">for </span>CairoInstruction&lt;F&gt; {
+    <span class="kw">fn </span>off_dst(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.word.off_dst()
     }
 
-    <span class="kw">fn</span> <span class="ident">off_op0</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">word</span>.<span class="ident">off_op0</span>()
+    <span class="kw">fn </span>off_op0(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.word.off_op0()
     }
 
-    <span class="kw">fn</span> <span class="ident">off_op1</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">word</span>.<span class="ident">off_op1</span>()
+    <span class="kw">fn </span>off_op1(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.word.off_op1()
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span> <span class="ident">FlagBits</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CairoInstruction</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">f_dst_fp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">word</span>.<span class="ident">f_dst_fp</span>()
+<span class="kw">impl</span>&lt;F: Field&gt; FlagBits&lt;F&gt; <span class="kw">for </span>CairoInstruction&lt;F&gt; {
+    <span class="kw">fn </span>f_dst_fp(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.word.f_dst_fp()
     }
 
-    <span class="kw">fn</span> <span class="ident">f_op0_fp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">word</span>.<span class="ident">f_op0_fp</span>()
+    <span class="kw">fn </span>f_op0_fp(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.word.f_op0_fp()
     }
 
-    <span class="kw">fn</span> <span class="ident">f_op1_val</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">word</span>.<span class="ident">f_op1_val</span>()
+    <span class="kw">fn </span>f_op1_val(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.word.f_op1_val()
     }
 
-    <span class="kw">fn</span> <span class="ident">f_op1_fp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">word</span>.<span class="ident">f_op1_fp</span>()
+    <span class="kw">fn </span>f_op1_fp(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.word.f_op1_fp()
     }
 
-    <span class="kw">fn</span> <span class="ident">f_op1_ap</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">word</span>.<span class="ident">f_op1_ap</span>()
+    <span class="kw">fn </span>f_op1_ap(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.word.f_op1_ap()
     }
 
-    <span class="kw">fn</span> <span class="ident">f_res_add</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">word</span>.<span class="ident">f_res_add</span>()
+    <span class="kw">fn </span>f_res_add(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.word.f_res_add()
     }
 
-    <span class="kw">fn</span> <span class="ident">f_res_mul</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">word</span>.<span class="ident">f_res_mul</span>()
+    <span class="kw">fn </span>f_res_mul(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.word.f_res_mul()
     }
 
-    <span class="kw">fn</span> <span class="ident">f_pc_abs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">word</span>.<span class="ident">f_pc_abs</span>()
+    <span class="kw">fn </span>f_pc_abs(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.word.f_pc_abs()
     }
 
-    <span class="kw">fn</span> <span class="ident">f_pc_rel</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">word</span>.<span class="ident">f_pc_rel</span>()
+    <span class="kw">fn </span>f_pc_rel(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.word.f_pc_rel()
     }
 
-    <span class="kw">fn</span> <span class="ident">f_pc_jnz</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">word</span>.<span class="ident">f_pc_jnz</span>()
+    <span class="kw">fn </span>f_pc_jnz(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.word.f_pc_jnz()
     }
 
-    <span class="kw">fn</span> <span class="ident">f_ap_add</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">word</span>.<span class="ident">f_ap_add</span>()
+    <span class="kw">fn </span>f_ap_add(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.word.f_ap_add()
     }
 
-    <span class="kw">fn</span> <span class="ident">f_ap_one</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">word</span>.<span class="ident">f_ap_one</span>()
+    <span class="kw">fn </span>f_ap_one(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.word.f_ap_one()
     }
 
-    <span class="kw">fn</span> <span class="ident">f_opc_call</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">word</span>.<span class="ident">f_opc_call</span>()
+    <span class="kw">fn </span>f_opc_call(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.word.f_opc_call()
     }
 
-    <span class="kw">fn</span> <span class="ident">f_opc_ret</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">word</span>.<span class="ident">f_opc_ret</span>()
+    <span class="kw">fn </span>f_opc_ret(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.word.f_opc_ret()
     }
 
-    <span class="kw">fn</span> <span class="ident">f_opc_aeq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">word</span>.<span class="ident">f_opc_aeq</span>()
+    <span class="kw">fn </span>f_opc_aeq(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.word.f_opc_aeq()
     }
 
-    <span class="kw">fn</span> <span class="ident">f15</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">word</span>.<span class="ident">f15</span>()
+    <span class="kw">fn </span>f15(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.word.f15()
     }
 }
 
-<span class="doccomment">/// A data structure to store a current step of Cairo computation</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CairoStep</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// state of the computation</span>
-    <span class="ident">mem</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="kw-2">mut</span> <span class="ident">CairoMemory</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    <span class="comment">// comment instr for efficiency</span>
-    <span class="doccomment">/// current pointers</span>
-    <span class="ident">curr</span>: <span class="ident">CairoState</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// (if any) next pointers</span>
-    <span class="ident">next</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">CairoState</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// state auxiliary variables</span>
-    <span class="ident">vars</span>: <span class="ident">CairoContext</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
+<span class="doccomment">/// A data structure to store a current step of Cairo computation
+</span><span class="kw">pub struct </span>CairoStep&lt;<span class="lifetime">&#39;a</span>, F&gt; {
+    <span class="doccomment">/// state of the computation
+    </span>mem: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="kw-2">mut </span>CairoMemory&lt;F&gt;,
+    <span class="comment">// comment instr for efficiency
+    </span><span class="doccomment">/// current pointers
+    </span>curr: CairoState&lt;F&gt;,
+    <span class="doccomment">/// (if any) next pointers
+    </span>next: <span class="prelude-ty">Option</span>&lt;CairoState&lt;F&gt;&gt;,
+    <span class="doccomment">/// state auxiliary variables
+    </span>vars: CairoContext&lt;F&gt;,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span> <span class="ident">CairoStep</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Creates a new Cairo execution step from a step index, a Cairo word, and current pointers</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">mem</span>: <span class="kw-2">&amp;mut</span> <span class="ident">CairoMemory</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">ptrs</span>: <span class="ident">CairoState</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="ident">CairoStep</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-        <span class="ident">CairoStep</span> {
-            <span class="ident">mem</span>,
-            <span class="ident">curr</span>: <span class="ident">ptrs</span>,
-            <span class="ident">next</span>: <span class="prelude-val">None</span>,
-            <span class="ident">vars</span>: <span class="ident">CairoContext::default</span>(),
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: Field&gt; CairoStep&lt;<span class="lifetime">&#39;a</span>, F&gt; {
+    <span class="doccomment">/// Creates a new Cairo execution step from a step index, a Cairo word, and current pointers
+    </span><span class="kw">pub fn </span>new(mem: <span class="kw-2">&amp;mut </span>CairoMemory&lt;F&gt;, ptrs: CairoState&lt;F&gt;) -&gt; CairoStep&lt;F&gt; {
+        CairoStep {
+            mem,
+            curr: ptrs,
+            next: <span class="prelude-val">None</span>,
+            vars: CairoContext::default(),
         }
     }
 
-    <span class="doccomment">/// Executes a Cairo step from the current registers</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">execute</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">CairoInstruction</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-        <span class="comment">// This order is important in order to allocate the memory in time</span>
-        <span class="self">self</span>.<span class="ident">set_op0</span>();
-        <span class="self">self</span>.<span class="ident">set_op1</span>();
-        <span class="self">self</span>.<span class="ident">set_res</span>();
-        <span class="self">self</span>.<span class="ident">set_dst</span>();
-        <span class="comment">// If the Option&lt;&gt; is not a guarantee for continuation of the program, we may be removing this</span>
-        <span class="kw">let</span> <span class="ident">next_pc</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">next_pc</span>();
-        <span class="kw">let</span> (<span class="ident">next_ap</span>, <span class="ident">next_fp</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">next_apfp</span>();
-        <span class="self">self</span>.<span class="ident">next</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">CairoState::new</span>(
-            <span class="ident">next_pc</span>.<span class="ident">expect</span>(<span class="string">&quot;Empty next program counter&quot;</span>),
-            <span class="ident">next_ap</span>.<span class="ident">expect</span>(<span class="string">&quot;Empty next allocation pointer&quot;</span>),
-            <span class="ident">next_fp</span>.<span class="ident">expect</span>(<span class="string">&quot;Empty next frame pointer&quot;</span>),
+    <span class="doccomment">/// Executes a Cairo step from the current registers
+    </span><span class="kw">pub fn </span>execute(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; CairoInstruction&lt;F&gt; {
+        <span class="comment">// This order is important in order to allocate the memory in time
+        </span><span class="self">self</span>.set_op0();
+        <span class="self">self</span>.set_op1();
+        <span class="self">self</span>.set_res();
+        <span class="self">self</span>.set_dst();
+        <span class="comment">// If the Option&lt;&gt; is not a guarantee for continuation of the program, we may be removing this
+        </span><span class="kw">let </span>next_pc = <span class="self">self</span>.next_pc();
+        <span class="kw">let </span>(next_ap, next_fp) = <span class="self">self</span>.next_apfp();
+        <span class="self">self</span>.next = <span class="prelude-val">Some</span>(CairoState::new(
+            next_pc.expect(<span class="string">&quot;Empty next program counter&quot;</span>),
+            next_ap.expect(<span class="string">&quot;Empty next allocation pointer&quot;</span>),
+            next_fp.expect(<span class="string">&quot;Empty next frame pointer&quot;</span>),
         ));
-        <span class="ident">CairoInstruction::new</span>(<span class="self">self</span>.<span class="ident">instr</span>(), <span class="self">self</span>.<span class="ident">curr</span>, <span class="self">self</span>.<span class="ident">vars</span>)
+        CairoInstruction::new(<span class="self">self</span>.instr(), <span class="self">self</span>.curr, <span class="self">self</span>.vars)
     }
 
-    <span class="doccomment">/// This function returns the current word instruction being executed</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">instr</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">CairoWord</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-        <span class="ident">CairoWord::new</span>(<span class="self">self</span>.<span class="ident">mem</span>.<span class="ident">read</span>(<span class="self">self</span>.<span class="ident">curr</span>.<span class="ident">pc</span>).<span class="ident">expect</span>(<span class="string">&quot;pc points to None cell&quot;</span>))
+    <span class="doccomment">/// This function returns the current word instruction being executed
+    </span><span class="kw">pub fn </span>instr(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; CairoWord&lt;F&gt; {
+        CairoWord::new(<span class="self">self</span>.mem.read(<span class="self">self</span>.curr.pc).expect(<span class="string">&quot;pc points to None cell&quot;</span>))
     }
 
-    <span class="doccomment">/// This function computes the first operand address</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_op0</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="kw">let</span> <span class="ident">reg</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">instr</span>().<span class="ident">op0_reg</span>() {
-            <span class="comment">/*0*/</span> <span class="ident">OP0_AP</span> =&gt; <span class="self">self</span>.<span class="ident">curr</span>.<span class="ident">ap</span>, <span class="comment">// reads first word from allocated memory</span>
-            <span class="comment">/*1*/</span> <span class="kw">_</span> =&gt; <span class="self">self</span>.<span class="ident">curr</span>.<span class="ident">fp</span>, <span class="comment">// reads first word from input stack</span>
-        }; <span class="comment">// no more values than 0 and 1 because op0_reg is one bit</span>
-        <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">adr_op0</span> <span class="op">=</span> <span class="ident">reg</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">instr</span>().<span class="ident">off_op0</span>();
-        <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">op0</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">mem</span>.<span class="ident">read</span>(<span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">adr_op0</span>);
+    <span class="doccomment">/// This function computes the first operand address
+    </span><span class="kw">pub fn </span>set_op0(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">let </span>reg = <span class="kw">match </span><span class="self">self</span>.instr().op0_reg() {
+            <span class="comment">/*0*/ </span>OP0_AP =&gt; <span class="self">self</span>.curr.ap, <span class="comment">// reads first word from allocated memory
+            /*1*/ </span><span class="kw">_ </span>=&gt; <span class="self">self</span>.curr.fp, <span class="comment">// reads first word from input stack
+        </span>}; <span class="comment">// no more values than 0 and 1 because op0_reg is one bit
+        </span><span class="self">self</span>.vars.adr_op0 = reg + <span class="self">self</span>.instr().off_op0();
+        <span class="self">self</span>.vars.op0 = <span class="self">self</span>.mem.read(<span class="self">self</span>.vars.adr_op0);
     }
 
-    <span class="doccomment">/// This function computes the second operand address and content and the instruction size</span>
-    <span class="doccomment">/// Panics if the flagset `OP1_SRC` has more than 1 nonzero bit</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_op1</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="kw">let</span> (<span class="ident">reg</span>, <span class="ident">size</span>) <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">instr</span>().<span class="ident">op1_src</span>() {
-            <span class="comment">/*0*/</span>
-            <span class="ident">OP1_DBL</span> =&gt; (<span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">op0</span>.<span class="ident">expect</span>(<span class="string">&quot;None op0 for OP1_DBL&quot;</span>), <span class="ident">F::one</span>()), <span class="comment">// double indexing, op0 should be positive for address</span>
-            <span class="comment">/*1*/</span>
-            <span class="ident">OP1_VAL</span> =&gt; (<span class="self">self</span>.<span class="ident">curr</span>.<span class="ident">pc</span>, <span class="ident">F::from</span>(<span class="number">2u32</span>)), <span class="comment">// off_op1 will be 1 and then op1 contains an immediate value</span>
-            <span class="comment">/*2*/</span> <span class="ident">OP1_FP</span> =&gt; (<span class="self">self</span>.<span class="ident">curr</span>.<span class="ident">fp</span>, <span class="ident">F::one</span>()),
-            <span class="comment">/*4*/</span> <span class="ident">OP1_AP</span> =&gt; (<span class="self">self</span>.<span class="ident">curr</span>.<span class="ident">ap</span>, <span class="ident">F::one</span>()),
-            <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Invalid op1_src flagset&quot;</span>),
+    <span class="doccomment">/// This function computes the second operand address and content and the instruction size
+    /// Panics if the flagset `OP1_SRC` has more than 1 nonzero bit
+    </span><span class="kw">pub fn </span>set_op1(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">let </span>(reg, size) = <span class="kw">match </span><span class="self">self</span>.instr().op1_src() {
+            <span class="comment">/*0*/
+            </span>OP1_DBL =&gt; (<span class="self">self</span>.vars.op0.expect(<span class="string">&quot;None op0 for OP1_DBL&quot;</span>), F::one()), <span class="comment">// double indexing, op0 should be positive for address
+            /*1*/
+            </span>OP1_VAL =&gt; (<span class="self">self</span>.curr.pc, F::from(<span class="number">2u32</span>)), <span class="comment">// off_op1 will be 1 and then op1 contains an immediate value
+            /*2*/ </span>OP1_FP =&gt; (<span class="self">self</span>.curr.fp, F::one()),
+            <span class="comment">/*4*/ </span>OP1_AP =&gt; (<span class="self">self</span>.curr.ap, F::one()),
+            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Invalid op1_src flagset&quot;</span>),
         };
-        <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">size</span> <span class="op">=</span> <span class="ident">size</span>;
-        <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">adr_op1</span> <span class="op">=</span> <span class="ident">reg</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">instr</span>().<span class="ident">off_op1</span>(); <span class="comment">// apply second offset to corresponding register</span>
-        <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">op1</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">mem</span>.<span class="ident">read</span>(<span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">adr_op1</span>);
+        <span class="self">self</span>.vars.size = size;
+        <span class="self">self</span>.vars.adr_op1 = reg + <span class="self">self</span>.instr().off_op1(); <span class="comment">// apply second offset to corresponding register
+        </span><span class="self">self</span>.vars.op1 = <span class="self">self</span>.mem.read(<span class="self">self</span>.vars.adr_op1);
     }
 
-    <span class="doccomment">/// This function computes the value of the result of the arithmetic operation</span>
-    <span class="doccomment">/// Panics if a `jnz` instruction is used with an invalid format</span>
-    <span class="doccomment">///     or if the flagset `RES_LOG` has more than 1 nonzero bit</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_res</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">instr</span>().<span class="ident">pc_up</span>() <span class="op">==</span> <span class="ident">PC_JNZ</span> {
-            <span class="comment">/*4*/</span>
-            <span class="comment">// jnz instruction</span>
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">instr</span>().<span class="ident">res_log</span>() <span class="op">==</span> <span class="ident">RES_ONE</span> <span class="comment">/*0*/</span>
-                <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">instr</span>().<span class="ident">opcode</span>() <span class="op">==</span> <span class="ident">OPC_JMP_INC</span> <span class="comment">/*0*/</span>
-                <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">instr</span>().<span class="ident">ap_up</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">AP_ADD</span>
-            <span class="comment">/* not 1*/</span>
-            {
-                <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">res</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">F::zero</span>()); <span class="comment">// &quot;unused&quot;</span>
-            } <span class="kw">else</span> {
+    <span class="doccomment">/// This function computes the value of the result of the arithmetic operation
+    /// Panics if a `jnz` instruction is used with an invalid format
+    ///     or if the flagset `RES_LOG` has more than 1 nonzero bit
+    </span><span class="kw">pub fn </span>set_res(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">if </span><span class="self">self</span>.instr().pc_up() == PC_JNZ {
+            <span class="comment">/*4*/
+            // jnz instruction
+            </span><span class="kw">if </span><span class="self">self</span>.instr().res_log() == RES_ONE <span class="comment">/*0*/
+                </span>&amp;&amp; <span class="self">self</span>.instr().opcode() == OPC_JMP_INC <span class="comment">/*0*/
+                </span>&amp;&amp; <span class="self">self</span>.instr().ap_up() != AP_ADD
+            <span class="comment">/* not 1*/
+            </span>{
+                <span class="self">self</span>.vars.res = <span class="prelude-val">Some</span>(F::zero()); <span class="comment">// &quot;unused&quot;
+            </span>} <span class="kw">else </span>{
                 <span class="macro">panic!</span>(<span class="string">&quot;Invalid JNZ instruction&quot;</span>);
             }
-        } <span class="kw">else</span> <span class="kw">if</span> <span class="self">self</span>.<span class="ident">instr</span>().<span class="ident">pc_up</span>() <span class="op">==</span> <span class="ident">PC_SIZ</span> <span class="comment">/*0*/</span>
-            <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">instr</span>().<span class="ident">pc_up</span>() <span class="op">==</span> <span class="ident">PC_ABS</span> <span class="comment">/*1*/</span>
-            <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">instr</span>().<span class="ident">pc_up</span>() <span class="op">==</span> <span class="ident">PC_REL</span>
-        <span class="comment">/*2*/</span>
-        {
-            <span class="comment">// rest of types of updates</span>
-            <span class="comment">// common increase || absolute jump || relative jump</span>
-            <span class="kw">match</span> <span class="self">self</span>.<span class="ident">instr</span>().<span class="ident">res_log</span>() {
-                <span class="comment">/*0*/</span>
-                <span class="ident">RES_ONE</span> =&gt; <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">op1</span>, <span class="comment">// right part is single operand</span>
-                <span class="comment">/*1*/</span>
-                <span class="ident">RES_ADD</span> =&gt; {
-                    <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">res</span> <span class="op">=</span> <span class="prelude-val">Some</span>(
-                        <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">op0</span>.<span class="ident">expect</span>(<span class="string">&quot;None op0 after RES_ADD&quot;</span>)
-                            <span class="op">+</span> <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">op1</span>.<span class="ident">expect</span>(<span class="string">&quot;None op1 after RES_ADD&quot;</span>),
+        } <span class="kw">else if </span><span class="self">self</span>.instr().pc_up() == PC_SIZ <span class="comment">/*0*/
+            </span>|| <span class="self">self</span>.instr().pc_up() == PC_ABS <span class="comment">/*1*/
+            </span>|| <span class="self">self</span>.instr().pc_up() == PC_REL
+        <span class="comment">/*2*/
+        </span>{
+            <span class="comment">// rest of types of updates
+            // common increase || absolute jump || relative jump
+            </span><span class="kw">match </span><span class="self">self</span>.instr().res_log() {
+                <span class="comment">/*0*/
+                </span>RES_ONE =&gt; <span class="self">self</span>.vars.res = <span class="self">self</span>.vars.op1, <span class="comment">// right part is single operand
+                /*1*/
+                </span>RES_ADD =&gt; {
+                    <span class="self">self</span>.vars.res = <span class="prelude-val">Some</span>(
+                        <span class="self">self</span>.vars.op0.expect(<span class="string">&quot;None op0 after RES_ADD&quot;</span>)
+                            + <span class="self">self</span>.vars.op1.expect(<span class="string">&quot;None op1 after RES_ADD&quot;</span>),
                     )
-                } <span class="comment">// right part is addition</span>
-                <span class="comment">/*2*/</span>
-                <span class="ident">RES_MUL</span> =&gt; {
-                    <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">res</span> <span class="op">=</span> <span class="prelude-val">Some</span>(
-                        <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">op0</span>.<span class="ident">expect</span>(<span class="string">&quot;None op0 after RES_MUL&quot;</span>)
-                            <span class="op">*</span> <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">op1</span>.<span class="ident">expect</span>(<span class="string">&quot;None op1 after RES_MUL&quot;</span>),
+                } <span class="comment">// right part is addition
+                /*2*/
+                </span>RES_MUL =&gt; {
+                    <span class="self">self</span>.vars.res = <span class="prelude-val">Some</span>(
+                        <span class="self">self</span>.vars.op0.expect(<span class="string">&quot;None op0 after RES_MUL&quot;</span>)
+                            * <span class="self">self</span>.vars.op1.expect(<span class="string">&quot;None op1 after RES_MUL&quot;</span>),
                     )
-                } <span class="comment">// right part is multiplication</span>
-                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Invalid res_log flagset&quot;</span>),
+                } <span class="comment">// right part is multiplication
+                </span><span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Invalid res_log flagset&quot;</span>),
             }
-        } <span class="kw">else</span> {
-            <span class="comment">// multiple bits take value 1</span>
-            <span class="macro">panic!</span>(<span class="string">&quot;Invalid pc_up flagset&quot;</span>);
+        } <span class="kw">else </span>{
+            <span class="comment">// multiple bits take value 1
+            </span><span class="macro">panic!</span>(<span class="string">&quot;Invalid pc_up flagset&quot;</span>);
         }
     }
 
-    <span class="doccomment">/// This function computes the destination address</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_dst</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="kw">let</span> <span class="ident">reg</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">instr</span>().<span class="ident">dst_reg</span>() {
-            <span class="comment">/*0*/</span> <span class="ident">DST_AP</span> =&gt; <span class="self">self</span>.<span class="ident">curr</span>.<span class="ident">ap</span>, <span class="comment">// read from stack</span>
-            <span class="comment">/*1*/</span> <span class="kw">_</span> =&gt; <span class="self">self</span>.<span class="ident">curr</span>.<span class="ident">fp</span>, <span class="comment">// read from parameters</span>
-        }; <span class="comment">// no more values than 0 and 1 because op0_reg is one bit</span>
-        <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">adr_dst</span> <span class="op">=</span> <span class="ident">reg</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">instr</span>().<span class="ident">off_dst</span>();
-        <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">dst</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">mem</span>.<span class="ident">read</span>(<span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">adr_dst</span>);
+    <span class="doccomment">/// This function computes the destination address
+    </span><span class="kw">pub fn </span>set_dst(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">let </span>reg = <span class="kw">match </span><span class="self">self</span>.instr().dst_reg() {
+            <span class="comment">/*0*/ </span>DST_AP =&gt; <span class="self">self</span>.curr.ap, <span class="comment">// read from stack
+            /*1*/ </span><span class="kw">_ </span>=&gt; <span class="self">self</span>.curr.fp, <span class="comment">// read from parameters
+        </span>}; <span class="comment">// no more values than 0 and 1 because op0_reg is one bit
+        </span><span class="self">self</span>.vars.adr_dst = reg + <span class="self">self</span>.instr().off_dst();
+        <span class="self">self</span>.vars.dst = <span class="self">self</span>.mem.read(<span class="self">self</span>.vars.adr_dst);
     }
 
-    <span class="doccomment">/// This function computes the next program counter</span>
-    <span class="doccomment">/// Panics if the flagset `PC_UP` has more than 1 nonzero bit</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">next_pc</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">instr</span>().<span class="ident">pc_up</span>() {
-            <span class="comment">/*0*/</span>
-            <span class="ident">PC_SIZ</span> =&gt; <span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="ident">curr</span>.<span class="ident">pc</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">size</span>), <span class="comment">// common case, next instruction is right after the current one</span>
-            <span class="comment">/*1*/</span>
-            <span class="ident">PC_ABS</span> =&gt; <span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">res</span>.<span class="ident">expect</span>(<span class="string">&quot;None res after PC_ABS&quot;</span>)), <span class="comment">// absolute jump, next instruction is in res,</span>
-            <span class="comment">/*2*/</span>
-            <span class="ident">PC_REL</span> =&gt; <span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="ident">curr</span>.<span class="ident">pc</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">res</span>.<span class="ident">expect</span>(<span class="string">&quot;None res after PC_REL&quot;</span>)), <span class="comment">// relative jump, go to some address relative to pc</span>
-            <span class="comment">/*4*/</span>
-            <span class="ident">PC_JNZ</span> =&gt; {
-                <span class="comment">// conditional relative jump (jnz)</span>
-                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">dst</span> <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="ident">F::zero</span>()) {
-                    <span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="ident">curr</span>.<span class="ident">pc</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">size</span>) <span class="comment">// if condition false, common case</span>
-                } <span class="kw">else</span> {
-                    <span class="comment">// if condition true, relative jump with second operand</span>
-                    <span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="ident">curr</span>.<span class="ident">pc</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">op1</span>.<span class="ident">expect</span>(<span class="string">&quot;None op1 after PC_JNZ&quot;</span>))
+    <span class="doccomment">/// This function computes the next program counter
+    /// Panics if the flagset `PC_UP` has more than 1 nonzero bit
+    </span><span class="kw">pub fn </span>next_pc(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;F&gt; {
+        <span class="kw">match </span><span class="self">self</span>.instr().pc_up() {
+            <span class="comment">/*0*/
+            </span>PC_SIZ =&gt; <span class="prelude-val">Some</span>(<span class="self">self</span>.curr.pc + <span class="self">self</span>.vars.size), <span class="comment">// common case, next instruction is right after the current one
+            /*1*/
+            </span>PC_ABS =&gt; <span class="prelude-val">Some</span>(<span class="self">self</span>.vars.res.expect(<span class="string">&quot;None res after PC_ABS&quot;</span>)), <span class="comment">// absolute jump, next instruction is in res,
+            /*2*/
+            </span>PC_REL =&gt; <span class="prelude-val">Some</span>(<span class="self">self</span>.curr.pc + <span class="self">self</span>.vars.res.expect(<span class="string">&quot;None res after PC_REL&quot;</span>)), <span class="comment">// relative jump, go to some address relative to pc
+            /*4*/
+            </span>PC_JNZ =&gt; {
+                <span class="comment">// conditional relative jump (jnz)
+                </span><span class="kw">if </span><span class="self">self</span>.vars.dst == <span class="prelude-val">Some</span>(F::zero()) {
+                    <span class="prelude-val">Some</span>(<span class="self">self</span>.curr.pc + <span class="self">self</span>.vars.size) <span class="comment">// if condition false, common case
+                </span>} <span class="kw">else </span>{
+                    <span class="comment">// if condition true, relative jump with second operand
+                    </span><span class="prelude-val">Some</span>(<span class="self">self</span>.curr.pc + <span class="self">self</span>.vars.op1.expect(<span class="string">&quot;None op1 after PC_JNZ&quot;</span>))
                 }
             }
-            <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Invalid pc_up flagset&quot;</span>),
+            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Invalid pc_up flagset&quot;</span>),
         }
     }
 
-    <span class="doccomment">/// This function computes the next values of the allocation and frame pointers</span>
-    <span class="doccomment">/// Panics if in a `call` instruction the flagset [AP_UP] is incorrect</span>
-    <span class="doccomment">///     or if in any other instruction the flagset AP_UP has more than 1 nonzero bit</span>
-    <span class="doccomment">///     or if the flagset `OPCODE` has more than 1 nonzero bit</span>
-    <span class="kw">fn</span> <span class="ident">next_apfp</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; (<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) {
-        <span class="kw">let</span> (<span class="ident">next_ap</span>, <span class="ident">next_fp</span>);
-        <span class="comment">// The following branches don&#39;t include the assertions. That is done in the verification.</span>
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">instr</span>().<span class="ident">opcode</span>() <span class="op">==</span> <span class="ident">OPC_CALL</span> {
-            <span class="comment">/*1*/</span>
-            <span class="comment">// &quot;call&quot; instruction</span>
-            <span class="self">self</span>.<span class="ident">mem</span>.<span class="ident">write</span>(<span class="self">self</span>.<span class="ident">curr</span>.<span class="ident">ap</span>, <span class="self">self</span>.<span class="ident">curr</span>.<span class="ident">fp</span>); <span class="comment">// Save current fp</span>
-            <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">dst</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">mem</span>.<span class="ident">read</span>(<span class="self">self</span>.<span class="ident">curr</span>.<span class="ident">ap</span>); <span class="comment">// update dst content</span>
-            <span class="self">self</span>.<span class="ident">mem</span>
-                .<span class="ident">write</span>(<span class="self">self</span>.<span class="ident">curr</span>.<span class="ident">ap</span> <span class="op">+</span> <span class="ident">F::one</span>(), <span class="self">self</span>.<span class="ident">curr</span>.<span class="ident">pc</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">size</span>); <span class="comment">// Save next instruction</span>
-            <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">op0</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">mem</span>.<span class="ident">read</span>(<span class="self">self</span>.<span class="ident">curr</span>.<span class="ident">ap</span> <span class="op">+</span> <span class="ident">F::one</span>()); <span class="comment">//update op0 content</span>
+    <span class="doccomment">/// This function computes the next values of the allocation and frame pointers
+    /// Panics if in a `call` instruction the flagset [AP_UP] is incorrect
+    ///     or if in any other instruction the flagset AP_UP has more than 1 nonzero bit
+    ///     or if the flagset `OPCODE` has more than 1 nonzero bit
+    </span><span class="kw">fn </span>next_apfp(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; (<span class="prelude-ty">Option</span>&lt;F&gt;, <span class="prelude-ty">Option</span>&lt;F&gt;) {
+        <span class="kw">let </span>(next_ap, next_fp);
+        <span class="comment">// The following branches don&#39;t include the assertions. That is done in the verification.
+        </span><span class="kw">if </span><span class="self">self</span>.instr().opcode() == OPC_CALL {
+            <span class="comment">/*1*/
+            // &quot;call&quot; instruction
+            </span><span class="self">self</span>.mem.write(<span class="self">self</span>.curr.ap, <span class="self">self</span>.curr.fp); <span class="comment">// Save current fp
+            </span><span class="self">self</span>.vars.dst = <span class="self">self</span>.mem.read(<span class="self">self</span>.curr.ap); <span class="comment">// update dst content
+            </span><span class="self">self</span>.mem
+                .write(<span class="self">self</span>.curr.ap + F::one(), <span class="self">self</span>.curr.pc + <span class="self">self</span>.vars.size); <span class="comment">// Save next instruction
+            </span><span class="self">self</span>.vars.op0 = <span class="self">self</span>.mem.read(<span class="self">self</span>.curr.ap + F::one()); <span class="comment">//update op0 content
 
-            <span class="comment">// Update fp</span>
-            <span class="ident">next_fp</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="ident">curr</span>.<span class="ident">ap</span> <span class="op">+</span> <span class="ident">F::from</span>(<span class="number">2u32</span>)); <span class="comment">// pointer for next frame is after current fp and instruction after call</span>
-                                                          <span class="comment">// Update ap</span>
-            <span class="kw">match</span> <span class="self">self</span>.<span class="ident">instr</span>().<span class="ident">ap_up</span>() {
-                <span class="comment">/*0*/</span>
-                <span class="ident">AP_Z2</span> =&gt; <span class="ident">next_ap</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="ident">curr</span>.<span class="ident">ap</span> <span class="op">+</span> <span class="ident">F::from</span>(<span class="number">2u32</span>)), <span class="comment">// two words were written so advance 2 positions</span>
-                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;ap increment in call instruction&quot;</span>), <span class="comment">// ap increments not allowed in call instructions</span>
-            };
-        } <span class="kw">else</span> <span class="kw">if</span> <span class="self">self</span>.<span class="ident">instr</span>().<span class="ident">opcode</span>() <span class="op">==</span> <span class="ident">OPC_JMP_INC</span> <span class="comment">/*0*/</span>
-            <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">instr</span>().<span class="ident">opcode</span>() <span class="op">==</span> <span class="ident">OPC_RET</span> <span class="comment">/*2*/</span>
-            <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">instr</span>().<span class="ident">opcode</span>() <span class="op">==</span> <span class="ident">OPC_AEQ</span>
-        <span class="comment">/*4*/</span>
-        {
-            <span class="comment">// rest of types of instruction</span>
-            <span class="comment">// jumps and increments || return || assert equal</span>
-            <span class="kw">match</span> <span class="self">self</span>.<span class="ident">instr</span>().<span class="ident">ap_up</span>() {
-                <span class="comment">/*0*/</span> <span class="ident">AP_Z2</span> =&gt; <span class="ident">next_ap</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="ident">curr</span>.<span class="ident">ap</span>), <span class="comment">// no modification on ap</span>
-                <span class="comment">/*1*/</span>
-                <span class="ident">AP_ADD</span> =&gt; {
-                    <span class="comment">// ap += &lt;op&gt; should be larger than current ap</span>
-                    <span class="ident">next_ap</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="ident">curr</span>.<span class="ident">ap</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">res</span>.<span class="ident">expect</span>(<span class="string">&quot;None res after AP_ADD&quot;</span>))
+            // Update fp
+            </span>next_fp = <span class="prelude-val">Some</span>(<span class="self">self</span>.curr.ap + F::from(<span class="number">2u32</span>)); <span class="comment">// pointer for next frame is after current fp and instruction after call
+                                                          // Update ap
+            </span><span class="kw">match </span><span class="self">self</span>.instr().ap_up() {
+                <span class="comment">/*0*/
+                </span>AP_Z2 =&gt; next_ap = <span class="prelude-val">Some</span>(<span class="self">self</span>.curr.ap + F::from(<span class="number">2u32</span>)), <span class="comment">// two words were written so advance 2 positions
+                </span><span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;ap increment in call instruction&quot;</span>), <span class="comment">// ap increments not allowed in call instructions
+            </span>};
+        } <span class="kw">else if </span><span class="self">self</span>.instr().opcode() == OPC_JMP_INC <span class="comment">/*0*/
+            </span>|| <span class="self">self</span>.instr().opcode() == OPC_RET <span class="comment">/*2*/
+            </span>|| <span class="self">self</span>.instr().opcode() == OPC_AEQ
+        <span class="comment">/*4*/
+        </span>{
+            <span class="comment">// rest of types of instruction
+            // jumps and increments || return || assert equal
+            </span><span class="kw">match </span><span class="self">self</span>.instr().ap_up() {
+                <span class="comment">/*0*/ </span>AP_Z2 =&gt; next_ap = <span class="prelude-val">Some</span>(<span class="self">self</span>.curr.ap), <span class="comment">// no modification on ap
+                /*1*/
+                </span>AP_ADD =&gt; {
+                    <span class="comment">// ap += &lt;op&gt; should be larger than current ap
+                    </span>next_ap = <span class="prelude-val">Some</span>(<span class="self">self</span>.curr.ap + <span class="self">self</span>.vars.res.expect(<span class="string">&quot;None res after AP_ADD&quot;</span>))
                 }
-                <span class="comment">/*2*/</span> <span class="ident">AP_ONE</span> =&gt; <span class="ident">next_ap</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="ident">curr</span>.<span class="ident">ap</span> <span class="op">+</span> <span class="ident">F::one</span>()), <span class="comment">// ap++</span>
-                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Invalid ap_up flagset&quot;</span>),
+                <span class="comment">/*2*/ </span>AP_ONE =&gt; next_ap = <span class="prelude-val">Some</span>(<span class="self">self</span>.curr.ap + F::one()), <span class="comment">// ap++
+                </span><span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Invalid ap_up flagset&quot;</span>),
             }
 
-            <span class="kw">match</span> <span class="self">self</span>.<span class="ident">instr</span>().<span class="ident">opcode</span>() {
-                <span class="comment">/*0*/</span>
-                <span class="ident">OPC_JMP_INC</span> =&gt; <span class="ident">next_fp</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="ident">curr</span>.<span class="ident">fp</span>), <span class="comment">// no modification on fp</span>
-                <span class="comment">/*2*/</span>
-                <span class="ident">OPC_RET</span> =&gt; <span class="ident">next_fp</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">dst</span>.<span class="ident">expect</span>(<span class="string">&quot;None dst after OPC_RET&quot;</span>)), <span class="comment">// ret sets fp to previous fp that was in [ap-2]</span>
-                <span class="comment">/*4*/</span>
-                <span class="ident">OPC_AEQ</span> =&gt; {
-                    <span class="comment">// The following conditional is a fix that is not explained in the whitepaper</span>
-                    <span class="comment">// The goal is to distinguish two types of ASSERT_EQUAL where one checks that</span>
-                    <span class="comment">// dst = res , but in order for this to be true, one sometimes needs to write</span>
-                    <span class="comment">// the res in mem(adr_dst) and sometimes write dst in mem(res_dir). The only</span>
-                    <span class="comment">// case where res can be None is when res = op1 and thus res_dir = adr_op1</span>
-                    <span class="kw">if</span> <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">res</span>.<span class="ident">is_none</span>() {
-                        <span class="comment">// res = dst</span>
-                        <span class="self">self</span>.<span class="ident">mem</span>.<span class="ident">write</span>(
-                            <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">adr_op1</span>,
-                            <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">dst</span>.<span class="ident">expect</span>(<span class="string">&quot;None dst after OPC_AEQ&quot;</span>),
+            <span class="kw">match </span><span class="self">self</span>.instr().opcode() {
+                <span class="comment">/*0*/
+                </span>OPC_JMP_INC =&gt; next_fp = <span class="prelude-val">Some</span>(<span class="self">self</span>.curr.fp), <span class="comment">// no modification on fp
+                /*2*/
+                </span>OPC_RET =&gt; next_fp = <span class="prelude-val">Some</span>(<span class="self">self</span>.vars.dst.expect(<span class="string">&quot;None dst after OPC_RET&quot;</span>)), <span class="comment">// ret sets fp to previous fp that was in [ap-2]
+                /*4*/
+                </span>OPC_AEQ =&gt; {
+                    <span class="comment">// The following conditional is a fix that is not explained in the whitepaper
+                    // The goal is to distinguish two types of ASSERT_EQUAL where one checks that
+                    // dst = res , but in order for this to be true, one sometimes needs to write
+                    // the res in mem(adr_dst) and sometimes write dst in mem(res_dir). The only
+                    // case where res can be None is when res = op1 and thus res_dir = adr_op1
+                    </span><span class="kw">if </span><span class="self">self</span>.vars.res.is_none() {
+                        <span class="comment">// res = dst
+                        </span><span class="self">self</span>.mem.write(
+                            <span class="self">self</span>.vars.adr_op1,
+                            <span class="self">self</span>.vars.dst.expect(<span class="string">&quot;None dst after OPC_AEQ&quot;</span>),
                         );
-                        <span class="comment">// update the value of the variable as well</span>
-                        <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">op1</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">mem</span>.<span class="ident">read</span>(<span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">adr_op1</span>);
-                        <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">mem</span>.<span class="ident">read</span>(<span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">adr_op1</span>);
-                    } <span class="kw">else</span> {
-                        <span class="comment">// dst = res</span>
-                        <span class="self">self</span>.<span class="ident">mem</span>.<span class="ident">write</span>(
-                            <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">adr_dst</span>,
-                            <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">res</span>.<span class="ident">expect</span>(<span class="string">&quot;None res after OPC_AEQ&quot;</span>),
+                        <span class="comment">// update the value of the variable as well
+                        </span><span class="self">self</span>.vars.op1 = <span class="self">self</span>.mem.read(<span class="self">self</span>.vars.adr_op1);
+                        <span class="self">self</span>.vars.res = <span class="self">self</span>.mem.read(<span class="self">self</span>.vars.adr_op1);
+                    } <span class="kw">else </span>{
+                        <span class="comment">// dst = res
+                        </span><span class="self">self</span>.mem.write(
+                            <span class="self">self</span>.vars.adr_dst,
+                            <span class="self">self</span>.vars.res.expect(<span class="string">&quot;None res after OPC_AEQ&quot;</span>),
                         );
-                        <span class="comment">// update the value of the variable as well</span>
-                        <span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">dst</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">mem</span>.<span class="ident">read</span>(<span class="self">self</span>.<span class="ident">vars</span>.<span class="ident">adr_dst</span>);
+                        <span class="comment">// update the value of the variable as well
+                        </span><span class="self">self</span>.vars.dst = <span class="self">self</span>.mem.read(<span class="self">self</span>.vars.adr_dst);
                     }
-                    <span class="ident">next_fp</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="ident">curr</span>.<span class="ident">fp</span>); <span class="comment">// no modification on fp</span>
-                }
-                <span class="kw">_</span> =&gt; {
+                    next_fp = <span class="prelude-val">Some</span>(<span class="self">self</span>.curr.fp); <span class="comment">// no modification on fp
+                </span>}
+                <span class="kw">_ </span>=&gt; {
                     <span class="macro">panic!</span>(<span class="string">&quot;This case must never happen&quot;</span>)
                 }
             }
-        } <span class="kw">else</span> {
+        } <span class="kw">else </span>{
             <span class="macro">panic!</span>(<span class="string">&quot;Invalid opcode flagset&quot;</span>);
         }
-        (<span class="ident">next_ap</span>, <span class="ident">next_fp</span>)
+        (next_ap, next_fp)
     }
 }
 
-<span class="doccomment">/// This struct stores the needed information to run a program</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CairoProgram</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// total number of steps</span>
-    <span class="ident">steps</span>: <span class="ident">F</span>,
-    <span class="doccomment">/// full execution memory</span>
-    <span class="ident">mem</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="kw-2">mut</span> <span class="ident">CairoMemory</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// initial computation registers</span>
-    <span class="ident">ini</span>: <span class="ident">CairoState</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// final computation pointers</span>
-    <span class="ident">fin</span>: <span class="ident">CairoState</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// execution trace as a vector of [CairoInstruction]</span>
-    <span class="ident">trace</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CairoInstruction</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+<span class="doccomment">/// This struct stores the needed information to run a program
+</span><span class="kw">pub struct </span>CairoProgram&lt;<span class="lifetime">&#39;a</span>, F&gt; {
+    <span class="doccomment">/// total number of steps
+    </span>steps: F,
+    <span class="doccomment">/// full execution memory
+    </span>mem: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="kw-2">mut </span>CairoMemory&lt;F&gt;,
+    <span class="doccomment">/// initial computation registers
+    </span>ini: CairoState&lt;F&gt;,
+    <span class="doccomment">/// final computation pointers
+    </span>fin: CairoState&lt;F&gt;,
+    <span class="doccomment">/// execution trace as a vector of [CairoInstruction]
+    </span>trace: Vec&lt;CairoInstruction&lt;F&gt;&gt;,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span> <span class="ident">CairoProgram</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Creates a Cairo execution from the public information (memory and initial pointers)</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">mem</span>: <span class="kw-2">&amp;mut</span> <span class="ident">CairoMemory</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">pc</span>: <span class="ident">u64</span>) -&gt; <span class="ident">CairoProgram</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">ap</span> <span class="op">=</span> <span class="ident">mem</span>.<span class="ident">len</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">prog</span> <span class="op">=</span> <span class="ident">CairoProgram</span> {
-            <span class="ident">steps</span>: <span class="ident">F::zero</span>(),
-            <span class="ident">mem</span>,
-            <span class="ident">ini</span>: <span class="ident">CairoState::new</span>(<span class="ident">F::from</span>(<span class="ident">pc</span>), <span class="ident">F::from</span>(<span class="ident">ap</span>), <span class="ident">F::from</span>(<span class="ident">ap</span>)),
-            <span class="ident">fin</span>: <span class="ident">CairoState::new</span>(<span class="ident">F::zero</span>(), <span class="ident">F::zero</span>(), <span class="ident">F::zero</span>()),
-            <span class="ident">trace</span>: <span class="ident">Vec::new</span>(),
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: Field&gt; CairoProgram&lt;<span class="lifetime">&#39;a</span>, F&gt; {
+    <span class="doccomment">/// Creates a Cairo execution from the public information (memory and initial pointers)
+    </span><span class="kw">pub fn </span>new(mem: <span class="kw-2">&amp;mut </span>CairoMemory&lt;F&gt;, pc: u64) -&gt; CairoProgram&lt;F&gt; {
+        <span class="kw">let </span>ap = mem.len();
+        <span class="kw">let </span><span class="kw-2">mut </span>prog = CairoProgram {
+            steps: F::zero(),
+            mem,
+            ini: CairoState::new(F::from(pc), F::from(ap), F::from(ap)),
+            fin: CairoState::new(F::zero(), F::zero(), F::zero()),
+            trace: Vec::new(),
         };
-        <span class="ident">prog</span>.<span class="ident">execute</span>();
-        <span class="ident">prog</span>
+        prog.execute();
+        prog
     }
 
-    <span class="doccomment">/// Outputs the total number of steps of the execution carried out by the runner</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">steps</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">steps</span>
+    <span class="doccomment">/// Outputs the total number of steps of the execution carried out by the runner
+    </span><span class="kw">pub fn </span>steps(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.steps
     }
 
-    <span class="doccomment">/// Outputs the initial value of the pointers after the execution carried out by the runner</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ini</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">CairoState</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">ini</span>
+    <span class="doccomment">/// Outputs the initial value of the pointers after the execution carried out by the runner
+    </span><span class="kw">pub fn </span>ini(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; CairoState&lt;F&gt; {
+        <span class="self">self</span>.ini
     }
 
-    <span class="doccomment">/// Outputs the final value of the pointers after the execution carried out by the runner</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">fin</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">CairoState</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">fin</span>
+    <span class="doccomment">/// Outputs the final value of the pointers after the execution carried out by the runner
+    </span><span class="kw">pub fn </span>fin(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; CairoState&lt;F&gt; {
+        <span class="self">self</span>.fin
     }
 
-    <span class="doccomment">/// Returns a reference to the set of instructions</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">trace</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CairoInstruction</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">trace</span>
+    <span class="doccomment">/// Returns a reference to the set of instructions
+    </span><span class="kw">pub fn </span>trace(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Vec&lt;CairoInstruction&lt;F&gt;&gt; {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.trace
     }
 
-    <span class="doccomment">/// This function simulates an execution of the Cairo program received as input.</span>
-    <span class="doccomment">/// It generates the full memory stack and the execution trace</span>
-    <span class="kw">fn</span> <span class="ident">execute</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="comment">// set finishing flag to false, as it just started</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">end</span> <span class="op">=</span> <span class="bool-val">false</span>;
-        <span class="comment">// saves local copy of the initial (claimed) pointers of the program</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">curr</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ini</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">next</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ini</span>;
-        <span class="comment">// first timestamp</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">n</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
-        <span class="comment">// keep executing steps until the end is reached</span>
-        <span class="kw">while</span> <span class="op">!</span><span class="ident">end</span> {
-            <span class="comment">// create current step of computation</span>
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">step</span> <span class="op">=</span> <span class="ident">CairoStep::new</span>(<span class="self">self</span>.<span class="ident">mem</span>, <span class="ident">next</span>);
-            <span class="comment">// save current value of the pointers</span>
-            <span class="ident">curr</span> <span class="op">=</span> <span class="ident">step</span>.<span class="ident">curr</span>;
-            <span class="comment">// execute current step and increase time counter</span>
-            <span class="kw">let</span> <span class="ident">instr</span> <span class="op">=</span> <span class="ident">step</span>.<span class="ident">execute</span>();
-            <span class="self">self</span>.<span class="ident">trace</span>.<span class="ident">push</span>(<span class="ident">instr</span>);
-            <span class="ident">n</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-            <span class="kw">match</span> <span class="ident">step</span>.<span class="ident">next</span> {
-                <span class="prelude-val">None</span> =&gt; <span class="ident">end</span> <span class="op">=</span> <span class="bool-val">true</span>, <span class="comment">// if find no next pointers, end</span>
-                <span class="kw">_</span> =&gt; {
-                    <span class="comment">// if there are next pointers</span>
-                    <span class="ident">end</span> <span class="op">=</span> <span class="bool-val">false</span>;
-                    <span class="comment">// update next value of pointers</span>
-                    <span class="ident">next</span> <span class="op">=</span> <span class="ident">step</span>.<span class="ident">next</span>.<span class="ident">expect</span>(<span class="string">&quot;Empty next pointers&quot;</span>);
-                    <span class="kw">if</span> <span class="ident">curr</span>.<span class="ident">ap</span> <span class="op">&lt;</span><span class="op">=</span> <span class="ident">next</span>.<span class="ident">pc</span> {
-                        <span class="comment">// if reading from unallocated memory, end</span>
-                        <span class="ident">end</span> <span class="op">=</span> <span class="bool-val">true</span>;
+    <span class="doccomment">/// This function simulates an execution of the Cairo program received as input.
+    /// It generates the full memory stack and the execution trace
+    </span><span class="kw">fn </span>execute(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="comment">// set finishing flag to false, as it just started
+        </span><span class="kw">let </span><span class="kw-2">mut </span>end = <span class="bool-val">false</span>;
+        <span class="comment">// saves local copy of the initial (claimed) pointers of the program
+        </span><span class="kw">let </span><span class="kw-2">mut </span>curr = <span class="self">self</span>.ini;
+        <span class="kw">let </span><span class="kw-2">mut </span>next = <span class="self">self</span>.ini;
+        <span class="comment">// first timestamp
+        </span><span class="kw">let </span><span class="kw-2">mut </span>n: u64 = <span class="number">0</span>;
+        <span class="comment">// keep executing steps until the end is reached
+        </span><span class="kw">while </span>!end {
+            <span class="comment">// create current step of computation
+            </span><span class="kw">let </span><span class="kw-2">mut </span>step = CairoStep::new(<span class="self">self</span>.mem, next);
+            <span class="comment">// save current value of the pointers
+            </span>curr = step.curr;
+            <span class="comment">// execute current step and increase time counter
+            </span><span class="kw">let </span>instr = step.execute();
+            <span class="self">self</span>.trace.push(instr);
+            n += <span class="number">1</span>;
+            <span class="kw">match </span>step.next {
+                <span class="prelude-val">None </span>=&gt; end = <span class="bool-val">true</span>, <span class="comment">// if find no next pointers, end
+                </span><span class="kw">_ </span>=&gt; {
+                    <span class="comment">// if there are next pointers
+                    </span>end = <span class="bool-val">false</span>;
+                    <span class="comment">// update next value of pointers
+                    </span>next = step.next.expect(<span class="string">&quot;Empty next pointers&quot;</span>);
+                    <span class="kw">if </span>curr.ap &lt;= next.pc {
+                        <span class="comment">// if reading from unallocated memory, end
+                        </span>end = <span class="bool-val">true</span>;
                     }
                 }
             }
         }
-        <span class="self">self</span>.<span class="ident">steps</span> <span class="op">=</span> <span class="ident">F::from</span>(<span class="ident">n</span>);
-        <span class="self">self</span>.<span class="ident">fin</span> <span class="op">=</span> <span class="ident">CairoState::new</span>(<span class="ident">curr</span>.<span class="ident">pc</span>, <span class="ident">curr</span>.<span class="ident">ap</span>, <span class="ident">curr</span>.<span class="ident">fp</span>);
+        <span class="self">self</span>.steps = F::from(n);
+        <span class="self">self</span>.fin = CairoState::new(curr.pc, curr.ap, curr.fp);
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident">mina_curves::pasta::fp::Fp</span> <span class="kw">as</span> <span class="ident">F</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span>mina_curves::pasta::fp::Fp <span class="kw">as </span>F;
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_cairo_step</span>() {
-        <span class="comment">// This tests that CairoStep works for a 2 word instruction</span>
-        <span class="comment">//    tempvar x = 10;</span>
-        <span class="kw">let</span> <span class="ident">instrs</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="number">0x480680017fff8000</span>, <span class="number">10</span>, <span class="number">0x208b7fff7fff7ffe</span>]
-            .<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">i</span>: <span class="kw-2">&amp;</span><span class="ident">i64</span><span class="op">|</span> <span class="ident">F::from</span>(<span class="ident">i</span>))
-            .<span class="ident">collect</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mem</span> <span class="op">=</span> <span class="ident">CairoMemory::new</span>(<span class="ident">instrs</span>);
-        <span class="comment">// Need to know how to find out</span>
-        <span class="comment">// Is it final ap and/or final fp? Will write to starkware guys to learn about this</span>
-        <span class="ident">mem</span>.<span class="ident">write</span>(<span class="ident">F::from</span>(<span class="number">4u32</span>), <span class="ident">F::from</span>(<span class="number">7u32</span>));
-        <span class="ident">mem</span>.<span class="ident">write</span>(<span class="ident">F::from</span>(<span class="number">5u32</span>), <span class="ident">F::from</span>(<span class="number">7u32</span>));
-        <span class="kw">let</span> <span class="ident">ptrs</span> <span class="op">=</span> <span class="ident">CairoState::new</span>(<span class="ident">F::from</span>(<span class="number">1u32</span>), <span class="ident">F::from</span>(<span class="number">6u32</span>), <span class="ident">F::from</span>(<span class="number">6u32</span>));
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">step</span> <span class="op">=</span> <span class="ident">CairoStep::new</span>(<span class="kw-2">&amp;mut</span> <span class="ident">mem</span>, <span class="ident">ptrs</span>);
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_cairo_step() {
+        <span class="comment">// This tests that CairoStep works for a 2 word instruction
+        //    tempvar x = 10;
+        </span><span class="kw">let </span>instrs = <span class="macro">vec!</span>[<span class="number">0x480680017fff8000</span>, <span class="number">10</span>, <span class="number">0x208b7fff7fff7ffe</span>]
+            .iter()
+            .map(|<span class="kw-2">&amp;</span>i: <span class="kw-2">&amp;</span>i64| F::from(i))
+            .collect();
+        <span class="kw">let </span><span class="kw-2">mut </span>mem = CairoMemory::new(instrs);
+        <span class="comment">// Need to know how to find out
+        // Is it final ap and/or final fp? Will write to starkware guys to learn about this
+        </span>mem.write(F::from(<span class="number">4u32</span>), F::from(<span class="number">7u32</span>));
+        mem.write(F::from(<span class="number">5u32</span>), F::from(<span class="number">7u32</span>));
+        <span class="kw">let </span>ptrs = CairoState::new(F::from(<span class="number">1u32</span>), F::from(<span class="number">6u32</span>), F::from(<span class="number">6u32</span>));
+        <span class="kw">let </span><span class="kw-2">mut </span>step = CairoStep::new(<span class="kw-2">&amp;mut </span>mem, ptrs);
 
-        <span class="ident">step</span>.<span class="ident">execute</span>();
-        <span class="macro">assert_eq!</span>(<span class="ident">step</span>.<span class="ident">next</span>.<span class="ident">unwrap</span>().<span class="ident">pc</span>, <span class="ident">F::from</span>(<span class="number">3u32</span>));
-        <span class="macro">assert_eq!</span>(<span class="ident">step</span>.<span class="ident">next</span>.<span class="ident">unwrap</span>().<span class="ident">ap</span>, <span class="ident">F::from</span>(<span class="number">7u32</span>));
-        <span class="macro">assert_eq!</span>(<span class="ident">step</span>.<span class="ident">next</span>.<span class="ident">unwrap</span>().<span class="ident">fp</span>, <span class="ident">F::from</span>(<span class="number">6u32</span>));
+        step.execute();
+        <span class="macro">assert_eq!</span>(step.next.unwrap().pc, F::from(<span class="number">3u32</span>));
+        <span class="macro">assert_eq!</span>(step.next.unwrap().ap, F::from(<span class="number">7u32</span>));
+        <span class="macro">assert_eq!</span>(step.next.unwrap().fp, F::from(<span class="number">6u32</span>));
 
-        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">step</span>.<span class="ident">mem</span>);
+        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, step.mem);
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_cairo_program</span>() {
-        <span class="kw">let</span> <span class="ident">instrs</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="number">0x480680017fff8000</span>, <span class="number">10</span>, <span class="number">0x208b7fff7fff7ffe</span>]
-            .<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">i</span>: <span class="kw-2">&amp;</span><span class="ident">i64</span><span class="op">|</span> <span class="ident">F::from</span>(<span class="ident">i</span>))
-            .<span class="ident">collect</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mem</span> <span class="op">=</span> <span class="ident">CairoMemory</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="ident">instrs</span>);
-        <span class="comment">// Need to know how to find out</span>
-        <span class="comment">// Is it final ap and/or final fp? Will write to starkware guys to learn about this</span>
-        <span class="ident">mem</span>.<span class="ident">write</span>(<span class="ident">F::from</span>(<span class="number">4u32</span>), <span class="ident">F::from</span>(<span class="number">7u32</span>)); <span class="comment">//beginning of output</span>
-        <span class="ident">mem</span>.<span class="ident">write</span>(<span class="ident">F::from</span>(<span class="number">5u32</span>), <span class="ident">F::from</span>(<span class="number">7u32</span>)); <span class="comment">//end of output</span>
-        <span class="kw">let</span> <span class="ident">prog</span> <span class="op">=</span> <span class="ident">CairoProgram::new</span>(<span class="kw-2">&amp;mut</span> <span class="ident">mem</span>, <span class="number">1</span>);
-        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">prog</span>.<span class="ident">mem</span>);
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_cairo_program() {
+        <span class="kw">let </span>instrs = <span class="macro">vec!</span>[<span class="number">0x480680017fff8000</span>, <span class="number">10</span>, <span class="number">0x208b7fff7fff7ffe</span>]
+            .iter()
+            .map(|<span class="kw-2">&amp;</span>i: <span class="kw-2">&amp;</span>i64| F::from(i))
+            .collect();
+        <span class="kw">let </span><span class="kw-2">mut </span>mem = CairoMemory::&lt;F&gt;::new(instrs);
+        <span class="comment">// Need to know how to find out
+        // Is it final ap and/or final fp? Will write to starkware guys to learn about this
+        </span>mem.write(F::from(<span class="number">4u32</span>), F::from(<span class="number">7u32</span>)); <span class="comment">//beginning of output
+        </span>mem.write(F::from(<span class="number">5u32</span>), F::from(<span class="number">7u32</span>)); <span class="comment">//end of output
+        </span><span class="kw">let </span>prog = CairoProgram::new(<span class="kw-2">&amp;mut </span>mem, <span class="number">1</span>);
+        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, prog.mem);
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_cairo_output</span>() {
-        <span class="comment">// This is a test for a longer program, involving builtins, imports and outputs</span>
-        <span class="comment">// One can generate more tests here: https://www.cairo-lang.org/playground/</span>
-        <span class="comment">/*
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_cairo_output() {
+        <span class="comment">// This is a test for a longer program, involving builtins, imports and outputs
+        // One can generate more tests here: https://www.cairo-lang.org/playground/
+        /*
         %builtins output
         from starkware.cairo.common.serialize import serialize_word
         func main{output_ptr : felt*}():
@@ -1331,8 +1331,8 @@
             serialize_word(z)
             return ()
         end
-        */</span>
-        <span class="kw">let</span> <span class="ident">instrs</span> <span class="op">=</span> <span class="macro">vec!</span>[
+        */
+        </span><span class="kw">let </span>instrs = <span class="macro">vec!</span>[
             <span class="number">0x400380007ffc7ffd</span>,
             <span class="number">0x482680017ffc8000</span>,
             <span class="number">1</span>,
@@ -1345,54 +1345,54 @@
             <span class="number">0x480a7ffd7fff8000</span>,
             <span class="number">0x48127ffb7fff8000</span>,
             <span class="number">0x1104800180018000</span>,
-            <span class="op">-</span><span class="number">11</span>,
+            -<span class="number">11</span>,
             <span class="number">0x48127ff87fff8000</span>,
             <span class="number">0x1104800180018000</span>,
-            <span class="op">-</span><span class="number">14</span>,
+            -<span class="number">14</span>,
             <span class="number">0x48127ff67fff8000</span>,
             <span class="number">0x1104800180018000</span>,
-            <span class="op">-</span><span class="number">17</span>,
+            -<span class="number">17</span>,
             <span class="number">0x208b7fff7fff7ffe</span>,
             <span class="comment">/*41, // beginning of outputs
             44,   // end of outputs
             44,   // input
-            */</span>
-        ]
-        .<span class="ident">iter</span>()
-        .<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">i</span>: <span class="kw-2">&amp;</span><span class="ident">i64</span><span class="op">|</span> <span class="ident">F::from</span>(<span class="ident">i</span>))
-        .<span class="ident">collect</span>();
+            */
+        </span>]
+        .iter()
+        .map(|<span class="kw-2">&amp;</span>i: <span class="kw-2">&amp;</span>i64| F::from(i))
+        .collect();
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mem</span> <span class="op">=</span> <span class="ident">CairoMemory</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="ident">instrs</span>);
-        <span class="comment">// Need to know how to find out</span>
-        <span class="ident">mem</span>.<span class="ident">write</span>(<span class="ident">F::from</span>(<span class="number">21u32</span>), <span class="ident">F::from</span>(<span class="number">41u32</span>)); <span class="comment">// beginning of outputs</span>
-        <span class="ident">mem</span>.<span class="ident">write</span>(<span class="ident">F::from</span>(<span class="number">22u32</span>), <span class="ident">F::from</span>(<span class="number">44u32</span>)); <span class="comment">// end of outputs</span>
-        <span class="ident">mem</span>.<span class="ident">write</span>(<span class="ident">F::from</span>(<span class="number">23u32</span>), <span class="ident">F::from</span>(<span class="number">44u32</span>)); <span class="comment">//end of program</span>
-        <span class="kw">let</span> <span class="ident">prog</span> <span class="op">=</span> <span class="ident">CairoProgram::new</span>(<span class="kw-2">&amp;mut</span> <span class="ident">mem</span>, <span class="number">5</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">prog</span>.<span class="ident">fin</span>().<span class="ident">pc</span>, <span class="ident">F::from</span>(<span class="number">20u32</span>));
-        <span class="macro">assert_eq!</span>(<span class="ident">prog</span>.<span class="ident">fin</span>().<span class="ident">ap</span>, <span class="ident">F::from</span>(<span class="number">41u32</span>));
-        <span class="macro">assert_eq!</span>(<span class="ident">prog</span>.<span class="ident">fin</span>().<span class="ident">fp</span>, <span class="ident">F::from</span>(<span class="number">24u32</span>));
-        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">prog</span>.<span class="ident">mem</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">prog</span>.<span class="ident">mem</span>.<span class="ident">read</span>(<span class="ident">F::from</span>(<span class="number">24u32</span>)).<span class="ident">unwrap</span>(), <span class="ident">F::from</span>(<span class="number">10u32</span>));
-        <span class="macro">assert_eq!</span>(<span class="ident">prog</span>.<span class="ident">mem</span>.<span class="ident">read</span>(<span class="ident">F::from</span>(<span class="number">25u32</span>)).<span class="ident">unwrap</span>(), <span class="ident">F::from</span>(<span class="number">20u32</span>));
-        <span class="macro">assert_eq!</span>(<span class="ident">prog</span>.<span class="ident">mem</span>.<span class="ident">read</span>(<span class="ident">F::from</span>(<span class="number">26u32</span>)).<span class="ident">unwrap</span>(), <span class="ident">F::from</span>(<span class="number">400u32</span>));
-        <span class="macro">assert_eq!</span>(<span class="ident">prog</span>.<span class="ident">mem</span>.<span class="ident">read</span>(<span class="ident">F::from</span>(<span class="number">27u32</span>)).<span class="ident">unwrap</span>(), <span class="ident">F::from</span>(<span class="number">410u32</span>));
-        <span class="macro">assert_eq!</span>(<span class="ident">prog</span>.<span class="ident">mem</span>.<span class="ident">read</span>(<span class="ident">F::from</span>(<span class="number">28u32</span>)).<span class="ident">unwrap</span>(), <span class="ident">F::from</span>(<span class="number">41u32</span>));
-        <span class="macro">assert_eq!</span>(<span class="ident">prog</span>.<span class="ident">mem</span>.<span class="ident">read</span>(<span class="ident">F::from</span>(<span class="number">29u32</span>)).<span class="ident">unwrap</span>(), <span class="ident">F::from</span>(<span class="number">10u32</span>));
-        <span class="macro">assert_eq!</span>(<span class="ident">prog</span>.<span class="ident">mem</span>.<span class="ident">read</span>(<span class="ident">F::from</span>(<span class="number">30u32</span>)).<span class="ident">unwrap</span>(), <span class="ident">F::from</span>(<span class="number">24u32</span>));
-        <span class="macro">assert_eq!</span>(<span class="ident">prog</span>.<span class="ident">mem</span>.<span class="ident">read</span>(<span class="ident">F::from</span>(<span class="number">31u32</span>)).<span class="ident">unwrap</span>(), <span class="ident">F::from</span>(<span class="number">14u32</span>));
-        <span class="macro">assert_eq!</span>(<span class="ident">prog</span>.<span class="ident">mem</span>.<span class="ident">read</span>(<span class="ident">F::from</span>(<span class="number">32u32</span>)).<span class="ident">unwrap</span>(), <span class="ident">F::from</span>(<span class="number">42u32</span>));
-        <span class="macro">assert_eq!</span>(<span class="ident">prog</span>.<span class="ident">mem</span>.<span class="ident">read</span>(<span class="ident">F::from</span>(<span class="number">33u32</span>)).<span class="ident">unwrap</span>(), <span class="ident">F::from</span>(<span class="number">20u32</span>));
-        <span class="macro">assert_eq!</span>(<span class="ident">prog</span>.<span class="ident">mem</span>.<span class="ident">read</span>(<span class="ident">F::from</span>(<span class="number">34u32</span>)).<span class="ident">unwrap</span>(), <span class="ident">F::from</span>(<span class="number">24u32</span>));
-        <span class="macro">assert_eq!</span>(<span class="ident">prog</span>.<span class="ident">mem</span>.<span class="ident">read</span>(<span class="ident">F::from</span>(<span class="number">35u32</span>)).<span class="ident">unwrap</span>(), <span class="ident">F::from</span>(<span class="number">17u32</span>));
-        <span class="macro">assert_eq!</span>(<span class="ident">prog</span>.<span class="ident">mem</span>.<span class="ident">read</span>(<span class="ident">F::from</span>(<span class="number">36u32</span>)).<span class="ident">unwrap</span>(), <span class="ident">F::from</span>(<span class="number">43u32</span>));
-        <span class="macro">assert_eq!</span>(<span class="ident">prog</span>.<span class="ident">mem</span>.<span class="ident">read</span>(<span class="ident">F::from</span>(<span class="number">37u32</span>)).<span class="ident">unwrap</span>(), <span class="ident">F::from</span>(<span class="number">410u32</span>));
-        <span class="macro">assert_eq!</span>(<span class="ident">prog</span>.<span class="ident">mem</span>.<span class="ident">read</span>(<span class="ident">F::from</span>(<span class="number">38u32</span>)).<span class="ident">unwrap</span>(), <span class="ident">F::from</span>(<span class="number">24u32</span>));
-        <span class="macro">assert_eq!</span>(<span class="ident">prog</span>.<span class="ident">mem</span>.<span class="ident">read</span>(<span class="ident">F::from</span>(<span class="number">39u32</span>)).<span class="ident">unwrap</span>(), <span class="ident">F::from</span>(<span class="number">20u32</span>));
-        <span class="macro">assert_eq!</span>(<span class="ident">prog</span>.<span class="ident">mem</span>.<span class="ident">read</span>(<span class="ident">F::from</span>(<span class="number">40u32</span>)).<span class="ident">unwrap</span>(), <span class="ident">F::from</span>(<span class="number">44u32</span>));
-        <span class="macro">assert_eq!</span>(<span class="ident">prog</span>.<span class="ident">mem</span>.<span class="ident">read</span>(<span class="ident">F::from</span>(<span class="number">41u32</span>)).<span class="ident">unwrap</span>(), <span class="ident">F::from</span>(<span class="number">10u32</span>));
-        <span class="macro">assert_eq!</span>(<span class="ident">prog</span>.<span class="ident">mem</span>.<span class="ident">read</span>(<span class="ident">F::from</span>(<span class="number">42u32</span>)).<span class="ident">unwrap</span>(), <span class="ident">F::from</span>(<span class="number">20u32</span>));
-        <span class="macro">assert_eq!</span>(<span class="ident">prog</span>.<span class="ident">mem</span>.<span class="ident">read</span>(<span class="ident">F::from</span>(<span class="number">43u32</span>)).<span class="ident">unwrap</span>(), <span class="ident">F::from</span>(<span class="number">410u32</span>));
+        <span class="kw">let </span><span class="kw-2">mut </span>mem = CairoMemory::&lt;F&gt;::new(instrs);
+        <span class="comment">// Need to know how to find out
+        </span>mem.write(F::from(<span class="number">21u32</span>), F::from(<span class="number">41u32</span>)); <span class="comment">// beginning of outputs
+        </span>mem.write(F::from(<span class="number">22u32</span>), F::from(<span class="number">44u32</span>)); <span class="comment">// end of outputs
+        </span>mem.write(F::from(<span class="number">23u32</span>), F::from(<span class="number">44u32</span>)); <span class="comment">//end of program
+        </span><span class="kw">let </span>prog = CairoProgram::new(<span class="kw-2">&amp;mut </span>mem, <span class="number">5</span>);
+        <span class="macro">assert_eq!</span>(prog.fin().pc, F::from(<span class="number">20u32</span>));
+        <span class="macro">assert_eq!</span>(prog.fin().ap, F::from(<span class="number">41u32</span>));
+        <span class="macro">assert_eq!</span>(prog.fin().fp, F::from(<span class="number">24u32</span>));
+        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, prog.mem);
+        <span class="macro">assert_eq!</span>(prog.mem.read(F::from(<span class="number">24u32</span>)).unwrap(), F::from(<span class="number">10u32</span>));
+        <span class="macro">assert_eq!</span>(prog.mem.read(F::from(<span class="number">25u32</span>)).unwrap(), F::from(<span class="number">20u32</span>));
+        <span class="macro">assert_eq!</span>(prog.mem.read(F::from(<span class="number">26u32</span>)).unwrap(), F::from(<span class="number">400u32</span>));
+        <span class="macro">assert_eq!</span>(prog.mem.read(F::from(<span class="number">27u32</span>)).unwrap(), F::from(<span class="number">410u32</span>));
+        <span class="macro">assert_eq!</span>(prog.mem.read(F::from(<span class="number">28u32</span>)).unwrap(), F::from(<span class="number">41u32</span>));
+        <span class="macro">assert_eq!</span>(prog.mem.read(F::from(<span class="number">29u32</span>)).unwrap(), F::from(<span class="number">10u32</span>));
+        <span class="macro">assert_eq!</span>(prog.mem.read(F::from(<span class="number">30u32</span>)).unwrap(), F::from(<span class="number">24u32</span>));
+        <span class="macro">assert_eq!</span>(prog.mem.read(F::from(<span class="number">31u32</span>)).unwrap(), F::from(<span class="number">14u32</span>));
+        <span class="macro">assert_eq!</span>(prog.mem.read(F::from(<span class="number">32u32</span>)).unwrap(), F::from(<span class="number">42u32</span>));
+        <span class="macro">assert_eq!</span>(prog.mem.read(F::from(<span class="number">33u32</span>)).unwrap(), F::from(<span class="number">20u32</span>));
+        <span class="macro">assert_eq!</span>(prog.mem.read(F::from(<span class="number">34u32</span>)).unwrap(), F::from(<span class="number">24u32</span>));
+        <span class="macro">assert_eq!</span>(prog.mem.read(F::from(<span class="number">35u32</span>)).unwrap(), F::from(<span class="number">17u32</span>));
+        <span class="macro">assert_eq!</span>(prog.mem.read(F::from(<span class="number">36u32</span>)).unwrap(), F::from(<span class="number">43u32</span>));
+        <span class="macro">assert_eq!</span>(prog.mem.read(F::from(<span class="number">37u32</span>)).unwrap(), F::from(<span class="number">410u32</span>));
+        <span class="macro">assert_eq!</span>(prog.mem.read(F::from(<span class="number">38u32</span>)).unwrap(), F::from(<span class="number">24u32</span>));
+        <span class="macro">assert_eq!</span>(prog.mem.read(F::from(<span class="number">39u32</span>)).unwrap(), F::from(<span class="number">20u32</span>));
+        <span class="macro">assert_eq!</span>(prog.mem.read(F::from(<span class="number">40u32</span>)).unwrap(), F::from(<span class="number">44u32</span>));
+        <span class="macro">assert_eq!</span>(prog.mem.read(F::from(<span class="number">41u32</span>)).unwrap(), F::from(<span class="number">10u32</span>));
+        <span class="macro">assert_eq!</span>(prog.mem.read(F::from(<span class="number">42u32</span>)).unwrap(), F::from(<span class="number">20u32</span>));
+        <span class="macro">assert_eq!</span>(prog.mem.read(F::from(<span class="number">43u32</span>)).unwrap(), F::from(<span class="number">410u32</span>));
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="cairo" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="cairo" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

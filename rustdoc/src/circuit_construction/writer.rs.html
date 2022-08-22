@@ -999,682 +999,682 @@
 <span id="999">999</span>
 <span id="1000">1000</span>
 <span id="1001">1001</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">BigInteger</span>, <span class="ident">FftField</span>, <span class="ident">PrimeField</span>};
-<span class="kw">use</span> <span class="ident">array_init::array_init</span>;
-<span class="kw">use</span> <span class="ident">kimchi::circuits</span>::{
-    <span class="ident">gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">GateType</span>},
-    <span class="ident">polynomials::generic</span>::{
-        <span class="ident">DOUBLE_GENERIC_COEFFS</span>, <span class="ident">DOUBLE_GENERIC_REGISTERS</span>, <span class="ident">GENERIC_COEFFS</span>, <span class="ident">GENERIC_REGISTERS</span>,
+</pre><pre class="rust"><code><span class="kw">use </span>ark_ff::{BigInteger, FftField, PrimeField};
+<span class="kw">use </span>array_init::array_init;
+<span class="kw">use </span>kimchi::circuits::{
+    gate::{CircuitGate, GateType},
+    polynomials::generic::{
+        DOUBLE_GENERIC_COEFFS, DOUBLE_GENERIC_REGISTERS, GENERIC_COEFFS, GENERIC_REGISTERS,
     },
-    <span class="ident">wires</span>::{<span class="ident">Wire</span>, <span class="ident">COLUMNS</span>},
+    wires::{Wire, COLUMNS},
 };
-<span class="kw">use</span> <span class="ident">oracle</span>::{<span class="ident">constants</span>::<span class="kw-2">*</span>, <span class="ident">permutation::full_round</span>};
-<span class="kw">use</span> <span class="ident">std::collections::HashMap</span>;
+<span class="kw">use </span>oracle::{constants::<span class="kw-2">*</span>, permutation::full_round};
+<span class="kw">use </span>std::collections::HashMap;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants::Constants</span>;
+<span class="kw">use </span><span class="kw">crate</span>::constants::Constants;
 
-<span class="doccomment">/// A variable in our circuit.</span>
-<span class="doccomment">/// Variables are assigned with an index to differentiate from each other.</span>
-<span class="doccomment">/// Optionally, they can eventually take as value a field element.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Hash</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="ident">index</span>: <span class="ident">usize</span>,
-    <span class="kw">pub</span> <span class="ident">value</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
+<span class="doccomment">/// A variable in our circuit.
+/// Variables are assigned with an index to differentiate from each other.
+/// Optionally, they can eventually take as value a field element.
+</span><span class="attribute">#[derive(Hash, Eq, PartialEq, Debug, Clone, Copy)]
+</span><span class="kw">pub struct </span>Var&lt;F&gt; {
+    <span class="kw">pub </span>index: usize,
+    <span class="kw">pub </span>value: <span class="prelude-ty">Option</span>&lt;F&gt;,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Copy</span><span class="op">&gt;</span> <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Returns the value inside a variable [Var].</span>
-    <span class="doccomment">/// It panics if it is `None`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">val</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">value</span>.<span class="ident">unwrap</span>()
+<span class="kw">impl</span>&lt;F: Copy&gt; Var&lt;F&gt; {
+    <span class="doccomment">/// Returns the value inside a variable [Var].
+    /// It panics if it is `None`.
+    </span><span class="kw">pub fn </span>val(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.value.unwrap()
     }
 }
 
-<span class="doccomment">/// A variable that corresponds to scalar that is shifted by a certain amount.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ShiftedScalar</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>);
+<span class="doccomment">/// A variable that corresponds to scalar that is shifted by a certain amount.
+</span><span class="kw">pub struct </span>ShiftedScalar&lt;F&gt;(Var&lt;F&gt;);
 
-<span class="doccomment">/// Specifies a gate within a circuit.</span>
-<span class="doccomment">/// A gate will have a type,</span>
-<span class="doccomment">/// will refer to a row of variables,</span>
-<span class="doccomment">/// and will have associated vector of coefficients.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">GateSpec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="ident">typ</span>: <span class="ident">GateType</span>,
-    <span class="kw">pub</span> <span class="ident">row</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">coeffs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Specifies a gate within a circuit.
+/// A gate will have a type,
+/// will refer to a row of variables,
+/// and will have associated vector of coefficients.
+</span><span class="kw">pub struct </span>GateSpec&lt;F&gt; {
+    <span class="kw">pub </span>typ: GateType,
+    <span class="kw">pub </span>row: Vec&lt;<span class="prelude-ty">Option</span>&lt;Var&lt;F&gt;&gt;&gt;,
+    <span class="kw">pub </span>coeffs: Vec&lt;F&gt;,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> <span class="ident">GateSpec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_var_val_or</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">col</span>: <span class="ident">usize</span>, <span class="ident">default</span>: <span class="ident">F</span>) -&gt; <span class="ident">F</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">row</span>.<span class="ident">get</span>(<span class="ident">col</span>) {
-            <span class="prelude-val">Some</span>(<span class="prelude-val">Some</span>(<span class="ident">var</span>)) =&gt; <span class="ident">var</span>.<span class="ident">val</span>(),
-            <span class="kw">_</span> =&gt; <span class="ident">default</span>,
+<span class="kw">impl</span>&lt;F: FftField&gt; GateSpec&lt;F&gt; {
+    <span class="kw">pub fn </span>get_var_val_or(<span class="kw-2">&amp;</span><span class="self">self</span>, col: usize, default: F) -&gt; F {
+        <span class="kw">match </span><span class="self">self</span>.row.get(col) {
+            <span class="prelude-val">Some</span>(<span class="prelude-val">Some</span>(var)) =&gt; var.val(),
+            <span class="kw">_ </span>=&gt; default,
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_var_idx</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">col</span>: <span class="ident">usize</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">row</span>.<span class="ident">get</span>(<span class="ident">col</span>) {
-            <span class="prelude-val">Some</span>(<span class="prelude-val">Some</span>(<span class="ident">var</span>)) =&gt; <span class="prelude-val">Some</span>(<span class="ident">var</span>.<span class="ident">index</span>),
-            <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
+    <span class="kw">pub fn </span>get_var_idx(<span class="kw-2">&amp;</span><span class="self">self</span>, col: usize) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {
+        <span class="kw">match </span><span class="self">self</span>.row.get(col) {
+            <span class="prelude-val">Some</span>(<span class="prelude-val">Some</span>(var)) =&gt; <span class="prelude-val">Some</span>(var.index),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         }
     }
 }
 
-<span class="doccomment">/// A set of gates within the circuit.</span>
-<span class="doccomment">/// It carries the index for the next available variable,</span>
-<span class="doccomment">/// and the vector of [GateSpec] created so far.</span>
-<span class="doccomment">/// It also keeps track of the queue of generic gates and cached constants.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">System</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="ident">next_variable</span>: <span class="ident">usize</span>,
-    <span class="kw">pub</span> <span class="ident">generic_gate_queue</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">GateSpec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="comment">// pub equivalence_classes: HashMap&lt;Var, Vec&lt;Position&gt;&gt;,</span>
-    <span class="kw">pub</span> <span class="ident">gates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">GateSpec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">cached_constants</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+<span class="doccomment">/// A set of gates within the circuit.
+/// It carries the index for the next available variable,
+/// and the vector of [GateSpec] created so far.
+/// It also keeps track of the queue of generic gates and cached constants.
+</span><span class="attribute">#[derive(Default)]
+</span><span class="kw">pub struct </span>System&lt;F&gt; {
+    <span class="kw">pub </span>next_variable: usize,
+    <span class="kw">pub </span>generic_gate_queue: Vec&lt;GateSpec&lt;F&gt;&gt;,
+    <span class="comment">// pub equivalence_classes: HashMap&lt;Var, Vec&lt;Position&gt;&gt;,
+    </span><span class="kw">pub </span>gates: Vec&lt;GateSpec&lt;F&gt;&gt;,
+    <span class="kw">pub </span>cached_constants: HashMap&lt;F, Var&lt;F&gt;&gt;,
 }
 
-<span class="doccomment">/// Carries a vector of rows corresponding to the witness, a queue of generic gates, and stores the cached constants</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">WitnessGenerator</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">F</span>: <span class="ident">PrimeField</span>,
+<span class="doccomment">/// Carries a vector of rows corresponding to the witness, a queue of generic gates, and stores the cached constants
+</span><span class="attribute">#[derive(Default)]
+</span><span class="kw">pub struct </span>WitnessGenerator&lt;F&gt;
+<span class="kw">where
+    </span>F: PrimeField,
 {
-    <span class="kw">pub</span> <span class="ident">generic_gate_queue</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">GateSpec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">rows</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Row</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">cached_constants</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="kw">pub </span>generic_gate_queue: Vec&lt;GateSpec&lt;F&gt;&gt;,
+    <span class="kw">pub </span>rows: Vec&lt;Row&lt;F&gt;&gt;,
+    <span class="kw">pub </span>cached_constants: HashMap&lt;F, Var&lt;F&gt;&gt;,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="ident">WitnessGenerator</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">F</span>: <span class="ident">PrimeField</span>,
+<span class="kw">impl</span>&lt;F&gt; WitnessGenerator&lt;F&gt;
+<span class="kw">where
+    </span>F: PrimeField,
 {
-    <span class="doccomment">/// Given a list of public inputs, creates the witness generator.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">public_inputs</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>]) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">gen</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::default</span>();
+    <span class="doccomment">/// Given a list of public inputs, creates the witness generator.
+    </span><span class="kw">pub fn </span>new(public_inputs: <span class="kw-2">&amp;</span>[F]) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>gen = <span class="self">Self</span>::default();
 
-        <span class="kw">for</span> <span class="ident">input</span> <span class="kw">in</span> <span class="ident">public_inputs</span> {
-            <span class="kw">let</span> <span class="ident">row</span> <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="kw">if</span> <span class="ident">i</span> <span class="op">==</span> <span class="number">0</span> { <span class="kw-2">*</span><span class="ident">input</span> } <span class="kw">else</span> { <span class="ident">F::zero</span>() });
-            <span class="ident">gen</span>.<span class="ident">rows</span>.<span class="ident">push</span>(<span class="ident">row</span>);
+        <span class="kw">for </span>input <span class="kw">in </span>public_inputs {
+            <span class="kw">let </span>row = array_init(|i| <span class="kw">if </span>i == <span class="number">0 </span>{ <span class="kw-2">*</span>input } <span class="kw">else </span>{ F::zero() });
+            gen.rows.push(row);
         }
 
-        <span class="ident">gen</span>
+        gen
     }
 }
 
-<span class="doccomment">/// A row is an array of [COLUMNS] elements</span>
-<span class="kw">type</span> <span class="ident">Row</span><span class="op">&lt;</span><span class="ident">V</span><span class="op">&gt;</span> <span class="op">=</span> [<span class="ident">V</span>; <span class="ident">COLUMNS</span>];
+<span class="doccomment">/// A row is an array of [COLUMNS] elements
+</span><span class="kw">type </span>Row&lt;V&gt; = [V; COLUMNS];
 
-<span class="doccomment">/// This trait includes all the operations that can be executed</span>
-<span class="doccomment">/// by the elements in the circuits.</span>
-<span class="doccomment">/// It allows for different behaviours depending on the struct for</span>
-<span class="doccomment">/// which it is implemented for.</span>
-<span class="doccomment">/// In particular, the circuit mode and the witness generation mode.</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Cs</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// In cases where you want to create a free variable in the circuit,</span>
-    <span class="doccomment">/// as in the variable is not constrained _yet_</span>
-    <span class="doccomment">/// and can be anything that the prover wants.</span>
-    <span class="doccomment">/// For example, division can be implemented as:</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```ignore</span>
-    <span class="doccomment">/// let a = sys.constant(5u32.into());</span>
-    <span class="doccomment">/// let b = sys.constant(10u32.into());</span>
-    <span class="doccomment">/// let c = sys.var(|| {</span>
-    <span class="doccomment">///    b.value * a.value.inverse().unwrap()</span>
-    <span class="doccomment">/// });</span>
-    <span class="doccomment">/// sys.assert_eq(a * c, b);</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">///</span>
-    <span class="kw">fn</span> <span class="ident">var</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">g</span>: <span class="ident">G</span>) -&gt; <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">G</span>: <span class="ident">FnOnce</span>() -&gt; <span class="ident">F</span>;
+<span class="doccomment">/// This trait includes all the operations that can be executed
+/// by the elements in the circuits.
+/// It allows for different behaviours depending on the struct for
+/// which it is implemented for.
+/// In particular, the circuit mode and the witness generation mode.
+</span><span class="kw">pub trait </span>Cs&lt;F: PrimeField&gt; {
+    <span class="doccomment">/// In cases where you want to create a free variable in the circuit,
+    /// as in the variable is not constrained _yet_
+    /// and can be anything that the prover wants.
+    /// For example, division can be implemented as:
+    ///
+    /// ```ignore
+    /// let a = sys.constant(5u32.into());
+    /// let b = sys.constant(10u32.into());
+    /// let c = sys.var(|| {
+    ///    b.value * a.value.inverse().unwrap()
+    /// });
+    /// sys.assert_eq(a * c, b);
+    /// ```
+    ///
+    </span><span class="kw">fn </span>var&lt;G&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, g: G) -&gt; Var&lt;F&gt;
+    <span class="kw">where
+        </span>G: FnOnce() -&gt; F;
 
-    <span class="doccomment">/// Returns the number of gates that the current [Self] contains.</span>
-    <span class="kw">fn</span> <span class="ident">curr_gate_count</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span>;
+    <span class="doccomment">/// Returns the number of gates that the current [Self] contains.
+    </span><span class="kw">fn </span>curr_gate_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
 
-    <span class="doccomment">/// Returns a variable containing a field element as value that is</span>
-    <span class="doccomment">/// computed as the equivalent `BigInteger` number returned by</span>
-    <span class="doccomment">/// function `g`, only if the length is a multiple of 4.</span>
-    <span class="kw">fn</span> <span class="ident">endo_scalar</span><span class="op">&lt;</span><span class="ident">G</span>, <span class="ident">N</span>: <span class="ident">BigInteger</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">length</span>: <span class="ident">usize</span>, <span class="ident">g</span>: <span class="ident">G</span>) -&gt; <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">G</span>: <span class="ident">FnOnce</span>() -&gt; <span class="ident">N</span>,
+    <span class="doccomment">/// Returns a variable containing a field element as value that is
+    /// computed as the equivalent `BigInteger` number returned by
+    /// function `g`, only if the length is a multiple of 4.
+    </span><span class="kw">fn </span>endo_scalar&lt;G, N: BigInteger&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, length: usize, g: G) -&gt; Var&lt;F&gt;
+    <span class="kw">where
+        </span>G: FnOnce() -&gt; N,
     {
-        <span class="macro">assert_eq!</span>(<span class="ident">length</span> <span class="op">%</span> <span class="number">4</span>, <span class="number">0</span>);
+        <span class="macro">assert_eq!</span>(length % <span class="number">4</span>, <span class="number">0</span>);
 
-        <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">y</span> <span class="op">=</span> <span class="ident">g</span>();
-            <span class="kw">let</span> <span class="ident">bits</span> <span class="op">=</span> <span class="ident">y</span>.<span class="ident">to_bits_le</span>();
-            <span class="ident">F::from_repr</span>(<span class="ident">F::BigInt::from_bits_le</span>(<span class="kw-2">&amp;</span><span class="ident">bits</span>)).<span class="ident">unwrap</span>()
+        <span class="self">self</span>.var(|| {
+            <span class="kw">let </span>y = g();
+            <span class="kw">let </span>bits = y.to_bits_le();
+            F::from_repr(F::BigInt::from_bits_le(<span class="kw-2">&amp;</span>bits)).unwrap()
         })
     }
 
-    <span class="doccomment">/// This function creates a [ShiftedScalar] variable from a field element that is</span>
-    <span class="doccomment">/// returned by function `g()`, and a length that should be a multiple of 5.</span>
-    <span class="kw">fn</span> <span class="ident">scalar</span><span class="op">&lt;</span><span class="ident">G</span>, <span class="ident">Fr</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">length</span>: <span class="ident">usize</span>, <span class="ident">g</span>: <span class="ident">G</span>) -&gt; <span class="ident">ShiftedScalar</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">G</span>: <span class="ident">FnOnce</span>() -&gt; <span class="ident">Fr</span>,
+    <span class="doccomment">/// This function creates a [ShiftedScalar] variable from a field element that is
+    /// returned by function `g()`, and a length that should be a multiple of 5.
+    </span><span class="kw">fn </span>scalar&lt;G, Fr: PrimeField&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, length: usize, g: G) -&gt; ShiftedScalar&lt;F&gt;
+    <span class="kw">where
+        </span>G: FnOnce() -&gt; Fr,
     {
-        <span class="macro">assert_eq!</span>(<span class="ident">length</span> <span class="op">%</span> <span class="number">5</span>, <span class="number">0</span>);
+        <span class="macro">assert_eq!</span>(length % <span class="number">5</span>, <span class="number">0</span>);
 
-        <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> {
-            <span class="comment">// TODO: No need to recompute this each time.</span>
-            <span class="kw">let</span> <span class="ident">two</span> <span class="op">=</span> <span class="ident">Fr::from</span>(<span class="number">2u64</span>);
-            <span class="kw">let</span> <span class="ident">shift</span> <span class="op">=</span> <span class="ident">Fr::one</span>() <span class="op">+</span> <span class="ident">two</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="ident">length</span> <span class="kw">as</span> <span class="ident">u64</span>]);
+        <span class="kw">let </span>v = <span class="self">self</span>.var(|| {
+            <span class="comment">// TODO: No need to recompute this each time.
+            </span><span class="kw">let </span>two = Fr::from(<span class="number">2u64</span>);
+            <span class="kw">let </span>shift = Fr::one() + two.pow(<span class="kw-2">&amp;</span>[length <span class="kw">as </span>u64]);
 
-            <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">g</span>();
-            <span class="comment">// x = 2 y + shift</span>
-            <span class="comment">// y = (x - shift) / 2</span>
-            <span class="comment">// TODO: Could cache value of 1/2 to avoid division</span>
-            <span class="kw">let</span> <span class="ident">y</span> <span class="op">=</span> (<span class="ident">x</span> <span class="op">-</span> <span class="ident">shift</span>) <span class="op">/</span> <span class="ident">two</span>;
-            <span class="kw">let</span> <span class="ident">bits</span> <span class="op">=</span> <span class="ident">y</span>.<span class="ident">into_repr</span>().<span class="ident">to_bits_le</span>();
-            <span class="ident">F::from_repr</span>(<span class="ident">F::BigInt::from_bits_le</span>(<span class="kw-2">&amp;</span><span class="ident">bits</span>)).<span class="ident">unwrap</span>()
+            <span class="kw">let </span>x = g();
+            <span class="comment">// x = 2 y + shift
+            // y = (x - shift) / 2
+            // TODO: Could cache value of 1/2 to avoid division
+            </span><span class="kw">let </span>y = (x - shift) / two;
+            <span class="kw">let </span>bits = y.into_repr().to_bits_le();
+            F::from_repr(F::BigInt::from_bits_le(<span class="kw-2">&amp;</span>bits)).unwrap()
         });
-        <span class="ident">ShiftedScalar</span>(<span class="ident">v</span>)
+        ShiftedScalar(v)
     }
 
-    <span class="doccomment">/// In circuit mode, adds a gate to the circuit.</span>
-    <span class="doccomment">/// In witness generation mode, adds the corresponding row to the witness.</span>
-    <span class="kw">fn</span> <span class="ident">gate</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">g</span>: <span class="ident">GateSpec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>);
+    <span class="doccomment">/// In circuit mode, adds a gate to the circuit.
+    /// In witness generation mode, adds the corresponding row to the witness.
+    </span><span class="kw">fn </span>gate(<span class="kw-2">&amp;mut </span><span class="self">self</span>, g: GateSpec&lt;F&gt;);
 
-    <span class="doccomment">/// Creates a `Generic` gate that constrains if two variables are equal.</span>
-    <span class="doccomment">/// This is done by setting `x1` in the left wire and `x2` in the right wire</span>
-    <span class="doccomment">/// with left coefficient `1` and right coefficient `-1`, so that `x1 - x2 = 0`.  </span>
-    <span class="comment">// TODO: Optimize to use permutation argument.</span>
-    <span class="kw">fn</span> <span class="ident">assert_eq</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">x1</span>: <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">x2</span>: <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) {
-        <span class="comment">// | 0  | 1  | 2 | ...</span>
-        <span class="comment">// | x1 | x2 | 0 | ...</span>
-        <span class="kw">let</span> <span class="ident">vars</span> <span class="op">=</span> [<span class="prelude-val">Some</span>(<span class="ident">x1</span>), <span class="prelude-val">Some</span>(<span class="ident">x2</span>), <span class="prelude-val">None</span>];
+    <span class="doccomment">/// Creates a `Generic` gate that constrains if two variables are equal.
+    /// This is done by setting `x1` in the left wire and `x2` in the right wire
+    /// with left coefficient `1` and right coefficient `-1`, so that `x1 - x2 = 0`.  
+    </span><span class="comment">// TODO: Optimize to use permutation argument.
+    </span><span class="kw">fn </span>assert_eq(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x1: Var&lt;F&gt;, x2: Var&lt;F&gt;) {
+        <span class="comment">// | 0  | 1  | 2 | ...
+        // | x1 | x2 | 0 | ...
+        </span><span class="kw">let </span>vars = [<span class="prelude-val">Some</span>(x1), <span class="prelude-val">Some</span>(x2), <span class="prelude-val">None</span>];
 
-        <span class="comment">// constrain `x1 - x2 = 0`</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">coeffs</span> <span class="op">=</span> [<span class="ident">F::zero</span>(); <span class="ident">GENERIC_COEFFS</span>];
-        <span class="ident">coeffs</span>[<span class="number">0</span>] <span class="op">=</span> <span class="ident">F::one</span>();
-        <span class="ident">coeffs</span>[<span class="number">1</span>] <span class="op">=</span> <span class="op">-</span><span class="ident">F::one</span>();
+        <span class="comment">// constrain `x1 - x2 = 0`
+        </span><span class="kw">let </span><span class="kw-2">mut </span>coeffs = [F::zero(); GENERIC_COEFFS];
+        coeffs[<span class="number">0</span>] = F::one();
+        coeffs[<span class="number">1</span>] = -F::one();
 
-        <span class="self">self</span>.<span class="ident">generic</span>(<span class="ident">coeffs</span>, <span class="ident">vars</span>);
+        <span class="self">self</span>.generic(coeffs, vars);
     }
 
-    <span class="doccomment">/// Checks if a constant `x` is already in the cached constants of `self` and returns it.</span>
-    <span class="doccomment">/// Otherwise, it creates a variable for it and caches it.</span>
-    <span class="kw">fn</span> <span class="ident">cached_constants</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">x</span>: <span class="ident">F</span>) -&gt; <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Checks if a constant `x` is already in the cached constants of `self` and returns it.
+    /// Otherwise, it creates a variable for it and caches it.
+    </span><span class="kw">fn </span>cached_constants(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: F) -&gt; Var&lt;F&gt;;
 
-    <span class="doccomment">/// Creates a `Generic` gate to include a constant in the circuit, and returns the variable containing it.</span>
-    <span class="doccomment">/// It sets the left wire to be the variable containing the constant `x` and the rest to zero.</span>
-    <span class="doccomment">/// Then the left coefficient is set to one and the coefficient for constants is set to `-x`.</span>
-    <span class="doccomment">/// This way, the constraint `1 * x - x = 0` holds.</span>
-    <span class="kw">fn</span> <span class="ident">constant</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">x</span>: <span class="ident">F</span>) -&gt; <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">cached_constants</span>(<span class="ident">x</span>);
+    <span class="doccomment">/// Creates a `Generic` gate to include a constant in the circuit, and returns the variable containing it.
+    /// It sets the left wire to be the variable containing the constant `x` and the rest to zero.
+    /// Then the left coefficient is set to one and the coefficient for constants is set to `-x`.
+    /// This way, the constraint `1 * x - x = 0` holds.
+    </span><span class="kw">fn </span>constant(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: F) -&gt; Var&lt;F&gt; {
+        <span class="kw">let </span>v = <span class="self">self</span>.cached_constants(x);
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">coeffs</span> <span class="op">=</span> [<span class="ident">F::zero</span>(); <span class="ident">GENERIC_COEFFS</span>];
-        <span class="ident">coeffs</span>[<span class="number">0</span>] <span class="op">=</span> <span class="ident">F::one</span>();
-        <span class="ident">coeffs</span>[<span class="ident">GENERIC_REGISTERS</span> <span class="op">+</span> <span class="number">1</span>] <span class="op">=</span> <span class="op">-</span><span class="ident">x</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>coeffs = [F::zero(); GENERIC_COEFFS];
+        coeffs[<span class="number">0</span>] = F::one();
+        coeffs[GENERIC_REGISTERS + <span class="number">1</span>] = -x;
 
-        <span class="kw">let</span> <span class="ident">vars</span> <span class="op">=</span> [<span class="prelude-val">Some</span>(<span class="ident">v</span>), <span class="prelude-val">None</span>, <span class="prelude-val">None</span>];
+        <span class="kw">let </span>vars = [<span class="prelude-val">Some</span>(v), <span class="prelude-val">None</span>, <span class="prelude-val">None</span>];
 
-        <span class="self">self</span>.<span class="ident">generic</span>(<span class="ident">coeffs</span>, <span class="ident">vars</span>);
+        <span class="self">self</span>.generic(coeffs, vars);
 
-        <span class="ident">v</span>
+        v
     }
 
-    <span class="doccomment">/// Stores a generic gate until it can combine two of them</span>
-    <span class="doccomment">/// into a double generic gate.</span>
-    <span class="kw">fn</span> <span class="ident">generic_queue</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">gate</span>: <span class="ident">GateSpec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">GateSpec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Stores a generic gate until it can combine two of them
+    /// into a double generic gate.
+    </span><span class="kw">fn </span>generic_queue(<span class="kw-2">&amp;mut </span><span class="self">self</span>, gate: GateSpec&lt;F&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;GateSpec&lt;F&gt;&gt;;
 
-    <span class="doccomment">/// Adds a generic gate.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Warning: this assumes that some finalization occurs to flush</span>
-    <span class="doccomment">/// any queued generic gate.</span>
-    <span class="kw">fn</span> <span class="ident">generic</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">coeffs</span>: [<span class="ident">F</span>; <span class="ident">GENERIC_COEFFS</span>], <span class="ident">vars</span>: [<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>; <span class="ident">GENERIC_REGISTERS</span>]) {
-        <span class="kw">let</span> <span class="ident">gate</span> <span class="op">=</span> <span class="ident">GateSpec</span> {
-            <span class="ident">typ</span>: <span class="ident">GateType::Generic</span>,
-            <span class="ident">row</span>: <span class="ident">vars</span>.<span class="ident">to_vec</span>(),
-            <span class="ident">coeffs</span>: <span class="ident">coeffs</span>.<span class="ident">to_vec</span>(),
+    <span class="doccomment">/// Adds a generic gate.
+    ///
+    /// Warning: this assumes that some finalization occurs to flush
+    /// any queued generic gate.
+    </span><span class="kw">fn </span>generic(<span class="kw-2">&amp;mut </span><span class="self">self</span>, coeffs: [F; GENERIC_COEFFS], vars: [<span class="prelude-ty">Option</span>&lt;Var&lt;F&gt;&gt;; GENERIC_REGISTERS]) {
+        <span class="kw">let </span>gate = GateSpec {
+            typ: GateType::Generic,
+            row: vars.to_vec(),
+            coeffs: coeffs.to_vec(),
         };
-        <span class="comment">// we queue the single generic gate until we have two of them</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">double_generic_gate</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">generic_queue</span>(<span class="ident">gate</span>) {
-            <span class="self">self</span>.<span class="ident">gate</span>(<span class="ident">double_generic_gate</span>);
+        <span class="comment">// we queue the single generic gate until we have two of them
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(double_generic_gate) = <span class="self">self</span>.generic_queue(gate) {
+            <span class="self">self</span>.gate(double_generic_gate);
         }
     }
 
-    <span class="doccomment">/// Creates a `Generic` gate to constrain that a variable `v` is scaled by an `x` amount and returns it.</span>
-    <span class="doccomment">/// First, it creates a new variable with a scaled value (meaning, the value in `v` times `x`).</span>
-    <span class="doccomment">/// Then, it creates a row that sets the left wire to be `v` and the right wire to be the scaled variable.</span>
-    <span class="doccomment">/// Finally, it sets the left coefficient to `x` and the right coefficient to `-1`.</span>
-    <span class="doccomment">/// That way, the constraint `x * v - 1 * xv = 0` is created.</span>
-    <span class="kw">fn</span> <span class="ident">scale</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">x</span>: <span class="ident">F</span>, <span class="ident">v</span>: <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">xv</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">val</span>() <span class="op">*</span> <span class="ident">x</span>);
+    <span class="doccomment">/// Creates a `Generic` gate to constrain that a variable `v` is scaled by an `x` amount and returns it.
+    /// First, it creates a new variable with a scaled value (meaning, the value in `v` times `x`).
+    /// Then, it creates a row that sets the left wire to be `v` and the right wire to be the scaled variable.
+    /// Finally, it sets the left coefficient to `x` and the right coefficient to `-1`.
+    /// That way, the constraint `x * v - 1 * xv = 0` is created.
+    </span><span class="kw">fn </span>scale(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: F, v: Var&lt;F&gt;) -&gt; Var&lt;F&gt; {
+        <span class="kw">let </span>xv = <span class="self">self</span>.var(|| v.val() * x);
 
-        <span class="kw">let</span> <span class="ident">vars</span> <span class="op">=</span> [<span class="prelude-val">Some</span>(<span class="ident">v</span>), <span class="prelude-val">Some</span>(<span class="ident">xv</span>), <span class="prelude-val">None</span>];
+        <span class="kw">let </span>vars = [<span class="prelude-val">Some</span>(v), <span class="prelude-val">Some</span>(xv), <span class="prelude-val">None</span>];
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">coeffs</span> <span class="op">=</span> [<span class="ident">F::zero</span>(); <span class="ident">GENERIC_COEFFS</span>];
-        <span class="ident">coeffs</span>[<span class="number">0</span>] <span class="op">=</span> <span class="ident">x</span>;
-        <span class="ident">coeffs</span>[<span class="number">1</span>] <span class="op">=</span> <span class="op">-</span><span class="ident">F::one</span>();
+        <span class="kw">let </span><span class="kw-2">mut </span>coeffs = [F::zero(); GENERIC_COEFFS];
+        coeffs[<span class="number">0</span>] = x;
+        coeffs[<span class="number">1</span>] = -F::one();
 
-        <span class="self">self</span>.<span class="ident">generic</span>(<span class="ident">coeffs</span>, <span class="ident">vars</span>);
+        <span class="self">self</span>.generic(coeffs, vars);
 
-        <span class="ident">xv</span>
+        xv
     }
 
-    <span class="doccomment">/// Performs curve point addition.</span>
-    <span class="doccomment">/// It creates the corresponding `CompleteAdd` gate for the points `(x1, y1)` and `(x2,y2)`</span>
-    <span class="doccomment">/// and returns the third point resulting from the addition as a tuple of variables.</span>
-    <span class="kw">fn</span> <span class="ident">add_group</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">zero</span>: <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-        (<span class="ident">x1</span>, <span class="ident">y1</span>): (<span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>),
-        (<span class="ident">x2</span>, <span class="ident">y2</span>): (<span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>),
-    ) -&gt; (<span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">same_x_bool</span> <span class="op">=</span> <span class="bool-val">false</span>;
-        <span class="kw">let</span> <span class="ident">same_x</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">same_x</span> <span class="op">=</span> <span class="ident">x1</span>.<span class="ident">val</span>() <span class="op">==</span> <span class="ident">x2</span>.<span class="ident">val</span>();
-            <span class="ident">same_x_bool</span> <span class="op">=</span> <span class="ident">same_x</span>;
-            <span class="ident">F::from</span>(<span class="ident">same_x</span> <span class="kw">as</span> <span class="ident">u64</span>)
+    <span class="doccomment">/// Performs curve point addition.
+    /// It creates the corresponding `CompleteAdd` gate for the points `(x1, y1)` and `(x2,y2)`
+    /// and returns the third point resulting from the addition as a tuple of variables.
+    </span><span class="kw">fn </span>add_group(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        zero: Var&lt;F&gt;,
+        (x1, y1): (Var&lt;F&gt;, Var&lt;F&gt;),
+        (x2, y2): (Var&lt;F&gt;, Var&lt;F&gt;),
+    ) -&gt; (Var&lt;F&gt;, Var&lt;F&gt;) {
+        <span class="kw">let </span><span class="kw-2">mut </span>same_x_bool = <span class="bool-val">false</span>;
+        <span class="kw">let </span>same_x = <span class="self">self</span>.var(|| {
+            <span class="kw">let </span>same_x = x1.val() == x2.val();
+            same_x_bool = same_x;
+            F::from(same_x <span class="kw">as </span>u64)
         });
 
-        <span class="kw">let</span> <span class="ident">inf</span> <span class="op">=</span> <span class="ident">zero</span>;
-        <span class="kw">let</span> <span class="ident">x21_inv</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> {
-            <span class="kw">if</span> <span class="ident">x1</span>.<span class="ident">val</span>() <span class="op">==</span> <span class="ident">x2</span>.<span class="ident">val</span>() {
-                <span class="ident">F::zero</span>()
-            } <span class="kw">else</span> {
-                (<span class="ident">x2</span>.<span class="ident">val</span>() <span class="op">-</span> <span class="ident">x1</span>.<span class="ident">val</span>()).<span class="ident">inverse</span>().<span class="ident">unwrap</span>()
+        <span class="kw">let </span>inf = zero;
+        <span class="kw">let </span>x21_inv = <span class="self">self</span>.var(|| {
+            <span class="kw">if </span>x1.val() == x2.val() {
+                F::zero()
+            } <span class="kw">else </span>{
+                (x2.val() - x1.val()).inverse().unwrap()
             }
         });
 
-        <span class="kw">let</span> <span class="ident">s</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> {
-            <span class="kw">if</span> <span class="ident">same_x_bool</span> {
-                <span class="kw">let</span> <span class="ident">x1_squared</span> <span class="op">=</span> <span class="ident">x1</span>.<span class="ident">val</span>().<span class="ident">square</span>();
-                (<span class="ident">x1_squared</span>.<span class="ident">double</span>() <span class="op">+</span> <span class="ident">x1_squared</span>).<span class="ident">div</span>(<span class="ident">y1</span>.<span class="ident">val</span>().<span class="ident">double</span>())
-            } <span class="kw">else</span> {
-                (<span class="ident">y2</span>.<span class="ident">val</span>() <span class="op">-</span> <span class="ident">y1</span>.<span class="ident">val</span>()) <span class="op">*</span> <span class="ident">x21_inv</span>.<span class="ident">val</span>()
+        <span class="kw">let </span>s = <span class="self">self</span>.var(|| {
+            <span class="kw">if </span>same_x_bool {
+                <span class="kw">let </span>x1_squared = x1.val().square();
+                (x1_squared.double() + x1_squared).div(y1.val().double())
+            } <span class="kw">else </span>{
+                (y2.val() - y1.val()) * x21_inv.val()
             }
         });
 
-        <span class="kw">let</span> <span class="ident">inf_z</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> {
-            <span class="kw">if</span> <span class="ident">y1</span>.<span class="ident">val</span>() <span class="op">==</span> <span class="ident">y2</span>.<span class="ident">val</span>() {
-                <span class="ident">F::zero</span>()
-            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">same_x_bool</span> {
-                (<span class="ident">y2</span>.<span class="ident">val</span>() <span class="op">-</span> <span class="ident">y1</span>.<span class="ident">val</span>()).<span class="ident">inverse</span>().<span class="ident">unwrap</span>()
-            } <span class="kw">else</span> {
-                <span class="ident">F::zero</span>()
+        <span class="kw">let </span>inf_z = <span class="self">self</span>.var(|| {
+            <span class="kw">if </span>y1.val() == y2.val() {
+                F::zero()
+            } <span class="kw">else if </span>same_x_bool {
+                (y2.val() - y1.val()).inverse().unwrap()
+            } <span class="kw">else </span>{
+                F::zero()
             }
         });
 
-        <span class="kw">let</span> <span class="ident">x3</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">val</span>().<span class="ident">square</span>() <span class="op">-</span> (<span class="ident">x1</span>.<span class="ident">val</span>() <span class="op">+</span> <span class="ident">x2</span>.<span class="ident">val</span>()));
+        <span class="kw">let </span>x3 = <span class="self">self</span>.var(|| s.val().square() - (x1.val() + x2.val()));
 
-        <span class="kw">let</span> <span class="ident">y3</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">val</span>() <span class="op">*</span> (<span class="ident">x1</span>.<span class="ident">val</span>() <span class="op">-</span> <span class="ident">x3</span>.<span class="ident">val</span>()) <span class="op">-</span> <span class="ident">y1</span>.<span class="ident">val</span>());
+        <span class="kw">let </span>y3 = <span class="self">self</span>.var(|| s.val() * (x1.val() - x3.val()) - y1.val());
 
-        <span class="self">self</span>.<span class="ident">gate</span>(<span class="ident">GateSpec</span> {
-            <span class="ident">typ</span>: <span class="ident">GateType::CompleteAdd</span>,
-            <span class="ident">row</span>: <span class="macro">vec!</span>[
-                <span class="prelude-val">Some</span>(<span class="ident">x1</span>),
-                <span class="prelude-val">Some</span>(<span class="ident">y1</span>),
-                <span class="prelude-val">Some</span>(<span class="ident">x2</span>),
-                <span class="prelude-val">Some</span>(<span class="ident">y2</span>),
-                <span class="prelude-val">Some</span>(<span class="ident">x3</span>),
-                <span class="prelude-val">Some</span>(<span class="ident">y3</span>),
-                <span class="prelude-val">Some</span>(<span class="ident">inf</span>),
-                <span class="prelude-val">Some</span>(<span class="ident">same_x</span>),
-                <span class="prelude-val">Some</span>(<span class="ident">s</span>),
-                <span class="prelude-val">Some</span>(<span class="ident">inf_z</span>),
-                <span class="prelude-val">Some</span>(<span class="ident">x21_inv</span>),
+        <span class="self">self</span>.gate(GateSpec {
+            typ: GateType::CompleteAdd,
+            row: <span class="macro">vec!</span>[
+                <span class="prelude-val">Some</span>(x1),
+                <span class="prelude-val">Some</span>(y1),
+                <span class="prelude-val">Some</span>(x2),
+                <span class="prelude-val">Some</span>(y2),
+                <span class="prelude-val">Some</span>(x3),
+                <span class="prelude-val">Some</span>(y3),
+                <span class="prelude-val">Some</span>(inf),
+                <span class="prelude-val">Some</span>(same_x),
+                <span class="prelude-val">Some</span>(s),
+                <span class="prelude-val">Some</span>(inf_z),
+                <span class="prelude-val">Some</span>(x21_inv),
             ],
-            <span class="ident">coeffs</span>: <span class="macro">vec!</span>[],
+            coeffs: <span class="macro">vec!</span>[],
         });
-        (<span class="ident">x3</span>, <span class="ident">y3</span>)
+        (x3, y3)
     }
 
-    <span class="doccomment">/// Doubles one curve point `(x1, y1)`, using internally the `add_group()` function.</span>
-    <span class="doccomment">/// It creates a `CompleteAdd` gate for this point addition (with itself).</span>
-    <span class="doccomment">/// Returns a tuple of variables corresponding to the doubled point.</span>
-    <span class="kw">fn</span> <span class="ident">double</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">zero</span>: <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, (<span class="ident">x1</span>, <span class="ident">y1</span>): (<span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>)) -&gt; (<span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="ident">add_group</span>(<span class="ident">zero</span>, (<span class="ident">x1</span>, <span class="ident">y1</span>), (<span class="ident">x1</span>, <span class="ident">y1</span>))
+    <span class="doccomment">/// Doubles one curve point `(x1, y1)`, using internally the `add_group()` function.
+    /// It creates a `CompleteAdd` gate for this point addition (with itself).
+    /// Returns a tuple of variables corresponding to the doubled point.
+    </span><span class="kw">fn </span>double(<span class="kw-2">&amp;mut </span><span class="self">self</span>, zero: Var&lt;F&gt;, (x1, y1): (Var&lt;F&gt;, Var&lt;F&gt;)) -&gt; (Var&lt;F&gt;, Var&lt;F&gt;) {
+        <span class="self">self</span>.add_group(zero, (x1, y1), (x1, y1))
     }
 
-    <span class="doccomment">/// Creates a `CompleteAdd` gate that checks whether a third point `(x3, y3)` is the addition</span>
-    <span class="doccomment">/// of the two first points `(x1, y1)` and `(x2, y2)`.</span>
-    <span class="doccomment">/// The difference between this function and `add_group()` is that in `assert_add_group` the</span>
-    <span class="doccomment">/// third point is given, whereas in the other one it is computed with the formula.</span>
-    <span class="kw">fn</span> <span class="ident">assert_add_group</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">zero</span>: <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-        (<span class="ident">x1</span>, <span class="ident">y1</span>): (<span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>),
-        (<span class="ident">x2</span>, <span class="ident">y2</span>): (<span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>),
-        (<span class="ident">x3</span>, <span class="ident">y3</span>): (<span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>),
+    <span class="doccomment">/// Creates a `CompleteAdd` gate that checks whether a third point `(x3, y3)` is the addition
+    /// of the two first points `(x1, y1)` and `(x2, y2)`.
+    /// The difference between this function and `add_group()` is that in `assert_add_group` the
+    /// third point is given, whereas in the other one it is computed with the formula.
+    </span><span class="kw">fn </span>assert_add_group(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        zero: Var&lt;F&gt;,
+        (x1, y1): (Var&lt;F&gt;, Var&lt;F&gt;),
+        (x2, y2): (Var&lt;F&gt;, Var&lt;F&gt;),
+        (x3, y3): (Var&lt;F&gt;, Var&lt;F&gt;),
     ) {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">same_x_bool</span> <span class="op">=</span> <span class="bool-val">false</span>;
-        <span class="kw">let</span> <span class="ident">same_x</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">same_x</span> <span class="op">=</span> <span class="ident">x1</span>.<span class="ident">val</span>() <span class="op">==</span> <span class="ident">x2</span>.<span class="ident">val</span>();
-            <span class="ident">same_x_bool</span> <span class="op">=</span> <span class="ident">same_x</span>;
-            <span class="ident">F::from</span>(<span class="ident">same_x</span> <span class="kw">as</span> <span class="ident">u64</span>)
+        <span class="kw">let </span><span class="kw-2">mut </span>same_x_bool = <span class="bool-val">false</span>;
+        <span class="kw">let </span>same_x = <span class="self">self</span>.var(|| {
+            <span class="kw">let </span>same_x = x1.val() == x2.val();
+            same_x_bool = same_x;
+            F::from(same_x <span class="kw">as </span>u64)
         });
 
-        <span class="kw">let</span> <span class="ident">inf</span> <span class="op">=</span> <span class="ident">zero</span>;
-        <span class="kw">let</span> <span class="ident">x21_inv</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> {
-            <span class="kw">if</span> <span class="ident">x1</span>.<span class="ident">val</span>() <span class="op">==</span> <span class="ident">x2</span>.<span class="ident">val</span>() {
-                <span class="ident">F::zero</span>()
-            } <span class="kw">else</span> {
-                (<span class="ident">x2</span>.<span class="ident">val</span>() <span class="op">-</span> <span class="ident">x1</span>.<span class="ident">val</span>()).<span class="ident">inverse</span>().<span class="ident">unwrap</span>()
+        <span class="kw">let </span>inf = zero;
+        <span class="kw">let </span>x21_inv = <span class="self">self</span>.var(|| {
+            <span class="kw">if </span>x1.val() == x2.val() {
+                F::zero()
+            } <span class="kw">else </span>{
+                (x2.val() - x1.val()).inverse().unwrap()
             }
         });
 
-        <span class="kw">let</span> <span class="ident">s</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> {
-            <span class="kw">if</span> <span class="ident">same_x_bool</span> {
-                <span class="kw">let</span> <span class="ident">x1_squared</span> <span class="op">=</span> <span class="ident">x1</span>.<span class="ident">val</span>().<span class="ident">square</span>();
-                (<span class="ident">x1_squared</span>.<span class="ident">double</span>() <span class="op">+</span> <span class="ident">x1_squared</span>).<span class="ident">div</span>(<span class="ident">y1</span>.<span class="ident">val</span>().<span class="ident">double</span>())
-            } <span class="kw">else</span> {
-                (<span class="ident">y2</span>.<span class="ident">val</span>() <span class="op">-</span> <span class="ident">y1</span>.<span class="ident">val</span>()) <span class="op">*</span> <span class="ident">x21_inv</span>.<span class="ident">val</span>()
+        <span class="kw">let </span>s = <span class="self">self</span>.var(|| {
+            <span class="kw">if </span>same_x_bool {
+                <span class="kw">let </span>x1_squared = x1.val().square();
+                (x1_squared.double() + x1_squared).div(y1.val().double())
+            } <span class="kw">else </span>{
+                (y2.val() - y1.val()) * x21_inv.val()
             }
         });
 
-        <span class="kw">let</span> <span class="ident">inf_z</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> {
-            <span class="kw">if</span> <span class="ident">y1</span>.<span class="ident">val</span>() <span class="op">==</span> <span class="ident">y2</span>.<span class="ident">val</span>() {
-                <span class="ident">F::zero</span>()
-            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">same_x_bool</span> {
-                (<span class="ident">y2</span>.<span class="ident">val</span>() <span class="op">-</span> <span class="ident">y1</span>.<span class="ident">val</span>()).<span class="ident">inverse</span>().<span class="ident">unwrap</span>()
-            } <span class="kw">else</span> {
-                <span class="ident">F::zero</span>()
+        <span class="kw">let </span>inf_z = <span class="self">self</span>.var(|| {
+            <span class="kw">if </span>y1.val() == y2.val() {
+                F::zero()
+            } <span class="kw">else if </span>same_x_bool {
+                (y2.val() - y1.val()).inverse().unwrap()
+            } <span class="kw">else </span>{
+                F::zero()
             }
         });
 
-        <span class="self">self</span>.<span class="ident">gate</span>(<span class="ident">GateSpec</span> {
-            <span class="ident">typ</span>: <span class="ident">GateType::CompleteAdd</span>,
-            <span class="ident">row</span>: <span class="macro">vec!</span>[
-                <span class="prelude-val">Some</span>(<span class="ident">x1</span>),
-                <span class="prelude-val">Some</span>(<span class="ident">y1</span>),
-                <span class="prelude-val">Some</span>(<span class="ident">x2</span>),
-                <span class="prelude-val">Some</span>(<span class="ident">y2</span>),
-                <span class="prelude-val">Some</span>(<span class="ident">x3</span>),
-                <span class="prelude-val">Some</span>(<span class="ident">y3</span>),
-                <span class="prelude-val">Some</span>(<span class="ident">inf</span>),
-                <span class="prelude-val">Some</span>(<span class="ident">same_x</span>),
-                <span class="prelude-val">Some</span>(<span class="ident">s</span>),
-                <span class="prelude-val">Some</span>(<span class="ident">inf_z</span>),
-                <span class="prelude-val">Some</span>(<span class="ident">x21_inv</span>),
+        <span class="self">self</span>.gate(GateSpec {
+            typ: GateType::CompleteAdd,
+            row: <span class="macro">vec!</span>[
+                <span class="prelude-val">Some</span>(x1),
+                <span class="prelude-val">Some</span>(y1),
+                <span class="prelude-val">Some</span>(x2),
+                <span class="prelude-val">Some</span>(y2),
+                <span class="prelude-val">Some</span>(x3),
+                <span class="prelude-val">Some</span>(y3),
+                <span class="prelude-val">Some</span>(inf),
+                <span class="prelude-val">Some</span>(same_x),
+                <span class="prelude-val">Some</span>(s),
+                <span class="prelude-val">Some</span>(inf_z),
+                <span class="prelude-val">Some</span>(x21_inv),
             ],
-            <span class="ident">coeffs</span>: <span class="macro">vec!</span>[],
+            coeffs: <span class="macro">vec!</span>[],
         });
     }
 
-    <span class="doccomment">/// This function is used to include conditionals in circuits.</span>
-    <span class="doccomment">/// It creates three `Generic` gates to simulate the logics of the conditional.</span>
-    <span class="doccomment">/// It receives as input:</span>
-    <span class="doccomment">///  - `b`: the branch</span>
-    <span class="doccomment">///  - `t`: the true</span>
-    <span class="doccomment">///  - `f`: the false</span>
-    <span class="doccomment">/// And simulates the following equation: `res = b * ( t - f ) + f`</span>
-    <span class="doccomment">/// ( when the condition is false, `res = 1` )</span>
-    <span class="doccomment">/// ( when the condition is  true, `res = b` )</span>
-    <span class="doccomment">/// This is constrained using three `Generic` gates</span>
-    <span class="doccomment">/// 1. Constrain `delta = t - f`</span>
-    <span class="doccomment">/// 2. Constrain `res1 = b * delta`</span>
-    <span class="doccomment">/// 3. Constrain `res = res1 + f`</span>
-    <span class="doccomment">/// For (1):</span>
-    <span class="doccomment">/// - Creates a row with left wire `t`, right wire `f`, and output wire `delta`</span>
-    <span class="doccomment">/// - Assigns `1` to the left coefficient, `-1` to the right coefficient, and `-1` to the output coefficient.</span>
-    <span class="doccomment">/// - That way, it creates a first gate constraining: `1 * t - 1 * f - delta = 0``</span>
-    <span class="doccomment">/// For (2):</span>
-    <span class="doccomment">/// - Creates a row with left wire `b`, right wire `delta`, and output wire `res1`.</span>
-    <span class="doccomment">/// - Assigns `-1` to the output coefficient, and `1` to the multiplication coefficient.</span>
-    <span class="doccomment">/// - That way, it creates a second gate constraining: `-1 * res + 1 * b * delta = 0`</span>
-    <span class="doccomment">/// For (3):</span>
-    <span class="doccomment">/// - Creates a row with left wire `res1`, right wire `f`, and output wire `res`.</span>
-    <span class="doccomment">/// - Assigns `1` to the left coefficient, `1` to the right coefficient, and `-1` to the output coefficient.</span>
-    <span class="doccomment">/// - That way, it creates a third gate constraining: `1 * res1 + 1 * f - 1 * res = 0`</span>
-    <span class="kw">fn</span> <span class="ident">cond_select</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">b</span>: <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">t</span>: <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">f</span>: <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-        <span class="comment">// Could be more efficient. Currently uses three constraints :(</span>
-        <span class="comment">// delta = t - f</span>
-        <span class="comment">// res1 = b * delta</span>
-        <span class="comment">// res = res1 + f</span>
+    <span class="doccomment">/// This function is used to include conditionals in circuits.
+    /// It creates three `Generic` gates to simulate the logics of the conditional.
+    /// It receives as input:
+    ///  - `b`: the branch
+    ///  - `t`: the true
+    ///  - `f`: the false
+    /// And simulates the following equation: `res = b * ( t - f ) + f`
+    /// ( when the condition is false, `res = 1` )
+    /// ( when the condition is  true, `res = b` )
+    /// This is constrained using three `Generic` gates
+    /// 1. Constrain `delta = t - f`
+    /// 2. Constrain `res1 = b * delta`
+    /// 3. Constrain `res = res1 + f`
+    /// For (1):
+    /// - Creates a row with left wire `t`, right wire `f`, and output wire `delta`
+    /// - Assigns `1` to the left coefficient, `-1` to the right coefficient, and `-1` to the output coefficient.
+    /// - That way, it creates a first gate constraining: `1 * t - 1 * f - delta = 0``
+    /// For (2):
+    /// - Creates a row with left wire `b`, right wire `delta`, and output wire `res1`.
+    /// - Assigns `-1` to the output coefficient, and `1` to the multiplication coefficient.
+    /// - That way, it creates a second gate constraining: `-1 * res + 1 * b * delta = 0`
+    /// For (3):
+    /// - Creates a row with left wire `res1`, right wire `f`, and output wire `res`.
+    /// - Assigns `1` to the left coefficient, `1` to the right coefficient, and `-1` to the output coefficient.
+    /// - That way, it creates a third gate constraining: `1 * res1 + 1 * f - 1 * res = 0`
+    </span><span class="kw">fn </span>cond_select(<span class="kw-2">&amp;mut </span><span class="self">self</span>, b: Var&lt;F&gt;, t: Var&lt;F&gt;, f: Var&lt;F&gt;) -&gt; Var&lt;F&gt; {
+        <span class="comment">// Could be more efficient. Currently uses three constraints :(
+        // delta = t - f
+        // res1 = b * delta
+        // res = res1 + f
 
-        <span class="kw">let</span> <span class="ident">delta</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">t</span>.<span class="ident">val</span>() <span class="op">-</span> <span class="ident">f</span>.<span class="ident">val</span>());
-        <span class="kw">let</span> <span class="ident">res1</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">b</span>.<span class="ident">val</span>() <span class="op">*</span> <span class="ident">delta</span>.<span class="ident">val</span>());
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">f</span>.<span class="ident">val</span>() <span class="op">+</span> <span class="ident">res1</span>.<span class="ident">val</span>());
+        </span><span class="kw">let </span>delta = <span class="self">self</span>.var(|| t.val() - f.val());
+        <span class="kw">let </span>res1 = <span class="self">self</span>.var(|| b.val() * delta.val());
+        <span class="kw">let </span>res = <span class="self">self</span>.var(|| f.val() + res1.val());
 
-        <span class="kw">let</span> <span class="ident">row1</span> <span class="op">=</span> [<span class="prelude-val">Some</span>(<span class="ident">t</span>), <span class="prelude-val">Some</span>(<span class="ident">f</span>), <span class="prelude-val">Some</span>(<span class="ident">delta</span>)];
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">c1</span> <span class="op">=</span> [<span class="ident">F::zero</span>(); <span class="ident">GENERIC_COEFFS</span>];
-        <span class="ident">c1</span>[<span class="number">0</span>] <span class="op">=</span> <span class="ident">F::one</span>();
-        <span class="ident">c1</span>[<span class="number">1</span>] <span class="op">=</span> <span class="op">-</span><span class="ident">F::one</span>();
-        <span class="ident">c1</span>[<span class="number">2</span>] <span class="op">=</span> <span class="op">-</span><span class="ident">F::one</span>();
+        <span class="kw">let </span>row1 = [<span class="prelude-val">Some</span>(t), <span class="prelude-val">Some</span>(f), <span class="prelude-val">Some</span>(delta)];
+        <span class="kw">let </span><span class="kw-2">mut </span>c1 = [F::zero(); GENERIC_COEFFS];
+        c1[<span class="number">0</span>] = F::one();
+        c1[<span class="number">1</span>] = -F::one();
+        c1[<span class="number">2</span>] = -F::one();
 
-        <span class="self">self</span>.<span class="ident">generic</span>(<span class="ident">c1</span>, <span class="ident">row1</span>);
+        <span class="self">self</span>.generic(c1, row1);
 
-        <span class="kw">let</span> <span class="ident">row2</span> <span class="op">=</span> [<span class="prelude-val">Some</span>(<span class="ident">b</span>), <span class="prelude-val">Some</span>(<span class="ident">delta</span>), <span class="prelude-val">Some</span>(<span class="ident">res1</span>)];
+        <span class="kw">let </span>row2 = [<span class="prelude-val">Some</span>(b), <span class="prelude-val">Some</span>(delta), <span class="prelude-val">Some</span>(res1)];
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">c2</span> <span class="op">=</span> [<span class="ident">F::zero</span>(); <span class="ident">GENERIC_COEFFS</span>];
-        <span class="ident">c2</span>[<span class="number">0</span>] <span class="op">=</span> <span class="ident">F::zero</span>();
-        <span class="ident">c2</span>[<span class="number">1</span>] <span class="op">=</span> <span class="ident">F::zero</span>();
-        <span class="ident">c2</span>[<span class="number">2</span>] <span class="op">=</span> <span class="op">-</span><span class="ident">F::one</span>();
-        <span class="ident">c2</span>[<span class="number">3</span>] <span class="op">=</span> <span class="ident">F::one</span>();
+        <span class="kw">let </span><span class="kw-2">mut </span>c2 = [F::zero(); GENERIC_COEFFS];
+        c2[<span class="number">0</span>] = F::zero();
+        c2[<span class="number">1</span>] = F::zero();
+        c2[<span class="number">2</span>] = -F::one();
+        c2[<span class="number">3</span>] = F::one();
 
-        <span class="self">self</span>.<span class="ident">generic</span>(<span class="ident">c2</span>, <span class="ident">row2</span>);
+        <span class="self">self</span>.generic(c2, row2);
 
-        <span class="kw">let</span> <span class="ident">row3</span> <span class="op">=</span> [<span class="prelude-val">Some</span>(<span class="ident">res1</span>), <span class="prelude-val">Some</span>(<span class="ident">f</span>), <span class="prelude-val">Some</span>(<span class="ident">res</span>)];
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">c3</span> <span class="op">=</span> [<span class="ident">F::zero</span>(); <span class="ident">GENERIC_COEFFS</span>];
-        <span class="ident">c3</span>[<span class="number">0</span>] <span class="op">=</span> <span class="ident">F::one</span>();
-        <span class="ident">c3</span>[<span class="number">1</span>] <span class="op">=</span> <span class="ident">F::one</span>();
-        <span class="ident">c3</span>[<span class="number">2</span>] <span class="op">=</span> <span class="op">-</span><span class="ident">F::one</span>();
+        <span class="kw">let </span>row3 = [<span class="prelude-val">Some</span>(res1), <span class="prelude-val">Some</span>(f), <span class="prelude-val">Some</span>(res)];
+        <span class="kw">let </span><span class="kw-2">mut </span>c3 = [F::zero(); GENERIC_COEFFS];
+        c3[<span class="number">0</span>] = F::one();
+        c3[<span class="number">1</span>] = F::one();
+        c3[<span class="number">2</span>] = -F::one();
 
-        <span class="self">self</span>.<span class="ident">generic</span>(<span class="ident">c3</span>, <span class="ident">row3</span>);
+        <span class="self">self</span>.generic(c3, row3);
 
-        <span class="ident">res</span>
+        res
     }
 
-    <span class="doccomment">/// Performs a scalar multiplication between a [ShiftedScalar] and a point `(xt, yt)`.</span>
-    <span class="doccomment">/// This function creates 51 rows pairs of rows.</span>
-    <span class="kw">fn</span> <span class="ident">scalar_mul</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">zero</span>: <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-        (<span class="ident">xt</span>, <span class="ident">yt</span>): (<span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>),
-        <span class="ident">scalar</span>: <span class="ident">ShiftedScalar</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    ) -&gt; (<span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) {
-        <span class="kw">let</span> <span class="ident">num_bits</span> <span class="op">=</span> <span class="number">255</span>;
-        <span class="kw">let</span> <span class="ident">num_row_pairs</span> <span class="op">=</span> <span class="ident">num_bits</span> <span class="op">/</span> <span class="number">5</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">vec!</span>[]);
+    <span class="doccomment">/// Performs a scalar multiplication between a [ShiftedScalar] and a point `(xt, yt)`.
+    /// This function creates 51 rows pairs of rows.
+    </span><span class="kw">fn </span>scalar_mul(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        zero: Var&lt;F&gt;,
+        (xt, yt): (Var&lt;F&gt;, Var&lt;F&gt;),
+        scalar: ShiftedScalar&lt;F&gt;,
+    ) -&gt; (Var&lt;F&gt;, Var&lt;F&gt;) {
+        <span class="kw">let </span>num_bits = <span class="number">255</span>;
+        <span class="kw">let </span>num_row_pairs = num_bits / <span class="number">5</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>witness: [Vec&lt;F&gt;; COLUMNS] = array_init(|<span class="kw">_</span>| <span class="macro">vec!</span>[]);
 
-        <span class="kw">let</span> <span class="ident">acc0</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">add_group</span>(<span class="ident">zero</span>, (<span class="ident">xt</span>, <span class="ident">yt</span>), (<span class="ident">xt</span>, <span class="ident">yt</span>));
+        <span class="kw">let </span>acc0 = <span class="self">self</span>.add_group(zero, (xt, yt), (xt, yt));
 
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> {
-            <span class="ident">witness</span> <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="number">2</span> <span class="op">*</span> <span class="ident">num_row_pairs</span>]);
-            <span class="comment">// Creates a vector of bits from the value inside the scalar, with the most significant bit upfront</span>
-            <span class="kw">let</span> <span class="ident">bits_msb</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">scalar</span>
-                .<span class="number">0</span>
-                .<span class="ident">val</span>()
-                .<span class="ident">into_repr</span>()
-                .<span class="ident">to_bits_le</span>()
-                .<span class="ident">iter</span>()
-                .<span class="ident">take</span>(<span class="ident">num_bits</span>)
-                .<span class="ident">copied</span>()
-                .<span class="ident">rev</span>()
-                .<span class="ident">collect</span>();
-            <span class="comment">// Creates a witness for the VarBaseMul gate.</span>
-            <span class="ident">kimchi::circuits::polynomials::varbasemul::witness</span>(
-                <span class="kw-2">&amp;mut</span> <span class="ident">witness</span>,
+        <span class="kw">let _ </span>= <span class="self">self</span>.var(|| {
+            witness = array_init(|<span class="kw">_</span>| <span class="macro">vec!</span>[F::zero(); <span class="number">2 </span>* num_row_pairs]);
+            <span class="comment">// Creates a vector of bits from the value inside the scalar, with the most significant bit upfront
+            </span><span class="kw">let </span>bits_msb: Vec&lt;bool&gt; = scalar
+                .<span class="number">0
+                </span>.val()
+                .into_repr()
+                .to_bits_le()
+                .iter()
+                .take(num_bits)
+                .copied()
+                .rev()
+                .collect();
+            <span class="comment">// Creates a witness for the VarBaseMul gate.
+            </span>kimchi::circuits::polynomials::varbasemul::witness(
+                <span class="kw-2">&amp;mut </span>witness,
                 <span class="number">0</span>,
-                (<span class="ident">xt</span>.<span class="ident">val</span>(), <span class="ident">yt</span>.<span class="ident">val</span>()),
-                <span class="kw-2">&amp;</span><span class="ident">bits_msb</span>,
-                (<span class="ident">acc0</span>.<span class="number">0</span>.<span class="ident">val</span>(), <span class="ident">acc0</span>.<span class="number">1</span>.<span class="ident">val</span>()),
+                (xt.val(), yt.val()),
+                <span class="kw-2">&amp;</span>bits_msb,
+                (acc0.<span class="number">0</span>.val(), acc0.<span class="number">1</span>.val()),
             );
-            <span class="ident">F::zero</span>()
+            F::zero()
         });
 
-        <span class="comment">// For each of the pairs, it generates a VarBaseMul and a Zero gate.</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="prelude-val">None</span>;
-        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">num_row_pairs</span> {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">row1</span>: [<span class="kw">_</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">j</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">witness</span>[<span class="ident">j</span>][<span class="number">2</span> <span class="op">*</span> <span class="ident">i</span>]));
-            <span class="kw">let</span> <span class="ident">row2</span>: [<span class="kw">_</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">j</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">witness</span>[<span class="ident">j</span>][<span class="number">2</span> <span class="op">*</span> <span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>]));
+        <span class="comment">// For each of the pairs, it generates a VarBaseMul and a Zero gate.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>res = <span class="prelude-val">None</span>;
+        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..num_row_pairs {
+            <span class="kw">let </span><span class="kw-2">mut </span>row1: [<span class="kw">_</span>; COLUMNS] = array_init(|j| <span class="self">self</span>.var(|| witness[j][<span class="number">2 </span>* i]));
+            <span class="kw">let </span>row2: [<span class="kw">_</span>; COLUMNS] = array_init(|j| <span class="self">self</span>.var(|| witness[j][<span class="number">2 </span>* i + <span class="number">1</span>]));
 
-            <span class="ident">row1</span>[<span class="number">0</span>] <span class="op">=</span> <span class="ident">xt</span>;
-            <span class="ident">row1</span>[<span class="number">1</span>] <span class="op">=</span> <span class="ident">yt</span>;
-            <span class="kw">if</span> <span class="ident">i</span> <span class="op">==</span> <span class="number">0</span> {
-                <span class="ident">row1</span>[<span class="number">2</span>] <span class="op">=</span> <span class="ident">acc0</span>.<span class="number">0</span>;
-                <span class="ident">row1</span>[<span class="number">3</span>] <span class="op">=</span> <span class="ident">acc0</span>.<span class="number">1</span>;
-                <span class="ident">row1</span>[<span class="number">4</span>] <span class="op">=</span> <span class="ident">zero</span>;
+            row1[<span class="number">0</span>] = xt;
+            row1[<span class="number">1</span>] = yt;
+            <span class="kw">if </span>i == <span class="number">0 </span>{
+                row1[<span class="number">2</span>] = acc0.<span class="number">0</span>;
+                row1[<span class="number">3</span>] = acc0.<span class="number">1</span>;
+                row1[<span class="number">4</span>] = zero;
             }
-            <span class="kw">if</span> <span class="ident">i</span> <span class="op">==</span> <span class="ident">num_row_pairs</span> <span class="op">-</span> <span class="number">1</span> {
-                <span class="ident">row1</span>[<span class="number">5</span>] <span class="op">=</span> <span class="ident">scalar</span>.<span class="number">0</span>;
-                <span class="ident">res</span> <span class="op">=</span> <span class="prelude-val">Some</span>((<span class="ident">row2</span>[<span class="number">0</span>], <span class="ident">row2</span>[<span class="number">1</span>]));
+            <span class="kw">if </span>i == num_row_pairs - <span class="number">1 </span>{
+                row1[<span class="number">5</span>] = scalar.<span class="number">0</span>;
+                res = <span class="prelude-val">Some</span>((row2[<span class="number">0</span>], row2[<span class="number">1</span>]));
             }
 
-            <span class="self">self</span>.<span class="ident">gate</span>(<span class="ident">GateSpec</span> {
-                <span class="ident">row</span>: <span class="ident">row1</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="prelude-val">Some</span>).<span class="ident">collect</span>(),
-                <span class="ident">typ</span>: <span class="ident">GateType::VarBaseMul</span>,
-                <span class="ident">coeffs</span>: <span class="macro">vec!</span>[],
+            <span class="self">self</span>.gate(GateSpec {
+                row: row1.into_iter().map(<span class="prelude-val">Some</span>).collect(),
+                typ: GateType::VarBaseMul,
+                coeffs: <span class="macro">vec!</span>[],
             });
 
-            <span class="self">self</span>.<span class="ident">gate</span>(<span class="ident">GateSpec</span> {
-                <span class="ident">row</span>: <span class="ident">row2</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="prelude-val">Some</span>).<span class="ident">collect</span>(),
-                <span class="ident">typ</span>: <span class="ident">GateType::Zero</span>,
-                <span class="ident">coeffs</span>: <span class="macro">vec!</span>[],
+            <span class="self">self</span>.gate(GateSpec {
+                row: row2.into_iter().map(<span class="prelude-val">Some</span>).collect(),
+                typ: GateType::Zero,
+                coeffs: <span class="macro">vec!</span>[],
             })
         }
 
-        <span class="ident">res</span>.<span class="ident">unwrap</span>()
+        res.unwrap()
     }
 
-    <span class="doccomment">/// Creates an endoscalar multiplication gadget with `length_in_bits/4 + 1` gates.</span>
-    <span class="doccomment">/// For each row, it adds one `EndoMul` gate. The gadget is finalized with a `Zero` gate.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// | row | `GateType` |</span>
-    <span class="doccomment">/// | --- | ---------- |</span>
-    <span class="doccomment">/// |  i  | `EndoMul`  |</span>
-    <span class="doccomment">/// | i+1 | `EndoMul`  |</span>
-    <span class="doccomment">/// | ... |    ...     |</span>
-    <span class="doccomment">/// |  r  | `EndoMul`  |</span>
-    <span class="doccomment">/// | r+1 | `Zero`     |</span>
-    <span class="doccomment">///</span>
-    <span class="kw">fn</span> <span class="ident">endo</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">zero</span>: <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-        <span class="ident">constants</span>: <span class="kw-2">&amp;</span><span class="ident">Constants</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-        (<span class="ident">xt</span>, <span class="ident">yt</span>): (<span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>),
-        <span class="ident">scalar</span>: <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-        <span class="ident">length_in_bits</span>: <span class="ident">usize</span>,
-    ) -&gt; (<span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) {
-        <span class="kw">let</span> <span class="ident">bits_per_row</span> <span class="op">=</span> <span class="number">4</span>;
-        <span class="kw">let</span> <span class="ident">rows</span> <span class="op">=</span> <span class="ident">length_in_bits</span> <span class="op">/</span> <span class="number">4</span>;
-        <span class="macro">assert_eq!</span>(<span class="number">0</span>, <span class="ident">length_in_bits</span> <span class="op">%</span> <span class="number">4</span>);
+    <span class="doccomment">/// Creates an endoscalar multiplication gadget with `length_in_bits/4 + 1` gates.
+    /// For each row, it adds one `EndoMul` gate. The gadget is finalized with a `Zero` gate.
+    ///
+    /// | row | `GateType` |
+    /// | --- | ---------- |
+    /// |  i  | `EndoMul`  |
+    /// | i+1 | `EndoMul`  |
+    /// | ... |    ...     |
+    /// |  r  | `EndoMul`  |
+    /// | r+1 | `Zero`     |
+    ///
+    </span><span class="kw">fn </span>endo(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        zero: Var&lt;F&gt;,
+        constants: <span class="kw-2">&amp;</span>Constants&lt;F&gt;,
+        (xt, yt): (Var&lt;F&gt;, Var&lt;F&gt;),
+        scalar: Var&lt;F&gt;,
+        length_in_bits: usize,
+    ) -&gt; (Var&lt;F&gt;, Var&lt;F&gt;) {
+        <span class="kw">let </span>bits_per_row = <span class="number">4</span>;
+        <span class="kw">let </span>rows = length_in_bits / <span class="number">4</span>;
+        <span class="macro">assert_eq!</span>(<span class="number">0</span>, length_in_bits % <span class="number">4</span>);
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">bits_</span> <span class="op">=</span> <span class="macro">vec!</span>[];
-        <span class="kw">let</span> <span class="ident">bits</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">length_in_bits</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
-                <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="ident">bits_</span>.<span class="ident">is_empty</span>() {
-                        <span class="ident">bits_</span> <span class="op">=</span> <span class="ident">scalar</span>
-                            .<span class="ident">val</span>()
-                            .<span class="ident">into_repr</span>()
-                            .<span class="ident">to_bits_le</span>()
-                            .<span class="ident">iter</span>()
-                            .<span class="ident">take</span>(<span class="ident">length_in_bits</span>)
-                            .<span class="ident">copied</span>()
-                            .<span class="ident">rev</span>()
-                            .<span class="ident">collect</span>()
+        <span class="kw">let </span><span class="kw-2">mut </span>bits_ = <span class="macro">vec!</span>[];
+        <span class="kw">let </span>bits: Vec&lt;<span class="kw">_</span>&gt; = (<span class="number">0</span>..length_in_bits)
+            .map(|i| {
+                <span class="self">self</span>.var(|| {
+                    <span class="kw">if </span>bits_.is_empty() {
+                        bits_ = scalar
+                            .val()
+                            .into_repr()
+                            .to_bits_le()
+                            .iter()
+                            .take(length_in_bits)
+                            .copied()
+                            .rev()
+                            .collect()
                     }
-                    <span class="ident">F::from</span>(<span class="ident">bits_</span>[<span class="ident">i</span>] <span class="kw">as</span> <span class="ident">u64</span>)
+                    F::from(bits_[i] <span class="kw">as </span>u64)
                 })
             })
-            .<span class="ident">collect</span>();
+            .collect();
 
-        <span class="kw">let</span> <span class="ident">one</span> <span class="op">=</span> <span class="ident">F::one</span>();
+        <span class="kw">let </span>one = F::one();
 
-        <span class="kw">let</span> <span class="ident">endo</span> <span class="op">=</span> <span class="ident">constants</span>.<span class="ident">endo</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">acc</span> <span class="op">=</span> {
-            <span class="kw">let</span> <span class="ident">phip</span> <span class="op">=</span> (<span class="self">self</span>.<span class="ident">scale</span>(<span class="ident">endo</span>, <span class="ident">xt</span>), <span class="ident">yt</span>);
-            <span class="kw">let</span> <span class="ident">phip_p</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">add_group</span>(<span class="ident">zero</span>, <span class="ident">phip</span>, (<span class="ident">xt</span>, <span class="ident">yt</span>));
-            <span class="self">self</span>.<span class="ident">double</span>(<span class="ident">zero</span>, <span class="ident">phip_p</span>)
+        <span class="kw">let </span>endo = constants.endo;
+        <span class="kw">let </span><span class="kw-2">mut </span>acc = {
+            <span class="kw">let </span>phip = (<span class="self">self</span>.scale(endo, xt), yt);
+            <span class="kw">let </span>phip_p = <span class="self">self</span>.add_group(zero, phip, (xt, yt));
+            <span class="self">self</span>.double(zero, phip_p)
         };
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">n_acc</span> <span class="op">=</span> <span class="ident">zero</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>n_acc = zero;
 
-        <span class="comment">// TODO: Could be more efficient</span>
-        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">rows</span> {
-            <span class="kw">let</span> <span class="ident">b1</span> <span class="op">=</span> <span class="ident">bits</span>[<span class="ident">i</span> <span class="op">*</span> <span class="ident">bits_per_row</span>];
-            <span class="kw">let</span> <span class="ident">b2</span> <span class="op">=</span> <span class="ident">bits</span>[<span class="ident">i</span> <span class="op">*</span> <span class="ident">bits_per_row</span> <span class="op">+</span> <span class="number">1</span>];
-            <span class="kw">let</span> <span class="ident">b3</span> <span class="op">=</span> <span class="ident">bits</span>[<span class="ident">i</span> <span class="op">*</span> <span class="ident">bits_per_row</span> <span class="op">+</span> <span class="number">2</span>];
-            <span class="kw">let</span> <span class="ident">b4</span> <span class="op">=</span> <span class="ident">bits</span>[<span class="ident">i</span> <span class="op">*</span> <span class="ident">bits_per_row</span> <span class="op">+</span> <span class="number">3</span>];
+        <span class="comment">// TODO: Could be more efficient
+        </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..rows {
+            <span class="kw">let </span>b1 = bits[i * bits_per_row];
+            <span class="kw">let </span>b2 = bits[i * bits_per_row + <span class="number">1</span>];
+            <span class="kw">let </span>b3 = bits[i * bits_per_row + <span class="number">2</span>];
+            <span class="kw">let </span>b4 = bits[i * bits_per_row + <span class="number">3</span>];
 
-            <span class="kw">let</span> (<span class="ident">xp</span>, <span class="ident">yp</span>) <span class="op">=</span> <span class="ident">acc</span>;
+            <span class="kw">let </span>(xp, yp) = acc;
 
-            <span class="kw">let</span> <span class="ident">xq1</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> (<span class="ident">one</span> <span class="op">+</span> (<span class="ident">endo</span> <span class="op">-</span> <span class="ident">one</span>) <span class="op">*</span> <span class="ident">b1</span>.<span class="ident">val</span>()) <span class="op">*</span> <span class="ident">xt</span>.<span class="ident">val</span>());
-            <span class="kw">let</span> <span class="ident">yq1</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> (<span class="ident">b2</span>.<span class="ident">val</span>().<span class="ident">double</span>() <span class="op">-</span> <span class="ident">one</span>) <span class="op">*</span> <span class="ident">yt</span>.<span class="ident">val</span>());
+            <span class="kw">let </span>xq1 = <span class="self">self</span>.var(|| (one + (endo - one) * b1.val()) * xt.val());
+            <span class="kw">let </span>yq1 = <span class="self">self</span>.var(|| (b2.val().double() - one) * yt.val());
 
-            <span class="kw">let</span> <span class="ident">s1</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> (<span class="ident">yq1</span>.<span class="ident">val</span>() <span class="op">-</span> <span class="ident">yp</span>.<span class="ident">val</span>()) <span class="op">/</span> (<span class="ident">xq1</span>.<span class="ident">val</span>() <span class="op">-</span> <span class="ident">xp</span>.<span class="ident">val</span>()));
-            <span class="kw">let</span> <span class="ident">s1_squared</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">s1</span>.<span class="ident">val</span>().<span class="ident">square</span>());
-            <span class="comment">// (2*xp – s1^2 + xq) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2*yp</span>
-            <span class="comment">// =&gt; 2 yp / (2*xp – s1^2 + xq) = s1 + (yr + yp) / (xp – xr)</span>
-            <span class="comment">// =&gt; 2 yp / (2*xp – s1^2 + xq) - s1 = (yr + yp) / (xp – xr)</span>
-            <span class="comment">//</span>
-            <span class="comment">// s2 := 2 yp / (2*xp – s1^2 + xq) - s1</span>
-            <span class="comment">//</span>
-            <span class="comment">// (yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)</span>
-            <span class="comment">// =&gt; (s1^2 – xq1 + xr) = (yr + yp)^2 / (xp – xr)^2</span>
-            <span class="comment">//</span>
-            <span class="comment">// =&gt; xr = s2^2 - s1^2 + xq</span>
-            <span class="comment">// =&gt; yr = s2 * (xp - xr) - yp</span>
-            <span class="kw">let</span> <span class="ident">s2</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> {
-                <span class="ident">yp</span>.<span class="ident">val</span>().<span class="ident">double</span>() <span class="op">/</span> (<span class="ident">xp</span>.<span class="ident">val</span>().<span class="ident">double</span>() <span class="op">+</span> <span class="ident">xq1</span>.<span class="ident">val</span>() <span class="op">-</span> <span class="ident">s1_squared</span>.<span class="ident">val</span>()) <span class="op">-</span> <span class="ident">s1</span>.<span class="ident">val</span>()
+            <span class="kw">let </span>s1 = <span class="self">self</span>.var(|| (yq1.val() - yp.val()) / (xq1.val() - xp.val()));
+            <span class="kw">let </span>s1_squared = <span class="self">self</span>.var(|| s1.val().square());
+            <span class="comment">// (2*xp – s1^2 + xq) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2*yp
+            // =&gt; 2 yp / (2*xp – s1^2 + xq) = s1 + (yr + yp) / (xp – xr)
+            // =&gt; 2 yp / (2*xp – s1^2 + xq) - s1 = (yr + yp) / (xp – xr)
+            //
+            // s2 := 2 yp / (2*xp – s1^2 + xq) - s1
+            //
+            // (yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)
+            // =&gt; (s1^2 – xq1 + xr) = (yr + yp)^2 / (xp – xr)^2
+            //
+            // =&gt; xr = s2^2 - s1^2 + xq
+            // =&gt; yr = s2 * (xp - xr) - yp
+            </span><span class="kw">let </span>s2 = <span class="self">self</span>.var(|| {
+                yp.val().double() / (xp.val().double() + xq1.val() - s1_squared.val()) - s1.val()
             });
 
-            <span class="comment">// (xr, yr)</span>
-            <span class="kw">let</span> <span class="ident">xr</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">xq1</span>.<span class="ident">val</span>() <span class="op">+</span> <span class="ident">s2</span>.<span class="ident">val</span>().<span class="ident">square</span>() <span class="op">-</span> <span class="ident">s1_squared</span>.<span class="ident">val</span>());
-            <span class="kw">let</span> <span class="ident">yr</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> (<span class="ident">xp</span>.<span class="ident">val</span>() <span class="op">-</span> <span class="ident">xr</span>.<span class="ident">val</span>()) <span class="op">*</span> <span class="ident">s2</span>.<span class="ident">val</span>() <span class="op">-</span> <span class="ident">yp</span>.<span class="ident">val</span>());
+            <span class="comment">// (xr, yr)
+            </span><span class="kw">let </span>xr = <span class="self">self</span>.var(|| xq1.val() + s2.val().square() - s1_squared.val());
+            <span class="kw">let </span>yr = <span class="self">self</span>.var(|| (xp.val() - xr.val()) * s2.val() - yp.val());
 
-            <span class="kw">let</span> <span class="ident">xq2</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> (<span class="ident">one</span> <span class="op">+</span> (<span class="ident">endo</span> <span class="op">-</span> <span class="ident">one</span>) <span class="op">*</span> <span class="ident">b3</span>.<span class="ident">val</span>()) <span class="op">*</span> <span class="ident">xt</span>.<span class="ident">val</span>());
-            <span class="kw">let</span> <span class="ident">yq2</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> (<span class="ident">b4</span>.<span class="ident">val</span>().<span class="ident">double</span>() <span class="op">-</span> <span class="ident">one</span>) <span class="op">*</span> <span class="ident">yt</span>.<span class="ident">val</span>());
-            <span class="kw">let</span> <span class="ident">s3</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> (<span class="ident">yq2</span>.<span class="ident">val</span>() <span class="op">-</span> <span class="ident">yr</span>.<span class="ident">val</span>()) <span class="op">/</span> (<span class="ident">xq2</span>.<span class="ident">val</span>() <span class="op">-</span> <span class="ident">xr</span>.<span class="ident">val</span>()));
-            <span class="kw">let</span> <span class="ident">s3_squared</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">s3</span>.<span class="ident">val</span>().<span class="ident">square</span>());
-            <span class="kw">let</span> <span class="ident">s4</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> {
-                <span class="ident">yr</span>.<span class="ident">val</span>().<span class="ident">double</span>() <span class="op">/</span> (<span class="ident">xr</span>.<span class="ident">val</span>().<span class="ident">double</span>() <span class="op">+</span> <span class="ident">xq2</span>.<span class="ident">val</span>() <span class="op">-</span> <span class="ident">s3_squared</span>.<span class="ident">val</span>()) <span class="op">-</span> <span class="ident">s3</span>.<span class="ident">val</span>()
+            <span class="kw">let </span>xq2 = <span class="self">self</span>.var(|| (one + (endo - one) * b3.val()) * xt.val());
+            <span class="kw">let </span>yq2 = <span class="self">self</span>.var(|| (b4.val().double() - one) * yt.val());
+            <span class="kw">let </span>s3 = <span class="self">self</span>.var(|| (yq2.val() - yr.val()) / (xq2.val() - xr.val()));
+            <span class="kw">let </span>s3_squared = <span class="self">self</span>.var(|| s3.val().square());
+            <span class="kw">let </span>s4 = <span class="self">self</span>.var(|| {
+                yr.val().double() / (xr.val().double() + xq2.val() - s3_squared.val()) - s3.val()
             });
 
-            <span class="kw">let</span> <span class="ident">xs</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">xq2</span>.<span class="ident">val</span>() <span class="op">+</span> <span class="ident">s4</span>.<span class="ident">val</span>().<span class="ident">square</span>() <span class="op">-</span> <span class="ident">s3_squared</span>.<span class="ident">val</span>());
-            <span class="kw">let</span> <span class="ident">ys</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> (<span class="ident">xr</span>.<span class="ident">val</span>() <span class="op">-</span> <span class="ident">xs</span>.<span class="ident">val</span>()) <span class="op">*</span> <span class="ident">s4</span>.<span class="ident">val</span>() <span class="op">-</span> <span class="ident">yr</span>.<span class="ident">val</span>());
+            <span class="kw">let </span>xs = <span class="self">self</span>.var(|| xq2.val() + s4.val().square() - s3_squared.val());
+            <span class="kw">let </span>ys = <span class="self">self</span>.var(|| (xr.val() - xs.val()) * s4.val() - yr.val());
 
-            <span class="self">self</span>.<span class="ident">gate</span>(<span class="ident">GateSpec</span> {
-                <span class="ident">typ</span>: <span class="ident">GateType::EndoMul</span>,
-                <span class="ident">row</span>: <span class="macro">vec!</span>[
-                    <span class="prelude-val">Some</span>(<span class="ident">xt</span>),
-                    <span class="prelude-val">Some</span>(<span class="ident">yt</span>),
+            <span class="self">self</span>.gate(GateSpec {
+                typ: GateType::EndoMul,
+                row: <span class="macro">vec!</span>[
+                    <span class="prelude-val">Some</span>(xt),
+                    <span class="prelude-val">Some</span>(yt),
                     <span class="prelude-val">None</span>,
                     <span class="prelude-val">None</span>,
-                    <span class="prelude-val">Some</span>(<span class="ident">xp</span>),
-                    <span class="prelude-val">Some</span>(<span class="ident">yp</span>),
-                    <span class="prelude-val">Some</span>(<span class="ident">n_acc</span>),
-                    <span class="prelude-val">Some</span>(<span class="ident">xr</span>),
-                    <span class="prelude-val">Some</span>(<span class="ident">yr</span>),
-                    <span class="prelude-val">Some</span>(<span class="ident">s1</span>),
-                    <span class="prelude-val">Some</span>(<span class="ident">s3</span>),
-                    <span class="prelude-val">Some</span>(<span class="ident">b1</span>),
-                    <span class="prelude-val">Some</span>(<span class="ident">b2</span>),
-                    <span class="prelude-val">Some</span>(<span class="ident">b3</span>),
-                    <span class="prelude-val">Some</span>(<span class="ident">b4</span>),
+                    <span class="prelude-val">Some</span>(xp),
+                    <span class="prelude-val">Some</span>(yp),
+                    <span class="prelude-val">Some</span>(n_acc),
+                    <span class="prelude-val">Some</span>(xr),
+                    <span class="prelude-val">Some</span>(yr),
+                    <span class="prelude-val">Some</span>(s1),
+                    <span class="prelude-val">Some</span>(s3),
+                    <span class="prelude-val">Some</span>(b1),
+                    <span class="prelude-val">Some</span>(b2),
+                    <span class="prelude-val">Some</span>(b3),
+                    <span class="prelude-val">Some</span>(b4),
                 ],
-                <span class="ident">coeffs</span>: <span class="macro">vec!</span>[],
+                coeffs: <span class="macro">vec!</span>[],
             });
 
-            <span class="ident">acc</span> <span class="op">=</span> (<span class="ident">xs</span>, <span class="ident">ys</span>);
+            acc = (xs, ys);
 
-            <span class="ident">n_acc</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">n_acc</span> <span class="op">=</span> <span class="ident">n_acc</span>.<span class="ident">val</span>();
-                <span class="ident">n_acc</span>.<span class="ident">double_in_place</span>();
-                <span class="ident">n_acc</span> <span class="op">+</span><span class="op">=</span> <span class="ident">b1</span>.<span class="ident">val</span>();
-                <span class="ident">n_acc</span>.<span class="ident">double_in_place</span>();
-                <span class="ident">n_acc</span> <span class="op">+</span><span class="op">=</span> <span class="ident">b2</span>.<span class="ident">val</span>();
-                <span class="ident">n_acc</span>.<span class="ident">double_in_place</span>();
-                <span class="ident">n_acc</span> <span class="op">+</span><span class="op">=</span> <span class="ident">b3</span>.<span class="ident">val</span>();
-                <span class="ident">n_acc</span>.<span class="ident">double_in_place</span>();
-                <span class="ident">n_acc</span> <span class="op">+</span><span class="op">=</span> <span class="ident">b4</span>.<span class="ident">val</span>();
-                <span class="ident">n_acc</span>
+            n_acc = <span class="self">self</span>.var(|| {
+                <span class="kw">let </span><span class="kw-2">mut </span>n_acc = n_acc.val();
+                n_acc.double_in_place();
+                n_acc += b1.val();
+                n_acc.double_in_place();
+                n_acc += b2.val();
+                n_acc.double_in_place();
+                n_acc += b3.val();
+                n_acc.double_in_place();
+                n_acc += b4.val();
+                n_acc
             });
         }
 
-        <span class="comment">// TODO: use a generic gate with zero coeffs</span>
-        <span class="self">self</span>.<span class="ident">gate</span>(<span class="ident">GateSpec</span> {
-            <span class="ident">typ</span>: <span class="ident">GateType::Zero</span>,
-            <span class="ident">row</span>: <span class="macro">vec!</span>[
+        <span class="comment">// TODO: use a generic gate with zero coeffs
+        </span><span class="self">self</span>.gate(GateSpec {
+            typ: GateType::Zero,
+            row: <span class="macro">vec!</span>[
                 <span class="prelude-val">None</span>,
                 <span class="prelude-val">None</span>,
                 <span class="prelude-val">None</span>,
                 <span class="prelude-val">None</span>,
-                <span class="prelude-val">Some</span>(<span class="ident">acc</span>.<span class="number">0</span>),
-                <span class="prelude-val">Some</span>(<span class="ident">acc</span>.<span class="number">1</span>),
-                <span class="prelude-val">Some</span>(<span class="ident">scalar</span>),
+                <span class="prelude-val">Some</span>(acc.<span class="number">0</span>),
+                <span class="prelude-val">Some</span>(acc.<span class="number">1</span>),
+                <span class="prelude-val">Some</span>(scalar),
                 <span class="prelude-val">None</span>,
                 <span class="prelude-val">None</span>,
                 <span class="prelude-val">None</span>,
@@ -1684,321 +1684,321 @@
                 <span class="prelude-val">None</span>,
                 <span class="prelude-val">None</span>,
             ],
-            <span class="ident">coeffs</span>: <span class="macro">vec!</span>[],
+            coeffs: <span class="macro">vec!</span>[],
         });
-        <span class="ident">acc</span>
+        acc
     }
 
-    <span class="doccomment">/// Checks that a string of bits (with LSB first) correspond to the value inside variable `x`.</span>
-    <span class="doccomment">/// It splits the bitstring across rows, where each row takes care of 8 crumbs of 2 bits each.</span>
-    <span class="doccomment">///</span>
-    <span class="kw">fn</span> <span class="ident">assert_pack</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">zero</span>: <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">x</span>: <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">bits_lsb</span>: <span class="kw-2">&amp;</span>[<span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>]) {
-        <span class="kw">let</span> <span class="ident">crumbs_per_row</span> <span class="op">=</span> <span class="number">8</span>;
-        <span class="kw">let</span> <span class="ident">bits_per_row</span> <span class="op">=</span> <span class="number">2</span> <span class="op">*</span> <span class="ident">crumbs_per_row</span>;
-        <span class="macro">assert_eq!</span>(<span class="ident">bits_lsb</span>.<span class="ident">len</span>() <span class="op">%</span> <span class="ident">bits_per_row</span>, <span class="number">0</span>);
-        <span class="kw">let</span> <span class="ident">num_rows</span> <span class="op">=</span> <span class="ident">bits_lsb</span>.<span class="ident">len</span>() <span class="op">/</span> <span class="ident">bits_per_row</span>;
+    <span class="doccomment">/// Checks that a string of bits (with LSB first) correspond to the value inside variable `x`.
+    /// It splits the bitstring across rows, where each row takes care of 8 crumbs of 2 bits each.
+    ///
+    </span><span class="kw">fn </span>assert_pack(<span class="kw-2">&amp;mut </span><span class="self">self</span>, zero: Var&lt;F&gt;, x: Var&lt;F&gt;, bits_lsb: <span class="kw-2">&amp;</span>[Var&lt;F&gt;]) {
+        <span class="kw">let </span>crumbs_per_row = <span class="number">8</span>;
+        <span class="kw">let </span>bits_per_row = <span class="number">2 </span>* crumbs_per_row;
+        <span class="macro">assert_eq!</span>(bits_lsb.len() % bits_per_row, <span class="number">0</span>);
+        <span class="kw">let </span>num_rows = bits_lsb.len() / bits_per_row;
 
-        <span class="comment">// Reverse string of bits to have MSB first in the vector</span>
-        <span class="kw">let</span> <span class="ident">bits_msb</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">bits_lsb</span>.<span class="ident">iter</span>().<span class="ident">rev</span>().<span class="ident">collect</span>();
+        <span class="comment">// Reverse string of bits to have MSB first in the vector
+        </span><span class="kw">let </span>bits_msb: Vec&lt;<span class="kw">_</span>&gt; = bits_lsb.iter().rev().collect();
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">a</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">F::from</span>(<span class="number">2u64</span>));
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">b</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">F::from</span>(<span class="number">2u64</span>));
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">zero</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>a = <span class="self">self</span>.var(|| F::from(<span class="number">2u64</span>));
+        <span class="kw">let </span><span class="kw-2">mut </span>b = <span class="self">self</span>.var(|| F::from(<span class="number">2u64</span>));
+        <span class="kw">let </span><span class="kw-2">mut </span>n = zero;
 
-        <span class="kw">let</span> <span class="ident">one</span> <span class="op">=</span> <span class="ident">F::one</span>();
-        <span class="kw">let</span> <span class="ident">neg_one</span> <span class="op">=</span> <span class="op">-</span><span class="ident">one</span>;
+        <span class="kw">let </span>one = F::one();
+        <span class="kw">let </span>neg_one = -one;
 
-        <span class="comment">// For each of the chunks, get the corresponding bits</span>
-        <span class="kw">for</span> (<span class="ident">i</span>, <span class="ident">row_bits</span>) <span class="kw">in</span> <span class="ident">bits_msb</span>[..].<span class="ident">chunks</span>(<span class="ident">bits_per_row</span>).<span class="ident">enumerate</span>() {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">row</span>: [<span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">F::zero</span>()));
-            <span class="ident">row</span>[<span class="number">0</span>] <span class="op">=</span> <span class="ident">n</span>;
-            <span class="ident">row</span>[<span class="number">2</span>] <span class="op">=</span> <span class="ident">a</span>;
-            <span class="ident">row</span>[<span class="number">3</span>] <span class="op">=</span> <span class="ident">b</span>;
+        <span class="comment">// For each of the chunks, get the corresponding bits
+        </span><span class="kw">for </span>(i, row_bits) <span class="kw">in </span>bits_msb[..].chunks(bits_per_row).enumerate() {
+            <span class="kw">let </span><span class="kw-2">mut </span>row: [Var&lt;F&gt;; COLUMNS] = array_init(|<span class="kw">_</span>| <span class="self">self</span>.var(|| F::zero()));
+            row[<span class="number">0</span>] = n;
+            row[<span class="number">2</span>] = a;
+            row[<span class="number">3</span>] = b;
 
-            <span class="comment">// For this row, get crumbs of 2 bits each</span>
-            <span class="kw">for</span> (<span class="ident">j</span>, <span class="ident">crumb_bits</span>) <span class="kw">in</span> <span class="ident">row_bits</span>.<span class="ident">chunks</span>(<span class="number">2</span>).<span class="ident">enumerate</span>() {
-                <span class="comment">// Remember the MSB of each crumb is in the 0 index</span>
-                <span class="kw">let</span> <span class="ident">b0</span> <span class="op">=</span> <span class="ident">crumb_bits</span>[<span class="number">1</span>]; <span class="comment">// less valued</span>
-                <span class="kw">let</span> <span class="ident">b1</span> <span class="op">=</span> <span class="ident">crumb_bits</span>[<span class="number">0</span>]; <span class="comment">// more valued</span>
+            <span class="comment">// For this row, get crumbs of 2 bits each
+            </span><span class="kw">for </span>(j, crumb_bits) <span class="kw">in </span>row_bits.chunks(<span class="number">2</span>).enumerate() {
+                <span class="comment">// Remember the MSB of each crumb is in the 0 index
+                </span><span class="kw">let </span>b0 = crumb_bits[<span class="number">1</span>]; <span class="comment">// less valued
+                </span><span class="kw">let </span>b1 = crumb_bits[<span class="number">0</span>]; <span class="comment">// more valued
 
-                <span class="comment">// Value of the 2-bit crumb in MSB</span>
-                <span class="kw">let</span> <span class="ident">crumb</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">b0</span>.<span class="ident">val</span>() <span class="op">+</span> <span class="ident">b1</span>.<span class="ident">val</span>().<span class="ident">double</span>());
-                <span class="comment">// Stores the 8 of them in positions [6..13] of the row</span>
-                <span class="ident">row</span>[<span class="number">6</span> <span class="op">+</span> <span class="ident">j</span>] <span class="op">=</span> <span class="ident">crumb</span>;
+                // Value of the 2-bit crumb in MSB
+                </span><span class="kw">let </span>crumb = <span class="self">self</span>.var(|| b0.val() + b1.val().double());
+                <span class="comment">// Stores the 8 of them in positions [6..13] of the row
+                </span>row[<span class="number">6 </span>+ j] = crumb;
 
-                <span class="ident">a</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> {
-                    <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">a</span>.<span class="ident">val</span>().<span class="ident">double</span>();
-                    <span class="kw">if</span> <span class="ident">b1</span>.<span class="ident">val</span>().<span class="ident">is_zero</span>() {
-                        <span class="ident">x</span>
-                    } <span class="kw">else</span> {
-                        <span class="ident">x</span> <span class="op">+</span> <span class="kw">if</span> <span class="ident">b0</span>.<span class="ident">val</span>().<span class="ident">is_one</span>() { <span class="ident">one</span> } <span class="kw">else</span> { <span class="ident">neg_one</span> }
+                a = <span class="self">self</span>.var(|| {
+                    <span class="kw">let </span>x = a.val().double();
+                    <span class="kw">if </span>b1.val().is_zero() {
+                        x
+                    } <span class="kw">else </span>{
+                        x + <span class="kw">if </span>b0.val().is_one() { one } <span class="kw">else </span>{ neg_one }
                     }
                 });
 
-                <span class="ident">b</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> {
-                    <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">b</span>.<span class="ident">val</span>().<span class="ident">double</span>();
-                    <span class="kw">if</span> <span class="ident">b1</span>.<span class="ident">val</span>().<span class="ident">is_zero</span>() {
-                        <span class="ident">x</span> <span class="op">+</span> <span class="kw">if</span> <span class="ident">b0</span>.<span class="ident">val</span>().<span class="ident">is_one</span>() { <span class="ident">one</span> } <span class="kw">else</span> { <span class="ident">neg_one</span> }
-                    } <span class="kw">else</span> {
-                        <span class="ident">x</span>
+                b = <span class="self">self</span>.var(|| {
+                    <span class="kw">let </span>x = b.val().double();
+                    <span class="kw">if </span>b1.val().is_zero() {
+                        x + <span class="kw">if </span>b0.val().is_one() { one } <span class="kw">else </span>{ neg_one }
+                    } <span class="kw">else </span>{
+                        x
                     }
                 });
 
-                <span class="comment">// Accumulated chunk value</span>
-                <span class="ident">n</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">n</span>.<span class="ident">val</span>().<span class="ident">double</span>().<span class="ident">double</span>() <span class="op">+</span> <span class="ident">crumb</span>.<span class="ident">val</span>());
+                <span class="comment">// Accumulated chunk value
+                </span>n = <span class="self">self</span>.var(|| n.val().double().double() + crumb.val());
             }
 
-            <span class="comment">// In final row, this is the input value, otherwise the accumulated value</span>
-            <span class="ident">row</span>[<span class="number">1</span>] <span class="op">=</span> <span class="kw">if</span> <span class="ident">i</span> <span class="op">==</span> <span class="ident">num_rows</span> <span class="op">-</span> <span class="number">1</span> { <span class="ident">x</span> } <span class="kw">else</span> { <span class="ident">n</span> };
-            <span class="ident">row</span>[<span class="number">4</span>] <span class="op">=</span> <span class="ident">a</span>;
-            <span class="ident">row</span>[<span class="number">5</span>] <span class="op">=</span> <span class="ident">b</span>;
+            <span class="comment">// In final row, this is the input value, otherwise the accumulated value
+            </span>row[<span class="number">1</span>] = <span class="kw">if </span>i == num_rows - <span class="number">1 </span>{ x } <span class="kw">else </span>{ n };
+            row[<span class="number">4</span>] = a;
+            row[<span class="number">5</span>] = b;
 
-            <span class="ident">row</span>[<span class="number">14</span>] <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">F::zero</span>());
+            row[<span class="number">14</span>] = <span class="self">self</span>.var(|| F::zero());
         }
     }
 
-    <span class="doccomment">/// Creates a Poseidon gadget for given constants and a given input.</span>
-    <span class="doccomment">/// It generates a number of `Poseidon` gates followed by a final `Zero` gate.</span>
-    <span class="kw">fn</span> <span class="ident">poseidon</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">constants</span>: <span class="kw-2">&amp;</span><span class="ident">Constants</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">input</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">use</span> <span class="ident">kimchi::circuits::polynomials::poseidon</span>::<span class="kw-2">*</span>;
+    <span class="doccomment">/// Creates a Poseidon gadget for given constants and a given input.
+    /// It generates a number of `Poseidon` gates followed by a final `Zero` gate.
+    </span><span class="kw">fn </span>poseidon(<span class="kw-2">&amp;mut </span><span class="self">self</span>, constants: <span class="kw-2">&amp;</span>Constants&lt;F&gt;, input: Vec&lt;Var&lt;F&gt;&gt;) -&gt; Vec&lt;Var&lt;F&gt;&gt; {
+        <span class="kw">use </span>kimchi::circuits::polynomials::poseidon::<span class="kw-2">*</span>;
 
-        <span class="kw">let</span> <span class="ident">params</span> <span class="op">=</span> <span class="ident">constants</span>.<span class="ident">poseidon</span>;
-        <span class="kw">let</span> <span class="ident">rc</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">params</span>.<span class="ident">round_constants</span>;
-        <span class="kw">let</span> <span class="ident">width</span> <span class="op">=</span> <span class="ident">PlonkSpongeConstantsKimchi::SPONGE_WIDTH</span>;
+        <span class="kw">let </span>params = constants.poseidon;
+        <span class="kw">let </span>rc = <span class="kw-2">&amp;</span>params.round_constants;
+        <span class="kw">let </span>width = PlonkSpongeConstantsKimchi::SPONGE_WIDTH;
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">states</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">input</span>];
+        <span class="kw">let </span><span class="kw-2">mut </span>states = <span class="macro">vec!</span>[input];
 
-        <span class="kw">for</span> <span class="ident">row</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">POS_ROWS_PER_HASH</span> {
-            <span class="kw">let</span> <span class="ident">offset</span> <span class="op">=</span> <span class="ident">row</span> <span class="op">*</span> <span class="ident">ROUNDS_PER_ROW</span>;
+        <span class="kw">for </span>row <span class="kw">in </span><span class="number">0</span>..POS_ROWS_PER_HASH {
+            <span class="kw">let </span>offset = row * ROUNDS_PER_ROW;
 
-            <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">ROUNDS_PER_ROW</span> {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">s</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="prelude-val">None</span>;
-                <span class="ident">states</span>.<span class="ident">push</span>(
+            <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..ROUNDS_PER_ROW {
+                <span class="kw">let </span><span class="kw-2">mut </span>s: <span class="prelude-ty">Option</span>&lt;Vec&lt;F&gt;&gt; = <span class="prelude-val">None</span>;
+                states.push(
                     (<span class="number">0</span>..<span class="number">3</span>)
-                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> {
-                            <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> {
-                                <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">s</span> {
-                                    <span class="prelude-val">Some</span>(<span class="ident">s</span>) =&gt; <span class="ident">s</span>[<span class="ident">col</span>],
-                                    <span class="prelude-val">None</span> =&gt; {
-                                        <span class="comment">// Do one full round on the previous value</span>
-                                        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">acc</span> <span class="op">=</span> <span class="ident">states</span>[<span class="ident">states</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>]
-                                            .<span class="ident">iter</span>()
-                                            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">val</span>())
-                                            .<span class="ident">collect</span>();
-                                        <span class="ident">full_round</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">PlonkSpongeConstantsKimchi</span><span class="op">&gt;</span>(
-                                            <span class="ident">params</span>,
-                                            <span class="kw-2">&amp;mut</span> <span class="ident">acc</span>,
-                                            <span class="ident">offset</span> <span class="op">+</span> <span class="ident">i</span>,
+                        .map(|col| {
+                            <span class="self">self</span>.var(|| {
+                                <span class="kw">match </span><span class="kw-2">&amp;</span>s {
+                                    <span class="prelude-val">Some</span>(s) =&gt; s[col],
+                                    <span class="prelude-val">None </span>=&gt; {
+                                        <span class="comment">// Do one full round on the previous value
+                                        </span><span class="kw">let </span><span class="kw-2">mut </span>acc = states[states.len() - <span class="number">1</span>]
+                                            .iter()
+                                            .map(|x| x.val())
+                                            .collect();
+                                        full_round::&lt;F, PlonkSpongeConstantsKimchi&gt;(
+                                            params,
+                                            <span class="kw-2">&amp;mut </span>acc,
+                                            offset + i,
                                         );
-                                        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">acc</span>[<span class="ident">col</span>];
-                                        <span class="ident">s</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">acc</span>);
-                                        <span class="ident">res</span>
+                                        <span class="kw">let </span>res = acc[col];
+                                        s = <span class="prelude-val">Some</span>(acc);
+                                        res
                                     }
                                 }
                             })
                         })
-                        .<span class="ident">collect</span>(),
+                        .collect(),
                 );
             }
 
-            <span class="self">self</span>.<span class="ident">gate</span>(<span class="ident">GateSpec</span> {
-                <span class="ident">typ</span>: <span class="ident">kimchi::circuits::gate::GateType::Poseidon</span>,
-                <span class="ident">coeffs</span>: (<span class="number">0</span>..<span class="ident">COLUMNS</span>)
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">rc</span>[<span class="ident">offset</span> <span class="op">+</span> (<span class="ident">i</span> <span class="op">/</span> <span class="ident">width</span>)][<span class="ident">i</span> <span class="op">%</span> <span class="ident">width</span>])
-                    .<span class="ident">collect</span>(),
-                <span class="ident">row</span>: <span class="macro">vec!</span>[
-                    <span class="prelude-val">Some</span>(<span class="ident">states</span>[<span class="ident">offset</span>][<span class="number">0</span>]),
-                    <span class="prelude-val">Some</span>(<span class="ident">states</span>[<span class="ident">offset</span>][<span class="number">1</span>]),
-                    <span class="prelude-val">Some</span>(<span class="ident">states</span>[<span class="ident">offset</span>][<span class="number">2</span>]),
-                    <span class="prelude-val">Some</span>(<span class="ident">states</span>[<span class="ident">offset</span> <span class="op">+</span> <span class="number">4</span>][<span class="number">0</span>]),
-                    <span class="prelude-val">Some</span>(<span class="ident">states</span>[<span class="ident">offset</span> <span class="op">+</span> <span class="number">4</span>][<span class="number">1</span>]),
-                    <span class="prelude-val">Some</span>(<span class="ident">states</span>[<span class="ident">offset</span> <span class="op">+</span> <span class="number">4</span>][<span class="number">2</span>]),
-                    <span class="prelude-val">Some</span>(<span class="ident">states</span>[<span class="ident">offset</span> <span class="op">+</span> <span class="number">1</span>][<span class="number">0</span>]),
-                    <span class="prelude-val">Some</span>(<span class="ident">states</span>[<span class="ident">offset</span> <span class="op">+</span> <span class="number">1</span>][<span class="number">1</span>]),
-                    <span class="prelude-val">Some</span>(<span class="ident">states</span>[<span class="ident">offset</span> <span class="op">+</span> <span class="number">1</span>][<span class="number">2</span>]),
-                    <span class="prelude-val">Some</span>(<span class="ident">states</span>[<span class="ident">offset</span> <span class="op">+</span> <span class="number">2</span>][<span class="number">0</span>]),
-                    <span class="prelude-val">Some</span>(<span class="ident">states</span>[<span class="ident">offset</span> <span class="op">+</span> <span class="number">2</span>][<span class="number">1</span>]),
-                    <span class="prelude-val">Some</span>(<span class="ident">states</span>[<span class="ident">offset</span> <span class="op">+</span> <span class="number">2</span>][<span class="number">2</span>]),
-                    <span class="prelude-val">Some</span>(<span class="ident">states</span>[<span class="ident">offset</span> <span class="op">+</span> <span class="number">3</span>][<span class="number">0</span>]),
-                    <span class="prelude-val">Some</span>(<span class="ident">states</span>[<span class="ident">offset</span> <span class="op">+</span> <span class="number">3</span>][<span class="number">1</span>]),
-                    <span class="prelude-val">Some</span>(<span class="ident">states</span>[<span class="ident">offset</span> <span class="op">+</span> <span class="number">3</span>][<span class="number">2</span>]),
+            <span class="self">self</span>.gate(GateSpec {
+                typ: kimchi::circuits::gate::GateType::Poseidon,
+                coeffs: (<span class="number">0</span>..COLUMNS)
+                    .map(|i| rc[offset + (i / width)][i % width])
+                    .collect(),
+                row: <span class="macro">vec!</span>[
+                    <span class="prelude-val">Some</span>(states[offset][<span class="number">0</span>]),
+                    <span class="prelude-val">Some</span>(states[offset][<span class="number">1</span>]),
+                    <span class="prelude-val">Some</span>(states[offset][<span class="number">2</span>]),
+                    <span class="prelude-val">Some</span>(states[offset + <span class="number">4</span>][<span class="number">0</span>]),
+                    <span class="prelude-val">Some</span>(states[offset + <span class="number">4</span>][<span class="number">1</span>]),
+                    <span class="prelude-val">Some</span>(states[offset + <span class="number">4</span>][<span class="number">2</span>]),
+                    <span class="prelude-val">Some</span>(states[offset + <span class="number">1</span>][<span class="number">0</span>]),
+                    <span class="prelude-val">Some</span>(states[offset + <span class="number">1</span>][<span class="number">1</span>]),
+                    <span class="prelude-val">Some</span>(states[offset + <span class="number">1</span>][<span class="number">2</span>]),
+                    <span class="prelude-val">Some</span>(states[offset + <span class="number">2</span>][<span class="number">0</span>]),
+                    <span class="prelude-val">Some</span>(states[offset + <span class="number">2</span>][<span class="number">1</span>]),
+                    <span class="prelude-val">Some</span>(states[offset + <span class="number">2</span>][<span class="number">2</span>]),
+                    <span class="prelude-val">Some</span>(states[offset + <span class="number">3</span>][<span class="number">0</span>]),
+                    <span class="prelude-val">Some</span>(states[offset + <span class="number">3</span>][<span class="number">1</span>]),
+                    <span class="prelude-val">Some</span>(states[offset + <span class="number">3</span>][<span class="number">2</span>]),
                 ],
             });
         }
 
-        <span class="kw">let</span> <span class="ident">final_state</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">states</span>[<span class="ident">states</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>];
-        <span class="kw">let</span> <span class="ident">final_row</span> <span class="op">=</span> <span class="macro">vec!</span>[
-            <span class="prelude-val">Some</span>(<span class="ident">final_state</span>[<span class="number">0</span>]),
-            <span class="prelude-val">Some</span>(<span class="ident">final_state</span>[<span class="number">1</span>]),
-            <span class="prelude-val">Some</span>(<span class="ident">final_state</span>[<span class="number">2</span>]),
+        <span class="kw">let </span>final_state = <span class="kw-2">&amp;</span>states[states.len() - <span class="number">1</span>];
+        <span class="kw">let </span>final_row = <span class="macro">vec!</span>[
+            <span class="prelude-val">Some</span>(final_state[<span class="number">0</span>]),
+            <span class="prelude-val">Some</span>(final_state[<span class="number">1</span>]),
+            <span class="prelude-val">Some</span>(final_state[<span class="number">2</span>]),
         ];
-        <span class="self">self</span>.<span class="ident">gate</span>(<span class="ident">GateSpec</span> {
-            <span class="ident">typ</span>: <span class="ident">kimchi::circuits::gate::GateType::Zero</span>,
-            <span class="ident">coeffs</span>: <span class="macro">vec!</span>[],
-            <span class="ident">row</span>: <span class="ident">final_row</span>,
+        <span class="self">self</span>.gate(GateSpec {
+            typ: kimchi::circuits::gate::GateType::Zero,
+            coeffs: <span class="macro">vec!</span>[],
+            row: final_row,
         });
 
-        <span class="ident">states</span>.<span class="ident">pop</span>().<span class="ident">unwrap</span>()
+        states.pop().unwrap()
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> <span class="ident">Cs</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">WitnessGenerator</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Creates a variable with value given by a function `g` with index `0`</span>
-    <span class="kw">fn</span> <span class="ident">var</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">g</span>: <span class="ident">G</span>) -&gt; <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">G</span>: <span class="ident">FnOnce</span>() -&gt; <span class="ident">F</span>,
+<span class="kw">impl</span>&lt;F: PrimeField&gt; Cs&lt;F&gt; <span class="kw">for </span>WitnessGenerator&lt;F&gt; {
+    <span class="doccomment">/// Creates a variable with value given by a function `g` with index `0`
+    </span><span class="kw">fn </span>var&lt;G&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, g: G) -&gt; Var&lt;F&gt;
+    <span class="kw">where
+        </span>G: FnOnce() -&gt; F,
     {
-        <span class="ident">Var</span> {
-            <span class="ident">index</span>: <span class="number">0</span>,
-            <span class="ident">value</span>: <span class="prelude-val">Some</span>(<span class="ident">g</span>()),
+        Var {
+            index: <span class="number">0</span>,
+            value: <span class="prelude-val">Some</span>(g()),
         }
     }
 
-    <span class="doccomment">/// Returns the number of rows.</span>
-    <span class="kw">fn</span> <span class="ident">curr_gate_count</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="self">self</span>.<span class="ident">rows</span>.<span class="ident">len</span>()
+    <span class="doccomment">/// Returns the number of rows.
+    </span><span class="kw">fn </span>curr_gate_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.rows.len()
     }
 
-    <span class="doccomment">/// Pushes a new row corresponding to the values in the row of gate `g`.</span>
-    <span class="kw">fn</span> <span class="ident">gate</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">g</span>: <span class="ident">GateSpec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) {
-        <span class="macro">assert!</span>(<span class="ident">g</span>.<span class="ident">row</span>.<span class="ident">len</span>() <span class="op">&lt;</span><span class="op">=</span> <span class="ident">COLUMNS</span>);
+    <span class="doccomment">/// Pushes a new row corresponding to the values in the row of gate `g`.
+    </span><span class="kw">fn </span>gate(<span class="kw-2">&amp;mut </span><span class="self">self</span>, g: GateSpec&lt;F&gt;) {
+        <span class="macro">assert!</span>(g.row.len() &lt;= COLUMNS);
 
-        <span class="kw">let</span> <span class="ident">row</span>: [<span class="ident">F</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> <span class="ident">g</span>.<span class="ident">get_var_val_or</span>(<span class="ident">col</span>, <span class="ident">F::zero</span>()));
-        <span class="self">self</span>.<span class="ident">rows</span>.<span class="ident">push</span>(<span class="ident">row</span>)
+        <span class="kw">let </span>row: [F; COLUMNS] = array_init(|col| g.get_var_val_or(col, F::zero()));
+        <span class="self">self</span>.rows.push(row)
     }
 
-    <span class="kw">fn</span> <span class="ident">generic_queue</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">gate</span>: <span class="ident">GateSpec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">GateSpec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">mut</span> <span class="ident">other</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">generic_gate_queue</span>.<span class="ident">pop</span>() {
-            <span class="ident">other</span>.<span class="ident">row</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">gate</span>.<span class="ident">row</span>);
-            <span class="macro">assert_eq!</span>(<span class="ident">other</span>.<span class="ident">row</span>.<span class="ident">len</span>(), <span class="ident">DOUBLE_GENERIC_REGISTERS</span>);
-            <span class="prelude-val">Some</span>(<span class="ident">other</span>)
-        } <span class="kw">else</span> {
-            <span class="self">self</span>.<span class="ident">generic_gate_queue</span>.<span class="ident">push</span>(<span class="ident">gate</span>);
-            <span class="prelude-val">None</span>
-        }
+    <span class="kw">fn </span>generic_queue(<span class="kw-2">&amp;mut </span><span class="self">self</span>, gate: GateSpec&lt;F&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;GateSpec&lt;F&gt;&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">mut </span>other) = <span class="self">self</span>.generic_gate_queue.pop() {
+            other.row.extend(<span class="kw-2">&amp;</span>gate.row);
+            <span class="macro">assert_eq!</span>(other.row.len(), DOUBLE_GENERIC_REGISTERS);
+            <span class="prelude-val">Some</span>(other)
+        } <span class="kw">else </span>{
+            <span class="self">self</span>.generic_gate_queue.push(gate);
+            <span class="prelude-val">None
+        </span>}
     }
 
-    <span class="kw">fn</span> <span class="ident">cached_constants</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">x</span>: <span class="ident">F</span>) -&gt; <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">cached_constants</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">x</span>) {
-            <span class="prelude-val">Some</span>(<span class="ident">var</span>) =&gt; <span class="kw-2">*</span><span class="ident">var</span>,
-            <span class="prelude-val">None</span> =&gt; {
-                <span class="kw">let</span> <span class="ident">var</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">x</span>);
-                <span class="self">self</span>.<span class="ident">cached_constants</span>.<span class="ident">insert</span>(<span class="ident">x</span>, <span class="ident">var</span>);
-                <span class="ident">var</span>
+    <span class="kw">fn </span>cached_constants(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: F) -&gt; Var&lt;F&gt; {
+        <span class="kw">match </span><span class="self">self</span>.cached_constants.get(<span class="kw-2">&amp;</span>x) {
+            <span class="prelude-val">Some</span>(var) =&gt; <span class="kw-2">*</span>var,
+            <span class="prelude-val">None </span>=&gt; {
+                <span class="kw">let </span>var = <span class="self">self</span>.var(|| x);
+                <span class="self">self</span>.cached_constants.insert(x, var);
+                var
             }
         }
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> <span class="ident">WitnessGenerator</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Returns the columns of the witness.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">columns</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] {
-        <span class="comment">// flush any queued generic gate</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">gate</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">generic_gate_queue</span>.<span class="ident">pop</span>() {
-            <span class="self">self</span>.<span class="ident">gate</span>(<span class="ident">gate</span>);
+<span class="kw">impl</span>&lt;F: PrimeField&gt; WitnessGenerator&lt;F&gt; {
+    <span class="doccomment">/// Returns the columns of the witness.
+    </span><span class="kw">pub fn </span>columns(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; [Vec&lt;F&gt;; COLUMNS] {
+        <span class="comment">// flush any queued generic gate
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(gate) = <span class="self">self</span>.generic_gate_queue.pop() {
+            <span class="self">self</span>.gate(gate);
         }
 
-        <span class="comment">// transpose</span>
-        <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">rows</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">row</span><span class="op">|</span> <span class="ident">row</span>[<span class="ident">col</span>]).<span class="ident">collect</span>())
+        <span class="comment">// transpose
+        </span>array_init(|col| <span class="self">self</span>.rows.iter().map(|row| row[col]).collect())
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> <span class="ident">Cs</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">System</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">var</span><span class="op">&lt;</span><span class="ident">V</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="kw">_</span>: <span class="ident">V</span>) -&gt; <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">next_variable</span>;
-        <span class="self">self</span>.<span class="ident">next_variable</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-        <span class="ident">Var</span> {
-            <span class="ident">index</span>: <span class="ident">v</span>,
-            <span class="ident">value</span>: <span class="prelude-val">None</span>,
+<span class="kw">impl</span>&lt;F: PrimeField&gt; Cs&lt;F&gt; <span class="kw">for </span>System&lt;F&gt; {
+    <span class="kw">fn </span>var&lt;V&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, <span class="kw">_</span>: V) -&gt; Var&lt;F&gt; {
+        <span class="kw">let </span>v = <span class="self">self</span>.next_variable;
+        <span class="self">self</span>.next_variable += <span class="number">1</span>;
+        Var {
+            index: v,
+            value: <span class="prelude-val">None</span>,
         }
     }
 
-    <span class="doccomment">/// Outputs the number of gates in the circuit</span>
-    <span class="kw">fn</span> <span class="ident">curr_gate_count</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="self">self</span>.<span class="ident">gates</span>.<span class="ident">len</span>()
+    <span class="doccomment">/// Outputs the number of gates in the circuit
+    </span><span class="kw">fn </span>curr_gate_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.gates.len()
     }
 
-    <span class="kw">fn</span> <span class="ident">gate</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">g</span>: <span class="ident">GateSpec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="ident">gates</span>.<span class="ident">push</span>(<span class="ident">g</span>);
+    <span class="kw">fn </span>gate(<span class="kw-2">&amp;mut </span><span class="self">self</span>, g: GateSpec&lt;F&gt;) {
+        <span class="self">self</span>.gates.push(g);
     }
 
-    <span class="kw">fn</span> <span class="ident">generic_queue</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">gate</span>: <span class="ident">GateSpec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">GateSpec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">mut</span> <span class="ident">other</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">generic_gate_queue</span>.<span class="ident">pop</span>() {
-            <span class="ident">other</span>.<span class="ident">row</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">gate</span>.<span class="ident">row</span>);
-            <span class="macro">assert_eq!</span>(<span class="ident">other</span>.<span class="ident">row</span>.<span class="ident">len</span>(), <span class="ident">DOUBLE_GENERIC_REGISTERS</span>);
-            <span class="ident">other</span>.<span class="ident">coeffs</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">gate</span>.<span class="ident">coeffs</span>);
-            <span class="macro">assert_eq!</span>(<span class="ident">other</span>.<span class="ident">coeffs</span>.<span class="ident">len</span>(), <span class="ident">DOUBLE_GENERIC_COEFFS</span>);
-            <span class="prelude-val">Some</span>(<span class="ident">other</span>)
-        } <span class="kw">else</span> {
-            <span class="self">self</span>.<span class="ident">generic_gate_queue</span>.<span class="ident">push</span>(<span class="ident">gate</span>);
-            <span class="prelude-val">None</span>
-        }
+    <span class="kw">fn </span>generic_queue(<span class="kw-2">&amp;mut </span><span class="self">self</span>, gate: GateSpec&lt;F&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;GateSpec&lt;F&gt;&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">mut </span>other) = <span class="self">self</span>.generic_gate_queue.pop() {
+            other.row.extend(<span class="kw-2">&amp;</span>gate.row);
+            <span class="macro">assert_eq!</span>(other.row.len(), DOUBLE_GENERIC_REGISTERS);
+            other.coeffs.extend(<span class="kw-2">&amp;</span>gate.coeffs);
+            <span class="macro">assert_eq!</span>(other.coeffs.len(), DOUBLE_GENERIC_COEFFS);
+            <span class="prelude-val">Some</span>(other)
+        } <span class="kw">else </span>{
+            <span class="self">self</span>.generic_gate_queue.push(gate);
+            <span class="prelude-val">None
+        </span>}
     }
 
-    <span class="kw">fn</span> <span class="ident">cached_constants</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">x</span>: <span class="ident">F</span>) -&gt; <span class="ident">Var</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">cached_constants</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">x</span>) {
-            <span class="prelude-val">Some</span>(<span class="ident">var</span>) =&gt; <span class="kw-2">*</span><span class="ident">var</span>,
-            <span class="prelude-val">None</span> =&gt; {
-                <span class="kw">let</span> <span class="ident">var</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">x</span>);
-                <span class="self">self</span>.<span class="ident">cached_constants</span>.<span class="ident">insert</span>(<span class="ident">x</span>, <span class="ident">var</span>);
-                <span class="ident">var</span>
+    <span class="kw">fn </span>cached_constants(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: F) -&gt; Var&lt;F&gt; {
+        <span class="kw">match </span><span class="self">self</span>.cached_constants.get(<span class="kw-2">&amp;</span>x) {
+            <span class="prelude-val">Some</span>(var) =&gt; <span class="kw-2">*</span>var,
+            <span class="prelude-val">None </span>=&gt; {
+                <span class="kw">let </span>var = <span class="self">self</span>.var(|| x);
+                <span class="self">self</span>.cached_constants.insert(x, var);
+                var
             }
         }
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> <span class="ident">System</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Compiles our intermediate representation into a circuit.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">gates</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">first_cell</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">Wire</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">most_recent_cell</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">Wire</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">gates</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+<span class="kw">impl</span>&lt;F: PrimeField&gt; System&lt;F&gt; {
+    <span class="doccomment">/// Compiles our intermediate representation into a circuit.
+    </span><span class="kw">pub fn </span>gates(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; Vec&lt;CircuitGate&lt;F&gt;&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>first_cell: HashMap&lt;usize, Wire&gt; = HashMap::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>most_recent_cell: HashMap&lt;usize, Wire&gt; = HashMap::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>gates = <span class="macro">vec!</span>[];
 
-        <span class="comment">// flush any queued generic gate</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">gate</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">generic_gate_queue</span>.<span class="ident">pop</span>() {
-            <span class="self">self</span>.<span class="ident">gate</span>(<span class="ident">gate</span>);
+        <span class="comment">// flush any queued generic gate
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(gate) = <span class="self">self</span>.generic_gate_queue.pop() {
+            <span class="self">self</span>.gate(gate);
         }
 
-        <span class="comment">// convert GateSpec into CircuitGate</span>
-        <span class="kw">for</span> (<span class="ident">row</span>, <span class="ident">gate</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">gates</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-            <span class="comment">// while tracking the wiring</span>
-            <span class="kw">let</span> <span class="ident">wires</span> <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">curr</span> <span class="op">=</span> <span class="ident">Wire</span> { <span class="ident">row</span>, <span class="ident">col</span> };
+        <span class="comment">// convert GateSpec into CircuitGate
+        </span><span class="kw">for </span>(row, gate) <span class="kw">in </span><span class="self">self</span>.gates.iter().enumerate() {
+            <span class="comment">// while tracking the wiring
+            </span><span class="kw">let </span>wires = array_init(|col| {
+                <span class="kw">let </span>curr = Wire { row, col };
 
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">index</span>) <span class="op">=</span> <span class="ident">gate</span>.<span class="ident">get_var_idx</span>(<span class="ident">col</span>) {
-                    <span class="comment">// wire this cell to the previous one</span>
-                    <span class="kw">match</span> <span class="ident">most_recent_cell</span>.<span class="ident">insert</span>(<span class="ident">index</span>, <span class="ident">curr</span>) {
-                        <span class="prelude-val">Some</span>(<span class="ident">w</span>) =&gt; <span class="ident">w</span>,
-                        <span class="comment">// unless it is the first cell,</span>
-                        <span class="comment">// in which case we just save it for the very end</span>
-                        <span class="comment">// (to complete the cycle)</span>
-                        <span class="prelude-val">None</span> =&gt; {
-                            <span class="ident">first_cell</span>.<span class="ident">insert</span>(<span class="ident">index</span>, <span class="ident">curr</span>);
-                            <span class="ident">curr</span>
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(index) = gate.get_var_idx(col) {
+                    <span class="comment">// wire this cell to the previous one
+                    </span><span class="kw">match </span>most_recent_cell.insert(index, curr) {
+                        <span class="prelude-val">Some</span>(w) =&gt; w,
+                        <span class="comment">// unless it is the first cell,
+                        // in which case we just save it for the very end
+                        // (to complete the cycle)
+                        </span><span class="prelude-val">None </span>=&gt; {
+                            first_cell.insert(index, curr);
+                            curr
                         }
                     }
-                } <span class="kw">else</span> {
-                    <span class="comment">// if no var to be found, it&#39;s a cell wired to itself</span>
-                    <span class="ident">curr</span>
+                } <span class="kw">else </span>{
+                    <span class="comment">// if no var to be found, it&#39;s a cell wired to itself
+                    </span>curr
                 }
             });
 
-            <span class="kw">let</span> <span class="ident">g</span> <span class="op">=</span> <span class="ident">CircuitGate</span> {
-                <span class="ident">typ</span>: <span class="ident">gate</span>.<span class="ident">typ</span>,
-                <span class="ident">wires</span>,
-                <span class="ident">coeffs</span>: <span class="ident">gate</span>.<span class="ident">coeffs</span>.<span class="ident">clone</span>(),
+            <span class="kw">let </span>g = CircuitGate {
+                typ: gate.typ,
+                wires,
+                coeffs: gate.coeffs.clone(),
             };
-            <span class="ident">gates</span>.<span class="ident">push</span>(<span class="ident">g</span>);
+            gates.push(g);
         }
 
-        <span class="comment">// finish the permutation cycle</span>
-        <span class="kw">for</span> (<span class="ident">var</span>, <span class="ident">first</span>) <span class="kw">in</span> <span class="ident">first_cell</span>.<span class="ident">iter</span>() {
-            <span class="kw">let</span> <span class="ident">last</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">most_recent_cell</span>.<span class="ident">get</span>(<span class="ident">var</span>).<span class="ident">unwrap</span>();
-            <span class="ident">gates</span>[<span class="ident">first</span>.<span class="ident">row</span>].<span class="ident">wires</span>[<span class="ident">first</span>.<span class="ident">col</span>] <span class="op">=</span> <span class="ident">last</span>;
+        <span class="comment">// finish the permutation cycle
+        </span><span class="kw">for </span>(var, first) <span class="kw">in </span>first_cell.iter() {
+            <span class="kw">let </span>last = <span class="kw-2">*</span>most_recent_cell.get(var).unwrap();
+            gates[first.row].wires[first.col] = last;
         }
 
-        <span class="ident">gates</span>
+        gates
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="circuit_construction" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="circuit_construction" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

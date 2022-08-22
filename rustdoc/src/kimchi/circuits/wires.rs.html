@@ -101,108 +101,108 @@
 <span id="101">101</span>
 <span id="102">102</span>
 <span id="103">103</span>
-</pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk circuit gate wires primitive.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk circuit gate wires primitive.
 
-<span class="kw">use</span> <span class="ident">ark_ff::bytes</span>::{<span class="ident">FromBytes</span>, <span class="ident">ToBytes</span>};
-<span class="kw">use</span> <span class="ident">array_init::array_init</span>;
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">std::io</span>::{<span class="ident">Read</span>, <span class="prelude-ty">Result</span> <span class="kw">as</span> <span class="ident">IoResult</span>, <span class="ident">Write</span>};
+</span><span class="kw">use </span>ark_ff::bytes::{FromBytes, ToBytes};
+<span class="kw">use </span>array_init::array_init;
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>std::io::{Read, <span class="prelude-ty">Result </span><span class="kw">as </span>IoResult, Write};
 
-<span class="doccomment">/// Number of registers</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">COLUMNS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">15</span>;
+<span class="doccomment">/// Number of registers
+</span><span class="kw">pub const </span>COLUMNS: usize = <span class="number">15</span>;
 
-<span class="doccomment">/// Number of registers that can be wired (participating in the permutation)</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PERMUTS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">7</span>;
+<span class="doccomment">/// Number of registers that can be wired (participating in the permutation)
+</span><span class="kw">pub const </span>PERMUTS: usize = <span class="number">7</span>;
 
-<span class="doccomment">/// index of all registers</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">WIRES</span>: [<span class="ident">usize</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> [<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>, <span class="number">7</span>, <span class="number">8</span>, <span class="number">9</span>, <span class="number">10</span>, <span class="number">11</span>, <span class="number">12</span>, <span class="number">13</span>, <span class="number">14</span>];
+<span class="doccomment">/// index of all registers
+</span><span class="kw">pub const </span>WIRES: [usize; COLUMNS] = [<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>, <span class="number">7</span>, <span class="number">8</span>, <span class="number">9</span>, <span class="number">10</span>, <span class="number">11</span>, <span class="number">12</span>, <span class="number">13</span>, <span class="number">14</span>];
 
-<span class="doccomment">/// Wire documents the other cell that is wired to this one.</span>
-<span class="doccomment">/// If the cell represents an internal wire, an input to the circuit,</span>
-<span class="doccomment">/// or a final output of the circuit, the cell references itself.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">proptest_derive::Arbitrary</span>))]</span>
-<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;wasm_types&quot;</span>, <span class="ident">wasm_bindgen::prelude::wasm_bindgen</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Wire</span> {
-    <span class="comment">// TODO(mimoo): shouldn&#39;t we use u32 since we serialize them as u32?</span>
-    <span class="kw">pub</span> <span class="ident">row</span>: <span class="ident">usize</span>,
-    <span class="kw">pub</span> <span class="ident">col</span>: <span class="ident">usize</span>,
+<span class="doccomment">/// Wire documents the other cell that is wired to this one.
+/// If the cell represents an internal wire, an input to the circuit,
+/// or a final output of the circuit, the cell references itself.
+</span><span class="attribute">#[derive(PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
+#[cfg_attr(feature = <span class="string">&quot;wasm_types&quot;</span>, wasm_bindgen::prelude::wasm_bindgen)]
+</span><span class="kw">pub struct </span>Wire {
+    <span class="comment">// TODO(mimoo): shouldn&#39;t we use u32 since we serialize them as u32?
+    </span><span class="kw">pub </span>row: usize,
+    <span class="kw">pub </span>col: usize,
 }
 
-<span class="kw">impl</span> <span class="ident">Wire</span> {
-    <span class="doccomment">/// Creates a new set of wires for a given row.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">row</span>: <span class="ident">usize</span>) -&gt; [<span class="self">Self</span>; <span class="ident">PERMUTS</span>] {
-        <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> <span class="self">Self</span> { <span class="ident">row</span>, <span class="ident">col</span> })
+<span class="kw">impl </span>Wire {
+    <span class="doccomment">/// Creates a new set of wires for a given row.
+    </span><span class="kw">pub fn </span>new(row: usize) -&gt; [<span class="self">Self</span>; PERMUTS] {
+        array_init(|col| <span class="self">Self </span>{ row, col })
     }
 }
 
-<span class="doccomment">/// GateWires document the wiring of a gate. More specifically, each value either</span>
-<span class="doccomment">/// represents the same cell (row and column) or a different cell in another row.</span>
-<span class="doccomment">/// (This is to help the permutation argument.)</span>
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">GateWires</span> <span class="op">=</span> [<span class="ident">Wire</span>; <span class="ident">PERMUTS</span>];
+<span class="doccomment">/// GateWires document the wiring of a gate. More specifically, each value either
+/// represents the same cell (row and column) or a different cell in another row.
+/// (This is to help the permutation argument.)
+</span><span class="kw">pub type </span>GateWires = [Wire; PERMUTS];
 
-<span class="kw">impl</span> <span class="ident">ToBytes</span> <span class="kw">for</span> <span class="ident">Wire</span> {
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">fn</span> <span class="ident">write</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">w</span>: <span class="ident">W</span>) -&gt; <span class="ident">IoResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        (<span class="self">self</span>.<span class="ident">row</span> <span class="kw">as</span> <span class="ident">u32</span>).<span class="ident">write</span>(<span class="kw-2">&amp;mut</span> <span class="ident">w</span>)<span class="question-mark">?</span>;
-        (<span class="self">self</span>.<span class="ident">col</span> <span class="kw">as</span> <span class="ident">u32</span>).<span class="ident">write</span>(<span class="kw-2">&amp;mut</span> <span class="ident">w</span>)<span class="question-mark">?</span>;
+<span class="kw">impl </span>ToBytes <span class="kw">for </span>Wire {
+    <span class="attribute">#[inline]
+    </span><span class="kw">fn </span>write&lt;W: Write&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut </span>w: W) -&gt; IoResult&lt;()&gt; {
+        (<span class="self">self</span>.row <span class="kw">as </span>u32).write(<span class="kw-2">&amp;mut </span>w)<span class="question-mark">?</span>;
+        (<span class="self">self</span>.col <span class="kw">as </span>u32).write(<span class="kw-2">&amp;mut </span>w)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="kw">impl</span> <span class="ident">FromBytes</span> <span class="kw">for</span> <span class="ident">Wire</span> {
-    <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">fn</span> <span class="ident">read</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span>(<span class="kw-2">mut</span> <span class="ident">r</span>: <span class="ident">R</span>) -&gt; <span class="ident">IoResult</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">row</span> <span class="op">=</span> <span class="ident">u32::read</span>(<span class="kw-2">&amp;mut</span> <span class="ident">r</span>)<span class="question-mark">?</span> <span class="kw">as</span> <span class="ident">usize</span>;
-        <span class="kw">let</span> <span class="ident">col</span> <span class="op">=</span> <span class="ident">u32::read</span>(<span class="kw-2">&amp;mut</span> <span class="ident">r</span>)<span class="question-mark">?</span> <span class="kw">as</span> <span class="ident">usize</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">Wire</span> { <span class="ident">row</span>, <span class="ident">col</span> })
+<span class="kw">impl </span>FromBytes <span class="kw">for </span>Wire {
+    <span class="attribute">#[inline]
+    </span><span class="kw">fn </span>read&lt;R: Read&gt;(<span class="kw-2">mut </span>r: R) -&gt; IoResult&lt;<span class="self">Self</span>&gt; {
+        <span class="kw">let </span>row = u32::read(<span class="kw-2">&amp;mut </span>r)<span class="question-mark">? </span><span class="kw">as </span>usize;
+        <span class="kw">let </span>col = u32::read(<span class="kw-2">&amp;mut </span>r)<span class="question-mark">? </span><span class="kw">as </span>usize;
+        <span class="prelude-val">Ok</span>(Wire { row, col })
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;ocaml_types&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">caml</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
+<span class="attribute">#[cfg(feature = <span class="string">&quot;ocaml_types&quot;</span>)]
+</span><span class="kw">pub mod </span>caml {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span>std::convert::TryInto;
 
-    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">ocaml_gen::Struct</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlWire</span> {
-        <span class="kw">pub</span> <span class="ident">row</span>: <span class="ident">ocaml::Int</span>,
-        <span class="kw">pub</span> <span class="ident">col</span>: <span class="ident">ocaml::Int</span>,
+    <span class="attribute">#[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    </span><span class="kw">pub struct </span>CamlWire {
+        <span class="kw">pub </span>row: ocaml::Int,
+        <span class="kw">pub </span>col: ocaml::Int,
     }
 
-    <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">Wire</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CamlWire</span> {
-        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">w</span>: <span class="ident">Wire</span>) -&gt; <span class="self">Self</span> {
-            <span class="self">Self</span> {
-                <span class="ident">row</span>: <span class="ident">w</span>.<span class="ident">row</span>.<span class="ident">try_into</span>().<span class="ident">expect</span>(<span class="string">&quot;usize -&gt; isize&quot;</span>),
-                <span class="ident">col</span>: <span class="ident">w</span>.<span class="ident">col</span>.<span class="ident">try_into</span>().<span class="ident">expect</span>(<span class="string">&quot;usize -&gt; isize&quot;</span>),
+    <span class="kw">impl </span>From&lt;Wire&gt; <span class="kw">for </span>CamlWire {
+        <span class="kw">fn </span>from(w: Wire) -&gt; <span class="self">Self </span>{
+            <span class="self">Self </span>{
+                row: w.row.try_into().expect(<span class="string">&quot;usize -&gt; isize&quot;</span>),
+                col: w.col.try_into().expect(<span class="string">&quot;usize -&gt; isize&quot;</span>),
             }
         }
     }
 
-    <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">CamlWire</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Wire</span> {
-        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">w</span>: <span class="ident">CamlWire</span>) -&gt; <span class="self">Self</span> {
-            <span class="self">Self</span> {
-                <span class="ident">row</span>: <span class="ident">w</span>.<span class="ident">row</span>.<span class="ident">try_into</span>().<span class="ident">expect</span>(<span class="string">&quot;isize -&gt; usize&quot;</span>),
-                <span class="ident">col</span>: <span class="ident">w</span>.<span class="ident">col</span>.<span class="ident">try_into</span>().<span class="ident">expect</span>(<span class="string">&quot;isize -&gt; usize&quot;</span>),
+    <span class="kw">impl </span>From&lt;CamlWire&gt; <span class="kw">for </span>Wire {
+        <span class="kw">fn </span>from(w: CamlWire) -&gt; <span class="self">Self </span>{
+            <span class="self">Self </span>{
+                row: w.row.try_into().expect(<span class="string">&quot;isize -&gt; usize&quot;</span>),
+                col: w.col.try_into().expect(<span class="string">&quot;isize -&gt; usize&quot;</span>),
             }
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;wasm_types&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">wasm</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+<span class="attribute">#[cfg(feature = <span class="string">&quot;wasm_types&quot;</span>)]
+</span><span class="kw">pub mod </span>wasm {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-    <span class="attribute">#[<span class="ident">wasm_bindgen::prelude::wasm_bindgen</span>]</span>
-    <span class="kw">impl</span> <span class="ident">Wire</span> {
-        <span class="attribute">#[<span class="ident">wasm_bindgen::prelude::wasm_bindgen</span>]</span>
-        <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create</span>(<span class="ident">row</span>: <span class="ident">i32</span>, <span class="ident">col</span>: <span class="ident">i32</span>) -&gt; <span class="self">Self</span> {
-            <span class="self">Self</span> {
-                <span class="ident">row</span>: <span class="ident">row</span> <span class="kw">as</span> <span class="ident">usize</span>,
-                <span class="ident">col</span>: <span class="ident">col</span> <span class="kw">as</span> <span class="ident">usize</span>,
+    <span class="attribute">#[wasm_bindgen::prelude::wasm_bindgen]
+    </span><span class="kw">impl </span>Wire {
+        <span class="attribute">#[wasm_bindgen::prelude::wasm_bindgen]
+        </span><span class="kw">pub fn </span>create(row: i32, col: i32) -&gt; <span class="self">Self </span>{
+            <span class="self">Self </span>{
+                row: row <span class="kw">as </span>usize,
+                col: col <span class="kw">as </span>usize,
             }
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

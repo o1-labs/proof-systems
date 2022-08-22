@@ -352,359 +352,359 @@
 <span id="352">352</span>
 <span id="353">353</span>
 <span id="354">354</span>
-</pre><pre class="rust"><code><span class="doccomment">//! This module implements short Weierstrass curve</span>
-<span class="doccomment">//! endomorphism optimised variable base</span>
-<span class="doccomment">//! scalar multiplication custom Plonk polynomials.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This module implements short Weierstrass curve
+//! endomorphism optimised variable base
+//! scalar multiplication custom Plonk polynomials.
 
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">circuits</span>::{
-        <span class="ident">argument</span>::{<span class="ident">Argument</span>, <span class="ident">ArgumentType</span>},
-        <span class="ident">constraints::ConstraintSystem</span>,
-        <span class="ident">expr</span>::{<span class="self">self</span>, <span class="ident">constraints::boolean</span>, <span class="ident">prologue</span>::<span class="kw-2">*</span>, <span class="ident">Cache</span>, <span class="ident">ConstantExpr</span>},
-        <span class="ident">gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">GateType</span>},
-        <span class="ident">wires</span>::{<span class="ident">GateWires</span>, <span class="ident">COLUMNS</span>},
+</span><span class="kw">use crate</span>::{
+    circuits::{
+        argument::{Argument, ArgumentType},
+        constraints::ConstraintSystem,
+        expr::{<span class="self">self</span>, constraints::boolean, prologue::<span class="kw-2">*</span>, Cache, ConstantExpr},
+        gate::{CircuitGate, GateType},
+        wires::{GateWires, COLUMNS},
     },
-    <span class="ident">curve::KimchiCurve</span>,
-    <span class="ident">proof::ProofEvaluations</span>,
+    curve::KimchiCurve,
+    proof::ProofEvaluations,
 };
-<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">Field</span>, <span class="ident">One</span>, <span class="ident">PrimeField</span>};
-<span class="kw">use</span> <span class="ident">std::marker::PhantomData</span>;
+<span class="kw">use </span>ark_ff::{FftField, Field, One, PrimeField};
+<span class="kw">use </span>std::marker::PhantomData;
 
-<span class="comment">//~ We implement custom gate constraints for short Weierstrass curve</span>
-<span class="comment">//~ endomorphism optimised variable base scalar multiplication.</span>
-<span class="comment">//~</span>
-<span class="comment">//~ Given a finite field $\mathbb{F}_q$ of order $q$, if the order is not a multiple of 2 nor 3, then an</span>
-<span class="comment">//~ elliptic curve over $\mathbb{F}_q$ in short Weierstrass form is represented by the set of points $(x,y)$</span>
-<span class="comment">//~ that satisfy the following equation with $a,b\in\mathbb{F}_q$ and $4a^3+27b^2\neq_{\mathbb{F}_q} 0$:</span>
-<span class="comment">//~ $$E(\mathbb{F}_q): y^2 = x^3 + a x + b$$</span>
-<span class="comment">//~ If $P=(x_p, y_p)$ and $T=(x_t, y_t)$ are two points in the curve $E(\mathbb{F}_q)$, the goal of this</span>
-<span class="comment">//~ operation is to perform the operation $2P±T$ efficiently as $(P±T)+P$.</span>
-<span class="comment">//~</span>
-<span class="comment">//~ `S = (P + (b ? T : −T)) + P`</span>
-<span class="comment">//~</span>
-<span class="comment">//~ The same algorithm can be used to perform other scalar multiplications, meaning it is</span>
-<span class="comment">//~ not restricted to the case $2\cdot P$, but it can be used for any arbitrary $k\cdot P$. This is done</span>
-<span class="comment">//~ by decomposing the scalar $k$ into its binary representation.</span>
-<span class="comment">//~ Moreover, for every step, there will be a one-bit constraint meant to differentiate between addition and subtraction</span>
-<span class="comment">//~ for the operation $(P±T)+P$:</span>
-<span class="comment">//~</span>
-<span class="comment">//~ In particular, the constraints of this gate take care of 4 bits of the scalar within a single EVBSM row.</span>
-<span class="comment">//~ When the scalar is longer (which will usually be the case), multiple EVBSM rows will be concatenated.</span>
-<span class="comment">//~</span>
-<span class="comment">//~ |  Row  |  0 |  1 |  2 |  3 |  4 |  5 |  6 |   7 |   8 |   9 |  10 |  11 |  12 |  13 |  14 |  Type |</span>
-<span class="comment">//~ |-------|----|----|----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|-------|</span>
-<span class="comment">//~ |     i | xT | yT |  Ø |  Ø | xP | yP | n  |  xR |  yR |  s1 | s3  | b1  |  b2 |  b3 |  b4 | EVBSM |</span>
-<span class="comment">//~ |   i+1 |  = |  = |    |    | xS | yS | n&#39; | xR&#39; | yR&#39; | s1&#39; | s3&#39; | b1&#39; | b2&#39; | b3&#39; | b4&#39; | EVBSM |</span>
-<span class="comment">//~</span>
-<span class="comment">//~ The layout of this gate (and the next row) allows for this chained behavior where the output point</span>
-<span class="comment">//~ of the current row $S$ gets accumulated as one of the inputs of the following row, becoming $P$ in</span>
-<span class="comment">//~ the next constraints. Similarly, the scalar is decomposed into binary form and $n$ ($n&#39;$ respectively)</span>
-<span class="comment">//~ will store the current accumulated value and the next one for the check.</span>
-<span class="comment">//~</span>
-<span class="comment">//~ For readability, we define the following variables for the constraints:</span>
-<span class="comment">//~</span>
-<span class="comment">//~   * `endo` $:=$ `EndoCoefficient`</span>
-<span class="comment">//~   * `xq1` $:= (1 + ($`endo`$ - 1)\cdot b_1) \cdot x_t$</span>
-<span class="comment">//~   * `xq2` $:= (1 + ($`endo`$ - 1)\cdot b_3) \cdot x_t$</span>
-<span class="comment">//~   * `yq1` $:= (2\cdot b_2 - 1) \cdot y_t$</span>
-<span class="comment">//~   * `yq2` $:= (2\cdot b_4 - 1) \cdot y_t$</span>
-<span class="comment">//~</span>
-<span class="comment">//~ These are the 11 constraints that correspond to each EVBSM gate,</span>
-<span class="comment">//~ which take care of 4 bits of the scalar within a single EVBSM row:</span>
-<span class="comment">//~</span>
-<span class="comment">//~ * First block:</span>
-<span class="comment">//~   * `(xq1 - xp) * s1 = yq1 - yp`</span>
-<span class="comment">//~   * `(2 * xp – s1^2 + xq1) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2 * yp`</span>
-<span class="comment">//~   * `(yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)`</span>
-<span class="comment">//~ * Second block:</span>
-<span class="comment">//~   * `(xq2 - xr) * s3 = yq2 - yr`</span>
-<span class="comment">//~   * `(2*xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2 * yr`</span>
-<span class="comment">//~   * `(ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)`</span>
-<span class="comment">//~ * Booleanity checks:</span>
-<span class="comment">//~   * Bit flag $b_1$: `0 = b1 * (b1 - 1)`</span>
-<span class="comment">//~   * Bit flag $b_2$: `0 = b2 * (b2 - 1)`</span>
-<span class="comment">//~   * Bit flag $b_3$: `0 = b3 * (b3 - 1)`</span>
-<span class="comment">//~   * Bit flag $b_4$: `0 = b4 * (b4 - 1)`</span>
-<span class="comment">//~ * Binary decomposition:</span>
-<span class="comment">//~   * Accumulated scalar: `n_next = 16 * n + 8 * b1 + 4 * b2 + 2 * b3 + b4`</span>
-<span class="comment">//~</span>
-<span class="comment">//~ The constraints above are derived from the following EC Affine arithmetic equations:</span>
-<span class="comment">//~</span>
-<span class="comment">//~ * (1) =&gt; $(x_{q_1} - x_p) \cdot s_1 = y_{q_1} - y_p$</span>
-<span class="comment">//~ * (2&amp;3) =&gt; $(x_p – x_r) \cdot s_2 = y_r + y_p$</span>
-<span class="comment">//~ * (2) =&gt; $(2 \cdot x_p + x_{q_1} – s_1^2) \cdot (s_1 + s_2) = 2 \cdot y_p$</span>
-<span class="comment">//~     * &lt;=&gt; $(2 \cdot x_p – s_1^2 + x_{q_1}) \cdot ((x_p – x_r) \cdot s_1 + y_r + y_p) = (x_p – x_r) \cdot 2 \cdot y_p$</span>
-<span class="comment">//~ * (3) =&gt; $s_1^2 - s_2^2 = x_{q_1} - x_r$</span>
-<span class="comment">//~     * &lt;=&gt; $(y_r + y_p)^2 = (x_p – x_r)^2 \cdot (s_1^2 – x_{q_1} + x_r)$</span>
-<span class="comment">//~ *</span>
-<span class="comment">//~ * (4) =&gt; $(x_{q_2} - x_r) \cdot s_3 = y_{q_2} - y_r$</span>
-<span class="comment">//~ * (5&amp;6) =&gt; $(x_r – x_s) \cdot s_4 = y_s + y_r$</span>
-<span class="comment">//~ * (5) =&gt; $(2 \cdot x_r + x_{q_2} – s_3^2) \cdot (s_3 + s_4) = 2 \cdot y_r$</span>
-<span class="comment">//~     * &lt;=&gt; $(2 \cdot x_r – s_3^2 + x_{q_2}) \cdot ((x_r – x_s) \cdot s_3 + y_s + y_r) = (x_r – x_s) \cdot 2 \cdot y_r$</span>
-<span class="comment">//~ * (6) =&gt; $s_3^2 – s_4^2 = x_{q_2} - x_s$</span>
-<span class="comment">//~     * &lt;=&gt; $(y_s + y_r)^2 = (x_r – x_s)^2 \cdot (s_3^2 – x_{q_2} + x_s)$</span>
-<span class="comment">//~</span>
-<span class="comment">//~ Defining $s_2$ and $s_4$ as</span>
-<span class="comment">//~</span>
-<span class="comment">//~ * $s_2 := \frac{2 \cdot y_P}{2 * x_P + x_T - s_1^2} - s_1$</span>
-<span class="comment">//~ * $s_4 := \frac{2 \cdot y_R}{2 * x_R + x_T - s_3^2} - s_3$</span>
-<span class="comment">//~</span>
-<span class="comment">//~ Gives the following equations when substituting the values of $s_2$ and $s_4$:</span>
-<span class="comment">//~</span>
-<span class="comment">//~ 1. `(xq1 - xp) * s1 = (2 * b1 - 1) * yt - yp`</span>
-<span class="comment">//~ 2. `(2 * xp – s1^2 + xq1) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2 * yp`</span>
-<span class="comment">//~ 3. `(yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)`</span>
-<span class="comment">//~ -</span>
-<span class="comment">//~ 4. `(xq2 - xr) * s3 = (2 * b2 - 1) * yt - yr`</span>
-<span class="comment">//~ 5. `(2 * xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2 * yr`</span>
-<span class="comment">//~ 6. `(ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)`</span>
-<span class="comment">//~</span>
+<span class="comment">//~ We implement custom gate constraints for short Weierstrass curve
+//~ endomorphism optimised variable base scalar multiplication.
+//~
+//~ Given a finite field $\mathbb{F}_q$ of order $q$, if the order is not a multiple of 2 nor 3, then an
+//~ elliptic curve over $\mathbb{F}_q$ in short Weierstrass form is represented by the set of points $(x,y)$
+//~ that satisfy the following equation with $a,b\in\mathbb{F}_q$ and $4a^3+27b^2\neq_{\mathbb{F}_q} 0$:
+//~ $$E(\mathbb{F}_q): y^2 = x^3 + a x + b$$
+//~ If $P=(x_p, y_p)$ and $T=(x_t, y_t)$ are two points in the curve $E(\mathbb{F}_q)$, the goal of this
+//~ operation is to perform the operation $2P±T$ efficiently as $(P±T)+P$.
+//~
+//~ `S = (P + (b ? T : −T)) + P`
+//~
+//~ The same algorithm can be used to perform other scalar multiplications, meaning it is
+//~ not restricted to the case $2\cdot P$, but it can be used for any arbitrary $k\cdot P$. This is done
+//~ by decomposing the scalar $k$ into its binary representation.
+//~ Moreover, for every step, there will be a one-bit constraint meant to differentiate between addition and subtraction
+//~ for the operation $(P±T)+P$:
+//~
+//~ In particular, the constraints of this gate take care of 4 bits of the scalar within a single EVBSM row.
+//~ When the scalar is longer (which will usually be the case), multiple EVBSM rows will be concatenated.
+//~
+//~ |  Row  |  0 |  1 |  2 |  3 |  4 |  5 |  6 |   7 |   8 |   9 |  10 |  11 |  12 |  13 |  14 |  Type |
+//~ |-------|----|----|----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|-------|
+//~ |     i | xT | yT |  Ø |  Ø | xP | yP | n  |  xR |  yR |  s1 | s3  | b1  |  b2 |  b3 |  b4 | EVBSM |
+//~ |   i+1 |  = |  = |    |    | xS | yS | n&#39; | xR&#39; | yR&#39; | s1&#39; | s3&#39; | b1&#39; | b2&#39; | b3&#39; | b4&#39; | EVBSM |
+//~
+//~ The layout of this gate (and the next row) allows for this chained behavior where the output point
+//~ of the current row $S$ gets accumulated as one of the inputs of the following row, becoming $P$ in
+//~ the next constraints. Similarly, the scalar is decomposed into binary form and $n$ ($n&#39;$ respectively)
+//~ will store the current accumulated value and the next one for the check.
+//~
+//~ For readability, we define the following variables for the constraints:
+//~
+//~   * `endo` $:=$ `EndoCoefficient`
+//~   * `xq1` $:= (1 + ($`endo`$ - 1)\cdot b_1) \cdot x_t$
+//~   * `xq2` $:= (1 + ($`endo`$ - 1)\cdot b_3) \cdot x_t$
+//~   * `yq1` $:= (2\cdot b_2 - 1) \cdot y_t$
+//~   * `yq2` $:= (2\cdot b_4 - 1) \cdot y_t$
+//~
+//~ These are the 11 constraints that correspond to each EVBSM gate,
+//~ which take care of 4 bits of the scalar within a single EVBSM row:
+//~
+//~ * First block:
+//~   * `(xq1 - xp) * s1 = yq1 - yp`
+//~   * `(2 * xp – s1^2 + xq1) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2 * yp`
+//~   * `(yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)`
+//~ * Second block:
+//~   * `(xq2 - xr) * s3 = yq2 - yr`
+//~   * `(2*xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2 * yr`
+//~   * `(ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)`
+//~ * Booleanity checks:
+//~   * Bit flag $b_1$: `0 = b1 * (b1 - 1)`
+//~   * Bit flag $b_2$: `0 = b2 * (b2 - 1)`
+//~   * Bit flag $b_3$: `0 = b3 * (b3 - 1)`
+//~   * Bit flag $b_4$: `0 = b4 * (b4 - 1)`
+//~ * Binary decomposition:
+//~   * Accumulated scalar: `n_next = 16 * n + 8 * b1 + 4 * b2 + 2 * b3 + b4`
+//~
+//~ The constraints above are derived from the following EC Affine arithmetic equations:
+//~
+//~ * (1) =&gt; $(x_{q_1} - x_p) \cdot s_1 = y_{q_1} - y_p$
+//~ * (2&amp;3) =&gt; $(x_p – x_r) \cdot s_2 = y_r + y_p$
+//~ * (2) =&gt; $(2 \cdot x_p + x_{q_1} – s_1^2) \cdot (s_1 + s_2) = 2 \cdot y_p$
+//~     * &lt;=&gt; $(2 \cdot x_p – s_1^2 + x_{q_1}) \cdot ((x_p – x_r) \cdot s_1 + y_r + y_p) = (x_p – x_r) \cdot 2 \cdot y_p$
+//~ * (3) =&gt; $s_1^2 - s_2^2 = x_{q_1} - x_r$
+//~     * &lt;=&gt; $(y_r + y_p)^2 = (x_p – x_r)^2 \cdot (s_1^2 – x_{q_1} + x_r)$
+//~ *
+//~ * (4) =&gt; $(x_{q_2} - x_r) \cdot s_3 = y_{q_2} - y_r$
+//~ * (5&amp;6) =&gt; $(x_r – x_s) \cdot s_4 = y_s + y_r$
+//~ * (5) =&gt; $(2 \cdot x_r + x_{q_2} – s_3^2) \cdot (s_3 + s_4) = 2 \cdot y_r$
+//~     * &lt;=&gt; $(2 \cdot x_r – s_3^2 + x_{q_2}) \cdot ((x_r – x_s) \cdot s_3 + y_s + y_r) = (x_r – x_s) \cdot 2 \cdot y_r$
+//~ * (6) =&gt; $s_3^2 – s_4^2 = x_{q_2} - x_s$
+//~     * &lt;=&gt; $(y_s + y_r)^2 = (x_r – x_s)^2 \cdot (s_3^2 – x_{q_2} + x_s)$
+//~
+//~ Defining $s_2$ and $s_4$ as
+//~
+//~ * $s_2 := \frac{2 \cdot y_P}{2 * x_P + x_T - s_1^2} - s_1$
+//~ * $s_4 := \frac{2 \cdot y_R}{2 * x_R + x_T - s_3^2} - s_3$
+//~
+//~ Gives the following equations when substituting the values of $s_2$ and $s_4$:
+//~
+//~ 1. `(xq1 - xp) * s1 = (2 * b1 - 1) * yt - yp`
+//~ 2. `(2 * xp – s1^2 + xq1) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2 * yp`
+//~ 3. `(yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)`
+//~ -
+//~ 4. `(xq2 - xr) * s3 = (2 * b2 - 1) * yt - yr`
+//~ 5. `(2 * xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2 * yr`
+//~ 6. `(ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)`
+//~
 
-<span class="doccomment">/// Implementation of group endomorphism optimised</span>
-<span class="doccomment">/// variable base scalar multiplication custom Plonk constraints.</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_endomul</span>(<span class="ident">wires</span>: <span class="ident">GateWires</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">CircuitGate</span> {
-            <span class="ident">typ</span>: <span class="ident">GateType::EndoMul</span>,
-            <span class="ident">wires</span>,
-            <span class="ident">coeffs</span>: <span class="macro">vec!</span>[],
+</span><span class="doccomment">/// Implementation of group endomorphism optimised
+/// variable base scalar multiplication custom Plonk constraints.
+</span><span class="kw">impl</span>&lt;F: PrimeField&gt; CircuitGate&lt;F&gt; {
+    <span class="kw">pub fn </span>create_endomul(wires: GateWires) -&gt; <span class="self">Self </span>{
+        CircuitGate {
+            typ: GateType::EndoMul,
+            wires,
+            coeffs: <span class="macro">vec!</span>[],
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_endomul</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">KimchiCurve</span><span class="op">&lt;</span><span class="ident">ScalarField</span> <span class="op">=</span> <span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>(
+    <span class="kw">pub fn </span>verify_endomul&lt;G: KimchiCurve&lt;ScalarField = F&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">row</span>: <span class="ident">usize</span>,
-        <span class="ident">witness</span>: <span class="kw-2">&amp;</span>[<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
-        <span class="ident">cs</span>: <span class="kw-2">&amp;</span><span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="macro">ensure_eq!</span>(<span class="self">self</span>.<span class="ident">typ</span>, <span class="ident">GateType::EndoMul</span>, <span class="string">&quot;incorrect gate type&quot;</span>);
+        row: usize,
+        witness: <span class="kw-2">&amp;</span>[Vec&lt;F&gt;; COLUMNS],
+        cs: <span class="kw-2">&amp;</span>ConstraintSystem&lt;F&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
+        <span class="macro">ensure_eq!</span>(<span class="self">self</span>.typ, GateType::EndoMul, <span class="string">&quot;incorrect gate type&quot;</span>);
 
-        <span class="kw">let</span> <span class="ident">this</span>: [<span class="ident">F</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init::array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">witness</span>[<span class="ident">i</span>][<span class="ident">row</span>]);
-        <span class="kw">let</span> <span class="ident">next</span>: [<span class="ident">F</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init::array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">witness</span>[<span class="ident">i</span>][<span class="ident">row</span> <span class="op">+</span> <span class="number">1</span>]);
+        <span class="kw">let </span>this: [F; COLUMNS] = array_init::array_init(|i| witness[i][row]);
+        <span class="kw">let </span>next: [F; COLUMNS] = array_init::array_init(|i| witness[i][row + <span class="number">1</span>]);
 
-        <span class="kw">let</span> <span class="ident">pt</span> <span class="op">=</span> <span class="ident">F::from</span>(<span class="number">123456u64</span>);
+        <span class="kw">let </span>pt = F::from(<span class="number">123456u64</span>);
 
-        <span class="kw">let</span> <span class="ident">constants</span> <span class="op">=</span> <span class="ident">expr::Constants</span> {
-            <span class="ident">alpha</span>: <span class="ident">F::zero</span>(),
-            <span class="ident">beta</span>: <span class="ident">F::zero</span>(),
-            <span class="ident">gamma</span>: <span class="ident">F::zero</span>(),
-            <span class="ident">joint_combiner</span>: <span class="prelude-val">None</span>,
-            <span class="ident">mds</span>: <span class="kw-2">&amp;</span><span class="ident">G::sponge_params</span>().<span class="ident">mds</span>,
-            <span class="ident">endo_coefficient</span>: <span class="ident">cs</span>.<span class="ident">endo</span>,
+        <span class="kw">let </span>constants = expr::Constants {
+            alpha: F::zero(),
+            beta: F::zero(),
+            gamma: F::zero(),
+            joint_combiner: <span class="prelude-val">None</span>,
+            mds: <span class="kw-2">&amp;</span>G::sponge_params().mds,
+            endo_coefficient: cs.endo,
         };
 
-        <span class="kw">let</span> <span class="ident">evals</span>: [<span class="ident">ProofEvaluations</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span>; <span class="number">2</span>] <span class="op">=</span> [
-            <span class="ident">ProofEvaluations::dummy_with_witness_evaluations</span>(<span class="ident">this</span>),
-            <span class="ident">ProofEvaluations::dummy_with_witness_evaluations</span>(<span class="ident">next</span>),
+        <span class="kw">let </span>evals: [ProofEvaluations&lt;G::ScalarField&gt;; <span class="number">2</span>] = [
+            ProofEvaluations::dummy_with_witness_evaluations(this),
+            ProofEvaluations::dummy_with_witness_evaluations(next),
         ];
 
-        <span class="kw">let</span> <span class="ident">constraints</span> <span class="op">=</span> <span class="ident">EndosclMul::constraints</span>();
-        <span class="kw">for</span> (<span class="ident">i</span>, <span class="ident">c</span>) <span class="kw">in</span> <span class="ident">constraints</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-            <span class="kw">match</span> <span class="ident">c</span>.<span class="ident">evaluate_</span>(<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>, <span class="ident">pt</span>, <span class="kw-2">&amp;</span><span class="ident">evals</span>, <span class="kw-2">&amp;</span><span class="ident">constants</span>) {
-                <span class="prelude-val">Ok</span>(<span class="ident">x</span>) =&gt; {
-                    <span class="kw">if</span> <span class="ident">x</span> <span class="op">!</span><span class="op">=</span> <span class="ident">F::zero</span>() {
-                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="macro">format!</span>(<span class="string">&quot;Bad endo equation {}&quot;</span>, <span class="ident">i</span>));
+        <span class="kw">let </span>constraints = EndosclMul::constraints();
+        <span class="kw">for </span>(i, c) <span class="kw">in </span>constraints.iter().enumerate() {
+            <span class="kw">match </span>c.evaluate_(cs.domain.d1, pt, <span class="kw-2">&amp;</span>evals, <span class="kw-2">&amp;</span>constants) {
+                <span class="prelude-val">Ok</span>(x) =&gt; {
+                    <span class="kw">if </span>x != F::zero() {
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">format!</span>(<span class="string">&quot;Bad endo equation {}&quot;</span>, i));
                     }
                 }
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="macro">format!</span>(<span class="string">&quot;evaluation failed: {}&quot;</span>, <span class="ident">e</span>)),
+                <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">format!</span>(<span class="string">&quot;evaluation failed: {}&quot;</span>, e)),
             }
         }
 
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">endomul</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">typ</span> <span class="op">==</span> <span class="ident">GateType::EndoMul</span> {
-            <span class="ident">F::one</span>()
-        } <span class="kw">else</span> {
-            <span class="ident">F::zero</span>()
+    <span class="kw">pub fn </span>endomul(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="kw">if </span><span class="self">self</span>.typ == GateType::EndoMul {
+            F::one()
+        } <span class="kw">else </span>{
+            F::zero()
         }
     }
 }
 
-<span class="doccomment">/// Implementation of the EndosclMul gate.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">EndosclMul</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">PhantomData</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>);
+<span class="doccomment">/// Implementation of the EndosclMul gate.
+</span><span class="kw">pub struct </span>EndosclMul&lt;F&gt;(PhantomData&lt;F&gt;);
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="ident">Argument</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">EndosclMul</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">F</span>: <span class="ident">FftField</span>,
+<span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>EndosclMul&lt;F&gt;
+<span class="kw">where
+    </span>F: FftField,
 {
-    <span class="kw">const</span> <span class="ident">ARGUMENT_TYPE</span>: <span class="ident">ArgumentType</span> <span class="op">=</span> <span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::EndoMul</span>);
-    <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">11</span>;
+    <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMul);
+    <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">11</span>;
 
-    <span class="kw">fn</span> <span class="ident">constraints</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">b1</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">11</span>);
-        <span class="kw">let</span> <span class="ident">b2</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">12</span>);
-        <span class="kw">let</span> <span class="ident">b3</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">13</span>);
-        <span class="kw">let</span> <span class="ident">b4</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">14</span>);
+    <span class="kw">fn </span>constraints() -&gt; Vec&lt;E&lt;F&gt;&gt; {
+        <span class="kw">let </span>b1 = witness_curr(<span class="number">11</span>);
+        <span class="kw">let </span>b2 = witness_curr(<span class="number">12</span>);
+        <span class="kw">let </span>b3 = witness_curr(<span class="number">13</span>);
+        <span class="kw">let </span>b4 = witness_curr(<span class="number">14</span>);
 
-        <span class="kw">let</span> <span class="ident">xt</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">0</span>);
-        <span class="kw">let</span> <span class="ident">yt</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">1</span>);
+        <span class="kw">let </span>xt = witness_curr(<span class="number">0</span>);
+        <span class="kw">let </span>yt = witness_curr(<span class="number">1</span>);
 
-        <span class="kw">let</span> <span class="ident">xs</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">4</span>);
-        <span class="kw">let</span> <span class="ident">ys</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">5</span>);
+        <span class="kw">let </span>xs = witness_next(<span class="number">4</span>);
+        <span class="kw">let </span>ys = witness_next(<span class="number">5</span>);
 
-        <span class="kw">let</span> <span class="ident">xp</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">4</span>);
-        <span class="kw">let</span> <span class="ident">yp</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">5</span>);
+        <span class="kw">let </span>xp = witness_curr(<span class="number">4</span>);
+        <span class="kw">let </span>yp = witness_curr(<span class="number">5</span>);
 
-        <span class="kw">let</span> <span class="ident">xr</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">7</span>);
-        <span class="kw">let</span> <span class="ident">yr</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">8</span>);
+        <span class="kw">let </span>xr = witness_curr(<span class="number">7</span>);
+        <span class="kw">let </span>yr = witness_curr(<span class="number">8</span>);
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cache</span> <span class="op">=</span> <span class="ident">Cache::default</span>();
+        <span class="kw">let </span><span class="kw-2">mut </span>cache = Cache::default();
 
-        <span class="kw">let</span> <span class="ident">s1</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">9</span>);
-        <span class="kw">let</span> <span class="ident">s3</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">10</span>);
+        <span class="kw">let </span>s1 = witness_curr(<span class="number">9</span>);
+        <span class="kw">let </span>s3 = witness_curr(<span class="number">10</span>);
 
-        <span class="kw">let</span> <span class="ident">endo_minus_1</span> <span class="op">=</span> <span class="ident">E::Constant</span>(<span class="ident">ConstantExpr::EndoCoefficient</span> <span class="op">-</span> <span class="ident">ConstantExpr::one</span>());
-        <span class="kw">let</span> <span class="ident">xq1</span> <span class="op">=</span> <span class="ident">cache</span>.<span class="ident">cache</span>((<span class="ident">E::one</span>() <span class="op">+</span> <span class="ident">b1</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">endo_minus_1</span>.<span class="ident">clone</span>()) <span class="op">*</span> <span class="ident">xt</span>.<span class="ident">clone</span>());
-        <span class="kw">let</span> <span class="ident">xq2</span> <span class="op">=</span> <span class="ident">cache</span>.<span class="ident">cache</span>((<span class="ident">E::one</span>() <span class="op">+</span> <span class="ident">b3</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">endo_minus_1</span>) <span class="op">*</span> <span class="ident">xt</span>);
+        <span class="kw">let </span>endo_minus_1 = E::Constant(ConstantExpr::EndoCoefficient - ConstantExpr::one());
+        <span class="kw">let </span>xq1 = cache.cache((E::one() + b1.clone() * endo_minus_1.clone()) * xt.clone());
+        <span class="kw">let </span>xq2 = cache.cache((E::one() + b3.clone() * endo_minus_1) * xt);
 
-        <span class="kw">let</span> <span class="ident">yq1</span> <span class="op">=</span> (<span class="ident">b2</span>.<span class="ident">clone</span>().<span class="ident">double</span>() <span class="op">-</span> <span class="ident">E::one</span>()) <span class="op">*</span> <span class="ident">yt</span>.<span class="ident">clone</span>();
-        <span class="kw">let</span> <span class="ident">yq2</span> <span class="op">=</span> (<span class="ident">b4</span>.<span class="ident">clone</span>().<span class="ident">double</span>() <span class="op">-</span> <span class="ident">E::one</span>()) <span class="op">*</span> <span class="ident">yt</span>;
+        <span class="kw">let </span>yq1 = (b2.clone().double() - E::one()) * yt.clone();
+        <span class="kw">let </span>yq2 = (b4.clone().double() - E::one()) * yt;
 
-        <span class="kw">let</span> <span class="ident">s1_squared</span> <span class="op">=</span> <span class="ident">cache</span>.<span class="ident">cache</span>(<span class="ident">s1</span>.<span class="ident">clone</span>().<span class="ident">square</span>());
-        <span class="kw">let</span> <span class="ident">s3_squared</span> <span class="op">=</span> <span class="ident">cache</span>.<span class="ident">cache</span>(<span class="ident">s3</span>.<span class="ident">clone</span>().<span class="ident">square</span>());
+        <span class="kw">let </span>s1_squared = cache.cache(s1.clone().square());
+        <span class="kw">let </span>s3_squared = cache.cache(s3.clone().square());
 
-        <span class="comment">// n_next = 16*n + 8*b1 + 4*b2 + 2*b3 + b4</span>
-        <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">6</span>);
-        <span class="kw">let</span> <span class="ident">n_next</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">6</span>);
-        <span class="kw">let</span> <span class="ident">n_constraint</span> <span class="op">=</span>
-            (((<span class="ident">n</span>.<span class="ident">double</span>() <span class="op">+</span> <span class="ident">b1</span>.<span class="ident">clone</span>()).<span class="ident">double</span>() <span class="op">+</span> <span class="ident">b2</span>.<span class="ident">clone</span>()).<span class="ident">double</span>() <span class="op">+</span> <span class="ident">b3</span>.<span class="ident">clone</span>()).<span class="ident">double</span>()
-                <span class="op">+</span> <span class="ident">b4</span>.<span class="ident">clone</span>()
-                <span class="op">-</span> <span class="ident">n_next</span>;
+        <span class="comment">// n_next = 16*n + 8*b1 + 4*b2 + 2*b3 + b4
+        </span><span class="kw">let </span>n = witness_curr(<span class="number">6</span>);
+        <span class="kw">let </span>n_next = witness_next(<span class="number">6</span>);
+        <span class="kw">let </span>n_constraint =
+            (((n.double() + b1.clone()).double() + b2.clone()).double() + b3.clone()).double()
+                + b4.clone()
+                - n_next;
 
-        <span class="kw">let</span> <span class="ident">xp_xr</span> <span class="op">=</span> <span class="ident">cache</span>.<span class="ident">cache</span>(<span class="ident">xp</span>.<span class="ident">clone</span>() <span class="op">-</span> <span class="ident">xr</span>.<span class="ident">clone</span>());
-        <span class="kw">let</span> <span class="ident">xr_xs</span> <span class="op">=</span> <span class="ident">cache</span>.<span class="ident">cache</span>(<span class="ident">xr</span>.<span class="ident">clone</span>() <span class="op">-</span> <span class="ident">xs</span>.<span class="ident">clone</span>());
+        <span class="kw">let </span>xp_xr = cache.cache(xp.clone() - xr.clone());
+        <span class="kw">let </span>xr_xs = cache.cache(xr.clone() - xs.clone());
 
-        <span class="kw">let</span> <span class="ident">ys_yr</span> <span class="op">=</span> <span class="ident">cache</span>.<span class="ident">cache</span>(<span class="ident">ys</span> <span class="op">+</span> <span class="ident">yr</span>.<span class="ident">clone</span>());
-        <span class="kw">let</span> <span class="ident">yr_yp</span> <span class="op">=</span> <span class="ident">cache</span>.<span class="ident">cache</span>(<span class="ident">yr</span>.<span class="ident">clone</span>() <span class="op">+</span> <span class="ident">yp</span>.<span class="ident">clone</span>());
+        <span class="kw">let </span>ys_yr = cache.cache(ys + yr.clone());
+        <span class="kw">let </span>yr_yp = cache.cache(yr.clone() + yp.clone());
 
         <span class="macro">vec!</span>[
-            <span class="comment">// verify booleanity of the scalar bits</span>
-            <span class="ident">boolean</span>(<span class="kw-2">&amp;</span><span class="ident">b1</span>),
-            <span class="ident">boolean</span>(<span class="kw-2">&amp;</span><span class="ident">b2</span>),
-            <span class="ident">boolean</span>(<span class="kw-2">&amp;</span><span class="ident">b3</span>),
-            <span class="ident">boolean</span>(<span class="kw-2">&amp;</span><span class="ident">b4</span>),
-            <span class="comment">// (xq1 - xp) * s1 = yq1 - yp</span>
-            ((<span class="ident">xq1</span>.<span class="ident">clone</span>() <span class="op">-</span> <span class="ident">xp</span>.<span class="ident">clone</span>()) <span class="op">*</span> <span class="ident">s1</span>.<span class="ident">clone</span>()) <span class="op">-</span> (<span class="ident">yq1</span> <span class="op">-</span> <span class="ident">yp</span>.<span class="ident">clone</span>()),
-            <span class="comment">// (2*xp – s1^2 + xq1) * ((xp - xr) * s1 + yr + yp) = (xp - xr) * 2*yp</span>
-            (((<span class="ident">xp</span>.<span class="ident">double</span>() <span class="op">-</span> <span class="ident">s1_squared</span>.<span class="ident">clone</span>()) <span class="op">+</span> <span class="ident">xq1</span>.<span class="ident">clone</span>())
-                <span class="op">*</span> ((<span class="ident">xp_xr</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">s1</span>) <span class="op">+</span> <span class="ident">yr_yp</span>.<span class="ident">clone</span>()))
-                <span class="op">-</span> (<span class="ident">yp</span>.<span class="ident">double</span>() <span class="op">*</span> <span class="ident">xp_xr</span>.<span class="ident">clone</span>()),
-            <span class="comment">// (yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)</span>
-            <span class="ident">yr_yp</span>.<span class="ident">square</span>() <span class="op">-</span> (<span class="ident">xp_xr</span>.<span class="ident">square</span>() <span class="op">*</span> ((<span class="ident">s1_squared</span> <span class="op">-</span> <span class="ident">xq1</span>) <span class="op">+</span> <span class="ident">xr</span>.<span class="ident">clone</span>())),
-            <span class="comment">// (xq2 - xr) * s3 = yq2 - yr</span>
-            ((<span class="ident">xq2</span>.<span class="ident">clone</span>() <span class="op">-</span> <span class="ident">xr</span>.<span class="ident">clone</span>()) <span class="op">*</span> <span class="ident">s3</span>.<span class="ident">clone</span>()) <span class="op">-</span> (<span class="ident">yq2</span> <span class="op">-</span> <span class="ident">yr</span>.<span class="ident">clone</span>()),
-            <span class="comment">// (2*xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr - xs) * 2*yr</span>
-            (((<span class="ident">xr</span>.<span class="ident">double</span>() <span class="op">-</span> <span class="ident">s3_squared</span>.<span class="ident">clone</span>()) <span class="op">+</span> <span class="ident">xq2</span>.<span class="ident">clone</span>())
-                <span class="op">*</span> ((<span class="ident">xr_xs</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">s3</span>) <span class="op">+</span> <span class="ident">ys_yr</span>.<span class="ident">clone</span>()))
-                <span class="op">-</span> (<span class="ident">yr</span>.<span class="ident">double</span>() <span class="op">*</span> <span class="ident">xr_xs</span>.<span class="ident">clone</span>()),
-            <span class="comment">// (ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)</span>
-            <span class="ident">ys_yr</span>.<span class="ident">square</span>() <span class="op">-</span> (<span class="ident">xr_xs</span>.<span class="ident">square</span>() <span class="op">*</span> ((<span class="ident">s3_squared</span> <span class="op">-</span> <span class="ident">xq2</span>) <span class="op">+</span> <span class="ident">xs</span>)),
-            <span class="ident">n_constraint</span>,
+            <span class="comment">// verify booleanity of the scalar bits
+            </span>boolean(<span class="kw-2">&amp;</span>b1),
+            boolean(<span class="kw-2">&amp;</span>b2),
+            boolean(<span class="kw-2">&amp;</span>b3),
+            boolean(<span class="kw-2">&amp;</span>b4),
+            <span class="comment">// (xq1 - xp) * s1 = yq1 - yp
+            </span>((xq1.clone() - xp.clone()) * s1.clone()) - (yq1 - yp.clone()),
+            <span class="comment">// (2*xp – s1^2 + xq1) * ((xp - xr) * s1 + yr + yp) = (xp - xr) * 2*yp
+            </span>(((xp.double() - s1_squared.clone()) + xq1.clone())
+                * ((xp_xr.clone() * s1) + yr_yp.clone()))
+                - (yp.double() * xp_xr.clone()),
+            <span class="comment">// (yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)
+            </span>yr_yp.square() - (xp_xr.square() * ((s1_squared - xq1) + xr.clone())),
+            <span class="comment">// (xq2 - xr) * s3 = yq2 - yr
+            </span>((xq2.clone() - xr.clone()) * s3.clone()) - (yq2 - yr.clone()),
+            <span class="comment">// (2*xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr - xs) * 2*yr
+            </span>(((xr.double() - s3_squared.clone()) + xq2.clone())
+                * ((xr_xs.clone() * s3) + ys_yr.clone()))
+                - (yr.double() * xr_xs.clone()),
+            <span class="comment">// (ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)
+            </span>ys_yr.square() - (xr_xs.square() * ((s3_squared - xq2) + xs)),
+            n_constraint,
         ]
     }
 }
 
-<span class="doccomment">/// The result of performing an endoscaling: the accumulated curve point</span>
-<span class="doccomment">/// and scalar.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">EndoMulResult</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="ident">acc</span>: (<span class="ident">F</span>, <span class="ident">F</span>),
-    <span class="kw">pub</span> <span class="ident">n</span>: <span class="ident">F</span>,
+<span class="doccomment">/// The result of performing an endoscaling: the accumulated curve point
+/// and scalar.
+</span><span class="kw">pub struct </span>EndoMulResult&lt;F&gt; {
+    <span class="kw">pub </span>acc: (F, F),
+    <span class="kw">pub </span>n: F,
 }
 
-<span class="doccomment">/// Generates the witness_curr values for a series of endoscaling constraints.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">gen_witness</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span> <span class="op">+</span> <span class="ident">std::fmt::Display</span><span class="op">&gt;</span>(
-    <span class="ident">w</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
-    <span class="ident">row0</span>: <span class="ident">usize</span>,
-    <span class="ident">endo</span>: <span class="ident">F</span>,
-    <span class="ident">base</span>: (<span class="ident">F</span>, <span class="ident">F</span>),
-    <span class="ident">bits</span>: <span class="kw-2">&amp;</span>[<span class="ident">bool</span>],
-    <span class="ident">acc0</span>: (<span class="ident">F</span>, <span class="ident">F</span>),
-) -&gt; <span class="ident">EndoMulResult</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">bits_per_row</span> <span class="op">=</span> <span class="number">4</span>;
-    <span class="kw">let</span> <span class="ident">rows</span> <span class="op">=</span> <span class="ident">bits</span>.<span class="ident">len</span>() <span class="op">/</span> <span class="number">4</span>;
-    <span class="macro">assert_eq!</span>(<span class="number">0</span>, <span class="ident">bits</span>.<span class="ident">len</span>() <span class="op">%</span> <span class="number">4</span>);
+<span class="doccomment">/// Generates the witness_curr values for a series of endoscaling constraints.
+</span><span class="kw">pub fn </span>gen_witness&lt;F: Field + std::fmt::Display&gt;(
+    w: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS],
+    row0: usize,
+    endo: F,
+    base: (F, F),
+    bits: <span class="kw-2">&amp;</span>[bool],
+    acc0: (F, F),
+) -&gt; EndoMulResult&lt;F&gt; {
+    <span class="kw">let </span>bits_per_row = <span class="number">4</span>;
+    <span class="kw">let </span>rows = bits.len() / <span class="number">4</span>;
+    <span class="macro">assert_eq!</span>(<span class="number">0</span>, bits.len() % <span class="number">4</span>);
 
-    <span class="kw">let</span> <span class="ident">bits</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">bits</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">F::from</span>(<span class="kw-2">*</span><span class="ident">x</span> <span class="kw">as</span> <span class="ident">u64</span>)).<span class="ident">collect</span>();
-    <span class="kw">let</span> <span class="ident">one</span> <span class="op">=</span> <span class="ident">F::one</span>();
+    <span class="kw">let </span>bits: Vec&lt;<span class="kw">_</span>&gt; = bits.iter().map(|x| F::from(<span class="kw-2">*</span>x <span class="kw">as </span>u64)).collect();
+    <span class="kw">let </span>one = F::one();
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">acc</span> <span class="op">=</span> <span class="ident">acc0</span>;
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">n_acc</span> <span class="op">=</span> <span class="ident">F::zero</span>();
+    <span class="kw">let </span><span class="kw-2">mut </span>acc = acc0;
+    <span class="kw">let </span><span class="kw-2">mut </span>n_acc = F::zero();
 
-    <span class="comment">// TODO: Could be more efficient</span>
-    <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">rows</span> {
-        <span class="kw">let</span> <span class="ident">b1</span> <span class="op">=</span> <span class="ident">bits</span>[<span class="ident">i</span> <span class="op">*</span> <span class="ident">bits_per_row</span>];
-        <span class="kw">let</span> <span class="ident">b2</span> <span class="op">=</span> <span class="ident">bits</span>[<span class="ident">i</span> <span class="op">*</span> <span class="ident">bits_per_row</span> <span class="op">+</span> <span class="number">1</span>];
-        <span class="kw">let</span> <span class="ident">b3</span> <span class="op">=</span> <span class="ident">bits</span>[<span class="ident">i</span> <span class="op">*</span> <span class="ident">bits_per_row</span> <span class="op">+</span> <span class="number">2</span>];
-        <span class="kw">let</span> <span class="ident">b4</span> <span class="op">=</span> <span class="ident">bits</span>[<span class="ident">i</span> <span class="op">*</span> <span class="ident">bits_per_row</span> <span class="op">+</span> <span class="number">3</span>];
+    <span class="comment">// TODO: Could be more efficient
+    </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..rows {
+        <span class="kw">let </span>b1 = bits[i * bits_per_row];
+        <span class="kw">let </span>b2 = bits[i * bits_per_row + <span class="number">1</span>];
+        <span class="kw">let </span>b3 = bits[i * bits_per_row + <span class="number">2</span>];
+        <span class="kw">let </span>b4 = bits[i * bits_per_row + <span class="number">3</span>];
 
-        <span class="kw">let</span> (<span class="ident">xt</span>, <span class="ident">yt</span>) <span class="op">=</span> <span class="ident">base</span>;
-        <span class="kw">let</span> (<span class="ident">xp</span>, <span class="ident">yp</span>) <span class="op">=</span> <span class="ident">acc</span>;
+        <span class="kw">let </span>(xt, yt) = base;
+        <span class="kw">let </span>(xp, yp) = acc;
 
-        <span class="kw">let</span> <span class="ident">xq1</span> <span class="op">=</span> (<span class="ident">one</span> <span class="op">+</span> (<span class="ident">endo</span> <span class="op">-</span> <span class="ident">one</span>) <span class="op">*</span> <span class="ident">b1</span>) <span class="op">*</span> <span class="ident">xt</span>;
-        <span class="kw">let</span> <span class="ident">yq1</span> <span class="op">=</span> (<span class="ident">b2</span>.<span class="ident">double</span>() <span class="op">-</span> <span class="ident">one</span>) <span class="op">*</span> <span class="ident">yt</span>;
+        <span class="kw">let </span>xq1 = (one + (endo - one) * b1) * xt;
+        <span class="kw">let </span>yq1 = (b2.double() - one) * yt;
 
-        <span class="kw">let</span> <span class="ident">s1</span> <span class="op">=</span> (<span class="ident">yq1</span> <span class="op">-</span> <span class="ident">yp</span>) <span class="op">/</span> (<span class="ident">xq1</span> <span class="op">-</span> <span class="ident">xp</span>);
-        <span class="kw">let</span> <span class="ident">s1_squared</span> <span class="op">=</span> <span class="ident">s1</span>.<span class="ident">square</span>();
-        <span class="comment">// (2*xp – s1^2 + xq) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2*yp</span>
-        <span class="comment">// =&gt; 2 yp / (2*xp – s1^2 + xq) = s1 + (yr + yp) / (xp – xr)</span>
-        <span class="comment">// =&gt; 2 yp / (2*xp – s1^2 + xq) - s1 = (yr + yp) / (xp – xr)</span>
-        <span class="comment">//</span>
-        <span class="comment">// s2 := 2 yp / (2*xp – s1^2 + xq) - s1</span>
-        <span class="comment">//</span>
-        <span class="comment">// (yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)</span>
-        <span class="comment">// =&gt; (s1^2 – xq1 + xr) = (yr + yp)^2 / (xp – xr)^2</span>
-        <span class="comment">//</span>
-        <span class="comment">// =&gt; xr = s2^2 - s1^2 + xq</span>
-        <span class="comment">// =&gt; yr = s2 * (xp - xr) - yp</span>
-        <span class="kw">let</span> <span class="ident">s2</span> <span class="op">=</span> <span class="ident">yp</span>.<span class="ident">double</span>() <span class="op">/</span> (<span class="ident">xp</span>.<span class="ident">double</span>() <span class="op">+</span> <span class="ident">xq1</span> <span class="op">-</span> <span class="ident">s1_squared</span>) <span class="op">-</span> <span class="ident">s1</span>;
+        <span class="kw">let </span>s1 = (yq1 - yp) / (xq1 - xp);
+        <span class="kw">let </span>s1_squared = s1.square();
+        <span class="comment">// (2*xp – s1^2 + xq) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2*yp
+        // =&gt; 2 yp / (2*xp – s1^2 + xq) = s1 + (yr + yp) / (xp – xr)
+        // =&gt; 2 yp / (2*xp – s1^2 + xq) - s1 = (yr + yp) / (xp – xr)
+        //
+        // s2 := 2 yp / (2*xp – s1^2 + xq) - s1
+        //
+        // (yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)
+        // =&gt; (s1^2 – xq1 + xr) = (yr + yp)^2 / (xp – xr)^2
+        //
+        // =&gt; xr = s2^2 - s1^2 + xq
+        // =&gt; yr = s2 * (xp - xr) - yp
+        </span><span class="kw">let </span>s2 = yp.double() / (xp.double() + xq1 - s1_squared) - s1;
 
-        <span class="comment">// (xr, yr)</span>
-        <span class="kw">let</span> <span class="ident">xr</span> <span class="op">=</span> <span class="ident">xq1</span> <span class="op">+</span> <span class="ident">s2</span>.<span class="ident">square</span>() <span class="op">-</span> <span class="ident">s1_squared</span>;
-        <span class="kw">let</span> <span class="ident">yr</span> <span class="op">=</span> (<span class="ident">xp</span> <span class="op">-</span> <span class="ident">xr</span>) <span class="op">*</span> <span class="ident">s2</span> <span class="op">-</span> <span class="ident">yp</span>;
+        <span class="comment">// (xr, yr)
+        </span><span class="kw">let </span>xr = xq1 + s2.square() - s1_squared;
+        <span class="kw">let </span>yr = (xp - xr) * s2 - yp;
 
-        <span class="kw">let</span> <span class="ident">xq2</span> <span class="op">=</span> (<span class="ident">one</span> <span class="op">+</span> (<span class="ident">endo</span> <span class="op">-</span> <span class="ident">one</span>) <span class="op">*</span> <span class="ident">b3</span>) <span class="op">*</span> <span class="ident">xt</span>;
-        <span class="kw">let</span> <span class="ident">yq2</span> <span class="op">=</span> (<span class="ident">b4</span>.<span class="ident">double</span>() <span class="op">-</span> <span class="ident">one</span>) <span class="op">*</span> <span class="ident">yt</span>;
-        <span class="kw">let</span> <span class="ident">s3</span> <span class="op">=</span> (<span class="ident">yq2</span> <span class="op">-</span> <span class="ident">yr</span>) <span class="op">/</span> (<span class="ident">xq2</span> <span class="op">-</span> <span class="ident">xr</span>);
-        <span class="kw">let</span> <span class="ident">s3_squared</span> <span class="op">=</span> <span class="ident">s3</span>.<span class="ident">square</span>();
-        <span class="kw">let</span> <span class="ident">s4</span> <span class="op">=</span> <span class="ident">yr</span>.<span class="ident">double</span>() <span class="op">/</span> (<span class="ident">xr</span>.<span class="ident">double</span>() <span class="op">+</span> <span class="ident">xq2</span> <span class="op">-</span> <span class="ident">s3_squared</span>) <span class="op">-</span> <span class="ident">s3</span>;
+        <span class="kw">let </span>xq2 = (one + (endo - one) * b3) * xt;
+        <span class="kw">let </span>yq2 = (b4.double() - one) * yt;
+        <span class="kw">let </span>s3 = (yq2 - yr) / (xq2 - xr);
+        <span class="kw">let </span>s3_squared = s3.square();
+        <span class="kw">let </span>s4 = yr.double() / (xr.double() + xq2 - s3_squared) - s3;
 
-        <span class="kw">let</span> <span class="ident">xs</span> <span class="op">=</span> <span class="ident">xq2</span> <span class="op">+</span> <span class="ident">s4</span>.<span class="ident">square</span>() <span class="op">-</span> <span class="ident">s3_squared</span>;
-        <span class="kw">let</span> <span class="ident">ys</span> <span class="op">=</span> (<span class="ident">xr</span> <span class="op">-</span> <span class="ident">xs</span>) <span class="op">*</span> <span class="ident">s4</span> <span class="op">-</span> <span class="ident">yr</span>;
+        <span class="kw">let </span>xs = xq2 + s4.square() - s3_squared;
+        <span class="kw">let </span>ys = (xr - xs) * s4 - yr;
 
-        <span class="kw">let</span> <span class="ident">row</span> <span class="op">=</span> <span class="ident">i</span> <span class="op">+</span> <span class="ident">row0</span>;
+        <span class="kw">let </span>row = i + row0;
 
-        <span class="ident">w</span>[<span class="number">0</span>][<span class="ident">row</span>] <span class="op">=</span> <span class="ident">base</span>.<span class="number">0</span>;
-        <span class="ident">w</span>[<span class="number">1</span>][<span class="ident">row</span>] <span class="op">=</span> <span class="ident">base</span>.<span class="number">1</span>;
-        <span class="ident">w</span>[<span class="number">4</span>][<span class="ident">row</span>] <span class="op">=</span> <span class="ident">xp</span>;
-        <span class="ident">w</span>[<span class="number">5</span>][<span class="ident">row</span>] <span class="op">=</span> <span class="ident">yp</span>;
-        <span class="ident">w</span>[<span class="number">6</span>][<span class="ident">row</span>] <span class="op">=</span> <span class="ident">n_acc</span>;
-        <span class="ident">w</span>[<span class="number">7</span>][<span class="ident">row</span>] <span class="op">=</span> <span class="ident">xr</span>;
-        <span class="ident">w</span>[<span class="number">8</span>][<span class="ident">row</span>] <span class="op">=</span> <span class="ident">yr</span>;
-        <span class="ident">w</span>[<span class="number">9</span>][<span class="ident">row</span>] <span class="op">=</span> <span class="ident">s1</span>;
-        <span class="ident">w</span>[<span class="number">10</span>][<span class="ident">row</span>] <span class="op">=</span> <span class="ident">s3</span>;
-        <span class="ident">w</span>[<span class="number">11</span>][<span class="ident">row</span>] <span class="op">=</span> <span class="ident">b1</span>;
-        <span class="ident">w</span>[<span class="number">12</span>][<span class="ident">row</span>] <span class="op">=</span> <span class="ident">b2</span>;
-        <span class="ident">w</span>[<span class="number">13</span>][<span class="ident">row</span>] <span class="op">=</span> <span class="ident">b3</span>;
-        <span class="ident">w</span>[<span class="number">14</span>][<span class="ident">row</span>] <span class="op">=</span> <span class="ident">b4</span>;
+        w[<span class="number">0</span>][row] = base.<span class="number">0</span>;
+        w[<span class="number">1</span>][row] = base.<span class="number">1</span>;
+        w[<span class="number">4</span>][row] = xp;
+        w[<span class="number">5</span>][row] = yp;
+        w[<span class="number">6</span>][row] = n_acc;
+        w[<span class="number">7</span>][row] = xr;
+        w[<span class="number">8</span>][row] = yr;
+        w[<span class="number">9</span>][row] = s1;
+        w[<span class="number">10</span>][row] = s3;
+        w[<span class="number">11</span>][row] = b1;
+        w[<span class="number">12</span>][row] = b2;
+        w[<span class="number">13</span>][row] = b3;
+        w[<span class="number">14</span>][row] = b4;
 
-        <span class="ident">acc</span> <span class="op">=</span> (<span class="ident">xs</span>, <span class="ident">ys</span>);
+        acc = (xs, ys);
 
-        <span class="ident">n_acc</span>.<span class="ident">double_in_place</span>();
-        <span class="ident">n_acc</span> <span class="op">+</span><span class="op">=</span> <span class="ident">b1</span>;
-        <span class="ident">n_acc</span>.<span class="ident">double_in_place</span>();
-        <span class="ident">n_acc</span> <span class="op">+</span><span class="op">=</span> <span class="ident">b2</span>;
-        <span class="ident">n_acc</span>.<span class="ident">double_in_place</span>();
-        <span class="ident">n_acc</span> <span class="op">+</span><span class="op">=</span> <span class="ident">b3</span>;
-        <span class="ident">n_acc</span>.<span class="ident">double_in_place</span>();
-        <span class="ident">n_acc</span> <span class="op">+</span><span class="op">=</span> <span class="ident">b4</span>;
+        n_acc.double_in_place();
+        n_acc += b1;
+        n_acc.double_in_place();
+        n_acc += b2;
+        n_acc.double_in_place();
+        n_acc += b3;
+        n_acc.double_in_place();
+        n_acc += b4;
     }
-    <span class="ident">w</span>[<span class="number">4</span>][<span class="ident">row0</span> <span class="op">+</span> <span class="ident">rows</span>] <span class="op">=</span> <span class="ident">acc</span>.<span class="number">0</span>;
-    <span class="ident">w</span>[<span class="number">5</span>][<span class="ident">row0</span> <span class="op">+</span> <span class="ident">rows</span>] <span class="op">=</span> <span class="ident">acc</span>.<span class="number">1</span>;
-    <span class="ident">w</span>[<span class="number">6</span>][<span class="ident">row0</span> <span class="op">+</span> <span class="ident">rows</span>] <span class="op">=</span> <span class="ident">n_acc</span>;
+    w[<span class="number">4</span>][row0 + rows] = acc.<span class="number">0</span>;
+    w[<span class="number">5</span>][row0 + rows] = acc.<span class="number">1</span>;
+    w[<span class="number">6</span>][row0 + rows] = n_acc;
 
-    <span class="ident">EndoMulResult</span> { <span class="ident">acc</span>, <span class="ident">n</span>: <span class="ident">n_acc</span> }
+    EndoMulResult { acc, n: n_acc }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

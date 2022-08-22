@@ -452,459 +452,459 @@
 <span id="452">452</span>
 <span id="453">453</span>
 <span id="454">454</span>
-</pre><pre class="rust"><code><span class="doccomment">//! This module implements permutation constraint polynomials.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This module implements permutation constraint polynomials.
 
-<span class="comment">//~</span>
-<span class="comment">//~ The permutation constraints are the following 4 constraints:</span>
-<span class="comment">//~</span>
-<span class="comment">//~ The two sides of the coin (with $\text{shift}_0 = 1$):</span>
-<span class="comment">//~</span>
-<span class="comment">//~ $$\begin{align}</span>
-<span class="comment">//~     &amp; z(x) \cdot zkpm(x) \cdot \alpha^{PERM0} \cdot \\</span>
-<span class="comment">//~     &amp; (w_0(x) + \beta \cdot \text{shift}_0 x + \gamma) \cdot \\</span>
-<span class="comment">//~     &amp; (w_1(x) + \beta \cdot \text{shift}_1 x + \gamma) \cdot \\</span>
-<span class="comment">//~     &amp; (w_2(x) + \beta \cdot \text{shift}_2 x + \gamma) \cdot \\</span>
-<span class="comment">//~     &amp; (w_3(x) + \beta \cdot \text{shift}_3 x + \gamma) \cdot \\</span>
-<span class="comment">//~     &amp; (w_4(x) + \beta \cdot \text{shift}_4 x + \gamma) \cdot \\</span>
-<span class="comment">//~     &amp; (w_5(x) + \beta \cdot \text{shift}_5 x + \gamma) \cdot \\</span>
-<span class="comment">//~     &amp; (w_6(x) + \beta \cdot \text{shift}_6 x + \gamma)</span>
-<span class="comment">//~ \end{align}$$</span>
-<span class="comment">//~</span>
-<span class="comment">//~ and</span>
-<span class="comment">//~</span>
-<span class="comment">//~ $$\begin{align}</span>
-<span class="comment">//~ &amp; -1 \cdot z(x \omega) \cdot zkpm(x) \cdot \alpha^{PERM0} \cdot \\</span>
-<span class="comment">//~ &amp; (w_0(x) + \beta \cdot \sigma_0(x) + \gamma) \cdot \\</span>
-<span class="comment">//~ &amp; (w_1(x) + \beta \cdot \sigma_1(x) + \gamma) \cdot \\</span>
-<span class="comment">//~ &amp; (w_2(x) + \beta \cdot \sigma_2(x) + \gamma) \cdot \\</span>
-<span class="comment">//~ &amp; (w_3(x) + \beta \cdot \sigma_3(x) + \gamma) \cdot \\</span>
-<span class="comment">//~ &amp; (w_4(x) + \beta \cdot \sigma_4(x) + \gamma) \cdot \\</span>
-<span class="comment">//~ &amp; (w_5(x) + \beta \cdot \sigma_5(x) + \gamma) \cdot \\</span>
-<span class="comment">//~ &amp; (w_6(x) + \beta \cdot \sigma_6(x) + \gamma) \cdot</span>
-<span class="comment">//~ \end{align}$$</span>
-<span class="comment">//~</span>
-<span class="comment">//~ the initialization of the accumulator:</span>
-<span class="comment">//~</span>
-<span class="comment">//~ $$(z(x) - 1) L_1(x) \alpha^{PERM1}$$</span>
-<span class="comment">//~</span>
-<span class="comment">//~ and the accumulator&#39;s final value:</span>
-<span class="comment">//~</span>
-<span class="comment">//~ $$(z(x) - 1) L_{n-k}(x) \alpha^{PERM2}$$</span>
-<span class="comment">//~</span>
-<span class="comment">//~ You can read more about why it looks like that in [this post](https://minaprotocol.com/blog/a-more-efficient-approach-to-zero-knowledge-for-plonk).</span>
-<span class="comment">//~</span>
+</span><span class="comment">//~
+//~ The permutation constraints are the following 4 constraints:
+//~
+//~ The two sides of the coin (with $\text{shift}_0 = 1$):
+//~
+//~ $$\begin{align}
+//~     &amp; z(x) \cdot zkpm(x) \cdot \alpha^{PERM0} \cdot \\
+//~     &amp; (w_0(x) + \beta \cdot \text{shift}_0 x + \gamma) \cdot \\
+//~     &amp; (w_1(x) + \beta \cdot \text{shift}_1 x + \gamma) \cdot \\
+//~     &amp; (w_2(x) + \beta \cdot \text{shift}_2 x + \gamma) \cdot \\
+//~     &amp; (w_3(x) + \beta \cdot \text{shift}_3 x + \gamma) \cdot \\
+//~     &amp; (w_4(x) + \beta \cdot \text{shift}_4 x + \gamma) \cdot \\
+//~     &amp; (w_5(x) + \beta \cdot \text{shift}_5 x + \gamma) \cdot \\
+//~     &amp; (w_6(x) + \beta \cdot \text{shift}_6 x + \gamma)
+//~ \end{align}$$
+//~
+//~ and
+//~
+//~ $$\begin{align}
+//~ &amp; -1 \cdot z(x \omega) \cdot zkpm(x) \cdot \alpha^{PERM0} \cdot \\
+//~ &amp; (w_0(x) + \beta \cdot \sigma_0(x) + \gamma) \cdot \\
+//~ &amp; (w_1(x) + \beta \cdot \sigma_1(x) + \gamma) \cdot \\
+//~ &amp; (w_2(x) + \beta \cdot \sigma_2(x) + \gamma) \cdot \\
+//~ &amp; (w_3(x) + \beta \cdot \sigma_3(x) + \gamma) \cdot \\
+//~ &amp; (w_4(x) + \beta \cdot \sigma_4(x) + \gamma) \cdot \\
+//~ &amp; (w_5(x) + \beta \cdot \sigma_5(x) + \gamma) \cdot \\
+//~ &amp; (w_6(x) + \beta \cdot \sigma_6(x) + \gamma) \cdot
+//~ \end{align}$$
+//~
+//~ the initialization of the accumulator:
+//~
+//~ $$(z(x) - 1) L_1(x) \alpha^{PERM1}$$
+//~
+//~ and the accumulator&#39;s final value:
+//~
+//~ $$(z(x) - 1) L_{n-k}(x) \alpha^{PERM2}$$
+//~
+//~ You can read more about why it looks like that in [this post](https://minaprotocol.com/blog/a-more-efficient-approach-to-zero-knowledge-for-plonk).
+//~
 
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">circuits</span>::{<span class="ident">constraints::ConstraintSystem</span>, <span class="ident">polynomial::WitnessOverDomains</span>, <span class="ident">wires</span>::<span class="kw-2">*</span>},
-    <span class="ident">error::ProverError</span>,
-    <span class="ident">proof::ProofEvaluations</span>,
+</span><span class="kw">use crate</span>::{
+    circuits::{constraints::ConstraintSystem, polynomial::WitnessOverDomains, wires::<span class="kw-2">*</span>},
+    error::ProverError,
+    proof::ProofEvaluations,
 };
-<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">PrimeField</span>, <span class="ident">SquareRootField</span>, <span class="ident">Zero</span>};
-<span class="kw">use</span> <span class="ident">ark_poly</span>::{
-    <span class="ident">univariate</span>::{<span class="ident">DenseOrSparsePolynomial</span>, <span class="ident">DensePolynomial</span>},
-    <span class="ident">EvaluationDomain</span>, <span class="ident">Evaluations</span>, <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>,
+<span class="kw">use </span>ark_ff::{FftField, PrimeField, SquareRootField, Zero};
+<span class="kw">use </span>ark_poly::{
+    univariate::{DenseOrSparsePolynomial, DensePolynomial},
+    EvaluationDomain, Evaluations, Radix2EvaluationDomain <span class="kw">as </span>D,
 };
-<span class="kw">use</span> <span class="ident">ark_poly</span>::{<span class="ident">Polynomial</span>, <span class="ident">UVPolynomial</span>};
-<span class="kw">use</span> <span class="ident">array_init::array_init</span>;
-<span class="kw">use</span> <span class="ident">blake2</span>::{<span class="ident">Blake2b512</span>, <span class="ident">Digest</span>};
-<span class="kw">use</span> <span class="ident">o1_utils</span>::{<span class="ident">ExtendedDensePolynomial</span>, <span class="ident">ExtendedEvaluations</span>};
-<span class="kw">use</span> <span class="ident">rand</span>::{<span class="ident">CryptoRng</span>, <span class="ident">RngCore</span>};
+<span class="kw">use </span>ark_poly::{Polynomial, UVPolynomial};
+<span class="kw">use </span>array_init::array_init;
+<span class="kw">use </span>blake2::{Blake2b512, Digest};
+<span class="kw">use </span>o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
+<span class="kw">use </span>rand::{CryptoRng, RngCore};
 
-<span class="doccomment">/// Number of constraints produced by the argument.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">3</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">ZK_ROWS</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">3</span>;
-<span class="doccomment">/// Evaluates the polynomial</span>
-<span class="doccomment">/// (x - w^{n - 4}) (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">eval_vanishes_on_last_4_rows</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">domain</span>: <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">x</span>: <span class="ident">F</span>) -&gt; <span class="ident">F</span> {
-    <span class="kw">let</span> <span class="ident">w4</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="ident">domain</span>.<span class="ident">size</span> <span class="op">-</span> (<span class="ident">ZK_ROWS</span> <span class="op">+</span> <span class="number">1</span>)]);
-    <span class="kw">let</span> <span class="ident">w3</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span> <span class="op">*</span> <span class="ident">w4</span>;
-    <span class="kw">let</span> <span class="ident">w2</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span> <span class="op">*</span> <span class="ident">w3</span>;
-    <span class="kw">let</span> <span class="ident">w1</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span> <span class="op">*</span> <span class="ident">w2</span>;
-    (<span class="ident">x</span> <span class="op">-</span> <span class="ident">w1</span>) <span class="op">*</span> (<span class="ident">x</span> <span class="op">-</span> <span class="ident">w2</span>) <span class="op">*</span> (<span class="ident">x</span> <span class="op">-</span> <span class="ident">w3</span>) <span class="op">*</span> (<span class="ident">x</span> <span class="op">-</span> <span class="ident">w4</span>)
+<span class="doccomment">/// Number of constraints produced by the argument.
+</span><span class="kw">pub const </span>CONSTRAINTS: u32 = <span class="number">3</span>;
+<span class="kw">pub const </span>ZK_ROWS: u64 = <span class="number">3</span>;
+<span class="doccomment">/// Evaluates the polynomial
+/// (x - w^{n - 4}) (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
+</span><span class="kw">pub fn </span>eval_vanishes_on_last_4_rows&lt;F: FftField&gt;(domain: D&lt;F&gt;, x: F) -&gt; F {
+    <span class="kw">let </span>w4 = domain.group_gen.pow(<span class="kw-2">&amp;</span>[domain.size - (ZK_ROWS + <span class="number">1</span>)]);
+    <span class="kw">let </span>w3 = domain.group_gen * w4;
+    <span class="kw">let </span>w2 = domain.group_gen * w3;
+    <span class="kw">let </span>w1 = domain.group_gen * w2;
+    (x - w1) * (x - w2) * (x - w3) * (x - w4)
 }
 
-<span class="doccomment">/// The polynomial</span>
-<span class="doccomment">/// (x - w^{n - 4}) (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">vanishes_on_last_4_rows</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">domain</span>: <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">DensePolynomial::from_coefficients_slice</span>(<span class="kw-2">&amp;</span>[<span class="ident">F::zero</span>(), <span class="ident">F::one</span>()]);
-    <span class="kw">let</span> <span class="ident">c</span> <span class="op">=</span> <span class="op">|</span><span class="ident">a</span>: <span class="ident">F</span><span class="op">|</span> <span class="ident">DensePolynomial::from_coefficients_slice</span>(<span class="kw-2">&amp;</span>[<span class="ident">a</span>]);
-    <span class="kw">let</span> <span class="ident">w4</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="ident">domain</span>.<span class="ident">size</span> <span class="op">-</span> (<span class="ident">ZK_ROWS</span> <span class="op">+</span> <span class="number">1</span>)]);
-    <span class="kw">let</span> <span class="ident">w3</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span> <span class="op">*</span> <span class="ident">w4</span>;
-    <span class="kw">let</span> <span class="ident">w2</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span> <span class="op">*</span> <span class="ident">w3</span>;
-    <span class="kw">let</span> <span class="ident">w1</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span> <span class="op">*</span> <span class="ident">w2</span>;
-    <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span><span class="ident">x</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">c</span>(<span class="ident">w1</span>)) <span class="op">*</span> <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span><span class="ident">x</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">c</span>(<span class="ident">w2</span>))) <span class="op">*</span> <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span><span class="ident">x</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">c</span>(<span class="ident">w3</span>)) <span class="op">*</span> <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span><span class="ident">x</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">c</span>(<span class="ident">w4</span>)))
+<span class="doccomment">/// The polynomial
+/// (x - w^{n - 4}) (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
+</span><span class="kw">pub fn </span>vanishes_on_last_4_rows&lt;F: FftField&gt;(domain: D&lt;F&gt;) -&gt; DensePolynomial&lt;F&gt; {
+    <span class="kw">let </span>x = DensePolynomial::from_coefficients_slice(<span class="kw-2">&amp;</span>[F::zero(), F::one()]);
+    <span class="kw">let </span>c = |a: F| DensePolynomial::from_coefficients_slice(<span class="kw-2">&amp;</span>[a]);
+    <span class="kw">let </span>w4 = domain.group_gen.pow(<span class="kw-2">&amp;</span>[domain.size - (ZK_ROWS + <span class="number">1</span>)]);
+    <span class="kw">let </span>w3 = domain.group_gen * w4;
+    <span class="kw">let </span>w2 = domain.group_gen * w3;
+    <span class="kw">let </span>w1 = domain.group_gen * w2;
+    <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span>x - <span class="kw-2">&amp;</span>c(w1)) * <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span>x - <span class="kw-2">&amp;</span>c(w2))) * <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span>x - <span class="kw-2">&amp;</span>c(w3)) * <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span>x - <span class="kw-2">&amp;</span>c(w4)))
 }
 
-<span class="doccomment">/// Returns the end of the circuit, which is used for introducing zero-knowledge in the permutation polynomial</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">zk_w3</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">domain</span>: <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="ident">F</span> {
-    <span class="ident">domain</span>.<span class="ident">group_gen</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="ident">domain</span>.<span class="ident">size</span> <span class="op">-</span> (<span class="ident">ZK_ROWS</span>)])
+<span class="doccomment">/// Returns the end of the circuit, which is used for introducing zero-knowledge in the permutation polynomial
+</span><span class="kw">pub fn </span>zk_w3&lt;F: FftField&gt;(domain: D&lt;F&gt;) -&gt; F {
+    domain.group_gen.pow(<span class="kw-2">&amp;</span>[domain.size - (ZK_ROWS)])
 }
 
-<span class="doccomment">/// Evaluates the polynomial</span>
-<span class="doccomment">/// (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">eval_zk_polynomial</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">domain</span>: <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">x</span>: <span class="ident">F</span>) -&gt; <span class="ident">F</span> {
-    <span class="kw">let</span> <span class="ident">w3</span> <span class="op">=</span> <span class="ident">zk_w3</span>(<span class="ident">domain</span>);
-    <span class="kw">let</span> <span class="ident">w2</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span> <span class="op">*</span> <span class="ident">w3</span>;
-    <span class="kw">let</span> <span class="ident">w1</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span> <span class="op">*</span> <span class="ident">w2</span>;
-    (<span class="ident">x</span> <span class="op">-</span> <span class="ident">w1</span>) <span class="op">*</span> (<span class="ident">x</span> <span class="op">-</span> <span class="ident">w2</span>) <span class="op">*</span> (<span class="ident">x</span> <span class="op">-</span> <span class="ident">w3</span>)
+<span class="doccomment">/// Evaluates the polynomial
+/// (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
+</span><span class="kw">pub fn </span>eval_zk_polynomial&lt;F: FftField&gt;(domain: D&lt;F&gt;, x: F) -&gt; F {
+    <span class="kw">let </span>w3 = zk_w3(domain);
+    <span class="kw">let </span>w2 = domain.group_gen * w3;
+    <span class="kw">let </span>w1 = domain.group_gen * w2;
+    (x - w1) * (x - w2) * (x - w3)
 }
 
-<span class="doccomment">/// Computes the zero-knowledge polynomial for blinding the permutation polynomial: `(x-w^{n-k})(x-w^{n-k-1})...(x-w^n)`.</span>
-<span class="doccomment">/// Currently, we use k = 3 for 2 blinding factors,</span>
-<span class="doccomment">/// see &lt;https://www.plonk.cafe/t/noob-questions-plonk-paper/73&gt;</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">zk_polynomial</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">domain</span>: <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">w3</span> <span class="op">=</span> <span class="ident">zk_w3</span>(<span class="ident">domain</span>);
-    <span class="kw">let</span> <span class="ident">w2</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span> <span class="op">*</span> <span class="ident">w3</span>;
-    <span class="kw">let</span> <span class="ident">w1</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span> <span class="op">*</span> <span class="ident">w2</span>;
+<span class="doccomment">/// Computes the zero-knowledge polynomial for blinding the permutation polynomial: `(x-w^{n-k})(x-w^{n-k-1})...(x-w^n)`.
+/// Currently, we use k = 3 for 2 blinding factors,
+/// see &lt;https://www.plonk.cafe/t/noob-questions-plonk-paper/73&gt;
+</span><span class="kw">pub fn </span>zk_polynomial&lt;F: FftField&gt;(domain: D&lt;F&gt;) -&gt; DensePolynomial&lt;F&gt; {
+    <span class="kw">let </span>w3 = zk_w3(domain);
+    <span class="kw">let </span>w2 = domain.group_gen * w3;
+    <span class="kw">let </span>w1 = domain.group_gen * w2;
 
-    <span class="comment">// (x-w3)(x-w2)(x-w1) =</span>
-    <span class="comment">// x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3</span>
-    <span class="kw">let</span> <span class="ident">w1w2</span> <span class="op">=</span> <span class="ident">w1</span> <span class="op">*</span> <span class="ident">w2</span>;
-    <span class="ident">DensePolynomial::from_coefficients_slice</span>(<span class="kw-2">&amp;</span>[
-        <span class="op">-</span><span class="ident">w1w2</span> <span class="op">*</span> <span class="ident">w3</span>,                   <span class="comment">// 1</span>
-        <span class="ident">w1w2</span> <span class="op">+</span> (<span class="ident">w1</span> <span class="op">*</span> <span class="ident">w3</span>) <span class="op">+</span> (<span class="ident">w3</span> <span class="op">*</span> <span class="ident">w2</span>), <span class="comment">// x</span>
-        <span class="op">-</span><span class="ident">w1</span> <span class="op">-</span> <span class="ident">w2</span> <span class="op">-</span> <span class="ident">w3</span>,                <span class="comment">// x^2</span>
-        <span class="ident">F::one</span>(),                     <span class="comment">// x^3</span>
-    ])
+    <span class="comment">// (x-w3)(x-w2)(x-w1) =
+    // x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3
+    </span><span class="kw">let </span>w1w2 = w1 * w2;
+    DensePolynomial::from_coefficients_slice(<span class="kw-2">&amp;</span>[
+        -w1w2 * w3,                   <span class="comment">// 1
+        </span>w1w2 + (w1 * w3) + (w3 * w2), <span class="comment">// x
+        </span>-w1 - w2 - w3,                <span class="comment">// x^2
+        </span>F::one(),                     <span class="comment">// x^3
+    </span>])
 }
 
-<span class="doccomment">/// Shifts represent the shifts required in the permutation argument of PLONK.</span>
-<span class="doccomment">/// It also caches the shifted powers of omega for optimization purposes.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Shifts</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// The coefficients `k` (in the Plonk paper) that create a coset when multiplied with the generator of our domain.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">shifts</span>: [<span class="ident">F</span>; <span class="ident">PERMUTS</span>],
-    <span class="doccomment">/// A matrix that maps all cells coordinates `{col, row}` to their shifted field element.</span>
-    <span class="doccomment">/// For example the cell `{col:2, row:1}` will map to `omega * k2`,</span>
-    <span class="doccomment">/// which lives in `map[2][1]`</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">map</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">PERMUTS</span>],
+<span class="doccomment">/// Shifts represent the shifts required in the permutation argument of PLONK.
+/// It also caches the shifted powers of omega for optimization purposes.
+</span><span class="kw">pub struct </span>Shifts&lt;F&gt; {
+    <span class="doccomment">/// The coefficients `k` (in the Plonk paper) that create a coset when multiplied with the generator of our domain.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) shifts: [F; PERMUTS],
+    <span class="doccomment">/// A matrix that maps all cells coordinates `{col, row}` to their shifted field element.
+    /// For example the cell `{col:2, row:1}` will map to `omega * k2`,
+    /// which lives in `map[2][1]`
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) map: [Vec&lt;F&gt;; PERMUTS],
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="ident">Shifts</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">SquareRootField</span>,
+<span class="kw">impl</span>&lt;F&gt; Shifts&lt;F&gt;
+<span class="kw">where
+    </span>F: FftField + SquareRootField,
 {
-    <span class="doccomment">/// Generates the shifts for a given domain</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">domain</span>: <span class="kw-2">&amp;</span><span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">shifts</span> <span class="op">=</span> [<span class="ident">F::zero</span>(); <span class="ident">PERMUTS</span>];
+    <span class="doccomment">/// Generates the shifts for a given domain
+    </span><span class="kw">pub fn </span>new(domain: <span class="kw-2">&amp;</span>D&lt;F&gt;) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>shifts = [F::zero(); PERMUTS];
 
-        <span class="comment">// first shift is the identity</span>
-        <span class="ident">shifts</span>[<span class="number">0</span>] <span class="op">=</span> <span class="ident">F::one</span>();
+        <span class="comment">// first shift is the identity
+        </span>shifts[<span class="number">0</span>] = F::one();
 
-        <span class="comment">// sample the other shifts</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">i</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">7</span>;
-        <span class="kw">for</span> <span class="ident">idx</span> <span class="kw">in</span> <span class="number">1</span>..(<span class="ident">PERMUTS</span>) {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">shift</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::sample</span>(<span class="ident">domain</span>, <span class="kw-2">&amp;mut</span> <span class="ident">i</span>);
-            <span class="comment">// they have to be distincts</span>
-            <span class="kw">while</span> <span class="ident">shifts</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">shift</span>) {
-                <span class="ident">shift</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::sample</span>(<span class="ident">domain</span>, <span class="kw-2">&amp;mut</span> <span class="ident">i</span>);
+        <span class="comment">// sample the other shifts
+        </span><span class="kw">let </span><span class="kw-2">mut </span>i: u32 = <span class="number">7</span>;
+        <span class="kw">for </span>idx <span class="kw">in </span><span class="number">1</span>..(PERMUTS) {
+            <span class="kw">let </span><span class="kw-2">mut </span>shift = <span class="self">Self</span>::sample(domain, <span class="kw-2">&amp;mut </span>i);
+            <span class="comment">// they have to be distincts
+            </span><span class="kw">while </span>shifts.contains(<span class="kw-2">&amp;</span>shift) {
+                shift = <span class="self">Self</span>::sample(domain, <span class="kw-2">&amp;mut </span>i);
             }
-            <span class="ident">shifts</span>[<span class="ident">idx</span>] <span class="op">=</span> <span class="ident">shift</span>;
+            shifts[idx] = shift;
         }
 
-        <span class="comment">// create a map of cells to their shifted value</span>
-        <span class="kw">let</span> <span class="ident">map</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">PERMUTS</span>] <span class="op">=</span>
-            <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">domain</span>.<span class="ident">elements</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">elm</span><span class="op">|</span> <span class="ident">shifts</span>[<span class="ident">i</span>] <span class="op">*</span> <span class="ident">elm</span>).<span class="ident">collect</span>());
+        <span class="comment">// create a map of cells to their shifted value
+        </span><span class="kw">let </span>map: [Vec&lt;F&gt;; PERMUTS] =
+            array_init(|i| domain.elements().map(|elm| shifts[i] * elm).collect());
 
-        <span class="comment">//</span>
-        <span class="self">Self</span> { <span class="ident">shifts</span>, <span class="ident">map</span> }
+        <span class="comment">//
+        </span><span class="self">Self </span>{ shifts, map }
     }
 
-    <span class="doccomment">/// retrieve the shifts</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">shifts</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">F</span>; <span class="ident">PERMUTS</span>] {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">shifts</span>
+    <span class="doccomment">/// retrieve the shifts
+    </span><span class="kw">pub fn </span>shifts(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[F; PERMUTS] {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.shifts
     }
 
-    <span class="doccomment">/// sample coordinate shifts deterministically</span>
-    <span class="kw">fn</span> <span class="ident">sample</span>(<span class="ident">domain</span>: <span class="kw-2">&amp;</span><span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">input</span>: <span class="kw-2">&amp;mut</span> <span class="ident">u32</span>) -&gt; <span class="ident">F</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">h</span> <span class="op">=</span> <span class="ident">Blake2b512::new</span>();
+    <span class="doccomment">/// sample coordinate shifts deterministically
+    </span><span class="kw">fn </span>sample(domain: <span class="kw-2">&amp;</span>D&lt;F&gt;, input: <span class="kw-2">&amp;mut </span>u32) -&gt; F {
+        <span class="kw">let </span><span class="kw-2">mut </span>h = Blake2b512::new();
 
-        <span class="kw-2">*</span><span class="ident">input</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-        <span class="ident">h</span>.<span class="ident">update</span>(<span class="kw-2">&amp;</span><span class="ident">input</span>.<span class="ident">to_be_bytes</span>());
+        <span class="kw-2">*</span>input += <span class="number">1</span>;
+        h.update(<span class="kw-2">&amp;</span>input.to_be_bytes());
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">shift</span> <span class="op">=</span> <span class="ident">F::from_random_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">h</span>.<span class="ident">finalize</span>()[..<span class="number">31</span>])
-            .<span class="ident">expect</span>(<span class="string">&quot;our field elements fit in more than 31 bytes&quot;</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>shift = F::from_random_bytes(<span class="kw-2">&amp;</span>h.finalize()[..<span class="number">31</span>])
+            .expect(<span class="string">&quot;our field elements fit in more than 31 bytes&quot;</span>);
 
-        <span class="kw">while</span> <span class="op">!</span><span class="ident">shift</span>.<span class="ident">legendre</span>().<span class="ident">is_qnr</span>() <span class="op">|</span><span class="op">|</span> <span class="ident">domain</span>.<span class="ident">evaluate_vanishing_polynomial</span>(<span class="ident">shift</span>).<span class="ident">is_zero</span>() {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">h</span> <span class="op">=</span> <span class="ident">Blake2b512::new</span>();
-            <span class="kw-2">*</span><span class="ident">input</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-            <span class="ident">h</span>.<span class="ident">update</span>(<span class="kw-2">&amp;</span><span class="ident">input</span>.<span class="ident">to_be_bytes</span>());
-            <span class="ident">shift</span> <span class="op">=</span> <span class="ident">F::from_random_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">h</span>.<span class="ident">finalize</span>()[..<span class="number">31</span>])
-                .<span class="ident">expect</span>(<span class="string">&quot;our field elements fit in more than 31 bytes&quot;</span>);
+        <span class="kw">while </span>!shift.legendre().is_qnr() || domain.evaluate_vanishing_polynomial(shift).is_zero() {
+            <span class="kw">let </span><span class="kw-2">mut </span>h = Blake2b512::new();
+            <span class="kw-2">*</span>input += <span class="number">1</span>;
+            h.update(<span class="kw-2">&amp;</span>input.to_be_bytes());
+            shift = F::from_random_bytes(<span class="kw-2">&amp;</span>h.finalize()[..<span class="number">31</span>])
+                .expect(<span class="string">&quot;our field elements fit in more than 31 bytes&quot;</span>);
         }
-        <span class="ident">shift</span>
+        shift
     }
 
-    <span class="doccomment">/// Returns the field element that represents a position</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">cell_to_field</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">&amp;</span><span class="ident">Wire</span> { <span class="ident">row</span>, <span class="ident">col</span> }: <span class="kw-2">&amp;</span><span class="ident">Wire</span>) -&gt; <span class="ident">F</span> {
-        <span class="self">self</span>.<span class="ident">map</span>[<span class="ident">col</span>][<span class="ident">row</span>]
+    <span class="doccomment">/// Returns the field element that represents a position
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>cell_to_field(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">&amp;</span>Wire { row, col }: <span class="kw-2">&amp;</span>Wire) -&gt; F {
+        <span class="self">self</span>.map[col][row]
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> <span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// permutation quotient poly contribution computation</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::type_complexity</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">perm_quot</span>(
+<span class="kw">impl</span>&lt;F: PrimeField&gt; ConstraintSystem&lt;F&gt; {
+    <span class="doccomment">/// permutation quotient poly contribution computation
+    </span><span class="attribute">#[allow(clippy::type_complexity)]
+    </span><span class="kw">pub fn </span>perm_quot(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">lagrange</span>: <span class="kw-2">&amp;</span><span class="ident">WitnessOverDomains</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-        <span class="ident">beta</span>: <span class="ident">F</span>,
-        <span class="ident">gamma</span>: <span class="ident">F</span>,
-        <span class="ident">z</span>: <span class="kw-2">&amp;</span><span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-        <span class="kw-2">mut</span> <span class="ident">alphas</span>: <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">F</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>), <span class="ident">ProverError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">alpha0</span> <span class="op">=</span> <span class="ident">alphas</span>.<span class="ident">next</span>().<span class="ident">expect</span>(<span class="string">&quot;missing power of alpha&quot;</span>);
-        <span class="kw">let</span> <span class="ident">alpha1</span> <span class="op">=</span> <span class="ident">alphas</span>.<span class="ident">next</span>().<span class="ident">expect</span>(<span class="string">&quot;missing power of alpha&quot;</span>);
-        <span class="kw">let</span> <span class="ident">alpha2</span> <span class="op">=</span> <span class="ident">alphas</span>.<span class="ident">next</span>().<span class="ident">expect</span>(<span class="string">&quot;missing power of alpha&quot;</span>);
+        lagrange: <span class="kw-2">&amp;</span>WitnessOverDomains&lt;F&gt;,
+        beta: F,
+        gamma: F,
+        z: <span class="kw-2">&amp;</span>DensePolynomial&lt;F&gt;,
+        <span class="kw-2">mut </span>alphas: <span class="kw">impl </span>Iterator&lt;Item = F&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(Evaluations&lt;F, D&lt;F&gt;&gt;, DensePolynomial&lt;F&gt;), ProverError&gt; {
+        <span class="kw">let </span>alpha0 = alphas.next().expect(<span class="string">&quot;missing power of alpha&quot;</span>);
+        <span class="kw">let </span>alpha1 = alphas.next().expect(<span class="string">&quot;missing power of alpha&quot;</span>);
+        <span class="kw">let </span>alpha2 = alphas.next().expect(<span class="string">&quot;missing power of alpha&quot;</span>);
 
-        <span class="comment">// constant gamma in evaluation form (in domain d8)</span>
-        <span class="kw">let</span> <span class="ident">gamma</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">precomputations</span>().<span class="ident">constant_1_d8</span>.<span class="ident">scale</span>(<span class="ident">gamma</span>);
+        <span class="comment">// constant gamma in evaluation form (in domain d8)
+        </span><span class="kw">let </span>gamma = <span class="kw-2">&amp;</span><span class="self">self</span>.precomputations().constant_1_d8.scale(gamma);
 
-        <span class="comment">//~ The quotient contribution of the permutation is split into two parts $perm$ and $bnd$.</span>
-        <span class="comment">//~ They will be used by the prover.</span>
-        <span class="comment">//~</span>
-        <span class="comment">//~ $$</span>
-        <span class="comment">//~ \begin{align}</span>
-        <span class="comment">//~ perm(x) =</span>
-        <span class="comment">//~     &amp; \; a^{PERM0} \cdot zkpl(x) \cdot [ \\</span>
-        <span class="comment">//~     &amp; \;\;   z(x) \cdot \\</span>
-        <span class="comment">//~     &amp; \;\;   (w_0(x) + \gamma + x \cdot \beta \cdot \text{shift}_0) \cdot \\</span>
-        <span class="comment">//~     &amp; \;\;   (w_1(x) + \gamma + x \cdot \beta \cdot \text{shift}_1) \cdot \\</span>
-        <span class="comment">//~     &amp; \;\;   (w_2(x) + \gamma + x \cdot \beta \cdot \text{shift}_2) \cdot \\</span>
-        <span class="comment">//~     &amp; \;\;   (w_3(x) + \gamma + x \cdot \beta \cdot \text{shift}_3) \cdot \\</span>
-        <span class="comment">//~     &amp; \;\;   (w_4(x) + \gamma + x \cdot \beta \cdot \text{shift}_4) \cdot \\</span>
-        <span class="comment">//~     &amp; \;\;   (w_5(x) + \gamma + x \cdot \beta \cdot \text{shift}_5) \cdot \\</span>
-        <span class="comment">//~     &amp; \;\;   (w_6(x) + \gamma + x \cdot \beta \cdot \text{shift}_6) \cdot \\</span>
-        <span class="comment">//~     &amp; \;   - \\</span>
-        <span class="comment">//~     &amp; \;\;   z(x \cdot w) \cdot \\</span>
-        <span class="comment">//~     &amp; \;\;   (w_0(x) + \gamma + \sigma_0 \cdot \beta) \cdot \\</span>
-        <span class="comment">//~     &amp; \;\;   (w_1(x) + \gamma + \sigma_1 \cdot \beta) \cdot \\</span>
-        <span class="comment">//~     &amp; \;\;   (w_2(x) + \gamma + \sigma_2 \cdot \beta) \cdot \\</span>
-        <span class="comment">//~     &amp; \;\;   (w_3(x) + \gamma + \sigma_3 \cdot \beta) \cdot \\</span>
-        <span class="comment">//~     &amp; \;\;   (w_4(x) + \gamma + \sigma_4 \cdot \beta) \cdot \\</span>
-        <span class="comment">//~     &amp; \;\;   (w_5(x) + \gamma + \sigma_5 \cdot \beta) \cdot \\</span>
-        <span class="comment">//~     &amp; \;\;   (w_6(x) + \gamma + \sigma_6 \cdot \beta) \cdot \\</span>
-        <span class="comment">//~     &amp;]</span>
-        <span class="comment">//~ \end{align}</span>
-        <span class="comment">//~ $$</span>
-        <span class="comment">//~</span>
-        <span class="kw">let</span> <span class="ident">perm</span> <span class="op">=</span> {
-            <span class="comment">// shifts = z(x) *</span>
-            <span class="comment">// (w[0](x) + gamma + x * beta * shift[0]) *</span>
-            <span class="comment">// (w[1](x) + gamma + x * beta * shift[1]) * ...</span>
-            <span class="comment">// (w[6](x) + gamma + x * beta * shift[6])</span>
-            <span class="comment">// in evaluation form in d8</span>
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">shifts</span> <span class="op">=</span> <span class="ident">lagrange</span>.<span class="ident">d8</span>.<span class="ident">this</span>.<span class="ident">z</span>.<span class="ident">clone</span>();
-            <span class="kw">for</span> (<span class="ident">witness</span>, <span class="ident">shift</span>) <span class="kw">in</span> <span class="ident">lagrange</span>.<span class="ident">d8</span>.<span class="ident">this</span>.<span class="ident">w</span>.<span class="ident">iter</span>().<span class="ident">zip</span>(<span class="self">self</span>.<span class="ident">shift</span>.<span class="ident">iter</span>()) {
-                <span class="kw">let</span> <span class="ident">term</span> <span class="op">=</span>
-                    <span class="kw-2">&amp;</span>(<span class="ident">witness</span> <span class="op">+</span> <span class="ident">gamma</span>) <span class="op">+</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">precomputations</span>().<span class="ident">poly_x_d1</span>.<span class="ident">scale</span>(<span class="ident">beta</span> <span class="op">*</span> <span class="ident">shift</span>);
-                <span class="ident">shifts</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">shifts</span> <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">term</span>;
+        <span class="comment">//~ The quotient contribution of the permutation is split into two parts $perm$ and $bnd$.
+        //~ They will be used by the prover.
+        //~
+        //~ $$
+        //~ \begin{align}
+        //~ perm(x) =
+        //~     &amp; \; a^{PERM0} \cdot zkpl(x) \cdot [ \\
+        //~     &amp; \;\;   z(x) \cdot \\
+        //~     &amp; \;\;   (w_0(x) + \gamma + x \cdot \beta \cdot \text{shift}_0) \cdot \\
+        //~     &amp; \;\;   (w_1(x) + \gamma + x \cdot \beta \cdot \text{shift}_1) \cdot \\
+        //~     &amp; \;\;   (w_2(x) + \gamma + x \cdot \beta \cdot \text{shift}_2) \cdot \\
+        //~     &amp; \;\;   (w_3(x) + \gamma + x \cdot \beta \cdot \text{shift}_3) \cdot \\
+        //~     &amp; \;\;   (w_4(x) + \gamma + x \cdot \beta \cdot \text{shift}_4) \cdot \\
+        //~     &amp; \;\;   (w_5(x) + \gamma + x \cdot \beta \cdot \text{shift}_5) \cdot \\
+        //~     &amp; \;\;   (w_6(x) + \gamma + x \cdot \beta \cdot \text{shift}_6) \cdot \\
+        //~     &amp; \;   - \\
+        //~     &amp; \;\;   z(x \cdot w) \cdot \\
+        //~     &amp; \;\;   (w_0(x) + \gamma + \sigma_0 \cdot \beta) \cdot \\
+        //~     &amp; \;\;   (w_1(x) + \gamma + \sigma_1 \cdot \beta) \cdot \\
+        //~     &amp; \;\;   (w_2(x) + \gamma + \sigma_2 \cdot \beta) \cdot \\
+        //~     &amp; \;\;   (w_3(x) + \gamma + \sigma_3 \cdot \beta) \cdot \\
+        //~     &amp; \;\;   (w_4(x) + \gamma + \sigma_4 \cdot \beta) \cdot \\
+        //~     &amp; \;\;   (w_5(x) + \gamma + \sigma_5 \cdot \beta) \cdot \\
+        //~     &amp; \;\;   (w_6(x) + \gamma + \sigma_6 \cdot \beta) \cdot \\
+        //~     &amp;]
+        //~ \end{align}
+        //~ $$
+        //~
+        </span><span class="kw">let </span>perm = {
+            <span class="comment">// shifts = z(x) *
+            // (w[0](x) + gamma + x * beta * shift[0]) *
+            // (w[1](x) + gamma + x * beta * shift[1]) * ...
+            // (w[6](x) + gamma + x * beta * shift[6])
+            // in evaluation form in d8
+            </span><span class="kw">let </span><span class="kw-2">mut </span>shifts = lagrange.d8.this.z.clone();
+            <span class="kw">for </span>(witness, shift) <span class="kw">in </span>lagrange.d8.this.w.iter().zip(<span class="self">self</span>.shift.iter()) {
+                <span class="kw">let </span>term =
+                    <span class="kw-2">&amp;</span>(witness + gamma) + <span class="kw-2">&amp;</span><span class="self">self</span>.precomputations().poly_x_d1.scale(beta * shift);
+                shifts = <span class="kw-2">&amp;</span>shifts * <span class="kw-2">&amp;</span>term;
             }
 
-            <span class="comment">// sigmas = z(x * w) *</span>
-            <span class="comment">// (w8[0] + gamma + sigma[0] * beta) *</span>
-            <span class="comment">// (w8[1] + gamma + sigma[1] * beta) * ...</span>
-            <span class="comment">// (w8[6] + gamma + sigma[6] * beta)</span>
-            <span class="comment">// in evaluation form in d8</span>
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">sigmas</span> <span class="op">=</span> <span class="ident">lagrange</span>.<span class="ident">d8</span>.<span class="ident">next</span>.<span class="ident">z</span>.<span class="ident">clone</span>();
-            <span class="kw">for</span> (<span class="ident">witness</span>, <span class="ident">sigma</span>) <span class="kw">in</span> <span class="ident">lagrange</span>.<span class="ident">d8</span>.<span class="ident">this</span>.<span class="ident">w</span>.<span class="ident">iter</span>().<span class="ident">zip</span>(<span class="self">self</span>.<span class="ident">sigmal8</span>.<span class="ident">iter</span>()) {
-                <span class="kw">let</span> <span class="ident">term</span> <span class="op">=</span> <span class="ident">witness</span> <span class="op">+</span> <span class="kw-2">&amp;</span>(<span class="ident">gamma</span> <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">sigma</span>.<span class="ident">scale</span>(<span class="ident">beta</span>));
-                <span class="ident">sigmas</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">sigmas</span> <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">term</span>;
+            <span class="comment">// sigmas = z(x * w) *
+            // (w8[0] + gamma + sigma[0] * beta) *
+            // (w8[1] + gamma + sigma[1] * beta) * ...
+            // (w8[6] + gamma + sigma[6] * beta)
+            // in evaluation form in d8
+            </span><span class="kw">let </span><span class="kw-2">mut </span>sigmas = lagrange.d8.next.z.clone();
+            <span class="kw">for </span>(witness, sigma) <span class="kw">in </span>lagrange.d8.this.w.iter().zip(<span class="self">self</span>.sigmal8.iter()) {
+                <span class="kw">let </span>term = witness + <span class="kw-2">&amp;</span>(gamma + <span class="kw-2">&amp;</span>sigma.scale(beta));
+                sigmas = <span class="kw-2">&amp;</span>sigmas * <span class="kw-2">&amp;</span>term;
             }
 
-            <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span><span class="ident">shifts</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">sigmas</span>).<span class="ident">scale</span>(<span class="ident">alpha0</span>) <span class="op">*</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">precomputations</span>().<span class="ident">zkpl</span>
+            <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span>shifts - <span class="kw-2">&amp;</span>sigmas).scale(alpha0) * <span class="kw-2">&amp;</span><span class="self">self</span>.precomputations().zkpl
         };
 
-        <span class="comment">//~ and `bnd`:</span>
-        <span class="comment">//~</span>
-        <span class="comment">//~ $$bnd(x) =</span>
-        <span class="comment">//~     a^{PERM1} \cdot \frac{z(x) - 1}{x - 1}</span>
-        <span class="comment">//~     +</span>
-        <span class="comment">//~     a^{PERM2} \cdot \frac{z(x) - 1}{x - sid[n-k]}</span>
-        <span class="comment">//~ $$</span>
-        <span class="kw">let</span> <span class="ident">bnd</span> <span class="op">=</span> {
-            <span class="kw">let</span> <span class="ident">one_poly</span> <span class="op">=</span> <span class="ident">DensePolynomial::from_coefficients_slice</span>(<span class="kw-2">&amp;</span>[<span class="ident">F::one</span>()]);
-            <span class="kw">let</span> <span class="ident">z_minus_1</span> <span class="op">=</span> <span class="ident">z</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">one_poly</span>;
+        <span class="comment">//~ and `bnd`:
+        //~
+        //~ $$bnd(x) =
+        //~     a^{PERM1} \cdot \frac{z(x) - 1}{x - 1}
+        //~     +
+        //~     a^{PERM2} \cdot \frac{z(x) - 1}{x - sid[n-k]}
+        //~ $$
+        </span><span class="kw">let </span>bnd = {
+            <span class="kw">let </span>one_poly = DensePolynomial::from_coefficients_slice(<span class="kw-2">&amp;</span>[F::one()]);
+            <span class="kw">let </span>z_minus_1 = z - <span class="kw-2">&amp;</span>one_poly;
 
-            <span class="comment">// TODO(mimoo): use self.sid[0] instead of 1</span>
-            <span class="comment">// accumulator init := (z(x) - 1) / (x - 1)</span>
-            <span class="kw">let</span> <span class="ident">x_minus_1</span> <span class="op">=</span> <span class="ident">DensePolynomial::from_coefficients_slice</span>(<span class="kw-2">&amp;</span>[<span class="op">-</span><span class="ident">F::one</span>(), <span class="ident">F::one</span>()]);
-            <span class="kw">let</span> (<span class="ident">bnd1</span>, <span class="ident">res</span>) <span class="op">=</span> <span class="ident">DenseOrSparsePolynomial::divide_with_q_and_r</span>(
-                <span class="kw-2">&amp;</span><span class="ident">z_minus_1</span>.<span class="ident">clone</span>().<span class="ident">into</span>(),
-                <span class="kw-2">&amp;</span><span class="ident">x_minus_1</span>.<span class="ident">into</span>(),
+            <span class="comment">// TODO(mimoo): use self.sid[0] instead of 1
+            // accumulator init := (z(x) - 1) / (x - 1)
+            </span><span class="kw">let </span>x_minus_1 = DensePolynomial::from_coefficients_slice(<span class="kw-2">&amp;</span>[-F::one(), F::one()]);
+            <span class="kw">let </span>(bnd1, res) = DenseOrSparsePolynomial::divide_with_q_and_r(
+                <span class="kw-2">&amp;</span>z_minus_1.clone().into(),
+                <span class="kw-2">&amp;</span>x_minus_1.into(),
             )
-            .<span class="ident">map_or</span>(<span class="prelude-val">Err</span>(<span class="ident">ProverError::Permutation</span>(<span class="string">&quot;first division&quot;</span>)), <span class="prelude-val">Ok</span>)<span class="question-mark">?</span>;
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">res</span>.<span class="ident">is_zero</span>() {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProverError::Permutation</span>(<span class="string">&quot;first division rest&quot;</span>));
+            .map_or(<span class="prelude-val">Err</span>(ProverError::Permutation(<span class="string">&quot;first division&quot;</span>)), <span class="prelude-val">Ok</span>)<span class="question-mark">?</span>;
+            <span class="kw">if </span>!res.is_zero() {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProverError::Permutation(<span class="string">&quot;first division rest&quot;</span>));
             }
 
-            <span class="comment">// accumulator end := (z(x) - 1) / (x - sid[n-3])</span>
-            <span class="kw">let</span> <span class="ident">denominator</span> <span class="op">=</span> <span class="ident">DensePolynomial::from_coefficients_slice</span>(<span class="kw-2">&amp;</span>[
-                <span class="op">-</span><span class="self">self</span>.<span class="ident">sid</span>[<span class="self">self</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span>() <span class="op">-</span> <span class="number">3</span>],
-                <span class="ident">F::one</span>(),
+            <span class="comment">// accumulator end := (z(x) - 1) / (x - sid[n-3])
+            </span><span class="kw">let </span>denominator = DensePolynomial::from_coefficients_slice(<span class="kw-2">&amp;</span>[
+                -<span class="self">self</span>.sid[<span class="self">self</span>.domain.d1.size() - <span class="number">3</span>],
+                F::one(),
             ]);
-            <span class="kw">let</span> (<span class="ident">bnd2</span>, <span class="ident">res</span>) <span class="op">=</span> <span class="ident">DenseOrSparsePolynomial::divide_with_q_and_r</span>(
-                <span class="kw-2">&amp;</span><span class="ident">z_minus_1</span>.<span class="ident">into</span>(),
-                <span class="kw-2">&amp;</span><span class="ident">denominator</span>.<span class="ident">into</span>(),
+            <span class="kw">let </span>(bnd2, res) = DenseOrSparsePolynomial::divide_with_q_and_r(
+                <span class="kw-2">&amp;</span>z_minus_1.into(),
+                <span class="kw-2">&amp;</span>denominator.into(),
             )
-            .<span class="ident">map_or</span>(<span class="prelude-val">Err</span>(<span class="ident">ProverError::Permutation</span>(<span class="string">&quot;second division&quot;</span>)), <span class="prelude-val">Ok</span>)<span class="question-mark">?</span>;
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">res</span>.<span class="ident">is_zero</span>() {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProverError::Permutation</span>(<span class="string">&quot;second division rest&quot;</span>));
+            .map_or(<span class="prelude-val">Err</span>(ProverError::Permutation(<span class="string">&quot;second division&quot;</span>)), <span class="prelude-val">Ok</span>)<span class="question-mark">?</span>;
+            <span class="kw">if </span>!res.is_zero() {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProverError::Permutation(<span class="string">&quot;second division rest&quot;</span>));
             }
 
-            <span class="kw-2">&amp;</span><span class="ident">bnd1</span>.<span class="ident">scale</span>(<span class="ident">alpha1</span>) <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">bnd2</span>.<span class="ident">scale</span>(<span class="ident">alpha2</span>)
+            <span class="kw-2">&amp;</span>bnd1.scale(alpha1) + <span class="kw-2">&amp;</span>bnd2.scale(alpha2)
         };
 
-        <span class="comment">//</span>
-        <span class="prelude-val">Ok</span>((<span class="ident">perm</span>, <span class="ident">bnd</span>))
+        <span class="comment">//
+        </span><span class="prelude-val">Ok</span>((perm, bnd))
     }
 
-    <span class="doccomment">/// permutation linearization poly contribution computation</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">perm_lnrz</span>(
+    <span class="doccomment">/// permutation linearization poly contribution computation
+    </span><span class="kw">pub fn </span>perm_lnrz(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">e</span>: <span class="kw-2">&amp;</span>[<span class="ident">ProofEvaluations</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>],
-        <span class="ident">zeta</span>: <span class="ident">F</span>,
-        <span class="ident">beta</span>: <span class="ident">F</span>,
-        <span class="ident">gamma</span>: <span class="ident">F</span>,
-        <span class="ident">alphas</span>: <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">F</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-        <span class="comment">//~</span>
-        <span class="comment">//~ The linearization:</span>
-        <span class="comment">//~</span>
-        <span class="comment">//~ $\text{scalar} \cdot \sigma_6(x)$</span>
-        <span class="comment">//~</span>
-        <span class="kw">let</span> <span class="ident">zkpm_zeta</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">precomputations</span>().<span class="ident">zkpm</span>.<span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="ident">zeta</span>);
-        <span class="kw">let</span> <span class="ident">scalar</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::perm_scalars</span>(<span class="ident">e</span>, <span class="ident">beta</span>, <span class="ident">gamma</span>, <span class="ident">alphas</span>, <span class="ident">zkpm_zeta</span>);
-        <span class="self">self</span>.<span class="ident">sigmam</span>[<span class="ident">PERMUTS</span> <span class="op">-</span> <span class="number">1</span>].<span class="ident">scale</span>(<span class="ident">scalar</span>)
+        e: <span class="kw-2">&amp;</span>[ProofEvaluations&lt;F&gt;],
+        zeta: F,
+        beta: F,
+        gamma: F,
+        alphas: <span class="kw">impl </span>Iterator&lt;Item = F&gt;,
+    ) -&gt; DensePolynomial&lt;F&gt; {
+        <span class="comment">//~
+        //~ The linearization:
+        //~
+        //~ $\text{scalar} \cdot \sigma_6(x)$
+        //~
+        </span><span class="kw">let </span>zkpm_zeta = <span class="self">self</span>.precomputations().zkpm.evaluate(<span class="kw-2">&amp;</span>zeta);
+        <span class="kw">let </span>scalar = <span class="self">Self</span>::perm_scalars(e, beta, gamma, alphas, zkpm_zeta);
+        <span class="self">self</span>.sigmam[PERMUTS - <span class="number">1</span>].scale(scalar)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">perm_scalars</span>(
-        <span class="ident">e</span>: <span class="kw-2">&amp;</span>[<span class="ident">ProofEvaluations</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>],
-        <span class="ident">beta</span>: <span class="ident">F</span>,
-        <span class="ident">gamma</span>: <span class="ident">F</span>,
-        <span class="kw-2">mut</span> <span class="ident">alphas</span>: <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">F</span><span class="op">&gt;</span>,
-        <span class="ident">zkp_zeta</span>: <span class="ident">F</span>,
-    ) -&gt; <span class="ident">F</span> {
-        <span class="kw">let</span> <span class="ident">alpha0</span> <span class="op">=</span> <span class="ident">alphas</span>
-            .<span class="ident">next</span>()
-            .<span class="ident">expect</span>(<span class="string">&quot;not enough powers of alpha for permutation&quot;</span>);
-        <span class="kw">let</span> <span class="ident">_alpha1</span> <span class="op">=</span> <span class="ident">alphas</span>
-            .<span class="ident">next</span>()
-            .<span class="ident">expect</span>(<span class="string">&quot;not enough powers of alpha for permutation&quot;</span>);
-        <span class="kw">let</span> <span class="ident">_alpha2</span> <span class="op">=</span> <span class="ident">alphas</span>
-            .<span class="ident">next</span>()
-            .<span class="ident">expect</span>(<span class="string">&quot;not enough powers of alpha for permutation&quot;</span>);
+    <span class="kw">pub fn </span>perm_scalars(
+        e: <span class="kw-2">&amp;</span>[ProofEvaluations&lt;F&gt;],
+        beta: F,
+        gamma: F,
+        <span class="kw-2">mut </span>alphas: <span class="kw">impl </span>Iterator&lt;Item = F&gt;,
+        zkp_zeta: F,
+    ) -&gt; F {
+        <span class="kw">let </span>alpha0 = alphas
+            .next()
+            .expect(<span class="string">&quot;not enough powers of alpha for permutation&quot;</span>);
+        <span class="kw">let </span>_alpha1 = alphas
+            .next()
+            .expect(<span class="string">&quot;not enough powers of alpha for permutation&quot;</span>);
+        <span class="kw">let </span>_alpha2 = alphas
+            .next()
+            .expect(<span class="string">&quot;not enough powers of alpha for permutation&quot;</span>);
 
-        <span class="comment">//~ where $\text{scalar}$ is computed as:</span>
-        <span class="comment">//~</span>
-        <span class="comment">//~ $$</span>
-        <span class="comment">//~ \begin{align}</span>
-        <span class="comment">//~ z(\zeta \omega) \beta \alpha^{PERM0} zkpl(\zeta) \cdot \\</span>
-        <span class="comment">//~ (\gamma + \beta \sigma_0(\zeta) + w_0(\zeta)) \cdot \\</span>
-        <span class="comment">//~ (\gamma + \beta \sigma_1(\zeta) + w_1(\zeta)) \cdot \\</span>
-        <span class="comment">//~ (\gamma + \beta \sigma_2(\zeta) + w_2(\zeta)) \cdot \\</span>
-        <span class="comment">//~ (\gamma + \beta \sigma_3(\zeta) + w_3(\zeta)) \cdot \\</span>
-        <span class="comment">//~ (\gamma + \beta \sigma_4(\zeta) + w_4(\zeta)) \cdot \\</span>
-        <span class="comment">//~ (\gamma + \beta \sigma_5(\zeta) + w_5(\zeta)) \cdot \\</span>
-        <span class="comment">//~ \end{align}</span>
-        <span class="comment">//~$$</span>
-        <span class="comment">//~</span>
-        <span class="kw">let</span> <span class="ident">init</span> <span class="op">=</span> <span class="ident">e</span>[<span class="number">1</span>].<span class="ident">z</span> <span class="op">*</span> <span class="ident">beta</span> <span class="op">*</span> <span class="ident">alpha0</span> <span class="op">*</span> <span class="ident">zkp_zeta</span>;
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">e</span>[<span class="number">0</span>]
-            .<span class="ident">w</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">zip</span>(<span class="ident">e</span>[<span class="number">0</span>].<span class="ident">s</span>.<span class="ident">iter</span>())
-            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">w</span>, <span class="ident">s</span>)<span class="op">|</span> <span class="ident">gamma</span> <span class="op">+</span> (<span class="ident">beta</span> <span class="op">*</span> <span class="ident">s</span>) <span class="op">+</span> <span class="ident">w</span>)
-            .<span class="ident">fold</span>(<span class="ident">init</span>, <span class="op">|</span><span class="ident">x</span>, <span class="ident">y</span><span class="op">|</span> <span class="ident">x</span> <span class="op">*</span> <span class="ident">y</span>);
-        <span class="op">-</span><span class="ident">res</span>
+        <span class="comment">//~ where $\text{scalar}$ is computed as:
+        //~
+        //~ $$
+        //~ \begin{align}
+        //~ z(\zeta \omega) \beta \alpha^{PERM0} zkpl(\zeta) \cdot \\
+        //~ (\gamma + \beta \sigma_0(\zeta) + w_0(\zeta)) \cdot \\
+        //~ (\gamma + \beta \sigma_1(\zeta) + w_1(\zeta)) \cdot \\
+        //~ (\gamma + \beta \sigma_2(\zeta) + w_2(\zeta)) \cdot \\
+        //~ (\gamma + \beta \sigma_3(\zeta) + w_3(\zeta)) \cdot \\
+        //~ (\gamma + \beta \sigma_4(\zeta) + w_4(\zeta)) \cdot \\
+        //~ (\gamma + \beta \sigma_5(\zeta) + w_5(\zeta)) \cdot \\
+        //~ \end{align}
+        //~$$
+        //~
+        </span><span class="kw">let </span>init = e[<span class="number">1</span>].z * beta * alpha0 * zkp_zeta;
+        <span class="kw">let </span>res = e[<span class="number">0</span>]
+            .w
+            .iter()
+            .zip(e[<span class="number">0</span>].s.iter())
+            .map(|(w, s)| gamma + (beta * s) + w)
+            .fold(init, |x, y| x * y);
+        -res
     }
 
-    <span class="doccomment">/// permutation aggregation polynomial computation</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">perm_aggreg</span>(
+    <span class="doccomment">/// permutation aggregation polynomial computation
+    </span><span class="kw">pub fn </span>perm_aggreg(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">witness</span>: <span class="kw-2">&amp;</span>[<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
-        <span class="ident">beta</span>: <span class="kw-2">&amp;</span><span class="ident">F</span>,
-        <span class="ident">gamma</span>: <span class="kw-2">&amp;</span><span class="ident">F</span>,
-        <span class="ident">rng</span>: <span class="kw-2">&amp;mut</span> (<span class="kw">impl</span> <span class="ident">RngCore</span> <span class="op">+</span> <span class="ident">CryptoRng</span>),
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">ProverError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span>();
+        witness: <span class="kw-2">&amp;</span>[Vec&lt;F&gt;; COLUMNS],
+        beta: <span class="kw-2">&amp;</span>F,
+        gamma: <span class="kw-2">&amp;</span>F,
+        rng: <span class="kw-2">&amp;mut </span>(<span class="kw">impl </span>RngCore + CryptoRng),
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;DensePolynomial&lt;F&gt;, ProverError&gt; {
+        <span class="kw">let </span>n = <span class="self">self</span>.domain.d1.size();
 
-        <span class="comment">// only works if first element is 1</span>
-        <span class="macro">assert_eq!</span>(<span class="self">self</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">elements</span>().<span class="ident">next</span>(), <span class="prelude-val">Some</span>(<span class="ident">F::one</span>()));
+        <span class="comment">// only works if first element is 1
+        </span><span class="macro">assert_eq!</span>(<span class="self">self</span>.domain.d1.elements().next(), <span class="prelude-val">Some</span>(F::one()));
 
-        <span class="comment">//~ To compute the permutation aggregation polynomial,</span>
-        <span class="comment">//~ the prover interpolates the polynomial that has the following evaluations.</span>
+        <span class="comment">//~ To compute the permutation aggregation polynomial,
+        //~ the prover interpolates the polynomial that has the following evaluations.
 
-        <span class="comment">//~ The first evaluation represents the initial value of the accumulator:</span>
-        <span class="comment">//~ $$z(g^0) = 1$$</span>
+        //~ The first evaluation represents the initial value of the accumulator:
+        //~ $$z(g^0) = 1$$
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">z</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">F::one</span>(); <span class="ident">n</span>];
+        </span><span class="kw">let </span><span class="kw-2">mut </span>z = <span class="macro">vec!</span>[F::one(); n];
 
-        <span class="comment">//~ For $i = 0, \cdot, n - 4$, where $n$ is the size of the domain,</span>
-        <span class="comment">//~ evaluations are computed as:</span>
-        <span class="comment">//~</span>
-        <span class="comment">//~ $$z(g^{i+1}) = z_1 / z_2$$</span>
-        <span class="comment">//~</span>
-        <span class="comment">//~ with</span>
-        <span class="comment">//~</span>
-        <span class="comment">//~ $$</span>
-        <span class="comment">//~ \begin{align}</span>
-        <span class="comment">//~ z_1 = &amp;\ (w_0(g^i + sid(g^i) \cdot beta \cdot shift_0 + \gamma) \cdot \\</span>
-        <span class="comment">//~ &amp;\ (w_1(g^i) + sid(g^i) \cdot beta \cdot shift_1 + \gamma) \cdot \\</span>
-        <span class="comment">//~ &amp;\ (w_2(g^i) + sid(g^i) \cdot beta \cdot shift_2 + \gamma) \cdot \\</span>
-        <span class="comment">//~ &amp;\ (w_3(g^i) + sid(g^i) \cdot beta \cdot shift_3 + \gamma) \cdot \\</span>
-        <span class="comment">//~ &amp;\ (w_4(g^i) + sid(g^i) \cdot beta \cdot shift_4 + \gamma) \cdot \\</span>
-        <span class="comment">//~ &amp;\ (w_5(g^i) + sid(g^i) \cdot beta \cdot shift_5 + \gamma) \cdot \\</span>
-        <span class="comment">//~ &amp;\ (w_6(g^i) + sid(g^i) \cdot beta \cdot shift_6 + \gamma)</span>
-        <span class="comment">//~ \end{align}</span>
-        <span class="comment">//~ $$</span>
-        <span class="comment">//~</span>
-        <span class="comment">//~ and</span>
-        <span class="comment">//~</span>
-        <span class="comment">//~ $$</span>
-        <span class="comment">//~ \begin{align}</span>
-        <span class="comment">//~ z_2 = &amp;\ (w_0(g^i) + \sigma_0 \cdot beta + \gamma) \cdot \\</span>
-        <span class="comment">//~ &amp;\ (w_1(g^i) + \sigma_1 \cdot beta + \gamma) \cdot \\</span>
-        <span class="comment">//~ &amp;\ (w_2(g^i) + \sigma_2 \cdot beta + \gamma) \cdot \\</span>
-        <span class="comment">//~ &amp;\ (w_3(g^i) + \sigma_3 \cdot beta + \gamma) \cdot \\</span>
-        <span class="comment">//~ &amp;\ (w_4(g^i) + \sigma_4 \cdot beta + \gamma) \cdot \\</span>
-        <span class="comment">//~ &amp;\ (w_5(g^i) + \sigma_5 \cdot beta + \gamma) \cdot \\</span>
-        <span class="comment">//~ &amp;\ (w_6(g^i) + \sigma_6 \cdot beta + \gamma)</span>
-        <span class="comment">//~ \end{align}</span>
-        <span class="comment">//~ $$</span>
-        <span class="comment">//~</span>
-        <span class="comment">//~</span>
-        <span class="kw">for</span> <span class="ident">j</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">n</span> <span class="op">-</span> <span class="number">3</span> {
-            <span class="ident">z</span>[<span class="ident">j</span> <span class="op">+</span> <span class="number">1</span>] <span class="op">=</span> <span class="ident">witness</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">zip</span>(<span class="self">self</span>.<span class="ident">sigmal1</span>.<span class="ident">iter</span>())
-                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">w</span>, <span class="ident">s</span>)<span class="op">|</span> <span class="ident">w</span>[<span class="ident">j</span>] <span class="op">+</span> (<span class="ident">s</span>[<span class="ident">j</span>] <span class="op">*</span> <span class="ident">beta</span>) <span class="op">+</span> <span class="ident">gamma</span>)
-                .<span class="ident">fold</span>(<span class="ident">F::one</span>(), <span class="op">|</span><span class="ident">x</span>, <span class="ident">y</span><span class="op">|</span> <span class="ident">x</span> <span class="op">*</span> <span class="ident">y</span>)
+        <span class="comment">//~ For $i = 0, \cdot, n - 4$, where $n$ is the size of the domain,
+        //~ evaluations are computed as:
+        //~
+        //~ $$z(g^{i+1}) = z_1 / z_2$$
+        //~
+        //~ with
+        //~
+        //~ $$
+        //~ \begin{align}
+        //~ z_1 = &amp;\ (w_0(g^i + sid(g^i) \cdot beta \cdot shift_0 + \gamma) \cdot \\
+        //~ &amp;\ (w_1(g^i) + sid(g^i) \cdot beta \cdot shift_1 + \gamma) \cdot \\
+        //~ &amp;\ (w_2(g^i) + sid(g^i) \cdot beta \cdot shift_2 + \gamma) \cdot \\
+        //~ &amp;\ (w_3(g^i) + sid(g^i) \cdot beta \cdot shift_3 + \gamma) \cdot \\
+        //~ &amp;\ (w_4(g^i) + sid(g^i) \cdot beta \cdot shift_4 + \gamma) \cdot \\
+        //~ &amp;\ (w_5(g^i) + sid(g^i) \cdot beta \cdot shift_5 + \gamma) \cdot \\
+        //~ &amp;\ (w_6(g^i) + sid(g^i) \cdot beta \cdot shift_6 + \gamma)
+        //~ \end{align}
+        //~ $$
+        //~
+        //~ and
+        //~
+        //~ $$
+        //~ \begin{align}
+        //~ z_2 = &amp;\ (w_0(g^i) + \sigma_0 \cdot beta + \gamma) \cdot \\
+        //~ &amp;\ (w_1(g^i) + \sigma_1 \cdot beta + \gamma) \cdot \\
+        //~ &amp;\ (w_2(g^i) + \sigma_2 \cdot beta + \gamma) \cdot \\
+        //~ &amp;\ (w_3(g^i) + \sigma_3 \cdot beta + \gamma) \cdot \\
+        //~ &amp;\ (w_4(g^i) + \sigma_4 \cdot beta + \gamma) \cdot \\
+        //~ &amp;\ (w_5(g^i) + \sigma_5 \cdot beta + \gamma) \cdot \\
+        //~ &amp;\ (w_6(g^i) + \sigma_6 \cdot beta + \gamma)
+        //~ \end{align}
+        //~ $$
+        //~
+        //~
+        </span><span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..n - <span class="number">3 </span>{
+            z[j + <span class="number">1</span>] = witness
+                .iter()
+                .zip(<span class="self">self</span>.sigmal1.iter())
+                .map(|(w, s)| w[j] + (s[j] * beta) + gamma)
+                .fold(F::one(), |x, y| x * y)
         }
 
-        <span class="ident">ark_ff::fields::batch_inversion</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="ident">z</span>[<span class="number">1</span>..<span class="op">=</span><span class="ident">n</span> <span class="op">-</span> <span class="number">3</span>]);
+        ark_ff::fields::batch_inversion::&lt;F&gt;(<span class="kw-2">&amp;mut </span>z[<span class="number">1</span>..=n - <span class="number">3</span>]);
 
-        <span class="kw">for</span> <span class="ident">j</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">n</span> <span class="op">-</span> <span class="number">3</span> {
-            <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">z</span>[<span class="ident">j</span>];
-            <span class="ident">z</span>[<span class="ident">j</span> <span class="op">+</span> <span class="number">1</span>] <span class="kw-2">*</span><span class="op">=</span> <span class="ident">witness</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">zip</span>(<span class="self">self</span>.<span class="ident">shift</span>.<span class="ident">iter</span>())
-                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">w</span>, <span class="ident">s</span>)<span class="op">|</span> <span class="ident">w</span>[<span class="ident">j</span>] <span class="op">+</span> (<span class="self">self</span>.<span class="ident">sid</span>[<span class="ident">j</span>] <span class="op">*</span> <span class="ident">beta</span> <span class="op">*</span> <span class="ident">s</span>) <span class="op">+</span> <span class="ident">gamma</span>)
-                .<span class="ident">fold</span>(<span class="ident">x</span>, <span class="op">|</span><span class="ident">z</span>, <span class="ident">y</span><span class="op">|</span> <span class="ident">z</span> <span class="op">*</span> <span class="ident">y</span>)
+        <span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..n - <span class="number">3 </span>{
+            <span class="kw">let </span>x = z[j];
+            z[j + <span class="number">1</span>] <span class="kw-2">*</span>= witness
+                .iter()
+                .zip(<span class="self">self</span>.shift.iter())
+                .map(|(w, s)| w[j] + (<span class="self">self</span>.sid[j] * beta * s) + gamma)
+                .fold(x, |z, y| z * y)
         }
 
-        <span class="comment">//~ If computed correctly, we should have $z(g^{n-3}) = 1$.</span>
-        <span class="comment">//~</span>
-        <span class="kw">if</span> <span class="ident">z</span>[<span class="ident">n</span> <span class="op">-</span> <span class="number">3</span>] <span class="op">!</span><span class="op">=</span> <span class="ident">F::one</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProverError::Permutation</span>(<span class="string">&quot;final value&quot;</span>));
+        <span class="comment">//~ If computed correctly, we should have $z(g^{n-3}) = 1$.
+        //~
+        </span><span class="kw">if </span>z[n - <span class="number">3</span>] != F::one() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ProverError::Permutation(<span class="string">&quot;final value&quot;</span>));
         };
 
-        <span class="comment">//~ Finally, randomize the last `EVAL_POINTS` evaluations $z(g^{n-2})$ and $z(g^{n-1})$,</span>
-        <span class="comment">//~ in order to add zero-knowledge to the protocol.</span>
-        <span class="ident">z</span>[<span class="ident">n</span> <span class="op">-</span> <span class="number">2</span>] <span class="op">=</span> <span class="ident">F::rand</span>(<span class="ident">rng</span>);
-        <span class="ident">z</span>[<span class="ident">n</span> <span class="op">-</span> <span class="number">1</span>] <span class="op">=</span> <span class="ident">F::rand</span>(<span class="ident">rng</span>);
+        <span class="comment">//~ Finally, randomize the last `EVAL_POINTS` evaluations $z(g^{n-2})$ and $z(g^{n-1})$,
+        //~ in order to add zero-knowledge to the protocol.
+        </span>z[n - <span class="number">2</span>] = F::rand(rng);
+        z[n - <span class="number">1</span>] = F::rand(rng);
 
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">Evaluations</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::from_vec_and_domain</span>(<span class="ident">z</span>, <span class="self">self</span>.<span class="ident">domain</span>.<span class="ident">d1</span>).<span class="ident">interpolate</span>();
-        <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
+        <span class="kw">let </span>res = Evaluations::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(z, <span class="self">self</span>.domain.d1).interpolate();
+        <span class="prelude-val">Ok</span>(res)
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

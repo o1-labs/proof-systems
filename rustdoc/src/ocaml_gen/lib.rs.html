@@ -242,249 +242,249 @@
 <span id="242">242</span>
 <span id="243">243</span>
 <span id="244">244</span>
-</pre><pre class="rust"><code><span class="attribute">#![<span class="ident">deny</span>(<span class="ident">missing_docs</span>)]</span>
-<span class="attribute">#![<span class="ident">doc</span> <span class="op">=</span> <span class="macro">include_str!</span>(<span class="string">&quot;../README.md&quot;</span>)]</span>
+</pre><pre class="rust"><code><span class="attribute">#![deny(missing_docs)]
+#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../README.md&quot;</span>)]
 
-<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">ocaml_derive</span>;
-<span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">hash_map::Entry</span>, <span class="ident">HashMap</span>};
+</span><span class="kw">extern crate </span>ocaml_derive;
+<span class="kw">use </span>std::collections::{hash_map::Entry, HashMap};
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">const_random::const_random</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">ocaml_derive</span>::<span class="kw-2">*</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">paste::paste</span>;
+<span class="kw">pub use </span>const_random::const_random;
+<span class="kw">pub use </span>ocaml_derive::<span class="kw-2">*</span>;
+<span class="kw">pub use </span>paste::paste;
 
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">conv</span>;
+<span class="kw">pub mod </span>conv;
 
-<span class="comment">//</span>
-<span class="comment">// Structs</span>
-<span class="comment">//</span>
+<span class="comment">//
+// Structs
+//
 
-<span class="doccomment">/// The environment at some point in time during the declaration of OCaml bindings.</span>
-<span class="doccomment">/// It ensures that types cannot be declared twice, and that types that are</span>
-<span class="doccomment">/// renamed and/or relocated into module are referenced correctly.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Env</span> {
-    <span class="doccomment">/// every type (their path and their name) is stored here at declaration</span>
-    <span class="ident">locations</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">u128</span>, (<span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span><span class="op">&gt;</span>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>)<span class="op">&gt;</span>,
-    <span class="doccomment">/// the current path we&#39;re in (e.g. `ModA.ModB`)</span>
-    <span class="ident">current_module</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span><span class="op">&gt;</span>,
+</span><span class="doccomment">/// The environment at some point in time during the declaration of OCaml bindings.
+/// It ensures that types cannot be declared twice, and that types that are
+/// renamed and/or relocated into module are referenced correctly.
+</span><span class="attribute">#[derive(Default, Debug)]
+</span><span class="kw">pub struct </span>Env {
+    <span class="doccomment">/// every type (their path and their name) is stored here at declaration
+    </span>locations: HashMap&lt;u128, (Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str&gt;, <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str)&gt;,
+    <span class="doccomment">/// the current path we&#39;re in (e.g. `ModA.ModB`)
+    </span>current_module: Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">Drop</span> <span class="kw">for</span> <span class="ident">Env</span> {
-    <span class="doccomment">/// This makes sure that we close our OCaml modules (with the keyword `end`)</span>
-    <span class="kw">fn</span> <span class="ident">drop</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">current_module</span>.<span class="ident">is_empty</span>() {
-            <span class="macro">panic!</span>(<span class="string">&quot;you must call .root() on the environment to finalize the generation. You are currently still nested: {:?}&quot;</span>, <span class="self">self</span>.<span class="ident">current_module</span>);
+<span class="kw">impl </span>Drop <span class="kw">for </span>Env {
+    <span class="doccomment">/// This makes sure that we close our OCaml modules (with the keyword `end`)
+    </span><span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">if </span>!<span class="self">self</span>.current_module.is_empty() {
+            <span class="macro">panic!</span>(<span class="string">&quot;you must call .root() on the environment to finalize the generation. You are currently still nested: {:?}&quot;</span>, <span class="self">self</span>.current_module);
         }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Env</span> {
-    <span class="doccomment">/// Declares a new type. If the type was already declared, this will panic.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_type</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">ty</span>: <span class="ident">u128</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>) {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">locations</span>.<span class="ident">entry</span>(<span class="ident">ty</span>) {
-            <span class="ident">Entry::Occupied</span>(<span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;ocaml-gen: cannot re-declare the same type twice&quot;</span>),
-            <span class="ident">Entry::Vacant</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>.<span class="ident">insert</span>((<span class="self">self</span>.<span class="ident">current_module</span>.<span class="ident">clone</span>(), <span class="ident">name</span>)),
+<span class="kw">impl </span>Env {
+    <span class="doccomment">/// Declares a new type. If the type was already declared, this will panic.
+    </span><span class="kw">pub fn </span>new_type(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ty: u128, name: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str) {
+        <span class="kw">match </span><span class="self">self</span>.locations.entry(ty) {
+            Entry::Occupied(<span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;ocaml-gen: cannot re-declare the same type twice&quot;</span>),
+            Entry::Vacant(v) =&gt; v.insert((<span class="self">self</span>.current_module.clone(), name)),
         };
     }
 
-    <span class="doccomment">/// retrieves a type that was declared previously</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ty</span>: <span class="ident">u128</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">String</span> {
-        <span class="kw">let</span> (<span class="ident">type_path</span>, <span class="ident">type_name</span>) <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">locations</span>
-            .<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">ty</span>)
-            .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="macro">panic!</span>(<span class="string">&quot;ocaml-gen: the type {} hasn&#39;t been declared&quot;</span>, <span class="ident">name</span>));
+    <span class="doccomment">/// retrieves a type that was declared previously
+    </span><span class="kw">pub fn </span>get_type(<span class="kw-2">&amp;</span><span class="self">self</span>, ty: u128, name: <span class="kw-2">&amp;</span>str) -&gt; String {
+        <span class="kw">let </span>(type_path, type_name) = <span class="self">self
+            </span>.locations
+            .get(<span class="kw-2">&amp;</span>ty)
+            .unwrap_or_else(|| <span class="macro">panic!</span>(<span class="string">&quot;ocaml-gen: the type {} hasn&#39;t been declared&quot;</span>, name));
 
-        <span class="comment">// path resolution</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">current</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">current_module</span>.<span class="ident">clone</span>();
-        <span class="ident">current</span>.<span class="ident">reverse</span>();
-        <span class="kw">let</span> <span class="ident">path</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">type_path</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">skip_while</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">p</span><span class="op">|</span> <span class="prelude-val">Some</span>(<span class="kw-2">*</span><span class="ident">p</span>) <span class="op">==</span> <span class="ident">current</span>.<span class="ident">pop</span>())
-            .<span class="ident">copied</span>()
-            .<span class="ident">collect</span>();
+        <span class="comment">// path resolution
+        </span><span class="kw">let </span><span class="kw-2">mut </span>current = <span class="self">self</span>.current_module.clone();
+        current.reverse();
+        <span class="kw">let </span>path: Vec&lt;<span class="kw-2">&amp;</span>str&gt; = type_path
+            .iter()
+            .skip_while(|<span class="kw-2">&amp;</span>p| <span class="prelude-val">Some</span>(<span class="kw-2">*</span>p) == current.pop())
+            .copied()
+            .collect();
 
-        <span class="kw">if</span> <span class="ident">path</span>.<span class="ident">is_empty</span>() {
-            <span class="ident">type_name</span>.<span class="ident">to_string</span>()
-        } <span class="kw">else</span> {
-            <span class="macro">format!</span>(<span class="string">&quot;{}.{}&quot;</span>, <span class="ident">path</span>.<span class="ident">join</span>(<span class="string">&quot;.&quot;</span>), <span class="ident">type_name</span>)
+        <span class="kw">if </span>path.is_empty() {
+            type_name.to_string()
+        } <span class="kw">else </span>{
+            <span class="macro">format!</span>(<span class="string">&quot;{}.{}&quot;</span>, path.join(<span class="string">&quot;.&quot;</span>), type_name)
         }
     }
 
-    <span class="doccomment">/// create a module and enters it</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_module</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">mod_name</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>) -&gt; <span class="ident">String</span> {
-        <span class="kw">let</span> <span class="ident">first_letter</span> <span class="op">=</span> <span class="ident">mod_name</span>
-            .<span class="ident">chars</span>()
-            .<span class="ident">next</span>()
-            .<span class="ident">expect</span>(<span class="string">&quot;module name cannot be empty&quot;</span>);
-        <span class="kw">if</span> <span class="ident">first_letter</span>.<span class="ident">to_uppercase</span>().<span class="ident">to_string</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">first_letter</span>.<span class="ident">to_string</span>() {
+    <span class="doccomment">/// create a module and enters it
+    </span><span class="kw">pub fn </span>new_module(<span class="kw-2">&amp;mut </span><span class="self">self</span>, mod_name: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str) -&gt; String {
+        <span class="kw">let </span>first_letter = mod_name
+            .chars()
+            .next()
+            .expect(<span class="string">&quot;module name cannot be empty&quot;</span>);
+        <span class="kw">if </span>first_letter.to_uppercase().to_string() != first_letter.to_string() {
             <span class="macro">panic!</span>(
                 <span class="string">&quot;ocaml-gen: OCaml module names start with an uppercase, you provided: {}&quot;</span>,
-                <span class="ident">mod_name</span>
+                mod_name
             );
         }
 
-        <span class="self">self</span>.<span class="ident">current_module</span>.<span class="ident">push</span>(<span class="ident">mod_name</span>);
-        <span class="macro">format!</span>(<span class="string">&quot;module {} = struct &quot;</span>, <span class="ident">mod_name</span>)
+        <span class="self">self</span>.current_module.push(mod_name);
+        <span class="macro">format!</span>(<span class="string">&quot;module {} = struct &quot;</span>, mod_name)
     }
 
-    <span class="doccomment">/// how deeply nested are we currently? (default is 0)</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">nested</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="self">self</span>.<span class="ident">current_module</span>.<span class="ident">len</span>()
+    <span class="doccomment">/// how deeply nested are we currently? (default is 0)
+    </span><span class="kw">pub fn </span>nested(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.current_module.len()
     }
 
-    <span class="doccomment">/// go back up one module</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">parent</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">String</span> {
-        <span class="self">self</span>.<span class="ident">current_module</span>
-            .<span class="ident">pop</span>()
-            .<span class="ident">expect</span>(<span class="string">&quot;ocaml-gen: you are already at the root&quot;</span>);
-        <span class="string">&quot;end&quot;</span>.<span class="ident">to_string</span>()
+    <span class="doccomment">/// go back up one module
+    </span><span class="kw">pub fn </span>parent(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; String {
+        <span class="self">self</span>.current_module
+            .pop()
+            .expect(<span class="string">&quot;ocaml-gen: you are already at the root&quot;</span>);
+        <span class="string">&quot;end&quot;</span>.to_string()
     }
 
-    <span class="doccomment">/// you can call this to go back to the root and finalize the generation</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">root</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">String</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">String::new</span>();
-        <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">current_module</span> {
-            <span class="ident">res</span>.<span class="ident">push_str</span>(<span class="string">&quot;end\n&quot;</span>);
+    <span class="doccomment">/// you can call this to go back to the root and finalize the generation
+    </span><span class="kw">pub fn </span>root(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; String {
+        <span class="kw">let </span><span class="kw-2">mut </span>res = String::new();
+        <span class="kw">for _ in </span><span class="kw-2">&amp;</span><span class="self">self</span>.current_module {
+            res.push_str(<span class="string">&quot;end\n&quot;</span>);
         }
-        <span class="ident">res</span>
+        res
     }
 }
 
-<span class="comment">//</span>
-<span class="comment">// Traits</span>
-<span class="comment">//</span>
+<span class="comment">//
+// Traits
+//
 
-<span class="doccomment">/// OCamlBinding is the trait implemented by types to generate their OCaml bindings.</span>
-<span class="doccomment">/// It is usually derived automatically via the [Struct] macro,</span>
-<span class="doccomment">/// or the [CustomType] macro for custom types.</span>
-<span class="doccomment">/// For functions, refer to the [func] macro.</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">OCamlBinding</span> {
-    <span class="doccomment">/// will generate the OCaml bindings for a type (called root type).</span>
-    <span class="doccomment">/// It takes the current environment [Env],</span>
-    <span class="doccomment">/// as well as an optional name (if you wish to rename the type in OCaml).</span>
-    <span class="kw">fn</span> <span class="ident">ocaml_binding</span>(<span class="ident">env</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Env</span>, <span class="ident">rename</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span><span class="op">&gt;</span>, <span class="ident">new_type</span>: <span class="ident">bool</span>) -&gt; <span class="ident">String</span>;
+</span><span class="doccomment">/// OCamlBinding is the trait implemented by types to generate their OCaml bindings.
+/// It is usually derived automatically via the [Struct] macro,
+/// or the [CustomType] macro for custom types.
+/// For functions, refer to the [func] macro.
+</span><span class="kw">pub trait </span>OCamlBinding {
+    <span class="doccomment">/// will generate the OCaml bindings for a type (called root type).
+    /// It takes the current environment [Env],
+    /// as well as an optional name (if you wish to rename the type in OCaml).
+    </span><span class="kw">fn </span>ocaml_binding(env: <span class="kw-2">&amp;mut </span>Env, rename: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str&gt;, new_type: bool) -&gt; String;
 }
 
-<span class="doccomment">/// OCamlDesc is the trait implemented by types to facilitate generation of their OCaml bindings.</span>
-<span class="doccomment">/// It is usually derived automatically via the [Struct] macro,</span>
-<span class="doccomment">/// or the [CustomType] macro for custom types.</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">OCamlDesc</span> {
-    <span class="doccomment">/// describes the type in OCaml, given the current environment [Env]</span>
-    <span class="doccomment">/// and the list of generic type parameters of the root type</span>
-    <span class="doccomment">/// (the type that makes use of this type)</span>
-    <span class="kw">fn</span> <span class="ident">ocaml_desc</span>(<span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>, <span class="ident">generics</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>]) -&gt; <span class="ident">String</span>;
+<span class="doccomment">/// OCamlDesc is the trait implemented by types to facilitate generation of their OCaml bindings.
+/// It is usually derived automatically via the [Struct] macro,
+/// or the [CustomType] macro for custom types.
+</span><span class="kw">pub trait </span>OCamlDesc {
+    <span class="doccomment">/// describes the type in OCaml, given the current environment [Env]
+    /// and the list of generic type parameters of the root type
+    /// (the type that makes use of this type)
+    </span><span class="kw">fn </span>ocaml_desc(env: <span class="kw-2">&amp;</span>Env, generics: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>str]) -&gt; String;
 
-    <span class="doccomment">/// Returns a unique ID for the type. This ID will not change if concrete type parameters are used.</span>
-    <span class="kw">fn</span> <span class="ident">unique_id</span>() -&gt; <span class="ident">u128</span>;
+    <span class="doccomment">/// Returns a unique ID for the type. This ID will not change if concrete type parameters are used.
+    </span><span class="kw">fn </span>unique_id() -&gt; u128;
 }
 
-<span class="comment">//</span>
-<span class="comment">// Func-like macros</span>
-<span class="comment">//</span>
+<span class="comment">//
+// Func-like macros
+//
 
-<span class="doccomment">/// Creates a module</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">decl_module</span> {
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">w</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">env</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">b</span>:<span class="ident">block</span>) =&gt; {{
-        <span class="kw">use</span> <span class="ident">std::io::Write</span>;
-        <span class="macro">write!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">w</span>, <span class="string">&quot;\n{}{}\n&quot;</span>, <span class="macro">format_args!</span>(<span class="string">&quot;{: &gt;1$}&quot;</span>, <span class="string">&quot;&quot;</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">env</span>.<span class="ident">nested</span>() <span class="op">*</span> <span class="number">2</span>), <span class="macro-nonterminal">$</span><span class="macro-nonterminal">env</span>.<span class="ident">new_module</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>)).<span class="ident">unwrap</span>();
-        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">b</span>
-        <span class="macro">write!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">w</span>, <span class="string">&quot;{}{}\n\n&quot;</span>, <span class="macro">format_args!</span>(<span class="string">&quot;{: &gt;1$}&quot;</span>, <span class="string">&quot;&quot;</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">env</span>.<span class="ident">nested</span>() <span class="op">*</span> <span class="number">2</span> <span class="op">-</span> <span class="number">2</span>), <span class="macro-nonterminal">$</span><span class="macro-nonterminal">env</span>.<span class="ident">parent</span>()).<span class="ident">unwrap</span>();
+</span><span class="doccomment">/// Creates a module
+</span><span class="attribute">#[macro_export]
+</span><span class="macro">macro_rules! </span>decl_module {
+    (<span class="macro-nonterminal">$w</span>:expr, <span class="macro-nonterminal">$env</span>:expr, <span class="macro-nonterminal">$name</span>:expr, <span class="macro-nonterminal">$b</span>:block) =&gt; {{
+        <span class="kw">use </span>std::io::Write;
+        <span class="macro">write!</span>(<span class="macro-nonterminal">$w</span>, <span class="string">&quot;\n{}{}\n&quot;</span>, <span class="macro">format_args!</span>(<span class="string">&quot;{: &gt;1$}&quot;</span>, <span class="string">&quot;&quot;</span>, <span class="macro-nonterminal">$env</span>.nested() * <span class="number">2</span>), <span class="macro-nonterminal">$env</span>.new_module(<span class="macro-nonterminal">$name</span>)).unwrap();
+        <span class="macro-nonterminal">$b
+        </span><span class="macro">write!</span>(<span class="macro-nonterminal">$w</span>, <span class="string">&quot;{}{}\n\n&quot;</span>, <span class="macro">format_args!</span>(<span class="string">&quot;{: &gt;1$}&quot;</span>, <span class="string">&quot;&quot;</span>, <span class="macro-nonterminal">$env</span>.nested() * <span class="number">2 </span>- <span class="number">2</span>), <span class="macro-nonterminal">$env</span>.parent()).unwrap();
     }}
 }
 
-<span class="doccomment">/// Declares the binding for a given function</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">decl_func</span> {
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">w</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">env</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">func</span>:<span class="ident">ident</span>) =&gt; {{
-        <span class="kw">use</span> <span class="ident">std::io::Write</span>;
-        <span class="macro">::ocaml_gen::paste!</span> {
-            <span class="kw">let</span> <span class="ident">binding</span> <span class="op">=</span> [<span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">func</span> <span class="ident">_to_ocaml</span><span class="op">&gt;</span>](<span class="macro-nonterminal">$</span><span class="macro-nonterminal">env</span>, <span class="prelude-val">None</span>);
+<span class="doccomment">/// Declares the binding for a given function
+</span><span class="attribute">#[macro_export]
+</span><span class="macro">macro_rules! </span>decl_func {
+    (<span class="macro-nonterminal">$w</span>:expr, <span class="macro-nonterminal">$env</span>:expr, <span class="macro-nonterminal">$func</span>:ident) =&gt; {{
+        <span class="kw">use </span>std::io::Write;
+        <span class="macro">::ocaml_gen::paste! </span>{
+            <span class="kw">let </span>binding = [&lt;<span class="macro-nonterminal">$func </span>_to_ocaml&gt;](<span class="macro-nonterminal">$env</span>, <span class="prelude-val">None</span>);
         }
         <span class="macro">write!</span>(
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">w</span>,
+            <span class="macro-nonterminal">$w</span>,
             <span class="string">&quot;{}{}\n&quot;</span>,
-            <span class="macro">format_args!</span>(<span class="string">&quot;{: &gt;1$}&quot;</span>, <span class="string">&quot;&quot;</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">env</span>.<span class="ident">nested</span>() <span class="op">*</span> <span class="number">2</span>),
-            <span class="ident">binding</span>,
+            <span class="macro">format_args!</span>(<span class="string">&quot;{: &gt;1$}&quot;</span>, <span class="string">&quot;&quot;</span>, <span class="macro-nonterminal">$env</span>.nested() * <span class="number">2</span>),
+            binding,
         )
-        .<span class="ident">unwrap</span>();
+        .unwrap();
     }};
-    <span class="comment">// rename</span>
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">w</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">env</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">func</span>:<span class="ident">ident</span> =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">new</span>:<span class="ident">expr</span>) =&gt; {{
-        <span class="kw">use</span> <span class="ident">std::io::Write</span>;
-        <span class="macro">::ocaml_gen::paste!</span> {
-            <span class="kw">let</span> <span class="ident">binding</span> <span class="op">=</span> [<span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">func</span> <span class="ident">_to_ocaml</span><span class="op">&gt;</span>](<span class="macro-nonterminal">$</span><span class="macro-nonterminal">env</span>, <span class="prelude-val">Some</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">new</span>));
+    <span class="comment">// rename
+    </span>(<span class="macro-nonterminal">$w</span>:expr, <span class="macro-nonterminal">$env</span>:expr, <span class="macro-nonterminal">$func</span>:ident =&gt; <span class="macro-nonterminal">$new</span>:expr) =&gt; {{
+        <span class="kw">use </span>std::io::Write;
+        <span class="macro">::ocaml_gen::paste! </span>{
+            <span class="kw">let </span>binding = [&lt;<span class="macro-nonterminal">$func </span>_to_ocaml&gt;](<span class="macro-nonterminal">$env</span>, <span class="prelude-val">Some</span>(<span class="macro-nonterminal">$new</span>));
         }
         <span class="macro">write!</span>(
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">w</span>,
+            <span class="macro-nonterminal">$w</span>,
             <span class="string">&quot;{}{}\n&quot;</span>,
-            <span class="macro">format_args!</span>(<span class="string">&quot;{: &gt;1$}&quot;</span>, <span class="string">&quot;&quot;</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">env</span>.<span class="ident">nested</span>() <span class="op">*</span> <span class="number">2</span>),
-            <span class="ident">binding</span>,
+            <span class="macro">format_args!</span>(<span class="string">&quot;{: &gt;1$}&quot;</span>, <span class="string">&quot;&quot;</span>, <span class="macro-nonterminal">$env</span>.nested() * <span class="number">2</span>),
+            binding,
         )
-        .<span class="ident">unwrap</span>();
+        .unwrap();
     }};
 }
 
-<span class="doccomment">/// Declares the binding for a given type</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">decl_type</span> {
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">w</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">env</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>:<span class="ident">ty</span>) =&gt; {{
-        <span class="kw">use</span> <span class="ident">std::io::Write</span>;
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span> <span class="kw">as</span> <span class="ident">::ocaml_gen::OCamlBinding</span><span class="op">&gt;</span><span class="ident">::ocaml_binding</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">env</span>, <span class="prelude-val">None</span>, <span class="bool-val">true</span>);
+<span class="doccomment">/// Declares the binding for a given type
+</span><span class="attribute">#[macro_export]
+</span><span class="macro">macro_rules! </span>decl_type {
+    (<span class="macro-nonterminal">$w</span>:expr, <span class="macro-nonterminal">$env</span>:expr, <span class="macro-nonterminal">$ty</span>:ty) =&gt; {{
+        <span class="kw">use </span>std::io::Write;
+        <span class="kw">let </span>res = &lt;<span class="macro-nonterminal">$ty </span><span class="kw">as </span>::ocaml_gen::OCamlBinding&gt;::ocaml_binding(<span class="macro-nonterminal">$env</span>, <span class="prelude-val">None</span>, <span class="bool-val">true</span>);
         <span class="macro">write!</span>(
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">w</span>,
+            <span class="macro-nonterminal">$w</span>,
             <span class="string">&quot;{}{}\n&quot;</span>,
-            <span class="macro">format_args!</span>(<span class="string">&quot;{: &gt;1$}&quot;</span>, <span class="string">&quot;&quot;</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">env</span>.<span class="ident">nested</span>() <span class="op">*</span> <span class="number">2</span>),
-            <span class="ident">res</span>,
+            <span class="macro">format_args!</span>(<span class="string">&quot;{: &gt;1$}&quot;</span>, <span class="string">&quot;&quot;</span>, <span class="macro-nonterminal">$env</span>.nested() * <span class="number">2</span>),
+            res,
         )
-        .<span class="ident">unwrap</span>();
+        .unwrap();
     }};
-    <span class="comment">// rename</span>
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">w</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">env</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>:<span class="ident">ty</span> =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">new</span>:<span class="ident">expr</span>) =&gt; {{
-        <span class="kw">use</span> <span class="ident">std::io::Write</span>;
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span> <span class="kw">as</span> <span class="ident">::ocaml_gen::OCamlBinding</span><span class="op">&gt;</span><span class="ident">::ocaml_binding</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">env</span>, <span class="prelude-val">Some</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">new</span>), <span class="bool-val">true</span>);
+    <span class="comment">// rename
+    </span>(<span class="macro-nonterminal">$w</span>:expr, <span class="macro-nonterminal">$env</span>:expr, <span class="macro-nonterminal">$ty</span>:ty =&gt; <span class="macro-nonterminal">$new</span>:expr) =&gt; {{
+        <span class="kw">use </span>std::io::Write;
+        <span class="kw">let </span>res = &lt;<span class="macro-nonterminal">$ty </span><span class="kw">as </span>::ocaml_gen::OCamlBinding&gt;::ocaml_binding(<span class="macro-nonterminal">$env</span>, <span class="prelude-val">Some</span>(<span class="macro-nonterminal">$new</span>), <span class="bool-val">true</span>);
         <span class="macro">write!</span>(
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">w</span>,
+            <span class="macro-nonterminal">$w</span>,
             <span class="string">&quot;{}{}\n&quot;</span>,
-            <span class="macro">format_args!</span>(<span class="string">&quot;{: &gt;1$}&quot;</span>, <span class="string">&quot;&quot;</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">env</span>.<span class="ident">nested</span>() <span class="op">*</span> <span class="number">2</span>),
-            <span class="ident">res</span>,
+            <span class="macro">format_args!</span>(<span class="string">&quot;{: &gt;1$}&quot;</span>, <span class="string">&quot;&quot;</span>, <span class="macro-nonterminal">$env</span>.nested() * <span class="number">2</span>),
+            res,
         )
-        .<span class="ident">unwrap</span>();
-    }};
-}
-
-<span class="doccomment">/// Declares a new OCaml type that is made of other types</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">decl_type_alias</span> {
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">w</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">env</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">new</span>:<span class="ident">expr</span> =&gt; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span>:<span class="ident">ty</span>) =&gt; {{
-        <span class="kw">use</span> <span class="ident">std::io::Write</span>;
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">ty</span> <span class="kw">as</span> <span class="ident">::ocaml_gen::OCamlBinding</span><span class="op">&gt;</span><span class="ident">::ocaml_binding</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">env</span>, <span class="prelude-val">Some</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">new</span>), <span class="bool-val">false</span>);
-        <span class="macro">write!</span>(
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">w</span>,
-            <span class="string">&quot;{}{}\n&quot;</span>,
-            <span class="macro">format_args!</span>(<span class="string">&quot;{: &gt;1$}&quot;</span>, <span class="string">&quot;&quot;</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">env</span>.<span class="ident">nested</span>() <span class="op">*</span> <span class="number">2</span>),
-            <span class="ident">res</span>,
-        )
-        .<span class="ident">unwrap</span>();
+        .unwrap();
     }};
 }
 
-<span class="doccomment">/// Creates a fake generic. This is a necessary hack, at the moment, to declare types (with the [decl_type] macro) that have generic parameters.</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
-<span class="macro">macro_rules!</span> <span class="ident">decl_fake_generic</span> {
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>:<span class="ident">ident</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">i</span>:<span class="ident">expr</span>) =&gt; {
-        <span class="kw">pub</span> <span class="kw">struct</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>;
+<span class="doccomment">/// Declares a new OCaml type that is made of other types
+</span><span class="attribute">#[macro_export]
+</span><span class="macro">macro_rules! </span>decl_type_alias {
+    (<span class="macro-nonterminal">$w</span>:expr, <span class="macro-nonterminal">$env</span>:expr, <span class="macro-nonterminal">$new</span>:expr =&gt; <span class="macro-nonterminal">$ty</span>:ty) =&gt; {{
+        <span class="kw">use </span>std::io::Write;
+        <span class="kw">let </span>res = &lt;<span class="macro-nonterminal">$ty </span><span class="kw">as </span>::ocaml_gen::OCamlBinding&gt;::ocaml_binding(<span class="macro-nonterminal">$env</span>, <span class="prelude-val">Some</span>(<span class="macro-nonterminal">$new</span>), <span class="bool-val">false</span>);
+        <span class="macro">write!</span>(
+            <span class="macro-nonterminal">$w</span>,
+            <span class="string">&quot;{}{}\n&quot;</span>,
+            <span class="macro">format_args!</span>(<span class="string">&quot;{: &gt;1$}&quot;</span>, <span class="string">&quot;&quot;</span>, <span class="macro-nonterminal">$env</span>.nested() * <span class="number">2</span>),
+            res,
+        )
+        .unwrap();
+    }};
+}
 
-        <span class="kw">impl</span> <span class="ident">::ocaml_gen::OCamlDesc</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span> {
-            <span class="kw">fn</span> <span class="ident">ocaml_desc</span>(<span class="ident">_env</span>: <span class="kw-2">&amp;</span><span class="ident">::ocaml_gen::Env</span>, <span class="ident">generics</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>]) -&gt; <span class="ident">String</span> {
-                <span class="macro">format!</span>(<span class="string">&quot;&#39;{}&quot;</span>, <span class="ident">generics</span>[<span class="macro-nonterminal">$</span><span class="macro-nonterminal">i</span>])
+<span class="doccomment">/// Creates a fake generic. This is a necessary hack, at the moment, to declare types (with the [decl_type] macro) that have generic parameters.
+</span><span class="attribute">#[macro_export]
+</span><span class="macro">macro_rules! </span>decl_fake_generic {
+    (<span class="macro-nonterminal">$name</span>:ident, <span class="macro-nonterminal">$i</span>:expr) =&gt; {
+        <span class="kw">pub struct </span><span class="macro-nonterminal">$name</span>;
+
+        <span class="kw">impl </span>::ocaml_gen::OCamlDesc <span class="kw">for </span><span class="macro-nonterminal">$name </span>{
+            <span class="kw">fn </span>ocaml_desc(_env: <span class="kw-2">&amp;</span>::ocaml_gen::Env, generics: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>str]) -&gt; String {
+                <span class="macro">format!</span>(<span class="string">&quot;&#39;{}&quot;</span>, generics[<span class="macro-nonterminal">$i</span>])
             }
 
-            <span class="kw">fn</span> <span class="ident">unique_id</span>() -&gt; <span class="ident">u128</span> {
-                <span class="macro">::ocaml_gen::const_random!</span>(<span class="ident">u128</span>)
+            <span class="kw">fn </span>unique_id() -&gt; u128 {
+                <span class="macro">::ocaml_gen::const_random!</span>(u128)
             }
         }
     };
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="ocaml_gen" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="ocaml_gen" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

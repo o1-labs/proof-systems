@@ -15,22 +15,22 @@
 <span id="15">15</span>
 <span id="16">16</span>
 <span id="17">17</span>
-</pre><pre class="rust"><code><span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
-<span class="doccomment">//! This module contains the code that executes a compiled Cairo program and generates the memory.</span>
-<span class="doccomment">//! The Cairo runner includes code to execute a bytecode compiled Cairo program,</span>
-<span class="doccomment">//! and obtain a memory instantiation after the execution. It uses some code to</span>
-<span class="doccomment">//! represent Cairo instructions and their decomposition, together with their logic</span>
-<span class="doccomment">//! which is represented as steps of computation making up the full program.</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">flags</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">helper</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">memory</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">runner</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">word</span>;
+</pre><pre class="rust"><code><span class="attribute">#![warn(missing_docs)]
+</span><span class="doccomment">//! This module contains the code that executes a compiled Cairo program and generates the memory.
+//! The Cairo runner includes code to execute a bytecode compiled Cairo program,
+//! and obtain a memory instantiation after the execution. It uses some code to
+//! represent Cairo instructions and their decomposition, together with their logic
+//! which is represented as steps of computation making up the full program.
+</span><span class="kw">pub mod </span>flags;
+<span class="kw">pub mod </span>helper;
+<span class="kw">pub mod </span>memory;
+<span class="kw">pub mod </span>runner;
+<span class="kw">pub mod </span>word;
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::{
-    <span class="ident">memory::CairoMemory</span>,
-    <span class="ident">runner</span>::{<span class="ident">CairoInstruction</span>, <span class="ident">CairoProgram</span>, <span class="ident">Pointers</span>},
-    <span class="ident">word</span>::{<span class="ident">FlagBits</span>, <span class="ident">Offsets</span>},
+<span class="kw">pub use </span><span class="self">self</span>::{
+    memory::CairoMemory,
+    runner::{CairoInstruction, CairoProgram, Pointers},
+    word::{FlagBits, Offsets},
 };
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="cairo" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="cairo" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

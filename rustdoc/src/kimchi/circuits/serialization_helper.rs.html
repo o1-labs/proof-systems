@@ -191,198 +191,198 @@
 <span id="191">191</span>
 <span id="192">192</span>
 <span id="193">193</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::lookup::lookups</span>::{<span class="ident">JointLookup</span>, <span class="ident">JointLookupValue</span>};
-<span class="kw">use</span> <span class="ident">serde</span>::{
-    <span class="ident">de</span>::{<span class="ident">Error</span>, <span class="ident">IgnoredAny</span>, <span class="ident">MapAccess</span>, <span class="ident">SeqAccess</span>},
-    <span class="ident">ser::SerializeStruct</span>,
-    <span class="ident">Deserialize</span>, <span class="ident">Deserializer</span>, <span class="ident">Serializer</span>,
+</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::circuits::lookup::lookups::{JointLookup, JointLookupValue};
+<span class="kw">use </span>serde::{
+    de::{Error, IgnoredAny, MapAccess, SeqAccess},
+    ser::SerializeStruct,
+    Deserialize, Deserializer, Serializer,
 };
-<span class="kw">use</span> <span class="ident">serde_with</span>::{<span class="ident">de::DeserializeAsWrap</span>, <span class="ident">ser::SerializeAsWrap</span>, <span class="ident">DeserializeAs</span>, <span class="ident">SerializeAs</span>};
-<span class="kw">use</span> <span class="ident">std::fmt::Formatter</span>;
-<span class="kw">use</span> <span class="ident">std::marker::PhantomData</span>;
+<span class="kw">use </span>serde_with::{de::DeserializeAsWrap, ser::SerializeAsWrap, DeserializeAs, SerializeAs};
+<span class="kw">use </span>std::fmt::Formatter;
+<span class="kw">use </span>std::marker::PhantomData;
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">G</span><span class="op">&gt;</span> <span class="ident">SerializeAs</span><span class="op">&lt;</span><span class="ident">JointLookupValue</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">JointLookupValue</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">G</span>: <span class="ident">SerializeAs</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
+<span class="kw">impl</span>&lt;F, G&gt; SerializeAs&lt;JointLookupValue&lt;F&gt;&gt; <span class="kw">for </span>JointLookupValue&lt;G&gt;
+<span class="kw">where
+    </span>G: SerializeAs&lt;F&gt;,
 {
-    <span class="kw">fn</span> <span class="ident">serialize_as</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span>(<span class="ident">source</span>: <span class="kw-2">&amp;</span><span class="ident">JointLookupValue</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">serializer</span>: <span class="ident">S</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">S::Ok</span>, <span class="ident">S::Error</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">S</span>: <span class="ident">Serializer</span>,
+    <span class="kw">fn </span>serialize_as&lt;S&gt;(source: <span class="kw-2">&amp;</span>JointLookupValue&lt;F&gt;, serializer: S) -&gt; <span class="prelude-ty">Result</span>&lt;S::Ok, S::Error&gt;
+    <span class="kw">where
+        </span>S: Serializer,
     {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">s</span> <span class="op">=</span> <span class="ident">serializer</span>.<span class="ident">serialize_struct</span>(<span class="string">&quot;JointLookup&quot;</span>, <span class="number">2</span>)<span class="question-mark">?</span>;
-        <span class="ident">s</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;table_id&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">SerializeAsWrap</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">G</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="kw-2">&amp;</span><span class="ident">source</span>.<span class="ident">table_id</span>))<span class="question-mark">?</span>;
-        <span class="ident">s</span>.<span class="ident">serialize_field</span>(
+        <span class="kw">let </span><span class="kw-2">mut </span>s = serializer.serialize_struct(<span class="string">&quot;JointLookup&quot;</span>, <span class="number">2</span>)<span class="question-mark">?</span>;
+        s.serialize_field(<span class="string">&quot;table_id&quot;</span>, <span class="kw-2">&amp;</span>SerializeAsWrap::&lt;F, G&gt;::new(<span class="kw-2">&amp;</span>source.table_id))<span class="question-mark">?</span>;
+        s.serialize_field(
             <span class="string">&quot;entry&quot;</span>,
-            <span class="kw-2">&amp;</span><span class="ident">SerializeAsWrap</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="kw-2">&amp;</span><span class="ident">source</span>.<span class="ident">entry</span>),
+            <span class="kw-2">&amp;</span>SerializeAsWrap::&lt;Vec&lt;F&gt;, Vec&lt;G&gt;&gt;::new(<span class="kw-2">&amp;</span>source.entry),
         )<span class="question-mark">?</span>;
-        <span class="ident">s</span>.<span class="ident">end</span>()
+        s.end()
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span>, <span class="ident">F</span>, <span class="ident">G</span>: <span class="ident">DeserializeAs</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span>, <span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="ident">DeserializeAs</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span>, <span class="ident">JointLookupValue</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>
-    <span class="kw">for</span> <span class="ident">JointLookupValue</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;de</span>, F, G: DeserializeAs&lt;<span class="lifetime">&#39;de</span>, F&gt;&gt; DeserializeAs&lt;<span class="lifetime">&#39;de</span>, JointLookupValue&lt;F&gt;&gt;
+    <span class="kw">for </span>JointLookupValue&lt;G&gt;
 {
-    <span class="kw">fn</span> <span class="ident">deserialize_as</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>(<span class="ident">deserializer</span>: <span class="ident">D</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">JointLookupValue</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">D::Error</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">D</span>: <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span>,
+    <span class="kw">fn </span>deserialize_as&lt;D&gt;(deserializer: D) -&gt; <span class="prelude-ty">Result</span>&lt;JointLookupValue&lt;F&gt;, D::Error&gt;
+    <span class="kw">where
+        </span>D: Deserializer&lt;<span class="lifetime">&#39;de</span>&gt;,
     {
-        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">non_camel_case_types</span>)]</span>
-        <span class="kw">enum</span> <span class="ident">Field</span> {
-            <span class="ident">field0</span>,
-            <span class="ident">field1</span>,
-            <span class="ident">ignore</span>,
+        <span class="attribute">#[allow(non_camel_case_types)]
+        </span><span class="kw">enum </span>Field {
+            field0,
+            field1,
+            ignore,
         }
-        <span class="kw">struct</span> <span class="ident">FieldVisitor</span>;
-        <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="ident">serde::de::Visitor</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">FieldVisitor</span> {
-            <span class="kw">type</span> <span class="ident">Value</span> <span class="op">=</span> <span class="ident">Field</span>;
-            <span class="kw">fn</span> <span class="ident">expecting</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">formatter</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-                <span class="ident">Formatter::write_str</span>(<span class="ident">formatter</span>, <span class="string">&quot;field identifier&quot;</span>)
+        <span class="kw">struct </span>FieldVisitor;
+        <span class="kw">impl</span>&lt;<span class="lifetime">&#39;de</span>&gt; serde::de::Visitor&lt;<span class="lifetime">&#39;de</span>&gt; <span class="kw">for </span>FieldVisitor {
+            <span class="kw">type </span>Value = Field;
+            <span class="kw">fn </span>expecting(<span class="kw-2">&amp;</span><span class="self">self</span>, formatter: <span class="kw-2">&amp;mut </span>Formatter) -&gt; std::fmt::Result {
+                Formatter::write_str(formatter, <span class="string">&quot;field identifier&quot;</span>)
             }
-            <span class="kw">fn</span> <span class="ident">visit_u64</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">value</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Value</span>, <span class="ident">E</span><span class="op">&gt;</span>
-            <span class="kw">where</span>
-                <span class="ident">E</span>: <span class="ident">Error</span>,
+            <span class="kw">fn </span>visit_u64&lt;E&gt;(<span class="self">self</span>, value: u64) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>::Value, E&gt;
+            <span class="kw">where
+                </span>E: Error,
             {
-                <span class="kw">match</span> <span class="ident">value</span> {
-                    <span class="number">0u64</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">Field::field0</span>),
-                    <span class="number">1u64</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">Field::field1</span>),
-                    <span class="kw">_</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">Field::ignore</span>),
+                <span class="kw">match </span>value {
+                    <span class="number">0u64 </span>=&gt; <span class="prelude-val">Ok</span>(Field::field0),
+                    <span class="number">1u64 </span>=&gt; <span class="prelude-val">Ok</span>(Field::field1),
+                    <span class="kw">_ </span>=&gt; <span class="prelude-val">Ok</span>(Field::ignore),
                 }
             }
-            <span class="kw">fn</span> <span class="ident">visit_str</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Value</span>, <span class="ident">E</span><span class="op">&gt;</span>
-            <span class="kw">where</span>
-                <span class="ident">E</span>: <span class="ident">Error</span>,
+            <span class="kw">fn </span>visit_str&lt;E&gt;(<span class="self">self</span>, value: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>::Value, E&gt;
+            <span class="kw">where
+                </span>E: Error,
             {
-                <span class="kw">match</span> <span class="ident">value</span> {
-                    <span class="string">&quot;table_id&quot;</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">Field::field0</span>),
-                    <span class="string">&quot;entry&quot;</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">Field::field1</span>),
-                    <span class="kw">_</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">Field::ignore</span>),
+                <span class="kw">match </span>value {
+                    <span class="string">&quot;table_id&quot; </span>=&gt; <span class="prelude-val">Ok</span>(Field::field0),
+                    <span class="string">&quot;entry&quot; </span>=&gt; <span class="prelude-val">Ok</span>(Field::field1),
+                    <span class="kw">_ </span>=&gt; <span class="prelude-val">Ok</span>(Field::ignore),
                 }
             }
-            <span class="kw">fn</span> <span class="ident">visit_bytes</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Value</span>, <span class="ident">E</span><span class="op">&gt;</span>
-            <span class="kw">where</span>
-                <span class="ident">E</span>: <span class="ident">Error</span>,
+            <span class="kw">fn </span>visit_bytes&lt;E&gt;(<span class="self">self</span>, value: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>::Value, E&gt;
+            <span class="kw">where
+                </span>E: Error,
             {
-                <span class="kw">match</span> <span class="ident">value</span> {
-                    <span class="string">b&quot;table_id&quot;</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">Field::field0</span>),
-                    <span class="string">b&quot;entry&quot;</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">Field::field1</span>),
-                    <span class="kw">_</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">Field::ignore</span>),
+                <span class="kw">match </span>value {
+                    <span class="string">b&quot;table_id&quot; </span>=&gt; <span class="prelude-val">Ok</span>(Field::field0),
+                    <span class="string">b&quot;entry&quot; </span>=&gt; <span class="prelude-val">Ok</span>(Field::field1),
+                    <span class="kw">_ </span>=&gt; <span class="prelude-val">Ok</span>(Field::ignore),
                 }
             }
         }
-        <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="ident">Deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Field</span> {
-            <span class="attribute">#[<span class="ident">inline</span>]</span>
-            <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>(<span class="ident">deserializer</span>: <span class="ident">D</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">D::Error</span><span class="op">&gt;</span>
-            <span class="kw">where</span>
-                <span class="ident">D</span>: <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span>,
+        <span class="kw">impl</span>&lt;<span class="lifetime">&#39;de</span>&gt; Deserialize&lt;<span class="lifetime">&#39;de</span>&gt; <span class="kw">for </span>Field {
+            <span class="attribute">#[inline]
+            </span><span class="kw">fn </span>deserialize&lt;D&gt;(deserializer: D) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, D::Error&gt;
+            <span class="kw">where
+                </span>D: Deserializer&lt;<span class="lifetime">&#39;de</span>&gt;,
             {
-                <span class="ident">Deserializer::deserialize_identifier</span>(<span class="ident">deserializer</span>, <span class="ident">FieldVisitor</span>)
+                Deserializer::deserialize_identifier(deserializer, FieldVisitor)
             }
         }
-        <span class="kw">struct</span> <span class="ident">Visitor</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span>, <span class="ident">F</span>, <span class="ident">G</span><span class="op">&gt;</span>
-        <span class="kw">where</span>
-            <span class="ident">G</span>: <span class="ident">DeserializeAs</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span>, <span class="ident">F</span><span class="op">&gt;</span>,
+        <span class="kw">struct </span>Visitor&lt;<span class="lifetime">&#39;de</span>, F, G&gt;
+        <span class="kw">where
+            </span>G: DeserializeAs&lt;<span class="lifetime">&#39;de</span>, F&gt;,
         {
-            <span class="ident">marker</span>: <span class="ident">PhantomData</span><span class="op">&lt;</span><span class="ident">JointLookupValue</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-            <span class="ident">marker2</span>: <span class="ident">PhantomData</span><span class="op">&lt;</span><span class="ident">JointLookupValue</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-            <span class="ident">lifetime</span>: <span class="ident">PhantomData</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;de</span> ()<span class="op">&gt;</span>,
+            marker: PhantomData&lt;JointLookupValue&lt;F&gt;&gt;,
+            marker2: PhantomData&lt;JointLookupValue&lt;G&gt;&gt;,
+            lifetime: PhantomData&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;de </span>()&gt;,
         }
-        <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span>, <span class="ident">F</span>, <span class="ident">G</span><span class="op">&gt;</span> <span class="ident">serde::de::Visitor</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Visitor</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span>, <span class="ident">F</span>, <span class="ident">G</span><span class="op">&gt;</span>
-        <span class="kw">where</span>
-            <span class="ident">G</span>: <span class="ident">DeserializeAs</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span>, <span class="ident">F</span><span class="op">&gt;</span>,
+        <span class="kw">impl</span>&lt;<span class="lifetime">&#39;de</span>, F, G&gt; serde::de::Visitor&lt;<span class="lifetime">&#39;de</span>&gt; <span class="kw">for </span>Visitor&lt;<span class="lifetime">&#39;de</span>, F, G&gt;
+        <span class="kw">where
+            </span>G: DeserializeAs&lt;<span class="lifetime">&#39;de</span>, F&gt;,
         {
-            <span class="kw">type</span> <span class="ident">Value</span> <span class="op">=</span> <span class="ident">JointLookupValue</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>;
-            <span class="kw">fn</span> <span class="ident">expecting</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">formatter</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-                <span class="ident">Formatter::write_str</span>(<span class="ident">formatter</span>, <span class="string">&quot;struct JointLookup&quot;</span>)
+            <span class="kw">type </span>Value = JointLookupValue&lt;F&gt;;
+            <span class="kw">fn </span>expecting(<span class="kw-2">&amp;</span><span class="self">self</span>, formatter: <span class="kw-2">&amp;mut </span>Formatter) -&gt; std::fmt::Result {
+                Formatter::write_str(formatter, <span class="string">&quot;struct JointLookup&quot;</span>)
             }
-            <span class="attribute">#[<span class="ident">inline</span>]</span>
-            <span class="kw">fn</span> <span class="ident">visit_seq</span><span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">seq</span>: <span class="ident">A</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Value</span>, <span class="ident">A::Error</span><span class="op">&gt;</span>
-            <span class="kw">where</span>
-                <span class="ident">A</span>: <span class="ident">SeqAccess</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span>,
+            <span class="attribute">#[inline]
+            </span><span class="kw">fn </span>visit_seq&lt;A&gt;(<span class="self">self</span>, <span class="kw-2">mut </span>seq: A) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>::Value, A::Error&gt;
+            <span class="kw">where
+                </span>A: SeqAccess&lt;<span class="lifetime">&#39;de</span>&gt;,
             {
-                <span class="kw">let</span> <span class="ident">field0</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">SeqAccess::next_element</span>::<span class="op">&lt;</span><span class="ident">DeserializeAsWrap</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="ident">seq</span>)<span class="question-mark">?</span> {
-                    <span class="prelude-val">Some</span>(<span class="ident">value</span>) =&gt; <span class="ident">value</span>.<span class="ident">into_inner</span>(),
-                    <span class="prelude-val">None</span> =&gt; {
-                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Error::invalid_length</span>(
+                <span class="kw">let </span>field0 = <span class="kw">match </span>SeqAccess::next_element::&lt;DeserializeAsWrap&lt;F, G&gt;&gt;(<span class="kw-2">&amp;mut </span>seq)<span class="question-mark">? </span>{
+                    <span class="prelude-val">Some</span>(value) =&gt; value.into_inner(),
+                    <span class="prelude-val">None </span>=&gt; {
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::invalid_length(
                             <span class="number">0usize</span>,
                             <span class="kw-2">&amp;</span><span class="string">&quot;struct JointLookup with 2 elements&quot;</span>,
                         ));
                     }
                 };
-                <span class="kw">let</span> <span class="ident">field1</span> <span class="op">=</span>
-                    <span class="kw">match</span> <span class="ident">SeqAccess::next_element</span>::<span class="op">&lt;</span><span class="ident">DeserializeAsWrap</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="ident">seq</span>)<span class="question-mark">?</span> {
-                        <span class="prelude-val">Some</span>(<span class="ident">value</span>) =&gt; <span class="ident">value</span>.<span class="ident">into_inner</span>(),
-                        <span class="prelude-val">None</span> =&gt; {
-                            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Error::invalid_length</span>(
+                <span class="kw">let </span>field1 =
+                    <span class="kw">match </span>SeqAccess::next_element::&lt;DeserializeAsWrap&lt;Vec&lt;F&gt;, Vec&lt;G&gt;&gt;&gt;(<span class="kw-2">&amp;mut </span>seq)<span class="question-mark">? </span>{
+                        <span class="prelude-val">Some</span>(value) =&gt; value.into_inner(),
+                        <span class="prelude-val">None </span>=&gt; {
+                            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::invalid_length(
                                 <span class="number">1usize</span>,
                                 <span class="kw-2">&amp;</span><span class="string">&quot;struct JointLookup with 2 elements&quot;</span>,
                             ));
                         }
                     };
-                <span class="prelude-val">Ok</span>(<span class="ident">JointLookup</span> {
-                    <span class="ident">table_id</span>: <span class="ident">field0</span>,
-                    <span class="ident">entry</span>: <span class="ident">field1</span>,
+                <span class="prelude-val">Ok</span>(JointLookup {
+                    table_id: field0,
+                    entry: field1,
                 })
             }
-            <span class="attribute">#[<span class="ident">inline</span>]</span>
-            <span class="kw">fn</span> <span class="ident">visit_map</span><span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">map</span>: <span class="ident">A</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Value</span>, <span class="ident">A::Error</span><span class="op">&gt;</span>
-            <span class="kw">where</span>
-                <span class="ident">A</span>: <span class="ident">MapAccess</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span>,
+            <span class="attribute">#[inline]
+            </span><span class="kw">fn </span>visit_map&lt;A&gt;(<span class="self">self</span>, <span class="kw-2">mut </span>map: A) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>::Value, A::Error&gt;
+            <span class="kw">where
+                </span>A: MapAccess&lt;<span class="lifetime">&#39;de</span>&gt;,
             {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">field0</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="op">=</span> <span class="prelude-val">None</span>;
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">field1</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="prelude-val">None</span>;
-                <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">key</span>) <span class="op">=</span> <span class="ident">MapAccess::next_key</span>::<span class="op">&lt;</span><span class="ident">Field</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="ident">map</span>)<span class="question-mark">?</span> {
-                    <span class="kw">match</span> <span class="ident">key</span> {
-                        <span class="ident">Field::field0</span> =&gt; {
-                            <span class="kw">if</span> <span class="ident">Option::is_some</span>(<span class="kw-2">&amp;</span><span class="ident">field0</span>) {
-                                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">A::Error::duplicate_field</span>(<span class="string">&quot;table_id&quot;</span>));
+                <span class="kw">let </span><span class="kw-2">mut </span>field0: <span class="prelude-ty">Option</span>&lt;F&gt; = <span class="prelude-val">None</span>;
+                <span class="kw">let </span><span class="kw-2">mut </span>field1: <span class="prelude-ty">Option</span>&lt;Vec&lt;F&gt;&gt; = <span class="prelude-val">None</span>;
+                <span class="kw">while let </span><span class="prelude-val">Some</span>(key) = MapAccess::next_key::&lt;Field&gt;(<span class="kw-2">&amp;mut </span>map)<span class="question-mark">? </span>{
+                    <span class="kw">match </span>key {
+                        Field::field0 =&gt; {
+                            <span class="kw">if </span>Option::is_some(<span class="kw-2">&amp;</span>field0) {
+                                <span class="kw">return </span><span class="prelude-val">Err</span>(A::Error::duplicate_field(<span class="string">&quot;table_id&quot;</span>));
                             }
-                            <span class="ident">field0</span> <span class="op">=</span> <span class="prelude-val">Some</span>(
-                                <span class="ident">MapAccess::next_value</span>::<span class="op">&lt;</span><span class="ident">DeserializeAsWrap</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="ident">map</span>)<span class="question-mark">?</span>
-                                    .<span class="ident">into_inner</span>(),
+                            field0 = <span class="prelude-val">Some</span>(
+                                MapAccess::next_value::&lt;DeserializeAsWrap&lt;F, G&gt;&gt;(<span class="kw-2">&amp;mut </span>map)<span class="question-mark">?
+                                    </span>.into_inner(),
                             );
                         }
-                        <span class="ident">Field::field1</span> =&gt; {
-                            <span class="kw">if</span> <span class="ident">Option::is_some</span>(<span class="kw-2">&amp;</span><span class="ident">field1</span>) {
-                                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">A::Error::duplicate_field</span>(<span class="string">&quot;entry&quot;</span>));
+                        Field::field1 =&gt; {
+                            <span class="kw">if </span>Option::is_some(<span class="kw-2">&amp;</span>field1) {
+                                <span class="kw">return </span><span class="prelude-val">Err</span>(A::Error::duplicate_field(<span class="string">&quot;entry&quot;</span>));
                             }
-                            <span class="ident">field1</span> <span class="op">=</span> <span class="prelude-val">Some</span>(
-                                <span class="ident">MapAccess::next_value</span>::<span class="op">&lt;</span><span class="ident">DeserializeAsWrap</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>(
-                                    <span class="kw-2">&amp;mut</span> <span class="ident">map</span>,
-                                )<span class="question-mark">?</span>
-                                .<span class="ident">into_inner</span>(),
+                            field1 = <span class="prelude-val">Some</span>(
+                                MapAccess::next_value::&lt;DeserializeAsWrap&lt;Vec&lt;F&gt;, Vec&lt;G&gt;&gt;&gt;(
+                                    <span class="kw-2">&amp;mut </span>map,
+                                )<span class="question-mark">?
+                                </span>.into_inner(),
                             );
                         }
-                        <span class="kw">_</span> =&gt; {
-                            <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">MapAccess::next_value</span>::<span class="op">&lt;</span><span class="ident">IgnoredAny</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="ident">map</span>)<span class="question-mark">?</span>;
+                        <span class="kw">_ </span>=&gt; {
+                            <span class="kw">let _ </span>= MapAccess::next_value::&lt;IgnoredAny&gt;(<span class="kw-2">&amp;mut </span>map)<span class="question-mark">?</span>;
                         }
                     }
                 }
-                <span class="kw">let</span> <span class="ident">field0</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">field0</span> {
-                    <span class="prelude-val">Some</span>(<span class="ident">field0</span>) =&gt; <span class="ident">field0</span>,
-                    <span class="prelude-val">None</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">A::Error::missing_field</span>(<span class="string">&quot;table_id&quot;</span>)),
+                <span class="kw">let </span>field0 = <span class="kw">match </span>field0 {
+                    <span class="prelude-val">Some</span>(field0) =&gt; field0,
+                    <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(A::Error::missing_field(<span class="string">&quot;table_id&quot;</span>)),
                 };
-                <span class="kw">let</span> <span class="ident">field1</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">field1</span> {
-                    <span class="prelude-val">Some</span>(<span class="ident">field1</span>) =&gt; <span class="ident">field1</span>,
-                    <span class="prelude-val">None</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">A::Error::missing_field</span>(<span class="string">&quot;entry&quot;</span>)),
+                <span class="kw">let </span>field1 = <span class="kw">match </span>field1 {
+                    <span class="prelude-val">Some</span>(field1) =&gt; field1,
+                    <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(A::Error::missing_field(<span class="string">&quot;entry&quot;</span>)),
                 };
-                <span class="prelude-val">Ok</span>(<span class="ident">JointLookup</span> {
-                    <span class="ident">table_id</span>: <span class="ident">field0</span>,
-                    <span class="ident">entry</span>: <span class="ident">field1</span>,
+                <span class="prelude-val">Ok</span>(JointLookup {
+                    table_id: field0,
+                    entry: field1,
                 })
             }
         }
-        <span class="kw">const</span> <span class="ident">FIELDS</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>] <span class="op">=</span> <span class="kw-2">&amp;</span>[<span class="string">&quot;table_id&quot;</span>, <span class="string">&quot;entry&quot;</span>];
-        <span class="ident">Deserializer::deserialize_struct</span>(
-            <span class="ident">deserializer</span>,
+        <span class="kw">const </span>FIELDS: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>str] = <span class="kw-2">&amp;</span>[<span class="string">&quot;table_id&quot;</span>, <span class="string">&quot;entry&quot;</span>];
+        Deserializer::deserialize_struct(
+            deserializer,
             <span class="string">&quot;JointLookup&quot;</span>,
-            <span class="ident">FIELDS</span>,
-            <span class="ident">Visitor</span> {
-                <span class="ident">marker</span>: <span class="ident">PhantomData</span>::<span class="op">&lt;</span><span class="ident">JointLookupValue</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-                <span class="ident">marker2</span>: <span class="ident">PhantomData</span>::<span class="op">&lt;</span><span class="ident">JointLookupValue</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-                <span class="ident">lifetime</span>: <span class="ident">PhantomData</span>,
+            FIELDS,
+            Visitor {
+                marker: PhantomData::&lt;JointLookupValue&lt;F&gt;&gt;,
+                marker2: PhantomData::&lt;JointLookupValue&lt;G&gt;&gt;,
+                lifetime: PhantomData,
             },
         )
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

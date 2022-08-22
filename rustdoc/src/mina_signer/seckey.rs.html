@@ -31,38 +31,38 @@
 <span id="31">31</span>
 <span id="32">32</span>
 <span id="33">33</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Secret key structures and helpers</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Secret key structures and helpers
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ScalarField</span>;
-<span class="kw">use</span> <span class="ident">ark_ff::UniformRand</span>;
-<span class="kw">use</span> <span class="ident">rand</span>::{<span class="self">self</span>, <span class="ident">CryptoRng</span>, <span class="ident">RngCore</span>};
+</span><span class="kw">use </span><span class="kw">crate</span>::ScalarField;
+<span class="kw">use </span>ark_ff::UniformRand;
+<span class="kw">use </span>rand::{<span class="self">self</span>, CryptoRng, RngCore};
 
-<span class="doccomment">/// Secret key</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span> <span class="comment">// No Debug nor Display</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SecKey</span>(<span class="ident">ScalarField</span>);
+<span class="doccomment">/// Secret key
+</span><span class="attribute">#[derive(Clone, PartialEq, Eq)] </span><span class="comment">// No Debug nor Display
+</span><span class="kw">pub struct </span>SecKey(ScalarField);
 
-<span class="kw">impl</span> <span class="ident">SecKey</span> {
-    <span class="doccomment">/// Generate a random secret key</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">rand</span>(<span class="ident">rng</span>: <span class="kw-2">&amp;mut</span> (<span class="kw">impl</span> <span class="ident">RngCore</span> <span class="op">+</span> <span class="ident">CryptoRng</span>)) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">secret</span>: <span class="ident">ScalarField</span> <span class="op">=</span> <span class="ident">ScalarField::rand</span>(<span class="ident">rng</span>);
+<span class="kw">impl </span>SecKey {
+    <span class="doccomment">/// Generate a random secret key
+    </span><span class="kw">pub fn </span>rand(rng: <span class="kw-2">&amp;mut </span>(<span class="kw">impl </span>RngCore + CryptoRng)) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>secret: ScalarField = ScalarField::rand(rng);
 
-        <span class="self">Self</span>(<span class="ident">secret</span>)
+        <span class="self">Self</span>(secret)
     }
 
-    <span class="doccomment">/// Create a secret key from scalar field element</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">scalar</span>: <span class="ident">ScalarField</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span>(<span class="ident">scalar</span>)
+    <span class="doccomment">/// Create a secret key from scalar field element
+    </span><span class="kw">pub fn </span>new(scalar: ScalarField) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>(scalar)
     }
 
-    <span class="doccomment">/// Borrows secret key as scalar field element</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">scalar</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">ScalarField</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>
-    }
+    <span class="doccomment">/// Borrows secret key as scalar field element
+    </span><span class="kw">pub fn </span>scalar(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ScalarField {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0
+    </span>}
 
-    <span class="doccomment">/// Convert secret key into scalar field element</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_scalar</span>(<span class="self">self</span>) -&gt; <span class="ident">ScalarField</span> {
-        <span class="self">self</span>.<span class="number">0</span>
-    }
+    <span class="doccomment">/// Convert secret key into scalar field element
+    </span><span class="kw">pub fn </span>into_scalar(<span class="self">self</span>) -&gt; ScalarField {
+        <span class="self">self</span>.<span class="number">0
+    </span>}
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="mina_signer" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="mina_signer" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

@@ -101,108 +101,108 @@
 <span id="101">101</span>
 <span id="102">102</span>
 <span id="103">103</span>
-</pre><pre class="rust"><code><span class="doccomment">//! This type and logic only exists for the OCaml side.</span>
-<span class="doccomment">//! As we move more code to the Rust side,</span>
-<span class="doccomment">//! we hope to be able to remove this code in the future.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This type and logic only exists for the OCaml side.
+//! As we move more code to the Rust side,
+//! we hope to be able to remove this code in the future.
 
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">alphas::Alphas</span>, <span class="ident">circuits::scalars::RandomOracles</span>};
-<span class="kw">use</span> <span class="ident">commitment_dlog::commitment</span>::{<span class="ident">CommitmentCurve</span>, <span class="ident">PolyComm</span>};
-<span class="kw">use</span> <span class="ident">oracle::FqSponge</span>;
+</span><span class="kw">use crate</span>::{alphas::Alphas, circuits::scalars::RandomOracles};
+<span class="kw">use </span>commitment_dlog::commitment::{CommitmentCurve, PolyComm};
+<span class="kw">use </span>oracle::FqSponge;
 
-<span class="doccomment">/// The result of running the oracle protocol</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">OraclesResult</span><span class="op">&lt;</span><span class="ident">G</span>, <span class="ident">EFqSponge</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">G</span>: <span class="ident">CommitmentCurve</span>,
-    <span class="ident">EFqSponge</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">FqSponge</span><span class="op">&lt;</span><span class="ident">G::BaseField</span>, <span class="ident">G</span>, <span class="ident">G::ScalarField</span><span class="op">&gt;</span>,
+<span class="doccomment">/// The result of running the oracle protocol
+</span><span class="kw">pub struct </span>OraclesResult&lt;G, EFqSponge&gt;
+<span class="kw">where
+    </span>G: CommitmentCurve,
+    EFqSponge: Clone + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
 {
-    <span class="doccomment">/// A sponge that acts on the base field of a curve</span>
-    <span class="kw">pub</span> <span class="ident">fq_sponge</span>: <span class="ident">EFqSponge</span>,
-    <span class="doccomment">/// the last evaluation of the Fq-Sponge in this protocol</span>
-    <span class="kw">pub</span> <span class="ident">digest</span>: <span class="ident">G::ScalarField</span>,
-    <span class="doccomment">/// the challenges produced in the protocol</span>
-    <span class="kw">pub</span> <span class="ident">oracles</span>: <span class="ident">RandomOracles</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// the computed powers of alpha</span>
-    <span class="kw">pub</span> <span class="ident">all_alphas</span>: <span class="ident">Alphas</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// public polynomial evaluations</span>
-    <span class="kw">pub</span> <span class="ident">p_eval</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// zeta^n and (zeta * omega)^n</span>
-    <span class="kw">pub</span> <span class="ident">powers_of_eval_points_for_chunks</span>: [<span class="ident">G::ScalarField</span>; <span class="number">2</span>],
-    <span class="doccomment">/// recursion data</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::type_complexity</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">polys</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
-    <span class="doccomment">/// pre-computed zeta^n</span>
-    <span class="kw">pub</span> <span class="ident">zeta1</span>: <span class="ident">G::ScalarField</span>,
-    <span class="doccomment">/// The evaluation f(zeta) - t(zeta) * Z_H(zeta)</span>
-    <span class="kw">pub</span> <span class="ident">ft_eval0</span>: <span class="ident">G::ScalarField</span>,
-    <span class="doccomment">/// Used by the OCaml side</span>
-    <span class="kw">pub</span> <span class="ident">combined_inner_product</span>: <span class="ident">G::ScalarField</span>,
+    <span class="doccomment">/// A sponge that acts on the base field of a curve
+    </span><span class="kw">pub </span>fq_sponge: EFqSponge,
+    <span class="doccomment">/// the last evaluation of the Fq-Sponge in this protocol
+    </span><span class="kw">pub </span>digest: G::ScalarField,
+    <span class="doccomment">/// the challenges produced in the protocol
+    </span><span class="kw">pub </span>oracles: RandomOracles&lt;G::ScalarField&gt;,
+    <span class="doccomment">/// the computed powers of alpha
+    </span><span class="kw">pub </span>all_alphas: Alphas&lt;G::ScalarField&gt;,
+    <span class="doccomment">/// public polynomial evaluations
+    </span><span class="kw">pub </span>p_eval: Vec&lt;Vec&lt;G::ScalarField&gt;&gt;,
+    <span class="doccomment">/// zeta^n and (zeta * omega)^n
+    </span><span class="kw">pub </span>powers_of_eval_points_for_chunks: [G::ScalarField; <span class="number">2</span>],
+    <span class="doccomment">/// recursion data
+    </span><span class="attribute">#[allow(clippy::type_complexity)]
+    </span><span class="kw">pub </span>polys: Vec&lt;(PolyComm&lt;G&gt;, Vec&lt;Vec&lt;G::ScalarField&gt;&gt;)&gt;,
+    <span class="doccomment">/// pre-computed zeta^n
+    </span><span class="kw">pub </span>zeta1: G::ScalarField,
+    <span class="doccomment">/// The evaluation f(zeta) - t(zeta) * Z_H(zeta)
+    </span><span class="kw">pub </span>ft_eval0: G::ScalarField,
+    <span class="doccomment">/// Used by the OCaml side
+    </span><span class="kw">pub </span>combined_inner_product: G::ScalarField,
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;ocaml_types&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">caml</span> {
-    <span class="kw">use</span> <span class="ident">ark_ff::PrimeField</span>;
-    <span class="kw">use</span> <span class="ident">commitment_dlog::commitment::shift_scalar</span>;
+<span class="attribute">#[cfg(feature = <span class="string">&quot;ocaml_types&quot;</span>)]
+</span><span class="kw">pub mod </span>caml {
+    <span class="kw">use </span>ark_ff::PrimeField;
+    <span class="kw">use </span>commitment_dlog::commitment::shift_scalar;
 
-    <span class="kw">use</span> <span class="kw">crate</span>::{
-        <span class="ident">circuits::scalars::caml::CamlRandomOracles</span>, <span class="ident">curve::KimchiCurve</span>, <span class="ident">error::VerifyError</span>,
-        <span class="ident">plonk_sponge::FrSponge</span>, <span class="ident">proof::ProverProof</span>, <span class="ident">verifier_index::VerifierIndex</span>,
+    <span class="kw">use crate</span>::{
+        circuits::scalars::caml::CamlRandomOracles, curve::KimchiCurve, error::VerifyError,
+        plonk_sponge::FrSponge, proof::ProverProof, verifier_index::VerifierIndex,
     };
 
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">ocaml_gen::Struct</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlOracles</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span> {
-        <span class="kw">pub</span> <span class="ident">o</span>: <span class="ident">CamlRandomOracles</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
-        <span class="kw">pub</span> <span class="ident">p_eval</span>: (<span class="ident">CamlF</span>, <span class="ident">CamlF</span>),
-        <span class="kw">pub</span> <span class="ident">opening_prechallenges</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
-        <span class="kw">pub</span> <span class="ident">digest_before_evaluations</span>: <span class="ident">CamlF</span>,
+    <span class="attribute">#[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    </span><span class="kw">pub struct </span>CamlOracles&lt;CamlF&gt; {
+        <span class="kw">pub </span>o: CamlRandomOracles&lt;CamlF&gt;,
+        <span class="kw">pub </span>p_eval: (CamlF, CamlF),
+        <span class="kw">pub </span>opening_prechallenges: Vec&lt;CamlF&gt;,
+        <span class="kw">pub </span>digest_before_evaluations: CamlF,
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_caml_oracles</span><span class="op">&lt;</span><span class="ident">G</span>, <span class="ident">CamlF</span>, <span class="ident">EFqSponge</span>, <span class="ident">EFrSponge</span>, <span class="ident">CurveParams</span><span class="op">&gt;</span>(
-        <span class="ident">lgr_comm</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">index</span>: <span class="ident">VerifierIndex</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
-        <span class="ident">proof</span>: <span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CamlOracles</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>, <span class="ident">VerifyError</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">G</span>: <span class="ident">KimchiCurve</span>,
-        <span class="ident">G::BaseField</span>: <span class="ident">PrimeField</span>,
-        <span class="ident">EFqSponge</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">FqSponge</span><span class="op">&lt;</span><span class="ident">G::BaseField</span>, <span class="ident">G</span>, <span class="ident">G::ScalarField</span><span class="op">&gt;</span>,
-        <span class="ident">EFrSponge</span>: <span class="ident">FrSponge</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span>,
-        <span class="ident">CamlF</span>: <span class="ident">From</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span>,
+    <span class="kw">pub fn </span>create_caml_oracles&lt;G, CamlF, EFqSponge, EFrSponge, CurveParams&gt;(
+        lgr_comm: Vec&lt;PolyComm&lt;G&gt;&gt;,
+        index: VerifierIndex&lt;G&gt;,
+        proof: ProverProof&lt;G&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;CamlOracles&lt;CamlF&gt;, VerifyError&gt;
+    <span class="kw">where
+        </span>G: KimchiCurve,
+        G::BaseField: PrimeField,
+        EFqSponge: Clone + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
+        EFrSponge: FrSponge&lt;G::ScalarField&gt;,
+        CamlF: From&lt;G::ScalarField&gt;,
     {
-        <span class="kw">let</span> <span class="ident">lgr_comm</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">lgr_comm</span>.<span class="ident">into_iter</span>().<span class="ident">take</span>(<span class="ident">proof</span>.<span class="ident">public</span>.<span class="ident">len</span>()).<span class="ident">collect</span>();
-        <span class="kw">let</span> <span class="ident">lgr_comm_refs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">lgr_comm</span>.<span class="ident">iter</span>().<span class="ident">collect</span>();
+        <span class="kw">let </span>lgr_comm: Vec&lt;PolyComm&lt;G&gt;&gt; = lgr_comm.into_iter().take(proof.public.len()).collect();
+        <span class="kw">let </span>lgr_comm_refs: Vec&lt;<span class="kw">_</span>&gt; = lgr_comm.iter().collect();
 
-        <span class="kw">let</span> <span class="ident">negated_public</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">proof</span>.<span class="ident">public</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="op">-</span><span class="kw-2">*</span><span class="ident">s</span>).<span class="ident">collect</span>();
+        <span class="kw">let </span>negated_public: Vec&lt;<span class="kw">_</span>&gt; = proof.public.iter().map(|s| -<span class="kw-2">*</span>s).collect();
 
-        <span class="kw">let</span> <span class="ident">p_comm</span> <span class="op">=</span> <span class="ident">PolyComm</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::multi_scalar_mul</span>(<span class="kw-2">&amp;</span><span class="ident">lgr_comm_refs</span>, <span class="kw-2">&amp;</span><span class="ident">negated_public</span>);
+        <span class="kw">let </span>p_comm = PolyComm::&lt;G&gt;::multi_scalar_mul(<span class="kw-2">&amp;</span>lgr_comm_refs, <span class="kw-2">&amp;</span>negated_public);
 
-        <span class="kw">let</span> <span class="ident">oracles_result</span> <span class="op">=</span> <span class="ident">proof</span>.<span class="ident">oracles</span>::<span class="op">&lt;</span><span class="ident">EFqSponge</span>, <span class="ident">EFrSponge</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>, <span class="kw-2">&amp;</span><span class="ident">p_comm</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>oracles_result = proof.oracles::&lt;EFqSponge, EFrSponge&gt;(<span class="kw-2">&amp;</span>index, <span class="kw-2">&amp;</span>p_comm)<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">sponge</span>, <span class="ident">combined_inner_product</span>, <span class="ident">p_eval</span>, <span class="ident">digest</span>, <span class="ident">oracles</span>) <span class="op">=</span> (
-            <span class="ident">oracles_result</span>.<span class="ident">fq_sponge</span>,
-            <span class="ident">oracles_result</span>.<span class="ident">combined_inner_product</span>,
-            <span class="ident">oracles_result</span>.<span class="ident">p_eval</span>,
-            <span class="ident">oracles_result</span>.<span class="ident">digest</span>,
-            <span class="ident">oracles_result</span>.<span class="ident">oracles</span>,
+        <span class="kw">let </span>(<span class="kw-2">mut </span>sponge, combined_inner_product, p_eval, digest, oracles) = (
+            oracles_result.fq_sponge,
+            oracles_result.combined_inner_product,
+            oracles_result.p_eval,
+            oracles_result.digest,
+            oracles_result.oracles,
         );
 
-        <span class="ident">sponge</span>.<span class="ident">absorb_fr</span>(<span class="kw-2">&amp;</span>[<span class="ident">shift_scalar</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>(<span class="ident">combined_inner_product</span>)]);
+        sponge.absorb_fr(<span class="kw-2">&amp;</span>[shift_scalar::&lt;G&gt;(combined_inner_product)]);
 
-        <span class="kw">let</span> <span class="ident">opening_prechallenges</span> <span class="op">=</span> <span class="ident">proof</span>
-            .<span class="ident">proof</span>
-            .<span class="ident">prechallenges</span>(<span class="kw-2">&amp;mut</span> <span class="ident">sponge</span>)
-            .<span class="ident">into_iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="number">0</span>.<span class="ident">into</span>())
-            .<span class="ident">collect</span>();
+        <span class="kw">let </span>opening_prechallenges = proof
+            .proof
+            .prechallenges(<span class="kw-2">&amp;mut </span>sponge)
+            .into_iter()
+            .map(|x| x.<span class="number">0</span>.into())
+            .collect();
 
-        <span class="prelude-val">Ok</span>(<span class="ident">CamlOracles</span> {
-            <span class="ident">o</span>: <span class="ident">oracles</span>.<span class="ident">into</span>(),
-            <span class="ident">p_eval</span>: (<span class="ident">p_eval</span>[<span class="number">0</span>][<span class="number">0</span>].<span class="ident">into</span>(), <span class="ident">p_eval</span>[<span class="number">1</span>][<span class="number">0</span>].<span class="ident">into</span>()),
-            <span class="ident">opening_prechallenges</span>,
-            <span class="ident">digest_before_evaluations</span>: <span class="ident">digest</span>.<span class="ident">into</span>(),
+        <span class="prelude-val">Ok</span>(CamlOracles {
+            o: oracles.into(),
+            p_eval: (p_eval[<span class="number">0</span>][<span class="number">0</span>].into(), p_eval[<span class="number">1</span>][<span class="number">0</span>].into()),
+            opening_prechallenges,
+            digest_before_evaluations: digest.into(),
         })
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

@@ -287,294 +287,294 @@
 <span id="287">287</span>
 <span id="288">288</span>
 <span id="289">289</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Useful helper methods to extend [ark_ff::Field].</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Useful helper methods to extend [ark_ff::Field].
 
-<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">BigInteger</span>, <span class="ident">Field</span>, <span class="ident">FpParameters</span>, <span class="ident">PrimeField</span>};
-<span class="kw">use</span> <span class="ident">num_bigint::BigUint</span>;
-<span class="kw">use</span> <span class="ident">std::ops::Neg</span>;
-<span class="kw">use</span> <span class="ident">thiserror::Error</span>;
+</span><span class="kw">use </span>ark_ff::{BigInteger, Field, FpParameters, PrimeField};
+<span class="kw">use </span>num_bigint::BigUint;
+<span class="kw">use </span>std::ops::Neg;
+<span class="kw">use </span>thiserror::Error;
 
-<span class="doccomment">/// Field helpers error</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">missing_docs</span>)]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">FieldHelpersError</span> {
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;failed to deserialize field bytes&quot;</span>)]</span>
-    <span class="ident">DeserializeBytes</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;failed to decode hex&quot;</span>)]</span>
-    <span class="ident">DecodeHex</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;failed to convert BigUint into field element&quot;</span>)]</span>
-    <span class="ident">FromBigToField</span>,
+<span class="doccomment">/// Field helpers error
+</span><span class="attribute">#[allow(missing_docs)]
+#[derive(Error, Debug, Clone, PartialEq)]
+</span><span class="kw">pub enum </span>FieldHelpersError {
+    <span class="attribute">#[error(<span class="string">&quot;failed to deserialize field bytes&quot;</span>)]
+    </span>DeserializeBytes,
+    <span class="attribute">#[error(<span class="string">&quot;failed to decode hex&quot;</span>)]
+    </span>DecodeHex,
+    <span class="attribute">#[error(<span class="string">&quot;failed to convert BigUint into field element&quot;</span>)]
+    </span>FromBigToField,
 }
 
-<span class="doccomment">/// Result alias using [FieldHelpersError]</span>
-<span class="kw">pub</span> <span class="kw">type</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">std::result::Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">FieldHelpersError</span><span class="op">&gt;</span>;
+<span class="doccomment">/// Result alias using [FieldHelpersError]
+</span><span class="kw">pub type </span><span class="prelude-ty">Result</span>&lt;T&gt; = std::result::Result&lt;T, FieldHelpersError&gt;;
 
-<span class="doccomment">/// Field element helpers</span>
-<span class="doccomment">///   Unless otherwise stated everything is in little-endian byte order.</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">FieldHelpers</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Deserialize from bytes</span>
-    <span class="kw">fn</span> <span class="ident">from_bytes</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>;
+<span class="doccomment">/// Field element helpers
+///   Unless otherwise stated everything is in little-endian byte order.
+</span><span class="kw">pub trait </span>FieldHelpers&lt;F&gt; {
+    <span class="doccomment">/// Deserialize from bytes
+    </span><span class="kw">fn </span>from_bytes(bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;F&gt;;
 
-    <span class="doccomment">/// Deserialize from little-endian hex</span>
-    <span class="kw">fn</span> <span class="ident">from_hex</span>(<span class="ident">hex</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Deserialize from little-endian hex
+    </span><span class="kw">fn </span>from_hex(hex: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;F&gt;;
 
-    <span class="doccomment">/// Deserialize from bits</span>
-    <span class="kw">fn</span> <span class="ident">from_bits</span>(<span class="ident">bits</span>: <span class="kw-2">&amp;</span>[<span class="ident">bool</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Deserialize from bits
+    </span><span class="kw">fn </span>from_bits(bits: <span class="kw-2">&amp;</span>[bool]) -&gt; <span class="prelude-ty">Result</span>&lt;F&gt;;
 
-    <span class="doccomment">/// Serialize to bytes</span>
-    <span class="kw">fn</span> <span class="ident">to_bytes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Serialize to bytes
+    </span><span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;u8&gt;;
 
-    <span class="doccomment">/// Serialize to hex</span>
-    <span class="kw">fn</span> <span class="ident">to_hex</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">String</span>;
+    <span class="doccomment">/// Serialize to hex
+    </span><span class="kw">fn </span>to_hex(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String;
 
-    <span class="doccomment">/// Serialize to bits</span>
-    <span class="kw">fn</span> <span class="ident">to_bits</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Serialize to bits
+    </span><span class="kw">fn </span>to_bits(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;bool&gt;;
 
-    <span class="doccomment">/// Field size in bytes</span>
-    <span class="kw">fn</span> <span class="ident">size_in_bytes</span>() -&gt; <span class="ident">usize</span>
-    <span class="kw">where</span>
-        <span class="ident">F</span>: <span class="ident">PrimeField</span>,
+    <span class="doccomment">/// Field size in bytes
+    </span><span class="kw">fn </span>size_in_bytes() -&gt; usize
+    <span class="kw">where
+        </span>F: PrimeField,
     {
-        <span class="ident">F::size_in_bits</span>() <span class="op">/</span> <span class="number">8</span> <span class="op">+</span> (<span class="ident">F::size_in_bits</span>() <span class="op">%</span> <span class="number">8</span> <span class="op">!</span><span class="op">=</span> <span class="number">0</span>) <span class="kw">as</span> <span class="ident">usize</span>
+        F::size_in_bits() / <span class="number">8 </span>+ (F::size_in_bits() % <span class="number">8 </span>!= <span class="number">0</span>) <span class="kw">as </span>usize
     }
 
-    <span class="doccomment">/// Get the modulus as `BigUint`</span>
-    <span class="kw">fn</span> <span class="ident">modulus_biguint</span>() -&gt; <span class="ident">BigUint</span>
-    <span class="kw">where</span>
-        <span class="ident">F</span>: <span class="ident">PrimeField</span>,
+    <span class="doccomment">/// Get the modulus as `BigUint`
+    </span><span class="kw">fn </span>modulus_biguint() -&gt; BigUint
+    <span class="kw">where
+        </span>F: PrimeField,
     {
-        <span class="ident">BigUint::from_bytes_le</span>(<span class="kw-2">&amp;</span><span class="ident">F::Params::MODULUS</span>.<span class="ident">to_bytes_le</span>())
+        BigUint::from_bytes_le(<span class="kw-2">&amp;</span>F::Params::MODULUS.to_bytes_le())
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span> <span class="ident">FieldHelpers</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">F</span> {
-    <span class="kw">fn</span> <span class="ident">from_bytes</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-        <span class="ident">F::deserialize</span>(<span class="kw-2">&amp;mut</span> <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="ident">bytes</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">FieldHelpersError::DeserializeBytes</span>)
+<span class="kw">impl</span>&lt;F: Field&gt; FieldHelpers&lt;F&gt; <span class="kw">for </span>F {
+    <span class="kw">fn </span>from_bytes(bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;F&gt; {
+        F::deserialize(<span class="kw-2">&amp;mut &amp;*</span>bytes).map_err(|<span class="kw">_</span>| FieldHelpersError::DeserializeBytes)
     }
 
-    <span class="kw">fn</span> <span class="ident">from_hex</span>(<span class="ident">hex</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">bytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">hex::decode</span>(<span class="ident">hex</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">FieldHelpersError::DecodeHex</span>)<span class="question-mark">?</span>;
-        <span class="ident">F::deserialize</span>(<span class="kw-2">&amp;mut</span> <span class="kw-2">&amp;</span><span class="ident">bytes</span>[..]).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">FieldHelpersError::DeserializeBytes</span>)
+    <span class="kw">fn </span>from_hex(hex: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;F&gt; {
+        <span class="kw">let </span>bytes: Vec&lt;u8&gt; = hex::decode(hex).map_err(|<span class="kw">_</span>| FieldHelpersError::DecodeHex)<span class="question-mark">?</span>;
+        F::deserialize(<span class="kw-2">&amp;mut &amp;</span>bytes[..]).map_err(|<span class="kw">_</span>| FieldHelpersError::DeserializeBytes)
     }
 
-    <span class="kw">fn</span> <span class="ident">from_bits</span>(<span class="ident">bits</span>: <span class="kw-2">&amp;</span>[<span class="ident">bool</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">bytes</span> <span class="op">=</span> <span class="ident">bits</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">enumerate</span>()
-            .<span class="ident">fold</span>(<span class="ident">F::zero</span>().<span class="ident">to_bytes</span>(), <span class="op">|</span><span class="kw-2">mut</span> <span class="ident">bytes</span>, (<span class="ident">i</span>, <span class="ident">bit</span>)<span class="op">|</span> {
-                <span class="ident">bytes</span>[<span class="ident">i</span> <span class="op">/</span> <span class="number">8</span>] <span class="op">|</span><span class="op">=</span> (<span class="kw-2">*</span><span class="ident">bit</span> <span class="kw">as</span> <span class="ident">u8</span>) <span class="op">&lt;</span><span class="op">&lt;</span> (<span class="ident">i</span> <span class="op">%</span> <span class="number">8</span>);
-                <span class="ident">bytes</span>
+    <span class="kw">fn </span>from_bits(bits: <span class="kw-2">&amp;</span>[bool]) -&gt; <span class="prelude-ty">Result</span>&lt;F&gt; {
+        <span class="kw">let </span>bytes = bits
+            .iter()
+            .enumerate()
+            .fold(F::zero().to_bytes(), |<span class="kw-2">mut </span>bytes, (i, bit)| {
+                bytes[i / <span class="number">8</span>] |= (<span class="kw-2">*</span>bit <span class="kw">as </span>u8) &lt;&lt; (i % <span class="number">8</span>);
+                bytes
             });
 
-        <span class="ident">F::deserialize</span>(<span class="kw-2">&amp;mut</span> <span class="kw-2">&amp;</span><span class="ident">bytes</span>[..]).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">FieldHelpersError::DeserializeBytes</span>)
+        F::deserialize(<span class="kw-2">&amp;mut &amp;</span>bytes[..]).map_err(|<span class="kw">_</span>| FieldHelpersError::DeserializeBytes)
     }
 
-    <span class="kw">fn</span> <span class="ident">to_bytes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">bytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
-        <span class="self">self</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;mut</span> <span class="ident">bytes</span>)
-            .<span class="ident">expect</span>(<span class="string">&quot;Failed to serialize field&quot;</span>);
+    <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>bytes: Vec&lt;u8&gt; = <span class="macro">vec!</span>[];
+        <span class="self">self</span>.serialize(<span class="kw-2">&amp;mut </span>bytes)
+            .expect(<span class="string">&quot;Failed to serialize field&quot;</span>);
 
-        <span class="ident">bytes</span>
+        bytes
     }
 
-    <span class="kw">fn</span> <span class="ident">to_hex</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">String</span> {
-        <span class="ident">hex::encode</span>(<span class="self">self</span>.<span class="ident">to_bytes</span>())
+    <span class="kw">fn </span>to_hex(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
+        hex::encode(<span class="self">self</span>.to_bytes())
     }
 
-    <span class="kw">fn</span> <span class="ident">to_bits</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">to_bytes</span>().<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="macro">vec!</span>[], <span class="op">|</span><span class="kw-2">mut</span> <span class="ident">bits</span>, <span class="ident">byte</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">byte</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">byte</span>;
-            <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">8</span> {
-                <span class="ident">bits</span>.<span class="ident">push</span>(<span class="ident">byte</span> <span class="op">&amp;</span> <span class="number">0x01</span> <span class="op">==</span> <span class="number">0x01</span>);
-                <span class="ident">byte</span> <span class="op">&gt;</span><span class="op">&gt;</span><span class="op">=</span> <span class="number">1</span>;
+    <span class="kw">fn </span>to_bits(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;bool&gt; {
+        <span class="self">self</span>.to_bytes().iter().fold(<span class="macro">vec!</span>[], |<span class="kw-2">mut </span>bits, byte| {
+            <span class="kw">let </span><span class="kw-2">mut </span>byte = <span class="kw-2">*</span>byte;
+            <span class="kw">for _ in </span><span class="number">0</span>..<span class="number">8 </span>{
+                bits.push(byte &amp; <span class="number">0x01 </span>== <span class="number">0x01</span>);
+                byte &gt;&gt;= <span class="number">1</span>;
             }
-            <span class="ident">bits</span>
+            bits
         })
     }
 }
 
-<span class="doccomment">/// Field element wrapper for [BigUint]</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">FieldFromBig</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Deserialize from big unsigned integer</span>
-    <span class="kw">fn</span> <span class="ident">from_big</span>(<span class="ident">big</span>: <span class="ident">BigUint</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>;
+<span class="doccomment">/// Field element wrapper for [BigUint]
+</span><span class="kw">pub trait </span>FieldFromBig&lt;F&gt; {
+    <span class="doccomment">/// Deserialize from big unsigned integer
+    </span><span class="kw">fn </span>from_big(big: BigUint) -&gt; <span class="prelude-ty">Result</span>&lt;F&gt;;
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> <span class="ident">FieldFromBig</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">F</span> {
-    <span class="kw">fn</span> <span class="ident">from_big</span>(<span class="ident">big</span>: <span class="ident">BigUint</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-        <span class="ident">big</span>.<span class="ident">try_into</span>()
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">FieldHelpersError::FromBigToField</span>)
+<span class="kw">impl</span>&lt;F: PrimeField&gt; FieldFromBig&lt;F&gt; <span class="kw">for </span>F {
+    <span class="kw">fn </span>from_big(big: BigUint) -&gt; <span class="prelude-ty">Result</span>&lt;F&gt; {
+        big.try_into()
+            .map_err(|<span class="kw">_</span>| FieldHelpersError::FromBigToField)
     }
 }
 
-<span class="doccomment">/// Converts an [i32] into a [Field]</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">i32_to_field</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">From</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">Neg</span><span class="op">&lt;</span><span class="ident">Output</span> <span class="op">=</span> <span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="ident">i</span>: <span class="ident">i32</span>) -&gt; <span class="ident">F</span> {
-    <span class="kw">if</span> <span class="ident">i</span> <span class="op">&gt;</span><span class="op">=</span> <span class="number">0</span> {
-        <span class="ident">F::from</span>(<span class="ident">i</span> <span class="kw">as</span> <span class="ident">u64</span>)
-    } <span class="kw">else</span> {
-        <span class="op">-</span><span class="ident">F::from</span>(<span class="op">-</span><span class="ident">i</span> <span class="kw">as</span> <span class="ident">u64</span>)
+<span class="doccomment">/// Converts an [i32] into a [Field]
+</span><span class="kw">pub fn </span>i32_to_field&lt;F: From&lt;u64&gt; + Neg&lt;Output = F&gt;&gt;(i: i32) -&gt; F {
+    <span class="kw">if </span>i &gt;= <span class="number">0 </span>{
+        F::from(i <span class="kw">as </span>u64)
+    } <span class="kw">else </span>{
+        -F::from(-i <span class="kw">as </span>u64)
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-    <span class="kw">use</span> <span class="ident">ark_ec::AffineCurve</span>;
-    <span class="kw">use</span> <span class="ident">ark_ff::One</span>;
-    <span class="kw">use</span> <span class="ident">mina_curves::pasta::pallas</span>;
+    <span class="kw">use </span>ark_ec::AffineCurve;
+    <span class="kw">use </span>ark_ff::One;
+    <span class="kw">use </span>mina_curves::pasta::pallas;
 
-    <span class="doccomment">/// Affine curve point type</span>
-    <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">pallas::Pallas</span> <span class="kw">as</span> <span class="ident">CurvePoint</span>;
-    <span class="doccomment">/// Base field element type</span>
-    <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">BaseField</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">CurvePoint</span> <span class="kw">as</span> <span class="ident">AffineCurve</span><span class="op">&gt;</span><span class="ident">::BaseField</span>;
+    <span class="doccomment">/// Affine curve point type
+    </span><span class="kw">pub use </span>pallas::Pallas <span class="kw">as </span>CurvePoint;
+    <span class="doccomment">/// Base field element type
+    </span><span class="kw">pub type </span>BaseField = &lt;CurvePoint <span class="kw">as </span>AffineCurve&gt;::BaseField;
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">field_hex</span>() {
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>field_hex() {
         <span class="macro">assert_eq!</span>(
-            <span class="ident">BaseField::from_hex</span>(<span class="string">&quot;&quot;</span>),
-            <span class="prelude-val">Err</span>(<span class="ident">FieldHelpersError::DeserializeBytes</span>)
+            BaseField::from_hex(<span class="string">&quot;&quot;</span>),
+            <span class="prelude-val">Err</span>(FieldHelpersError::DeserializeBytes)
         );
         <span class="macro">assert_eq!</span>(
-            <span class="ident">BaseField::from_hex</span>(<span class="string">&quot;1428fadcf0c02396e620f14f176fddb5d769b7de2027469d027a80142ef8f07&quot;</span>),
-            <span class="prelude-val">Err</span>(<span class="ident">FieldHelpersError::DecodeHex</span>)
+            BaseField::from_hex(<span class="string">&quot;1428fadcf0c02396e620f14f176fddb5d769b7de2027469d027a80142ef8f07&quot;</span>),
+            <span class="prelude-val">Err</span>(FieldHelpersError::DecodeHex)
         );
         <span class="macro">assert_eq!</span>(
-            <span class="ident">BaseField::from_hex</span>(
-                <span class="string">&quot;0f5314f176fddb5d769b7de2027469d027ad428fadcf0c02396e6280142efb7d8&quot;</span>
+            BaseField::from_hex(
+                <span class="string">&quot;0f5314f176fddb5d769b7de2027469d027ad428fadcf0c02396e6280142efb7d8&quot;
+            </span>),
+            <span class="prelude-val">Err</span>(FieldHelpersError::DecodeHex)
+        );
+        <span class="macro">assert_eq!</span>(
+            BaseField::from_hex(<span class="string">&quot;g64244176fddb5d769b7de2027469d027ad428fadcf0c02396e6280142efb7d8&quot;</span>),
+            <span class="prelude-val">Err</span>(FieldHelpersError::DecodeHex)
+        );
+        <span class="macro">assert_eq!</span>(
+            BaseField::from_hex(<span class="string">&quot;0cdaf334e9632268a5aa959c2781fb32bf45565fe244ae42c849d3fdc7c644fd&quot;</span>),
+            <span class="prelude-val">Err</span>(FieldHelpersError::DeserializeBytes)
+        );
+
+        <span class="macro">assert_eq!</span>(
+            BaseField::from_hex(<span class="string">&quot;25b89cf1a14e2de6124fea18758bf890af76fff31b7fc68713c7653c61b49d39&quot;</span>)
+                .is_ok(),
+            <span class="bool-val">true
+        </span>);
+
+        <span class="kw">let </span>field_hex = <span class="string">&quot;f2eee8d8f6e5fb182c610cae6c5393fce69dc4d900e7b4923b074e54ad00fb36&quot;</span>;
+        <span class="macro">assert_eq!</span>(
+            BaseField::to_hex(
+                <span class="kw-2">&amp;</span>BaseField::from_hex(field_hex).expect(<span class="string">&quot;Failed to deserialize field hex&quot;</span>)
             ),
-            <span class="prelude-val">Err</span>(<span class="ident">FieldHelpersError::DecodeHex</span>)
-        );
-        <span class="macro">assert_eq!</span>(
-            <span class="ident">BaseField::from_hex</span>(<span class="string">&quot;g64244176fddb5d769b7de2027469d027ad428fadcf0c02396e6280142efb7d8&quot;</span>),
-            <span class="prelude-val">Err</span>(<span class="ident">FieldHelpersError::DecodeHex</span>)
-        );
-        <span class="macro">assert_eq!</span>(
-            <span class="ident">BaseField::from_hex</span>(<span class="string">&quot;0cdaf334e9632268a5aa959c2781fb32bf45565fe244ae42c849d3fdc7c644fd&quot;</span>),
-            <span class="prelude-val">Err</span>(<span class="ident">FieldHelpersError::DeserializeBytes</span>)
-        );
-
-        <span class="macro">assert_eq!</span>(
-            <span class="ident">BaseField::from_hex</span>(<span class="string">&quot;25b89cf1a14e2de6124fea18758bf890af76fff31b7fc68713c7653c61b49d39&quot;</span>)
-                .<span class="ident">is_ok</span>(),
-            <span class="bool-val">true</span>
-        );
-
-        <span class="kw">let</span> <span class="ident">field_hex</span> <span class="op">=</span> <span class="string">&quot;f2eee8d8f6e5fb182c610cae6c5393fce69dc4d900e7b4923b074e54ad00fb36&quot;</span>;
-        <span class="macro">assert_eq!</span>(
-            <span class="ident">BaseField::to_hex</span>(
-                <span class="kw-2">&amp;</span><span class="ident">BaseField::from_hex</span>(<span class="ident">field_hex</span>).<span class="ident">expect</span>(<span class="string">&quot;Failed to deserialize field hex&quot;</span>)
-            ),
-            <span class="ident">field_hex</span>
+            field_hex
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">field_bytes</span>() {
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>field_bytes() {
         <span class="macro">assert_eq!</span>(
-            <span class="ident">BaseField::from_bytes</span>(<span class="kw-2">&amp;</span>[
+            BaseField::from_bytes(<span class="kw-2">&amp;</span>[
                 <span class="number">46</span>, <span class="number">174</span>, <span class="number">218</span>, <span class="number">228</span>, <span class="number">42</span>, <span class="number">116</span>, <span class="number">97</span>, <span class="number">213</span>, <span class="number">149</span>, <span class="number">45</span>, <span class="number">39</span>, <span class="number">185</span>, <span class="number">126</span>, <span class="number">202</span>, <span class="number">208</span>, <span class="number">104</span>, <span class="number">182</span>,
-                <span class="number">152</span>, <span class="number">235</span>, <span class="number">185</span>, <span class="number">78</span>, <span class="number">138</span>, <span class="number">14</span>, <span class="number">76</span>, <span class="number">69</span>, <span class="number">56</span>, <span class="number">139</span>, <span class="number">182</span>, <span class="number">19</span>, <span class="number">222</span>, <span class="number">126</span>, <span class="number">8</span>
-            ])
-            .<span class="ident">is_ok</span>(),
-            <span class="bool-val">true</span>
+                <span class="number">152</span>, <span class="number">235</span>, <span class="number">185</span>, <span class="number">78</span>, <span class="number">138</span>, <span class="number">14</span>, <span class="number">76</span>, <span class="number">69</span>, <span class="number">56</span>, <span class="number">139</span>, <span class="number">182</span>, <span class="number">19</span>, <span class="number">222</span>, <span class="number">126</span>, <span class="number">8
+            </span>])
+            .is_ok(),
+            <span class="bool-val">true
+        </span>);
+
+        <span class="macro">assert_eq!</span>(
+            BaseField::from_bytes(<span class="kw-2">&amp;</span>[<span class="number">46</span>, <span class="number">174</span>, <span class="number">218</span>, <span class="number">228</span>, <span class="number">42</span>, <span class="number">116</span>, <span class="number">97</span>, <span class="number">213</span>]),
+            <span class="prelude-val">Err</span>(FieldHelpersError::DeserializeBytes)
         );
 
         <span class="macro">assert_eq!</span>(
-            <span class="ident">BaseField::from_bytes</span>(<span class="kw-2">&amp;</span>[<span class="number">46</span>, <span class="number">174</span>, <span class="number">218</span>, <span class="number">228</span>, <span class="number">42</span>, <span class="number">116</span>, <span class="number">97</span>, <span class="number">213</span>]),
-            <span class="prelude-val">Err</span>(<span class="ident">FieldHelpersError::DeserializeBytes</span>)
-        );
-
-        <span class="macro">assert_eq!</span>(
-            <span class="ident">BaseField::to_hex</span>(
-                <span class="kw-2">&amp;</span><span class="ident">BaseField::from_bytes</span>(<span class="kw-2">&amp;</span>[
+            BaseField::to_hex(
+                <span class="kw-2">&amp;</span>BaseField::from_bytes(<span class="kw-2">&amp;</span>[
                     <span class="number">46</span>, <span class="number">174</span>, <span class="number">218</span>, <span class="number">228</span>, <span class="number">42</span>, <span class="number">116</span>, <span class="number">97</span>, <span class="number">213</span>, <span class="number">149</span>, <span class="number">45</span>, <span class="number">39</span>, <span class="number">185</span>, <span class="number">126</span>, <span class="number">202</span>, <span class="number">208</span>, <span class="number">104</span>, <span class="number">182</span>,
-                    <span class="number">152</span>, <span class="number">235</span>, <span class="number">185</span>, <span class="number">78</span>, <span class="number">138</span>, <span class="number">14</span>, <span class="number">76</span>, <span class="number">69</span>, <span class="number">56</span>, <span class="number">139</span>, <span class="number">182</span>, <span class="number">19</span>, <span class="number">222</span>, <span class="number">126</span>, <span class="number">8</span>
-                ])
-                .<span class="ident">expect</span>(<span class="string">&quot;Failed to deserialize field bytes&quot;</span>)
+                    <span class="number">152</span>, <span class="number">235</span>, <span class="number">185</span>, <span class="number">78</span>, <span class="number">138</span>, <span class="number">14</span>, <span class="number">76</span>, <span class="number">69</span>, <span class="number">56</span>, <span class="number">139</span>, <span class="number">182</span>, <span class="number">19</span>, <span class="number">222</span>, <span class="number">126</span>, <span class="number">8
+                </span>])
+                .expect(<span class="string">&quot;Failed to deserialize field bytes&quot;</span>)
             ),
-            <span class="string">&quot;2eaedae42a7461d5952d27b97ecad068b698ebb94e8a0e4c45388bb613de7e08&quot;</span>
-        );
+            <span class="string">&quot;2eaedae42a7461d5952d27b97ecad068b698ebb94e8a0e4c45388bb613de7e08&quot;
+        </span>);
 
-        <span class="kw">fn</span> <span class="ident">lifetime_test</span>() -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BaseField</span><span class="op">&gt;</span> {
-            <span class="kw">let</span> <span class="ident">bytes</span> <span class="op">=</span> [<span class="number">0</span>; <span class="number">32</span>];
-            <span class="ident">BaseField::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">bytes</span>)
+        <span class="kw">fn </span>lifetime_test() -&gt; <span class="prelude-ty">Result</span>&lt;BaseField&gt; {
+            <span class="kw">let </span>bytes = [<span class="number">0</span>; <span class="number">32</span>];
+            BaseField::from_bytes(<span class="kw-2">&amp;</span>bytes)
         }
-        <span class="macro">assert_eq!</span>(<span class="ident">lifetime_test</span>().<span class="ident">is_ok</span>(), <span class="bool-val">true</span>);
+        <span class="macro">assert_eq!</span>(lifetime_test().is_ok(), <span class="bool-val">true</span>);
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">field_bits</span>() {
-        <span class="kw">let</span> <span class="ident">fe</span> <span class="op">=</span>
-            <span class="ident">BaseField::from_hex</span>(<span class="string">&quot;2cc3342ad3cd516175b8f0d0189bc3bdcb7947a4cc96c7cfc8d5df10cc443832&quot;</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;Failed to deserialize field hex&quot;</span>);
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>field_bits() {
+        <span class="kw">let </span>fe =
+            BaseField::from_hex(<span class="string">&quot;2cc3342ad3cd516175b8f0d0189bc3bdcb7947a4cc96c7cfc8d5df10cc443832&quot;</span>)
+                .expect(<span class="string">&quot;Failed to deserialize field hex&quot;</span>);
 
-        <span class="kw">let</span> <span class="ident">fe_check</span> <span class="op">=</span>
-            <span class="ident">BaseField::from_bits</span>(<span class="kw-2">&amp;</span><span class="ident">fe</span>.<span class="ident">to_bits</span>()).<span class="ident">expect</span>(<span class="string">&quot;Failed to deserialize field bits&quot;</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">fe</span>, <span class="ident">fe_check</span>);
+        <span class="kw">let </span>fe_check =
+            BaseField::from_bits(<span class="kw-2">&amp;</span>fe.to_bits()).expect(<span class="string">&quot;Failed to deserialize field bits&quot;</span>);
+        <span class="macro">assert_eq!</span>(fe, fe_check);
 
         <span class="macro">assert_eq!</span>(
-            <span class="ident">BaseField::from_bits</span>(
-                <span class="kw-2">&amp;</span><span class="ident">BaseField::from_hex</span>(
-                    <span class="string">&quot;e9a8f3b489990ed7eddce497b7138c6a06ff802d1b58fca1997c5f2ee971cd32&quot;</span>
-                )
-                .<span class="ident">expect</span>(<span class="string">&quot;Failed to deserialize field hex&quot;</span>)
-                .<span class="ident">to_bits</span>()
+            BaseField::from_bits(
+                <span class="kw-2">&amp;</span>BaseField::from_hex(
+                    <span class="string">&quot;e9a8f3b489990ed7eddce497b7138c6a06ff802d1b58fca1997c5f2ee971cd32&quot;
+                </span>)
+                .expect(<span class="string">&quot;Failed to deserialize field hex&quot;</span>)
+                .to_bits()
             )
-            .<span class="ident">is_ok</span>(),
-            <span class="bool-val">true</span>
+            .is_ok(),
+            <span class="bool-val">true
+        </span>);
+
+        <span class="macro">assert_eq!</span>(
+            BaseField::from_bits(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="bool-val">true</span>; BaseField::size_in_bits()]),
+            <span class="prelude-val">Err</span>(FieldHelpersError::DeserializeBytes)
         );
 
         <span class="macro">assert_eq!</span>(
-            <span class="ident">BaseField::from_bits</span>(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="bool-val">true</span>; <span class="ident">BaseField::size_in_bits</span>()]),
-            <span class="prelude-val">Err</span>(<span class="ident">FieldHelpersError::DeserializeBytes</span>)
-        );
+            BaseField::from_bits(<span class="kw-2">&amp;</span>[<span class="bool-val">false</span>, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">true</span>]).is_ok(),
+            <span class="bool-val">true
+        </span>);
 
         <span class="macro">assert_eq!</span>(
-            <span class="ident">BaseField::from_bits</span>(<span class="kw-2">&amp;</span>[<span class="bool-val">false</span>, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">true</span>]).<span class="ident">is_ok</span>(),
-            <span class="bool-val">true</span>
-        );
-
-        <span class="macro">assert_eq!</span>(
-            <span class="ident">BaseField::from_bits</span>(<span class="kw-2">&amp;</span>[<span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>]).<span class="ident">expect</span>(<span class="string">&quot;Failed to deserialize field bytes&quot;</span>),
-            <span class="ident">BaseField::one</span>()
+            BaseField::from_bits(<span class="kw-2">&amp;</span>[<span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>]).expect(<span class="string">&quot;Failed to deserialize field bytes&quot;</span>),
+            BaseField::one()
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">field_big</span>() {
-        <span class="kw">let</span> <span class="ident">fe_1024</span> <span class="op">=</span> <span class="ident">BaseField::from</span>(<span class="number">1024u32</span>);
-        <span class="kw">let</span> <span class="ident">big_1024</span> <span class="op">=</span> <span class="ident">fe_1024</span>.<span class="ident">into</span>();
-        <span class="macro">assert_eq!</span>(<span class="ident">big_1024</span>, <span class="ident">BigUint::new</span>(<span class="macro">vec!</span>[<span class="number">1024</span>]));
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>field_big() {
+        <span class="kw">let </span>fe_1024 = BaseField::from(<span class="number">1024u32</span>);
+        <span class="kw">let </span>big_1024 = fe_1024.into();
+        <span class="macro">assert_eq!</span>(big_1024, BigUint::new(<span class="macro">vec!</span>[<span class="number">1024</span>]));
 
         <span class="macro">assert_eq!</span>(
-            <span class="ident">BaseField::from_big</span>(<span class="ident">big_1024</span>).<span class="ident">expect</span>(<span class="string">&quot;Failed to deserialize big uint&quot;</span>),
-            <span class="ident">fe_1024</span>
+            BaseField::from_big(big_1024).expect(<span class="string">&quot;Failed to deserialize big uint&quot;</span>),
+            fe_1024
         );
 
-        <span class="kw">let</span> <span class="ident">be_zero_32bytes</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>];
-        <span class="kw">let</span> <span class="ident">be_zero_1byte</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="number">0x00</span>];
-        <span class="kw">let</span> <span class="ident">big_zero_32</span> <span class="op">=</span> <span class="ident">BigUint::from_bytes_be</span>(<span class="kw-2">&amp;</span><span class="ident">be_zero_32bytes</span>);
-        <span class="kw">let</span> <span class="ident">big_zero_1</span> <span class="op">=</span> <span class="ident">BigUint::from_bytes_be</span>(<span class="kw-2">&amp;</span><span class="ident">be_zero_1byte</span>);
-        <span class="kw">let</span> <span class="ident">field_zero</span> <span class="op">=</span> <span class="ident">BaseField::from</span>(<span class="number">0u32</span>);
+        <span class="kw">let </span>be_zero_32bytes = <span class="macro">vec!</span>[<span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>];
+        <span class="kw">let </span>be_zero_1byte = <span class="macro">vec!</span>[<span class="number">0x00</span>];
+        <span class="kw">let </span>big_zero_32 = BigUint::from_bytes_be(<span class="kw-2">&amp;</span>be_zero_32bytes);
+        <span class="kw">let </span>big_zero_1 = BigUint::from_bytes_be(<span class="kw-2">&amp;</span>be_zero_1byte);
+        <span class="kw">let </span>field_zero = BaseField::from(<span class="number">0u32</span>);
 
         <span class="macro">assert_eq!</span>(
-            <span class="ident">BigUint::from_bytes_be</span>(<span class="kw-2">&amp;</span><span class="ident">field_zero</span>.<span class="ident">into_repr</span>().<span class="ident">to_bytes_be</span>()),
-            <span class="ident">BigUint::from_bytes_be</span>(<span class="kw-2">&amp;</span><span class="ident">be_zero_32bytes</span>)
+            BigUint::from_bytes_be(<span class="kw-2">&amp;</span>field_zero.into_repr().to_bytes_be()),
+            BigUint::from_bytes_be(<span class="kw-2">&amp;</span>be_zero_32bytes)
         );
 
         <span class="macro">assert_eq!</span>(
-            <span class="ident">BaseField::from_big</span>(<span class="ident">BigUint::from_bytes_be</span>(<span class="kw-2">&amp;</span><span class="ident">be_zero_32bytes</span>))
-                .<span class="ident">expect</span>(<span class="string">&quot;Failed to convert big uint&quot;</span>),
-            <span class="ident">field_zero</span>
+            BaseField::from_big(BigUint::from_bytes_be(<span class="kw-2">&amp;</span>be_zero_32bytes))
+                .expect(<span class="string">&quot;Failed to convert big uint&quot;</span>),
+            field_zero
         );
 
-        <span class="macro">assert_eq!</span>(<span class="ident">big_zero_32</span>, <span class="ident">big_zero_1</span>);
+        <span class="macro">assert_eq!</span>(big_zero_32, big_zero_1);
 
         <span class="macro">assert_eq!</span>(
-            <span class="ident">BaseField::from_big</span>(<span class="ident">big_zero_32</span>).<span class="ident">expect</span>(<span class="string">&quot;Failed&quot;</span>),
-            <span class="ident">BaseField::from_big</span>(<span class="ident">big_zero_1</span>).<span class="ident">expect</span>(<span class="string">&quot;Failed&quot;</span>)
+            BaseField::from_big(big_zero_32).expect(<span class="string">&quot;Failed&quot;</span>),
+            BaseField::from_big(big_zero_1).expect(<span class="string">&quot;Failed&quot;</span>)
         );
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="o1_utils" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="o1_utils" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

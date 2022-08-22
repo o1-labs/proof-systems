@@ -138,145 +138,145 @@
 <span id="138">138</span>
 <span id="139">139</span>
 <span id="140">140</span>
-</pre><pre class="rust"><code><span class="doccomment">//! This module implements the linearization.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This module implements the linearization.
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::alphas::Alphas</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::argument</span>::{<span class="ident">Argument</span>, <span class="ident">ArgumentType</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::lookup</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::lookup::constraints::LookupConfiguration</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::polynomials::chacha</span>::{<span class="ident">ChaCha0</span>, <span class="ident">ChaCha1</span>, <span class="ident">ChaCha2</span>, <span class="ident">ChaChaFinal</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::polynomials::complete_add::CompleteAdd</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::polynomials::endomul_scalar::EndomulScalar</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::polynomials::endosclmul::EndosclMul</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::polynomials::permutation</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::polynomials::poseidon::Poseidon</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::polynomials::range_check</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::polynomials::varbasemul::VarbaseMul</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
-    <span class="ident">expr</span>::{<span class="ident">Column</span>, <span class="ident">ConstantExpr</span>, <span class="ident">Expr</span>, <span class="ident">Linearization</span>, <span class="ident">PolishToken</span>},
-    <span class="ident">gate::GateType</span>,
-    <span class="ident">wires</span>::<span class="kw-2">*</span>,
+</span><span class="kw">use </span><span class="kw">crate</span>::alphas::Alphas;
+<span class="kw">use </span><span class="kw">crate</span>::circuits::argument::{Argument, ArgumentType};
+<span class="kw">use </span><span class="kw">crate</span>::circuits::lookup;
+<span class="kw">use </span><span class="kw">crate</span>::circuits::lookup::constraints::LookupConfiguration;
+<span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal};
+<span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::complete_add::CompleteAdd;
+<span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::endomul_scalar::EndomulScalar;
+<span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::endosclmul::EndosclMul;
+<span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::permutation;
+<span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::poseidon::Poseidon;
+<span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::range_check;
+<span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::varbasemul::VarbaseMul;
+<span class="kw">use </span><span class="kw">crate</span>::circuits::{
+    expr::{Column, ConstantExpr, Expr, Linearization, PolishToken},
+    gate::GateType,
+    wires::<span class="kw-2">*</span>,
 };
-<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">SquareRootField</span>};
+<span class="kw">use </span>ark_ff::{FftField, SquareRootField};
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">constraints_expr</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">SquareRootField</span><span class="op">&gt;</span>(
-    <span class="ident">chacha</span>: <span class="ident">bool</span>,
-    <span class="ident">range_check</span>: <span class="ident">bool</span>,
-    <span class="ident">lookup_constraint_system</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">LookupConfiguration</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-) -&gt; (<span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">ConstantExpr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">Alphas</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) {
-    <span class="comment">// register powers of alpha so that we don&#39;t reuse them across mutually inclusive constraints</span>
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">powers_of_alpha</span> <span class="op">=</span> <span class="ident">Alphas</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::default</span>();
+<span class="kw">pub fn </span>constraints_expr&lt;F: FftField + SquareRootField&gt;(
+    chacha: bool,
+    range_check: bool,
+    lookup_constraint_system: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>LookupConfiguration&lt;F&gt;&gt;,
+) -&gt; (Expr&lt;ConstantExpr&lt;F&gt;&gt;, Alphas&lt;F&gt;) {
+    <span class="comment">// register powers of alpha so that we don&#39;t reuse them across mutually inclusive constraints
+    </span><span class="kw">let </span><span class="kw-2">mut </span>powers_of_alpha = Alphas::&lt;F&gt;::default();
 
-    <span class="comment">// Set up powers of alpha. Only the max number of constraints matters.</span>
-    <span class="comment">// The gate type argument can just be the zero gate.</span>
-    <span class="ident">powers_of_alpha</span>.<span class="ident">register</span>(
-        <span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::Zero</span>),
-        <span class="ident">VarbaseMul</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::CONSTRAINTS</span>,
+    <span class="comment">// Set up powers of alpha. Only the max number of constraints matters.
+    // The gate type argument can just be the zero gate.
+    </span>powers_of_alpha.register(
+        ArgumentType::Gate(GateType::Zero),
+        VarbaseMul::&lt;F&gt;::CONSTRAINTS,
     );
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">expr</span> <span class="op">=</span> <span class="ident">Poseidon::combined_constraints</span>(<span class="kw-2">&amp;</span><span class="ident">powers_of_alpha</span>);
-    <span class="ident">expr</span> <span class="op">+</span><span class="op">=</span> <span class="ident">VarbaseMul::combined_constraints</span>(<span class="kw-2">&amp;</span><span class="ident">powers_of_alpha</span>);
-    <span class="ident">expr</span> <span class="op">+</span><span class="op">=</span> <span class="ident">CompleteAdd::combined_constraints</span>(<span class="kw-2">&amp;</span><span class="ident">powers_of_alpha</span>);
-    <span class="ident">expr</span> <span class="op">+</span><span class="op">=</span> <span class="ident">EndosclMul::combined_constraints</span>(<span class="kw-2">&amp;</span><span class="ident">powers_of_alpha</span>);
-    <span class="ident">expr</span> <span class="op">+</span><span class="op">=</span> <span class="ident">EndomulScalar::combined_constraints</span>(<span class="kw-2">&amp;</span><span class="ident">powers_of_alpha</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>expr = Poseidon::combined_constraints(<span class="kw-2">&amp;</span>powers_of_alpha);
+    expr += VarbaseMul::combined_constraints(<span class="kw-2">&amp;</span>powers_of_alpha);
+    expr += CompleteAdd::combined_constraints(<span class="kw-2">&amp;</span>powers_of_alpha);
+    expr += EndosclMul::combined_constraints(<span class="kw-2">&amp;</span>powers_of_alpha);
+    expr += EndomulScalar::combined_constraints(<span class="kw-2">&amp;</span>powers_of_alpha);
 
-    <span class="kw">if</span> <span class="ident">chacha</span> {
-        <span class="ident">expr</span> <span class="op">+</span><span class="op">=</span> <span class="ident">ChaCha0::combined_constraints</span>(<span class="kw-2">&amp;</span><span class="ident">powers_of_alpha</span>);
-        <span class="ident">expr</span> <span class="op">+</span><span class="op">=</span> <span class="ident">ChaCha1::combined_constraints</span>(<span class="kw-2">&amp;</span><span class="ident">powers_of_alpha</span>);
-        <span class="ident">expr</span> <span class="op">+</span><span class="op">=</span> <span class="ident">ChaCha2::combined_constraints</span>(<span class="kw-2">&amp;</span><span class="ident">powers_of_alpha</span>);
-        <span class="ident">expr</span> <span class="op">+</span><span class="op">=</span> <span class="ident">ChaChaFinal::combined_constraints</span>(<span class="kw-2">&amp;</span><span class="ident">powers_of_alpha</span>);
+    <span class="kw">if </span>chacha {
+        expr += ChaCha0::combined_constraints(<span class="kw-2">&amp;</span>powers_of_alpha);
+        expr += ChaCha1::combined_constraints(<span class="kw-2">&amp;</span>powers_of_alpha);
+        expr += ChaCha2::combined_constraints(<span class="kw-2">&amp;</span>powers_of_alpha);
+        expr += ChaChaFinal::combined_constraints(<span class="kw-2">&amp;</span>powers_of_alpha);
     }
 
-    <span class="kw">if</span> <span class="ident">range_check</span> {
-        <span class="ident">expr</span> <span class="op">+</span><span class="op">=</span> <span class="ident">range_check::gadget::combined_constraints</span>(<span class="kw-2">&amp;</span><span class="ident">powers_of_alpha</span>);
+    <span class="kw">if </span>range_check {
+        expr += range_check::gadget::combined_constraints(<span class="kw-2">&amp;</span>powers_of_alpha);
     }
 
-    <span class="comment">// permutation</span>
-    <span class="ident">powers_of_alpha</span>.<span class="ident">register</span>(<span class="ident">ArgumentType::Permutation</span>, <span class="ident">permutation::CONSTRAINTS</span>);
+    <span class="comment">// permutation
+    </span>powers_of_alpha.register(ArgumentType::Permutation, permutation::CONSTRAINTS);
 
-    <span class="comment">// lookup</span>
-    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">lcs</span>) <span class="op">=</span> <span class="ident">lookup_constraint_system</span>.<span class="ident">as_ref</span>() {
-        <span class="kw">let</span> <span class="ident">constraints</span> <span class="op">=</span> <span class="ident">lookup::constraints::constraints</span>(<span class="ident">lcs</span>);
+    <span class="comment">// lookup
+    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(lcs) = lookup_constraint_system.as_ref() {
+        <span class="kw">let </span>constraints = lookup::constraints::constraints(lcs);
 
-        <span class="comment">// note: the number of constraints depends on the lookup configuration,</span>
-        <span class="comment">// specifically the presence of runtime tables.</span>
-        <span class="kw">let</span> <span class="ident">constraints_len</span> <span class="op">=</span> <span class="ident">u32::try_from</span>(<span class="ident">constraints</span>.<span class="ident">len</span>())
-            .<span class="ident">expect</span>(<span class="string">&quot;we always expect a relatively low amount of constraints&quot;</span>);
+        <span class="comment">// note: the number of constraints depends on the lookup configuration,
+        // specifically the presence of runtime tables.
+        </span><span class="kw">let </span>constraints_len = u32::try_from(constraints.len())
+            .expect(<span class="string">&quot;we always expect a relatively low amount of constraints&quot;</span>);
 
-        <span class="ident">powers_of_alpha</span>.<span class="ident">register</span>(<span class="ident">ArgumentType::Lookup</span>, <span class="ident">constraints_len</span>);
+        powers_of_alpha.register(ArgumentType::Lookup, constraints_len);
 
-        <span class="kw">let</span> <span class="ident">alphas</span> <span class="op">=</span> <span class="ident">powers_of_alpha</span>.<span class="ident">get_exponents</span>(<span class="ident">ArgumentType::Lookup</span>, <span class="ident">constraints_len</span>);
-        <span class="kw">let</span> <span class="ident">combined</span> <span class="op">=</span> <span class="ident">Expr::combine_constraints</span>(<span class="ident">alphas</span>, <span class="ident">constraints</span>);
+        <span class="kw">let </span>alphas = powers_of_alpha.get_exponents(ArgumentType::Lookup, constraints_len);
+        <span class="kw">let </span>combined = Expr::combine_constraints(alphas, constraints);
 
-        <span class="ident">expr</span> <span class="op">+</span><span class="op">=</span> <span class="ident">combined</span>;
+        expr += combined;
     }
 
-    <span class="comment">// the generic gate must be associated with alpha^0</span>
-    <span class="comment">// to make the later addition with the public input work</span>
-    <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">debug_assertions</span>) {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">generic_alphas</span> <span class="op">=</span>
-            <span class="ident">powers_of_alpha</span>.<span class="ident">get_exponents</span>(<span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::Generic</span>), <span class="number">1</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">generic_alphas</span>.<span class="ident">next</span>(), <span class="prelude-val">Some</span>(<span class="number">0</span>));
+    <span class="comment">// the generic gate must be associated with alpha^0
+    // to make the later addition with the public input work
+    </span><span class="kw">if </span><span class="macro">cfg!</span>(debug_assertions) {
+        <span class="kw">let </span><span class="kw-2">mut </span>generic_alphas =
+            powers_of_alpha.get_exponents(ArgumentType::Gate(GateType::Generic), <span class="number">1</span>);
+        <span class="macro">assert_eq!</span>(generic_alphas.next(), <span class="prelude-val">Some</span>(<span class="number">0</span>));
     }
 
-    <span class="comment">// return the expression</span>
-    (<span class="ident">expr</span>, <span class="ident">powers_of_alpha</span>)
+    <span class="comment">// return the expression
+    </span>(expr, powers_of_alpha)
 }
 
-<span class="doccomment">/// Adds the polynomials that are evaluated as part of the proof</span>
-<span class="doccomment">/// for the linearization to work.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">linearization_columns</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">SquareRootField</span><span class="op">&gt;</span>(
-    <span class="ident">lookup_constraint_system</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">LookupConfiguration</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-) -&gt; <span class="ident">std::collections::HashSet</span><span class="op">&lt;</span><span class="ident">Column</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">h</span> <span class="op">=</span> <span class="ident">std::collections::HashSet::new</span>();
-    <span class="kw">use</span> <span class="ident">Column</span>::<span class="kw-2">*</span>;
+<span class="doccomment">/// Adds the polynomials that are evaluated as part of the proof
+/// for the linearization to work.
+</span><span class="kw">pub fn </span>linearization_columns&lt;F: FftField + SquareRootField&gt;(
+    lookup_constraint_system: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>LookupConfiguration&lt;F&gt;&gt;,
+) -&gt; std::collections::HashSet&lt;Column&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>h = std::collections::HashSet::new();
+    <span class="kw">use </span>Column::<span class="kw-2">*</span>;
 
-    <span class="comment">// the witness polynomials</span>
-    <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">COLUMNS</span> {
-        <span class="ident">h</span>.<span class="ident">insert</span>(<span class="ident">Witness</span>(<span class="ident">i</span>));
+    <span class="comment">// the witness polynomials
+    </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..COLUMNS {
+        h.insert(Witness(i));
     }
 
-    <span class="comment">// the lookup polynomials</span>
-    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">lcs</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">lookup_constraint_system</span> {
-        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..(<span class="ident">lcs</span>.<span class="ident">lookup_info</span>.<span class="ident">max_per_row</span> <span class="op">+</span> <span class="number">1</span>) {
-            <span class="ident">h</span>.<span class="ident">insert</span>(<span class="ident">LookupSorted</span>(<span class="ident">i</span>));
+    <span class="comment">// the lookup polynomials
+    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(lcs) = <span class="kw-2">&amp;</span>lookup_constraint_system {
+        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..(lcs.lookup_info.max_per_row + <span class="number">1</span>) {
+            h.insert(LookupSorted(i));
         }
-        <span class="ident">h</span>.<span class="ident">insert</span>(<span class="ident">LookupAggreg</span>);
-        <span class="ident">h</span>.<span class="ident">insert</span>(<span class="ident">LookupTable</span>);
+        h.insert(LookupAggreg);
+        h.insert(LookupTable);
 
-        <span class="comment">// the runtime lookup polynomials</span>
-        <span class="kw">if</span> <span class="ident">lcs</span>.<span class="ident">lookup_info</span>.<span class="ident">uses_runtime_tables</span> {
-            <span class="ident">h</span>.<span class="ident">insert</span>(<span class="ident">LookupRuntimeTable</span>);
+        <span class="comment">// the runtime lookup polynomials
+        </span><span class="kw">if </span>lcs.lookup_info.uses_runtime_tables {
+            h.insert(LookupRuntimeTable);
         }
     }
 
-    <span class="comment">// the permutation polynomial</span>
-    <span class="ident">h</span>.<span class="ident">insert</span>(<span class="ident">Z</span>);
+    <span class="comment">// the permutation polynomial
+    </span>h.insert(Z);
 
-    <span class="comment">// the poseidon selector polynomial</span>
-    <span class="ident">h</span>.<span class="ident">insert</span>(<span class="ident">Index</span>(<span class="ident">GateType::Poseidon</span>));
+    <span class="comment">// the poseidon selector polynomial
+    </span>h.insert(Index(GateType::Poseidon));
 
-    <span class="comment">// the generic selector polynomial</span>
-    <span class="ident">h</span>.<span class="ident">insert</span>(<span class="ident">Index</span>(<span class="ident">GateType::Generic</span>));
+    <span class="comment">// the generic selector polynomial
+    </span>h.insert(Index(GateType::Generic));
 
-    <span class="ident">h</span>
+    h
 }
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">expr_linearization</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">SquareRootField</span><span class="op">&gt;</span>(
-    <span class="ident">chacha</span>: <span class="ident">bool</span>,
-    <span class="ident">range_check</span>: <span class="ident">bool</span>,
-    <span class="ident">lookup_constraint_system</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">LookupConfiguration</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-) -&gt; (<span class="ident">Linearization</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PolishToken</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">Alphas</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) {
-    <span class="kw">let</span> <span class="ident">evaluated_cols</span> <span class="op">=</span> <span class="ident">linearization_columns</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">lookup_constraint_system</span>);
+<span class="kw">pub fn </span>expr_linearization&lt;F: FftField + SquareRootField&gt;(
+    chacha: bool,
+    range_check: bool,
+    lookup_constraint_system: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>LookupConfiguration&lt;F&gt;&gt;,
+) -&gt; (Linearization&lt;Vec&lt;PolishToken&lt;F&gt;&gt;&gt;, Alphas&lt;F&gt;) {
+    <span class="kw">let </span>evaluated_cols = linearization_columns::&lt;F&gt;(lookup_constraint_system);
 
-    <span class="kw">let</span> (<span class="ident">expr</span>, <span class="ident">powers_of_alpha</span>) <span class="op">=</span> <span class="ident">constraints_expr</span>(<span class="ident">chacha</span>, <span class="ident">range_check</span>, <span class="ident">lookup_constraint_system</span>);
+    <span class="kw">let </span>(expr, powers_of_alpha) = constraints_expr(chacha, range_check, lookup_constraint_system);
 
-    <span class="kw">let</span> <span class="ident">linearization</span> <span class="op">=</span> <span class="ident">expr</span>
-        .<span class="ident">linearize</span>(<span class="ident">evaluated_cols</span>)
-        .<span class="ident">unwrap</span>()
-        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">to_polish</span>());
+    <span class="kw">let </span>linearization = expr
+        .linearize(evaluated_cols)
+        .unwrap()
+        .map(|e| e.to_polish());
 
-    (<span class="ident">linearization</span>, <span class="ident">powers_of_alpha</span>)
+    (linearization, powers_of_alpha)
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

@@ -910,425 +910,425 @@
 <span id="910">910</span>
 <span id="911">911</span>
 <span id="912">912</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Random oracle input structures and algorithms</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Definition of random oracle input structure and</span>
-<span class="doccomment">//! methods for serializing into bytes and field elements</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Random oracle input structures and algorithms
+//!
+//! Definition of random oracle input structure and
+//! methods for serializing into bytes and field elements
 
-<span class="kw">use</span> <span class="ident">bitvec</span>::{<span class="ident">prelude</span>::<span class="kw-2">*</span>, <span class="ident">view::AsBits</span>};
+</span><span class="kw">use </span>bitvec::{prelude::<span class="kw-2">*</span>, view::AsBits};
 
-<span class="kw">use</span> <span class="ident">ark_ff::PrimeField</span>;
-<span class="kw">use</span> <span class="ident">mina_curves::pasta</span>::{<span class="ident">Fp</span>, <span class="ident">Fq</span>};
-<span class="kw">use</span> <span class="ident">o1_utils::FieldHelpers</span>;
+<span class="kw">use </span>ark_ff::PrimeField;
+<span class="kw">use </span>mina_curves::pasta::{Fp, Fq};
+<span class="kw">use </span>o1_utils::FieldHelpers;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::Hashable</span>;
+<span class="kw">use </span><span class="kw">super</span>::Hashable;
 
-<span class="doccomment">/// Random oracle input structure</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// The random oracle input encapsulates the serialization format and methods using during hashing.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// When implementing the [`Hashable`] trait to enable hashing for a type, you must implement</span>
-<span class="doccomment">/// its `to_roinput()` serialization method using the [`ROInput`] functions below.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// The random oracle input structure is used (by generic code) to serialize the object into</span>
-<span class="doccomment">/// both a vector of `pasta::Fp` field elements and into a vector of bytes, depending on the situation.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Here is an example of how `ROInput` is used during the definition of the `Hashable` trait.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```rust</span>
-<span class="doccomment">/// use mina_hasher::{Hashable, ROInput};</span>
-<span class="doccomment">/// use mina_curves::pasta::Fp;</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// #[derive(Clone)]</span>
-<span class="doccomment">/// pub struct MyExample {</span>
-<span class="doccomment">///     pub x: Fp,</span>
-<span class="doccomment">///     pub y: Fp,</span>
-<span class="doccomment">///     pub nonce: u64,</span>
-<span class="doccomment">/// }</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// impl Hashable for MyExample {</span>
-<span class="doccomment">///     type D = ();</span>
-<span class="doccomment">///</span>
-<span class="doccomment">///     fn to_roinput(&amp;self) -&gt; ROInput {</span>
-<span class="doccomment">///         ROInput::new()</span>
-<span class="doccomment">///             .append_field(self.x)</span>
-<span class="doccomment">///             .append_field(self.y)</span>
-<span class="doccomment">///             .append_u64(self.nonce)</span>
-<span class="doccomment">///     }</span>
-<span class="doccomment">///</span>
-<span class="doccomment">///     fn domain_string(_: Self::D) -&gt; Option&lt;String&gt; {</span>
-<span class="doccomment">///         format!(&quot;MyExampleMainnet&quot;).into()</span>
-<span class="doccomment">///     }</span>
-<span class="doccomment">/// }</span>
-<span class="doccomment">/// ```</span>
-<span class="doccomment">/// **Details:** For technical reasons related to our proof system and performance,</span>
-<span class="doccomment">/// non-field-element members are serialized for signing differently than other types.</span>
-<span class="doccomment">/// Additionally, during signing all members of the random oracle input get serialized</span>
-<span class="doccomment">/// together in two different ways: both as *bytes* and as a vector of *field elements*.</span>
-<span class="doccomment">/// The random oracle input automates and encapsulates this complexity.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ROInput</span> {
-    <span class="ident">fields</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span>,
-    <span class="ident">bits</span>: <span class="ident">BitVec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Random oracle input structure
+///
+/// The random oracle input encapsulates the serialization format and methods using during hashing.
+///
+/// When implementing the [`Hashable`] trait to enable hashing for a type, you must implement
+/// its `to_roinput()` serialization method using the [`ROInput`] functions below.
+///
+/// The random oracle input structure is used (by generic code) to serialize the object into
+/// both a vector of `pasta::Fp` field elements and into a vector of bytes, depending on the situation.
+///
+/// Here is an example of how `ROInput` is used during the definition of the `Hashable` trait.
+///
+/// ```rust
+/// use mina_hasher::{Hashable, ROInput};
+/// use mina_curves::pasta::Fp;
+///
+/// #[derive(Clone)]
+/// pub struct MyExample {
+///     pub x: Fp,
+///     pub y: Fp,
+///     pub nonce: u64,
+/// }
+///
+/// impl Hashable for MyExample {
+///     type D = ();
+///
+///     fn to_roinput(&amp;self) -&gt; ROInput {
+///         ROInput::new()
+///             .append_field(self.x)
+///             .append_field(self.y)
+///             .append_u64(self.nonce)
+///     }
+///
+///     fn domain_string(_: Self::D) -&gt; Option&lt;String&gt; {
+///         format!(&quot;MyExampleMainnet&quot;).into()
+///     }
+/// }
+/// ```
+/// **Details:** For technical reasons related to our proof system and performance,
+/// non-field-element members are serialized for signing differently than other types.
+/// Additionally, during signing all members of the random oracle input get serialized
+/// together in two different ways: both as *bytes* and as a vector of *field elements*.
+/// The random oracle input automates and encapsulates this complexity.
+</span><span class="attribute">#[derive(Default, Debug, Clone, PartialEq)]
+</span><span class="kw">pub struct </span>ROInput {
+    fields: Vec&lt;Fp&gt;,
+    bits: BitVec&lt;u8&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">ROInput</span> {
-    <span class="doccomment">/// Create a new empty random oracle input</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">ROInput</span> {
-            <span class="ident">fields</span>: <span class="macro">vec!</span>[],
-            <span class="ident">bits</span>: <span class="ident">BitVec::new</span>(),
+<span class="kw">impl </span>ROInput {
+    <span class="doccomment">/// Create a new empty random oracle input
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        ROInput {
+            fields: <span class="macro">vec!</span>[],
+            bits: BitVec::new(),
         }
     }
 
-    <span class="doccomment">/// Append a `Hashable` input</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">append_hashable</span>(<span class="self">self</span>, <span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">Hashable</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">append_roinput</span>(<span class="ident">input</span>.<span class="ident">to_roinput</span>())
+    <span class="doccomment">/// Append a `Hashable` input
+    </span><span class="kw">pub fn </span>append_hashable(<span class="self">self</span>, input: <span class="kw-2">&amp;</span><span class="kw">impl </span>Hashable) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.append_roinput(input.to_roinput())
     }
 
-    <span class="doccomment">/// Append another random oracle input</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">append_roinput</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">roi</span>: <span class="ident">ROInput</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">fields</span>.<span class="ident">append</span>(<span class="kw-2">&amp;mut</span> <span class="ident">roi</span>.<span class="ident">fields</span>);
-        <span class="self">self</span>.<span class="ident">bits</span>.<span class="ident">extend</span>(<span class="ident">roi</span>.<span class="ident">bits</span>);
-        <span class="self">self</span>
+    <span class="doccomment">/// Append another random oracle input
+    </span><span class="kw">pub fn </span>append_roinput(<span class="kw-2">mut </span><span class="self">self</span>, <span class="kw-2">mut </span>roi: ROInput) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.fields.append(<span class="kw-2">&amp;mut </span>roi.fields);
+        <span class="self">self</span>.bits.extend(roi.bits);
+        <span class="self">self
+    </span>}
+
+    <span class="doccomment">/// Append a base field element
+    </span><span class="kw">pub fn </span>append_field(<span class="kw-2">mut </span><span class="self">self</span>, f: Fp) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.fields.push(f);
+        <span class="self">self
+    </span>}
+
+    <span class="doccomment">/// Append a scalar field element
+    </span><span class="kw">pub fn </span>append_scalar(<span class="kw-2">mut </span><span class="self">self</span>, s: Fq) -&gt; <span class="self">Self </span>{
+        <span class="comment">// mina scalars are 255 bytes
+        </span><span class="kw">let </span>bytes = s.to_bytes();
+        <span class="kw">let </span>bits = <span class="kw-2">&amp;</span>bytes.as_bits::&lt;Lsb0&gt;()[..Fq::size_in_bits()];
+        <span class="self">self</span>.bits.extend(bits);
+        <span class="self">self
+    </span>}
+
+    <span class="doccomment">/// Append a single bit
+    </span><span class="kw">pub fn </span>append_bool(<span class="kw-2">mut </span><span class="self">self</span>, b: bool) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.bits.push(b);
+        <span class="self">self
+    </span>}
+
+    <span class="doccomment">/// Append bytes
+    </span><span class="kw">pub fn </span>append_bytes(<span class="kw-2">mut </span><span class="self">self</span>, bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.bits.extend_from_bitslice(bytes.as_bits::&lt;Lsb0&gt;());
+        <span class="self">self
+    </span>}
+
+    <span class="doccomment">/// Append a 32-bit unsigned integer
+    </span><span class="kw">pub fn </span>append_u32(<span class="self">self</span>, x: u32) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.append_bytes(<span class="kw-2">&amp;</span>x.to_le_bytes())
     }
 
-    <span class="doccomment">/// Append a base field element</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">append_field</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">f</span>: <span class="ident">Fp</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">fields</span>.<span class="ident">push</span>(<span class="ident">f</span>);
-        <span class="self">self</span>
+    <span class="doccomment">/// Append a 64-bit unsigned integer
+    </span><span class="kw">pub fn </span>append_u64(<span class="self">self</span>, x: u64) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.append_bytes(<span class="kw-2">&amp;</span>x.to_le_bytes())
     }
 
-    <span class="doccomment">/// Append a scalar field element</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">append_scalar</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">s</span>: <span class="ident">Fq</span>) -&gt; <span class="self">Self</span> {
-        <span class="comment">// mina scalars are 255 bytes</span>
-        <span class="kw">let</span> <span class="ident">bytes</span> <span class="op">=</span> <span class="ident">s</span>.<span class="ident">to_bytes</span>();
-        <span class="kw">let</span> <span class="ident">bits</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">bytes</span>.<span class="ident">as_bits</span>::<span class="op">&lt;</span><span class="ident">Lsb0</span><span class="op">&gt;</span>()[..<span class="ident">Fq::size_in_bits</span>()];
-        <span class="self">self</span>.<span class="ident">bits</span>.<span class="ident">extend</span>(<span class="ident">bits</span>);
-        <span class="self">self</span>
-    }
+    <span class="doccomment">/// Serialize random oracle input to bytes
+    </span><span class="kw">pub fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>bits: BitVec&lt;u8&gt; = <span class="self">self</span>.fields.iter().fold(BitVec::new(), |<span class="kw-2">mut </span>acc, fe| {
+            acc.extend_from_bitslice(<span class="kw-2">&amp;</span>fe.to_bytes().as_bits::&lt;Lsb0&gt;()[..Fp::size_in_bits()]);
 
-    <span class="doccomment">/// Append a single bit</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">append_bool</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">b</span>: <span class="ident">bool</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">bits</span>.<span class="ident">push</span>(<span class="ident">b</span>);
-        <span class="self">self</span>
-    }
-
-    <span class="doccomment">/// Append bytes</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">append_bytes</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">bytes</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">bits</span>.<span class="ident">extend_from_bitslice</span>(<span class="ident">bytes</span>.<span class="ident">as_bits</span>::<span class="op">&lt;</span><span class="ident">Lsb0</span><span class="op">&gt;</span>());
-        <span class="self">self</span>
-    }
-
-    <span class="doccomment">/// Append a 32-bit unsigned integer</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">append_u32</span>(<span class="self">self</span>, <span class="ident">x</span>: <span class="ident">u32</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">append_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">x</span>.<span class="ident">to_le_bytes</span>())
-    }
-
-    <span class="doccomment">/// Append a 64-bit unsigned integer</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">append_u64</span>(<span class="self">self</span>, <span class="ident">x</span>: <span class="ident">u64</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">append_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">x</span>.<span class="ident">to_le_bytes</span>())
-    }
-
-    <span class="doccomment">/// Serialize random oracle input to bytes</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_bytes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">bits</span>: <span class="ident">BitVec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">fields</span>.<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="ident">BitVec::new</span>(), <span class="op">|</span><span class="kw-2">mut</span> <span class="ident">acc</span>, <span class="ident">fe</span><span class="op">|</span> {
-            <span class="ident">acc</span>.<span class="ident">extend_from_bitslice</span>(<span class="kw-2">&amp;</span><span class="ident">fe</span>.<span class="ident">to_bytes</span>().<span class="ident">as_bits</span>::<span class="op">&lt;</span><span class="ident">Lsb0</span><span class="op">&gt;</span>()[..<span class="ident">Fp::size_in_bits</span>()]);
-
-            <span class="ident">acc</span>
+            acc
         });
 
-        <span class="ident">bits</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">bits</span>);
+        bits.extend(<span class="kw-2">&amp;</span><span class="self">self</span>.bits);
 
-        <span class="ident">bits</span>.<span class="ident">into</span>()
+        bits.into()
     }
 
-    <span class="doccomment">/// Serialize random oracle input to vector of base field elements</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_fields</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">fields</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">fields</span>.<span class="ident">clone</span>();
+    <span class="doccomment">/// Serialize random oracle input to vector of base field elements
+    </span><span class="kw">pub fn </span>to_fields(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;Fp&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>fields: Vec&lt;Fp&gt; = <span class="self">self</span>.fields.clone();
 
-        <span class="kw">let</span> <span class="ident">bits_as_fields</span> <span class="op">=</span>
-            <span class="self">self</span>.<span class="ident">bits</span>
-                .<span class="ident">chunks</span>(<span class="ident">Fp::size_in_bits</span>() <span class="op">-</span> <span class="number">1</span>)
-                .<span class="ident">into_iter</span>()
-                .<span class="ident">fold</span>(<span class="macro">vec!</span>[], <span class="op">|</span><span class="kw-2">mut</span> <span class="ident">acc</span>, <span class="ident">chunk</span><span class="op">|</span> {
-                    <span class="comment">// Workaround: chunk.clone() does not appear to respect</span>
-                    <span class="comment">// the chunk&#39;s boundaries when it&#39;s not byte-aligned.</span>
-                    <span class="comment">//</span>
-                    <span class="comment">// That is,</span>
-                    <span class="comment">//</span>
-                    <span class="comment">//   let mut bv = chunk.clone().to_bitvec();</span>
-                    <span class="comment">//   bv.resize(B::size_in_bits(), false);</span>
-                    <span class="comment">//   fields.push(B::from_bytes(bv.into()));</span>
-                    <span class="comment">//</span>
-                    <span class="comment">// doesn&#39;t work.</span>
-                    <span class="comment">//</span>
-                    <span class="comment">// Instead we must do</span>
+        <span class="kw">let </span>bits_as_fields =
+            <span class="self">self</span>.bits
+                .chunks(Fp::size_in_bits() - <span class="number">1</span>)
+                .into_iter()
+                .fold(<span class="macro">vec!</span>[], |<span class="kw-2">mut </span>acc, chunk| {
+                    <span class="comment">// Workaround: chunk.clone() does not appear to respect
+                    // the chunk&#39;s boundaries when it&#39;s not byte-aligned.
+                    //
+                    // That is,
+                    //
+                    //   let mut bv = chunk.clone().to_bitvec();
+                    //   bv.resize(B::size_in_bits(), false);
+                    //   fields.push(B::from_bytes(bv.into()));
+                    //
+                    // doesn&#39;t work.
+                    //
+                    // Instead we must do
 
-                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">bv</span> <span class="op">=</span> <span class="ident">BitVec</span>::<span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="ident">::new</span>();
-                    <span class="ident">bv</span>.<span class="ident">resize</span>(<span class="ident">chunk</span>.<span class="ident">len</span>(), <span class="bool-val">false</span>);
-                    <span class="ident">bv</span>.<span class="ident">clone_from_bitslice</span>(<span class="ident">chunk</span>);
+                    </span><span class="kw">let </span><span class="kw-2">mut </span>bv = BitVec::&lt;u8&gt;::new();
+                    bv.resize(chunk.len(), <span class="bool-val">false</span>);
+                    bv.clone_from_bitslice(chunk);
 
-                    <span class="comment">// extend to the size of a field;</span>
-                    <span class="ident">bv</span>.<span class="ident">resize</span>(<span class="ident">Fp::size_in_bits</span>(), <span class="bool-val">false</span>);
+                    <span class="comment">// extend to the size of a field;
+                    </span>bv.resize(Fp::size_in_bits(), <span class="bool-val">false</span>);
 
-                    <span class="ident">acc</span>.<span class="ident">push</span>(
-                        <span class="ident">Fp::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">bv</span>.<span class="ident">into_vec</span>())
-                            .<span class="ident">expect</span>(<span class="string">&quot;failed to create base field element&quot;</span>),
+                    acc.push(
+                        Fp::from_bytes(<span class="kw-2">&amp;</span>bv.into_vec())
+                            .expect(<span class="string">&quot;failed to create base field element&quot;</span>),
                     );
 
-                    <span class="ident">acc</span>
+                    acc
                 });
 
-        <span class="ident">fields</span>.<span class="ident">extend</span>(<span class="ident">bits_as_fields</span>);
+        fields.extend(bits_as_fields);
 
-        <span class="ident">fields</span>
+        fields
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::Hashable</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use </span><span class="kw">crate</span>::Hashable;
 
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">append_bool</span>() {
-        <span class="kw">let</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>().<span class="ident">append_bool</span>(<span class="bool-val">true</span>);
-        <span class="macro">assert!</span>(<span class="ident">roi</span>.<span class="ident">bits</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">1</span>);
-        <span class="macro">assert!</span>(<span class="ident">roi</span>.<span class="ident">bits</span>.<span class="ident">as_raw_slice</span>() <span class="op">==</span> [<span class="number">0x01</span>]);
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>append_bool() {
+        <span class="kw">let </span>roi = ROInput::new().append_bool(<span class="bool-val">true</span>);
+        <span class="macro">assert!</span>(roi.bits.len() == <span class="number">1</span>);
+        <span class="macro">assert!</span>(roi.bits.as_raw_slice() == [<span class="number">0x01</span>]);
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">append_two_bits</span>() {
-        <span class="kw">let</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>().<span class="ident">append_bool</span>(<span class="bool-val">false</span>).<span class="ident">append_bool</span>(<span class="bool-val">true</span>);
-        <span class="macro">assert!</span>(<span class="ident">roi</span>.<span class="ident">bits</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">2</span>);
-        <span class="macro">assert!</span>(<span class="ident">roi</span>.<span class="ident">bits</span>.<span class="ident">as_raw_slice</span>() <span class="op">==</span> [<span class="number">0x02</span>]);
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>append_two_bits() {
+        <span class="kw">let </span>roi = ROInput::new().append_bool(<span class="bool-val">false</span>).append_bool(<span class="bool-val">true</span>);
+        <span class="macro">assert!</span>(roi.bits.len() == <span class="number">2</span>);
+        <span class="macro">assert!</span>(roi.bits.as_raw_slice() == [<span class="number">0x02</span>]);
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">append_five_bits</span>() {
-        <span class="kw">let</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>()
-            .<span class="ident">append_bool</span>(<span class="bool-val">false</span>)
-            .<span class="ident">append_bool</span>(<span class="bool-val">true</span>)
-            .<span class="ident">append_bool</span>(<span class="bool-val">false</span>)
-            .<span class="ident">append_bool</span>(<span class="bool-val">false</span>)
-            .<span class="ident">append_bool</span>(<span class="bool-val">true</span>);
-        <span class="macro">assert!</span>(<span class="ident">roi</span>.<span class="ident">bits</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">5</span>);
-        <span class="macro">assert!</span>(<span class="ident">roi</span>.<span class="ident">bits</span>.<span class="ident">as_raw_slice</span>() <span class="op">==</span> [<span class="number">0x12</span>]);
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>append_five_bits() {
+        <span class="kw">let </span>roi = ROInput::new()
+            .append_bool(<span class="bool-val">false</span>)
+            .append_bool(<span class="bool-val">true</span>)
+            .append_bool(<span class="bool-val">false</span>)
+            .append_bool(<span class="bool-val">false</span>)
+            .append_bool(<span class="bool-val">true</span>);
+        <span class="macro">assert!</span>(roi.bits.len() == <span class="number">5</span>);
+        <span class="macro">assert!</span>(roi.bits.as_raw_slice() == [<span class="number">0x12</span>]);
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">append_byte</span>() {
-        <span class="kw">let</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>().<span class="ident">append_bytes</span>(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">0x01</span>]);
-        <span class="macro">assert!</span>(<span class="ident">roi</span>.<span class="ident">bits</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">8</span>);
-        <span class="macro">assert!</span>(<span class="ident">roi</span>.<span class="ident">bits</span>.<span class="ident">as_raw_slice</span>() <span class="op">==</span> [<span class="number">0x01</span>]);
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>append_byte() {
+        <span class="kw">let </span>roi = ROInput::new().append_bytes(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">0x01</span>]);
+        <span class="macro">assert!</span>(roi.bits.len() == <span class="number">8</span>);
+        <span class="macro">assert!</span>(roi.bits.as_raw_slice() == [<span class="number">0x01</span>]);
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">append_two_bytes</span>() {
-        <span class="kw">let</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>().<span class="ident">append_bytes</span>(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">0x10</span>, <span class="number">0xac</span>]);
-        <span class="macro">assert!</span>(<span class="ident">roi</span>.<span class="ident">bits</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">16</span>);
-        <span class="macro">assert!</span>(<span class="ident">roi</span>.<span class="ident">bits</span>.<span class="ident">as_raw_slice</span>() <span class="op">==</span> [<span class="number">0x10</span>, <span class="number">0xac</span>]);
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>append_two_bytes() {
+        <span class="kw">let </span>roi = ROInput::new().append_bytes(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">0x10</span>, <span class="number">0xac</span>]);
+        <span class="macro">assert!</span>(roi.bits.len() == <span class="number">16</span>);
+        <span class="macro">assert!</span>(roi.bits.as_raw_slice() == [<span class="number">0x10</span>, <span class="number">0xac</span>]);
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">append_five_bytes</span>() {
-        <span class="kw">let</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>().<span class="ident">append_bytes</span>(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">0x10</span>, <span class="number">0xac</span>, <span class="number">0x01</span>, <span class="number">0xeb</span>, <span class="number">0xca</span>]);
-        <span class="macro">assert!</span>(<span class="ident">roi</span>.<span class="ident">bits</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">40</span>);
-        <span class="macro">assert!</span>(<span class="ident">roi</span>.<span class="ident">bits</span>.<span class="ident">as_raw_slice</span>() <span class="op">==</span> [<span class="number">0x10</span>, <span class="number">0xac</span>, <span class="number">0x01</span>, <span class="number">0xeb</span>, <span class="number">0xca</span>]);
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>append_five_bytes() {
+        <span class="kw">let </span>roi = ROInput::new().append_bytes(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">0x10</span>, <span class="number">0xac</span>, <span class="number">0x01</span>, <span class="number">0xeb</span>, <span class="number">0xca</span>]);
+        <span class="macro">assert!</span>(roi.bits.len() == <span class="number">40</span>);
+        <span class="macro">assert!</span>(roi.bits.as_raw_slice() == [<span class="number">0x10</span>, <span class="number">0xac</span>, <span class="number">0x01</span>, <span class="number">0xeb</span>, <span class="number">0xca</span>]);
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">append_scalar</span>() {
-        <span class="kw">let</span> <span class="ident">scalar</span> <span class="op">=</span>
-            <span class="ident">Fq::from_hex</span>(<span class="string">&quot;18b7ef420128e69623c0c0dcfa28d47a029d462720deb769d7b5dd6f17444216&quot;</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;failed to create scalar&quot;</span>);
-        <span class="kw">let</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>().<span class="ident">append_scalar</span>(<span class="ident">scalar</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">roi</span>.<span class="ident">bits</span>.<span class="ident">len</span>(), <span class="number">255</span>);
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>append_scalar() {
+        <span class="kw">let </span>scalar =
+            Fq::from_hex(<span class="string">&quot;18b7ef420128e69623c0c0dcfa28d47a029d462720deb769d7b5dd6f17444216&quot;</span>)
+                .expect(<span class="string">&quot;failed to create scalar&quot;</span>);
+        <span class="kw">let </span>roi = ROInput::new().append_scalar(scalar);
+        <span class="macro">assert_eq!</span>(roi.bits.len(), <span class="number">255</span>);
         <span class="macro">assert_eq!</span>(
-            <span class="ident">roi</span>.<span class="ident">bits</span>.<span class="ident">as_raw_slice</span>(),
+            roi.bits.as_raw_slice(),
             [
                 <span class="number">0x18</span>, <span class="number">0xb7</span>, <span class="number">0xef</span>, <span class="number">0x42</span>, <span class="number">0x01</span>, <span class="number">0x28</span>, <span class="number">0xe6</span>, <span class="number">0x96</span>, <span class="number">0x23</span>, <span class="number">0xc0</span>, <span class="number">0xc0</span>, <span class="number">0xdc</span>, <span class="number">0xfa</span>, <span class="number">0x28</span>,
                 <span class="number">0xd4</span>, <span class="number">0x7a</span>, <span class="number">0x02</span>, <span class="number">0x9d</span>, <span class="number">0x46</span>, <span class="number">0x27</span>, <span class="number">0x20</span>, <span class="number">0xde</span>, <span class="number">0xb7</span>, <span class="number">0x69</span>, <span class="number">0xd7</span>, <span class="number">0xb5</span>, <span class="number">0xdd</span>, <span class="number">0x6f</span>,
-                <span class="number">0x17</span>, <span class="number">0x44</span>, <span class="number">0x42</span>, <span class="number">0x16</span>
-            ]
+                <span class="number">0x17</span>, <span class="number">0x44</span>, <span class="number">0x42</span>, <span class="number">0x16
+            </span>]
         );
         <span class="macro">assert_eq!</span>(
-            <span class="ident">roi</span>.<span class="ident">to_bytes</span>(),
+            roi.to_bytes(),
             [
                 <span class="number">0x18</span>, <span class="number">0xb7</span>, <span class="number">0xef</span>, <span class="number">0x42</span>, <span class="number">0x01</span>, <span class="number">0x28</span>, <span class="number">0xe6</span>, <span class="number">0x96</span>, <span class="number">0x23</span>, <span class="number">0xc0</span>, <span class="number">0xc0</span>, <span class="number">0xdc</span>, <span class="number">0xfa</span>, <span class="number">0x28</span>,
                 <span class="number">0xd4</span>, <span class="number">0x7a</span>, <span class="number">0x02</span>, <span class="number">0x9d</span>, <span class="number">0x46</span>, <span class="number">0x27</span>, <span class="number">0x20</span>, <span class="number">0xde</span>, <span class="number">0xb7</span>, <span class="number">0x69</span>, <span class="number">0xd7</span>, <span class="number">0xb5</span>, <span class="number">0xdd</span>, <span class="number">0x6f</span>,
-                <span class="number">0x17</span>, <span class="number">0x44</span>, <span class="number">0x42</span>, <span class="number">0x16</span>
-            ]
+                <span class="number">0x17</span>, <span class="number">0x44</span>, <span class="number">0x42</span>, <span class="number">0x16
+            </span>]
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">append_scalar_and_byte</span>() {
-        <span class="kw">let</span> <span class="ident">scalar</span> <span class="op">=</span>
-            <span class="ident">Fq::from_hex</span>(<span class="string">&quot;18b7ef420128e69623c0c0dcfa28d47a029d462720deb769d7b5dd6f17444216&quot;</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;failed to create scalar&quot;</span>);
-        <span class="kw">let</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>()
-            .<span class="ident">append_scalar</span>(<span class="ident">scalar</span>)
-            .<span class="ident">append_bytes</span>(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">0x01</span>]);
-        <span class="macro">assert!</span>(<span class="ident">roi</span>.<span class="ident">bits</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">263</span>);
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>append_scalar_and_byte() {
+        <span class="kw">let </span>scalar =
+            Fq::from_hex(<span class="string">&quot;18b7ef420128e69623c0c0dcfa28d47a029d462720deb769d7b5dd6f17444216&quot;</span>)
+                .expect(<span class="string">&quot;failed to create scalar&quot;</span>);
+        <span class="kw">let </span>roi = ROInput::new()
+            .append_scalar(scalar)
+            .append_bytes(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">0x01</span>]);
+        <span class="macro">assert!</span>(roi.bits.len() == <span class="number">263</span>);
         <span class="macro">assert!</span>(
-            <span class="ident">roi</span>.<span class="ident">bits</span>.<span class="ident">as_raw_slice</span>()
-                <span class="op">==</span> [
+            roi.bits.as_raw_slice()
+                == [
                     <span class="number">0x18</span>, <span class="number">0xb7</span>, <span class="number">0xef</span>, <span class="number">0x42</span>, <span class="number">0x01</span>, <span class="number">0x28</span>, <span class="number">0xe6</span>, <span class="number">0x96</span>, <span class="number">0x23</span>, <span class="number">0xc0</span>, <span class="number">0xc0</span>, <span class="number">0xdc</span>, <span class="number">0xfa</span>,
                     <span class="number">0x28</span>, <span class="number">0xd4</span>, <span class="number">0x7a</span>, <span class="number">0x02</span>, <span class="number">0x9d</span>, <span class="number">0x46</span>, <span class="number">0x27</span>, <span class="number">0x20</span>, <span class="number">0xde</span>, <span class="number">0xb7</span>, <span class="number">0x69</span>, <span class="number">0xd7</span>, <span class="number">0xb5</span>,
-                    <span class="number">0xdd</span>, <span class="number">0x6f</span>, <span class="number">0x17</span>, <span class="number">0x44</span>, <span class="number">0x42</span>, <span class="number">0x96</span>, <span class="number">0x00</span>
-                ]
+                    <span class="number">0xdd</span>, <span class="number">0x6f</span>, <span class="number">0x17</span>, <span class="number">0x44</span>, <span class="number">0x42</span>, <span class="number">0x96</span>, <span class="number">0x00
+                </span>]
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">append_two_scalars</span>() {
-        <span class="kw">let</span> <span class="ident">scalar1</span> <span class="op">=</span>
-            <span class="ident">Fq::from_hex</span>(<span class="string">&quot;18b7ef420128e69623c0c0dcfa28d47a029d462720deb769d7b5dd6f17444216&quot;</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;failed to create scalar&quot;</span>);
-        <span class="kw">let</span> <span class="ident">scalar2</span> <span class="op">=</span>
-            <span class="ident">Fq::from_hex</span>(<span class="string">&quot;a1b1e948835be341277548134e0effabdbcb95b742e8c5e967e9bf13eb4ae805&quot;</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;failed to create scalar&quot;</span>);
-        <span class="kw">let</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>().<span class="ident">append_scalar</span>(<span class="ident">scalar1</span>).<span class="ident">append_scalar</span>(<span class="ident">scalar2</span>);
-        <span class="macro">assert!</span>(<span class="ident">roi</span>.<span class="ident">bits</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">510</span>);
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>append_two_scalars() {
+        <span class="kw">let </span>scalar1 =
+            Fq::from_hex(<span class="string">&quot;18b7ef420128e69623c0c0dcfa28d47a029d462720deb769d7b5dd6f17444216&quot;</span>)
+                .expect(<span class="string">&quot;failed to create scalar&quot;</span>);
+        <span class="kw">let </span>scalar2 =
+            Fq::from_hex(<span class="string">&quot;a1b1e948835be341277548134e0effabdbcb95b742e8c5e967e9bf13eb4ae805&quot;</span>)
+                .expect(<span class="string">&quot;failed to create scalar&quot;</span>);
+        <span class="kw">let </span>roi = ROInput::new().append_scalar(scalar1).append_scalar(scalar2);
+        <span class="macro">assert!</span>(roi.bits.len() == <span class="number">510</span>);
         <span class="macro">assert!</span>(
-            <span class="ident">roi</span>.<span class="ident">bits</span>.<span class="ident">as_raw_slice</span>()
-                <span class="op">==</span> [
+            roi.bits.as_raw_slice()
+                == [
                     <span class="number">0x18</span>, <span class="number">0xb7</span>, <span class="number">0xef</span>, <span class="number">0x42</span>, <span class="number">0x01</span>, <span class="number">0x28</span>, <span class="number">0xe6</span>, <span class="number">0x96</span>, <span class="number">0x23</span>, <span class="number">0xc0</span>, <span class="number">0xc0</span>, <span class="number">0xdc</span>, <span class="number">0xfa</span>,
                     <span class="number">0x28</span>, <span class="number">0xd4</span>, <span class="number">0x7a</span>, <span class="number">0x02</span>, <span class="number">0x9d</span>, <span class="number">0x46</span>, <span class="number">0x27</span>, <span class="number">0x20</span>, <span class="number">0xde</span>, <span class="number">0xb7</span>, <span class="number">0x69</span>, <span class="number">0xd7</span>, <span class="number">0xb5</span>,
                     <span class="number">0xdd</span>, <span class="number">0x6f</span>, <span class="number">0x17</span>, <span class="number">0x44</span>, <span class="number">0x42</span>, <span class="number">0x96</span>, <span class="number">0xd0</span>, <span class="number">0xd8</span>, <span class="number">0x74</span>, <span class="number">0xa4</span>, <span class="number">0xc1</span>, <span class="number">0xad</span>, <span class="number">0xf1</span>,
                     <span class="number">0xa0</span>, <span class="number">0x93</span>, <span class="number">0x3a</span>, <span class="number">0xa4</span>, <span class="number">0x09</span>, <span class="number">0x27</span>, <span class="number">0x87</span>, <span class="number">0xff</span>, <span class="number">0xd5</span>, <span class="number">0xed</span>, <span class="number">0xe5</span>, <span class="number">0xca</span>, <span class="number">0x5b</span>,
-                    <span class="number">0x21</span>, <span class="number">0xf4</span>, <span class="number">0xe2</span>, <span class="number">0xf4</span>, <span class="number">0xb3</span>, <span class="number">0xf4</span>, <span class="number">0xdf</span>, <span class="number">0x89</span>, <span class="number">0x75</span>, <span class="number">0x25</span>, <span class="number">0xf4</span>, <span class="number">0x02</span>
-                ]
+                    <span class="number">0x21</span>, <span class="number">0xf4</span>, <span class="number">0xe2</span>, <span class="number">0xf4</span>, <span class="number">0xb3</span>, <span class="number">0xf4</span>, <span class="number">0xdf</span>, <span class="number">0x89</span>, <span class="number">0x75</span>, <span class="number">0x25</span>, <span class="number">0xf4</span>, <span class="number">0x02
+                </span>]
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">append_two_scalars_and_byte</span>() {
-        <span class="kw">let</span> <span class="ident">scalar1</span> <span class="op">=</span>
-            <span class="ident">Fq::from_hex</span>(<span class="string">&quot;60db6f4f5b8ce1c7cb747fba9e324cc3268c7a6e3f43cd82d451ae99a7b2bd1f&quot;</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;failed to create scalar&quot;</span>);
-        <span class="kw">let</span> <span class="ident">scalar2</span> <span class="op">=</span>
-            <span class="ident">Fq::from_hex</span>(<span class="string">&quot;fe7775b106bceb58f3e23e5a4eb99f404b8ed8cf2afeef9c9d1800f12138cd07&quot;</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;failed to create scalar&quot;</span>);
-        <span class="kw">let</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>()
-            .<span class="ident">append_scalar</span>(<span class="ident">scalar1</span>)
-            .<span class="ident">append_bytes</span>(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">0x2a</span>])
-            .<span class="ident">append_scalar</span>(<span class="ident">scalar2</span>);
-        <span class="macro">assert!</span>(<span class="ident">roi</span>.<span class="ident">bits</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">518</span>);
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>append_two_scalars_and_byte() {
+        <span class="kw">let </span>scalar1 =
+            Fq::from_hex(<span class="string">&quot;60db6f4f5b8ce1c7cb747fba9e324cc3268c7a6e3f43cd82d451ae99a7b2bd1f&quot;</span>)
+                .expect(<span class="string">&quot;failed to create scalar&quot;</span>);
+        <span class="kw">let </span>scalar2 =
+            Fq::from_hex(<span class="string">&quot;fe7775b106bceb58f3e23e5a4eb99f404b8ed8cf2afeef9c9d1800f12138cd07&quot;</span>)
+                .expect(<span class="string">&quot;failed to create scalar&quot;</span>);
+        <span class="kw">let </span>roi = ROInput::new()
+            .append_scalar(scalar1)
+            .append_bytes(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">0x2a</span>])
+            .append_scalar(scalar2);
+        <span class="macro">assert!</span>(roi.bits.len() == <span class="number">518</span>);
         <span class="macro">assert!</span>(
-            <span class="ident">roi</span>.<span class="ident">bits</span>.<span class="ident">as_raw_slice</span>()
-                <span class="op">==</span> [
+            roi.bits.as_raw_slice()
+                == [
                     <span class="number">0x60</span>, <span class="number">0xdb</span>, <span class="number">0x6f</span>, <span class="number">0x4f</span>, <span class="number">0x5b</span>, <span class="number">0x8c</span>, <span class="number">0xe1</span>, <span class="number">0xc7</span>, <span class="number">0xcb</span>, <span class="number">0x74</span>, <span class="number">0x7f</span>, <span class="number">0xba</span>, <span class="number">0x9e</span>,
                     <span class="number">0x32</span>, <span class="number">0x4c</span>, <span class="number">0xc3</span>, <span class="number">0x26</span>, <span class="number">0x8c</span>, <span class="number">0x7a</span>, <span class="number">0x6e</span>, <span class="number">0x3f</span>, <span class="number">0x43</span>, <span class="number">0xcd</span>, <span class="number">0x82</span>, <span class="number">0xd4</span>, <span class="number">0x51</span>,
                     <span class="number">0xae</span>, <span class="number">0x99</span>, <span class="number">0xa7</span>, <span class="number">0xb2</span>, <span class="number">0xbd</span>, <span class="number">0x1f</span>, <span class="number">0x15</span>, <span class="number">0xff</span>, <span class="number">0xbb</span>, <span class="number">0xba</span>, <span class="number">0x58</span>, <span class="number">0x03</span>, <span class="number">0xde</span>,
                     <span class="number">0x75</span>, <span class="number">0xac</span>, <span class="number">0x79</span>, <span class="number">0x71</span>, <span class="number">0x1f</span>, <span class="number">0x2d</span>, <span class="number">0xa7</span>, <span class="number">0xdc</span>, <span class="number">0x4f</span>, <span class="number">0xa0</span>, <span class="number">0x25</span>, <span class="number">0x47</span>, <span class="number">0xec</span>,
-                    <span class="number">0x67</span>, <span class="number">0x15</span>, <span class="number">0xff</span>, <span class="number">0x77</span>, <span class="number">0xce</span>, <span class="number">0x4e</span>, <span class="number">0x0c</span>, <span class="number">0x80</span>, <span class="number">0xf8</span>, <span class="number">0x10</span>, <span class="number">0x9c</span>, <span class="number">0xe6</span>, <span class="number">0x03</span>
-                ]
+                    <span class="number">0x67</span>, <span class="number">0x15</span>, <span class="number">0xff</span>, <span class="number">0x77</span>, <span class="number">0xce</span>, <span class="number">0x4e</span>, <span class="number">0x0c</span>, <span class="number">0x80</span>, <span class="number">0xf8</span>, <span class="number">0x10</span>, <span class="number">0x9c</span>, <span class="number">0xe6</span>, <span class="number">0x03
+                </span>]
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">append_u32</span>() {
-        <span class="kw">let</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>().<span class="ident">append_u32</span>(<span class="number">1984u32</span>);
-        <span class="macro">assert!</span>(<span class="ident">roi</span>.<span class="ident">bits</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">32</span>);
-        <span class="macro">assert!</span>(<span class="ident">roi</span>.<span class="ident">bits</span>.<span class="ident">as_raw_slice</span>() <span class="op">==</span> [<span class="number">0xc0</span>, <span class="number">0x07</span>, <span class="number">0x00</span>, <span class="number">0x00</span>]);
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>append_u32() {
+        <span class="kw">let </span>roi = ROInput::new().append_u32(<span class="number">1984u32</span>);
+        <span class="macro">assert!</span>(roi.bits.len() == <span class="number">32</span>);
+        <span class="macro">assert!</span>(roi.bits.as_raw_slice() == [<span class="number">0xc0</span>, <span class="number">0x07</span>, <span class="number">0x00</span>, <span class="number">0x00</span>]);
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">append_two_u32_and_bit</span>() {
-        <span class="kw">let</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>()
-            .<span class="ident">append_u32</span>(<span class="number">1729u32</span>)
-            .<span class="ident">append_bool</span>(<span class="bool-val">false</span>)
-            .<span class="ident">append_u32</span>(<span class="ident">u32::MAX</span>);
-        <span class="macro">assert!</span>(<span class="ident">roi</span>.<span class="ident">bits</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">65</span>);
-        <span class="macro">assert!</span>(<span class="ident">roi</span>.<span class="ident">bits</span>.<span class="ident">as_raw_slice</span>() <span class="op">==</span> [<span class="number">0xc1</span>, <span class="number">0x06</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0xfe</span>, <span class="number">0xff</span>, <span class="number">0xff</span>, <span class="number">0xff</span>, <span class="number">0x01</span>]);
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>append_two_u32_and_bit() {
+        <span class="kw">let </span>roi = ROInput::new()
+            .append_u32(<span class="number">1729u32</span>)
+            .append_bool(<span class="bool-val">false</span>)
+            .append_u32(u32::MAX);
+        <span class="macro">assert!</span>(roi.bits.len() == <span class="number">65</span>);
+        <span class="macro">assert!</span>(roi.bits.as_raw_slice() == [<span class="number">0xc1</span>, <span class="number">0x06</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0xfe</span>, <span class="number">0xff</span>, <span class="number">0xff</span>, <span class="number">0xff</span>, <span class="number">0x01</span>]);
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">append_u64</span>() {
-        <span class="kw">let</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>().<span class="ident">append_u64</span>(<span class="number">6174u64</span>);
-        <span class="macro">assert!</span>(<span class="ident">roi</span>.<span class="ident">bits</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">64</span>);
-        <span class="macro">assert!</span>(<span class="ident">roi</span>.<span class="ident">bits</span>.<span class="ident">as_raw_slice</span>() <span class="op">==</span> [<span class="number">0x1e</span>, <span class="number">0x18</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>]);
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>append_u64() {
+        <span class="kw">let </span>roi = ROInput::new().append_u64(<span class="number">6174u64</span>);
+        <span class="macro">assert!</span>(roi.bits.len() == <span class="number">64</span>);
+        <span class="macro">assert!</span>(roi.bits.as_raw_slice() == [<span class="number">0x1e</span>, <span class="number">0x18</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>]);
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">append_two_u64_and_bits</span>() {
-        <span class="kw">let</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>()
-            .<span class="ident">append_bool</span>(<span class="bool-val">true</span>)
-            .<span class="ident">append_u64</span>(<span class="ident">u64::MAX</span> <span class="op">/</span> <span class="number">6174u64</span>)
-            .<span class="ident">append_bool</span>(<span class="bool-val">false</span>)
-            .<span class="ident">append_u64</span>(<span class="ident">u64::MAX</span> <span class="op">/</span> <span class="number">1111u64</span>);
-        <span class="macro">assert!</span>(<span class="ident">roi</span>.<span class="ident">bits</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">130</span>);
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>append_two_u64_and_bits() {
+        <span class="kw">let </span>roi = ROInput::new()
+            .append_bool(<span class="bool-val">true</span>)
+            .append_u64(u64::MAX / <span class="number">6174u64</span>)
+            .append_bool(<span class="bool-val">false</span>)
+            .append_u64(u64::MAX / <span class="number">1111u64</span>);
+        <span class="macro">assert!</span>(roi.bits.len() == <span class="number">130</span>);
         <span class="macro">assert!</span>(
-            <span class="ident">roi</span>.<span class="ident">bits</span>.<span class="ident">as_raw_slice</span>()
-                <span class="op">==</span> [
+            roi.bits.as_raw_slice()
+                == [
                     <span class="number">0xe1</span>, <span class="number">0x29</span>, <span class="number">0x89</span>, <span class="number">0xd6</span>, <span class="number">0xcb</span>, <span class="number">0x3a</span>, <span class="number">0x15</span>, <span class="number">0x00</span>, <span class="number">0x08</span>, <span class="number">0x17</span>, <span class="number">0xc4</span>, <span class="number">0x9b</span>, <span class="number">0x04</span>,
-                    <span class="number">0xf4</span>, <span class="number">0xeb</span>, <span class="number">0x00</span>, <span class="number">0x00</span>
-                ]
+                    <span class="number">0xf4</span>, <span class="number">0xeb</span>, <span class="number">0x00</span>, <span class="number">0x00
+                </span>]
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">all_1</span>() {
-        <span class="kw">let</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>()
-            .<span class="ident">append_bool</span>(<span class="bool-val">true</span>)
-            .<span class="ident">append_scalar</span>(
-                <span class="ident">Fq::from_hex</span>(<span class="string">&quot;01d1755db21c8cd2a9cf5a3436178da3d70f484cd4b4c8834b799921e7d7a102&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create scalar&quot;</span>),
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>all_1() {
+        <span class="kw">let </span>roi = ROInput::new()
+            .append_bool(<span class="bool-val">true</span>)
+            .append_scalar(
+                Fq::from_hex(<span class="string">&quot;01d1755db21c8cd2a9cf5a3436178da3d70f484cd4b4c8834b799921e7d7a102&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create scalar&quot;</span>),
             )
-            .<span class="ident">append_u64</span>(<span class="number">18446744073709551557</span>)
-            .<span class="ident">append_bytes</span>(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">0xba</span>, <span class="number">0xdc</span>, <span class="number">0x0f</span>, <span class="number">0xfe</span>])
-            .<span class="ident">append_scalar</span>(
-                <span class="ident">Fq::from_hex</span>(<span class="string">&quot;e70187e9b125524489d0433da76fd8287fa652eaebde147b45fa0cd86f171810&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create scalar&quot;</span>),
+            .append_u64(<span class="number">18446744073709551557</span>)
+            .append_bytes(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">0xba</span>, <span class="number">0xdc</span>, <span class="number">0x0f</span>, <span class="number">0xfe</span>])
+            .append_scalar(
+                Fq::from_hex(<span class="string">&quot;e70187e9b125524489d0433da76fd8287fa652eaebde147b45fa0cd86f171810&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create scalar&quot;</span>),
             )
-            .<span class="ident">append_bool</span>(<span class="bool-val">false</span>)
-            .<span class="ident">append_u32</span>(<span class="number">2147483647</span>)
-            .<span class="ident">append_bool</span>(<span class="bool-val">true</span>);
+            .append_bool(<span class="bool-val">false</span>)
+            .append_u32(<span class="number">2147483647</span>)
+            .append_bool(<span class="bool-val">true</span>);
 
-        <span class="macro">assert!</span>(<span class="ident">roi</span>.<span class="ident">bits</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">641</span>);
+        <span class="macro">assert!</span>(roi.bits.len() == <span class="number">641</span>);
         <span class="macro">assert!</span>(
-            <span class="ident">roi</span>.<span class="ident">bits</span>.<span class="ident">as_raw_slice</span>()
-                <span class="op">==</span> [
+            roi.bits.as_raw_slice()
+                == [
                     <span class="number">0x03</span>, <span class="number">0xa2</span>, <span class="number">0xeb</span>, <span class="number">0xba</span>, <span class="number">0x64</span>, <span class="number">0x39</span>, <span class="number">0x18</span>, <span class="number">0xa5</span>, <span class="number">0x53</span>, <span class="number">0x9f</span>, <span class="number">0xb5</span>, <span class="number">0x68</span>, <span class="number">0x6c</span>,
                     <span class="number">0x2e</span>, <span class="number">0x1a</span>, <span class="number">0x47</span>, <span class="number">0xaf</span>, <span class="number">0x1f</span>, <span class="number">0x90</span>, <span class="number">0x98</span>, <span class="number">0xa8</span>, <span class="number">0x69</span>, <span class="number">0x91</span>, <span class="number">0x07</span>, <span class="number">0x97</span>, <span class="number">0xf2</span>,
                     <span class="number">0x32</span>, <span class="number">0x43</span>, <span class="number">0xce</span>, <span class="number">0xaf</span>, <span class="number">0x43</span>, <span class="number">0x05</span>, <span class="number">0xc5</span>, <span class="number">0xff</span>, <span class="number">0xff</span>, <span class="number">0xff</span>, <span class="number">0xff</span>, <span class="number">0xff</span>, <span class="number">0xff</span>,
                     <span class="number">0xff</span>, <span class="number">0xba</span>, <span class="number">0xdc</span>, <span class="number">0x0f</span>, <span class="number">0xfe</span>, <span class="number">0xe7</span>, <span class="number">0x01</span>, <span class="number">0x87</span>, <span class="number">0xe9</span>, <span class="number">0xb1</span>, <span class="number">0x25</span>, <span class="number">0x52</span>, <span class="number">0x44</span>,
                     <span class="number">0x89</span>, <span class="number">0xd0</span>, <span class="number">0x43</span>, <span class="number">0x3d</span>, <span class="number">0xa7</span>, <span class="number">0x6f</span>, <span class="number">0xd8</span>, <span class="number">0x28</span>, <span class="number">0x7f</span>, <span class="number">0xa6</span>, <span class="number">0x52</span>, <span class="number">0xea</span>, <span class="number">0xeb</span>,
                     <span class="number">0xde</span>, <span class="number">0x14</span>, <span class="number">0x7b</span>, <span class="number">0x45</span>, <span class="number">0xfa</span>, <span class="number">0x0c</span>, <span class="number">0xd8</span>, <span class="number">0x6f</span>, <span class="number">0x17</span>, <span class="number">0x18</span>, <span class="number">0x10</span>, <span class="number">0xff</span>, <span class="number">0xff</span>,
-                    <span class="number">0xff</span>, <span class="number">0x7f</span>, <span class="number">0x01</span>
-                ]
+                    <span class="number">0xff</span>, <span class="number">0x7f</span>, <span class="number">0x01
+                </span>]
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">transaction_bits</span>() {
-        <span class="kw">let</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>()
-            .<span class="ident">append_u64</span>(<span class="number">1000000</span>) <span class="comment">// fee</span>
-            .<span class="ident">append_u64</span>(<span class="number">1</span>) <span class="comment">// fee token</span>
-            .<span class="ident">append_bool</span>(<span class="bool-val">true</span>) <span class="comment">// fee payer pk odd</span>
-            .<span class="ident">append_u32</span>(<span class="number">0</span>) <span class="comment">// nonce</span>
-            .<span class="ident">append_u32</span>(<span class="ident">u32::MAX</span>) <span class="comment">// valid_until</span>
-            .<span class="ident">append_bytes</span>(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">0</span>; <span class="number">34</span>]) <span class="comment">// memo</span>
-            .<span class="ident">append_bool</span>(<span class="bool-val">false</span>) <span class="comment">// tags[0]</span>
-            .<span class="ident">append_bool</span>(<span class="bool-val">false</span>) <span class="comment">// tags[1]</span>
-            .<span class="ident">append_bool</span>(<span class="bool-val">false</span>) <span class="comment">// tags[2]</span>
-            .<span class="ident">append_bool</span>(<span class="bool-val">true</span>) <span class="comment">// sender pk odd</span>
-            .<span class="ident">append_bool</span>(<span class="bool-val">false</span>) <span class="comment">// receiver pk odd</span>
-            .<span class="ident">append_u64</span>(<span class="number">1</span>) <span class="comment">// token_id</span>
-            .<span class="ident">append_u64</span>(<span class="number">10000000000</span>) <span class="comment">// amount</span>
-            .<span class="ident">append_bool</span>(<span class="bool-val">false</span>) <span class="comment">// token_locked</span>
-            .<span class="ident">append_scalar</span>(
-                <span class="ident">Fq::from_hex</span>(<span class="string">&quot;de217a3017ca0b7a278e75f63c09890e3894be532d8dbadd30a7d450055f6d2d&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create scalar&quot;</span>),
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>transaction_bits() {
+        <span class="kw">let </span>roi = ROInput::new()
+            .append_u64(<span class="number">1000000</span>) <span class="comment">// fee
+            </span>.append_u64(<span class="number">1</span>) <span class="comment">// fee token
+            </span>.append_bool(<span class="bool-val">true</span>) <span class="comment">// fee payer pk odd
+            </span>.append_u32(<span class="number">0</span>) <span class="comment">// nonce
+            </span>.append_u32(u32::MAX) <span class="comment">// valid_until
+            </span>.append_bytes(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">0</span>; <span class="number">34</span>]) <span class="comment">// memo
+            </span>.append_bool(<span class="bool-val">false</span>) <span class="comment">// tags[0]
+            </span>.append_bool(<span class="bool-val">false</span>) <span class="comment">// tags[1]
+            </span>.append_bool(<span class="bool-val">false</span>) <span class="comment">// tags[2]
+            </span>.append_bool(<span class="bool-val">true</span>) <span class="comment">// sender pk odd
+            </span>.append_bool(<span class="bool-val">false</span>) <span class="comment">// receiver pk odd
+            </span>.append_u64(<span class="number">1</span>) <span class="comment">// token_id
+            </span>.append_u64(<span class="number">10000000000</span>) <span class="comment">// amount
+            </span>.append_bool(<span class="bool-val">false</span>) <span class="comment">// token_locked
+            </span>.append_scalar(
+                Fq::from_hex(<span class="string">&quot;de217a3017ca0b7a278e75f63c09890e3894be532d8dbadd30a7d450055f6d2d&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create scalar&quot;</span>),
             )
-            .<span class="ident">append_bytes</span>(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">0x01</span>]);
-        <span class="macro">assert_eq!</span>(<span class="ident">roi</span>.<span class="ident">bits</span>.<span class="ident">len</span>(), <span class="number">862</span>);
+            .append_bytes(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">0x01</span>]);
+        <span class="macro">assert_eq!</span>(roi.bits.len(), <span class="number">862</span>);
         <span class="macro">assert_eq!</span>(
-            <span class="ident">roi</span>.<span class="ident">bits</span>.<span class="ident">as_raw_slice</span>(),
+            roi.bits.as_raw_slice(),
             [
                 <span class="number">0x40</span>, <span class="number">0x42</span>, <span class="number">0x0f</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x01</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>,
                 <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x01</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0xfe</span>, <span class="number">0xff</span>, <span class="number">0xff</span>, <span class="number">0xff</span>, <span class="number">0x01</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>,
@@ -1337,70 +1337,70 @@
                 <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x50</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0xf9</span>, <span class="number">0x02</span>,
                 <span class="number">0x95</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0xef</span>, <span class="number">0x10</span>, <span class="number">0x3d</span>, <span class="number">0x98</span>, <span class="number">0x0b</span>, <span class="number">0xe5</span>, <span class="number">0x05</span>, <span class="number">0xbd</span>, <span class="number">0x13</span>,
                 <span class="number">0xc7</span>, <span class="number">0x3a</span>, <span class="number">0x7b</span>, <span class="number">0x9e</span>, <span class="number">0x84</span>, <span class="number">0x44</span>, <span class="number">0x07</span>, <span class="number">0x1c</span>, <span class="number">0x4a</span>, <span class="number">0xdf</span>, <span class="number">0xa9</span>, <span class="number">0x96</span>, <span class="number">0x46</span>, <span class="number">0xdd</span>,
-                <span class="number">0x6e</span>, <span class="number">0x98</span>, <span class="number">0x53</span>, <span class="number">0x6a</span>, <span class="number">0xa8</span>, <span class="number">0x82</span>, <span class="number">0xaf</span>, <span class="number">0xb6</span>, <span class="number">0x56</span>, <span class="number">0x00</span>
-            ]
+                <span class="number">0x6e</span>, <span class="number">0x98</span>, <span class="number">0x53</span>, <span class="number">0x6a</span>, <span class="number">0xa8</span>, <span class="number">0x82</span>, <span class="number">0xaf</span>, <span class="number">0xb6</span>, <span class="number">0x56</span>, <span class="number">0x00
+            </span>]
         )
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">append_field</span>() {
-        <span class="kw">let</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>().<span class="ident">append_field</span>(
-            <span class="ident">Fp::from_hex</span>(<span class="string">&quot;2eaedae42a7461d5952d27b97ecad068b698ebb94e8a0e4c45388bb613de7e08&quot;</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;failed to create field&quot;</span>),
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>append_field() {
+        <span class="kw">let </span>roi = ROInput::new().append_field(
+            Fp::from_hex(<span class="string">&quot;2eaedae42a7461d5952d27b97ecad068b698ebb94e8a0e4c45388bb613de7e08&quot;</span>)
+                .expect(<span class="string">&quot;failed to create field&quot;</span>),
         );
 
         <span class="macro">assert_eq!</span>(
-            <span class="ident">roi</span>.<span class="ident">to_bytes</span>(),
+            roi.to_bytes(),
             [
                 <span class="number">0x2e</span>, <span class="number">0xae</span>, <span class="number">0xda</span>, <span class="number">0xe4</span>, <span class="number">0x2a</span>, <span class="number">0x74</span>, <span class="number">0x61</span>, <span class="number">0xd5</span>, <span class="number">0x95</span>, <span class="number">0x2d</span>, <span class="number">0x27</span>, <span class="number">0xb9</span>, <span class="number">0x7e</span>, <span class="number">0xca</span>,
                 <span class="number">0xd0</span>, <span class="number">0x68</span>, <span class="number">0xb6</span>, <span class="number">0x98</span>, <span class="number">0xeb</span>, <span class="number">0xb9</span>, <span class="number">0x4e</span>, <span class="number">0x8a</span>, <span class="number">0x0e</span>, <span class="number">0x4c</span>, <span class="number">0x45</span>, <span class="number">0x38</span>, <span class="number">0x8b</span>, <span class="number">0xb6</span>,
-                <span class="number">0x13</span>, <span class="number">0xde</span>, <span class="number">0x7e</span>, <span class="number">0x08</span>
-            ]
+                <span class="number">0x13</span>, <span class="number">0xde</span>, <span class="number">0x7e</span>, <span class="number">0x08
+            </span>]
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">append_two_fields</span>() {
-        <span class="kw">let</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>()
-            .<span class="ident">append_field</span>(
-                <span class="ident">Fp::from_hex</span>(<span class="string">&quot;0cdaf334e9632268a5aa959c2781fb32bf45565fe244ae42c849d3fdc7c6441d&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create field&quot;</span>),
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>append_two_fields() {
+        <span class="kw">let </span>roi = ROInput::new()
+            .append_field(
+                Fp::from_hex(<span class="string">&quot;0cdaf334e9632268a5aa959c2781fb32bf45565fe244ae42c849d3fdc7c6441d&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create field&quot;</span>),
             )
-            .<span class="ident">append_field</span>(
-                <span class="ident">Fp::from_hex</span>(<span class="string">&quot;2eaedae42a7461d5952d27b97ecad068b698ebb94e8a0e4c45388bb613de7e08&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create field&quot;</span>),
+            .append_field(
+                Fp::from_hex(<span class="string">&quot;2eaedae42a7461d5952d27b97ecad068b698ebb94e8a0e4c45388bb613de7e08&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create field&quot;</span>),
             );
 
         <span class="macro">assert_eq!</span>(
-            <span class="ident">roi</span>.<span class="ident">to_bytes</span>(),
+            roi.to_bytes(),
             [
                 <span class="number">0x0c</span>, <span class="number">0xda</span>, <span class="number">0xf3</span>, <span class="number">0x34</span>, <span class="number">0xe9</span>, <span class="number">0x63</span>, <span class="number">0x22</span>, <span class="number">0x68</span>, <span class="number">0xa5</span>, <span class="number">0xaa</span>, <span class="number">0x95</span>, <span class="number">0x9c</span>, <span class="number">0x27</span>, <span class="number">0x81</span>,
                 <span class="number">0xfb</span>, <span class="number">0x32</span>, <span class="number">0xbf</span>, <span class="number">0x45</span>, <span class="number">0x56</span>, <span class="number">0x5f</span>, <span class="number">0xe2</span>, <span class="number">0x44</span>, <span class="number">0xae</span>, <span class="number">0x42</span>, <span class="number">0xc8</span>, <span class="number">0x49</span>, <span class="number">0xd3</span>, <span class="number">0xfd</span>,
                 <span class="number">0xc7</span>, <span class="number">0xc6</span>, <span class="number">0x44</span>, <span class="number">0x1d</span>, <span class="number">0x17</span>, <span class="number">0x57</span>, <span class="number">0x6d</span>, <span class="number">0x72</span>, <span class="number">0x15</span>, <span class="number">0xba</span>, <span class="number">0xb0</span>, <span class="number">0xea</span>, <span class="number">0xca</span>, <span class="number">0x96</span>,
                 <span class="number">0x93</span>, <span class="number">0x5c</span>, <span class="number">0x3f</span>, <span class="number">0x65</span>, <span class="number">0x68</span>, <span class="number">0x34</span>, <span class="number">0x5b</span>, <span class="number">0xcc</span>, <span class="number">0xf5</span>, <span class="number">0x5c</span>, <span class="number">0x27</span>, <span class="number">0x45</span>, <span class="number">0x07</span>, <span class="number">0xa6</span>,
-                <span class="number">0x22</span>, <span class="number">0x9c</span>, <span class="number">0x45</span>, <span class="number">0xdb</span>, <span class="number">0x09</span>, <span class="number">0x6f</span>, <span class="number">0x3f</span>, <span class="number">0x04</span>
-            ]
+                <span class="number">0x22</span>, <span class="number">0x9c</span>, <span class="number">0x45</span>, <span class="number">0xdb</span>, <span class="number">0x09</span>, <span class="number">0x6f</span>, <span class="number">0x3f</span>, <span class="number">0x04
+            </span>]
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">append_three_fields</span>() {
-        <span class="kw">let</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>()
-            .<span class="ident">append_field</span>(
-                <span class="ident">Fp::from_hex</span>(<span class="string">&quot;1f3f142986041b54427aa2032632e34df2fa9bde9bce70c04c5034266619e529&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create field&quot;</span>),
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>append_three_fields() {
+        <span class="kw">let </span>roi = ROInput::new()
+            .append_field(
+                Fp::from_hex(<span class="string">&quot;1f3f142986041b54427aa2032632e34df2fa9bde9bce70c04c5034266619e529&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create field&quot;</span>),
             )
-            .<span class="ident">append_field</span>(
-                <span class="ident">Fp::from_hex</span>(<span class="string">&quot;37f4433b85e753a91a1d79751645f1448954c433f9492e36a933ca7f3df61a04&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create field&quot;</span>),
+            .append_field(
+                Fp::from_hex(<span class="string">&quot;37f4433b85e753a91a1d79751645f1448954c433f9492e36a933ca7f3df61a04&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create field&quot;</span>),
             )
-            .<span class="ident">append_field</span>(
-                <span class="ident">Fp::from_hex</span>(<span class="string">&quot;6cf4772d3e1aab98a2b514b73a4f6e0df1fb4f703ecfa762196b22c26da4341c&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create field&quot;</span>),
+            .append_field(
+                Fp::from_hex(<span class="string">&quot;6cf4772d3e1aab98a2b514b73a4f6e0df1fb4f703ecfa762196b22c26da4341c&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create field&quot;</span>),
             );
 
         <span class="macro">assert_eq!</span>(
-            <span class="ident">roi</span>.<span class="ident">to_bytes</span>(),
+            roi.to_bytes(),
             [
                 <span class="number">0x1f</span>, <span class="number">0x3f</span>, <span class="number">0x14</span>, <span class="number">0x29</span>, <span class="number">0x86</span>, <span class="number">0x04</span>, <span class="number">0x1b</span>, <span class="number">0x54</span>, <span class="number">0x42</span>, <span class="number">0x7a</span>, <span class="number">0xa2</span>, <span class="number">0x03</span>, <span class="number">0x26</span>, <span class="number">0x32</span>,
                 <span class="number">0xe3</span>, <span class="number">0x4d</span>, <span class="number">0xf2</span>, <span class="number">0xfa</span>, <span class="number">0x9b</span>, <span class="number">0xde</span>, <span class="number">0x9b</span>, <span class="number">0xce</span>, <span class="number">0x70</span>, <span class="number">0xc0</span>, <span class="number">0x4c</span>, <span class="number">0x50</span>, <span class="number">0x34</span>, <span class="number">0x26</span>,
@@ -1408,80 +1408,80 @@
                 <span class="number">0xbc</span>, <span class="number">0x3a</span>, <span class="number">0x8b</span>, <span class="number">0xa2</span>, <span class="number">0x78</span>, <span class="number">0xa2</span>, <span class="number">0x44</span>, <span class="number">0x2a</span>, <span class="number">0xe2</span>, <span class="number">0x99</span>, <span class="number">0xfc</span>, <span class="number">0x24</span>, <span class="number">0x17</span>, <span class="number">0x9b</span>,
                 <span class="number">0xd4</span>, <span class="number">0x19</span>, <span class="number">0xe5</span>, <span class="number">0xbf</span>, <span class="number">0x1e</span>, <span class="number">0x7b</span>, <span class="number">0x0d</span>, <span class="number">0x02</span>, <span class="number">0x1b</span>, <span class="number">0xfd</span>, <span class="number">0x5d</span>, <span class="number">0x8b</span>, <span class="number">0x8f</span>, <span class="number">0xc6</span>,
                 <span class="number">0x2a</span>, <span class="number">0xa6</span>, <span class="number">0x68</span>, <span class="number">0x2d</span>, <span class="number">0xc5</span>, <span class="number">0xad</span>, <span class="number">0xce</span>, <span class="number">0x93</span>, <span class="number">0x5b</span>, <span class="number">0x43</span>, <span class="number">0xfc</span>, <span class="number">0xfe</span>, <span class="number">0x13</span>, <span class="number">0x9c</span>,
-                <span class="number">0xcf</span>, <span class="number">0xf3</span>, <span class="number">0xa9</span>, <span class="number">0x58</span>, <span class="number">0xc6</span>, <span class="number">0x9a</span>, <span class="number">0x88</span>, <span class="number">0x70</span>, <span class="number">0x1b</span>, <span class="number">0x29</span>, <span class="number">0x0d</span>, <span class="number">0x07</span>
-            ]
+                <span class="number">0xcf</span>, <span class="number">0xf3</span>, <span class="number">0xa9</span>, <span class="number">0x58</span>, <span class="number">0xc6</span>, <span class="number">0x9a</span>, <span class="number">0x88</span>, <span class="number">0x70</span>, <span class="number">0x1b</span>, <span class="number">0x29</span>, <span class="number">0x0d</span>, <span class="number">0x07
+            </span>]
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">append_field_and_scalar</span>() {
-        <span class="kw">let</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>()
-            .<span class="ident">append_field</span>(
-                <span class="ident">Fp::from_hex</span>(<span class="string">&quot;64cde530327a36fcb88b6d769adca9b7c5d266e7d0042482203f3fd3a0d71721&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create field&quot;</span>),
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>append_field_and_scalar() {
+        <span class="kw">let </span>roi = ROInput::new()
+            .append_field(
+                Fp::from_hex(<span class="string">&quot;64cde530327a36fcb88b6d769adca9b7c5d266e7d0042482203f3fd3a0d71721&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create field&quot;</span>),
             )
-            .<span class="ident">append_scalar</span>(
-                <span class="ident">Fq::from_hex</span>(<span class="string">&quot;604355d0daa455db783fd7ee11c5bd9b04d67ba64c27c95bef95e379f98c6432&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create scalar&quot;</span>),
+            .append_scalar(
+                Fq::from_hex(<span class="string">&quot;604355d0daa455db783fd7ee11c5bd9b04d67ba64c27c95bef95e379f98c6432&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create scalar&quot;</span>),
             );
 
         <span class="macro">assert_eq!</span>(
-            <span class="ident">roi</span>.<span class="ident">to_bytes</span>(),
+            roi.to_bytes(),
             [
                 <span class="number">0x64</span>, <span class="number">0xcd</span>, <span class="number">0xe5</span>, <span class="number">0x30</span>, <span class="number">0x32</span>, <span class="number">0x7a</span>, <span class="number">0x36</span>, <span class="number">0xfc</span>, <span class="number">0xb8</span>, <span class="number">0x8b</span>, <span class="number">0x6d</span>, <span class="number">0x76</span>, <span class="number">0x9a</span>, <span class="number">0xdc</span>,
                 <span class="number">0xa9</span>, <span class="number">0xb7</span>, <span class="number">0xc5</span>, <span class="number">0xd2</span>, <span class="number">0x66</span>, <span class="number">0xe7</span>, <span class="number">0xd0</span>, <span class="number">0x04</span>, <span class="number">0x24</span>, <span class="number">0x82</span>, <span class="number">0x20</span>, <span class="number">0x3f</span>, <span class="number">0x3f</span>, <span class="number">0xd3</span>,
                 <span class="number">0xa0</span>, <span class="number">0xd7</span>, <span class="number">0x17</span>, <span class="number">0x21</span>, <span class="number">0xb0</span>, <span class="number">0xa1</span>, <span class="number">0x2a</span>, <span class="number">0x68</span>, <span class="number">0x6d</span>, <span class="number">0xd2</span>, <span class="number">0xaa</span>, <span class="number">0x6d</span>, <span class="number">0xbc</span>, <span class="number">0x9f</span>,
                 <span class="number">0x6b</span>, <span class="number">0xf7</span>, <span class="number">0x88</span>, <span class="number">0xe2</span>, <span class="number">0xde</span>, <span class="number">0x4d</span>, <span class="number">0x02</span>, <span class="number">0xeb</span>, <span class="number">0x3d</span>, <span class="number">0x53</span>, <span class="number">0xa6</span>, <span class="number">0x93</span>, <span class="number">0xe4</span>, <span class="number">0xad</span>,
-                <span class="number">0xf7</span>, <span class="number">0xca</span>, <span class="number">0xf1</span>, <span class="number">0xbc</span>, <span class="number">0x7c</span>, <span class="number">0x46</span>, <span class="number">0x32</span>, <span class="number">0x19</span>
-            ]
+                <span class="number">0xf7</span>, <span class="number">0xca</span>, <span class="number">0xf1</span>, <span class="number">0xbc</span>, <span class="number">0x7c</span>, <span class="number">0x46</span>, <span class="number">0x32</span>, <span class="number">0x19
+            </span>]
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">append_field_bit_and_scalar</span>() {
-        <span class="kw">let</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>()
-            .<span class="ident">append_field</span>(
-                <span class="ident">Fp::from_hex</span>(<span class="string">&quot;d897c7a8b811d8acd3eeaa4adf42292802eed80031c2ad7c8989aea1fe94322c&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create field&quot;</span>),
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>append_field_bit_and_scalar() {
+        <span class="kw">let </span>roi = ROInput::new()
+            .append_field(
+                Fp::from_hex(<span class="string">&quot;d897c7a8b811d8acd3eeaa4adf42292802eed80031c2ad7c8989aea1fe94322c&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create field&quot;</span>),
             )
-            .<span class="ident">append_bool</span>(<span class="bool-val">false</span>)
-            .<span class="ident">append_scalar</span>(
-                <span class="ident">Fq::from_hex</span>(<span class="string">&quot;79586cc6b8b53c8991b2abe0ca76508f056ca50f06836ce4d818c2ff73d42b28&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create scalar&quot;</span>),
+            .append_bool(<span class="bool-val">false</span>)
+            .append_scalar(
+                Fq::from_hex(<span class="string">&quot;79586cc6b8b53c8991b2abe0ca76508f056ca50f06836ce4d818c2ff73d42b28&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create scalar&quot;</span>),
             );
 
         <span class="macro">assert_eq!</span>(
-            <span class="ident">roi</span>.<span class="ident">to_bytes</span>(),
+            roi.to_bytes(),
             [
                 <span class="number">0xd8</span>, <span class="number">0x97</span>, <span class="number">0xc7</span>, <span class="number">0xa8</span>, <span class="number">0xb8</span>, <span class="number">0x11</span>, <span class="number">0xd8</span>, <span class="number">0xac</span>, <span class="number">0xd3</span>, <span class="number">0xee</span>, <span class="number">0xaa</span>, <span class="number">0x4a</span>, <span class="number">0xdf</span>, <span class="number">0x42</span>,
                 <span class="number">0x29</span>, <span class="number">0x28</span>, <span class="number">0x02</span>, <span class="number">0xee</span>, <span class="number">0xd8</span>, <span class="number">0x00</span>, <span class="number">0x31</span>, <span class="number">0xc2</span>, <span class="number">0xad</span>, <span class="number">0x7c</span>, <span class="number">0x89</span>, <span class="number">0x89</span>, <span class="number">0xae</span>, <span class="number">0xa1</span>,
                 <span class="number">0xfe</span>, <span class="number">0x94</span>, <span class="number">0x32</span>, <span class="number">0x2c</span>, <span class="number">0x79</span>, <span class="number">0x58</span>, <span class="number">0x6c</span>, <span class="number">0xc6</span>, <span class="number">0xb8</span>, <span class="number">0xb5</span>, <span class="number">0x3c</span>, <span class="number">0x89</span>, <span class="number">0x91</span>, <span class="number">0xb2</span>,
                 <span class="number">0xab</span>, <span class="number">0xe0</span>, <span class="number">0xca</span>, <span class="number">0x76</span>, <span class="number">0x50</span>, <span class="number">0x8f</span>, <span class="number">0x05</span>, <span class="number">0x6c</span>, <span class="number">0xa5</span>, <span class="number">0x0f</span>, <span class="number">0x06</span>, <span class="number">0x83</span>, <span class="number">0x6c</span>, <span class="number">0xe4</span>,
-                <span class="number">0xd8</span>, <span class="number">0x18</span>, <span class="number">0xc2</span>, <span class="number">0xff</span>, <span class="number">0x73</span>, <span class="number">0xd4</span>, <span class="number">0x2b</span>, <span class="number">0x28</span>
-            ]
+                <span class="number">0xd8</span>, <span class="number">0x18</span>, <span class="number">0xc2</span>, <span class="number">0xff</span>, <span class="number">0x73</span>, <span class="number">0xd4</span>, <span class="number">0x2b</span>, <span class="number">0x28
+            </span>]
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">to_bytes</span>() {
-        <span class="kw">let</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>()
-            .<span class="ident">append_field</span>(
-                <span class="ident">Fp::from_hex</span>(<span class="string">&quot;a5984f2bd00906f9a86e75bfb4b2c3625f1a0d1cfacc1501e8e82ae7041efc14&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create field&quot;</span>),
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>to_bytes() {
+        <span class="kw">let </span>roi = ROInput::new()
+            .append_field(
+                Fp::from_hex(<span class="string">&quot;a5984f2bd00906f9a86e75bfb4b2c3625f1a0d1cfacc1501e8e82ae7041efc14&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create field&quot;</span>),
             )
-            .<span class="ident">append_field</span>(
-                <span class="ident">Fp::from_hex</span>(<span class="string">&quot;8af0bc770d49a5b9fcabfcdd033bab470b2a211ef80b710efe71315cfa818c0a&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create field&quot;</span>),
+            .append_field(
+                Fp::from_hex(<span class="string">&quot;8af0bc770d49a5b9fcabfcdd033bab470b2a211ef80b710efe71315cfa818c0a&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create field&quot;</span>),
             )
-            .<span class="ident">append_bool</span>(<span class="bool-val">false</span>)
-            .<span class="ident">append_u32</span>(<span class="number">314u32</span>)
-            .<span class="ident">append_scalar</span>(
-                <span class="ident">Fq::from_hex</span>(<span class="string">&quot;c23c43a23ddc1516578b0f0d81b93cdbbc97744acc697cfc8c5dfd01cc448323&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create scalar&quot;</span>),
+            .append_bool(<span class="bool-val">false</span>)
+            .append_u32(<span class="number">314u32</span>)
+            .append_scalar(
+                Fq::from_hex(<span class="string">&quot;c23c43a23ddc1516578b0f0d81b93cdbbc97744acc697cfc8c5dfd01cc448323&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create scalar&quot;</span>),
             );
 
         <span class="macro">assert_eq!</span>(
-            <span class="ident">roi</span>.<span class="ident">to_bytes</span>(),
+            roi.to_bytes(),
             [
                 <span class="number">0xa5</span>, <span class="number">0x98</span>, <span class="number">0x4f</span>, <span class="number">0x2b</span>, <span class="number">0xd0</span>, <span class="number">0x09</span>, <span class="number">0x06</span>, <span class="number">0xf9</span>, <span class="number">0xa8</span>, <span class="number">0x6e</span>, <span class="number">0x75</span>, <span class="number">0xbf</span>, <span class="number">0xb4</span>, <span class="number">0xb2</span>,
                 <span class="number">0xc3</span>, <span class="number">0x62</span>, <span class="number">0x5f</span>, <span class="number">0x1a</span>, <span class="number">0x0d</span>, <span class="number">0x1c</span>, <span class="number">0xfa</span>, <span class="number">0xcc</span>, <span class="number">0x15</span>, <span class="number">0x01</span>, <span class="number">0xe8</span>, <span class="number">0xe8</span>, <span class="number">0x2a</span>, <span class="number">0xe7</span>,
@@ -1490,205 +1490,205 @@
                 <span class="number">0xff</span>, <span class="number">0xb8</span>, <span class="number">0x18</span>, <span class="number">0x2e</span>, <span class="number">0xfd</span>, <span class="number">0x40</span>, <span class="number">0x46</span>, <span class="number">0x05</span>, <span class="number">0x9d</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x61</span>, <span class="number">0x9e</span>,
                 <span class="number">0x21</span>, <span class="number">0xd1</span>, <span class="number">0x1e</span>, <span class="number">0xee</span>, <span class="number">0x0a</span>, <span class="number">0x8b</span>, <span class="number">0xab</span>, <span class="number">0xc5</span>, <span class="number">0x87</span>, <span class="number">0x86</span>, <span class="number">0xc0</span>, <span class="number">0x5c</span>, <span class="number">0x9e</span>, <span class="number">0x6d</span>,
                 <span class="number">0xde</span>, <span class="number">0x4b</span>, <span class="number">0x3a</span>, <span class="number">0x25</span>, <span class="number">0xe6</span>, <span class="number">0x34</span>, <span class="number">0x3e</span>, <span class="number">0x7e</span>, <span class="number">0xc6</span>, <span class="number">0xae</span>, <span class="number">0xfe</span>, <span class="number">0x00</span>, <span class="number">0x66</span>, <span class="number">0xa2</span>,
-                <span class="number">0xc1</span>, <span class="number">0x11</span>
-            ]
+                <span class="number">0xc1</span>, <span class="number">0x11
+            </span>]
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">to_fields_1_scalar</span>() {
-        <span class="kw">let</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>().<span class="ident">append_scalar</span>(
-            <span class="ident">Fq::from_hex</span>(<span class="string">&quot;5d496dd8ff63f640c006887098092b16bc8c78504f84fa1ee3a0b54f85f0a625&quot;</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;failed to create scalar&quot;</span>),
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>to_fields_1_scalar() {
+        <span class="kw">let </span>roi = ROInput::new().append_scalar(
+            Fq::from_hex(<span class="string">&quot;5d496dd8ff63f640c006887098092b16bc8c78504f84fa1ee3a0b54f85f0a625&quot;</span>)
+                .expect(<span class="string">&quot;failed to create scalar&quot;</span>),
         );
 
         <span class="macro">assert_eq!</span>(
-            <span class="ident">roi</span>.<span class="ident">to_bytes</span>(),
+            roi.to_bytes(),
             [
                 <span class="number">0x5d</span>, <span class="number">0x49</span>, <span class="number">0x6d</span>, <span class="number">0xd8</span>, <span class="number">0xff</span>, <span class="number">0x63</span>, <span class="number">0xf6</span>, <span class="number">0x40</span>, <span class="number">0xc0</span>, <span class="number">0x06</span>, <span class="number">0x88</span>, <span class="number">0x70</span>, <span class="number">0x98</span>, <span class="number">0x09</span>,
                 <span class="number">0x2b</span>, <span class="number">0x16</span>, <span class="number">0xbc</span>, <span class="number">0x8c</span>, <span class="number">0x78</span>, <span class="number">0x50</span>, <span class="number">0x4f</span>, <span class="number">0x84</span>, <span class="number">0xfa</span>, <span class="number">0x1e</span>, <span class="number">0xe3</span>, <span class="number">0xa0</span>, <span class="number">0xb5</span>, <span class="number">0x4f</span>,
-                <span class="number">0x85</span>, <span class="number">0xf0</span>, <span class="number">0xa6</span>, <span class="number">0x25</span>
-            ]
+                <span class="number">0x85</span>, <span class="number">0xf0</span>, <span class="number">0xa6</span>, <span class="number">0x25
+            </span>]
         );
 
         <span class="macro">assert_eq!</span>(
-            <span class="ident">roi</span>.<span class="ident">to_fields</span>(),
+            roi.to_fields(),
             [
-                <span class="ident">Fp::from_hex</span>(<span class="string">&quot;5d496dd8ff63f640c006887098092b16bc8c78504f84fa1ee3a0b54f85f0a625&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create field&quot;</span>),
-                <span class="ident">Fp::from_hex</span>(<span class="string">&quot;0000000000000000000000000000000000000000000000000000000000000000&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create field&quot;</span>),
+                Fp::from_hex(<span class="string">&quot;5d496dd8ff63f640c006887098092b16bc8c78504f84fa1ee3a0b54f85f0a625&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create field&quot;</span>),
+                Fp::from_hex(<span class="string">&quot;0000000000000000000000000000000000000000000000000000000000000000&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create field&quot;</span>),
             ]
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">to_fields_1_scalar_2_bits</span>() {
-        <span class="kw">let</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>()
-            .<span class="ident">append_scalar</span>(
-                <span class="ident">Fq::from_hex</span>(<span class="string">&quot;e8a9961c8c417b0d0e3d7366f6b0e6ef90a6dad123070f715e8a9eaa02e47330&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create scalar&quot;</span>),
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>to_fields_1_scalar_2_bits() {
+        <span class="kw">let </span>roi = ROInput::new()
+            .append_scalar(
+                Fq::from_hex(<span class="string">&quot;e8a9961c8c417b0d0e3d7366f6b0e6ef90a6dad123070f715e8a9eaa02e47330&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create scalar&quot;</span>),
             )
-            .<span class="ident">append_bool</span>(<span class="bool-val">false</span>)
-            .<span class="ident">append_bool</span>(<span class="bool-val">true</span>);
+            .append_bool(<span class="bool-val">false</span>)
+            .append_bool(<span class="bool-val">true</span>);
 
         <span class="macro">assert_eq!</span>(
-            <span class="ident">roi</span>.<span class="ident">to_bytes</span>(),
+            roi.to_bytes(),
             [
                 <span class="number">0xe8</span>, <span class="number">0xa9</span>, <span class="number">0x96</span>, <span class="number">0x1c</span>, <span class="number">0x8c</span>, <span class="number">0x41</span>, <span class="number">0x7b</span>, <span class="number">0x0d</span>, <span class="number">0x0e</span>, <span class="number">0x3d</span>, <span class="number">0x73</span>, <span class="number">0x66</span>, <span class="number">0xf6</span>, <span class="number">0xb0</span>,
                 <span class="number">0xe6</span>, <span class="number">0xef</span>, <span class="number">0x90</span>, <span class="number">0xa6</span>, <span class="number">0xda</span>, <span class="number">0xd1</span>, <span class="number">0x23</span>, <span class="number">0x07</span>, <span class="number">0x0f</span>, <span class="number">0x71</span>, <span class="number">0x5e</span>, <span class="number">0x8a</span>, <span class="number">0x9e</span>, <span class="number">0xaa</span>,
-                <span class="number">0x02</span>, <span class="number">0xe4</span>, <span class="number">0x73</span>, <span class="number">0x30</span>, <span class="number">0x01</span>
-            ]
+                <span class="number">0x02</span>, <span class="number">0xe4</span>, <span class="number">0x73</span>, <span class="number">0x30</span>, <span class="number">0x01
+            </span>]
         );
 
         <span class="macro">assert_eq!</span>(
-            <span class="ident">roi</span>.<span class="ident">to_fields</span>(),
+            roi.to_fields(),
             [
-                <span class="ident">Fp::from_hex</span>(<span class="string">&quot;e8a9961c8c417b0d0e3d7366f6b0e6ef90a6dad123070f715e8a9eaa02e47330&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create field&quot;</span>),
-                <span class="ident">Fp::from_hex</span>(<span class="string">&quot;0400000000000000000000000000000000000000000000000000000000000000&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create field&quot;</span>),
+                Fp::from_hex(<span class="string">&quot;e8a9961c8c417b0d0e3d7366f6b0e6ef90a6dad123070f715e8a9eaa02e47330&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create field&quot;</span>),
+                Fp::from_hex(<span class="string">&quot;0400000000000000000000000000000000000000000000000000000000000000&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create field&quot;</span>),
             ]
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">to_fields_2_scalars</span>() {
-        <span class="kw">let</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>()
-            .<span class="ident">append_scalar</span>(
-                <span class="ident">Fq::from_hex</span>(<span class="string">&quot;e05c25d2c17ec20d6bc8fd21204af52808451076cff687407164a21d352ddd22&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create scalar&quot;</span>),
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>to_fields_2_scalars() {
+        <span class="kw">let </span>roi = ROInput::new()
+            .append_scalar(
+                Fq::from_hex(<span class="string">&quot;e05c25d2c17ec20d6bc8fd21204af52808451076cff687407164a21d352ddd22&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create scalar&quot;</span>),
             )
-            .<span class="ident">append_scalar</span>(
-                <span class="ident">Fq::from_hex</span>(<span class="string">&quot;c356dbb39478508818e0320dffa6c1ef512564366ec885ee2fc4d385dd36df0f&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create scalar&quot;</span>),
+            .append_scalar(
+                Fq::from_hex(<span class="string">&quot;c356dbb39478508818e0320dffa6c1ef512564366ec885ee2fc4d385dd36df0f&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create scalar&quot;</span>),
             );
 
         <span class="macro">assert_eq!</span>(
-            <span class="ident">roi</span>.<span class="ident">to_bytes</span>(),
+            roi.to_bytes(),
             [
                 <span class="number">0xe0</span>, <span class="number">0x5c</span>, <span class="number">0x25</span>, <span class="number">0xd2</span>, <span class="number">0xc1</span>, <span class="number">0x7e</span>, <span class="number">0xc2</span>, <span class="number">0x0d</span>, <span class="number">0x6b</span>, <span class="number">0xc8</span>, <span class="number">0xfd</span>, <span class="number">0x21</span>, <span class="number">0x20</span>, <span class="number">0x4a</span>,
                 <span class="number">0xf5</span>, <span class="number">0x28</span>, <span class="number">0x08</span>, <span class="number">0x45</span>, <span class="number">0x10</span>, <span class="number">0x76</span>, <span class="number">0xcf</span>, <span class="number">0xf6</span>, <span class="number">0x87</span>, <span class="number">0x40</span>, <span class="number">0x71</span>, <span class="number">0x64</span>, <span class="number">0xa2</span>, <span class="number">0x1d</span>,
                 <span class="number">0x35</span>, <span class="number">0x2d</span>, <span class="number">0xdd</span>, <span class="number">0xa2</span>, <span class="number">0x61</span>, <span class="number">0xab</span>, <span class="number">0xed</span>, <span class="number">0x59</span>, <span class="number">0x4a</span>, <span class="number">0x3c</span>, <span class="number">0x28</span>, <span class="number">0x44</span>, <span class="number">0x0c</span>, <span class="number">0x70</span>,
                 <span class="number">0x99</span>, <span class="number">0x86</span>, <span class="number">0x7f</span>, <span class="number">0xd3</span>, <span class="number">0xe0</span>, <span class="number">0xf7</span>, <span class="number">0xa8</span>, <span class="number">0x12</span>, <span class="number">0x32</span>, <span class="number">0x1b</span>, <span class="number">0x37</span>, <span class="number">0xe4</span>, <span class="number">0x42</span>, <span class="number">0xf7</span>,
-                <span class="number">0x17</span>, <span class="number">0xe2</span>, <span class="number">0xe9</span>, <span class="number">0xc2</span>, <span class="number">0x6e</span>, <span class="number">0x9b</span>, <span class="number">0xef</span>, <span class="number">0x07</span>
-            ]
+                <span class="number">0x17</span>, <span class="number">0xe2</span>, <span class="number">0xe9</span>, <span class="number">0xc2</span>, <span class="number">0x6e</span>, <span class="number">0x9b</span>, <span class="number">0xef</span>, <span class="number">0x07
+            </span>]
         );
 
         <span class="macro">assert_eq!</span>(
-            <span class="ident">roi</span>.<span class="ident">to_fields</span>(),
+            roi.to_fields(),
             [
-                <span class="ident">Fp::from_hex</span>(<span class="string">&quot;e05c25d2c17ec20d6bc8fd21204af52808451076cff687407164a21d352ddd22&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create field&quot;</span>),
-                <span class="ident">Fp::from_hex</span>(<span class="string">&quot;86adb66729f1a01031c0651afe4d83dfa34ac86cdc900bdd5f88a70bbb6dbe1f&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create field&quot;</span>),
-                <span class="ident">Fp::from_hex</span>(<span class="string">&quot;0000000000000000000000000000000000000000000000000000000000000000&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create field&quot;</span>),
+                Fp::from_hex(<span class="string">&quot;e05c25d2c17ec20d6bc8fd21204af52808451076cff687407164a21d352ddd22&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create field&quot;</span>),
+                Fp::from_hex(<span class="string">&quot;86adb66729f1a01031c0651afe4d83dfa34ac86cdc900bdd5f88a70bbb6dbe1f&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create field&quot;</span>),
+                Fp::from_hex(<span class="string">&quot;0000000000000000000000000000000000000000000000000000000000000000&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create field&quot;</span>),
             ]
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">to_fields_2_bits_scalar_u32</span>() {
-        <span class="kw">let</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>()
-            .<span class="ident">append_bool</span>(<span class="bool-val">true</span>)
-            .<span class="ident">append_bool</span>(<span class="bool-val">false</span>)
-            .<span class="ident">append_scalar</span>(
-                <span class="ident">Fq::from_hex</span>(<span class="string">&quot;689634de233b06251a80ac7df64483922727757eea1adc6f0c8f184441cfe10d&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create scalar&quot;</span>),
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>to_fields_2_bits_scalar_u32() {
+        <span class="kw">let </span>roi = ROInput::new()
+            .append_bool(<span class="bool-val">true</span>)
+            .append_bool(<span class="bool-val">false</span>)
+            .append_scalar(
+                Fq::from_hex(<span class="string">&quot;689634de233b06251a80ac7df64483922727757eea1adc6f0c8f184441cfe10d&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create scalar&quot;</span>),
             )
-            .<span class="ident">append_u32</span>(<span class="number">834803</span>);
+            .append_u32(<span class="number">834803</span>);
 
         <span class="macro">assert_eq!</span>(
-            <span class="ident">roi</span>.<span class="ident">to_bytes</span>(),
+            roi.to_bytes(),
             [
                 <span class="number">0xa1</span>, <span class="number">0x59</span>, <span class="number">0xd2</span>, <span class="number">0x78</span>, <span class="number">0x8f</span>, <span class="number">0xec</span>, <span class="number">0x18</span>, <span class="number">0x94</span>, <span class="number">0x68</span>, <span class="number">0x00</span>, <span class="number">0xb2</span>, <span class="number">0xf6</span>, <span class="number">0xd9</span>, <span class="number">0x13</span>,
                 <span class="number">0x0d</span>, <span class="number">0x4a</span>, <span class="number">0x9e</span>, <span class="number">0x9c</span>, <span class="number">0xd4</span>, <span class="number">0xf9</span>, <span class="number">0xa9</span>, <span class="number">0x6b</span>, <span class="number">0x70</span>, <span class="number">0xbf</span>, <span class="number">0x31</span>, <span class="number">0x3c</span>, <span class="number">0x62</span>, <span class="number">0x10</span>,
-                <span class="number">0x05</span>, <span class="number">0x3d</span>, <span class="number">0x87</span>, <span class="number">0x37</span>, <span class="number">0xe6</span>, <span class="number">0x79</span>, <span class="number">0x19</span>, <span class="number">0x00</span>, <span class="number">0x00</span>
-            ]
+                <span class="number">0x05</span>, <span class="number">0x3d</span>, <span class="number">0x87</span>, <span class="number">0x37</span>, <span class="number">0xe6</span>, <span class="number">0x79</span>, <span class="number">0x19</span>, <span class="number">0x00</span>, <span class="number">0x00
+            </span>]
         );
 
         <span class="macro">assert_eq!</span>(
-            <span class="ident">roi</span>.<span class="ident">to_fields</span>(),
+            roi.to_fields(),
             [
-                <span class="ident">Fp::from_hex</span>(<span class="string">&quot;a159d2788fec18946800b2f6d9130d4a9e9cd4f9a96b70bf313c6210053d8737&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create field&quot;</span>),
-                <span class="ident">Fp::from_hex</span>(<span class="string">&quot;98e7650000000000000000000000000000000000000000000000000000000000&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create field&quot;</span>),
+                Fp::from_hex(<span class="string">&quot;a159d2788fec18946800b2f6d9130d4a9e9cd4f9a96b70bf313c6210053d8737&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create field&quot;</span>),
+                Fp::from_hex(<span class="string">&quot;98e7650000000000000000000000000000000000000000000000000000000000&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create field&quot;</span>),
             ]
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">to_fields_2_bits_field_scalar</span>() {
-        <span class="kw">let</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>()
-            .<span class="ident">append_bool</span>(<span class="bool-val">false</span>)
-            .<span class="ident">append_bool</span>(<span class="bool-val">true</span>)
-            .<span class="ident">append_field</span>(
-                <span class="ident">Fp::from_hex</span>(<span class="string">&quot;90926b620ad09ed616d5df158504faed42928719c58ae619d9eccc062f920411&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create field&quot;</span>),
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>to_fields_2_bits_field_scalar() {
+        <span class="kw">let </span>roi = ROInput::new()
+            .append_bool(<span class="bool-val">false</span>)
+            .append_bool(<span class="bool-val">true</span>)
+            .append_field(
+                Fp::from_hex(<span class="string">&quot;90926b620ad09ed616d5df158504faed42928719c58ae619d9eccc062f920411&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create field&quot;</span>),
             )
-            .<span class="ident">append_scalar</span>(
-                <span class="ident">Fq::from_hex</span>(<span class="string">&quot;689634de233b06251a80ac7df64483922727757eea1adc6f0c8f184441cfe10d&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create scalar&quot;</span>),
+            .append_scalar(
+                Fq::from_hex(<span class="string">&quot;689634de233b06251a80ac7df64483922727757eea1adc6f0c8f184441cfe10d&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create scalar&quot;</span>),
             );
 
         <span class="macro">assert_eq!</span>(
-            <span class="ident">roi</span>.<span class="ident">to_bytes</span>(),
+            roi.to_bytes(),
             [
                 <span class="number">0x90</span>, <span class="number">0x92</span>, <span class="number">0x6b</span>, <span class="number">0x62</span>, <span class="number">0x0a</span>, <span class="number">0xd0</span>, <span class="number">0x9e</span>, <span class="number">0xd6</span>, <span class="number">0x16</span>, <span class="number">0xd5</span>, <span class="number">0xdf</span>, <span class="number">0x15</span>, <span class="number">0x85</span>, <span class="number">0x04</span>,
                 <span class="number">0xfa</span>, <span class="number">0xed</span>, <span class="number">0x42</span>, <span class="number">0x92</span>, <span class="number">0x87</span>, <span class="number">0x19</span>, <span class="number">0xc5</span>, <span class="number">0x8a</span>, <span class="number">0xe6</span>, <span class="number">0x19</span>, <span class="number">0xd9</span>, <span class="number">0xec</span>, <span class="number">0xcc</span>, <span class="number">0x06</span>,
                 <span class="number">0x2f</span>, <span class="number">0x92</span>, <span class="number">0x04</span>, <span class="number">0x11</span>, <span class="number">0xd1</span>, <span class="number">0x2c</span>, <span class="number">0x69</span>, <span class="number">0xbc</span>, <span class="number">0x47</span>, <span class="number">0x76</span>, <span class="number">0x0c</span>, <span class="number">0x4a</span>, <span class="number">0x34</span>, <span class="number">0x00</span>,
                 <span class="number">0x59</span>, <span class="number">0xfb</span>, <span class="number">0xec</span>, <span class="number">0x89</span>, <span class="number">0x06</span>, <span class="number">0x25</span>, <span class="number">0x4f</span>, <span class="number">0x4e</span>, <span class="number">0xea</span>, <span class="number">0xfc</span>, <span class="number">0xd4</span>, <span class="number">0x35</span>, <span class="number">0xb8</span>, <span class="number">0xdf</span>,
-                <span class="number">0x18</span>, <span class="number">0x1e</span>, <span class="number">0x31</span>, <span class="number">0x88</span>, <span class="number">0x82</span>, <span class="number">0x9e</span>, <span class="number">0xc3</span>, <span class="number">0x1b</span>
-            ]
+                <span class="number">0x18</span>, <span class="number">0x1e</span>, <span class="number">0x31</span>, <span class="number">0x88</span>, <span class="number">0x82</span>, <span class="number">0x9e</span>, <span class="number">0xc3</span>, <span class="number">0x1b
+            </span>]
         );
 
         <span class="macro">assert_eq!</span>(
-            <span class="ident">roi</span>.<span class="ident">to_fields</span>(),
+            roi.to_fields(),
             [
-                <span class="ident">Fp::from_hex</span>(<span class="string">&quot;90926b620ad09ed616d5df158504faed42928719c58ae619d9eccc062f920411&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create field&quot;</span>),
-                <span class="ident">Fp::from_hex</span>(<span class="string">&quot;a259d2788fec18946800b2f6d9130d4a9e9cd4f9a96b70bf313c6210053d8737&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create field&quot;</span>),
-                <span class="ident">Fp::from_hex</span>(<span class="string">&quot;0000000000000000000000000000000000000000000000000000000000000000&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create field&quot;</span>),
+                Fp::from_hex(<span class="string">&quot;90926b620ad09ed616d5df158504faed42928719c58ae619d9eccc062f920411&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create field&quot;</span>),
+                Fp::from_hex(<span class="string">&quot;a259d2788fec18946800b2f6d9130d4a9e9cd4f9a96b70bf313c6210053d8737&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create field&quot;</span>),
+                Fp::from_hex(<span class="string">&quot;0000000000000000000000000000000000000000000000000000000000000000&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create field&quot;</span>),
             ]
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">transaction_test_1</span>() {
-        <span class="kw">let</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>()
-            .<span class="ident">append_field</span>(
-                <span class="ident">Fp::from_hex</span>(<span class="string">&quot;41203c6bbac14b357301e1f386d80f52123fd00f02197491b690bddfa742ca22&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create field&quot;</span>),
-            ) <span class="comment">// fee payer</span>
-            .<span class="ident">append_field</span>(
-                <span class="ident">Fp::from_hex</span>(<span class="string">&quot;992cdaf29ffe15b2bcea5d00e498ed4fffd117c197f0f98586e405f72ef88e00&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create field&quot;</span>),
-            ) <span class="comment">// source</span>
-            .<span class="ident">append_field</span>(
-                <span class="ident">Fp::from_hex</span>(<span class="string">&quot;3fba4fa71bce0dfdf709d827463036d6291458dfef772ff65e87bd6d1b1e062a&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create field&quot;</span>),
-            ) <span class="comment">// receiver</span>
-            .<span class="ident">append_u64</span>(<span class="number">1000000</span>) <span class="comment">// fee</span>
-            .<span class="ident">append_u64</span>(<span class="number">1</span>) <span class="comment">// fee token</span>
-            .<span class="ident">append_bool</span>(<span class="bool-val">true</span>) <span class="comment">// fee payer pk odd</span>
-            .<span class="ident">append_u32</span>(<span class="number">0</span>) <span class="comment">// nonce</span>
-            .<span class="ident">append_u32</span>(<span class="ident">u32::MAX</span>) <span class="comment">// valid_until</span>
-            .<span class="ident">append_bytes</span>(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">0</span>; <span class="number">34</span>]) <span class="comment">// memo</span>
-            .<span class="ident">append_bool</span>(<span class="bool-val">false</span>) <span class="comment">// tags[0]</span>
-            .<span class="ident">append_bool</span>(<span class="bool-val">false</span>) <span class="comment">// tags[1]</span>
-            .<span class="ident">append_bool</span>(<span class="bool-val">false</span>) <span class="comment">// tags[2]</span>
-            .<span class="ident">append_bool</span>(<span class="bool-val">true</span>) <span class="comment">// sender pk odd</span>
-            .<span class="ident">append_bool</span>(<span class="bool-val">false</span>) <span class="comment">// receiver pk odd</span>
-            .<span class="ident">append_u64</span>(<span class="number">1</span>) <span class="comment">// token_id</span>
-            .<span class="ident">append_u64</span>(<span class="number">10000000000</span>) <span class="comment">// amount</span>
-            .<span class="ident">append_bool</span>(<span class="bool-val">false</span>); <span class="comment">// token_locked</span>
-        <span class="macro">assert_eq!</span>(<span class="ident">roi</span>.<span class="ident">bits</span>.<span class="ident">len</span>() <span class="op">+</span> <span class="ident">roi</span>.<span class="ident">fields</span>.<span class="ident">len</span>() <span class="op">*</span> <span class="number">255</span>, <span class="number">1364</span>);
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>transaction_test_1() {
+        <span class="kw">let </span>roi = ROInput::new()
+            .append_field(
+                Fp::from_hex(<span class="string">&quot;41203c6bbac14b357301e1f386d80f52123fd00f02197491b690bddfa742ca22&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create field&quot;</span>),
+            ) <span class="comment">// fee payer
+            </span>.append_field(
+                Fp::from_hex(<span class="string">&quot;992cdaf29ffe15b2bcea5d00e498ed4fffd117c197f0f98586e405f72ef88e00&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create field&quot;</span>),
+            ) <span class="comment">// source
+            </span>.append_field(
+                Fp::from_hex(<span class="string">&quot;3fba4fa71bce0dfdf709d827463036d6291458dfef772ff65e87bd6d1b1e062a&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create field&quot;</span>),
+            ) <span class="comment">// receiver
+            </span>.append_u64(<span class="number">1000000</span>) <span class="comment">// fee
+            </span>.append_u64(<span class="number">1</span>) <span class="comment">// fee token
+            </span>.append_bool(<span class="bool-val">true</span>) <span class="comment">// fee payer pk odd
+            </span>.append_u32(<span class="number">0</span>) <span class="comment">// nonce
+            </span>.append_u32(u32::MAX) <span class="comment">// valid_until
+            </span>.append_bytes(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">0</span>; <span class="number">34</span>]) <span class="comment">// memo
+            </span>.append_bool(<span class="bool-val">false</span>) <span class="comment">// tags[0]
+            </span>.append_bool(<span class="bool-val">false</span>) <span class="comment">// tags[1]
+            </span>.append_bool(<span class="bool-val">false</span>) <span class="comment">// tags[2]
+            </span>.append_bool(<span class="bool-val">true</span>) <span class="comment">// sender pk odd
+            </span>.append_bool(<span class="bool-val">false</span>) <span class="comment">// receiver pk odd
+            </span>.append_u64(<span class="number">1</span>) <span class="comment">// token_id
+            </span>.append_u64(<span class="number">10000000000</span>) <span class="comment">// amount
+            </span>.append_bool(<span class="bool-val">false</span>); <span class="comment">// token_locked
+        </span><span class="macro">assert_eq!</span>(roi.bits.len() + roi.fields.len() * <span class="number">255</span>, <span class="number">1364</span>);
         <span class="macro">assert_eq!</span>(
-            <span class="ident">roi</span>.<span class="ident">to_bytes</span>(),
+            roi.to_bytes(),
             [
                 <span class="number">0x41</span>, <span class="number">0x20</span>, <span class="number">0x3c</span>, <span class="number">0x6b</span>, <span class="number">0xba</span>, <span class="number">0xc1</span>, <span class="number">0x4b</span>, <span class="number">0x35</span>, <span class="number">0x73</span>, <span class="number">0x01</span>, <span class="number">0xe1</span>, <span class="number">0xf3</span>, <span class="number">0x86</span>, <span class="number">0xd8</span>,
                 <span class="number">0x0f</span>, <span class="number">0x52</span>, <span class="number">0x12</span>, <span class="number">0x3f</span>, <span class="number">0xd0</span>, <span class="number">0x0f</span>, <span class="number">0x02</span>, <span class="number">0x19</span>, <span class="number">0x74</span>, <span class="number">0x91</span>, <span class="number">0xb6</span>, <span class="number">0x90</span>, <span class="number">0xbd</span>, <span class="number">0xdf</span>,
@@ -1702,125 +1702,125 @@
                 <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>,
                 <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>,
                 <span class="number">0x0a</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x20</span>, <span class="number">0x5f</span>, <span class="number">0xa0</span>, <span class="number">0x12</span>, <span class="number">0x00</span>,
-                <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>
-            ]
+                <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00
+            </span>]
         );
 
         <span class="macro">assert_eq!</span>(
-            <span class="ident">roi</span>.<span class="ident">to_fields</span>(),
+            roi.to_fields(),
             [
-                <span class="ident">Fp::from_hex</span>(<span class="string">&quot;41203c6bbac14b357301e1f386d80f52123fd00f02197491b690bddfa742ca22&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create field&quot;</span>),
-                <span class="ident">Fp::from_hex</span>(<span class="string">&quot;992cdaf29ffe15b2bcea5d00e498ed4fffd117c197f0f98586e405f72ef88e00&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create field&quot;</span>),
-                <span class="ident">Fp::from_hex</span>(<span class="string">&quot;3fba4fa71bce0dfdf709d827463036d6291458dfef772ff65e87bd6d1b1e062a&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create field&quot;</span>),
-                <span class="ident">Fp::from_hex</span>(<span class="string">&quot;40420f0000000000010000000000000001000000feffffff0100000000000000&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create field&quot;</span>),
-                <span class="ident">Fp::from_hex</span>(<span class="string">&quot;0000000000000000000000000000000000000000000000000000400100000000&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create field&quot;</span>),
-                <span class="ident">Fp::from_hex</span>(<span class="string">&quot;00000000902f5009000000000000000000000000000000000000000000000000&quot;</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;failed to create field&quot;</span>),
+                Fp::from_hex(<span class="string">&quot;41203c6bbac14b357301e1f386d80f52123fd00f02197491b690bddfa742ca22&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create field&quot;</span>),
+                Fp::from_hex(<span class="string">&quot;992cdaf29ffe15b2bcea5d00e498ed4fffd117c197f0f98586e405f72ef88e00&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create field&quot;</span>),
+                Fp::from_hex(<span class="string">&quot;3fba4fa71bce0dfdf709d827463036d6291458dfef772ff65e87bd6d1b1e062a&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create field&quot;</span>),
+                Fp::from_hex(<span class="string">&quot;40420f0000000000010000000000000001000000feffffff0100000000000000&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create field&quot;</span>),
+                Fp::from_hex(<span class="string">&quot;0000000000000000000000000000000000000000000000000000400100000000&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create field&quot;</span>),
+                Fp::from_hex(<span class="string">&quot;00000000902f5009000000000000000000000000000000000000000000000000&quot;</span>)
+                    .expect(<span class="string">&quot;failed to create field&quot;</span>),
             ]
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">nested_roinput_test</span>() {
-        <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-        <span class="kw">struct</span> <span class="ident">A</span> {
-            <span class="ident">x</span>: <span class="ident">u32</span>,
-            <span class="ident">y</span>: <span class="ident">bool</span>,
-            <span class="ident">z</span>: <span class="ident">u32</span>,
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>nested_roinput_test() {
+        <span class="attribute">#[derive(Clone, Debug)]
+        </span><span class="kw">struct </span>A {
+            x: u32,
+            y: bool,
+            z: u32,
         }
 
-        <span class="kw">impl</span> <span class="ident">Hashable</span> <span class="kw">for</span> <span class="ident">A</span> {
-            <span class="kw">type</span> <span class="ident">D</span> <span class="op">=</span> ();
+        <span class="kw">impl </span>Hashable <span class="kw">for </span>A {
+            <span class="kw">type </span>D = ();
 
-            <span class="kw">fn</span> <span class="ident">to_roinput</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ROInput</span> {
-                <span class="ident">ROInput::new</span>()
-                    .<span class="ident">append_u32</span>(<span class="self">self</span>.<span class="ident">x</span>)
-                    .<span class="ident">append_bool</span>(<span class="self">self</span>.<span class="ident">y</span>)
-                    .<span class="ident">append_u32</span>(<span class="self">self</span>.<span class="ident">z</span>)
+            <span class="kw">fn </span>to_roinput(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ROInput {
+                ROInput::new()
+                    .append_u32(<span class="self">self</span>.x)
+                    .append_bool(<span class="self">self</span>.y)
+                    .append_u32(<span class="self">self</span>.z)
             }
 
-            <span class="kw">fn</span> <span class="ident">domain_string</span>(<span class="kw">_</span>: <span class="ident"><span class="self">Self</span>::D</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
-                <span class="macro">format!</span>(<span class="string">&quot;A&quot;</span>).<span class="ident">into</span>()
-            }
-        }
-
-        <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-        <span class="kw">struct</span> <span class="ident">B1</span> {
-            <span class="ident">a</span>: <span class="ident">A</span>,
-            <span class="ident">b</span>: <span class="ident">u64</span>,
-            <span class="ident">c</span>: <span class="ident">bool</span>,
-        }
-
-        <span class="kw">impl</span> <span class="ident">Hashable</span> <span class="kw">for</span> <span class="ident">B1</span> {
-            <span class="kw">type</span> <span class="ident">D</span> <span class="op">=</span> ();
-
-            <span class="kw">fn</span> <span class="ident">to_roinput</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ROInput</span> {
-                <span class="self">self</span>.<span class="ident">a</span>.<span class="ident">to_roinput</span>().<span class="ident">append_u64</span>(<span class="self">self</span>.<span class="ident">b</span>).<span class="ident">append_bool</span>(<span class="self">self</span>.<span class="ident">c</span>)
-            }
-
-            <span class="kw">fn</span> <span class="ident">domain_string</span>(<span class="kw">_</span>: <span class="ident"><span class="self">Self</span>::D</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
-                <span class="macro">format!</span>(<span class="string">&quot;B&quot;</span>).<span class="ident">into</span>()
+            <span class="kw">fn </span>domain_string(<span class="kw">_</span>: <span class="self">Self</span>::D) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
+                <span class="macro">format!</span>(<span class="string">&quot;A&quot;</span>).into()
             }
         }
 
-        <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-        <span class="kw">struct</span> <span class="ident">B2</span> {
-            <span class="ident">a</span>: <span class="ident">A</span>,
-            <span class="ident">b</span>: <span class="ident">u64</span>,
-            <span class="ident">c</span>: <span class="ident">bool</span>,
+        <span class="attribute">#[derive(Clone, Debug)]
+        </span><span class="kw">struct </span>B1 {
+            a: A,
+            b: u64,
+            c: bool,
         }
 
-        <span class="kw">impl</span> <span class="ident">Hashable</span> <span class="kw">for</span> <span class="ident">B2</span> {
-            <span class="kw">type</span> <span class="ident">D</span> <span class="op">=</span> ();
+        <span class="kw">impl </span>Hashable <span class="kw">for </span>B1 {
+            <span class="kw">type </span>D = ();
 
-            <span class="kw">fn</span> <span class="ident">to_roinput</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ROInput</span> {
-                <span class="self">self</span>.<span class="ident">a</span>
-                    .<span class="ident">to_roinput</span>()
-                    .<span class="ident">append_roinput</span>(<span class="ident">ROInput::new</span>().<span class="ident">append_u64</span>(<span class="self">self</span>.<span class="ident">b</span>).<span class="ident">append_bool</span>(<span class="self">self</span>.<span class="ident">c</span>))
+            <span class="kw">fn </span>to_roinput(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ROInput {
+                <span class="self">self</span>.a.to_roinput().append_u64(<span class="self">self</span>.b).append_bool(<span class="self">self</span>.c)
             }
 
-            <span class="kw">fn</span> <span class="ident">domain_string</span>(<span class="kw">_</span>: <span class="ident"><span class="self">Self</span>::D</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
-                <span class="macro">format!</span>(<span class="string">&quot;B&quot;</span>).<span class="ident">into</span>()
+            <span class="kw">fn </span>domain_string(<span class="kw">_</span>: <span class="self">Self</span>::D) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
+                <span class="macro">format!</span>(<span class="string">&quot;B&quot;</span>).into()
             }
         }
 
-        <span class="kw">let</span> <span class="ident">a</span> <span class="op">=</span> <span class="ident">A</span> {
-            <span class="ident">x</span>: <span class="number">16830533</span>,
-            <span class="ident">y</span>: <span class="bool-val">false</span>,
-            <span class="ident">z</span>: <span class="number">39827791</span>,
+        <span class="attribute">#[derive(Clone, Debug)]
+        </span><span class="kw">struct </span>B2 {
+            a: A,
+            b: u64,
+            c: bool,
+        }
+
+        <span class="kw">impl </span>Hashable <span class="kw">for </span>B2 {
+            <span class="kw">type </span>D = ();
+
+            <span class="kw">fn </span>to_roinput(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ROInput {
+                <span class="self">self</span>.a
+                    .to_roinput()
+                    .append_roinput(ROInput::new().append_u64(<span class="self">self</span>.b).append_bool(<span class="self">self</span>.c))
+            }
+
+            <span class="kw">fn </span>domain_string(<span class="kw">_</span>: <span class="self">Self</span>::D) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
+                <span class="macro">format!</span>(<span class="string">&quot;B&quot;</span>).into()
+            }
+        }
+
+        <span class="kw">let </span>a = A {
+            x: <span class="number">16830533</span>,
+            y: <span class="bool-val">false</span>,
+            z: <span class="number">39827791</span>,
         };
-        <span class="kw">let</span> <span class="ident">b1</span> <span class="op">=</span> <span class="ident">B1</span> {
-            <span class="ident">a</span>,
-            <span class="ident">b</span>: <span class="number">124819</span>,
-            <span class="ident">c</span>: <span class="bool-val">true</span>,
+        <span class="kw">let </span>b1 = B1 {
+            a,
+            b: <span class="number">124819</span>,
+            c: <span class="bool-val">true</span>,
         };
-        <span class="kw">let</span> <span class="ident">b2</span> <span class="op">=</span> <span class="ident">B2</span> {
-            <span class="ident">a</span>: <span class="ident">b1</span>.<span class="ident">a</span>.<span class="ident">clone</span>(),
-            <span class="ident">b</span>: <span class="ident">b1</span>.<span class="ident">b</span>,
-            <span class="ident">c</span>: <span class="ident">b1</span>.<span class="ident">c</span>,
+        <span class="kw">let </span>b2 = B2 {
+            a: b1.a.clone(),
+            b: b1.b,
+            c: b1.c,
         };
 
-        <span class="macro">assert_eq!</span>(<span class="ident">b1</span>.<span class="ident">to_roinput</span>(), <span class="ident">b2</span>.<span class="ident">to_roinput</span>());
+        <span class="macro">assert_eq!</span>(b1.to_roinput(), b2.to_roinput());
 
-        <span class="kw">let</span> <span class="ident">b2</span> <span class="op">=</span> <span class="ident">B2</span> {
-            <span class="ident">a</span>: <span class="ident">b1</span>.<span class="ident">a</span>.<span class="ident">clone</span>(),
-            <span class="ident">b</span>: <span class="ident">b1</span>.<span class="ident">b</span>.<span class="ident">clone</span>(),
-            <span class="ident">c</span>: <span class="bool-val">false</span>,
+        <span class="kw">let </span>b2 = B2 {
+            a: b1.a.clone(),
+            b: b1.b.clone(),
+            c: <span class="bool-val">false</span>,
         };
-        <span class="macro">assert_ne!</span>(<span class="ident">b1</span>.<span class="ident">to_roinput</span>(), <span class="ident">b2</span>.<span class="ident">to_roinput</span>());
+        <span class="macro">assert_ne!</span>(b1.to_roinput(), b2.to_roinput());
 
-        <span class="kw">let</span> <span class="ident">b2</span> <span class="op">=</span> <span class="ident">B2</span> {
-            <span class="ident">a</span>: <span class="ident">b1</span>.<span class="ident">a</span>.<span class="ident">clone</span>(),
-            <span class="ident">b</span>: <span class="ident">b1</span>.<span class="ident">b</span> <span class="op">+</span> <span class="number">1</span>,
-            <span class="ident">c</span>: <span class="ident">b1</span>.<span class="ident">c</span>,
+        <span class="kw">let </span>b2 = B2 {
+            a: b1.a.clone(),
+            b: b1.b + <span class="number">1</span>,
+            c: b1.c,
         };
-        <span class="macro">assert_ne!</span>(<span class="ident">b1</span>.<span class="ident">to_roinput</span>(), <span class="ident">b2</span>.<span class="ident">to_roinput</span>());
+        <span class="macro">assert_ne!</span>(b1.to_roinput(), b2.to_roinput());
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="mina_hasher" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="mina_hasher" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

@@ -114,121 +114,121 @@
 <span id="114">114</span>
 <span id="115">115</span>
 <span id="116">116</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">circuits</span>::{
-        <span class="ident">gate::CircuitGate</span>,
-        <span class="ident">polynomials::generic::GenericGateSpec</span>,
-        <span class="ident">wires</span>::{<span class="ident">Wire</span>, <span class="ident">COLUMNS</span>},
+</pre><pre class="rust"><code><span class="kw">use crate</span>::{
+    circuits::{
+        gate::CircuitGate,
+        polynomials::generic::GenericGateSpec,
+        wires::{Wire, COLUMNS},
     },
-    <span class="ident">proof::ProverProof</span>,
-    <span class="ident">prover_index</span>::{<span class="ident">testing::new_index_for_test</span>, <span class="ident">ProverIndex</span>},
-    <span class="ident">verifier::batch_verify</span>,
-    <span class="ident">verifier_index::VerifierIndex</span>,
+    proof::ProverProof,
+    prover_index::{testing::new_index_for_test, ProverIndex},
+    verifier::batch_verify,
+    verifier_index::VerifierIndex,
 };
-<span class="kw">use</span> <span class="ident">array_init::array_init</span>;
-<span class="kw">use</span> <span class="ident">commitment_dlog::commitment::CommitmentCurve</span>;
-<span class="kw">use</span> <span class="ident">groupmap</span>::{<span class="ident">BWParameters</span>, <span class="ident">GroupMap</span>};
-<span class="kw">use</span> <span class="ident">mina_curves::pasta::vesta::VestaParameters</span>;
-<span class="kw">use</span> <span class="ident">mina_curves::pasta</span>::{<span class="ident">fp::Fp</span>, <span class="ident">vesta::Vesta</span>};
-<span class="kw">use</span> <span class="ident">oracle</span>::{
-    <span class="ident">constants::PlonkSpongeConstantsKimchi</span>,
-    <span class="ident">sponge</span>::{<span class="ident">DefaultFqSponge</span>, <span class="ident">DefaultFrSponge</span>},
+<span class="kw">use </span>array_init::array_init;
+<span class="kw">use </span>commitment_dlog::commitment::CommitmentCurve;
+<span class="kw">use </span>groupmap::{BWParameters, GroupMap};
+<span class="kw">use </span>mina_curves::pasta::vesta::VestaParameters;
+<span class="kw">use </span>mina_curves::pasta::{fp::Fp, vesta::Vesta};
+<span class="kw">use </span>oracle::{
+    constants::PlonkSpongeConstantsKimchi,
+    sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 
-<span class="kw">use</span> <span class="ident">o1_utils::math</span>;
+<span class="kw">use </span>o1_utils::math;
 
-<span class="kw">type</span> <span class="ident">SpongeParams</span> <span class="op">=</span> <span class="ident">PlonkSpongeConstantsKimchi</span>;
-<span class="kw">type</span> <span class="ident">BaseSponge</span> <span class="op">=</span> <span class="ident">DefaultFqSponge</span><span class="op">&lt;</span><span class="ident">VestaParameters</span>, <span class="ident">SpongeParams</span><span class="op">&gt;</span>;
-<span class="kw">type</span> <span class="ident">ScalarSponge</span> <span class="op">=</span> <span class="ident">DefaultFrSponge</span><span class="op">&lt;</span><span class="ident">Fp</span>, <span class="ident">SpongeParams</span><span class="op">&gt;</span>;
+<span class="kw">type </span>SpongeParams = PlonkSpongeConstantsKimchi;
+<span class="kw">type </span>BaseSponge = DefaultFqSponge&lt;VestaParameters, SpongeParams&gt;;
+<span class="kw">type </span>ScalarSponge = DefaultFrSponge&lt;Fp, SpongeParams&gt;;
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BenchmarkCtx</span> {
-    <span class="ident">num_gates</span>: <span class="ident">usize</span>,
-    <span class="ident">group_map</span>: <span class="ident">BWParameters</span><span class="op">&lt;</span><span class="ident">VestaParameters</span><span class="op">&gt;</span>,
-    <span class="ident">index</span>: <span class="ident">ProverIndex</span><span class="op">&lt;</span><span class="ident">Vesta</span><span class="op">&gt;</span>,
-    <span class="ident">verifier_index</span>: <span class="ident">VerifierIndex</span><span class="op">&lt;</span><span class="ident">Vesta</span><span class="op">&gt;</span>,
+<span class="kw">pub struct </span>BenchmarkCtx {
+    num_gates: usize,
+    group_map: BWParameters&lt;VestaParameters&gt;,
+    index: ProverIndex&lt;Vesta&gt;,
+    verifier_index: VerifierIndex&lt;Vesta&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">BenchmarkCtx</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">srs_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="ident">math::ceil_log2</span>(<span class="self">self</span>.<span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">max_degree</span>())
+<span class="kw">impl </span>BenchmarkCtx {
+    <span class="kw">pub fn </span>srs_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        math::ceil_log2(<span class="self">self</span>.index.srs.max_degree())
     }
 
-    <span class="doccomment">/// This will create a context that allows for benchmarks of `num_gates` gates (multiplication gates).</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">num_gates</span>: <span class="ident">usize</span>) -&gt; <span class="self">Self</span> {
-        <span class="comment">// create the circuit</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">gates</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+    <span class="doccomment">/// This will create a context that allows for benchmarks of `num_gates` gates (multiplication gates).
+    </span><span class="kw">pub fn </span>new(num_gates: usize) -&gt; <span class="self">Self </span>{
+        <span class="comment">// create the circuit
+        </span><span class="kw">let </span><span class="kw-2">mut </span>gates = <span class="macro">vec!</span>[];
 
-        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::explicit_counter_loop</span>)]</span>
-        <span class="kw">for</span> <span class="ident">row</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">num_gates</span> {
-            <span class="kw">let</span> <span class="ident">wires</span> <span class="op">=</span> <span class="ident">Wire::new</span>(<span class="ident">row</span>);
-            <span class="ident">gates</span>.<span class="ident">push</span>(<span class="ident">CircuitGate::create_generic_gadget</span>(
-                <span class="ident">wires</span>,
-                <span class="ident">GenericGateSpec::Const</span>(<span class="number">1u32</span>.<span class="ident">into</span>()),
+        <span class="attribute">#[allow(clippy::explicit_counter_loop)]
+        </span><span class="kw">for </span>row <span class="kw">in </span><span class="number">0</span>..num_gates {
+            <span class="kw">let </span>wires = Wire::new(row);
+            gates.push(CircuitGate::create_generic_gadget(
+                wires,
+                GenericGateSpec::Const(<span class="number">1u32</span>.into()),
                 <span class="prelude-val">None</span>,
             ));
         }
 
-        <span class="comment">// group map</span>
-        <span class="kw">let</span> <span class="ident">group_map</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">Vesta</span> <span class="kw">as</span> <span class="ident">CommitmentCurve</span><span class="op">&gt;</span><span class="ident">::Map::setup</span>();
+        <span class="comment">// group map
+        </span><span class="kw">let </span>group_map = &lt;Vesta <span class="kw">as </span>CommitmentCurve&gt;::Map::setup();
 
-        <span class="comment">// create the index</span>
-        <span class="kw">let</span> <span class="ident">index</span> <span class="op">=</span> <span class="ident">new_index_for_test</span>(<span class="ident">gates</span>, <span class="number">0</span>);
+        <span class="comment">// create the index
+        </span><span class="kw">let </span>index = new_index_for_test(gates, <span class="number">0</span>);
 
-        <span class="comment">// create the verifier index</span>
-        <span class="kw">let</span> <span class="ident">verifier_index</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">verifier_index</span>();
+        <span class="comment">// create the verifier index
+        </span><span class="kw">let </span>verifier_index = index.verifier_index();
 
-        <span class="comment">//</span>
-        <span class="ident">BenchmarkCtx</span> {
-            <span class="ident">num_gates</span>,
-            <span class="ident">group_map</span>,
-            <span class="ident">index</span>,
-            <span class="ident">verifier_index</span>,
+        <span class="comment">//
+        </span>BenchmarkCtx {
+            num_gates,
+            group_map,
+            index,
+            verifier_index,
         }
     }
 
-    <span class="doccomment">/// Produces a proof</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_proof</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">Vesta</span><span class="op">&gt;</span> {
-        <span class="comment">// create witness</span>
-        <span class="kw">let</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">vec!</span>[<span class="number">1u32</span>.<span class="ident">into</span>(); <span class="self">self</span>.<span class="ident">num_gates</span>]);
+    <span class="doccomment">/// Produces a proof
+    </span><span class="kw">pub fn </span>create_proof(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ProverProof&lt;Vesta&gt; {
+        <span class="comment">// create witness
+        </span><span class="kw">let </span>witness: [Vec&lt;Fp&gt;; COLUMNS] = array_init(|<span class="kw">_</span>| <span class="macro">vec!</span>[<span class="number">1u32</span>.into(); <span class="self">self</span>.num_gates]);
 
-        <span class="comment">// add the proof to the batch</span>
-        <span class="ident">ProverProof::create</span>::<span class="op">&lt;</span><span class="ident">BaseSponge</span>, <span class="ident">ScalarSponge</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">group_map</span>, <span class="ident">witness</span>, <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">index</span>)
-            .<span class="ident">unwrap</span>()
+        <span class="comment">// add the proof to the batch
+        </span>ProverProof::create::&lt;BaseSponge, ScalarSponge&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>.group_map, witness, <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span><span class="self">self</span>.index)
+            .unwrap()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">batch_verification</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">batch</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">Vesta</span><span class="op">&gt;</span><span class="op">&gt;</span>) {
-        <span class="comment">// verify the proof</span>
-        <span class="kw">let</span> <span class="ident">batch</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">batch</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">proof</span><span class="op">|</span> (<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">verifier_index</span>, <span class="ident">proof</span>))
-            .<span class="ident">collect</span>();
-        <span class="ident">batch_verify</span>::<span class="op">&lt;</span><span class="ident">Vesta</span>, <span class="ident">BaseSponge</span>, <span class="ident">ScalarSponge</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">group_map</span>, <span class="kw-2">&amp;</span><span class="ident">batch</span>).<span class="ident">unwrap</span>();
+    <span class="kw">pub fn </span>batch_verification(<span class="kw-2">&amp;</span><span class="self">self</span>, batch: Vec&lt;ProverProof&lt;Vesta&gt;&gt;) {
+        <span class="comment">// verify the proof
+        </span><span class="kw">let </span>batch: Vec&lt;<span class="kw">_</span>&gt; = batch
+            .iter()
+            .map(|proof| (<span class="kw-2">&amp;</span><span class="self">self</span>.verifier_index, proof))
+            .collect();
+        batch_verify::&lt;Vesta, BaseSponge, ScalarSponge&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>.group_map, <span class="kw-2">&amp;</span>batch).unwrap();
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="ident">std::time::Instant</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use </span>std::time::Instant;
 
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_bench</span>() {
-        <span class="comment">// context created in 21.2235 ms</span>
-        <span class="kw">let</span> <span class="ident">start</span> <span class="op">=</span> <span class="ident">Instant::now</span>();
-        <span class="kw">let</span> <span class="ident">ctx</span> <span class="op">=</span> <span class="ident">BenchmarkCtx::new</span>(<span class="number">1</span> <span class="op">&lt;</span><span class="op">&lt;</span> <span class="number">4</span>);
-        <span class="macro">println!</span>(<span class="string">&quot;context created in {}&quot;</span>, <span class="ident">start</span>.<span class="ident">elapsed</span>().<span class="ident">as_secs</span>());
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_bench() {
+        <span class="comment">// context created in 21.2235 ms
+        </span><span class="kw">let </span>start = Instant::now();
+        <span class="kw">let </span>ctx = BenchmarkCtx::new(<span class="number">1 </span>&lt;&lt; <span class="number">4</span>);
+        <span class="macro">println!</span>(<span class="string">&quot;context created in {}&quot;</span>, start.elapsed().as_secs());
 
-        <span class="comment">// proof created in 7.1227 ms</span>
-        <span class="kw">let</span> <span class="ident">start</span> <span class="op">=</span> <span class="ident">Instant::now</span>();
-        <span class="kw">let</span> <span class="ident">proof</span> <span class="op">=</span> <span class="ident">ctx</span>.<span class="ident">create_proof</span>();
-        <span class="macro">println!</span>(<span class="string">&quot;proof created in {}&quot;</span>, <span class="ident">start</span>.<span class="ident">elapsed</span>().<span class="ident">as_millis</span>());
+        <span class="comment">// proof created in 7.1227 ms
+        </span><span class="kw">let </span>start = Instant::now();
+        <span class="kw">let </span>proof = ctx.create_proof();
+        <span class="macro">println!</span>(<span class="string">&quot;proof created in {}&quot;</span>, start.elapsed().as_millis());
 
-        <span class="comment">// proof verified in 1.710 ms</span>
-        <span class="kw">let</span> <span class="ident">start</span> <span class="op">=</span> <span class="ident">Instant::now</span>();
-        <span class="ident">ctx</span>.<span class="ident">batch_verification</span>(<span class="macro">vec!</span>[<span class="ident">proof</span>.<span class="ident">clone</span>()]);
-        <span class="macro">println!</span>(<span class="string">&quot;proof verified in {}&quot;</span>, <span class="ident">start</span>.<span class="ident">elapsed</span>().<span class="ident">as_millis</span>());
+        <span class="comment">// proof verified in 1.710 ms
+        </span><span class="kw">let </span>start = Instant::now();
+        ctx.batch_verification(<span class="macro">vec!</span>[proof.clone()]);
+        <span class="macro">println!</span>(<span class="string">&quot;proof verified in {}&quot;</span>, start.elapsed().as_millis());
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

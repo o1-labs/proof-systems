@@ -265,272 +265,272 @@
 <span id="265">265</span>
 <span id="266">266</span>
 <span id="267">267</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Implementations of [crate::OCamlDesc] for types</span>
-<span class="doccomment">//! that have natural equivalents in OCaml.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Implementations of [crate::OCamlDesc] for types
+//! that have natural equivalents in OCaml.
 
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">Env</span>, <span class="ident">OCamlDesc</span>};
-<span class="kw">use</span> <span class="ident">const_random::const_random</span>;
+</span><span class="kw">use crate</span>::{Env, OCamlDesc};
+<span class="kw">use </span>const_random::const_random;
 
-<span class="kw">impl</span> <span class="ident">OCamlDesc</span> <span class="kw">for</span> () {
-    <span class="kw">fn</span> <span class="ident">ocaml_desc</span>(<span class="ident">_env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>, <span class="ident">_generics</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>]) -&gt; <span class="ident">String</span> {
-        <span class="string">&quot;unit&quot;</span>.<span class="ident">to_string</span>()
+<span class="kw">impl </span>OCamlDesc <span class="kw">for </span>() {
+    <span class="kw">fn </span>ocaml_desc(_env: <span class="kw-2">&amp;</span>Env, _generics: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>str]) -&gt; String {
+        <span class="string">&quot;unit&quot;</span>.to_string()
     }
 
-    <span class="kw">fn</span> <span class="ident">unique_id</span>() -&gt; <span class="ident">u128</span> {
-        <span class="macro">const_random!</span>(<span class="ident">u128</span>)
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">OCamlDesc</span> <span class="kw">for</span> [<span class="ident">u8</span>; <span class="number">32</span>] {
-    <span class="kw">fn</span> <span class="ident">ocaml_desc</span>(<span class="ident">_env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>, <span class="ident">_generics</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>]) -&gt; <span class="ident">String</span> {
-        <span class="string">&quot;bytes&quot;</span>.<span class="ident">to_string</span>()
-    }
-
-    <span class="kw">fn</span> <span class="ident">unique_id</span>() -&gt; <span class="ident">u128</span> {
-        <span class="macro">const_random!</span>(<span class="ident">u128</span>)
+    <span class="kw">fn </span>unique_id() -&gt; u128 {
+        <span class="macro">const_random!</span>(u128)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">OCamlDesc</span> <span class="kw">for</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
-    <span class="kw">fn</span> <span class="ident">ocaml_desc</span>(<span class="ident">_env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>, <span class="ident">_generics</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>]) -&gt; <span class="ident">String</span> {
-        <span class="string">&quot;bytes&quot;</span>.<span class="ident">to_string</span>()
+<span class="kw">impl </span>OCamlDesc <span class="kw">for </span>[u8; <span class="number">32</span>] {
+    <span class="kw">fn </span>ocaml_desc(_env: <span class="kw-2">&amp;</span>Env, _generics: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>str]) -&gt; String {
+        <span class="string">&quot;bytes&quot;</span>.to_string()
     }
 
-    <span class="kw">fn</span> <span class="ident">unique_id</span>() -&gt; <span class="ident">u128</span> {
-        <span class="macro">const_random!</span>(<span class="ident">u128</span>)
+    <span class="kw">fn </span>unique_id() -&gt; u128 {
+        <span class="macro">const_random!</span>(u128)
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="ident">OCamlDesc</span> <span class="kw">for</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">T</span>: <span class="ident">OCamlDesc</span>,
+<span class="kw">impl </span>OCamlDesc <span class="kw">for </span><span class="kw-2">&amp;</span>[u8] {
+    <span class="kw">fn </span>ocaml_desc(_env: <span class="kw-2">&amp;</span>Env, _generics: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>str]) -&gt; String {
+        <span class="string">&quot;bytes&quot;</span>.to_string()
+    }
+
+    <span class="kw">fn </span>unique_id() -&gt; u128 {
+        <span class="macro">const_random!</span>(u128)
+    }
+}
+
+<span class="kw">impl</span>&lt;T&gt; OCamlDesc <span class="kw">for </span>Vec&lt;T&gt;
+<span class="kw">where
+    </span>T: OCamlDesc,
 {
-    <span class="kw">fn</span> <span class="ident">ocaml_desc</span>(<span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>, <span class="ident">generics</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>]) -&gt; <span class="ident">String</span> {
-        <span class="macro">format!</span>(<span class="string">&quot;({}) array&quot;</span>, <span class="ident">T::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>))
+    <span class="kw">fn </span>ocaml_desc(env: <span class="kw-2">&amp;</span>Env, generics: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>str]) -&gt; String {
+        <span class="macro">format!</span>(<span class="string">&quot;({}) array&quot;</span>, T::ocaml_desc(env, generics))
     }
 
-    <span class="kw">fn</span> <span class="ident">unique_id</span>() -&gt; <span class="ident">u128</span> {
-        <span class="macro">const_random!</span>(<span class="ident">u128</span>)
+    <span class="kw">fn </span>unique_id() -&gt; u128 {
+        <span class="macro">const_random!</span>(u128)
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">E</span><span class="op">&gt;</span> <span class="ident">OCamlDesc</span> <span class="kw">for</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">E</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">T</span>: <span class="ident">OCamlDesc</span>,
+<span class="kw">impl</span>&lt;T, E&gt; OCamlDesc <span class="kw">for </span><span class="prelude-ty">Result</span>&lt;T, E&gt;
+<span class="kw">where
+    </span>T: OCamlDesc,
 {
-    <span class="kw">fn</span> <span class="ident">ocaml_desc</span>(<span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>, <span class="ident">generics</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>]) -&gt; <span class="ident">String</span> {
-        <span class="ident">T::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>)
+    <span class="kw">fn </span>ocaml_desc(env: <span class="kw-2">&amp;</span>Env, generics: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>str]) -&gt; String {
+        T::ocaml_desc(env, generics)
     }
 
-    <span class="kw">fn</span> <span class="ident">unique_id</span>() -&gt; <span class="ident">u128</span> {
-        <span class="macro">const_random!</span>(<span class="ident">u128</span>)
+    <span class="kw">fn </span>unique_id() -&gt; u128 {
+        <span class="macro">const_random!</span>(u128)
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="ident">OCamlDesc</span> <span class="kw">for</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">T</span>: <span class="ident">OCamlDesc</span>,
+<span class="kw">impl</span>&lt;T&gt; OCamlDesc <span class="kw">for </span><span class="prelude-ty">Option</span>&lt;T&gt;
+<span class="kw">where
+    </span>T: OCamlDesc,
 {
-    <span class="kw">fn</span> <span class="ident">ocaml_desc</span>(<span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>, <span class="ident">generics</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>]) -&gt; <span class="ident">String</span> {
-        <span class="macro">format!</span>(<span class="string">&quot;({}) option&quot;</span>, <span class="ident">T::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>))
+    <span class="kw">fn </span>ocaml_desc(env: <span class="kw-2">&amp;</span>Env, generics: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>str]) -&gt; String {
+        <span class="macro">format!</span>(<span class="string">&quot;({}) option&quot;</span>, T::ocaml_desc(env, generics))
     }
 
-    <span class="kw">fn</span> <span class="ident">unique_id</span>() -&gt; <span class="ident">u128</span> {
-        <span class="macro">const_random!</span>(<span class="ident">u128</span>)
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">OCamlDesc</span> <span class="kw">for</span> <span class="ident">ocaml::Int</span> {
-    <span class="kw">fn</span> <span class="ident">ocaml_desc</span>(<span class="ident">_env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>, <span class="ident">_generics</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>]) -&gt; <span class="ident">String</span> {
-        <span class="string">&quot;int&quot;</span>.<span class="ident">to_string</span>()
-    }
-
-    <span class="kw">fn</span> <span class="ident">unique_id</span>() -&gt; <span class="ident">u128</span> {
-        <span class="macro">const_random!</span>(<span class="ident">u128</span>)
+    <span class="kw">fn </span>unique_id() -&gt; u128 {
+        <span class="macro">const_random!</span>(u128)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">OCamlDesc</span> <span class="kw">for</span> <span class="ident">String</span> {
-    <span class="kw">fn</span> <span class="ident">ocaml_desc</span>(<span class="ident">_env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>, <span class="ident">_generics</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>]) -&gt; <span class="ident">String</span> {
-        <span class="string">&quot;string&quot;</span>.<span class="ident">to_string</span>()
+<span class="kw">impl </span>OCamlDesc <span class="kw">for </span>ocaml::Int {
+    <span class="kw">fn </span>ocaml_desc(_env: <span class="kw-2">&amp;</span>Env, _generics: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>str]) -&gt; String {
+        <span class="string">&quot;int&quot;</span>.to_string()
     }
 
-    <span class="kw">fn</span> <span class="ident">unique_id</span>() -&gt; <span class="ident">u128</span> {
-        <span class="macro">const_random!</span>(<span class="ident">u128</span>)
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">OCamlDesc</span> <span class="kw">for</span> <span class="ident">bool</span> {
-    <span class="kw">fn</span> <span class="ident">ocaml_desc</span>(<span class="ident">_env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>, <span class="ident">_generics</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>]) -&gt; <span class="ident">String</span> {
-        <span class="string">&quot;bool&quot;</span>.<span class="ident">to_string</span>()
-    }
-
-    <span class="kw">fn</span> <span class="ident">unique_id</span>() -&gt; <span class="ident">u128</span> {
-        <span class="macro">const_random!</span>(<span class="ident">u128</span>)
+    <span class="kw">fn </span>unique_id() -&gt; u128 {
+        <span class="macro">const_random!</span>(u128)
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="ident">OCamlDesc</span> <span class="kw">for</span> <span class="ident">ocaml::Pointer</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">T</span>: <span class="ident">OCamlDesc</span>,
+<span class="kw">impl </span>OCamlDesc <span class="kw">for </span>String {
+    <span class="kw">fn </span>ocaml_desc(_env: <span class="kw-2">&amp;</span>Env, _generics: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>str]) -&gt; String {
+        <span class="string">&quot;string&quot;</span>.to_string()
+    }
+
+    <span class="kw">fn </span>unique_id() -&gt; u128 {
+        <span class="macro">const_random!</span>(u128)
+    }
+}
+
+<span class="kw">impl </span>OCamlDesc <span class="kw">for </span>bool {
+    <span class="kw">fn </span>ocaml_desc(_env: <span class="kw-2">&amp;</span>Env, _generics: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>str]) -&gt; String {
+        <span class="string">&quot;bool&quot;</span>.to_string()
+    }
+
+    <span class="kw">fn </span>unique_id() -&gt; u128 {
+        <span class="macro">const_random!</span>(u128)
+    }
+}
+
+<span class="kw">impl</span>&lt;T&gt; OCamlDesc <span class="kw">for </span>ocaml::Pointer&lt;<span class="lifetime">&#39;_</span>, T&gt;
+<span class="kw">where
+    </span>T: OCamlDesc,
 {
-    <span class="kw">fn</span> <span class="ident">ocaml_desc</span>(<span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>, <span class="ident">generics</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>]) -&gt; <span class="ident">String</span> {
-        <span class="ident">T::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>)
+    <span class="kw">fn </span>ocaml_desc(env: <span class="kw-2">&amp;</span>Env, generics: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>str]) -&gt; String {
+        T::ocaml_desc(env, generics)
     }
 
-    <span class="kw">fn</span> <span class="ident">unique_id</span>() -&gt; <span class="ident">u128</span> {
-        <span class="macro">const_random!</span>(<span class="ident">u128</span>)
+    <span class="kw">fn </span>unique_id() -&gt; u128 {
+        <span class="macro">const_random!</span>(u128)
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T1</span>, <span class="ident">T2</span><span class="op">&gt;</span> <span class="ident">OCamlDesc</span> <span class="kw">for</span> (<span class="ident">T1</span>, <span class="ident">T2</span>)
-<span class="kw">where</span>
-    <span class="ident">T1</span>: <span class="ident">OCamlDesc</span>,
-    <span class="ident">T2</span>: <span class="ident">OCamlDesc</span>,
+<span class="kw">impl</span>&lt;T1, T2&gt; OCamlDesc <span class="kw">for </span>(T1, T2)
+<span class="kw">where
+    </span>T1: OCamlDesc,
+    T2: OCamlDesc,
 {
-    <span class="kw">fn</span> <span class="ident">ocaml_desc</span>(<span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>, <span class="ident">generics</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>]) -&gt; <span class="ident">String</span> {
-        <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">T1::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>), <span class="ident">T2::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>)];
-        <span class="macro">format!</span>(<span class="string">&quot;({})&quot;</span>, <span class="ident">v</span>.<span class="ident">join</span>(<span class="string">&quot; * &quot;</span>))
+    <span class="kw">fn </span>ocaml_desc(env: <span class="kw-2">&amp;</span>Env, generics: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>str]) -&gt; String {
+        <span class="kw">let </span>v = <span class="macro">vec!</span>[T1::ocaml_desc(env, generics), T2::ocaml_desc(env, generics)];
+        <span class="macro">format!</span>(<span class="string">&quot;({})&quot;</span>, v.join(<span class="string">&quot; * &quot;</span>))
     }
 
-    <span class="kw">fn</span> <span class="ident">unique_id</span>() -&gt; <span class="ident">u128</span> {
-        <span class="macro">const_random!</span>(<span class="ident">u128</span>)
+    <span class="kw">fn </span>unique_id() -&gt; u128 {
+        <span class="macro">const_random!</span>(u128)
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T1</span>, <span class="ident">T2</span>, <span class="ident">T3</span>, <span class="ident">T4</span>, <span class="ident">T5</span>, <span class="ident">T6</span>, <span class="ident">T7</span>, <span class="ident">T8</span>, <span class="ident">T9</span>, <span class="ident">T10</span>, <span class="ident">T11</span>, <span class="ident">T12</span>, <span class="ident">T13</span>, <span class="ident">T14</span>, <span class="ident">T15</span><span class="op">&gt;</span> <span class="ident">OCamlDesc</span>
-    <span class="kw">for</span> (
-        <span class="ident">T1</span>,
-        <span class="ident">T2</span>,
-        <span class="ident">T3</span>,
-        <span class="ident">T4</span>,
-        <span class="ident">T5</span>,
-        <span class="ident">T6</span>,
-        <span class="ident">T7</span>,
-        <span class="ident">T8</span>,
-        <span class="ident">T9</span>,
-        <span class="ident">T10</span>,
-        <span class="ident">T11</span>,
-        <span class="ident">T12</span>,
-        <span class="ident">T13</span>,
-        <span class="ident">T14</span>,
-        <span class="ident">T15</span>,
+<span class="kw">impl</span>&lt;T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15&gt; OCamlDesc
+    <span class="kw">for </span>(
+        T1,
+        T2,
+        T3,
+        T4,
+        T5,
+        T6,
+        T7,
+        T8,
+        T9,
+        T10,
+        T11,
+        T12,
+        T13,
+        T14,
+        T15,
     )
-<span class="kw">where</span>
-    <span class="ident">T1</span>: <span class="ident">OCamlDesc</span>,
-    <span class="ident">T2</span>: <span class="ident">OCamlDesc</span>,
-    <span class="ident">T3</span>: <span class="ident">OCamlDesc</span>,
-    <span class="ident">T4</span>: <span class="ident">OCamlDesc</span>,
-    <span class="ident">T5</span>: <span class="ident">OCamlDesc</span>,
-    <span class="ident">T6</span>: <span class="ident">OCamlDesc</span>,
-    <span class="ident">T7</span>: <span class="ident">OCamlDesc</span>,
-    <span class="ident">T8</span>: <span class="ident">OCamlDesc</span>,
-    <span class="ident">T9</span>: <span class="ident">OCamlDesc</span>,
-    <span class="ident">T10</span>: <span class="ident">OCamlDesc</span>,
-    <span class="ident">T11</span>: <span class="ident">OCamlDesc</span>,
-    <span class="ident">T12</span>: <span class="ident">OCamlDesc</span>,
-    <span class="ident">T13</span>: <span class="ident">OCamlDesc</span>,
-    <span class="ident">T14</span>: <span class="ident">OCamlDesc</span>,
-    <span class="ident">T15</span>: <span class="ident">OCamlDesc</span>,
+<span class="kw">where
+    </span>T1: OCamlDesc,
+    T2: OCamlDesc,
+    T3: OCamlDesc,
+    T4: OCamlDesc,
+    T5: OCamlDesc,
+    T6: OCamlDesc,
+    T7: OCamlDesc,
+    T8: OCamlDesc,
+    T9: OCamlDesc,
+    T10: OCamlDesc,
+    T11: OCamlDesc,
+    T12: OCamlDesc,
+    T13: OCamlDesc,
+    T14: OCamlDesc,
+    T15: OCamlDesc,
 {
-    <span class="kw">fn</span> <span class="ident">ocaml_desc</span>(<span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>, <span class="ident">generics</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>]) -&gt; <span class="ident">String</span> {
-        <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="macro">vec!</span>[
-            <span class="ident">T1::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>),
-            <span class="ident">T2::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>),
-            <span class="ident">T3::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>),
-            <span class="ident">T4::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>),
-            <span class="ident">T5::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>),
-            <span class="ident">T6::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>),
-            <span class="ident">T7::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>),
-            <span class="ident">T8::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>),
-            <span class="ident">T9::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>),
-            <span class="ident">T10::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>),
-            <span class="ident">T11::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>),
-            <span class="ident">T12::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>),
-            <span class="ident">T13::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>),
-            <span class="ident">T14::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>),
-            <span class="ident">T15::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>),
+    <span class="kw">fn </span>ocaml_desc(env: <span class="kw-2">&amp;</span>Env, generics: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>str]) -&gt; String {
+        <span class="kw">let </span>v = <span class="macro">vec!</span>[
+            T1::ocaml_desc(env, generics),
+            T2::ocaml_desc(env, generics),
+            T3::ocaml_desc(env, generics),
+            T4::ocaml_desc(env, generics),
+            T5::ocaml_desc(env, generics),
+            T6::ocaml_desc(env, generics),
+            T7::ocaml_desc(env, generics),
+            T8::ocaml_desc(env, generics),
+            T9::ocaml_desc(env, generics),
+            T10::ocaml_desc(env, generics),
+            T11::ocaml_desc(env, generics),
+            T12::ocaml_desc(env, generics),
+            T13::ocaml_desc(env, generics),
+            T14::ocaml_desc(env, generics),
+            T15::ocaml_desc(env, generics),
         ];
-        <span class="macro">format!</span>(<span class="string">&quot;({})&quot;</span>, <span class="ident">v</span>.<span class="ident">join</span>(<span class="string">&quot; * &quot;</span>))
+        <span class="macro">format!</span>(<span class="string">&quot;({})&quot;</span>, v.join(<span class="string">&quot; * &quot;</span>))
     }
 
-    <span class="kw">fn</span> <span class="ident">unique_id</span>() -&gt; <span class="ident">u128</span> {
-        <span class="macro">const_random!</span>(<span class="ident">u128</span>)
+    <span class="kw">fn </span>unique_id() -&gt; u128 {
+        <span class="macro">const_random!</span>(u128)
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T1</span>, <span class="ident">T2</span>, <span class="ident">T3</span>, <span class="ident">T4</span>, <span class="ident">T5</span>, <span class="ident">T6</span><span class="op">&gt;</span> <span class="ident">OCamlDesc</span> <span class="kw">for</span> (<span class="ident">T1</span>, <span class="ident">T2</span>, <span class="ident">T3</span>, <span class="ident">T4</span>, <span class="ident">T5</span>, <span class="ident">T6</span>)
-<span class="kw">where</span>
-    <span class="ident">T1</span>: <span class="ident">OCamlDesc</span>,
-    <span class="ident">T2</span>: <span class="ident">OCamlDesc</span>,
-    <span class="ident">T3</span>: <span class="ident">OCamlDesc</span>,
-    <span class="ident">T4</span>: <span class="ident">OCamlDesc</span>,
-    <span class="ident">T5</span>: <span class="ident">OCamlDesc</span>,
-    <span class="ident">T6</span>: <span class="ident">OCamlDesc</span>,
+<span class="kw">impl</span>&lt;T1, T2, T3, T4, T5, T6&gt; OCamlDesc <span class="kw">for </span>(T1, T2, T3, T4, T5, T6)
+<span class="kw">where
+    </span>T1: OCamlDesc,
+    T2: OCamlDesc,
+    T3: OCamlDesc,
+    T4: OCamlDesc,
+    T5: OCamlDesc,
+    T6: OCamlDesc,
 {
-    <span class="kw">fn</span> <span class="ident">ocaml_desc</span>(<span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>, <span class="ident">generics</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>]) -&gt; <span class="ident">String</span> {
-        <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="macro">vec!</span>[
-            <span class="ident">T1::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>),
-            <span class="ident">T2::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>),
-            <span class="ident">T3::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>),
-            <span class="ident">T4::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>),
-            <span class="ident">T5::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>),
-            <span class="ident">T6::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>),
+    <span class="kw">fn </span>ocaml_desc(env: <span class="kw-2">&amp;</span>Env, generics: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>str]) -&gt; String {
+        <span class="kw">let </span>v = <span class="macro">vec!</span>[
+            T1::ocaml_desc(env, generics),
+            T2::ocaml_desc(env, generics),
+            T3::ocaml_desc(env, generics),
+            T4::ocaml_desc(env, generics),
+            T5::ocaml_desc(env, generics),
+            T6::ocaml_desc(env, generics),
         ];
-        <span class="macro">format!</span>(<span class="string">&quot;({})&quot;</span>, <span class="ident">v</span>.<span class="ident">join</span>(<span class="string">&quot; * &quot;</span>))
+        <span class="macro">format!</span>(<span class="string">&quot;({})&quot;</span>, v.join(<span class="string">&quot; * &quot;</span>))
     }
 
-    <span class="kw">fn</span> <span class="ident">unique_id</span>() -&gt; <span class="ident">u128</span> {
-        <span class="macro">const_random!</span>(<span class="ident">u128</span>)
+    <span class="kw">fn </span>unique_id() -&gt; u128 {
+        <span class="macro">const_random!</span>(u128)
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T1</span>, <span class="ident">T2</span>, <span class="ident">T3</span>, <span class="ident">T4</span>, <span class="ident">T5</span>, <span class="ident">T6</span>, <span class="ident">T7</span><span class="op">&gt;</span> <span class="ident">OCamlDesc</span> <span class="kw">for</span> (<span class="ident">T1</span>, <span class="ident">T2</span>, <span class="ident">T3</span>, <span class="ident">T4</span>, <span class="ident">T5</span>, <span class="ident">T6</span>, <span class="ident">T7</span>)
-<span class="kw">where</span>
-    <span class="ident">T1</span>: <span class="ident">OCamlDesc</span>,
-    <span class="ident">T2</span>: <span class="ident">OCamlDesc</span>,
-    <span class="ident">T3</span>: <span class="ident">OCamlDesc</span>,
-    <span class="ident">T4</span>: <span class="ident">OCamlDesc</span>,
-    <span class="ident">T5</span>: <span class="ident">OCamlDesc</span>,
-    <span class="ident">T6</span>: <span class="ident">OCamlDesc</span>,
-    <span class="ident">T7</span>: <span class="ident">OCamlDesc</span>,
+<span class="kw">impl</span>&lt;T1, T2, T3, T4, T5, T6, T7&gt; OCamlDesc <span class="kw">for </span>(T1, T2, T3, T4, T5, T6, T7)
+<span class="kw">where
+    </span>T1: OCamlDesc,
+    T2: OCamlDesc,
+    T3: OCamlDesc,
+    T4: OCamlDesc,
+    T5: OCamlDesc,
+    T6: OCamlDesc,
+    T7: OCamlDesc,
 {
-    <span class="kw">fn</span> <span class="ident">ocaml_desc</span>(<span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>, <span class="ident">generics</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>]) -&gt; <span class="ident">String</span> {
-        <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="macro">vec!</span>[
-            <span class="ident">T1::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>),
-            <span class="ident">T2::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>),
-            <span class="ident">T3::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>),
-            <span class="ident">T4::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>),
-            <span class="ident">T5::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>),
-            <span class="ident">T6::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>),
-            <span class="ident">T7::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>),
+    <span class="kw">fn </span>ocaml_desc(env: <span class="kw-2">&amp;</span>Env, generics: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>str]) -&gt; String {
+        <span class="kw">let </span>v = <span class="macro">vec!</span>[
+            T1::ocaml_desc(env, generics),
+            T2::ocaml_desc(env, generics),
+            T3::ocaml_desc(env, generics),
+            T4::ocaml_desc(env, generics),
+            T5::ocaml_desc(env, generics),
+            T6::ocaml_desc(env, generics),
+            T7::ocaml_desc(env, generics),
         ];
-        <span class="ident">v</span>.<span class="ident">join</span>(<span class="string">&quot; * &quot;</span>)
+        v.join(<span class="string">&quot; * &quot;</span>)
     }
 
-    <span class="kw">fn</span> <span class="ident">unique_id</span>() -&gt; <span class="ident">u128</span> {
-        <span class="macro">const_random!</span>(<span class="ident">u128</span>)
+    <span class="kw">fn </span>unique_id() -&gt; u128 {
+        <span class="macro">const_random!</span>(u128)
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T1</span>, <span class="ident">T2</span>, <span class="ident">T3</span><span class="op">&gt;</span> <span class="ident">OCamlDesc</span> <span class="kw">for</span> (<span class="ident">T1</span>, <span class="ident">T2</span>, <span class="ident">T3</span>)
-<span class="kw">where</span>
-    <span class="ident">T1</span>: <span class="ident">OCamlDesc</span>,
-    <span class="ident">T2</span>: <span class="ident">OCamlDesc</span>,
-    <span class="ident">T3</span>: <span class="ident">OCamlDesc</span>,
+<span class="kw">impl</span>&lt;T1, T2, T3&gt; OCamlDesc <span class="kw">for </span>(T1, T2, T3)
+<span class="kw">where
+    </span>T1: OCamlDesc,
+    T2: OCamlDesc,
+    T3: OCamlDesc,
 {
-    <span class="kw">fn</span> <span class="ident">ocaml_desc</span>(<span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>, <span class="ident">generics</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>]) -&gt; <span class="ident">String</span> {
-        <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="macro">vec!</span>[
-            <span class="ident">T1::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>),
-            <span class="ident">T2::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>),
-            <span class="ident">T3::ocaml_desc</span>(<span class="ident">env</span>, <span class="ident">generics</span>),
+    <span class="kw">fn </span>ocaml_desc(env: <span class="kw-2">&amp;</span>Env, generics: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>str]) -&gt; String {
+        <span class="kw">let </span>v = <span class="macro">vec!</span>[
+            T1::ocaml_desc(env, generics),
+            T2::ocaml_desc(env, generics),
+            T3::ocaml_desc(env, generics),
         ];
-        <span class="macro">format!</span>(<span class="string">&quot;({})&quot;</span>, <span class="ident">v</span>.<span class="ident">join</span>(<span class="string">&quot; * &quot;</span>))
+        <span class="macro">format!</span>(<span class="string">&quot;({})&quot;</span>, v.join(<span class="string">&quot; * &quot;</span>))
     }
 
-    <span class="kw">fn</span> <span class="ident">unique_id</span>() -&gt; <span class="ident">u128</span> {
-        <span class="macro">const_random!</span>(<span class="ident">u128</span>)
+    <span class="kw">fn </span>unique_id() -&gt; u128 {
+        <span class="macro">const_random!</span>(u128)
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="ocaml_gen" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="ocaml_gen" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

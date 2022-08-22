@@ -210,217 +210,217 @@
 <span id="210">210</span>
 <span id="211">211</span>
 <span id="212">212</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::writer</span>::{<span class="ident">Cs</span>, <span class="ident">GateSpec</span>, <span class="ident">System</span>, <span class="ident">Var</span>, <span class="ident">WitnessGenerator</span>};
-<span class="kw">use</span> <span class="ident">ark_ec</span>::{<span class="ident">AffineCurve</span>, <span class="ident">ProjectiveCurve</span>};
-<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">One</span>, <span class="ident">PrimeField</span>, <span class="ident">SquareRootField</span>, <span class="ident">Zero</span>};
-<span class="kw">use</span> <span class="ident">array_init::array_init</span>;
-<span class="kw">use</span> <span class="ident">commitment_dlog</span>::{
-    <span class="ident">commitment</span>::{<span class="ident">CommitmentCurve</span>, <span class="ident">PolyComm</span>},
-    <span class="ident">srs</span>::{<span class="ident">endos</span>, <span class="ident">SRS</span>},
+</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::writer::{Cs, GateSpec, System, Var, WitnessGenerator};
+<span class="kw">use </span>ark_ec::{AffineCurve, ProjectiveCurve};
+<span class="kw">use </span>ark_ff::{FftField, One, PrimeField, SquareRootField, Zero};
+<span class="kw">use </span>array_init::array_init;
+<span class="kw">use </span>commitment_dlog::{
+    commitment::{CommitmentCurve, PolyComm},
+    srs::{endos, SRS},
 };
-<span class="kw">use</span> <span class="ident">kimchi</span>::{
-    <span class="ident">circuits</span>::{<span class="ident">constraints::ConstraintSystem</span>, <span class="ident">gate::GateType</span>, <span class="ident">wires::COLUMNS</span>},
-    <span class="ident">curve::KimchiCurve</span>,
-    <span class="ident">plonk_sponge::FrSponge</span>,
-    <span class="ident">proof::ProverProof</span>,
-    <span class="ident">prover_index::ProverIndex</span>,
+<span class="kw">use </span>kimchi::{
+    circuits::{constraints::ConstraintSystem, gate::GateType, wires::COLUMNS},
+    curve::KimchiCurve,
+    plonk_sponge::FrSponge,
+    proof::ProverProof,
+    prover_index::ProverIndex,
 };
-<span class="kw">use</span> <span class="ident">mina_curves::pasta</span>::{<span class="ident">fp::Fp</span>, <span class="ident">fq::Fq</span>, <span class="ident">pallas::Pallas</span> <span class="kw">as</span> <span class="ident">Other</span>, <span class="ident">vesta::Vesta</span>};
-<span class="kw">use</span> <span class="ident">oracle::FqSponge</span>;
+<span class="kw">use </span>mina_curves::pasta::{fp::Fp, fq::Fq, pallas::Pallas <span class="kw">as </span>Other, vesta::Vesta};
+<span class="kw">use </span>oracle::FqSponge;
 
-<span class="doccomment">/// A [Cycle] represents the algebraic structure that</span>
-<span class="doccomment">/// allows for recursion using elliptic curves.</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Cycle</span> {
-    <span class="kw">type</span> <span class="ident">InnerField</span>: <span class="ident">FftField</span>
-        <span class="op">+</span> <span class="ident">PrimeField</span>
-        <span class="op">+</span> <span class="ident">SquareRootField</span>
-        <span class="op">+</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">u128</span><span class="op">&gt;</span>
-        <span class="op">+</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>
-        <span class="op">+</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>
-        <span class="op">+</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">u16</span><span class="op">&gt;</span>
-        <span class="op">+</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>;
-    <span class="kw">type</span> <span class="ident">OuterField</span>: <span class="ident">FftField</span>
-        <span class="op">+</span> <span class="ident">PrimeField</span>
-        <span class="op">+</span> <span class="ident">SquareRootField</span>
-        <span class="op">+</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">u128</span><span class="op">&gt;</span>
-        <span class="op">+</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>
-        <span class="op">+</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>
-        <span class="op">+</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">u16</span><span class="op">&gt;</span>
-        <span class="op">+</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>;
+<span class="doccomment">/// A [Cycle] represents the algebraic structure that
+/// allows for recursion using elliptic curves.
+</span><span class="kw">pub trait </span>Cycle {
+    <span class="kw">type </span>InnerField: FftField
+        + PrimeField
+        + SquareRootField
+        + From&lt;u128&gt;
+        + From&lt;u64&gt;
+        + From&lt;u32&gt;
+        + From&lt;u16&gt;
+        + From&lt;u8&gt;;
+    <span class="kw">type </span>OuterField: FftField
+        + PrimeField
+        + SquareRootField
+        + From&lt;u128&gt;
+        + From&lt;u64&gt;
+        + From&lt;u32&gt;
+        + From&lt;u16&gt;
+        + From&lt;u8&gt;;
 
-    <span class="kw">type</span> <span class="ident">InnerMap</span>: <span class="ident">groupmap::GroupMap</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::InnerField</span><span class="op">&gt;</span>;
-    <span class="kw">type</span> <span class="ident">OuterMap</span>: <span class="ident">groupmap::GroupMap</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::OuterField</span><span class="op">&gt;</span>;
+    <span class="kw">type </span>InnerMap: groupmap::GroupMap&lt;<span class="self">Self</span>::InnerField&gt;;
+    <span class="kw">type </span>OuterMap: groupmap::GroupMap&lt;<span class="self">Self</span>::OuterField&gt;;
 
-    <span class="kw">type</span> <span class="ident">InnerProj</span>: <span class="ident">ProjectiveCurve</span><span class="op">&lt;</span>
-            <span class="ident">Affine</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::Inner</span>,
-            <span class="ident">ScalarField</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::OuterField</span>,
-            <span class="ident">BaseField</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::InnerField</span>,
-        <span class="op">&gt;</span> <span class="op">+</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Inner</span><span class="op">&gt;</span>
-        <span class="op">+</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Inner</span><span class="op">&gt;</span>
-        <span class="op">+</span> <span class="ident">std::ops::MulAssign</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::OuterField</span><span class="op">&gt;</span>;
+    <span class="kw">type </span>InnerProj: ProjectiveCurve&lt;
+            Affine = <span class="self">Self</span>::Inner,
+            ScalarField = <span class="self">Self</span>::OuterField,
+            BaseField = <span class="self">Self</span>::InnerField,
+        &gt; + From&lt;<span class="self">Self</span>::Inner&gt;
+        + Into&lt;<span class="self">Self</span>::Inner&gt;
+        + std::ops::MulAssign&lt;<span class="self">Self</span>::OuterField&gt;;
 
-    <span class="kw">type</span> <span class="ident">Inner</span>: <span class="ident">CommitmentCurve</span><span class="op">&lt;</span>
-            <span class="ident">Projective</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::InnerProj</span>,
-            <span class="ident">Map</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::InnerMap</span>,
-            <span class="ident">BaseField</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::InnerField</span>,
-            <span class="ident">ScalarField</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::OuterField</span>,
-        <span class="op">&gt;</span> <span class="op">+</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::InnerProj</span><span class="op">&gt;</span>
-        <span class="op">+</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::InnerProj</span><span class="op">&gt;</span>;
+    <span class="kw">type </span>Inner: CommitmentCurve&lt;
+            Projective = <span class="self">Self</span>::InnerProj,
+            Map = <span class="self">Self</span>::InnerMap,
+            BaseField = <span class="self">Self</span>::InnerField,
+            ScalarField = <span class="self">Self</span>::OuterField,
+        &gt; + From&lt;<span class="self">Self</span>::InnerProj&gt;
+        + Into&lt;<span class="self">Self</span>::InnerProj&gt;;
 
-    <span class="kw">type</span> <span class="ident">OuterProj</span>: <span class="ident">ProjectiveCurve</span><span class="op">&lt;</span>
-            <span class="ident">Affine</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::Outer</span>,
-            <span class="ident">ScalarField</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::InnerField</span>,
-            <span class="ident">BaseField</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::OuterField</span>,
-        <span class="op">&gt;</span> <span class="op">+</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Outer</span><span class="op">&gt;</span>
-        <span class="op">+</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Outer</span><span class="op">&gt;</span>
-        <span class="op">+</span> <span class="ident">std::ops::MulAssign</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::InnerField</span><span class="op">&gt;</span>;
+    <span class="kw">type </span>OuterProj: ProjectiveCurve&lt;
+            Affine = <span class="self">Self</span>::Outer,
+            ScalarField = <span class="self">Self</span>::InnerField,
+            BaseField = <span class="self">Self</span>::OuterField,
+        &gt; + From&lt;<span class="self">Self</span>::Outer&gt;
+        + Into&lt;<span class="self">Self</span>::Outer&gt;
+        + std::ops::MulAssign&lt;<span class="self">Self</span>::InnerField&gt;;
 
-    <span class="kw">type</span> <span class="ident">Outer</span>: <span class="ident">CommitmentCurve</span><span class="op">&lt;</span>
-            <span class="ident">Projective</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::OuterProj</span>,
-            <span class="ident">Map</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::OuterMap</span>,
-            <span class="ident">ScalarField</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::InnerField</span>,
-            <span class="ident">BaseField</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::OuterField</span>,
-        <span class="op">&gt;</span> <span class="op">+</span> <span class="ident">KimchiCurve</span>;
+    <span class="kw">type </span>Outer: CommitmentCurve&lt;
+            Projective = <span class="self">Self</span>::OuterProj,
+            Map = <span class="self">Self</span>::OuterMap,
+            ScalarField = <span class="self">Self</span>::InnerField,
+            BaseField = <span class="self">Self</span>::OuterField,
+        &gt; + KimchiCurve;
 }
 
-<span class="doccomment">/// Used to configure the base curve of Pallas</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">FpInner</span>;
-<span class="doccomment">/// Used to configure the base curve of Vesta</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">FqInner</span>;
+<span class="doccomment">/// Used to configure the base curve of Pallas
+</span><span class="kw">pub struct </span>FpInner;
+<span class="doccomment">/// Used to configure the base curve of Vesta
+</span><span class="kw">pub struct </span>FqInner;
 
-<span class="kw">impl</span> <span class="ident">Cycle</span> <span class="kw">for</span> <span class="ident">FpInner</span> {
-    <span class="kw">type</span> <span class="ident">InnerMap</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">Other</span> <span class="kw">as</span> <span class="ident">CommitmentCurve</span><span class="op">&gt;</span><span class="ident">::Map</span>;
-    <span class="kw">type</span> <span class="ident">OuterMap</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">Vesta</span> <span class="kw">as</span> <span class="ident">CommitmentCurve</span><span class="op">&gt;</span><span class="ident">::Map</span>;
+<span class="kw">impl </span>Cycle <span class="kw">for </span>FpInner {
+    <span class="kw">type </span>InnerMap = &lt;Other <span class="kw">as </span>CommitmentCurve&gt;::Map;
+    <span class="kw">type </span>OuterMap = &lt;Vesta <span class="kw">as </span>CommitmentCurve&gt;::Map;
 
-    <span class="kw">type</span> <span class="ident">InnerField</span> <span class="op">=</span> <span class="ident">Fp</span>;
-    <span class="kw">type</span> <span class="ident">OuterField</span> <span class="op">=</span> <span class="ident">Fq</span>;
-    <span class="kw">type</span> <span class="ident">Inner</span> <span class="op">=</span> <span class="ident">Other</span>;
-    <span class="kw">type</span> <span class="ident">Outer</span> <span class="op">=</span> <span class="ident">Vesta</span>;
-    <span class="kw">type</span> <span class="ident">InnerProj</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">Other</span> <span class="kw">as</span> <span class="ident">AffineCurve</span><span class="op">&gt;</span><span class="ident">::Projective</span>;
-    <span class="kw">type</span> <span class="ident">OuterProj</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">Vesta</span> <span class="kw">as</span> <span class="ident">AffineCurve</span><span class="op">&gt;</span><span class="ident">::Projective</span>;
+    <span class="kw">type </span>InnerField = Fp;
+    <span class="kw">type </span>OuterField = Fq;
+    <span class="kw">type </span>Inner = Other;
+    <span class="kw">type </span>Outer = Vesta;
+    <span class="kw">type </span>InnerProj = &lt;Other <span class="kw">as </span>AffineCurve&gt;::Projective;
+    <span class="kw">type </span>OuterProj = &lt;Vesta <span class="kw">as </span>AffineCurve&gt;::Projective;
 }
 
-<span class="kw">impl</span> <span class="ident">Cycle</span> <span class="kw">for</span> <span class="ident">FqInner</span> {
-    <span class="kw">type</span> <span class="ident">InnerMap</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">Vesta</span> <span class="kw">as</span> <span class="ident">CommitmentCurve</span><span class="op">&gt;</span><span class="ident">::Map</span>;
-    <span class="kw">type</span> <span class="ident">OuterMap</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">Other</span> <span class="kw">as</span> <span class="ident">CommitmentCurve</span><span class="op">&gt;</span><span class="ident">::Map</span>;
+<span class="kw">impl </span>Cycle <span class="kw">for </span>FqInner {
+    <span class="kw">type </span>InnerMap = &lt;Vesta <span class="kw">as </span>CommitmentCurve&gt;::Map;
+    <span class="kw">type </span>OuterMap = &lt;Other <span class="kw">as </span>CommitmentCurve&gt;::Map;
 
-    <span class="kw">type</span> <span class="ident">InnerField</span> <span class="op">=</span> <span class="ident">Fq</span>;
-    <span class="kw">type</span> <span class="ident">OuterField</span> <span class="op">=</span> <span class="ident">Fp</span>;
-    <span class="kw">type</span> <span class="ident">Inner</span> <span class="op">=</span> <span class="ident">Vesta</span>;
-    <span class="kw">type</span> <span class="ident">Outer</span> <span class="op">=</span> <span class="ident">Other</span>;
-    <span class="kw">type</span> <span class="ident">InnerProj</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">Vesta</span> <span class="kw">as</span> <span class="ident">AffineCurve</span><span class="op">&gt;</span><span class="ident">::Projective</span>;
-    <span class="kw">type</span> <span class="ident">OuterProj</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">Other</span> <span class="kw">as</span> <span class="ident">AffineCurve</span><span class="op">&gt;</span><span class="ident">::Projective</span>;
+    <span class="kw">type </span>InnerField = Fq;
+    <span class="kw">type </span>OuterField = Fp;
+    <span class="kw">type </span>Inner = Vesta;
+    <span class="kw">type </span>Outer = Other;
+    <span class="kw">type </span>InnerProj = &lt;Vesta <span class="kw">as </span>AffineCurve&gt;::Projective;
+    <span class="kw">type </span>OuterProj = &lt;Other <span class="kw">as </span>AffineCurve&gt;::Projective;
 }
 
-<span class="doccomment">/// Given an index, a group map, custom blinders for the witness, a public input vector, and a circuit `main`, it creates a proof.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">prove</span><span class="op">&lt;</span><span class="ident">G</span>, <span class="ident">H</span>, <span class="ident">EFqSponge</span>, <span class="ident">EFrSponge</span><span class="op">&gt;</span>(
-    <span class="ident">index</span>: <span class="kw-2">&amp;</span><span class="ident">ProverIndex</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
-    <span class="ident">group_map</span>: <span class="kw-2">&amp;</span><span class="ident">G::Map</span>,
-    <span class="ident">blinders</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span>[<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>]<span class="op">&gt;</span>,
-    <span class="ident">public_input</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span>,
-    <span class="kw-2">mut</span> <span class="ident">main</span>: <span class="ident">H</span>,
-) -&gt; <span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">H</span>: <span class="ident">FnMut</span>(<span class="kw-2">&amp;mut</span> <span class="ident">WitnessGenerator</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Var</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span><span class="op">&gt;</span>),
-    <span class="ident">G::BaseField</span>: <span class="ident">PrimeField</span>,
-    <span class="ident">G</span>: <span class="ident">KimchiCurve</span>,
-    <span class="ident">EFqSponge</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">FqSponge</span><span class="op">&lt;</span><span class="ident">G::BaseField</span>, <span class="ident">G</span>, <span class="ident">G::ScalarField</span><span class="op">&gt;</span>,
-    <span class="ident">EFrSponge</span>: <span class="ident">FrSponge</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Given an index, a group map, custom blinders for the witness, a public input vector, and a circuit `main`, it creates a proof.
+</span><span class="kw">pub fn </span>prove&lt;G, H, EFqSponge, EFrSponge&gt;(
+    index: <span class="kw-2">&amp;</span>ProverIndex&lt;G&gt;,
+    group_map: <span class="kw-2">&amp;</span>G::Map,
+    blinders: <span class="prelude-ty">Option</span>&lt;[<span class="prelude-ty">Option</span>&lt;G::ScalarField&gt;; COLUMNS]&gt;,
+    public_input: Vec&lt;G::ScalarField&gt;,
+    <span class="kw-2">mut </span>main: H,
+) -&gt; ProverProof&lt;G&gt;
+<span class="kw">where
+    </span>H: FnMut(<span class="kw-2">&amp;mut </span>WitnessGenerator&lt;G::ScalarField&gt;, Vec&lt;Var&lt;G::ScalarField&gt;&gt;),
+    G::BaseField: PrimeField,
+    G: KimchiCurve,
+    EFqSponge: Clone + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
+    EFrSponge: FrSponge&lt;G::ScalarField&gt;,
 {
-    <span class="comment">// create the witness generator</span>
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">gen</span>: <span class="ident">WitnessGenerator</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">WitnessGenerator::new</span>(<span class="kw-2">&amp;</span><span class="ident">public_input</span>);
+    <span class="comment">// create the witness generator
+    </span><span class="kw">let </span><span class="kw-2">mut </span>gen: WitnessGenerator&lt;G::ScalarField&gt; = WitnessGenerator::new(<span class="kw-2">&amp;</span>public_input);
 
-    <span class="comment">// run the witness generation</span>
-    <span class="kw">let</span> <span class="ident">public_vars</span> <span class="op">=</span> <span class="ident">public_input</span>
-        .<span class="ident">iter</span>()
-        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">Var</span> {
-            <span class="ident">index</span>: <span class="number">0</span>,
-            <span class="ident">value</span>: <span class="prelude-val">Some</span>(<span class="kw-2">*</span><span class="ident">x</span>),
+    <span class="comment">// run the witness generation
+    </span><span class="kw">let </span>public_vars = public_input
+        .iter()
+        .map(|x| Var {
+            index: <span class="number">0</span>,
+            value: <span class="prelude-val">Some</span>(<span class="kw-2">*</span>x),
         })
-        .<span class="ident">collect</span>();
-    <span class="ident">main</span>(<span class="kw-2">&amp;mut</span> <span class="ident">gen</span>, <span class="ident">public_vars</span>);
+        .collect();
+    main(<span class="kw-2">&amp;mut </span>gen, public_vars);
 
-    <span class="comment">// get the witness columns</span>
-    <span class="ident">gen</span>.<span class="ident">curr_gate_count</span>();
-    <span class="kw">let</span> <span class="ident">columns</span> <span class="op">=</span> <span class="ident">gen</span>.<span class="ident">columns</span>();
+    <span class="comment">// get the witness columns
+    </span>gen.curr_gate_count();
+    <span class="kw">let </span>columns = gen.columns();
 
-    <span class="comment">// custom blinders for the witness commitment</span>
-    <span class="kw">let</span> <span class="ident">blinders</span>: [<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="kw">match</span> <span class="ident">blinders</span> {
-        <span class="prelude-val">None</span> =&gt; <span class="ident">array_init</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="prelude-val">None</span>),
-        <span class="prelude-val">Some</span>(<span class="ident">bs</span>) =&gt; <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
-            <span class="ident">bs</span>[<span class="ident">i</span>].<span class="ident">map</span>(<span class="op">|</span><span class="ident">b</span><span class="op">|</span> <span class="ident">PolyComm</span> {
-                <span class="ident">unshifted</span>: <span class="macro">vec!</span>[<span class="ident">b</span>],
-                <span class="ident">shifted</span>: <span class="prelude-val">None</span>,
+    <span class="comment">// custom blinders for the witness commitment
+    </span><span class="kw">let </span>blinders: [<span class="prelude-ty">Option</span>&lt;PolyComm&lt;G::ScalarField&gt;&gt;; COLUMNS] = <span class="kw">match </span>blinders {
+        <span class="prelude-val">None </span>=&gt; array_init(|<span class="kw">_</span>| <span class="prelude-val">None</span>),
+        <span class="prelude-val">Some</span>(bs) =&gt; array_init(|i| {
+            bs[i].map(|b| PolyComm {
+                unshifted: <span class="macro">vec!</span>[b],
+                shifted: <span class="prelude-val">None</span>,
             })
         }),
     };
 
-    <span class="comment">// create the proof</span>
-    <span class="ident">ProverProof::create_recursive</span>::<span class="op">&lt;</span><span class="ident">EFqSponge</span>, <span class="ident">EFrSponge</span><span class="op">&gt;</span>(
-        <span class="ident">group_map</span>,
-        <span class="ident">columns</span>,
+    <span class="comment">// create the proof
+    </span>ProverProof::create_recursive::&lt;EFqSponge, EFrSponge&gt;(
+        group_map,
+        columns,
         <span class="kw-2">&amp;</span>[],
-        <span class="ident">index</span>,
+        index,
         <span class="macro">vec!</span>[],
-        <span class="prelude-val">Some</span>(<span class="ident">blinders</span>),
+        <span class="prelude-val">Some</span>(blinders),
     )
-    .<span class="ident">unwrap</span>()
+    .unwrap()
 }
 
-<span class="doccomment">/// Creates the prover index on input an `srs`, used `constants`, parameters for Poseidon, number of public inputs, and a specific circuit</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_prover_index</span><span class="op">&lt;</span><span class="ident">C</span>, <span class="ident">H</span><span class="op">&gt;</span>(
-    <span class="ident">srs</span>: <span class="ident">std::sync::Arc</span><span class="op">&lt;</span><span class="ident">SRS</span><span class="op">&lt;</span><span class="ident">C::Outer</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">public</span>: <span class="ident">usize</span>,
-    <span class="ident">main</span>: <span class="ident">H</span>,
-) -&gt; <span class="ident">ProverIndex</span><span class="op">&lt;</span><span class="ident">C::Outer</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">H</span>: <span class="ident">FnOnce</span>(<span class="kw-2">&amp;mut</span> <span class="ident">System</span><span class="op">&lt;</span><span class="ident">C::InnerField</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Var</span><span class="op">&lt;</span><span class="ident">C::InnerField</span><span class="op">&gt;</span><span class="op">&gt;</span>),
-    <span class="ident">C</span>: <span class="ident">Cycle</span>,
+<span class="doccomment">/// Creates the prover index on input an `srs`, used `constants`, parameters for Poseidon, number of public inputs, and a specific circuit
+</span><span class="kw">pub fn </span>generate_prover_index&lt;C, H&gt;(
+    srs: std::sync::Arc&lt;SRS&lt;C::Outer&gt;&gt;,
+    public: usize,
+    main: H,
+) -&gt; ProverIndex&lt;C::Outer&gt;
+<span class="kw">where
+    </span>H: FnOnce(<span class="kw-2">&amp;mut </span>System&lt;C::InnerField&gt;, Vec&lt;Var&lt;C::InnerField&gt;&gt;),
+    C: Cycle,
 {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">system</span>: <span class="ident">System</span><span class="op">&lt;</span><span class="ident">C::InnerField</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">System::default</span>();
-    <span class="kw">let</span> <span class="ident">z</span> <span class="op">=</span> <span class="ident">C::InnerField::zero</span>();
+    <span class="kw">let </span><span class="kw-2">mut </span>system: System&lt;C::InnerField&gt; = System::default();
+    <span class="kw">let </span>z = C::InnerField::zero();
 
-    <span class="comment">// create public input variables</span>
-    <span class="kw">let</span> <span class="ident">public_input_row</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">C::InnerField::one</span>(), <span class="ident">z</span>, <span class="ident">z</span>, <span class="ident">z</span>, <span class="ident">z</span>, <span class="ident">z</span>, <span class="ident">z</span>, <span class="ident">z</span>, <span class="ident">z</span>, <span class="ident">z</span>];
-    <span class="kw">let</span> <span class="ident">public_input</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">public</span>)
-        .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="ident">system</span>.<span class="ident">var</span>(<span class="op">|</span><span class="op">|</span> <span class="macro">panic!</span>(<span class="string">&quot;fail&quot;</span>));
+    <span class="comment">// create public input variables
+    </span><span class="kw">let </span>public_input_row = <span class="macro">vec!</span>[C::InnerField::one(), z, z, z, z, z, z, z, z, z];
+    <span class="kw">let </span>public_input: Vec&lt;<span class="kw">_</span>&gt; = (<span class="number">0</span>..public)
+        .map(|<span class="kw">_</span>| {
+            <span class="kw">let </span>v = system.var(|| <span class="macro">panic!</span>(<span class="string">&quot;fail&quot;</span>));
 
-            <span class="ident">system</span>.<span class="ident">gate</span>(<span class="ident">GateSpec</span> {
-                <span class="ident">typ</span>: <span class="ident">GateType::Generic</span>,
-                <span class="ident">row</span>: <span class="macro">vec!</span>[<span class="prelude-val">Some</span>(<span class="ident">v</span>)],
-                <span class="ident">coeffs</span>: <span class="ident">public_input_row</span>.<span class="ident">clone</span>(),
+            system.gate(GateSpec {
+                typ: GateType::Generic,
+                row: <span class="macro">vec!</span>[<span class="prelude-val">Some</span>(v)],
+                coeffs: public_input_row.clone(),
             });
-            <span class="ident">v</span>
+            v
         })
-        .<span class="ident">collect</span>();
+        .collect();
 
-    <span class="ident">main</span>(<span class="kw-2">&amp;mut</span> <span class="ident">system</span>, <span class="ident">public_input</span>);
+    main(<span class="kw-2">&amp;mut </span>system, public_input);
 
-    <span class="kw">let</span> <span class="ident">gates</span> <span class="op">=</span> <span class="ident">system</span>.<span class="ident">gates</span>();
-    <span class="macro">println!</span>(<span class="string">&quot;gates: {}&quot;</span>, <span class="ident">gates</span>.<span class="ident">len</span>());
-    <span class="comment">// Other base field = self scalar field</span>
-    <span class="kw">let</span> (<span class="ident">endo_q</span>, <span class="ident">_endo_r</span>) <span class="op">=</span> <span class="ident">endos</span>::<span class="op">&lt;</span><span class="ident">C::Inner</span><span class="op">&gt;</span>();
+    <span class="kw">let </span>gates = system.gates();
+    <span class="macro">println!</span>(<span class="string">&quot;gates: {}&quot;</span>, gates.len());
+    <span class="comment">// Other base field = self scalar field
+    </span><span class="kw">let </span>(endo_q, _endo_r) = endos::&lt;C::Inner&gt;();
 
-    <span class="kw">let</span> <span class="ident">constraint_system</span> <span class="op">=</span> <span class="ident">ConstraintSystem</span>::<span class="op">&lt;</span><span class="ident">C::InnerField</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">gates</span>)
-        .<span class="ident">public</span>(<span class="ident">public</span>)
-        .<span class="ident">build</span>()
-        <span class="comment">// TODO: return a Result instead of panicking</span>
-        .<span class="ident">expect</span>(<span class="string">&quot;couldn&#39;t construct constraint system&quot;</span>);
+    <span class="kw">let </span>constraint_system = ConstraintSystem::&lt;C::InnerField&gt;::create(gates)
+        .public(public)
+        .build()
+        <span class="comment">// TODO: return a Result instead of panicking
+        </span>.expect(<span class="string">&quot;couldn&#39;t construct constraint system&quot;</span>);
 
-    <span class="ident">ProverIndex</span>::<span class="op">&lt;</span><span class="ident">C::Outer</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">constraint_system</span>, <span class="ident">endo_q</span>, <span class="ident">srs</span>)
+    ProverIndex::&lt;C::Outer&gt;::create(constraint_system, endo_q, srs)
 }
 
-<span class="doccomment">/// Handling coordinates in an affine curve</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">CoordinateCurve</span>: <span class="ident">AffineCurve</span> {
-    <span class="doccomment">/// Returns the coordinates in the curve as two points of the base field</span>
-    <span class="kw">fn</span> <span class="ident">to_coords</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident"><span class="self">Self</span>::BaseField</span>, <span class="ident"><span class="self">Self</span>::BaseField</span>)<span class="op">&gt;</span>;
+<span class="doccomment">/// Handling coordinates in an affine curve
+</span><span class="kw">pub trait </span>CoordinateCurve: AffineCurve {
+    <span class="doccomment">/// Returns the coordinates in the curve as two points of the base field
+    </span><span class="kw">fn </span>to_coords(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;(<span class="self">Self</span>::BaseField, <span class="self">Self</span>::BaseField)&gt;;
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">CommitmentCurve</span><span class="op">&gt;</span> <span class="ident">CoordinateCurve</span> <span class="kw">for</span> <span class="ident">G</span> {
-    <span class="kw">fn</span> <span class="ident">to_coords</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident"><span class="self">Self</span>::BaseField</span>, <span class="ident"><span class="self">Self</span>::BaseField</span>)<span class="op">&gt;</span> {
-        <span class="ident">CommitmentCurve::to_coordinates</span>(<span class="self">self</span>)
+<span class="kw">impl</span>&lt;G: CommitmentCurve&gt; CoordinateCurve <span class="kw">for </span>G {
+    <span class="kw">fn </span>to_coords(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;(<span class="self">Self</span>::BaseField, <span class="self">Self</span>::BaseField)&gt; {
+        CommitmentCurve::to_coordinates(<span class="self">self</span>)
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="circuit_construction" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="circuit_construction" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

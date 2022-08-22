@@ -413,192 +413,192 @@
 <span id="413">413</span>
 <span id="414">414</span>
 <span id="415">415</span>
-</pre><pre class="rust"><code><span class="doccomment">//! This module implements the Poseidon constraint polynomials.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This module implements the Poseidon constraint polynomials.
 
-<span class="comment">//~ The poseidon gate encodes 5 rounds of the poseidon permutation.</span>
-<span class="comment">//~ A state is represents by 3 field elements. For example,</span>
-<span class="comment">//~ the first state is represented by `(s0, s0, s0)`,</span>
-<span class="comment">//~ and the next state, after permutation, is represented by `(s1, s1, s1)`.</span>
-<span class="comment">//~</span>
-<span class="comment">//~ Below is how we store each state in the register table:</span>
-<span class="comment">//~</span>
-<span class="comment">//~ |  0 |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |  9 | 10 | 11 | 12 | 13 | 14 |</span>
-<span class="comment">//~ |:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|</span>
-<span class="comment">//~ | s0 | s0 | s0 | s4 | s4 | s4 | s1 | s1 | s1 | s2 | s2 | s2 | s3 | s3 | s3 |</span>
-<span class="comment">//~ | s5 | s5 | s5 |    |    |    |    |    |    |    |    |    |    |    |    |</span>
-<span class="comment">//~</span>
-<span class="comment">//~ The last state is stored on the next row. This last state is either used:</span>
-<span class="comment">//~</span>
-<span class="comment">//~ * with another Poseidon gate on that next row, representing the next 5 rounds.</span>
-<span class="comment">//~ * or with a Zero gate, and a permutation to use the output elsewhere in the circuit.</span>
-<span class="comment">//~ * or with another gate expecting an input of 3 field elements in its first registers.</span>
-<span class="comment">//~</span>
-<span class="comment">//~ ```admonish</span>
-<span class="comment">//~ As some of the poseidon hash variants might not use $5k$ rounds (for some $k$),</span>
-<span class="comment">//~ the result of the 4-th round is stored directly after the initial state.</span>
-<span class="comment">//~ This makes that state accessible to the permutation.</span>
-<span class="comment">//~ ```</span>
-<span class="comment">//~</span>
+</span><span class="comment">//~ The poseidon gate encodes 5 rounds of the poseidon permutation.
+//~ A state is represents by 3 field elements. For example,
+//~ the first state is represented by `(s0, s0, s0)`,
+//~ and the next state, after permutation, is represented by `(s1, s1, s1)`.
+//~
+//~ Below is how we store each state in the register table:
+//~
+//~ |  0 |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |  9 | 10 | 11 | 12 | 13 | 14 |
+//~ |:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+//~ | s0 | s0 | s0 | s4 | s4 | s4 | s1 | s1 | s1 | s2 | s2 | s2 | s3 | s3 | s3 |
+//~ | s5 | s5 | s5 |    |    |    |    |    |    |    |    |    |    |    |    |
+//~
+//~ The last state is stored on the next row. This last state is either used:
+//~
+//~ * with another Poseidon gate on that next row, representing the next 5 rounds.
+//~ * or with a Zero gate, and a permutation to use the output elsewhere in the circuit.
+//~ * or with another gate expecting an input of 3 field elements in its first registers.
+//~
+//~ ```admonish
+//~ As some of the poseidon hash variants might not use $5k$ rounds (for some $k$),
+//~ the result of the 4-th round is stored directly after the initial state.
+//~ This makes that state accessible to the permutation.
+//~ ```
+//~
 
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">circuits</span>::{
-        <span class="ident">argument</span>::{<span class="ident">Argument</span>, <span class="ident">ArgumentType</span>},
-        <span class="ident">expr</span>::{<span class="ident">prologue</span>::<span class="kw-2">*</span>, <span class="ident">Cache</span>, <span class="ident">ConstantExpr</span>},
-        <span class="ident">gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">CurrOrNext</span>, <span class="ident">GateType</span>},
-        <span class="ident">polynomial::COLUMNS</span>,
-        <span class="ident">wires</span>::{<span class="ident">GateWires</span>, <span class="ident">Wire</span>},
+</span><span class="kw">use crate</span>::{
+    circuits::{
+        argument::{Argument, ArgumentType},
+        expr::{prologue::<span class="kw-2">*</span>, Cache, ConstantExpr},
+        gate::{CircuitGate, CurrOrNext, GateType},
+        polynomial::COLUMNS,
+        wires::{GateWires, Wire},
     },
-    <span class="ident">curve::KimchiCurve</span>,
+    curve::KimchiCurve,
 };
-<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">Field</span>, <span class="ident">PrimeField</span>};
-<span class="kw">use</span> <span class="ident">oracle</span>::{
-    <span class="ident">constants</span>::{<span class="ident">PlonkSpongeConstantsKimchi</span>, <span class="ident">SpongeConstants</span>},
-    <span class="ident">poseidon</span>::{<span class="ident">sbox</span>, <span class="ident">ArithmeticSponge</span>, <span class="ident">ArithmeticSpongeParams</span>, <span class="ident">Sponge</span>},
+<span class="kw">use </span>ark_ff::{FftField, Field, PrimeField};
+<span class="kw">use </span>oracle::{
+    constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
+    poseidon::{sbox, ArithmeticSponge, ArithmeticSpongeParams, Sponge},
 };
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">marker::PhantomData</span>, <span class="ident">ops::Range</span>};
-<span class="kw">use</span> <span class="ident">CurrOrNext</span>::{<span class="ident">Curr</span>, <span class="ident">Next</span>};
+<span class="kw">use </span>std::{marker::PhantomData, ops::Range};
+<span class="kw">use </span>CurrOrNext::{Curr, Next};
 
-<span class="comment">//</span>
-<span class="comment">// Constants</span>
-<span class="comment">//</span>
+<span class="comment">//
+// Constants
+//
 
-<span class="doccomment">/// Width of the sponge</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">SPONGE_WIDTH</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">PlonkSpongeConstantsKimchi::SPONGE_WIDTH</span>;
+</span><span class="doccomment">/// Width of the sponge
+</span><span class="kw">pub const </span>SPONGE_WIDTH: usize = PlonkSpongeConstantsKimchi::SPONGE_WIDTH;
 
-<span class="doccomment">/// Number of rows</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">ROUNDS_PER_ROW</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">COLUMNS</span> <span class="op">/</span> <span class="ident">SPONGE_WIDTH</span>;
+<span class="doccomment">/// Number of rows
+</span><span class="kw">pub const </span>ROUNDS_PER_ROW: usize = COLUMNS / SPONGE_WIDTH;
 
-<span class="doccomment">/// Number of rounds</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">ROUNDS_PER_HASH</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">PlonkSpongeConstantsKimchi::PERM_ROUNDS_FULL</span>;
+<span class="doccomment">/// Number of rounds
+</span><span class="kw">pub const </span>ROUNDS_PER_HASH: usize = PlonkSpongeConstantsKimchi::PERM_ROUNDS_FULL;
 
-<span class="doccomment">/// Number of PLONK rows required to implement Poseidon</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">POS_ROWS_PER_HASH</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">ROUNDS_PER_HASH</span> <span class="op">/</span> <span class="ident">ROUNDS_PER_ROW</span>;
+<span class="doccomment">/// Number of PLONK rows required to implement Poseidon
+</span><span class="kw">pub const </span>POS_ROWS_PER_HASH: usize = ROUNDS_PER_HASH / ROUNDS_PER_ROW;
 
-<span class="doccomment">/// The order in a row in which we store states before and after permutations</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">STATE_ORDER</span>: [<span class="ident">usize</span>; <span class="ident">ROUNDS_PER_ROW</span>] <span class="op">=</span> [
-    <span class="number">0</span>, <span class="comment">// the first state is stored first</span>
-    <span class="comment">// we skip the next column for subsequent states</span>
-    <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>,
-    <span class="comment">// we store the last state directly after the first state,</span>
-    <span class="comment">// so that it can be used in the permutation argument</span>
-    <span class="number">1</span>,
+<span class="doccomment">/// The order in a row in which we store states before and after permutations
+</span><span class="kw">pub const </span>STATE_ORDER: [usize; ROUNDS_PER_ROW] = [
+    <span class="number">0</span>, <span class="comment">// the first state is stored first
+    // we skip the next column for subsequent states
+    </span><span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>,
+    <span class="comment">// we store the last state directly after the first state,
+    // so that it can be used in the permutation argument
+    </span><span class="number">1</span>,
 ];
 
-<span class="doccomment">/// Given a Poseidon round from 0 to 4 (inclusive),</span>
-<span class="doccomment">/// returns the columns (as a range) that are used in this round.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">round_to_cols</span>(<span class="ident">i</span>: <span class="ident">usize</span>) -&gt; <span class="ident">Range</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">slot</span> <span class="op">=</span> <span class="ident">STATE_ORDER</span>[<span class="ident">i</span>];
-    <span class="kw">let</span> <span class="ident">start</span> <span class="op">=</span> <span class="ident">slot</span> <span class="op">*</span> <span class="ident">SPONGE_WIDTH</span>;
-    <span class="ident">start</span>..(<span class="ident">start</span> <span class="op">+</span> <span class="ident">SPONGE_WIDTH</span>)
+<span class="doccomment">/// Given a Poseidon round from 0 to 4 (inclusive),
+/// returns the columns (as a range) that are used in this round.
+</span><span class="kw">pub const fn </span>round_to_cols(i: usize) -&gt; Range&lt;usize&gt; {
+    <span class="kw">let </span>slot = STATE_ORDER[i];
+    <span class="kw">let </span>start = slot * SPONGE_WIDTH;
+    start..(start + SPONGE_WIDTH)
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_poseidon</span>(
-        <span class="ident">wires</span>: <span class="ident">GateWires</span>,
-        <span class="comment">// Coefficients are passed in in the logical order</span>
-        <span class="ident">coeffs</span>: [[<span class="ident">F</span>; <span class="ident">SPONGE_WIDTH</span>]; <span class="ident">ROUNDS_PER_ROW</span>],
-    ) -&gt; <span class="self">Self</span> {
-        <span class="ident">CircuitGate</span> {
-            <span class="ident">typ</span>: <span class="ident">GateType::Poseidon</span>,
-            <span class="ident">wires</span>,
-            <span class="ident">coeffs</span>: <span class="ident">coeffs</span>.<span class="ident">iter</span>().<span class="ident">flatten</span>().<span class="ident">copied</span>().<span class="ident">collect</span>(),
+<span class="kw">impl</span>&lt;F: PrimeField&gt; CircuitGate&lt;F&gt; {
+    <span class="kw">pub fn </span>create_poseidon(
+        wires: GateWires,
+        <span class="comment">// Coefficients are passed in in the logical order
+        </span>coeffs: [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW],
+    ) -&gt; <span class="self">Self </span>{
+        CircuitGate {
+            typ: GateType::Poseidon,
+            wires,
+            coeffs: coeffs.iter().flatten().copied().collect(),
         }
     }
 
-    <span class="doccomment">/// `create_poseidon_gadget(row, first_and_last_row, round_constants)`  creates an entire set of constraint for a Poseidon hash.</span>
-    <span class="doccomment">/// For that, you need to pass:</span>
-    <span class="doccomment">/// - the index of the first `row`</span>
-    <span class="doccomment">/// - the first and last rows&#39; wires (because they are used in the permutation)</span>
-    <span class="doccomment">/// - the round constants</span>
-    <span class="doccomment">/// The function returns a set of gates, as well as the next pointer to the circuit (next empty absolute row)</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_poseidon_gadget</span>(
-        <span class="comment">// the absolute row in the circuit</span>
-        <span class="ident">row</span>: <span class="ident">usize</span>,
-        <span class="comment">// first and last row of the poseidon circuit (because they are used in the permutation)</span>
-        <span class="ident">first_and_last_row</span>: [<span class="ident">GateWires</span>; <span class="number">2</span>],
-        <span class="ident">round_constants</span>: <span class="kw-2">&amp;</span>[<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>],
-    ) -&gt; (<span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">usize</span>) {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">gates</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+    <span class="doccomment">/// `create_poseidon_gadget(row, first_and_last_row, round_constants)`  creates an entire set of constraint for a Poseidon hash.
+    /// For that, you need to pass:
+    /// - the index of the first `row`
+    /// - the first and last rows&#39; wires (because they are used in the permutation)
+    /// - the round constants
+    /// The function returns a set of gates, as well as the next pointer to the circuit (next empty absolute row)
+    </span><span class="kw">pub fn </span>create_poseidon_gadget(
+        <span class="comment">// the absolute row in the circuit
+        </span>row: usize,
+        <span class="comment">// first and last row of the poseidon circuit (because they are used in the permutation)
+        </span>first_and_last_row: [GateWires; <span class="number">2</span>],
+        round_constants: <span class="kw-2">&amp;</span>[Vec&lt;F&gt;],
+    ) -&gt; (Vec&lt;<span class="self">Self</span>&gt;, usize) {
+        <span class="kw">let </span><span class="kw-2">mut </span>gates = <span class="macro">vec!</span>[];
 
-        <span class="comment">// create the gates</span>
-        <span class="kw">let</span> <span class="ident">relative_rows</span> <span class="op">=</span> <span class="number">0</span>..<span class="ident">POS_ROWS_PER_HASH</span>;
-        <span class="kw">let</span> <span class="ident">last_row</span> <span class="op">=</span> <span class="ident">row</span> <span class="op">+</span> <span class="ident">POS_ROWS_PER_HASH</span>;
-        <span class="kw">let</span> <span class="ident">absolute_rows</span> <span class="op">=</span> <span class="ident">row</span>..<span class="ident">last_row</span>;
+        <span class="comment">// create the gates
+        </span><span class="kw">let </span>relative_rows = <span class="number">0</span>..POS_ROWS_PER_HASH;
+        <span class="kw">let </span>last_row = row + POS_ROWS_PER_HASH;
+        <span class="kw">let </span>absolute_rows = row..last_row;
 
-        <span class="kw">for</span> (<span class="ident">abs_row</span>, <span class="ident">rel_row</span>) <span class="kw">in</span> <span class="ident">absolute_rows</span>.<span class="ident">zip</span>(<span class="ident">relative_rows</span>) {
-            <span class="comment">// the 15 wires for this row</span>
-            <span class="kw">let</span> <span class="ident">wires</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">rel_row</span> <span class="op">==</span> <span class="number">0</span> {
-                <span class="ident">first_and_last_row</span>[<span class="number">0</span>]
-            } <span class="kw">else</span> {
-                <span class="ident">array_init::array_init</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> <span class="ident">Wire</span> { <span class="ident">col</span>, <span class="ident">row</span>: <span class="ident">abs_row</span> })
+        <span class="kw">for </span>(abs_row, rel_row) <span class="kw">in </span>absolute_rows.zip(relative_rows) {
+            <span class="comment">// the 15 wires for this row
+            </span><span class="kw">let </span>wires = <span class="kw">if </span>rel_row == <span class="number">0 </span>{
+                first_and_last_row[<span class="number">0</span>]
+            } <span class="kw">else </span>{
+                array_init::array_init(|col| Wire { col, row: abs_row })
             };
 
-            <span class="comment">// round constant for this row</span>
-            <span class="kw">let</span> <span class="ident">coeffs</span> <span class="op">=</span> <span class="ident">array_init::array_init</span>(<span class="op">|</span><span class="ident">offset</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">round</span> <span class="op">=</span> <span class="ident">rel_row</span> <span class="op">*</span> <span class="ident">ROUNDS_PER_ROW</span> <span class="op">+</span> <span class="ident">offset</span>;
-                <span class="ident">array_init::array_init</span>(<span class="op">|</span><span class="ident">field_el</span><span class="op">|</span> <span class="ident">round_constants</span>[<span class="ident">round</span>][<span class="ident">field_el</span>])
+            <span class="comment">// round constant for this row
+            </span><span class="kw">let </span>coeffs = array_init::array_init(|offset| {
+                <span class="kw">let </span>round = rel_row * ROUNDS_PER_ROW + offset;
+                array_init::array_init(|field_el| round_constants[round][field_el])
             });
 
-            <span class="comment">// create poseidon gate for this row</span>
-            <span class="ident">gates</span>.<span class="ident">push</span>(<span class="ident">CircuitGate::create_poseidon</span>(<span class="ident">wires</span>, <span class="ident">coeffs</span>));
+            <span class="comment">// create poseidon gate for this row
+            </span>gates.push(CircuitGate::create_poseidon(wires, coeffs));
         }
 
-        <span class="comment">// final (zero) gate that contains the output of poseidon</span>
-        <span class="ident">gates</span>.<span class="ident">push</span>(<span class="ident">CircuitGate::zero</span>(<span class="ident">first_and_last_row</span>[<span class="number">1</span>]));
+        <span class="comment">// final (zero) gate that contains the output of poseidon
+        </span>gates.push(CircuitGate::zero(first_and_last_row[<span class="number">1</span>]));
 
-        <span class="comment">//</span>
-        (<span class="ident">gates</span>, <span class="ident">last_row</span>)
+        <span class="comment">//
+        </span>(gates, last_row)
     }
 
-    <span class="doccomment">/// Checks if a witness verifies a poseidon gate</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_poseidon</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">KimchiCurve</span><span class="op">&lt;</span><span class="ident">ScalarField</span> <span class="op">=</span> <span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>(
+    <span class="doccomment">/// Checks if a witness verifies a poseidon gate
+    </span><span class="kw">pub fn </span>verify_poseidon&lt;G: KimchiCurve&lt;ScalarField = F&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">row</span>: <span class="ident">usize</span>,
-        <span class="comment">// TODO(mimoo): we should just pass two rows instead of the whole witness</span>
-        <span class="ident">witness</span>: <span class="kw-2">&amp;</span>[<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
+        row: usize,
+        <span class="comment">// TODO(mimoo): we should just pass two rows instead of the whole witness
+        </span>witness: <span class="kw-2">&amp;</span>[Vec&lt;F&gt;; COLUMNS],
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
         <span class="macro">ensure_eq!</span>(
-            <span class="self">self</span>.<span class="ident">typ</span>,
-            <span class="ident">GateType::Poseidon</span>,
-            <span class="string">&quot;incorrect gate type (should be poseidon)&quot;</span>
-        );
+            <span class="self">self</span>.typ,
+            GateType::Poseidon,
+            <span class="string">&quot;incorrect gate type (should be poseidon)&quot;
+        </span>);
 
-        <span class="comment">// fetch each state in the right order</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">states</span> <span class="op">=</span> <span class="macro">vec!</span>[];
-        <span class="kw">for</span> <span class="ident">round</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">ROUNDS_PER_ROW</span> {
-            <span class="kw">let</span> <span class="ident">cols</span> <span class="op">=</span> <span class="ident">round_to_cols</span>(<span class="ident">round</span>);
-            <span class="kw">let</span> <span class="ident">state</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">witness</span>[<span class="ident">cols</span>].<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> <span class="ident">col</span>[<span class="ident">row</span>]).<span class="ident">collect</span>();
-            <span class="ident">states</span>.<span class="ident">push</span>(<span class="ident">state</span>);
+        <span class="comment">// fetch each state in the right order
+        </span><span class="kw">let </span><span class="kw-2">mut </span>states = <span class="macro">vec!</span>[];
+        <span class="kw">for </span>round <span class="kw">in </span><span class="number">0</span>..ROUNDS_PER_ROW {
+            <span class="kw">let </span>cols = round_to_cols(round);
+            <span class="kw">let </span>state: Vec&lt;F&gt; = witness[cols].iter().map(|col| col[row]).collect();
+            states.push(state);
         }
-        <span class="comment">// (last state is in next row)</span>
-        <span class="kw">let</span> <span class="ident">cols</span> <span class="op">=</span> <span class="ident">round_to_cols</span>(<span class="number">0</span>);
-        <span class="kw">let</span> <span class="ident">next_row</span> <span class="op">=</span> <span class="ident">row</span> <span class="op">+</span> <span class="number">1</span>;
-        <span class="kw">let</span> <span class="ident">last_state</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">witness</span>[<span class="ident">cols</span>].<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> <span class="ident">col</span>[<span class="ident">next_row</span>]).<span class="ident">collect</span>();
-        <span class="ident">states</span>.<span class="ident">push</span>(<span class="ident">last_state</span>);
+        <span class="comment">// (last state is in next row)
+        </span><span class="kw">let </span>cols = round_to_cols(<span class="number">0</span>);
+        <span class="kw">let </span>next_row = row + <span class="number">1</span>;
+        <span class="kw">let </span>last_state: Vec&lt;F&gt; = witness[cols].iter().map(|col| col[next_row]).collect();
+        states.push(last_state);
 
-        <span class="comment">// round constants</span>
-        <span class="kw">let</span> <span class="ident">rc</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">rc</span>();
-        <span class="kw">let</span> <span class="ident">mds</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">G::sponge_params</span>().<span class="ident">mds</span>;
+        <span class="comment">// round constants
+        </span><span class="kw">let </span>rc = <span class="self">self</span>.rc();
+        <span class="kw">let </span>mds = <span class="kw-2">&amp;</span>G::sponge_params().mds;
 
-        <span class="comment">// for each round, check that the permutation was applied correctly</span>
-        <span class="kw">for</span> <span class="ident">round</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">ROUNDS_PER_ROW</span> {
-            <span class="kw">for</span> (<span class="ident">i</span>, <span class="ident">mds_row</span>) <span class="kw">in</span> <span class="ident">mds</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-                <span class="comment">// i-th(new_state) = i-th(rc) + mds(sbox(state))</span>
-                <span class="kw">let</span> <span class="ident">state</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">states</span>[<span class="ident">round</span>];
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_state</span> <span class="op">=</span> <span class="ident">rc</span>[<span class="ident">round</span>][<span class="ident">i</span>];
-                <span class="kw">for</span> (<span class="kw-2">&amp;</span><span class="ident">s</span>, <span class="ident">mds</span>) <span class="kw">in</span> <span class="ident">state</span>.<span class="ident">iter</span>().<span class="ident">zip</span>(<span class="ident">mds_row</span>.<span class="ident">iter</span>()) {
-                    <span class="kw">let</span> <span class="ident">sboxed</span> <span class="op">=</span> <span class="ident">sbox</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">PlonkSpongeConstantsKimchi</span><span class="op">&gt;</span>(<span class="ident">s</span>);
-                    <span class="ident">new_state</span> <span class="op">+</span><span class="op">=</span> <span class="ident">sboxed</span> <span class="op">*</span> <span class="ident">mds</span>;
+        <span class="comment">// for each round, check that the permutation was applied correctly
+        </span><span class="kw">for </span>round <span class="kw">in </span><span class="number">0</span>..ROUNDS_PER_ROW {
+            <span class="kw">for </span>(i, mds_row) <span class="kw">in </span>mds.iter().enumerate() {
+                <span class="comment">// i-th(new_state) = i-th(rc) + mds(sbox(state))
+                </span><span class="kw">let </span>state = <span class="kw-2">&amp;</span>states[round];
+                <span class="kw">let </span><span class="kw-2">mut </span>new_state = rc[round][i];
+                <span class="kw">for </span>(<span class="kw-2">&amp;</span>s, mds) <span class="kw">in </span>state.iter().zip(mds_row.iter()) {
+                    <span class="kw">let </span>sboxed = sbox::&lt;F, PlonkSpongeConstantsKimchi&gt;(s);
+                    new_state += sboxed * mds;
                 }
 
                 <span class="macro">ensure_eq!</span>(
-                    <span class="ident">new_state</span>,
-                    <span class="ident">states</span>[<span class="ident">round</span> <span class="op">+</span> <span class="number">1</span>][<span class="ident">i</span>],
+                    new_state,
+                    states[round + <span class="number">1</span>][i],
                     <span class="macro">format!</span>(
                         <span class="string">&quot;poseidon: permutation of state[{}] -&gt; state[{}][{}] is incorrect&quot;</span>,
-                        <span class="ident">round</span>,
-                        <span class="ident">round</span> <span class="op">+</span> <span class="number">1</span>,
-                        <span class="ident">i</span>
+                        round,
+                        round + <span class="number">1</span>,
+                        i
                     )
                 );
             }
@@ -607,226 +607,226 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ps</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">typ</span> <span class="op">==</span> <span class="ident">GateType::Poseidon</span> {
-            <span class="ident">F::one</span>()
-        } <span class="kw">else</span> {
-            <span class="ident">F::zero</span>()
+    <span class="kw">pub fn </span>ps(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="kw">if </span><span class="self">self</span>.typ == GateType::Poseidon {
+            F::one()
+        } <span class="kw">else </span>{
+            F::zero()
         }
     }
 
-    <span class="doccomment">/// round constant that are relevant for this specific gate</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">rc</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [[<span class="ident">F</span>; <span class="ident">SPONGE_WIDTH</span>]; <span class="ident">ROUNDS_PER_ROW</span>] {
-        <span class="ident">array_init::array_init</span>(<span class="op">|</span><span class="ident">round</span><span class="op">|</span> {
-            <span class="ident">array_init::array_init</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> {
-                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">typ</span> <span class="op">==</span> <span class="ident">GateType::Poseidon</span> {
-                    <span class="self">self</span>.<span class="ident">coeffs</span>[<span class="ident">SPONGE_WIDTH</span> <span class="op">*</span> <span class="ident">round</span> <span class="op">+</span> <span class="ident">col</span>]
-                } <span class="kw">else</span> {
-                    <span class="ident">F::zero</span>()
+    <span class="doccomment">/// round constant that are relevant for this specific gate
+    </span><span class="kw">pub fn </span>rc(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW] {
+        array_init::array_init(|round| {
+            array_init::array_init(|col| {
+                <span class="kw">if </span><span class="self">self</span>.typ == GateType::Poseidon {
+                    <span class="self">self</span>.coeffs[SPONGE_WIDTH * round + col]
+                } <span class="kw">else </span>{
+                    F::zero()
                 }
             })
         })
     }
 }
 
-<span class="doccomment">/// `generate_witness(row, params, witness_cols, input)` uses a sponge initialized with</span>
-<span class="doccomment">/// `params` to generate a witness for starting at row `row` in `witness_cols`,</span>
-<span class="doccomment">/// and with input `input`.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_witness</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(
-    <span class="ident">row</span>: <span class="ident">usize</span>,
-    <span class="ident">params</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    <span class="ident">witness_cols</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
-    <span class="ident">input</span>: [<span class="ident">F</span>; <span class="ident">SPONGE_WIDTH</span>],
+<span class="doccomment">/// `generate_witness(row, params, witness_cols, input)` uses a sponge initialized with
+/// `params` to generate a witness for starting at row `row` in `witness_cols`,
+/// and with input `input`.
+</span><span class="kw">pub fn </span>generate_witness&lt;F: Field&gt;(
+    row: usize,
+    params: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>ArithmeticSpongeParams&lt;F&gt;,
+    witness_cols: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS],
+    input: [F; SPONGE_WIDTH],
 ) {
-    <span class="comment">// add the input into the witness</span>
-    <span class="ident">witness_cols</span>[<span class="number">0</span>][<span class="ident">row</span>] <span class="op">=</span> <span class="ident">input</span>[<span class="number">0</span>];
-    <span class="ident">witness_cols</span>[<span class="number">1</span>][<span class="ident">row</span>] <span class="op">=</span> <span class="ident">input</span>[<span class="number">1</span>];
-    <span class="ident">witness_cols</span>[<span class="number">2</span>][<span class="ident">row</span>] <span class="op">=</span> <span class="ident">input</span>[<span class="number">2</span>];
+    <span class="comment">// add the input into the witness
+    </span>witness_cols[<span class="number">0</span>][row] = input[<span class="number">0</span>];
+    witness_cols[<span class="number">1</span>][row] = input[<span class="number">1</span>];
+    witness_cols[<span class="number">2</span>][row] = input[<span class="number">2</span>];
 
-    <span class="comment">// set the sponge state</span>
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">sponge</span> <span class="op">=</span> <span class="ident">ArithmeticSponge</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">PlonkSpongeConstantsKimchi</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="ident">params</span>);
-    <span class="ident">sponge</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">input</span>.<span class="ident">into</span>();
+    <span class="comment">// set the sponge state
+    </span><span class="kw">let </span><span class="kw-2">mut </span>sponge = ArithmeticSponge::&lt;F, PlonkSpongeConstantsKimchi&gt;::new(params);
+    sponge.state = input.into();
 
-    <span class="comment">// for the poseidon rows</span>
-    <span class="kw">for</span> <span class="ident">row_idx</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">POS_ROWS_PER_HASH</span> {
-        <span class="kw">let</span> <span class="ident">row</span> <span class="op">=</span> <span class="ident">row</span> <span class="op">+</span> <span class="ident">row_idx</span>;
-        <span class="kw">for</span> <span class="ident">round</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">ROUNDS_PER_ROW</span> {
-            <span class="comment">// the last round makes use of the next row</span>
-            <span class="kw">let</span> <span class="ident">maybe_next_row</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">round</span> <span class="op">==</span> <span class="ident">ROUNDS_PER_ROW</span> <span class="op">-</span> <span class="number">1</span> {
-                <span class="ident">row</span> <span class="op">+</span> <span class="number">1</span>
-            } <span class="kw">else</span> {
-                <span class="ident">row</span>
+    <span class="comment">// for the poseidon rows
+    </span><span class="kw">for </span>row_idx <span class="kw">in </span><span class="number">0</span>..POS_ROWS_PER_HASH {
+        <span class="kw">let </span>row = row + row_idx;
+        <span class="kw">for </span>round <span class="kw">in </span><span class="number">0</span>..ROUNDS_PER_ROW {
+            <span class="comment">// the last round makes use of the next row
+            </span><span class="kw">let </span>maybe_next_row = <span class="kw">if </span>round == ROUNDS_PER_ROW - <span class="number">1 </span>{
+                row + <span class="number">1
+            </span>} <span class="kw">else </span>{
+                row
             };
 
-            <span class="comment">//</span>
-            <span class="kw">let</span> <span class="ident">abs_round</span> <span class="op">=</span> <span class="ident">round</span> <span class="op">+</span> <span class="ident">row_idx</span> <span class="op">*</span> <span class="ident">ROUNDS_PER_ROW</span>;
+            <span class="comment">//
+            </span><span class="kw">let </span>abs_round = round + row_idx * ROUNDS_PER_ROW;
 
-            <span class="comment">// apply the sponge and record the result in the witness</span>
-            <span class="kw">if</span> <span class="ident">PlonkSpongeConstantsKimchi::PERM_INITIAL_ARK</span> {
+            <span class="comment">// apply the sponge and record the result in the witness
+            </span><span class="kw">if </span>PlonkSpongeConstantsKimchi::PERM_INITIAL_ARK {
                 <span class="macro">panic!</span>(<span class="string">&quot;this won&#39;t work if the circuit has an INITIAL_ARK&quot;</span>)
             }
-            <span class="ident">sponge</span>.<span class="ident">full_round</span>(<span class="ident">abs_round</span>);
+            sponge.full_round(abs_round);
 
-            <span class="comment">// apply the sponge and record the result in the witness</span>
-            <span class="kw">let</span> <span class="ident">cols_to_update</span> <span class="op">=</span> <span class="ident">round_to_cols</span>((<span class="ident">round</span> <span class="op">+</span> <span class="number">1</span>) <span class="op">%</span> <span class="ident">ROUNDS_PER_ROW</span>);
-            <span class="ident">witness_cols</span>[<span class="ident">cols_to_update</span>]
-                .<span class="ident">iter_mut</span>()
-                .<span class="ident">zip</span>(<span class="ident">sponge</span>.<span class="ident">state</span>.<span class="ident">iter</span>())
-                <span class="comment">// update the state (last update is on the next row)</span>
-                .<span class="ident">for_each</span>(<span class="op">|</span>(<span class="ident">w</span>, <span class="ident">s</span>)<span class="op">|</span> <span class="ident">w</span>[<span class="ident">maybe_next_row</span>] <span class="op">=</span> <span class="kw-2">*</span><span class="ident">s</span>);
+            <span class="comment">// apply the sponge and record the result in the witness
+            </span><span class="kw">let </span>cols_to_update = round_to_cols((round + <span class="number">1</span>) % ROUNDS_PER_ROW);
+            witness_cols[cols_to_update]
+                .iter_mut()
+                .zip(sponge.state.iter())
+                <span class="comment">// update the state (last update is on the next row)
+                </span>.for_each(|(w, s)| w[maybe_next_row] = <span class="kw-2">*</span>s);
         }
     }
 }
 
-<span class="doccomment">/// An equation of the form `(curr | next)[i] = round(curr[j])`</span>
-<span class="kw">struct</span> <span class="ident">RoundEquation</span> {
-    <span class="kw">pub</span> <span class="ident">source</span>: <span class="ident">usize</span>,
-    <span class="kw">pub</span> <span class="ident">target</span>: (<span class="ident">CurrOrNext</span>, <span class="ident">usize</span>),
+<span class="doccomment">/// An equation of the form `(curr | next)[i] = round(curr[j])`
+</span><span class="kw">struct </span>RoundEquation {
+    <span class="kw">pub </span>source: usize,
+    <span class="kw">pub </span>target: (CurrOrNext, usize),
 }
 
-<span class="doccomment">/// For each round, the tuple (row, round) its state permutes to</span>
-<span class="kw">const</span> <span class="ident">ROUND_EQUATIONS</span>: [<span class="ident">RoundEquation</span>; <span class="ident">ROUNDS_PER_ROW</span>] <span class="op">=</span> [
-    <span class="ident">RoundEquation</span> {
-        <span class="ident">source</span>: <span class="number">0</span>,
-        <span class="ident">target</span>: (<span class="ident">Curr</span>, <span class="number">1</span>),
+<span class="doccomment">/// For each round, the tuple (row, round) its state permutes to
+</span><span class="kw">const </span>ROUND_EQUATIONS: [RoundEquation; ROUNDS_PER_ROW] = [
+    RoundEquation {
+        source: <span class="number">0</span>,
+        target: (Curr, <span class="number">1</span>),
     },
-    <span class="ident">RoundEquation</span> {
-        <span class="ident">source</span>: <span class="number">1</span>,
-        <span class="ident">target</span>: (<span class="ident">Curr</span>, <span class="number">2</span>),
+    RoundEquation {
+        source: <span class="number">1</span>,
+        target: (Curr, <span class="number">2</span>),
     },
-    <span class="ident">RoundEquation</span> {
-        <span class="ident">source</span>: <span class="number">2</span>,
-        <span class="ident">target</span>: (<span class="ident">Curr</span>, <span class="number">3</span>),
+    RoundEquation {
+        source: <span class="number">2</span>,
+        target: (Curr, <span class="number">3</span>),
     },
-    <span class="ident">RoundEquation</span> {
-        <span class="ident">source</span>: <span class="number">3</span>,
-        <span class="ident">target</span>: (<span class="ident">Curr</span>, <span class="number">4</span>),
+    RoundEquation {
+        source: <span class="number">3</span>,
+        target: (Curr, <span class="number">4</span>),
     },
-    <span class="ident">RoundEquation</span> {
-        <span class="ident">source</span>: <span class="number">4</span>,
-        <span class="ident">target</span>: (<span class="ident">Next</span>, <span class="number">0</span>),
+    RoundEquation {
+        source: <span class="number">4</span>,
+        target: (Next, <span class="number">0</span>),
     },
 ];
 
-<span class="doccomment">/// Implementation of the Poseidon gate</span>
-<span class="doccomment">/// Poseidon quotient poly contribution computation `f^7 + c(x) - f(wx)`</span>
-<span class="doccomment">/// Conjunction of:</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```ignore</span>
-<span class="doccomment">/// curr[round_range(1)] = round(curr[round_range(0)])</span>
-<span class="doccomment">/// curr[round_range(2)] = round(curr[round_range(1)])</span>
-<span class="doccomment">/// curr[round_range(3)] = round(curr[round_range(2)])</span>
-<span class="doccomment">/// curr[round_range(4)] = round(curr[round_range(3)])</span>
-<span class="doccomment">/// next[round_range(0)] = round(curr[round_range(4)])</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// which expands e.g., to</span>
-<span class="doccomment">/// curr[round_range(1)][0] =</span>
-<span class="doccomment">///      mds[0][0] * sbox(curr[round_range(0)][0])</span>
-<span class="doccomment">///    + mds[0][1] * sbox(curr[round_range(0)][1])</span>
-<span class="doccomment">///    + mds[0][2] * sbox(curr[round_range(0)][2])</span>
-<span class="doccomment">///    + rcm[round_range(1)][0]</span>
-<span class="doccomment">/// curr[round_range(1)][1] =</span>
-<span class="doccomment">///      mds[1][0] * sbox(curr[round_range(0)][0])</span>
-<span class="doccomment">///    + mds[1][1] * sbox(curr[round_range(0)][1])</span>
-<span class="doccomment">///    + mds[1][2] * sbox(curr[round_range(0)][2])</span>
-<span class="doccomment">///    + rcm[round_range(1)][1]</span>
-<span class="doccomment">/// ...</span>
-<span class="doccomment">/// ```</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// The rth position in this array contains the alphas used for the equations that</span>
-<span class="doccomment">/// constrain the values of the (r+1)th state.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Poseidon</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">PhantomData</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>);
+<span class="doccomment">/// Implementation of the Poseidon gate
+/// Poseidon quotient poly contribution computation `f^7 + c(x) - f(wx)`
+/// Conjunction of:
+///
+/// ```ignore
+/// curr[round_range(1)] = round(curr[round_range(0)])
+/// curr[round_range(2)] = round(curr[round_range(1)])
+/// curr[round_range(3)] = round(curr[round_range(2)])
+/// curr[round_range(4)] = round(curr[round_range(3)])
+/// next[round_range(0)] = round(curr[round_range(4)])
+///
+/// which expands e.g., to
+/// curr[round_range(1)][0] =
+///      mds[0][0] * sbox(curr[round_range(0)][0])
+///    + mds[0][1] * sbox(curr[round_range(0)][1])
+///    + mds[0][2] * sbox(curr[round_range(0)][2])
+///    + rcm[round_range(1)][0]
+/// curr[round_range(1)][1] =
+///      mds[1][0] * sbox(curr[round_range(0)][0])
+///    + mds[1][1] * sbox(curr[round_range(0)][1])
+///    + mds[1][2] * sbox(curr[round_range(0)][2])
+///    + rcm[round_range(1)][1]
+/// ...
+/// ```
+///
+/// The rth position in this array contains the alphas used for the equations that
+/// constrain the values of the (r+1)th state.
+</span><span class="kw">pub struct </span>Poseidon&lt;F&gt;(PhantomData&lt;F&gt;);
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="ident">Poseidon</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">where</span> <span class="ident">F</span>: <span class="ident">Field</span> {}
+<span class="kw">impl</span>&lt;F&gt; Poseidon&lt;F&gt; <span class="kw">where </span>F: Field {}
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="ident">Argument</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Poseidon</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">F</span>: <span class="ident">FftField</span>,
+<span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>Poseidon&lt;F&gt;
+<span class="kw">where
+    </span>F: FftField,
 {
-    <span class="kw">const</span> <span class="ident">ARGUMENT_TYPE</span>: <span class="ident">ArgumentType</span> <span class="op">=</span> <span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::Poseidon</span>);
-    <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">15</span>;
+    <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Poseidon);
+    <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">15</span>;
 
-    <span class="kw">fn</span> <span class="ident">constraints</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">vec!</span>[];
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cache</span> <span class="op">=</span> <span class="ident">Cache::default</span>();
+    <span class="kw">fn </span>constraints() -&gt; Vec&lt;E&lt;F&gt;&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="macro">vec!</span>[];
+        <span class="kw">let </span><span class="kw-2">mut </span>cache = Cache::default();
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idx</span> <span class="op">=</span> <span class="number">0</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>idx = <span class="number">0</span>;
 
-        <span class="comment">//~ We define $M_{r, c}$ as the MDS matrix at row $r$ and column $c$.</span>
-        <span class="kw">let</span> <span class="ident">mds</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">SPONGE_WIDTH</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">row</span><span class="op">|</span> {
-                (<span class="number">0</span>..<span class="ident">SPONGE_WIDTH</span>)
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> <span class="ident">ConstantExpr::Mds</span> { <span class="ident">row</span>, <span class="ident">col</span> })
-                    .<span class="ident">collect</span>()
+        <span class="comment">//~ We define $M_{r, c}$ as the MDS matrix at row $r$ and column $c$.
+        </span><span class="kw">let </span>mds: Vec&lt;Vec&lt;<span class="kw">_</span>&gt;&gt; = (<span class="number">0</span>..SPONGE_WIDTH)
+            .map(|row| {
+                (<span class="number">0</span>..SPONGE_WIDTH)
+                    .map(|col| ConstantExpr::Mds { row, col })
+                    .collect()
             })
-            .<span class="ident">collect</span>();
+            .collect();
 
-        <span class="kw">for</span> <span class="ident">e</span> <span class="kw">in</span> <span class="ident">ROUND_EQUATIONS</span>.<span class="ident">iter</span>() {
-            <span class="kw">let</span> <span class="kw-2">&amp;</span><span class="ident">RoundEquation</span> {
-                <span class="ident">source</span>,
-                <span class="ident">target</span>: (<span class="ident">target_row</span>, <span class="ident">target_round</span>),
-            } <span class="op">=</span> <span class="ident">e</span>;
-            <span class="comment">//~</span>
-            <span class="comment">//~ We define the S-box operation as $w^S$ for $S$ the `SPONGE_BOX` constant.</span>
-            <span class="kw">let</span> <span class="ident">sboxed</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">round_to_cols</span>(<span class="ident">source</span>)
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
-                    <span class="ident">cache</span>.<span class="ident">cache</span>(<span class="ident">witness_curr</span>(<span class="ident">i</span>).<span class="ident">pow</span>(<span class="ident">PlonkSpongeConstantsKimchi::PERM_SBOX</span> <span class="kw">as</span> <span class="ident">u64</span>))
+        <span class="kw">for </span>e <span class="kw">in </span>ROUND_EQUATIONS.iter() {
+            <span class="kw">let </span><span class="kw-2">&amp;</span>RoundEquation {
+                source,
+                target: (target_row, target_round),
+            } = e;
+            <span class="comment">//~
+            //~ We define the S-box operation as $w^S$ for $S$ the `SPONGE_BOX` constant.
+            </span><span class="kw">let </span>sboxed: Vec&lt;<span class="kw">_</span>&gt; = round_to_cols(source)
+                .map(|i| {
+                    cache.cache(witness_curr(i).pow(PlonkSpongeConstantsKimchi::PERM_SBOX <span class="kw">as </span>u64))
                 })
-                .<span class="ident">collect</span>();
+                .collect();
 
-            <span class="kw">for</span> (<span class="ident">j</span>, <span class="ident">col</span>) <span class="kw">in</span> <span class="ident">round_to_cols</span>(<span class="ident">target_round</span>).<span class="ident">enumerate</span>() {
-                <span class="comment">//~</span>
-                <span class="comment">//~ We store the 15 round constants $r_i$ required for the 5 rounds (3 per round) in the coefficient table:</span>
-                <span class="comment">//~</span>
-                <span class="comment">//~ |  0 |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |  9 | 10 | 11 | 12 | 13 | 14 |</span>
-                <span class="comment">//~ |:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|</span>
-                <span class="comment">//~ | r0 | r1 | r2 | r3 | r4 | r5 | r6 | r7 | r8 | r9 | r10 | r11 | r12 | r13 | r14 |</span>
-                <span class="kw">let</span> <span class="ident">rc</span> <span class="op">=</span> <span class="ident">coeff</span>(<span class="ident">idx</span>);
+            <span class="kw">for </span>(j, col) <span class="kw">in </span>round_to_cols(target_round).enumerate() {
+                <span class="comment">//~
+                //~ We store the 15 round constants $r_i$ required for the 5 rounds (3 per round) in the coefficient table:
+                //~
+                //~ |  0 |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |  9 | 10 | 11 | 12 | 13 | 14 |
+                //~ |:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+                //~ | r0 | r1 | r2 | r3 | r4 | r5 | r6 | r7 | r8 | r9 | r10 | r11 | r12 | r13 | r14 |
+                </span><span class="kw">let </span>rc = coeff(idx);
 
-                <span class="ident">idx</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
+                idx += <span class="number">1</span>;
 
-                <span class="comment">//~</span>
-                <span class="comment">//~ The initial state, stored in the first three registers, are not constrained.</span>
-                <span class="comment">//~ The following 4 states (of 3 field elements), including 1 in the next row,</span>
-                <span class="comment">//~ are constrained to represent the 5 rounds of permutation.</span>
-                <span class="comment">//~ Each of the associated 15 registers is associated to a constraint, calculated as:</span>
-                <span class="comment">//~</span>
-                <span class="comment">//~ first round:</span>
-                <span class="comment">//~ * $w_6 - [r_0 + (M_{0, 0} w_0^S + M_{0, 1} w_1^S + M_{0, 2} w_2^S)]$</span>
-                <span class="comment">//~ * $w_7 - [r_1 + (M_{1, 0} w_0^S + M_{1, 1} w_1^S + M_{1, 2} w_2^S)]$</span>
-                <span class="comment">//~ * $w_8 - [r_2 + (M_{2, 0} w_0^S + M_{2, 1} w_1^S + M_{2, 2} w_2^S)]$</span>
-                <span class="comment">//~</span>
-                <span class="comment">//~ second round:</span>
-                <span class="comment">//~ * $w_9 - [r_3 + (M_{0, 0} w_6^S + M_{0, 1} w_7^S + M_{0, 2} w_8^S)]$</span>
-                <span class="comment">//~ * $w_{10} - [r_4 + (M_{1, 0} w_6^S + M_{1, 1} w_7^S + M_{1, 2} w_8^S)]$</span>
-                <span class="comment">//~ * $w_{11} - [r_5 + (M_{2, 0} w_6^S + M_{2, 1} w_7^S + M_{2, 2} w_8^S)]$</span>
-                <span class="comment">//~</span>
-                <span class="comment">//~ third round:</span>
-                <span class="comment">//~ * $w_{12} - [r_6 + (M_{0, 0} w_9^S + M_{0, 1} w_{10}^S + M_{0, 2} w_{11}^S)]$</span>
-                <span class="comment">//~ * $w_{13} - [r_7 + (M_{1, 0} w_9^S + M_{1, 1} w_{10}^S + M_{1, 2} w_{11}^S)]$</span>
-                <span class="comment">//~ * $w_{14} - [r_8 + (M_{2, 0} w_9^S + M_{2, 1} w_{10}^S + M_{2, 2} w_{11}^S)]$</span>
-                <span class="comment">//~</span>
-                <span class="comment">//~ fourth round:</span>
-                <span class="comment">//~ * $w_3 - [r_9 + (M_{0, 0} w_{12}^S + M_{0, 1} w_{13}^S + M_{0, 2} w_{14}^S)]$</span>
-                <span class="comment">//~ * $w_4 - [r_{10} + (M_{1, 0} w_{12}^S + M_{1, 1} w_{13}^S + M_{1, 2} w_{14}^S)]$</span>
-                <span class="comment">//~ * $w_5 - [r_{11} + (M_{2, 0} w_{12}^S + M_{2, 1} w_{13}^S + M_{2, 2} w_{14}^S)]$</span>
-                <span class="comment">//~</span>
-                <span class="comment">//~ fifth round:</span>
-                <span class="comment">//~ * $w_{0, next} - [r_{12} + (M_{0, 0} w_3^S + M_{0, 1} w_4^S + M_{0, 2} w_5^S)]$</span>
-                <span class="comment">//~ * $w_{1, next} - [r_{13} + (M_{1, 0} w_3^S + M_{1, 1} w_4^S + M_{1, 2} w_5^S)]$</span>
-                <span class="comment">//~ * $w_{2, next} - [r_{14} + (M_{2, 0} w_3^S + M_{2, 1} w_4^S + M_{2, 2} w_5^S)]$</span>
-                <span class="comment">//~</span>
-                <span class="comment">//~ where $w_{i, next}$ is the polynomial $w_i(\omega x)$ which points to the next row.</span>
-                <span class="kw">let</span> <span class="ident">constraint</span> <span class="op">=</span> <span class="ident">witness</span>(<span class="ident">col</span>, <span class="ident">target_row</span>)
-                    <span class="op">-</span> <span class="ident">sboxed</span>
-                        .<span class="ident">iter</span>()
-                        .<span class="ident">zip</span>(<span class="ident">mds</span>[<span class="ident">j</span>].<span class="ident">iter</span>())
-                        .<span class="ident">fold</span>(<span class="ident">rc</span>, <span class="op">|</span><span class="ident">acc</span>, (<span class="ident">x</span>, <span class="ident">c</span>)<span class="op">|</span> <span class="ident">acc</span> <span class="op">+</span> <span class="ident">E::Constant</span>(<span class="ident">c</span>.<span class="ident">clone</span>()) <span class="op">*</span> <span class="ident">x</span>.<span class="ident">clone</span>());
-                <span class="ident">res</span>.<span class="ident">push</span>(<span class="ident">constraint</span>);
+                <span class="comment">//~
+                //~ The initial state, stored in the first three registers, are not constrained.
+                //~ The following 4 states (of 3 field elements), including 1 in the next row,
+                //~ are constrained to represent the 5 rounds of permutation.
+                //~ Each of the associated 15 registers is associated to a constraint, calculated as:
+                //~
+                //~ first round:
+                //~ * $w_6 - [r_0 + (M_{0, 0} w_0^S + M_{0, 1} w_1^S + M_{0, 2} w_2^S)]$
+                //~ * $w_7 - [r_1 + (M_{1, 0} w_0^S + M_{1, 1} w_1^S + M_{1, 2} w_2^S)]$
+                //~ * $w_8 - [r_2 + (M_{2, 0} w_0^S + M_{2, 1} w_1^S + M_{2, 2} w_2^S)]$
+                //~
+                //~ second round:
+                //~ * $w_9 - [r_3 + (M_{0, 0} w_6^S + M_{0, 1} w_7^S + M_{0, 2} w_8^S)]$
+                //~ * $w_{10} - [r_4 + (M_{1, 0} w_6^S + M_{1, 1} w_7^S + M_{1, 2} w_8^S)]$
+                //~ * $w_{11} - [r_5 + (M_{2, 0} w_6^S + M_{2, 1} w_7^S + M_{2, 2} w_8^S)]$
+                //~
+                //~ third round:
+                //~ * $w_{12} - [r_6 + (M_{0, 0} w_9^S + M_{0, 1} w_{10}^S + M_{0, 2} w_{11}^S)]$
+                //~ * $w_{13} - [r_7 + (M_{1, 0} w_9^S + M_{1, 1} w_{10}^S + M_{1, 2} w_{11}^S)]$
+                //~ * $w_{14} - [r_8 + (M_{2, 0} w_9^S + M_{2, 1} w_{10}^S + M_{2, 2} w_{11}^S)]$
+                //~
+                //~ fourth round:
+                //~ * $w_3 - [r_9 + (M_{0, 0} w_{12}^S + M_{0, 1} w_{13}^S + M_{0, 2} w_{14}^S)]$
+                //~ * $w_4 - [r_{10} + (M_{1, 0} w_{12}^S + M_{1, 1} w_{13}^S + M_{1, 2} w_{14}^S)]$
+                //~ * $w_5 - [r_{11} + (M_{2, 0} w_{12}^S + M_{2, 1} w_{13}^S + M_{2, 2} w_{14}^S)]$
+                //~
+                //~ fifth round:
+                //~ * $w_{0, next} - [r_{12} + (M_{0, 0} w_3^S + M_{0, 1} w_4^S + M_{0, 2} w_5^S)]$
+                //~ * $w_{1, next} - [r_{13} + (M_{1, 0} w_3^S + M_{1, 1} w_4^S + M_{1, 2} w_5^S)]$
+                //~ * $w_{2, next} - [r_{14} + (M_{2, 0} w_3^S + M_{2, 1} w_4^S + M_{2, 2} w_5^S)]$
+                //~
+                //~ where $w_{i, next}$ is the polynomial $w_i(\omega x)$ which points to the next row.
+                </span><span class="kw">let </span>constraint = witness(col, target_row)
+                    - sboxed
+                        .iter()
+                        .zip(mds[j].iter())
+                        .fold(rc, |acc, (x, c)| acc + E::Constant(c.clone()) * x.clone());
+                res.push(constraint);
             }
         }
-        <span class="ident">res</span>
+        res
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

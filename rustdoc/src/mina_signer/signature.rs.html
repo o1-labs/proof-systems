@@ -31,38 +31,38 @@
 <span id="31">31</span>
 <span id="32">32</span>
 <span id="33">33</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Mina signature structure and associated helpers</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Mina signature structure and associated helpers
 
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">BaseField</span>, <span class="ident">ScalarField</span>};
-<span class="kw">use</span> <span class="ident">o1_utils::FieldHelpers</span>;
-<span class="kw">use</span> <span class="ident">std::fmt</span>;
+</span><span class="kw">use crate</span>::{BaseField, ScalarField};
+<span class="kw">use </span>o1_utils::FieldHelpers;
+<span class="kw">use </span>std::fmt;
 
-<span class="doccomment">/// Signature structure</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Eq</span>, <span class="ident">fmt::Debug</span>, <span class="ident">PartialEq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Signature</span> {
-    <span class="doccomment">/// Base field component</span>
-    <span class="kw">pub</span> <span class="ident">rx</span>: <span class="ident">BaseField</span>,
+<span class="doccomment">/// Signature structure
+</span><span class="attribute">#[derive(Clone, Eq, fmt::Debug, PartialEq)]
+</span><span class="kw">pub struct </span>Signature {
+    <span class="doccomment">/// Base field component
+    </span><span class="kw">pub </span>rx: BaseField,
 
-    <span class="doccomment">/// Scalar field component</span>
-    <span class="kw">pub</span> <span class="ident">s</span>: <span class="ident">ScalarField</span>,
+    <span class="doccomment">/// Scalar field component
+    </span><span class="kw">pub </span>s: ScalarField,
 }
 
-<span class="kw">impl</span> <span class="ident">Signature</span> {
-    <span class="doccomment">/// Create a new signature</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">rx</span>: <span class="ident">BaseField</span>, <span class="ident">s</span>: <span class="ident">ScalarField</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> { <span class="ident">rx</span>, <span class="ident">s</span> }
+<span class="kw">impl </span>Signature {
+    <span class="doccomment">/// Create a new signature
+    </span><span class="kw">pub fn </span>new(rx: BaseField, s: ScalarField) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ rx, s }
     }
 }
 
-<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">Signature</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rx_bytes</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">rx</span>.<span class="ident">to_bytes</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">s_bytes</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">s</span>.<span class="ident">to_bytes</span>();
-        <span class="ident">rx_bytes</span>.<span class="ident">reverse</span>();
-        <span class="ident">s_bytes</span>.<span class="ident">reverse</span>();
+<span class="kw">impl </span>fmt::Display <span class="kw">for </span>Signature {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        <span class="kw">let </span><span class="kw-2">mut </span>rx_bytes = <span class="self">self</span>.rx.to_bytes();
+        <span class="kw">let </span><span class="kw-2">mut </span>s_bytes = <span class="self">self</span>.s.to_bytes();
+        rx_bytes.reverse();
+        s_bytes.reverse();
 
-        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{}{}&quot;</span>, <span class="ident">hex::encode</span>(<span class="ident">rx_bytes</span>), <span class="ident">hex::encode</span>(<span class="ident">s_bytes</span>))
+        <span class="macro">write!</span>(f, <span class="string">&quot;{}{}&quot;</span>, hex::encode(rx_bytes), hex::encode(s_bytes))
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="mina_signer" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="mina_signer" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

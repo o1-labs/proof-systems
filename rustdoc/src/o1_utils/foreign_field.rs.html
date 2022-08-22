@@ -178,185 +178,185 @@
 <span id="178">178</span>
 <span id="179">179</span>
 <span id="180">180</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Describes helpers for foreign field arithmetics</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Describes helpers for foreign field arithmetics
 
-<span class="kw">use</span> <span class="ident">std::fmt::Display</span>;
+</span><span class="kw">use </span>std::fmt::Display;
 
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">field_helpers::FieldHelpers</span>, <span class="ident">serialization::SerdeAs</span>};
-<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">Field</span>, <span class="ident">PrimeField</span>};
-<span class="kw">use</span> <span class="ident">num_bigint::BigUint</span>;
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">serde_with::serde_as</span>;
+<span class="kw">use crate</span>::{field_helpers::FieldHelpers, serialization::SerdeAs};
+<span class="kw">use </span>ark_ff::{FftField, Field, PrimeField};
+<span class="kw">use </span>num_bigint::BigUint;
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>serde_with::serde_as;
 
-<span class="doccomment">/// Limb length for foreign field elements</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">LIMB_BITS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">88</span>;
+<span class="doccomment">/// Limb length for foreign field elements
+</span><span class="kw">pub const </span>LIMB_BITS: usize = <span class="number">88</span>;
 
-<span class="doccomment">/// Number of desired limbs for foreign field elements</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">LIMB_COUNT</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">3</span>;
+<span class="doccomment">/// Number of desired limbs for foreign field elements
+</span><span class="kw">pub const </span>LIMB_COUNT: usize = <span class="number">3</span>;
 
-<span class="doccomment">/// The foreign field modulus of secp256k1 is the prime number (in big endian)</span>
-<span class="doccomment">/// FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFE FFFFFC2F</span>
-<span class="doccomment">/// given by the computation 2^256 - 2^32 - 2^9 - 2^8 - 2^7 - 2^6 - 2^4 - 1</span>
-<span class="doccomment">/// more information here  &lt;https://en.bitcoin.it/wiki/Secp256k1&gt;</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">FOREIGN_MOD</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] <span class="op">=</span> <span class="kw-2">&amp;</span>[
+<span class="doccomment">/// The foreign field modulus of secp256k1 is the prime number (in big endian)
+/// FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFE FFFFFC2F
+/// given by the computation 2^256 - 2^32 - 2^9 - 2^8 - 2^7 - 2^6 - 2^4 - 1
+/// more information here  &lt;https://en.bitcoin.it/wiki/Secp256k1&gt;
+</span><span class="kw">pub const </span>FOREIGN_MOD: <span class="kw-2">&amp;</span>[u8] = <span class="kw-2">&amp;</span>[
     <span class="number">0xFF</span>, <span class="number">0xFF</span>, <span class="number">0xFF</span>, <span class="number">0xFF</span>, <span class="number">0xFF</span>, <span class="number">0xFF</span>, <span class="number">0xFF</span>, <span class="number">0xFF</span>, <span class="number">0xFF</span>, <span class="number">0xFF</span>, <span class="number">0xFF</span>, <span class="number">0xFF</span>, <span class="number">0xFF</span>, <span class="number">0xFF</span>, <span class="number">0xFF</span>, <span class="number">0xFF</span>,
     <span class="number">0xFF</span>, <span class="number">0xFF</span>, <span class="number">0xFF</span>, <span class="number">0xFF</span>, <span class="number">0xFF</span>, <span class="number">0xFF</span>, <span class="number">0xFF</span>, <span class="number">0xFF</span>, <span class="number">0xFF</span>, <span class="number">0xFF</span>, <span class="number">0xFF</span>, <span class="number">0xFE</span>, <span class="number">0xFF</span>, <span class="number">0xFF</span>, <span class="number">0xFC</span>, <span class="number">0x2F</span>,
 ];
 
-<span class="doccomment">/// Bit length of the foreign field modulus</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">FOREIGN_BITS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">8</span> <span class="op">*</span> <span class="ident">FOREIGN_MOD</span>.<span class="ident">len</span>(); <span class="comment">// 256 bits</span>
+<span class="doccomment">/// Bit length of the foreign field modulus
+</span><span class="kw">pub const </span>FOREIGN_BITS: usize = <span class="number">8 </span>* FOREIGN_MOD.len(); <span class="comment">// 256 bits
 
-<span class="attribute">#[<span class="ident">serde_as</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">PartialEq</span>)]</span>
-<span class="doccomment">/// Represents a foreign field element</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ForeignElement</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span>, <span class="kw">const</span> <span class="ident">N</span>: <span class="ident">usize</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// limbs in little endian order</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;[SerdeAs; N]&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">limbs</span>: [<span class="ident">F</span>; <span class="ident">N</span>],
-    <span class="doccomment">/// number of limbs used for the foreign field element</span>
-    <span class="kw">pub</span> <span class="ident">len</span>: <span class="ident">usize</span>,
+</span><span class="attribute">#[serde_as]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+</span><span class="doccomment">/// Represents a foreign field element
+</span><span class="kw">pub struct </span>ForeignElement&lt;F: Field, <span class="kw">const </span>N: usize&gt; {
+    <span class="doccomment">/// limbs in little endian order
+    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[SerdeAs; N]&quot;</span>)]
+    </span><span class="kw">pub </span>limbs: [F; N],
+    <span class="doccomment">/// number of limbs used for the foreign field element
+    </span><span class="kw">pub </span>len: usize,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span>, <span class="kw">const</span> <span class="ident">N</span>: <span class="ident">usize</span><span class="op">&gt;</span> <span class="ident">ForeignElement</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">N</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Initializes a new foreign element from a big unsigned integer</span>
-    <span class="doccomment">/// Panics if the BigUint is too large to fit in the `N` limbs</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_from_big</span>(<span class="ident">big</span>: <span class="ident">BigUint</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">vec</span> <span class="op">=</span> <span class="ident">ForeignElement</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">N</span><span class="op">&gt;</span><span class="ident">::big_to_vec</span>(<span class="ident">big</span>);
+<span class="kw">impl</span>&lt;F: PrimeField, <span class="kw">const </span>N: usize&gt; ForeignElement&lt;F, N&gt; {
+    <span class="doccomment">/// Initializes a new foreign element from a big unsigned integer
+    /// Panics if the BigUint is too large to fit in the `N` limbs
+    </span><span class="kw">pub fn </span>new_from_big(big: BigUint) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>vec = ForeignElement::&lt;F, N&gt;::big_to_vec(big);
 
-        <span class="comment">// create an array of N native elements containing the limbs</span>
-        <span class="comment">// until the array is full in big endian, so most significant</span>
-        <span class="comment">// limbs may be zero if the big number is smaller</span>
-        <span class="kw">if</span> <span class="ident">vec</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="ident">N</span> {
+        <span class="comment">// create an array of N native elements containing the limbs
+        // until the array is full in big endian, so most significant
+        // limbs may be zero if the big number is smaller
+        </span><span class="kw">if </span>vec.len() &gt; N {
             <span class="macro">panic!</span>(<span class="string">&quot;BigUint element is too large for N limbs&quot;</span>);
         }
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">limbs</span> <span class="op">=</span> [<span class="ident">F::zero</span>(); <span class="ident">N</span>];
-        <span class="kw">for</span> (<span class="ident">i</span>, <span class="ident">term</span>) <span class="kw">in</span> <span class="ident">vec</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-            <span class="ident">limbs</span>[<span class="ident">i</span>] <span class="op">=</span> <span class="kw-2">*</span><span class="ident">term</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>limbs = [F::zero(); N];
+        <span class="kw">for </span>(i, term) <span class="kw">in </span>vec.iter().enumerate() {
+            limbs[i] = <span class="kw-2">*</span>term;
         }
 
-        <span class="self">Self</span> {
-            <span class="ident">limbs</span>,
-            <span class="ident">len</span>: <span class="ident">limbs</span>.<span class="ident">len</span>(),
+        <span class="self">Self </span>{
+            limbs,
+            len: limbs.len(),
         }
     }
 
-    <span class="doccomment">/// Initializes a new foreign element from a set of bytes in big endian</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_from_be</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new_from_big</span>(<span class="ident">BigUint::from_bytes_be</span>(<span class="ident">bytes</span>))
+    <span class="doccomment">/// Initializes a new foreign element from a set of bytes in big endian
+    </span><span class="kw">pub fn </span>new_from_be(bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new_from_big(BigUint::from_bytes_be(bytes))
     }
 
-    <span class="doccomment">/// Initializes a new foreign element from an element in the native field</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_from_field</span>(<span class="ident">field</span>: <span class="ident">F</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new_from_big</span>(<span class="ident">field</span>.<span class="ident">into</span>())
+    <span class="doccomment">/// Initializes a new foreign element from an element in the native field
+    </span><span class="kw">pub fn </span>new_from_field(field: F) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new_from_big(field.into())
     }
 
-    <span class="doccomment">/// Obtains the big integer representation of the foreign field element</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_big</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">BigUint</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">bytes</span> <span class="op">=</span> <span class="macro">vec!</span>[];
-        <span class="comment">// limbs are stored in little endian</span>
-        <span class="kw">for</span> <span class="ident">limb</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">limbs</span> {
-            <span class="kw">let</span> <span class="ident">crumb</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">limb</span>.<span class="ident">to_bytes</span>()[<span class="number">0</span>..<span class="ident">LIMB_BITS</span> <span class="op">/</span> <span class="number">8</span>];
-            <span class="ident">bytes</span>.<span class="ident">extend_from_slice</span>(<span class="ident">crumb</span>);
+    <span class="doccomment">/// Obtains the big integer representation of the foreign field element
+    </span><span class="kw">pub fn </span>to_big(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; BigUint {
+        <span class="kw">let </span><span class="kw-2">mut </span>bytes = <span class="macro">vec!</span>[];
+        <span class="comment">// limbs are stored in little endian
+        </span><span class="kw">for </span>limb <span class="kw">in </span><span class="self">self</span>.limbs {
+            <span class="kw">let </span>crumb = <span class="kw-2">&amp;</span>limb.to_bytes()[<span class="number">0</span>..LIMB_BITS / <span class="number">8</span>];
+            bytes.extend_from_slice(crumb);
         }
-        <span class="ident">BigUint::from_bytes_le</span>(<span class="kw-2">&amp;</span><span class="ident">bytes</span>)
+        BigUint::from_bytes_le(<span class="kw-2">&amp;</span>bytes)
     }
 
-    <span class="doccomment">/// Split a foreign field element into a vector of `LIMB_BITS` bits field elements of type `F` in little-endian.</span>
-    <span class="doccomment">/// Right now it is written so that it gives `LIMB_COUNT` limbs, even if it fits in less bits.</span>
-    <span class="kw">fn</span> <span class="ident">big_to_vec</span>(<span class="ident">fe</span>: <span class="ident">BigUint</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">bytes</span> <span class="op">=</span> <span class="ident">fe</span>.<span class="ident">to_bytes_le</span>();
-        <span class="kw">let</span> <span class="ident">chunks</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="ident">u8</span>]<span class="op">&gt;</span> <span class="op">=</span> <span class="ident">bytes</span>.<span class="ident">chunks</span>(<span class="ident">LIMB_BITS</span> <span class="op">/</span> <span class="number">8</span>).<span class="ident">collect</span>();
-        <span class="ident">chunks</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">chunk</span><span class="op">|</span> <span class="ident">F::from_random_bytes</span>(<span class="ident">chunk</span>).<span class="ident">expect</span>(<span class="string">&quot;failed to deserialize&quot;</span>))
-            .<span class="ident">collect</span>()
+    <span class="doccomment">/// Split a foreign field element into a vector of `LIMB_BITS` bits field elements of type `F` in little-endian.
+    /// Right now it is written so that it gives `LIMB_COUNT` limbs, even if it fits in less bits.
+    </span><span class="kw">fn </span>big_to_vec(fe: BigUint) -&gt; Vec&lt;F&gt; {
+        <span class="kw">let </span>bytes = fe.to_bytes_le();
+        <span class="kw">let </span>chunks: Vec&lt;<span class="kw-2">&amp;</span>[u8]&gt; = bytes.chunks(LIMB_BITS / <span class="number">8</span>).collect();
+        chunks
+            .iter()
+            .map(|chunk| F::from_random_bytes(chunk).expect(<span class="string">&quot;failed to deserialize&quot;</span>))
+            .collect()
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> <span class="ident">ForeignElement</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="number">3</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Creates a new foreign element from an array containing 3 limbs</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">limbs</span>: [<span class="ident">F</span>; <span class="number">3</span>]) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> { <span class="ident">limbs</span>, <span class="ident">len</span>: <span class="number">3</span> }
+<span class="kw">impl</span>&lt;F: FftField&gt; ForeignElement&lt;F, <span class="number">3</span>&gt; {
+    <span class="doccomment">/// Creates a new foreign element from an array containing 3 limbs
+    </span><span class="kw">pub fn </span>new(limbs: [F; <span class="number">3</span>]) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ limbs, len: <span class="number">3 </span>}
     }
 
-    <span class="doccomment">/// Returns a reference to the lowest limb of the foreign element</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">lo</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">F</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">limbs</span>[<span class="number">0</span>]
+    <span class="doccomment">/// Returns a reference to the lowest limb of the foreign element
+    </span><span class="kw">pub fn </span>lo(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>F {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.limbs[<span class="number">0</span>]
     }
 
-    <span class="doccomment">/// Returns a reference to the middle limb of the foreign element</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">mi</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">F</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">limbs</span>[<span class="number">1</span>]
+    <span class="doccomment">/// Returns a reference to the middle limb of the foreign element
+    </span><span class="kw">pub fn </span>mi(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>F {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.limbs[<span class="number">1</span>]
     }
 
-    <span class="doccomment">/// Returns a reference to the highest limb of the foreign element</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">hi</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">F</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">limbs</span>[<span class="number">2</span>]
+    <span class="doccomment">/// Returns a reference to the highest limb of the foreign element
+    </span><span class="kw">pub fn </span>hi(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>F {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.limbs[<span class="number">2</span>]
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span>, <span class="kw">const</span> <span class="ident">N</span>: <span class="ident">usize</span><span class="op">&gt;</span> <span class="ident">Display</span> <span class="kw">for</span> <span class="ident">ForeignElement</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">N</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">s</span> <span class="op">=</span> <span class="ident">String::new</span>();
-        <span class="kw">let</span> <span class="ident">order</span> <span class="op">=</span> [<span class="string">&quot;lo&quot;</span>, <span class="string">&quot;mi&quot;</span>, <span class="string">&quot;hi&quot;</span>];
-        <span class="ident">s</span> <span class="op">+</span><span class="op">=</span> <span class="string">&quot;{ &quot;</span>;
-        <span class="kw">for</span> (<span class="ident">i</span>, <span class="ident">limb</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">limbs</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-            <span class="kw">let</span> <span class="ident">hex</span> <span class="op">=</span> <span class="ident">limb</span>.<span class="ident">to_hex</span>();
-            <span class="kw">let</span> <span class="ident">len</span> <span class="op">=</span> <span class="ident">LIMB_BITS</span> <span class="op">/</span> <span class="number">8</span> <span class="op">*</span> <span class="number">2</span>;
-            <span class="ident">s</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="ident">order</span>[<span class="ident">i</span> <span class="op">%</span> <span class="ident">N</span>].<span class="ident">to_owned</span>() <span class="op">+</span> <span class="string">&quot;: &quot;</span>);
-            <span class="ident">s</span>.<span class="ident">push_str</span>(<span class="kw-2">&amp;</span><span class="ident">hex</span>[<span class="number">0</span>..<span class="ident">len</span> <span class="kw">as</span> <span class="ident">usize</span>]);
-            <span class="kw">if</span> <span class="ident">i</span> <span class="op">&lt;</span> <span class="ident">N</span> <span class="op">-</span> <span class="number">1</span> {
-                <span class="ident">s</span> <span class="op">+</span><span class="op">=</span> <span class="string">&quot; , &quot;</span>;
+<span class="kw">impl</span>&lt;F: FftField, <span class="kw">const </span>N: usize&gt; Display <span class="kw">for </span>ForeignElement&lt;F, N&gt; {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+        <span class="kw">let </span><span class="kw-2">mut </span>s = String::new();
+        <span class="kw">let </span>order = [<span class="string">&quot;lo&quot;</span>, <span class="string">&quot;mi&quot;</span>, <span class="string">&quot;hi&quot;</span>];
+        s += <span class="string">&quot;{ &quot;</span>;
+        <span class="kw">for </span>(i, limb) <span class="kw">in </span><span class="self">self</span>.limbs.iter().enumerate() {
+            <span class="kw">let </span>hex = limb.to_hex();
+            <span class="kw">let </span>len = LIMB_BITS / <span class="number">8 </span>* <span class="number">2</span>;
+            s += <span class="kw-2">&amp;</span>(order[i % N].to_owned() + <span class="string">&quot;: &quot;</span>);
+            s.push_str(<span class="kw-2">&amp;</span>hex[<span class="number">0</span>..len <span class="kw">as </span>usize]);
+            <span class="kw">if </span>i &lt; N - <span class="number">1 </span>{
+                s += <span class="string">&quot; , &quot;</span>;
             }
         }
-        <span class="ident">s</span> <span class="op">+</span><span class="op">=</span> <span class="string">&quot; }&quot;</span>;
-        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{}&quot;</span>, <span class="ident">s</span>)
+        s += <span class="string">&quot; }&quot;</span>;
+        <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, s)
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::field_helpers::FieldFromBig</span>;
-    <span class="kw">use</span> <span class="ident">ark_ec::AffineCurve</span>;
-    <span class="kw">use</span> <span class="ident">ark_ff::One</span>;
-    <span class="kw">use</span> <span class="ident">mina_curves::pasta::pallas</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span><span class="kw">crate</span>::field_helpers::FieldFromBig;
+    <span class="kw">use </span>ark_ec::AffineCurve;
+    <span class="kw">use </span>ark_ff::One;
+    <span class="kw">use </span>mina_curves::pasta::pallas;
 
-    <span class="doccomment">/// Affine curve point type</span>
-    <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">pallas::Pallas</span> <span class="kw">as</span> <span class="ident">CurvePoint</span>;
-    <span class="doccomment">/// Base field element type</span>
-    <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">BaseField</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">CurvePoint</span> <span class="kw">as</span> <span class="ident">AffineCurve</span><span class="op">&gt;</span><span class="ident">::BaseField</span>;
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_big_be</span>() {
-        <span class="kw">let</span> <span class="ident">bytes</span> <span class="op">=</span> <span class="ident">FOREIGN_MOD</span>;
-        <span class="kw">let</span> <span class="ident">big</span> <span class="op">=</span> <span class="ident">BigUint::from_bytes_be</span>(<span class="ident">bytes</span>);
+    <span class="doccomment">/// Affine curve point type
+    </span><span class="kw">pub use </span>pallas::Pallas <span class="kw">as </span>CurvePoint;
+    <span class="doccomment">/// Base field element type
+    </span><span class="kw">pub type </span>BaseField = &lt;CurvePoint <span class="kw">as </span>AffineCurve&gt;::BaseField;
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_big_be() {
+        <span class="kw">let </span>bytes = FOREIGN_MOD;
+        <span class="kw">let </span>big = BigUint::from_bytes_be(bytes);
         <span class="macro">assert_eq!</span>(
-            <span class="ident">ForeignElement</span>::<span class="op">&lt;</span><span class="ident">BaseField</span>, <span class="number">3</span><span class="op">&gt;</span><span class="ident">::new_from_be</span>(<span class="ident">bytes</span>),
-            <span class="ident">ForeignElement</span>::<span class="op">&lt;</span><span class="ident">BaseField</span>, <span class="number">3</span><span class="op">&gt;</span><span class="ident">::new_from_big</span>(<span class="ident">big</span>)
+            ForeignElement::&lt;BaseField, <span class="number">3</span>&gt;::new_from_be(bytes),
+            ForeignElement::&lt;BaseField, <span class="number">3</span>&gt;::new_from_big(big)
         );
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_to_big</span>() {
-        <span class="kw">let</span> <span class="ident">bytes</span> <span class="op">=</span> <span class="ident">FOREIGN_MOD</span>;
-        <span class="kw">let</span> <span class="ident">big</span> <span class="op">=</span> <span class="ident">BigUint::from_bytes_be</span>(<span class="ident">bytes</span>);
-        <span class="kw">let</span> <span class="ident">fe</span> <span class="op">=</span> <span class="ident">ForeignElement</span>::<span class="op">&lt;</span><span class="ident">BaseField</span>, <span class="number">3</span><span class="op">&gt;</span><span class="ident">::new_from_be</span>(<span class="ident">bytes</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">fe</span>.<span class="ident">to_big</span>(), <span class="ident">big</span>);
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_to_big() {
+        <span class="kw">let </span>bytes = FOREIGN_MOD;
+        <span class="kw">let </span>big = BigUint::from_bytes_be(bytes);
+        <span class="kw">let </span>fe = ForeignElement::&lt;BaseField, <span class="number">3</span>&gt;::new_from_be(bytes);
+        <span class="macro">assert_eq!</span>(fe.to_big(), big);
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_from_big</span>() {
-        <span class="kw">let</span> <span class="ident">one</span> <span class="op">=</span> <span class="ident">ForeignElement</span>::<span class="op">&lt;</span><span class="ident">BaseField</span>, <span class="number">3</span><span class="op">&gt;</span><span class="ident">::new_from_be</span>(<span class="kw-2">&amp;</span>[<span class="number">0x01</span>]);
-        <span class="macro">assert_eq!</span>(<span class="ident">BaseField::from_big</span>(<span class="ident">one</span>.<span class="ident">to_big</span>()).<span class="ident">unwrap</span>(), <span class="ident">BaseField::one</span>());
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_from_big() {
+        <span class="kw">let </span>one = ForeignElement::&lt;BaseField, <span class="number">3</span>&gt;::new_from_be(<span class="kw-2">&amp;</span>[<span class="number">0x01</span>]);
+        <span class="macro">assert_eq!</span>(BaseField::from_big(one.to_big()).unwrap(), BaseField::one());
 
-        <span class="kw">let</span> <span class="ident">max_big</span> <span class="op">=</span> <span class="ident">BaseField::modulus_biguint</span>() <span class="op">-</span> <span class="number">1u32</span>;
-        <span class="kw">let</span> <span class="ident">max_fe</span> <span class="op">=</span> <span class="ident">ForeignElement</span>::<span class="op">&lt;</span><span class="ident">BaseField</span>, <span class="number">3</span><span class="op">&gt;</span><span class="ident">::new_from_big</span>(<span class="ident">max_big</span>.<span class="ident">clone</span>());
+        <span class="kw">let </span>max_big = BaseField::modulus_biguint() - <span class="number">1u32</span>;
+        <span class="kw">let </span>max_fe = ForeignElement::&lt;BaseField, <span class="number">3</span>&gt;::new_from_big(max_big.clone());
         <span class="macro">assert_eq!</span>(
-            <span class="ident">BaseField::from_big</span>(<span class="ident">max_fe</span>.<span class="ident">to_big</span>()).<span class="ident">unwrap</span>(),
-            <span class="ident">BaseField::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">max_big</span>.<span class="ident">to_bytes_le</span>()).<span class="ident">unwrap</span>(),
+            BaseField::from_big(max_fe.to_big()).unwrap(),
+            BaseField::from_bytes(<span class="kw-2">&amp;</span>max_big.to_bytes_le()).unwrap(),
         );
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="o1_utils" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="o1_utils" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

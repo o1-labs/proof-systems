@@ -39,46 +39,46 @@
 <span id="39">39</span>
 <span id="40">40</span>
 <span id="41">41</span>
-</pre><pre class="rust"><code><span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">SpongeConstants</span> {
-    <span class="kw">const</span> <span class="ident">SPONGE_CAPACITY</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">1</span>;
-    <span class="kw">const</span> <span class="ident">SPONGE_WIDTH</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">3</span>;
-    <span class="kw">const</span> <span class="ident">SPONGE_RATE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">2</span>;
-    <span class="kw">const</span> <span class="ident">PERM_ROUNDS_FULL</span>: <span class="ident">usize</span>;
-    <span class="kw">const</span> <span class="ident">PERM_ROUNDS_PARTIAL</span>: <span class="ident">usize</span>;
-    <span class="kw">const</span> <span class="ident">PERM_HALF_ROUNDS_FULL</span>: <span class="ident">usize</span>;
-    <span class="kw">const</span> <span class="ident">PERM_SBOX</span>: <span class="ident">u32</span>;
-    <span class="kw">const</span> <span class="ident">PERM_FULL_MDS</span>: <span class="ident">bool</span>;
-    <span class="kw">const</span> <span class="ident">PERM_INITIAL_ARK</span>: <span class="ident">bool</span>;
+</pre><pre class="rust"><code><span class="kw">pub trait </span>SpongeConstants {
+    <span class="kw">const </span>SPONGE_CAPACITY: usize = <span class="number">1</span>;
+    <span class="kw">const </span>SPONGE_WIDTH: usize = <span class="number">3</span>;
+    <span class="kw">const </span>SPONGE_RATE: usize = <span class="number">2</span>;
+    <span class="kw">const </span>PERM_ROUNDS_FULL: usize;
+    <span class="kw">const </span>PERM_ROUNDS_PARTIAL: usize;
+    <span class="kw">const </span>PERM_HALF_ROUNDS_FULL: usize;
+    <span class="kw">const </span>PERM_SBOX: u32;
+    <span class="kw">const </span>PERM_FULL_MDS: bool;
+    <span class="kw">const </span>PERM_INITIAL_ARK: bool;
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PlonkSpongeConstantsLegacy</span> {}
+<span class="attribute">#[derive(Clone)]
+</span><span class="kw">pub struct </span>PlonkSpongeConstantsLegacy {}
 
-<span class="kw">impl</span> <span class="ident">SpongeConstants</span> <span class="kw">for</span> <span class="ident">PlonkSpongeConstantsLegacy</span> {
-    <span class="kw">const</span> <span class="ident">SPONGE_CAPACITY</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">1</span>;
-    <span class="kw">const</span> <span class="ident">SPONGE_WIDTH</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">3</span>;
-    <span class="kw">const</span> <span class="ident">SPONGE_RATE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">2</span>;
-    <span class="kw">const</span> <span class="ident">PERM_ROUNDS_FULL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">63</span>;
-    <span class="kw">const</span> <span class="ident">PERM_ROUNDS_PARTIAL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0</span>;
-    <span class="kw">const</span> <span class="ident">PERM_HALF_ROUNDS_FULL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0</span>;
-    <span class="kw">const</span> <span class="ident">PERM_SBOX</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">5</span>;
-    <span class="kw">const</span> <span class="ident">PERM_FULL_MDS</span>: <span class="ident">bool</span> <span class="op">=</span> <span class="bool-val">true</span>;
-    <span class="kw">const</span> <span class="ident">PERM_INITIAL_ARK</span>: <span class="ident">bool</span> <span class="op">=</span> <span class="bool-val">true</span>;
+<span class="kw">impl </span>SpongeConstants <span class="kw">for </span>PlonkSpongeConstantsLegacy {
+    <span class="kw">const </span>SPONGE_CAPACITY: usize = <span class="number">1</span>;
+    <span class="kw">const </span>SPONGE_WIDTH: usize = <span class="number">3</span>;
+    <span class="kw">const </span>SPONGE_RATE: usize = <span class="number">2</span>;
+    <span class="kw">const </span>PERM_ROUNDS_FULL: usize = <span class="number">63</span>;
+    <span class="kw">const </span>PERM_ROUNDS_PARTIAL: usize = <span class="number">0</span>;
+    <span class="kw">const </span>PERM_HALF_ROUNDS_FULL: usize = <span class="number">0</span>;
+    <span class="kw">const </span>PERM_SBOX: u32 = <span class="number">5</span>;
+    <span class="kw">const </span>PERM_FULL_MDS: bool = <span class="bool-val">true</span>;
+    <span class="kw">const </span>PERM_INITIAL_ARK: bool = <span class="bool-val">true</span>;
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PlonkSpongeConstantsKimchi</span> {}
+<span class="attribute">#[derive(Clone)]
+</span><span class="kw">pub struct </span>PlonkSpongeConstantsKimchi {}
 
-<span class="kw">impl</span> <span class="ident">SpongeConstants</span> <span class="kw">for</span> <span class="ident">PlonkSpongeConstantsKimchi</span> {
-    <span class="kw">const</span> <span class="ident">SPONGE_CAPACITY</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">1</span>;
-    <span class="kw">const</span> <span class="ident">SPONGE_WIDTH</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">3</span>;
-    <span class="kw">const</span> <span class="ident">SPONGE_RATE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">2</span>;
-    <span class="kw">const</span> <span class="ident">PERM_ROUNDS_FULL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">55</span>;
-    <span class="kw">const</span> <span class="ident">PERM_ROUNDS_PARTIAL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0</span>;
-    <span class="kw">const</span> <span class="ident">PERM_HALF_ROUNDS_FULL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0</span>;
-    <span class="kw">const</span> <span class="ident">PERM_SBOX</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">7</span>;
-    <span class="kw">const</span> <span class="ident">PERM_FULL_MDS</span>: <span class="ident">bool</span> <span class="op">=</span> <span class="bool-val">true</span>;
-    <span class="kw">const</span> <span class="ident">PERM_INITIAL_ARK</span>: <span class="ident">bool</span> <span class="op">=</span> <span class="bool-val">false</span>;
+<span class="kw">impl </span>SpongeConstants <span class="kw">for </span>PlonkSpongeConstantsKimchi {
+    <span class="kw">const </span>SPONGE_CAPACITY: usize = <span class="number">1</span>;
+    <span class="kw">const </span>SPONGE_WIDTH: usize = <span class="number">3</span>;
+    <span class="kw">const </span>SPONGE_RATE: usize = <span class="number">2</span>;
+    <span class="kw">const </span>PERM_ROUNDS_FULL: usize = <span class="number">55</span>;
+    <span class="kw">const </span>PERM_ROUNDS_PARTIAL: usize = <span class="number">0</span>;
+    <span class="kw">const </span>PERM_HALF_ROUNDS_FULL: usize = <span class="number">0</span>;
+    <span class="kw">const </span>PERM_SBOX: u32 = <span class="number">7</span>;
+    <span class="kw">const </span>PERM_FULL_MDS: bool = <span class="bool-val">true</span>;
+    <span class="kw">const </span>PERM_INITIAL_ARK: bool = <span class="bool-val">false</span>;
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="oracle" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="oracle" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

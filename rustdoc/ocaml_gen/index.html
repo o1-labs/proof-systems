@@ -4,68 +4,68 @@ Refer to the rustdoc for more information.</p>
 <h3 id="binding-generation"><a href="#binding-generation">Binding generation</a></h3>
 <p>Here’s an example of generating some bindings:</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="comment">// initialize your environment</span>
-<span class="kw">let</span> <span class="ident">env</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">Env::default</span>();
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="comment">// initialize your environment
+</span><span class="kw">let </span>env = <span class="kw-2">&amp;mut </span>Env::default();
 
-<span class="comment">// choose where you want to write the bindings</span>
-<span class="kw">let</span> <span class="ident">w</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">std::io::stdout</span>();
+<span class="comment">// choose where you want to write the bindings
+</span><span class="kw">let </span>w = <span class="kw-2">&amp;mut </span>std::io::stdout();
 
-<span class="comment">// we need to create fake generic placeholders for generic structs</span>
-<span class="macro">decl_fake_generic!</span>(<span class="ident">T1</span>, <span class="number">0</span>);
-<span class="macro">decl_fake_generic!</span>(<span class="ident">T2</span>, <span class="number">1</span>);
+<span class="comment">// we need to create fake generic placeholders for generic structs
+</span><span class="macro">decl_fake_generic!</span>(T1, <span class="number">0</span>);
+<span class="macro">decl_fake_generic!</span>(T2, <span class="number">1</span>);
 
-<span class="comment">// you can declare modules</span>
-<span class="macro">decl_module!</span>(<span class="ident">w</span>, <span class="ident">env</span>, <span class="string">&quot;Types&quot;</span>, {
+<span class="comment">// you can declare modules
+</span><span class="macro">decl_module!</span>(w, env, <span class="string">&quot;Types&quot;</span>, {
     
-    <span class="comment">// and types</span>
-    <span class="macro">decl_type!</span>(<span class="ident">w</span>, <span class="ident">env</span>, <span class="ident">SomeType</span>);
+    <span class="comment">// and types
+    </span><span class="macro">decl_type!</span>(w, env, SomeType);
 
-    <span class="comment">// and even generic types</span>
-    <span class="macro">decl_type!</span>(<span class="ident">w</span>, <span class="ident">env</span>, <span class="ident">SomeGenericType</span>::<span class="op">&lt;</span><span class="ident">T1</span><span class="op">&gt;</span>);
+    <span class="comment">// and even generic types
+    </span><span class="macro">decl_type!</span>(w, env, SomeGenericType::&lt;T1&gt;);
 
-    <span class="comment">// you can also rename a type</span>
-    <span class="macro">decl_type!</span>(<span class="ident">w</span>, <span class="ident">env</span>, <span class="ident">SomeOtherGenericType</span>::<span class="op">&lt;</span><span class="ident">T1</span><span class="op">&gt;</span> =&gt; <span class="string">&quot;thing&quot;</span>);
+    <span class="comment">// you can also rename a type
+    </span><span class="macro">decl_type!</span>(w, env, SomeOtherGenericType::&lt;T1&gt; =&gt; <span class="string">&quot;thing&quot;</span>);
 });
 
-<span class="macro">decl_module!</span>(<span class="ident">w</span>, <span class="ident">env</span>, <span class="string">&quot;ImportantType&quot;</span>, {
+<span class="macro">decl_module!</span>(w, env, <span class="string">&quot;ImportantType&quot;</span>, {
 
-    <span class="comment">// the OCaml way is often to rename your module&#39;s main type as `t`</span>
-    <span class="macro">decl_type!</span>(<span class="ident">w</span>, <span class="ident">env</span>, <span class="ident">CamlBigInteger256</span> =&gt; <span class="string">&quot;t&quot;</span>);
+    <span class="comment">// the OCaml way is often to rename your module&#39;s main type as `t`
+    </span><span class="macro">decl_type!</span>(w, env, CamlBigInteger256 =&gt; <span class="string">&quot;t&quot;</span>);
 
-    <span class="comment">// you can declare functions as well</span>
-    <span class="comment">// note that the underlying function calls `caml_of_numeral_to_ocaml`</span>
-    <span class="comment">// so you have to either import all (e.g. `use path::*`)</span>
-    <span class="comment">// or you have to import `caml_of_numeral_to_ocaml`</span>
-    <span class="macro">decl_func!</span>(<span class="ident">w</span>, <span class="ident">env</span>, <span class="ident">caml_of_numeral</span> =&gt; <span class="string">&quot;of_numeral&quot;</span>);
+    <span class="comment">// you can declare functions as well
+    // note that the underlying function calls `caml_of_numeral_to_ocaml`
+    // so you have to either import all (e.g. `use path::*`)
+    // or you have to import `caml_of_numeral_to_ocaml`
+    </span><span class="macro">decl_func!</span>(w, env, caml_of_numeral =&gt; <span class="string">&quot;of_numeral&quot;</span>);
 });</code></pre></div>
 <h3 id="binding-description"><a href="#binding-description">Binding description</a></h3>
 <p>To allow the previous example to work, you must derive the correct functions on your types and functions.
 To do that, you can use the <a href="./derive">ocaml-derive</a> crate.</p>
 <p>To allow generation of bindings on structs, use <a href="">Struct</a>:</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="attribute">#[<span class="ident">ocaml_gen::Struct</span>]</span>
-<span class="kw">struct</span> <span class="ident">MyType</span> {
-  <span class="comment">// ...</span>
-}</code></pre></div>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="attribute">#[ocaml_gen::Struct]
+</span><span class="kw">struct </span>MyType {
+  <span class="comment">// ...
+</span>}</code></pre></div>
 <p>To allow generation of bindings on enums, use <a href="">ocaml_gen::Enum</a>:</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="attribute">#[<span class="ident">ocaml_gen::Enum</span>]</span>
-<span class="kw">enum</span> <span class="ident">MyType</span> {
-  <span class="comment">// ...</span>
-}</code></pre></div>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="attribute">#[ocaml_gen::Enum]
+</span><span class="kw">enum </span>MyType {
+  <span class="comment">// ...
+</span>}</code></pre></div>
 <p>To allow generation of bindings on functions, use <a href="">ocaml_gen::func</a>:</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="attribute">#[<span class="ident">ocaml_gen::func</span>]</span>
-<span class="attribute">#[<span class="ident">ocaml::func</span>]</span> <span class="comment">// if you use the crate ocaml-rs&#39; macro, it must appear after</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">your_function</span>(<span class="ident">arg1</span>: <span class="ident">String</span>) {
-  <span class="comment">//...</span>
-}</code></pre></div>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="attribute">#[ocaml_gen::func]
+#[ocaml::func] </span><span class="comment">// if you use the crate ocaml-rs&#39; macro, it must appear after
+</span><span class="kw">pub fn </span>your_function(arg1: String) {
+  <span class="comment">//...
+</span>}</code></pre></div>
 <p>To allow generation of bindings on custom types, use <a href="">ocaml_gen::CustomType</a>:</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="attribute">#[<span class="ident">ocaml_gen::CustomType</span>]</span>
-<span class="kw">struct</span> <span class="ident">MyCustomType</span> {
-  <span class="comment">// ...</span>
-}</code></pre></div>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="attribute">#[ocaml_gen::CustomType]
+</span><span class="kw">struct </span>MyCustomType {
+  <span class="comment">// ...
+</span>}</code></pre></div>
 </div></details><h2 id="modules" class="small-section-header"><a href="#modules">Modules</a></h2><div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="mod" href="conv/index.html" title="ocaml_gen::conv mod">conv</a></div><div class="item-right docblock-short"><p>Implementations of <a href="trait.OCamlDesc.html" title="crate::OCamlDesc">crate::OCamlDesc</a> for types
 that have natural equivalents in OCaml.</p>
 </div></div></div><h2 id="macros" class="small-section-header"><a href="#macros">Macros</a></h2><div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="macro" href="macro.const_random.html" title="ocaml_gen::const_random macro">const_random</a></div><div class="item-right docblock-short"><p>Random constants</p>
@@ -96,4 +96,4 @@ For example:</p>
 It generates implementations of ToOCaml and OCamlBinding on a struct.
 The type must implement <a href="https://docs.rs/ocaml/latest/ocaml/trait.IntoValue.html">ocaml::IntoValue</a>
 and <a href="https://docs.rs/ocaml/latest/ocaml/trait.FromValue.html">ocaml::FromValue</a></p>
-</div></div></div></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="ocaml_gen" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</div></div></div></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="ocaml_gen" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

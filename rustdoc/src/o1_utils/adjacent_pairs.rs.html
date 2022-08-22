@@ -62,51 +62,51 @@
 <span id="62">62</span>
 <span id="63">63</span>
 <span id="64">64</span>
-</pre><pre class="rust"><code><span class="doccomment">//! This module hosts the [AdjacentPairs] type,</span>
-<span class="doccomment">//! which can be used to list all the adjacent pairs of a list.</span>
-<span class="doccomment">//! For example, if you have a list of integers `[1, 2, 3]`,</span>
-<span class="doccomment">//! you can use it to obtain the list of tuples `[(1, 2), (2, 3)]`.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This module hosts the [AdjacentPairs] type,
+//! which can be used to list all the adjacent pairs of a list.
+//! For example, if you have a list of integers `[1, 2, 3]`,
+//! you can use it to obtain the list of tuples `[(1, 2), (2, 3)]`.
 
-<span class="doccomment">/// You can create a new [AdjacentPairs] from an iterator using:</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```</span>
-<span class="doccomment">/// use o1_utils::adjacent_pairs::AdjacentPairs;</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// let a = vec![1, 2, 3];</span>
-<span class="doccomment">/// let mut pairs = AdjacentPairs::from(a);</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// assert_eq!(pairs.next(), Some((1, 2)));</span>
-<span class="doccomment">/// assert_eq!(pairs.next(), Some((2, 3)));</span>
-<span class="doccomment">/// assert_eq!(pairs.next(), None);</span>
-<span class="doccomment">/// ```</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AdjacentPairs</span><span class="op">&lt;</span><span class="ident">A</span>, <span class="ident">I</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">I</span>: <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">A</span><span class="op">&gt;</span>,
+/// You can create a new [AdjacentPairs] from an iterator using:
+///
+/// ```
+/// use o1_utils::adjacent_pairs::AdjacentPairs;
+///
+/// let a = vec![1, 2, 3];
+/// let mut pairs = AdjacentPairs::from(a);
+///
+/// assert_eq!(pairs.next(), Some((1, 2)));
+/// assert_eq!(pairs.next(), Some((2, 3)));
+/// assert_eq!(pairs.next(), None);
+/// ```
+</span><span class="kw">pub struct </span>AdjacentPairs&lt;A, I&gt;
+<span class="kw">where
+    </span>I: Iterator&lt;Item = A&gt;,
 {
-    <span class="ident">prev_second_component</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span>,
-    <span class="ident">i</span>: <span class="ident">I</span>,
+    prev_second_component: <span class="prelude-ty">Option</span>&lt;A&gt;,
+    i: I,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">A</span>: <span class="ident">Copy</span>, <span class="ident">I</span>: <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">A</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="ident">Iterator</span> <span class="kw">for</span> <span class="ident">AdjacentPairs</span><span class="op">&lt;</span><span class="ident">A</span>, <span class="ident">I</span><span class="op">&gt;</span> {
-    <span class="kw">type</span> <span class="ident">Item</span> <span class="op">=</span> (<span class="ident">A</span>, <span class="ident">A</span>);
+<span class="kw">impl</span>&lt;A: Copy, I: Iterator&lt;Item = A&gt;&gt; Iterator <span class="kw">for </span>AdjacentPairs&lt;A, I&gt; {
+    <span class="kw">type </span>Item = (A, A);
 
-    <span class="kw">fn</span> <span class="ident">next</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">A</span>, <span class="ident">A</span>)<span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">prev_second_component</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">x</span>) =&gt; <span class="kw">match</span> <span class="self">self</span>.<span class="ident">i</span>.<span class="ident">next</span>() {
-                <span class="prelude-val">None</span> =&gt; <span class="prelude-val">None</span>,
-                <span class="prelude-val">Some</span>(<span class="ident">y</span>) =&gt; {
-                    <span class="self">self</span>.<span class="ident">prev_second_component</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">y</span>);
-                    <span class="prelude-val">Some</span>((<span class="ident">x</span>, <span class="ident">y</span>))
+    <span class="kw">fn </span>next(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;(A, A)&gt; {
+        <span class="kw">match </span><span class="self">self</span>.prev_second_component {
+            <span class="prelude-val">Some</span>(x) =&gt; <span class="kw">match </span><span class="self">self</span>.i.next() {
+                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">None</span>,
+                <span class="prelude-val">Some</span>(y) =&gt; {
+                    <span class="self">self</span>.prev_second_component = <span class="prelude-val">Some</span>(y);
+                    <span class="prelude-val">Some</span>((x, y))
                 }
             },
-            <span class="prelude-val">None</span> =&gt; {
-                <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">i</span>.<span class="ident">next</span>();
-                <span class="kw">let</span> <span class="ident">y</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">i</span>.<span class="ident">next</span>();
-                <span class="kw">match</span> (<span class="ident">x</span>, <span class="ident">y</span>) {
-                    (<span class="prelude-val">None</span>, <span class="kw">_</span>) <span class="op">|</span> (<span class="kw">_</span>, <span class="prelude-val">None</span>) =&gt; <span class="prelude-val">None</span>,
-                    (<span class="prelude-val">Some</span>(<span class="ident">x</span>), <span class="prelude-val">Some</span>(<span class="ident">y</span>)) =&gt; {
-                        <span class="self">self</span>.<span class="ident">prev_second_component</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">y</span>);
-                        <span class="prelude-val">Some</span>((<span class="ident">x</span>, <span class="ident">y</span>))
+            <span class="prelude-val">None </span>=&gt; {
+                <span class="kw">let </span>x = <span class="self">self</span>.i.next();
+                <span class="kw">let </span>y = <span class="self">self</span>.i.next();
+                <span class="kw">match </span>(x, y) {
+                    (<span class="prelude-val">None</span>, <span class="kw">_</span>) | (<span class="kw">_</span>, <span class="prelude-val">None</span>) =&gt; <span class="prelude-val">None</span>,
+                    (<span class="prelude-val">Some</span>(x), <span class="prelude-val">Some</span>(y)) =&gt; {
+                        <span class="self">self</span>.prev_second_component = <span class="prelude-val">Some</span>(y);
+                        <span class="prelude-val">Some</span>((x, y))
                     }
                 }
             }
@@ -114,17 +114,17 @@
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">A</span>, <span class="ident">I</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">AdjacentPairs</span><span class="op">&lt;</span><span class="ident">A</span>, <span class="ident">I</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">T</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">A</span>, <span class="ident">IntoIter</span> <span class="op">=</span> <span class="ident">I</span><span class="op">&gt;</span>,
-    <span class="ident">I</span>: <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">A</span><span class="op">&gt;</span>,
+<span class="kw">impl</span>&lt;A, I, T&gt; From&lt;T&gt; <span class="kw">for </span>AdjacentPairs&lt;A, I&gt;
+<span class="kw">where
+    </span>T: IntoIterator&lt;Item = A, IntoIter = I&gt;,
+    I: Iterator&lt;Item = A&gt;,
 {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">i</span>: <span class="ident">T</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">i</span>: <span class="ident">i</span>.<span class="ident">into_iter</span>(),
-            <span class="ident">prev_second_component</span>: <span class="prelude-val">None</span>,
+    <span class="kw">fn </span>from(i: T) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            i: i.into_iter(),
+            prev_second_component: <span class="prelude-val">None</span>,
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="o1_utils" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="o1_utils" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

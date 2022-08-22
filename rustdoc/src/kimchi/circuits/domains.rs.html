@@ -73,80 +73,80 @@
 <span id="73">73</span>
 <span id="74">74</span>
 <span id="75">75</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">ark_ff::FftField</span>;
-<span class="kw">use</span> <span class="ident">ark_poly</span>::{<span class="ident">EvaluationDomain</span>, <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">Domain</span>};
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">serde_with::serde_as</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>ark_ff::FftField;
+<span class="kw">use </span>ark_poly::{EvaluationDomain, Radix2EvaluationDomain <span class="kw">as </span>Domain};
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>serde_with::serde_as;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::SetupError</span>;
+<span class="kw">use </span><span class="kw">crate</span>::error::SetupError;
 
-<span class="attribute">#[<span class="ident">serde_as</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">EvaluationDomains</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> {
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">d1</span>: <span class="ident">Domain</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="comment">// size n</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">d2</span>: <span class="ident">Domain</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="comment">// size 2n</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">d4</span>: <span class="ident">Domain</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="comment">// size 4n</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">d8</span>: <span class="ident">Domain</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="comment">// size 8n</span>
-}
+<span class="attribute">#[serde_as]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>EvaluationDomains&lt;F: FftField&gt; {
+    <span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="kw">pub </span>d1: Domain&lt;F&gt;, <span class="comment">// size n
+    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="kw">pub </span>d2: Domain&lt;F&gt;, <span class="comment">// size 2n
+    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="kw">pub </span>d4: Domain&lt;F&gt;, <span class="comment">// size 4n
+    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="kw">pub </span>d8: Domain&lt;F&gt;, <span class="comment">// size 8n
+</span>}
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> <span class="ident">EvaluationDomains</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Creates 4 evaluation domains `d1` (of size `n`), `d2` (of size `2n`), `d4` (of size `4n`),</span>
-    <span class="doccomment">/// and `d8` (of size `8n`). If generator of `d8` is `g`, the generator</span>
-    <span class="doccomment">/// of `d4` is `g^2`, the generator of `d2` is `g^4`, and the generator of `d1` is `g^8`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create</span>(<span class="ident">n</span>: <span class="ident">usize</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">SetupError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">Domain</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::compute_size_of_domain</span>(<span class="ident">n</span>).<span class="ident">ok_or</span>(<span class="ident">SetupError::DomainCreation</span>(
+<span class="kw">impl</span>&lt;F: FftField&gt; EvaluationDomains&lt;F&gt; {
+    <span class="doccomment">/// Creates 4 evaluation domains `d1` (of size `n`), `d2` (of size `2n`), `d4` (of size `4n`),
+    /// and `d8` (of size `8n`). If generator of `d8` is `g`, the generator
+    /// of `d4` is `g^2`, the generator of `d2` is `g^4`, and the generator of `d1` is `g^8`.
+    </span><span class="kw">pub fn </span>create(n: usize) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, SetupError&gt; {
+        <span class="kw">let </span>n = Domain::&lt;F&gt;::compute_size_of_domain(n).ok_or(SetupError::DomainCreation(
             <span class="string">&quot;could not compute size of domain&quot;</span>,
         ))<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">d1</span> <span class="op">=</span> <span class="ident">Domain</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="ident">n</span>).<span class="ident">ok_or</span>(<span class="ident">SetupError::DomainCreation</span>(
+        <span class="kw">let </span>d1 = Domain::&lt;F&gt;::new(n).ok_or(SetupError::DomainCreation(
             <span class="string">&quot;construction of domain d1 did not work as intended&quot;</span>,
         ))<span class="question-mark">?</span>;
 
-        <span class="comment">// we also create domains of larger sizes</span>
-        <span class="comment">// to efficiently operate on polynomials in evaluation form.</span>
-        <span class="comment">// (in evaluation form, the domain needs to grow as the degree of a polynomial grows)</span>
-        <span class="kw">let</span> <span class="ident">d2</span> <span class="op">=</span> <span class="ident">Domain</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="number">2</span> <span class="op">*</span> <span class="ident">n</span>).<span class="ident">ok_or</span>(<span class="ident">SetupError::DomainCreation</span>(
+        <span class="comment">// we also create domains of larger sizes
+        // to efficiently operate on polynomials in evaluation form.
+        // (in evaluation form, the domain needs to grow as the degree of a polynomial grows)
+        </span><span class="kw">let </span>d2 = Domain::&lt;F&gt;::new(<span class="number">2 </span>* n).ok_or(SetupError::DomainCreation(
             <span class="string">&quot;construction of domain d2 did not work as intended&quot;</span>,
         ))<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">d4</span> <span class="op">=</span> <span class="ident">Domain</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="number">4</span> <span class="op">*</span> <span class="ident">n</span>).<span class="ident">ok_or</span>(<span class="ident">SetupError::DomainCreation</span>(
+        <span class="kw">let </span>d4 = Domain::&lt;F&gt;::new(<span class="number">4 </span>* n).ok_or(SetupError::DomainCreation(
             <span class="string">&quot;construction of domain d4 did not work as intended&quot;</span>,
         ))<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">d8</span> <span class="op">=</span> <span class="ident">Domain</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="number">8</span> <span class="op">*</span> <span class="ident">n</span>).<span class="ident">ok_or</span>(<span class="ident">SetupError::DomainCreation</span>(
+        <span class="kw">let </span>d8 = Domain::&lt;F&gt;::new(<span class="number">8 </span>* n).ok_or(SetupError::DomainCreation(
             <span class="string">&quot;construction of domain d8 did not work as intended&quot;</span>,
         ))<span class="question-mark">?</span>;
 
-        <span class="comment">// ensure the relationship between the three domains in case the library&#39;s behavior changes</span>
-        <span class="macro">assert_eq!</span>(<span class="ident">d2</span>.<span class="ident">group_gen</span>.<span class="ident">square</span>(), <span class="ident">d1</span>.<span class="ident">group_gen</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">d4</span>.<span class="ident">group_gen</span>.<span class="ident">square</span>(), <span class="ident">d2</span>.<span class="ident">group_gen</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">d8</span>.<span class="ident">group_gen</span>.<span class="ident">square</span>(), <span class="ident">d4</span>.<span class="ident">group_gen</span>);
+        <span class="comment">// ensure the relationship between the three domains in case the library&#39;s behavior changes
+        </span><span class="macro">assert_eq!</span>(d2.group_gen.square(), d1.group_gen);
+        <span class="macro">assert_eq!</span>(d4.group_gen.square(), d2.group_gen);
+        <span class="macro">assert_eq!</span>(d8.group_gen.square(), d4.group_gen);
 
-        <span class="prelude-val">Ok</span>(<span class="ident">EvaluationDomains</span> { <span class="ident">d1</span>, <span class="ident">d2</span>, <span class="ident">d4</span>, <span class="ident">d8</span> })
+        <span class="prelude-val">Ok</span>(EvaluationDomains { d1, d2, d4, d8 })
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident">ark_ff::Field</span>;
-    <span class="kw">use</span> <span class="ident">mina_curves::pasta::fp::Fp</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span>ark_ff::Field;
+    <span class="kw">use </span>mina_curves::pasta::fp::Fp;
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="attribute">#[<span class="ident">ignore</span>]</span> <span class="comment">// TODO(mimoo): wait for fix upstream (https://github.com/arkworks-rs/algebra/pull/307)</span>
-    <span class="kw">fn</span> <span class="ident">test_create_domain</span>() {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">d</span>) <span class="op">=</span> <span class="ident">EvaluationDomains</span>::<span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">usize::MAX</span>) {
-            <span class="macro">assert!</span>(<span class="ident">d</span>.<span class="ident">d4</span>.<span class="ident">group_gen</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="number">4</span>]) <span class="op">==</span> <span class="ident">d</span>.<span class="ident">d1</span>.<span class="ident">group_gen</span>);
-            <span class="macro">assert!</span>(<span class="ident">d</span>.<span class="ident">d8</span>.<span class="ident">group_gen</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="number">2</span>]) <span class="op">==</span> <span class="ident">d</span>.<span class="ident">d4</span>.<span class="ident">group_gen</span>);
-            <span class="macro">println!</span>(<span class="string">&quot;d8 = {:?}&quot;</span>, <span class="ident">d</span>.<span class="ident">d8</span>.<span class="ident">group_gen</span>);
-            <span class="macro">println!</span>(<span class="string">&quot;d8^2 = {:?}&quot;</span>, <span class="ident">d</span>.<span class="ident">d8</span>.<span class="ident">group_gen</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="number">2</span>]));
-            <span class="macro">println!</span>(<span class="string">&quot;d4 = {:?}&quot;</span>, <span class="ident">d</span>.<span class="ident">d4</span>.<span class="ident">group_gen</span>);
-            <span class="macro">println!</span>(<span class="string">&quot;d4 = {:?}&quot;</span>, <span class="ident">d</span>.<span class="ident">d4</span>.<span class="ident">group_gen</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="number">4</span>]));
-            <span class="macro">println!</span>(<span class="string">&quot;d1 = {:?}&quot;</span>, <span class="ident">d</span>.<span class="ident">d1</span>.<span class="ident">group_gen</span>);
+    <span class="attribute">#[test]
+    #[ignore] </span><span class="comment">// TODO(mimoo): wait for fix upstream (https://github.com/arkworks-rs/algebra/pull/307)
+    </span><span class="kw">fn </span>test_create_domain() {
+        <span class="kw">if let </span><span class="prelude-val">Ok</span>(d) = EvaluationDomains::&lt;Fp&gt;::create(usize::MAX) {
+            <span class="macro">assert!</span>(d.d4.group_gen.pow(<span class="kw-2">&amp;</span>[<span class="number">4</span>]) == d.d1.group_gen);
+            <span class="macro">assert!</span>(d.d8.group_gen.pow(<span class="kw-2">&amp;</span>[<span class="number">2</span>]) == d.d4.group_gen);
+            <span class="macro">println!</span>(<span class="string">&quot;d8 = {:?}&quot;</span>, d.d8.group_gen);
+            <span class="macro">println!</span>(<span class="string">&quot;d8^2 = {:?}&quot;</span>, d.d8.group_gen.pow(<span class="kw-2">&amp;</span>[<span class="number">2</span>]));
+            <span class="macro">println!</span>(<span class="string">&quot;d4 = {:?}&quot;</span>, d.d4.group_gen);
+            <span class="macro">println!</span>(<span class="string">&quot;d4 = {:?}&quot;</span>, d.d4.group_gen.pow(<span class="kw-2">&amp;</span>[<span class="number">4</span>]));
+            <span class="macro">println!</span>(<span class="string">&quot;d1 = {:?}&quot;</span>, d.d1.group_gen);
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

@@ -8,168 +8,168 @@
 </ul>
 <p>Here is an example of how to use the hasher interface.</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">mina_hasher</span>::{<span class="ident">create_legacy</span>, <span class="ident">Hashable</span>, <span class="ident">Hasher</span>, <span class="ident">ROInput</span>};
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>mina_hasher::{create_legacy, Hashable, Hasher, ROInput};
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
-<span class="kw">struct</span> <span class="ident">Example</span> {
-    <span class="ident">x</span>: <span class="ident">u32</span>,
-    <span class="ident">y</span>: <span class="ident">u64</span>,
+<span class="attribute">#[derive(Clone)]
+</span><span class="kw">struct </span>Example {
+    x: u32,
+    y: u64,
 }
 
-<span class="kw">impl</span> <span class="ident">Hashable</span> <span class="kw">for</span> <span class="ident">Example</span> {
-    <span class="kw">type</span> <span class="ident">D</span> <span class="op">=</span> <span class="ident">u32</span>;
+<span class="kw">impl </span>Hashable <span class="kw">for </span>Example {
+    <span class="kw">type </span>D = u32;
 
-    <span class="kw">fn</span> <span class="ident">to_roinput</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ROInput</span> {
-        <span class="ident">ROInput::new</span>()
-            .<span class="ident">append_u32</span>(<span class="self">self</span>.<span class="ident">x</span>)
-            .<span class="ident">append_u64</span>(<span class="self">self</span>.<span class="ident">y</span>)
+    <span class="kw">fn </span>to_roinput(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ROInput {
+        ROInput::new()
+            .append_u32(<span class="self">self</span>.x)
+            .append_u64(<span class="self">self</span>.y)
     }
 
-    <span class="kw">fn</span> <span class="ident">domain_string</span>(<span class="ident">seed</span>: <span class="ident">u32</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="macro">format!</span>(<span class="string">&quot;Example {}&quot;</span>, <span class="ident">seed</span>).<span class="ident">into</span>()
+    <span class="kw">fn </span>domain_string(seed: u32) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
+        <span class="macro">format!</span>(<span class="string">&quot;Example {}&quot;</span>, seed).into()
     }
 }
 
-<span class="comment">// Usage 1: incremental interface</span>
-<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">hasher</span> <span class="op">=</span> <span class="ident">create_legacy</span>::<span class="op">&lt;</span><span class="ident">Example</span><span class="op">&gt;</span>(<span class="number">0</span>);
-<span class="ident">hasher</span>.<span class="ident">update</span>(<span class="kw-2">&amp;</span><span class="ident">Example</span> { <span class="ident">x</span>: <span class="number">82</span>, <span class="ident">y</span>: <span class="number">834</span> });
-<span class="ident">hasher</span>.<span class="ident">update</span>(<span class="kw-2">&amp;</span><span class="ident">Example</span> { <span class="ident">x</span>: <span class="number">1235</span>, <span class="ident">y</span>: <span class="number">93</span> });
-<span class="kw">let</span> <span class="ident">out</span> <span class="op">=</span> <span class="ident">hasher</span>.<span class="ident">digest</span>();
-<span class="ident">hasher</span>.<span class="ident">init</span>(<span class="number">1</span>);
-<span class="ident">hasher</span>.<span class="ident">update</span>(<span class="kw-2">&amp;</span><span class="ident">Example</span> { <span class="ident">x</span>: <span class="number">82</span>, <span class="ident">y</span>: <span class="number">834</span> });
-<span class="kw">let</span> <span class="ident">out</span> <span class="op">=</span> <span class="ident">hasher</span>.<span class="ident">digest</span>();
+<span class="comment">// Usage 1: incremental interface
+</span><span class="kw">let </span><span class="kw-2">mut </span>hasher = create_legacy::&lt;Example&gt;(<span class="number">0</span>);
+hasher.update(<span class="kw-2">&amp;</span>Example { x: <span class="number">82</span>, y: <span class="number">834 </span>});
+hasher.update(<span class="kw-2">&amp;</span>Example { x: <span class="number">1235</span>, y: <span class="number">93 </span>});
+<span class="kw">let </span>out = hasher.digest();
+hasher.init(<span class="number">1</span>);
+hasher.update(<span class="kw-2">&amp;</span>Example { x: <span class="number">82</span>, y: <span class="number">834 </span>});
+<span class="kw">let </span>out = hasher.digest();
 
-<span class="comment">// Usage 2: builder interface with one-shot pattern</span>
-<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">hasher</span> <span class="op">=</span> <span class="ident">create_legacy</span>::<span class="op">&lt;</span><span class="ident">Example</span><span class="op">&gt;</span>(<span class="number">0</span>);
-<span class="kw">let</span> <span class="ident">out</span> <span class="op">=</span> <span class="ident">hasher</span>.<span class="ident">update</span>(<span class="kw-2">&amp;</span><span class="ident">Example</span> { <span class="ident">x</span>: <span class="number">3</span>, <span class="ident">y</span>: <span class="number">1</span> }).<span class="ident">digest</span>();
-<span class="kw">let</span> <span class="ident">out</span> <span class="op">=</span> <span class="ident">hasher</span>.<span class="ident">update</span>(<span class="kw-2">&amp;</span><span class="ident">Example</span> { <span class="ident">x</span>: <span class="number">31</span>, <span class="ident">y</span>: <span class="number">21</span> }).<span class="ident">digest</span>();
+<span class="comment">// Usage 2: builder interface with one-shot pattern
+</span><span class="kw">let </span><span class="kw-2">mut </span>hasher = create_legacy::&lt;Example&gt;(<span class="number">0</span>);
+<span class="kw">let </span>out = hasher.update(<span class="kw-2">&amp;</span>Example { x: <span class="number">3</span>, y: <span class="number">1 </span>}).digest();
+<span class="kw">let </span>out = hasher.update(<span class="kw-2">&amp;</span>Example { x: <span class="number">31</span>, y: <span class="number">21 </span>}).digest();
 
-<span class="comment">// Usage 3: builder interface with one-shot pattern also setting init state</span>
-<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">hasher</span> <span class="op">=</span> <span class="ident">create_legacy</span>::<span class="op">&lt;</span><span class="ident">Example</span><span class="op">&gt;</span>(<span class="number">0</span>);
-<span class="kw">let</span> <span class="ident">out</span> <span class="op">=</span> <span class="ident">hasher</span>.<span class="ident">init</span>(<span class="number">0</span>).<span class="ident">update</span>(<span class="kw-2">&amp;</span><span class="ident">Example</span> { <span class="ident">x</span>: <span class="number">3</span>, <span class="ident">y</span>: <span class="number">1</span> }).<span class="ident">digest</span>();
-<span class="kw">let</span> <span class="ident">out</span> <span class="op">=</span> <span class="ident">hasher</span>.<span class="ident">init</span>(<span class="number">1</span>).<span class="ident">update</span>(<span class="kw-2">&amp;</span><span class="ident">Example</span> { <span class="ident">x</span>: <span class="number">82</span>, <span class="ident">y</span>: <span class="number">834</span> }).<span class="ident">digest</span>();
+<span class="comment">// Usage 3: builder interface with one-shot pattern also setting init state
+</span><span class="kw">let </span><span class="kw-2">mut </span>hasher = create_legacy::&lt;Example&gt;(<span class="number">0</span>);
+<span class="kw">let </span>out = hasher.init(<span class="number">0</span>).update(<span class="kw-2">&amp;</span>Example { x: <span class="number">3</span>, y: <span class="number">1 </span>}).digest();
+<span class="kw">let </span>out = hasher.init(<span class="number">1</span>).update(<span class="kw-2">&amp;</span>Example { x: <span class="number">82</span>, y: <span class="number">834 </span>}).digest();
 
-<span class="comment">// Usage 4: one-shot interfaces</span>
-<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">hasher</span> <span class="op">=</span> <span class="ident">create_legacy</span>::<span class="op">&lt;</span><span class="ident">Example</span><span class="op">&gt;</span>(<span class="number">0</span>);
-<span class="kw">let</span> <span class="ident">out</span> <span class="op">=</span> <span class="ident">hasher</span>.<span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">Example</span> { <span class="ident">x</span>: <span class="number">3</span>, <span class="ident">y</span>: <span class="number">1</span> });
-<span class="kw">let</span> <span class="ident">out</span> <span class="op">=</span> <span class="ident">hasher</span>.<span class="ident">init_and_hash</span>(<span class="number">1</span>, <span class="kw-2">&amp;</span><span class="ident">Example</span> { <span class="ident">x</span>: <span class="number">82</span>, <span class="ident">y</span>: <span class="number">834</span> });</code></pre></div>
+<span class="comment">// Usage 4: one-shot interfaces
+</span><span class="kw">let </span><span class="kw-2">mut </span>hasher = create_legacy::&lt;Example&gt;(<span class="number">0</span>);
+<span class="kw">let </span>out = hasher.hash(<span class="kw-2">&amp;</span>Example { x: <span class="number">3</span>, y: <span class="number">1 </span>});
+<span class="kw">let </span>out = hasher.init_and_hash(<span class="number">1</span>, <span class="kw-2">&amp;</span>Example { x: <span class="number">82</span>, y: <span class="number">834 </span>});</code></pre></div>
 <h3 id="the-hashable-trait"><a href="#the-hashable-trait">The <code>Hashable</code> trait</a></h3>
 <p>In order to sign something it must be hashed.  This framework allows you to define how types are hashed by implementing the <a href="trait.Hashable.html" title="Hashable"><code>Hashable</code></a> trait.</p>
 <p>For example, if you wanted to hash the <code>Foo</code> structure you would do the following.</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">mina_hasher</span>::{<span class="ident">Hashable</span>, <span class="ident">ROInput</span>};
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>mina_hasher::{Hashable, ROInput};
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
-<span class="kw">struct</span> <span class="ident">Foo</span> {
-    <span class="ident">foo</span>: <span class="ident">u32</span>,
-    <span class="ident">bar</span>: <span class="ident">u64</span>,
+<span class="attribute">#[derive(Clone)]
+</span><span class="kw">struct </span>Foo {
+    foo: u32,
+    bar: u64,
 }
 
-<span class="kw">impl</span> <span class="ident">Hashable</span> <span class="kw">for</span> <span class="ident">Foo</span> {
-    <span class="kw">type</span> <span class="ident">D</span> <span class="op">=</span> ();
+<span class="kw">impl </span>Hashable <span class="kw">for </span>Foo {
+    <span class="kw">type </span>D = ();
 
-    <span class="kw">fn</span> <span class="ident">to_roinput</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ROInput</span> {
-        <span class="ident">ROInput::new</span>()
-            .<span class="ident">append_u32</span>(<span class="self">self</span>.<span class="ident">foo</span>)
-            .<span class="ident">append_u64</span>(<span class="self">self</span>.<span class="ident">bar</span>)
+    <span class="kw">fn </span>to_roinput(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ROInput {
+        ROInput::new()
+            .append_u32(<span class="self">self</span>.foo)
+            .append_u64(<span class="self">self</span>.bar)
     }
 
-    <span class="kw">fn</span> <span class="ident">domain_string</span>(<span class="kw">_</span>: <span class="ident"><span class="self">Self</span>::D</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="macro">format!</span>(<span class="string">&quot;Foo&quot;</span>).<span class="ident">into</span>()
+    <span class="kw">fn </span>domain_string(<span class="kw">_</span>: <span class="self">Self</span>::D) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
+        <span class="macro">format!</span>(<span class="string">&quot;Foo&quot;</span>).into()
     }
 }</code></pre></div>
 <p><strong>Example: <code>domain_string</code> parameterized by <code>domain_param</code></strong></p>
 <p>If the domain string depends on a parameter, for example a height, then it can be implemented like this.</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">ark_ff::Zero</span>;
-<span class="kw">use</span> <span class="ident">mina_hasher</span>::{<span class="ident">create_legacy</span>, <span class="ident">Fp</span>, <span class="ident">Hashable</span>, <span class="ident">Hasher</span>, <span class="ident">ROInput</span>};
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>ark_ff::Zero;
+<span class="kw">use </span>mina_hasher::{create_legacy, Fp, Hashable, Hasher, ROInput};
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
-<span class="kw">struct</span> <span class="ident">ExampleMerkleNode</span> {
-    <span class="ident">left</span>: <span class="ident">Fp</span>,
-    <span class="ident">right</span>: <span class="ident">Fp</span>,
+<span class="attribute">#[derive(Clone)]
+</span><span class="kw">struct </span>ExampleMerkleNode {
+    left: Fp,
+    right: Fp,
 }
 
-<span class="kw">impl</span> <span class="ident">Hashable</span> <span class="kw">for</span> <span class="ident">ExampleMerkleNode</span> {
-    <span class="kw">type</span> <span class="ident">D</span> <span class="op">=</span> <span class="ident">u64</span>;
+<span class="kw">impl </span>Hashable <span class="kw">for </span>ExampleMerkleNode {
+    <span class="kw">type </span>D = u64;
 
-    <span class="kw">fn</span> <span class="ident">to_roinput</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ROInput</span> {
-        <span class="ident">ROInput::new</span>()
-            .<span class="ident">append_field</span>(<span class="self">self</span>.<span class="ident">left</span>)
-            .<span class="ident">append_field</span>(<span class="self">self</span>.<span class="ident">right</span>)
+    <span class="kw">fn </span>to_roinput(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ROInput {
+        ROInput::new()
+            .append_field(<span class="self">self</span>.left)
+            .append_field(<span class="self">self</span>.right)
     }
 
-    <span class="kw">fn</span> <span class="ident">domain_string</span>(<span class="ident">height</span>: <span class="ident"><span class="self">Self</span>::D</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="macro">format!</span>(<span class="string">&quot;MerkleTree{:03}&quot;</span>, <span class="ident">height</span>).<span class="ident">into</span>()
+    <span class="kw">fn </span>domain_string(height: <span class="self">Self</span>::D) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
+        <span class="macro">format!</span>(<span class="string">&quot;MerkleTree{:03}&quot;</span>, height).into()
     }
 }
 
-<span class="comment">// Used like this</span>
-<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">hasher</span> <span class="op">=</span> <span class="ident">create_legacy</span>::<span class="op">&lt;</span><span class="ident">ExampleMerkleNode</span><span class="op">&gt;</span>(<span class="number">0</span>);
-<span class="kw">let</span> <span class="ident">node1</span> <span class="op">=</span> <span class="ident">ExampleMerkleNode</span> {
-    <span class="ident">left</span>: <span class="ident">Fp::zero</span>(),
-    <span class="ident">right</span>: <span class="ident">Fp::zero</span>(),
+<span class="comment">// Used like this
+</span><span class="kw">let </span><span class="kw-2">mut </span>hasher = create_legacy::&lt;ExampleMerkleNode&gt;(<span class="number">0</span>);
+<span class="kw">let </span>node1 = ExampleMerkleNode {
+    left: Fp::zero(),
+    right: Fp::zero(),
 };
-<span class="kw">let</span> <span class="ident">node2</span> <span class="op">=</span> <span class="ident">ExampleMerkleNode</span> {
-    <span class="ident">left</span>: <span class="ident">Fp::zero</span>(),
-    <span class="ident">right</span>: <span class="ident">Fp::zero</span>(),
+<span class="kw">let </span>node2 = ExampleMerkleNode {
+    left: Fp::zero(),
+    right: Fp::zero(),
 };
-<span class="kw">let</span> <span class="ident">out</span> <span class="op">=</span> <span class="ident">hasher</span>.<span class="ident">init_and_hash</span>(<span class="number">3</span> <span class="comment">/* height */</span>, <span class="kw-2">&amp;</span><span class="ident">node1</span>);
-<span class="kw">let</span> <span class="ident">out</span> <span class="op">=</span> <span class="ident">hasher</span>.<span class="ident">init_and_hash</span>(<span class="number">7</span> <span class="comment">/* height */</span>, <span class="kw-2">&amp;</span><span class="ident">node2</span>);
-<span class="comment">// Or like this..</span>
-<span class="kw">let</span> <span class="ident">out</span> <span class="op">=</span> <span class="ident">hasher</span>.<span class="ident">init</span>(<span class="number">3</span>).<span class="ident">update</span>(<span class="kw-2">&amp;</span><span class="ident">node1</span>).<span class="ident">digest</span>();
-<span class="kw">let</span> <span class="ident">out</span> <span class="op">=</span> <span class="ident">hasher</span>.<span class="ident">init</span>(<span class="number">7</span>).<span class="ident">update</span>(<span class="kw-2">&amp;</span><span class="ident">node2</span>).<span class="ident">digest</span>();
-<span class="comment">// Or even like this..</span>
-<span class="ident">hasher</span>.<span class="ident">init</span>(<span class="number">8192</span>);
-<span class="kw">let</span> <span class="ident">out</span> <span class="op">=</span> <span class="ident">hasher</span>.<span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">node2</span>);</code></pre></div>
+<span class="kw">let </span>out = hasher.init_and_hash(<span class="number">3 </span><span class="comment">/* height */</span>, <span class="kw-2">&amp;</span>node1);
+<span class="kw">let </span>out = hasher.init_and_hash(<span class="number">7 </span><span class="comment">/* height */</span>, <span class="kw-2">&amp;</span>node2);
+<span class="comment">// Or like this..
+</span><span class="kw">let </span>out = hasher.init(<span class="number">3</span>).update(<span class="kw-2">&amp;</span>node1).digest();
+<span class="kw">let </span>out = hasher.init(<span class="number">7</span>).update(<span class="kw-2">&amp;</span>node2).digest();
+<span class="comment">// Or even like this..
+</span>hasher.init(<span class="number">8192</span>);
+<span class="kw">let </span>out = hasher.hash(<span class="kw-2">&amp;</span>node2);</code></pre></div>
 <p><strong>Combining <code>ROInput</code>s</strong></p>
 <p>When implementing the <code>Hashable</code> trait for a structure composed of other <code>Hashable</code>
 structures, the <code>to_roinput()</code> implementation needs to combine <code>ROInput</code>s.</p>
 <p>Here is an example showing how this is done.</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">mina_hasher</span>::{<span class="ident">Hashable</span>, <span class="ident">ROInput</span>};
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>mina_hasher::{Hashable, ROInput};
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
-<span class="kw">struct</span> <span class="ident">A</span> {
-    <span class="ident">x</span>: <span class="ident">u32</span>,
-    <span class="ident">y</span>: <span class="ident">u32</span>,
+<span class="attribute">#[derive(Clone)]
+</span><span class="kw">struct </span>A {
+    x: u32,
+    y: u32,
 }
 
-<span class="kw">impl</span> <span class="ident">Hashable</span> <span class="kw">for</span> <span class="ident">A</span> {
-    <span class="kw">type</span> <span class="ident">D</span> <span class="op">=</span> ();
+<span class="kw">impl </span>Hashable <span class="kw">for </span>A {
+    <span class="kw">type </span>D = ();
 
-    <span class="kw">fn</span> <span class="ident">to_roinput</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ROInput</span> {
-        <span class="ident">ROInput::new</span>()
-            .<span class="ident">append_u32</span>(<span class="self">self</span>.<span class="ident">x</span>)
-            .<span class="ident">append_u32</span>(<span class="self">self</span>.<span class="ident">y</span>)
+    <span class="kw">fn </span>to_roinput(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ROInput {
+        ROInput::new()
+            .append_u32(<span class="self">self</span>.x)
+            .append_u32(<span class="self">self</span>.y)
     }
 
-    <span class="kw">fn</span> <span class="ident">domain_string</span>(<span class="kw">_</span>: <span class="ident"><span class="self">Self</span>::D</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="macro">format!</span>(<span class="string">&quot;A&quot;</span>).<span class="ident">into</span>()
+    <span class="kw">fn </span>domain_string(<span class="kw">_</span>: <span class="self">Self</span>::D) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
+        <span class="macro">format!</span>(<span class="string">&quot;A&quot;</span>).into()
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
-<span class="kw">struct</span> <span class="ident">B</span> {
-    <span class="ident">a1</span>: <span class="ident">A</span>,
-    <span class="ident">a2</span>: <span class="ident">A</span>,
-    <span class="ident">z</span>: <span class="ident">u32</span>,
+<span class="attribute">#[derive(Clone)]
+</span><span class="kw">struct </span>B {
+    a1: A,
+    a2: A,
+    z: u32,
 }
 
-<span class="kw">impl</span> <span class="ident">Hashable</span> <span class="kw">for</span> <span class="ident">B</span> {
-    <span class="kw">type</span> <span class="ident">D</span> <span class="op">=</span> ();
+<span class="kw">impl </span>Hashable <span class="kw">for </span>B {
+    <span class="kw">type </span>D = ();
 
-    <span class="kw">fn</span> <span class="ident">to_roinput</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ROInput</span> {
-        <span class="ident">ROInput::new</span>()
-            <span class="comment">// Way 1: Append Hashable input</span>
-            .<span class="ident">append_hashable</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">a1</span>)
-            <span class="comment">// Way 2: Append ROInput</span>
-            .<span class="ident">append_roinput</span>(<span class="self">self</span>.<span class="ident">a2</span>.<span class="ident">to_roinput</span>())
-            .<span class="ident">append_u32</span>(<span class="self">self</span>.<span class="ident">z</span>)
+    <span class="kw">fn </span>to_roinput(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ROInput {
+        ROInput::new()
+            <span class="comment">// Way 1: Append Hashable input
+            </span>.append_hashable(<span class="kw-2">&amp;</span><span class="self">self</span>.a1)
+            <span class="comment">// Way 2: Append ROInput
+            </span>.append_roinput(<span class="self">self</span>.a2.to_roinput())
+            .append_u32(<span class="self">self</span>.z)
     }
 
-    <span class="kw">fn</span> <span class="ident">domain_string</span>(<span class="kw">_</span>: <span class="ident"><span class="self">Self</span>::D</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="macro">format!</span>(<span class="string">&quot;B&quot;</span>).<span class="ident">into</span>()
+    <span class="kw">fn </span>domain_string(<span class="kw">_</span>: <span class="self">Self</span>::D) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
+        <span class="macro">format!</span>(<span class="string">&quot;B&quot;</span>).into()
     }
 }</code></pre></div>
 <p>For more details please see the rustdoc mina-hasher documentation.</p>
@@ -185,4 +185,4 @@ arguments to domain string generation.  It is also used by generic signing code.
 </div></div><div class="item-row"><div class="item-left module-item"><a class="trait" href="trait.Hasher.html" title="mina_hasher::Hasher trait">Hasher</a></div><div class="item-right docblock-short"><p>Interface for hashing <a href="trait.Hashable.html" title="Hashable"><code>Hashable</code></a> inputs</p>
 </div></div></div><h2 id="functions" class="small-section-header"><a href="#functions">Functions</a></h2><div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="fn" href="fn.create_kimchi.html" title="mina_hasher::create_kimchi fn">create_kimchi</a></div><div class="item-right docblock-short"><p>Create an experimental kimchi hasher context</p>
 </div></div><div class="item-row"><div class="item-left module-item"><a class="fn" href="fn.create_legacy.html" title="mina_hasher::create_legacy fn">create_legacy</a></div><div class="item-right docblock-short"><p>Create a legacy hasher context</p>
-</div></div></div><h2 id="types" class="small-section-header"><a href="#types">Type Definitions</a></h2><div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="type" href="type.Fp.html" title="mina_hasher::Fp type">Fp</a></div><div class="item-right docblock-short"></div></div></div></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="mina_hasher" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</div></div></div><h2 id="types" class="small-section-header"><a href="#types">Type Definitions</a></h2><div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="type" href="type.Fp.html" title="mina_hasher::Fp type">Fp</a></div><div class="item-right docblock-short"></div></div></div></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="mina_hasher" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

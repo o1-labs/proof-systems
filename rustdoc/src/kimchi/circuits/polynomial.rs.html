@@ -64,71 +64,71 @@
 <span id="64">64</span>
 <span id="65">65</span>
 <span id="66">66</span>
-</pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk prover polynomials primitive.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk prover polynomials primitive.
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::wires::COLUMNS</span>;
-<span class="kw">use</span> <span class="ident">ark_ff::FftField</span>;
-<span class="kw">use</span> <span class="ident">ark_poly</span>::{<span class="ident">univariate::DensePolynomial</span>, <span class="ident">Evaluations</span>, <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>};
+</span><span class="kw">pub use </span><span class="kw">super</span>::wires::COLUMNS;
+<span class="kw">use </span>ark_ff::FftField;
+<span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain <span class="kw">as </span>D};
 
-<span class="comment">// PLONK</span>
+<span class="comment">// PLONK
 
-<span class="doccomment">/// Evaluations of the wires and permutation</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">WitnessEvals</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// wire evaluations</span>
-    <span class="kw">pub</span> <span class="ident">w</span>: [<span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
-    <span class="doccomment">/// permutation evaluations</span>
-    <span class="kw">pub</span> <span class="ident">z</span>: <span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+</span><span class="doccomment">/// Evaluations of the wires and permutation
+</span><span class="attribute">#[derive(Clone)]
+</span><span class="kw">pub struct </span>WitnessEvals&lt;F: FftField&gt; {
+    <span class="doccomment">/// wire evaluations
+    </span><span class="kw">pub </span>w: [Evaluations&lt;F, D&lt;F&gt;&gt;; COLUMNS],
+    <span class="doccomment">/// permutation evaluations
+    </span><span class="kw">pub </span>z: Evaluations&lt;F, D&lt;F&gt;&gt;,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">WitnessShifts</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// this wire evaluations</span>
-    <span class="kw">pub</span> <span class="ident">this</span>: <span class="ident">WitnessEvals</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// next wire evaluations</span>
-    <span class="kw">pub</span> <span class="ident">next</span>: <span class="ident">WitnessEvals</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Clone)]
+</span><span class="kw">pub struct </span>WitnessShifts&lt;F: FftField&gt; {
+    <span class="doccomment">/// this wire evaluations
+    </span><span class="kw">pub </span>this: WitnessEvals&lt;F&gt;,
+    <span class="doccomment">/// next wire evaluations
+    </span><span class="kw">pub </span>next: WitnessEvals&lt;F&gt;,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">WitnessOverDomains</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// evaluations over domain d4</span>
-    <span class="kw">pub</span> <span class="ident">d4</span>: <span class="ident">WitnessShifts</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// evaluations over domain d8</span>
-    <span class="kw">pub</span> <span class="ident">d8</span>: <span class="ident">WitnessShifts</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Clone)]
+</span><span class="kw">pub struct </span>WitnessOverDomains&lt;F: FftField&gt; {
+    <span class="doccomment">/// evaluations over domain d4
+    </span><span class="kw">pub </span>d4: WitnessShifts&lt;F&gt;,
+    <span class="doccomment">/// evaluations over domain d8
+    </span><span class="kw">pub </span>d8: WitnessShifts&lt;F&gt;,
 }
 
-<span class="comment">// PLOOKUP</span>
+<span class="comment">// PLOOKUP
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LookupEvals</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// aggregation</span>
-    <span class="kw">pub</span> <span class="ident">l</span>: <span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// lookup witness</span>
-    <span class="kw">pub</span> <span class="ident">lw</span>: <span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// lookup multiset</span>
-    <span class="kw">pub</span> <span class="ident">h1</span>: <span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// lookup multiset</span>
-    <span class="kw">pub</span> <span class="ident">h2</span>: <span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+</span><span class="attribute">#[derive(Clone)]
+</span><span class="kw">pub struct </span>LookupEvals&lt;F: FftField&gt; {
+    <span class="doccomment">/// aggregation
+    </span><span class="kw">pub </span>l: Evaluations&lt;F, D&lt;F&gt;&gt;,
+    <span class="doccomment">/// lookup witness
+    </span><span class="kw">pub </span>lw: Evaluations&lt;F, D&lt;F&gt;&gt;,
+    <span class="doccomment">/// lookup multiset
+    </span><span class="kw">pub </span>h1: Evaluations&lt;F, D&lt;F&gt;&gt;,
+    <span class="doccomment">/// lookup multiset
+    </span><span class="kw">pub </span>h2: Evaluations&lt;F, D&lt;F&gt;&gt;,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LookupShifts</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// this wire evaluations</span>
-    <span class="kw">pub</span> <span class="ident">this</span>: <span class="ident">LookupEvals</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// next wire evaluations</span>
-    <span class="kw">pub</span> <span class="ident">next</span>: <span class="ident">LookupEvals</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Clone)]
+</span><span class="kw">pub struct </span>LookupShifts&lt;F: FftField&gt; {
+    <span class="doccomment">/// this wire evaluations
+    </span><span class="kw">pub </span>this: LookupEvals&lt;F&gt;,
+    <span class="doccomment">/// next wire evaluations
+    </span><span class="kw">pub </span>next: LookupEvals&lt;F&gt;,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LookupPolys</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// aggregation</span>
-    <span class="kw">pub</span> <span class="ident">l</span>: <span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// lookup witness</span>
-    <span class="kw">pub</span> <span class="ident">lw</span>: <span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// lookup multiset</span>
-    <span class="kw">pub</span> <span class="ident">h1</span>: <span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// lookup multiset</span>
-    <span class="kw">pub</span> <span class="ident">h2</span>: <span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Clone)]
+</span><span class="kw">pub struct </span>LookupPolys&lt;F: FftField&gt; {
+    <span class="doccomment">/// aggregation
+    </span><span class="kw">pub </span>l: DensePolynomial&lt;F&gt;,
+    <span class="doccomment">/// lookup witness
+    </span><span class="kw">pub </span>lw: DensePolynomial&lt;F&gt;,
+    <span class="doccomment">/// lookup multiset
+    </span><span class="kw">pub </span>h1: DensePolynomial&lt;F&gt;,
+    <span class="doccomment">/// lookup multiset
+    </span><span class="kw">pub </span>h2: DensePolynomial&lt;F&gt;,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

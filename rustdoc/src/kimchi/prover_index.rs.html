@@ -171,178 +171,178 @@
 <span id="171">171</span>
 <span id="172">172</span>
 <span id="173">173</span>
-</pre><pre class="rust"><code><span class="doccomment">//! This module implements the prover index as [ProverIndex].</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This module implements the prover index as [ProverIndex].
 
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">alphas::Alphas</span>,
-    <span class="ident">circuits</span>::{
-        <span class="ident">constraints::ConstraintSystem</span>,
-        <span class="ident">expr</span>::{<span class="ident">Linearization</span>, <span class="ident">PolishToken</span>},
-        <span class="ident">wires</span>::<span class="kw-2">*</span>,
+</span><span class="kw">use crate</span>::{
+    alphas::Alphas,
+    circuits::{
+        constraints::ConstraintSystem,
+        expr::{Linearization, PolishToken},
+        wires::<span class="kw-2">*</span>,
     },
-    <span class="ident">curve::KimchiCurve</span>,
-    <span class="ident">linearization::expr_linearization</span>,
-    <span class="ident">verifier_index::VerifierIndex</span>,
+    curve::KimchiCurve,
+    linearization::expr_linearization,
+    verifier_index::VerifierIndex,
 };
-<span class="kw">use</span> <span class="ident">ark_poly::EvaluationDomain</span>;
-<span class="kw">use</span> <span class="ident">commitment_dlog::srs::SRS</span>;
-<span class="kw">use</span> <span class="ident">oracle::FqSponge</span>;
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">de::DeserializeOwned</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">serde_with::serde_as</span>;
-<span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
+<span class="kw">use </span>ark_poly::EvaluationDomain;
+<span class="kw">use </span>commitment_dlog::srs::SRS;
+<span class="kw">use </span>oracle::FqSponge;
+<span class="kw">use </span>serde::{de::DeserializeOwned, Deserialize, Serialize};
+<span class="kw">use </span>serde_with::serde_as;
+<span class="kw">use </span>std::sync::Arc;
 
-<span class="doccomment">/// The index used by the prover</span>
-<span class="attribute">#[<span class="ident">serde_as</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="comment">//~spec:startcode</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProverIndex</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">KimchiCurve</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// constraints system polynomials</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">bound</span> <span class="op">=</span> <span class="string">&quot;ConstraintSystem&lt;G::ScalarField&gt;: Serialize + DeserializeOwned&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">cs</span>: <span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span>,
+<span class="doccomment">/// The index used by the prover
+</span><span class="attribute">#[serde_as]
+#[derive(Serialize, Deserialize, Debug)]
+</span><span class="comment">//~spec:startcode
+</span><span class="kw">pub struct </span>ProverIndex&lt;G: KimchiCurve&gt; {
+    <span class="doccomment">/// constraints system polynomials
+    </span><span class="attribute">#[serde(bound = <span class="string">&quot;ConstraintSystem&lt;G::ScalarField&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="kw">pub </span>cs: ConstraintSystem&lt;G::ScalarField&gt;,
 
-    <span class="doccomment">/// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">linearization</span>: <span class="ident">Linearization</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PolishToken</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
+    </span><span class="attribute">#[serde(skip)]
+    </span><span class="kw">pub </span>linearization: Linearization&lt;Vec&lt;PolishToken&lt;G::ScalarField&gt;&gt;&gt;,
 
-    <span class="doccomment">/// The mapping between powers of alpha and constraints</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">powers_of_alpha</span>: <span class="ident">Alphas</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// The mapping between powers of alpha and constraints
+    </span><span class="attribute">#[serde(skip)]
+    </span><span class="kw">pub </span>powers_of_alpha: Alphas&lt;G::ScalarField&gt;,
 
-    <span class="doccomment">/// polynomial commitment keys</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">srs</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">SRS</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// polynomial commitment keys
+    </span><span class="attribute">#[serde(skip)]
+    </span><span class="kw">pub </span>srs: Arc&lt;SRS&lt;G&gt;&gt;,
 
-    <span class="doccomment">/// maximal size of polynomial section</span>
-    <span class="kw">pub</span> <span class="ident">max_poly_size</span>: <span class="ident">usize</span>,
+    <span class="doccomment">/// maximal size of polynomial section
+    </span><span class="kw">pub </span>max_poly_size: usize,
 
-    <span class="doccomment">/// maximal size of the quotient polynomial according to the supported constraints</span>
-    <span class="kw">pub</span> <span class="ident">max_quot_size</span>: <span class="ident">usize</span>,
+    <span class="doccomment">/// maximal size of the quotient polynomial according to the supported constraints
+    </span><span class="kw">pub </span>max_quot_size: usize,
 
-    <span class="doccomment">/// The verifier index corresponding to this prover index</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">verifier_index</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">VerifierIndex</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// The verifier index corresponding to this prover index
+    </span><span class="attribute">#[serde(skip)]
+    </span><span class="kw">pub </span>verifier_index: <span class="prelude-ty">Option</span>&lt;VerifierIndex&lt;G&gt;&gt;,
 
-    <span class="doccomment">/// The verifier index digest corresponding to this prover index</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">verifier_index_digest</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">G::BaseField</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// The verifier index digest corresponding to this prover index
+    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    </span><span class="kw">pub </span>verifier_index_digest: <span class="prelude-ty">Option</span>&lt;G::BaseField&gt;,
 }
-<span class="comment">//~spec:endcode</span>
+<span class="comment">//~spec:endcode
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">KimchiCurve</span><span class="op">&gt;</span> <span class="ident">ProverIndex</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// this function compiles the index from constraints</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create</span>(
-        <span class="kw-2">mut</span> <span class="ident">cs</span>: <span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span>,
-        <span class="ident">endo_q</span>: <span class="ident">G::ScalarField</span>,
-        <span class="ident">srs</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">SRS</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">max_poly_size</span> <span class="op">=</span> <span class="ident">srs</span>.<span class="ident">g</span>.<span class="ident">len</span>();
-        <span class="kw">if</span> <span class="ident">cs</span>.<span class="ident">public</span> <span class="op">&gt;</span> <span class="number">0</span> {
+</span><span class="kw">impl</span>&lt;G: KimchiCurve&gt; ProverIndex&lt;G&gt; {
+    <span class="doccomment">/// this function compiles the index from constraints
+    </span><span class="kw">pub fn </span>create(
+        <span class="kw-2">mut </span>cs: ConstraintSystem&lt;G::ScalarField&gt;,
+        endo_q: G::ScalarField,
+        srs: Arc&lt;SRS&lt;G&gt;&gt;,
+    ) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>max_poly_size = srs.g.len();
+        <span class="kw">if </span>cs.public &gt; <span class="number">0 </span>{
             <span class="macro">assert!</span>(
-                <span class="ident">max_poly_size</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span>(),
-                <span class="string">&quot;polynomial segment size has to be not smaller that that of the circuit!&quot;</span>
-            );
+                max_poly_size &gt;= cs.domain.d1.size(),
+                <span class="string">&quot;polynomial segment size has to be not smaller that that of the circuit!&quot;
+            </span>);
         }
-        <span class="ident">cs</span>.<span class="ident">endo</span> <span class="op">=</span> <span class="ident">endo_q</span>;
+        cs.endo = endo_q;
 
-        <span class="comment">// pre-compute the linearization</span>
-        <span class="kw">let</span> (<span class="ident">linearization</span>, <span class="ident">powers_of_alpha</span>) <span class="op">=</span> <span class="ident">expr_linearization</span>(
-            <span class="ident">cs</span>.<span class="ident">chacha8</span>.<span class="ident">is_some</span>(),
-            <span class="ident">cs</span>.<span class="ident">range_check_selector_polys</span>.<span class="ident">is_some</span>(),
-            <span class="ident">cs</span>.<span class="ident">lookup_constraint_system</span>
-                .<span class="ident">as_ref</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">lcs</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">lcs</span>.<span class="ident">configuration</span>),
+        <span class="comment">// pre-compute the linearization
+        </span><span class="kw">let </span>(linearization, powers_of_alpha) = expr_linearization(
+            cs.chacha8.is_some(),
+            cs.range_check_selector_polys.is_some(),
+            cs.lookup_constraint_system
+                .as_ref()
+                .map(|lcs| <span class="kw-2">&amp;</span>lcs.configuration),
         );
 
-        <span class="comment">// set `max_quot_size` to the degree of the quotient polynomial,</span>
-        <span class="comment">// which is obtained by looking at the highest monomial in the sum</span>
-        <span class="comment">// $$\sum_{i=0}^{PERMUTS} (w_i(x) + \beta k_i x + \gamma)$$</span>
-        <span class="comment">// where the $w_i(x)$ are of degree the size of the domain.</span>
-        <span class="kw">let</span> <span class="ident">max_quot_size</span> <span class="op">=</span> <span class="ident">PERMUTS</span> <span class="op">*</span> <span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span>();
+        <span class="comment">// set `max_quot_size` to the degree of the quotient polynomial,
+        // which is obtained by looking at the highest monomial in the sum
+        // $$\sum_{i=0}^{PERMUTS} (w_i(x) + \beta k_i x + \gamma)$$
+        // where the $w_i(x)$ are of degree the size of the domain.
+        </span><span class="kw">let </span>max_quot_size = PERMUTS * cs.domain.d1.size();
 
-        <span class="ident">ProverIndex</span> {
-            <span class="ident">cs</span>,
-            <span class="ident">linearization</span>,
-            <span class="ident">powers_of_alpha</span>,
-            <span class="ident">srs</span>,
-            <span class="ident">max_poly_size</span>,
-            <span class="ident">max_quot_size</span>,
-            <span class="ident">verifier_index</span>: <span class="prelude-val">None</span>,
-            <span class="ident">verifier_index_digest</span>: <span class="prelude-val">None</span>,
+        ProverIndex {
+            cs,
+            linearization,
+            powers_of_alpha,
+            srs,
+            max_poly_size,
+            max_quot_size,
+            verifier_index: <span class="prelude-val">None</span>,
+            verifier_index_digest: <span class="prelude-val">None</span>,
         }
     }
 
-    <span class="doccomment">/// Retrieve or compute the digest for the corresponding verifier index.</span>
-    <span class="doccomment">/// If the digest is not already cached inside the index, store it.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">compute_verifier_index_digest</span><span class="op">&lt;</span>
-        <span class="ident">EFqSponge</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">FqSponge</span><span class="op">&lt;</span><span class="ident">G::BaseField</span>, <span class="ident">G</span>, <span class="ident">G::ScalarField</span><span class="op">&gt;</span>,
-    <span class="op">&gt;</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-    ) -&gt; <span class="ident">G::BaseField</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">verifier_index_digest</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">verifier_index_digest</span> {
-            <span class="kw">return</span> <span class="ident">verifier_index_digest</span>;
+    <span class="doccomment">/// Retrieve or compute the digest for the corresponding verifier index.
+    /// If the digest is not already cached inside the index, store it.
+    </span><span class="kw">pub fn </span>compute_verifier_index_digest&lt;
+        EFqSponge: Clone + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
+    &gt;(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+    ) -&gt; G::BaseField {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(verifier_index_digest) = <span class="self">self</span>.verifier_index_digest {
+            <span class="kw">return </span>verifier_index_digest;
         }
 
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">verifier_index</span>.<span class="ident">is_none</span>() {
-            <span class="self">self</span>.<span class="ident">verifier_index</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="ident">verifier_index</span>());
+        <span class="kw">if </span><span class="self">self</span>.verifier_index.is_none() {
+            <span class="self">self</span>.verifier_index = <span class="prelude-val">Some</span>(<span class="self">self</span>.verifier_index());
         }
 
-        <span class="kw">let</span> <span class="ident">verifier_index_digest</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">verifier_index_digest</span>::<span class="op">&lt;</span><span class="ident">EFqSponge</span><span class="op">&gt;</span>();
-        <span class="self">self</span>.<span class="ident">verifier_index_digest</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">verifier_index_digest</span>);
-        <span class="ident">verifier_index_digest</span>
+        <span class="kw">let </span>verifier_index_digest = <span class="self">self</span>.verifier_index_digest::&lt;EFqSponge&gt;();
+        <span class="self">self</span>.verifier_index_digest = <span class="prelude-val">Some</span>(verifier_index_digest);
+        verifier_index_digest
     }
 
-    <span class="doccomment">/// Retrieve or compute the digest for the corresponding verifier index.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verifier_index_digest</span><span class="op">&lt;</span><span class="ident">EFqSponge</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">FqSponge</span><span class="op">&lt;</span><span class="ident">G::BaseField</span>, <span class="ident">G</span>, <span class="ident">G::ScalarField</span><span class="op">&gt;</span><span class="op">&gt;</span>(
+    <span class="doccomment">/// Retrieve or compute the digest for the corresponding verifier index.
+    </span><span class="kw">pub fn </span>verifier_index_digest&lt;EFqSponge: Clone + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-    ) -&gt; <span class="ident">G::BaseField</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">verifier_index_digest</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">verifier_index_digest</span> {
-            <span class="kw">return</span> <span class="ident">verifier_index_digest</span>;
+    ) -&gt; G::BaseField {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(verifier_index_digest) = <span class="self">self</span>.verifier_index_digest {
+            <span class="kw">return </span>verifier_index_digest;
         }
 
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">verifier_index</span> {
-            <span class="prelude-val">None</span> =&gt; {
-                <span class="kw">let</span> <span class="ident">verifier_index</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">verifier_index</span>();
-                <span class="ident">verifier_index</span>.<span class="ident">digest</span>::<span class="op">&lt;</span><span class="ident">EFqSponge</span><span class="op">&gt;</span>()
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.verifier_index {
+            <span class="prelude-val">None </span>=&gt; {
+                <span class="kw">let </span>verifier_index = <span class="self">self</span>.verifier_index();
+                verifier_index.digest::&lt;EFqSponge&gt;()
             }
-            <span class="prelude-val">Some</span>(<span class="ident">verifier_index</span>) =&gt; <span class="ident">verifier_index</span>.<span class="ident">digest</span>::<span class="op">&lt;</span><span class="ident">EFqSponge</span><span class="op">&gt;</span>(),
+            <span class="prelude-val">Some</span>(verifier_index) =&gt; verifier_index.digest::&lt;EFqSponge&gt;(),
         }
     }
 }
 
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">testing</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
-        <span class="ident">gate::CircuitGate</span>,
-        <span class="ident">lookup</span>::{<span class="ident">runtime_tables::RuntimeTableCfg</span>, <span class="ident">tables::LookupTable</span>},
+<span class="kw">pub mod </span>testing {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span><span class="kw">crate</span>::circuits::{
+        gate::CircuitGate,
+        lookup::{runtime_tables::RuntimeTableCfg, tables::LookupTable},
     };
-    <span class="kw">use</span> <span class="ident">commitment_dlog::srs::endos</span>;
-    <span class="kw">use</span> <span class="ident">mina_curves::pasta</span>::{<span class="ident">pallas::Pallas</span>, <span class="ident">vesta::Vesta</span>, <span class="ident">Fp</span>};
+    <span class="kw">use </span>commitment_dlog::srs::endos;
+    <span class="kw">use </span>mina_curves::pasta::{pallas::Pallas, vesta::Vesta, Fp};
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_index_for_test_with_lookups</span>(
-        <span class="ident">gates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">public</span>: <span class="ident">usize</span>,
-        <span class="ident">prev_challenges</span>: <span class="ident">usize</span>,
-        <span class="ident">lookup_tables</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">LookupTable</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">runtime_tables</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RuntimeTableCfg</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">ProverIndex</span><span class="op">&lt;</span><span class="ident">Vesta</span><span class="op">&gt;</span> {
-        <span class="comment">// not sure if theres a smarter way instead of the double unwrap, but should be fine in the test</span>
-        <span class="kw">let</span> <span class="ident">cs</span> <span class="op">=</span> <span class="ident">ConstraintSystem</span>::<span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">gates</span>)
-            .<span class="ident">lookup</span>(<span class="ident">lookup_tables</span>)
-            .<span class="ident">runtime</span>(<span class="ident">runtime_tables</span>)
-            .<span class="ident">public</span>(<span class="ident">public</span>)
-            .<span class="ident">prev_challenges</span>(<span class="ident">prev_challenges</span>)
-            .<span class="ident">build</span>()
-            .<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">srs</span> <span class="op">=</span> <span class="ident">SRS</span>::<span class="op">&lt;</span><span class="ident">Vesta</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span>());
-        <span class="ident">srs</span>.<span class="ident">add_lagrange_basis</span>(<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>);
-        <span class="kw">let</span> <span class="ident">srs</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">srs</span>);
+    <span class="kw">pub fn </span>new_index_for_test_with_lookups(
+        gates: Vec&lt;CircuitGate&lt;Fp&gt;&gt;,
+        public: usize,
+        prev_challenges: usize,
+        lookup_tables: Vec&lt;LookupTable&lt;Fp&gt;&gt;,
+        runtime_tables: <span class="prelude-ty">Option</span>&lt;Vec&lt;RuntimeTableCfg&lt;Fp&gt;&gt;&gt;,
+    ) -&gt; ProverIndex&lt;Vesta&gt; {
+        <span class="comment">// not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
+        </span><span class="kw">let </span>cs = ConstraintSystem::&lt;Fp&gt;::create(gates)
+            .lookup(lookup_tables)
+            .runtime(runtime_tables)
+            .public(public)
+            .prev_challenges(prev_challenges)
+            .build()
+            .unwrap();
+        <span class="kw">let </span><span class="kw-2">mut </span>srs = SRS::&lt;Vesta&gt;::create(cs.domain.d1.size());
+        srs.add_lagrange_basis(cs.domain.d1);
+        <span class="kw">let </span>srs = Arc::new(srs);
 
-        <span class="kw">let</span> (<span class="ident">endo_q</span>, <span class="ident">_endo_r</span>) <span class="op">=</span> <span class="ident">endos</span>::<span class="op">&lt;</span><span class="ident">Pallas</span><span class="op">&gt;</span>();
-        <span class="ident">ProverIndex</span>::<span class="op">&lt;</span><span class="ident">Vesta</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">cs</span>, <span class="ident">endo_q</span>, <span class="ident">srs</span>)
+        <span class="kw">let </span>(endo_q, _endo_r) = endos::&lt;Pallas&gt;();
+        ProverIndex::&lt;Vesta&gt;::create(cs, endo_q, srs)
     }
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_index_for_test</span>(<span class="ident">gates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">public</span>: <span class="ident">usize</span>) -&gt; <span class="ident">ProverIndex</span><span class="op">&lt;</span><span class="ident">Vesta</span><span class="op">&gt;</span> {
-        <span class="ident">new_index_for_test_with_lookups</span>(<span class="ident">gates</span>, <span class="ident">public</span>, <span class="number">0</span>, <span class="macro">vec!</span>[], <span class="prelude-val">None</span>)
+    <span class="kw">pub fn </span>new_index_for_test(gates: Vec&lt;CircuitGate&lt;Fp&gt;&gt;, public: usize) -&gt; ProverIndex&lt;Vesta&gt; {
+        new_index_for_test_with_lookups(gates, public, <span class="number">0</span>, <span class="macro">vec!</span>[], <span class="prelude-val">None</span>)
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

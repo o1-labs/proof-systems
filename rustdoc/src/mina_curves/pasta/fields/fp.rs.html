@@ -70,77 +70,77 @@
 <span id="70">70</span>
 <span id="71">71</span>
 <span id="72">72</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">biginteger::BigInteger256</span> <span class="kw">as</span> <span class="ident">BigInteger</span>, <span class="ident">FftParameters</span>, <span class="ident">Fp256</span>, <span class="ident">Fp256Parameters</span>};
+</pre><pre class="rust"><code><span class="kw">use </span>ark_ff::{biginteger::BigInteger256 <span class="kw">as </span>BigInteger, FftParameters, Fp256, Fp256Parameters};
 
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">Fp</span> <span class="op">=</span> <span class="ident">Fp256</span><span class="op">&lt;</span><span class="ident">FpParameters</span><span class="op">&gt;</span>;
+<span class="kw">pub type </span>Fp = Fp256&lt;FpParameters&gt;;
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">FpParameters</span>;
+<span class="kw">pub struct </span>FpParameters;
 
-<span class="kw">impl</span> <span class="ident">Fp256Parameters</span> <span class="kw">for</span> <span class="ident">FpParameters</span> {}
+<span class="kw">impl </span>Fp256Parameters <span class="kw">for </span>FpParameters {}
 
-<span class="kw">impl</span> <span class="ident">FftParameters</span> <span class="kw">for</span> <span class="ident">FpParameters</span> {
-    <span class="kw">type</span> <span class="ident">BigInt</span> <span class="op">=</span> <span class="ident">BigInteger</span>;
+<span class="kw">impl </span>FftParameters <span class="kw">for </span>FpParameters {
+    <span class="kw">type </span>BigInt = BigInteger;
 
-    <span class="kw">const</span> <span class="ident">TWO_ADICITY</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">32</span>;
+    <span class="kw">const </span>TWO_ADICITY: u32 = <span class="number">32</span>;
 
-    <span class="attribute">#[<span class="ident">rustfmt::skip</span>]</span>
-    <span class="kw">const</span> <span class="ident">TWO_ADIC_ROOT_OF_UNITY</span>: <span class="ident">BigInteger</span> <span class="op">=</span> <span class="ident">BigInteger</span>([
-        <span class="number">0xa28db849bad6dbf0</span>, <span class="number">0x9083cd03d3b539df</span>, <span class="number">0xfba6b9ca9dc8448e</span>, <span class="number">0x3ec928747b89c6da</span>
-    ]);
+    <span class="attribute">#[rustfmt::skip]
+    </span><span class="kw">const </span>TWO_ADIC_ROOT_OF_UNITY: BigInteger = BigInteger([
+        <span class="number">0xa28db849bad6dbf0</span>, <span class="number">0x9083cd03d3b539df</span>, <span class="number">0xfba6b9ca9dc8448e</span>, <span class="number">0x3ec928747b89c6da
+    </span>]);
 }
 
-<span class="kw">impl</span> <span class="ident">ark_ff::FpParameters</span> <span class="kw">for</span> <span class="ident">FpParameters</span> {
-    <span class="comment">// 28948022309329048855892746252171976963363056481941560715954676764349967630337</span>
-    <span class="kw">const</span> <span class="ident">MODULUS</span>: <span class="ident">BigInteger</span> <span class="op">=</span> <span class="ident">BigInteger</span>([
+<span class="kw">impl </span>ark_ff::FpParameters <span class="kw">for </span>FpParameters {
+    <span class="comment">// 28948022309329048855892746252171976963363056481941560715954676764349967630337
+    </span><span class="kw">const </span>MODULUS: BigInteger = BigInteger([
         <span class="number">0x992d30ed00000001</span>,
         <span class="number">0x224698fc094cf91b</span>,
         <span class="number">0x0</span>,
         <span class="number">0x4000000000000000</span>,
     ]);
 
-    <span class="kw">const</span> <span class="ident">R</span>: <span class="ident">BigInteger</span> <span class="op">=</span> <span class="ident">BigInteger</span>([
+    <span class="kw">const </span>R: BigInteger = BigInteger([
         <span class="number">0x34786d38fffffffd</span>,
         <span class="number">0x992c350be41914ad</span>,
         <span class="number">0xffffffffffffffff</span>,
         <span class="number">0x3fffffffffffffff</span>,
     ]);
 
-    <span class="kw">const</span> <span class="ident">R2</span>: <span class="ident">BigInteger</span> <span class="op">=</span> <span class="ident">BigInteger</span>([
+    <span class="kw">const </span>R2: BigInteger = BigInteger([
         <span class="number">0x8c78ecb30000000f</span>,
         <span class="number">0xd7d30dbd8b0de0e7</span>,
         <span class="number">0x7797a99bc3c95d18</span>,
         <span class="number">0x96d41af7b9cb714</span>,
     ]);
 
-    <span class="kw">const</span> <span class="ident">MODULUS_MINUS_ONE_DIV_TWO</span>: <span class="ident">BigInteger</span> <span class="op">=</span> <span class="ident">BigInteger</span>([
+    <span class="kw">const </span>MODULUS_MINUS_ONE_DIV_TWO: BigInteger = BigInteger([
         <span class="number">0xcc96987680000000</span>,
         <span class="number">0x11234c7e04a67c8d</span>,
         <span class="number">0x0</span>,
         <span class="number">0x2000000000000000</span>,
     ]);
 
-    <span class="comment">// T and T_MINUS_ONE_DIV_TWO, where MODULUS - 1 = 2^S * T</span>
-    <span class="kw">const</span> <span class="ident">T</span>: <span class="ident">BigInteger</span> <span class="op">=</span> <span class="ident">BigInteger</span>([<span class="number">0x94cf91b992d30ed</span>, <span class="number">0x224698fc</span>, <span class="number">0x0</span>, <span class="number">0x40000000</span>]);
+    <span class="comment">// T and T_MINUS_ONE_DIV_TWO, where MODULUS - 1 = 2^S * T
+    </span><span class="kw">const </span>T: BigInteger = BigInteger([<span class="number">0x94cf91b992d30ed</span>, <span class="number">0x224698fc</span>, <span class="number">0x0</span>, <span class="number">0x40000000</span>]);
 
-    <span class="kw">const</span> <span class="ident">T_MINUS_ONE_DIV_TWO</span>: <span class="ident">BigInteger</span> <span class="op">=</span>
-        <span class="ident">BigInteger</span>([<span class="number">0x4a67c8dcc969876</span>, <span class="number">0x11234c7e</span>, <span class="number">0x0</span>, <span class="number">0x20000000</span>]);
+    <span class="kw">const </span>T_MINUS_ONE_DIV_TWO: BigInteger =
+        BigInteger([<span class="number">0x4a67c8dcc969876</span>, <span class="number">0x11234c7e</span>, <span class="number">0x0</span>, <span class="number">0x20000000</span>]);
 
-    <span class="comment">// GENERATOR = 5</span>
-    <span class="kw">const</span> <span class="ident">GENERATOR</span>: <span class="ident">BigInteger</span> <span class="op">=</span> <span class="ident">BigInteger</span>([
+    <span class="comment">// GENERATOR = 5
+    </span><span class="kw">const </span>GENERATOR: BigInteger = BigInteger([
         <span class="number">0xa1a55e68ffffffed</span>,
         <span class="number">0x74c2a54b4f4982f3</span>,
         <span class="number">0xfffffffffffffffd</span>,
         <span class="number">0x3fffffffffffffff</span>,
     ]);
 
-    <span class="kw">const</span> <span class="ident">MODULUS_BITS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">255</span>;
+    <span class="kw">const </span>MODULUS_BITS: u32 = <span class="number">255</span>;
 
-    <span class="kw">const</span> <span class="ident">CAPACITY</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::MODULUS_BITS</span> <span class="op">-</span> <span class="number">1</span>;
+    <span class="kw">const </span>CAPACITY: u32 = <span class="self">Self</span>::MODULUS_BITS - <span class="number">1</span>;
 
-    <span class="kw">const</span> <span class="ident">REPR_SHAVE_BITS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1</span>;
+    <span class="kw">const </span>REPR_SHAVE_BITS: u32 = <span class="number">1</span>;
 
-    <span class="comment">// -(MODULUS^{-1} mod 2^64) mod 2^64</span>
-    <span class="kw">const</span> <span class="ident">INV</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">11037532056220336127</span>;
+    <span class="comment">// -(MODULUS^{-1} mod 2^64) mod 2^64
+    </span><span class="kw">const </span>INV: u64 = <span class="number">11037532056220336127</span>;
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="mina_curves" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="mina_curves" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

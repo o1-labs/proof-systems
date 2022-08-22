@@ -711,718 +711,718 @@
 <span id="711">711</span>
 <span id="712">712</span>
 <span id="713">713</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Batch elliptic curve algorithms based on the batch-affine principle.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The principle is the following:</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Usually, affine coordinates are not used because curve operations require</span>
-<span class="doccomment">//! division, which is very inefficient. However, if one is performing a large</span>
-<span class="doccomment">//! number of curve operations at the same time, then the inverses can be computed</span>
-<span class="doccomment">//! efficiently using the *batch inversion algorithm* which allows you to compute</span>
-<span class="doccomment">//! the inverses for an array of elements at a cost of 3 multiplications per element.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! With the reduced cost of inversion, in settings where you are computing many</span>
-<span class="doccomment">//! parallel elliptic curve operations, it is actually cheaper to use affine coordinates.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Most algorithms in this module take an argument `denominators: &amp;mut Vec&lt;F&gt;` which</span>
-<span class="doccomment">//! is a scratch array used for performing inversions. It is passed around to avoid re-allocating</span>
-<span class="doccomment">//! such a scratch array within each algorithm.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Batch elliptic curve algorithms based on the batch-affine principle.
+//!
+//! The principle is the following:
+//!
+//! Usually, affine coordinates are not used because curve operations require
+//! division, which is very inefficient. However, if one is performing a large
+//! number of curve operations at the same time, then the inverses can be computed
+//! efficiently using the *batch inversion algorithm* which allows you to compute
+//! the inverses for an array of elements at a cost of 3 multiplications per element.
+//!
+//! With the reduced cost of inversion, in settings where you are computing many
+//! parallel elliptic curve operations, it is actually cheaper to use affine coordinates.
+//!
+//! Most algorithms in this module take an argument `denominators: &amp;mut Vec&lt;F&gt;` which
+//! is a scratch array used for performing inversions. It is passed around to avoid re-allocating
+//! such a scratch array within each algorithm.
 
-<span class="kw">use</span> <span class="ident">ark_ec</span>::{
-    <span class="ident">models::short_weierstrass_jacobian::GroupAffine</span> <span class="kw">as</span> <span class="ident">SWJAffine</span>, <span class="ident">AffineCurve</span>, <span class="ident">ProjectiveCurve</span>,
-    <span class="ident">SWModelParameters</span>,
+</span><span class="kw">use </span>ark_ec::{
+    models::short_weierstrass_jacobian::GroupAffine <span class="kw">as </span>SWJAffine, AffineCurve, ProjectiveCurve,
+    SWModelParameters,
 };
-<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">BitIteratorBE</span>, <span class="ident">Field</span>, <span class="ident">One</span>, <span class="ident">PrimeField</span>, <span class="ident">Zero</span>};
-<span class="kw">use</span> <span class="ident">itertools::Itertools</span>;
-<span class="kw">use</span> <span class="ident">oracle::sponge::ScalarChallenge</span>;
-<span class="kw">use</span> <span class="ident">rayon::prelude</span>::<span class="kw-2">*</span>;
+<span class="kw">use </span>ark_ff::{BitIteratorBE, Field, One, PrimeField, Zero};
+<span class="kw">use </span>itertools::Itertools;
+<span class="kw">use </span>oracle::sponge::ScalarChallenge;
+<span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 
-<span class="kw">fn</span> <span class="ident">add_pairs_in_place</span><span class="op">&lt;</span><span class="ident">P</span>: <span class="ident">SWModelParameters</span><span class="op">&gt;</span>(<span class="ident">pairs</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SWJAffine</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span><span class="op">&gt;</span>) {
-    <span class="kw">let</span> <span class="ident">len</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">pairs</span>.<span class="ident">len</span>() <span class="op">%</span> <span class="number">2</span> <span class="op">==</span> <span class="number">0</span> {
-        <span class="ident">pairs</span>.<span class="ident">len</span>()
-    } <span class="kw">else</span> {
-        <span class="ident">pairs</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>
-    };
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">denominators</span> <span class="op">=</span> <span class="ident">pairs</span>
-        .<span class="ident">chunks_exact_mut</span>(<span class="number">2</span>)
-        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> {
-            <span class="kw">if</span> <span class="ident">p</span>[<span class="number">0</span>].<span class="ident">x</span> <span class="op">==</span> <span class="ident">p</span>[<span class="number">1</span>].<span class="ident">x</span> {
-                <span class="kw">if</span> <span class="ident">p</span>[<span class="number">1</span>].<span class="ident">y</span>.<span class="ident">is_zero</span>() {
-                    <span class="ident">P::BaseField::one</span>()
-                } <span class="kw">else</span> {
-                    <span class="ident">p</span>[<span class="number">1</span>].<span class="ident">y</span>.<span class="ident">double</span>()
+<span class="kw">fn </span>add_pairs_in_place&lt;P: SWModelParameters&gt;(pairs: <span class="kw-2">&amp;mut </span>Vec&lt;SWJAffine&lt;P&gt;&gt;) {
+    <span class="kw">let </span>len = <span class="kw">if </span>pairs.len() % <span class="number">2 </span>== <span class="number">0 </span>{
+        pairs.len()
+    } <span class="kw">else </span>{
+        pairs.len() - <span class="number">1
+    </span>};
+    <span class="kw">let </span><span class="kw-2">mut </span>denominators = pairs
+        .chunks_exact_mut(<span class="number">2</span>)
+        .map(|p| {
+            <span class="kw">if </span>p[<span class="number">0</span>].x == p[<span class="number">1</span>].x {
+                <span class="kw">if </span>p[<span class="number">1</span>].y.is_zero() {
+                    P::BaseField::one()
+                } <span class="kw">else </span>{
+                    p[<span class="number">1</span>].y.double()
                 }
-            } <span class="kw">else</span> {
-                <span class="ident">p</span>[<span class="number">0</span>].<span class="ident">x</span> <span class="op">-</span> <span class="ident">p</span>[<span class="number">1</span>].<span class="ident">x</span>
+            } <span class="kw">else </span>{
+                p[<span class="number">0</span>].x - p[<span class="number">1</span>].x
             }
         })
-        .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>();
+        .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
-    <span class="ident">ark_ff::batch_inversion</span>::<span class="op">&lt;</span><span class="ident">P::BaseField</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="ident">denominators</span>);
+    ark_ff::batch_inversion::&lt;P::BaseField&gt;(<span class="kw-2">&amp;mut </span>denominators);
 
-    <span class="kw">for</span> (<span class="ident">i</span>, <span class="ident">d</span>) <span class="kw">in</span> (<span class="number">0</span>..<span class="ident">len</span>).<span class="ident">step_by</span>(<span class="number">2</span>).<span class="ident">zip</span>(<span class="ident">denominators</span>.<span class="ident">iter</span>()) {
-        <span class="kw">let</span> <span class="ident">j</span> <span class="op">=</span> <span class="ident">i</span> <span class="op">/</span> <span class="number">2</span>;
-        <span class="kw">if</span> <span class="ident">pairs</span>[<span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>].<span class="ident">is_zero</span>() {
-            <span class="ident">pairs</span>[<span class="ident">j</span>] <span class="op">=</span> <span class="ident">pairs</span>[<span class="ident">i</span>];
-        } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">pairs</span>[<span class="ident">i</span>].<span class="ident">is_zero</span>() {
-            <span class="ident">pairs</span>[<span class="ident">j</span>] <span class="op">=</span> <span class="ident">pairs</span>[<span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>];
-        } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">pairs</span>[<span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>].<span class="ident">x</span> <span class="op">==</span> <span class="ident">pairs</span>[<span class="ident">i</span>].<span class="ident">x</span>
-            <span class="op">&amp;&amp;</span> (<span class="ident">pairs</span>[<span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>].<span class="ident">y</span> <span class="op">!</span><span class="op">=</span> <span class="ident">pairs</span>[<span class="ident">i</span>].<span class="ident">y</span> <span class="op">|</span><span class="op">|</span> <span class="ident">pairs</span>[<span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>].<span class="ident">y</span>.<span class="ident">is_zero</span>())
+    <span class="kw">for </span>(i, d) <span class="kw">in </span>(<span class="number">0</span>..len).step_by(<span class="number">2</span>).zip(denominators.iter()) {
+        <span class="kw">let </span>j = i / <span class="number">2</span>;
+        <span class="kw">if </span>pairs[i + <span class="number">1</span>].is_zero() {
+            pairs[j] = pairs[i];
+        } <span class="kw">else if </span>pairs[i].is_zero() {
+            pairs[j] = pairs[i + <span class="number">1</span>];
+        } <span class="kw">else if </span>pairs[i + <span class="number">1</span>].x == pairs[i].x
+            &amp;&amp; (pairs[i + <span class="number">1</span>].y != pairs[i].y || pairs[i + <span class="number">1</span>].y.is_zero())
         {
-            <span class="ident">pairs</span>[<span class="ident">j</span>] <span class="op">=</span> <span class="ident">SWJAffine</span>::<span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span><span class="ident">::zero</span>();
-        } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">pairs</span>[<span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>].<span class="ident">x</span> <span class="op">==</span> <span class="ident">pairs</span>[<span class="ident">i</span>].<span class="ident">x</span> <span class="op">&amp;&amp;</span> <span class="ident">pairs</span>[<span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>].<span class="ident">y</span> <span class="op">==</span> <span class="ident">pairs</span>[<span class="ident">i</span>].<span class="ident">y</span> {
-            <span class="kw">let</span> <span class="ident">sq</span> <span class="op">=</span> <span class="ident">pairs</span>[<span class="ident">i</span>].<span class="ident">x</span>.<span class="ident">square</span>();
-            <span class="kw">let</span> <span class="ident">s</span> <span class="op">=</span> (<span class="ident">sq</span>.<span class="ident">double</span>() <span class="op">+</span> <span class="ident">sq</span> <span class="op">+</span> <span class="ident">P::COEFF_A</span>) <span class="op">*</span> <span class="ident">d</span>;
-            <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">s</span>.<span class="ident">square</span>() <span class="op">-</span> <span class="ident">pairs</span>[<span class="ident">i</span>].<span class="ident">x</span>.<span class="ident">double</span>();
-            <span class="kw">let</span> <span class="ident">y</span> <span class="op">=</span> <span class="op">-</span><span class="ident">pairs</span>[<span class="ident">i</span>].<span class="ident">y</span> <span class="op">-</span> (<span class="ident">s</span> <span class="op">*</span> (<span class="ident">x</span> <span class="op">-</span> <span class="ident">pairs</span>[<span class="ident">i</span>].<span class="ident">x</span>));
-            <span class="ident">pairs</span>[<span class="ident">j</span>].<span class="ident">x</span> <span class="op">=</span> <span class="ident">x</span>;
-            <span class="ident">pairs</span>[<span class="ident">j</span>].<span class="ident">y</span> <span class="op">=</span> <span class="ident">y</span>;
-        } <span class="kw">else</span> {
-            <span class="kw">let</span> <span class="ident">s</span> <span class="op">=</span> (<span class="ident">pairs</span>[<span class="ident">i</span>].<span class="ident">y</span> <span class="op">-</span> <span class="ident">pairs</span>[<span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>].<span class="ident">y</span>) <span class="op">*</span> <span class="ident">d</span>;
-            <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">s</span>.<span class="ident">square</span>() <span class="op">-</span> <span class="ident">pairs</span>[<span class="ident">i</span>].<span class="ident">x</span> <span class="op">-</span> <span class="ident">pairs</span>[<span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>].<span class="ident">x</span>;
-            <span class="kw">let</span> <span class="ident">y</span> <span class="op">=</span> <span class="op">-</span><span class="ident">pairs</span>[<span class="ident">i</span>].<span class="ident">y</span> <span class="op">-</span> (<span class="ident">s</span> <span class="op">*</span> (<span class="ident">x</span> <span class="op">-</span> <span class="ident">pairs</span>[<span class="ident">i</span>].<span class="ident">x</span>));
-            <span class="ident">pairs</span>[<span class="ident">j</span>].<span class="ident">x</span> <span class="op">=</span> <span class="ident">x</span>;
-            <span class="ident">pairs</span>[<span class="ident">j</span>].<span class="ident">y</span> <span class="op">=</span> <span class="ident">y</span>;
+            pairs[j] = SWJAffine::&lt;P&gt;::zero();
+        } <span class="kw">else if </span>pairs[i + <span class="number">1</span>].x == pairs[i].x &amp;&amp; pairs[i + <span class="number">1</span>].y == pairs[i].y {
+            <span class="kw">let </span>sq = pairs[i].x.square();
+            <span class="kw">let </span>s = (sq.double() + sq + P::COEFF_A) * d;
+            <span class="kw">let </span>x = s.square() - pairs[i].x.double();
+            <span class="kw">let </span>y = -pairs[i].y - (s * (x - pairs[i].x));
+            pairs[j].x = x;
+            pairs[j].y = y;
+        } <span class="kw">else </span>{
+            <span class="kw">let </span>s = (pairs[i].y - pairs[i + <span class="number">1</span>].y) * d;
+            <span class="kw">let </span>x = s.square() - pairs[i].x - pairs[i + <span class="number">1</span>].x;
+            <span class="kw">let </span>y = -pairs[i].y - (s * (x - pairs[i].x));
+            pairs[j].x = x;
+            pairs[j].y = y;
         }
     }
 
-    <span class="kw">let</span> <span class="ident">len</span> <span class="op">=</span> <span class="ident">pairs</span>.<span class="ident">len</span>();
-    <span class="kw">if</span> <span class="ident">len</span> <span class="op">%</span> <span class="number">2</span> <span class="op">==</span> <span class="number">1</span> {
-        <span class="ident">pairs</span>[<span class="ident">len</span> <span class="op">/</span> <span class="number">2</span>] <span class="op">=</span> <span class="ident">pairs</span>[<span class="ident">len</span> <span class="op">-</span> <span class="number">1</span>];
-        <span class="ident">pairs</span>.<span class="ident">truncate</span>(<span class="ident">len</span> <span class="op">/</span> <span class="number">2</span> <span class="op">+</span> <span class="number">1</span>);
-    } <span class="kw">else</span> {
-        <span class="ident">pairs</span>.<span class="ident">truncate</span>(<span class="ident">len</span> <span class="op">/</span> <span class="number">2</span>);
+    <span class="kw">let </span>len = pairs.len();
+    <span class="kw">if </span>len % <span class="number">2 </span>== <span class="number">1 </span>{
+        pairs[len / <span class="number">2</span>] = pairs[len - <span class="number">1</span>];
+        pairs.truncate(len / <span class="number">2 </span>+ <span class="number">1</span>);
+    } <span class="kw">else </span>{
+        pairs.truncate(len / <span class="number">2</span>);
     }
 }
 
-<span class="doccomment">/// Given arrays of curve points `v0` and `v1` do `v0[i] += v1[i]` for each i,</span>
-<span class="doccomment">/// assuming that for each `i`, `v0[i].x != v1[i].x` so we can use the ordinary</span>
-<span class="doccomment">/// addition formula and don&#39;t have to handle the edge cases of doubling and</span>
-<span class="doccomment">/// hitting the point at infinity.</span>
-<span class="kw">fn</span> <span class="ident">batch_add_assign_no_branch</span><span class="op">&lt;</span><span class="ident">P</span>: <span class="ident">SWModelParameters</span><span class="op">&gt;</span>(
-    <span class="ident">denominators</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">P::BaseField</span>],
-    <span class="ident">v0</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">SWJAffine</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span>],
-    <span class="ident">v1</span>: <span class="kw-2">&amp;</span>[<span class="ident">SWJAffine</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span>],
+<span class="doccomment">/// Given arrays of curve points `v0` and `v1` do `v0[i] += v1[i]` for each i,
+/// assuming that for each `i`, `v0[i].x != v1[i].x` so we can use the ordinary
+/// addition formula and don&#39;t have to handle the edge cases of doubling and
+/// hitting the point at infinity.
+</span><span class="kw">fn </span>batch_add_assign_no_branch&lt;P: SWModelParameters&gt;(
+    denominators: <span class="kw-2">&amp;mut </span>[P::BaseField],
+    v0: <span class="kw-2">&amp;mut </span>[SWJAffine&lt;P&gt;],
+    v1: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
 ) {
-    <span class="ident">denominators</span>
-        .<span class="ident">par_iter_mut</span>()
-        .<span class="ident">enumerate</span>()
-        .<span class="ident">for_each</span>(<span class="op">|</span>(<span class="ident">i</span>, <span class="ident">denom</span>)<span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">p0</span> <span class="op">=</span> <span class="ident">v0</span>[<span class="ident">i</span>];
-            <span class="kw">let</span> <span class="ident">p1</span> <span class="op">=</span> <span class="ident">v1</span>[<span class="ident">i</span>];
-            <span class="kw">let</span> <span class="ident">d</span> <span class="op">=</span> <span class="ident">p0</span>.<span class="ident">x</span> <span class="op">-</span> <span class="ident">p1</span>.<span class="ident">x</span>;
-            <span class="kw-2">*</span><span class="ident">denom</span> <span class="op">=</span> <span class="ident">d</span>;
+    denominators
+        .par_iter_mut()
+        .enumerate()
+        .for_each(|(i, denom)| {
+            <span class="kw">let </span>p0 = v0[i];
+            <span class="kw">let </span>p1 = v1[i];
+            <span class="kw">let </span>d = p0.x - p1.x;
+            <span class="kw-2">*</span>denom = d;
         });
 
-    <span class="ident">ark_ff::batch_inversion</span>::<span class="op">&lt;</span><span class="ident">P::BaseField</span><span class="op">&gt;</span>(<span class="ident">denominators</span>);
+    ark_ff::batch_inversion::&lt;P::BaseField&gt;(denominators);
 
-    <span class="ident">denominators</span>
-        .<span class="ident">par_iter</span>()
-        .<span class="ident">zip</span>(<span class="ident">v0</span>.<span class="ident">par_iter_mut</span>())
-        .<span class="ident">zip</span>(<span class="ident">v1</span>.<span class="ident">par_iter</span>())
-        .<span class="ident">for_each</span>(<span class="op">|</span>((<span class="ident">d</span>, <span class="ident">p0</span>), <span class="ident">p1</span>)<span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">s</span> <span class="op">=</span> (<span class="ident">p0</span>.<span class="ident">y</span> <span class="op">-</span> <span class="ident">p1</span>.<span class="ident">y</span>) <span class="op">*</span> <span class="ident">d</span>;
-            <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">s</span>.<span class="ident">square</span>() <span class="op">-</span> <span class="ident">p0</span>.<span class="ident">x</span> <span class="op">-</span> <span class="ident">p1</span>.<span class="ident">x</span>;
-            <span class="kw">let</span> <span class="ident">y</span> <span class="op">=</span> <span class="op">-</span><span class="ident">p0</span>.<span class="ident">y</span> <span class="op">-</span> (<span class="ident">s</span> <span class="op">*</span> (<span class="ident">x</span> <span class="op">-</span> <span class="ident">p0</span>.<span class="ident">x</span>));
-            <span class="ident">p0</span>.<span class="ident">x</span> <span class="op">=</span> <span class="ident">x</span>;
-            <span class="ident">p0</span>.<span class="ident">y</span> <span class="op">=</span> <span class="ident">y</span>;
+    denominators
+        .par_iter()
+        .zip(v0.par_iter_mut())
+        .zip(v1.par_iter())
+        .for_each(|((d, p0), p1)| {
+            <span class="kw">let </span>s = (p0.y - p1.y) * d;
+            <span class="kw">let </span>x = s.square() - p0.x - p1.x;
+            <span class="kw">let </span>y = -p0.y - (s * (x - p0.x));
+            p0.x = x;
+            p0.y = y;
         });
 }
 
-<span class="doccomment">/// Given arrays of curve points `v0` and `v1` do `v0[i] += v1[i]` for each i.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">batch_add_assign</span><span class="op">&lt;</span><span class="ident">P</span>: <span class="ident">SWModelParameters</span><span class="op">&gt;</span>(
-    <span class="ident">denominators</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">P::BaseField</span>],
-    <span class="ident">v0</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">SWJAffine</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span>],
-    <span class="ident">v1</span>: <span class="kw-2">&amp;</span>[<span class="ident">SWJAffine</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span>],
+<span class="doccomment">/// Given arrays of curve points `v0` and `v1` do `v0[i] += v1[i]` for each i.
+</span><span class="kw">pub fn </span>batch_add_assign&lt;P: SWModelParameters&gt;(
+    denominators: <span class="kw-2">&amp;mut </span>[P::BaseField],
+    v0: <span class="kw-2">&amp;mut </span>[SWJAffine&lt;P&gt;],
+    v1: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
 ) {
-    <span class="ident">denominators</span>
-        .<span class="ident">par_iter_mut</span>()
-        .<span class="ident">zip</span>(<span class="ident">v0</span>.<span class="ident">par_iter</span>())
-        .<span class="ident">zip</span>(<span class="ident">v1</span>.<span class="ident">par_iter</span>())
-        .<span class="ident">for_each</span>(<span class="op">|</span>((<span class="ident">denom</span>, <span class="ident">p0</span>), <span class="ident">p1</span>)<span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">d</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">p0</span>.<span class="ident">x</span> <span class="op">==</span> <span class="ident">p1</span>.<span class="ident">x</span> {
-                <span class="kw">if</span> <span class="ident">p1</span>.<span class="ident">y</span>.<span class="ident">is_zero</span>() {
-                    <span class="ident">P::BaseField::one</span>()
-                } <span class="kw">else</span> {
-                    <span class="ident">p1</span>.<span class="ident">y</span>.<span class="ident">double</span>()
+    denominators
+        .par_iter_mut()
+        .zip(v0.par_iter())
+        .zip(v1.par_iter())
+        .for_each(|((denom, p0), p1)| {
+            <span class="kw">let </span>d = <span class="kw">if </span>p0.x == p1.x {
+                <span class="kw">if </span>p1.y.is_zero() {
+                    P::BaseField::one()
+                } <span class="kw">else </span>{
+                    p1.y.double()
                 }
-            } <span class="kw">else</span> {
-                <span class="ident">p0</span>.<span class="ident">x</span> <span class="op">-</span> <span class="ident">p1</span>.<span class="ident">x</span>
+            } <span class="kw">else </span>{
+                p0.x - p1.x
             };
-            <span class="kw-2">*</span><span class="ident">denom</span> <span class="op">=</span> <span class="ident">d</span>;
+            <span class="kw-2">*</span>denom = d;
         });
 
-    <span class="ident">ark_ff::batch_inversion</span>::<span class="op">&lt;</span><span class="ident">P::BaseField</span><span class="op">&gt;</span>(<span class="ident">denominators</span>);
+    ark_ff::batch_inversion::&lt;P::BaseField&gt;(denominators);
 
-    <span class="ident">denominators</span>
-        .<span class="ident">par_iter</span>()
-        .<span class="ident">zip</span>(<span class="ident">v0</span>.<span class="ident">par_iter_mut</span>())
-        .<span class="ident">zip</span>(<span class="ident">v1</span>.<span class="ident">par_iter</span>())
-        .<span class="ident">for_each</span>(<span class="op">|</span>((<span class="ident">d</span>, <span class="ident">p0</span>), <span class="ident">p1</span>)<span class="op">|</span> {
-            <span class="kw">if</span> <span class="ident">p1</span>.<span class="ident">is_zero</span>() {
-            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">p0</span>.<span class="ident">is_zero</span>() {
-                <span class="kw-2">*</span><span class="ident">p0</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">p1</span>;
-            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">p1</span>.<span class="ident">x</span> <span class="op">==</span> <span class="ident">p0</span>.<span class="ident">x</span> <span class="op">&amp;&amp;</span> (<span class="ident">p1</span>.<span class="ident">y</span> <span class="op">!</span><span class="op">=</span> <span class="ident">p0</span>.<span class="ident">y</span> <span class="op">|</span><span class="op">|</span> <span class="ident">p1</span>.<span class="ident">y</span> <span class="op">==</span> <span class="ident">P::BaseField::zero</span>()) {
-                <span class="kw-2">*</span><span class="ident">p0</span> <span class="op">=</span> <span class="ident">SWJAffine</span>::<span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span><span class="ident">::zero</span>();
-            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">p1</span>.<span class="ident">x</span> <span class="op">==</span> <span class="ident">p0</span>.<span class="ident">x</span> <span class="op">&amp;&amp;</span> <span class="ident">p1</span>.<span class="ident">y</span> <span class="op">==</span> <span class="ident">p0</span>.<span class="ident">y</span> {
-                <span class="kw">let</span> <span class="ident">sq</span> <span class="op">=</span> <span class="ident">p0</span>.<span class="ident">x</span>.<span class="ident">square</span>();
-                <span class="kw">let</span> <span class="ident">s</span> <span class="op">=</span> (<span class="ident">sq</span>.<span class="ident">double</span>() <span class="op">+</span> <span class="ident">sq</span> <span class="op">+</span> <span class="ident">P::COEFF_A</span>) <span class="op">*</span> <span class="ident">d</span>;
-                <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">s</span>.<span class="ident">square</span>() <span class="op">-</span> <span class="ident">p0</span>.<span class="ident">x</span>.<span class="ident">double</span>();
-                <span class="kw">let</span> <span class="ident">y</span> <span class="op">=</span> <span class="op">-</span><span class="ident">p0</span>.<span class="ident">y</span> <span class="op">-</span> (<span class="ident">s</span> <span class="op">*</span> (<span class="ident">x</span> <span class="op">-</span> <span class="ident">p0</span>.<span class="ident">x</span>));
-                <span class="ident">p0</span>.<span class="ident">x</span> <span class="op">=</span> <span class="ident">x</span>;
-                <span class="ident">p0</span>.<span class="ident">y</span> <span class="op">=</span> <span class="ident">y</span>;
-            } <span class="kw">else</span> {
-                <span class="kw">let</span> <span class="ident">s</span> <span class="op">=</span> (<span class="ident">p0</span>.<span class="ident">y</span> <span class="op">-</span> <span class="ident">p1</span>.<span class="ident">y</span>) <span class="op">*</span> <span class="ident">d</span>;
-                <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">s</span>.<span class="ident">square</span>() <span class="op">-</span> <span class="ident">p0</span>.<span class="ident">x</span> <span class="op">-</span> <span class="ident">p1</span>.<span class="ident">x</span>;
-                <span class="kw">let</span> <span class="ident">y</span> <span class="op">=</span> <span class="op">-</span><span class="ident">p0</span>.<span class="ident">y</span> <span class="op">-</span> (<span class="ident">s</span> <span class="op">*</span> (<span class="ident">x</span> <span class="op">-</span> <span class="ident">p0</span>.<span class="ident">x</span>));
-                <span class="ident">p0</span>.<span class="ident">x</span> <span class="op">=</span> <span class="ident">x</span>;
-                <span class="ident">p0</span>.<span class="ident">y</span> <span class="op">=</span> <span class="ident">y</span>;
+    denominators
+        .par_iter()
+        .zip(v0.par_iter_mut())
+        .zip(v1.par_iter())
+        .for_each(|((d, p0), p1)| {
+            <span class="kw">if </span>p1.is_zero() {
+            } <span class="kw">else if </span>p0.is_zero() {
+                <span class="kw-2">*</span>p0 = <span class="kw-2">*</span>p1;
+            } <span class="kw">else if </span>p1.x == p0.x &amp;&amp; (p1.y != p0.y || p1.y == P::BaseField::zero()) {
+                <span class="kw-2">*</span>p0 = SWJAffine::&lt;P&gt;::zero();
+            } <span class="kw">else if </span>p1.x == p0.x &amp;&amp; p1.y == p0.y {
+                <span class="kw">let </span>sq = p0.x.square();
+                <span class="kw">let </span>s = (sq.double() + sq + P::COEFF_A) * d;
+                <span class="kw">let </span>x = s.square() - p0.x.double();
+                <span class="kw">let </span>y = -p0.y - (s * (x - p0.x));
+                p0.x = x;
+                p0.y = y;
+            } <span class="kw">else </span>{
+                <span class="kw">let </span>s = (p0.y - p1.y) * d;
+                <span class="kw">let </span>x = s.square() - p0.x - p1.x;
+                <span class="kw">let </span>y = -p0.y - (s * (x - p0.x));
+                p0.x = x;
+                p0.y = y;
             }
         });
 }
 
-<span class="kw">fn</span> <span class="ident">affine_window_combine_base</span><span class="op">&lt;</span><span class="ident">P</span>: <span class="ident">SWModelParameters</span><span class="op">&gt;</span>(
-    <span class="ident">g1</span>: <span class="kw-2">&amp;</span>[<span class="ident">SWJAffine</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span>],
-    <span class="ident">g2</span>: <span class="kw-2">&amp;</span>[<span class="ident">SWJAffine</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span>],
-    <span class="ident">x1</span>: <span class="ident">P::ScalarField</span>,
-    <span class="ident">x2</span>: <span class="ident">P::ScalarField</span>,
-) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SWJAffine</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">g1g2</span> <span class="op">=</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">v</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> (<span class="number">0</span>..<span class="number">2</span> <span class="op">*</span> <span class="ident">g1</span>.<span class="ident">len</span>())
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">j</span> <span class="op">=</span> <span class="ident">i</span> <span class="op">/</span> <span class="number">2</span>;
-                <span class="kw">if</span> <span class="ident">i</span> <span class="op">%</span> <span class="number">2</span> <span class="op">==</span> <span class="number">0</span> {
-                    <span class="ident">g1</span>[<span class="ident">j</span>]
-                } <span class="kw">else</span> {
-                    <span class="ident">g2</span>[<span class="ident">j</span>]
+<span class="kw">fn </span>affine_window_combine_base&lt;P: SWModelParameters&gt;(
+    g1: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
+    g2: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
+    x1: P::ScalarField,
+    x2: P::ScalarField,
+) -&gt; Vec&lt;SWJAffine&lt;P&gt;&gt; {
+    <span class="kw">let </span>g1g2 = {
+        <span class="kw">let </span><span class="kw-2">mut </span>v: Vec&lt;<span class="kw">_</span>&gt; = (<span class="number">0</span>..<span class="number">2 </span>* g1.len())
+            .map(|i| {
+                <span class="kw">let </span>j = i / <span class="number">2</span>;
+                <span class="kw">if </span>i % <span class="number">2 </span>== <span class="number">0 </span>{
+                    g1[j]
+                } <span class="kw">else </span>{
+                    g2[j]
                 }
             })
-            .<span class="ident">collect</span>();
-        <span class="ident">add_pairs_in_place</span>(<span class="kw-2">&amp;mut</span> <span class="ident">v</span>);
-        <span class="ident">v</span>
+            .collect();
+        add_pairs_in_place(<span class="kw-2">&amp;mut </span>v);
+        v
     };
-    <span class="macro">assert!</span>(<span class="ident">g1g2</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="ident">g1</span>.<span class="ident">len</span>());
+    <span class="macro">assert!</span>(g1g2.len() == g1.len());
 
-    <span class="kw">let</span> <span class="ident">windows1</span> <span class="op">=</span> <span class="ident">BitIteratorBE::new</span>(<span class="ident">x1</span>.<span class="ident">into_repr</span>()).<span class="ident">tuples</span>();
-    <span class="kw">let</span> <span class="ident">windows2</span> <span class="op">=</span> <span class="ident">BitIteratorBE::new</span>(<span class="ident">x2</span>.<span class="ident">into_repr</span>()).<span class="ident">tuples</span>();
+    <span class="kw">let </span>windows1 = BitIteratorBE::new(x1.into_repr()).tuples();
+    <span class="kw">let </span>windows2 = BitIteratorBE::new(x2.into_repr()).tuples();
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">points</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">SWJAffine</span>::<span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span><span class="ident">::zero</span>(); <span class="ident">g1</span>.<span class="ident">len</span>()];
+    <span class="kw">let </span><span class="kw-2">mut </span>points = <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); g1.len()];
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">denominators</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">P::BaseField::zero</span>(); <span class="ident">g1</span>.<span class="ident">len</span>()];
+    <span class="kw">let </span><span class="kw-2">mut </span>denominators = <span class="macro">vec!</span>[P::BaseField::zero(); g1.len()];
 
-    <span class="kw">let</span> [<span class="ident">g01_00</span>, <span class="ident">g10_00</span>, <span class="ident">g11_00</span>, <span class="ident">g00_01</span>, <span class="ident">g01_01</span>, <span class="ident">g10_01</span>, <span class="ident">g11_01</span>, <span class="ident">g00_10</span>, <span class="ident">g01_10</span>, <span class="ident">g10_10</span>, <span class="ident">g11_10</span>, <span class="ident">g00_11</span>, <span class="ident">g01_11</span>, <span class="ident">g10_11</span>, <span class="ident">g11_11</span>] <span class="op">=</span>
-        <span class="ident">affine_shamir_window_table</span>(<span class="kw-2">&amp;mut</span> <span class="ident">denominators</span>, <span class="ident">g1</span>, <span class="ident">g2</span>);
+    <span class="kw">let </span>[g01_00, g10_00, g11_00, g00_01, g01_01, g10_01, g11_01, g00_10, g01_10, g10_10, g11_10, g00_11, g01_11, g10_11, g11_11] =
+        affine_shamir_window_table(<span class="kw-2">&amp;mut </span>denominators, g1, g2);
 
-    <span class="kw">for</span> ((<span class="ident">hi_1</span>, <span class="ident">lo_1</span>), (<span class="ident">hi_2</span>, <span class="ident">lo_2</span>)) <span class="kw">in</span> <span class="ident">windows1</span>.<span class="ident">zip</span>(<span class="ident">windows2</span>) {
-        <span class="comment">// double in place</span>
-        <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">2</span> {
-            <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">g1</span>.<span class="ident">len</span>() {
-                <span class="ident">denominators</span>[<span class="ident">i</span>] <span class="op">=</span> <span class="ident">points</span>[<span class="ident">i</span>].<span class="ident">y</span>.<span class="ident">double</span>();
+    <span class="kw">for </span>((hi_1, lo_1), (hi_2, lo_2)) <span class="kw">in </span>windows1.zip(windows2) {
+        <span class="comment">// double in place
+        </span><span class="kw">for _ in </span><span class="number">0</span>..<span class="number">2 </span>{
+            <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..g1.len() {
+                denominators[i] = points[i].y.double();
             }
-            <span class="ident">ark_ff::batch_inversion</span>::<span class="op">&lt;</span><span class="ident">P::BaseField</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="ident">denominators</span>);
+            ark_ff::batch_inversion::&lt;P::BaseField&gt;(<span class="kw-2">&amp;mut </span>denominators);
 
-            <span class="comment">// TODO: Use less memory</span>
-            <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">g1</span>.<span class="ident">len</span>() {
-                <span class="kw">let</span> <span class="ident">d</span> <span class="op">=</span> <span class="ident">denominators</span>[<span class="ident">i</span>];
-                <span class="kw">let</span> <span class="ident">sq</span> <span class="op">=</span> <span class="ident">points</span>[<span class="ident">i</span>].<span class="ident">x</span>.<span class="ident">square</span>();
-                <span class="kw">let</span> <span class="ident">s</span> <span class="op">=</span> (<span class="ident">sq</span>.<span class="ident">double</span>() <span class="op">+</span> <span class="ident">sq</span> <span class="op">+</span> <span class="ident">P::COEFF_A</span>) <span class="op">*</span> <span class="ident">d</span>;
-                <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">s</span>.<span class="ident">square</span>() <span class="op">-</span> <span class="ident">points</span>[<span class="ident">i</span>].<span class="ident">x</span>.<span class="ident">double</span>();
-                <span class="kw">let</span> <span class="ident">y</span> <span class="op">=</span> <span class="op">-</span><span class="ident">points</span>[<span class="ident">i</span>].<span class="ident">y</span> <span class="op">-</span> (<span class="ident">s</span> <span class="op">*</span> (<span class="ident">x</span> <span class="op">-</span> <span class="ident">points</span>[<span class="ident">i</span>].<span class="ident">x</span>));
-                <span class="ident">points</span>[<span class="ident">i</span>].<span class="ident">x</span> <span class="op">=</span> <span class="ident">x</span>;
-                <span class="ident">points</span>[<span class="ident">i</span>].<span class="ident">y</span> <span class="op">=</span> <span class="ident">y</span>;
+            <span class="comment">// TODO: Use less memory
+            </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..g1.len() {
+                <span class="kw">let </span>d = denominators[i];
+                <span class="kw">let </span>sq = points[i].x.square();
+                <span class="kw">let </span>s = (sq.double() + sq + P::COEFF_A) * d;
+                <span class="kw">let </span>x = s.square() - points[i].x.double();
+                <span class="kw">let </span>y = -points[i].y - (s * (x - points[i].x));
+                points[i].x = x;
+                points[i].y = y;
             }
         }
 
-        <span class="kw">match</span> ((<span class="ident">hi_1</span>, <span class="ident">lo_1</span>), (<span class="ident">hi_2</span>, <span class="ident">lo_2</span>)) {
+        <span class="kw">match </span>((hi_1, lo_1), (hi_2, lo_2)) {
             ((<span class="bool-val">false</span>, <span class="bool-val">false</span>), (<span class="bool-val">false</span>, <span class="bool-val">false</span>)) =&gt; (),
             ((<span class="bool-val">false</span>, <span class="bool-val">true</span>), (<span class="bool-val">false</span>, <span class="bool-val">false</span>)) =&gt; {
-                <span class="ident">batch_add_assign</span>(<span class="kw-2">&amp;mut</span> <span class="ident">denominators</span>, <span class="kw-2">&amp;mut</span> <span class="ident">points</span>, <span class="kw-2">&amp;</span><span class="ident">g01_00</span>)
+                batch_add_assign(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, <span class="kw-2">&amp;</span>g01_00)
             }
             ((<span class="bool-val">true</span>, <span class="bool-val">false</span>), (<span class="bool-val">false</span>, <span class="bool-val">false</span>)) =&gt; {
-                <span class="ident">batch_add_assign</span>(<span class="kw-2">&amp;mut</span> <span class="ident">denominators</span>, <span class="kw-2">&amp;mut</span> <span class="ident">points</span>, <span class="kw-2">&amp;</span><span class="ident">g10_00</span>)
+                batch_add_assign(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, <span class="kw-2">&amp;</span>g10_00)
             }
             ((<span class="bool-val">true</span>, <span class="bool-val">true</span>), (<span class="bool-val">false</span>, <span class="bool-val">false</span>)) =&gt; {
-                <span class="ident">batch_add_assign</span>(<span class="kw-2">&amp;mut</span> <span class="ident">denominators</span>, <span class="kw-2">&amp;mut</span> <span class="ident">points</span>, <span class="kw-2">&amp;</span><span class="ident">g11_00</span>)
+                batch_add_assign(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, <span class="kw-2">&amp;</span>g11_00)
             }
 
             ((<span class="bool-val">false</span>, <span class="bool-val">false</span>), (<span class="bool-val">false</span>, <span class="bool-val">true</span>)) =&gt; {
-                <span class="ident">batch_add_assign</span>(<span class="kw-2">&amp;mut</span> <span class="ident">denominators</span>, <span class="kw-2">&amp;mut</span> <span class="ident">points</span>, <span class="kw-2">&amp;</span><span class="ident">g00_01</span>)
+                batch_add_assign(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, <span class="kw-2">&amp;</span>g00_01)
             }
             ((<span class="bool-val">false</span>, <span class="bool-val">true</span>), (<span class="bool-val">false</span>, <span class="bool-val">true</span>)) =&gt; {
-                <span class="ident">batch_add_assign</span>(<span class="kw-2">&amp;mut</span> <span class="ident">denominators</span>, <span class="kw-2">&amp;mut</span> <span class="ident">points</span>, <span class="kw-2">&amp;</span><span class="ident">g01_01</span>)
+                batch_add_assign(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, <span class="kw-2">&amp;</span>g01_01)
             }
             ((<span class="bool-val">true</span>, <span class="bool-val">false</span>), (<span class="bool-val">false</span>, <span class="bool-val">true</span>)) =&gt; {
-                <span class="ident">batch_add_assign</span>(<span class="kw-2">&amp;mut</span> <span class="ident">denominators</span>, <span class="kw-2">&amp;mut</span> <span class="ident">points</span>, <span class="kw-2">&amp;</span><span class="ident">g10_01</span>)
+                batch_add_assign(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, <span class="kw-2">&amp;</span>g10_01)
             }
             ((<span class="bool-val">true</span>, <span class="bool-val">true</span>), (<span class="bool-val">false</span>, <span class="bool-val">true</span>)) =&gt; {
-                <span class="ident">batch_add_assign</span>(<span class="kw-2">&amp;mut</span> <span class="ident">denominators</span>, <span class="kw-2">&amp;mut</span> <span class="ident">points</span>, <span class="kw-2">&amp;</span><span class="ident">g11_01</span>)
+                batch_add_assign(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, <span class="kw-2">&amp;</span>g11_01)
             }
 
             ((<span class="bool-val">false</span>, <span class="bool-val">false</span>), (<span class="bool-val">true</span>, <span class="bool-val">false</span>)) =&gt; {
-                <span class="ident">batch_add_assign</span>(<span class="kw-2">&amp;mut</span> <span class="ident">denominators</span>, <span class="kw-2">&amp;mut</span> <span class="ident">points</span>, <span class="kw-2">&amp;</span><span class="ident">g00_10</span>)
+                batch_add_assign(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, <span class="kw-2">&amp;</span>g00_10)
             }
             ((<span class="bool-val">false</span>, <span class="bool-val">true</span>), (<span class="bool-val">true</span>, <span class="bool-val">false</span>)) =&gt; {
-                <span class="ident">batch_add_assign</span>(<span class="kw-2">&amp;mut</span> <span class="ident">denominators</span>, <span class="kw-2">&amp;mut</span> <span class="ident">points</span>, <span class="kw-2">&amp;</span><span class="ident">g01_10</span>)
+                batch_add_assign(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, <span class="kw-2">&amp;</span>g01_10)
             }
             ((<span class="bool-val">true</span>, <span class="bool-val">false</span>), (<span class="bool-val">true</span>, <span class="bool-val">false</span>)) =&gt; {
-                <span class="ident">batch_add_assign</span>(<span class="kw-2">&amp;mut</span> <span class="ident">denominators</span>, <span class="kw-2">&amp;mut</span> <span class="ident">points</span>, <span class="kw-2">&amp;</span><span class="ident">g10_10</span>)
+                batch_add_assign(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, <span class="kw-2">&amp;</span>g10_10)
             }
             ((<span class="bool-val">true</span>, <span class="bool-val">true</span>), (<span class="bool-val">true</span>, <span class="bool-val">false</span>)) =&gt; {
-                <span class="ident">batch_add_assign</span>(<span class="kw-2">&amp;mut</span> <span class="ident">denominators</span>, <span class="kw-2">&amp;mut</span> <span class="ident">points</span>, <span class="kw-2">&amp;</span><span class="ident">g11_10</span>)
+                batch_add_assign(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, <span class="kw-2">&amp;</span>g11_10)
             }
 
             ((<span class="bool-val">false</span>, <span class="bool-val">false</span>), (<span class="bool-val">true</span>, <span class="bool-val">true</span>)) =&gt; {
-                <span class="ident">batch_add_assign</span>(<span class="kw-2">&amp;mut</span> <span class="ident">denominators</span>, <span class="kw-2">&amp;mut</span> <span class="ident">points</span>, <span class="kw-2">&amp;</span><span class="ident">g00_11</span>)
+                batch_add_assign(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, <span class="kw-2">&amp;</span>g00_11)
             }
             ((<span class="bool-val">false</span>, <span class="bool-val">true</span>), (<span class="bool-val">true</span>, <span class="bool-val">true</span>)) =&gt; {
-                <span class="ident">batch_add_assign</span>(<span class="kw-2">&amp;mut</span> <span class="ident">denominators</span>, <span class="kw-2">&amp;mut</span> <span class="ident">points</span>, <span class="kw-2">&amp;</span><span class="ident">g01_11</span>)
+                batch_add_assign(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, <span class="kw-2">&amp;</span>g01_11)
             }
             ((<span class="bool-val">true</span>, <span class="bool-val">false</span>), (<span class="bool-val">true</span>, <span class="bool-val">true</span>)) =&gt; {
-                <span class="ident">batch_add_assign</span>(<span class="kw-2">&amp;mut</span> <span class="ident">denominators</span>, <span class="kw-2">&amp;mut</span> <span class="ident">points</span>, <span class="kw-2">&amp;</span><span class="ident">g10_11</span>)
+                batch_add_assign(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, <span class="kw-2">&amp;</span>g10_11)
             }
             ((<span class="bool-val">true</span>, <span class="bool-val">true</span>), (<span class="bool-val">true</span>, <span class="bool-val">true</span>)) =&gt; {
-                <span class="ident">batch_add_assign</span>(<span class="kw-2">&amp;mut</span> <span class="ident">denominators</span>, <span class="kw-2">&amp;mut</span> <span class="ident">points</span>, <span class="kw-2">&amp;</span><span class="ident">g11_11</span>)
+                batch_add_assign(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, <span class="kw-2">&amp;</span>g11_11)
             }
         }
     }
-    <span class="ident">points</span>
+    points
 }
 
-<span class="kw">fn</span> <span class="ident">batch_endo_in_place</span><span class="op">&lt;</span><span class="ident">P</span>: <span class="ident">SWModelParameters</span><span class="op">&gt;</span>(<span class="ident">endo_coeff</span>: <span class="ident">P::BaseField</span>, <span class="ident">ps</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">SWJAffine</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span>]) {
-    <span class="ident">ps</span>.<span class="ident">par_iter_mut</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> <span class="ident">p</span>.<span class="ident">x</span> <span class="kw-2">*</span><span class="op">=</span> <span class="ident">endo_coeff</span>);
+<span class="kw">fn </span>batch_endo_in_place&lt;P: SWModelParameters&gt;(endo_coeff: P::BaseField, ps: <span class="kw-2">&amp;mut </span>[SWJAffine&lt;P&gt;]) {
+    ps.par_iter_mut().for_each(|p| p.x <span class="kw-2">*</span>= endo_coeff);
 }
 
-<span class="kw">fn</span> <span class="ident">batch_negate_in_place</span><span class="op">&lt;</span><span class="ident">P</span>: <span class="ident">SWModelParameters</span><span class="op">&gt;</span>(<span class="ident">ps</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">SWJAffine</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span>]) {
-    <span class="ident">ps</span>.<span class="ident">par_iter_mut</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> {
-        <span class="ident">p</span>.<span class="ident">y</span> <span class="op">=</span> <span class="op">-</span><span class="ident">p</span>.<span class="ident">y</span>;
+<span class="kw">fn </span>batch_negate_in_place&lt;P: SWModelParameters&gt;(ps: <span class="kw-2">&amp;mut </span>[SWJAffine&lt;P&gt;]) {
+    ps.par_iter_mut().for_each(|p| {
+        p.y = -p.y;
     });
 }
 
-<span class="doccomment">/// Uses a batch version of Algorithm 1 of https://eprint.iacr.org/2019/1021.pdf (on page 19) to</span>
-<span class="doccomment">/// compute `g1 + g2.scale(chal.to_field(endo_coeff))`</span>
-<span class="kw">fn</span> <span class="ident">affine_window_combine_one_endo_base</span><span class="op">&lt;</span><span class="ident">P</span>: <span class="ident">SWModelParameters</span><span class="op">&gt;</span>(
-    <span class="ident">endo_coeff</span>: <span class="ident">P::BaseField</span>,
-    <span class="ident">g1</span>: <span class="kw-2">&amp;</span>[<span class="ident">SWJAffine</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span>],
-    <span class="ident">g2</span>: <span class="kw-2">&amp;</span>[<span class="ident">SWJAffine</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span>],
-    <span class="ident">chal</span>: <span class="ident">ScalarChallenge</span><span class="op">&lt;</span><span class="ident">P::ScalarField</span><span class="op">&gt;</span>,
-) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SWJAffine</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">assign</span><span class="op">&lt;</span><span class="ident">A</span>: <span class="ident">Copy</span><span class="op">&gt;</span>(<span class="ident">dst</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">A</span>], <span class="ident">src</span>: <span class="kw-2">&amp;</span>[<span class="ident">A</span>]) {
-        <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">dst</span>.<span class="ident">len</span>();
-        <span class="ident">dst</span>[..<span class="ident">n</span>].<span class="ident">clone_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">src</span>[..<span class="ident">n</span>]);
+<span class="doccomment">/// Uses a batch version of Algorithm 1 of https://eprint.iacr.org/2019/1021.pdf (on page 19) to
+/// compute `g1 + g2.scale(chal.to_field(endo_coeff))`
+</span><span class="kw">fn </span>affine_window_combine_one_endo_base&lt;P: SWModelParameters&gt;(
+    endo_coeff: P::BaseField,
+    g1: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
+    g2: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
+    chal: ScalarChallenge&lt;P::ScalarField&gt;,
+) -&gt; Vec&lt;SWJAffine&lt;P&gt;&gt; {
+    <span class="kw">fn </span>assign&lt;A: Copy&gt;(dst: <span class="kw-2">&amp;mut </span>[A], src: <span class="kw-2">&amp;</span>[A]) {
+        <span class="kw">let </span>n = dst.len();
+        dst[..n].clone_from_slice(<span class="kw-2">&amp;</span>src[..n]);
     }
 
-    <span class="kw">fn</span> <span class="ident">get_bit</span>(<span class="ident">limbs_lsb</span>: <span class="kw-2">&amp;</span>[<span class="ident">u64</span>], <span class="ident">i</span>: <span class="ident">u64</span>) -&gt; <span class="ident">u64</span> {
-        <span class="kw">let</span> <span class="ident">limb</span> <span class="op">=</span> <span class="ident">i</span> <span class="op">/</span> <span class="number">64</span>;
-        <span class="kw">let</span> <span class="ident">j</span> <span class="op">=</span> <span class="ident">i</span> <span class="op">%</span> <span class="number">64</span>;
-        (<span class="ident">limbs_lsb</span>[<span class="ident">limb</span> <span class="kw">as</span> <span class="ident">usize</span>] <span class="op">&gt;</span><span class="op">&gt;</span> <span class="ident">j</span>) <span class="op">&amp;</span> <span class="number">1</span>
-    }
+    <span class="kw">fn </span>get_bit(limbs_lsb: <span class="kw-2">&amp;</span>[u64], i: u64) -&gt; u64 {
+        <span class="kw">let </span>limb = i / <span class="number">64</span>;
+        <span class="kw">let </span>j = i % <span class="number">64</span>;
+        (limbs_lsb[limb <span class="kw">as </span>usize] &gt;&gt; j) &amp; <span class="number">1
+    </span>}
 
-    <span class="kw">let</span> <span class="ident">rep</span> <span class="op">=</span> <span class="ident">chal</span>.<span class="number">0</span>.<span class="ident">into_repr</span>();
-    <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">rep</span>.<span class="ident">as_ref</span>();
+    <span class="kw">let </span>rep = chal.<span class="number">0</span>.into_repr();
+    <span class="kw">let </span>r = rep.as_ref();
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">denominators</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">P::BaseField::zero</span>(); <span class="ident">g1</span>.<span class="ident">len</span>()];
-    <span class="comment">// acc = 2 (phi(g2) + g2)</span>
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">points</span> <span class="op">=</span> <span class="ident">g2</span>.<span class="ident">to_vec</span>();
-    <span class="ident">batch_endo_in_place</span>(<span class="ident">endo_coeff</span>, <span class="kw-2">&amp;mut</span> <span class="ident">points</span>);
-    <span class="ident">batch_add_assign_no_branch</span>(<span class="kw-2">&amp;mut</span> <span class="ident">denominators</span>, <span class="kw-2">&amp;mut</span> <span class="ident">points</span>, <span class="ident">g2</span>);
-    <span class="ident">batch_double_in_place</span>(<span class="kw-2">&amp;mut</span> <span class="ident">denominators</span>, <span class="kw-2">&amp;mut</span> <span class="ident">points</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>denominators = <span class="macro">vec!</span>[P::BaseField::zero(); g1.len()];
+    <span class="comment">// acc = 2 (phi(g2) + g2)
+    </span><span class="kw">let </span><span class="kw-2">mut </span>points = g2.to_vec();
+    batch_endo_in_place(endo_coeff, <span class="kw-2">&amp;mut </span>points);
+    batch_add_assign_no_branch(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, g2);
+    batch_double_in_place(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points);
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tmp_s</span> <span class="op">=</span> <span class="ident">g2</span>.<span class="ident">to_vec</span>();
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tmp_acc</span> <span class="op">=</span> <span class="ident">g2</span>.<span class="ident">to_vec</span>();
-    <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> (<span class="number">0</span>..(<span class="number">128</span> <span class="op">/</span> <span class="number">2</span>)).<span class="ident">rev</span>() {
-        <span class="comment">// s = g2</span>
-        <span class="ident">assign</span>(<span class="kw-2">&amp;mut</span> <span class="ident">tmp_s</span>, <span class="ident">g2</span>);
-        <span class="comment">// tmp = acc</span>
-        <span class="ident">assign</span>(<span class="kw-2">&amp;mut</span> <span class="ident">tmp_acc</span>, <span class="kw-2">&amp;</span><span class="ident">points</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>tmp_s = g2.to_vec();
+    <span class="kw">let </span><span class="kw-2">mut </span>tmp_acc = g2.to_vec();
+    <span class="kw">for </span>i <span class="kw">in </span>(<span class="number">0</span>..(<span class="number">128 </span>/ <span class="number">2</span>)).rev() {
+        <span class="comment">// s = g2
+        </span>assign(<span class="kw-2">&amp;mut </span>tmp_s, g2);
+        <span class="comment">// tmp = acc
+        </span>assign(<span class="kw-2">&amp;mut </span>tmp_acc, <span class="kw-2">&amp;</span>points);
 
-        <span class="kw">let</span> <span class="ident">r_2i</span> <span class="op">=</span> <span class="ident">get_bit</span>(<span class="ident">r</span>, <span class="number">2</span> <span class="op">*</span> <span class="ident">i</span>);
-        <span class="kw">if</span> <span class="ident">r_2i</span> <span class="op">==</span> <span class="number">0</span> {
-            <span class="ident">batch_negate_in_place</span>(<span class="kw-2">&amp;mut</span> <span class="ident">tmp_s</span>);
+        <span class="kw">let </span>r_2i = get_bit(r, <span class="number">2 </span>* i);
+        <span class="kw">if </span>r_2i == <span class="number">0 </span>{
+            batch_negate_in_place(<span class="kw-2">&amp;mut </span>tmp_s);
         }
-        <span class="kw">if</span> <span class="ident">get_bit</span>(<span class="ident">r</span>, <span class="number">2</span> <span class="op">*</span> <span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>) <span class="op">==</span> <span class="number">1</span> {
-            <span class="ident">batch_endo_in_place</span>(<span class="ident">endo_coeff</span>, <span class="kw-2">&amp;mut</span> <span class="ident">tmp_s</span>);
+        <span class="kw">if </span>get_bit(r, <span class="number">2 </span>* i + <span class="number">1</span>) == <span class="number">1 </span>{
+            batch_endo_in_place(endo_coeff, <span class="kw-2">&amp;mut </span>tmp_s);
         }
 
-        <span class="comment">// acc = (acc + s) + acc</span>
-        <span class="ident">batch_add_assign_no_branch</span>(<span class="kw-2">&amp;mut</span> <span class="ident">denominators</span>, <span class="kw-2">&amp;mut</span> <span class="ident">points</span>, <span class="kw-2">&amp;</span><span class="ident">tmp_s</span>);
-        <span class="ident">batch_add_assign_no_branch</span>(<span class="kw-2">&amp;mut</span> <span class="ident">denominators</span>, <span class="kw-2">&amp;mut</span> <span class="ident">points</span>, <span class="kw-2">&amp;</span><span class="ident">tmp_acc</span>);
+        <span class="comment">// acc = (acc + s) + acc
+        </span>batch_add_assign_no_branch(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, <span class="kw-2">&amp;</span>tmp_s);
+        batch_add_assign_no_branch(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, <span class="kw-2">&amp;</span>tmp_acc);
     }
-    <span class="comment">// acc += g1</span>
-    <span class="ident">batch_add_assign</span>(<span class="kw-2">&amp;mut</span> <span class="ident">denominators</span>, <span class="kw-2">&amp;mut</span> <span class="ident">points</span>, <span class="ident">g1</span>);
-    <span class="ident">points</span>
+    <span class="comment">// acc += g1
+    </span>batch_add_assign(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, g1);
+    points
 }
 
-<span class="doccomment">///! Double an array of curve points in-place.</span>
-<span class="kw">fn</span> <span class="ident">batch_double_in_place</span><span class="op">&lt;</span><span class="ident">P</span>: <span class="ident">SWModelParameters</span><span class="op">&gt;</span>(
-    <span class="ident">denominators</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">P::BaseField</span><span class="op">&gt;</span>,
-    <span class="ident">points</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">SWJAffine</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span>],
+<span class="doccomment">///! Double an array of curve points in-place.
+</span><span class="kw">fn </span>batch_double_in_place&lt;P: SWModelParameters&gt;(
+    denominators: <span class="kw-2">&amp;mut </span>Vec&lt;P::BaseField&gt;,
+    points: <span class="kw-2">&amp;mut </span>[SWJAffine&lt;P&gt;],
 ) {
-    <span class="ident">denominators</span>
-        .<span class="ident">par_iter_mut</span>()
-        .<span class="ident">zip</span>(<span class="ident">points</span>.<span class="ident">par_iter</span>())
-        .<span class="ident">for_each</span>(<span class="op">|</span>(<span class="ident">d</span>, <span class="ident">p</span>)<span class="op">|</span> {
-            <span class="kw-2">*</span><span class="ident">d</span> <span class="op">=</span> <span class="ident">p</span>.<span class="ident">y</span>.<span class="ident">double</span>();
+    denominators
+        .par_iter_mut()
+        .zip(points.par_iter())
+        .for_each(|(d, p)| {
+            <span class="kw-2">*</span>d = p.y.double();
         });
-    <span class="ident">ark_ff::batch_inversion</span>::<span class="op">&lt;</span><span class="ident">P::BaseField</span><span class="op">&gt;</span>(<span class="ident">denominators</span>);
+    ark_ff::batch_inversion::&lt;P::BaseField&gt;(denominators);
 
-    <span class="comment">// TODO: Use less memory</span>
-    <span class="ident">denominators</span>
-        .<span class="ident">par_iter</span>()
-        .<span class="ident">zip</span>(<span class="ident">points</span>.<span class="ident">par_iter_mut</span>())
-        .<span class="ident">for_each</span>(<span class="op">|</span>(<span class="ident">d</span>, <span class="ident">p</span>)<span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">sq</span> <span class="op">=</span> <span class="ident">p</span>.<span class="ident">x</span>.<span class="ident">square</span>();
-            <span class="kw">let</span> <span class="ident">s</span> <span class="op">=</span> (<span class="ident">sq</span>.<span class="ident">double</span>() <span class="op">+</span> <span class="ident">sq</span> <span class="op">+</span> <span class="ident">P::COEFF_A</span>) <span class="op">*</span> <span class="ident">d</span>;
-            <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">s</span>.<span class="ident">square</span>() <span class="op">-</span> <span class="ident">p</span>.<span class="ident">x</span>.<span class="ident">double</span>();
-            <span class="kw">let</span> <span class="ident">y</span> <span class="op">=</span> <span class="op">-</span><span class="ident">p</span>.<span class="ident">y</span> <span class="op">-</span> (<span class="ident">s</span> <span class="op">*</span> (<span class="ident">x</span> <span class="op">-</span> <span class="ident">p</span>.<span class="ident">x</span>));
-            <span class="ident">p</span>.<span class="ident">x</span> <span class="op">=</span> <span class="ident">x</span>;
-            <span class="ident">p</span>.<span class="ident">y</span> <span class="op">=</span> <span class="ident">y</span>;
+    <span class="comment">// TODO: Use less memory
+    </span>denominators
+        .par_iter()
+        .zip(points.par_iter_mut())
+        .for_each(|(d, p)| {
+            <span class="kw">let </span>sq = p.x.square();
+            <span class="kw">let </span>s = (sq.double() + sq + P::COEFF_A) * d;
+            <span class="kw">let </span>x = s.square() - p.x.double();
+            <span class="kw">let </span>y = -p.y - (s * (x - p.x));
+            p.x = x;
+            p.y = y;
         });
 }
 
-<span class="kw">fn</span> <span class="ident">affine_window_combine_one_base</span><span class="op">&lt;</span><span class="ident">P</span>: <span class="ident">SWModelParameters</span><span class="op">&gt;</span>(
-    <span class="ident">g1</span>: <span class="kw-2">&amp;</span>[<span class="ident">SWJAffine</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span>],
-    <span class="ident">g2</span>: <span class="kw-2">&amp;</span>[<span class="ident">SWJAffine</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span>],
-    <span class="ident">x2</span>: <span class="ident">P::ScalarField</span>,
-) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SWJAffine</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">windows2</span> <span class="op">=</span> <span class="ident">BitIteratorBE::new</span>(<span class="ident">x2</span>.<span class="ident">into_repr</span>()).<span class="ident">tuples</span>();
+<span class="kw">fn </span>affine_window_combine_one_base&lt;P: SWModelParameters&gt;(
+    g1: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
+    g2: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
+    x2: P::ScalarField,
+) -&gt; Vec&lt;SWJAffine&lt;P&gt;&gt; {
+    <span class="kw">let </span>windows2 = BitIteratorBE::new(x2.into_repr()).tuples();
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">points</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">SWJAffine</span>::<span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span><span class="ident">::zero</span>(); <span class="ident">g1</span>.<span class="ident">len</span>()];
+    <span class="kw">let </span><span class="kw-2">mut </span>points = <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); g1.len()];
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">denominators</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">P::BaseField::zero</span>(); <span class="ident">g1</span>.<span class="ident">len</span>()];
+    <span class="kw">let </span><span class="kw-2">mut </span>denominators = <span class="macro">vec!</span>[P::BaseField::zero(); g1.len()];
 
-    <span class="kw">let</span> [<span class="ident">g01</span>, <span class="ident">g10</span>, <span class="ident">g11</span>] <span class="op">=</span> <span class="ident">affine_shamir_window_table_one</span>(<span class="kw-2">&amp;mut</span> <span class="ident">denominators</span>, <span class="ident">g2</span>);
+    <span class="kw">let </span>[g01, g10, g11] = affine_shamir_window_table_one(<span class="kw-2">&amp;mut </span>denominators, g2);
 
-    <span class="kw">for</span> (<span class="ident">hi_2</span>, <span class="ident">lo_2</span>) <span class="kw">in</span> <span class="ident">windows2</span> {
-        <span class="comment">// double in place</span>
-        <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">2</span> {
-            <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">g1</span>.<span class="ident">len</span>() {
-                <span class="ident">denominators</span>[<span class="ident">i</span>] <span class="op">=</span> <span class="ident">points</span>[<span class="ident">i</span>].<span class="ident">y</span>.<span class="ident">double</span>();
+    <span class="kw">for </span>(hi_2, lo_2) <span class="kw">in </span>windows2 {
+        <span class="comment">// double in place
+        </span><span class="kw">for _ in </span><span class="number">0</span>..<span class="number">2 </span>{
+            <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..g1.len() {
+                denominators[i] = points[i].y.double();
             }
-            <span class="ident">ark_ff::batch_inversion</span>::<span class="op">&lt;</span><span class="ident">P::BaseField</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="ident">denominators</span>);
+            ark_ff::batch_inversion::&lt;P::BaseField&gt;(<span class="kw-2">&amp;mut </span>denominators);
 
-            <span class="comment">// TODO: Use less memory</span>
-            <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">g1</span>.<span class="ident">len</span>() {
-                <span class="kw">let</span> <span class="ident">d</span> <span class="op">=</span> <span class="ident">denominators</span>[<span class="ident">i</span>];
-                <span class="kw">let</span> <span class="ident">sq</span> <span class="op">=</span> <span class="ident">points</span>[<span class="ident">i</span>].<span class="ident">x</span>.<span class="ident">square</span>();
-                <span class="kw">let</span> <span class="ident">s</span> <span class="op">=</span> (<span class="ident">sq</span>.<span class="ident">double</span>() <span class="op">+</span> <span class="ident">sq</span> <span class="op">+</span> <span class="ident">P::COEFF_A</span>) <span class="op">*</span> <span class="ident">d</span>;
-                <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">s</span>.<span class="ident">square</span>() <span class="op">-</span> <span class="ident">points</span>[<span class="ident">i</span>].<span class="ident">x</span>.<span class="ident">double</span>();
-                <span class="kw">let</span> <span class="ident">y</span> <span class="op">=</span> <span class="op">-</span><span class="ident">points</span>[<span class="ident">i</span>].<span class="ident">y</span> <span class="op">-</span> (<span class="ident">s</span> <span class="op">*</span> (<span class="ident">x</span> <span class="op">-</span> <span class="ident">points</span>[<span class="ident">i</span>].<span class="ident">x</span>));
-                <span class="ident">points</span>[<span class="ident">i</span>].<span class="ident">x</span> <span class="op">=</span> <span class="ident">x</span>;
-                <span class="ident">points</span>[<span class="ident">i</span>].<span class="ident">y</span> <span class="op">=</span> <span class="ident">y</span>;
+            <span class="comment">// TODO: Use less memory
+            </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..g1.len() {
+                <span class="kw">let </span>d = denominators[i];
+                <span class="kw">let </span>sq = points[i].x.square();
+                <span class="kw">let </span>s = (sq.double() + sq + P::COEFF_A) * d;
+                <span class="kw">let </span>x = s.square() - points[i].x.double();
+                <span class="kw">let </span>y = -points[i].y - (s * (x - points[i].x));
+                points[i].x = x;
+                points[i].y = y;
             }
         }
 
-        <span class="kw">match</span> (<span class="ident">hi_2</span>, <span class="ident">lo_2</span>) {
+        <span class="kw">match </span>(hi_2, lo_2) {
             (<span class="bool-val">false</span>, <span class="bool-val">false</span>) =&gt; (),
-            (<span class="bool-val">false</span>, <span class="bool-val">true</span>) =&gt; <span class="ident">batch_add_assign</span>(<span class="kw-2">&amp;mut</span> <span class="ident">denominators</span>, <span class="kw-2">&amp;mut</span> <span class="ident">points</span>, <span class="kw-2">&amp;</span><span class="ident">g01</span>),
-            (<span class="bool-val">true</span>, <span class="bool-val">false</span>) =&gt; <span class="ident">batch_add_assign</span>(<span class="kw-2">&amp;mut</span> <span class="ident">denominators</span>, <span class="kw-2">&amp;mut</span> <span class="ident">points</span>, <span class="kw-2">&amp;</span><span class="ident">g10</span>),
-            (<span class="bool-val">true</span>, <span class="bool-val">true</span>) =&gt; <span class="ident">batch_add_assign</span>(<span class="kw-2">&amp;mut</span> <span class="ident">denominators</span>, <span class="kw-2">&amp;mut</span> <span class="ident">points</span>, <span class="kw-2">&amp;</span><span class="ident">g11</span>),
+            (<span class="bool-val">false</span>, <span class="bool-val">true</span>) =&gt; batch_add_assign(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, <span class="kw-2">&amp;</span>g01),
+            (<span class="bool-val">true</span>, <span class="bool-val">false</span>) =&gt; batch_add_assign(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, <span class="kw-2">&amp;</span>g10),
+            (<span class="bool-val">true</span>, <span class="bool-val">true</span>) =&gt; batch_add_assign(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, <span class="kw-2">&amp;</span>g11),
         }
     }
 
-    <span class="ident">batch_add_assign</span>(<span class="kw-2">&amp;mut</span> <span class="ident">denominators</span>, <span class="kw-2">&amp;mut</span> <span class="ident">points</span>, <span class="ident">g1</span>);
+    batch_add_assign(<span class="kw-2">&amp;mut </span>denominators, <span class="kw-2">&amp;mut </span>points, g1);
 
-    <span class="ident">points</span>
+    points
 }
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">affine_window_combine</span><span class="op">&lt;</span><span class="ident">P</span>: <span class="ident">SWModelParameters</span><span class="op">&gt;</span>(
-    <span class="ident">g1</span>: <span class="kw-2">&amp;</span>[<span class="ident">SWJAffine</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span>],
-    <span class="ident">g2</span>: <span class="kw-2">&amp;</span>[<span class="ident">SWJAffine</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span>],
-    <span class="ident">x1</span>: <span class="ident">P::ScalarField</span>,
-    <span class="ident">x2</span>: <span class="ident">P::ScalarField</span>,
-) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SWJAffine</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-    <span class="kw">const</span> <span class="ident">CHUNK_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">10_000</span>;
-    <span class="kw">let</span> <span class="ident">b</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">g1</span>.<span class="ident">chunks</span>(<span class="ident">CHUNK_SIZE</span>).<span class="ident">zip</span>(<span class="ident">g2</span>.<span class="ident">chunks</span>(<span class="ident">CHUNK_SIZE</span>)).<span class="ident">collect</span>();
-    <span class="kw">let</span> <span class="ident">v</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">b</span>
-        .<span class="ident">into_par_iter</span>()
-        .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">v1</span>, <span class="ident">v2</span>)<span class="op">|</span> <span class="ident">affine_window_combine_base</span>(<span class="ident">v1</span>, <span class="ident">v2</span>, <span class="ident">x1</span>, <span class="ident">x2</span>))
-        .<span class="ident">collect</span>();
-    <span class="ident">v</span>.<span class="ident">concat</span>()
+<span class="kw">pub fn </span>affine_window_combine&lt;P: SWModelParameters&gt;(
+    g1: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
+    g2: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
+    x1: P::ScalarField,
+    x2: P::ScalarField,
+) -&gt; Vec&lt;SWJAffine&lt;P&gt;&gt; {
+    <span class="kw">const </span>CHUNK_SIZE: usize = <span class="number">10_000</span>;
+    <span class="kw">let </span>b: Vec&lt;<span class="kw">_</span>&gt; = g1.chunks(CHUNK_SIZE).zip(g2.chunks(CHUNK_SIZE)).collect();
+    <span class="kw">let </span>v: Vec&lt;<span class="kw">_</span>&gt; = b
+        .into_par_iter()
+        .map(|(v1, v2)| affine_window_combine_base(v1, v2, x1, x2))
+        .collect();
+    v.concat()
 }
 
-<span class="doccomment">/// Given vectors of curve points `g1` and `g2`, compute a vector whose ith entry is</span>
-<span class="doccomment">/// `g1[i] + g2[i].scale(chal.to_field(endo_coeff))`</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Internally, it uses the curve endomorphism to speed up this operation.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">affine_window_combine_one_endo</span><span class="op">&lt;</span><span class="ident">P</span>: <span class="ident">SWModelParameters</span><span class="op">&gt;</span>(
-    <span class="ident">endo_coeff</span>: <span class="ident">P::BaseField</span>,
-    <span class="ident">g1</span>: <span class="kw-2">&amp;</span>[<span class="ident">SWJAffine</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span>],
-    <span class="ident">g2</span>: <span class="kw-2">&amp;</span>[<span class="ident">SWJAffine</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span>],
-    <span class="ident">chal</span>: <span class="ident">ScalarChallenge</span><span class="op">&lt;</span><span class="ident">P::ScalarField</span><span class="op">&gt;</span>,
-) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SWJAffine</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-    <span class="kw">const</span> <span class="ident">CHUNK_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">4096</span>;
-    <span class="kw">let</span> <span class="ident">b</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">g1</span>.<span class="ident">chunks</span>(<span class="ident">CHUNK_SIZE</span>).<span class="ident">zip</span>(<span class="ident">g2</span>.<span class="ident">chunks</span>(<span class="ident">CHUNK_SIZE</span>)).<span class="ident">collect</span>();
-    <span class="kw">let</span> <span class="ident">v</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">b</span>
-        .<span class="ident">into_par_iter</span>()
-        .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">v1</span>, <span class="ident">v2</span>)<span class="op">|</span> <span class="ident">affine_window_combine_one_endo_base</span>(<span class="ident">endo_coeff</span>, <span class="ident">v1</span>, <span class="ident">v2</span>, <span class="ident">chal</span>.<span class="ident">clone</span>()))
-        .<span class="ident">collect</span>();
-    <span class="ident">v</span>.<span class="ident">concat</span>()
+<span class="doccomment">/// Given vectors of curve points `g1` and `g2`, compute a vector whose ith entry is
+/// `g1[i] + g2[i].scale(chal.to_field(endo_coeff))`
+///
+/// Internally, it uses the curve endomorphism to speed up this operation.
+</span><span class="kw">pub fn </span>affine_window_combine_one_endo&lt;P: SWModelParameters&gt;(
+    endo_coeff: P::BaseField,
+    g1: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
+    g2: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
+    chal: ScalarChallenge&lt;P::ScalarField&gt;,
+) -&gt; Vec&lt;SWJAffine&lt;P&gt;&gt; {
+    <span class="kw">const </span>CHUNK_SIZE: usize = <span class="number">4096</span>;
+    <span class="kw">let </span>b: Vec&lt;<span class="kw">_</span>&gt; = g1.chunks(CHUNK_SIZE).zip(g2.chunks(CHUNK_SIZE)).collect();
+    <span class="kw">let </span>v: Vec&lt;<span class="kw">_</span>&gt; = b
+        .into_par_iter()
+        .map(|(v1, v2)| affine_window_combine_one_endo_base(endo_coeff, v1, v2, chal.clone()))
+        .collect();
+    v.concat()
 }
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">affine_window_combine_one</span><span class="op">&lt;</span><span class="ident">P</span>: <span class="ident">SWModelParameters</span><span class="op">&gt;</span>(
-    <span class="ident">g1</span>: <span class="kw-2">&amp;</span>[<span class="ident">SWJAffine</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span>],
-    <span class="ident">g2</span>: <span class="kw-2">&amp;</span>[<span class="ident">SWJAffine</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span>],
-    <span class="ident">x2</span>: <span class="ident">P::ScalarField</span>,
-) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SWJAffine</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-    <span class="kw">const</span> <span class="ident">CHUNK_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">10_000</span>;
-    <span class="kw">let</span> <span class="ident">b</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">g1</span>.<span class="ident">chunks</span>(<span class="ident">CHUNK_SIZE</span>).<span class="ident">zip</span>(<span class="ident">g2</span>.<span class="ident">chunks</span>(<span class="ident">CHUNK_SIZE</span>)).<span class="ident">collect</span>();
-    <span class="kw">let</span> <span class="ident">v</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">b</span>
-        .<span class="ident">into_par_iter</span>()
-        .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">v1</span>, <span class="ident">v2</span>)<span class="op">|</span> <span class="ident">affine_window_combine_one_base</span>(<span class="ident">v1</span>, <span class="ident">v2</span>, <span class="ident">x2</span>))
-        .<span class="ident">collect</span>();
-    <span class="ident">v</span>.<span class="ident">concat</span>()
+<span class="kw">pub fn </span>affine_window_combine_one&lt;P: SWModelParameters&gt;(
+    g1: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
+    g2: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
+    x2: P::ScalarField,
+) -&gt; Vec&lt;SWJAffine&lt;P&gt;&gt; {
+    <span class="kw">const </span>CHUNK_SIZE: usize = <span class="number">10_000</span>;
+    <span class="kw">let </span>b: Vec&lt;<span class="kw">_</span>&gt; = g1.chunks(CHUNK_SIZE).zip(g2.chunks(CHUNK_SIZE)).collect();
+    <span class="kw">let </span>v: Vec&lt;<span class="kw">_</span>&gt; = b
+        .into_par_iter()
+        .map(|(v1, v2)| affine_window_combine_one_base(v1, v2, x2))
+        .collect();
+    v.concat()
 }
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">window_combine</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">AffineCurve</span><span class="op">&gt;</span>(
-    <span class="ident">g_lo</span>: <span class="kw-2">&amp;</span>[<span class="ident">G</span>],
-    <span class="ident">g_hi</span>: <span class="kw-2">&amp;</span>[<span class="ident">G</span>],
-    <span class="ident">x_lo</span>: <span class="ident">G::ScalarField</span>,
-    <span class="ident">x_hi</span>: <span class="ident">G::ScalarField</span>,
-) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">g_proj</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">G::Projective</span><span class="op">&gt;</span> <span class="op">=</span> {
-        <span class="kw">let</span> <span class="ident">pairs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">g_lo</span>.<span class="ident">iter</span>().<span class="ident">zip</span>(<span class="ident">g_hi</span>).<span class="ident">collect</span>();
-        <span class="ident">pairs</span>
-            .<span class="ident">into_par_iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">lo</span>, <span class="ident">hi</span>)<span class="op">|</span> <span class="ident">window_shamir</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>(<span class="ident">x_lo</span>, <span class="kw-2">*</span><span class="ident">lo</span>, <span class="ident">x_hi</span>, <span class="kw-2">*</span><span class="ident">hi</span>))
-            .<span class="ident">collect</span>()
+<span class="kw">pub fn </span>window_combine&lt;G: AffineCurve&gt;(
+    g_lo: <span class="kw-2">&amp;</span>[G],
+    g_hi: <span class="kw-2">&amp;</span>[G],
+    x_lo: G::ScalarField,
+    x_hi: G::ScalarField,
+) -&gt; Vec&lt;G&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>g_proj: Vec&lt;G::Projective&gt; = {
+        <span class="kw">let </span>pairs: Vec&lt;<span class="kw">_</span>&gt; = g_lo.iter().zip(g_hi).collect();
+        pairs
+            .into_par_iter()
+            .map(|(lo, hi)| window_shamir::&lt;G&gt;(x_lo, <span class="kw-2">*</span>lo, x_hi, <span class="kw-2">*</span>hi))
+            .collect()
     };
-    <span class="ident">G::Projective::batch_normalization</span>(<span class="ident">g_proj</span>.<span class="ident">as_mut_slice</span>());
-    <span class="ident">g_proj</span>.<span class="ident">par_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">g</span><span class="op">|</span> <span class="ident">g</span>.<span class="ident">into_affine</span>()).<span class="ident">collect</span>()
+    G::Projective::batch_normalization(g_proj.as_mut_slice());
+    g_proj.par_iter().map(|g| g.into_affine()).collect()
 }
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">affine_shamir_window_table</span><span class="op">&lt;</span><span class="ident">P</span>: <span class="ident">SWModelParameters</span><span class="op">&gt;</span>(
-    <span class="ident">denominators</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">P::BaseField</span>],
-    <span class="ident">g1</span>: <span class="kw-2">&amp;</span>[<span class="ident">SWJAffine</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span>],
-    <span class="ident">g2</span>: <span class="kw-2">&amp;</span>[<span class="ident">SWJAffine</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span>],
-) -&gt; [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SWJAffine</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span><span class="op">&gt;</span>; <span class="number">15</span>] {
-    <span class="kw">fn</span> <span class="ident">assign</span><span class="op">&lt;</span><span class="ident">A</span>: <span class="ident">Copy</span><span class="op">&gt;</span>(<span class="ident">dst</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">A</span>], <span class="ident">src</span>: <span class="kw-2">&amp;</span>[<span class="ident">A</span>]) {
-        <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">dst</span>.<span class="ident">len</span>();
-        <span class="ident">dst</span>[..<span class="ident">n</span>].<span class="ident">clone_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">src</span>[..<span class="ident">n</span>]);
+<span class="kw">pub fn </span>affine_shamir_window_table&lt;P: SWModelParameters&gt;(
+    denominators: <span class="kw-2">&amp;mut </span>[P::BaseField],
+    g1: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
+    g2: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
+) -&gt; [Vec&lt;SWJAffine&lt;P&gt;&gt;; <span class="number">15</span>] {
+    <span class="kw">fn </span>assign&lt;A: Copy&gt;(dst: <span class="kw-2">&amp;mut </span>[A], src: <span class="kw-2">&amp;</span>[A]) {
+        <span class="kw">let </span>n = dst.len();
+        dst[..n].clone_from_slice(<span class="kw-2">&amp;</span>src[..n]);
     }
 
-    <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">g1</span>.<span class="ident">len</span>();
+    <span class="kw">let </span>n = g1.len();
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>; <span class="number">15</span>] <span class="op">=</span> [
-        <span class="macro">vec!</span>[<span class="ident">SWJAffine</span>::<span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span><span class="ident">::zero</span>(); <span class="ident">n</span>],
-        <span class="macro">vec!</span>[<span class="ident">SWJAffine</span>::<span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span><span class="ident">::zero</span>(); <span class="ident">n</span>],
-        <span class="macro">vec!</span>[<span class="ident">SWJAffine</span>::<span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span><span class="ident">::zero</span>(); <span class="ident">n</span>],
-        <span class="macro">vec!</span>[<span class="ident">SWJAffine</span>::<span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span><span class="ident">::zero</span>(); <span class="ident">n</span>],
-        <span class="macro">vec!</span>[<span class="ident">SWJAffine</span>::<span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span><span class="ident">::zero</span>(); <span class="ident">n</span>],
-        <span class="macro">vec!</span>[<span class="ident">SWJAffine</span>::<span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span><span class="ident">::zero</span>(); <span class="ident">n</span>],
-        <span class="macro">vec!</span>[<span class="ident">SWJAffine</span>::<span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span><span class="ident">::zero</span>(); <span class="ident">n</span>],
-        <span class="macro">vec!</span>[<span class="ident">SWJAffine</span>::<span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span><span class="ident">::zero</span>(); <span class="ident">n</span>],
-        <span class="macro">vec!</span>[<span class="ident">SWJAffine</span>::<span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span><span class="ident">::zero</span>(); <span class="ident">n</span>],
-        <span class="macro">vec!</span>[<span class="ident">SWJAffine</span>::<span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span><span class="ident">::zero</span>(); <span class="ident">n</span>],
-        <span class="macro">vec!</span>[<span class="ident">SWJAffine</span>::<span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span><span class="ident">::zero</span>(); <span class="ident">n</span>],
-        <span class="macro">vec!</span>[<span class="ident">SWJAffine</span>::<span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span><span class="ident">::zero</span>(); <span class="ident">n</span>],
-        <span class="macro">vec!</span>[<span class="ident">SWJAffine</span>::<span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span><span class="ident">::zero</span>(); <span class="ident">n</span>],
-        <span class="macro">vec!</span>[<span class="ident">SWJAffine</span>::<span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span><span class="ident">::zero</span>(); <span class="ident">n</span>],
-        <span class="macro">vec!</span>[<span class="ident">SWJAffine</span>::<span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span><span class="ident">::zero</span>(); <span class="ident">n</span>],
+    <span class="kw">let </span><span class="kw-2">mut </span>res: [Vec&lt;<span class="kw">_</span>&gt;; <span class="number">15</span>] = [
+        <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); n],
+        <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); n],
+        <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); n],
+        <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); n],
+        <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); n],
+        <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); n],
+        <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); n],
+        <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); n],
+        <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); n],
+        <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); n],
+        <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); n],
+        <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); n],
+        <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); n],
+        <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); n],
+        <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); n],
     ];
 
-    <span class="kw">let</span> [<span class="ident">g01_00</span>, <span class="ident">g10_00</span>, <span class="ident">g11_00</span>, <span class="ident">g00_01</span>, <span class="ident">g01_01</span>, <span class="ident">g10_01</span>, <span class="ident">g11_01</span>, <span class="ident">g00_10</span>, <span class="ident">g01_10</span>, <span class="ident">g10_10</span>, <span class="ident">g11_10</span>, <span class="ident">g00_11</span>, <span class="ident">g01_11</span>, <span class="ident">g10_11</span>, <span class="ident">g11_11</span>] <span class="op">=</span>
-        <span class="kw-2">&amp;mut</span> <span class="ident">res</span>;
+    <span class="kw">let </span>[g01_00, g10_00, g11_00, g00_01, g01_01, g10_01, g11_01, g00_10, g01_10, g10_10, g11_10, g00_11, g01_11, g10_11, g11_11] =
+        <span class="kw-2">&amp;mut </span>res;
 
-    <span class="ident">assign</span>(<span class="ident">g01_00</span>, <span class="ident">g1</span>);
+    assign(g01_00, g1);
 
-    <span class="ident">assign</span>(<span class="ident">g10_00</span>, <span class="ident">g1</span>);
-    <span class="ident">batch_add_assign</span>(<span class="ident">denominators</span>, <span class="ident">g10_00</span>, <span class="ident">g1</span>);
+    assign(g10_00, g1);
+    batch_add_assign(denominators, g10_00, g1);
 
-    <span class="ident">assign</span>(<span class="ident">g11_00</span>, <span class="ident">g10_00</span>);
-    <span class="ident">batch_add_assign</span>(<span class="ident">denominators</span>, <span class="ident">g11_00</span>, <span class="ident">g1</span>);
+    assign(g11_00, g10_00);
+    batch_add_assign(denominators, g11_00, g1);
 
-    <span class="ident">assign</span>(<span class="ident">g00_01</span>, <span class="ident">g2</span>);
+    assign(g00_01, g2);
 
-    <span class="ident">assign</span>(<span class="ident">g01_01</span>, <span class="ident">g00_01</span>);
-    <span class="ident">batch_add_assign</span>(<span class="ident">denominators</span>, <span class="ident">g01_01</span>, <span class="ident">g1</span>);
+    assign(g01_01, g00_01);
+    batch_add_assign(denominators, g01_01, g1);
 
-    <span class="ident">assign</span>(<span class="ident">g10_01</span>, <span class="ident">g01_01</span>);
-    <span class="ident">batch_add_assign</span>(<span class="ident">denominators</span>, <span class="ident">g10_01</span>, <span class="ident">g1</span>);
+    assign(g10_01, g01_01);
+    batch_add_assign(denominators, g10_01, g1);
 
-    <span class="ident">assign</span>(<span class="ident">g11_01</span>, <span class="ident">g10_01</span>);
-    <span class="ident">batch_add_assign</span>(<span class="ident">denominators</span>, <span class="ident">g11_01</span>, <span class="ident">g1</span>);
+    assign(g11_01, g10_01);
+    batch_add_assign(denominators, g11_01, g1);
 
-    <span class="ident">assign</span>(<span class="ident">g00_10</span>, <span class="ident">g00_01</span>);
-    <span class="ident">batch_add_assign</span>(<span class="ident">denominators</span>, <span class="ident">g00_10</span>, <span class="ident">g2</span>);
+    assign(g00_10, g00_01);
+    batch_add_assign(denominators, g00_10, g2);
 
-    <span class="ident">assign</span>(<span class="ident">g01_10</span>, <span class="ident">g00_10</span>);
-    <span class="ident">batch_add_assign</span>(<span class="ident">denominators</span>, <span class="ident">g01_10</span>, <span class="ident">g1</span>);
+    assign(g01_10, g00_10);
+    batch_add_assign(denominators, g01_10, g1);
 
-    <span class="ident">assign</span>(<span class="ident">g10_10</span>, <span class="ident">g01_10</span>);
-    <span class="ident">batch_add_assign</span>(<span class="ident">denominators</span>, <span class="ident">g10_10</span>, <span class="ident">g1</span>);
+    assign(g10_10, g01_10);
+    batch_add_assign(denominators, g10_10, g1);
 
-    <span class="ident">assign</span>(<span class="ident">g11_10</span>, <span class="ident">g10_10</span>);
-    <span class="ident">batch_add_assign</span>(<span class="ident">denominators</span>, <span class="ident">g11_10</span>, <span class="ident">g1</span>);
+    assign(g11_10, g10_10);
+    batch_add_assign(denominators, g11_10, g1);
 
-    <span class="ident">assign</span>(<span class="ident">g00_11</span>, <span class="ident">g00_10</span>);
-    <span class="ident">batch_add_assign</span>(<span class="ident">denominators</span>, <span class="ident">g00_11</span>, <span class="ident">g2</span>);
+    assign(g00_11, g00_10);
+    batch_add_assign(denominators, g00_11, g2);
 
-    <span class="ident">assign</span>(<span class="ident">g01_11</span>, <span class="ident">g00_11</span>);
-    <span class="ident">batch_add_assign</span>(<span class="ident">denominators</span>, <span class="ident">g01_11</span>, <span class="ident">g1</span>);
+    assign(g01_11, g00_11);
+    batch_add_assign(denominators, g01_11, g1);
 
-    <span class="ident">assign</span>(<span class="ident">g10_11</span>, <span class="ident">g01_11</span>);
-    <span class="ident">batch_add_assign</span>(<span class="ident">denominators</span>, <span class="ident">g10_11</span>, <span class="ident">g1</span>);
+    assign(g10_11, g01_11);
+    batch_add_assign(denominators, g10_11, g1);
 
-    <span class="ident">assign</span>(<span class="ident">g11_11</span>, <span class="ident">g10_11</span>);
-    <span class="ident">batch_add_assign</span>(<span class="ident">denominators</span>, <span class="ident">g11_11</span>, <span class="ident">g1</span>);
+    assign(g11_11, g10_11);
+    batch_add_assign(denominators, g11_11, g1);
 
-    <span class="ident">res</span>
+    res
 }
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">affine_shamir_window_table_one</span><span class="op">&lt;</span><span class="ident">P</span>: <span class="ident">SWModelParameters</span><span class="op">&gt;</span>(
-    <span class="ident">denominators</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">P::BaseField</span>],
-    <span class="ident">g1</span>: <span class="kw-2">&amp;</span>[<span class="ident">SWJAffine</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span>],
-) -&gt; [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SWJAffine</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span><span class="op">&gt;</span>; <span class="number">3</span>] {
-    <span class="kw">fn</span> <span class="ident">assign</span><span class="op">&lt;</span><span class="ident">A</span>: <span class="ident">Copy</span><span class="op">&gt;</span>(<span class="ident">dst</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">A</span>], <span class="ident">src</span>: <span class="kw-2">&amp;</span>[<span class="ident">A</span>]) {
-        <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">dst</span>.<span class="ident">len</span>();
-        <span class="ident">dst</span>[..<span class="ident">n</span>].<span class="ident">clone_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">src</span>[..<span class="ident">n</span>]);
+<span class="kw">pub fn </span>affine_shamir_window_table_one&lt;P: SWModelParameters&gt;(
+    denominators: <span class="kw-2">&amp;mut </span>[P::BaseField],
+    g1: <span class="kw-2">&amp;</span>[SWJAffine&lt;P&gt;],
+) -&gt; [Vec&lt;SWJAffine&lt;P&gt;&gt;; <span class="number">3</span>] {
+    <span class="kw">fn </span>assign&lt;A: Copy&gt;(dst: <span class="kw-2">&amp;mut </span>[A], src: <span class="kw-2">&amp;</span>[A]) {
+        <span class="kw">let </span>n = dst.len();
+        dst[..n].clone_from_slice(<span class="kw-2">&amp;</span>src[..n]);
     }
 
-    <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">g1</span>.<span class="ident">len</span>();
+    <span class="kw">let </span>n = g1.len();
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>; <span class="number">3</span>] <span class="op">=</span> [
-        <span class="macro">vec!</span>[<span class="ident">SWJAffine</span>::<span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span><span class="ident">::zero</span>(); <span class="ident">n</span>],
-        <span class="macro">vec!</span>[<span class="ident">SWJAffine</span>::<span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span><span class="ident">::zero</span>(); <span class="ident">n</span>],
-        <span class="macro">vec!</span>[<span class="ident">SWJAffine</span>::<span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span><span class="ident">::zero</span>(); <span class="ident">n</span>],
+    <span class="kw">let </span><span class="kw-2">mut </span>res: [Vec&lt;<span class="kw">_</span>&gt;; <span class="number">3</span>] = [
+        <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); n],
+        <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); n],
+        <span class="macro">vec!</span>[SWJAffine::&lt;P&gt;::zero(); n],
     ];
 
-    <span class="kw">let</span> [<span class="ident">g01</span>, <span class="ident">g10</span>, <span class="ident">g11</span>] <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">res</span>;
+    <span class="kw">let </span>[g01, g10, g11] = <span class="kw-2">&amp;mut </span>res;
 
-    <span class="ident">assign</span>(<span class="ident">g01</span>, <span class="ident">g1</span>);
+    assign(g01, g1);
 
-    <span class="ident">assign</span>(<span class="ident">g10</span>, <span class="ident">g1</span>);
-    <span class="ident">batch_add_assign</span>(<span class="ident">denominators</span>, <span class="ident">g10</span>, <span class="ident">g1</span>);
+    assign(g10, g1);
+    batch_add_assign(denominators, g10, g1);
 
-    <span class="ident">assign</span>(<span class="ident">g11</span>, <span class="ident">g10</span>);
-    <span class="ident">batch_add_assign</span>(<span class="ident">denominators</span>, <span class="ident">g11</span>, <span class="ident">g1</span>);
+    assign(g11, g10);
+    batch_add_assign(denominators, g11, g1);
 
-    <span class="ident">res</span>
+    res
 }
 
-<span class="kw">fn</span> <span class="ident">window_shamir</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">AffineCurve</span><span class="op">&gt;</span>(
-    <span class="ident">x1</span>: <span class="ident">G::ScalarField</span>,
-    <span class="ident">g1</span>: <span class="ident">G</span>,
-    <span class="ident">x2</span>: <span class="ident">G::ScalarField</span>,
-    <span class="ident">g2</span>: <span class="ident">G</span>,
-) -&gt; <span class="ident">G::Projective</span> {
-    <span class="kw">let</span> [<span class="ident">_g00_00</span>, <span class="ident">g01_00</span>, <span class="ident">g10_00</span>, <span class="ident">g11_00</span>, <span class="ident">g00_01</span>, <span class="ident">g01_01</span>, <span class="ident">g10_01</span>, <span class="ident">g11_01</span>, <span class="ident">g00_10</span>, <span class="ident">g01_10</span>, <span class="ident">g10_10</span>, <span class="ident">g11_10</span>, <span class="ident">g00_11</span>, <span class="ident">g01_11</span>, <span class="ident">g10_11</span>, <span class="ident">g11_11</span>] <span class="op">=</span>
-        <span class="ident">shamir_window_table</span>(<span class="ident">g1</span>, <span class="ident">g2</span>);
+<span class="kw">fn </span>window_shamir&lt;G: AffineCurve&gt;(
+    x1: G::ScalarField,
+    g1: G,
+    x2: G::ScalarField,
+    g2: G,
+) -&gt; G::Projective {
+    <span class="kw">let </span>[_g00_00, g01_00, g10_00, g11_00, g00_01, g01_01, g10_01, g11_01, g00_10, g01_10, g10_10, g11_10, g00_11, g01_11, g10_11, g11_11] =
+        shamir_window_table(g1, g2);
 
-    <span class="kw">let</span> <span class="ident">windows1</span> <span class="op">=</span> <span class="ident">BitIteratorBE::new</span>(<span class="ident">x1</span>.<span class="ident">into_repr</span>()).<span class="ident">tuples</span>();
-    <span class="kw">let</span> <span class="ident">windows2</span> <span class="op">=</span> <span class="ident">BitIteratorBE::new</span>(<span class="ident">x2</span>.<span class="ident">into_repr</span>()).<span class="ident">tuples</span>();
+    <span class="kw">let </span>windows1 = BitIteratorBE::new(x1.into_repr()).tuples();
+    <span class="kw">let </span>windows2 = BitIteratorBE::new(x2.into_repr()).tuples();
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">G::Projective::zero</span>();
+    <span class="kw">let </span><span class="kw-2">mut </span>res = G::Projective::zero();
 
-    <span class="kw">for</span> ((<span class="ident">hi_1</span>, <span class="ident">lo_1</span>), (<span class="ident">hi_2</span>, <span class="ident">lo_2</span>)) <span class="kw">in</span> <span class="ident">windows1</span>.<span class="ident">zip</span>(<span class="ident">windows2</span>) {
-        <span class="ident">res</span>.<span class="ident">double_in_place</span>();
-        <span class="ident">res</span>.<span class="ident">double_in_place</span>();
-        <span class="kw">match</span> ((<span class="ident">hi_1</span>, <span class="ident">lo_1</span>), (<span class="ident">hi_2</span>, <span class="ident">lo_2</span>)) {
+    <span class="kw">for </span>((hi_1, lo_1), (hi_2, lo_2)) <span class="kw">in </span>windows1.zip(windows2) {
+        res.double_in_place();
+        res.double_in_place();
+        <span class="kw">match </span>((hi_1, lo_1), (hi_2, lo_2)) {
             ((<span class="bool-val">false</span>, <span class="bool-val">false</span>), (<span class="bool-val">false</span>, <span class="bool-val">false</span>)) =&gt; (),
-            ((<span class="bool-val">false</span>, <span class="bool-val">true</span>), (<span class="bool-val">false</span>, <span class="bool-val">false</span>)) =&gt; <span class="ident">res</span>.<span class="ident">add_assign_mixed</span>(<span class="kw-2">&amp;</span><span class="ident">g01_00</span>),
-            ((<span class="bool-val">true</span>, <span class="bool-val">false</span>), (<span class="bool-val">false</span>, <span class="bool-val">false</span>)) =&gt; <span class="ident">res</span>.<span class="ident">add_assign_mixed</span>(<span class="kw-2">&amp;</span><span class="ident">g10_00</span>),
-            ((<span class="bool-val">true</span>, <span class="bool-val">true</span>), (<span class="bool-val">false</span>, <span class="bool-val">false</span>)) =&gt; <span class="ident">res</span>.<span class="ident">add_assign_mixed</span>(<span class="kw-2">&amp;</span><span class="ident">g11_00</span>),
+            ((<span class="bool-val">false</span>, <span class="bool-val">true</span>), (<span class="bool-val">false</span>, <span class="bool-val">false</span>)) =&gt; res.add_assign_mixed(<span class="kw-2">&amp;</span>g01_00),
+            ((<span class="bool-val">true</span>, <span class="bool-val">false</span>), (<span class="bool-val">false</span>, <span class="bool-val">false</span>)) =&gt; res.add_assign_mixed(<span class="kw-2">&amp;</span>g10_00),
+            ((<span class="bool-val">true</span>, <span class="bool-val">true</span>), (<span class="bool-val">false</span>, <span class="bool-val">false</span>)) =&gt; res.add_assign_mixed(<span class="kw-2">&amp;</span>g11_00),
 
-            ((<span class="bool-val">false</span>, <span class="bool-val">false</span>), (<span class="bool-val">false</span>, <span class="bool-val">true</span>)) =&gt; <span class="ident">res</span>.<span class="ident">add_assign_mixed</span>(<span class="kw-2">&amp;</span><span class="ident">g00_01</span>),
-            ((<span class="bool-val">false</span>, <span class="bool-val">true</span>), (<span class="bool-val">false</span>, <span class="bool-val">true</span>)) =&gt; <span class="ident">res</span>.<span class="ident">add_assign_mixed</span>(<span class="kw-2">&amp;</span><span class="ident">g01_01</span>),
-            ((<span class="bool-val">true</span>, <span class="bool-val">false</span>), (<span class="bool-val">false</span>, <span class="bool-val">true</span>)) =&gt; <span class="ident">res</span>.<span class="ident">add_assign_mixed</span>(<span class="kw-2">&amp;</span><span class="ident">g10_01</span>),
-            ((<span class="bool-val">true</span>, <span class="bool-val">true</span>), (<span class="bool-val">false</span>, <span class="bool-val">true</span>)) =&gt; <span class="ident">res</span>.<span class="ident">add_assign_mixed</span>(<span class="kw-2">&amp;</span><span class="ident">g11_01</span>),
+            ((<span class="bool-val">false</span>, <span class="bool-val">false</span>), (<span class="bool-val">false</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign_mixed(<span class="kw-2">&amp;</span>g00_01),
+            ((<span class="bool-val">false</span>, <span class="bool-val">true</span>), (<span class="bool-val">false</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign_mixed(<span class="kw-2">&amp;</span>g01_01),
+            ((<span class="bool-val">true</span>, <span class="bool-val">false</span>), (<span class="bool-val">false</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign_mixed(<span class="kw-2">&amp;</span>g10_01),
+            ((<span class="bool-val">true</span>, <span class="bool-val">true</span>), (<span class="bool-val">false</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign_mixed(<span class="kw-2">&amp;</span>g11_01),
 
-            ((<span class="bool-val">false</span>, <span class="bool-val">false</span>), (<span class="bool-val">true</span>, <span class="bool-val">false</span>)) =&gt; <span class="ident">res</span>.<span class="ident">add_assign_mixed</span>(<span class="kw-2">&amp;</span><span class="ident">g00_10</span>),
-            ((<span class="bool-val">false</span>, <span class="bool-val">true</span>), (<span class="bool-val">true</span>, <span class="bool-val">false</span>)) =&gt; <span class="ident">res</span>.<span class="ident">add_assign_mixed</span>(<span class="kw-2">&amp;</span><span class="ident">g01_10</span>),
-            ((<span class="bool-val">true</span>, <span class="bool-val">false</span>), (<span class="bool-val">true</span>, <span class="bool-val">false</span>)) =&gt; <span class="ident">res</span>.<span class="ident">add_assign_mixed</span>(<span class="kw-2">&amp;</span><span class="ident">g10_10</span>),
-            ((<span class="bool-val">true</span>, <span class="bool-val">true</span>), (<span class="bool-val">true</span>, <span class="bool-val">false</span>)) =&gt; <span class="ident">res</span>.<span class="ident">add_assign_mixed</span>(<span class="kw-2">&amp;</span><span class="ident">g11_10</span>),
+            ((<span class="bool-val">false</span>, <span class="bool-val">false</span>), (<span class="bool-val">true</span>, <span class="bool-val">false</span>)) =&gt; res.add_assign_mixed(<span class="kw-2">&amp;</span>g00_10),
+            ((<span class="bool-val">false</span>, <span class="bool-val">true</span>), (<span class="bool-val">true</span>, <span class="bool-val">false</span>)) =&gt; res.add_assign_mixed(<span class="kw-2">&amp;</span>g01_10),
+            ((<span class="bool-val">true</span>, <span class="bool-val">false</span>), (<span class="bool-val">true</span>, <span class="bool-val">false</span>)) =&gt; res.add_assign_mixed(<span class="kw-2">&amp;</span>g10_10),
+            ((<span class="bool-val">true</span>, <span class="bool-val">true</span>), (<span class="bool-val">true</span>, <span class="bool-val">false</span>)) =&gt; res.add_assign_mixed(<span class="kw-2">&amp;</span>g11_10),
 
-            ((<span class="bool-val">false</span>, <span class="bool-val">false</span>), (<span class="bool-val">true</span>, <span class="bool-val">true</span>)) =&gt; <span class="ident">res</span>.<span class="ident">add_assign_mixed</span>(<span class="kw-2">&amp;</span><span class="ident">g00_11</span>),
-            ((<span class="bool-val">false</span>, <span class="bool-val">true</span>), (<span class="bool-val">true</span>, <span class="bool-val">true</span>)) =&gt; <span class="ident">res</span>.<span class="ident">add_assign_mixed</span>(<span class="kw-2">&amp;</span><span class="ident">g01_11</span>),
-            ((<span class="bool-val">true</span>, <span class="bool-val">false</span>), (<span class="bool-val">true</span>, <span class="bool-val">true</span>)) =&gt; <span class="ident">res</span>.<span class="ident">add_assign_mixed</span>(<span class="kw-2">&amp;</span><span class="ident">g10_11</span>),
-            ((<span class="bool-val">true</span>, <span class="bool-val">true</span>), (<span class="bool-val">true</span>, <span class="bool-val">true</span>)) =&gt; <span class="ident">res</span>.<span class="ident">add_assign_mixed</span>(<span class="kw-2">&amp;</span><span class="ident">g11_11</span>),
+            ((<span class="bool-val">false</span>, <span class="bool-val">false</span>), (<span class="bool-val">true</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign_mixed(<span class="kw-2">&amp;</span>g00_11),
+            ((<span class="bool-val">false</span>, <span class="bool-val">true</span>), (<span class="bool-val">true</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign_mixed(<span class="kw-2">&amp;</span>g01_11),
+            ((<span class="bool-val">true</span>, <span class="bool-val">false</span>), (<span class="bool-val">true</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign_mixed(<span class="kw-2">&amp;</span>g10_11),
+            ((<span class="bool-val">true</span>, <span class="bool-val">true</span>), (<span class="bool-val">true</span>, <span class="bool-val">true</span>)) =&gt; res.add_assign_mixed(<span class="kw-2">&amp;</span>g11_11),
         }
     }
 
-    <span class="ident">res</span>
+    res
 }
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">shamir_window_table</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">AffineCurve</span><span class="op">&gt;</span>(<span class="ident">g1</span>: <span class="ident">G</span>, <span class="ident">g2</span>: <span class="ident">G</span>) -&gt; [<span class="ident">G</span>; <span class="number">16</span>] {
-    <span class="kw">let</span> <span class="ident">g00_00</span> <span class="op">=</span> <span class="ident">G::prime_subgroup_generator</span>().<span class="ident">into_projective</span>();
-    <span class="kw">let</span> <span class="ident">g01_00</span> <span class="op">=</span> <span class="ident">g1</span>.<span class="ident">into_projective</span>();
-    <span class="kw">let</span> <span class="ident">g10_00</span> <span class="op">=</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">g</span> <span class="op">=</span> <span class="ident">g01_00</span>;
-        <span class="ident">g</span>.<span class="ident">add_assign_mixed</span>(<span class="kw-2">&amp;</span><span class="ident">g1</span>);
-        <span class="ident">g</span>
+<span class="kw">pub fn </span>shamir_window_table&lt;G: AffineCurve&gt;(g1: G, g2: G) -&gt; [G; <span class="number">16</span>] {
+    <span class="kw">let </span>g00_00 = G::prime_subgroup_generator().into_projective();
+    <span class="kw">let </span>g01_00 = g1.into_projective();
+    <span class="kw">let </span>g10_00 = {
+        <span class="kw">let </span><span class="kw-2">mut </span>g = g01_00;
+        g.add_assign_mixed(<span class="kw-2">&amp;</span>g1);
+        g
     };
-    <span class="kw">let</span> <span class="ident">g11_00</span> <span class="op">=</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">g</span> <span class="op">=</span> <span class="ident">g10_00</span>;
-        <span class="ident">g</span>.<span class="ident">add_assign_mixed</span>(<span class="kw-2">&amp;</span><span class="ident">g1</span>);
-        <span class="ident">g</span>
-    };
-
-    <span class="kw">let</span> <span class="ident">g00_01</span> <span class="op">=</span> <span class="ident">g2</span>.<span class="ident">into_projective</span>();
-    <span class="kw">let</span> <span class="ident">g01_01</span> <span class="op">=</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">g</span> <span class="op">=</span> <span class="ident">g00_01</span>;
-        <span class="ident">g</span>.<span class="ident">add_assign_mixed</span>(<span class="kw-2">&amp;</span><span class="ident">g1</span>);
-        <span class="ident">g</span>
-    };
-    <span class="kw">let</span> <span class="ident">g10_01</span> <span class="op">=</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">g</span> <span class="op">=</span> <span class="ident">g01_01</span>;
-        <span class="ident">g</span>.<span class="ident">add_assign_mixed</span>(<span class="kw-2">&amp;</span><span class="ident">g1</span>);
-        <span class="ident">g</span>
-    };
-    <span class="kw">let</span> <span class="ident">g11_01</span> <span class="op">=</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">g</span> <span class="op">=</span> <span class="ident">g10_01</span>;
-        <span class="ident">g</span>.<span class="ident">add_assign_mixed</span>(<span class="kw-2">&amp;</span><span class="ident">g1</span>);
-        <span class="ident">g</span>
+    <span class="kw">let </span>g11_00 = {
+        <span class="kw">let </span><span class="kw-2">mut </span>g = g10_00;
+        g.add_assign_mixed(<span class="kw-2">&amp;</span>g1);
+        g
     };
 
-    <span class="kw">let</span> <span class="ident">g00_10</span> <span class="op">=</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">g</span> <span class="op">=</span> <span class="ident">g00_01</span>;
-        <span class="ident">g</span>.<span class="ident">add_assign_mixed</span>(<span class="kw-2">&amp;</span><span class="ident">g2</span>);
-        <span class="ident">g</span>
+    <span class="kw">let </span>g00_01 = g2.into_projective();
+    <span class="kw">let </span>g01_01 = {
+        <span class="kw">let </span><span class="kw-2">mut </span>g = g00_01;
+        g.add_assign_mixed(<span class="kw-2">&amp;</span>g1);
+        g
     };
-    <span class="kw">let</span> <span class="ident">g01_10</span> <span class="op">=</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">g</span> <span class="op">=</span> <span class="ident">g00_10</span>;
-        <span class="ident">g</span>.<span class="ident">add_assign_mixed</span>(<span class="kw-2">&amp;</span><span class="ident">g1</span>);
-        <span class="ident">g</span>
+    <span class="kw">let </span>g10_01 = {
+        <span class="kw">let </span><span class="kw-2">mut </span>g = g01_01;
+        g.add_assign_mixed(<span class="kw-2">&amp;</span>g1);
+        g
     };
-    <span class="kw">let</span> <span class="ident">g10_10</span> <span class="op">=</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">g</span> <span class="op">=</span> <span class="ident">g01_10</span>;
-        <span class="ident">g</span>.<span class="ident">add_assign_mixed</span>(<span class="kw-2">&amp;</span><span class="ident">g1</span>);
-        <span class="ident">g</span>
-    };
-    <span class="kw">let</span> <span class="ident">g11_10</span> <span class="op">=</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">g</span> <span class="op">=</span> <span class="ident">g10_10</span>;
-        <span class="ident">g</span>.<span class="ident">add_assign_mixed</span>(<span class="kw-2">&amp;</span><span class="ident">g1</span>);
-        <span class="ident">g</span>
-    };
-    <span class="kw">let</span> <span class="ident">g00_11</span> <span class="op">=</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">g</span> <span class="op">=</span> <span class="ident">g00_10</span>;
-        <span class="ident">g</span>.<span class="ident">add_assign_mixed</span>(<span class="kw-2">&amp;</span><span class="ident">g2</span>);
-        <span class="ident">g</span>
-    };
-    <span class="kw">let</span> <span class="ident">g01_11</span> <span class="op">=</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">g</span> <span class="op">=</span> <span class="ident">g00_11</span>;
-        <span class="ident">g</span>.<span class="ident">add_assign_mixed</span>(<span class="kw-2">&amp;</span><span class="ident">g1</span>);
-        <span class="ident">g</span>
-    };
-    <span class="kw">let</span> <span class="ident">g10_11</span> <span class="op">=</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">g</span> <span class="op">=</span> <span class="ident">g01_11</span>;
-        <span class="ident">g</span>.<span class="ident">add_assign_mixed</span>(<span class="kw-2">&amp;</span><span class="ident">g1</span>);
-        <span class="ident">g</span>
-    };
-    <span class="kw">let</span> <span class="ident">g11_11</span> <span class="op">=</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">g</span> <span class="op">=</span> <span class="ident">g10_11</span>;
-        <span class="ident">g</span>.<span class="ident">add_assign_mixed</span>(<span class="kw-2">&amp;</span><span class="ident">g1</span>);
-        <span class="ident">g</span>
+    <span class="kw">let </span>g11_01 = {
+        <span class="kw">let </span><span class="kw-2">mut </span>g = g10_01;
+        g.add_assign_mixed(<span class="kw-2">&amp;</span>g1);
+        g
     };
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">v</span> <span class="op">=</span> <span class="macro">vec!</span>[
-        <span class="ident">g00_00</span>, <span class="ident">g01_00</span>, <span class="ident">g10_00</span>, <span class="ident">g11_00</span>, <span class="ident">g00_01</span>, <span class="ident">g01_01</span>, <span class="ident">g10_01</span>, <span class="ident">g11_01</span>, <span class="ident">g00_10</span>, <span class="ident">g01_10</span>, <span class="ident">g10_10</span>,
-        <span class="ident">g11_10</span>, <span class="ident">g00_11</span>, <span class="ident">g01_11</span>, <span class="ident">g10_11</span>, <span class="ident">g11_11</span>,
+    <span class="kw">let </span>g00_10 = {
+        <span class="kw">let </span><span class="kw-2">mut </span>g = g00_01;
+        g.add_assign_mixed(<span class="kw-2">&amp;</span>g2);
+        g
+    };
+    <span class="kw">let </span>g01_10 = {
+        <span class="kw">let </span><span class="kw-2">mut </span>g = g00_10;
+        g.add_assign_mixed(<span class="kw-2">&amp;</span>g1);
+        g
+    };
+    <span class="kw">let </span>g10_10 = {
+        <span class="kw">let </span><span class="kw-2">mut </span>g = g01_10;
+        g.add_assign_mixed(<span class="kw-2">&amp;</span>g1);
+        g
+    };
+    <span class="kw">let </span>g11_10 = {
+        <span class="kw">let </span><span class="kw-2">mut </span>g = g10_10;
+        g.add_assign_mixed(<span class="kw-2">&amp;</span>g1);
+        g
+    };
+    <span class="kw">let </span>g00_11 = {
+        <span class="kw">let </span><span class="kw-2">mut </span>g = g00_10;
+        g.add_assign_mixed(<span class="kw-2">&amp;</span>g2);
+        g
+    };
+    <span class="kw">let </span>g01_11 = {
+        <span class="kw">let </span><span class="kw-2">mut </span>g = g00_11;
+        g.add_assign_mixed(<span class="kw-2">&amp;</span>g1);
+        g
+    };
+    <span class="kw">let </span>g10_11 = {
+        <span class="kw">let </span><span class="kw-2">mut </span>g = g01_11;
+        g.add_assign_mixed(<span class="kw-2">&amp;</span>g1);
+        g
+    };
+    <span class="kw">let </span>g11_11 = {
+        <span class="kw">let </span><span class="kw-2">mut </span>g = g10_11;
+        g.add_assign_mixed(<span class="kw-2">&amp;</span>g1);
+        g
+    };
+
+    <span class="kw">let </span><span class="kw-2">mut </span>v = <span class="macro">vec!</span>[
+        g00_00, g01_00, g10_00, g11_00, g00_01, g01_01, g10_01, g11_01, g00_10, g01_10, g10_10,
+        g11_10, g00_11, g01_11, g10_11, g11_11,
     ];
-    <span class="ident">G::Projective::batch_normalization</span>(<span class="ident">v</span>.<span class="ident">as_mut_slice</span>());
-    <span class="kw">let</span> <span class="ident">v</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">v</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">into_affine</span>()).<span class="ident">collect</span>();
+    G::Projective::batch_normalization(v.as_mut_slice());
+    <span class="kw">let </span>v: Vec&lt;<span class="kw">_</span>&gt; = v.iter().map(|x| x.into_affine()).collect();
     [
-        <span class="ident">v</span>[<span class="number">0</span>], <span class="ident">v</span>[<span class="number">1</span>], <span class="ident">v</span>[<span class="number">2</span>], <span class="ident">v</span>[<span class="number">3</span>], <span class="ident">v</span>[<span class="number">4</span>], <span class="ident">v</span>[<span class="number">5</span>], <span class="ident">v</span>[<span class="number">6</span>], <span class="ident">v</span>[<span class="number">7</span>], <span class="ident">v</span>[<span class="number">8</span>], <span class="ident">v</span>[<span class="number">9</span>], <span class="ident">v</span>[<span class="number">10</span>], <span class="ident">v</span>[<span class="number">11</span>], <span class="ident">v</span>[<span class="number">12</span>], <span class="ident">v</span>[<span class="number">13</span>],
-        <span class="ident">v</span>[<span class="number">14</span>], <span class="ident">v</span>[<span class="number">15</span>],
+        v[<span class="number">0</span>], v[<span class="number">1</span>], v[<span class="number">2</span>], v[<span class="number">3</span>], v[<span class="number">4</span>], v[<span class="number">5</span>], v[<span class="number">6</span>], v[<span class="number">7</span>], v[<span class="number">8</span>], v[<span class="number">9</span>], v[<span class="number">10</span>], v[<span class="number">11</span>], v[<span class="number">12</span>], v[<span class="number">13</span>],
+        v[<span class="number">14</span>], v[<span class="number">15</span>],
     ]
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

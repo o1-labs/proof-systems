@@ -58,65 +58,65 @@
 <span id="58">58</span>
 <span id="59">59</span>
 <span id="60">60</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Definition of some constants for easier readability of the steps.</span>
-<span class="doccomment">//! When they refer to single bit flagsets, only one constant is needed.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Definition of some constants for easier readability of the steps.
+//! When they refer to single bit flagsets, only one constant is needed.
 
-<span class="doccomment">/// Number of Cairo flags</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">NUM_FLAGS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">16</span>;
-<span class="doccomment">/// Position of destination offset of 16 bits within instruction decomposition</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">POS_DST</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0</span>;
-<span class="doccomment">/// Position of first operand offset of 16 bits within instruction decomposition</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">POS_OP0</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">1</span>;
-<span class="doccomment">/// Position of second operand offset of 16 bits within instruction decomposition</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">POS_OP1</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">2</span>;
-<span class="doccomment">/// Bit position of the beginning of the flags in a Cairo instruction</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">POS_FLAGS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">48</span>;
+/// Number of Cairo flags
+</span><span class="kw">pub const </span>NUM_FLAGS: usize = <span class="number">16</span>;
+<span class="doccomment">/// Position of destination offset of 16 bits within instruction decomposition
+</span><span class="kw">pub const </span>POS_DST: usize = <span class="number">0</span>;
+<span class="doccomment">/// Position of first operand offset of 16 bits within instruction decomposition
+</span><span class="kw">pub const </span>POS_OP0: usize = <span class="number">1</span>;
+<span class="doccomment">/// Position of second operand offset of 16 bits within instruction decomposition
+</span><span class="kw">pub const </span>POS_OP1: usize = <span class="number">2</span>;
+<span class="doccomment">/// Bit position of the beginning of the flags in a Cairo instruction
+</span><span class="kw">pub const </span>POS_FLAGS: usize = <span class="number">48</span>;
 
-<span class="doccomment">/// Destination refers to ap register</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">DST_AP</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">0</span>;
+<span class="doccomment">/// Destination refers to ap register
+</span><span class="kw">pub const </span>DST_AP: u8 = <span class="number">0</span>;
 
-<span class="doccomment">/// First operand refers to ap register</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">OP0_AP</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">0</span>;
+<span class="doccomment">/// First operand refers to ap register
+</span><span class="kw">pub const </span>OP0_AP: u8 = <span class="number">0</span>;
 
-<span class="doccomment">/// Second operand is double indexing</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">OP1_DBL</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">0</span>;
-<span class="doccomment">/// Second operand is immediate value</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">OP1_VAL</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">1</span>;
-<span class="doccomment">/// Second operand refers to fp register</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">OP1_FP</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">2</span>;
-<span class="doccomment">/// Second operand refers to ap register</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">OP1_AP</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">4</span>;
+<span class="doccomment">/// Second operand is double indexing
+</span><span class="kw">pub const </span>OP1_DBL: u8 = <span class="number">0</span>;
+<span class="doccomment">/// Second operand is immediate value
+</span><span class="kw">pub const </span>OP1_VAL: u8 = <span class="number">1</span>;
+<span class="doccomment">/// Second operand refers to fp register
+</span><span class="kw">pub const </span>OP1_FP: u8 = <span class="number">2</span>;
+<span class="doccomment">/// Second operand refers to ap register
+</span><span class="kw">pub const </span>OP1_AP: u8 = <span class="number">4</span>;
 
-<span class="doccomment">/// Result is a single operand</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">RES_ONE</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">0</span>;
-<span class="doccomment">/// Result is an addition</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">RES_ADD</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">1</span>;
-<span class="doccomment">/// Result is a multiplication</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">RES_MUL</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">2</span>;
+<span class="doccomment">/// Result is a single operand
+</span><span class="kw">pub const </span>RES_ONE: u8 = <span class="number">0</span>;
+<span class="doccomment">/// Result is an addition
+</span><span class="kw">pub const </span>RES_ADD: u8 = <span class="number">1</span>;
+<span class="doccomment">/// Result is a multiplication
+</span><span class="kw">pub const </span>RES_MUL: u8 = <span class="number">2</span>;
 
-<span class="doccomment">/// Default increase of pc by adding instruction size</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PC_SIZ</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">0</span>;
-<span class="doccomment">/// Update pc by an absolute jump</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PC_ABS</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">1</span>;
-<span class="doccomment">/// Update pc by a relative jump</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PC_REL</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">2</span>;
-<span class="doccomment">/// Update pc by a conditional relative jump</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PC_JNZ</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">4</span>;
+<span class="doccomment">/// Default increase of pc by adding instruction size
+</span><span class="kw">pub const </span>PC_SIZ: u8 = <span class="number">0</span>;
+<span class="doccomment">/// Update pc by an absolute jump
+</span><span class="kw">pub const </span>PC_ABS: u8 = <span class="number">1</span>;
+<span class="doccomment">/// Update pc by a relative jump
+</span><span class="kw">pub const </span>PC_REL: u8 = <span class="number">2</span>;
+<span class="doccomment">/// Update pc by a conditional relative jump
+</span><span class="kw">pub const </span>PC_JNZ: u8 = <span class="number">4</span>;
 
-<span class="doccomment">/// Update by 2 in call instructions or zero behaviour for other instructions</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">AP_Z2</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">0</span>;
-<span class="doccomment">/// Update ap by adding a number of positions</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">AP_ADD</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">1</span>;
-<span class="doccomment">/// Update ap by self increment</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">AP_ONE</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">2</span>;
+<span class="doccomment">/// Update by 2 in call instructions or zero behaviour for other instructions
+</span><span class="kw">pub const </span>AP_Z2: u8 = <span class="number">0</span>;
+<span class="doccomment">/// Update ap by adding a number of positions
+</span><span class="kw">pub const </span>AP_ADD: u8 = <span class="number">1</span>;
+<span class="doccomment">/// Update ap by self increment
+</span><span class="kw">pub const </span>AP_ONE: u8 = <span class="number">2</span>;
 
-<span class="doccomment">/// Operation code is a jump or an increment</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">OPC_JMP_INC</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">0</span>;
-<span class="doccomment">/// Operation code is a call</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">OPC_CALL</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">1</span>;
-<span class="doccomment">/// Operation code is a return</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">OPC_RET</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">2</span>;
-<span class="doccomment">/// Operation code is an assert-equal</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">OPC_AEQ</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">4</span>;
+<span class="doccomment">/// Operation code is a jump or an increment
+</span><span class="kw">pub const </span>OPC_JMP_INC: u8 = <span class="number">0</span>;
+<span class="doccomment">/// Operation code is a call
+</span><span class="kw">pub const </span>OPC_CALL: u8 = <span class="number">1</span>;
+<span class="doccomment">/// Operation code is a return
+</span><span class="kw">pub const </span>OPC_RET: u8 = <span class="number">2</span>;
+<span class="doccomment">/// Operation code is an assert-equal
+</span><span class="kw">pub const </span>OPC_AEQ: u8 = <span class="number">4</span>;
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="cairo" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="cairo" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

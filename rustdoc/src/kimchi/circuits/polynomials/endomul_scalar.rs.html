@@ -384,391 +384,391 @@
 <span id="384">384</span>
 <span id="385">385</span>
 <span id="386">386</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Implementation of the EndomulScalar gate for the endomul scalar multiplication.</span>
-<span class="doccomment">//! This gate checks 8 rounds of the Algorithm 2 in the [Halo paper](https://eprint.iacr.org/2019/1021.pdf) per row.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Implementation of the EndomulScalar gate for the endomul scalar multiplication.
+//! This gate checks 8 rounds of the Algorithm 2 in the [Halo paper](https://eprint.iacr.org/2019/1021.pdf) per row.
 
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">circuits</span>::{
-        <span class="ident">argument</span>::{<span class="ident">Argument</span>, <span class="ident">ArgumentType</span>},
-        <span class="ident">constraints::ConstraintSystem</span>,
-        <span class="ident">expr</span>::{<span class="ident">prologue</span>::<span class="kw-2">*</span>, <span class="ident">Cache</span>},
-        <span class="ident">gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">GateType</span>},
-        <span class="ident">wires::COLUMNS</span>,
+</span><span class="kw">use crate</span>::{
+    circuits::{
+        argument::{Argument, ArgumentType},
+        constraints::ConstraintSystem,
+        expr::{prologue::<span class="kw-2">*</span>, Cache},
+        gate::{CircuitGate, GateType},
+        wires::COLUMNS,
     },
-    <span class="ident">curve::KimchiCurve</span>,
+    curve::KimchiCurve,
 };
-<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">BitIteratorLE</span>, <span class="ident">FftField</span>, <span class="ident">Field</span>, <span class="ident">PrimeField</span>, <span class="ident">Zero</span>};
-<span class="kw">use</span> <span class="ident">array_init::array_init</span>;
-<span class="kw">use</span> <span class="ident">std::marker::PhantomData</span>;
+<span class="kw">use </span>ark_ff::{BitIteratorLE, FftField, Field, PrimeField, Zero};
+<span class="kw">use </span>array_init::array_init;
+<span class="kw">use </span>std::marker::PhantomData;
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_endomul_scalar</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">KimchiCurve</span><span class="op">&lt;</span><span class="ident">ScalarField</span> <span class="op">=</span> <span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>(
+<span class="kw">impl</span>&lt;F: PrimeField&gt; CircuitGate&lt;F&gt; {
+    <span class="kw">pub fn </span>verify_endomul_scalar&lt;G: KimchiCurve&lt;ScalarField = F&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">row</span>: <span class="ident">usize</span>,
-        <span class="ident">witness</span>: <span class="kw-2">&amp;</span>[<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
-        <span class="ident">_cs</span>: <span class="kw-2">&amp;</span><span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="macro">ensure_eq!</span>(<span class="self">self</span>.<span class="ident">typ</span>, <span class="ident">GateType::EndoMulScalar</span>, <span class="string">&quot;incorrect gate type&quot;</span>);
+        row: usize,
+        witness: <span class="kw-2">&amp;</span>[Vec&lt;F&gt;; COLUMNS],
+        _cs: <span class="kw-2">&amp;</span>ConstraintSystem&lt;F&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
+        <span class="macro">ensure_eq!</span>(<span class="self">self</span>.typ, GateType::EndoMulScalar, <span class="string">&quot;incorrect gate type&quot;</span>);
 
-        <span class="kw">let</span> <span class="ident">n0</span> <span class="op">=</span> <span class="ident">witness</span>[<span class="number">0</span>][<span class="ident">row</span>];
-        <span class="kw">let</span> <span class="ident">n8</span> <span class="op">=</span> <span class="ident">witness</span>[<span class="number">1</span>][<span class="ident">row</span>];
-        <span class="kw">let</span> <span class="ident">a0</span> <span class="op">=</span> <span class="ident">witness</span>[<span class="number">2</span>][<span class="ident">row</span>];
-        <span class="kw">let</span> <span class="ident">b0</span> <span class="op">=</span> <span class="ident">witness</span>[<span class="number">3</span>][<span class="ident">row</span>];
-        <span class="kw">let</span> <span class="ident">a8</span> <span class="op">=</span> <span class="ident">witness</span>[<span class="number">4</span>][<span class="ident">row</span>];
-        <span class="kw">let</span> <span class="ident">b8</span> <span class="op">=</span> <span class="ident">witness</span>[<span class="number">5</span>][<span class="ident">row</span>];
+        <span class="kw">let </span>n0 = witness[<span class="number">0</span>][row];
+        <span class="kw">let </span>n8 = witness[<span class="number">1</span>][row];
+        <span class="kw">let </span>a0 = witness[<span class="number">2</span>][row];
+        <span class="kw">let </span>b0 = witness[<span class="number">3</span>][row];
+        <span class="kw">let </span>a8 = witness[<span class="number">4</span>][row];
+        <span class="kw">let </span>b8 = witness[<span class="number">5</span>][row];
 
-        <span class="kw">let</span> <span class="ident">xs</span>: [<span class="kw">_</span>; <span class="number">8</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">witness</span>[<span class="number">6</span> <span class="op">+</span> <span class="ident">i</span>][<span class="ident">row</span>]);
+        <span class="kw">let </span>xs: [<span class="kw">_</span>; <span class="number">8</span>] = array_init(|i| witness[<span class="number">6 </span>+ i][row]);
 
-        <span class="kw">let</span> <span class="ident">n8_expected</span> <span class="op">=</span> <span class="ident">xs</span>.<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="ident">n0</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="ident">x</span><span class="op">|</span> <span class="ident">acc</span>.<span class="ident">double</span>().<span class="ident">double</span>() <span class="op">+</span> <span class="ident">x</span>);
-        <span class="kw">let</span> <span class="ident">a8_expected</span> <span class="op">=</span> <span class="ident">xs</span>.<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="ident">a0</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="ident">x</span><span class="op">|</span> <span class="ident">acc</span>.<span class="ident">double</span>() <span class="op">+</span> <span class="ident">c_func</span>(<span class="kw-2">*</span><span class="ident">x</span>));
-        <span class="kw">let</span> <span class="ident">b8_expected</span> <span class="op">=</span> <span class="ident">xs</span>.<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="ident">b0</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="ident">x</span><span class="op">|</span> <span class="ident">acc</span>.<span class="ident">double</span>() <span class="op">+</span> <span class="ident">d_func</span>(<span class="kw-2">*</span><span class="ident">x</span>));
+        <span class="kw">let </span>n8_expected = xs.iter().fold(n0, |acc, x| acc.double().double() + x);
+        <span class="kw">let </span>a8_expected = xs.iter().fold(a0, |acc, x| acc.double() + c_func(<span class="kw-2">*</span>x));
+        <span class="kw">let </span>b8_expected = xs.iter().fold(b0, |acc, x| acc.double() + d_func(<span class="kw-2">*</span>x));
 
-        <span class="macro">ensure_eq!</span>(<span class="ident">a8</span>, <span class="ident">a8_expected</span>, <span class="string">&quot;a8 incorrect&quot;</span>);
-        <span class="macro">ensure_eq!</span>(<span class="ident">b8</span>, <span class="ident">b8_expected</span>, <span class="string">&quot;b8 incorrect&quot;</span>);
-        <span class="macro">ensure_eq!</span>(<span class="ident">n8</span>, <span class="ident">n8_expected</span>, <span class="string">&quot;n8 incorrect&quot;</span>);
+        <span class="macro">ensure_eq!</span>(a8, a8_expected, <span class="string">&quot;a8 incorrect&quot;</span>);
+        <span class="macro">ensure_eq!</span>(b8, b8_expected, <span class="string">&quot;b8 incorrect&quot;</span>);
+        <span class="macro">ensure_eq!</span>(n8, n8_expected, <span class="string">&quot;n8 incorrect&quot;</span>);
 
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="kw">fn</span> <span class="ident">polynomial</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">coeffs</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>], <span class="ident">x</span>: <span class="kw-2">&amp;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="ident">coeffs</span>
-        .<span class="ident">iter</span>()
-        .<span class="ident">rev</span>()
-        .<span class="ident">fold</span>(<span class="ident">E::zero</span>(), <span class="op">|</span><span class="ident">acc</span>, <span class="ident">c</span><span class="op">|</span> <span class="ident">acc</span> <span class="op">*</span> <span class="ident">x</span>.<span class="ident">clone</span>() <span class="op">+</span> <span class="ident">E::literal</span>(<span class="kw-2">*</span><span class="ident">c</span>))
+<span class="kw">fn </span>polynomial&lt;F: Field&gt;(coeffs: <span class="kw-2">&amp;</span>[F], x: <span class="kw-2">&amp;</span>E&lt;F&gt;) -&gt; E&lt;F&gt; {
+    coeffs
+        .iter()
+        .rev()
+        .fold(E::zero(), |acc, c| acc * x.clone() + E::literal(<span class="kw-2">*</span>c))
 }
 
-<span class="comment">//~ We give constraints for the endomul scalar computation.</span>
-<span class="comment">//~</span>
-<span class="comment">//~ Each row corresponds to 8 iterations of the inner loop in &quot;Algorithm 2&quot; on page 29 of</span>
-<span class="comment">//~ [the Halo paper](https://eprint.iacr.org/2019/1021.pdf).</span>
-<span class="comment">//~</span>
-<span class="comment">//~ The state of the algorithm that&#39;s updated across iterations of the loop is `(a, b)`.</span>
-<span class="comment">//~ It&#39;s clear from that description of the algorithm that an iteration of the loop can</span>
-<span class="comment">//~ be written as</span>
-<span class="comment">//~</span>
-<span class="comment">//~ ```ignore</span>
-<span class="comment">//~ (a, b, i) -&gt;</span>
-<span class="comment">//~   ( 2 * a + c_func(r_{2 * i}, r_{2 * i + 1}),</span>
-<span class="comment">//~     2 * b + d_func(r_{2 * i}, r_{2 * i + 1}) )</span>
-<span class="comment">//~ ```</span>
-<span class="comment">//~</span>
-<span class="comment">//~ for some functions `c_func` and `d_func`. If one works out what these functions are on</span>
-<span class="comment">//~ every input (thinking of a two-bit input as a number in $\{0, 1, 2, 3\}$), one finds they</span>
-<span class="comment">//~ are given by</span>
-<span class="comment">//~</span>
-<span class="comment">//~ `c_func(x)`, defined by</span>
-<span class="comment">//~ - `c_func(0) = 0`</span>
-<span class="comment">//~ - `c_func(1) = 0`</span>
-<span class="comment">//~ - `c_func(2) = -1`</span>
-<span class="comment">//~ - `c_func(3) = 1`</span>
-<span class="comment">//~</span>
-<span class="comment">//~ `d_func(x)`, defined by</span>
-<span class="comment">//~ - `d_func(0) = -1`</span>
-<span class="comment">//~ - `d_func(1) = 1`</span>
-<span class="comment">//~ - `d_func(2) = 0`</span>
-<span class="comment">//~ - `d_func(3) = 0`</span>
-<span class="comment">//~</span>
-<span class="comment">//~ One can then interpolate to find polynomials that implement these functions on $\{0, 1, 2, 3\}$.</span>
-<span class="comment">//~</span>
-<span class="comment">//~ You can use [`sage`](https://www.sagemath.org/), as</span>
-<span class="comment">//~ ```ignore</span>
-<span class="comment">//~ R = PolynomialRing(QQ, &#39;x&#39;)</span>
-<span class="comment">//~ c_func = R.lagrange_polynomial([(0, 0), (1, 0), (2, -1), (3, 1)])</span>
-<span class="comment">//~ d_func = R.lagrange_polynomial([(0, -1), (1, 1), (2, 0), (3, 0)])</span>
-<span class="comment">//~ ```</span>
-<span class="comment">//~</span>
-<span class="comment">//~ Then, `c_func` is given by</span>
-<span class="comment">//~</span>
-<span class="comment">//~ ```ignore</span>
-<span class="comment">//~ 2/3 * x^3 - 5/2 * x^2 + 11/6 * x</span>
-<span class="comment">//~ ```</span>
-<span class="comment">//~</span>
-<span class="comment">//~ and `d_func` is given by</span>
-<span class="comment">//~ ```ignore</span>
-<span class="comment">//~ 2/3 * x^3 - 7/2 * x^2 + 29/6 * x - 1 &lt;=&gt; c_func + (-x^2 + 3x - 1)</span>
-<span class="comment">//~ ```</span>
-<span class="comment">//~</span>
-<span class="comment">//~ We lay it out the witness as</span>
-<span class="comment">//~</span>
-<span class="comment">//~ |  0 |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |  9 | 10 | 11 | 12 | 13 | 14 | Type |</span>
-<span class="comment">//~ |----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|------|</span>
-<span class="comment">//~ | n0 | n8 | a0 | b0 | a8 | b8 | x0 | x1 | x2 | x3 | x4 | x5 | x6 | x7 |    | ENDO |</span>
-<span class="comment">//~</span>
-<span class="comment">//~ where each `xi` is a two-bit &quot;crumb&quot;.</span>
-<span class="comment">//~</span>
-<span class="comment">//~ We also use a polynomial to check that each `xi` is indeed in $\{0, 1, 2, 3\}$,</span>
-<span class="comment">//~ which can be done by checking that each $x_i$ is a root of the polyunomial below:</span>
-<span class="comment">//~</span>
-<span class="comment">//~ ```ignore</span>
-<span class="comment">//~ crumb(x)</span>
-<span class="comment">//~ = x (x - 1) (x - 2) (x - 3)</span>
-<span class="comment">//~ = x^4 - 6*x^3 + 11*x^2 - 6*x</span>
-<span class="comment">//~ = x *(x^3 - 6*x^2 + 11*x - 6)</span>
-<span class="comment">//~ ```</span>
-<span class="comment">//~ Each iteration performs the following computations</span>
-<span class="comment">//~</span>
-<span class="comment">//~ * Update $n$: $\quad n_{i+1} = 2 \cdot n_{i} + x_i$</span>
-<span class="comment">//~ * Update $a$: $\quad a_{i+1} = 2 \cdot a_{i} + c_i$</span>
-<span class="comment">//~ * Update $b$: $\quad b_{i+1} = 2 \cdot b_{i} + d_i$</span>
-<span class="comment">//~</span>
-<span class="comment">//~ Then, after the 8 iterations, we compute expected values of the above operations as:</span>
-<span class="comment">//~</span>
-<span class="comment">//~ * `expected_n8 := 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * (2 * n0 + x0) + x1 ) + x2 ) + x3 ) + x4 ) + x5 ) + x6 ) + x7`</span>
-<span class="comment">//~ * `expected_a8 := 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * (2 * a0 + c0) + c1 ) + c2 ) + c3 ) + c4 ) + c5 ) + c6 ) + c7`</span>
-<span class="comment">//~ * `expected_b8 := 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * (2 * b0 + d0) + d1 ) + d2 ) + d3 ) + d4 ) + d5 ) + d6 ) + d7`</span>
-<span class="comment">//~</span>
-<span class="comment">//~ Putting together all of the above, these are the 11 constraints for this gate</span>
-<span class="comment">//~</span>
-<span class="comment">//~ * Checking values after the 8 iterations:</span>
-<span class="comment">//~   * Constrain $n$: ` 0 = expected_n8 - n8`</span>
-<span class="comment">//~   * Constrain $a$: ` 0 = expected_a8 - a8`</span>
-<span class="comment">//~   * Constrain $b$: ` 0 = expected_b8 - b8`</span>
-<span class="comment">//~ * Checking the crumbs, meaning each $x$ is indeed in the range $\{0, 1, 2, 3\}$:</span>
-<span class="comment">//~   * Constrain $x_0$: `0 = x0 * ( x0^3 - 6 * x0^2 + 11 * x0 - 6 )`</span>
-<span class="comment">//~   * Constrain $x_1$: `0 = x1 * ( x1^3 - 6 * x1^2 + 11 * x1 - 6 )`</span>
-<span class="comment">//~   * Constrain $x_2$: `0 = x2 * ( x2^3 - 6 * x2^2 + 11 * x2 - 6 )`</span>
-<span class="comment">//~   * Constrain $x_3$: `0 = x3 * ( x3^3 - 6 * x3^2 + 11 * x3 - 6 )`</span>
-<span class="comment">//~   * Constrain $x_4$: `0 = x4 * ( x4^3 - 6 * x4^2 + 11 * x4 - 6 )`</span>
-<span class="comment">//~   * Constrain $x_5$: `0 = x5 * ( x5^3 - 6 * x5^2 + 11 * x5 - 6 )`</span>
-<span class="comment">//~   * Constrain $x_6$: `0 = x6 * ( x6^3 - 6 * x6^2 + 11 * x6 - 6 )`</span>
-<span class="comment">//~   * Constrain $x_7$: `0 = x7 * ( x7^3 - 6 * x7^2 + 11 * x7 - 6 )`</span>
-<span class="comment">//~</span>
+<span class="comment">//~ We give constraints for the endomul scalar computation.
+//~
+//~ Each row corresponds to 8 iterations of the inner loop in &quot;Algorithm 2&quot; on page 29 of
+//~ [the Halo paper](https://eprint.iacr.org/2019/1021.pdf).
+//~
+//~ The state of the algorithm that&#39;s updated across iterations of the loop is `(a, b)`.
+//~ It&#39;s clear from that description of the algorithm that an iteration of the loop can
+//~ be written as
+//~
+//~ ```ignore
+//~ (a, b, i) -&gt;
+//~   ( 2 * a + c_func(r_{2 * i}, r_{2 * i + 1}),
+//~     2 * b + d_func(r_{2 * i}, r_{2 * i + 1}) )
+//~ ```
+//~
+//~ for some functions `c_func` and `d_func`. If one works out what these functions are on
+//~ every input (thinking of a two-bit input as a number in $\{0, 1, 2, 3\}$), one finds they
+//~ are given by
+//~
+//~ `c_func(x)`, defined by
+//~ - `c_func(0) = 0`
+//~ - `c_func(1) = 0`
+//~ - `c_func(2) = -1`
+//~ - `c_func(3) = 1`
+//~
+//~ `d_func(x)`, defined by
+//~ - `d_func(0) = -1`
+//~ - `d_func(1) = 1`
+//~ - `d_func(2) = 0`
+//~ - `d_func(3) = 0`
+//~
+//~ One can then interpolate to find polynomials that implement these functions on $\{0, 1, 2, 3\}$.
+//~
+//~ You can use [`sage`](https://www.sagemath.org/), as
+//~ ```ignore
+//~ R = PolynomialRing(QQ, &#39;x&#39;)
+//~ c_func = R.lagrange_polynomial([(0, 0), (1, 0), (2, -1), (3, 1)])
+//~ d_func = R.lagrange_polynomial([(0, -1), (1, 1), (2, 0), (3, 0)])
+//~ ```
+//~
+//~ Then, `c_func` is given by
+//~
+//~ ```ignore
+//~ 2/3 * x^3 - 5/2 * x^2 + 11/6 * x
+//~ ```
+//~
+//~ and `d_func` is given by
+//~ ```ignore
+//~ 2/3 * x^3 - 7/2 * x^2 + 29/6 * x - 1 &lt;=&gt; c_func + (-x^2 + 3x - 1)
+//~ ```
+//~
+//~ We lay it out the witness as
+//~
+//~ |  0 |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |  9 | 10 | 11 | 12 | 13 | 14 | Type |
+//~ |----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|------|
+//~ | n0 | n8 | a0 | b0 | a8 | b8 | x0 | x1 | x2 | x3 | x4 | x5 | x6 | x7 |    | ENDO |
+//~
+//~ where each `xi` is a two-bit &quot;crumb&quot;.
+//~
+//~ We also use a polynomial to check that each `xi` is indeed in $\{0, 1, 2, 3\}$,
+//~ which can be done by checking that each $x_i$ is a root of the polyunomial below:
+//~
+//~ ```ignore
+//~ crumb(x)
+//~ = x (x - 1) (x - 2) (x - 3)
+//~ = x^4 - 6*x^3 + 11*x^2 - 6*x
+//~ = x *(x^3 - 6*x^2 + 11*x - 6)
+//~ ```
+//~ Each iteration performs the following computations
+//~
+//~ * Update $n$: $\quad n_{i+1} = 2 \cdot n_{i} + x_i$
+//~ * Update $a$: $\quad a_{i+1} = 2 \cdot a_{i} + c_i$
+//~ * Update $b$: $\quad b_{i+1} = 2 \cdot b_{i} + d_i$
+//~
+//~ Then, after the 8 iterations, we compute expected values of the above operations as:
+//~
+//~ * `expected_n8 := 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * (2 * n0 + x0) + x1 ) + x2 ) + x3 ) + x4 ) + x5 ) + x6 ) + x7`
+//~ * `expected_a8 := 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * (2 * a0 + c0) + c1 ) + c2 ) + c3 ) + c4 ) + c5 ) + c6 ) + c7`
+//~ * `expected_b8 := 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * ( 2 * (2 * b0 + d0) + d1 ) + d2 ) + d3 ) + d4 ) + d5 ) + d6 ) + d7`
+//~
+//~ Putting together all of the above, these are the 11 constraints for this gate
+//~
+//~ * Checking values after the 8 iterations:
+//~   * Constrain $n$: ` 0 = expected_n8 - n8`
+//~   * Constrain $a$: ` 0 = expected_a8 - a8`
+//~   * Constrain $b$: ` 0 = expected_b8 - b8`
+//~ * Checking the crumbs, meaning each $x$ is indeed in the range $\{0, 1, 2, 3\}$:
+//~   * Constrain $x_0$: `0 = x0 * ( x0^3 - 6 * x0^2 + 11 * x0 - 6 )`
+//~   * Constrain $x_1$: `0 = x1 * ( x1^3 - 6 * x1^2 + 11 * x1 - 6 )`
+//~   * Constrain $x_2$: `0 = x2 * ( x2^3 - 6 * x2^2 + 11 * x2 - 6 )`
+//~   * Constrain $x_3$: `0 = x3 * ( x3^3 - 6 * x3^2 + 11 * x3 - 6 )`
+//~   * Constrain $x_4$: `0 = x4 * ( x4^3 - 6 * x4^2 + 11 * x4 - 6 )`
+//~   * Constrain $x_5$: `0 = x5 * ( x5^3 - 6 * x5^2 + 11 * x5 - 6 )`
+//~   * Constrain $x_6$: `0 = x6 * ( x6^3 - 6 * x6^2 + 11 * x6 - 6 )`
+//~   * Constrain $x_7$: `0 = x7 * ( x7^3 - 6 * x7^2 + 11 * x7 - 6 )`
+//~
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">EndomulScalar</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">PhantomData</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>);
+</span><span class="kw">pub struct </span>EndomulScalar&lt;F&gt;(PhantomData&lt;F&gt;);
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="ident">Argument</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">EndomulScalar</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">F</span>: <span class="ident">FftField</span>,
+<span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>EndomulScalar&lt;F&gt;
+<span class="kw">where
+    </span>F: FftField,
 {
-    <span class="kw">const</span> <span class="ident">ARGUMENT_TYPE</span>: <span class="ident">ArgumentType</span> <span class="op">=</span> <span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::EndoMulScalar</span>);
-    <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">11</span>;
+    <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMulScalar);
+    <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">11</span>;
 
-    <span class="kw">fn</span> <span class="ident">constraints</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">n0</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">0</span>);
-        <span class="kw">let</span> <span class="ident">n8</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">1</span>);
-        <span class="kw">let</span> <span class="ident">a0</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">2</span>);
-        <span class="kw">let</span> <span class="ident">b0</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">3</span>);
-        <span class="kw">let</span> <span class="ident">a8</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">4</span>);
-        <span class="kw">let</span> <span class="ident">b8</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">5</span>);
+    <span class="kw">fn </span>constraints() -&gt; Vec&lt;E&lt;F&gt;&gt; {
+        <span class="kw">let </span>n0 = witness_curr(<span class="number">0</span>);
+        <span class="kw">let </span>n8 = witness_curr(<span class="number">1</span>);
+        <span class="kw">let </span>a0 = witness_curr(<span class="number">2</span>);
+        <span class="kw">let </span>b0 = witness_curr(<span class="number">3</span>);
+        <span class="kw">let </span>a8 = witness_curr(<span class="number">4</span>);
+        <span class="kw">let </span>b8 = witness_curr(<span class="number">5</span>);
 
-        <span class="comment">// x0..x7</span>
-        <span class="kw">let</span> <span class="ident">xs</span>: [<span class="kw">_</span>; <span class="number">8</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">witness_curr</span>(<span class="number">6</span> <span class="op">+</span> <span class="ident">i</span>));
+        <span class="comment">// x0..x7
+        </span><span class="kw">let </span>xs: [<span class="kw">_</span>; <span class="number">8</span>] = array_init(|i| witness_curr(<span class="number">6 </span>+ i));
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cache</span> <span class="op">=</span> <span class="ident">Cache::default</span>();
+        <span class="kw">let </span><span class="kw-2">mut </span>cache = Cache::default();
 
-        <span class="kw">let</span> <span class="ident">c_coeffs</span> <span class="op">=</span> [
-            <span class="ident">F::zero</span>(),
-            <span class="ident">F::from</span>(<span class="number">11u64</span>) <span class="op">/</span> <span class="ident">F::from</span>(<span class="number">6u64</span>),
-            <span class="op">-</span><span class="ident">F::from</span>(<span class="number">5u64</span>) <span class="op">/</span> <span class="ident">F::from</span>(<span class="number">2u64</span>),
-            <span class="ident">F::from</span>(<span class="number">2u64</span>) <span class="op">/</span> <span class="ident">F::from</span>(<span class="number">3u64</span>),
+        <span class="kw">let </span>c_coeffs = [
+            F::zero(),
+            F::from(<span class="number">11u64</span>) / F::from(<span class="number">6u64</span>),
+            -F::from(<span class="number">5u64</span>) / F::from(<span class="number">2u64</span>),
+            F::from(<span class="number">2u64</span>) / F::from(<span class="number">3u64</span>),
         ];
 
-        <span class="kw">let</span> <span class="ident">crumb_over_x_coeffs</span> <span class="op">=</span> [<span class="op">-</span><span class="ident">F::from</span>(<span class="number">6u64</span>), <span class="ident">F::from</span>(<span class="number">11u64</span>), <span class="op">-</span><span class="ident">F::from</span>(<span class="number">6u64</span>), <span class="ident">F::one</span>()];
-        <span class="kw">let</span> <span class="ident">crumb</span> <span class="op">=</span> <span class="op">|</span><span class="ident">x</span>: <span class="kw-2">&amp;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">|</span> <span class="ident">polynomial</span>(<span class="kw-2">&amp;</span><span class="ident">crumb_over_x_coeffs</span>[..], <span class="ident">x</span>) <span class="op">*</span> <span class="ident">x</span>.<span class="ident">clone</span>();
-        <span class="kw">let</span> <span class="ident">d_minus_c_coeffs</span> <span class="op">=</span> [<span class="op">-</span><span class="ident">F::one</span>(), <span class="ident">F::from</span>(<span class="number">3u64</span>), <span class="op">-</span><span class="ident">F::one</span>()];
+        <span class="kw">let </span>crumb_over_x_coeffs = [-F::from(<span class="number">6u64</span>), F::from(<span class="number">11u64</span>), -F::from(<span class="number">6u64</span>), F::one()];
+        <span class="kw">let </span>crumb = |x: <span class="kw-2">&amp;</span>E&lt;F&gt;| polynomial(<span class="kw-2">&amp;</span>crumb_over_x_coeffs[..], x) * x.clone();
+        <span class="kw">let </span>d_minus_c_coeffs = [-F::one(), F::from(<span class="number">3u64</span>), -F::one()];
 
-        <span class="kw">let</span> <span class="ident">c_funcs</span>: [<span class="kw">_</span>; <span class="number">8</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">cache</span>.<span class="ident">cache</span>(<span class="ident">polynomial</span>(<span class="kw-2">&amp;</span><span class="ident">c_coeffs</span>[..], <span class="kw-2">&amp;</span><span class="ident">xs</span>[<span class="ident">i</span>])));
-        <span class="kw">let</span> <span class="ident">d_funcs</span>: [<span class="kw">_</span>; <span class="number">8</span>] <span class="op">=</span>
-            <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">c_funcs</span>[<span class="ident">i</span>].<span class="ident">clone</span>() <span class="op">+</span> <span class="ident">polynomial</span>(<span class="kw-2">&amp;</span><span class="ident">d_minus_c_coeffs</span>[..], <span class="kw-2">&amp;</span><span class="ident">xs</span>[<span class="ident">i</span>]));
+        <span class="kw">let </span>c_funcs: [<span class="kw">_</span>; <span class="number">8</span>] = array_init(|i| cache.cache(polynomial(<span class="kw-2">&amp;</span>c_coeffs[..], <span class="kw-2">&amp;</span>xs[i])));
+        <span class="kw">let </span>d_funcs: [<span class="kw">_</span>; <span class="number">8</span>] =
+            array_init(|i| c_funcs[i].clone() + polynomial(<span class="kw-2">&amp;</span>d_minus_c_coeffs[..], <span class="kw-2">&amp;</span>xs[i]));
 
-        <span class="kw">let</span> <span class="ident">n8_expected</span> <span class="op">=</span> <span class="ident">xs</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">fold</span>(<span class="ident">n0</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="ident">x</span><span class="op">|</span> <span class="ident">acc</span>.<span class="ident">double</span>().<span class="ident">double</span>() <span class="op">+</span> <span class="ident">x</span>.<span class="ident">clone</span>());
+        <span class="kw">let </span>n8_expected = xs
+            .iter()
+            .fold(n0, |acc, x| acc.double().double() + x.clone());
 
-        <span class="comment">// This is iterating</span>
-        <span class="comment">//</span>
-        <span class="comment">// a = 2 a + c</span>
-        <span class="comment">// b = 2 b + d</span>
-        <span class="comment">//</span>
-        <span class="comment">// as in the paper.</span>
-        <span class="kw">let</span> <span class="ident">a8_expected</span> <span class="op">=</span> <span class="ident">c_funcs</span>.<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="ident">a0</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="ident">c</span><span class="op">|</span> <span class="ident">acc</span>.<span class="ident">double</span>() <span class="op">+</span> <span class="ident">c</span>.<span class="ident">clone</span>());
-        <span class="kw">let</span> <span class="ident">b8_expected</span> <span class="op">=</span> <span class="ident">d_funcs</span>.<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="ident">b0</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="ident">d</span><span class="op">|</span> <span class="ident">acc</span>.<span class="ident">double</span>() <span class="op">+</span> <span class="ident">d</span>.<span class="ident">clone</span>());
+        <span class="comment">// This is iterating
+        //
+        // a = 2 a + c
+        // b = 2 b + d
+        //
+        // as in the paper.
+        </span><span class="kw">let </span>a8_expected = c_funcs.iter().fold(a0, |acc, c| acc.double() + c.clone());
+        <span class="kw">let </span>b8_expected = d_funcs.iter().fold(b0, |acc, d| acc.double() + d.clone());
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">constraints</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">n8_expected</span> <span class="op">-</span> <span class="ident">n8</span>, <span class="ident">a8_expected</span> <span class="op">-</span> <span class="ident">a8</span>, <span class="ident">b8_expected</span> <span class="op">-</span> <span class="ident">b8</span>];
-        <span class="ident">constraints</span>.<span class="ident">extend</span>(<span class="ident">xs</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="ident">crumb</span>));
+        <span class="kw">let </span><span class="kw-2">mut </span>constraints = <span class="macro">vec!</span>[n8_expected - n8, a8_expected - a8, b8_expected - b8];
+        constraints.extend(xs.iter().map(crumb));
 
-        <span class="ident">constraints</span>
+        constraints
     }
 }
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">gen_witness</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span> <span class="op">+</span> <span class="ident">std::fmt::Display</span><span class="op">&gt;</span>(
-    <span class="ident">witness_cols</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
-    <span class="ident">scalar</span>: <span class="ident">F</span>,
-    <span class="ident">endo_scalar</span>: <span class="ident">F</span>,
-    <span class="ident">num_bits</span>: <span class="ident">usize</span>,
-) -&gt; <span class="ident">F</span> {
-    <span class="kw">let</span> <span class="ident">crumbs_per_row</span> <span class="op">=</span> <span class="number">8</span>;
-    <span class="kw">let</span> <span class="ident">bits_per_row</span> <span class="op">=</span> <span class="number">2</span> <span class="op">*</span> <span class="ident">crumbs_per_row</span>;
-    <span class="macro">assert_eq!</span>(<span class="ident">num_bits</span> <span class="op">%</span> <span class="ident">bits_per_row</span>, <span class="number">0</span>);
+<span class="kw">pub fn </span>gen_witness&lt;F: PrimeField + std::fmt::Display&gt;(
+    witness_cols: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS],
+    scalar: F,
+    endo_scalar: F,
+    num_bits: usize,
+) -&gt; F {
+    <span class="kw">let </span>crumbs_per_row = <span class="number">8</span>;
+    <span class="kw">let </span>bits_per_row = <span class="number">2 </span>* crumbs_per_row;
+    <span class="macro">assert_eq!</span>(num_bits % bits_per_row, <span class="number">0</span>);
 
-    <span class="kw">let</span> <span class="ident">bits_lsb</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">BitIteratorLE::new</span>(<span class="ident">scalar</span>.<span class="ident">into_repr</span>())
-        .<span class="ident">take</span>(<span class="ident">num_bits</span>)
-        .<span class="ident">collect</span>();
-    <span class="kw">let</span> <span class="ident">bits_msb</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">bits_lsb</span>.<span class="ident">iter</span>().<span class="ident">rev</span>().<span class="ident">collect</span>();
+    <span class="kw">let </span>bits_lsb: Vec&lt;<span class="kw">_</span>&gt; = BitIteratorLE::new(scalar.into_repr())
+        .take(num_bits)
+        .collect();
+    <span class="kw">let </span>bits_msb: Vec&lt;<span class="kw">_</span>&gt; = bits_lsb.iter().rev().collect();
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">a</span> <span class="op">=</span> <span class="ident">F::from</span>(<span class="number">2u64</span>);
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">b</span> <span class="op">=</span> <span class="ident">F::from</span>(<span class="number">2u64</span>);
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">F::zero</span>();
+    <span class="kw">let </span><span class="kw-2">mut </span>a = F::from(<span class="number">2u64</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>b = F::from(<span class="number">2u64</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>n = F::zero();
 
-    <span class="kw">let</span> <span class="ident">one</span> <span class="op">=</span> <span class="ident">F::one</span>();
-    <span class="kw">let</span> <span class="ident">neg_one</span> <span class="op">=</span> <span class="op">-</span><span class="ident">one</span>;
+    <span class="kw">let </span>one = F::one();
+    <span class="kw">let </span>neg_one = -one;
 
-    <span class="kw">for</span> <span class="ident">row_bits</span> <span class="kw">in</span> <span class="ident">bits_msb</span>[..].<span class="ident">chunks</span>(<span class="ident">bits_per_row</span>) {
-        <span class="ident">witness_cols</span>[<span class="number">0</span>].<span class="ident">push</span>(<span class="ident">n</span>);
-        <span class="ident">witness_cols</span>[<span class="number">2</span>].<span class="ident">push</span>(<span class="ident">a</span>);
-        <span class="ident">witness_cols</span>[<span class="number">3</span>].<span class="ident">push</span>(<span class="ident">b</span>);
+    <span class="kw">for </span>row_bits <span class="kw">in </span>bits_msb[..].chunks(bits_per_row) {
+        witness_cols[<span class="number">0</span>].push(n);
+        witness_cols[<span class="number">2</span>].push(a);
+        witness_cols[<span class="number">3</span>].push(b);
 
-        <span class="kw">for</span> (<span class="ident">j</span>, <span class="ident">crumb_bits</span>) <span class="kw">in</span> <span class="ident">row_bits</span>.<span class="ident">chunks</span>(<span class="number">2</span>).<span class="ident">enumerate</span>() {
-            <span class="kw">let</span> <span class="ident">b0</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">crumb_bits</span>[<span class="number">1</span>];
-            <span class="kw">let</span> <span class="ident">b1</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">crumb_bits</span>[<span class="number">0</span>];
+        <span class="kw">for </span>(j, crumb_bits) <span class="kw">in </span>row_bits.chunks(<span class="number">2</span>).enumerate() {
+            <span class="kw">let </span>b0 = <span class="kw-2">*</span>crumb_bits[<span class="number">1</span>];
+            <span class="kw">let </span>b1 = <span class="kw-2">*</span>crumb_bits[<span class="number">0</span>];
 
-            <span class="kw">let</span> <span class="ident">crumb</span> <span class="op">=</span> <span class="ident">F::from</span>(<span class="ident">b0</span> <span class="kw">as</span> <span class="ident">u64</span>) <span class="op">+</span> <span class="ident">F::from</span>(<span class="ident">b1</span> <span class="kw">as</span> <span class="ident">u64</span>).<span class="ident">double</span>();
-            <span class="ident">witness_cols</span>[<span class="number">6</span> <span class="op">+</span> <span class="ident">j</span>].<span class="ident">push</span>(<span class="ident">crumb</span>);
+            <span class="kw">let </span>crumb = F::from(b0 <span class="kw">as </span>u64) + F::from(b1 <span class="kw">as </span>u64).double();
+            witness_cols[<span class="number">6 </span>+ j].push(crumb);
 
-            <span class="ident">a</span>.<span class="ident">double_in_place</span>();
-            <span class="ident">b</span>.<span class="ident">double_in_place</span>();
+            a.double_in_place();
+            b.double_in_place();
 
-            <span class="kw">let</span> <span class="ident">s</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">b0</span> { <span class="kw-2">&amp;</span><span class="ident">one</span> } <span class="kw">else</span> { <span class="kw-2">&amp;</span><span class="ident">neg_one</span> };
+            <span class="kw">let </span>s = <span class="kw">if </span>b0 { <span class="kw-2">&amp;</span>one } <span class="kw">else </span>{ <span class="kw-2">&amp;</span>neg_one };
 
-            <span class="kw">let</span> <span class="ident">a_prev</span> <span class="op">=</span> <span class="ident">a</span>;
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">b1</span> {
-                <span class="ident">b</span> <span class="op">+</span><span class="op">=</span> <span class="ident">s</span>;
-            } <span class="kw">else</span> {
-                <span class="ident">a</span> <span class="op">+</span><span class="op">=</span> <span class="ident">s</span>;
+            <span class="kw">let </span>a_prev = a;
+            <span class="kw">if </span>!b1 {
+                b += s;
+            } <span class="kw">else </span>{
+                a += s;
             }
-            <span class="macro">assert_eq!</span>(<span class="ident">a</span>, <span class="ident">a_prev</span> <span class="op">+</span> <span class="ident">c_func</span>(<span class="ident">crumb</span>));
+            <span class="macro">assert_eq!</span>(a, a_prev + c_func(crumb));
 
-            <span class="ident">n</span>.<span class="ident">double_in_place</span>().<span class="ident">double_in_place</span>();
-            <span class="ident">n</span> <span class="op">+</span><span class="op">=</span> <span class="ident">crumb</span>;
+            n.double_in_place().double_in_place();
+            n += crumb;
         }
 
-        <span class="ident">witness_cols</span>[<span class="number">1</span>].<span class="ident">push</span>(<span class="ident">n</span>);
-        <span class="ident">witness_cols</span>[<span class="number">4</span>].<span class="ident">push</span>(<span class="ident">a</span>);
-        <span class="ident">witness_cols</span>[<span class="number">5</span>].<span class="ident">push</span>(<span class="ident">b</span>);
+        witness_cols[<span class="number">1</span>].push(n);
+        witness_cols[<span class="number">4</span>].push(a);
+        witness_cols[<span class="number">5</span>].push(b);
 
-        <span class="ident">witness_cols</span>[<span class="number">14</span>].<span class="ident">push</span>(<span class="ident">F::zero</span>()); <span class="comment">// unused</span>
-    }
+        witness_cols[<span class="number">14</span>].push(F::zero()); <span class="comment">// unused
+    </span>}
 
-    <span class="macro">assert_eq!</span>(<span class="ident">scalar</span>, <span class="ident">n</span>);
+    <span class="macro">assert_eq!</span>(scalar, n);
 
-    <span class="ident">a</span> <span class="op">*</span> <span class="ident">endo_scalar</span> <span class="op">+</span> <span class="ident">b</span>
+    a * endo_scalar + b
 }
 
-<span class="kw">fn</span> <span class="ident">c_func</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">x</span>: <span class="ident">F</span>) -&gt; <span class="ident">F</span> {
-    <span class="kw">let</span> <span class="ident">zero</span> <span class="op">=</span> <span class="ident">F::zero</span>();
-    <span class="kw">let</span> <span class="ident">one</span> <span class="op">=</span> <span class="ident">F::one</span>();
-    <span class="kw">let</span> <span class="ident">two</span> <span class="op">=</span> <span class="ident">F::from</span>(<span class="number">2u64</span>);
-    <span class="kw">let</span> <span class="ident">three</span> <span class="op">=</span> <span class="ident">F::from</span>(<span class="number">3u64</span>);
+<span class="kw">fn </span>c_func&lt;F: Field&gt;(x: F) -&gt; F {
+    <span class="kw">let </span>zero = F::zero();
+    <span class="kw">let </span>one = F::one();
+    <span class="kw">let </span>two = F::from(<span class="number">2u64</span>);
+    <span class="kw">let </span>three = F::from(<span class="number">3u64</span>);
 
-    <span class="kw">match</span> <span class="ident">x</span> {
-        <span class="ident">x</span> <span class="kw">if</span> <span class="ident">x</span>.<span class="ident">is_zero</span>() =&gt; <span class="ident">zero</span>,
-        <span class="ident">x</span> <span class="kw">if</span> <span class="ident">x</span> <span class="op">==</span> <span class="ident">one</span> =&gt; <span class="ident">zero</span>,
-        <span class="ident">x</span> <span class="kw">if</span> <span class="ident">x</span> <span class="op">==</span> <span class="ident">two</span> =&gt; <span class="op">-</span><span class="ident">one</span>,
-        <span class="ident">x</span> <span class="kw">if</span> <span class="ident">x</span> <span class="op">==</span> <span class="ident">three</span> =&gt; <span class="ident">one</span>,
-        <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;c_func&quot;</span>),
-    }
-}
-
-<span class="kw">fn</span> <span class="ident">d_func</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">x</span>: <span class="ident">F</span>) -&gt; <span class="ident">F</span> {
-    <span class="kw">let</span> <span class="ident">zero</span> <span class="op">=</span> <span class="ident">F::zero</span>();
-    <span class="kw">let</span> <span class="ident">one</span> <span class="op">=</span> <span class="ident">F::one</span>();
-    <span class="kw">let</span> <span class="ident">two</span> <span class="op">=</span> <span class="ident">F::from</span>(<span class="number">2u64</span>);
-    <span class="kw">let</span> <span class="ident">three</span> <span class="op">=</span> <span class="ident">F::from</span>(<span class="number">3u64</span>);
-
-    <span class="kw">match</span> <span class="ident">x</span> {
-        <span class="ident">x</span> <span class="kw">if</span> <span class="ident">x</span>.<span class="ident">is_zero</span>() =&gt; <span class="op">-</span><span class="ident">one</span>,
-        <span class="ident">x</span> <span class="kw">if</span> <span class="ident">x</span> <span class="op">==</span> <span class="ident">one</span> =&gt; <span class="ident">one</span>,
-        <span class="ident">x</span> <span class="kw">if</span> <span class="ident">x</span> <span class="op">==</span> <span class="ident">two</span> =&gt; <span class="ident">zero</span>,
-        <span class="ident">x</span> <span class="kw">if</span> <span class="ident">x</span> <span class="op">==</span> <span class="ident">three</span> =&gt; <span class="ident">zero</span>,
-        <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;d_func&quot;</span>),
+    <span class="kw">match </span>x {
+        x <span class="kw">if </span>x.is_zero() =&gt; zero,
+        x <span class="kw">if </span>x == one =&gt; zero,
+        x <span class="kw">if </span>x == two =&gt; -one,
+        x <span class="kw">if </span>x == three =&gt; one,
+        <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;c_func&quot;</span>),
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+<span class="kw">fn </span>d_func&lt;F: Field&gt;(x: F) -&gt; F {
+    <span class="kw">let </span>zero = F::zero();
+    <span class="kw">let </span>one = F::one();
+    <span class="kw">let </span>two = F::from(<span class="number">2u64</span>);
+    <span class="kw">let </span>three = F::from(<span class="number">3u64</span>);
 
-    <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">BigInteger</span>, <span class="ident">Field</span>, <span class="ident">One</span>, <span class="ident">PrimeField</span>, <span class="ident">Zero</span>};
-    <span class="kw">use</span> <span class="ident">mina_curves::pasta::fp::Fp</span> <span class="kw">as</span> <span class="ident">F</span>;
+    <span class="kw">match </span>x {
+        x <span class="kw">if </span>x.is_zero() =&gt; -one,
+        x <span class="kw">if </span>x == one =&gt; one,
+        x <span class="kw">if </span>x == two =&gt; zero,
+        x <span class="kw">if </span>x == three =&gt; zero,
+        <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;d_func&quot;</span>),
+    }
+}
 
-    <span class="doccomment">/// 2/3*x^3 - 5/2*x^2 + 11/6*x</span>
-    <span class="kw">fn</span> <span class="ident">c_poly</span>(<span class="ident">x</span>: <span class="ident">F</span>) -&gt; <span class="ident">F</span> {
-        <span class="kw">let</span> <span class="ident">x2</span> <span class="op">=</span> <span class="ident">x</span>.<span class="ident">square</span>();
-        <span class="kw">let</span> <span class="ident">x3</span> <span class="op">=</span> <span class="ident">x</span> <span class="op">*</span> <span class="ident">x2</span>;
-        (<span class="ident">F::from</span>(<span class="number">2u64</span>) <span class="op">/</span> <span class="ident">F::from</span>(<span class="number">3u64</span>)) <span class="op">*</span> <span class="ident">x3</span> <span class="op">-</span> (<span class="ident">F::from</span>(<span class="number">5u64</span>) <span class="op">/</span> <span class="ident">F::from</span>(<span class="number">2u64</span>)) <span class="op">*</span> <span class="ident">x2</span>
-            <span class="op">+</span> (<span class="ident">F::from</span>(<span class="number">11u64</span>) <span class="op">/</span> <span class="ident">F::from</span>(<span class="number">6u64</span>)) <span class="op">*</span> <span class="ident">x</span>
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+
+    <span class="kw">use </span>ark_ff::{BigInteger, Field, One, PrimeField, Zero};
+    <span class="kw">use </span>mina_curves::pasta::fp::Fp <span class="kw">as </span>F;
+
+    <span class="doccomment">/// 2/3*x^3 - 5/2*x^2 + 11/6*x
+    </span><span class="kw">fn </span>c_poly(x: F) -&gt; F {
+        <span class="kw">let </span>x2 = x.square();
+        <span class="kw">let </span>x3 = x * x2;
+        (F::from(<span class="number">2u64</span>) / F::from(<span class="number">3u64</span>)) * x3 - (F::from(<span class="number">5u64</span>) / F::from(<span class="number">2u64</span>)) * x2
+            + (F::from(<span class="number">11u64</span>) / F::from(<span class="number">6u64</span>)) * x
     }
 
-    <span class="doccomment">/// -x^2 + 3x - 1</span>
-    <span class="kw">fn</span> <span class="ident">d_minus_c_poly</span>(<span class="ident">x</span>: <span class="ident">F</span>) -&gt; <span class="ident">F</span> {
-        <span class="kw">let</span> <span class="ident">x2</span> <span class="op">=</span> <span class="ident">x</span>.<span class="ident">square</span>();
-        <span class="op">-</span><span class="ident">F::one</span>() <span class="op">*</span> <span class="ident">x2</span> <span class="op">+</span> <span class="ident">F::from</span>(<span class="number">3u64</span>) <span class="op">*</span> <span class="ident">x</span> <span class="op">-</span> <span class="ident">F::one</span>()
+    <span class="doccomment">/// -x^2 + 3x - 1
+    </span><span class="kw">fn </span>d_minus_c_poly(x: F) -&gt; F {
+        <span class="kw">let </span>x2 = x.square();
+        -F::one() * x2 + F::from(<span class="number">3u64</span>) * x - F::one()
     }
 
-    <span class="comment">// Test equivalence of the &quot;c function&quot; in its lookup table,</span>
-    <span class="comment">// logical, and polynomial forms.</span>
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">c_func_test</span>() {
-        <span class="kw">let</span> <span class="ident">f1</span> <span class="op">=</span> <span class="ident">c_func</span>;
+    <span class="comment">// Test equivalence of the &quot;c function&quot; in its lookup table,
+    // logical, and polynomial forms.
+    </span><span class="attribute">#[test]
+    </span><span class="kw">fn </span>c_func_test() {
+        <span class="kw">let </span>f1 = c_func;
 
-        <span class="kw">let</span> <span class="ident">f2</span> <span class="op">=</span> <span class="op">|</span><span class="ident">x</span>: <span class="ident">F</span><span class="op">|</span> -&gt; <span class="ident">F</span> {
-            <span class="kw">let</span> <span class="ident">bits_le</span> <span class="op">=</span> <span class="ident">x</span>.<span class="ident">into_repr</span>().<span class="ident">to_bits_le</span>();
-            <span class="kw">let</span> <span class="ident">b0</span> <span class="op">=</span> <span class="ident">bits_le</span>[<span class="number">0</span>];
-            <span class="kw">let</span> <span class="ident">b1</span> <span class="op">=</span> <span class="ident">bits_le</span>[<span class="number">1</span>];
+        <span class="kw">let </span>f2 = |x: F| -&gt; F {
+            <span class="kw">let </span>bits_le = x.into_repr().to_bits_le();
+            <span class="kw">let </span>b0 = bits_le[<span class="number">0</span>];
+            <span class="kw">let </span>b1 = bits_le[<span class="number">1</span>];
 
-            <span class="kw">if</span> <span class="ident">b1</span> {
-                <span class="kw">if</span> <span class="ident">b0</span> {
-                    <span class="ident">F::one</span>()
-                } <span class="kw">else</span> {
-                    <span class="op">-</span><span class="ident">F::one</span>()
+            <span class="kw">if </span>b1 {
+                <span class="kw">if </span>b0 {
+                    F::one()
+                } <span class="kw">else </span>{
+                    -F::one()
                 }
-            } <span class="kw">else</span> {
-                <span class="ident">F::zero</span>()
+            } <span class="kw">else </span>{
+                F::zero()
             }
         };
 
-        <span class="kw">for</span> <span class="ident">x</span> <span class="kw">in</span> <span class="number">0u64</span>..<span class="number">4u64</span> {
-            <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">F::from</span>(<span class="ident">x</span>);
-            <span class="kw">let</span> <span class="ident">y1</span> <span class="op">=</span> <span class="ident">f1</span>(<span class="ident">x</span>);
-            <span class="kw">let</span> <span class="ident">y2</span> <span class="op">=</span> <span class="ident">f2</span>(<span class="ident">x</span>);
-            <span class="kw">let</span> <span class="ident">y3</span> <span class="op">=</span> <span class="ident">c_poly</span>(<span class="ident">x</span>);
-            <span class="macro">assert_eq!</span>(<span class="ident">y1</span>, <span class="ident">y2</span>);
-            <span class="macro">assert_eq!</span>(<span class="ident">y2</span>, <span class="ident">y3</span>);
+        <span class="kw">for </span>x <span class="kw">in </span><span class="number">0u64</span>..<span class="number">4u64 </span>{
+            <span class="kw">let </span>x = F::from(x);
+            <span class="kw">let </span>y1 = f1(x);
+            <span class="kw">let </span>y2 = f2(x);
+            <span class="kw">let </span>y3 = c_poly(x);
+            <span class="macro">assert_eq!</span>(y1, y2);
+            <span class="macro">assert_eq!</span>(y2, y3);
         }
     }
 
-    <span class="comment">// Test equivalence of the &quot;b function&quot; in its lookup table,</span>
-    <span class="comment">// logical, and polynomial forms.</span>
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">d_func_test</span>() {
-        <span class="kw">let</span> <span class="ident">f1</span> <span class="op">=</span> <span class="ident">d_func</span>;
+    <span class="comment">// Test equivalence of the &quot;b function&quot; in its lookup table,
+    // logical, and polynomial forms.
+    </span><span class="attribute">#[test]
+    </span><span class="kw">fn </span>d_func_test() {
+        <span class="kw">let </span>f1 = d_func;
 
-        <span class="kw">let</span> <span class="ident">f2</span> <span class="op">=</span> <span class="op">|</span><span class="ident">x</span>: <span class="ident">F</span><span class="op">|</span> -&gt; <span class="ident">F</span> {
-            <span class="kw">let</span> <span class="ident">bits_le</span> <span class="op">=</span> <span class="ident">x</span>.<span class="ident">into_repr</span>().<span class="ident">to_bits_le</span>();
-            <span class="kw">let</span> <span class="ident">b0</span> <span class="op">=</span> <span class="ident">bits_le</span>[<span class="number">0</span>];
-            <span class="kw">let</span> <span class="ident">b1</span> <span class="op">=</span> <span class="ident">bits_le</span>[<span class="number">1</span>];
+        <span class="kw">let </span>f2 = |x: F| -&gt; F {
+            <span class="kw">let </span>bits_le = x.into_repr().to_bits_le();
+            <span class="kw">let </span>b0 = bits_le[<span class="number">0</span>];
+            <span class="kw">let </span>b1 = bits_le[<span class="number">1</span>];
 
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">b1</span> {
-                <span class="kw">if</span> <span class="ident">b0</span> {
-                    <span class="ident">F::one</span>()
-                } <span class="kw">else</span> {
-                    <span class="op">-</span><span class="ident">F::one</span>()
+            <span class="kw">if </span>!b1 {
+                <span class="kw">if </span>b0 {
+                    F::one()
+                } <span class="kw">else </span>{
+                    -F::one()
                 }
-            } <span class="kw">else</span> {
-                <span class="ident">F::zero</span>()
+            } <span class="kw">else </span>{
+                F::zero()
             }
         };
 
-        <span class="kw">for</span> <span class="ident">x</span> <span class="kw">in</span> <span class="number">0u64</span>..<span class="number">4u64</span> {
-            <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">F::from</span>(<span class="ident">x</span>);
-            <span class="kw">let</span> <span class="ident">y1</span> <span class="op">=</span> <span class="ident">f1</span>(<span class="ident">x</span>);
-            <span class="kw">let</span> <span class="ident">y2</span> <span class="op">=</span> <span class="ident">f2</span>(<span class="ident">x</span>);
-            <span class="kw">let</span> <span class="ident">y3</span> <span class="op">=</span> <span class="ident">c_poly</span>(<span class="ident">x</span>) <span class="op">+</span> <span class="ident">d_minus_c_poly</span>(<span class="ident">x</span>);
-            <span class="macro">assert_eq!</span>(<span class="ident">y1</span>, <span class="ident">y2</span>);
-            <span class="macro">assert_eq!</span>(<span class="ident">y2</span>, <span class="ident">y3</span>);
+        <span class="kw">for </span>x <span class="kw">in </span><span class="number">0u64</span>..<span class="number">4u64 </span>{
+            <span class="kw">let </span>x = F::from(x);
+            <span class="kw">let </span>y1 = f1(x);
+            <span class="kw">let </span>y2 = f2(x);
+            <span class="kw">let </span>y3 = c_poly(x) + d_minus_c_poly(x);
+            <span class="macro">assert_eq!</span>(y1, y2);
+            <span class="macro">assert_eq!</span>(y2, y3);
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

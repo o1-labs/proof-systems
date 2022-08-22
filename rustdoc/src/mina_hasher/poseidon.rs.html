@@ -100,107 +100,107 @@
 <span id="100">100</span>
 <span id="101">101</span>
 <span id="102">102</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Mina Poseidon hasher</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! An implementation of Mina&#39;s hasher based on the poseidon arithmetic sponge</span>
-<span class="doccomment">//!</span>
-<span class="kw">use</span> <span class="ident">std::marker::PhantomData</span>;
+</pre><pre class="rust"><code><span class="doccomment">//! Mina Poseidon hasher
+//!
+//! An implementation of Mina&#39;s hasher based on the poseidon arithmetic sponge
+//!
+</span><span class="kw">use </span>std::marker::PhantomData;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::DomainParameter</span>;
-<span class="kw">use</span> <span class="ident">mina_curves::pasta::Fp</span>;
-<span class="kw">use</span> <span class="ident">oracle</span>::{
-    <span class="ident">constants</span>::{<span class="ident">PlonkSpongeConstantsKimchi</span>, <span class="ident">PlonkSpongeConstantsLegacy</span>, <span class="ident">SpongeConstants</span>},
-    <span class="ident">pasta</span>,
-    <span class="ident">poseidon</span>::{<span class="ident">ArithmeticSponge</span>, <span class="ident">ArithmeticSpongeParams</span>, <span class="ident">Sponge</span>, <span class="ident">SpongeState</span>},
+<span class="kw">use </span><span class="kw">crate</span>::DomainParameter;
+<span class="kw">use </span>mina_curves::pasta::Fp;
+<span class="kw">use </span>oracle::{
+    constants::{PlonkSpongeConstantsKimchi, PlonkSpongeConstantsLegacy, SpongeConstants},
+    pasta,
+    poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge, SpongeState},
 };
 
-<span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">domain_prefix_to_field</span>, <span class="ident">Hashable</span>, <span class="ident">Hasher</span>};
+<span class="kw">use super</span>::{domain_prefix_to_field, Hashable, Hasher};
 
-<span class="doccomment">/// Poseidon hasher context</span>
-<span class="comment">//</span>
-<span class="comment">//  The arithmetic sponge parameters are large and costly to initialize,</span>
-<span class="comment">//  so we only want to do this once and then re-use the Poseidon context</span>
-<span class="comment">//  for many hashes. Also, following approach of the mina code we store</span>
-<span class="comment">//  a backup of the initialized sponge state for efficient reuse.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Poseidon</span><span class="op">&lt;</span><span class="ident">SC</span>: <span class="ident">SpongeConstants</span>, <span class="ident">H</span>: <span class="ident">Hashable</span><span class="op">&gt;</span> {
-    <span class="ident">sponge</span>: <span class="ident">ArithmeticSponge</span><span class="op">&lt;</span><span class="ident">Fp</span>, <span class="ident">SC</span><span class="op">&gt;</span>,
-    <span class="ident">sponge_state</span>: <span class="ident">SpongeState</span>,
-    <span class="ident">state</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span>,
-    <span class="ident">phantom</span>: <span class="ident">PhantomData</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Poseidon hasher context
+</span><span class="comment">//
+//  The arithmetic sponge parameters are large and costly to initialize,
+//  so we only want to do this once and then re-use the Poseidon context
+//  for many hashes. Also, following approach of the mina code we store
+//  a backup of the initialized sponge state for efficient reuse.
+</span><span class="kw">pub struct </span>Poseidon&lt;SC: SpongeConstants, H: Hashable&gt; {
+    sponge: ArithmeticSponge&lt;Fp, SC&gt;,
+    sponge_state: SpongeState,
+    state: Vec&lt;Fp&gt;,
+    phantom: PhantomData&lt;H&gt;,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">SC</span>: <span class="ident">SpongeConstants</span>, <span class="ident">H</span>: <span class="ident">Hashable</span><span class="op">&gt;</span> <span class="ident">Poseidon</span><span class="op">&lt;</span><span class="ident">SC</span>, <span class="ident">H</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">domain_param</span>: <span class="ident">H::D</span>, <span class="ident">sponge_params</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">poseidon</span> <span class="op">=</span> <span class="ident">Poseidon</span>::<span class="op">&lt;</span><span class="ident">SC</span>, <span class="ident">H</span><span class="op">&gt;</span> {
-            <span class="ident">sponge</span>: <span class="ident">ArithmeticSponge</span>::<span class="op">&lt;</span><span class="ident">Fp</span>, <span class="ident">SC</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="ident">sponge_params</span>),
-            <span class="ident">sponge_state</span>: <span class="ident">SpongeState::Absorbed</span>(<span class="number">0</span>),
-            <span class="ident">state</span>: <span class="macro">vec!</span>[],
-            <span class="ident">phantom</span>: <span class="ident">PhantomData</span>,
+<span class="kw">impl</span>&lt;SC: SpongeConstants, H: Hashable&gt; Poseidon&lt;SC, H&gt; {
+    <span class="kw">fn </span>new(domain_param: H::D, sponge_params: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>ArithmeticSpongeParams&lt;Fp&gt;) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>poseidon = Poseidon::&lt;SC, H&gt; {
+            sponge: ArithmeticSponge::&lt;Fp, SC&gt;::new(sponge_params),
+            sponge_state: SpongeState::Absorbed(<span class="number">0</span>),
+            state: <span class="macro">vec!</span>[],
+            phantom: PhantomData,
         };
 
-        <span class="ident">poseidon</span>.<span class="ident">init</span>(<span class="ident">domain_param</span>);
+        poseidon.init(domain_param);
 
-        <span class="ident">poseidon</span>
+        poseidon
     }
 }
 
-<span class="doccomment">/// Poseidon hasher type with legacy plonk sponge constants</span>
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">PoseidonHasherLegacy</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Poseidon</span><span class="op">&lt;</span><span class="ident">PlonkSpongeConstantsLegacy</span>, <span class="ident">H</span><span class="op">&gt;</span>;
+<span class="doccomment">/// Poseidon hasher type with legacy plonk sponge constants
+</span><span class="kw">pub type </span>PoseidonHasherLegacy&lt;H&gt; = Poseidon&lt;PlonkSpongeConstantsLegacy, H&gt;;
 
-<span class="doccomment">/// Create a legacy hasher context</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new_legacy</span><span class="op">&lt;</span><span class="ident">H</span>: <span class="ident">Hashable</span><span class="op">&gt;</span>(<span class="ident">domain_param</span>: <span class="ident">H::D</span>) -&gt; <span class="ident">PoseidonHasherLegacy</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span> {
-    <span class="ident">Poseidon</span>::<span class="op">&lt;</span><span class="ident">PlonkSpongeConstantsLegacy</span>, <span class="ident">H</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="ident">domain_param</span>, <span class="ident">pasta::fp_legacy::static_params</span>())
+<span class="doccomment">/// Create a legacy hasher context
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new_legacy&lt;H: Hashable&gt;(domain_param: H::D) -&gt; PoseidonHasherLegacy&lt;H&gt; {
+    Poseidon::&lt;PlonkSpongeConstantsLegacy, H&gt;::new(domain_param, pasta::fp_legacy::static_params())
 }
 
-<span class="doccomment">/// Poseidon hasher type with experimental kimchi plonk sponge constants</span>
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">PoseidonHasherKimchi</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Poseidon</span><span class="op">&lt;</span><span class="ident">PlonkSpongeConstantsKimchi</span>, <span class="ident">H</span><span class="op">&gt;</span>;
+<span class="doccomment">/// Poseidon hasher type with experimental kimchi plonk sponge constants
+</span><span class="kw">pub type </span>PoseidonHasherKimchi&lt;H&gt; = Poseidon&lt;PlonkSpongeConstantsKimchi, H&gt;;
 
-<span class="doccomment">/// Create an experimental kimchi hasher context</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new_kimchi</span><span class="op">&lt;</span><span class="ident">H</span>: <span class="ident">Hashable</span><span class="op">&gt;</span>(<span class="ident">domain_param</span>: <span class="ident">H::D</span>) -&gt; <span class="ident">PoseidonHasherKimchi</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span> {
-    <span class="ident">Poseidon</span>::<span class="op">&lt;</span><span class="ident">PlonkSpongeConstantsKimchi</span>, <span class="ident">H</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="ident">domain_param</span>, <span class="ident">pasta::fp_kimchi::static_params</span>())
+<span class="doccomment">/// Create an experimental kimchi hasher context
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new_kimchi&lt;H: Hashable&gt;(domain_param: H::D) -&gt; PoseidonHasherKimchi&lt;H&gt; {
+    Poseidon::&lt;PlonkSpongeConstantsKimchi, H&gt;::new(domain_param, pasta::fp_kimchi::static_params())
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">SC</span>: <span class="ident">SpongeConstants</span>, <span class="ident">H</span>: <span class="ident">Hashable</span><span class="op">&gt;</span> <span class="ident">Hasher</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Poseidon</span><span class="op">&lt;</span><span class="ident">SC</span>, <span class="ident">H</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">H::D</span>: <span class="ident">DomainParameter</span>,
+<span class="kw">impl</span>&lt;SC: SpongeConstants, H: Hashable&gt; Hasher&lt;H&gt; <span class="kw">for </span>Poseidon&lt;SC, H&gt;
+<span class="kw">where
+    </span>H::D: DomainParameter,
 {
-    <span class="kw">fn</span> <span class="ident">reset</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">Hasher</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span> {
-        <span class="comment">// Efficient reset</span>
-        <span class="self">self</span>.<span class="ident">sponge</span>.<span class="ident">sponge_state</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">sponge_state</span>.<span class="ident">clone</span>();
-        <span class="self">self</span>.<span class="ident">sponge</span>.<span class="ident">state</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">state</span>.<span class="ident">clone</span>();
+    <span class="kw">fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>Hasher&lt;H&gt; {
+        <span class="comment">// Efficient reset
+        </span><span class="self">self</span>.sponge.sponge_state = <span class="self">self</span>.sponge_state.clone();
+        <span class="self">self</span>.sponge.state = <span class="self">self</span>.state.clone();
 
-        <span class="self">self</span>
-    }
+        <span class="self">self
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">init</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">domain_param</span>: <span class="ident">H::D</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">Hasher</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span> {
-        <span class="comment">// Set sponge initial state and save it so the hasher context can be reused efficiently</span>
-        <span class="comment">// N.B. Mina sets the sponge&#39;s initial state by hashing the input type&#39;s domain bytes</span>
-        <span class="self">self</span>.<span class="ident">sponge</span>.<span class="ident">reset</span>();
+    <span class="kw">fn </span>init(<span class="kw-2">&amp;mut </span><span class="self">self</span>, domain_param: H::D) -&gt; <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>Hasher&lt;H&gt; {
+        <span class="comment">// Set sponge initial state and save it so the hasher context can be reused efficiently
+        // N.B. Mina sets the sponge&#39;s initial state by hashing the input type&#39;s domain bytes
+        </span><span class="self">self</span>.sponge.reset();
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">domain_string</span>) <span class="op">=</span> <span class="ident">H::domain_string</span>(<span class="ident">domain_param</span>) {
-            <span class="self">self</span>.<span class="ident">sponge</span>
-                .<span class="ident">absorb</span>(<span class="kw-2">&amp;</span>[<span class="ident">domain_prefix_to_field</span>::<span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span>(<span class="ident">domain_string</span>)]);
-            <span class="self">self</span>.<span class="ident">sponge</span>.<span class="ident">squeeze</span>();
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(domain_string) = H::domain_string(domain_param) {
+            <span class="self">self</span>.sponge
+                .absorb(<span class="kw-2">&amp;</span>[domain_prefix_to_field::&lt;Fp&gt;(domain_string)]);
+            <span class="self">self</span>.sponge.squeeze();
         }
 
-        <span class="comment">// Save initial state for efficient reset</span>
-        <span class="self">self</span>.<span class="ident">sponge_state</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">sponge</span>.<span class="ident">sponge_state</span>.<span class="ident">clone</span>();
-        <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">sponge</span>.<span class="ident">state</span>.<span class="ident">clone</span>();
+        <span class="comment">// Save initial state for efficient reset
+        </span><span class="self">self</span>.sponge_state = <span class="self">self</span>.sponge.sponge_state.clone();
+        <span class="self">self</span>.state = <span class="self">self</span>.sponge.state.clone();
 
-        <span class="self">self</span>
-    }
+        <span class="self">self
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">update</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="ident">H</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">Hasher</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">sponge</span>.<span class="ident">absorb</span>(<span class="kw-2">&amp;</span><span class="ident">input</span>.<span class="ident">to_roinput</span>().<span class="ident">to_fields</span>());
+    <span class="kw">fn </span>update(<span class="kw-2">&amp;mut </span><span class="self">self</span>, input: <span class="kw-2">&amp;</span>H) -&gt; <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>Hasher&lt;H&gt; {
+        <span class="self">self</span>.sponge.absorb(<span class="kw-2">&amp;</span>input.to_roinput().to_fields());
 
-        <span class="self">self</span>
-    }
+        <span class="self">self
+    </span>}
 
-    <span class="kw">fn</span> <span class="ident">digest</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">Fp</span> {
-        <span class="kw">let</span> <span class="ident">output</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">sponge</span>.<span class="ident">squeeze</span>();
-        <span class="self">self</span>.<span class="ident">sponge</span>.<span class="ident">reset</span>();
-        <span class="ident">output</span>
+    <span class="kw">fn </span>digest(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; Fp {
+        <span class="kw">let </span>output = <span class="self">self</span>.sponge.squeeze();
+        <span class="self">self</span>.sponge.reset();
+        output
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="mina_hasher" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="mina_hasher" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

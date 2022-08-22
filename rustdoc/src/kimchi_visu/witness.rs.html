@@ -44,51 +44,51 @@
 <span id="44">44</span>
 <span id="45">45</span>
 <span id="46">46</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">ark_ff::Field</span>;
-<span class="kw">use</span> <span class="ident">array_init::array_init</span>;
-<span class="kw">use</span> <span class="ident">kimchi::circuits::polynomial::COLUMNS</span>;
-<span class="kw">use</span> <span class="ident">serde::Serialize</span>;
-<span class="kw">use</span> <span class="ident">serde_with::serde_as</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>ark_ff::Field;
+<span class="kw">use </span>array_init::array_init;
+<span class="kw">use </span>kimchi::circuits::polynomial::COLUMNS;
+<span class="kw">use </span>serde::Serialize;
+<span class="kw">use </span>serde_with::serde_as;
 
-<span class="doccomment">/// The type that represents the execution trace.</span>
-<span class="doccomment">/// It represents a table of [COLUMNS] columns, with `n` rows.</span>
-<span class="doccomment">/// `n` being the maximum size of the circuit, and the size of the domain.</span>
-<span class="attribute">#[<span class="ident">serde_as</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Witness</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">F</span>: <span class="ident">Field</span>,
+<span class="doccomment">/// The type that represents the execution trace.
+/// It represents a table of [COLUMNS] columns, with `n` rows.
+/// `n` being the maximum size of the circuit, and the size of the domain.
+</span><span class="attribute">#[serde_as]
+#[derive(Debug, Serialize)]
+</span><span class="kw">pub struct </span>Witness&lt;F&gt;
+<span class="kw">where
+    </span>F: Field,
 {
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;[Vec&lt;o1_utils::serialization::SerdeAs&gt;; COLUMNS]&quot;</span>)]</span>
-    <span class="ident">inner</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
+    <span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[Vec&lt;o1_utils::serialization::SerdeAs&gt;; COLUMNS]&quot;</span>)]
+    </span>inner: [Vec&lt;F&gt;; COLUMNS],
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="ident">Witness</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">F</span>: <span class="ident">Field</span>,
+<span class="kw">impl</span>&lt;F&gt; Witness&lt;F&gt;
+<span class="kw">where
+    </span>F: Field,
 {
-    <span class="doccomment">/// Creates a new witness with `rows` rows.</span>
-    <span class="comment">// TODO: deprecate this</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">rows</span>: <span class="ident">usize</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">Witness</span> {
-            <span class="ident">inner</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="ident">rows</span>]),
+    <span class="doccomment">/// Creates a new witness with `rows` rows.
+    </span><span class="comment">// TODO: deprecate this
+    </span><span class="kw">pub fn </span>new(rows: usize) -&gt; <span class="self">Self </span>{
+        Witness {
+            inner: array_init(|<span class="kw">_</span>| <span class="macro">vec!</span>[F::zero(); rows]),
         }
     }
 
-    <span class="doccomment">/// Returns the inner witness.</span>
-    <span class="comment">// TODO: deprecate this</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">inner</span>(<span class="self">self</span>) -&gt; [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] {
-        <span class="self">self</span>.<span class="ident">inner</span>
+    <span class="doccomment">/// Returns the inner witness.
+    </span><span class="comment">// TODO: deprecate this
+    </span><span class="kw">pub fn </span>inner(<span class="self">self</span>) -&gt; [Vec&lt;F&gt;; COLUMNS] {
+        <span class="self">self</span>.inner
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span>[<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>]<span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Witness</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">F</span>: <span class="ident">Field</span>,
+<span class="kw">impl</span>&lt;F&gt; From&lt;[Vec&lt;F&gt;; COLUMNS]&gt; <span class="kw">for </span>Witness&lt;F&gt;
+<span class="kw">where
+    </span>F: Field,
 {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">inner</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>]) -&gt; <span class="self">Self</span> {
-        <span class="ident">Witness</span> { <span class="ident">inner</span> }
+    <span class="kw">fn </span>from(inner: [Vec&lt;F&gt;; COLUMNS]) -&gt; <span class="self">Self </span>{
+        Witness { inner }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi_visu" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi_visu" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

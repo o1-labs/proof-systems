@@ -68,75 +68,75 @@
 <span id="68">68</span>
 <span id="69">69</span>
 <span id="70">70</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::pasta</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">ark_ec</span>::{
-    <span class="ident">models::short_weierstrass_jacobian</span>::{<span class="ident">GroupAffine</span>, <span class="ident">GroupProjective</span>},
-    <span class="ident">ModelParameters</span>, <span class="ident">SWModelParameters</span>,
+</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::pasta::<span class="kw-2">*</span>;
+<span class="kw">use </span>ark_ec::{
+    models::short_weierstrass_jacobian::{GroupAffine, GroupProjective},
+    ModelParameters, SWModelParameters,
 };
-<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">field_new</span>, <span class="ident">Zero</span>};
+<span class="kw">use </span>ark_ff::{field_new, Zero};
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Default</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">VestaParameters</span>;
+<span class="attribute">#[derive(Debug, Clone, Default, PartialEq, Eq)]
+</span><span class="kw">pub struct </span>VestaParameters;
 
-<span class="kw">impl</span> <span class="ident">ModelParameters</span> <span class="kw">for</span> <span class="ident">VestaParameters</span> {
-    <span class="kw">type</span> <span class="ident">BaseField</span> <span class="op">=</span> <span class="ident">Fq</span>;
-    <span class="kw">type</span> <span class="ident">ScalarField</span> <span class="op">=</span> <span class="ident">Fp</span>;
+<span class="kw">impl </span>ModelParameters <span class="kw">for </span>VestaParameters {
+    <span class="kw">type </span>BaseField = Fq;
+    <span class="kw">type </span>ScalarField = Fp;
 }
 
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">Vesta</span> <span class="op">=</span> <span class="ident">GroupAffine</span><span class="op">&lt;</span><span class="ident">VestaParameters</span><span class="op">&gt;</span>;
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">Projective</span> <span class="op">=</span> <span class="ident">GroupProjective</span><span class="op">&lt;</span><span class="ident">VestaParameters</span><span class="op">&gt;</span>;
+<span class="kw">pub type </span>Vesta = GroupAffine&lt;VestaParameters&gt;;
+<span class="kw">pub type </span>Projective = GroupProjective&lt;VestaParameters&gt;;
 
-<span class="kw">impl</span> <span class="ident">SWModelParameters</span> <span class="kw">for</span> <span class="ident">VestaParameters</span> {
-    <span class="doccomment">/// COEFF_A = 0</span>
-    <span class="kw">const</span> <span class="ident">COEFF_A</span>: <span class="ident">Fq</span> <span class="op">=</span> <span class="macro">field_new!</span>(<span class="ident">Fq</span>, <span class="string">&quot;0&quot;</span>);
+<span class="kw">impl </span>SWModelParameters <span class="kw">for </span>VestaParameters {
+    <span class="doccomment">/// COEFF_A = 0
+    </span><span class="kw">const </span>COEFF_A: Fq = <span class="macro">field_new!</span>(Fq, <span class="string">&quot;0&quot;</span>);
 
-    <span class="doccomment">/// COEFF_B = 5</span>
-    <span class="kw">const</span> <span class="ident">COEFF_B</span>: <span class="ident">Fq</span> <span class="op">=</span> <span class="macro">field_new!</span>(<span class="ident">Fq</span>, <span class="string">&quot;5&quot;</span>);
+    <span class="doccomment">/// COEFF_B = 5
+    </span><span class="kw">const </span>COEFF_B: Fq = <span class="macro">field_new!</span>(Fq, <span class="string">&quot;5&quot;</span>);
 
-    <span class="doccomment">/// COFACTOR = 1</span>
-    <span class="kw">const</span> <span class="ident">COFACTOR</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> [<span class="ident">u64</span>] <span class="op">=</span> <span class="kw-2">&amp;</span>[<span class="number">0x1</span>];
+    <span class="doccomment">/// COFACTOR = 1
+    </span><span class="kw">const </span>COFACTOR: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>[u64] = <span class="kw-2">&amp;</span>[<span class="number">0x1</span>];
 
-    <span class="doccomment">/// COFACTOR_INV = 1</span>
-    <span class="kw">const</span> <span class="ident">COFACTOR_INV</span>: <span class="ident">Fp</span> <span class="op">=</span> <span class="macro">field_new!</span>(<span class="ident">Fp</span>, <span class="string">&quot;1&quot;</span>);
+    <span class="doccomment">/// COFACTOR_INV = 1
+    </span><span class="kw">const </span>COFACTOR_INV: Fp = <span class="macro">field_new!</span>(Fp, <span class="string">&quot;1&quot;</span>);
 
-    <span class="doccomment">/// AFFINE_GENERATOR_COEFFS = (G1_GENERATOR_X, G1_GENERATOR_Y)</span>
-    <span class="kw">const</span> <span class="ident">AFFINE_GENERATOR_COEFFS</span>: (<span class="ident"><span class="self">Self</span>::BaseField</span>, <span class="ident"><span class="self">Self</span>::BaseField</span>) <span class="op">=</span>
-        (<span class="ident">G_GENERATOR_X</span>, <span class="ident">G_GENERATOR_Y</span>);
+    <span class="doccomment">/// AFFINE_GENERATOR_COEFFS = (G1_GENERATOR_X, G1_GENERATOR_Y)
+    </span><span class="kw">const </span>AFFINE_GENERATOR_COEFFS: (<span class="self">Self</span>::BaseField, <span class="self">Self</span>::BaseField) =
+        (G_GENERATOR_X, G_GENERATOR_Y);
 
-    <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">mul_by_a</span>(<span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident"><span class="self">Self</span>::BaseField</span>) -&gt; <span class="ident"><span class="self">Self</span>::BaseField</span> {
-        <span class="ident"><span class="self">Self</span>::BaseField::zero</span>()
+    <span class="attribute">#[inline(always)]
+    </span><span class="kw">fn </span>mul_by_a(<span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>::BaseField) -&gt; <span class="self">Self</span>::BaseField {
+        <span class="self">Self</span>::BaseField::zero()
     }
 }
 
-<span class="doccomment">/// G_GENERATOR_X =</span>
-<span class="doccomment">/// 1</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">G_GENERATOR_X</span>: <span class="ident">Fq</span> <span class="op">=</span> <span class="macro">field_new!</span>(<span class="ident">Fq</span>, <span class="string">&quot;1&quot;</span>);
+<span class="doccomment">/// G_GENERATOR_X =
+/// 1
+</span><span class="kw">pub const </span>G_GENERATOR_X: Fq = <span class="macro">field_new!</span>(Fq, <span class="string">&quot;1&quot;</span>);
 
-<span class="doccomment">/// G1_GENERATOR_Y =</span>
-<span class="doccomment">/// 11426906929455361843568202299992114520848200991084027513389447476559454104162</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">G_GENERATOR_Y</span>: <span class="ident">Fq</span> <span class="op">=</span> <span class="macro">field_new!</span>(
-    <span class="ident">Fq</span>,
-    <span class="string">&quot;11426906929455361843568202299992114520848200991084027513389447476559454104162&quot;</span>
-);
+<span class="doccomment">/// G1_GENERATOR_Y =
+/// 11426906929455361843568202299992114520848200991084027513389447476559454104162
+</span><span class="kw">pub const </span>G_GENERATOR_Y: Fq = <span class="macro">field_new!</span>(
+    Fq,
+    <span class="string">&quot;11426906929455361843568202299992114520848200991084027513389447476559454104162&quot;
+</span>);
 
-<span class="doccomment">/// legacy curve, a copy of the normal curve to support legacy sponge params</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">Default</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LegacyVestaParameters</span>;
+<span class="doccomment">/// legacy curve, a copy of the normal curve to support legacy sponge params
+</span><span class="attribute">#[derive(Copy, Clone, Default, PartialEq, Eq)]
+</span><span class="kw">pub struct </span>LegacyVestaParameters;
 
-<span class="kw">impl</span> <span class="ident">ModelParameters</span> <span class="kw">for</span> <span class="ident">LegacyVestaParameters</span> {
-    <span class="kw">type</span> <span class="ident">BaseField</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">VestaParameters</span> <span class="kw">as</span> <span class="ident">ModelParameters</span><span class="op">&gt;</span><span class="ident">::BaseField</span>;
-    <span class="kw">type</span> <span class="ident">ScalarField</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">VestaParameters</span> <span class="kw">as</span> <span class="ident">ModelParameters</span><span class="op">&gt;</span><span class="ident">::ScalarField</span>;
+<span class="kw">impl </span>ModelParameters <span class="kw">for </span>LegacyVestaParameters {
+    <span class="kw">type </span>BaseField = &lt;VestaParameters <span class="kw">as </span>ModelParameters&gt;::BaseField;
+    <span class="kw">type </span>ScalarField = &lt;VestaParameters <span class="kw">as </span>ModelParameters&gt;::ScalarField;
 }
-<span class="kw">impl</span> <span class="ident">SWModelParameters</span> <span class="kw">for</span> <span class="ident">LegacyVestaParameters</span> {
-    <span class="kw">const</span> <span class="ident">COEFF_A</span>: <span class="ident"><span class="self">Self</span>::BaseField</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">VestaParameters</span> <span class="kw">as</span> <span class="ident">SWModelParameters</span><span class="op">&gt;</span><span class="ident">::COEFF_A</span>;
-    <span class="kw">const</span> <span class="ident">COEFF_B</span>: <span class="ident"><span class="self">Self</span>::BaseField</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">VestaParameters</span> <span class="kw">as</span> <span class="ident">SWModelParameters</span><span class="op">&gt;</span><span class="ident">::COEFF_B</span>;
-    <span class="kw">const</span> <span class="ident">COFACTOR</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> [<span class="ident">u64</span>] <span class="op">=</span> <span class="op">&lt;</span><span class="ident">VestaParameters</span> <span class="kw">as</span> <span class="ident">SWModelParameters</span><span class="op">&gt;</span><span class="ident">::COFACTOR</span>;
-    <span class="kw">const</span> <span class="ident">COFACTOR_INV</span>: <span class="ident"><span class="self">Self</span>::ScalarField</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">VestaParameters</span> <span class="kw">as</span> <span class="ident">SWModelParameters</span><span class="op">&gt;</span><span class="ident">::COFACTOR_INV</span>;
-    <span class="kw">const</span> <span class="ident">AFFINE_GENERATOR_COEFFS</span>: (<span class="ident"><span class="self">Self</span>::BaseField</span>, <span class="ident"><span class="self">Self</span>::BaseField</span>) <span class="op">=</span>
-        <span class="op">&lt;</span><span class="ident">VestaParameters</span> <span class="kw">as</span> <span class="ident">SWModelParameters</span><span class="op">&gt;</span><span class="ident">::AFFINE_GENERATOR_COEFFS</span>;
+<span class="kw">impl </span>SWModelParameters <span class="kw">for </span>LegacyVestaParameters {
+    <span class="kw">const </span>COEFF_A: <span class="self">Self</span>::BaseField = &lt;VestaParameters <span class="kw">as </span>SWModelParameters&gt;::COEFF_A;
+    <span class="kw">const </span>COEFF_B: <span class="self">Self</span>::BaseField = &lt;VestaParameters <span class="kw">as </span>SWModelParameters&gt;::COEFF_B;
+    <span class="kw">const </span>COFACTOR: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>[u64] = &lt;VestaParameters <span class="kw">as </span>SWModelParameters&gt;::COFACTOR;
+    <span class="kw">const </span>COFACTOR_INV: <span class="self">Self</span>::ScalarField = &lt;VestaParameters <span class="kw">as </span>SWModelParameters&gt;::COFACTOR_INV;
+    <span class="kw">const </span>AFFINE_GENERATOR_COEFFS: (<span class="self">Self</span>::BaseField, <span class="self">Self</span>::BaseField) =
+        &lt;VestaParameters <span class="kw">as </span>SWModelParameters&gt;::AFFINE_GENERATOR_COEFFS;
 }
 
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">LegacyVesta</span> <span class="op">=</span> <span class="ident">GroupAffine</span><span class="op">&lt;</span><span class="ident">LegacyVestaParameters</span><span class="op">&gt;</span>;
+<span class="kw">pub type </span>LegacyVesta = GroupAffine&lt;LegacyVestaParameters&gt;;
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="mina_curves" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="mina_curves" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

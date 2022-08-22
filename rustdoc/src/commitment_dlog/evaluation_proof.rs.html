@@ -370,377 +370,377 @@
 <span id="370">370</span>
 <span id="371">371</span>
 <span id="372">372</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::commitment</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::srs::SRS</span>;
-<span class="kw">use</span> <span class="ident">ark_ec</span>::{<span class="ident">msm::VariableBaseMSM</span>, <span class="ident">AffineCurve</span>, <span class="ident">ProjectiveCurve</span>};
-<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">Field</span>, <span class="ident">One</span>, <span class="ident">PrimeField</span>, <span class="ident">UniformRand</span>, <span class="ident">Zero</span>};
-<span class="kw">use</span> <span class="ident">ark_poly</span>::{<span class="ident">univariate::DensePolynomial</span>, <span class="ident">UVPolynomial</span>};
-<span class="kw">use</span> <span class="ident">o1_utils::math</span>;
-<span class="kw">use</span> <span class="ident">oracle</span>::{<span class="ident">sponge::ScalarChallenge</span>, <span class="ident">FqSponge</span>};
-<span class="kw">use</span> <span class="ident">rand_core</span>::{<span class="ident">CryptoRng</span>, <span class="ident">RngCore</span>};
-<span class="kw">use</span> <span class="ident">rayon::prelude</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">serde_with::serde_as</span>;
-<span class="kw">use</span> <span class="ident">std::iter::Iterator</span>;
+</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::commitment::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::srs::SRS;
+<span class="kw">use </span>ark_ec::{msm::VariableBaseMSM, AffineCurve, ProjectiveCurve};
+<span class="kw">use </span>ark_ff::{Field, One, PrimeField, UniformRand, Zero};
+<span class="kw">use </span>ark_poly::{univariate::DensePolynomial, UVPolynomial};
+<span class="kw">use </span>o1_utils::math;
+<span class="kw">use </span>oracle::{sponge::ScalarChallenge, FqSponge};
+<span class="kw">use </span>rand_core::{CryptoRng, RngCore};
+<span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>serde_with::serde_as;
+<span class="kw">use </span>std::iter::Iterator;
 
-<span class="kw">enum</span> <span class="ident">OptShiftedPolynomial</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span> {
-    <span class="ident">Unshifted</span>(<span class="ident">P</span>),
-    <span class="ident">Shifted</span>(<span class="ident">P</span>, <span class="ident">usize</span>),
+<span class="kw">enum </span>OptShiftedPolynomial&lt;P&gt; {
+    Unshifted(P),
+    Shifted(P, usize),
 }
 
-<span class="comment">// A formal sum of the form</span>
-<span class="comment">// `s_0 * p_0 + ... s_n * p_n`</span>
-<span class="comment">// where each `s_i` is a scalar and each `p_i` is an optionally shifted polynomial.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
-<span class="kw">struct</span> <span class="ident">ScaledChunkedPolynomial</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">P</span><span class="op">&gt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">F</span>, <span class="ident">OptShiftedPolynomial</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span>)<span class="op">&gt;</span>);
+<span class="comment">// A formal sum of the form
+// `s_0 * p_0 + ... s_n * p_n`
+// where each `s_i` is a scalar and each `p_i` is an optionally shifted polynomial.
+</span><span class="attribute">#[derive(Default)]
+</span><span class="kw">struct </span>ScaledChunkedPolynomial&lt;F, P&gt;(Vec&lt;(F, OptShiftedPolynomial&lt;P&gt;)&gt;);
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">P</span><span class="op">&gt;</span> <span class="ident">ScaledChunkedPolynomial</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">P</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">add_unshifted</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">scale</span>: <span class="ident">F</span>, <span class="ident">p</span>: <span class="ident">P</span>) {
-        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">push</span>((<span class="ident">scale</span>, <span class="ident">OptShiftedPolynomial::Unshifted</span>(<span class="ident">p</span>)))
+<span class="kw">impl</span>&lt;F, P&gt; ScaledChunkedPolynomial&lt;F, P&gt; {
+    <span class="kw">fn </span>add_unshifted(<span class="kw-2">&amp;mut </span><span class="self">self</span>, scale: F, p: P) {
+        <span class="self">self</span>.<span class="number">0</span>.push((scale, OptShiftedPolynomial::Unshifted(p)))
     }
 
-    <span class="kw">fn</span> <span class="ident">add_shifted</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">scale</span>: <span class="ident">F</span>, <span class="ident">shift</span>: <span class="ident">usize</span>, <span class="ident">p</span>: <span class="ident">P</span>) {
-        <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">push</span>((<span class="ident">scale</span>, <span class="ident">OptShiftedPolynomial::Shifted</span>(<span class="ident">p</span>, <span class="ident">shift</span>)))
+    <span class="kw">fn </span>add_shifted(<span class="kw-2">&amp;mut </span><span class="self">self</span>, scale: F, shift: usize, p: P) {
+        <span class="self">self</span>.<span class="number">0
+            </span>.push((scale, OptShiftedPolynomial::Shifted(p, shift)))
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span> <span class="ident">ScaledChunkedPolynomial</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">F</span>]<span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">to_dense_polynomial</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">DensePolynomial</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::zero</span>();
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: Field&gt; ScaledChunkedPolynomial&lt;F, <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[F]&gt; {
+    <span class="kw">fn </span>to_dense_polynomial(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; DensePolynomial&lt;F&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>res = DensePolynomial::&lt;F&gt;::zero();
 
-        <span class="kw">let</span> <span class="ident">scaled</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="number">0</span>
-            .<span class="ident">par_iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">scale</span>, <span class="ident">segment</span>)<span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">scale</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">scale</span>;
-                <span class="kw">match</span> <span class="ident">segment</span> {
-                    <span class="ident">OptShiftedPolynomial::Unshifted</span>(<span class="ident">segment</span>) =&gt; {
-                        <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="ident">segment</span>.<span class="ident">par_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">scale</span> <span class="op">*</span> <span class="kw-2">*</span><span class="ident">x</span>).<span class="ident">collect</span>();
-                        <span class="ident">DensePolynomial::from_coefficients_vec</span>(<span class="ident">v</span>)
+        <span class="kw">let </span>scaled: Vec&lt;<span class="kw">_</span>&gt; = <span class="self">self
+            </span>.<span class="number">0
+            </span>.par_iter()
+            .map(|(scale, segment)| {
+                <span class="kw">let </span>scale = <span class="kw-2">*</span>scale;
+                <span class="kw">match </span>segment {
+                    OptShiftedPolynomial::Unshifted(segment) =&gt; {
+                        <span class="kw">let </span>v = segment.par_iter().map(|x| scale * <span class="kw-2">*</span>x).collect();
+                        DensePolynomial::from_coefficients_vec(v)
                     }
-                    <span class="ident">OptShiftedPolynomial::Shifted</span>(<span class="ident">segment</span>, <span class="ident">shift</span>) =&gt; {
-                        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">v</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">segment</span>.<span class="ident">par_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">scale</span> <span class="op">*</span> <span class="kw-2">*</span><span class="ident">x</span>).<span class="ident">collect</span>();
-                        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="kw-2">*</span><span class="ident">shift</span>];
-                        <span class="ident">res</span>.<span class="ident">append</span>(<span class="kw-2">&amp;mut</span> <span class="ident">v</span>);
-                        <span class="ident">DensePolynomial::from_coefficients_vec</span>(<span class="ident">res</span>)
+                    OptShiftedPolynomial::Shifted(segment, shift) =&gt; {
+                        <span class="kw">let </span><span class="kw-2">mut </span>v: Vec&lt;<span class="kw">_</span>&gt; = segment.par_iter().map(|x| scale * <span class="kw-2">*</span>x).collect();
+                        <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="macro">vec!</span>[F::zero(); <span class="kw-2">*</span>shift];
+                        res.append(<span class="kw-2">&amp;mut </span>v);
+                        DensePolynomial::from_coefficients_vec(res)
                     }
                 }
             })
-            .<span class="ident">collect</span>();
+            .collect();
 
-        <span class="kw">for</span> <span class="ident">p</span> <span class="kw">in</span> <span class="ident">scaled</span> {
-            <span class="ident">res</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">p</span>;
+        <span class="kw">for </span>p <span class="kw">in </span>scaled {
+            res += <span class="kw-2">&amp;</span>p;
         }
 
-        <span class="ident">res</span>
+        res
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">CommitmentCurve</span><span class="op">&gt;</span> <span class="ident">SRS</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// This function opens polynomial commitments in batch</span>
-    <span class="doccomment">///     plnms: batch of polynomials to open commitments for with, optionally, max degrees</span>
-    <span class="doccomment">///     elm: evaluation point vector to open the commitments at</span>
-    <span class="doccomment">///     polyscale: polynomial scaling factor for opening commitments in batch</span>
-    <span class="doccomment">///     evalscale: eval scaling factor for opening commitments in batch</span>
-    <span class="doccomment">///     oracle_params: parameters for the random oracle argument</span>
-    <span class="doccomment">///     RETURN: commitment opening proof</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::too_many_arguments</span>)]</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::type_complexity</span>)]</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::many_single_char_names</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">open</span><span class="op">&lt;</span><span class="ident">EFqSponge</span>, <span class="ident">RNG</span><span class="op">&gt;</span>(
+<span class="kw">impl</span>&lt;G: CommitmentCurve&gt; SRS&lt;G&gt; {
+    <span class="doccomment">/// This function opens polynomial commitments in batch
+    ///     plnms: batch of polynomials to open commitments for with, optionally, max degrees
+    ///     elm: evaluation point vector to open the commitments at
+    ///     polyscale: polynomial scaling factor for opening commitments in batch
+    ///     evalscale: eval scaling factor for opening commitments in batch
+    ///     oracle_params: parameters for the random oracle argument
+    ///     RETURN: commitment opening proof
+    </span><span class="attribute">#[allow(clippy::too_many_arguments)]
+    #[allow(clippy::type_complexity)]
+    #[allow(clippy::many_single_char_names)]
+    </span><span class="kw">pub fn </span>open&lt;EFqSponge, RNG&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">group_map</span>: <span class="kw-2">&amp;</span><span class="ident">G::Map</span>,
-        <span class="comment">// TODO(mimoo): create a type for that entry</span>
-        <span class="ident">plnms</span>: <span class="kw-2">&amp;</span>[(
-            <span class="kw-2">&amp;</span><span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span>,
-            <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>,
-            <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span>,
-        )], <span class="comment">// vector of polynomial with optional degree bound and commitment randomness</span>
-        <span class="ident">elm</span>: <span class="kw-2">&amp;</span>[<span class="ident">G::ScalarField</span>],    <span class="comment">// vector of evaluation points</span>
-        <span class="ident">polyscale</span>: <span class="ident">G::ScalarField</span>, <span class="comment">// scaling factor for polynoms</span>
-        <span class="ident">evalscale</span>: <span class="ident">G::ScalarField</span>, <span class="comment">// scaling factor for evaluation point powers</span>
-        <span class="kw-2">mut</span> <span class="ident">sponge</span>: <span class="ident">EFqSponge</span>,     <span class="comment">// sponge</span>
-        <span class="ident">rng</span>: <span class="kw-2">&amp;mut</span> <span class="ident">RNG</span>,
-    ) -&gt; <span class="ident">OpeningProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">EFqSponge</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">FqSponge</span><span class="op">&lt;</span><span class="ident">G::BaseField</span>, <span class="ident">G</span>, <span class="ident">G::ScalarField</span><span class="op">&gt;</span>,
-        <span class="ident">RNG</span>: <span class="ident">RngCore</span> <span class="op">+</span> <span class="ident">CryptoRng</span>,
-        <span class="ident">G::BaseField</span>: <span class="ident">PrimeField</span>,
+        group_map: <span class="kw-2">&amp;</span>G::Map,
+        <span class="comment">// TODO(mimoo): create a type for that entry
+        </span>plnms: <span class="kw-2">&amp;</span>[(
+            <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt;,
+            <span class="prelude-ty">Option</span>&lt;usize&gt;,
+            PolyComm&lt;G::ScalarField&gt;,
+        )], <span class="comment">// vector of polynomial with optional degree bound and commitment randomness
+        </span>elm: <span class="kw-2">&amp;</span>[G::ScalarField],    <span class="comment">// vector of evaluation points
+        </span>polyscale: G::ScalarField, <span class="comment">// scaling factor for polynoms
+        </span>evalscale: G::ScalarField, <span class="comment">// scaling factor for evaluation point powers
+        </span><span class="kw-2">mut </span>sponge: EFqSponge,     <span class="comment">// sponge
+        </span>rng: <span class="kw-2">&amp;mut </span>RNG,
+    ) -&gt; OpeningProof&lt;G&gt;
+    <span class="kw">where
+        </span>EFqSponge: Clone + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
+        RNG: RngCore + CryptoRng,
+        G::BaseField: PrimeField,
     {
-        <span class="kw">let</span> <span class="ident">rounds</span> <span class="op">=</span> <span class="ident">math::ceil_log2</span>(<span class="self">self</span>.<span class="ident">g</span>.<span class="ident">len</span>());
-        <span class="kw">let</span> <span class="ident">padded_length</span> <span class="op">=</span> <span class="number">1</span> <span class="op">&lt;</span><span class="op">&lt;</span> <span class="ident">rounds</span>;
+        <span class="kw">let </span>rounds = math::ceil_log2(<span class="self">self</span>.g.len());
+        <span class="kw">let </span>padded_length = <span class="number">1 </span>&lt;&lt; rounds;
 
-        <span class="comment">// TODO: Trim this to the degree of the largest polynomial</span>
-        <span class="kw">let</span> <span class="ident">padding</span> <span class="op">=</span> <span class="ident">padded_length</span> <span class="op">-</span> <span class="self">self</span>.<span class="ident">g</span>.<span class="ident">len</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">g</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">g</span>.<span class="ident">clone</span>();
-        <span class="ident">g</span>.<span class="ident">extend</span>(<span class="macro">vec!</span>[<span class="ident">G::zero</span>(); <span class="ident">padding</span>]);
+        <span class="comment">// TODO: Trim this to the degree of the largest polynomial
+        </span><span class="kw">let </span>padding = padded_length - <span class="self">self</span>.g.len();
+        <span class="kw">let </span><span class="kw-2">mut </span>g = <span class="self">self</span>.g.clone();
+        g.extend(<span class="macro">vec!</span>[G::zero(); padding]);
 
-        <span class="kw">let</span> (<span class="ident">p</span>, <span class="ident">blinding_factor</span>) <span class="op">=</span> {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">plnm</span> <span class="op">=</span> <span class="ident">ScaledChunkedPolynomial</span>::<span class="op">&lt;</span><span class="ident">G::ScalarField</span>, <span class="kw-2">&amp;</span>[<span class="ident">G::ScalarField</span>]<span class="op">&gt;</span><span class="ident">::default</span>();
-            <span class="comment">// let mut plnm_chunks: Vec&lt;(G::ScalarField, OptShiftedPolynomial&lt;_&gt;)&gt; = vec![];</span>
+        <span class="kw">let </span>(p, blinding_factor) = {
+            <span class="kw">let </span><span class="kw-2">mut </span>plnm = ScaledChunkedPolynomial::&lt;G::ScalarField, <span class="kw-2">&amp;</span>[G::ScalarField]&gt;::default();
+            <span class="comment">// let mut plnm_chunks: Vec&lt;(G::ScalarField, OptShiftedPolynomial&lt;_&gt;)&gt; = vec![];
 
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">omega</span> <span class="op">=</span> <span class="ident">G::ScalarField::zero</span>();
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">scale</span> <span class="op">=</span> <span class="ident">G::ScalarField::one</span>();
+            </span><span class="kw">let </span><span class="kw-2">mut </span>omega = G::ScalarField::zero();
+            <span class="kw">let </span><span class="kw-2">mut </span>scale = G::ScalarField::one();
 
-            <span class="comment">// iterating over polynomials in the batch</span>
-            <span class="kw">for</span> (<span class="ident">p_i</span>, <span class="ident">degree_bound</span>, <span class="ident">omegas</span>) <span class="kw">in</span> <span class="ident">plnms</span>.<span class="ident">iter</span>().<span class="ident">filter</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> <span class="op">!</span><span class="ident">p</span>.<span class="number">0</span>.<span class="ident">is_zero</span>()) {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">offset</span> <span class="op">=</span> <span class="number">0</span>;
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">j</span> <span class="op">=</span> <span class="number">0</span>;
-                <span class="comment">// iterating over chunks of the polynomial</span>
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">m</span>) <span class="op">=</span> <span class="ident">degree_bound</span> {
-                    <span class="macro">assert!</span>(<span class="ident">p_i</span>.<span class="ident">coeffs</span>.<span class="ident">len</span>() <span class="op">&lt;</span><span class="op">=</span> <span class="ident">m</span> <span class="op">+</span> <span class="number">1</span>);
-                    <span class="kw">while</span> <span class="ident">j</span> <span class="op">&lt;</span> <span class="ident">omegas</span>.<span class="ident">unshifted</span>.<span class="ident">len</span>() {
-                        <span class="kw">let</span> <span class="ident">segment</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">p_i</span>.<span class="ident">coeffs</span>[<span class="ident">offset</span>
-                            ..<span class="kw">if</span> <span class="ident">offset</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">g</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="ident">p_i</span>.<span class="ident">coeffs</span>.<span class="ident">len</span>() {
-                                <span class="ident">p_i</span>.<span class="ident">coeffs</span>.<span class="ident">len</span>()
-                            } <span class="kw">else</span> {
-                                <span class="ident">offset</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">g</span>.<span class="ident">len</span>()
+            <span class="comment">// iterating over polynomials in the batch
+            </span><span class="kw">for </span>(p_i, degree_bound, omegas) <span class="kw">in </span>plnms.iter().filter(|p| !p.<span class="number">0</span>.is_zero()) {
+                <span class="kw">let </span><span class="kw-2">mut </span>offset = <span class="number">0</span>;
+                <span class="kw">let </span><span class="kw-2">mut </span>j = <span class="number">0</span>;
+                <span class="comment">// iterating over chunks of the polynomial
+                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(m) = degree_bound {
+                    <span class="macro">assert!</span>(p_i.coeffs.len() &lt;= m + <span class="number">1</span>);
+                    <span class="kw">while </span>j &lt; omegas.unshifted.len() {
+                        <span class="kw">let </span>segment = <span class="kw-2">&amp;</span>p_i.coeffs[offset
+                            ..<span class="kw">if </span>offset + <span class="self">self</span>.g.len() &gt; p_i.coeffs.len() {
+                                p_i.coeffs.len()
+                            } <span class="kw">else </span>{
+                                offset + <span class="self">self</span>.g.len()
                             }];
-                        <span class="comment">// always mixing in the unshifted segments</span>
-                        <span class="ident">plnm</span>.<span class="ident">add_unshifted</span>(<span class="ident">scale</span>, <span class="ident">segment</span>);
+                        <span class="comment">// always mixing in the unshifted segments
+                        </span>plnm.add_unshifted(scale, segment);
 
-                        <span class="ident">omega</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="ident">omegas</span>.<span class="ident">unshifted</span>[<span class="ident">j</span>] <span class="op">*</span> <span class="ident">scale</span>);
-                        <span class="ident">j</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-                        <span class="ident">scale</span> <span class="kw-2">*</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">polyscale</span>;
-                        <span class="ident">offset</span> <span class="op">+</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">g</span>.<span class="ident">len</span>();
-                        <span class="kw">if</span> <span class="ident">offset</span> <span class="op">&gt;</span> <span class="kw-2">*</span><span class="ident">m</span> {
-                            <span class="comment">// mixing in the shifted segment since degree is bounded</span>
-                            <span class="ident">plnm</span>.<span class="ident">add_shifted</span>(<span class="ident">scale</span>, <span class="self">self</span>.<span class="ident">g</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="ident">m</span> <span class="op">%</span> <span class="self">self</span>.<span class="ident">g</span>.<span class="ident">len</span>(), <span class="ident">segment</span>);
-                            <span class="ident">omega</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="ident">omegas</span>.<span class="ident">shifted</span>.<span class="ident">unwrap</span>() <span class="op">*</span> <span class="ident">scale</span>);
-                            <span class="ident">scale</span> <span class="kw-2">*</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">polyscale</span>;
+                        omega += <span class="kw-2">&amp;</span>(omegas.unshifted[j] * scale);
+                        j += <span class="number">1</span>;
+                        scale <span class="kw-2">*</span>= <span class="kw-2">&amp;</span>polyscale;
+                        offset += <span class="self">self</span>.g.len();
+                        <span class="kw">if </span>offset &gt; <span class="kw-2">*</span>m {
+                            <span class="comment">// mixing in the shifted segment since degree is bounded
+                            </span>plnm.add_shifted(scale, <span class="self">self</span>.g.len() - m % <span class="self">self</span>.g.len(), segment);
+                            omega += <span class="kw-2">&amp;</span>(omegas.shifted.unwrap() * scale);
+                            scale <span class="kw-2">*</span>= <span class="kw-2">&amp;</span>polyscale;
                         }
                     }
-                } <span class="kw">else</span> {
-                    <span class="macro">assert!</span>(<span class="ident">omegas</span>.<span class="ident">shifted</span>.<span class="ident">is_none</span>());
-                    <span class="kw">while</span> <span class="ident">j</span> <span class="op">&lt;</span> <span class="ident">omegas</span>.<span class="ident">unshifted</span>.<span class="ident">len</span>() {
-                        <span class="kw">let</span> <span class="ident">segment</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">p_i</span>.<span class="ident">coeffs</span>[<span class="ident">offset</span>
-                            ..<span class="kw">if</span> <span class="ident">offset</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">g</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="ident">p_i</span>.<span class="ident">coeffs</span>.<span class="ident">len</span>() {
-                                <span class="ident">p_i</span>.<span class="ident">coeffs</span>.<span class="ident">len</span>()
-                            } <span class="kw">else</span> {
-                                <span class="ident">offset</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">g</span>.<span class="ident">len</span>()
+                } <span class="kw">else </span>{
+                    <span class="macro">assert!</span>(omegas.shifted.is_none());
+                    <span class="kw">while </span>j &lt; omegas.unshifted.len() {
+                        <span class="kw">let </span>segment = <span class="kw-2">&amp;</span>p_i.coeffs[offset
+                            ..<span class="kw">if </span>offset + <span class="self">self</span>.g.len() &gt; p_i.coeffs.len() {
+                                p_i.coeffs.len()
+                            } <span class="kw">else </span>{
+                                offset + <span class="self">self</span>.g.len()
                             }];
 
-                        <span class="comment">// always mixing in the unshifted segments</span>
-                        <span class="ident">plnm</span>.<span class="ident">add_unshifted</span>(<span class="ident">scale</span>, <span class="ident">segment</span>);
-                        <span class="ident">omega</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="ident">omegas</span>.<span class="ident">unshifted</span>[<span class="ident">j</span>] <span class="op">*</span> <span class="ident">scale</span>);
-                        <span class="ident">j</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-                        <span class="ident">scale</span> <span class="kw-2">*</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">polyscale</span>;
-                        <span class="ident">offset</span> <span class="op">+</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">g</span>.<span class="ident">len</span>();
+                        <span class="comment">// always mixing in the unshifted segments
+                        </span>plnm.add_unshifted(scale, segment);
+                        omega += <span class="kw-2">&amp;</span>(omegas.unshifted[j] * scale);
+                        j += <span class="number">1</span>;
+                        scale <span class="kw-2">*</span>= <span class="kw-2">&amp;</span>polyscale;
+                        offset += <span class="self">self</span>.g.len();
                     }
                 }
-                <span class="macro">assert_eq!</span>(<span class="ident">j</span>, <span class="ident">omegas</span>.<span class="ident">unshifted</span>.<span class="ident">len</span>());
+                <span class="macro">assert_eq!</span>(j, omegas.unshifted.len());
             }
 
-            (<span class="ident">plnm</span>.<span class="ident">to_dense_polynomial</span>(), <span class="ident">omega</span>)
+            (plnm.to_dense_polynomial(), omega)
         };
 
-        <span class="kw">let</span> <span class="ident">rounds</span> <span class="op">=</span> <span class="ident">math::ceil_log2</span>(<span class="self">self</span>.<span class="ident">g</span>.<span class="ident">len</span>());
+        <span class="kw">let </span>rounds = math::ceil_log2(<span class="self">self</span>.g.len());
 
-        <span class="comment">// b_j = sum_i r^i elm_i^j</span>
-        <span class="kw">let</span> <span class="ident">b_init</span> <span class="op">=</span> {
-            <span class="comment">// randomise/scale the eval powers</span>
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">scale</span> <span class="op">=</span> <span class="ident">G::ScalarField::one</span>();
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span> <span class="op">=</span>
-                (<span class="number">0</span>..<span class="ident">padded_length</span>).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">G::ScalarField::zero</span>()).<span class="ident">collect</span>();
-            <span class="kw">for</span> <span class="ident">e</span> <span class="kw">in</span> <span class="ident">elm</span> {
-                <span class="kw">for</span> (<span class="ident">i</span>, <span class="ident">t</span>) <span class="kw">in</span> <span class="ident">pows</span>(<span class="ident">padded_length</span>, <span class="kw-2">*</span><span class="ident">e</span>).<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-                    <span class="ident">res</span>[<span class="ident">i</span>] <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="ident">scale</span> <span class="op">*</span> <span class="ident">t</span>);
+        <span class="comment">// b_j = sum_i r^i elm_i^j
+        </span><span class="kw">let </span>b_init = {
+            <span class="comment">// randomise/scale the eval powers
+            </span><span class="kw">let </span><span class="kw-2">mut </span>scale = G::ScalarField::one();
+            <span class="kw">let </span><span class="kw-2">mut </span>res: Vec&lt;G::ScalarField&gt; =
+                (<span class="number">0</span>..padded_length).map(|<span class="kw">_</span>| G::ScalarField::zero()).collect();
+            <span class="kw">for </span>e <span class="kw">in </span>elm {
+                <span class="kw">for </span>(i, t) <span class="kw">in </span>pows(padded_length, <span class="kw-2">*</span>e).iter().enumerate() {
+                    res[i] += <span class="kw-2">&amp;</span>(scale * t);
                 }
-                <span class="ident">scale</span> <span class="kw-2">*</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">evalscale</span>;
+                scale <span class="kw-2">*</span>= <span class="kw-2">&amp;</span>evalscale;
             }
-            <span class="ident">res</span>
+            res
         };
 
-        <span class="kw">let</span> <span class="ident">combined_inner_product</span> <span class="op">=</span> <span class="ident">p</span>
-            .<span class="ident">coeffs</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">zip</span>(<span class="ident">b_init</span>.<span class="ident">iter</span>())
-            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">a</span>, <span class="ident">b</span>)<span class="op">|</span> <span class="kw-2">*</span><span class="ident">a</span> <span class="op">*</span> <span class="ident">b</span>)
-            .<span class="ident">fold</span>(<span class="ident">G::ScalarField::zero</span>(), <span class="op">|</span><span class="ident">acc</span>, <span class="ident">x</span><span class="op">|</span> <span class="ident">acc</span> <span class="op">+</span> <span class="ident">x</span>);
+        <span class="kw">let </span>combined_inner_product = p
+            .coeffs
+            .iter()
+            .zip(b_init.iter())
+            .map(|(a, b)| <span class="kw-2">*</span>a * b)
+            .fold(G::ScalarField::zero(), |acc, x| acc + x);
 
-        <span class="ident">sponge</span>.<span class="ident">absorb_fr</span>(<span class="kw-2">&amp;</span>[<span class="ident">shift_scalar</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>(<span class="ident">combined_inner_product</span>)]);
+        sponge.absorb_fr(<span class="kw-2">&amp;</span>[shift_scalar::&lt;G&gt;(combined_inner_product)]);
 
-        <span class="kw">let</span> <span class="ident">t</span> <span class="op">=</span> <span class="ident">sponge</span>.<span class="ident">challenge_fq</span>();
-        <span class="kw">let</span> <span class="ident">u</span>: <span class="ident">G</span> <span class="op">=</span> <span class="ident">to_group</span>(<span class="ident">group_map</span>, <span class="ident">t</span>);
+        <span class="kw">let </span>t = sponge.challenge_fq();
+        <span class="kw">let </span>u: G = to_group(group_map, t);
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">a</span> <span class="op">=</span> <span class="ident">p</span>.<span class="ident">coeffs</span>;
-        <span class="macro">assert!</span>(<span class="ident">padded_length</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">a</span>.<span class="ident">len</span>());
-        <span class="ident">a</span>.<span class="ident">extend</span>(<span class="macro">vec!</span>[<span class="ident">G::ScalarField::zero</span>(); <span class="ident">padded_length</span> <span class="op">-</span> <span class="ident">a</span>.<span class="ident">len</span>()]);
+        <span class="kw">let </span><span class="kw-2">mut </span>a = p.coeffs;
+        <span class="macro">assert!</span>(padded_length &gt;= a.len());
+        a.extend(<span class="macro">vec!</span>[G::ScalarField::zero(); padded_length - a.len()]);
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">b</span> <span class="op">=</span> <span class="ident">b_init</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>b = b_init;
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">lr</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+        <span class="kw">let </span><span class="kw-2">mut </span>lr = <span class="macro">vec!</span>[];
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blinders</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+        <span class="kw">let </span><span class="kw-2">mut </span>blinders = <span class="macro">vec!</span>[];
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">chals</span> <span class="op">=</span> <span class="macro">vec!</span>[];
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">chal_invs</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+        <span class="kw">let </span><span class="kw-2">mut </span>chals = <span class="macro">vec!</span>[];
+        <span class="kw">let </span><span class="kw-2">mut </span>chal_invs = <span class="macro">vec!</span>[];
 
-        <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">rounds</span> {
-            <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">g</span>.<span class="ident">len</span>() <span class="op">/</span> <span class="number">2</span>;
-            <span class="kw">let</span> (<span class="ident">g_lo</span>, <span class="ident">g_hi</span>) <span class="op">=</span> (<span class="ident">g</span>[<span class="number">0</span>..<span class="ident">n</span>].<span class="ident">to_vec</span>(), <span class="ident">g</span>[<span class="ident">n</span>..].<span class="ident">to_vec</span>());
-            <span class="kw">let</span> (<span class="ident">a_lo</span>, <span class="ident">a_hi</span>) <span class="op">=</span> (<span class="kw-2">&amp;</span><span class="ident">a</span>[<span class="number">0</span>..<span class="ident">n</span>], <span class="kw-2">&amp;</span><span class="ident">a</span>[<span class="ident">n</span>..]);
-            <span class="kw">let</span> (<span class="ident">b_lo</span>, <span class="ident">b_hi</span>) <span class="op">=</span> (<span class="kw-2">&amp;</span><span class="ident">b</span>[<span class="number">0</span>..<span class="ident">n</span>], <span class="kw-2">&amp;</span><span class="ident">b</span>[<span class="ident">n</span>..]);
+        <span class="kw">for _ in </span><span class="number">0</span>..rounds {
+            <span class="kw">let </span>n = g.len() / <span class="number">2</span>;
+            <span class="kw">let </span>(g_lo, g_hi) = (g[<span class="number">0</span>..n].to_vec(), g[n..].to_vec());
+            <span class="kw">let </span>(a_lo, a_hi) = (<span class="kw-2">&amp;</span>a[<span class="number">0</span>..n], <span class="kw-2">&amp;</span>a[n..]);
+            <span class="kw">let </span>(b_lo, b_hi) = (<span class="kw-2">&amp;</span>b[<span class="number">0</span>..n], <span class="kw-2">&amp;</span>b[n..]);
 
-            <span class="kw">let</span> <span class="ident">rand_l</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">G::ScalarField</span> <span class="kw">as</span> <span class="ident">UniformRand</span><span class="op">&gt;</span><span class="ident">::rand</span>(<span class="ident">rng</span>);
-            <span class="kw">let</span> <span class="ident">rand_r</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">G::ScalarField</span> <span class="kw">as</span> <span class="ident">UniformRand</span><span class="op">&gt;</span><span class="ident">::rand</span>(<span class="ident">rng</span>);
+            <span class="kw">let </span>rand_l = &lt;G::ScalarField <span class="kw">as </span>UniformRand&gt;::rand(rng);
+            <span class="kw">let </span>rand_r = &lt;G::ScalarField <span class="kw">as </span>UniformRand&gt;::rand(rng);
 
-            <span class="kw">let</span> <span class="ident">l</span> <span class="op">=</span> <span class="ident">VariableBaseMSM::multi_scalar_mul</span>(
-                <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">g</span>[<span class="number">0</span>..<span class="ident">n</span>], <span class="kw-2">&amp;</span>[<span class="self">self</span>.<span class="ident">h</span>, <span class="ident">u</span>]].<span class="ident">concat</span>(),
-                <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">a</span>[<span class="ident">n</span>..], <span class="kw-2">&amp;</span>[<span class="ident">rand_l</span>, <span class="ident">inner_prod</span>(<span class="ident">a_hi</span>, <span class="ident">b_lo</span>)]]
-                    .<span class="ident">concat</span>()
-                    .<span class="ident">iter</span>()
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">into_repr</span>())
-                    .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>(),
+            <span class="kw">let </span>l = VariableBaseMSM::multi_scalar_mul(
+                <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>g[<span class="number">0</span>..n], <span class="kw-2">&amp;</span>[<span class="self">self</span>.h, u]].concat(),
+                <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>a[n..], <span class="kw-2">&amp;</span>[rand_l, inner_prod(a_hi, b_lo)]]
+                    .concat()
+                    .iter()
+                    .map(|x| x.into_repr())
+                    .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
             )
-            .<span class="ident">into_affine</span>();
+            .into_affine();
 
-            <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">VariableBaseMSM::multi_scalar_mul</span>(
-                <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">g</span>[<span class="ident">n</span>..], <span class="kw-2">&amp;</span>[<span class="self">self</span>.<span class="ident">h</span>, <span class="ident">u</span>]].<span class="ident">concat</span>(),
-                <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">a</span>[<span class="number">0</span>..<span class="ident">n</span>], <span class="kw-2">&amp;</span>[<span class="ident">rand_r</span>, <span class="ident">inner_prod</span>(<span class="ident">a_lo</span>, <span class="ident">b_hi</span>)]]
-                    .<span class="ident">concat</span>()
-                    .<span class="ident">iter</span>()
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">into_repr</span>())
-                    .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>(),
+            <span class="kw">let </span>r = VariableBaseMSM::multi_scalar_mul(
+                <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>g[n..], <span class="kw-2">&amp;</span>[<span class="self">self</span>.h, u]].concat(),
+                <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>a[<span class="number">0</span>..n], <span class="kw-2">&amp;</span>[rand_r, inner_prod(a_lo, b_hi)]]
+                    .concat()
+                    .iter()
+                    .map(|x| x.into_repr())
+                    .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
             )
-            .<span class="ident">into_affine</span>();
+            .into_affine();
 
-            <span class="ident">lr</span>.<span class="ident">push</span>((<span class="ident">l</span>, <span class="ident">r</span>));
-            <span class="ident">blinders</span>.<span class="ident">push</span>((<span class="ident">rand_l</span>, <span class="ident">rand_r</span>));
+            lr.push((l, r));
+            blinders.push((rand_l, rand_r));
 
-            <span class="ident">sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span>[<span class="ident">l</span>]);
-            <span class="ident">sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span>[<span class="ident">r</span>]);
+            sponge.absorb_g(<span class="kw-2">&amp;</span>[l]);
+            sponge.absorb_g(<span class="kw-2">&amp;</span>[r]);
 
-            <span class="kw">let</span> <span class="ident">u_pre</span> <span class="op">=</span> <span class="ident">squeeze_prechallenge</span>(<span class="kw-2">&amp;mut</span> <span class="ident">sponge</span>);
-            <span class="kw">let</span> <span class="ident">u</span> <span class="op">=</span> <span class="ident">u_pre</span>.<span class="ident">to_field</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">endo_r</span>);
-            <span class="kw">let</span> <span class="ident">u_inv</span> <span class="op">=</span> <span class="ident">u</span>.<span class="ident">inverse</span>().<span class="ident">unwrap</span>();
+            <span class="kw">let </span>u_pre = squeeze_prechallenge(<span class="kw-2">&amp;mut </span>sponge);
+            <span class="kw">let </span>u = u_pre.to_field(<span class="kw-2">&amp;</span><span class="self">self</span>.endo_r);
+            <span class="kw">let </span>u_inv = u.inverse().unwrap();
 
-            <span class="ident">chals</span>.<span class="ident">push</span>(<span class="ident">u</span>);
-            <span class="ident">chal_invs</span>.<span class="ident">push</span>(<span class="ident">u_inv</span>);
+            chals.push(u);
+            chal_invs.push(u_inv);
 
-            <span class="ident">a</span> <span class="op">=</span> <span class="ident">a_hi</span>
-                .<span class="ident">par_iter</span>()
-                .<span class="ident">zip</span>(<span class="ident">a_lo</span>)
-                .<span class="ident">map</span>(<span class="op">|</span>(<span class="kw-2">&amp;</span><span class="ident">hi</span>, <span class="kw-2">&amp;</span><span class="ident">lo</span>)<span class="op">|</span> {
-                    <span class="comment">// lo + u_inv * hi</span>
-                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">hi</span>;
-                    <span class="ident">res</span> <span class="kw-2">*</span><span class="op">=</span> <span class="ident">u_inv</span>;
-                    <span class="ident">res</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">lo</span>;
-                    <span class="ident">res</span>
+            a = a_hi
+                .par_iter()
+                .zip(a_lo)
+                .map(|(<span class="kw-2">&amp;</span>hi, <span class="kw-2">&amp;</span>lo)| {
+                    <span class="comment">// lo + u_inv * hi
+                    </span><span class="kw">let </span><span class="kw-2">mut </span>res = hi;
+                    res <span class="kw-2">*</span>= u_inv;
+                    res += <span class="kw-2">&amp;</span>lo;
+                    res
                 })
-                .<span class="ident">collect</span>();
+                .collect();
 
-            <span class="ident">b</span> <span class="op">=</span> <span class="ident">b_lo</span>
-                .<span class="ident">par_iter</span>()
-                .<span class="ident">zip</span>(<span class="ident">b_hi</span>)
-                .<span class="ident">map</span>(<span class="op">|</span>(<span class="kw-2">&amp;</span><span class="ident">lo</span>, <span class="kw-2">&amp;</span><span class="ident">hi</span>)<span class="op">|</span> {
-                    <span class="comment">// lo + u * hi</span>
-                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">hi</span>;
-                    <span class="ident">res</span> <span class="kw-2">*</span><span class="op">=</span> <span class="ident">u</span>;
-                    <span class="ident">res</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">lo</span>;
-                    <span class="ident">res</span>
+            b = b_lo
+                .par_iter()
+                .zip(b_hi)
+                .map(|(<span class="kw-2">&amp;</span>lo, <span class="kw-2">&amp;</span>hi)| {
+                    <span class="comment">// lo + u * hi
+                    </span><span class="kw">let </span><span class="kw-2">mut </span>res = hi;
+                    res <span class="kw-2">*</span>= u;
+                    res += <span class="kw-2">&amp;</span>lo;
+                    res
                 })
-                .<span class="ident">collect</span>();
+                .collect();
 
-            <span class="ident">g</span> <span class="op">=</span> <span class="ident">G::combine_one_endo</span>(<span class="self">self</span>.<span class="ident">endo_r</span>, <span class="self">self</span>.<span class="ident">endo_q</span>, <span class="kw-2">&amp;</span><span class="ident">g_lo</span>, <span class="kw-2">&amp;</span><span class="ident">g_hi</span>, <span class="ident">u_pre</span>);
+            g = G::combine_one_endo(<span class="self">self</span>.endo_r, <span class="self">self</span>.endo_q, <span class="kw-2">&amp;</span>g_lo, <span class="kw-2">&amp;</span>g_hi, u_pre);
         }
 
-        <span class="macro">assert!</span>(<span class="ident">g</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">1</span>);
-        <span class="kw">let</span> <span class="ident">a0</span> <span class="op">=</span> <span class="ident">a</span>[<span class="number">0</span>];
-        <span class="kw">let</span> <span class="ident">b0</span> <span class="op">=</span> <span class="ident">b</span>[<span class="number">0</span>];
-        <span class="kw">let</span> <span class="ident">g0</span> <span class="op">=</span> <span class="ident">g</span>[<span class="number">0</span>];
+        <span class="macro">assert!</span>(g.len() == <span class="number">1</span>);
+        <span class="kw">let </span>a0 = a[<span class="number">0</span>];
+        <span class="kw">let </span>b0 = b[<span class="number">0</span>];
+        <span class="kw">let </span>g0 = g[<span class="number">0</span>];
 
-        <span class="kw">let</span> <span class="ident">r_prime</span> <span class="op">=</span> <span class="ident">blinders</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">zip</span>(<span class="ident">chals</span>.<span class="ident">iter</span>().<span class="ident">zip</span>(<span class="ident">chal_invs</span>.<span class="ident">iter</span>()))
-            .<span class="ident">map</span>(<span class="op">|</span>((<span class="ident">l</span>, <span class="ident">r</span>), (<span class="ident">u</span>, <span class="ident">u_inv</span>))<span class="op">|</span> ((<span class="kw-2">*</span><span class="ident">l</span>) <span class="op">*</span> <span class="ident">u_inv</span>) <span class="op">+</span> (<span class="kw-2">*</span><span class="ident">r</span> <span class="op">*</span> <span class="ident">u</span>))
-            .<span class="ident">fold</span>(<span class="ident">blinding_factor</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="ident">x</span><span class="op">|</span> <span class="ident">acc</span> <span class="op">+</span> <span class="ident">x</span>);
+        <span class="kw">let </span>r_prime = blinders
+            .iter()
+            .zip(chals.iter().zip(chal_invs.iter()))
+            .map(|((l, r), (u, u_inv))| ((<span class="kw-2">*</span>l) * u_inv) + (<span class="kw-2">*</span>r * u))
+            .fold(blinding_factor, |acc, x| acc + x);
 
-        <span class="kw">let</span> <span class="ident">d</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">G::ScalarField</span> <span class="kw">as</span> <span class="ident">UniformRand</span><span class="op">&gt;</span><span class="ident">::rand</span>(<span class="ident">rng</span>);
-        <span class="kw">let</span> <span class="ident">r_delta</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">G::ScalarField</span> <span class="kw">as</span> <span class="ident">UniformRand</span><span class="op">&gt;</span><span class="ident">::rand</span>(<span class="ident">rng</span>);
+        <span class="kw">let </span>d = &lt;G::ScalarField <span class="kw">as </span>UniformRand&gt;::rand(rng);
+        <span class="kw">let </span>r_delta = &lt;G::ScalarField <span class="kw">as </span>UniformRand&gt;::rand(rng);
 
-        <span class="kw">let</span> <span class="ident">delta</span> <span class="op">=</span> ((<span class="ident">g0</span>.<span class="ident">into_projective</span>() <span class="op">+</span> (<span class="ident">u</span>.<span class="ident">mul</span>(<span class="ident">b0</span>))).<span class="ident">into_affine</span>().<span class="ident">mul</span>(<span class="ident">d</span>)
-            <span class="op">+</span> <span class="self">self</span>.<span class="ident">h</span>.<span class="ident">mul</span>(<span class="ident">r_delta</span>))
-        .<span class="ident">into_affine</span>();
+        <span class="kw">let </span>delta = ((g0.into_projective() + (u.mul(b0))).into_affine().mul(d)
+            + <span class="self">self</span>.h.mul(r_delta))
+        .into_affine();
 
-        <span class="ident">sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span>[<span class="ident">delta</span>]);
-        <span class="kw">let</span> <span class="ident">c</span> <span class="op">=</span> <span class="ident">ScalarChallenge</span>(<span class="ident">sponge</span>.<span class="ident">challenge</span>()).<span class="ident">to_field</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">endo_r</span>);
+        sponge.absorb_g(<span class="kw-2">&amp;</span>[delta]);
+        <span class="kw">let </span>c = ScalarChallenge(sponge.challenge()).to_field(<span class="kw-2">&amp;</span><span class="self">self</span>.endo_r);
 
-        <span class="kw">let</span> <span class="ident">z1</span> <span class="op">=</span> <span class="ident">a0</span> <span class="op">*</span> <span class="ident">c</span> <span class="op">+</span> <span class="ident">d</span>;
-        <span class="kw">let</span> <span class="ident">z2</span> <span class="op">=</span> <span class="ident">c</span> <span class="op">*</span> <span class="ident">r_prime</span> <span class="op">+</span> <span class="ident">r_delta</span>;
+        <span class="kw">let </span>z1 = a0 * c + d;
+        <span class="kw">let </span>z2 = c * r_prime + r_delta;
 
-        <span class="ident">OpeningProof</span> {
-            <span class="ident">delta</span>,
-            <span class="ident">lr</span>,
-            <span class="ident">z1</span>,
-            <span class="ident">z2</span>,
-            <span class="ident">sg</span>: <span class="ident">g0</span>,
+        OpeningProof {
+            delta,
+            lr,
+            z1,
+            z2,
+            sg: g0,
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">serde_as</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">bound</span> <span class="op">=</span> <span class="string">&quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">OpeningProof</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">AffineCurve</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// vector of rounds of L &amp; R commitments</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;Vec&lt;(o1_utils::serialization::SerdeAs, o1_utils::serialization::SerdeAs)&gt;&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">lr</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">G</span>, <span class="ident">G</span>)<span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">delta</span>: <span class="ident">G</span>,
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">z1</span>: <span class="ident">G::ScalarField</span>,
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">z2</span>: <span class="ident">G::ScalarField</span>,
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">sg</span>: <span class="ident">G</span>,
+<span class="attribute">#[serde_as]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(bound = <span class="string">&quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;</span>)]
+</span><span class="kw">pub struct </span>OpeningProof&lt;G: AffineCurve&gt; {
+    <span class="doccomment">/// vector of rounds of L &amp; R commitments
+    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;(o1_utils::serialization::SerdeAs, o1_utils::serialization::SerdeAs)&gt;&quot;</span>)]
+    </span><span class="kw">pub </span>lr: Vec&lt;(G, G)&gt;,
+    <span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="kw">pub </span>delta: G,
+    <span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="kw">pub </span>z1: G::ScalarField,
+    <span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="kw">pub </span>z2: G::ScalarField,
+    <span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="kw">pub </span>sg: G,
 }
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Challenges</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="ident">chal</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">chal_inv</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
+<span class="kw">pub struct </span>Challenges&lt;F&gt; {
+    <span class="kw">pub </span>chal: Vec&lt;F&gt;,
+    <span class="kw">pub </span>chal_inv: Vec&lt;F&gt;,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">AffineCurve</span><span class="op">&gt;</span> <span class="ident">OpeningProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">prechallenges</span><span class="op">&lt;</span><span class="ident">EFqSponge</span>: <span class="ident">FqSponge</span><span class="op">&lt;</span><span class="ident">G::BaseField</span>, <span class="ident">G</span>, <span class="ident">G::ScalarField</span><span class="op">&gt;</span><span class="op">&gt;</span>(
+<span class="kw">impl</span>&lt;G: AffineCurve&gt; OpeningProof&lt;G&gt; {
+    <span class="kw">pub fn </span>prechallenges&lt;EFqSponge: FqSponge&lt;G::BaseField, G, G::ScalarField&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">sponge</span>: <span class="kw-2">&amp;mut</span> <span class="ident">EFqSponge</span>,
-    ) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ScalarChallenge</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">_t</span> <span class="op">=</span> <span class="ident">sponge</span>.<span class="ident">challenge_fq</span>();
-        <span class="self">self</span>.<span class="ident">lr</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">l</span>, <span class="ident">r</span>)<span class="op">|</span> {
-                <span class="ident">sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span>[<span class="kw-2">*</span><span class="ident">l</span>]);
-                <span class="ident">sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span>[<span class="kw-2">*</span><span class="ident">r</span>]);
-                <span class="ident">squeeze_prechallenge</span>(<span class="ident">sponge</span>)
+        sponge: <span class="kw-2">&amp;mut </span>EFqSponge,
+    ) -&gt; Vec&lt;ScalarChallenge&lt;G::ScalarField&gt;&gt; {
+        <span class="kw">let </span>_t = sponge.challenge_fq();
+        <span class="self">self</span>.lr
+            .iter()
+            .map(|(l, r)| {
+                sponge.absorb_g(<span class="kw-2">&amp;</span>[<span class="kw-2">*</span>l]);
+                sponge.absorb_g(<span class="kw-2">&amp;</span>[<span class="kw-2">*</span>r]);
+                squeeze_prechallenge(sponge)
             })
-            .<span class="ident">collect</span>()
+            .collect()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">challenges</span><span class="op">&lt;</span><span class="ident">EFqSponge</span>: <span class="ident">FqSponge</span><span class="op">&lt;</span><span class="ident">G::BaseField</span>, <span class="ident">G</span>, <span class="ident">G::ScalarField</span><span class="op">&gt;</span><span class="op">&gt;</span>(
+    <span class="kw">pub fn </span>challenges&lt;EFqSponge: FqSponge&lt;G::BaseField, G, G::ScalarField&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">endo_r</span>: <span class="kw-2">&amp;</span><span class="ident">G::ScalarField</span>,
-        <span class="ident">sponge</span>: <span class="kw-2">&amp;mut</span> <span class="ident">EFqSponge</span>,
-    ) -&gt; <span class="ident">Challenges</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">chal</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">lr</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">l</span>, <span class="ident">r</span>)<span class="op">|</span> {
-                <span class="ident">sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span>[<span class="kw-2">*</span><span class="ident">l</span>]);
-                <span class="ident">sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span>[<span class="kw-2">*</span><span class="ident">r</span>]);
-                <span class="ident">squeeze_challenge</span>(<span class="ident">endo_r</span>, <span class="ident">sponge</span>)
+        endo_r: <span class="kw-2">&amp;</span>G::ScalarField,
+        sponge: <span class="kw-2">&amp;mut </span>EFqSponge,
+    ) -&gt; Challenges&lt;G::ScalarField&gt; {
+        <span class="kw">let </span>chal: Vec&lt;<span class="kw">_</span>&gt; = <span class="self">self
+            </span>.lr
+            .iter()
+            .map(|(l, r)| {
+                sponge.absorb_g(<span class="kw-2">&amp;</span>[<span class="kw-2">*</span>l]);
+                sponge.absorb_g(<span class="kw-2">&amp;</span>[<span class="kw-2">*</span>r]);
+                squeeze_challenge(endo_r, sponge)
             })
-            .<span class="ident">collect</span>();
+            .collect();
 
-        <span class="kw">let</span> <span class="ident">chal_inv</span> <span class="op">=</span> {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cs</span> <span class="op">=</span> <span class="ident">chal</span>.<span class="ident">clone</span>();
-            <span class="ident">ark_ff::batch_inversion</span>(<span class="kw-2">&amp;mut</span> <span class="ident">cs</span>);
-            <span class="ident">cs</span>
+        <span class="kw">let </span>chal_inv = {
+            <span class="kw">let </span><span class="kw-2">mut </span>cs = chal.clone();
+            ark_ff::batch_inversion(<span class="kw-2">&amp;mut </span>cs);
+            cs
         };
 
-        <span class="ident">Challenges</span> { <span class="ident">chal</span>, <span class="ident">chal_inv</span> }
+        Challenges { chal, chal_inv }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

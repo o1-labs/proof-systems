@@ -349,356 +349,356 @@
 <span id="349">349</span>
 <span id="350">350</span>
 <span id="351">351</span>
-</pre><pre class="rust"><code><span class="doccomment">//! This module implements an abstraction to keep track of the powers of alphas.</span>
-<span class="doccomment">//! As a recap, alpha is a challenge sent by the verifier in PLONK,</span>
-<span class="doccomment">//! and is used to aggregate multiple constraints into a single polynomial.</span>
-<span class="doccomment">//! It is important that different constraints use different powers of alpha,</span>
-<span class="doccomment">//! as otherwise they can interact and potentially cancel one another.</span>
-<span class="doccomment">//! (The proof is in the use of the Schwartz-Zippel lemma.)</span>
-<span class="doccomment">//! As such, we want two properties from this:</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! - we should keep track of a mapping between type of constraint and range of powers</span>
-<span class="doccomment">//! - when powers of alphas are used, we should ensure that no more no less are used</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! We use powers of alpha in two different places in the codebase:</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! - when creating the index, we do not know alpha at this point so we</span>
-<span class="doccomment">//!   simply keep track of what constraints will use what powers</span>
-<span class="doccomment">//! - when creating a proof or verifying a proof, at this point we know alpha</span>
-<span class="doccomment">//!   so we can use the mapping we created during the creation of the index.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! For this to work, we use the type [Alphas] to register ranges of powers of alpha,</span>
-<span class="doccomment">//! for the various [ArgumentType]s.</span>
-<span class="doccomment">//!</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This module implements an abstraction to keep track of the powers of alphas.
+//! As a recap, alpha is a challenge sent by the verifier in PLONK,
+//! and is used to aggregate multiple constraints into a single polynomial.
+//! It is important that different constraints use different powers of alpha,
+//! as otherwise they can interact and potentially cancel one another.
+//! (The proof is in the use of the Schwartz-Zippel lemma.)
+//! As such, we want two properties from this:
+//!
+//! - we should keep track of a mapping between type of constraint and range of powers
+//! - when powers of alphas are used, we should ensure that no more no less are used
+//!
+//! We use powers of alpha in two different places in the codebase:
+//!
+//! - when creating the index, we do not know alpha at this point so we
+//!   simply keep track of what constraints will use what powers
+//! - when creating a proof or verifying a proof, at this point we know alpha
+//!   so we can use the mapping we created during the creation of the index.
+//!
+//! For this to work, we use the type [Alphas] to register ranges of powers of alpha,
+//! for the various [ArgumentType]s.
+//!
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{<span class="ident">argument::ArgumentType</span>, <span class="ident">gate::GateType</span>};
-<span class="kw">use</span> <span class="ident">ark_ff::Field</span>;
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">std</span>::{
-    <span class="ident">collections::HashMap</span>,
-    <span class="ident">fmt::Display</span>,
-    <span class="ident">iter</span>::{<span class="ident">Cloned</span>, <span class="ident">Skip</span>, <span class="ident">Take</span>},
-    <span class="ident">ops::Range</span>,
-    <span class="ident">slice::Iter</span>,
-    <span class="ident">thread</span>,
+</span><span class="kw">use </span><span class="kw">crate</span>::circuits::{argument::ArgumentType, gate::GateType};
+<span class="kw">use </span>ark_ff::Field;
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>std::{
+    collections::HashMap,
+    fmt::Display,
+    iter::{Cloned, Skip, Take},
+    ops::Range,
+    slice::Iter,
+    thread,
 };
 
-<span class="comment">// ------------------------------------------</span>
+<span class="comment">// ------------------------------------------
 
-<span class="doccomment">/// This type can be used to create a mapping between powers of alpha and constraint types.</span>
-<span class="doccomment">/// See [Self::default] to create one,</span>
-<span class="doccomment">/// and [Self::register] to register a new mapping.</span>
-<span class="doccomment">/// Once you know the alpha value, you can convert this type to a [Alphas].</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Default</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Alphas</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// The next power of alpha to use</span>
-    <span class="doccomment">/// the end result will be [1, alpha^{next_power - 1}]</span>
-    <span class="ident">next_power</span>: <span class="ident">u32</span>,
-    <span class="doccomment">/// The mapping between constraint types and powers of alpha</span>
-    <span class="ident">mapping</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ArgumentType</span>, (<span class="ident">u32</span>, <span class="ident">u32</span>)<span class="op">&gt;</span>,
-    <span class="doccomment">/// The powers of alpha: 1, alpha, alpha^2, etc.</span>
-    <span class="doccomment">/// If set to [Some], you can&#39;t register new constraints.</span>
-    <span class="ident">alphas</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+</span><span class="doccomment">/// This type can be used to create a mapping between powers of alpha and constraint types.
+/// See [Self::default] to create one,
+/// and [Self::register] to register a new mapping.
+/// Once you know the alpha value, you can convert this type to a [Alphas].
+</span><span class="attribute">#[derive(Debug, Default, Serialize, Deserialize, Clone)]
+</span><span class="kw">pub struct </span>Alphas&lt;F&gt; {
+    <span class="doccomment">/// The next power of alpha to use
+    /// the end result will be [1, alpha^{next_power - 1}]
+    </span>next_power: u32,
+    <span class="doccomment">/// The mapping between constraint types and powers of alpha
+    </span>mapping: HashMap&lt;ArgumentType, (u32, u32)&gt;,
+    <span class="doccomment">/// The powers of alpha: 1, alpha, alpha^2, etc.
+    /// If set to [Some], you can&#39;t register new constraints.
+    </span>alphas: <span class="prelude-ty">Option</span>&lt;Vec&lt;F&gt;&gt;,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span> <span class="ident">Alphas</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Registers a new [ArgumentType],</span>
-    <span class="doccomment">/// associating it with a number `powers` of powers of alpha.</span>
-    <span class="doccomment">/// This function will panic if you register the same type twice.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">register</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">ty</span>: <span class="ident">ArgumentType</span>, <span class="ident">powers</span>: <span class="ident">u32</span>) {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">alphas</span>.<span class="ident">is_some</span>() {
+<span class="kw">impl</span>&lt;F: Field&gt; Alphas&lt;F&gt; {
+    <span class="doccomment">/// Registers a new [ArgumentType],
+    /// associating it with a number `powers` of powers of alpha.
+    /// This function will panic if you register the same type twice.
+    </span><span class="kw">pub fn </span>register(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ty: ArgumentType, powers: u32) {
+        <span class="kw">if </span><span class="self">self</span>.alphas.is_some() {
             <span class="macro">panic!</span>(<span class="string">&quot;you cannot register new constraints once initialized with a field element&quot;</span>);
         }
 
-        <span class="comment">// gates are a special case, as we reuse the same power of alpha</span>
-        <span class="comment">// across all of them (they&#39;re mutually exclusive)</span>
-        <span class="kw">let</span> <span class="ident">ty</span> <span class="op">=</span> <span class="kw">if</span> <span class="macro">matches!</span>(<span class="ident">ty</span>, <span class="ident">ArgumentType::Gate</span>(<span class="kw">_</span>)) {
-            <span class="comment">// the zero gate is not used, so we default to it</span>
-            <span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::Zero</span>)
-        } <span class="kw">else</span> {
-            <span class="ident">ty</span>
+        <span class="comment">// gates are a special case, as we reuse the same power of alpha
+        // across all of them (they&#39;re mutually exclusive)
+        </span><span class="kw">let </span>ty = <span class="kw">if </span><span class="macro">matches!</span>(ty, ArgumentType::Gate(<span class="kw">_</span>)) {
+            <span class="comment">// the zero gate is not used, so we default to it
+            </span>ArgumentType::Gate(GateType::Zero)
+        } <span class="kw">else </span>{
+            ty
         };
 
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">mapping</span>.<span class="ident">insert</span>(<span class="ident">ty</span>, (<span class="self">self</span>.<span class="ident">next_power</span>, <span class="ident">powers</span>)).<span class="ident">is_some</span>() {
-            <span class="macro">panic!</span>(<span class="string">&quot;cannot re-register {:?}&quot;</span>, <span class="ident">ty</span>);
+        <span class="kw">if </span><span class="self">self</span>.mapping.insert(ty, (<span class="self">self</span>.next_power, powers)).is_some() {
+            <span class="macro">panic!</span>(<span class="string">&quot;cannot re-register {:?}&quot;</span>, ty);
         }
 
-        <span class="self">self</span>.<span class="ident">next_power</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">next_power</span>
-            .<span class="ident">checked_add</span>(<span class="ident">powers</span>)
-            .<span class="ident">expect</span>(<span class="string">&quot;too many powers of alphas were registered&quot;</span>);
+        <span class="self">self</span>.next_power = <span class="self">self
+            </span>.next_power
+            .checked_add(powers)
+            .expect(<span class="string">&quot;too many powers of alphas were registered&quot;</span>);
     }
 
-    <span class="doccomment">/// Returns a range of exponents, for a given [ArgumentType], upperbounded by `num`.</span>
-    <span class="doccomment">/// Note that this function will panic if you did not register enough powers of alpha.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_exponents</span>(
+    <span class="doccomment">/// Returns a range of exponents, for a given [ArgumentType], upperbounded by `num`.
+    /// Note that this function will panic if you did not register enough powers of alpha.
+    </span><span class="kw">pub fn </span>get_exponents(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">ty</span>: <span class="ident">ArgumentType</span>,
-        <span class="ident">num</span>: <span class="ident">u32</span>,
-    ) -&gt; <span class="ident">MustConsumeIterator</span><span class="op">&lt;</span><span class="ident">Range</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>, <span class="ident">u32</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">ty</span> <span class="op">=</span> <span class="kw">if</span> <span class="macro">matches!</span>(<span class="ident">ty</span>, <span class="ident">ArgumentType::Gate</span>(<span class="kw">_</span>)) {
-            <span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::Zero</span>)
-        } <span class="kw">else</span> {
-            <span class="ident">ty</span>
+        ty: ArgumentType,
+        num: u32,
+    ) -&gt; MustConsumeIterator&lt;Range&lt;u32&gt;, u32&gt; {
+        <span class="kw">let </span>ty = <span class="kw">if </span><span class="macro">matches!</span>(ty, ArgumentType::Gate(<span class="kw">_</span>)) {
+            ArgumentType::Gate(GateType::Zero)
+        } <span class="kw">else </span>{
+            ty
         };
 
-        <span class="kw">let</span> <span class="ident">range</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">mapping</span>
-            .<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">ty</span>)
-            .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="macro">panic!</span>(<span class="string">&quot;constraint {:?} was not registered&quot;</span>, <span class="ident">ty</span>));
+        <span class="kw">let </span>range = <span class="self">self
+            </span>.mapping
+            .get(<span class="kw-2">&amp;</span>ty)
+            .unwrap_or_else(|| <span class="macro">panic!</span>(<span class="string">&quot;constraint {:?} was not registered&quot;</span>, ty));
 
-        <span class="kw">if</span> <span class="ident">num</span> <span class="op">&gt;</span> <span class="ident">range</span>.<span class="number">1</span> {
+        <span class="kw">if </span>num &gt; range.<span class="number">1 </span>{
             <span class="macro">panic!</span>(
                 <span class="string">&quot;you asked for {num} exponents, but only registered {} for {:?}&quot;</span>,
-                <span class="ident">range</span>.<span class="number">1</span>, <span class="ident">ty</span>
+                range.<span class="number">1</span>, ty
             );
         }
 
-        <span class="kw">let</span> <span class="ident">start</span> <span class="op">=</span> <span class="ident">range</span>.<span class="number">0</span>;
-        <span class="kw">let</span> <span class="ident">end</span> <span class="op">=</span> <span class="ident">start</span> <span class="op">+</span> <span class="ident">num</span>;
+        <span class="kw">let </span>start = range.<span class="number">0</span>;
+        <span class="kw">let </span>end = start + num;
 
-        <span class="ident">MustConsumeIterator</span> {
-            <span class="ident">inner</span>: <span class="ident">start</span>..<span class="ident">end</span>,
-            <span class="ident">debug_info</span>: <span class="ident">ty</span>,
+        MustConsumeIterator {
+            inner: start..end,
+            debug_info: ty,
         }
     }
 
-    <span class="doccomment">/// Instantiates the ranges with an actual field element `alpha`.</span>
-    <span class="doccomment">/// Once you call this function, you cannot register new constraints via [Self::register].</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">instantiate</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">alpha</span>: <span class="ident">F</span>) {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">last_power</span> <span class="op">=</span> <span class="ident">F::one</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">alphas</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="self">self</span>.<span class="ident">next_power</span> <span class="kw">as</span> <span class="ident">usize</span>);
-        <span class="ident">alphas</span>.<span class="ident">push</span>(<span class="ident">F::one</span>());
-        <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">1</span>..<span class="self">self</span>.<span class="ident">next_power</span> {
-            <span class="ident">last_power</span> <span class="kw-2">*</span><span class="op">=</span> <span class="ident">alpha</span>;
-            <span class="ident">alphas</span>.<span class="ident">push</span>(<span class="ident">last_power</span>);
+    <span class="doccomment">/// Instantiates the ranges with an actual field element `alpha`.
+    /// Once you call this function, you cannot register new constraints via [Self::register].
+    </span><span class="kw">pub fn </span>instantiate(<span class="kw-2">&amp;mut </span><span class="self">self</span>, alpha: F) {
+        <span class="kw">let </span><span class="kw-2">mut </span>last_power = F::one();
+        <span class="kw">let </span><span class="kw-2">mut </span>alphas = Vec::with_capacity(<span class="self">self</span>.next_power <span class="kw">as </span>usize);
+        alphas.push(F::one());
+        <span class="kw">for _ in </span><span class="number">1</span>..<span class="self">self</span>.next_power {
+            last_power <span class="kw-2">*</span>= alpha;
+            alphas.push(last_power);
         }
-        <span class="self">self</span>.<span class="ident">alphas</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">alphas</span>);
+        <span class="self">self</span>.alphas = <span class="prelude-val">Some</span>(alphas);
     }
 
-    <span class="doccomment">/// This function allows us to retrieve the powers of alpha, upperbounded by `num`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_alphas</span>(
+    <span class="doccomment">/// This function allows us to retrieve the powers of alpha, upperbounded by `num`
+    </span><span class="kw">pub fn </span>get_alphas(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">ty</span>: <span class="ident">ArgumentType</span>,
-        <span class="ident">num</span>: <span class="ident">u32</span>,
-    ) -&gt; <span class="ident">MustConsumeIterator</span><span class="op">&lt;</span><span class="ident">Cloned</span><span class="op">&lt;</span><span class="ident">Take</span><span class="op">&lt;</span><span class="ident">Skip</span><span class="op">&lt;</span><span class="ident">Iter</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">F</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">ty</span> <span class="op">=</span> <span class="kw">if</span> <span class="macro">matches!</span>(<span class="ident">ty</span>, <span class="ident">ArgumentType::Gate</span>(<span class="kw">_</span>)) {
-            <span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::Zero</span>)
-        } <span class="kw">else</span> {
-            <span class="ident">ty</span>
+        ty: ArgumentType,
+        num: u32,
+    ) -&gt; MustConsumeIterator&lt;Cloned&lt;Take&lt;Skip&lt;Iter&lt;F&gt;&gt;&gt;&gt;, F&gt; {
+        <span class="kw">let </span>ty = <span class="kw">if </span><span class="macro">matches!</span>(ty, ArgumentType::Gate(<span class="kw">_</span>)) {
+            ArgumentType::Gate(GateType::Zero)
+        } <span class="kw">else </span>{
+            ty
         };
 
-        <span class="kw">let</span> <span class="ident">range</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">mapping</span>
-            .<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">ty</span>)
-            .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="macro">panic!</span>(<span class="string">&quot;constraint {:?} was not registered&quot;</span>, <span class="ident">ty</span>));
+        <span class="kw">let </span>range = <span class="self">self
+            </span>.mapping
+            .get(<span class="kw-2">&amp;</span>ty)
+            .unwrap_or_else(|| <span class="macro">panic!</span>(<span class="string">&quot;constraint {:?} was not registered&quot;</span>, ty));
 
-        <span class="kw">if</span> <span class="ident">num</span> <span class="op">&gt;</span> <span class="ident">range</span>.<span class="number">1</span> {
+        <span class="kw">if </span>num &gt; range.<span class="number">1 </span>{
             <span class="macro">panic!</span>(
                 <span class="string">&quot;you asked for {num} alphas, but only {} are available for {:?}&quot;</span>,
-                <span class="ident">range</span>.<span class="number">1</span>, <span class="ident">ty</span>
+                range.<span class="number">1</span>, ty
             );
         }
 
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">alphas</span> {
-            <span class="prelude-val">None</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;you must call instantiate with an actual field element first&quot;</span>),
-            <span class="prelude-val">Some</span>(<span class="ident">alphas</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">alphas_range</span> <span class="op">=</span> <span class="ident">alphas</span>
-                    .<span class="ident">iter</span>()
-                    .<span class="ident">skip</span>(<span class="ident">range</span>.<span class="number">0</span> <span class="kw">as</span> <span class="ident">usize</span>)
-                    .<span class="ident">take</span>(<span class="ident">num</span> <span class="kw">as</span> <span class="ident">usize</span>)
-                    .<span class="ident">cloned</span>();
-                <span class="ident">MustConsumeIterator</span> {
-                    <span class="ident">inner</span>: <span class="ident">alphas_range</span>,
-                    <span class="ident">debug_info</span>: <span class="ident">ty</span>,
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.alphas {
+            <span class="prelude-val">None </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;you must call instantiate with an actual field element first&quot;</span>),
+            <span class="prelude-val">Some</span>(alphas) =&gt; {
+                <span class="kw">let </span>alphas_range = alphas
+                    .iter()
+                    .skip(range.<span class="number">0 </span><span class="kw">as </span>usize)
+                    .take(num <span class="kw">as </span>usize)
+                    .cloned();
+                MustConsumeIterator {
+                    inner: alphas_range,
+                    debug_info: ty,
                 }
             }
         }
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="ident">Display</span> <span class="kw">for</span> <span class="ident">Alphas</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-        <span class="kw">for</span> <span class="ident">arg</span> <span class="kw">in</span> [
-            <span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::Zero</span>),
-            <span class="ident">ArgumentType::Permutation</span>,
-            <span class="comment">//            ArgumentType::Lookup,</span>
-        ] {
-            <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="kw">if</span> <span class="macro">matches!</span>(<span class="ident">arg</span>, <span class="ident">ArgumentType::Gate</span>(<span class="kw">_</span>)) {
-                <span class="string">&quot;gates&quot;</span>.<span class="ident">to_string</span>()
-            } <span class="kw">else</span> {
-                <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">arg</span>)
+<span class="kw">impl</span>&lt;T&gt; Display <span class="kw">for </span>Alphas&lt;T&gt; {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+        <span class="kw">for </span>arg <span class="kw">in </span>[
+            ArgumentType::Gate(GateType::Zero),
+            ArgumentType::Permutation,
+            <span class="comment">//            ArgumentType::Lookup,
+        </span>] {
+            <span class="kw">let </span>name = <span class="kw">if </span><span class="macro">matches!</span>(arg, ArgumentType::Gate(<span class="kw">_</span>)) {
+                <span class="string">&quot;gates&quot;</span>.to_string()
+            } <span class="kw">else </span>{
+                <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, arg)
             };
-            <span class="kw">let</span> <span class="ident">range</span> <span class="op">=</span> <span class="self">self</span>
-                .<span class="ident">mapping</span>
-                .<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">arg</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;you need to register all arguments before calling display&quot;</span>);
+            <span class="kw">let </span>range = <span class="self">self
+                </span>.mapping
+                .get(<span class="kw-2">&amp;</span>arg)
+                .expect(<span class="string">&quot;you need to register all arguments before calling display&quot;</span>);
             <span class="macro">writeln!</span>(
-                <span class="ident">f</span>,
+                f,
                 <span class="string">&quot;* **{}**. Offset starts at {} and {} powers of $\\alpha$ are used&quot;</span>,
-                <span class="ident">name</span>, <span class="ident">range</span>.<span class="number">0</span>, <span class="ident">range</span>.<span class="number">1</span>
-            )<span class="question-mark">?</span>;
+                name, range.<span class="number">0</span>, range.<span class="number">1
+            </span>)<span class="question-mark">?</span>;
         }
 
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="comment">// ------------------------------------------</span>
+<span class="comment">// ------------------------------------------
 
-<span class="doccomment">/// Wrapper around an iterator that warns you if not consumed entirely.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MustConsumeIterator</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">I</span>: <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">T</span><span class="op">&gt;</span>,
-    <span class="ident">T</span>: <span class="ident">std::fmt::Display</span>,
+</span><span class="doccomment">/// Wrapper around an iterator that warns you if not consumed entirely.
+</span><span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>MustConsumeIterator&lt;I, T&gt;
+<span class="kw">where
+    </span>I: Iterator&lt;Item = T&gt;,
+    T: std::fmt::Display,
 {
-    <span class="ident">inner</span>: <span class="ident">I</span>,
-    <span class="ident">debug_info</span>: <span class="ident">ArgumentType</span>,
+    inner: I,
+    debug_info: ArgumentType,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">Iterator</span> <span class="kw">for</span> <span class="ident">MustConsumeIterator</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">I</span>: <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">T</span><span class="op">&gt;</span>,
-    <span class="ident">T</span>: <span class="ident">std::fmt::Display</span>,
+<span class="kw">impl</span>&lt;I, T&gt; Iterator <span class="kw">for </span>MustConsumeIterator&lt;I, T&gt;
+<span class="kw">where
+    </span>I: Iterator&lt;Item = T&gt;,
+    T: std::fmt::Display,
 {
-    <span class="kw">type</span> <span class="ident">Item</span> <span class="op">=</span> <span class="ident">I::Item</span>;
-    <span class="kw">fn</span> <span class="ident">next</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::Item</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">next</span>()
+    <span class="kw">type </span>Item = I::Item;
+    <span class="kw">fn </span>next(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Item&gt; {
+        <span class="self">self</span>.inner.next()
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">Drop</span> <span class="kw">for</span> <span class="ident">MustConsumeIterator</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">T</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">I</span>: <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">T</span><span class="op">&gt;</span>,
-    <span class="ident">T</span>: <span class="ident">std::fmt::Display</span>,
+<span class="kw">impl</span>&lt;I, T&gt; Drop <span class="kw">for </span>MustConsumeIterator&lt;I, T&gt;
+<span class="kw">where
+    </span>I: Iterator&lt;Item = T&gt;,
+    T: std::fmt::Display,
 {
-    <span class="kw">fn</span> <span class="ident">drop</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">v</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">next</span>() {
-            <span class="kw">if</span> <span class="ident">thread::panicking</span>() {
-                <span class="macro">eprintln!</span>(<span class="string">&quot;the registered number of powers of alpha for {:?} is too large, you haven&#39;t used alpha^{} (absolute power of alpha)&quot;</span>, <span class="self">self</span>.<span class="ident">debug_info</span>,
-                <span class="ident">v</span>);
-            } <span class="kw">else</span> {
-                <span class="macro">panic!</span>(<span class="string">&quot;the registered number of powers of alpha for {:?} is too large, you haven&#39;t used alpha^{} (absolute power of alpha)&quot;</span>, <span class="self">self</span>.<span class="ident">debug_info</span>,
-                <span class="ident">v</span>);
+    <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = <span class="self">self</span>.inner.next() {
+            <span class="kw">if </span>thread::panicking() {
+                <span class="macro">eprintln!</span>(<span class="string">&quot;the registered number of powers of alpha for {:?} is too large, you haven&#39;t used alpha^{} (absolute power of alpha)&quot;</span>, <span class="self">self</span>.debug_info,
+                v);
+            } <span class="kw">else </span>{
+                <span class="macro">panic!</span>(<span class="string">&quot;the registered number of powers of alpha for {:?} is too large, you haven&#39;t used alpha^{} (absolute power of alpha)&quot;</span>, <span class="self">self</span>.debug_info,
+                v);
             }
         }
     }
 }
 
-<span class="comment">// ------------------------------------------</span>
+<span class="comment">// ------------------------------------------
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">fs</span>, <span class="ident">path::Path</span>};
+</span><span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use </span>std::{fs, path::Path};
 
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::gate::GateType</span>;
-    <span class="kw">use</span> <span class="ident">mina_curves::pasta::Fp</span>;
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span><span class="kw">crate</span>::circuits::gate::GateType;
+    <span class="kw">use </span>mina_curves::pasta::Fp;
 
-    <span class="comment">// testing [Builder]</span>
+    <span class="comment">// testing [Builder]
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">incorrect_alpha_powers</span>() {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">alphas</span> <span class="op">=</span> <span class="ident">Alphas</span>::<span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="ident">::default</span>();
-        <span class="ident">alphas</span>.<span class="ident">register</span>(<span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::Poseidon</span>), <span class="number">3</span>);
+    </span><span class="attribute">#[test]
+    </span><span class="kw">fn </span>incorrect_alpha_powers() {
+        <span class="kw">let </span><span class="kw-2">mut </span>alphas = Alphas::&lt;Fp&gt;::default();
+        alphas.register(ArgumentType::Gate(GateType::Poseidon), <span class="number">3</span>);
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">powers</span> <span class="op">=</span> <span class="ident">alphas</span>.<span class="ident">get_exponents</span>(<span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::Poseidon</span>), <span class="number">3</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">powers</span>.<span class="ident">next</span>(), <span class="prelude-val">Some</span>(<span class="number">0</span>));
-        <span class="macro">assert_eq!</span>(<span class="ident">powers</span>.<span class="ident">next</span>(), <span class="prelude-val">Some</span>(<span class="number">1</span>));
-        <span class="macro">assert_eq!</span>(<span class="ident">powers</span>.<span class="ident">next</span>(), <span class="prelude-val">Some</span>(<span class="number">2</span>));
+        <span class="kw">let </span><span class="kw-2">mut </span>powers = alphas.get_exponents(ArgumentType::Gate(GateType::Poseidon), <span class="number">3</span>);
+        <span class="macro">assert_eq!</span>(powers.next(), <span class="prelude-val">Some</span>(<span class="number">0</span>));
+        <span class="macro">assert_eq!</span>(powers.next(), <span class="prelude-val">Some</span>(<span class="number">1</span>));
+        <span class="macro">assert_eq!</span>(powers.next(), <span class="prelude-val">Some</span>(<span class="number">2</span>));
 
-        <span class="ident">alphas</span>.<span class="ident">register</span>(<span class="ident">ArgumentType::Permutation</span>, <span class="number">3</span>);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">powers</span> <span class="op">=</span> <span class="ident">alphas</span>.<span class="ident">get_exponents</span>(<span class="ident">ArgumentType::Permutation</span>, <span class="number">3</span>);
+        alphas.register(ArgumentType::Permutation, <span class="number">3</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>powers = alphas.get_exponents(ArgumentType::Permutation, <span class="number">3</span>);
 
-        <span class="macro">assert_eq!</span>(<span class="ident">powers</span>.<span class="ident">next</span>(), <span class="prelude-val">Some</span>(<span class="number">3</span>));
-        <span class="macro">assert_eq!</span>(<span class="ident">powers</span>.<span class="ident">next</span>(), <span class="prelude-val">Some</span>(<span class="number">4</span>));
-        <span class="macro">assert_eq!</span>(<span class="ident">powers</span>.<span class="ident">next</span>(), <span class="prelude-val">Some</span>(<span class="number">5</span>));
+        <span class="macro">assert_eq!</span>(powers.next(), <span class="prelude-val">Some</span>(<span class="number">3</span>));
+        <span class="macro">assert_eq!</span>(powers.next(), <span class="prelude-val">Some</span>(<span class="number">4</span>));
+        <span class="macro">assert_eq!</span>(powers.next(), <span class="prelude-val">Some</span>(<span class="number">5</span>));
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="attribute">#[<span class="ident">should_panic</span>]</span>
-    <span class="kw">fn</span> <span class="ident">register_after_instantiating</span>() {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">alphas</span> <span class="op">=</span> <span class="ident">Alphas</span>::<span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="ident">::default</span>();
-        <span class="ident">alphas</span>.<span class="ident">instantiate</span>(<span class="ident">Fp::from</span>(<span class="number">1</span>));
-        <span class="ident">alphas</span>.<span class="ident">register</span>(<span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::Poseidon</span>), <span class="number">3</span>);
+    <span class="attribute">#[test]
+    #[should_panic]
+    </span><span class="kw">fn </span>register_after_instantiating() {
+        <span class="kw">let </span><span class="kw-2">mut </span>alphas = Alphas::&lt;Fp&gt;::default();
+        alphas.instantiate(Fp::from(<span class="number">1</span>));
+        alphas.register(ArgumentType::Gate(GateType::Poseidon), <span class="number">3</span>);
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="attribute">#[<span class="ident">should_panic</span>]</span>
-    <span class="kw">fn</span> <span class="ident">didnt_use_all_alpha_powers</span>() {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">alphas</span> <span class="op">=</span> <span class="ident">Alphas</span>::<span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="ident">::default</span>();
-        <span class="ident">alphas</span>.<span class="ident">register</span>(<span class="ident">ArgumentType::Permutation</span>, <span class="number">7</span>);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">powers</span> <span class="op">=</span> <span class="ident">alphas</span>.<span class="ident">get_exponents</span>(<span class="ident">ArgumentType::Permutation</span>, <span class="number">3</span>);
-        <span class="ident">powers</span>.<span class="ident">next</span>();
+    <span class="attribute">#[test]
+    #[should_panic]
+    </span><span class="kw">fn </span>didnt_use_all_alpha_powers() {
+        <span class="kw">let </span><span class="kw-2">mut </span>alphas = Alphas::&lt;Fp&gt;::default();
+        alphas.register(ArgumentType::Permutation, <span class="number">7</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>powers = alphas.get_exponents(ArgumentType::Permutation, <span class="number">3</span>);
+        powers.next();
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="attribute">#[<span class="ident">should_panic</span>]</span>
-    <span class="kw">fn</span> <span class="ident">registered_alpha_powers_for_some_constraint_twice</span>() {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">alphas</span> <span class="op">=</span> <span class="ident">Alphas</span>::<span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="ident">::default</span>();
-        <span class="ident">alphas</span>.<span class="ident">register</span>(<span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::Poseidon</span>), <span class="number">2</span>);
-        <span class="ident">alphas</span>.<span class="ident">register</span>(<span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::ChaCha0</span>), <span class="number">3</span>);
+    <span class="attribute">#[test]
+    #[should_panic]
+    </span><span class="kw">fn </span>registered_alpha_powers_for_some_constraint_twice() {
+        <span class="kw">let </span><span class="kw-2">mut </span>alphas = Alphas::&lt;Fp&gt;::default();
+        alphas.register(ArgumentType::Gate(GateType::Poseidon), <span class="number">2</span>);
+        alphas.register(ArgumentType::Gate(GateType::ChaCha0), <span class="number">3</span>);
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">powers_of_alpha</span>() {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">alphas</span> <span class="op">=</span> <span class="ident">Alphas::default</span>();
-        <span class="ident">alphas</span>.<span class="ident">register</span>(<span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::Poseidon</span>), <span class="number">4</span>);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">powers</span> <span class="op">=</span> <span class="ident">alphas</span>.<span class="ident">get_exponents</span>(<span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::Poseidon</span>), <span class="number">4</span>);
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>powers_of_alpha() {
+        <span class="kw">let </span><span class="kw-2">mut </span>alphas = Alphas::default();
+        alphas.register(ArgumentType::Gate(GateType::Poseidon), <span class="number">4</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>powers = alphas.get_exponents(ArgumentType::Gate(GateType::Poseidon), <span class="number">4</span>);
 
-        <span class="macro">assert_eq!</span>(<span class="ident">powers</span>.<span class="ident">next</span>(), <span class="prelude-val">Some</span>(<span class="number">0</span>));
-        <span class="macro">assert_eq!</span>(<span class="ident">powers</span>.<span class="ident">next</span>(), <span class="prelude-val">Some</span>(<span class="number">1</span>));
-        <span class="macro">assert_eq!</span>(<span class="ident">powers</span>.<span class="ident">next</span>(), <span class="prelude-val">Some</span>(<span class="number">2</span>));
-        <span class="macro">assert_eq!</span>(<span class="ident">powers</span>.<span class="ident">next</span>(), <span class="prelude-val">Some</span>(<span class="number">3</span>));
+        <span class="macro">assert_eq!</span>(powers.next(), <span class="prelude-val">Some</span>(<span class="number">0</span>));
+        <span class="macro">assert_eq!</span>(powers.next(), <span class="prelude-val">Some</span>(<span class="number">1</span>));
+        <span class="macro">assert_eq!</span>(powers.next(), <span class="prelude-val">Some</span>(<span class="number">2</span>));
+        <span class="macro">assert_eq!</span>(powers.next(), <span class="prelude-val">Some</span>(<span class="number">3</span>));
 
-        <span class="kw">let</span> <span class="ident">alpha</span> <span class="op">=</span> <span class="ident">Fp::from</span>(<span class="number">2</span>);
-        <span class="ident">alphas</span>.<span class="ident">instantiate</span>(<span class="ident">alpha</span>);
+        <span class="kw">let </span>alpha = Fp::from(<span class="number">2</span>);
+        alphas.instantiate(alpha);
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">alphas</span> <span class="op">=</span> <span class="ident">alphas</span>.<span class="ident">get_alphas</span>(<span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::Poseidon</span>), <span class="number">4</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">alphas</span>.<span class="ident">next</span>(), <span class="prelude-val">Some</span>(<span class="number">1</span>.<span class="ident">into</span>()));
-        <span class="macro">assert_eq!</span>(<span class="ident">alphas</span>.<span class="ident">next</span>(), <span class="prelude-val">Some</span>(<span class="number">2</span>.<span class="ident">into</span>()));
-        <span class="macro">assert_eq!</span>(<span class="ident">alphas</span>.<span class="ident">next</span>(), <span class="prelude-val">Some</span>(<span class="number">4</span>.<span class="ident">into</span>()));
-        <span class="macro">assert_eq!</span>(<span class="ident">alphas</span>.<span class="ident">next</span>(), <span class="prelude-val">Some</span>(<span class="number">8</span>.<span class="ident">into</span>()));
+        <span class="kw">let </span><span class="kw-2">mut </span>alphas = alphas.get_alphas(ArgumentType::Gate(GateType::Poseidon), <span class="number">4</span>);
+        <span class="macro">assert_eq!</span>(alphas.next(), <span class="prelude-val">Some</span>(<span class="number">1</span>.into()));
+        <span class="macro">assert_eq!</span>(alphas.next(), <span class="prelude-val">Some</span>(<span class="number">2</span>.into()));
+        <span class="macro">assert_eq!</span>(alphas.next(), <span class="prelude-val">Some</span>(<span class="number">4</span>.into()));
+        <span class="macro">assert_eq!</span>(alphas.next(), <span class="prelude-val">Some</span>(<span class="number">8</span>.into()));
     }
 
-    <span class="comment">// useful for the spec</span>
+    <span class="comment">// useful for the spec
 
-    <span class="kw">use</span> <span class="kw">crate</span>::{
-        <span class="ident">circuits</span>::{<span class="ident">gate::CircuitGate</span>, <span class="ident">wires::Wire</span>},
-        <span class="ident">linearization::expr_linearization</span>,
-        <span class="ident">prover_index::testing::new_index_for_test</span>,
+    </span><span class="kw">use crate</span>::{
+        circuits::{gate::CircuitGate, wires::Wire},
+        linearization::expr_linearization,
+        prover_index::testing::new_index_for_test,
     };
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">get_alphas_for_spec</span>() {
-        <span class="kw">let</span> <span class="ident">gates</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">CircuitGate</span>::<span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="ident">::zero</span>(<span class="ident">Wire::new</span>(<span class="number">0</span>)); <span class="number">2</span>];
-        <span class="kw">let</span> <span class="ident">index</span> <span class="op">=</span> <span class="ident">new_index_for_test</span>(<span class="ident">gates</span>, <span class="number">0</span>);
-        <span class="kw">let</span> (<span class="ident">_linearization</span>, <span class="ident">powers_of_alpha</span>) <span class="op">=</span> <span class="ident">expr_linearization</span>(
-            <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">chacha8</span>.<span class="ident">is_some</span>(),
-            <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">range_check_selector_polys</span>.<span class="ident">is_some</span>(),
-            <span class="ident">index</span>
-                .<span class="ident">cs</span>
-                .<span class="ident">lookup_constraint_system</span>
-                .<span class="ident">as_ref</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">lcs</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">lcs</span>.<span class="ident">configuration</span>),
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>get_alphas_for_spec() {
+        <span class="kw">let </span>gates = <span class="macro">vec!</span>[CircuitGate::&lt;Fp&gt;::zero(Wire::new(<span class="number">0</span>)); <span class="number">2</span>];
+        <span class="kw">let </span>index = new_index_for_test(gates, <span class="number">0</span>);
+        <span class="kw">let </span>(_linearization, powers_of_alpha) = expr_linearization(
+            index.cs.chacha8.is_some(),
+            index.cs.range_check_selector_polys.is_some(),
+            index
+                .cs
+                .lookup_constraint_system
+                .as_ref()
+                .map(|lcs| <span class="kw-2">&amp;</span>lcs.configuration),
         );
-        <span class="comment">// make sure this is present in the specification</span>
-        <span class="kw">let</span> <span class="ident">manifest_dir</span> <span class="op">=</span> <span class="ident">std::env::var</span>(<span class="string">&quot;CARGO_MANIFEST_DIR&quot;</span>).<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">spec_path</span> <span class="op">=</span> <span class="ident">Path::new</span>(<span class="kw-2">&amp;</span><span class="ident">manifest_dir</span>)
-            .<span class="ident">join</span>(<span class="string">&quot;..&quot;</span>)
-            .<span class="ident">join</span>(<span class="string">&quot;book&quot;</span>)
-            .<span class="ident">join</span>(<span class="string">&quot;specifications&quot;</span>)
-            .<span class="ident">join</span>(<span class="string">&quot;kimchi&quot;</span>)
-            .<span class="ident">join</span>(<span class="string">&quot;template.md&quot;</span>);
+        <span class="comment">// make sure this is present in the specification
+        </span><span class="kw">let </span>manifest_dir = std::env::var(<span class="string">&quot;CARGO_MANIFEST_DIR&quot;</span>).unwrap();
+        <span class="kw">let </span>spec_path = Path::new(<span class="kw-2">&amp;</span>manifest_dir)
+            .join(<span class="string">&quot;..&quot;</span>)
+            .join(<span class="string">&quot;book&quot;</span>)
+            .join(<span class="string">&quot;specifications&quot;</span>)
+            .join(<span class="string">&quot;kimchi&quot;</span>)
+            .join(<span class="string">&quot;template.md&quot;</span>);
 
-        <span class="kw">let</span> <span class="ident">spec</span> <span class="op">=</span> <span class="ident">fs::read_to_string</span>(<span class="ident">spec_path</span>).<span class="ident">unwrap</span>();
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">spec</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">powers_of_alpha</span>.<span class="ident">to_string</span>()) {
+        <span class="kw">let </span>spec = fs::read_to_string(spec_path).unwrap();
+        <span class="kw">if </span>!spec.contains(<span class="kw-2">&amp;</span>powers_of_alpha.to_string()) {
             <span class="macro">panic!</span>(
-                <span class="string">&quot;the specification of kimchi must contain the following paragraph:\n\n{powers_of_alpha}\n\n&quot;</span>
-            );
+                <span class="string">&quot;the specification of kimchi must contain the following paragraph:\n\n{powers_of_alpha}\n\n&quot;
+            </span>);
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

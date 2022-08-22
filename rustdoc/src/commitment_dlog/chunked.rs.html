@@ -47,54 +47,54 @@
 <span id="47">47</span>
 <span id="48">48</span>
 <span id="49">49</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">ark_ec::ProjectiveCurve</span>;
-<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">Field</span>, <span class="ident">Zero</span>};
+</pre><pre class="rust"><code><span class="kw">use </span>ark_ec::ProjectiveCurve;
+<span class="kw">use </span>ark_ff::{Field, Zero};
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::commitment::CommitmentCurve</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::PolyComm</span>;
+<span class="kw">use </span><span class="kw">crate</span>::commitment::CommitmentCurve;
+<span class="kw">use </span><span class="kw">crate</span>::PolyComm;
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">C</span>: <span class="ident">CommitmentCurve</span>,
+<span class="kw">impl</span>&lt;C&gt; PolyComm&lt;C&gt;
+<span class="kw">where
+    </span>C: CommitmentCurve,
 {
-    <span class="doccomment">/// Multiplies each commitment chunk of f with powers of zeta^n</span>
-    <span class="doccomment">/// Note that it ignores the shifted part.</span>
-    <span class="comment">// TODO(mimoo): better name for this function</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">chunk_commitment</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">zeta_n</span>: <span class="ident">C::ScalarField</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">C::Projective::zero</span>();
-        <span class="comment">// use Horner&#39;s to compute chunk[0] + z^n chunk[1] + z^2n chunk[2] + ...</span>
-        <span class="comment">// as ( chunk[-1] * z^n + chunk[-2] ) * z^n + chunk[-3]</span>
-        <span class="comment">// (https://en.wikipedia.org/wiki/Horner%27s_method)</span>
-        <span class="kw">for</span> <span class="ident">chunk</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">unshifted</span>.<span class="ident">iter</span>().<span class="ident">rev</span>() {
-            <span class="ident">res</span> <span class="kw-2">*</span><span class="op">=</span> <span class="ident">zeta_n</span>;
-            <span class="ident">res</span>.<span class="ident">add_assign_mixed</span>(<span class="ident">chunk</span>);
+    <span class="doccomment">/// Multiplies each commitment chunk of f with powers of zeta^n
+    /// Note that it ignores the shifted part.
+    </span><span class="comment">// TODO(mimoo): better name for this function
+    </span><span class="kw">pub fn </span>chunk_commitment(<span class="kw-2">&amp;</span><span class="self">self</span>, zeta_n: C::ScalarField) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>res = C::Projective::zero();
+        <span class="comment">// use Horner&#39;s to compute chunk[0] + z^n chunk[1] + z^2n chunk[2] + ...
+        // as ( chunk[-1] * z^n + chunk[-2] ) * z^n + chunk[-3]
+        // (https://en.wikipedia.org/wiki/Horner%27s_method)
+        </span><span class="kw">for </span>chunk <span class="kw">in </span><span class="self">self</span>.unshifted.iter().rev() {
+            res <span class="kw-2">*</span>= zeta_n;
+            res.add_assign_mixed(chunk);
         }
 
-        <span class="ident">PolyComm</span> {
-            <span class="ident">unshifted</span>: <span class="macro">vec!</span>[<span class="ident">res</span>.<span class="ident">into_affine</span>()],
-            <span class="ident">shifted</span>: <span class="self">self</span>.<span class="ident">shifted</span>,
+        PolyComm {
+            unshifted: <span class="macro">vec!</span>[res.into_affine()],
+            shifted: <span class="self">self</span>.shifted,
         }
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">F</span>: <span class="ident">Field</span>,
+<span class="kw">impl</span>&lt;F&gt; PolyComm&lt;F&gt;
+<span class="kw">where
+    </span>F: Field,
 {
-    <span class="doccomment">/// Multiplies each blinding chunk of f with powers of zeta^n</span>
-    <span class="doccomment">/// Note that it ignores the shifted part.</span>
-    <span class="comment">// TODO(mimoo): better name for this function</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">chunk_blinding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">zeta_n</span>: <span class="ident">F</span>) -&gt; <span class="ident">F</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">F::zero</span>();
-        <span class="comment">// use Horner&#39;s to compute chunk[0] + z^n chunk[1] + z^2n chunk[2] + ...</span>
-        <span class="comment">// as ( chunk[-1] * z^n + chunk[-2] ) * z^n + chunk[-3]</span>
-        <span class="comment">// (https://en.wikipedia.org/wiki/Horner%27s_method)</span>
-        <span class="kw">for</span> <span class="ident">chunk</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">unshifted</span>.<span class="ident">iter</span>().<span class="ident">rev</span>() {
-            <span class="ident">res</span> <span class="kw-2">*</span><span class="op">=</span> <span class="ident">zeta_n</span>;
-            <span class="ident">res</span> <span class="op">+</span><span class="op">=</span> <span class="ident">chunk</span>
+    <span class="doccomment">/// Multiplies each blinding chunk of f with powers of zeta^n
+    /// Note that it ignores the shifted part.
+    </span><span class="comment">// TODO(mimoo): better name for this function
+    </span><span class="kw">pub fn </span>chunk_blinding(<span class="kw-2">&amp;</span><span class="self">self</span>, zeta_n: F) -&gt; F {
+        <span class="kw">let </span><span class="kw-2">mut </span>res = F::zero();
+        <span class="comment">// use Horner&#39;s to compute chunk[0] + z^n chunk[1] + z^2n chunk[2] + ...
+        // as ( chunk[-1] * z^n + chunk[-2] ) * z^n + chunk[-3]
+        // (https://en.wikipedia.org/wiki/Horner%27s_method)
+        </span><span class="kw">for </span>chunk <span class="kw">in </span><span class="self">self</span>.unshifted.iter().rev() {
+            res <span class="kw-2">*</span>= zeta_n;
+            res += chunk
         }
-        <span class="ident">res</span>
+        res
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

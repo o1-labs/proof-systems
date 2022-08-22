@@ -190,197 +190,197 @@
 <span id="190">190</span>
 <span id="191">191</span>
 <span id="192">192</span>
-</pre><pre class="rust"><code><span class="doccomment">//! This module implements the Marlin structured reference string primitive</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This module implements the Marlin structured reference string primitive
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::commitment::CommitmentCurve</span>;
-<span class="kw">use</span> <span class="ident">ark_ec</span>::{<span class="ident">AffineCurve</span>, <span class="ident">ProjectiveCurve</span>};
-<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">BigInteger</span>, <span class="ident">PrimeField</span>};
-<span class="kw">use</span> <span class="ident">ark_poly</span>::{<span class="ident">EvaluationDomain</span>, <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>};
-<span class="kw">use</span> <span class="ident">array_init::array_init</span>;
-<span class="kw">use</span> <span class="ident">blake2</span>::{<span class="ident">Blake2b512</span>, <span class="ident">Digest</span>};
-<span class="kw">use</span> <span class="ident">groupmap::GroupMap</span>;
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">serde_with::serde_as</span>;
-<span class="kw">use</span> <span class="ident">std::collections::HashMap</span>;
+</span><span class="kw">use </span><span class="kw">crate</span>::commitment::CommitmentCurve;
+<span class="kw">use </span>ark_ec::{AffineCurve, ProjectiveCurve};
+<span class="kw">use </span>ark_ff::{BigInteger, PrimeField};
+<span class="kw">use </span>ark_poly::{EvaluationDomain, Radix2EvaluationDomain <span class="kw">as </span>D};
+<span class="kw">use </span>array_init::array_init;
+<span class="kw">use </span>blake2::{Blake2b512, Digest};
+<span class="kw">use </span>groupmap::GroupMap;
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>serde_with::serde_as;
+<span class="kw">use </span>std::collections::HashMap;
 
-<span class="attribute">#[<span class="ident">serde_as</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Default</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SRS</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">CommitmentCurve</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// The vector of group elements for committing to polynomials in coefficient form</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">g</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// A group element used for blinding commitments</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">h</span>: <span class="ident">G</span>,
+<span class="attribute">#[serde_as]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>SRS&lt;G: CommitmentCurve&gt; {
+    <span class="doccomment">/// The vector of group elements for committing to polynomials in coefficient form
+    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    </span><span class="kw">pub </span>g: Vec&lt;G&gt;,
+    <span class="doccomment">/// A group element used for blinding commitments
+    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="kw">pub </span>h: G,
 
-    <span class="comment">// TODO: the following field should be separated, as they are optimization values</span>
-    <span class="doccomment">/// Commitments to Lagrange bases, per domain size</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">lagrange_bases</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Coefficient for the curve endomorphism</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">endo_r</span>: <span class="ident">G::ScalarField</span>,
-    <span class="doccomment">/// Coefficient for the curve endomorphism</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">endo_q</span>: <span class="ident">G::BaseField</span>,
+    <span class="comment">// TODO: the following field should be separated, as they are optimization values
+    </span><span class="doccomment">/// Commitments to Lagrange bases, per domain size
+    </span><span class="attribute">#[serde(skip)]
+    </span><span class="kw">pub </span>lagrange_bases: HashMap&lt;usize, Vec&lt;G&gt;&gt;,
+    <span class="doccomment">/// Coefficient for the curve endomorphism
+    </span><span class="attribute">#[serde(skip)]
+    </span><span class="kw">pub </span>endo_r: G::ScalarField,
+    <span class="doccomment">/// Coefficient for the curve endomorphism
+    </span><span class="attribute">#[serde(skip)]
+    </span><span class="kw">pub </span>endo_q: G::BaseField,
 }
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">endos</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">CommitmentCurve</span><span class="op">&gt;</span>() -&gt; (<span class="ident">G::BaseField</span>, <span class="ident">G::ScalarField</span>)
-<span class="kw">where</span>
-    <span class="ident">G::BaseField</span>: <span class="ident">PrimeField</span>,
+<span class="kw">pub fn </span>endos&lt;G: CommitmentCurve&gt;() -&gt; (G::BaseField, G::ScalarField)
+<span class="kw">where
+    </span>G::BaseField: PrimeField,
 {
-    <span class="kw">let</span> <span class="ident">endo_q</span>: <span class="ident">G::BaseField</span> <span class="op">=</span> <span class="ident">oracle::sponge::endo_coefficient</span>();
-    <span class="kw">let</span> <span class="ident">endo_r</span> <span class="op">=</span> {
-        <span class="kw">let</span> <span class="ident">potential_endo_r</span>: <span class="ident">G::ScalarField</span> <span class="op">=</span> <span class="ident">oracle::sponge::endo_coefficient</span>();
-        <span class="kw">let</span> <span class="ident">t</span> <span class="op">=</span> <span class="ident">G::prime_subgroup_generator</span>();
-        <span class="kw">let</span> (<span class="ident">x</span>, <span class="ident">y</span>) <span class="op">=</span> <span class="ident">t</span>.<span class="ident">to_coordinates</span>().<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">phi_t</span> <span class="op">=</span> <span class="ident">G::of_coordinates</span>(<span class="ident">x</span> <span class="op">*</span> <span class="ident">endo_q</span>, <span class="ident">y</span>);
-        <span class="kw">if</span> <span class="ident">t</span>.<span class="ident">mul</span>(<span class="ident">potential_endo_r</span>) <span class="op">==</span> <span class="ident">phi_t</span>.<span class="ident">into_projective</span>() {
-            <span class="ident">potential_endo_r</span>
-        } <span class="kw">else</span> {
-            <span class="ident">potential_endo_r</span> <span class="op">*</span> <span class="ident">potential_endo_r</span>
+    <span class="kw">let </span>endo_q: G::BaseField = oracle::sponge::endo_coefficient();
+    <span class="kw">let </span>endo_r = {
+        <span class="kw">let </span>potential_endo_r: G::ScalarField = oracle::sponge::endo_coefficient();
+        <span class="kw">let </span>t = G::prime_subgroup_generator();
+        <span class="kw">let </span>(x, y) = t.to_coordinates().unwrap();
+        <span class="kw">let </span>phi_t = G::of_coordinates(x * endo_q, y);
+        <span class="kw">if </span>t.mul(potential_endo_r) == phi_t.into_projective() {
+            potential_endo_r
+        } <span class="kw">else </span>{
+            potential_endo_r * potential_endo_r
         }
     };
-    (<span class="ident">endo_q</span>, <span class="ident">endo_r</span>)
+    (endo_q, endo_r)
 }
 
-<span class="kw">fn</span> <span class="ident">point_of_random_bytes</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">CommitmentCurve</span><span class="op">&gt;</span>(<span class="ident">map</span>: <span class="kw-2">&amp;</span><span class="ident">G::Map</span>, <span class="ident">random_bytes</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="ident">G</span>
-<span class="kw">where</span>
-    <span class="ident">G::BaseField</span>: <span class="ident">PrimeField</span>,
+<span class="kw">fn </span>point_of_random_bytes&lt;G: CommitmentCurve&gt;(map: <span class="kw-2">&amp;</span>G::Map, random_bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; G
+<span class="kw">where
+    </span>G::BaseField: PrimeField,
 {
-    <span class="comment">// packing in bit-representation</span>
-    <span class="kw">const</span> <span class="ident">N</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">31</span>;
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">bits</span> <span class="op">=</span> [<span class="bool-val">false</span>; <span class="number">8</span> <span class="op">*</span> <span class="ident">N</span>];
-    <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">N</span> {
-        <span class="kw">for</span> <span class="ident">j</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">8</span> {
-            <span class="ident">bits</span>[<span class="number">8</span> <span class="op">*</span> <span class="ident">i</span> <span class="op">+</span> <span class="ident">j</span>] <span class="op">=</span> (<span class="ident">random_bytes</span>[<span class="ident">i</span>] <span class="op">&gt;</span><span class="op">&gt;</span> <span class="ident">j</span>) <span class="op">&amp;</span> <span class="number">1</span> <span class="op">==</span> <span class="number">1</span>;
+    <span class="comment">// packing in bit-representation
+    </span><span class="kw">const </span>N: usize = <span class="number">31</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>bits = [<span class="bool-val">false</span>; <span class="number">8 </span>* N];
+    <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..N {
+        <span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..<span class="number">8 </span>{
+            bits[<span class="number">8 </span>* i + j] = (random_bytes[i] &gt;&gt; j) &amp; <span class="number">1 </span>== <span class="number">1</span>;
         }
     }
 
-    <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">G::BaseField</span> <span class="kw">as</span> <span class="ident">PrimeField</span><span class="op">&gt;</span><span class="ident">::BigInt::from_bits_be</span>(<span class="kw-2">&amp;</span><span class="ident">bits</span>);
-    <span class="kw">let</span> <span class="ident">t</span> <span class="op">=</span> <span class="ident">G::BaseField::from_repr</span>(<span class="ident">n</span>).<span class="ident">expect</span>(<span class="string">&quot;packing code has a bug&quot;</span>);
-    <span class="kw">let</span> (<span class="ident">x</span>, <span class="ident">y</span>) <span class="op">=</span> <span class="ident">map</span>.<span class="ident">to_group</span>(<span class="ident">t</span>);
-    <span class="ident">G::of_coordinates</span>(<span class="ident">x</span>, <span class="ident">y</span>)
+    <span class="kw">let </span>n = &lt;G::BaseField <span class="kw">as </span>PrimeField&gt;::BigInt::from_bits_be(<span class="kw-2">&amp;</span>bits);
+    <span class="kw">let </span>t = G::BaseField::from_repr(n).expect(<span class="string">&quot;packing code has a bug&quot;</span>);
+    <span class="kw">let </span>(x, y) = map.to_group(t);
+    G::of_coordinates(x, y)
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">CommitmentCurve</span><span class="op">&gt;</span> <span class="ident">SRS</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">G::BaseField</span>: <span class="ident">PrimeField</span>,
+<span class="kw">impl</span>&lt;G: CommitmentCurve&gt; SRS&lt;G&gt;
+<span class="kw">where
+    </span>G::BaseField: PrimeField,
 {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">max_degree</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="self">self</span>.<span class="ident">g</span>.<span class="ident">len</span>()
+    <span class="kw">pub fn </span>max_degree(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.g.len()
     }
 
-    <span class="doccomment">/// Compute commitments to the lagrange basis corresponding to the given domain and</span>
-    <span class="doccomment">/// cache them in the SRS</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_lagrange_basis</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">domain</span>: <span class="ident">D</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span>) {
-        <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">size</span>();
-        <span class="kw">if</span> <span class="ident">n</span> <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">g</span>.<span class="ident">len</span>() {
+    <span class="doccomment">/// Compute commitments to the lagrange basis corresponding to the given domain and
+    /// cache them in the SRS
+    </span><span class="kw">pub fn </span>add_lagrange_basis(<span class="kw-2">&amp;mut </span><span class="self">self</span>, domain: D&lt;G::ScalarField&gt;) {
+        <span class="kw">let </span>n = domain.size();
+        <span class="kw">if </span>n &gt; <span class="self">self</span>.g.len() {
             <span class="macro">panic!</span>(
                 <span class="string">&quot;add_lagrange_basis: Domain size {} larger than SRS size {}&quot;</span>,
-                <span class="ident">n</span>,
-                <span class="self">self</span>.<span class="ident">g</span>.<span class="ident">len</span>()
+                n,
+                <span class="self">self</span>.g.len()
             );
         }
 
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">lagrange_bases</span>.<span class="ident">contains_key</span>(<span class="kw-2">&amp;</span><span class="ident">n</span>) {
+        <span class="kw">if </span><span class="self">self</span>.lagrange_bases.contains_key(<span class="kw-2">&amp;</span>n) {
             <span class="kw">return</span>;
         }
 
-        <span class="comment">// Let V be a vector space over the field F.</span>
-        <span class="comment">//</span>
-        <span class="comment">// Given</span>
-        <span class="comment">// - a domain [ 1, w, w^2, ..., w^{n - 1} ]</span>
-        <span class="comment">// - a vector v := [ v_0, ..., v_{n - 1} ] in V^n</span>
-        <span class="comment">//</span>
-        <span class="comment">// the FFT algorithm computes the matrix application</span>
-        <span class="comment">//</span>
-        <span class="comment">// u = M(w) * v</span>
-        <span class="comment">//</span>
-        <span class="comment">// where</span>
-        <span class="comment">// M(w) =</span>
-        <span class="comment">//   1 1       1           ... 1</span>
-        <span class="comment">//   1 w       w^2         ... w^{n-1}</span>
-        <span class="comment">//   ...</span>
-        <span class="comment">//   1 w^{n-1} (w^2)^{n-1} ... (w^{n-1})^{n-1}</span>
-        <span class="comment">//</span>
-        <span class="comment">// The IFFT algorithm computes</span>
-        <span class="comment">//</span>
-        <span class="comment">// v = M(w)^{-1} * u</span>
-        <span class="comment">//</span>
-        <span class="comment">// Let&#39;s see how we can use this algorithm to compute the lagrange basis</span>
-        <span class="comment">// commitments.</span>
-        <span class="comment">//</span>
-        <span class="comment">// Let V be the vector space F[x] of polynomials in x over F.</span>
-        <span class="comment">// Let v in V be the vector [ L_0, ..., L_{n - 1} ] where L_i is the i^{th}</span>
-        <span class="comment">// normalized Lagrange polynomial (where L_i(w^j) = j == i ? 1 : 0).</span>
-        <span class="comment">//</span>
-        <span class="comment">// Consider the rows of M(w) * v. Let me write out the matrix and vector so you</span>
-        <span class="comment">// can see more easily.</span>
-        <span class="comment">//</span>
-        <span class="comment">//   | 1 1       1           ... 1               |   | L_0     |</span>
-        <span class="comment">//   | 1 w       w^2         ... w^{n-1}         | * | L_1     |</span>
-        <span class="comment">//   | ...                                       |   | ...     |</span>
-        <span class="comment">//   | 1 w^{n-1} (w^2)^{n-1} ... (w^{n-1})^{n-1} |   | L_{n-1} |</span>
-        <span class="comment">//</span>
-        <span class="comment">// The 0th row is L_0 + L1 + ... + L_{n - 1}. So, it&#39;s the polynomial</span>
-        <span class="comment">// that has the value 1 on every element of the domain.</span>
-        <span class="comment">// In other words, it&#39;s the polynomial 1.</span>
-        <span class="comment">//</span>
-        <span class="comment">// The 1st row is L_0 + w L_1 + ... + w^{n - 1} L_{n - 1}. So, it&#39;s the</span>
-        <span class="comment">// polynomial which has value w^i on w^i.</span>
-        <span class="comment">// In other words, it&#39;s the polynomial x.</span>
-        <span class="comment">//</span>
-        <span class="comment">// In general, you can see that row i is in fact the polynomial x^i.</span>
-        <span class="comment">//</span>
-        <span class="comment">// Thus, M(w) * v is the vector u, where u = [ 1, x, x^2, ..., x^n ]</span>
-        <span class="comment">//</span>
-        <span class="comment">// Therefore, the IFFT algorithm, when applied to the vector u (the standard</span>
-        <span class="comment">// monomial basis) will yield the vector v of the (normalized) Lagrange polynomials.</span>
-        <span class="comment">//</span>
-        <span class="comment">// Now, because the polynomial commitment scheme is additively homomorphic, and</span>
-        <span class="comment">// because the commitment to the polynomial x^i is just self.g[i], we can obtain</span>
-        <span class="comment">// commitments to the normalized Lagrange polynomials by applying IFFT to the</span>
-        <span class="comment">// vector self.g[0..n].</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">lg</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="op">&lt;</span><span class="ident">G</span> <span class="kw">as</span> <span class="ident">AffineCurve</span><span class="op">&gt;</span><span class="ident">::Projective</span><span class="op">&gt;</span> <span class="op">=</span>
-            <span class="self">self</span>.<span class="ident">g</span>[<span class="number">0</span>..<span class="ident">n</span>].<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">g</span><span class="op">|</span> <span class="ident">g</span>.<span class="ident">into_projective</span>()).<span class="ident">collect</span>();
-        <span class="ident">domain</span>.<span class="ident">ifft_in_place</span>(<span class="kw-2">&amp;mut</span> <span class="ident">lg</span>);
+        <span class="comment">// Let V be a vector space over the field F.
+        //
+        // Given
+        // - a domain [ 1, w, w^2, ..., w^{n - 1} ]
+        // - a vector v := [ v_0, ..., v_{n - 1} ] in V^n
+        //
+        // the FFT algorithm computes the matrix application
+        //
+        // u = M(w) * v
+        //
+        // where
+        // M(w) =
+        //   1 1       1           ... 1
+        //   1 w       w^2         ... w^{n-1}
+        //   ...
+        //   1 w^{n-1} (w^2)^{n-1} ... (w^{n-1})^{n-1}
+        //
+        // The IFFT algorithm computes
+        //
+        // v = M(w)^{-1} * u
+        //
+        // Let&#39;s see how we can use this algorithm to compute the lagrange basis
+        // commitments.
+        //
+        // Let V be the vector space F[x] of polynomials in x over F.
+        // Let v in V be the vector [ L_0, ..., L_{n - 1} ] where L_i is the i^{th}
+        // normalized Lagrange polynomial (where L_i(w^j) = j == i ? 1 : 0).
+        //
+        // Consider the rows of M(w) * v. Let me write out the matrix and vector so you
+        // can see more easily.
+        //
+        //   | 1 1       1           ... 1               |   | L_0     |
+        //   | 1 w       w^2         ... w^{n-1}         | * | L_1     |
+        //   | ...                                       |   | ...     |
+        //   | 1 w^{n-1} (w^2)^{n-1} ... (w^{n-1})^{n-1} |   | L_{n-1} |
+        //
+        // The 0th row is L_0 + L1 + ... + L_{n - 1}. So, it&#39;s the polynomial
+        // that has the value 1 on every element of the domain.
+        // In other words, it&#39;s the polynomial 1.
+        //
+        // The 1st row is L_0 + w L_1 + ... + w^{n - 1} L_{n - 1}. So, it&#39;s the
+        // polynomial which has value w^i on w^i.
+        // In other words, it&#39;s the polynomial x.
+        //
+        // In general, you can see that row i is in fact the polynomial x^i.
+        //
+        // Thus, M(w) * v is the vector u, where u = [ 1, x, x^2, ..., x^n ]
+        //
+        // Therefore, the IFFT algorithm, when applied to the vector u (the standard
+        // monomial basis) will yield the vector v of the (normalized) Lagrange polynomials.
+        //
+        // Now, because the polynomial commitment scheme is additively homomorphic, and
+        // because the commitment to the polynomial x^i is just self.g[i], we can obtain
+        // commitments to the normalized Lagrange polynomials by applying IFFT to the
+        // vector self.g[0..n].
+        </span><span class="kw">let </span><span class="kw-2">mut </span>lg: Vec&lt;&lt;G <span class="kw">as </span>AffineCurve&gt;::Projective&gt; =
+            <span class="self">self</span>.g[<span class="number">0</span>..n].iter().map(|g| g.into_projective()).collect();
+        domain.ifft_in_place(<span class="kw-2">&amp;mut </span>lg);
 
-        <span class="op">&lt;</span><span class="ident">G</span> <span class="kw">as</span> <span class="ident">AffineCurve</span><span class="op">&gt;</span><span class="ident">::Projective::batch_normalization</span>(<span class="ident">lg</span>.<span class="ident">as_mut_slice</span>());
-        <span class="self">self</span>.<span class="ident">lagrange_bases</span>
-            .<span class="ident">insert</span>(<span class="ident">n</span>, <span class="ident">lg</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">g</span><span class="op">|</span> <span class="ident">g</span>.<span class="ident">into_affine</span>()).<span class="ident">collect</span>());
+        &lt;G <span class="kw">as </span>AffineCurve&gt;::Projective::batch_normalization(lg.as_mut_slice());
+        <span class="self">self</span>.lagrange_bases
+            .insert(n, lg.iter().map(|g| g.into_affine()).collect());
     }
 
-    <span class="doccomment">/// This function creates SRS instance for circuits with number of rows up to `depth`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create</span>(<span class="ident">depth</span>: <span class="ident">usize</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">m</span> <span class="op">=</span> <span class="ident">G::Map::setup</span>();
+    <span class="doccomment">/// This function creates SRS instance for circuits with number of rows up to `depth`.
+    </span><span class="kw">pub fn </span>create(depth: usize) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>m = G::Map::setup();
 
-        <span class="kw">let</span> <span class="ident">g</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">depth</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">h</span> <span class="op">=</span> <span class="ident">Blake2b512::new</span>();
-                <span class="ident">h</span>.<span class="ident">update</span>(<span class="kw-2">&amp;</span>(<span class="ident">i</span> <span class="kw">as</span> <span class="ident">u32</span>).<span class="ident">to_be_bytes</span>());
-                <span class="ident">point_of_random_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">m</span>, <span class="kw-2">&amp;</span><span class="ident">h</span>.<span class="ident">finalize</span>())
+        <span class="kw">let </span>g: Vec&lt;<span class="kw">_</span>&gt; = (<span class="number">0</span>..depth)
+            .map(|i| {
+                <span class="kw">let </span><span class="kw-2">mut </span>h = Blake2b512::new();
+                h.update(<span class="kw-2">&amp;</span>(i <span class="kw">as </span>u32).to_be_bytes());
+                point_of_random_bytes(<span class="kw-2">&amp;</span>m, <span class="kw-2">&amp;</span>h.finalize())
             })
-            .<span class="ident">collect</span>();
+            .collect();
 
-        <span class="kw">let</span> (<span class="ident">endo_q</span>, <span class="ident">endo_r</span>) <span class="op">=</span> <span class="ident">endos</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>();
+        <span class="kw">let </span>(endo_q, endo_r) = endos::&lt;G&gt;();
 
-        <span class="kw">const</span> <span class="ident">MISC</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">1</span>;
-        <span class="kw">let</span> [<span class="ident">h</span>]: [<span class="ident">G</span>; <span class="ident">MISC</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">h</span> <span class="op">=</span> <span class="ident">Blake2b512::new</span>();
-            <span class="ident">h</span>.<span class="ident">update</span>(<span class="string">&quot;srs_misc&quot;</span>.<span class="ident">as_bytes</span>());
-            <span class="ident">h</span>.<span class="ident">update</span>(<span class="kw-2">&amp;</span>(<span class="ident">i</span> <span class="kw">as</span> <span class="ident">u32</span>).<span class="ident">to_be_bytes</span>());
-            <span class="ident">point_of_random_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">m</span>, <span class="kw-2">&amp;</span><span class="ident">h</span>.<span class="ident">finalize</span>())
+        <span class="kw">const </span>MISC: usize = <span class="number">1</span>;
+        <span class="kw">let </span>[h]: [G; MISC] = array_init(|i| {
+            <span class="kw">let </span><span class="kw-2">mut </span>h = Blake2b512::new();
+            h.update(<span class="string">&quot;srs_misc&quot;</span>.as_bytes());
+            h.update(<span class="kw-2">&amp;</span>(i <span class="kw">as </span>u32).to_be_bytes());
+            point_of_random_bytes(<span class="kw-2">&amp;</span>m, <span class="kw-2">&amp;</span>h.finalize())
         });
 
-        <span class="ident">SRS</span> {
-            <span class="ident">g</span>,
-            <span class="ident">h</span>,
-            <span class="ident">lagrange_bases</span>: <span class="ident">HashMap::new</span>(),
-            <span class="ident">endo_r</span>,
-            <span class="ident">endo_q</span>,
+        SRS {
+            g,
+            h,
+            lagrange_bases: HashMap::new(),
+            endo_r,
+            endo_q,
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

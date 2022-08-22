@@ -7,14 +7,14 @@
 <span id="7">7</span>
 <span id="8">8</span>
 <span id="9">9</span>
-</pre><pre class="rust"><code><span class="doccomment">/// checks if two expressions are equal, if not return an error:</span>
-<span class="doccomment">/// `ensure_eq(left, right, &quot;some error&quot;)`</span>
-<span class="macro">macro_rules!</span> <span class="ident">ensure_eq</span> {
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">a</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">b</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">c</span>:<span class="ident">expr</span>) =&gt; {
-        <span class="kw">if</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">a</span> <span class="op">!</span><span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">b</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">c</span>.<span class="ident">into</span>());
+</pre><pre class="rust"><code><span class="doccomment">/// checks if two expressions are equal, if not return an error:
+/// `ensure_eq(left, right, &quot;some error&quot;)`
+</span><span class="macro">macro_rules! </span>ensure_eq {
+    (<span class="macro-nonterminal">$a</span>:expr, <span class="macro-nonterminal">$b</span>:expr, <span class="macro-nonterminal">$c</span>:expr) =&gt; {
+        <span class="kw">if </span><span class="macro-nonterminal">$a </span>!= <span class="macro-nonterminal">$b </span>{
+            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro-nonterminal">$c</span>.into());
         }
     };
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

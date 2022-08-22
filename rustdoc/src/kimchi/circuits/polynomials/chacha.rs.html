@@ -607,329 +607,329 @@
 <span id="607">607</span>
 <span id="608">608</span>
 <span id="609">609</span>
-</pre><pre class="rust"><code><span class="doccomment">//! This module implements the ChaCha constraints.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This module implements the ChaCha constraints.
 
-<span class="comment">//~ There are four chacha constraint types, corresponding to the four lines in each quarter round.</span>
-<span class="comment">//~</span>
-<span class="comment">//~ ```</span>
-<span class="comment">//~ a += b; d ^= a; d &lt;&lt;&lt;= 16;</span>
-<span class="comment">//~ c += d; b ^= c; b &lt;&lt;&lt;= 12;</span>
-<span class="comment">//~ a += b; d ^= a; d &lt;&lt;&lt;= 8;</span>
-<span class="comment">//~ c += d; b ^= c; b &lt;&lt;&lt;= 7;</span>
-<span class="comment">//~ ```</span>
-<span class="comment">//~</span>
-<span class="comment">//~ or, written without mutation, (and where `+` is mod $2^32$),</span>
-<span class="comment">//~</span>
-<span class="comment">//~ ```</span>
-<span class="comment">//~ a&#39;  = a + b ; d&#39; = (d ⊕ a&#39;) &lt;&lt;&lt; 16;</span>
-<span class="comment">//~ c&#39;  = c + d&#39;; b&#39; = (b ⊕ c&#39;) &lt;&lt;&lt; 12;</span>
-<span class="comment">//~ a&#39;&#39; = a&#39; + b&#39;; d&#39;&#39; = (d&#39; ⊕ a&#39;) &lt;&lt;&lt; 8;</span>
-<span class="comment">//~ c&#39;&#39; = c&#39; + d&#39;&#39;; b&#39;&#39; = (c&#39;&#39; ⊕ b&#39;) &lt;&lt;&lt; 7;</span>
-<span class="comment">//~ ```</span>
-<span class="comment">//~</span>
-<span class="comment">//~ We lay each line as two rows.</span>
-<span class="comment">//~</span>
-<span class="comment">//~ Each line has the form</span>
-<span class="comment">//~</span>
-<span class="comment">//~ ```</span>
-<span class="comment">//~ x += z; y ^= x; y &lt;&lt;&lt;= k</span>
-<span class="comment">//~ ```</span>
-<span class="comment">//~</span>
-<span class="comment">//~ or without mutation,</span>
-<span class="comment">//~</span>
-<span class="comment">//~ ```</span>
-<span class="comment">//~ x&#39; = x + z; y&#39; = (y ⊕ x&#39;) &lt;&lt;&lt; k</span>
-<span class="comment">//~ ```</span>
-<span class="comment">//~</span>
-<span class="comment">//~ which we abbreviate as</span>
-<span class="comment">//~</span>
-<span class="comment">//~ L(x, x&#39;, y, y&#39;, z, k)</span>
-<span class="comment">//~</span>
-<span class="comment">//~ In general, such a line will be laid out as the two rows</span>
-<span class="comment">//~</span>
-<span class="comment">//~</span>
-<span class="comment">//~ | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |</span>
-<span class="comment">//~ |---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|</span>
-<span class="comment">//~ | x | y | z | (y^x&#39;)_0 | (y^x&#39;)_1 | (y^x&#39;)_2 | (y^x&#39;)_3 | (x+z)_0 | (x+z)_1 | (x+z)_2 | (x+z)_3 | y_0 | y_1 | y_2 | y_3 |</span>
-<span class="comment">//~ | x&#39; | y&#39; | (x+z)_8 | (y^x&#39;)_4 | (y^x&#39;)_5 | (y^x&#39;)_6 | (y^x&#39;)_7 | (x+z)_4 | (x+z)_5 | (x+z)_6 | (x+z)_7 | y_4 | y_5 | y_6 | y_7 |</span>
-<span class="comment">//~</span>
-<span class="comment">//~ where A_i indicates the i^th nybble (four-bit chunk) of the value A.</span>
-<span class="comment">//~</span>
-<span class="comment">//~ $(x+z)_8$ is special, since we know it is actually at most 1 bit (representing the overflow bit of x + z).</span>
-<span class="comment">//~</span>
-<span class="comment">//~ So the first line `L(a, a&#39;, d, d&#39;, b, 8)` for example becomes the two rows</span>
-<span class="comment">//~</span>
-<span class="comment">//~ | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |</span>
-<span class="comment">//~ |---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|</span>
-<span class="comment">//~ | a | d | b | (d^a&#39;)_0 | (d^a&#39;)_1 | (d^a&#39;)_2 | (d^a&#39;)_3 | (a+b)_0 | (a+b)_1 | (a+b)_2 | (a+b)_3 | d_0 | d_1 | d_2 | d_3 |</span>
-<span class="comment">//~ | a&#39; | d&#39; | (a+b)_8 | (d^a&#39;)_4 | (d^a&#39;)_5 | (d^a&#39;)_6 | (d^a&#39;)_7 | (a+b)_4 | (a+b)_5 | (a+b)_6 | (a+b)_7 | d_4 | d_5 | d_6 | d_7 |</span>
-<span class="comment">//~</span>
-<span class="comment">//~ along with the equations</span>
-<span class="comment">//~</span>
-<span class="comment">//~ * $(a+b)_8^2 = (a+b)_8$ (booleanity check)</span>
-<span class="comment">//~ * $a&#39; = \sum_{i = 0}^7 (2^4)^i (a+b)_i$</span>
-<span class="comment">//~ * $a + b = 2^{32} (a+b)_8 + a&#39;$</span>
-<span class="comment">//~ * $d = \sum_{i = 0}^7 (2^4)^i d_i$</span>
-<span class="comment">//~ * $d&#39; = \sum_{i = 0}^7 (2^4)^{(i + 4) \mod 8} (a+b)_i$</span>
-<span class="comment">//~</span>
-<span class="comment">//~ The $(i + 4) \mod 8$ rotates the nybbles left by 4, which means bit-rotating by $4 \times 4 = 16$ as desired.</span>
-<span class="comment">//~</span>
-<span class="comment">//~ The final line is a bit more complicated as we have to rotate by 7, which is not a multiple of 4.</span>
-<span class="comment">//~ We accomplish this as follows.</span>
-<span class="comment">//~</span>
-<span class="comment">//~ Let&#39;s say we want to rotate the nybbles $A_0, \cdots, A_7$ left by 7.</span>
-<span class="comment">//~ First we&#39;ll rotate left by 4 to get</span>
-<span class="comment">//~</span>
-<span class="comment">//~ $$A_7, A_0, A_1, \cdots, A_6$$</span>
-<span class="comment">//~</span>
-<span class="comment">//~ Rename these as</span>
-<span class="comment">//~ $$B_0, \cdots, B_7$$</span>
-<span class="comment">//~</span>
-<span class="comment">//~ We now want to left-rotate each $B_i$ by 3.</span>
-<span class="comment">//~</span>
-<span class="comment">//~ Let $b_i$ be the low bit of $B_i$.</span>
-<span class="comment">//~ Then, the low 3 bits of $B_i$ are</span>
-<span class="comment">//~ $(B_i - b_i) / 2$.</span>
-<span class="comment">//~</span>
-<span class="comment">//~ The result will thus be</span>
-<span class="comment">//~</span>
-<span class="comment">//~ * $2^3 b_0 + (B_7 - b_7)/2$</span>
-<span class="comment">//~ * $2^3 b_1 + (B_0 - b_0)/2$</span>
-<span class="comment">//~ * $2^3 b_2 + (B_1 - b_1)/2$</span>
-<span class="comment">//~ * $\cdots$</span>
-<span class="comment">//~ * $2^3 b_7 + (B_6 - b_6)/2$</span>
-<span class="comment">//~</span>
-<span class="comment">//~ or re-writing in terms of our original nybbles $A_i$,</span>
-<span class="comment">//~</span>
-<span class="comment">//~ * $2^3 a_7 + (A_6 - a_6)/2$</span>
-<span class="comment">//~ * $2^3 a_0 + (A_7 - a_7)/2$</span>
-<span class="comment">//~ * $2^3 a_1 + (A_0 - a_0)/2$</span>
-<span class="comment">//~ * $2^3 a_2 + (A_1 - a_1)/2$</span>
-<span class="comment">//~ * $2^3 a_3 + (A_2 - a_2)/2$</span>
-<span class="comment">//~ * $2^3 a_4 + (A_3 - a_3)/2$</span>
-<span class="comment">//~ * $2^3 a_5 + (A_4 - a_4)/2$</span>
-<span class="comment">//~ * $2^3 a_6 + (A_5 - a_5)/2$</span>
-<span class="comment">//~</span>
-<span class="comment">//~ For neatness, letting $(x, y, z) = (c&#39;, b&#39;, d&#39;&#39;)$, the first 2 rows for the final line will be:</span>
-<span class="comment">//~</span>
-<span class="comment">//~ | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |</span>
-<span class="comment">//~ |---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|</span>
-<span class="comment">//~ | x | y | z | (y^x&#39;)_0 | (y^x&#39;)_1 | (y^x&#39;)_2 | (y^x&#39;)_3 | (x+z)_0 | (x+z)_1 | (x+z)_2 | (x+z)_3 | y_0 | y_1 | y_2 | y_3 |</span>
-<span class="comment">//~ | x&#39; | _ | (x+z)_8 | (y^x&#39;)_4 | (y^x&#39;)_5 | (y^x&#39;)_6 | (y^x&#39;)_7 | (x+z)_4 | (x+z)_5 | (x+z)_6 | (x+z)_7 | y_4 | y_5 | y_6 | y_7 |</span>
-<span class="comment">//~</span>
-<span class="comment">//~ but then we also need to perform the bit-rotate by 1.</span>
-<span class="comment">//~</span>
-<span class="comment">//~ For this we&#39;ll add an additional 2 rows. It&#39;s probably possible to do it with just 1,</span>
-<span class="comment">//~ but I think we&#39;d have to change our plookup setup somehow, or maybe expand the number of columns,</span>
-<span class="comment">//~ or allow access to the previous row.</span>
-<span class="comment">//~</span>
-<span class="comment">//~ Let $lo(n)$ be the low bit of the nybble n. The 2 rows will be</span>
-<span class="comment">//~</span>
-<span class="comment">//~ | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |</span>
-<span class="comment">//~ |---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|</span>
-<span class="comment">//~ | y&#39; | (y^x&#39;)_0 | (y^x&#39;)_1 | (y^x&#39;)_2 | (y^x&#39;)_3 | lo((y^x&#39;)_0) | lo((y^x&#39;)_1) | lo((y^x&#39;)_2) | lo((y^x&#39;)_3) |</span>
-<span class="comment">//~ | _ | (y^x&#39;)_4 | (y^x&#39;)_5 | (y^x&#39;)_6 | (y^x&#39;)_7 | lo((y^x&#39;)_4) | lo((y^x&#39;)_5) | lo((y^x&#39;)_6) | lo((y^x&#39;)_7) |</span>
-<span class="comment">//~</span>
-<span class="comment">//~ On each of them we&#39;ll do the plookups</span>
-<span class="comment">//~</span>
-<span class="comment">//~ ```</span>
-<span class="comment">//~ ((cols[1] - cols[5])/2, (cols[1] - cols[5])/2, 0) in XOR</span>
-<span class="comment">//~ ((cols[2] - cols[6])/2, (cols[2] - cols[6])/2, 0) in XOR</span>
-<span class="comment">//~ ((cols[3] - cols[7])/2, (cols[3] - cols[7])/2, 0) in XOR</span>
-<span class="comment">//~ ((cols[4] - cols[8])/2, (cols[4] - cols[8])/2, 0) in XOR</span>
-<span class="comment">//~ ```</span>
-<span class="comment">//~</span>
-<span class="comment">//~ which checks that $(y^{x&#39;})_i - lo((y^{x&#39;})_i)$ is a nybble,</span>
-<span class="comment">//~ which guarantees that the low bit is computed correctly.</span>
-<span class="comment">//~</span>
-<span class="comment">//~ There is no need to check nybbleness of $(y^x&#39;)_i$ because those will be constrained to</span>
-<span class="comment">//~ be equal to the copies of those values from previous rows, which have already been</span>
-<span class="comment">//~ constrained for nybbleness (by the lookup in the XOR table).</span>
-<span class="comment">//~</span>
-<span class="comment">//~ And we&#39;ll check that y&#39; is the sum of the shifted nybbles.</span>
-<span class="comment">//~</span>
+</span><span class="comment">//~ There are four chacha constraint types, corresponding to the four lines in each quarter round.
+//~
+//~ ```
+//~ a += b; d ^= a; d &lt;&lt;&lt;= 16;
+//~ c += d; b ^= c; b &lt;&lt;&lt;= 12;
+//~ a += b; d ^= a; d &lt;&lt;&lt;= 8;
+//~ c += d; b ^= c; b &lt;&lt;&lt;= 7;
+//~ ```
+//~
+//~ or, written without mutation, (and where `+` is mod $2^32$),
+//~
+//~ ```
+//~ a&#39;  = a + b ; d&#39; = (d ⊕ a&#39;) &lt;&lt;&lt; 16;
+//~ c&#39;  = c + d&#39;; b&#39; = (b ⊕ c&#39;) &lt;&lt;&lt; 12;
+//~ a&#39;&#39; = a&#39; + b&#39;; d&#39;&#39; = (d&#39; ⊕ a&#39;) &lt;&lt;&lt; 8;
+//~ c&#39;&#39; = c&#39; + d&#39;&#39;; b&#39;&#39; = (c&#39;&#39; ⊕ b&#39;) &lt;&lt;&lt; 7;
+//~ ```
+//~
+//~ We lay each line as two rows.
+//~
+//~ Each line has the form
+//~
+//~ ```
+//~ x += z; y ^= x; y &lt;&lt;&lt;= k
+//~ ```
+//~
+//~ or without mutation,
+//~
+//~ ```
+//~ x&#39; = x + z; y&#39; = (y ⊕ x&#39;) &lt;&lt;&lt; k
+//~ ```
+//~
+//~ which we abbreviate as
+//~
+//~ L(x, x&#39;, y, y&#39;, z, k)
+//~
+//~ In general, such a line will be laid out as the two rows
+//~
+//~
+//~ | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
+//~ |---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|
+//~ | x | y | z | (y^x&#39;)_0 | (y^x&#39;)_1 | (y^x&#39;)_2 | (y^x&#39;)_3 | (x+z)_0 | (x+z)_1 | (x+z)_2 | (x+z)_3 | y_0 | y_1 | y_2 | y_3 |
+//~ | x&#39; | y&#39; | (x+z)_8 | (y^x&#39;)_4 | (y^x&#39;)_5 | (y^x&#39;)_6 | (y^x&#39;)_7 | (x+z)_4 | (x+z)_5 | (x+z)_6 | (x+z)_7 | y_4 | y_5 | y_6 | y_7 |
+//~
+//~ where A_i indicates the i^th nybble (four-bit chunk) of the value A.
+//~
+//~ $(x+z)_8$ is special, since we know it is actually at most 1 bit (representing the overflow bit of x + z).
+//~
+//~ So the first line `L(a, a&#39;, d, d&#39;, b, 8)` for example becomes the two rows
+//~
+//~ | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
+//~ |---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|
+//~ | a | d | b | (d^a&#39;)_0 | (d^a&#39;)_1 | (d^a&#39;)_2 | (d^a&#39;)_3 | (a+b)_0 | (a+b)_1 | (a+b)_2 | (a+b)_3 | d_0 | d_1 | d_2 | d_3 |
+//~ | a&#39; | d&#39; | (a+b)_8 | (d^a&#39;)_4 | (d^a&#39;)_5 | (d^a&#39;)_6 | (d^a&#39;)_7 | (a+b)_4 | (a+b)_5 | (a+b)_6 | (a+b)_7 | d_4 | d_5 | d_6 | d_7 |
+//~
+//~ along with the equations
+//~
+//~ * $(a+b)_8^2 = (a+b)_8$ (booleanity check)
+//~ * $a&#39; = \sum_{i = 0}^7 (2^4)^i (a+b)_i$
+//~ * $a + b = 2^{32} (a+b)_8 + a&#39;$
+//~ * $d = \sum_{i = 0}^7 (2^4)^i d_i$
+//~ * $d&#39; = \sum_{i = 0}^7 (2^4)^{(i + 4) \mod 8} (a+b)_i$
+//~
+//~ The $(i + 4) \mod 8$ rotates the nybbles left by 4, which means bit-rotating by $4 \times 4 = 16$ as desired.
+//~
+//~ The final line is a bit more complicated as we have to rotate by 7, which is not a multiple of 4.
+//~ We accomplish this as follows.
+//~
+//~ Let&#39;s say we want to rotate the nybbles $A_0, \cdots, A_7$ left by 7.
+//~ First we&#39;ll rotate left by 4 to get
+//~
+//~ $$A_7, A_0, A_1, \cdots, A_6$$
+//~
+//~ Rename these as
+//~ $$B_0, \cdots, B_7$$
+//~
+//~ We now want to left-rotate each $B_i$ by 3.
+//~
+//~ Let $b_i$ be the low bit of $B_i$.
+//~ Then, the low 3 bits of $B_i$ are
+//~ $(B_i - b_i) / 2$.
+//~
+//~ The result will thus be
+//~
+//~ * $2^3 b_0 + (B_7 - b_7)/2$
+//~ * $2^3 b_1 + (B_0 - b_0)/2$
+//~ * $2^3 b_2 + (B_1 - b_1)/2$
+//~ * $\cdots$
+//~ * $2^3 b_7 + (B_6 - b_6)/2$
+//~
+//~ or re-writing in terms of our original nybbles $A_i$,
+//~
+//~ * $2^3 a_7 + (A_6 - a_6)/2$
+//~ * $2^3 a_0 + (A_7 - a_7)/2$
+//~ * $2^3 a_1 + (A_0 - a_0)/2$
+//~ * $2^3 a_2 + (A_1 - a_1)/2$
+//~ * $2^3 a_3 + (A_2 - a_2)/2$
+//~ * $2^3 a_4 + (A_3 - a_3)/2$
+//~ * $2^3 a_5 + (A_4 - a_4)/2$
+//~ * $2^3 a_6 + (A_5 - a_5)/2$
+//~
+//~ For neatness, letting $(x, y, z) = (c&#39;, b&#39;, d&#39;&#39;)$, the first 2 rows for the final line will be:
+//~
+//~ | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
+//~ |---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|
+//~ | x | y | z | (y^x&#39;)_0 | (y^x&#39;)_1 | (y^x&#39;)_2 | (y^x&#39;)_3 | (x+z)_0 | (x+z)_1 | (x+z)_2 | (x+z)_3 | y_0 | y_1 | y_2 | y_3 |
+//~ | x&#39; | _ | (x+z)_8 | (y^x&#39;)_4 | (y^x&#39;)_5 | (y^x&#39;)_6 | (y^x&#39;)_7 | (x+z)_4 | (x+z)_5 | (x+z)_6 | (x+z)_7 | y_4 | y_5 | y_6 | y_7 |
+//~
+//~ but then we also need to perform the bit-rotate by 1.
+//~
+//~ For this we&#39;ll add an additional 2 rows. It&#39;s probably possible to do it with just 1,
+//~ but I think we&#39;d have to change our plookup setup somehow, or maybe expand the number of columns,
+//~ or allow access to the previous row.
+//~
+//~ Let $lo(n)$ be the low bit of the nybble n. The 2 rows will be
+//~
+//~ | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
+//~ |---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|
+//~ | y&#39; | (y^x&#39;)_0 | (y^x&#39;)_1 | (y^x&#39;)_2 | (y^x&#39;)_3 | lo((y^x&#39;)_0) | lo((y^x&#39;)_1) | lo((y^x&#39;)_2) | lo((y^x&#39;)_3) |
+//~ | _ | (y^x&#39;)_4 | (y^x&#39;)_5 | (y^x&#39;)_6 | (y^x&#39;)_7 | lo((y^x&#39;)_4) | lo((y^x&#39;)_5) | lo((y^x&#39;)_6) | lo((y^x&#39;)_7) |
+//~
+//~ On each of them we&#39;ll do the plookups
+//~
+//~ ```
+//~ ((cols[1] - cols[5])/2, (cols[1] - cols[5])/2, 0) in XOR
+//~ ((cols[2] - cols[6])/2, (cols[2] - cols[6])/2, 0) in XOR
+//~ ((cols[3] - cols[7])/2, (cols[3] - cols[7])/2, 0) in XOR
+//~ ((cols[4] - cols[8])/2, (cols[4] - cols[8])/2, 0) in XOR
+//~ ```
+//~
+//~ which checks that $(y^{x&#39;})_i - lo((y^{x&#39;})_i)$ is a nybble,
+//~ which guarantees that the low bit is computed correctly.
+//~
+//~ There is no need to check nybbleness of $(y^x&#39;)_i$ because those will be constrained to
+//~ be equal to the copies of those values from previous rows, which have already been
+//~ constrained for nybbleness (by the lookup in the XOR table).
+//~
+//~ And we&#39;ll check that y&#39; is the sum of the shifted nybbles.
+//~
 
-<span class="kw">use</span> <span class="ident">std::marker::PhantomData</span>;
+</span><span class="kw">use </span>std::marker::PhantomData;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
-    <span class="ident">argument</span>::{<span class="ident">Argument</span>, <span class="ident">ArgumentType</span>},
-    <span class="ident">expr</span>::{<span class="ident">constraints::boolean</span>, <span class="ident">prologue</span>::<span class="kw-2">*</span>, <span class="ident">ConstantExpr</span> <span class="kw">as</span> <span class="ident">C</span>},
-    <span class="ident">gate</span>::{<span class="ident">CurrOrNext</span>, <span class="ident">GateType</span>},
+<span class="kw">use </span><span class="kw">crate</span>::circuits::{
+    argument::{Argument, ArgumentType},
+    expr::{constraints::boolean, prologue::<span class="kw-2">*</span>, ConstantExpr <span class="kw">as </span>C},
+    gate::{CurrOrNext, GateType},
 };
-<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">Field</span>, <span class="ident">Zero</span>};
+<span class="kw">use </span>ark_ff::{FftField, Field, Zero};
 
-<span class="comment">//</span>
-<span class="comment">// Implementation internals</span>
-<span class="comment">//</span>
+<span class="comment">//
+// Implementation internals
+//
 
-<span class="doccomment">/// 8-nybble sequences that are laid out as 4 nybbles per row over the two row,</span>
-<span class="doccomment">/// like y^x&#39; or x+z</span>
-<span class="kw">fn</span> <span class="ident">chunks_over_2_rows</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">col_offset</span>: <span class="ident">usize</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+</span><span class="doccomment">/// 8-nybble sequences that are laid out as 4 nybbles per row over the two row,
+/// like y^x&#39; or x+z
+</span><span class="kw">fn </span>chunks_over_2_rows&lt;F&gt;(col_offset: usize) -&gt; Vec&lt;E&lt;F&gt;&gt; {
     (<span class="number">0</span>..<span class="number">8</span>)
-        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
-            <span class="kw">use</span> <span class="ident">CurrOrNext</span>::{<span class="ident">Curr</span>, <span class="ident">Next</span>};
-            <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">i</span> <span class="op">&lt;</span> <span class="number">4</span> { <span class="ident">Curr</span> } <span class="kw">else</span> { <span class="ident">Next</span> };
-            <span class="ident">witness</span>(<span class="ident">col_offset</span> <span class="op">+</span> (<span class="ident">i</span> <span class="op">%</span> <span class="number">4</span>), <span class="ident">r</span>)
+        .map(|i| {
+            <span class="kw">use </span>CurrOrNext::{Curr, Next};
+            <span class="kw">let </span>r = <span class="kw">if </span>i &lt; <span class="number">4 </span>{ Curr } <span class="kw">else </span>{ Next };
+            witness(col_offset + (i % <span class="number">4</span>), r)
         })
-        .<span class="ident">collect</span>()
+        .collect()
 }
 
-<span class="kw">fn</span> <span class="ident">combine_nybbles</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">ns</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="ident">ns</span>.<span class="ident">into_iter</span>()
-        .<span class="ident">enumerate</span>()
-        .<span class="ident">fold</span>(<span class="ident">E::zero</span>(), <span class="op">|</span><span class="ident">acc</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, (<span class="ident">i</span>, <span class="ident">t</span>)<span class="op">|</span> {
-            <span class="ident">acc</span> <span class="op">+</span> <span class="ident">E::from</span>(<span class="number">1</span> <span class="op">&lt;</span><span class="op">&lt;</span> (<span class="number">4</span> <span class="op">*</span> <span class="ident">i</span>)) <span class="op">*</span> <span class="ident">t</span>
+<span class="kw">fn </span>combine_nybbles&lt;F: Field&gt;(ns: Vec&lt;E&lt;F&gt;&gt;) -&gt; E&lt;F&gt; {
+    ns.into_iter()
+        .enumerate()
+        .fold(E::zero(), |acc: E&lt;F&gt;, (i, t)| {
+            acc + E::from(<span class="number">1 </span>&lt;&lt; (<span class="number">4 </span>* i)) * t
         })
 }
 
-<span class="doccomment">/// Constraints for the line L(x, x&#39;, y, y&#39;, z, k), where k = 4 * nybble_rotation</span>
-<span class="kw">fn</span> <span class="ident">line</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">nybble_rotation</span>: <span class="ident">usize</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">y_xor_xprime_nybbles</span> <span class="op">=</span> <span class="ident">chunks_over_2_rows</span>(<span class="number">3</span>);
-    <span class="kw">let</span> <span class="ident">x_plus_z_nybbles</span> <span class="op">=</span> <span class="ident">chunks_over_2_rows</span>(<span class="number">7</span>);
-    <span class="kw">let</span> <span class="ident">y_nybbles</span> <span class="op">=</span> <span class="ident">chunks_over_2_rows</span>(<span class="number">11</span>);
+<span class="doccomment">/// Constraints for the line L(x, x&#39;, y, y&#39;, z, k), where k = 4 * nybble_rotation
+</span><span class="kw">fn </span>line&lt;F: Field&gt;(nybble_rotation: usize) -&gt; Vec&lt;E&lt;F&gt;&gt; {
+    <span class="kw">let </span>y_xor_xprime_nybbles = chunks_over_2_rows(<span class="number">3</span>);
+    <span class="kw">let </span>x_plus_z_nybbles = chunks_over_2_rows(<span class="number">7</span>);
+    <span class="kw">let </span>y_nybbles = chunks_over_2_rows(<span class="number">11</span>);
 
-    <span class="kw">let</span> <span class="ident">x_plus_z_overflow_bit</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">2</span>);
+    <span class="kw">let </span>x_plus_z_overflow_bit = witness_next(<span class="number">2</span>);
 
-    <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">0</span>);
-    <span class="kw">let</span> <span class="ident">xprime</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">0</span>);
-    <span class="kw">let</span> <span class="ident">y</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">1</span>);
-    <span class="kw">let</span> <span class="ident">yprime</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">1</span>);
-    <span class="kw">let</span> <span class="ident">z</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">2</span>);
+    <span class="kw">let </span>x = witness_curr(<span class="number">0</span>);
+    <span class="kw">let </span>xprime = witness_next(<span class="number">0</span>);
+    <span class="kw">let </span>y = witness_curr(<span class="number">1</span>);
+    <span class="kw">let </span>yprime = witness_next(<span class="number">1</span>);
+    <span class="kw">let </span>z = witness_curr(<span class="number">2</span>);
 
-    <span class="comment">// Because the nybbles are little-endian, rotating the vector &quot;right&quot;</span>
-    <span class="comment">// is equivalent to left-shifting the nybbles.</span>
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">y_xor_xprime_rotated</span> <span class="op">=</span> <span class="ident">y_xor_xprime_nybbles</span>;
-    <span class="ident">y_xor_xprime_rotated</span>.<span class="ident">rotate_right</span>(<span class="ident">nybble_rotation</span>);
+    <span class="comment">// Because the nybbles are little-endian, rotating the vector &quot;right&quot;
+    // is equivalent to left-shifting the nybbles.
+    </span><span class="kw">let </span><span class="kw-2">mut </span>y_xor_xprime_rotated = y_xor_xprime_nybbles;
+    y_xor_xprime_rotated.rotate_right(nybble_rotation);
 
     <span class="macro">vec!</span>[
-        <span class="comment">// booleanity of overflow bit</span>
-        <span class="ident">boolean</span>(<span class="kw-2">&amp;</span><span class="ident">x_plus_z_overflow_bit</span>),
-        <span class="comment">// x&#39; = x + z (mod 2^32)</span>
-        <span class="ident">combine_nybbles</span>(<span class="ident">x_plus_z_nybbles</span>) <span class="op">-</span> <span class="ident">xprime</span>.<span class="ident">clone</span>(),
-        <span class="comment">// Correctness of x+z nybbles</span>
-        <span class="ident">xprime</span> <span class="op">+</span> <span class="ident">E::from</span>(<span class="number">1</span> <span class="op">&lt;</span><span class="op">&lt;</span> <span class="number">32</span>) <span class="op">*</span> <span class="ident">x_plus_z_overflow_bit</span> <span class="op">-</span> (<span class="ident">x</span> <span class="op">+</span> <span class="ident">z</span>),
-        <span class="comment">// Correctness of y nybbles</span>
-        <span class="ident">combine_nybbles</span>(<span class="ident">y_nybbles</span>) <span class="op">-</span> <span class="ident">y</span>,
-        <span class="comment">// y&#39; = (y ^ x&#39;) &lt;&lt;&lt; 4 * nybble_rotation</span>
-        <span class="ident">combine_nybbles</span>(<span class="ident">y_xor_xprime_rotated</span>) <span class="op">-</span> <span class="ident">yprime</span>,
+        <span class="comment">// booleanity of overflow bit
+        </span>boolean(<span class="kw-2">&amp;</span>x_plus_z_overflow_bit),
+        <span class="comment">// x&#39; = x + z (mod 2^32)
+        </span>combine_nybbles(x_plus_z_nybbles) - xprime.clone(),
+        <span class="comment">// Correctness of x+z nybbles
+        </span>xprime + E::from(<span class="number">1 </span>&lt;&lt; <span class="number">32</span>) * x_plus_z_overflow_bit - (x + z),
+        <span class="comment">// Correctness of y nybbles
+        </span>combine_nybbles(y_nybbles) - y,
+        <span class="comment">// y&#39; = (y ^ x&#39;) &lt;&lt;&lt; 4 * nybble_rotation
+        </span>combine_nybbles(y_xor_xprime_rotated) - yprime,
     ]
 }
 
-<span class="comment">//</span>
-<span class="comment">// Gates</span>
-<span class="comment">//</span>
+<span class="comment">//
+// Gates
+//
 
-<span class="doccomment">/// Implementation of the ChaCha0 gate</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ChaCha0</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">PhantomData</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>);
+</span><span class="doccomment">/// Implementation of the ChaCha0 gate
+</span><span class="kw">pub struct </span>ChaCha0&lt;F&gt;(PhantomData&lt;F&gt;);
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="ident">Argument</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ChaCha0</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">F</span>: <span class="ident">FftField</span>,
+<span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>ChaCha0&lt;F&gt;
+<span class="kw">where
+    </span>F: FftField,
 {
-    <span class="kw">const</span> <span class="ident">ARGUMENT_TYPE</span>: <span class="ident">ArgumentType</span> <span class="op">=</span> <span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::ChaCha0</span>);
-    <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">5</span>;
+    <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha0);
+    <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">5</span>;
 
-    <span class="kw">fn</span> <span class="ident">constraints</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="comment">// a += b; d ^= a; d &lt;&lt;&lt;= 16 (=4*4)</span>
-        <span class="ident">line</span>(<span class="number">4</span>)
+    <span class="kw">fn </span>constraints() -&gt; Vec&lt;E&lt;F&gt;&gt; {
+        <span class="comment">// a += b; d ^= a; d &lt;&lt;&lt;= 16 (=4*4)
+        </span>line(<span class="number">4</span>)
     }
 }
 
-<span class="doccomment">/// Implementation of the ChaCha1 gate</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ChaCha1</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">PhantomData</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>);
+<span class="doccomment">/// Implementation of the ChaCha1 gate
+</span><span class="kw">pub struct </span>ChaCha1&lt;F&gt;(PhantomData&lt;F&gt;);
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="ident">Argument</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ChaCha1</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">F</span>: <span class="ident">FftField</span>,
+<span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>ChaCha1&lt;F&gt;
+<span class="kw">where
+    </span>F: FftField,
 {
-    <span class="kw">const</span> <span class="ident">ARGUMENT_TYPE</span>: <span class="ident">ArgumentType</span> <span class="op">=</span> <span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::ChaCha1</span>);
-    <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">5</span>;
+    <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha1);
+    <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">5</span>;
 
-    <span class="kw">fn</span> <span class="ident">constraints</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="comment">// c += d; b ^= c; b &lt;&lt;&lt;= 12 (=3*4)</span>
-        <span class="ident">line</span>(<span class="number">3</span>)
+    <span class="kw">fn </span>constraints() -&gt; Vec&lt;E&lt;F&gt;&gt; {
+        <span class="comment">// c += d; b ^= c; b &lt;&lt;&lt;= 12 (=3*4)
+        </span>line(<span class="number">3</span>)
     }
 }
 
-<span class="doccomment">/// Implementation of the ChaCha2 gate</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ChaCha2</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">PhantomData</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>);
+<span class="doccomment">/// Implementation of the ChaCha2 gate
+</span><span class="kw">pub struct </span>ChaCha2&lt;F&gt;(PhantomData&lt;F&gt;);
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="ident">Argument</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ChaCha2</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">F</span>: <span class="ident">FftField</span>,
+<span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>ChaCha2&lt;F&gt;
+<span class="kw">where
+    </span>F: FftField,
 {
-    <span class="kw">const</span> <span class="ident">ARGUMENT_TYPE</span>: <span class="ident">ArgumentType</span> <span class="op">=</span> <span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::ChaCha2</span>);
-    <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">5</span>;
+    <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha2);
+    <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">5</span>;
 
-    <span class="kw">fn</span> <span class="ident">constraints</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="comment">// a += b; d ^= a; d &lt;&lt;&lt;= 8  (=2*4)</span>
-        <span class="ident">line</span>(<span class="number">2</span>)
+    <span class="kw">fn </span>constraints() -&gt; Vec&lt;E&lt;F&gt;&gt; {
+        <span class="comment">// a += b; d ^= a; d &lt;&lt;&lt;= 8  (=2*4)
+        </span>line(<span class="number">2</span>)
     }
 }
 
-<span class="doccomment">/// Implementation of the ChaChaFinal gate</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ChaChaFinal</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">PhantomData</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>);
+<span class="doccomment">/// Implementation of the ChaChaFinal gate
+</span><span class="kw">pub struct </span>ChaChaFinal&lt;F&gt;(PhantomData&lt;F&gt;);
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="ident">Argument</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ChaChaFinal</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">F</span>: <span class="ident">FftField</span>,
+<span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>ChaChaFinal&lt;F&gt;
+<span class="kw">where
+    </span>F: FftField,
 {
-    <span class="kw">const</span> <span class="ident">ARGUMENT_TYPE</span>: <span class="ident">ArgumentType</span> <span class="op">=</span> <span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::ChaChaFinal</span>);
-    <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">9</span>;
+    <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaChaFinal);
+    <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">9</span>;
 
-    <span class="kw">fn</span> <span class="ident">constraints</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="comment">// The last line, namely,</span>
-        <span class="comment">// c += d; b ^= c; b &lt;&lt;&lt;= 7;</span>
-        <span class="comment">// is special.</span>
-        <span class="comment">// We don&#39;t use the y&#39; value computed by this one, so we</span>
-        <span class="comment">// will use a ChaCha0 gate to compute the nybbles of</span>
-        <span class="comment">// all the relevant values, and the xors, and then do</span>
-        <span class="comment">// the shifting using a ChaChaFinal gate.</span>
-        <span class="kw">let</span> <span class="ident">y_xor_xprime_nybbles</span> <span class="op">=</span> <span class="ident">chunks_over_2_rows</span>(<span class="number">1</span>);
-        <span class="kw">let</span> <span class="ident">low_bits</span> <span class="op">=</span> <span class="ident">chunks_over_2_rows</span>(<span class="number">5</span>);
-        <span class="kw">let</span> <span class="ident">yprime</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">0</span>);
+    <span class="kw">fn </span>constraints() -&gt; Vec&lt;E&lt;F&gt;&gt; {
+        <span class="comment">// The last line, namely,
+        // c += d; b ^= c; b &lt;&lt;&lt;= 7;
+        // is special.
+        // We don&#39;t use the y&#39; value computed by this one, so we
+        // will use a ChaCha0 gate to compute the nybbles of
+        // all the relevant values, and the xors, and then do
+        // the shifting using a ChaChaFinal gate.
+        </span><span class="kw">let </span>y_xor_xprime_nybbles = chunks_over_2_rows(<span class="number">1</span>);
+        <span class="kw">let </span>low_bits = chunks_over_2_rows(<span class="number">5</span>);
+        <span class="kw">let </span>yprime = witness_curr(<span class="number">0</span>);
 
-        <span class="kw">let</span> <span class="ident">one_half</span> <span class="op">=</span> <span class="ident">F::from</span>(<span class="number">2u64</span>).<span class="ident">inverse</span>().<span class="ident">unwrap</span>();
+        <span class="kw">let </span>one_half = F::from(<span class="number">2u64</span>).inverse().unwrap();
 
-        <span class="comment">// (y xor xprime) &lt;&lt;&lt; 7</span>
-        <span class="comment">// per the comment at the top of the file</span>
-        <span class="kw">let</span> <span class="ident">y_xor_xprime_rotated</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> [<span class="number">7</span>, <span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>]
-            .<span class="ident">iter</span>()
-            .<span class="ident">zip</span>([<span class="number">6</span>, <span class="number">7</span>, <span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>].<span class="ident">iter</span>())
-            .<span class="ident">map</span>(<span class="op">|</span>(<span class="kw-2">&amp;</span><span class="ident">i</span>, <span class="kw-2">&amp;</span><span class="ident">j</span>)<span class="op">|</span> -&gt; <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-                <span class="ident">E::from</span>(<span class="number">8</span>) <span class="op">*</span> <span class="ident">low_bits</span>[<span class="ident">i</span>].<span class="ident">clone</span>()
-                    <span class="op">+</span> <span class="ident">E::Constant</span>(<span class="ident">C::Literal</span>(<span class="ident">one_half</span>))
-                        <span class="op">*</span> (<span class="ident">y_xor_xprime_nybbles</span>[<span class="ident">j</span>].<span class="ident">clone</span>() <span class="op">-</span> <span class="ident">low_bits</span>[<span class="ident">j</span>].<span class="ident">clone</span>())
+        <span class="comment">// (y xor xprime) &lt;&lt;&lt; 7
+        // per the comment at the top of the file
+        </span><span class="kw">let </span>y_xor_xprime_rotated: Vec&lt;<span class="kw">_</span>&gt; = [<span class="number">7</span>, <span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>]
+            .iter()
+            .zip([<span class="number">6</span>, <span class="number">7</span>, <span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>].iter())
+            .map(|(<span class="kw-2">&amp;</span>i, <span class="kw-2">&amp;</span>j)| -&gt; E&lt;F&gt; {
+                E::from(<span class="number">8</span>) * low_bits[i].clone()
+                    + E::Constant(C::Literal(one_half))
+                        * (y_xor_xprime_nybbles[j].clone() - low_bits[j].clone())
             })
-            .<span class="ident">collect</span>();
+            .collect();
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">constraints</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">low_bits</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="ident">boolean</span>).<span class="ident">collect</span>();
-        <span class="ident">constraints</span>.<span class="ident">push</span>(<span class="ident">combine_nybbles</span>(<span class="ident">y_xor_xprime_rotated</span>) <span class="op">-</span> <span class="ident">yprime</span>);
-        <span class="ident">constraints</span>
+        <span class="kw">let </span><span class="kw-2">mut </span>constraints: Vec&lt;E&lt;F&gt;&gt; = low_bits.iter().map(boolean).collect();
+        constraints.push(combine_nybbles(y_xor_xprime_rotated) - yprime);
+        constraints
     }
 }
 
-<span class="comment">// TODO: move this to test file</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">testing</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+<span class="comment">// TODO: move this to test file
+</span><span class="kw">pub mod </span>testing {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-    <span class="doccomment">/// This is just for tests. It doesn&#39;t set up the permutations</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">chacha20_gates</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">GateType</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">gs</span> <span class="op">=</span> <span class="macro">vec!</span>[];
-        <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">20</span> {
-            <span class="kw">use</span> <span class="ident">GateType</span>::<span class="kw-2">*</span>;
-            <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">4</span> {
-                <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="ident">g</span> <span class="kw">in</span> <span class="kw-2">&amp;</span>[<span class="ident">ChaCha0</span>, <span class="ident">ChaCha1</span>, <span class="ident">ChaCha2</span>, <span class="ident">ChaCha0</span>, <span class="ident">ChaChaFinal</span>] {
-                    <span class="ident">gs</span>.<span class="ident">push</span>(<span class="ident">g</span>);
-                    <span class="ident">gs</span>.<span class="ident">push</span>(<span class="ident">Zero</span>);
+    <span class="doccomment">/// This is just for tests. It doesn&#39;t set up the permutations
+    </span><span class="kw">pub fn </span>chacha20_gates() -&gt; Vec&lt;GateType&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>gs = <span class="macro">vec!</span>[];
+        <span class="kw">for _ in </span><span class="number">0</span>..<span class="number">20 </span>{
+            <span class="kw">use </span>GateType::<span class="kw-2">*</span>;
+            <span class="kw">for _ in </span><span class="number">0</span>..<span class="number">4 </span>{
+                <span class="kw">for </span><span class="kw-2">&amp;</span>g <span class="kw">in </span><span class="kw-2">&amp;</span>[ChaCha0, ChaCha1, ChaCha2, ChaCha0, ChaChaFinal] {
+                    gs.push(g);
+                    gs.push(Zero);
                 }
             }
         }
-        <span class="ident">gs</span>
+        gs
     }
 
-    <span class="kw">const</span> <span class="ident">CHACHA20_ROTATIONS</span>: [<span class="ident">u32</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">16</span>, <span class="number">12</span>, <span class="number">8</span>, <span class="number">7</span>];
-    <span class="kw">const</span> <span class="ident">CHACHA20_QRS</span>: [[<span class="ident">usize</span>; <span class="number">4</span>]; <span class="number">8</span>] <span class="op">=</span> [
+    <span class="kw">const </span>CHACHA20_ROTATIONS: [u32; <span class="number">4</span>] = [<span class="number">16</span>, <span class="number">12</span>, <span class="number">8</span>, <span class="number">7</span>];
+    <span class="kw">const </span>CHACHA20_QRS: [[usize; <span class="number">4</span>]; <span class="number">8</span>] = [
         [<span class="number">0</span>, <span class="number">4</span>, <span class="number">8</span>, <span class="number">12</span>],
         [<span class="number">1</span>, <span class="number">5</span>, <span class="number">9</span>, <span class="number">13</span>],
         [<span class="number">2</span>, <span class="number">6</span>, <span class="number">10</span>, <span class="number">14</span>],
@@ -940,272 +940,272 @@
         [<span class="number">3</span>, <span class="number">4</span>, <span class="number">9</span>, <span class="number">14</span>],
     ];
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">chacha20_rows</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">s0</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rows</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+    <span class="kw">pub fn </span>chacha20_rows&lt;F: FftField&gt;(s0: Vec&lt;u32&gt;) -&gt; Vec&lt;Vec&lt;F&gt;&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>rows = <span class="macro">vec!</span>[];
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">s</span> <span class="op">=</span> <span class="ident">s0</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">line</span> <span class="op">=</span> <span class="op">|</span><span class="ident">x</span>: <span class="ident">usize</span>, <span class="ident">y</span>: <span class="ident">usize</span>, <span class="ident">z</span>: <span class="ident">usize</span>, <span class="ident">k</span>: <span class="ident">u32</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">f</span> <span class="op">=</span> <span class="op">|</span><span class="ident">t</span>: <span class="ident">u32</span><span class="op">|</span> <span class="ident">F::from</span>(<span class="ident">t</span>);
-            <span class="kw">let</span> <span class="ident">nyb</span> <span class="op">=</span> <span class="op">|</span><span class="ident">t</span>: <span class="ident">u32</span>, <span class="ident">i</span>: <span class="ident">usize</span><span class="op">|</span> <span class="ident">f</span>((<span class="ident">t</span> <span class="op">&gt;</span><span class="op">&gt;</span> (<span class="number">4</span> <span class="op">*</span> <span class="ident">i</span>)) <span class="op">&amp;</span> <span class="number">0b1111</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>s = s0;
+        <span class="kw">let </span><span class="kw-2">mut </span>line = |x: usize, y: usize, z: usize, k: u32| {
+            <span class="kw">let </span>f = |t: u32| F::from(t);
+            <span class="kw">let </span>nyb = |t: u32, i: usize| f((t &gt;&gt; (<span class="number">4 </span>* i)) &amp; <span class="number">0b1111</span>);
 
-            <span class="kw">let</span> <span class="ident">top_bit</span> <span class="op">=</span> (((<span class="ident">s</span>[<span class="ident">x</span>] <span class="kw">as</span> <span class="ident">u64</span>) <span class="op">+</span> (<span class="ident">s</span>[<span class="ident">z</span>] <span class="kw">as</span> <span class="ident">u64</span>)) <span class="op">&gt;</span><span class="op">&gt;</span> <span class="number">32</span>) <span class="kw">as</span> <span class="ident">u32</span>;
-            <span class="kw">let</span> <span class="ident">xprime</span> <span class="op">=</span> <span class="ident">u32::wrapping_add</span>(<span class="ident">s</span>[<span class="ident">x</span>], <span class="ident">s</span>[<span class="ident">z</span>]);
-            <span class="kw">let</span> <span class="ident">y_xor_xprime</span> <span class="op">=</span> <span class="ident">s</span>[<span class="ident">y</span>] <span class="op">^</span> <span class="ident">xprime</span>;
-            <span class="kw">let</span> <span class="ident">yprime</span> <span class="op">=</span> <span class="ident">y_xor_xprime</span>.<span class="ident">rotate_left</span>(<span class="ident">k</span>);
+            <span class="kw">let </span>top_bit = (((s[x] <span class="kw">as </span>u64) + (s[z] <span class="kw">as </span>u64)) &gt;&gt; <span class="number">32</span>) <span class="kw">as </span>u32;
+            <span class="kw">let </span>xprime = u32::wrapping_add(s[x], s[z]);
+            <span class="kw">let </span>y_xor_xprime = s[y] ^ xprime;
+            <span class="kw">let </span>yprime = y_xor_xprime.rotate_left(k);
 
-            <span class="kw">let</span> <span class="ident">yprime_in_row</span> <span class="op">=</span>
-                <span class="comment">// When k = 7, we use a ChaCha0 gate and throw away the yprime value</span>
-                <span class="comment">// (which will need to be y_xor_xprime.rotate_left(16))</span>
-                <span class="comment">// in the second row corresponding to that gate</span>
-                <span class="kw">if</span> <span class="ident">k</span> <span class="op">==</span> <span class="number">7</span> { <span class="ident">y_xor_xprime</span>.<span class="ident">rotate_left</span>(<span class="number">16</span>) } <span class="kw">else</span> { <span class="ident">yprime</span> };
+            <span class="kw">let </span>yprime_in_row =
+                <span class="comment">// When k = 7, we use a ChaCha0 gate and throw away the yprime value
+                // (which will need to be y_xor_xprime.rotate_left(16))
+                // in the second row corresponding to that gate
+                </span><span class="kw">if </span>k == <span class="number">7 </span>{ y_xor_xprime.rotate_left(<span class="number">16</span>) } <span class="kw">else </span>{ yprime };
 
-            <span class="ident">rows</span>.<span class="ident">push</span>(<span class="macro">vec!</span>[
-                <span class="ident">f</span>(<span class="ident">s</span>[<span class="ident">x</span>]),
-                <span class="ident">f</span>(<span class="ident">s</span>[<span class="ident">y</span>]),
-                <span class="ident">f</span>(<span class="ident">s</span>[<span class="ident">z</span>]),
-                <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">0</span>),
-                <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">1</span>),
-                <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">2</span>),
-                <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">3</span>),
-                <span class="ident">nyb</span>(<span class="ident">xprime</span>, <span class="number">0</span>),
-                <span class="ident">nyb</span>(<span class="ident">xprime</span>, <span class="number">1</span>),
-                <span class="ident">nyb</span>(<span class="ident">xprime</span>, <span class="number">2</span>),
-                <span class="ident">nyb</span>(<span class="ident">xprime</span>, <span class="number">3</span>),
-                <span class="ident">nyb</span>(<span class="ident">s</span>[<span class="ident">y</span>], <span class="number">0</span>),
-                <span class="ident">nyb</span>(<span class="ident">s</span>[<span class="ident">y</span>], <span class="number">1</span>),
-                <span class="ident">nyb</span>(<span class="ident">s</span>[<span class="ident">y</span>], <span class="number">2</span>),
-                <span class="ident">nyb</span>(<span class="ident">s</span>[<span class="ident">y</span>], <span class="number">3</span>),
+            rows.push(<span class="macro">vec!</span>[
+                f(s[x]),
+                f(s[y]),
+                f(s[z]),
+                nyb(y_xor_xprime, <span class="number">0</span>),
+                nyb(y_xor_xprime, <span class="number">1</span>),
+                nyb(y_xor_xprime, <span class="number">2</span>),
+                nyb(y_xor_xprime, <span class="number">3</span>),
+                nyb(xprime, <span class="number">0</span>),
+                nyb(xprime, <span class="number">1</span>),
+                nyb(xprime, <span class="number">2</span>),
+                nyb(xprime, <span class="number">3</span>),
+                nyb(s[y], <span class="number">0</span>),
+                nyb(s[y], <span class="number">1</span>),
+                nyb(s[y], <span class="number">2</span>),
+                nyb(s[y], <span class="number">3</span>),
             ]);
-            <span class="ident">rows</span>.<span class="ident">push</span>(<span class="macro">vec!</span>[
-                <span class="ident">f</span>(<span class="ident">xprime</span>),
-                <span class="ident">f</span>(<span class="ident">yprime_in_row</span>),
-                <span class="ident">f</span>(<span class="ident">top_bit</span>),
-                <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">4</span>),
-                <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">5</span>),
-                <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">6</span>),
-                <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">7</span>),
-                <span class="ident">nyb</span>(<span class="ident">xprime</span>, <span class="number">4</span>),
-                <span class="ident">nyb</span>(<span class="ident">xprime</span>, <span class="number">5</span>),
-                <span class="ident">nyb</span>(<span class="ident">xprime</span>, <span class="number">6</span>),
-                <span class="ident">nyb</span>(<span class="ident">xprime</span>, <span class="number">7</span>),
-                <span class="ident">nyb</span>(<span class="ident">s</span>[<span class="ident">y</span>], <span class="number">4</span>),
-                <span class="ident">nyb</span>(<span class="ident">s</span>[<span class="ident">y</span>], <span class="number">5</span>),
-                <span class="ident">nyb</span>(<span class="ident">s</span>[<span class="ident">y</span>], <span class="number">6</span>),
-                <span class="ident">nyb</span>(<span class="ident">s</span>[<span class="ident">y</span>], <span class="number">7</span>),
+            rows.push(<span class="macro">vec!</span>[
+                f(xprime),
+                f(yprime_in_row),
+                f(top_bit),
+                nyb(y_xor_xprime, <span class="number">4</span>),
+                nyb(y_xor_xprime, <span class="number">5</span>),
+                nyb(y_xor_xprime, <span class="number">6</span>),
+                nyb(y_xor_xprime, <span class="number">7</span>),
+                nyb(xprime, <span class="number">4</span>),
+                nyb(xprime, <span class="number">5</span>),
+                nyb(xprime, <span class="number">6</span>),
+                nyb(xprime, <span class="number">7</span>),
+                nyb(s[y], <span class="number">4</span>),
+                nyb(s[y], <span class="number">5</span>),
+                nyb(s[y], <span class="number">6</span>),
+                nyb(s[y], <span class="number">7</span>),
             ]);
 
-            <span class="ident">s</span>[<span class="ident">x</span>] <span class="op">=</span> <span class="ident">xprime</span>;
-            <span class="ident">s</span>[<span class="ident">y</span>] <span class="op">=</span> <span class="ident">yprime</span>;
+            s[x] = xprime;
+            s[y] = yprime;
 
-            <span class="kw">if</span> <span class="ident">k</span> <span class="op">==</span> <span class="number">7</span> {
-                <span class="kw">let</span> <span class="ident">lo</span> <span class="op">=</span> <span class="op">|</span><span class="ident">t</span>: <span class="ident">u32</span>, <span class="ident">i</span>: <span class="ident">usize</span><span class="op">|</span> <span class="ident">f</span>((<span class="ident">t</span> <span class="op">&gt;</span><span class="op">&gt;</span> (<span class="number">4</span> <span class="op">*</span> <span class="ident">i</span>)) <span class="op">&amp;</span> <span class="number">1</span>);
-                <span class="ident">rows</span>.<span class="ident">push</span>(<span class="macro">vec!</span>[
-                    <span class="ident">f</span>(<span class="ident">yprime</span>),
-                    <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">0</span>),
-                    <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">1</span>),
-                    <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">2</span>),
-                    <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">3</span>),
-                    <span class="ident">lo</span>(<span class="ident">y_xor_xprime</span>, <span class="number">0</span>),
-                    <span class="ident">lo</span>(<span class="ident">y_xor_xprime</span>, <span class="number">1</span>),
-                    <span class="ident">lo</span>(<span class="ident">y_xor_xprime</span>, <span class="number">2</span>),
-                    <span class="ident">lo</span>(<span class="ident">y_xor_xprime</span>, <span class="number">3</span>),
-                    <span class="ident">F::zero</span>(),
-                    <span class="ident">F::zero</span>(),
-                    <span class="ident">F::zero</span>(),
-                    <span class="ident">F::zero</span>(),
-                    <span class="ident">F::zero</span>(),
-                    <span class="ident">F::zero</span>(),
+            <span class="kw">if </span>k == <span class="number">7 </span>{
+                <span class="kw">let </span>lo = |t: u32, i: usize| f((t &gt;&gt; (<span class="number">4 </span>* i)) &amp; <span class="number">1</span>);
+                rows.push(<span class="macro">vec!</span>[
+                    f(yprime),
+                    nyb(y_xor_xprime, <span class="number">0</span>),
+                    nyb(y_xor_xprime, <span class="number">1</span>),
+                    nyb(y_xor_xprime, <span class="number">2</span>),
+                    nyb(y_xor_xprime, <span class="number">3</span>),
+                    lo(y_xor_xprime, <span class="number">0</span>),
+                    lo(y_xor_xprime, <span class="number">1</span>),
+                    lo(y_xor_xprime, <span class="number">2</span>),
+                    lo(y_xor_xprime, <span class="number">3</span>),
+                    F::zero(),
+                    F::zero(),
+                    F::zero(),
+                    F::zero(),
+                    F::zero(),
+                    F::zero(),
                 ]);
-                <span class="ident">rows</span>.<span class="ident">push</span>(<span class="macro">vec!</span>[
-                    <span class="ident">F::zero</span>(),
-                    <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">4</span>),
-                    <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">5</span>),
-                    <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">6</span>),
-                    <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">7</span>),
-                    <span class="ident">lo</span>(<span class="ident">y_xor_xprime</span>, <span class="number">4</span>),
-                    <span class="ident">lo</span>(<span class="ident">y_xor_xprime</span>, <span class="number">5</span>),
-                    <span class="ident">lo</span>(<span class="ident">y_xor_xprime</span>, <span class="number">6</span>),
-                    <span class="ident">lo</span>(<span class="ident">y_xor_xprime</span>, <span class="number">7</span>),
-                    <span class="ident">F::zero</span>(),
-                    <span class="ident">F::zero</span>(),
-                    <span class="ident">F::zero</span>(),
-                    <span class="ident">F::zero</span>(),
-                    <span class="ident">F::zero</span>(),
-                    <span class="ident">F::zero</span>(),
+                rows.push(<span class="macro">vec!</span>[
+                    F::zero(),
+                    nyb(y_xor_xprime, <span class="number">4</span>),
+                    nyb(y_xor_xprime, <span class="number">5</span>),
+                    nyb(y_xor_xprime, <span class="number">6</span>),
+                    nyb(y_xor_xprime, <span class="number">7</span>),
+                    lo(y_xor_xprime, <span class="number">4</span>),
+                    lo(y_xor_xprime, <span class="number">5</span>),
+                    lo(y_xor_xprime, <span class="number">6</span>),
+                    lo(y_xor_xprime, <span class="number">7</span>),
+                    F::zero(),
+                    F::zero(),
+                    F::zero(),
+                    F::zero(),
+                    F::zero(),
+                    F::zero(),
                 ]);
             }
         };
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">qr</span> <span class="op">=</span> <span class="op">|</span><span class="ident">a</span>, <span class="ident">b</span>, <span class="ident">c</span>, <span class="ident">d</span><span class="op">|</span> {
-            <span class="ident">line</span>(<span class="ident">a</span>, <span class="ident">d</span>, <span class="ident">b</span>, <span class="ident">CHACHA20_ROTATIONS</span>[<span class="number">0</span>]);
-            <span class="ident">line</span>(<span class="ident">c</span>, <span class="ident">b</span>, <span class="ident">d</span>, <span class="ident">CHACHA20_ROTATIONS</span>[<span class="number">1</span>]);
-            <span class="ident">line</span>(<span class="ident">a</span>, <span class="ident">d</span>, <span class="ident">b</span>, <span class="ident">CHACHA20_ROTATIONS</span>[<span class="number">2</span>]);
-            <span class="ident">line</span>(<span class="ident">c</span>, <span class="ident">b</span>, <span class="ident">d</span>, <span class="ident">CHACHA20_ROTATIONS</span>[<span class="number">3</span>]);
+        <span class="kw">let </span><span class="kw-2">mut </span>qr = |a, b, c, d| {
+            line(a, d, b, CHACHA20_ROTATIONS[<span class="number">0</span>]);
+            line(c, b, d, CHACHA20_ROTATIONS[<span class="number">1</span>]);
+            line(a, d, b, CHACHA20_ROTATIONS[<span class="number">2</span>]);
+            line(c, b, d, CHACHA20_ROTATIONS[<span class="number">3</span>]);
         };
-        <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">10</span> {
-            <span class="kw">for</span> [<span class="ident">a</span>, <span class="ident">b</span>, <span class="ident">c</span>, <span class="ident">d</span>] <span class="kw">in</span> <span class="ident">CHACHA20_QRS</span> {
-                <span class="ident">qr</span>(<span class="ident">a</span>, <span class="ident">b</span>, <span class="ident">c</span>, <span class="ident">d</span>);
+        <span class="kw">for _ in </span><span class="number">0</span>..<span class="number">10 </span>{
+            <span class="kw">for </span>[a, b, c, d] <span class="kw">in </span>CHACHA20_QRS {
+                qr(a, b, c, d);
             }
         }
 
-        <span class="ident">rows</span>
+        rows
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">chacha20</span>(<span class="kw-2">mut</span> <span class="ident">s</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">line</span> <span class="op">=</span> <span class="op">|</span><span class="ident">x</span>, <span class="ident">y</span>, <span class="ident">z</span>, <span class="ident">k</span><span class="op">|</span> {
-            <span class="ident">s</span>[<span class="ident">x</span>] <span class="op">=</span> <span class="ident">u32::wrapping_add</span>(<span class="ident">s</span>[<span class="ident">x</span>], <span class="ident">s</span>[<span class="ident">z</span>]);
-            <span class="ident">s</span>[<span class="ident">y</span>] <span class="op">^</span><span class="op">=</span> <span class="ident">s</span>[<span class="ident">x</span>];
-            <span class="kw">let</span> <span class="ident">yy</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="ident">s</span>[<span class="ident">y</span>];
-            <span class="ident">s</span>[<span class="ident">y</span>] <span class="op">=</span> <span class="ident">yy</span>.<span class="ident">rotate_left</span>(<span class="ident">k</span>);
+    <span class="kw">pub fn </span>chacha20(<span class="kw-2">mut </span>s: Vec&lt;u32&gt;) -&gt; Vec&lt;u32&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>line = |x, y, z, k| {
+            s[x] = u32::wrapping_add(s[x], s[z]);
+            s[y] ^= s[x];
+            <span class="kw">let </span>yy: u32 = s[y];
+            s[y] = yy.rotate_left(k);
         };
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">qr</span> <span class="op">=</span> <span class="op">|</span><span class="ident">a</span>, <span class="ident">b</span>, <span class="ident">c</span>, <span class="ident">d</span><span class="op">|</span> {
-            <span class="ident">line</span>(<span class="ident">a</span>, <span class="ident">d</span>, <span class="ident">b</span>, <span class="ident">CHACHA20_ROTATIONS</span>[<span class="number">0</span>]);
-            <span class="ident">line</span>(<span class="ident">c</span>, <span class="ident">b</span>, <span class="ident">d</span>, <span class="ident">CHACHA20_ROTATIONS</span>[<span class="number">1</span>]);
-            <span class="ident">line</span>(<span class="ident">a</span>, <span class="ident">d</span>, <span class="ident">b</span>, <span class="ident">CHACHA20_ROTATIONS</span>[<span class="number">2</span>]);
-            <span class="ident">line</span>(<span class="ident">c</span>, <span class="ident">b</span>, <span class="ident">d</span>, <span class="ident">CHACHA20_ROTATIONS</span>[<span class="number">3</span>]);
+        <span class="kw">let </span><span class="kw-2">mut </span>qr = |a, b, c, d| {
+            line(a, d, b, CHACHA20_ROTATIONS[<span class="number">0</span>]);
+            line(c, b, d, CHACHA20_ROTATIONS[<span class="number">1</span>]);
+            line(a, d, b, CHACHA20_ROTATIONS[<span class="number">2</span>]);
+            line(c, b, d, CHACHA20_ROTATIONS[<span class="number">3</span>]);
         };
-        <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">10</span> {
-            <span class="kw">for</span> [<span class="ident">a</span>, <span class="ident">b</span>, <span class="ident">c</span>, <span class="ident">d</span>] <span class="kw">in</span> <span class="ident">CHACHA20_QRS</span> {
-                <span class="ident">qr</span>(<span class="ident">a</span>, <span class="ident">b</span>, <span class="ident">c</span>, <span class="ident">d</span>);
+        <span class="kw">for _ in </span><span class="number">0</span>..<span class="number">10 </span>{
+            <span class="kw">for </span>[a, b, c, d] <span class="kw">in </span>CHACHA20_QRS {
+                qr(a, b, c, d);
             }
         }
-        <span class="ident">s</span>
+        s
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="kw">crate</span>::{
-        <span class="ident">alphas::Alphas</span>,
-        <span class="ident">circuits</span>::{
-            <span class="ident">expr</span>::{<span class="ident">Column</span>, <span class="ident">Constants</span>, <span class="ident">PolishToken</span>},
-            <span class="ident">lookup::lookups</span>::{<span class="ident">LookupInfo</span>, <span class="ident">LookupPattern</span>},
-            <span class="ident">wires</span>::<span class="kw-2">*</span>,
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use crate</span>::{
+        alphas::Alphas,
+        circuits::{
+            expr::{Column, Constants, PolishToken},
+            lookup::lookups::{LookupInfo, LookupPattern},
+            wires::<span class="kw-2">*</span>,
         },
-        <span class="ident">curve::KimchiCurve</span>,
-        <span class="ident">proof</span>::{<span class="ident">LookupEvaluations</span>, <span class="ident">ProofEvaluations</span>},
+        curve::KimchiCurve,
+        proof::{LookupEvaluations, ProofEvaluations},
     };
-    <span class="kw">use</span> <span class="ident">ark_ff::UniformRand</span>;
-    <span class="kw">use</span> <span class="ident">ark_poly</span>::{<span class="ident">EvaluationDomain</span>, <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>};
-    <span class="kw">use</span> <span class="ident">array_init::array_init</span>;
-    <span class="kw">use</span> <span class="ident">mina_curves::pasta::fp::Fp</span> <span class="kw">as</span> <span class="ident">F</span>;
-    <span class="kw">use</span> <span class="ident">mina_curves::pasta::vesta::Vesta</span>;
-    <span class="kw">use</span> <span class="ident">rand</span>::{<span class="ident">rngs::StdRng</span>, <span class="ident">SeedableRng</span>};
-    <span class="kw">use</span> <span class="ident">std::fmt</span>::{<span class="ident">Display</span>, <span class="ident">Formatter</span>};
+    <span class="kw">use </span>ark_ff::UniformRand;
+    <span class="kw">use </span>ark_poly::{EvaluationDomain, Radix2EvaluationDomain <span class="kw">as </span>D};
+    <span class="kw">use </span>array_init::array_init;
+    <span class="kw">use </span>mina_curves::pasta::fp::Fp <span class="kw">as </span>F;
+    <span class="kw">use </span>mina_curves::pasta::vesta::Vesta;
+    <span class="kw">use </span>rand::{rngs::StdRng, SeedableRng};
+    <span class="kw">use </span>std::fmt::{Display, Formatter};
 
-    <span class="kw">struct</span> <span class="ident">Polish</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PolishToken</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>);
-    <span class="kw">impl</span> <span class="ident">Display</span> <span class="kw">for</span> <span class="ident">Polish</span> {
-        <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-            <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;[&quot;</span>)<span class="question-mark">?</span>;
-            <span class="kw">for</span> <span class="ident">x</span> <span class="kw">in</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">iter</span>() {
-                <span class="kw">match</span> <span class="ident">x</span> {
-                    <span class="ident">PolishToken::Literal</span>(<span class="ident">a</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{}, &quot;</span>, <span class="ident">a</span>)<span class="question-mark">?</span>,
-                    <span class="ident">PolishToken::Add</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;+, &quot;</span>)<span class="question-mark">?</span>,
-                    <span class="ident">PolishToken::Mul</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;*, &quot;</span>)<span class="question-mark">?</span>,
-                    <span class="ident">PolishToken::Sub</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;-, &quot;</span>)<span class="question-mark">?</span>,
-                    <span class="ident">x</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{:?}, &quot;</span>, <span class="ident">x</span>)<span class="question-mark">?</span>,
+    <span class="kw">struct </span>Polish(Vec&lt;PolishToken&lt;F&gt;&gt;);
+    <span class="kw">impl </span>Display <span class="kw">for </span>Polish {
+        <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+            <span class="macro">write!</span>(f, <span class="string">&quot;[&quot;</span>)<span class="question-mark">?</span>;
+            <span class="kw">for </span>x <span class="kw">in </span><span class="self">self</span>.<span class="number">0</span>.iter() {
+                <span class="kw">match </span>x {
+                    PolishToken::Literal(a) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{}, &quot;</span>, a)<span class="question-mark">?</span>,
+                    PolishToken::Add =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;+, &quot;</span>)<span class="question-mark">?</span>,
+                    PolishToken::Mul =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;*, &quot;</span>)<span class="question-mark">?</span>,
+                    PolishToken::Sub =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;-, &quot;</span>)<span class="question-mark">?</span>,
+                    x =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{:?}, &quot;</span>, x)<span class="question-mark">?</span>,
                 }
             }
-            <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;]&quot;</span>)<span class="question-mark">?</span>;
+            <span class="macro">write!</span>(f, <span class="string">&quot;]&quot;</span>)<span class="question-mark">?</span>;
             <span class="prelude-val">Ok</span>(())
         }
     }
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">chacha_linearization</span>() {
-        <span class="kw">let</span> <span class="ident">lookup_info</span> <span class="op">=</span> <span class="ident">LookupInfo::create</span>(
-            [<span class="ident">LookupPattern::ChaCha</span>, <span class="ident">LookupPattern::ChaChaFinal</span>]
-                .<span class="ident">into_iter</span>()
-                .<span class="ident">collect</span>(),
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>chacha_linearization() {
+        <span class="kw">let </span>lookup_info = LookupInfo::create(
+            [LookupPattern::ChaCha, LookupPattern::ChaChaFinal]
+                .into_iter()
+                .collect(),
             <span class="bool-val">false</span>,
         );
 
-        <span class="kw">let</span> <span class="ident">evaluated_cols</span> <span class="op">=</span> {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">h</span> <span class="op">=</span> <span class="ident">std::collections::HashSet::new</span>();
-            <span class="comment">// use Column::*;</span>
-            <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">COLUMNS</span> {
-                <span class="ident">h</span>.<span class="ident">insert</span>(<span class="ident">Column::Witness</span>(<span class="ident">i</span>));
+        <span class="kw">let </span>evaluated_cols = {
+            <span class="kw">let </span><span class="kw-2">mut </span>h = std::collections::HashSet::new();
+            <span class="comment">// use Column::*;
+            </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..COLUMNS {
+                h.insert(Column::Witness(i));
             }
-            <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..(<span class="ident">lookup_info</span>.<span class="ident">max_per_row</span> <span class="op">+</span> <span class="number">1</span>) {
-                <span class="ident">h</span>.<span class="ident">insert</span>(<span class="ident">Column::LookupSorted</span>(<span class="ident">i</span> <span class="kw">as</span> <span class="ident">usize</span>));
+            <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..(lookup_info.max_per_row + <span class="number">1</span>) {
+                h.insert(Column::LookupSorted(i <span class="kw">as </span>usize));
             }
-            <span class="ident">h</span>.<span class="ident">insert</span>(<span class="ident">Column::Z</span>);
-            <span class="ident">h</span>.<span class="ident">insert</span>(<span class="ident">Column::LookupAggreg</span>);
-            <span class="ident">h</span>.<span class="ident">insert</span>(<span class="ident">Column::LookupTable</span>);
-            <span class="ident">h</span>.<span class="ident">insert</span>(<span class="ident">Column::Index</span>(<span class="ident">GateType::Poseidon</span>));
-            <span class="ident">h</span>.<span class="ident">insert</span>(<span class="ident">Column::Index</span>(<span class="ident">GateType::Generic</span>));
-            <span class="ident">h</span>
+            h.insert(Column::Z);
+            h.insert(Column::LookupAggreg);
+            h.insert(Column::LookupTable);
+            h.insert(Column::Index(GateType::Poseidon));
+            h.insert(Column::Index(GateType::Generic));
+            h
         };
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">alphas</span> <span class="op">=</span> <span class="ident">Alphas</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::default</span>();
-        <span class="ident">alphas</span>.<span class="ident">register</span>(
-            <span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::ChaChaFinal</span>),
-            <span class="ident">ChaChaFinal</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::CONSTRAINTS</span>,
+        <span class="kw">let </span><span class="kw-2">mut </span>alphas = Alphas::&lt;F&gt;::default();
+        alphas.register(
+            ArgumentType::Gate(GateType::ChaChaFinal),
+            ChaChaFinal::&lt;F&gt;::CONSTRAINTS,
         );
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">expr</span> <span class="op">=</span> <span class="ident">ChaCha0::combined_constraints</span>(<span class="kw-2">&amp;</span><span class="ident">alphas</span>);
-        <span class="ident">expr</span> <span class="op">+</span><span class="op">=</span> <span class="ident">ChaCha1::combined_constraints</span>(<span class="kw-2">&amp;</span><span class="ident">alphas</span>);
-        <span class="ident">expr</span> <span class="op">+</span><span class="op">=</span> <span class="ident">ChaCha2::combined_constraints</span>(<span class="kw-2">&amp;</span><span class="ident">alphas</span>);
-        <span class="ident">expr</span> <span class="op">+</span><span class="op">=</span> <span class="ident">ChaChaFinal::combined_constraints</span>(<span class="kw-2">&amp;</span><span class="ident">alphas</span>);
-        <span class="kw">let</span> <span class="ident">linearized</span> <span class="op">=</span> <span class="ident">expr</span>.<span class="ident">linearize</span>(<span class="ident">evaluated_cols</span>).<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">_expr_polish</span> <span class="op">=</span> <span class="ident">expr</span>.<span class="ident">to_polish</span>();
-        <span class="kw">let</span> <span class="ident">linearized_polish</span> <span class="op">=</span> <span class="ident">linearized</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">to_polish</span>());
+        <span class="kw">let </span><span class="kw-2">mut </span>expr = ChaCha0::combined_constraints(<span class="kw-2">&amp;</span>alphas);
+        expr += ChaCha1::combined_constraints(<span class="kw-2">&amp;</span>alphas);
+        expr += ChaCha2::combined_constraints(<span class="kw-2">&amp;</span>alphas);
+        expr += ChaChaFinal::combined_constraints(<span class="kw-2">&amp;</span>alphas);
+        <span class="kw">let </span>linearized = expr.linearize(evaluated_cols).unwrap();
+        <span class="kw">let </span>_expr_polish = expr.to_polish();
+        <span class="kw">let </span>linearized_polish = linearized.map(|e| e.to_polish());
 
-        <span class="kw">let</span> <span class="ident">rng</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">StdRng::from_seed</span>([<span class="number">0u8</span>; <span class="number">32</span>]);
+        <span class="kw">let </span>rng = <span class="kw-2">&amp;mut </span>StdRng::from_seed([<span class="number">0u8</span>; <span class="number">32</span>]);
 
-        <span class="kw">let</span> <span class="ident">d</span> <span class="op">=</span> <span class="ident">D::new</span>(<span class="number">1024</span>).<span class="ident">unwrap</span>();
+        <span class="kw">let </span>d = D::new(<span class="number">1024</span>).unwrap();
 
-        <span class="kw">let</span> <span class="ident">pt</span> <span class="op">=</span> <span class="ident">F::rand</span>(<span class="ident">rng</span>);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">eval</span> <span class="op">=</span> <span class="op">|</span><span class="op">|</span> <span class="ident">ProofEvaluations</span> {
-            <span class="ident">w</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">F::rand</span>(<span class="ident">rng</span>)),
-            <span class="ident">z</span>: <span class="ident">F::rand</span>(<span class="ident">rng</span>),
-            <span class="ident">s</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">F::rand</span>(<span class="ident">rng</span>)),
-            <span class="ident">generic_selector</span>: <span class="ident">F::zero</span>(),
-            <span class="ident">poseidon_selector</span>: <span class="ident">F::zero</span>(),
-            <span class="ident">lookup</span>: <span class="prelude-val">Some</span>(<span class="ident">LookupEvaluations</span> {
-                <span class="ident">sorted</span>: (<span class="number">0</span>..(<span class="ident">lookup_info</span>.<span class="ident">max_per_row</span> <span class="op">+</span> <span class="number">1</span>))
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">F::rand</span>(<span class="ident">rng</span>))
-                    .<span class="ident">collect</span>(),
-                <span class="ident">aggreg</span>: <span class="ident">F::rand</span>(<span class="ident">rng</span>),
-                <span class="ident">table</span>: <span class="ident">F::rand</span>(<span class="ident">rng</span>),
-                <span class="ident">runtime</span>: <span class="prelude-val">None</span>,
+        <span class="kw">let </span>pt = F::rand(rng);
+        <span class="kw">let </span><span class="kw-2">mut </span>eval = || ProofEvaluations {
+            w: array_init(|<span class="kw">_</span>| F::rand(rng)),
+            z: F::rand(rng),
+            s: array_init(|<span class="kw">_</span>| F::rand(rng)),
+            generic_selector: F::zero(),
+            poseidon_selector: F::zero(),
+            lookup: <span class="prelude-val">Some</span>(LookupEvaluations {
+                sorted: (<span class="number">0</span>..(lookup_info.max_per_row + <span class="number">1</span>))
+                    .map(|<span class="kw">_</span>| F::rand(rng))
+                    .collect(),
+                aggreg: F::rand(rng),
+                table: F::rand(rng),
+                runtime: <span class="prelude-val">None</span>,
             }),
         };
 
-        <span class="kw">let</span> <span class="ident">evals</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">eval</span>(), <span class="ident">eval</span>()];
+        <span class="kw">let </span>evals = <span class="macro">vec!</span>[eval(), eval()];
 
-        <span class="kw">let</span> <span class="ident">constants</span> <span class="op">=</span> <span class="ident">Constants</span> {
-            <span class="ident">alpha</span>: <span class="ident">F::rand</span>(<span class="ident">rng</span>),
-            <span class="ident">beta</span>: <span class="ident">F::rand</span>(<span class="ident">rng</span>),
-            <span class="ident">gamma</span>: <span class="ident">F::rand</span>(<span class="ident">rng</span>),
-            <span class="ident">joint_combiner</span>: <span class="prelude-val">None</span>,
-            <span class="ident">endo_coefficient</span>: <span class="ident">F::zero</span>(),
-            <span class="ident">mds</span>: <span class="kw-2">&amp;</span><span class="ident">Vesta::sponge_params</span>().<span class="ident">mds</span>,
+        <span class="kw">let </span>constants = Constants {
+            alpha: F::rand(rng),
+            beta: F::rand(rng),
+            gamma: F::rand(rng),
+            joint_combiner: <span class="prelude-val">None</span>,
+            endo_coefficient: F::zero(),
+            mds: <span class="kw-2">&amp;</span>Vesta::sponge_params().mds,
         };
 
         <span class="macro">assert_eq!</span>(
-            <span class="ident">linearized</span>
-                .<span class="ident">constant_term</span>
-                .<span class="ident">evaluate_</span>(<span class="ident">d</span>, <span class="ident">pt</span>, <span class="kw-2">&amp;</span><span class="ident">evals</span>, <span class="kw-2">&amp;</span><span class="ident">constants</span>)
-                .<span class="ident">unwrap</span>(),
-            <span class="ident">PolishToken::evaluate</span>(<span class="kw-2">&amp;</span><span class="ident">linearized_polish</span>.<span class="ident">constant_term</span>, <span class="ident">d</span>, <span class="ident">pt</span>, <span class="kw-2">&amp;</span><span class="ident">evals</span>, <span class="kw-2">&amp;</span><span class="ident">constants</span>)
-                .<span class="ident">unwrap</span>()
+            linearized
+                .constant_term
+                .evaluate_(d, pt, <span class="kw-2">&amp;</span>evals, <span class="kw-2">&amp;</span>constants)
+                .unwrap(),
+            PolishToken::evaluate(<span class="kw-2">&amp;</span>linearized_polish.constant_term, d, pt, <span class="kw-2">&amp;</span>evals, <span class="kw-2">&amp;</span>constants)
+                .unwrap()
         );
 
-        <span class="ident">linearized</span>
-            .<span class="ident">index_terms</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">zip</span>(<span class="ident">linearized_polish</span>.<span class="ident">index_terms</span>.<span class="ident">iter</span>())
-            .<span class="ident">for_each</span>(<span class="op">|</span>((<span class="ident">c1</span>, <span class="ident">e1</span>), (<span class="ident">c2</span>, <span class="ident">e2</span>))<span class="op">|</span> {
-                <span class="macro">assert_eq!</span>(<span class="ident">c1</span>, <span class="ident">c2</span>);
-                <span class="macro">println!</span>(<span class="string">&quot;{:?} ?&quot;</span>, <span class="ident">c1</span>);
-                <span class="kw">let</span> <span class="ident">x1</span> <span class="op">=</span> <span class="ident">e1</span>.<span class="ident">evaluate_</span>(<span class="ident">d</span>, <span class="ident">pt</span>, <span class="kw-2">&amp;</span><span class="ident">evals</span>, <span class="kw-2">&amp;</span><span class="ident">constants</span>).<span class="ident">unwrap</span>();
-                <span class="kw">let</span> <span class="ident">x2</span> <span class="op">=</span> <span class="ident">PolishToken::evaluate</span>(<span class="ident">e2</span>, <span class="ident">d</span>, <span class="ident">pt</span>, <span class="kw-2">&amp;</span><span class="ident">evals</span>, <span class="kw-2">&amp;</span><span class="ident">constants</span>).<span class="ident">unwrap</span>();
-                <span class="kw">if</span> <span class="ident">x1</span> <span class="op">!</span><span class="op">=</span> <span class="ident">x2</span> {
-                    <span class="macro">println!</span>(<span class="string">&quot;e1: {}&quot;</span>, <span class="ident">e1</span>.<span class="ident">ocaml_str</span>());
-                    <span class="macro">println!</span>(<span class="string">&quot;e2: {}&quot;</span>, <span class="ident">Polish</span>(<span class="ident">e2</span>.<span class="ident">clone</span>()));
-                    <span class="macro">println!</span>(<span class="string">&quot;Polish evaluation differed for {:?}: {} != {}&quot;</span>, <span class="ident">c1</span>, <span class="ident">x1</span>, <span class="ident">x2</span>);
-                } <span class="kw">else</span> {
-                    <span class="macro">println!</span>(<span class="string">&quot;{:?} OK&quot;</span>, <span class="ident">c1</span>);
+        linearized
+            .index_terms
+            .iter()
+            .zip(linearized_polish.index_terms.iter())
+            .for_each(|((c1, e1), (c2, e2))| {
+                <span class="macro">assert_eq!</span>(c1, c2);
+                <span class="macro">println!</span>(<span class="string">&quot;{:?} ?&quot;</span>, c1);
+                <span class="kw">let </span>x1 = e1.evaluate_(d, pt, <span class="kw-2">&amp;</span>evals, <span class="kw-2">&amp;</span>constants).unwrap();
+                <span class="kw">let </span>x2 = PolishToken::evaluate(e2, d, pt, <span class="kw-2">&amp;</span>evals, <span class="kw-2">&amp;</span>constants).unwrap();
+                <span class="kw">if </span>x1 != x2 {
+                    <span class="macro">println!</span>(<span class="string">&quot;e1: {}&quot;</span>, e1.ocaml_str());
+                    <span class="macro">println!</span>(<span class="string">&quot;e2: {}&quot;</span>, Polish(e2.clone()));
+                    <span class="macro">println!</span>(<span class="string">&quot;Polish evaluation differed for {:?}: {} != {}&quot;</span>, c1, x1, x2);
+                } <span class="kw">else </span>{
+                    <span class="macro">println!</span>(<span class="string">&quot;{:?} OK&quot;</span>, c1);
                 }
             });
 
@@ -1213,8 +1213,8 @@
         assert_eq!(
             expr.evaluate_(d, pt, &amp;evals, &amp;constants).unwrap(),
             PolishToken::evaluate(&amp;expr_polish, d, pt, &amp;evals, &amp;constants).unwrap());
-            */</span>
-    }
+            */
+    </span>}
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

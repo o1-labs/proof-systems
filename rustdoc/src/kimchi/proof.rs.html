@@ -493,500 +493,500 @@
 <span id="493">493</span>
 <span id="494">494</span>
 <span id="495">495</span>
-</pre><pre class="rust"><code><span class="doccomment">//! This module implements the data structures of a proof.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This module implements the data structures of a proof.
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::wires</span>::{<span class="ident">COLUMNS</span>, <span class="ident">PERMUTS</span>};
-<span class="kw">use</span> <span class="ident">ark_ec::AffineCurve</span>;
-<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">One</span>, <span class="ident">Zero</span>};
-<span class="kw">use</span> <span class="ident">ark_poly::univariate::DensePolynomial</span>;
-<span class="kw">use</span> <span class="ident">array_init::array_init</span>;
-<span class="kw">use</span> <span class="ident">commitment_dlog</span>::{
-    <span class="ident">commitment</span>::{<span class="ident">b_poly</span>, <span class="ident">b_poly_coefficients</span>, <span class="ident">PolyComm</span>},
-    <span class="ident">evaluation_proof::OpeningProof</span>,
+</span><span class="kw">use </span><span class="kw">crate</span>::circuits::wires::{COLUMNS, PERMUTS};
+<span class="kw">use </span>ark_ec::AffineCurve;
+<span class="kw">use </span>ark_ff::{FftField, One, Zero};
+<span class="kw">use </span>ark_poly::univariate::DensePolynomial;
+<span class="kw">use </span>array_init::array_init;
+<span class="kw">use </span>commitment_dlog::{
+    commitment::{b_poly, b_poly_coefficients, PolyComm},
+    evaluation_proof::OpeningProof,
 };
-<span class="kw">use</span> <span class="ident">o1_utils::ExtendedDensePolynomial</span>;
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">serde_with::serde_as</span>;
+<span class="kw">use </span>o1_utils::ExtendedDensePolynomial;
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>serde_with::serde_as;
 
-<span class="comment">//~ spec:startcode</span>
-<span class="doccomment">/// Evaluations of lookup polynomials</span>
-<span class="attribute">#[<span class="ident">serde_as</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">bound</span>(
-    <span class="ident">serialize</span> <span class="op">=</span> <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;: serde_with::SerializeAs&lt;Field&gt;&quot;</span>,
-    <span class="ident">deserialize</span> <span class="op">=</span> <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;: serde_with::DeserializeAs&lt;&#39;de, Field&gt;&quot;</span>
-))]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LookupEvaluations</span><span class="op">&lt;</span><span class="ident">Field</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// sorted lookup table polynomial</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;Vec&lt;Vec&lt;o1_utils::serialization::SerdeAs&gt;&gt;&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">sorted</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Field</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// lookup aggregation polynomial</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">aggreg</span>: <span class="ident">Field</span>,
-    <span class="comment">// TODO: May be possible to optimize this away?</span>
-    <span class="doccomment">/// lookup table polynomial</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">table</span>: <span class="ident">Field</span>,
+<span class="comment">//~ spec:startcode
+</span><span class="doccomment">/// Evaluations of lookup polynomials
+</span><span class="attribute">#[serde_as]
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(bound(
+    serialize = <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;: serde_with::SerializeAs&lt;Field&gt;&quot;</span>,
+    deserialize = <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;: serde_with::DeserializeAs&lt;&#39;de, Field&gt;&quot;
+</span>))]
+</span><span class="kw">pub struct </span>LookupEvaluations&lt;Field&gt; {
+    <span class="doccomment">/// sorted lookup table polynomial
+    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;Vec&lt;o1_utils::serialization::SerdeAs&gt;&gt;&quot;</span>)]
+    </span><span class="kw">pub </span>sorted: Vec&lt;Field&gt;,
+    <span class="doccomment">/// lookup aggregation polynomial
+    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    </span><span class="kw">pub </span>aggreg: Field,
+    <span class="comment">// TODO: May be possible to optimize this away?
+    </span><span class="doccomment">/// lookup table polynomial
+    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    </span><span class="kw">pub </span>table: Field,
 
-    <span class="doccomment">/// Optionally, a runtime table polynomial.</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;Option&lt;Vec&lt;o1_utils::serialization::SerdeAs&gt;&gt;&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">runtime</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Field</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Optionally, a runtime table polynomial.
+    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;Vec&lt;o1_utils::serialization::SerdeAs&gt;&gt;&quot;</span>)]
+    </span><span class="kw">pub </span>runtime: <span class="prelude-ty">Option</span>&lt;Field&gt;,
 }
 
-<span class="comment">// TODO: this should really be vectors here, perhaps create another type for chunked evaluations?</span>
-<span class="doccomment">/// Polynomial evaluations contained in a `ProverProof`.</span>
-<span class="doccomment">/// - **Chunked evaluations** `Field` is instantiated with vectors with a length that equals the length of the chunk</span>
-<span class="doccomment">/// - **Non chunked evaluations** `Field` is instantiated with a field, so they are single-sized#[serde_as]</span>
-<span class="attribute">#[<span class="ident">serde_as</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">bound</span>(
-    <span class="ident">serialize</span> <span class="op">=</span> <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;: serde_with::SerializeAs&lt;Field&gt;&quot;</span>,
-    <span class="ident">deserialize</span> <span class="op">=</span> <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;: serde_with::DeserializeAs&lt;&#39;de, Field&gt;&quot;</span>
-))]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProofEvaluations</span><span class="op">&lt;</span><span class="ident">Field</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// witness polynomials</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;[Vec&lt;o1_utils::serialization::SerdeAs&gt;; COLUMNS]&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">w</span>: [<span class="ident">Field</span>; <span class="ident">COLUMNS</span>],
-    <span class="doccomment">/// permutation polynomial</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">z</span>: <span class="ident">Field</span>,
-    <span class="doccomment">/// permutation polynomials</span>
-    <span class="doccomment">/// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;[Vec&lt;o1_utils::serialization::SerdeAs&gt;; PERMUTS - 1]&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">s</span>: [<span class="ident">Field</span>; <span class="ident">PERMUTS</span> <span class="op">-</span> <span class="number">1</span>],
-    <span class="doccomment">/// lookup-related evaluations</span>
-    <span class="kw">pub</span> <span class="ident">lookup</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LookupEvaluations</span><span class="op">&lt;</span><span class="ident">Field</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// evaluation of the generic selector polynomial</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">generic_selector</span>: <span class="ident">Field</span>,
-    <span class="doccomment">/// evaluation of the poseidon selector polynomial</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">poseidon_selector</span>: <span class="ident">Field</span>,
+<span class="comment">// TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
+</span><span class="doccomment">/// Polynomial evaluations contained in a `ProverProof`.
+/// - **Chunked evaluations** `Field` is instantiated with vectors with a length that equals the length of the chunk
+/// - **Non chunked evaluations** `Field` is instantiated with a field, so they are single-sized#[serde_as]
+</span><span class="attribute">#[serde_as]
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(bound(
+    serialize = <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;: serde_with::SerializeAs&lt;Field&gt;&quot;</span>,
+    deserialize = <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;: serde_with::DeserializeAs&lt;&#39;de, Field&gt;&quot;
+</span>))]
+</span><span class="kw">pub struct </span>ProofEvaluations&lt;Field&gt; {
+    <span class="doccomment">/// witness polynomials
+    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[Vec&lt;o1_utils::serialization::SerdeAs&gt;; COLUMNS]&quot;</span>)]
+    </span><span class="kw">pub </span>w: [Field; COLUMNS],
+    <span class="doccomment">/// permutation polynomial
+    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    </span><span class="kw">pub </span>z: Field,
+    <span class="doccomment">/// permutation polynomials
+    /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
+    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[Vec&lt;o1_utils::serialization::SerdeAs&gt;; PERMUTS - 1]&quot;</span>)]
+    </span><span class="kw">pub </span>s: [Field; PERMUTS - <span class="number">1</span>],
+    <span class="doccomment">/// lookup-related evaluations
+    </span><span class="kw">pub </span>lookup: <span class="prelude-ty">Option</span>&lt;LookupEvaluations&lt;Field&gt;&gt;,
+    <span class="doccomment">/// evaluation of the generic selector polynomial
+    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    </span><span class="kw">pub </span>generic_selector: Field,
+    <span class="doccomment">/// evaluation of the poseidon selector polynomial
+    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    </span><span class="kw">pub </span>poseidon_selector: Field,
 }
 
-<span class="doccomment">/// Commitments linked to the lookup feature</span>
-<span class="attribute">#[<span class="ident">serde_as</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">bound</span> <span class="op">=</span> <span class="string">&quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LookupCommitments</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">AffineCurve</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Commitments to the sorted lookup table polynomial (may have chunks)</span>
-    <span class="kw">pub</span> <span class="ident">sorted</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Commitment to the lookup aggregation polynomial</span>
-    <span class="kw">pub</span> <span class="ident">aggreg</span>: <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Optional commitment to concatenated runtime tables</span>
-    <span class="kw">pub</span> <span class="ident">runtime</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+<span class="doccomment">/// Commitments linked to the lookup feature
+</span><span class="attribute">#[serde_as]
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(bound = <span class="string">&quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;</span>)]
+</span><span class="kw">pub struct </span>LookupCommitments&lt;G: AffineCurve&gt; {
+    <span class="doccomment">/// Commitments to the sorted lookup table polynomial (may have chunks)
+    </span><span class="kw">pub </span>sorted: Vec&lt;PolyComm&lt;G&gt;&gt;,
+    <span class="doccomment">/// Commitment to the lookup aggregation polynomial
+    </span><span class="kw">pub </span>aggreg: PolyComm&lt;G&gt;,
+    <span class="doccomment">/// Optional commitment to concatenated runtime tables
+    </span><span class="kw">pub </span>runtime: <span class="prelude-ty">Option</span>&lt;PolyComm&lt;G&gt;&gt;,
 }
 
-<span class="doccomment">/// All the commitments that the prover creates as part of the proof.</span>
-<span class="attribute">#[<span class="ident">serde_as</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">bound</span> <span class="op">=</span> <span class="string">&quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProverCommitments</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">AffineCurve</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// The commitments to the witness (execution trace)</span>
-    <span class="kw">pub</span> <span class="ident">w_comm</span>: [<span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
-    <span class="doccomment">/// The commitment to the permutation polynomial</span>
-    <span class="kw">pub</span> <span class="ident">z_comm</span>: <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// The commitment to the quotient polynomial</span>
-    <span class="kw">pub</span> <span class="ident">t_comm</span>: <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Commitments related to the lookup argument</span>
-    <span class="kw">pub</span> <span class="ident">lookup</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LookupCommitments</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+<span class="doccomment">/// All the commitments that the prover creates as part of the proof.
+</span><span class="attribute">#[serde_as]
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(bound = <span class="string">&quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;</span>)]
+</span><span class="kw">pub struct </span>ProverCommitments&lt;G: AffineCurve&gt; {
+    <span class="doccomment">/// The commitments to the witness (execution trace)
+    </span><span class="kw">pub </span>w_comm: [PolyComm&lt;G&gt;; COLUMNS],
+    <span class="doccomment">/// The commitment to the permutation polynomial
+    </span><span class="kw">pub </span>z_comm: PolyComm&lt;G&gt;,
+    <span class="doccomment">/// The commitment to the quotient polynomial
+    </span><span class="kw">pub </span>t_comm: PolyComm&lt;G&gt;,
+    <span class="doccomment">/// Commitments related to the lookup argument
+    </span><span class="kw">pub </span>lookup: <span class="prelude-ty">Option</span>&lt;LookupCommitments&lt;G&gt;&gt;,
 }
 
-<span class="doccomment">/// The proof that the prover creates from a [ProverIndex](super::prover_index::ProverIndex) and a `witness`.</span>
-<span class="attribute">#[<span class="ident">serde_as</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">bound</span> <span class="op">=</span> <span class="string">&quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">AffineCurve</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// All the polynomial commitments required in the proof</span>
-    <span class="kw">pub</span> <span class="ident">commitments</span>: <span class="ident">ProverCommitments</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
+<span class="doccomment">/// The proof that the prover creates from a [ProverIndex](super::prover_index::ProverIndex) and a `witness`.
+</span><span class="attribute">#[serde_as]
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(bound = <span class="string">&quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;</span>)]
+</span><span class="kw">pub struct </span>ProverProof&lt;G: AffineCurve&gt; {
+    <span class="doccomment">/// All the polynomial commitments required in the proof
+    </span><span class="kw">pub </span>commitments: ProverCommitments&lt;G&gt;,
 
-    <span class="doccomment">/// batched commitment opening proof</span>
-    <span class="kw">pub</span> <span class="ident">proof</span>: <span class="ident">OpeningProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// batched commitment opening proof
+    </span><span class="kw">pub </span>proof: OpeningProof&lt;G&gt;,
 
-    <span class="doccomment">/// Two evaluations over a number of committed polynomials</span>
-    <span class="comment">// TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }</span>
-    <span class="kw">pub</span> <span class="ident">evals</span>: [<span class="ident">ProofEvaluations</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span><span class="op">&gt;</span>; <span class="number">2</span>],
+    <span class="doccomment">/// Two evaluations over a number of committed polynomials
+    </span><span class="comment">// TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }
+    </span><span class="kw">pub </span>evals: [ProofEvaluations&lt;Vec&lt;G::ScalarField&gt;&gt;; <span class="number">2</span>],
 
-    <span class="doccomment">/// Required evaluation for [Maller&#39;s optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">ft_eval1</span>: <span class="ident">G::ScalarField</span>,
+    <span class="doccomment">/// Required evaluation for [Maller&#39;s optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
+    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="kw">pub </span>ft_eval1: G::ScalarField,
 
-    <span class="doccomment">/// The public input</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">public</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// The public input
+    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    </span><span class="kw">pub </span>public: Vec&lt;G::ScalarField&gt;,
 
-    <span class="doccomment">/// The challenges underlying the optional polynomials folded into the proof</span>
-    <span class="kw">pub</span> <span class="ident">prev_challenges</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RecursionChallenge</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// The challenges underlying the optional polynomials folded into the proof
+    </span><span class="kw">pub </span>prev_challenges: Vec&lt;RecursionChallenge&lt;G&gt;&gt;,
 }
 
-<span class="doccomment">/// A struct to store the challenges inside a `ProverProof`</span>
-<span class="attribute">#[<span class="ident">serde_as</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">bound</span> <span class="op">=</span> <span class="string">&quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RecursionChallenge</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">G</span>: <span class="ident">AffineCurve</span>,
+<span class="doccomment">/// A struct to store the challenges inside a `ProverProof`
+</span><span class="attribute">#[serde_as]
+#[derive(Clone, Deserialize, Serialize)]
+#[serde(bound = <span class="string">&quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;</span>)]
+</span><span class="kw">pub struct </span>RecursionChallenge&lt;G&gt;
+<span class="kw">where
+    </span>G: AffineCurve,
 {
-    <span class="doccomment">/// Vector of scalar field elements</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">chals</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Polynomial commitment</span>
-    <span class="kw">pub</span> <span class="ident">comm</span>: <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Vector of scalar field elements
+    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    </span><span class="kw">pub </span>chals: Vec&lt;G::ScalarField&gt;,
+    <span class="doccomment">/// Polynomial commitment
+    </span><span class="kw">pub </span>comm: PolyComm&lt;G&gt;,
 }
 
-<span class="comment">//~ spec:endcode</span>
+<span class="comment">//~ spec:endcode
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="ident">ProofEvaluations</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">transpose</span><span class="op">&lt;</span><span class="kw">const</span> <span class="ident">N</span>: <span class="ident">usize</span><span class="op">&gt;</span>(
-        <span class="ident">evals</span>: [<span class="kw-2">&amp;</span><span class="ident">ProofEvaluations</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">N</span>],
-    ) -&gt; <span class="ident">ProofEvaluations</span><span class="op">&lt;</span>[<span class="kw-2">&amp;</span><span class="ident">F</span>; <span class="ident">N</span>]<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">has_lookup</span> <span class="op">=</span> <span class="ident">evals</span>.<span class="ident">iter</span>().<span class="ident">all</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">lookup</span>.<span class="ident">is_some</span>());
-        <span class="kw">let</span> <span class="ident">has_runtime</span> <span class="op">=</span> <span class="ident">has_lookup</span>
-            <span class="op">&amp;&amp;</span> <span class="ident">evals</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">all</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">lookup</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>().<span class="ident">runtime</span>.<span class="ident">is_some</span>());
+</span><span class="kw">impl</span>&lt;F&gt; ProofEvaluations&lt;F&gt; {
+    <span class="kw">pub fn </span>transpose&lt;<span class="kw">const </span>N: usize&gt;(
+        evals: [<span class="kw-2">&amp;</span>ProofEvaluations&lt;F&gt;; N],
+    ) -&gt; ProofEvaluations&lt;[<span class="kw-2">&amp;</span>F; N]&gt; {
+        <span class="kw">let </span>has_lookup = evals.iter().all(|e| e.lookup.is_some());
+        <span class="kw">let </span>has_runtime = has_lookup
+            &amp;&amp; evals
+                .iter()
+                .all(|e| e.lookup.as_ref().unwrap().runtime.is_some());
 
-        <span class="ident">ProofEvaluations</span> {
-            <span class="ident">generic_selector</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">evals</span>[<span class="ident">i</span>].<span class="ident">generic_selector</span>),
-            <span class="ident">poseidon_selector</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">evals</span>[<span class="ident">i</span>].<span class="ident">poseidon_selector</span>),
-            <span class="ident">z</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">evals</span>[<span class="ident">i</span>].<span class="ident">z</span>),
-            <span class="ident">w</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">j</span><span class="op">|</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">evals</span>[<span class="ident">i</span>].<span class="ident">w</span>[<span class="ident">j</span>])),
-            <span class="ident">s</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">j</span><span class="op">|</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">evals</span>[<span class="ident">i</span>].<span class="ident">s</span>[<span class="ident">j</span>])),
-            <span class="ident">lookup</span>: <span class="kw">if</span> <span class="ident">has_lookup</span> {
-                <span class="kw">let</span> <span class="ident">sorted_length</span> <span class="op">=</span> <span class="ident">evals</span>[<span class="number">0</span>].<span class="ident">lookup</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>().<span class="ident">sorted</span>.<span class="ident">len</span>();
-                <span class="prelude-val">Some</span>(<span class="ident">LookupEvaluations</span> {
-                    <span class="ident">aggreg</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">evals</span>[<span class="ident">i</span>].<span class="ident">lookup</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>().<span class="ident">aggreg</span>),
-                    <span class="ident">table</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">evals</span>[<span class="ident">i</span>].<span class="ident">lookup</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>().<span class="ident">table</span>),
-                    <span class="ident">sorted</span>: (<span class="number">0</span>..<span class="ident">sorted_length</span>)
-                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">j</span><span class="op">|</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">evals</span>[<span class="ident">i</span>].<span class="ident">lookup</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>().<span class="ident">sorted</span>[<span class="ident">j</span>]))
-                        .<span class="ident">collect</span>(),
-                    <span class="ident">runtime</span>: <span class="kw">if</span> <span class="ident">has_runtime</span> {
-                        <span class="prelude-val">Some</span>(<span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
-                            <span class="ident">evals</span>[<span class="ident">i</span>].<span class="ident">lookup</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>().<span class="ident">runtime</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>()
+        ProofEvaluations {
+            generic_selector: array_init(|i| <span class="kw-2">&amp;</span>evals[i].generic_selector),
+            poseidon_selector: array_init(|i| <span class="kw-2">&amp;</span>evals[i].poseidon_selector),
+            z: array_init(|i| <span class="kw-2">&amp;</span>evals[i].z),
+            w: array_init(|j| array_init(|i| <span class="kw-2">&amp;</span>evals[i].w[j])),
+            s: array_init(|j| array_init(|i| <span class="kw-2">&amp;</span>evals[i].s[j])),
+            lookup: <span class="kw">if </span>has_lookup {
+                <span class="kw">let </span>sorted_length = evals[<span class="number">0</span>].lookup.as_ref().unwrap().sorted.len();
+                <span class="prelude-val">Some</span>(LookupEvaluations {
+                    aggreg: array_init(|i| <span class="kw-2">&amp;</span>evals[i].lookup.as_ref().unwrap().aggreg),
+                    table: array_init(|i| <span class="kw-2">&amp;</span>evals[i].lookup.as_ref().unwrap().table),
+                    sorted: (<span class="number">0</span>..sorted_length)
+                        .map(|j| array_init(|i| <span class="kw-2">&amp;</span>evals[i].lookup.as_ref().unwrap().sorted[j]))
+                        .collect(),
+                    runtime: <span class="kw">if </span>has_runtime {
+                        <span class="prelude-val">Some</span>(array_init(|i| {
+                            evals[i].lookup.as_ref().unwrap().runtime.as_ref().unwrap()
                         }))
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">None</span>
-                    },
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">None
+                    </span>},
                 })
-            } <span class="kw">else</span> {
-                <span class="prelude-val">None</span>
-            },
+            } <span class="kw">else </span>{
+                <span class="prelude-val">None
+            </span>},
         }
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">AffineCurve</span><span class="op">&gt;</span> <span class="ident">RecursionChallenge</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">chals</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span>, <span class="ident">comm</span>: <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>) -&gt; <span class="ident">RecursionChallenge</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
-        <span class="ident">RecursionChallenge</span> { <span class="ident">chals</span>, <span class="ident">comm</span> }
+<span class="kw">impl</span>&lt;G: AffineCurve&gt; RecursionChallenge&lt;G&gt; {
+    <span class="kw">pub fn </span>new(chals: Vec&lt;G::ScalarField&gt;, comm: PolyComm&lt;G&gt;) -&gt; RecursionChallenge&lt;G&gt; {
+        RecursionChallenge { chals, comm }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">evals</span>(
+    <span class="kw">pub fn </span>evals(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">max_poly_size</span>: <span class="ident">usize</span>,
-        <span class="ident">evaluation_points</span>: <span class="kw-2">&amp;</span>[<span class="ident">G::ScalarField</span>],
-        <span class="ident">powers_of_eval_points_for_chunks</span>: <span class="kw-2">&amp;</span>[<span class="ident">G::ScalarField</span>],
-    ) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">RecursionChallenge</span> { <span class="ident">chals</span>, <span class="ident">comm</span>: <span class="kw">_</span> } <span class="op">=</span> <span class="self">self</span>;
-        <span class="comment">// No need to check the correctness of poly explicitly. Its correctness is assured by the</span>
-        <span class="comment">// checking of the inner product argument.</span>
-        <span class="kw">let</span> <span class="ident">b_len</span> <span class="op">=</span> <span class="number">1</span> <span class="op">&lt;</span><span class="op">&lt;</span> <span class="ident">chals</span>.<span class="ident">len</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">b</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="prelude-val">None</span>;
+        max_poly_size: usize,
+        evaluation_points: <span class="kw-2">&amp;</span>[G::ScalarField],
+        powers_of_eval_points_for_chunks: <span class="kw-2">&amp;</span>[G::ScalarField],
+    ) -&gt; Vec&lt;Vec&lt;G::ScalarField&gt;&gt; {
+        <span class="kw">let </span>RecursionChallenge { chals, comm: <span class="kw">_ </span>} = <span class="self">self</span>;
+        <span class="comment">// No need to check the correctness of poly explicitly. Its correctness is assured by the
+        // checking of the inner product argument.
+        </span><span class="kw">let </span>b_len = <span class="number">1 </span>&lt;&lt; chals.len();
+        <span class="kw">let </span><span class="kw-2">mut </span>b: <span class="prelude-ty">Option</span>&lt;Vec&lt;G::ScalarField&gt;&gt; = <span class="prelude-val">None</span>;
 
         (<span class="number">0</span>..<span class="number">2</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">full</span> <span class="op">=</span> <span class="ident">b_poly</span>(<span class="ident">chals</span>, <span class="ident">evaluation_points</span>[<span class="ident">i</span>]);
-                <span class="kw">if</span> <span class="ident">max_poly_size</span> <span class="op">==</span> <span class="ident">b_len</span> {
-                    <span class="kw">return</span> <span class="macro">vec!</span>[<span class="ident">full</span>];
+            .map(|i| {
+                <span class="kw">let </span>full = b_poly(chals, evaluation_points[i]);
+                <span class="kw">if </span>max_poly_size == b_len {
+                    <span class="kw">return </span><span class="macro">vec!</span>[full];
                 }
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">betaacc</span> <span class="op">=</span> <span class="ident">G::ScalarField::one</span>();
-                <span class="kw">let</span> <span class="ident">diff</span> <span class="op">=</span> (<span class="ident">max_poly_size</span>..<span class="ident">b_len</span>)
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">j</span><span class="op">|</span> {
-                        <span class="kw">let</span> <span class="ident">b_j</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">b</span> {
-                            <span class="prelude-val">None</span> =&gt; {
-                                <span class="kw">let</span> <span class="ident">t</span> <span class="op">=</span> <span class="ident">b_poly_coefficients</span>(<span class="ident">chals</span>);
-                                <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">t</span>[<span class="ident">j</span>];
-                                <span class="ident">b</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">t</span>);
-                                <span class="ident">res</span>
+                <span class="kw">let </span><span class="kw-2">mut </span>betaacc = G::ScalarField::one();
+                <span class="kw">let </span>diff = (max_poly_size..b_len)
+                    .map(|j| {
+                        <span class="kw">let </span>b_j = <span class="kw">match </span><span class="kw-2">&amp;</span>b {
+                            <span class="prelude-val">None </span>=&gt; {
+                                <span class="kw">let </span>t = b_poly_coefficients(chals);
+                                <span class="kw">let </span>res = t[j];
+                                b = <span class="prelude-val">Some</span>(t);
+                                res
                             }
-                            <span class="prelude-val">Some</span>(<span class="ident">b</span>) =&gt; <span class="ident">b</span>[<span class="ident">j</span>],
+                            <span class="prelude-val">Some</span>(b) =&gt; b[j],
                         };
 
-                        <span class="kw">let</span> <span class="ident">ret</span> <span class="op">=</span> <span class="ident">betaacc</span> <span class="op">*</span> <span class="ident">b_j</span>;
-                        <span class="ident">betaacc</span> <span class="kw-2">*</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">evaluation_points</span>[<span class="ident">i</span>];
-                        <span class="ident">ret</span>
+                        <span class="kw">let </span>ret = betaacc * b_j;
+                        betaacc <span class="kw-2">*</span>= <span class="kw-2">&amp;</span>evaluation_points[i];
+                        ret
                     })
-                    .<span class="ident">fold</span>(<span class="ident">G::ScalarField::zero</span>(), <span class="op">|</span><span class="ident">x</span>, <span class="ident">y</span><span class="op">|</span> <span class="ident">x</span> <span class="op">+</span> <span class="ident">y</span>);
-                <span class="macro">vec!</span>[<span class="ident">full</span> <span class="op">-</span> (<span class="ident">diff</span> <span class="op">*</span> <span class="ident">powers_of_eval_points_for_chunks</span>[<span class="ident">i</span>]), <span class="ident">diff</span>]
+                    .fold(G::ScalarField::zero(), |x, y| x + y);
+                <span class="macro">vec!</span>[full - (diff * powers_of_eval_points_for_chunks[i]), diff]
             })
-            .<span class="ident">collect</span>()
+            .collect()
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Zero</span><span class="op">&gt;</span> <span class="ident">ProofEvaluations</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">dummy_with_witness_evaluations</span>(<span class="ident">w</span>: [<span class="ident">F</span>; <span class="ident">COLUMNS</span>]) -&gt; <span class="ident">ProofEvaluations</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-        <span class="ident">ProofEvaluations</span> {
-            <span class="ident">w</span>,
-            <span class="ident">z</span>: <span class="ident">F::zero</span>(),
-            <span class="ident">s</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">F::zero</span>()),
-            <span class="ident">lookup</span>: <span class="prelude-val">None</span>,
-            <span class="ident">generic_selector</span>: <span class="ident">F::zero</span>(),
-            <span class="ident">poseidon_selector</span>: <span class="ident">F::zero</span>(),
+<span class="kw">impl</span>&lt;F: Zero&gt; ProofEvaluations&lt;F&gt; {
+    <span class="kw">pub fn </span>dummy_with_witness_evaluations(w: [F; COLUMNS]) -&gt; ProofEvaluations&lt;F&gt; {
+        ProofEvaluations {
+            w,
+            z: F::zero(),
+            s: array_init(|<span class="kw">_</span>| F::zero()),
+            lookup: <span class="prelude-val">None</span>,
+            generic_selector: F::zero(),
+            poseidon_selector: F::zero(),
         }
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> <span class="ident">ProofEvaluations</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">combine</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">pt</span>: <span class="ident">F</span>) -&gt; <span class="ident">ProofEvaluations</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-        <span class="ident">ProofEvaluations</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-            <span class="ident">s</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">DensePolynomial::eval_polynomial</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">s</span>[<span class="ident">i</span>], <span class="ident">pt</span>)),
-            <span class="ident">w</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">DensePolynomial::eval_polynomial</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">w</span>[<span class="ident">i</span>], <span class="ident">pt</span>)),
-            <span class="ident">z</span>: <span class="ident">DensePolynomial::eval_polynomial</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">z</span>, <span class="ident">pt</span>),
-            <span class="ident">lookup</span>: <span class="self">self</span>.<span class="ident">lookup</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">l</span><span class="op">|</span> <span class="ident">LookupEvaluations</span> {
-                <span class="ident">table</span>: <span class="ident">DensePolynomial::eval_polynomial</span>(<span class="kw-2">&amp;</span><span class="ident">l</span>.<span class="ident">table</span>, <span class="ident">pt</span>),
-                <span class="ident">aggreg</span>: <span class="ident">DensePolynomial::eval_polynomial</span>(<span class="kw-2">&amp;</span><span class="ident">l</span>.<span class="ident">aggreg</span>, <span class="ident">pt</span>),
-                <span class="ident">sorted</span>: <span class="ident">l</span>
-                    .<span class="ident">sorted</span>
-                    .<span class="ident">iter</span>()
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">DensePolynomial::eval_polynomial</span>(<span class="ident">x</span>, <span class="ident">pt</span>))
-                    .<span class="ident">collect</span>(),
-                <span class="ident">runtime</span>: <span class="ident">l</span>
-                    .<span class="ident">runtime</span>
-                    .<span class="ident">as_ref</span>()
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">rt</span><span class="op">|</span> <span class="ident">DensePolynomial::eval_polynomial</span>(<span class="ident">rt</span>, <span class="ident">pt</span>)),
+<span class="kw">impl</span>&lt;F: FftField&gt; ProofEvaluations&lt;Vec&lt;F&gt;&gt; {
+    <span class="kw">pub fn </span>combine(<span class="kw-2">&amp;</span><span class="self">self</span>, pt: F) -&gt; ProofEvaluations&lt;F&gt; {
+        ProofEvaluations::&lt;F&gt; {
+            s: array_init(|i| DensePolynomial::eval_polynomial(<span class="kw-2">&amp;</span><span class="self">self</span>.s[i], pt)),
+            w: array_init(|i| DensePolynomial::eval_polynomial(<span class="kw-2">&amp;</span><span class="self">self</span>.w[i], pt)),
+            z: DensePolynomial::eval_polynomial(<span class="kw-2">&amp;</span><span class="self">self</span>.z, pt),
+            lookup: <span class="self">self</span>.lookup.as_ref().map(|l| LookupEvaluations {
+                table: DensePolynomial::eval_polynomial(<span class="kw-2">&amp;</span>l.table, pt),
+                aggreg: DensePolynomial::eval_polynomial(<span class="kw-2">&amp;</span>l.aggreg, pt),
+                sorted: l
+                    .sorted
+                    .iter()
+                    .map(|x| DensePolynomial::eval_polynomial(x, pt))
+                    .collect(),
+                runtime: l
+                    .runtime
+                    .as_ref()
+                    .map(|rt| DensePolynomial::eval_polynomial(rt, pt)),
             }),
-            <span class="ident">generic_selector</span>: <span class="ident">DensePolynomial::eval_polynomial</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">generic_selector</span>, <span class="ident">pt</span>),
-            <span class="ident">poseidon_selector</span>: <span class="ident">DensePolynomial::eval_polynomial</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">poseidon_selector</span>, <span class="ident">pt</span>),
+            generic_selector: DensePolynomial::eval_polynomial(<span class="kw-2">&amp;</span><span class="self">self</span>.generic_selector, pt),
+            poseidon_selector: DensePolynomial::eval_polynomial(<span class="kw-2">&amp;</span><span class="self">self</span>.poseidon_selector, pt),
         }
     }
 }
 
-<span class="comment">//</span>
-<span class="comment">// OCaml types</span>
-<span class="comment">//</span>
+<span class="comment">//
+// OCaml types
+//
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;ocaml_types&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">caml</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident">commitment_dlog::commitment::caml::CamlPolyComm</span>;
+</span><span class="attribute">#[cfg(feature = <span class="string">&quot;ocaml_types&quot;</span>)]
+</span><span class="kw">pub mod </span>caml {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span>commitment_dlog::commitment::caml::CamlPolyComm;
 
-    <span class="comment">//</span>
-    <span class="comment">// CamlRecursionChallenge&lt;CamlG, CamlF&gt;</span>
-    <span class="comment">//</span>
+    <span class="comment">//
+    // CamlRecursionChallenge&lt;CamlG, CamlF&gt;
+    //
 
-    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">ocaml_gen::Struct</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlRecursionChallenge</span><span class="op">&lt;</span><span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span> {
-        <span class="kw">pub</span> <span class="ident">chals</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
-        <span class="kw">pub</span> <span class="ident">comm</span>: <span class="ident">CamlPolyComm</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>,
+    </span><span class="attribute">#[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    </span><span class="kw">pub struct </span>CamlRecursionChallenge&lt;CamlG, CamlF&gt; {
+        <span class="kw">pub </span>chals: Vec&lt;CamlF&gt;,
+        <span class="kw">pub </span>comm: CamlPolyComm&lt;CamlG&gt;,
     }
 
-    <span class="comment">//</span>
-    <span class="comment">// CamlRecursionChallenge&lt;CamlG, CamlF&gt; &lt;-&gt; RecursionChallenge&lt;G&gt;</span>
-    <span class="comment">//</span>
+    <span class="comment">//
+    // CamlRecursionChallenge&lt;CamlG, CamlF&gt; &lt;-&gt; RecursionChallenge&lt;G&gt;
+    //
 
-    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>, <span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">RecursionChallenge</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CamlRecursionChallenge</span><span class="op">&lt;</span><span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">G</span>: <span class="ident">AffineCurve</span>,
-        <span class="ident">CamlG</span>: <span class="ident">From</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
-        <span class="ident">CamlF</span>: <span class="ident">From</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span>,
+    </span><span class="kw">impl</span>&lt;G, CamlG, CamlF&gt; From&lt;RecursionChallenge&lt;G&gt;&gt; <span class="kw">for </span>CamlRecursionChallenge&lt;CamlG, CamlF&gt;
+    <span class="kw">where
+        </span>G: AffineCurve,
+        CamlG: From&lt;G&gt;,
+        CamlF: From&lt;G::ScalarField&gt;,
     {
-        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">ch</span>: <span class="ident">RecursionChallenge</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-            <span class="self">Self</span> {
-                <span class="ident">chals</span>: <span class="ident">ch</span>.<span class="ident">chals</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">comm</span>: <span class="ident">ch</span>.<span class="ident">comm</span>.<span class="ident">into</span>(),
+        <span class="kw">fn </span>from(ch: RecursionChallenge&lt;G&gt;) -&gt; <span class="self">Self </span>{
+            <span class="self">Self </span>{
+                chals: ch.chals.into_iter().map(Into::into).collect(),
+                comm: ch.comm.into(),
             }
         }
     }
 
-    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>, <span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">CamlRecursionChallenge</span><span class="op">&lt;</span><span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">RecursionChallenge</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">G</span>: <span class="ident">AffineCurve</span> <span class="op">+</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>,
-        <span class="ident">G::ScalarField</span>: <span class="ident">From</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
+    <span class="kw">impl</span>&lt;G, CamlG, CamlF&gt; From&lt;CamlRecursionChallenge&lt;CamlG, CamlF&gt;&gt; <span class="kw">for </span>RecursionChallenge&lt;G&gt;
+    <span class="kw">where
+        </span>G: AffineCurve + From&lt;CamlG&gt;,
+        G::ScalarField: From&lt;CamlF&gt;,
     {
-        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">caml_ch</span>: <span class="ident">CamlRecursionChallenge</span><span class="op">&lt;</span><span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span>) -&gt; <span class="ident">RecursionChallenge</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
-            <span class="ident">RecursionChallenge</span> {
-                <span class="ident">chals</span>: <span class="ident">caml_ch</span>.<span class="ident">chals</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">comm</span>: <span class="ident">caml_ch</span>.<span class="ident">comm</span>.<span class="ident">into</span>(),
+        <span class="kw">fn </span>from(caml_ch: CamlRecursionChallenge&lt;CamlG, CamlF&gt;) -&gt; RecursionChallenge&lt;G&gt; {
+            RecursionChallenge {
+                chals: caml_ch.chals.into_iter().map(Into::into).collect(),
+                comm: caml_ch.comm.into(),
             }
         }
     }
 
-    <span class="comment">//</span>
-    <span class="comment">// CamlLookupEvaluations&lt;CamlF&gt;</span>
-    <span class="comment">//</span>
+    <span class="comment">//
+    // CamlLookupEvaluations&lt;CamlF&gt;
+    //
 
-    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">ocaml_gen::Struct</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlLookupEvaluations</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span> {
-        <span class="kw">pub</span> <span class="ident">sorted</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="kw">pub</span> <span class="ident">aggreg</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
-        <span class="kw">pub</span> <span class="ident">table</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
-        <span class="kw">pub</span> <span class="ident">runtime</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    </span><span class="attribute">#[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    </span><span class="kw">pub struct </span>CamlLookupEvaluations&lt;CamlF&gt; {
+        <span class="kw">pub </span>sorted: Vec&lt;Vec&lt;CamlF&gt;&gt;,
+        <span class="kw">pub </span>aggreg: Vec&lt;CamlF&gt;,
+        <span class="kw">pub </span>table: Vec&lt;CamlF&gt;,
+        <span class="kw">pub </span>runtime: <span class="prelude-ty">Option</span>&lt;Vec&lt;CamlF&gt;&gt;,
     }
 
-    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">CamlF</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">LookupEvaluations</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CamlLookupEvaluations</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">F</span>: <span class="ident">Clone</span>,
-        <span class="ident">CamlF</span>: <span class="ident">From</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
+    <span class="kw">impl</span>&lt;F, CamlF&gt; From&lt;LookupEvaluations&lt;Vec&lt;F&gt;&gt;&gt; <span class="kw">for </span>CamlLookupEvaluations&lt;CamlF&gt;
+    <span class="kw">where
+        </span>F: Clone,
+        CamlF: From&lt;F&gt;,
     {
-        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">le</span>: <span class="ident">LookupEvaluations</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-            <span class="self">Self</span> {
-                <span class="ident">sorted</span>: <span class="ident">le</span>
-                    .<span class="ident">sorted</span>
-                    .<span class="ident">into_iter</span>()
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>())
-                    .<span class="ident">collect</span>(),
-                <span class="ident">aggreg</span>: <span class="ident">le</span>.<span class="ident">aggreg</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">table</span>: <span class="ident">le</span>.<span class="ident">table</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">runtime</span>: <span class="ident">le</span>.<span class="ident">runtime</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">r</span><span class="op">|</span> <span class="ident">r</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>()),
+        <span class="kw">fn </span>from(le: LookupEvaluations&lt;Vec&lt;F&gt;&gt;) -&gt; <span class="self">Self </span>{
+            <span class="self">Self </span>{
+                sorted: le
+                    .sorted
+                    .into_iter()
+                    .map(|x| x.into_iter().map(Into::into).collect())
+                    .collect(),
+                aggreg: le.aggreg.into_iter().map(Into::into).collect(),
+                table: le.table.into_iter().map(Into::into).collect(),
+                runtime: le.runtime.map(|r| r.into_iter().map(Into::into).collect()),
             }
         }
     }
 
-    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">CamlF</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">CamlLookupEvaluations</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">LookupEvaluations</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">F</span>: <span class="ident">From</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">Clone</span>,
+    <span class="kw">impl</span>&lt;F, CamlF&gt; From&lt;CamlLookupEvaluations&lt;CamlF&gt;&gt; <span class="kw">for </span>LookupEvaluations&lt;Vec&lt;F&gt;&gt;
+    <span class="kw">where
+        </span>F: From&lt;CamlF&gt; + Clone,
     {
-        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">pe</span>: <span class="ident">CamlLookupEvaluations</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-            <span class="self">Self</span> {
-                <span class="ident">sorted</span>: <span class="ident">pe</span>
-                    .<span class="ident">sorted</span>
-                    .<span class="ident">into_iter</span>()
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>())
-                    .<span class="ident">collect</span>(),
-                <span class="ident">aggreg</span>: <span class="ident">pe</span>.<span class="ident">aggreg</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">table</span>: <span class="ident">pe</span>.<span class="ident">table</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">runtime</span>: <span class="ident">pe</span>.<span class="ident">runtime</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">r</span><span class="op">|</span> <span class="ident">r</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>()),
+        <span class="kw">fn </span>from(pe: CamlLookupEvaluations&lt;CamlF&gt;) -&gt; <span class="self">Self </span>{
+            <span class="self">Self </span>{
+                sorted: pe
+                    .sorted
+                    .into_iter()
+                    .map(|x| x.into_iter().map(Into::into).collect())
+                    .collect(),
+                aggreg: pe.aggreg.into_iter().map(Into::into).collect(),
+                table: pe.table.into_iter().map(Into::into).collect(),
+                runtime: pe.runtime.map(|r| r.into_iter().map(Into::into).collect()),
             }
         }
     }
 
-    <span class="comment">//</span>
-    <span class="comment">// CamlProofEvaluations&lt;CamlF&gt;</span>
-    <span class="comment">//</span>
+    <span class="comment">//
+    // CamlProofEvaluations&lt;CamlF&gt;
+    //
 
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::type_complexity</span>)]</span>
-    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">ocaml_gen::Struct</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlProofEvaluations</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span> {
-        <span class="kw">pub</span> <span class="ident">w</span>: (
-            <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
-            <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
-            <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
-            <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
-            <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
-            <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
-            <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
-            <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
-            <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
-            <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
-            <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
-            <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
-            <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
-            <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
-            <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
+    </span><span class="attribute">#[allow(clippy::type_complexity)]
+    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    </span><span class="kw">pub struct </span>CamlProofEvaluations&lt;CamlF&gt; {
+        <span class="kw">pub </span>w: (
+            Vec&lt;CamlF&gt;,
+            Vec&lt;CamlF&gt;,
+            Vec&lt;CamlF&gt;,
+            Vec&lt;CamlF&gt;,
+            Vec&lt;CamlF&gt;,
+            Vec&lt;CamlF&gt;,
+            Vec&lt;CamlF&gt;,
+            Vec&lt;CamlF&gt;,
+            Vec&lt;CamlF&gt;,
+            Vec&lt;CamlF&gt;,
+            Vec&lt;CamlF&gt;,
+            Vec&lt;CamlF&gt;,
+            Vec&lt;CamlF&gt;,
+            Vec&lt;CamlF&gt;,
+            Vec&lt;CamlF&gt;,
         ),
-        <span class="kw">pub</span> <span class="ident">z</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
-        <span class="kw">pub</span> <span class="ident">s</span>: (
-            <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
-            <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
-            <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
-            <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
-            <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
-            <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
+        <span class="kw">pub </span>z: Vec&lt;CamlF&gt;,
+        <span class="kw">pub </span>s: (
+            Vec&lt;CamlF&gt;,
+            Vec&lt;CamlF&gt;,
+            Vec&lt;CamlF&gt;,
+            Vec&lt;CamlF&gt;,
+            Vec&lt;CamlF&gt;,
+            Vec&lt;CamlF&gt;,
         ),
-        <span class="kw">pub</span> <span class="ident">generic_selector</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
-        <span class="kw">pub</span> <span class="ident">poseidon_selector</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
+        <span class="kw">pub </span>generic_selector: Vec&lt;CamlF&gt;,
+        <span class="kw">pub </span>poseidon_selector: Vec&lt;CamlF&gt;,
 
-        <span class="kw">pub</span> <span class="ident">lookup</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">CamlLookupEvaluations</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="kw">pub </span>lookup: <span class="prelude-ty">Option</span>&lt;CamlLookupEvaluations&lt;CamlF&gt;&gt;,
     }
 
-    <span class="comment">//</span>
-    <span class="comment">// ProofEvaluations&lt;Vec&lt;F&gt;&gt; &lt;-&gt; CamlProofEvaluations&lt;CamlF&gt;</span>
-    <span class="comment">//</span>
+    <span class="comment">//
+    // ProofEvaluations&lt;Vec&lt;F&gt;&gt; &lt;-&gt; CamlProofEvaluations&lt;CamlF&gt;
+    //
 
-    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">CamlF</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">ProofEvaluations</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CamlProofEvaluations</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">F</span>: <span class="ident">Clone</span>,
-        <span class="ident">CamlF</span>: <span class="ident">From</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
+    </span><span class="kw">impl</span>&lt;F, CamlF&gt; From&lt;ProofEvaluations&lt;Vec&lt;F&gt;&gt;&gt; <span class="kw">for </span>CamlProofEvaluations&lt;CamlF&gt;
+    <span class="kw">where
+        </span>F: Clone,
+        CamlF: From&lt;F&gt;,
     {
-        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">pe</span>: <span class="ident">ProofEvaluations</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-            <span class="kw">let</span> <span class="ident">w</span> <span class="op">=</span> (
-                <span class="ident">pe</span>.<span class="ident">w</span>[<span class="number">0</span>].<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">pe</span>.<span class="ident">w</span>[<span class="number">1</span>].<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">pe</span>.<span class="ident">w</span>[<span class="number">2</span>].<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">pe</span>.<span class="ident">w</span>[<span class="number">3</span>].<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">pe</span>.<span class="ident">w</span>[<span class="number">4</span>].<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">pe</span>.<span class="ident">w</span>[<span class="number">5</span>].<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">pe</span>.<span class="ident">w</span>[<span class="number">6</span>].<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">pe</span>.<span class="ident">w</span>[<span class="number">7</span>].<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">pe</span>.<span class="ident">w</span>[<span class="number">8</span>].<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">pe</span>.<span class="ident">w</span>[<span class="number">9</span>].<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">pe</span>.<span class="ident">w</span>[<span class="number">10</span>].<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">pe</span>.<span class="ident">w</span>[<span class="number">11</span>].<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">pe</span>.<span class="ident">w</span>[<span class="number">12</span>].<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">pe</span>.<span class="ident">w</span>[<span class="number">13</span>].<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">pe</span>.<span class="ident">w</span>[<span class="number">14</span>].<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
+        <span class="kw">fn </span>from(pe: ProofEvaluations&lt;Vec&lt;F&gt;&gt;) -&gt; <span class="self">Self </span>{
+            <span class="kw">let </span>w = (
+                pe.w[<span class="number">0</span>].iter().cloned().map(Into::into).collect(),
+                pe.w[<span class="number">1</span>].iter().cloned().map(Into::into).collect(),
+                pe.w[<span class="number">2</span>].iter().cloned().map(Into::into).collect(),
+                pe.w[<span class="number">3</span>].iter().cloned().map(Into::into).collect(),
+                pe.w[<span class="number">4</span>].iter().cloned().map(Into::into).collect(),
+                pe.w[<span class="number">5</span>].iter().cloned().map(Into::into).collect(),
+                pe.w[<span class="number">6</span>].iter().cloned().map(Into::into).collect(),
+                pe.w[<span class="number">7</span>].iter().cloned().map(Into::into).collect(),
+                pe.w[<span class="number">8</span>].iter().cloned().map(Into::into).collect(),
+                pe.w[<span class="number">9</span>].iter().cloned().map(Into::into).collect(),
+                pe.w[<span class="number">10</span>].iter().cloned().map(Into::into).collect(),
+                pe.w[<span class="number">11</span>].iter().cloned().map(Into::into).collect(),
+                pe.w[<span class="number">12</span>].iter().cloned().map(Into::into).collect(),
+                pe.w[<span class="number">13</span>].iter().cloned().map(Into::into).collect(),
+                pe.w[<span class="number">14</span>].iter().cloned().map(Into::into).collect(),
             );
-            <span class="kw">let</span> <span class="ident">s</span> <span class="op">=</span> (
-                <span class="ident">pe</span>.<span class="ident">s</span>[<span class="number">0</span>].<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">pe</span>.<span class="ident">s</span>[<span class="number">1</span>].<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">pe</span>.<span class="ident">s</span>[<span class="number">2</span>].<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">pe</span>.<span class="ident">s</span>[<span class="number">3</span>].<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">pe</span>.<span class="ident">s</span>[<span class="number">4</span>].<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">pe</span>.<span class="ident">s</span>[<span class="number">5</span>].<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
+            <span class="kw">let </span>s = (
+                pe.s[<span class="number">0</span>].iter().cloned().map(Into::into).collect(),
+                pe.s[<span class="number">1</span>].iter().cloned().map(Into::into).collect(),
+                pe.s[<span class="number">2</span>].iter().cloned().map(Into::into).collect(),
+                pe.s[<span class="number">3</span>].iter().cloned().map(Into::into).collect(),
+                pe.s[<span class="number">4</span>].iter().cloned().map(Into::into).collect(),
+                pe.s[<span class="number">5</span>].iter().cloned().map(Into::into).collect(),
             );
 
-            <span class="self">Self</span> {
-                <span class="ident">w</span>,
-                <span class="ident">z</span>: <span class="ident">pe</span>.<span class="ident">z</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">s</span>,
-                <span class="ident">generic_selector</span>: <span class="ident">pe</span>.<span class="ident">generic_selector</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">poseidon_selector</span>: <span class="ident">pe</span>.<span class="ident">poseidon_selector</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">lookup</span>: <span class="ident">pe</span>.<span class="ident">lookup</span>.<span class="ident">map</span>(<span class="ident">Into::into</span>),
+            <span class="self">Self </span>{
+                w,
+                z: pe.z.into_iter().map(Into::into).collect(),
+                s,
+                generic_selector: pe.generic_selector.into_iter().map(Into::into).collect(),
+                poseidon_selector: pe.poseidon_selector.into_iter().map(Into::into).collect(),
+                lookup: pe.lookup.map(Into::into),
             }
         }
     }
 
-    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">CamlF</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">CamlProofEvaluations</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ProofEvaluations</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>
-    <span class="kw">where</span>
-        <span class="ident">F</span>: <span class="ident">Clone</span>,
-        <span class="ident">F</span>: <span class="ident">From</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
+    <span class="kw">impl</span>&lt;F, CamlF&gt; From&lt;CamlProofEvaluations&lt;CamlF&gt;&gt; <span class="kw">for </span>ProofEvaluations&lt;Vec&lt;F&gt;&gt;
+    <span class="kw">where
+        </span>F: Clone,
+        F: From&lt;CamlF&gt;,
     {
-        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">cpe</span>: <span class="ident">CamlProofEvaluations</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-            <span class="kw">let</span> <span class="ident">w</span> <span class="op">=</span> [
-                <span class="ident">cpe</span>.<span class="ident">w</span>.<span class="number">0</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">cpe</span>.<span class="ident">w</span>.<span class="number">1</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">cpe</span>.<span class="ident">w</span>.<span class="number">2</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">cpe</span>.<span class="ident">w</span>.<span class="number">3</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">cpe</span>.<span class="ident">w</span>.<span class="number">4</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">cpe</span>.<span class="ident">w</span>.<span class="number">5</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">cpe</span>.<span class="ident">w</span>.<span class="number">6</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">cpe</span>.<span class="ident">w</span>.<span class="number">7</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">cpe</span>.<span class="ident">w</span>.<span class="number">8</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">cpe</span>.<span class="ident">w</span>.<span class="number">9</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">cpe</span>.<span class="ident">w</span>.<span class="number">10</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">cpe</span>.<span class="ident">w</span>.<span class="number">11</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">cpe</span>.<span class="ident">w</span>.<span class="number">12</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">cpe</span>.<span class="ident">w</span>.<span class="number">13</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">cpe</span>.<span class="ident">w</span>.<span class="number">14</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
+        <span class="kw">fn </span>from(cpe: CamlProofEvaluations&lt;CamlF&gt;) -&gt; <span class="self">Self </span>{
+            <span class="kw">let </span>w = [
+                cpe.w.<span class="number">0</span>.into_iter().map(Into::into).collect(),
+                cpe.w.<span class="number">1</span>.into_iter().map(Into::into).collect(),
+                cpe.w.<span class="number">2</span>.into_iter().map(Into::into).collect(),
+                cpe.w.<span class="number">3</span>.into_iter().map(Into::into).collect(),
+                cpe.w.<span class="number">4</span>.into_iter().map(Into::into).collect(),
+                cpe.w.<span class="number">5</span>.into_iter().map(Into::into).collect(),
+                cpe.w.<span class="number">6</span>.into_iter().map(Into::into).collect(),
+                cpe.w.<span class="number">7</span>.into_iter().map(Into::into).collect(),
+                cpe.w.<span class="number">8</span>.into_iter().map(Into::into).collect(),
+                cpe.w.<span class="number">9</span>.into_iter().map(Into::into).collect(),
+                cpe.w.<span class="number">10</span>.into_iter().map(Into::into).collect(),
+                cpe.w.<span class="number">11</span>.into_iter().map(Into::into).collect(),
+                cpe.w.<span class="number">12</span>.into_iter().map(Into::into).collect(),
+                cpe.w.<span class="number">13</span>.into_iter().map(Into::into).collect(),
+                cpe.w.<span class="number">14</span>.into_iter().map(Into::into).collect(),
             ];
-            <span class="kw">let</span> <span class="ident">s</span> <span class="op">=</span> [
-                <span class="ident">cpe</span>.<span class="ident">s</span>.<span class="number">0</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">cpe</span>.<span class="ident">s</span>.<span class="number">1</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">cpe</span>.<span class="ident">s</span>.<span class="number">2</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">cpe</span>.<span class="ident">s</span>.<span class="number">3</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">cpe</span>.<span class="ident">s</span>.<span class="number">4</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">cpe</span>.<span class="ident">s</span>.<span class="number">5</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
+            <span class="kw">let </span>s = [
+                cpe.s.<span class="number">0</span>.into_iter().map(Into::into).collect(),
+                cpe.s.<span class="number">1</span>.into_iter().map(Into::into).collect(),
+                cpe.s.<span class="number">2</span>.into_iter().map(Into::into).collect(),
+                cpe.s.<span class="number">3</span>.into_iter().map(Into::into).collect(),
+                cpe.s.<span class="number">4</span>.into_iter().map(Into::into).collect(),
+                cpe.s.<span class="number">5</span>.into_iter().map(Into::into).collect(),
             ];
 
-            <span class="self">Self</span> {
-                <span class="ident">w</span>,
-                <span class="ident">z</span>: <span class="ident">cpe</span>.<span class="ident">z</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">s</span>,
-                <span class="ident">generic_selector</span>: <span class="ident">cpe</span>.<span class="ident">generic_selector</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">poseidon_selector</span>: <span class="ident">cpe</span>.<span class="ident">poseidon_selector</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">lookup</span>: <span class="ident">cpe</span>.<span class="ident">lookup</span>.<span class="ident">map</span>(<span class="ident">Into::into</span>),
+            <span class="self">Self </span>{
+                w,
+                z: cpe.z.into_iter().map(Into::into).collect(),
+                s,
+                generic_selector: cpe.generic_selector.into_iter().map(Into::into).collect(),
+                poseidon_selector: cpe.poseidon_selector.into_iter().map(Into::into).collect(),
+                lookup: cpe.lookup.map(Into::into),
             }
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

@@ -2,28 +2,28 @@
 which provides a generic interface for hashing.</p>
 <p>To use it, simply implement <a href="trait.CryptoDigest.html" title="CryptoDigest">CryptoDigest</a> for your type:</p>
 
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">o1_utils::hasher::CryptoDigest</span>;
-<span class="kw">use</span> <span class="ident">serde::Serialize</span>;
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>o1_utils::hasher::CryptoDigest;
+<span class="kw">use </span>serde::Serialize;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>)]</span>
-<span class="kw">struct</span> <span class="ident">A</span> {
-    <span class="ident">thing</span>: <span class="ident">u8</span>,
+<span class="attribute">#[derive(Serialize)]
+</span><span class="kw">struct </span>A {
+    thing: u8,
 }
 
-<span class="kw">impl</span> <span class="ident">CryptoDigest</span> <span class="kw">for</span> <span class="ident">A</span> {
-    <span class="kw">const</span> <span class="ident">PREFIX</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> [<span class="ident">u8</span>; <span class="number">15</span>] <span class="op">=</span> <span class="string">b&quot;kimchi-circuit0&quot;</span>;
+<span class="kw">impl </span>CryptoDigest <span class="kw">for </span>A {
+    <span class="kw">const </span>PREFIX: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>[u8; <span class="number">15</span>] = <span class="string">b&quot;kimchi-circuit0&quot;</span>;
 }
 
-<span class="kw">let</span> <span class="ident">a</span> <span class="op">=</span> <span class="ident">A</span> { <span class="ident">thing</span>: <span class="number">1</span> };
-<span class="kw">let</span> <span class="ident">expected_result</span> <span class="op">=</span> [<span class="number">164</span>, <span class="number">8</span>, <span class="number">215</span>, <span class="number">27</span>, <span class="number">25</span>, <span class="number">36</span>, <span class="number">6</span>, <span class="number">167</span>, <span class="number">42</span>, <span class="number">86</span>, <span class="number">200</span>, <span class="number">203</span>, <span class="number">99</span>, <span class="number">74</span>, <span class="number">178</span>, <span class="number">134</span>, <span class="number">66</span>, <span class="number">168</span>, <span class="number">85</span>, <span class="number">7</span>, <span class="number">224</span>, <span class="number">189</span>, <span class="number">73</span>, <span class="number">63</span>, <span class="number">117</span>, <span class="number">23</span>, <span class="number">18</span>, <span class="number">193</span>, <span class="number">168</span>, <span class="number">176</span>, <span class="number">123</span>, <span class="number">80</span>];
-<span class="macro">assert_eq!</span>(<span class="ident">a</span>.<span class="ident">digest</span>(), <span class="ident">expected_result</span>);
+<span class="kw">let </span>a = A { thing: <span class="number">1 </span>};
+<span class="kw">let </span>expected_result = [<span class="number">164</span>, <span class="number">8</span>, <span class="number">215</span>, <span class="number">27</span>, <span class="number">25</span>, <span class="number">36</span>, <span class="number">6</span>, <span class="number">167</span>, <span class="number">42</span>, <span class="number">86</span>, <span class="number">200</span>, <span class="number">203</span>, <span class="number">99</span>, <span class="number">74</span>, <span class="number">178</span>, <span class="number">134</span>, <span class="number">66</span>, <span class="number">168</span>, <span class="number">85</span>, <span class="number">7</span>, <span class="number">224</span>, <span class="number">189</span>, <span class="number">73</span>, <span class="number">63</span>, <span class="number">117</span>, <span class="number">23</span>, <span class="number">18</span>, <span class="number">193</span>, <span class="number">168</span>, <span class="number">176</span>, <span class="number">123</span>, <span class="number">80</span>];
+<span class="macro">assert_eq!</span>(a.digest(), expected_result);
 
-<span class="kw">let</span> <span class="ident">b</span> <span class="op">=</span> <span class="ident">A</span> { <span class="ident">thing</span>: <span class="number">1</span> };
-<span class="macro">assert_eq!</span>(<span class="ident">a</span>.<span class="ident">digest</span>(), <span class="ident">b</span>.<span class="ident">digest</span>());</code></pre></div>
+<span class="kw">let </span>b = A { thing: <span class="number">1 </span>};
+<span class="macro">assert_eq!</span>(a.digest(), b.digest());</code></pre></div>
 <p>Warning: make sure not to reuse the same <code>PREFIX</code>
 for different types. This prefix is here to semantically
 distinguish the hash of different types
 (and thus different use-case).</p>
 </div></details><h2 id="traits" class="small-section-header"><a href="#traits">Traits</a></h2><div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="trait" href="trait.CryptoDigest.html" title="o1_utils::hasher::CryptoDigest trait">CryptoDigest</a></div><div class="item-right docblock-short"><p>This trait can be implemented on any type that implements <a href="https://docs.rs/serde/1.0.137/serde/ser/trait.Serialize.html" title="serde::Serialize">serde::Serialize</a>,
 in order to provide a <code>digest()</code> function that returns a unique hash.</p>
-</div></div></div></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="o1_utils" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</div></div></div></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="o1_utils" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>

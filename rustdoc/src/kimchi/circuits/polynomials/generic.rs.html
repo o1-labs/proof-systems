@@ -571,578 +571,578 @@
 <span id="571">571</span>
 <span id="572">572</span>
 <span id="573">573</span>
-</pre><pre class="rust"><code><span class="doccomment">//! This module implements the double generic gate.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This module implements the double generic gate.
 
-<span class="comment">//~ The double generic gate contains two generic gates.</span>
-<span class="comment">//~</span>
-<span class="comment">//~ A generic gate is simply the 2-fan in gate specified in the</span>
-<span class="comment">//~ vanilla PLONK protocol that allows us to do operations like:</span>
-<span class="comment">//~</span>
-<span class="comment">//~ * addition of two registers (into an output register)</span>
-<span class="comment">//~ * or multiplication of two registers</span>
-<span class="comment">//~ * equality of a register with a constant</span>
-<span class="comment">//~</span>
-<span class="comment">//~ More generally, the generic gate controls the coefficients $c_i$ in the equation:</span>
-<span class="comment">//~</span>
-<span class="comment">//~ $$c_0 \cdot l + c_1 \cdot r + c_2 \cdot o + c_3 \cdot (l \times r) + c_4$$</span>
-<span class="comment">//~</span>
-<span class="comment">//~ The layout of the gate is the following:</span>
-<span class="comment">//~</span>
-<span class="comment">//~ |  0 |  1 |  2 |  3 |  4 |  5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |</span>
-<span class="comment">//~ |:--:|:--:|:--:|:--:|:--:|:--:|:-:|:-:|:-:|:-:|:--:|:--:|:--:|:--:|:--:|</span>
-<span class="comment">//~ | l1 | r1 | o1 | l2 | r2 | o2 |   |   |   |   |    |    |    |    |    |</span>
-<span class="comment">//~</span>
-<span class="comment">//~ where l1, r1, and o1 (resp. l2, r2, o2)</span>
-<span class="comment">//~ are the left, right, and output registers</span>
-<span class="comment">//~ of the first (resp. second) generic gate.</span>
-<span class="comment">//~</span>
-<span class="comment">//~ The selectors are stored in the coefficient table as:</span>
-<span class="comment">//~</span>
-<span class="comment">//~ |  0 |  1 |  2 |  3 |  4 |  5 | 6  |  7 |  8 |  9 | 10 | 11 | 12 | 13 | 14 |</span>
-<span class="comment">//~ |:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|</span>
-<span class="comment">//~ | l1 | r1 | o1 | m1 | c1 | l2 | r2 | o2 | m2 | c2 |    |    |    |    |    |</span>
-<span class="comment">//~</span>
-<span class="comment">//~ with m1 (resp. m2) the mul selector for the first (resp. second) gate,</span>
-<span class="comment">//~ and c1 (resp. c2) the constant selector for the first (resp. second) gate.</span>
-<span class="comment">//~</span>
+</span><span class="comment">//~ The double generic gate contains two generic gates.
+//~
+//~ A generic gate is simply the 2-fan in gate specified in the
+//~ vanilla PLONK protocol that allows us to do operations like:
+//~
+//~ * addition of two registers (into an output register)
+//~ * or multiplication of two registers
+//~ * equality of a register with a constant
+//~
+//~ More generally, the generic gate controls the coefficients $c_i$ in the equation:
+//~
+//~ $$c_0 \cdot l + c_1 \cdot r + c_2 \cdot o + c_3 \cdot (l \times r) + c_4$$
+//~
+//~ The layout of the gate is the following:
+//~
+//~ |  0 |  1 |  2 |  3 |  4 |  5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
+//~ |:--:|:--:|:--:|:--:|:--:|:--:|:-:|:-:|:-:|:-:|:--:|:--:|:--:|:--:|:--:|
+//~ | l1 | r1 | o1 | l2 | r2 | o2 |   |   |   |   |    |    |    |    |    |
+//~
+//~ where l1, r1, and o1 (resp. l2, r2, o2)
+//~ are the left, right, and output registers
+//~ of the first (resp. second) generic gate.
+//~
+//~ The selectors are stored in the coefficient table as:
+//~
+//~ |  0 |  1 |  2 |  3 |  4 |  5 | 6  |  7 |  8 |  9 | 10 | 11 | 12 | 13 | 14 |
+//~ |:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+//~ | l1 | r1 | o1 | m1 | c1 | l2 | r2 | o2 | m2 | c2 |    |    |    |    |    |
+//~
+//~ with m1 (resp. m2) the mul selector for the first (resp. second) gate,
+//~ and c1 (resp. c2) the constant selector for the first (resp. second) gate.
+//~
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
-    <span class="ident">constraints::ConstraintSystem</span>,
-    <span class="ident">gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">GateType</span>},
-    <span class="ident">polynomial::COLUMNS</span>,
-    <span class="ident">wires::GateWires</span>,
+</span><span class="kw">use </span><span class="kw">crate</span>::circuits::{
+    constraints::ConstraintSystem,
+    gate::{CircuitGate, GateType},
+    polynomial::COLUMNS,
+    wires::GateWires,
 };
-<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">PrimeField</span>, <span class="ident">Zero</span>};
-<span class="kw">use</span> <span class="ident">ark_poly</span>::{
-    <span class="ident">univariate::DensePolynomial</span>, <span class="ident">EvaluationDomain</span>, <span class="ident">Evaluations</span>, <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>,
+<span class="kw">use </span>ark_ff::{FftField, PrimeField, Zero};
+<span class="kw">use </span>ark_poly::{
+    univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain <span class="kw">as </span>D,
 };
-<span class="kw">use</span> <span class="ident">array_init::array_init</span>;
-<span class="kw">use</span> <span class="ident">rayon::prelude</span>::<span class="kw-2">*</span>;
+<span class="kw">use </span>array_init::array_init;
+<span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 
-<span class="doccomment">/// Number of constraints produced by the gate.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">2</span>;
+<span class="doccomment">/// Number of constraints produced by the gate.
+</span><span class="kw">pub const </span>CONSTRAINTS: u32 = <span class="number">2</span>;
 
-<span class="doccomment">/// Number of generic of registers by a single generic gate</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">GENERIC_REGISTERS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">3</span>;
+<span class="doccomment">/// Number of generic of registers by a single generic gate
+</span><span class="kw">pub const </span>GENERIC_REGISTERS: usize = <span class="number">3</span>;
 
-<span class="doccomment">/// Number of coefficients used by a single generic gate</span>
-<span class="doccomment">/// Three are used for the registers, one for the multiplication,</span>
-<span class="doccomment">/// and one for the constant.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">GENERIC_COEFFS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">GENERIC_REGISTERS</span> <span class="op">+</span> <span class="number">1</span> <span class="comment">/* mul */</span> <span class="op">+</span> <span class="number">1</span> <span class="comment">/* cst */</span>;
+<span class="doccomment">/// Number of coefficients used by a single generic gate
+/// Three are used for the registers, one for the multiplication,
+/// and one for the constant.
+</span><span class="kw">pub const </span>GENERIC_COEFFS: usize = GENERIC_REGISTERS + <span class="number">1 </span><span class="comment">/* mul */ </span>+ <span class="number">1 </span><span class="comment">/* cst */</span>;
 
-<span class="doccomment">/// The double generic gate actually contains two generic gates.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">DOUBLE_GENERIC_COEFFS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">GENERIC_COEFFS</span> <span class="op">*</span> <span class="number">2</span>;
+<span class="doccomment">/// The double generic gate actually contains two generic gates.
+</span><span class="kw">pub const </span>DOUBLE_GENERIC_COEFFS: usize = GENERIC_COEFFS * <span class="number">2</span>;
 
-<span class="doccomment">/// Number of generic of registers by a double generic gate.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">DOUBLE_GENERIC_REGISTERS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">GENERIC_REGISTERS</span> <span class="op">*</span> <span class="number">2</span>;
+<span class="doccomment">/// Number of generic of registers by a double generic gate.
+</span><span class="kw">pub const </span>DOUBLE_GENERIC_REGISTERS: usize = GENERIC_REGISTERS * <span class="number">2</span>;
 
-<span class="doccomment">/// The different type of computation that are possible with a generic gate.</span>
-<span class="doccomment">/// This type is useful to create a generic gate via the [CircuitGate::create_generic_gadget] function.</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">GenericGateSpec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Add two values.</span>
-    <span class="ident">Add</span> {
-        <span class="doccomment">/// Optional coefficient that can be multiplied with the left operand.</span>
-        <span class="ident">left_coeff</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-        <span class="doccomment">/// Optional coefficient that can be multiplied with the right operand.</span>
-        <span class="ident">right_coeff</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-        <span class="doccomment">/// Optional coefficient that can be multiplied with the output.</span>
-        <span class="ident">output_coeff</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
+<span class="doccomment">/// The different type of computation that are possible with a generic gate.
+/// This type is useful to create a generic gate via the [CircuitGate::create_generic_gadget] function.
+</span><span class="kw">pub enum </span>GenericGateSpec&lt;F&gt; {
+    <span class="doccomment">/// Add two values.
+    </span>Add {
+        <span class="doccomment">/// Optional coefficient that can be multiplied with the left operand.
+        </span>left_coeff: <span class="prelude-ty">Option</span>&lt;F&gt;,
+        <span class="doccomment">/// Optional coefficient that can be multiplied with the right operand.
+        </span>right_coeff: <span class="prelude-ty">Option</span>&lt;F&gt;,
+        <span class="doccomment">/// Optional coefficient that can be multiplied with the output.
+        </span>output_coeff: <span class="prelude-ty">Option</span>&lt;F&gt;,
     },
-    <span class="doccomment">/// Multiplication of two values</span>
-    <span class="ident">Mul</span> {
-        <span class="doccomment">/// Optional coefficient that can be multiplied with the output.</span>
-        <span class="ident">output_coeff</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-        <span class="doccomment">/// Optional coefficient that can be multiplied with the multiplication result.</span>
-        <span class="ident">mul_coeff</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Multiplication of two values
+    </span>Mul {
+        <span class="doccomment">/// Optional coefficient that can be multiplied with the output.
+        </span>output_coeff: <span class="prelude-ty">Option</span>&lt;F&gt;,
+        <span class="doccomment">/// Optional coefficient that can be multiplied with the multiplication result.
+        </span>mul_coeff: <span class="prelude-ty">Option</span>&lt;F&gt;,
     },
-    <span class="doccomment">/// A constant, the constructor contains the constant itself</span>
-    <span class="ident">Const</span>(<span class="ident">F</span>),
-    <span class="doccomment">/// A public gate</span>
-    <span class="ident">Pub</span>,
+    <span class="doccomment">/// A constant, the constructor contains the constant itself
+    </span>Const(F),
+    <span class="doccomment">/// A public gate
+    </span>Pub,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// This allows you to create two generic gates that will fit in one row, check [Self::create_generic_gadget] for a better to way to create these gates.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_generic</span>(<span class="ident">wires</span>: <span class="ident">GateWires</span>, <span class="ident">c</span>: [<span class="ident">F</span>; <span class="ident">GENERIC_COEFFS</span> <span class="op">*</span> <span class="number">2</span>]) -&gt; <span class="self">Self</span> {
-        <span class="ident">CircuitGate</span> {
-            <span class="ident">typ</span>: <span class="ident">GateType::Generic</span>,
-            <span class="ident">wires</span>,
-            <span class="ident">coeffs</span>: <span class="ident">c</span>.<span class="ident">to_vec</span>(),
+<span class="kw">impl</span>&lt;F: PrimeField&gt; CircuitGate&lt;F&gt; {
+    <span class="doccomment">/// This allows you to create two generic gates that will fit in one row, check [Self::create_generic_gadget] for a better to way to create these gates.
+    </span><span class="kw">pub fn </span>create_generic(wires: GateWires, c: [F; GENERIC_COEFFS * <span class="number">2</span>]) -&gt; <span class="self">Self </span>{
+        CircuitGate {
+            typ: GateType::Generic,
+            wires,
+            coeffs: c.to_vec(),
         }
     }
 
-    <span class="doccomment">/// This allows you to create two generic gates by passing the desired</span>
-    <span class="doccomment">/// `gate1` and `gate2` as two [GenericGateSpec].</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_generic_gadget</span>(
-        <span class="ident">wires</span>: <span class="ident">GateWires</span>,
-        <span class="ident">gate1</span>: <span class="ident">GenericGateSpec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-        <span class="ident">gate2</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">GenericGateSpec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">coeffs</span> <span class="op">=</span> [<span class="ident">F::zero</span>(); <span class="ident">GENERIC_COEFFS</span> <span class="op">*</span> <span class="number">2</span>];
-        <span class="kw">match</span> <span class="ident">gate1</span> {
-            <span class="ident">GenericGateSpec::Add</span> {
-                <span class="ident">left_coeff</span>,
-                <span class="ident">right_coeff</span>,
-                <span class="ident">output_coeff</span>,
+    <span class="doccomment">/// This allows you to create two generic gates by passing the desired
+    /// `gate1` and `gate2` as two [GenericGateSpec].
+    </span><span class="kw">pub fn </span>create_generic_gadget(
+        wires: GateWires,
+        gate1: GenericGateSpec&lt;F&gt;,
+        gate2: <span class="prelude-ty">Option</span>&lt;GenericGateSpec&lt;F&gt;&gt;,
+    ) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>coeffs = [F::zero(); GENERIC_COEFFS * <span class="number">2</span>];
+        <span class="kw">match </span>gate1 {
+            GenericGateSpec::Add {
+                left_coeff,
+                right_coeff,
+                output_coeff,
             } =&gt; {
-                <span class="ident">coeffs</span>[<span class="number">0</span>] <span class="op">=</span> <span class="ident">left_coeff</span>.<span class="ident">unwrap_or_else</span>(<span class="ident">F::one</span>);
-                <span class="ident">coeffs</span>[<span class="number">1</span>] <span class="op">=</span> <span class="ident">right_coeff</span>.<span class="ident">unwrap_or_else</span>(<span class="ident">F::one</span>);
-                <span class="ident">coeffs</span>[<span class="number">2</span>] <span class="op">=</span> <span class="ident">output_coeff</span>.<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="op">-</span><span class="ident">F::one</span>());
+                coeffs[<span class="number">0</span>] = left_coeff.unwrap_or_else(F::one);
+                coeffs[<span class="number">1</span>] = right_coeff.unwrap_or_else(F::one);
+                coeffs[<span class="number">2</span>] = output_coeff.unwrap_or_else(|| -F::one());
             }
-            <span class="ident">GenericGateSpec::Mul</span> {
-                <span class="ident">output_coeff</span>,
-                <span class="ident">mul_coeff</span>,
+            GenericGateSpec::Mul {
+                output_coeff,
+                mul_coeff,
             } =&gt; {
-                <span class="ident">coeffs</span>[<span class="number">2</span>] <span class="op">=</span> <span class="ident">output_coeff</span>.<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="op">-</span><span class="ident">F::one</span>());
-                <span class="ident">coeffs</span>[<span class="number">3</span>] <span class="op">=</span> <span class="ident">mul_coeff</span>.<span class="ident">unwrap_or_else</span>(<span class="ident">F::one</span>);
+                coeffs[<span class="number">2</span>] = output_coeff.unwrap_or_else(|| -F::one());
+                coeffs[<span class="number">3</span>] = mul_coeff.unwrap_or_else(F::one);
             }
-            <span class="ident">GenericGateSpec::Const</span>(<span class="ident">cst</span>) =&gt; {
-                <span class="ident">coeffs</span>[<span class="number">0</span>] <span class="op">=</span> <span class="ident">F::one</span>();
-                <span class="ident">coeffs</span>[<span class="number">4</span>] <span class="op">=</span> <span class="op">-</span><span class="ident">cst</span>;
+            GenericGateSpec::Const(cst) =&gt; {
+                coeffs[<span class="number">0</span>] = F::one();
+                coeffs[<span class="number">4</span>] = -cst;
             }
-            <span class="ident">GenericGateSpec::Pub</span> =&gt; {
-                <span class="ident">coeffs</span>[<span class="number">0</span>] <span class="op">=</span> <span class="ident">F::one</span>();
+            GenericGateSpec::Pub =&gt; {
+                coeffs[<span class="number">0</span>] = F::one();
             }
         };
-        <span class="kw">match</span> <span class="ident">gate2</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">GenericGateSpec::Add</span> {
-                <span class="ident">left_coeff</span>,
-                <span class="ident">right_coeff</span>,
-                <span class="ident">output_coeff</span>,
+        <span class="kw">match </span>gate2 {
+            <span class="prelude-val">Some</span>(GenericGateSpec::Add {
+                left_coeff,
+                right_coeff,
+                output_coeff,
             }) =&gt; {
-                <span class="ident">coeffs</span>[<span class="number">5</span>] <span class="op">=</span> <span class="ident">left_coeff</span>.<span class="ident">unwrap_or_else</span>(<span class="ident">F::one</span>);
-                <span class="ident">coeffs</span>[<span class="number">6</span>] <span class="op">=</span> <span class="ident">right_coeff</span>.<span class="ident">unwrap_or_else</span>(<span class="ident">F::one</span>);
-                <span class="ident">coeffs</span>[<span class="number">7</span>] <span class="op">=</span> <span class="ident">output_coeff</span>.<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="op">-</span><span class="ident">F::one</span>());
+                coeffs[<span class="number">5</span>] = left_coeff.unwrap_or_else(F::one);
+                coeffs[<span class="number">6</span>] = right_coeff.unwrap_or_else(F::one);
+                coeffs[<span class="number">7</span>] = output_coeff.unwrap_or_else(|| -F::one());
             }
-            <span class="prelude-val">Some</span>(<span class="ident">GenericGateSpec::Mul</span> {
-                <span class="ident">output_coeff</span>,
-                <span class="ident">mul_coeff</span>,
+            <span class="prelude-val">Some</span>(GenericGateSpec::Mul {
+                output_coeff,
+                mul_coeff,
             }) =&gt; {
-                <span class="ident">coeffs</span>[<span class="number">7</span>] <span class="op">=</span> <span class="ident">output_coeff</span>.<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="op">-</span><span class="ident">F::one</span>());
-                <span class="ident">coeffs</span>[<span class="number">8</span>] <span class="op">=</span> <span class="ident">mul_coeff</span>.<span class="ident">unwrap_or_else</span>(<span class="ident">F::one</span>);
+                coeffs[<span class="number">7</span>] = output_coeff.unwrap_or_else(|| -F::one());
+                coeffs[<span class="number">8</span>] = mul_coeff.unwrap_or_else(F::one);
             }
-            <span class="prelude-val">Some</span>(<span class="ident">GenericGateSpec::Const</span>(<span class="ident">cst</span>)) =&gt; {
-                <span class="ident">coeffs</span>[<span class="number">5</span>] <span class="op">=</span> <span class="ident">F::one</span>();
-                <span class="ident">coeffs</span>[<span class="number">9</span>] <span class="op">=</span> <span class="op">-</span><span class="ident">cst</span>;
+            <span class="prelude-val">Some</span>(GenericGateSpec::Const(cst)) =&gt; {
+                coeffs[<span class="number">5</span>] = F::one();
+                coeffs[<span class="number">9</span>] = -cst;
             }
-            <span class="prelude-val">Some</span>(<span class="ident">GenericGateSpec::Pub</span>) =&gt; {
-                <span class="ident">coeffs</span>[<span class="number">5</span>] <span class="op">=</span> <span class="ident">F::one</span>();
+            <span class="prelude-val">Some</span>(GenericGateSpec::Pub) =&gt; {
+                coeffs[<span class="number">5</span>] = F::one();
                 <span class="macro">unimplemented!</span>();
             }
-            <span class="prelude-val">None</span> =&gt; (),
+            <span class="prelude-val">None </span>=&gt; (),
         };
-        <span class="ident"><span class="self">Self</span>::create_generic</span>(<span class="ident">wires</span>, <span class="ident">coeffs</span>)
+        <span class="self">Self</span>::create_generic(wires, coeffs)
     }
 }
 
-<span class="comment">// -------------------------------------------------</span>
+<span class="comment">// -------------------------------------------------
 
-<span class="comment">//~ The constraints:</span>
-<span class="comment">//~</span>
-<span class="comment">//~ * $w_0 \cdot c_0 + w_1 \cdot c_1 + w_2 \cdot c_2 + w_0 \cdot w_1 \cdot c_3 + c_4$</span>
-<span class="comment">//~ * $w_3 \cdot c_5 + w_4 \cdot c_6 + w_5 \cdot c_7 + w_3 w_4 c_8 + c_9$</span>
-<span class="comment">//~</span>
-<span class="comment">//~ where the $c_i$ are the [coefficients]().</span>
+//~ The constraints:
+//~
+//~ * $w_0 \cdot c_0 + w_1 \cdot c_1 + w_2 \cdot c_2 + w_0 \cdot w_1 \cdot c_3 + c_4$
+//~ * $w_3 \cdot c_5 + w_4 \cdot c_6 + w_5 \cdot c_7 + w_3 w_4 c_8 + c_9$
+//~
+//~ where the $c_i$ are the [coefficients]().
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> <span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// generic constraint quotient poly contribution computation</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">gnrc_quot</span>(
+</span><span class="kw">impl</span>&lt;F: PrimeField&gt; ConstraintSystem&lt;F&gt; {
+    <span class="doccomment">/// generic constraint quotient poly contribution computation
+    </span><span class="kw">pub fn </span>gnrc_quot(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="kw-2">mut</span> <span class="ident">alphas</span>: <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">F</span><span class="op">&gt;</span>,
-        <span class="ident">witness_cols_d4</span>: <span class="kw-2">&amp;</span>[<span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
-    ) -&gt; <span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">generic_gate</span> <span class="op">=</span> <span class="op">|</span><span class="ident">alpha_pow</span>, <span class="ident">coeff_offset</span>, <span class="ident">register_offset</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">Evaluations::from_vec_and_domain</span>(
-                <span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="self">self</span>.<span class="ident">domain</span>.<span class="ident">d4</span>.<span class="ident">size</span>()],
-                <span class="self">self</span>.<span class="ident">domain</span>.<span class="ident">d4</span>,
+        <span class="kw-2">mut </span>alphas: <span class="kw">impl </span>Iterator&lt;Item = F&gt;,
+        witness_cols_d4: <span class="kw-2">&amp;</span>[Evaluations&lt;F, D&lt;F&gt;&gt;; COLUMNS],
+    ) -&gt; Evaluations&lt;F, D&lt;F&gt;&gt; {
+        <span class="kw">let </span>generic_gate = |alpha_pow, coeff_offset, register_offset| {
+            <span class="kw">let </span><span class="kw-2">mut </span>res = Evaluations::from_vec_and_domain(
+                <span class="macro">vec!</span>[F::zero(); <span class="self">self</span>.domain.d4.size()],
+                <span class="self">self</span>.domain.d4,
             );
 
-            <span class="comment">// addition</span>
-            <span class="kw">for</span> (<span class="ident">witness_d4</span>, <span class="ident">selector_d8</span>) <span class="kw">in</span> <span class="ident">witness_cols_d4</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">skip</span>(<span class="ident">register_offset</span>)
-                .<span class="ident">zip</span>(<span class="self">self</span>.<span class="ident">coefficients8</span>.<span class="ident">iter</span>().<span class="ident">skip</span>(<span class="ident">coeff_offset</span>))
-                .<span class="ident">take</span>(<span class="ident">GENERIC_REGISTERS</span>)
+            <span class="comment">// addition
+            </span><span class="kw">for </span>(witness_d4, selector_d8) <span class="kw">in </span>witness_cols_d4
+                .iter()
+                .skip(register_offset)
+                .zip(<span class="self">self</span>.coefficients8.iter().skip(coeff_offset))
+                .take(GENERIC_REGISTERS)
             {
-                <span class="ident">res</span>.<span class="ident">evals</span>
-                    .<span class="ident">par_iter_mut</span>()
-                    .<span class="ident">enumerate</span>()
-                    .<span class="ident">for_each</span>(<span class="op">|</span>(<span class="ident">i</span>, <span class="ident">eval</span>)<span class="op">|</span> <span class="kw-2">*</span><span class="ident">eval</span> <span class="op">+</span><span class="op">=</span> <span class="ident">witness_d4</span>.<span class="ident">evals</span>[<span class="ident">i</span>] <span class="op">*</span> <span class="ident">selector_d8</span>[<span class="number">2</span> <span class="op">*</span> <span class="ident">i</span>])
+                res.evals
+                    .par_iter_mut()
+                    .enumerate()
+                    .for_each(|(i, eval)| <span class="kw-2">*</span>eval += witness_d4.evals[i] * selector_d8[<span class="number">2 </span>* i])
             }
 
-            <span class="comment">// multiplication</span>
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mul</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">witness_cols_d4</span>[<span class="ident">register_offset</span>] <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">witness_cols_d4</span>[<span class="ident">register_offset</span> <span class="op">+</span> <span class="number">1</span>];
-            <span class="kw">let</span> <span class="ident">mul_selector_d8</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">coefficients8</span>[<span class="ident">coeff_offset</span> <span class="op">+</span> <span class="number">3</span>];
-            <span class="ident">mul</span>.<span class="ident">evals</span>
-                .<span class="ident">par_iter_mut</span>()
-                .<span class="ident">enumerate</span>()
-                .<span class="ident">for_each</span>(<span class="op">|</span>(<span class="ident">i</span>, <span class="ident">eval</span>)<span class="op">|</span> <span class="kw-2">*</span><span class="ident">eval</span> <span class="kw-2">*</span><span class="op">=</span> <span class="ident">mul_selector_d8</span>[<span class="number">2</span> <span class="op">*</span> <span class="ident">i</span>]);
-            <span class="ident">res</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">mul</span>;
+            <span class="comment">// multiplication
+            </span><span class="kw">let </span><span class="kw-2">mut </span>mul = <span class="kw-2">&amp;</span>witness_cols_d4[register_offset] * <span class="kw-2">&amp;</span>witness_cols_d4[register_offset + <span class="number">1</span>];
+            <span class="kw">let </span>mul_selector_d8 = <span class="kw-2">&amp;</span><span class="self">self</span>.coefficients8[coeff_offset + <span class="number">3</span>];
+            mul.evals
+                .par_iter_mut()
+                .enumerate()
+                .for_each(|(i, eval)| <span class="kw-2">*</span>eval <span class="kw-2">*</span>= mul_selector_d8[<span class="number">2 </span>* i]);
+            res += <span class="kw-2">&amp;</span>mul;
 
-            <span class="comment">// constant</span>
-            <span class="kw">let</span> <span class="ident">constant_d8</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">coefficients8</span>[<span class="ident">coeff_offset</span> <span class="op">+</span> <span class="number">4</span>];
-            <span class="ident">res</span>.<span class="ident">evals</span>
-                .<span class="ident">par_iter_mut</span>()
-                .<span class="ident">enumerate</span>()
-                .<span class="ident">for_each</span>(<span class="op">|</span>(<span class="ident">i</span>, <span class="ident">e</span>)<span class="op">|</span> <span class="kw-2">*</span><span class="ident">e</span> <span class="op">+</span><span class="op">=</span> <span class="ident">constant_d8</span>[<span class="number">2</span> <span class="op">*</span> <span class="ident">i</span>]);
+            <span class="comment">// constant
+            </span><span class="kw">let </span>constant_d8 = <span class="kw-2">&amp;</span><span class="self">self</span>.coefficients8[coeff_offset + <span class="number">4</span>];
+            res.evals
+                .par_iter_mut()
+                .enumerate()
+                .for_each(|(i, e)| <span class="kw-2">*</span>e += constant_d8[<span class="number">2 </span>* i]);
 
-            <span class="comment">// alpha</span>
-            <span class="kw">let</span> <span class="ident">alpha_pow</span> <span class="op">=</span> {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">precomputations</span>().<span class="ident">constant_1_d4</span>.<span class="ident">clone</span>();
-                <span class="ident">res</span>.<span class="ident">evals</span>.<span class="ident">par_iter_mut</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="kw-2">*</span><span class="ident">x</span> <span class="kw-2">*</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">alpha_pow</span>);
-                <span class="ident">res</span>
+            <span class="comment">// alpha
+            </span><span class="kw">let </span>alpha_pow = {
+                <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="self">self</span>.precomputations().constant_1_d4.clone();
+                res.evals.par_iter_mut().for_each(|x| <span class="kw-2">*</span>x <span class="kw-2">*</span>= <span class="kw-2">&amp;</span>alpha_pow);
+                res
             };
 
-            <span class="kw-2">&amp;</span><span class="ident">res</span> <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">alpha_pow</span>
+            <span class="kw-2">&amp;</span>res * <span class="kw-2">&amp;</span>alpha_pow
         };
 
-        <span class="kw">let</span> <span class="ident">alpha_pow1</span> <span class="op">=</span> <span class="ident">alphas</span>
-            .<span class="ident">next</span>()
-            .<span class="ident">expect</span>(<span class="string">&quot;not enough powers of alpha for the generic gate&quot;</span>);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">generic_gate</span>(<span class="ident">alpha_pow1</span>, <span class="number">0</span>, <span class="number">0</span>);
+        <span class="kw">let </span>alpha_pow1 = alphas
+            .next()
+            .expect(<span class="string">&quot;not enough powers of alpha for the generic gate&quot;</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>res = generic_gate(alpha_pow1, <span class="number">0</span>, <span class="number">0</span>);
 
-        <span class="kw">let</span> <span class="ident">alpha_pow2</span> <span class="op">=</span> <span class="ident">alphas</span>
-            .<span class="ident">next</span>()
-            .<span class="ident">expect</span>(<span class="string">&quot;not enough powers of alpha for the generic gate&quot;</span>);
-        <span class="ident">res</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">generic_gate</span>(<span class="ident">alpha_pow2</span>, <span class="ident">GENERIC_COEFFS</span>, <span class="ident">GENERIC_REGISTERS</span>);
+        <span class="kw">let </span>alpha_pow2 = alphas
+            .next()
+            .expect(<span class="string">&quot;not enough powers of alpha for the generic gate&quot;</span>);
+        res += <span class="kw-2">&amp;</span>generic_gate(alpha_pow2, GENERIC_COEFFS, GENERIC_REGISTERS);
 
-        <span class="comment">// generic selector</span>
-        <span class="kw-2">&amp;</span><span class="ident">res</span> <span class="op">*</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">generic4</span>
+        <span class="comment">// generic selector
+        </span><span class="kw-2">&amp;</span>res * <span class="kw-2">&amp;</span><span class="self">self</span>.generic4
     }
 
-    <span class="doccomment">/// produces</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```ignore</span>
-    <span class="doccomment">/// alpha * generic(zeta) * w[0](zeta) * w[1](zeta),</span>
-    <span class="doccomment">/// alpha * generic(zeta) * w[0](zeta),</span>
-    <span class="doccomment">/// alpha * generic(zeta) * w[1](zeta),</span>
-    <span class="doccomment">/// alpha * generic(zeta) * w[2](zeta)</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">gnrc_scalars</span>(
-        <span class="kw-2">mut</span> <span class="ident">alphas</span>: <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">F</span><span class="op">&gt;</span>,
-        <span class="ident">w_zeta</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>; <span class="ident">COLUMNS</span>],
-        <span class="ident">generic_zeta</span>: <span class="ident">F</span>,
-    ) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-        <span class="comment">// setup</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+    <span class="doccomment">/// produces
+    ///
+    /// ```ignore
+    /// alpha * generic(zeta) * w[0](zeta) * w[1](zeta),
+    /// alpha * generic(zeta) * w[0](zeta),
+    /// alpha * generic(zeta) * w[1](zeta),
+    /// alpha * generic(zeta) * w[2](zeta)
+    /// ```
+    </span><span class="kw">pub fn </span>gnrc_scalars(
+        <span class="kw-2">mut </span>alphas: <span class="kw">impl </span>Iterator&lt;Item = F&gt;,
+        w_zeta: <span class="kw-2">&amp;</span>[F; COLUMNS],
+        generic_zeta: F,
+    ) -&gt; Vec&lt;F&gt; {
+        <span class="comment">// setup
+        </span><span class="kw">let </span><span class="kw-2">mut </span>res = <span class="macro">vec!</span>[];
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">generic_gate</span> <span class="op">=</span> <span class="op">|</span><span class="ident">alpha_pow</span>, <span class="ident">register_offset</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">alpha_generic</span> <span class="op">=</span> <span class="ident">alpha_pow</span> <span class="op">*</span> <span class="ident">generic_zeta</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>generic_gate = |alpha_pow, register_offset| {
+            <span class="kw">let </span>alpha_generic = alpha_pow * generic_zeta;
 
-            <span class="comment">// addition</span>
-            <span class="ident">res</span>.<span class="ident">push</span>(<span class="ident">alpha_generic</span> <span class="op">*</span> <span class="ident">w_zeta</span>[<span class="ident">register_offset</span>]);
-            <span class="ident">res</span>.<span class="ident">push</span>(<span class="ident">alpha_generic</span> <span class="op">*</span> <span class="ident">w_zeta</span>[<span class="ident">register_offset</span> <span class="op">+</span> <span class="number">1</span>]);
-            <span class="ident">res</span>.<span class="ident">push</span>(<span class="ident">alpha_generic</span> <span class="op">*</span> <span class="ident">w_zeta</span>[<span class="ident">register_offset</span> <span class="op">+</span> <span class="number">2</span>]);
+            <span class="comment">// addition
+            </span>res.push(alpha_generic * w_zeta[register_offset]);
+            res.push(alpha_generic * w_zeta[register_offset + <span class="number">1</span>]);
+            res.push(alpha_generic * w_zeta[register_offset + <span class="number">2</span>]);
 
-            <span class="comment">// multplication</span>
-            <span class="ident">res</span>.<span class="ident">push</span>(<span class="ident">alpha_generic</span> <span class="op">*</span> <span class="ident">w_zeta</span>[<span class="ident">register_offset</span>] <span class="op">*</span> <span class="ident">w_zeta</span>[<span class="ident">register_offset</span> <span class="op">+</span> <span class="number">1</span>]);
+            <span class="comment">// multplication
+            </span>res.push(alpha_generic * w_zeta[register_offset] * w_zeta[register_offset + <span class="number">1</span>]);
 
-            <span class="comment">// constant</span>
-            <span class="ident">res</span>.<span class="ident">push</span>(<span class="ident">alpha_generic</span>);
+            <span class="comment">// constant
+            </span>res.push(alpha_generic);
         };
 
-        <span class="kw">let</span> <span class="ident">alpha_pow1</span> <span class="op">=</span> <span class="ident">alphas</span>
-            .<span class="ident">next</span>()
-            .<span class="ident">expect</span>(<span class="string">&quot;not enough alpha powers for generic gate&quot;</span>);
-        <span class="ident">generic_gate</span>(<span class="ident">alpha_pow1</span>, <span class="number">0</span>);
+        <span class="kw">let </span>alpha_pow1 = alphas
+            .next()
+            .expect(<span class="string">&quot;not enough alpha powers for generic gate&quot;</span>);
+        generic_gate(alpha_pow1, <span class="number">0</span>);
 
-        <span class="kw">let</span> <span class="ident">alpha_pow2</span> <span class="op">=</span> <span class="ident">alphas</span>
-            .<span class="ident">next</span>()
-            .<span class="ident">expect</span>(<span class="string">&quot;not enough alpha powers for generic gate&quot;</span>);
-        <span class="ident">generic_gate</span>(<span class="ident">alpha_pow2</span>, <span class="ident">GENERIC_REGISTERS</span>);
+        <span class="kw">let </span>alpha_pow2 = alphas
+            .next()
+            .expect(<span class="string">&quot;not enough alpha powers for generic gate&quot;</span>);
+        generic_gate(alpha_pow2, GENERIC_REGISTERS);
 
-        <span class="ident">res</span>
+        res
     }
 
-    <span class="doccomment">/// generic constraint linearization poly contribution computation</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">gnrc_lnrz</span>(
+    <span class="doccomment">/// generic constraint linearization poly contribution computation
+    </span><span class="kw">pub fn </span>gnrc_lnrz(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">alphas</span>: <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">F</span><span class="op">&gt;</span>,
-        <span class="ident">w_zeta</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>; <span class="ident">COLUMNS</span>],
-        <span class="ident">generic_zeta</span>: <span class="ident">F</span>,
-    ) -&gt; <span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">d1</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">domain</span>.<span class="ident">d1</span>;
-        <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">d1</span>.<span class="ident">size</span>();
+        alphas: <span class="kw">impl </span>Iterator&lt;Item = F&gt;,
+        w_zeta: <span class="kw-2">&amp;</span>[F; COLUMNS],
+        generic_zeta: F,
+    ) -&gt; Evaluations&lt;F, D&lt;F&gt;&gt; {
+        <span class="kw">let </span>d1 = <span class="self">self</span>.domain.d1;
+        <span class="kw">let </span>n = d1.size();
 
-        <span class="comment">// get scalars</span>
-        <span class="kw">let</span> <span class="ident">scalars</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::gnrc_scalars</span>(<span class="ident">alphas</span>, <span class="ident">w_zeta</span>, <span class="ident">generic_zeta</span>);
+        <span class="comment">// get scalars
+        </span><span class="kw">let </span>scalars = <span class="self">Self</span>::gnrc_scalars(alphas, w_zeta, generic_zeta);
 
-        <span class="comment">//</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">Evaluations::from_vec_and_domain</span>(<span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="ident">n</span>], <span class="ident">d1</span>);
+        <span class="comment">//
+        </span><span class="kw">let </span><span class="kw-2">mut </span>res = Evaluations::from_vec_and_domain(<span class="macro">vec!</span>[F::zero(); n], d1);
 
-        <span class="kw">let</span> <span class="ident">scale</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">coefficients8</span>[<span class="number">0</span>].<span class="ident">evals</span>.<span class="ident">len</span>() <span class="op">/</span> <span class="ident">n</span>;
+        <span class="kw">let </span>scale = <span class="self">self</span>.coefficients8[<span class="number">0</span>].evals.len() / n;
 
-        <span class="kw">let</span> <span class="ident">coeffs</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">coefficients8</span>.<span class="ident">iter</span>();
-        <span class="kw">for</span> (<span class="ident">scalar</span>, <span class="ident">coeff</span>) <span class="kw">in</span> <span class="ident">scalars</span>.<span class="ident">into_iter</span>().<span class="ident">zip</span>(<span class="ident">coeffs</span>) {
-            <span class="ident">res</span>.<span class="ident">evals</span>.<span class="ident">par_iter_mut</span>().<span class="ident">enumerate</span>().<span class="ident">for_each</span>(<span class="op">|</span>(<span class="ident">i</span>, <span class="ident">e</span>)<span class="op">|</span> {
-                <span class="kw-2">*</span><span class="ident">e</span> <span class="op">+</span><span class="op">=</span> <span class="ident">scalar</span> <span class="op">*</span> <span class="ident">coeff</span>[<span class="ident">scale</span> <span class="op">*</span> <span class="ident">i</span>];
+        <span class="kw">let </span>coeffs = <span class="self">self</span>.coefficients8.iter();
+        <span class="kw">for </span>(scalar, coeff) <span class="kw">in </span>scalars.into_iter().zip(coeffs) {
+            res.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
+                <span class="kw-2">*</span>e += scalar * coeff[scale * i];
             });
         }
 
-        <span class="comment">// l * qwm[0] + r * qwm[1] + o * qwm[2] + l * r * qmm + qc</span>
-        <span class="ident">res</span>
+        <span class="comment">// l * qwm[0] + r * qwm[1] + o * qwm[2] + l * r * qmm + qc
+        </span>res
     }
 }
 
-<span class="comment">// -------------------------------------------------</span>
+<span class="comment">// -------------------------------------------------
 
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">testing</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::wires::Wire</span>;
-    <span class="kw">use</span> <span class="ident">itertools::iterate</span>;
+</span><span class="kw">pub mod </span>testing {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span><span class="kw">crate</span>::circuits::wires::Wire;
+    <span class="kw">use </span>itertools::iterate;
 
-    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-        <span class="doccomment">/// verifies that the generic gate constraints are solved by the witness</span>
-        <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_generic</span>(
+    <span class="kw">impl</span>&lt;F: PrimeField&gt; CircuitGate&lt;F&gt; {
+        <span class="doccomment">/// verifies that the generic gate constraints are solved by the witness
+        </span><span class="kw">pub fn </span>verify_generic(
             <span class="kw-2">&amp;</span><span class="self">self</span>,
-            <span class="ident">row</span>: <span class="ident">usize</span>,
-            <span class="ident">witness</span>: <span class="kw-2">&amp;</span>[<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
-            <span class="ident">public</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>],
-        ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
-            <span class="comment">// assignments</span>
-            <span class="kw">let</span> <span class="ident">this</span>: [<span class="ident">F</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">witness</span>[<span class="ident">i</span>][<span class="ident">row</span>]);
+            row: usize,
+            witness: <span class="kw-2">&amp;</span>[Vec&lt;F&gt;; COLUMNS],
+            public: <span class="kw-2">&amp;</span>[F],
+        ) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
+            <span class="comment">// assignments
+            </span><span class="kw">let </span>this: [F; COLUMNS] = array_init(|i| witness[i][row]);
 
-            <span class="comment">// constants</span>
-            <span class="kw">let</span> <span class="ident">zero</span> <span class="op">=</span> <span class="ident">F::zero</span>();
+            <span class="comment">// constants
+            </span><span class="kw">let </span>zero = F::zero();
 
-            <span class="comment">// check if it&#39;s the correct gate</span>
-            <span class="macro">ensure_eq!</span>(<span class="self">self</span>.<span class="ident">typ</span>, <span class="ident">GateType::Generic</span>, <span class="string">&quot;generic: incorrect gate&quot;</span>);
+            <span class="comment">// check if it&#39;s the correct gate
+            </span><span class="macro">ensure_eq!</span>(<span class="self">self</span>.typ, GateType::Generic, <span class="string">&quot;generic: incorrect gate&quot;</span>);
 
-            <span class="kw">let</span> <span class="ident">check_single</span> <span class="op">=</span> <span class="op">|</span><span class="ident">coeffs_offset</span>, <span class="ident">register_offset</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">get</span> <span class="op">=</span> <span class="op">|</span><span class="ident">offset</span><span class="op">|</span> {
-                    <span class="self">self</span>.<span class="ident">coeffs</span>
-                        .<span class="ident">get</span>(<span class="ident">offset</span>)
-                        .<span class="ident">cloned</span>()
-                        .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">F::zero</span>())
+            <span class="kw">let </span>check_single = |coeffs_offset, register_offset| {
+                <span class="kw">let </span>get = |offset| {
+                    <span class="self">self</span>.coeffs
+                        .get(offset)
+                        .cloned()
+                        .unwrap_or_else(|| F::zero())
                 };
-                <span class="kw">let</span> <span class="ident">l_coeff</span> <span class="op">=</span> <span class="ident">get</span>(<span class="ident">coeffs_offset</span>);
-                <span class="kw">let</span> <span class="ident">r_coeff</span> <span class="op">=</span> <span class="ident">get</span>(<span class="ident">coeffs_offset</span> <span class="op">+</span> <span class="number">1</span>);
-                <span class="kw">let</span> <span class="ident">o_coeff</span> <span class="op">=</span> <span class="ident">get</span>(<span class="ident">coeffs_offset</span> <span class="op">+</span> <span class="number">2</span>);
-                <span class="kw">let</span> <span class="ident">m_coeff</span> <span class="op">=</span> <span class="ident">get</span>(<span class="ident">coeffs_offset</span> <span class="op">+</span> <span class="number">3</span>);
-                <span class="kw">let</span> <span class="ident">c_coeff</span> <span class="op">=</span> <span class="ident">get</span>(<span class="ident">coeffs_offset</span> <span class="op">+</span> <span class="number">4</span>);
+                <span class="kw">let </span>l_coeff = get(coeffs_offset);
+                <span class="kw">let </span>r_coeff = get(coeffs_offset + <span class="number">1</span>);
+                <span class="kw">let </span>o_coeff = get(coeffs_offset + <span class="number">2</span>);
+                <span class="kw">let </span>m_coeff = get(coeffs_offset + <span class="number">3</span>);
+                <span class="kw">let </span>c_coeff = get(coeffs_offset + <span class="number">4</span>);
 
-                <span class="kw">let</span> <span class="ident">sum</span> <span class="op">=</span> <span class="ident">l_coeff</span> <span class="op">*</span> <span class="ident">this</span>[<span class="ident">register_offset</span>]
-                    <span class="op">+</span> <span class="ident">r_coeff</span> <span class="op">*</span> <span class="ident">this</span>[<span class="ident">register_offset</span> <span class="op">+</span> <span class="number">1</span>]
-                    <span class="op">+</span> <span class="ident">o_coeff</span> <span class="op">*</span> <span class="ident">this</span>[<span class="ident">register_offset</span> <span class="op">+</span> <span class="number">2</span>];
-                <span class="kw">let</span> <span class="ident">mul</span> <span class="op">=</span> <span class="ident">m_coeff</span> <span class="op">*</span> <span class="ident">this</span>[<span class="ident">register_offset</span>] <span class="op">*</span> <span class="ident">this</span>[<span class="ident">register_offset</span> <span class="op">+</span> <span class="number">1</span>];
-                <span class="kw">let</span> <span class="ident">public</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">coeffs_offset</span> <span class="op">==</span> <span class="number">0</span> {
-                    <span class="ident">public</span>.<span class="ident">get</span>(<span class="ident">row</span>).<span class="ident">cloned</span>().<span class="ident">unwrap_or_else</span>(<span class="ident">F::zero</span>)
-                } <span class="kw">else</span> {
-                    <span class="ident">F::zero</span>()
+                <span class="kw">let </span>sum = l_coeff * this[register_offset]
+                    + r_coeff * this[register_offset + <span class="number">1</span>]
+                    + o_coeff * this[register_offset + <span class="number">2</span>];
+                <span class="kw">let </span>mul = m_coeff * this[register_offset] * this[register_offset + <span class="number">1</span>];
+                <span class="kw">let </span>public = <span class="kw">if </span>coeffs_offset == <span class="number">0 </span>{
+                    public.get(row).cloned().unwrap_or_else(F::zero)
+                } <span class="kw">else </span>{
+                    F::zero()
                 };
                 <span class="macro">ensure_eq!</span>(
-                    <span class="ident">zero</span>,
-                    <span class="ident">sum</span> <span class="op">+</span> <span class="ident">mul</span> <span class="op">+</span> <span class="ident">c_coeff</span> <span class="op">-</span> <span class="ident">public</span>,
-                    <span class="string">&quot;generic: incorrect gate&quot;</span>
-                );
+                    zero,
+                    sum + mul + c_coeff - public,
+                    <span class="string">&quot;generic: incorrect gate&quot;
+                </span>);
                 <span class="prelude-val">Ok</span>(())
             };
 
-            <span class="ident">check_single</span>(<span class="number">0</span>, <span class="number">0</span>)<span class="question-mark">?</span>;
-            <span class="ident">check_single</span>(<span class="ident">GENERIC_COEFFS</span>, <span class="ident">GENERIC_REGISTERS</span>)
+            check_single(<span class="number">0</span>, <span class="number">0</span>)<span class="question-mark">?</span>;
+            check_single(GENERIC_COEFFS, GENERIC_REGISTERS)
         }
     }
 
-    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> <span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-        <span class="doccomment">/// Function to verify the generic polynomials with a witness.</span>
-        <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_generic</span>(
+    <span class="kw">impl</span>&lt;F: PrimeField&gt; ConstraintSystem&lt;F&gt; {
+        <span class="doccomment">/// Function to verify the generic polynomials with a witness.
+        </span><span class="kw">pub fn </span>verify_generic(
             <span class="kw-2">&amp;</span><span class="self">self</span>,
-            <span class="ident">witness</span>: <span class="kw-2">&amp;</span>[<span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
-            <span class="ident">public</span>: <span class="kw-2">&amp;</span><span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-        ) -&gt; <span class="ident">bool</span> {
-            <span class="kw">let</span> <span class="ident">coefficientsm</span>: [<span class="kw">_</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span>
-                <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">coefficients8</span>[<span class="ident">i</span>].<span class="ident">clone</span>().<span class="ident">interpolate</span>());
+            witness: <span class="kw-2">&amp;</span>[DensePolynomial&lt;F&gt;; COLUMNS],
+            public: <span class="kw-2">&amp;</span>DensePolynomial&lt;F&gt;,
+        ) -&gt; bool {
+            <span class="kw">let </span>coefficientsm: [<span class="kw">_</span>; COLUMNS] =
+                array_init(|i| <span class="self">self</span>.coefficients8[i].clone().interpolate());
 
-            <span class="kw">let</span> <span class="ident">generic_gate</span> <span class="op">=</span> <span class="op">|</span><span class="ident">coeff_offset</span>, <span class="ident">register_offset</span><span class="op">|</span> {
-                <span class="comment">// addition (of left, right, output wires)</span>
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ff</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">coefficientsm</span>[<span class="ident">coeff_offset</span>] <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">witness</span>[<span class="ident">register_offset</span>];
-                <span class="ident">ff</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span><span class="ident">coefficientsm</span>[<span class="ident">coeff_offset</span> <span class="op">+</span> <span class="number">1</span>] <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">witness</span>[<span class="ident">register_offset</span> <span class="op">+</span> <span class="number">1</span>]);
-                <span class="ident">ff</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span><span class="ident">coefficientsm</span>[<span class="ident">coeff_offset</span> <span class="op">+</span> <span class="number">2</span>] <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">witness</span>[<span class="ident">register_offset</span> <span class="op">+</span> <span class="number">2</span>]);
+            <span class="kw">let </span>generic_gate = |coeff_offset, register_offset| {
+                <span class="comment">// addition (of left, right, output wires)
+                </span><span class="kw">let </span><span class="kw-2">mut </span>ff = <span class="kw-2">&amp;</span>coefficientsm[coeff_offset] * <span class="kw-2">&amp;</span>witness[register_offset];
+                ff += <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span>coefficientsm[coeff_offset + <span class="number">1</span>] * <span class="kw-2">&amp;</span>witness[register_offset + <span class="number">1</span>]);
+                ff += <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span>coefficientsm[coeff_offset + <span class="number">2</span>] * <span class="kw-2">&amp;</span>witness[register_offset + <span class="number">2</span>]);
 
-                <span class="comment">// multiplication</span>
-                <span class="ident">ff</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span><span class="ident">witness</span>[<span class="ident">register_offset</span>] <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">witness</span>[<span class="ident">register_offset</span> <span class="op">+</span> <span class="number">1</span>])
-                    <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">coefficientsm</span>[<span class="ident">coeff_offset</span> <span class="op">+</span> <span class="number">3</span>]);
+                <span class="comment">// multiplication
+                </span>ff += <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span>witness[register_offset] * <span class="kw-2">&amp;</span>witness[register_offset + <span class="number">1</span>])
+                    * <span class="kw-2">&amp;</span>coefficientsm[coeff_offset + <span class="number">3</span>]);
 
-                <span class="comment">// constant</span>
-                <span class="kw-2">&amp;</span><span class="ident">ff</span> <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">coefficientsm</span>[<span class="ident">coeff_offset</span> <span class="op">+</span> <span class="number">4</span>]
+                <span class="comment">// constant
+                </span><span class="kw-2">&amp;</span>ff + <span class="kw-2">&amp;</span>coefficientsm[coeff_offset + <span class="number">4</span>]
 
-                <span class="comment">// note: skip alpha power, as we&#39;re testing for completeness</span>
-            };
+                <span class="comment">// note: skip alpha power, as we&#39;re testing for completeness
+            </span>};
 
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">generic_gate</span>(<span class="number">0</span>, <span class="number">0</span>);
-            <span class="ident">res</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">generic_gate</span>(<span class="ident">GENERIC_COEFFS</span>, <span class="ident">GENERIC_REGISTERS</span>);
+            <span class="kw">let </span><span class="kw-2">mut </span>res = generic_gate(<span class="number">0</span>, <span class="number">0</span>);
+            res += <span class="kw-2">&amp;</span>generic_gate(GENERIC_COEFFS, GENERIC_REGISTERS);
 
-            <span class="comment">// public inputs</span>
-            <span class="ident">res</span> <span class="op">+</span><span class="op">=</span> <span class="ident">public</span>;
+            <span class="comment">// public inputs
+            </span>res += public;
 
-            <span class="comment">// selector poly</span>
-            <span class="ident">res</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">res</span> <span class="op">*</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">genericm</span>;
+            <span class="comment">// selector poly
+            </span>res = <span class="kw-2">&amp;</span>res * <span class="kw-2">&amp;</span><span class="self">self</span>.genericm;
 
-            <span class="comment">// verify that it is divisible by Z_H</span>
-            <span class="kw">match</span> <span class="ident">res</span>.<span class="ident">divide_by_vanishing_poly</span>(<span class="self">self</span>.<span class="ident">domain</span>.<span class="ident">d1</span>) {
-                <span class="prelude-val">Some</span>((<span class="ident">_quotient</span>, <span class="ident">rest</span>)) =&gt; <span class="ident">rest</span>.<span class="ident">is_zero</span>(),
-                <span class="prelude-val">None</span> =&gt; <span class="bool-val">false</span>,
+            <span class="comment">// verify that it is divisible by Z_H
+            </span><span class="kw">match </span>res.divide_by_vanishing_poly(<span class="self">self</span>.domain.d1) {
+                <span class="prelude-val">Some</span>((_quotient, rest)) =&gt; rest.is_zero(),
+                <span class="prelude-val">None </span>=&gt; <span class="bool-val">false</span>,
             }
         }
     }
 
-    <span class="doccomment">/// function to create a generic circuit</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_circuit</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span>(<span class="ident">start_row</span>: <span class="ident">usize</span>, <span class="ident">public</span>: <span class="ident">usize</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="comment">// create constraint system with a single generic gate</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">gates</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+    <span class="doccomment">/// function to create a generic circuit
+    </span><span class="kw">pub fn </span>create_circuit&lt;F: PrimeField&gt;(start_row: usize, public: usize) -&gt; Vec&lt;CircuitGate&lt;F&gt;&gt; {
+        <span class="comment">// create constraint system with a single generic gate
+        </span><span class="kw">let </span><span class="kw-2">mut </span>gates = <span class="macro">vec!</span>[];
 
-        <span class="comment">// create generic gates</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">gates_row</span> <span class="op">=</span> <span class="ident">iterate</span>(<span class="ident">start_row</span>, <span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">i</span><span class="op">|</span> <span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>);
+        <span class="comment">// create generic gates
+        </span><span class="kw">let </span><span class="kw-2">mut </span>gates_row = iterate(start_row, |<span class="kw-2">&amp;</span>i| i + <span class="number">1</span>);
 
-        <span class="comment">// public input</span>
-        <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">public</span> {
-            <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">gates_row</span>.<span class="ident">next</span>().<span class="ident">unwrap</span>();
-            <span class="ident">gates</span>.<span class="ident">push</span>(<span class="ident">CircuitGate::create_generic_gadget</span>(
-                <span class="ident">Wire::new</span>(<span class="ident">r</span>),
-                <span class="ident">GenericGateSpec::Pub</span>,
+        <span class="comment">// public input
+        </span><span class="kw">for _ in </span><span class="number">0</span>..public {
+            <span class="kw">let </span>r = gates_row.next().unwrap();
+            gates.push(CircuitGate::create_generic_gadget(
+                Wire::new(r),
+                GenericGateSpec::Pub,
                 <span class="prelude-val">None</span>,
             ));
         }
 
-        <span class="comment">// add and mul</span>
-        <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">10</span> {
-            <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">gates_row</span>.<span class="ident">next</span>().<span class="ident">unwrap</span>();
-            <span class="kw">let</span> <span class="ident">g1</span> <span class="op">=</span> <span class="ident">GenericGateSpec::Add</span> {
-                <span class="ident">left_coeff</span>: <span class="prelude-val">None</span>,
-                <span class="ident">right_coeff</span>: <span class="prelude-val">Some</span>(<span class="number">3u32</span>.<span class="ident">into</span>()),
-                <span class="ident">output_coeff</span>: <span class="prelude-val">None</span>,
+        <span class="comment">// add and mul
+        </span><span class="kw">for _ in </span><span class="number">0</span>..<span class="number">10 </span>{
+            <span class="kw">let </span>r = gates_row.next().unwrap();
+            <span class="kw">let </span>g1 = GenericGateSpec::Add {
+                left_coeff: <span class="prelude-val">None</span>,
+                right_coeff: <span class="prelude-val">Some</span>(<span class="number">3u32</span>.into()),
+                output_coeff: <span class="prelude-val">None</span>,
             };
-            <span class="kw">let</span> <span class="ident">g2</span> <span class="op">=</span> <span class="ident">GenericGateSpec::Mul</span> {
-                <span class="ident">output_coeff</span>: <span class="prelude-val">None</span>,
-                <span class="ident">mul_coeff</span>: <span class="prelude-val">Some</span>(<span class="number">2u32</span>.<span class="ident">into</span>()),
+            <span class="kw">let </span>g2 = GenericGateSpec::Mul {
+                output_coeff: <span class="prelude-val">None</span>,
+                mul_coeff: <span class="prelude-val">Some</span>(<span class="number">2u32</span>.into()),
             };
-            <span class="ident">gates</span>.<span class="ident">push</span>(<span class="ident">CircuitGate::create_generic_gadget</span>(
-                <span class="ident">Wire::new</span>(<span class="ident">r</span>),
-                <span class="ident">g1</span>,
-                <span class="prelude-val">Some</span>(<span class="ident">g2</span>),
+            gates.push(CircuitGate::create_generic_gadget(
+                Wire::new(r),
+                g1,
+                <span class="prelude-val">Some</span>(g2),
             ));
         }
 
-        <span class="comment">// two consts</span>
-        <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">10</span> {
-            <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">gates_row</span>.<span class="ident">next</span>().<span class="ident">unwrap</span>();
-            <span class="kw">let</span> <span class="ident">g1</span> <span class="op">=</span> <span class="ident">GenericGateSpec::Const</span>(<span class="number">3u32</span>.<span class="ident">into</span>());
-            <span class="kw">let</span> <span class="ident">g2</span> <span class="op">=</span> <span class="ident">GenericGateSpec::Const</span>(<span class="number">5u32</span>.<span class="ident">into</span>());
-            <span class="ident">gates</span>.<span class="ident">push</span>(<span class="ident">CircuitGate::create_generic_gadget</span>(
-                <span class="ident">Wire::new</span>(<span class="ident">r</span>),
-                <span class="ident">g1</span>,
-                <span class="prelude-val">Some</span>(<span class="ident">g2</span>),
+        <span class="comment">// two consts
+        </span><span class="kw">for _ in </span><span class="number">0</span>..<span class="number">10 </span>{
+            <span class="kw">let </span>r = gates_row.next().unwrap();
+            <span class="kw">let </span>g1 = GenericGateSpec::Const(<span class="number">3u32</span>.into());
+            <span class="kw">let </span>g2 = GenericGateSpec::Const(<span class="number">5u32</span>.into());
+            gates.push(CircuitGate::create_generic_gadget(
+                Wire::new(r),
+                g1,
+                <span class="prelude-val">Some</span>(g2),
             ));
         }
 
-        <span class="ident">gates</span>
+        gates
     }
 
-    <span class="comment">// function to fill in a witness created via [create_circuit]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">fill_in_witness</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(
-        <span class="ident">start_row</span>: <span class="ident">usize</span>,
-        <span class="ident">witness</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
-        <span class="ident">public</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>],
+    <span class="comment">// function to fill in a witness created via [create_circuit]
+    </span><span class="kw">pub fn </span>fill_in_witness&lt;F: FftField&gt;(
+        start_row: usize,
+        witness: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS],
+        public: <span class="kw-2">&amp;</span>[F],
     ) {
-        <span class="comment">// fill witness</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">witness_row</span> <span class="op">=</span> <span class="ident">iterate</span>(<span class="ident">start_row</span>, <span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">i</span><span class="op">|</span> <span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>);
+        <span class="comment">// fill witness
+        </span><span class="kw">let </span><span class="kw-2">mut </span>witness_row = iterate(start_row, |<span class="kw-2">&amp;</span>i| i + <span class="number">1</span>);
 
-        <span class="comment">// public</span>
-        <span class="kw">for</span> <span class="ident">p</span> <span class="kw">in</span> <span class="ident">public</span> {
-            <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">witness_row</span>.<span class="ident">next</span>().<span class="ident">unwrap</span>();
-            <span class="ident">witness</span>[<span class="number">0</span>][<span class="ident">r</span>] <span class="op">=</span> <span class="kw-2">*</span><span class="ident">p</span>;
+        <span class="comment">// public
+        </span><span class="kw">for </span>p <span class="kw">in </span>public {
+            <span class="kw">let </span>r = witness_row.next().unwrap();
+            witness[<span class="number">0</span>][r] = <span class="kw-2">*</span>p;
         }
 
-        <span class="comment">// add and mul</span>
-        <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">10</span> {
-            <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">witness_row</span>.<span class="ident">next</span>().<span class="ident">unwrap</span>();
+        <span class="comment">// add and mul
+        </span><span class="kw">for _ in </span><span class="number">0</span>..<span class="number">10 </span>{
+            <span class="kw">let </span>r = witness_row.next().unwrap();
 
-            <span class="ident">witness</span>[<span class="number">0</span>][<span class="ident">r</span>] <span class="op">=</span> <span class="number">11u32</span>.<span class="ident">into</span>();
-            <span class="ident">witness</span>[<span class="number">1</span>][<span class="ident">r</span>] <span class="op">=</span> <span class="number">23u32</span>.<span class="ident">into</span>();
-            <span class="ident">witness</span>[<span class="number">2</span>][<span class="ident">r</span>] <span class="op">=</span> (<span class="number">11u32</span> <span class="op">+</span> <span class="number">23u32</span> <span class="op">*</span> <span class="number">3u32</span>).<span class="ident">into</span>();
+            witness[<span class="number">0</span>][r] = <span class="number">11u32</span>.into();
+            witness[<span class="number">1</span>][r] = <span class="number">23u32</span>.into();
+            witness[<span class="number">2</span>][r] = (<span class="number">11u32 </span>+ <span class="number">23u32 </span>* <span class="number">3u32</span>).into();
 
-            <span class="ident">witness</span>[<span class="number">3</span>][<span class="ident">r</span>] <span class="op">=</span> <span class="number">11u32</span>.<span class="ident">into</span>();
-            <span class="ident">witness</span>[<span class="number">4</span>][<span class="ident">r</span>] <span class="op">=</span> <span class="number">23u32</span>.<span class="ident">into</span>();
-            <span class="ident">witness</span>[<span class="number">5</span>][<span class="ident">r</span>] <span class="op">=</span> (<span class="number">11u32</span> <span class="op">*</span> <span class="number">23</span> <span class="op">*</span> <span class="number">2</span>).<span class="ident">into</span>();
+            witness[<span class="number">3</span>][r] = <span class="number">11u32</span>.into();
+            witness[<span class="number">4</span>][r] = <span class="number">23u32</span>.into();
+            witness[<span class="number">5</span>][r] = (<span class="number">11u32 </span>* <span class="number">23 </span>* <span class="number">2</span>).into();
         }
 
-        <span class="comment">// const</span>
-        <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">10</span> {
-            <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">witness_row</span>.<span class="ident">next</span>().<span class="ident">unwrap</span>();
+        <span class="comment">// const
+        </span><span class="kw">for _ in </span><span class="number">0</span>..<span class="number">10 </span>{
+            <span class="kw">let </span>r = witness_row.next().unwrap();
 
-            <span class="ident">witness</span>[<span class="number">0</span>][<span class="ident">r</span>] <span class="op">=</span> <span class="number">3u32</span>.<span class="ident">into</span>();
+            witness[<span class="number">0</span>][r] = <span class="number">3u32</span>.into();
 
-            <span class="ident">witness</span>[<span class="number">3</span>][<span class="ident">r</span>] <span class="op">=</span> <span class="number">5u32</span>.<span class="ident">into</span>();
+            witness[<span class="number">3</span>][r] = <span class="number">5u32</span>.into();
         }
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::wires::COLUMNS</span>;
-    <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">UniformRand</span>, <span class="ident">Zero</span>};
-    <span class="kw">use</span> <span class="ident">ark_poly</span>::{<span class="ident">EvaluationDomain</span>, <span class="ident">Polynomial</span>};
-    <span class="kw">use</span> <span class="ident">array_init::array_init</span>;
-    <span class="kw">use</span> <span class="ident">mina_curves::pasta::fp::Fp</span>;
-    <span class="kw">use</span> <span class="ident">mina_curves::pasta::vesta::Vesta</span>;
-    <span class="kw">use</span> <span class="ident">rand::SeedableRng</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span><span class="kw">crate</span>::circuits::wires::COLUMNS;
+    <span class="kw">use </span>ark_ff::{UniformRand, Zero};
+    <span class="kw">use </span>ark_poly::{EvaluationDomain, Polynomial};
+    <span class="kw">use </span>array_init::array_init;
+    <span class="kw">use </span>mina_curves::pasta::fp::Fp;
+    <span class="kw">use </span>mina_curves::pasta::vesta::Vesta;
+    <span class="kw">use </span>rand::SeedableRng;
 
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_generic_polynomial</span>() {
-        <span class="comment">// create circuit</span>
-        <span class="kw">let</span> <span class="ident">gates</span> <span class="op">=</span> <span class="ident">testing::create_circuit</span>::<span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span>(<span class="number">0</span>, <span class="number">0</span>);
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_generic_polynomial() {
+        <span class="comment">// create circuit
+        </span><span class="kw">let </span>gates = testing::create_circuit::&lt;Fp&gt;(<span class="number">0</span>, <span class="number">0</span>);
 
-        <span class="comment">// create constraint system</span>
-        <span class="kw">let</span> <span class="ident">cs</span> <span class="op">=</span> <span class="ident">ConstraintSystem::fp_for_testing</span>(<span class="ident">gates</span>);
+        <span class="comment">// create constraint system
+        </span><span class="kw">let </span>cs = ConstraintSystem::fp_for_testing(gates);
 
-        <span class="comment">// create witness</span>
-        <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">vec!</span>[<span class="ident">Fp::zero</span>(); <span class="ident">n</span>]);
-        <span class="ident">testing::fill_in_witness</span>(<span class="number">0</span>, <span class="kw-2">&amp;mut</span> <span class="ident">witness</span>, <span class="kw-2">&amp;</span>[]);
+        <span class="comment">// create witness
+        </span><span class="kw">let </span>n = cs.domain.d1.size();
+        <span class="kw">let </span><span class="kw-2">mut </span>witness: [Vec&lt;Fp&gt;; COLUMNS] = array_init(|<span class="kw">_</span>| <span class="macro">vec!</span>[Fp::zero(); n]);
+        testing::fill_in_witness(<span class="number">0</span>, <span class="kw-2">&amp;mut </span>witness, <span class="kw-2">&amp;</span>[]);
 
-        <span class="comment">// make sure we&#39;re done filling the witness correctly</span>
-        <span class="ident">cs</span>.<span class="ident">verify</span>::<span class="op">&lt;</span><span class="ident">Vesta</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="ident">witness</span>, <span class="kw-2">&amp;</span>[]).<span class="ident">unwrap</span>();
+        <span class="comment">// make sure we&#39;re done filling the witness correctly
+        </span>cs.verify::&lt;Vesta&gt;(<span class="kw-2">&amp;</span>witness, <span class="kw-2">&amp;</span>[]).unwrap();
 
-        <span class="comment">// generate witness polynomials</span>
-        <span class="kw">let</span> <span class="ident">witness_evals</span>: [<span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">Fp</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span>
-            <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> <span class="ident">Evaluations::from_vec_and_domain</span>(<span class="ident">witness</span>[<span class="ident">col</span>].<span class="ident">clone</span>(), <span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>));
-        <span class="kw">let</span> <span class="ident">witness</span>: [<span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span>
-            <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> <span class="ident">witness_evals</span>[<span class="ident">col</span>].<span class="ident">interpolate_by_ref</span>());
-        <span class="kw">let</span> <span class="ident">witness_d4</span>: [<span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">Fp</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span>
-            <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> <span class="ident">witness</span>[<span class="ident">col</span>].<span class="ident">evaluate_over_domain_by_ref</span>(<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d4</span>));
+        <span class="comment">// generate witness polynomials
+        </span><span class="kw">let </span>witness_evals: [Evaluations&lt;Fp, D&lt;Fp&gt;&gt;; COLUMNS] =
+            array_init(|col| Evaluations::from_vec_and_domain(witness[col].clone(), cs.domain.d1));
+        <span class="kw">let </span>witness: [DensePolynomial&lt;Fp&gt;; COLUMNS] =
+            array_init(|col| witness_evals[col].interpolate_by_ref());
+        <span class="kw">let </span>witness_d4: [Evaluations&lt;Fp, D&lt;Fp&gt;&gt;; COLUMNS] =
+            array_init(|col| witness[col].evaluate_over_domain_by_ref(cs.domain.d4));
 
-        <span class="comment">// make sure we&#39;ve done that correctly</span>
-        <span class="kw">let</span> <span class="ident">public</span> <span class="op">=</span> <span class="ident">DensePolynomial::zero</span>();
-        <span class="macro">assert!</span>(<span class="ident">cs</span>.<span class="ident">verify_generic</span>(<span class="kw-2">&amp;</span><span class="ident">witness</span>, <span class="kw-2">&amp;</span><span class="ident">public</span>));
+        <span class="comment">// make sure we&#39;ve done that correctly
+        </span><span class="kw">let </span>public = DensePolynomial::zero();
+        <span class="macro">assert!</span>(cs.verify_generic(<span class="kw-2">&amp;</span>witness, <span class="kw-2">&amp;</span>public));
 
-        <span class="comment">// random zeta</span>
-        <span class="kw">let</span> <span class="ident">rng</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">rand::rngs::StdRng::from_seed</span>([<span class="number">0</span>; <span class="number">32</span>]);
-        <span class="kw">let</span> <span class="ident">zeta</span> <span class="op">=</span> <span class="ident">Fp::rand</span>(<span class="ident">rng</span>);
+        <span class="comment">// random zeta
+        </span><span class="kw">let </span>rng = <span class="kw-2">&amp;mut </span>rand::rngs::StdRng::from_seed([<span class="number">0</span>; <span class="number">32</span>]);
+        <span class="kw">let </span>zeta = Fp::rand(rng);
 
-        <span class="comment">// compute quotient by dividing with vanishing polynomial</span>
-        <span class="kw">let</span> <span class="ident">alphas</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">Fp::rand</span>(<span class="ident">rng</span>), <span class="ident">Fp::rand</span>(<span class="ident">rng</span>)];
-        <span class="kw">let</span> <span class="ident">t1</span> <span class="op">=</span> <span class="ident">cs</span>.<span class="ident">gnrc_quot</span>(<span class="kw-2">&amp;mut</span> <span class="ident">alphas</span>.<span class="ident">clone</span>().<span class="ident">into_iter</span>(), <span class="kw-2">&amp;</span><span class="ident">witness_d4</span>);
-        <span class="kw">let</span> <span class="ident">t_before_division</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">t1</span>.<span class="ident">interpolate</span>() <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">public</span>;
-        <span class="kw">let</span> (<span class="ident">t</span>, <span class="ident">rem</span>) <span class="op">=</span> <span class="ident">t_before_division</span>
-            .<span class="ident">divide_by_vanishing_poly</span>(<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>)
-            .<span class="ident">unwrap</span>();
-        <span class="macro">assert!</span>(<span class="ident">rem</span>.<span class="ident">is_zero</span>());
-        <span class="kw">let</span> <span class="ident">t_zeta</span> <span class="op">=</span> <span class="ident">t</span>.<span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="ident">zeta</span>);
+        <span class="comment">// compute quotient by dividing with vanishing polynomial
+        </span><span class="kw">let </span>alphas = <span class="macro">vec!</span>[Fp::rand(rng), Fp::rand(rng)];
+        <span class="kw">let </span>t1 = cs.gnrc_quot(<span class="kw-2">&amp;mut </span>alphas.clone().into_iter(), <span class="kw-2">&amp;</span>witness_d4);
+        <span class="kw">let </span>t_before_division = <span class="kw-2">&amp;</span>t1.interpolate() + <span class="kw-2">&amp;</span>public;
+        <span class="kw">let </span>(t, rem) = t_before_division
+            .divide_by_vanishing_poly(cs.domain.d1)
+            .unwrap();
+        <span class="macro">assert!</span>(rem.is_zero());
+        <span class="kw">let </span>t_zeta = t.evaluate(<span class="kw-2">&amp;</span>zeta);
 
-        <span class="comment">// compute linearization f(z)</span>
-        <span class="kw">let</span> <span class="ident">w_zeta</span>: [<span class="ident">Fp</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> <span class="ident">witness</span>[<span class="ident">col</span>].<span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="ident">zeta</span>));
-        <span class="kw">let</span> <span class="ident">generic_zeta</span> <span class="op">=</span> <span class="ident">cs</span>.<span class="ident">genericm</span>.<span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="ident">zeta</span>);
+        <span class="comment">// compute linearization f(z)
+        </span><span class="kw">let </span>w_zeta: [Fp; COLUMNS] = array_init(|col| witness[col].evaluate(<span class="kw-2">&amp;</span>zeta));
+        <span class="kw">let </span>generic_zeta = cs.genericm.evaluate(<span class="kw-2">&amp;</span>zeta);
 
-        <span class="kw">let</span> <span class="ident">f</span> <span class="op">=</span> <span class="ident">cs</span>
-            .<span class="ident">gnrc_lnrz</span>(<span class="kw-2">&amp;mut</span> <span class="ident">alphas</span>.<span class="ident">clone</span>().<span class="ident">into_iter</span>(), <span class="kw-2">&amp;</span><span class="ident">w_zeta</span>, <span class="ident">generic_zeta</span>)
-            .<span class="ident">interpolate</span>();
-        <span class="kw">let</span> <span class="ident">f_zeta</span> <span class="op">=</span> <span class="ident">f</span>.<span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="ident">zeta</span>);
+        <span class="kw">let </span>f = cs
+            .gnrc_lnrz(<span class="kw-2">&amp;mut </span>alphas.clone().into_iter(), <span class="kw-2">&amp;</span>w_zeta, generic_zeta)
+            .interpolate();
+        <span class="kw">let </span>f_zeta = f.evaluate(<span class="kw-2">&amp;</span>zeta);
 
-        <span class="comment">// check that f(z) = t(z) * Z_H(z)</span>
-        <span class="kw">let</span> <span class="ident">z_h_zeta</span> <span class="op">=</span> <span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">evaluate_vanishing_polynomial</span>(<span class="ident">zeta</span>);
-        <span class="macro">assert!</span>(<span class="ident">f_zeta</span> <span class="op">==</span> <span class="ident">t_zeta</span> <span class="op">*</span> <span class="ident">z_h_zeta</span>);
+        <span class="comment">// check that f(z) = t(z) * Z_H(z)
+        </span><span class="kw">let </span>z_h_zeta = cs.domain.d1.evaluate_vanishing_polynomial(zeta);
+        <span class="macro">assert!</span>(f_zeta == t_zeta * z_h_zeta);
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (d394408fb 2022-08-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>
