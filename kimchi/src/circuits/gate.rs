@@ -1,13 +1,18 @@
 //! This module implements Plonk constraint gate primitive.
 
-use crate::circuits::{constraints::ConstraintSystem, wires::*};
-use ark_ff::FftField;
-use ark_ff::{bytes::ToBytes, SquareRootField};
+use crate::{
+    circuits::{constraints::ConstraintSystem, wires::*},
+    curve::KimchiCurve,
+};
+use ark_ff::{bytes::ToBytes, PrimeField};
+use ark_poly::Evaluations;
+use ark_poly::Radix2EvaluationDomain as D;
 use num_traits::cast::ToPrimitive;
 use o1_utils::hasher::CryptoDigest;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::io::{Result as IoResult, Write};
+use thiserror::Error;
 
 /// A row accessible from a given row, corresponds to the fact that we open all polynomials
 /// at `zeta` **and** `omega * zeta`.
@@ -89,15 +94,52 @@ pub enum GateType {
     CairoInstruction = 13,
     CairoFlags = 14,
     CairoTransition = 15,
-    // Range check (16-24)
+    /// Range check (16-24)
     RangeCheck0 = 16,
     RangeCheck1 = 17,
+    // ForeignFieldAdd = 25,
+    // ForeignFieldMul = 26,
 }
+
+/// Selector polynomial
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct SelectorPolynomial<F: PrimeField> {
+    /// Evaluation form (evaluated over domain d8)
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub eval8: Evaluations<F, D<F>>,
+}
+
+/// Gate error
+#[derive(Error, Debug, Clone, Copy, PartialEq)]
+pub enum CircuitGateError {
+    /// Invalid constraint
+    #[error("Invalid circuit gate type {0:?}")]
+    InvalidCircuitGateType(GateType),
+    /// Invalid constraint
+    #[error("Invalid {0:?} constraint")]
+    InvalidConstraint(GateType),
+    /// Invalid copy constraint
+    #[error("Invalid {0:?} copy constraint")]
+    InvalidCopyConstraint(GateType),
+    /// Invalid lookup constraint - sorted evaluations
+    #[error("Invalid {0:?} lookup constraint - sorted evaluations")]
+    InvalidLookupConstraintSorted(GateType),
+    /// Invalid lookup constraint - sorted evaluations
+    #[error("Invalid {0:?} lookup constraint - aggregation polynomial")]
+    InvalidLookupConstraintAggregation(GateType),
+    /// Missing lookup constraint system
+    #[error("Failed to get lookup constraint system for {0:?}")]
+    MissingLookupConstraintSystem(GateType),
+}
+
+/// Gate result
+pub type CircuitGateResult<T> = std::result::Result<T, CircuitGateError>;
 
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 /// A single gate in a circuit.
-pub struct CircuitGate<F: FftField> {
+pub struct CircuitGate<F: PrimeField> {
     /// type of the gate
     pub typ: GateType,
     /// gate wiring (for each cell, what cell it is wired to)
@@ -107,7 +149,7 @@ pub struct CircuitGate<F: FftField> {
     pub coeffs: Vec<F>,
 }
 
-impl<F: FftField> ToBytes for CircuitGate<F> {
+impl<F: PrimeField> ToBytes for CircuitGate<F> {
     #[inline]
     fn write<W: Write>(&self, mut w: W) -> IoResult<()> {
         let typ: u8 = ToPrimitive::to_u8(&self.typ).unwrap();
@@ -124,7 +166,7 @@ impl<F: FftField> ToBytes for CircuitGate<F> {
     }
 }
 
-impl<F: FftField + SquareRootField> CircuitGate<F> {
+impl<F: PrimeField> CircuitGate<F> {
     /// this function creates "empty" circuit gate
     pub fn zero(wires: GateWires) -> Self {
         CircuitGate {
@@ -136,7 +178,7 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
 
     /// This function verifies the consistency of the wire
     /// assignments (witness) against the constraints
-    pub fn verify(
+    pub fn verify<G: KimchiCurve<ScalarField = F>>(
         &self,
         row: usize,
         witness: &[Vec<F>; COLUMNS],
@@ -147,32 +189,51 @@ impl<F: FftField + SquareRootField> CircuitGate<F> {
         match self.typ {
             Zero => Ok(()),
             Generic => self.verify_generic(row, witness, public),
-            Poseidon => self.verify_poseidon(row, witness, cs),
+            Poseidon => self.verify_poseidon::<G>(row, witness),
             CompleteAdd => self.verify_complete_add(row, witness),
             VarBaseMul => self.verify_vbmul(row, witness),
-            EndoMul => self.verify_endomul(row, witness, cs),
-            EndoMulScalar => self.verify_endomul_scalar(row, witness, cs),
+            EndoMul => self.verify_endomul::<G>(row, witness, cs),
+            EndoMulScalar => self.verify_endomul_scalar::<G>(row, witness, cs),
             // TODO: implement the verification for chacha
             ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => Ok(()),
             // TODO: implement the verification for the lookup gate
             Lookup => Ok(()),
             CairoClaim | CairoInstruction | CairoFlags | CairoTransition => {
-                self.verify_cairo_gate(row, witness, cs)
+                self.verify_cairo_gate::<G>(row, witness, cs)
             }
             RangeCheck0 | RangeCheck1 => self
-                .verify_range_check(row, witness, cs)
+                .verify_range_check::<G>(row, witness, cs)
                 .map_err(|e| e.to_string()),
         }
     }
 }
 
+/// Trait to connect a pair of cells in a circuit
+pub trait Connect {
+    /// Connect the pair of cells specified by the cell1 and cell2 parameters
+    /// cell_pre --> cell_new && cell_new --> wire_tmp
+    ///
+    /// Note: This function assumes that the targeted cells are freshly instantiated
+    ///       with self-connections.  If the two cells are transitively already part
+    ///       of the same permutation then this would split it.
+    fn connect_cell_pair(&mut self, cell1: (usize, usize), cell2: (usize, usize));
+}
+
+impl<F: PrimeField> Connect for Vec<CircuitGate<F>> {
+    fn connect_cell_pair(&mut self, cell_pre: (usize, usize), cell_new: (usize, usize)) {
+        let wire_tmp = self[cell_pre.0].wires[cell_pre.1];
+        self[cell_pre.0].wires[cell_pre.1] = self[cell_new.0].wires[cell_new.1];
+        self[cell_new.0].wires[cell_new.1] = wire_tmp;
+    }
+}
+
 /// A circuit is specified as a series of [CircuitGate].
 #[derive(Serialize)]
-pub struct Circuit<'a, F: FftField>(
+pub struct Circuit<'a, F: PrimeField>(
     #[serde(bound = "CircuitGate<F>: Serialize")] pub &'a [CircuitGate<F>],
 );
 
-impl<'a, F: FftField> CryptoDigest for Circuit<'a, F> {
+impl<'a, F: PrimeField> CryptoDigest for Circuit<'a, F> {
     const PREFIX: &'static [u8; 15] = b"kimchi-circuit0";
 }
 
@@ -200,7 +261,7 @@ pub mod caml {
     impl<F, CamlF> From<CircuitGate<F>> for CamlCircuitGate<CamlF>
     where
         CamlF: From<F>,
-        F: FftField,
+        F: PrimeField,
     {
         fn from(cg: CircuitGate<F>) -> Self {
             Self {
@@ -214,7 +275,7 @@ pub mod caml {
     impl<F, CamlF> From<&CircuitGate<F>> for CamlCircuitGate<CamlF>
     where
         CamlF: From<F>,
-        F: FftField,
+        F: PrimeField,
     {
         fn from(cg: &CircuitGate<F>) -> Self {
             Self {
@@ -228,7 +289,7 @@ pub mod caml {
     impl<F, CamlF> From<CamlCircuitGate<CamlF>> for CircuitGate<F>
     where
         F: From<CamlF>,
-        F: FftField,
+        F: PrimeField,
     {
         fn from(ccg: CamlCircuitGate<CamlF>) -> Self {
             Self {

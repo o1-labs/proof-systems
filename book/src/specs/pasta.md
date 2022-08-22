@@ -13,7 +13,12 @@ But in our code, because of the cycles:
 * Fp refers to the base field of Pallas, and the scalar field of Vesta
 * Fq refers to the base field of Vesta, and the scalar field of Pallas
 
-TODO: change the naming of Fp and Fq to avoid ambiguity with the conventional Fq and Fr.
+Note that $|F_q| > |F_p|$.
+
+In pickles:
+
+* Vesta is also referred to as the step curve, or the tick curve.
+* Pallas is also referred to as the wrap curve, or the tock curve.
 
 ## Pallas
 
@@ -23,6 +28,13 @@ TODO: change the naming of Fp and Fq to avoid ambiguity with the conventional Fq
 * mina generator: $(1, 12418654782883325593414442427049395787963493412651469444558597405572177144507)$
 * arkworks generator: $(-1, 2)$
 
+You can use [sage](https://www.sagemath.org/) to test this:
+
+```py
+Fp = GF(28948022309329048855892746252171976963363056481941560715954676764349967630337)
+Pallas = EllipticCurve(Fp, [0, 5])
+Pallas.count_points()
+```
 
 ## Vesta
 
@@ -31,3 +43,11 @@ TODO: change the naming of Fp and Fq to avoid ambiguity with the conventional Fq
 * scalar field: $28948022309329048855892746252171976963363056481941560715954676764349967630337$
 * mina generator: $(1, 11426906929455361843568202299992114520848200991084027513389447476559454104162)$
 * arkworks generator: $(-1, 2)$
+
+You can use [sage](https://www.sagemath.org/) to test this:
+
+```py
+Fq = GF(28948022309329048855892746252171976963363056481941647379679742748393362948097)
+Vesta = EllipticCurve(Fq, [0, 5])
+Vesta.count_points()
+```

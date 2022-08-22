@@ -346,6 +346,7 @@ dependencies = [
  "o1-utils",
  "ocaml",
  "ocaml-gen",
+ "once_cell",
  "oracle",
  "rand",
  "rand_core",
@@ -584,6 +585,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "disjoint-set"
+version = "0.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d102f1a462fdcdddce88d6d46c06c074a2d2749b262230333726b06c52bb7585"
+
+[[package]]
 name = "either"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -758,6 +765,7 @@ dependencies = [
  "colored",
  "commitment_dlog",
  "criterion",
+ "disjoint-set",
  "groupmap",
  "hex",
  "iai",
@@ -1051,6 +1059,7 @@ dependencies = [
  "o1-utils",
  "ocaml",
  "ocaml-gen",
+ "once_cell",
  "rand",
  "rayon",
  "serde",

@@ -43,12 +43,11 @@ impl<H: Hashable> Hashable for Message<H> {
     type D = H::D;
 
     fn to_roinput(&self) -> ROInput {
-        let mut roi = self.input.to_roinput();
-        roi.append_field(self.pub_key_x);
-        roi.append_field(self.pub_key_y);
-        roi.append_field(self.rx);
-
-        roi
+        self.input
+            .to_roinput()
+            .append_field(self.pub_key_x)
+            .append_field(self.pub_key_y)
+            .append_field(self.rx)
     }
 
     fn domain_string(domain_param: Self::D) -> Option<String> {
@@ -110,11 +109,12 @@ impl<H: 'static + Hashable> Schnorr<H> {
     fn derive_nonce(&self, kp: &Keypair, input: &H) -> ScalarField {
         let mut blake_hasher = Blake2bVar::new(32).unwrap();
 
-        let mut roi: ROInput = input.to_roinput();
-        roi.append_field(kp.public.point().x);
-        roi.append_field(kp.public.point().y);
-        roi.append_scalar(*kp.secret.scalar());
-        roi.append_bytes(&self.domain_param.clone().into_bytes());
+        let roi = input
+            .to_roinput()
+            .append_field(kp.public.point().x)
+            .append_field(kp.public.point().y)
+            .append_scalar(*kp.secret.scalar())
+            .append_bytes(&self.domain_param.clone().into_bytes());
 
         blake_hasher.update(&roi.to_bytes());
 

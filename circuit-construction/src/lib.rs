@@ -23,8 +23,8 @@ pub mod prologue {
     pub use kimchi::verifier::verify;
     pub use mina_curves::pasta::{
         fp::Fp,
-        pallas::Affine as PallasAffine,
-        vesta::{Affine as VestaAffine, VestaParameters},
+        pallas::Pallas as PallasAffine,
+        vesta::{Vesta as VestaAffine, VestaParameters},
     };
     pub use oracle::{
         constants::*,
