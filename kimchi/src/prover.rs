@@ -1156,7 +1156,7 @@ impl<G: KimchiCurve + ark_ec::AffineCurve<ScalarField = F>, F: PrimeField> Looku
                 &joint_lookup_table_d8,
                 index.cs.domain.d1,
                 &index.cs.gates,
-                &witness,
+                witness,
                 joint_combiner,
                 table_id_combiner,
                 &lcs.configuration.lookup_info,
