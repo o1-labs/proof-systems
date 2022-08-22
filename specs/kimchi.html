@@ -203,7 +203,12 @@
 <li><a href="#proof-construction--verification">Proof Construction &amp; Verification</a>
 <ul>
 <li><a href="#proof-structure">Proof Structure</a></li>
-<li><a href="#proof-creation">Proof Creation</a></li>
+<li><a href="#proof-creation">Proof Creation</a>
+<ul>
+<li><a href="#lookup-context-creation">Lookup context creation</a></li>
+<li><a href="#lookup-context-aggregation-polynomial-creation">Lookup context aggregation polynomial creation</a></li>
+</ul>
+</li>
 <li><a href="#proof-verification">Proof Verification</a>
 <ul>
 <li><a href="#fiat-shamir-argument">Fiat-Shamir argument</a></li>
@@ -1731,32 +1736,7 @@ we can use the <code>commit_evaluation</code> optimization.</p>
 TODO: why not do this first, and then commit? Why commit from evaluation directly?</p>
 </li>
 <li>
-<p>If using lookup:</p>
-<ul>
-<li>if using runtime table:
-<ul>
-<li>check that all the provided runtime tables have length and IDs that match the runtime table configuration of the index
-we expect the given runtime tables to be sorted as configured, this makes it easier afterwards</li>
-<li>calculate the contribution to the second column of the lookup table
-(the runtime vector)</li>
-</ul>
-</li>
-<li>If queries involve a lookup table with multiple columns
-then squeeze the Fq-Sponge to obtain the joint combiner challenge <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.946332em;vertical-align:-0.19444em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.05724em;">j</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span>,
-otherwise set the joint combiner challenge <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.946332em;vertical-align:-0.19444em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.05724em;">j</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span> to <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">0</span></span></span></span>.</li>
-<li>Derive the scalar joint combiner <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.85396em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.05724em;">j</span></span></span></span> from <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.946332em;vertical-align:-0.19444em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.05724em;">j</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span> using the endomorphism (TOOD: specify)</li>
-<li>If multiple lookup tables are involved,
-set the <code>table_id_combiner</code> as the <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.019104em;vertical-align:-0.19444em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.05724em;">j</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.824664em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">i</span></span></span></span></span></span></span></span></span></span></span> with <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.65952em;vertical-align:0em;"></span><span class="mord mathnormal">i</span></span></span></span> the maximum width of any used table.
-Essentially, this is to add a last column of table ids to the concatenated lookup tables.</li>
-<li>Compute the dummy lookup value as the combination of the last entry of the XOR table (so <code>(0, 0, 0)</code>).
-Warning: This assumes that we always use the XOR table when using lookups.</li>
-<li>Compute the lookup table values as the combination of the lookup table entries.</li>
-<li>Compute the sorted evaluations.</li>
-<li>Randomize the last <code>EVALS</code> rows in each of the sorted polynomials
-in order to add zero-knowledge to the protocol.</li>
-<li>Commit each of the sorted polynomials.</li>
-<li>Absorb each commitments to the sorted polynomials.</li>
-</ul>
+<p>If circuit uses lookups, create a lookup context (see <a href="#lookup-context-creation">Lookup context creation</a> algorithm)</p>
 </li>
 <li>
 <p>Sample <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.05278em;">β</span></span></span></span> with the Fq-Sponge.</p>
@@ -1765,12 +1745,7 @@ in order to add zero-knowledge to the protocol.</li>
 <p>Sample <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.625em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.05556em;">γ</span></span></span></span> with the Fq-Sponge.</p>
 </li>
 <li>
-<p>If using lookup:</p>
-<ul>
-<li>Compute the lookup aggregation polynomial.</li>
-<li>Commit to the aggregation polynomial.</li>
-<li>Absorb the commitment to the aggregation polynomial with the Fq-Sponge.</li>
-</ul>
+<p>If circuit uses lookups, compute lookup context aggregation polynomial (see <a href="#lookup-context-aggregation-polynomial-creation">Lookup context aggregation polynomial creation</a> algorithm)</p>
 </li>
 <li>
 <p>Compute the permutation aggregation polynomial <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.43056em;vertical-align:0em;"></span><span class="mord mathnormal" style="margin-right:0.04398em;">z</span></span></span></span>.</p>
@@ -1928,6 +1903,35 @@ First, include the previous challenges, in case we are in a recursive prover.</p
 <p>Create an aggregated evaluation proof for all of these polynomials at <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span></span></span></span> and <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span><span class="mord mathnormal" style="margin-right:0.03588em;">ω</span></span></span></span> using <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.43056em;vertical-align:0em;"></span><span class="mord mathnormal">u</span></span></span></span> and <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.43056em;vertical-align:0em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">v</span></span></span></span>.</p>
 </li>
 </ol>
+<h4 id="lookup-context-creation"><a class="header" href="#lookup-context-creation">Lookup context creation</a></h4>
+<p>When we want to create a proof for a circuit that uses lookups, we must create a lookup context.
+- if using runtime table:
+- check that all the provided runtime tables have length and IDs that match the runtime table configuration of the index
+we expect the given runtime tables to be sorted as configured, this makes it easier afterwards
+- calculate the contribution to the second column of the lookup table
+(the runtime vector)
+- If queries involve a lookup table with multiple columns
+then squeeze the Fq-Sponge to obtain the joint combiner challenge <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.946332em;vertical-align:-0.19444em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.05724em;">j</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span>,
+otherwise set the joint combiner challenge <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.946332em;vertical-align:-0.19444em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.05724em;">j</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span> to <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">0</span></span></span></span>.
+- Derive the scalar joint combiner <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.85396em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.05724em;">j</span></span></span></span> from <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.946332em;vertical-align:-0.19444em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.05724em;">j</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span> using the endomorphism (TOOD: specify)
+- If multiple lookup tables are involved,
+set the <code>table_id_combiner</code> as the <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.019104em;vertical-align:-0.19444em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.05724em;">j</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.824664em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">i</span></span></span></span></span></span></span></span></span></span></span> with <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.65952em;vertical-align:0em;"></span><span class="mord mathnormal">i</span></span></span></span> the maximum width of any used table.
+Essentially, this is to add a last column of table ids to the concatenated lookup tables.
+- Compute the dummy lookup value as the combination of the last entry of the XOR table (so <code>(0, 0, 0)</code>).
+Warning: This assumes that we always use the XOR table when using lookups.
+- Compute the lookup table values as the combination of the lookup table entries.
+- Compute the sorted evaluations.
+- Randomize the last <code>EVALS</code> rows in each of the sorted polynomials
+in order to add zero-knowledge to the protocol.
+- Commit each of the sorted polynomials.
+- Absorb each commitments to the sorted polynomials.</p>
+<h4 id="lookup-context-aggregation-polynomial-creation"><a class="header" href="#lookup-context-aggregation-polynomial-creation">Lookup context aggregation polynomial creation</a></h4>
+<p>When we have a lookup context, we must compute its aggregation polynomial.</p>
+<ul>
+<li>Compute the lookup aggregation polynomial.</li>
+<li>Commit to the aggregation polynomial.</li>
+<li>Absorb the commitment to the aggregation polynomial with the Fq-Sponge.</li>
+</ul>
 <h3 id="proof-verification"><a class="header" href="#proof-verification">Proof Verification</a></h3>
 <p>TODO: we talk about batch verification, but is there an actual batch operation? It seems like we’re just verifying an aggregated opening proof</p>
 <p>We define two helper algorithms below, used in the batch verification of proofs.</p>
