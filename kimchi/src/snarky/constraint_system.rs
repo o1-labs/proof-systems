@@ -242,13 +242,14 @@ where
     */
     cached_constants: HashMap<Field, V>,
     /** The [equivalence_classes] field keeps track of the positions which must be
-         enforced to be equivalent due to the fact that they correspond to the same V.t value.
-         I.e., positions that are different usages of the same [V.t].
-         We use a union-find data structure to track equalities that a constraint system wants
-         enforced *between* [V.t] values. Then, at the end, for all [V.t]s that have been unioned
-         together, we combine their equivalence classes in the [equivalence_classes] table into
-         a single equivalence class, so that the permutation argument enforces these desired equalities
-         as well.
+    enforced to be equivalent due to the fact that they correspond to the same V.t value.
+    I.e., positions that are different usages of the same [V.t].
+
+    We use a union-find data structure to track equalities that a constraint system wants
+    enforced *between* [V.t] values. Then, at the end, for all [V.t]s that have been unioned
+    together, we combine their equivalence classes in the [equivalence_classes] table into
+    a single equivalence class, so that the permutation argument enforces these desired equalities
+    as well.
     */
     union_finds: disjoint_set::DisjointSet<V>,
 }
