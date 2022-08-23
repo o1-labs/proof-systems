@@ -1124,34 +1124,6 @@
 <span id="1124">1124</span>
 <span id="1125">1125</span>
 <span id="1126">1126</span>
-<span id="1127">1127</span>
-<span id="1128">1128</span>
-<span id="1129">1129</span>
-<span id="1130">1130</span>
-<span id="1131">1131</span>
-<span id="1132">1132</span>
-<span id="1133">1133</span>
-<span id="1134">1134</span>
-<span id="1135">1135</span>
-<span id="1136">1136</span>
-<span id="1137">1137</span>
-<span id="1138">1138</span>
-<span id="1139">1139</span>
-<span id="1140">1140</span>
-<span id="1141">1141</span>
-<span id="1142">1142</span>
-<span id="1143">1143</span>
-<span id="1144">1144</span>
-<span id="1145">1145</span>
-<span id="1146">1146</span>
-<span id="1147">1147</span>
-<span id="1148">1148</span>
-<span id="1149">1149</span>
-<span id="1150">1150</span>
-<span id="1151">1151</span>
-<span id="1152">1152</span>
-<span id="1153">1153</span>
-<span id="1154">1154</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Dlog-based polynomial commitment schema.
 //! The folowing functionality is implemented
 //!
@@ -1229,18 +1201,6 @@
     <span class="doccomment">/// Returns `true` if the commitment is empty.
     </span><span class="kw">pub fn </span>is_empty(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="self">self</span>.unshifted.is_empty() &amp;&amp; <span class="self">self</span>.shifted.is_none()
-    }
-}
-
-<span class="kw">impl</span>&lt;A: Copy, B: Copy&gt; PolyComm&lt;(A, B)&gt;
-<span class="kw">where
-    </span>A: CanonicalDeserialize + CanonicalSerialize,
-    B: CanonicalDeserialize + CanonicalSerialize,
-{
-    <span class="kw">fn </span>unzip(<span class="self">self</span>) -&gt; (PolyComm&lt;A&gt;, PolyComm&lt;B&gt;) {
-        <span class="kw">let </span>a = <span class="self">self</span>.map(|(x, <span class="kw">_</span>)| x);
-        <span class="kw">let </span>b = <span class="self">self</span>.map(|(<span class="kw">_</span>, y)| y);
-        (a, b)
     }
 }
 
@@ -1667,27 +1627,11 @@
     <span class="doccomment">/// Turns a non-hiding polynomial commitment into a hidding polynomial commitment. Transforms each given `&lt;a, G&gt;` into `(&lt;a, G&gt; + wH, w)` with a random `w` per commitment.
     </span><span class="kw">pub fn </span>mask(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        c: PolyComm&lt;G&gt;,
+        comm: PolyComm&lt;G&gt;,
         rng: <span class="kw-2">&amp;mut </span>(<span class="kw">impl </span>RngCore + CryptoRng),
     ) -&gt; BlindedCommitment&lt;G&gt; {
-        <span class="kw">let </span>(commitment, blinders) = c
-            .map(|g: G| {
-                <span class="kw">if </span>g.is_zero() {
-                    <span class="comment">// TODO: This leaks information when g is the identity!
-                    // We should change this so that we still mask in this case
-                    </span>(g, G::ScalarField::zero())
-                } <span class="kw">else </span>{
-                    <span class="kw">let </span>w = G::ScalarField::rand(rng);
-                    <span class="kw">let </span><span class="kw-2">mut </span>g_masked = <span class="self">self</span>.h.mul(w);
-                    g_masked.add_assign_mixed(<span class="kw-2">&amp;</span>g);
-                    (g_masked.into_affine(), w)
-                }
-            })
-            .unzip();
-        BlindedCommitment {
-            commitment,
-            blinders,
-        }
+        <span class="kw">let </span>blinders = comm.map(|<span class="kw">_</span>| G::ScalarField::rand(rng));
+        <span class="self">self</span>.mask_custom(comm, <span class="kw-2">&amp;</span>blinders).unwrap()
     }
 
     <span class="doccomment">/// Same as [SRS::mask] except that you can pass the blinders manually.
@@ -2307,4 +2251,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c0941dfb5 2022-08-21)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>
