@@ -78,18 +78,6 @@ where
     }
 }
 
-impl<A: Copy, B: Copy> PolyComm<(A, B)>
-where
-    A: CanonicalDeserialize + CanonicalSerialize,
-    B: CanonicalDeserialize + CanonicalSerialize,
-{
-    fn unzip(self) -> (PolyComm<A>, PolyComm<B>) {
-        let a = self.map(|(x, _)| x);
-        let b = self.map(|(_, y)| y);
-        (a, b)
-    }
-}
-
 impl<A: Copy + CanonicalDeserialize + CanonicalSerialize> PolyComm<A> {
     // TODO: if all callers end up calling unwrap, just call this zip_eq and panic here (and document the panic)
     pub fn zip<B: Copy + CanonicalDeserialize + CanonicalSerialize>(
@@ -513,27 +501,11 @@ impl<G: CommitmentCurve> SRS<G> {
     /// Turns a non-hiding polynomial commitment into a hidding polynomial commitment. Transforms each given `<a, G>` into `(<a, G> + wH, w)` with a random `w` per commitment.
     pub fn mask(
         &self,
-        c: PolyComm<G>,
+        comm: PolyComm<G>,
         rng: &mut (impl RngCore + CryptoRng),
     ) -> BlindedCommitment<G> {
-        let (commitment, blinders) = c
-            .map(|g: G| {
-                if g.is_zero() {
-                    // TODO: This leaks information when g is the identity!
-                    // We should change this so that we still mask in this case
-                    (g, G::ScalarField::zero())
-                } else {
-                    let w = G::ScalarField::rand(rng);
-                    let mut g_masked = self.h.mul(w);
-                    g_masked.add_assign_mixed(&g);
-                    (g_masked.into_affine(), w)
-                }
-            })
-            .unzip();
-        BlindedCommitment {
-            commitment,
-            blinders,
-        }
+        let blinders = comm.map(|_| G::ScalarField::rand(rng));
+        self.mask_custom(comm, &blinders).unwrap()
     }
 
     /// Same as [SRS::mask] except that you can pass the blinders manually.
