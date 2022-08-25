@@ -2156,15 +2156,42 @@ where
 pub mod constraints {
     use super::*;
 
+    pub trait ArithmeticOps:
+        std::ops::Mul<Output = Self>
+        + std::ops::Sub<Output = Self>
+        + std::ops::Neg<Output = Self>
+        + std::ops::Add<Output = Self>
+        + Clone
+        + One
+        + From<u64>
+    where
+        Self: std::marker::Sized,
+    {
+    }
+
+    impl<T> ArithmeticOps for T where
+        T: std::ops::Mul<Output = Self>
+            + std::ops::Sub<Output = Self>
+            + std::ops::Neg<Output = Self>
+            + std::ops::Add<Output = Self>
+            + Clone
+            + One
+            + From<u64>
+    {
+    }
+
     /// Creates a constraint to enforce that b is either 0 or 1.
-    pub fn boolean<F: Field>(b: &E<F>) -> E<F> {
-        b.clone().square() - b.clone()
+    pub fn boolean<F: ArithmeticOps>(b: &F) -> F {
+        b.clone() * (b.clone() - 1u64.into())
     }
 
     /// Crumb constraint for 2-bit value x
-    pub fn crumb<F: FftField>(x: &E<F>) -> E<F> {
+    pub fn crumb<F: ArithmeticOps>(x: &F) -> F {
         // Assert x \in [0,3] i.e. assert x*(x - 1)*(x - 2)*(x - 3) == 0
-        x.clone() * (x.clone() - E::one()) * (x.clone() - 2u64.into()) * (x.clone() - 3u64.into())
+        x.clone()
+            * (x.clone() - 1u64.into())
+            * (x.clone() - 2u64.into())
+            * (x.clone() - 3u64.into())
     }
 }
 

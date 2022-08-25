@@ -1,6 +1,7 @@
 //! Foreign field multiplication witness computation
 
 use crate::circuits::{
+    expr::constraints::crumb,
     polynomial::COLUMNS,
     polynomials::range_check::{
         self,
@@ -301,9 +302,9 @@ pub fn check_witness<F: PrimeField>(
     let product_mi_sum = two_to_88 * product_mi_top + product_mi_bot;
     assert_eq!(F::zero(), product_mi - product_mi_sum);
 
-    assert_eq!(F::zero(), crumb(carry_bot));
+    assert_eq!(F::zero(), crumb(&carry_bot));
 
-    assert_eq!(F::zero(), crumb(product_mi_top_over));
+    assert_eq!(F::zero(), crumb(&product_mi_top_over));
 
     assert_eq!(F::zero(), carry_shift - two_to_8 * carry_top_over);
 
@@ -320,10 +321,6 @@ pub fn check_witness<F: PrimeField>(
     assert_eq!(F::zero(), zero_top - two_to_88 * carry_top);
 
     Ok(())
-}
-
-pub fn crumb<F: PrimeField>(x: F) -> F {
-    x * (x - F::one()) * (x - F::from(2u64)) * (x - F::from(3u64))
 }
 
 /// Compute nonzero intermediate products with the bitstring format.

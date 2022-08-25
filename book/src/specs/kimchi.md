@@ -1199,17 +1199,17 @@ where the notation `v2ci` and `v2pi` defined in the "Layout" section above.
 
 #### Foreign Field Multiplication
 
-These circuit gates are used to constrain that
+This gadget are used to constrain that
 
-$$left_input * right_input = quotient * foreign_modulus + remainder$$
+$\mathtt{left\_input} * \mathtt{right\_input} = \mathtt{quotient} * \mathtt{foreign\_modulus} + \mathtt{remainder}$
 
 ##### Documentation:
 
 For more details please see the [FFMul RFC](../rfcs/ffadd.md)
 
 ##### Mapping:
-To make things clearer, the following mapping between the variable names
-used in the code and those of the document can be helpful.
+For clarity, the following mapping between the variable names used in the code and
+those of the RFC can be helpful.
 
 ```text
 left_input_hi => a2  right_input_hi => b2  quotient_hi => q2  remainder_hi => r2
@@ -1218,32 +1218,34 @@ left_input_lo => a0  right_input_lo => b0  quotient_lo => q0  remainder_lo => r0
 
 product_mi_bot => p10   product_mi_top_limb => p110   product_mi_top_over => p111
 carry_bot      => v0    carry_top_limb      => v10    carry_top_over      => v11
+
+         carry_shift => shift_v11            product_shift => shift_q2
 ````
 
 ##### Suffixes:
 The variable names in this code uses descriptive suffixes to convey information about the
 positions of the bits referred to.
 
-- When a variable is split into 3 limbs we use: lo, mid, hi (where high is the most significant)
-- When a variable is split in 2 halves we use: bottom, top  (where top is the most significant)
-- When the bits of a variable are split into a limb and some over bits we use: limb,
+- When a variable is split into 3 limbs we use: lo, mid and hi (where hi is the most significant)
+- When a variable is split in 2 halves we use: bottom and top  (where top is the most significant)
+- When the bits of a variable are split into a limb and some over bits we use: limb and
   over (where over is the most significant)
 
 ##### Inputs:
-* foreign_modulus        := foreign field modulus (currently stored in constraint system)
-* left_input $~\in F_f$  := left foreign field element multiplicand
-* right_input $~\in F_f$ := right foreign field element multiplicand
+* $\mathtt{foreign\_modulus}$ := foreign field modulus (currently stored in constraint system)
+* $\mathtt{left\_input} ~\in F_f$  := left foreign field element multiplicand
+* $\mathtt{right\_input} ~\in F_f$ := right foreign field element multiplicand
 
 ```admonition::notice
 N.b. the native field modulus is obtainable from F, the native field's trait bound below.
 ```
 
 ##### Witness:
-* quotient $~\in F_f$  := foreign field quotient
-* remainder $~\in F_f$ := foreign field remainder
-* carry_bot            := a two bit carry
-* carry_top_limb       := low 88 bits of carry_top
-* carry_top_over       := high 3 bits of carry_top
+* $\mathtt{quotient} ~\in F_f$ := foreign field quotient
+* $\mathtt{remainder} ~\in F_f$ := foreign field remainder
+* $\mathtt{carry\_bot}$ := a two bit carry
+* $\mathtt{carry\_top\_limb}$ := low 88 bits of carry_top
+* $\mathtt{carry\_top\_over}$ := high 3 bits of carry_top
 
 ##### Layout:
 
