@@ -236,7 +236,7 @@ where
                 ],
             ]
         } else {
-            vec![Vec::<G::ScalarField>::new(), Vec::<G::ScalarField>::new()]
+            vec![vec![G::ScalarField::zero()], vec![G::ScalarField::zero()]]
         };
 
         //~ 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.

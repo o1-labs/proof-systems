@@ -563,7 +563,7 @@ impl<G: CommitmentCurve> SRS<G> {
 
         // committing all the segments without shifting
         let unshifted = if is_zero {
-            Vec::new()
+            vec![G::zero()]
         } else {
             (0..p / n + if p % n != 0 { 1 } else { 0 })
                 .map(|i| {
