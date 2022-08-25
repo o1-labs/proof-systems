@@ -394,7 +394,7 @@ where
                     .collect::<Vec<_>>(),
             );
 
-            combined_inner_product::<G>(&evaluation_points, &v, &u, &es, index.srs().g.len())
+            combined_inner_product(&evaluation_points, &v, &u, &es, index.srs().g.len())
         };
 
         let oracles = RandomOracles {

@@ -78,18 +78,6 @@ where
     }
 }
 
-impl<A: Copy, B: Copy> PolyComm<(A, B)>
-where
-    A: CanonicalDeserialize + CanonicalSerialize,
-    B: CanonicalDeserialize + CanonicalSerialize,
-{
-    fn unzip(self) -> (PolyComm<A>, PolyComm<B>) {
-        let a = self.map(|(x, _)| x);
-        let b = self.map(|(_, y)| y);
-        (a, b)
-    }
-}
-
 impl<A: Copy + CanonicalDeserialize + CanonicalSerialize> PolyComm<A> {
     // TODO: if all callers end up calling unwrap, just call this zip_eq and panic here (and document the panic)
     pub fn zip<B: Copy + CanonicalDeserialize + CanonicalSerialize>(
@@ -420,16 +408,16 @@ pub fn to_group<G: CommitmentCurve>(m: &G::Map, t: <G as AffineCurve>::BaseField
 /// Note that if one of the polynomial comes specified with a degree bound,
 /// the evaluation for the last segment is potentially shifted to meet the proof.
 #[allow(clippy::type_complexity)]
-pub fn combined_inner_product<G: CommitmentCurve>(
-    evaluation_points: &[G::ScalarField],
-    xi: &G::ScalarField,
-    r: &G::ScalarField,
+pub fn combined_inner_product<F: PrimeField>(
+    evaluation_points: &[F],
+    xi: &F,
+    r: &F,
     // TODO(mimoo): needs a type that can get you evaluations or segments
-    polys: &[(Vec<Vec<G::ScalarField>>, Option<usize>)],
+    polys: &[(Vec<Vec<F>>, Option<usize>)],
     srs_length: usize,
-) -> G::ScalarField {
-    let mut res = G::ScalarField::zero();
-    let mut xi_i = G::ScalarField::one();
+) -> F {
+    let mut res = F::zero();
+    let mut xi_i = F::one();
 
     for (evals_tr, shifted) in polys.iter().filter(|(evals_tr, _)| !evals_tr[0].is_empty()) {
         // transpose the evaluations
@@ -439,7 +427,7 @@ pub fn combined_inner_product<G: CommitmentCurve>(
 
         // iterating over the polynomial segments
         for eval in evals.iter() {
-            let term = DensePolynomial::<G::ScalarField>::eval_polynomial(eval, *r);
+            let term = DensePolynomial::<F>::eval_polynomial(eval, *r);
 
             res += &(xi_i * term);
             xi_i *= xi;
@@ -448,7 +436,7 @@ pub fn combined_inner_product<G: CommitmentCurve>(
         if let Some(m) = shifted {
             // xi^i sum_j r^j elm_j^{N - m} f(elm_j)
             let last_evals = if *m > evals.len() * srs_length {
-                vec![G::ScalarField::zero(); evaluation_points.len()]
+                vec![F::zero(); evaluation_points.len()]
             } else {
                 evals[evals.len() - 1].clone()
             };
@@ -458,7 +446,7 @@ pub fn combined_inner_product<G: CommitmentCurve>(
                 .map(|(elm, f_elm)| elm.pow(&[(srs_length - (*m) % srs_length) as u64]) * f_elm)
                 .collect();
 
-            res += &(xi_i * DensePolynomial::<G::ScalarField>::eval_polynomial(&shifted_evals, *r));
+            res += &(xi_i * DensePolynomial::<F>::eval_polynomial(&shifted_evals, *r));
             xi_i *= xi;
         }
     }
@@ -513,27 +501,11 @@ impl<G: CommitmentCurve> SRS<G> {
     /// Turns a non-hiding polynomial commitment into a hidding polynomial commitment. Transforms each given `<a, G>` into `(<a, G> + wH, w)` with a random `w` per commitment.
     pub fn mask(
         &self,
-        c: PolyComm<G>,
+        comm: PolyComm<G>,
         rng: &mut (impl RngCore + CryptoRng),
     ) -> BlindedCommitment<G> {
-        let (commitment, blinders) = c
-            .map(|g: G| {
-                if g.is_zero() {
-                    // TODO: This leaks information when g is the identity!
-                    // We should change this so that we still mask in this case
-                    (g, G::ScalarField::zero())
-                } else {
-                    let w = G::ScalarField::rand(rng);
-                    let mut g_masked = self.h.mul(w);
-                    g_masked.add_assign_mixed(&g);
-                    (g_masked.into_affine(), w)
-                }
-            })
-            .unzip();
-        BlindedCommitment {
-            commitment,
-            blinders,
-        }
+        let blinders = comm.map(|_| G::ScalarField::rand(rng));
+        self.mask_custom(comm, &blinders).unwrap()
     }
 
     /// Same as [SRS::mask] except that you can pass the blinders manually.
@@ -765,7 +737,7 @@ impl<G: CommitmentCurve> SRS<G> {
                         },
                     )
                     .collect();
-                combined_inner_product::<G>(evaluation_points, xi, r, &es, self.g.len())
+                combined_inner_product(evaluation_points, xi, r, &es, self.g.len())
             };
 
             sponge.absorb_fr(&[shift_scalar::<G>(combined_inner_product0)]);
