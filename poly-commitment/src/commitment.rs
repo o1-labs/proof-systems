@@ -518,15 +518,9 @@ impl<G: CommitmentCurve> SRS<G> {
             .zip(blinders)
             .ok_or_else(|| CommitmentError::BlindersDontMatch(blinders.len(), com.len()))?
             .map(|(g, b)| {
-                if g.is_zero() {
-                    // TODO: This leaks information when g is the identity!
-                    // We should change this so that we still mask in this case
-                    g
-                } else {
-                    let mut g_masked = self.h.mul(b);
-                    g_masked.add_assign_mixed(&g);
-                    g_masked.into_affine()
-                }
+                let mut g_masked = self.h.mul(b);
+                g_masked.add_assign_mixed(&g);
+                g_masked.into_affine()
             });
         Ok(BlindedCommitment {
             commitment,
