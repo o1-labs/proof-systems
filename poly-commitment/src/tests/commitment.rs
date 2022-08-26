@@ -15,7 +15,7 @@ use o1_utils::ExtendedDensePolynomial as _;
 use oracle::constants::PlonkSpongeConstantsKimchi as SC;
 use oracle::sponge::DefaultFqSponge;
 use oracle::FqSponge as _;
-use rand::Rng;
+use rand::{CryptoRng, Rng};
 use std::time::{Duration, Instant};
 
 // Note: Because the current API uses large tuples of types, I re-create types
@@ -95,15 +95,7 @@ impl AggregatedEvaluationProof {
     }
 }
 
-#[test]
-/// Tests polynomial commitments, batched openings and
-/// verification of a batch of batched opening proofs of polynomial commitments
-fn test_commit()
-where
-    <Fp as std::str::FromStr>::Err: std::fmt::Debug,
-{
-    // setup
-    let mut rng = rand::thread_rng();
+fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
     let group_map = <Vesta as CommitmentCurve>::Map::setup();
     let fq_sponge =
         DefaultFqSponge::<VestaParameters, SC>::new(oracle::pasta::fq_kimchi::static_params());
@@ -229,4 +221,16 @@ where
         "batch verification time:".green(),
         timer.elapsed()
     );
+}
+
+#[test]
+/// Tests polynomial commitments, batched openings and
+/// verification of a batch of batched opening proofs of polynomial commitments
+fn test_commit()
+where
+    <Fp as std::str::FromStr>::Err: std::fmt::Debug,
+{
+    // setup
+    let mut rng = rand::thread_rng();
+    test_randomised(&mut rng)
 }
