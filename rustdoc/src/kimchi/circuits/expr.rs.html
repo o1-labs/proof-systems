@@ -2300,6 +2300,79 @@
 <span id="2300">2300</span>
 <span id="2301">2301</span>
 <span id="2302">2302</span>
+<span id="2303">2303</span>
+<span id="2304">2304</span>
+<span id="2305">2305</span>
+<span id="2306">2306</span>
+<span id="2307">2307</span>
+<span id="2308">2308</span>
+<span id="2309">2309</span>
+<span id="2310">2310</span>
+<span id="2311">2311</span>
+<span id="2312">2312</span>
+<span id="2313">2313</span>
+<span id="2314">2314</span>
+<span id="2315">2315</span>
+<span id="2316">2316</span>
+<span id="2317">2317</span>
+<span id="2318">2318</span>
+<span id="2319">2319</span>
+<span id="2320">2320</span>
+<span id="2321">2321</span>
+<span id="2322">2322</span>
+<span id="2323">2323</span>
+<span id="2324">2324</span>
+<span id="2325">2325</span>
+<span id="2326">2326</span>
+<span id="2327">2327</span>
+<span id="2328">2328</span>
+<span id="2329">2329</span>
+<span id="2330">2330</span>
+<span id="2331">2331</span>
+<span id="2332">2332</span>
+<span id="2333">2333</span>
+<span id="2334">2334</span>
+<span id="2335">2335</span>
+<span id="2336">2336</span>
+<span id="2337">2337</span>
+<span id="2338">2338</span>
+<span id="2339">2339</span>
+<span id="2340">2340</span>
+<span id="2341">2341</span>
+<span id="2342">2342</span>
+<span id="2343">2343</span>
+<span id="2344">2344</span>
+<span id="2345">2345</span>
+<span id="2346">2346</span>
+<span id="2347">2347</span>
+<span id="2348">2348</span>
+<span id="2349">2349</span>
+<span id="2350">2350</span>
+<span id="2351">2351</span>
+<span id="2352">2352</span>
+<span id="2353">2353</span>
+<span id="2354">2354</span>
+<span id="2355">2355</span>
+<span id="2356">2356</span>
+<span id="2357">2357</span>
+<span id="2358">2358</span>
+<span id="2359">2359</span>
+<span id="2360">2360</span>
+<span id="2361">2361</span>
+<span id="2362">2362</span>
+<span id="2363">2363</span>
+<span id="2364">2364</span>
+<span id="2365">2365</span>
+<span id="2366">2366</span>
+<span id="2367">2367</span>
+<span id="2368">2368</span>
+<span id="2369">2369</span>
+<span id="2370">2370</span>
+<span id="2371">2371</span>
+<span id="2372">2372</span>
+<span id="2373">2373</span>
+<span id="2374">2374</span>
+<span id="2375">2375</span>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         domains::EvaluationDomains,
@@ -4448,15 +4521,54 @@
 </span><span class="kw">pub mod </span>constraints {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
+    <span class="doccomment">/// This trait defines a common arithmetic operations interface
+    /// that can be used by constraints.  It allows us to reuse
+    /// constraint code for witness computation.
+    </span><span class="kw">pub trait </span>ArithmeticOps:
+        std::ops::Add&lt;Output = <span class="self">Self</span>&gt;
+        + std::ops::Sub&lt;Output = <span class="self">Self</span>&gt;
+        + std::ops::Neg&lt;Output = <span class="self">Self</span>&gt;
+        + std::ops::Mul&lt;Output = <span class="self">Self</span>&gt;
+        + Clone
+        + Zero
+        + One
+        + From&lt;u64&gt;
+    <span class="comment">// Add more as necessary
+    </span><span class="kw">where
+        </span><span class="self">Self</span>: std::marker::Sized,
+    {
+        <span class="doccomment">/// Compute the square of this value
+        </span><span class="kw">fn </span>square(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
+            <span class="self">self</span>.clone() * <span class="self">self</span>.clone()
+        }
+    }
+
+    <span class="kw">impl</span>&lt;T&gt; ArithmeticOps <span class="kw">for </span>T
+    <span class="kw">where
+        </span>T: std::ops::Add&lt;Output = <span class="self">Self</span>&gt;
+            + std::ops::Sub&lt;Output = <span class="self">Self</span>&gt;
+            + std::ops::Neg&lt;Output = <span class="self">Self</span>&gt;
+            + std::ops::Mul&lt;Output = <span class="self">Self</span>&gt;
+            + Clone
+            + Zero
+            + One
+            + From&lt;u64&gt;,
+    {
+        <span class="comment">// Nothing required yet
+    </span>}
+
     <span class="doccomment">/// Creates a constraint to enforce that b is either 0 or 1.
-    </span><span class="kw">pub fn </span>boolean&lt;F: Field&gt;(b: <span class="kw-2">&amp;</span>E&lt;F&gt;) -&gt; E&lt;F&gt; {
-        b.clone().square() - b.clone()
+    </span><span class="kw">pub fn </span>boolean&lt;F: ArithmeticOps&gt;(b: <span class="kw-2">&amp;</span>F) -&gt; F {
+        b.square() - b.clone()
     }
 
     <span class="doccomment">/// Crumb constraint for 2-bit value x
-    </span><span class="kw">pub fn </span>crumb&lt;F: FftField&gt;(x: <span class="kw-2">&amp;</span>E&lt;F&gt;) -&gt; E&lt;F&gt; {
+    </span><span class="kw">pub fn </span>crumb&lt;F: ArithmeticOps&gt;(x: <span class="kw-2">&amp;</span>F) -&gt; F {
         <span class="comment">// Assert x \in [0,3] i.e. assert x*(x - 1)*(x - 2)*(x - 3) == 0
-        </span>x.clone() * (x.clone() - E::one()) * (x.clone() - <span class="number">2u64</span>.into()) * (x.clone() - <span class="number">3u64</span>.into())
+        </span>x.clone()
+            * (x.clone() - <span class="number">1u64</span>.into())
+            * (x.clone() - <span class="number">2u64</span>.into())
+            * (x.clone() - <span class="number">3u64</span>.into())
     }
 }
 
@@ -4507,6 +4619,7 @@
     <span class="kw">use crate</span>::{
         circuits::{
             constraints::ConstraintSystem,
+            expr::constraints::ArithmeticOps,
             gate::CircuitGate,
             polynomials::{generic::GenericGateSpec, permutation::ZK_ROWS},
             wires::Wire,
@@ -4601,6 +4714,39 @@
             );
         }
     }
+
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_arithmetic_ops() {
+        <span class="kw">fn </span>test_1&lt;F: ArithmeticOps&gt;() -&gt; F {
+            F::zero() + F::one()
+        }
+        <span class="macro">assert_eq!</span>(test_1::&lt;E&lt;Fp&gt;&gt;(), E::zero() + E::one());
+        <span class="macro">assert_eq!</span>(test_1::&lt;Fp&gt;(), Fp::one());
+
+        <span class="kw">fn </span>test_2&lt;F: ArithmeticOps&gt;() -&gt; F {
+            F::one() + F::one()
+        }
+        <span class="macro">assert_eq!</span>(test_2::&lt;E&lt;Fp&gt;&gt;(), E::one() + E::one());
+        <span class="macro">assert_eq!</span>(test_2::&lt;Fp&gt;(), Fp::from(<span class="number">2u64</span>));
+
+        <span class="kw">fn </span>test_3&lt;F: ArithmeticOps&gt;(x: F) -&gt; F {
+            F::from(<span class="number">2u64</span>) * x
+        }
+        <span class="macro">assert_eq!</span>(
+            test_3::&lt;E&lt;Fp&gt;&gt;(E::from(<span class="number">3u64</span>)),
+            E::from(<span class="number">2u64</span>) * E::from(<span class="number">3u64</span>)
+        );
+        <span class="macro">assert_eq!</span>(test_3(Fp::from(<span class="number">3u64</span>)), Fp::from(<span class="number">6u64</span>));
+
+        <span class="kw">fn </span>test_4&lt;F: ArithmeticOps&gt;(x: F) -&gt; F {
+            x.clone() * (x.square() + F::from(<span class="number">7u64</span>))
+        }
+        <span class="macro">assert_eq!</span>(
+            test_4::&lt;E&lt;Fp&gt;&gt;(E::from(<span class="number">5u64</span>)),
+            E::from(<span class="number">5u64</span>) * (E::from(<span class="number">5u64</span>) * E::from(<span class="number">5u64</span>) + E::from(<span class="number">7u64</span>))
+        );
+        <span class="macro">assert_eq!</span>(test_4::&lt;Fp&gt;(Fp::from(<span class="number">5u64</span>)), Fp::from(<span class="number">160u64</span>));
+    }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (015a824f2 2022-08-22)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (748038961 2022-08-25)" ></div></body></html>
