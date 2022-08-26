@@ -232,7 +232,7 @@ impl<C: AffineCurve> PolyComm<C> {
             },
             unshifted: {
                 if com.is_empty() || elm.is_empty() {
-                    Vec::new()
+                    vec![C::zero()]
                 } else {
                     let n = Iterator::max(com.iter().map(|c| c.unshifted.len())).unwrap();
                     (0..n)
