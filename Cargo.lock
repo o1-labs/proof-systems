@@ -349,6 +349,7 @@ dependencies = [
  "once_cell",
  "oracle",
  "rand",
+ "rand_chacha",
  "rand_core",
  "rayon",
  "serde",
