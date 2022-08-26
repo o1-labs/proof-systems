@@ -147,7 +147,9 @@ pub enum BasicSnarkyConstraint<Var> {
     R1CS(Var, Var, Var),
 }
 
-/** A PLONK constraint (or gate) can be [Basic], [Poseidon], [EC_add_complete], [EC_scale], [EC_endoscale], or [EC_endoscalar]. */
+/** A PLONK constraint (or gate) can be [Basic](KimchiConstraint::Basic), [Poseidon](KimchiConstraint::Poseidon),
+ * [EcAddComplete](KimchiConstraint::EcAddComplete), [EcScale](KimchiConstraint::EcScale),
+ * [EcEndoscale](KimchiConstraint::EcEndoscale), or [EcEndoscalar](KimchiConstraint::EcEndoscalar). */
 pub enum KimchiConstraint<Var, Field> {
     Basic {
         l: (Field, Var),
@@ -225,7 +227,7 @@ where
     /** The variables that hold each witness value for each row, in reverse order. */
     rows: Vec<Vec<Option<V>>>,
     /** A circuit is described by a series of gates.
-       A gate is finalized once [finalize_and_get_gates] is called.
+       A gate is finalized once [finalize_and_get_gates](SnarkyConstraintSystem::finalize_and_get_gates) is called.
        The finalized tag contains the digest of the circuit.
     */
     gates: Circuit<Field, RustGates>,
@@ -241,13 +243,13 @@ where
        use a fresh generic constraint each time to create a constant.
     */
     cached_constants: HashMap<Field, V>,
-    /** The [equivalence_classes] field keeps track of the positions which must be
+    /** The [equivalence_classes](SnarkyConstraintSystem::equivalence_classes) field keeps track of the positions which must be
     enforced to be equivalent due to the fact that they correspond to the same V.t value.
     I.e., positions that are different usages of the same [V.t].
 
     We use a union-find data structure to track equalities that a constraint system wants
     enforced *between* [V.t] values. Then, at the end, for all [V.t]s that have been unioned
-    together, we combine their equivalence classes in the [equivalence_classes] table into
+    together, we combine their equivalence classes in the [equivalence_classes](SnarkyConstraintSystem::equivalence_classes) table into
     a single equivalence class, so that the permutation argument enforces these desired equalities
     as well.
     */
