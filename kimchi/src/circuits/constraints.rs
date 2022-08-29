@@ -54,6 +54,9 @@ pub struct ConstraintSystem<F: PrimeField> {
 
     // Coefficient polynomials. These define constant that gates can use as they like.
     // ---------------------------------------
+    /// coefficients polynomials in monomial form
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
+    pub coefficientsm: [DP<F>; COLUMNS],
     /// coefficients polynomials in evaluation form
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
     pub coefficients8: [E<F, D<F>>; COLUMNS],
@@ -600,6 +603,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             sigmam,
             genericm,
             generic4,
+            coefficientsm,
             coefficients8,
             ps8,
             psm,

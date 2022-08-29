@@ -59,6 +59,9 @@ pub struct ProofEvaluations<Field> {
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
     #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; PERMUTS - 1]")]
     pub s: [Field; PERMUTS - 1],
+    /// coefficient polynomials
+    #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; COLUMNS]")]
+    pub coefficients: [Field; COLUMNS],
     /// lookup-related evaluations
     pub lookup: Option<LookupEvaluations<Field>>,
     /// evaluation of the generic selector polynomial
@@ -157,6 +160,7 @@ impl<F> ProofEvaluations<F> {
             z: array_init(|i| &evals[i].z),
             w: array_init(|j| array_init(|i| &evals[i].w[j])),
             s: array_init(|j| array_init(|i| &evals[i].s[j])),
+            coefficients: array_init(|j| array_init(|i| &evals[i].coefficients[j])),
             lookup: if has_lookup {
                 let sorted_length = evals[0].lookup.as_ref().unwrap().sorted.len();
                 Some(LookupEvaluations {
@@ -233,6 +237,7 @@ impl<F: Zero> ProofEvaluations<F> {
             w,
             z: F::zero(),
             s: array_init(|_| F::zero()),
+            coefficients: array_init(|_| F::zero()),
             lookup: None,
             generic_selector: F::zero(),
             poseidon_selector: F::zero(),
@@ -244,6 +249,9 @@ impl<F: FftField> ProofEvaluations<Vec<F>> {
     pub fn combine(&self, pt: F) -> ProofEvaluations<F> {
         ProofEvaluations::<F> {
             s: array_init(|i| DensePolynomial::eval_polynomial(&self.s[i], pt)),
+            coefficients: array_init(|i| {
+                DensePolynomial::eval_polynomial(&self.coefficients[i], pt)
+            }),
             w: array_init(|i| DensePolynomial::eval_polynomial(&self.w[i], pt)),
             z: DensePolynomial::eval_polynomial(&self.z, pt),
             lookup: self.lookup.as_ref().map(|l| LookupEvaluations {

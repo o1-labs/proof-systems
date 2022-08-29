@@ -643,6 +643,11 @@ where
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta)
                 }),
+                coefficients: array_init(|i| {
+                    index.cs.coefficientsm[i]
+                        .to_chunked_polynomial(index.max_poly_size)
+                        .evaluate_chunks(zeta)
+                }),
                 w: array_init(|i| {
                     witness_poly[i]
                         .to_chunked_polynomial(index.max_poly_size)
@@ -670,6 +675,11 @@ where
             let chunked_evals_zeta_omega = ProofEvaluations::<Vec<G::ScalarField>> {
                 s: array_init(|i| {
                     index.cs.sigmam[0..PERMUTS - 1][i]
+                        .to_chunked_polynomial(index.max_poly_size)
+                        .evaluate_chunks(zeta_omega)
+                }),
+                coefficients: array_init(|i| {
+                    index.cs.coefficientsm[i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta_omega)
                 }),
@@ -715,6 +725,9 @@ where
                 .zip(power_of_eval_points_for_chunks.iter()) // (zeta , zeta_omega)
                 .map(|(es, &e1)| ProofEvaluations::<G::ScalarField> {
                     s: array_init(|i| DensePolynomial::eval_polynomial(&es.s[i], e1)),
+                    coefficients: array_init(|i| {
+                        DensePolynomial::eval_polynomial(&es.coefficients[i], e1)
+                    }),
                     w: array_init(|i| DensePolynomial::eval_polynomial(&es.w[i], e1)),
                     z: DensePolynomial::eval_polynomial(&es.z, e1),
                     lookup: es.lookup.as_ref().map(|l| LookupEvaluations {
@@ -899,6 +912,14 @@ where
             index.cs.sigmam[0..PERMUTS - 1]
                 .iter()
                 .map(|w| (w, None, non_hiding(1)))
+                .collect::<Vec<_>>(),
+        );
+        polynomials.extend(
+            index
+                .cs
+                .coefficientsm
+                .iter()
+                .map(|coefficientm| (coefficientm, None, non_hiding(1)))
                 .collect::<Vec<_>>(),
         );
 
