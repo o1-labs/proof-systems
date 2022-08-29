@@ -11,7 +11,7 @@ use ark_ec::AffineCurve;
 use ark_ff::Zero;
 use mina_curves::pasta::{pallas, vesta::Vesta, Fp};
 use num_bigint::BigUint;
-use o1_utils::foreign_field::{ForeignElement, FOREIGN_MOD};
+use o1_utils::foreign_field::{ForeignElement, SECP256K1_MOD};
 
 type PallasField = <pallas::Pallas as AffineCurve>::BaseField;
 
@@ -74,7 +74,7 @@ fn create_test_prover_index(public_size: usize) -> ProverIndex<Vesta> {
         0,
         vec![foreign_field_mul::gadget::lookup_table()],
         None,
-        Some(BigUint::from_bytes_be(FOREIGN_MOD)),
+        Some(BigUint::from_bytes_be(SECP256K1_MOD)),
     )
 }
 
@@ -83,7 +83,7 @@ fn create_test_prover_index(public_size: usize) -> ProverIndex<Vesta> {
 fn test_zero_mul() {
     let prover_index = create_test_prover_index(0);
 
-    let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
+    let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(SECP256K1_MOD);
 
     let left_input = ForeignElement::<PallasField, 3>::new([
         PallasField::zero(),
@@ -121,7 +121,7 @@ fn test_zero_mul() {
 fn test_one_mul() {
     let prover_index = create_test_prover_index(0);
 
-    let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
+    let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(SECP256K1_MOD);
     let left_input = ForeignElement::<PallasField, 3>::new_from_be(MAX_FOR);
     let right_input = ForeignElement::<PallasField, 3>::new_from_be(ONE);
 
@@ -153,7 +153,7 @@ fn test_one_mul() {
 // m^2 = q * f + r -> q should be 0 and r should be m^2 < n < f
 fn test_max_native_square() {
     //let prover_index = create_test_prover_index(0);
-    let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
+    let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(SECP256K1_MOD);
     let left_input = ForeignElement::<PallasField, 3>::new_from_be(SQR_NAT);
     let right_input = ForeignElement::<PallasField, 3>::new_from_be(SQR_NAT);
 
@@ -194,7 +194,7 @@ fn test_max_native_square() {
 // g^2 = q * f + r -> q should be 0 and r should be g^2 < f
 fn test_max_foreign_square() {
     //let prover_index = create_test_prover_index(0);
-    let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
+    let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(SECP256K1_MOD);
     let left_input = ForeignElement::<PallasField, 3>::new_from_be(SQR_FOR);
     let right_input = ForeignElement::<PallasField, 3>::new_from_be(SQR_FOR);
 
@@ -234,7 +234,7 @@ fn test_max_foreign_square() {
 // (n - 1) * (n - 1) = q * f + r
 fn test_max_native_multiplicands() {
     //let prover_index = create_test_prover_index(0);
-    let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
+    let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(SECP256K1_MOD);
     let left_input = ForeignElement::<PallasField, 3>::new_from_be(MAX_NAT);
     let right_input = ForeignElement::<PallasField, 3>::new_from_be(MAX_NAT);
 
@@ -260,7 +260,7 @@ fn test_max_native_multiplicands() {
 // ( f - 1) * (f - 1) = f^2 - 2f + 1 = f * (f - 2) + 1
 fn test_max_foreign_multiplicands() {
     //let prover_index = create_test_prover_index(0);
-    let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
+    let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(SECP256K1_MOD);
     let left_input = ForeignElement::<PallasField, 3>::new_from_be(MAX_FOR);
     let right_input = ForeignElement::<PallasField, 3>::new_from_be(MAX_FOR);
 

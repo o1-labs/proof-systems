@@ -116,7 +116,7 @@ impl<T> std::ops::Index<LookupPattern> for LookupSelectors<T> {
             LookupPattern::ChaChaFinal => &self.chacha_final,
             LookupPattern::LookupGate => &self.lookup_gate,
             LookupPattern::RangeCheckGate => &self.range_check_gate,
-            LookupPattern::FFMulGate => &self.ffmul_gate,
+            LookupPattern::ForeignFieldMulGate => &self.ffmul_gate,
         }
     }
 }
@@ -128,7 +128,7 @@ impl<T> std::ops::IndexMut<LookupPattern> for LookupSelectors<T> {
             LookupPattern::ChaChaFinal => &mut self.chacha_final,
             LookupPattern::LookupGate => &mut self.lookup_gate,
             LookupPattern::RangeCheckGate => &mut self.range_check_gate,
-            LookupPattern::FFMulGate => &mut self.ffmul_gate,
+            LookupPattern::ForeignFieldMulGate => &mut self.ffmul_gate,
         }
     }
 }

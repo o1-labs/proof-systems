@@ -89,7 +89,6 @@ use crate::circuits::{
     gate::GateType,
 };
 use ark_ff::FftField;
-use num_traits::One;
 use o1_utils::foreign_field::LIMB_BITS;
 use std::marker::PhantomData;
 

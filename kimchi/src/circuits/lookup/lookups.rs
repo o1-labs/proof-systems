@@ -283,7 +283,7 @@ pub enum LookupPattern {
     ChaChaFinal,
     LookupGate,
     RangeCheckGate,
-    FFMulGate,
+    ForeignFieldMulGate,
 }
 
 impl LookupPattern {
@@ -294,7 +294,7 @@ impl LookupPattern {
             LookupPattern::ChaChaFinal => 4,
             LookupPattern::LookupGate => 3,
             LookupPattern::RangeCheckGate => 4,
-            LookupPattern::FFMulGate => 2,
+            LookupPattern::ForeignFieldMulGate => 2,
         }
     }
 
@@ -305,7 +305,7 @@ impl LookupPattern {
             LookupPattern::ChaChaFinal => 3,
             LookupPattern::LookupGate => 2,
             LookupPattern::RangeCheckGate => 1,
-            LookupPattern::FFMulGate => 1,
+            LookupPattern::ForeignFieldMulGate => 1,
         }
     }
 
@@ -392,7 +392,7 @@ impl LookupPattern {
                     })
                     .collect()
             }
-            LookupPattern::FFMulGate => {
+            LookupPattern::ForeignFieldMulGate => {
                 (5..=6)
                     .map(|column| {
                         //   0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
@@ -415,7 +415,7 @@ impl LookupPattern {
             LookupPattern::ChaCha | LookupPattern::ChaChaFinal => Some(GateLookupTable::Xor),
             LookupPattern::LookupGate => None,
             LookupPattern::RangeCheckGate => Some(GateLookupTable::RangeCheck),
-            LookupPattern::FFMulGate => Some(GateLookupTable::RangeCheck),
+            LookupPattern::ForeignFieldMulGate => Some(GateLookupTable::RangeCheck),
         }
     }
 
@@ -428,7 +428,7 @@ impl LookupPattern {
             (ChaChaFinal, Curr | Next) => Some(LookupPattern::ChaChaFinal),
             (Lookup, Curr) => Some(LookupPattern::LookupGate),
             (RangeCheck0, Curr) | (RangeCheck1, Curr | Next) => Some(LookupPattern::RangeCheckGate),
-            (ForeignFieldMul, Curr) => Some(LookupPattern::FFMulGate),
+            (ForeignFieldMul, Curr) => Some(LookupPattern::ForeignFieldMulGate),
             _ => None,
         }
     }
@@ -447,7 +447,7 @@ impl GateType {
             LookupPattern::ChaChaFinal,
             LookupPattern::LookupGate,
             LookupPattern::RangeCheckGate,
-            LookupPattern::FFMulGate,
+            LookupPattern::ForeignFieldMulGate,
         ]
     }
 }
