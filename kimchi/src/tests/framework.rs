@@ -19,7 +19,7 @@ use commitment_dlog::commitment::CommitmentCurve;
 use groupmap::GroupMap;
 use mina_curves::pasta::{
     fp::Fp,
-    vesta::{Affine, VestaParameters},
+    vesta::{Vesta, VestaParameters},
 };
 use num_bigint::BigUint;
 use oracle::{
@@ -42,11 +42,11 @@ pub(crate) struct TestFramework {
     lookup_tables: Vec<LookupTable<Fp>>,
     runtime_tables_setup: Option<Vec<RuntimeTableCfg<Fp>>>,
     runtime_tables: Vec<RuntimeTable<Fp>>,
-    recursion: Vec<RecursionChallenge<Affine>>,
+    recursion: Vec<RecursionChallenge<Vesta>>,
     num_prev_challenges: usize,
 
-    prover_index: Option<ProverIndex<Affine>>,
-    verifier_index: Option<VerifierIndex<Affine>>,
+    prover_index: Option<ProverIndex<Vesta>>,
+    verifier_index: Option<VerifierIndex<Vesta>>,
 }
 
 pub(crate) struct TestRunner(TestFramework);
@@ -126,12 +126,12 @@ impl TestRunner {
     }
 
     #[must_use]
-    pub(crate) fn recursion(mut self, recursion: Vec<RecursionChallenge<Affine>>) -> Self {
+    pub(crate) fn recursion(mut self, recursion: Vec<RecursionChallenge<Vesta>>) -> Self {
         self.0.recursion = recursion;
         self
     }
 
-    pub(crate) fn prover_index(&self) -> &ProverIndex<Affine> {
+    pub(crate) fn prover_index(&self) -> &ProverIndex<Vesta> {
         self.0.prover_index.as_ref().unwrap()
     }
 
@@ -143,13 +143,13 @@ impl TestRunner {
         // verify the circuit satisfiability by the computed witness
         prover
             .cs
-            .verify::<Affine>(&witness, &self.0.public_inputs)
+            .verify::<Vesta>(&witness, &self.0.public_inputs)
             .unwrap();
 
         // add the proof to the batch
         let start = Instant::now();
 
-        let group_map = <Affine as CommitmentCurve>::Map::setup();
+        let group_map = <Vesta as CommitmentCurve>::Map::setup();
 
         let proof = ProverProof::create_recursive::<BaseSponge, ScalarSponge>(
             &group_map,
@@ -164,7 +164,7 @@ impl TestRunner {
 
         // verify the proof
         let start = Instant::now();
-        verify::<Affine, BaseSponge, ScalarSponge>(
+        verify::<Vesta, BaseSponge, ScalarSponge>(
             &group_map,
             &self.0.verifier_index.unwrap(),
             &proof,

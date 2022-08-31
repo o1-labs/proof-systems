@@ -6,7 +6,10 @@ use crate::{
     circuits::{
         expr::{Linearization, PolishToken},
         lookup::{index::LookupSelectors, lookups::LookupsUsed},
-        polynomials::permutation::{zk_polynomial, zk_w3},
+        polynomials::{
+            permutation::{zk_polynomial, zk_w3},
+            range_check,
+        },
         wires::*,
     },
     curve::KimchiCurve,
@@ -21,6 +24,7 @@ use commitment_dlog::{
     srs::SRS,
 };
 use once_cell::sync::OnceCell;
+use oracle::FqSponge;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::{
@@ -32,7 +36,7 @@ use std::{
 
 //~spec:startcode
 #[serde_as]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LookupVerifierIndex<G: CommitmentCurve> {
     pub lookup_used: LookupsUsed,
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
@@ -54,7 +58,7 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 }
 
 #[serde_as]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct VerifierIndex<G: KimchiCurve> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
@@ -106,8 +110,8 @@ pub struct VerifierIndex<G: KimchiCurve> {
     pub chacha_comm: Option<[PolyComm<G>; 4]>,
 
     // Range check gates polynomial commitments
-    #[serde(bound = "Vec<PolyComm<G>>: Serialize + DeserializeOwned")]
-    pub range_check_comm: Vec<PolyComm<G>>,
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub range_check_comm: Option<[PolyComm<G>; range_check::gadget::GATE_COUNT]>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -137,6 +141,10 @@ pub struct VerifierIndex<G: KimchiCurve> {
 impl<G: KimchiCurve> ProverIndex<G> {
     /// Produces the [VerifierIndex] from the prover's [ProverIndex].
     pub fn verifier_index(&self) -> VerifierIndex<G> {
+        if let Some(verifier_index) = &self.verifier_index {
+            return verifier_index.clone();
+        }
+
         let domain = self.cs.domain.d1;
 
         let lookup_index = {
@@ -211,16 +219,12 @@ impl<G: KimchiCurve> ProverIndex<G> {
                 array_init(|i| self.srs.commit_evaluations_non_hiding(domain, &c[i], None))
             }),
 
-            range_check_comm: self
-                .cs
-                .range_check_selector_polys
-                .iter()
-                .map(|poly| {
+            range_check_comm: self.cs.range_check_selector_polys.as_ref().map(|poly| {
+                array_init(|i| {
                     self.srs
-                        .commit_evaluations_non_hiding(domain, &poly.eval8, None)
+                        .commit_evaluations_non_hiding(domain, &poly[i].eval8, None)
                 })
-                .collect(),
-
+            }),
             shift: self.cs.shift,
             zkpm: {
                 let cell = OnceCell::new();
@@ -309,5 +313,119 @@ impl<G: KimchiCurve> VerifierIndex<G> {
 
         self.serialize(&mut rmp_serde::Serializer::new(writer))
             .map_err(|e| e.to_string())
+    }
+
+    /// Compute the digest of the [VerifierIndex], which can be used for the Fiat-Shamir
+    /// transformation while proving / verifying.
+    pub fn digest<EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>>(
+        &self,
+    ) -> G::BaseField {
+        let mut fq_sponge = EFqSponge::new(G::OtherCurve::sponge_params());
+        // We fully expand this to make the compiler check that we aren't missing any commitments
+        let VerifierIndex {
+            domain: _,
+            max_poly_size: _,
+            max_quot_size: _,
+            srs: _,
+            public: _,
+            prev_challenges: _,
+
+            // Always present
+            sigma_comm,
+            coefficients_comm,
+            generic_comm,
+            psm_comm,
+            complete_add_comm,
+            mul_comm,
+            emul_comm,
+            endomul_scalar_comm,
+
+            // Optional gates
+            chacha_comm,
+            range_check_comm,
+
+            // Lookup index; optional
+            lookup_index,
+
+            shift: _,
+            zkpm: _,
+            w: _,
+            endo: _,
+
+            linearization: _,
+            powers_of_alpha: _,
+        } = &self;
+
+        // Always present
+
+        for comm in sigma_comm.iter() {
+            fq_sponge.absorb_g(&comm.unshifted)
+        }
+        for comm in coefficients_comm.iter() {
+            fq_sponge.absorb_g(&comm.unshifted)
+        }
+        fq_sponge.absorb_g(&generic_comm.unshifted);
+        fq_sponge.absorb_g(&psm_comm.unshifted);
+        fq_sponge.absorb_g(&complete_add_comm.unshifted);
+        fq_sponge.absorb_g(&mul_comm.unshifted);
+        fq_sponge.absorb_g(&emul_comm.unshifted);
+        fq_sponge.absorb_g(&endomul_scalar_comm.unshifted);
+
+        // Optional gates
+
+        if let Some(chacha_comm) = chacha_comm {
+            for chacha_comm in chacha_comm {
+                fq_sponge.absorb_g(&chacha_comm.unshifted);
+            }
+        }
+        if let Some(range_check_comm) = range_check_comm {
+            for range_check_comm in range_check_comm {
+                fq_sponge.absorb_g(&range_check_comm.unshifted);
+            }
+        }
+
+        // Lookup index; optional
+
+        if let Some(LookupVerifierIndex {
+            lookup_used: _,
+            lookup_table,
+            table_ids,
+            runtime_tables_selector,
+
+            lookup_selectors:
+                LookupSelectors {
+                    chacha,
+                    chacha_final,
+                    lookup_gate,
+                    range_check_gate,
+                },
+
+            max_joint_size: _,
+        }) = lookup_index
+        {
+            for entry in lookup_table {
+                fq_sponge.absorb_g(&entry.unshifted);
+            }
+            if let Some(table_ids) = table_ids {
+                fq_sponge.absorb_g(&table_ids.unshifted);
+            }
+            if let Some(runtime_tables_selector) = runtime_tables_selector {
+                fq_sponge.absorb_g(&runtime_tables_selector.unshifted);
+            }
+
+            if let Some(chacha) = chacha {
+                fq_sponge.absorb_g(&chacha.unshifted);
+            }
+            if let Some(chacha_final) = chacha_final {
+                fq_sponge.absorb_g(&chacha_final.unshifted);
+            }
+            if let Some(lookup_gate) = lookup_gate {
+                fq_sponge.absorb_g(&lookup_gate.unshifted);
+            }
+            if let Some(range_check_gate) = range_check_gate {
+                fq_sponge.absorb_g(&range_check_gate.unshifted);
+            }
+        }
+        fq_sponge.digest_fq()
     }
 }

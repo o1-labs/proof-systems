@@ -1,16 +1,23 @@
+//! Useful helper methods to extend [ark_ff::Field].
+
 use ark_ff::{BigInteger, Field, FpParameters, PrimeField};
 use num_bigint::BigUint;
 use std::ops::Neg;
 use thiserror::Error;
 
-// Field helpers error
+/// Field helpers error
+#[allow(missing_docs)]
 #[derive(Error, Debug, Clone, PartialEq)]
 pub enum FieldHelpersError {
     #[error("failed to deserialize field bytes")]
     DeserializeBytes,
     #[error("failed to decode hex")]
     DecodeHex,
+    #[error("failed to convert BigUint into field element")]
+    FromBigToField,
 }
+
+/// Result alias using [FieldHelpersError]
 pub type Result<T> = std::result::Result<T, FieldHelpersError>;
 
 /// Field element helpers
@@ -97,6 +104,20 @@ impl<F: Field> FieldHelpers<F> for F {
     }
 }
 
+/// Field element wrapper for [BigUint]
+pub trait FieldFromBig<F> {
+    /// Deserialize from big unsigned integer
+    fn from_big(big: BigUint) -> Result<F>;
+}
+
+impl<F: PrimeField> FieldFromBig<F> for F {
+    fn from_big(big: BigUint) -> Result<F> {
+        big.try_into()
+            .map_err(|_| FieldHelpersError::FromBigToField)
+    }
+}
+
+/// Converts an [i32] into a [Field]
 pub fn i32_to_field<F: From<u64> + Neg<Output = F>>(i: i32) -> F {
     if i >= 0 {
         F::from(i as u64)
@@ -107,16 +128,16 @@ pub fn i32_to_field<F: From<u64> + Neg<Output = F>>(i: i32) -> F {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     use ark_ec::AffineCurve;
-    use ark_ff::{One, PrimeField};
+    use ark_ff::One;
     use mina_curves::pasta::pallas;
 
-    // Affine curve point type
-    pub use pallas::Affine as CurvePoint;
-    // Base field element type
+    /// Affine curve point type
+    pub use pallas::Pallas as CurvePoint;
+    /// Base field element type
     pub type BaseField = <CurvePoint as AffineCurve>::BaseField;
-
-    use super::*;
 
     #[test]
     fn field_hex() {
@@ -227,6 +248,42 @@ mod tests {
         assert_eq!(
             BaseField::from_bits(&[true, false, false]).expect("Failed to deserialize field bytes"),
             BaseField::one()
+        );
+    }
+
+    #[test]
+    fn field_big() {
+        let fe_1024 = BaseField::from(1024u32);
+        let big_1024 = fe_1024.into();
+        assert_eq!(big_1024, BigUint::new(vec![1024]));
+
+        assert_eq!(
+            BaseField::from_big(big_1024).expect("Failed to deserialize big uint"),
+            fe_1024
+        );
+
+        let be_zero_32bytes = vec![0x00, 0x00, 0x00, 0x00, 0x00];
+        let be_zero_1byte = vec![0x00];
+        let big_zero_32 = BigUint::from_bytes_be(&be_zero_32bytes);
+        let big_zero_1 = BigUint::from_bytes_be(&be_zero_1byte);
+        let field_zero = BaseField::from(0u32);
+
+        assert_eq!(
+            BigUint::from_bytes_be(&field_zero.into_repr().to_bytes_be()),
+            BigUint::from_bytes_be(&be_zero_32bytes)
+        );
+
+        assert_eq!(
+            BaseField::from_big(BigUint::from_bytes_be(&be_zero_32bytes))
+                .expect("Failed to convert big uint"),
+            field_zero
+        );
+
+        assert_eq!(big_zero_32, big_zero_1);
+
+        assert_eq!(
+            BaseField::from_big(big_zero_32).expect("Failed"),
+            BaseField::from_big(big_zero_1).expect("Failed")
         );
     }
 }

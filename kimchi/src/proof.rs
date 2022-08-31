@@ -1,10 +1,8 @@
 //! This module implements the data structures of a proof.
 
-use std::iter;
-
 use crate::circuits::wires::{COLUMNS, PERMUTS};
 use ark_ec::AffineCurve;
-use ark_ff::Field;
+use ark_ff::{Field, Zero};
 use array_init::array_init;
 use commitment_dlog::{commitment::PolyComm, evaluation_proof::OpeningProof};
 use itertools::chain;
@@ -144,26 +142,52 @@ where
 
 //~ spec:endcode
 
+impl<F> ProofEvaluations<F> {
+    pub fn transpose<const N: usize>(
+        evals: [&ProofEvaluations<F>; N],
+    ) -> ProofEvaluations<[&F; N]> {
+        let has_lookup = evals.iter().all(|e| e.lookup.is_some());
+        let has_runtime = has_lookup
+            && evals
+                .iter()
+                .all(|e| e.lookup.as_ref().unwrap().runtime.is_some());
+
+        ProofEvaluations {
+            generic_selector: array_init(|i| &evals[i].generic_selector),
+            poseidon_selector: array_init(|i| &evals[i].poseidon_selector),
+            z: array_init(|i| &evals[i].z),
+            w: array_init(|j| array_init(|i| &evals[i].w[j])),
+            s: array_init(|j| array_init(|i| &evals[i].s[j])),
+            lookup: if has_lookup {
+                let sorted_length = evals[0].lookup.as_ref().unwrap().sorted.len();
+                Some(LookupEvaluations {
+                    aggreg: array_init(|i| &evals[i].lookup.as_ref().unwrap().aggreg),
+                    table: array_init(|i| &evals[i].lookup.as_ref().unwrap().table),
+                    sorted: (0..sorted_length)
+                        .map(|j| array_init(|i| &evals[i].lookup.as_ref().unwrap().sorted[j]))
+                        .collect(),
+                    runtime: if has_runtime {
+                        Some(array_init(|i| {
+                            evals[i].lookup.as_ref().unwrap().runtime.as_ref().unwrap()
+                        }))
+                    } else {
+                        None
+                    },
+                })
+            } else {
+                None
+            },
+        }
+    }
+}
+
 impl<G: AffineCurve> RecursionChallenge<G> {
     pub fn new(chals: Vec<G::ScalarField>, comm: PolyComm<G>) -> RecursionChallenge<G> {
         RecursionChallenge { chals, comm }
     }
 }
 
-impl<F> ProofEvaluations<F>
-where
-    F: Field,
-{
-    pub fn iter(&self) -> impl Iterator<Item = F> {
-        chain![
-            iter::once(self.z),
-            iter::once(self.generic_selector),
-            iter::once(self.poseidon_selector),
-            self.w,
-            self.s
-        ]
-    }
-
+impl<F: Zero> ProofEvaluations<F> {
     pub fn dummy_with_witness_evaluations(w: [F; COLUMNS]) -> ProofEvaluations<F> {
         ProofEvaluations {
             w,
@@ -275,26 +299,33 @@ pub mod caml {
     #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlProofEvaluations<CamlF> {
         pub w: (
-            CamlF,
-            CamlF,
-            CamlF,
-            CamlF,
-            CamlF,
-            CamlF,
-            CamlF,
-            CamlF,
-            CamlF,
-            CamlF,
-            CamlF,
-            CamlF,
-            CamlF,
-            CamlF,
-            CamlF,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
         ),
-        pub z: CamlF,
-        pub s: (CamlF, CamlF, CamlF, CamlF, CamlF, CamlF),
-        pub generic_selector: CamlF,
-        pub poseidon_selector: CamlF,
+        pub z: Vec<CamlF>,
+        pub s: (
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+        ),
+        pub generic_selector: Vec<CamlF>,
+        pub poseidon_selector: Vec<CamlF>,
 
         pub lookup: Option<CamlLookupEvaluations<CamlF>>,
     }

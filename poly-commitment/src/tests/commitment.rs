@@ -8,14 +8,14 @@ use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use colored::Colorize;
 use groupmap::GroupMap;
 use mina_curves::pasta::{
-    vesta::{Affine, VestaParameters},
+    vesta::{Vesta, VestaParameters},
     Fp,
 };
 use o1_utils::ExtendedDensePolynomial as _;
 use oracle::constants::PlonkSpongeConstantsKimchi as SC;
 use oracle::sponge::DefaultFqSponge;
 use oracle::FqSponge as _;
-use rand::Rng;
+use rand::{CryptoRng, Rng, SeedableRng};
 use std::time::{Duration, Instant};
 
 // Note: Because the current API uses large tuples of types, I re-create types
@@ -25,7 +25,7 @@ use std::time::{Duration, Instant};
 /// A commitment
 pub struct Commitment {
     /// the commitment itself, potentially in chunks
-    chunked_commitment: PolyComm<Affine>,
+    chunked_commitment: PolyComm<Vesta>,
     /// an optional degree bound
     bound: Option<usize>,
 }
@@ -68,14 +68,12 @@ pub struct AggregatedEvaluationProof {
     /// an Fq-sponge
     fq_sponge: DefaultFqSponge<VestaParameters, SC>,
     /// the actual evaluation proof
-    proof: OpeningProof<Affine>,
+    proof: OpeningProof<Vesta>,
 }
 
 impl AggregatedEvaluationProof {
     /// This function converts an aggregated evaluation proof into something the verify API understands
-    pub fn verify_type(
-        &self,
-    ) -> BatchEvaluationProof<Affine, DefaultFqSponge<VestaParameters, SC>> {
+    pub fn verify_type(&self) -> BatchEvaluationProof<Vesta, DefaultFqSponge<VestaParameters, SC>> {
         let mut coms = vec![];
         for eval_com in &self.eval_commitments {
             assert_eq!(self.eval_points.len(), eval_com.chunked_evals.len());
@@ -97,21 +95,13 @@ impl AggregatedEvaluationProof {
     }
 }
 
-#[test]
-/// Tests polynomial commitments, batched openings and
-/// verification of a batch of batched opening proofs of polynomial commitments
-fn test_commit()
-where
-    <Fp as std::str::FromStr>::Err: std::fmt::Debug,
-{
-    // setup
-    let mut rng = rand::thread_rng();
-    let group_map = <Affine as CommitmentCurve>::Map::setup();
+fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
+    let group_map = <Vesta as CommitmentCurve>::Map::setup();
     let fq_sponge =
         DefaultFqSponge::<VestaParameters, SC>::new(oracle::pasta::fq_kimchi::static_params());
 
     // create an SRS optimized for polynomials of degree 2^7 - 1
-    let srs = SRS::<Affine>::create(1 << 7);
+    let srs = SRS::<Vesta>::create(1 << 7);
 
     // TODO: move to bench
     let mut time_commit = Duration::new(0, 0);
@@ -231,4 +221,33 @@ where
         "batch verification time:".green(),
         timer.elapsed()
     );
+}
+
+#[test]
+/// Tests polynomial commitments, batched openings and
+/// verification of a batch of batched opening proofs of polynomial commitments
+fn test_commit()
+where
+    <Fp as std::str::FromStr>::Err: std::fmt::Debug,
+{
+    // setup
+    let mut rng = rand::thread_rng();
+    test_randomised(&mut rng)
+}
+
+#[test]
+/// Deterministic tests of polynomial commitments, batched openings and
+/// verification of a batch of batched opening proofs of polynomial commitments
+fn test_commit_deterministic()
+where
+    <Fp as std::str::FromStr>::Err: std::fmt::Debug,
+{
+    // Seed deliberately chosen to exercise zero commitments
+    let seed = [
+        17, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0,
+    ];
+
+    let mut rng = <rand_chacha::ChaCha20Rng as SeedableRng>::from_seed(seed);
+    test_randomised(&mut rng)
 }

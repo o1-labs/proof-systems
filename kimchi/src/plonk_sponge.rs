@@ -15,16 +15,18 @@ pub trait FrSponge<Fr: Field> {
     /// Absorbs the field element into the sponge.
     fn absorb(&mut self, x: &Fr);
 
+    /// Absorbs a slice of field elements into the sponge.
+    fn absorb_multiple(&mut self, x: &[Fr]);
+
     /// Creates a [ScalarChallenge] by squeezing the sponge.
     fn challenge(&mut self) -> ScalarChallenge<Fr>;
 
+    /// Consumes the sponge and returns the current digest, by squeezing.
+    fn digest(self) -> Fr;
+
     /// Absorbs the given evaluations into the sponge.
     // TODO: IMO this function should be inlined in prover/verifier
-    fn absorb_evaluations<const N: usize>(
-        &mut self,
-        p: [&[Fr]; N],
-        evals: [&ProofEvaluations<Fr>; N],
-    );
+    fn absorb_evaluations<const N: usize>(&mut self, evals: [&ProofEvaluations<Fr>; N]);
 }
 
 impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
@@ -40,21 +42,23 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
         self.sponge.absorb(&[*x]);
     }
 
+    fn absorb_multiple(&mut self, x: &[Fr]) {
+        self.last_squeezed = vec![];
+        self.sponge.absorb(x);
+    }
+
     fn challenge(&mut self) -> ScalarChallenge<Fr> {
         // TODO: why involve sponge_5_wires here?
         ScalarChallenge(self.squeeze(oracle::sponge::CHALLENGE_LENGTH_IN_LIMBS))
     }
 
+    fn digest(mut self) -> Fr {
+        self.sponge.squeeze()
+    }
+
     // We absorb all evaluations of the same polynomial at the same time
-    fn absorb_evaluations<const N: usize>(
-        &mut self,
-        p: [&[Fr]; N],
-        evals: [&ProofEvaluations<Fr>; N],
-    ) {
+    fn absorb_evaluations<const N: usize>(&mut self, evals: [&ProofEvaluations<Fr>; N]) {
         self.last_squeezed = vec![];
-        for x in p {
-            self.sponge.absorb(x);
-        }
 
         let zeta_evals = &evals[0];
         let zeta_omega_evals = &evals[1];
