@@ -142,52 +142,64 @@ where
 
 //~ spec:endcode
 
-impl<F> ProofEvaluations<F> {
-    pub fn transpose<const N: usize>(
-        evals: [&ProofEvaluations<F>; N],
-    ) -> ProofEvaluations<[&F; N]> {
-        let has_lookup = evals.iter().all(|e| e.lookup.is_some());
-        let has_runtime = has_lookup
-            && evals
-                .iter()
-                .all(|e| e.lookup.as_ref().unwrap().runtime.is_some());
-
-        ProofEvaluations {
-            generic_selector: array_init(|i| &evals[i].generic_selector),
-            poseidon_selector: array_init(|i| &evals[i].poseidon_selector),
-            z: array_init(|i| &evals[i].z),
-            w: array_init(|j| array_init(|i| &evals[i].w[j])),
-            s: array_init(|j| array_init(|i| &evals[i].s[j])),
-            lookup: if has_lookup {
-                let sorted_length = evals[0].lookup.as_ref().unwrap().sorted.len();
-                Some(LookupEvaluations {
-                    aggreg: array_init(|i| &evals[i].lookup.as_ref().unwrap().aggreg),
-                    table: array_init(|i| &evals[i].lookup.as_ref().unwrap().table),
-                    sorted: (0..sorted_length)
-                        .map(|j| array_init(|i| &evals[i].lookup.as_ref().unwrap().sorted[j]))
-                        .collect(),
-                    runtime: if has_runtime {
-                        Some(array_init(|i| {
-                            evals[i].lookup.as_ref().unwrap().runtime.as_ref().unwrap()
-                        }))
-                    } else {
-                        None
-                    },
-                })
-            } else {
-                None
-            },
-        }
-    }
-}
-
 impl<G: AffineCurve> RecursionChallenge<G> {
     pub fn new(chals: Vec<G::ScalarField>, comm: PolyComm<G>) -> RecursionChallenge<G> {
         RecursionChallenge { chals, comm }
     }
+
+    pub fn evals(
+        &self,
+        max_poly_size: usize,
+        evaluation_points: &[G::ScalarField],
+        powers_of_eval_points_for_chunks: &[G::ScalarField],
+    ) -> Vec<Vec<G::ScalarField>> {
+        let RecursionChallenge { chals, comm: _ } = self;
+        // No need to check the correctness of poly explicitly. Its correctness is assured by the
+        // checking of the inner product argument.
+        let b_len = 1 << chals.len();
+        let mut b: Option<Vec<G::ScalarField>> = None;
+
+        (0..2)
+            .map(|i| {
+                let full = b_poly(chals, evaluation_points[i]);
+                if max_poly_size == b_len {
+                    return vec![full];
+                }
+                let mut betaacc = G::ScalarField::one();
+                let diff = (max_poly_size..b_len)
+                    .map(|j| {
+                        let b_j = match &b {
+                            None => {
+                                let t = b_poly_coefficients(chals);
+                                let res = t[j];
+                                b = Some(t);
+                                res
+                            }
+                            Some(b) => b[j],
+                        };
+
+                        let ret = betaacc * b_j;
+                        betaacc *= &evaluation_points[i];
+                        ret
+                    })
+                    .fold(G::ScalarField::zero(), |x, y| x + y);
+                vec![full - (diff * powers_of_eval_points_for_chunks[i]), diff]
+            })
+            .collect()
+    }
 }
 
-impl<F: Zero> ProofEvaluations<F> {
+impl<F: Field> ProofEvaluations<F> {
+    pub fn iter(&self) -> impl Iterator<Item = F> {
+        chain![
+            std::iter::once(self.z),
+            std::iter::once(self.generic_selector),
+            std::iter::once(self.poseidon_selector),
+            self.w,
+            self.s
+        ]
+    }
+
     pub fn dummy_with_witness_evaluations(w: [F; COLUMNS]) -> ProofEvaluations<F> {
         ProofEvaluations {
             w,
@@ -299,33 +311,26 @@ pub mod caml {
     #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlProofEvaluations<CamlF> {
         pub w: (
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
+            CamlF,
+            CamlF,
+            CamlF,
+            CamlF,
+            CamlF,
+            CamlF,
+            CamlF,
+            CamlF,
+            CamlF,
+            CamlF,
+            CamlF,
+            CamlF,
+            CamlF,
+            CamlF,
+            CamlF,
         ),
-        pub z: Vec<CamlF>,
-        pub s: (
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-        ),
-        pub generic_selector: Vec<CamlF>,
-        pub poseidon_selector: Vec<CamlF>,
+        pub z: CamlF,
+        pub s: (CamlF, CamlF, CamlF, CamlF, CamlF, CamlF),
+        pub generic_selector: CamlF,
+        pub poseidon_selector: CamlF,
 
         pub lookup: Option<CamlLookupEvaluations<CamlF>>,
     }
