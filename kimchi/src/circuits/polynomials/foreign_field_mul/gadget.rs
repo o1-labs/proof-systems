@@ -167,7 +167,7 @@ impl<F: PrimeField> CircuitGate<F> {
 
         // Initialize the foreign field modulus constant
         // TODO: (querolita) new_from_be could return an option instead of panicking?
-        let foreign_field_modulus = Some(ForeignElement::<F, 3>::new_from_be(SECP256K1_MOD));
+        let foreign_field_modulus = Some(ForeignElement::<F, 3>::from_be(SECP256K1_MOD));
 
         // Set up the environment
         let env = {

@@ -16,7 +16,7 @@ use array_init::array_init;
 use num_bigint::BigUint;
 use num_integer::Integer;
 use o1_utils::{
-    field_helpers::FieldFromBig,
+    field_helpers::FieldHelpers,
     foreign_field::{ForeignElement, LIMB_BITS},
 };
 
@@ -172,11 +172,10 @@ pub fn create_witness<F: PrimeField>(
     extend_witness(&mut witness, right_input);
 
     // Compute quotient and remainder and add to witness
-    let (quotient_big, remainder_big) =
-        (left_input.to_big() * right_input.to_big()).div_rem(&foreign_modulus.to_big());
-
-    let quotient = ForeignElement::new_from_big(quotient_big);
-    let remainder = ForeignElement::new_from_big(remainder_big);
+    let (quotient, remainder) =
+        (left_input.to_biguint() * right_input.to_biguint()).div_rem(&foreign_modulus.to_biguint());
+    let quotient = ForeignElement::from_biguint(quotient);
+    let remainder = ForeignElement::from_biguint(remainder);
     extend_witness(&mut witness, quotient);
     extend_witness(&mut witness, remainder);
 
@@ -198,29 +197,31 @@ pub fn create_witness<F: PrimeField>(
     let (product_mi_top, product_mi_bot) = product_mi_big.div_rem(&two_to_88_big);
 
     let zero_bot = product_lo - *remainder.lo()
-        + two_to_88 * (F::from_big(product_mi_bot.clone()).unwrap() - *remainder.mi());
+        + two_to_88 * (F::from_biguint(product_mi_bot.clone()).unwrap() - *remainder.mi());
     let zero_bot_big: BigUint = zero_bot.into();
     let (carry_bot, _) = zero_bot_big.div_rem(&two_to_176);
 
     let (_, product_mi_top_limb) = product_mi_top.div_rem(&two_to_88_big);
-    let zero_top: F =
-        F::from_big(carry_bot.clone()).unwrap() + F::from_big(product_mi_top).unwrap() + product_hi
-            - *remainder.hi()
-            - aux_lo * power_lo_top
-            - aux_mi * power_mi_top;
+    let zero_top: F = F::from_biguint(carry_bot.clone()).unwrap()
+        + F::from_biguint(product_mi_top).unwrap()
+        + product_hi
+        - *remainder.hi()
+        - aux_lo * power_lo_top
+        - aux_mi * power_mi_top;
     let zero_top_big: BigUint = zero_top.into();
     let (carry_top_big, _) = zero_top_big.div_rem(&two_to_88_big);
-    let carry_top: F = F::from_big(carry_top_big.clone()).unwrap();
+    let carry_top: F = F::from_biguint(carry_top_big.clone()).unwrap();
     let (_carry_top_over, carry_top_limb) = carry_top_big.div_rem(&two_to_88_big);
 
-    let product_mi_bot = F::from_big(product_mi_bot).expect("big_f does not fit in F");
-    let product_mi_top_limb = F::from_big(product_mi_top_limb).expect("big_f does not fit in F");
-    let carry_top_limb = F::from_big(carry_top_limb).expect("big_f does not fit in F");
+    let product_mi_bot = F::from_biguint(product_mi_bot).expect("big_f does not fit in F");
+    let product_mi_top_limb =
+        F::from_biguint(product_mi_top_limb).expect("big_f does not fit in F");
+    let carry_top_limb = F::from_biguint(carry_top_limb).expect("big_f does not fit in F");
 
     // Define the row for the multi-range check for the product_mi_bot, product_mi_top_limb, and carry_top_limb
     extend_witness(
         &mut witness,
-        ForeignElement::new([product_mi_bot, product_mi_top_limb, carry_top_limb]),
+        ForeignElement::create([product_mi_bot, product_mi_top_limb, carry_top_limb]),
     );
 
     // Create foreign field multiplication and zero witness rows
@@ -228,7 +229,7 @@ pub fn create_witness<F: PrimeField>(
         w.extend(std::iter::repeat(F::zero()).take(2));
     }
 
-    let carry_bot = F::from_big(carry_bot).expect("big_f does not fit in F");
+    let carry_bot = F::from_biguint(carry_bot).expect("big_f does not fit in F");
 
     // ForeignFieldMul and Zero row
     init_foreign_field_mul_rows(
@@ -283,9 +284,9 @@ pub fn check_witness<F: PrimeField>(
     let power_mi_top = two_to_limb * two * two; // 2^
                                                 //let power_hi_top = power_mi.clone() * two.clone(); // 2^{2L+3}
 
-    let left_input = ForeignElement::new([left_input_lo, left_input_mi, left_input_hi]);
-    let right_input = ForeignElement::new([right_input_lo, right_input_mi, right_input_hi]);
-    let quotient = ForeignElement::new([quotient_lo, quotient_mi, quotient_hi]);
+    let left_input = ForeignElement::create([left_input_lo, left_input_mi, left_input_hi]);
+    let right_input = ForeignElement::create([right_input_lo, right_input_mi, right_input_hi]);
+    let quotient = ForeignElement::create([quotient_lo, quotient_mi, quotient_hi]);
     let (product_lo, product_mi, product_hi, _aux_lo, _aux_mi, _aux_hi) =
         compute_auxiliar(left_input, right_input, quotient, foreign_mod);
 

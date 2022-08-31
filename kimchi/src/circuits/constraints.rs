@@ -398,7 +398,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
                 if modulus <= F::modulus_biguint() {
                     panic!("Foreign field modulus must be greater than the native modulus");
                 }
-                Some(ForeignElement::<F, 3>::new_from_big(modulus))
+                Some(ForeignElement::<F, 3>::from_biguint(modulus))
             } else {
                 None
             }

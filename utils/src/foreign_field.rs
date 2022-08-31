@@ -40,7 +40,7 @@ pub struct ForeignElement<F: Field, const N: usize> {
 impl<F: PrimeField, const N: usize> ForeignElement<F, N> {
     /// Initializes a new foreign element from a big unsigned integer
     /// Panics if the BigUint is too large to fit in the `N` limbs
-    pub fn new_from_big(big: BigUint) -> Self {
+    pub fn from_biguint(big: BigUint) -> Self {
         let vec = ForeignElement::<F, N>::big_to_vec(big);
 
         // create an array of N native elements containing the limbs
@@ -62,17 +62,17 @@ impl<F: PrimeField, const N: usize> ForeignElement<F, N> {
     }
 
     /// Initializes a new foreign element from a set of bytes in big endian
-    pub fn new_from_be(bytes: &[u8]) -> Self {
-        Self::new_from_big(BigUint::from_bytes_be(bytes))
+    pub fn from_be(bytes: &[u8]) -> Self {
+        Self::from_biguint(BigUint::from_bytes_be(bytes))
     }
 
     /// Initializes a new foreign element from an element in the native field
-    pub fn new_from_field(field: F) -> Self {
-        Self::new_from_big(field.into())
+    pub fn from_field(field: F) -> Self {
+        Self::from_biguint(field.into())
     }
 
     /// Obtains the big integer representation of the foreign field element
-    pub fn to_big(&self) -> BigUint {
+    pub fn to_biguint(&self) -> BigUint {
         let mut bytes = vec![];
         // limbs are stored in little endian
         for limb in self.limbs {
@@ -96,7 +96,7 @@ impl<F: PrimeField, const N: usize> ForeignElement<F, N> {
 
 impl<F: FftField> ForeignElement<F, 3> {
     /// Creates a new foreign element from an array containing 3 limbs
-    pub fn new(limbs: [F; 3]) -> Self {
+    pub fn create(limbs: [F; 3]) -> Self {
         Self { limbs, len: 3 }
     }
 
@@ -138,7 +138,7 @@ impl<F: FftField, const N: usize> Display for ForeignElement<F, N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::field_helpers::FieldFromBig;
+    use crate::field_helpers::FieldHelpers;
     use ark_ec::AffineCurve;
     use ark_ff::One;
     use mina_curves::pasta::pallas;
@@ -152,28 +152,28 @@ mod tests {
         let bytes = SECP256K1_MOD;
         let big = BigUint::from_bytes_be(bytes);
         assert_eq!(
-            ForeignElement::<BaseField, 3>::new_from_be(bytes),
-            ForeignElement::<BaseField, 3>::new_from_big(big)
+            ForeignElement::<BaseField, 3>::from_be(bytes),
+            ForeignElement::<BaseField, 3>::from_biguint(big)
         );
     }
 
     #[test]
-    fn test_to_big() {
+    fn test_to_biguint() {
         let bytes = SECP256K1_MOD;
         let big = BigUint::from_bytes_be(bytes);
-        let fe = ForeignElement::<BaseField, 3>::new_from_be(bytes);
-        assert_eq!(fe.to_big(), big);
+        let fe = ForeignElement::<BaseField, 3>::from_be(bytes);
+        assert_eq!(fe.to_biguint(), big);
     }
 
     #[test]
-    fn test_from_big() {
-        let one = ForeignElement::<BaseField, 3>::new_from_be(&[0x01]);
-        assert_eq!(BaseField::from_big(one.to_big()).unwrap(), BaseField::one());
+    fn test_from_biguint() {
+        let one = ForeignElement::<BaseField, 3>::from_be(&[0x01]);
+        assert_eq!(BaseField::from_biguint(one.to_biguint()).unwrap(), BaseField::one());
 
         let max_big = BaseField::modulus_biguint() - 1u32;
-        let max_fe = ForeignElement::<BaseField, 3>::new_from_big(max_big.clone());
+        let max_fe = ForeignElement::<BaseField, 3>::from_biguint(max_big.clone());
         assert_eq!(
-            BaseField::from_big(max_fe.to_big()).unwrap(),
+            BaseField::from_biguint(max_fe.to_biguint()).unwrap(),
             BaseField::from_bytes(&max_big.to_bytes_le()).unwrap(),
         );
     }

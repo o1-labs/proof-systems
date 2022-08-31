@@ -290,18 +290,19 @@ where
         //    For details on zero_bot and why this is valid, please see
         //        <https://hackmd.io/37M7qiTaSIKaZjCC5OnM1w?view#Intermediate-products>
         //
-        //                  2^176 * v_0 = u_0         = p0 - r0 + 2^88 (p10 - r1)
+        //                  2^176 * v_0 = u_0 = p0 - r0 + 2^88 (p10 - r1)
         //    <=>  2^176 * carry_bot = zero_bot = product_lo - remainder_lo + 2^88 ( product_mi_bot - remainder_mi )
         //
         let zero_bot =
             product_lo - remainder_lo + two_to_88.clone() * (product_mi_bot - remainder_mi);
         constraints.push(zero_bot - two_to_176 * carry_bot.clone());
+        // TODO: not working.
 
         // 7) Constraint carry_top to prove zero_top's bits are zero
         //    For details on zero_top and why this is valid, please see
         //        <https://hackmd.io/37M7qiTaSIKaZjCC5OnM1w?view#Intermediate-products<
         //
-        //              v_1 = v_{10} + 2^88 * v_{11}$
+        //              v1 = v_{10} + 2^88 * v_{11}$
         //        2^88 * v1 = u1 = v0 + p11 + p2 - r2
         //                 <=>
         //        carry_top = 2^88 * carry_top_over + carry_top_limb
