@@ -42,7 +42,6 @@ use commitment_dlog::commitment::{
 use itertools::Itertools;
 use o1_utils::ExtendedDensePolynomial as _;
 use oracle::{sponge::ScalarChallenge, FqSponge};
-use rand::{RngCore, CryptoRng};
 use std::collections::HashMap;
 
 /// The result of a proof creation or verification.
@@ -68,7 +67,7 @@ macro_rules! check_constraint {
 
 /// Contains variables needed for lookup in the prover algorithm.
 #[derive(Default)]
-pub struct LookupContext<G, F>
+struct LookupContext<G, F>
 where
     G: CommitmentCurve,
     F: FftField,
@@ -109,18 +108,172 @@ where
     runtime_second_col_d8: Option<Evaluations<F, D<F>>>,
 }
 
-impl<G: CommitmentCurve + ark_ec::AffineCurve<ScalarField = F>, F: PrimeField> LookupContext<G, F> {
-    pub fn create<EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>>(
-        witness: &[Vec<G::ScalarField>; COLUMNS],
+impl<G: CommitmentCurve> ProverProof<G>
+where
+    G::BaseField: PrimeField,
+{
+    /// This function constructs prover's zk-proof from the witness & the ProverIndex against SRS instance
+    pub fn create<
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+        EFrSponge: FrSponge<G::ScalarField>,
+    >(
+        groupmap: &G::Map,
+        witness: [Vec<G::ScalarField>; COLUMNS],
         runtime_tables: &[RuntimeTable<G::ScalarField>],
         index: &ProverIndex<G>,
-        rng: &mut (impl RngCore + CryptoRng),
-        fq_sponge: &mut EFqSponge,
-    ) -> Result<LookupContext<G, F>> {
+    ) -> Result<Self> {
+        Self::create_recursive::<EFqSponge, EFrSponge>(
+            groupmap,
+            witness,
+            runtime_tables,
+            index,
+            Vec::new(),
+            None,
+        )
+    }
+
+    /// This function constructs prover's recursive zk-proof from the witness & the ProverIndex against SRS instance
+    pub fn create_recursive<
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+        EFrSponge: FrSponge<G::ScalarField>,
+    >(
+        group_map: &G::Map,
+        mut witness: [Vec<G::ScalarField>; COLUMNS],
+        runtime_tables: &[RuntimeTable<G::ScalarField>],
+        index: &ProverIndex<G>,
+        prev_challenges: Vec<RecursionChallenge<G>>,
+        blinders: Option<[Option<PolyComm<G::ScalarField>>; COLUMNS]>,
+    ) -> Result<Self> {
+        // make sure that the SRS is not smaller than the domain size
+        let d1_size = index.cs.domain.d1.size();
+        if index.srs.max_degree() < d1_size {
+            return Err(ProverError::SRSTooSmall);
+        }
+
+        // TODO: rng should be passed as arg
+        let rng = &mut rand::rngs::OsRng;
+
+        // double-check the witness
+        if cfg!(debug_assertions) {
+            let public = witness[0][0..index.cs.public].to_vec();
+            index
+                .cs
+                .verify(&witness, &public)
+                .expect("incorrect witness");
+        }
+
+        //~ 1. Ensure we have room in the witness for the zero-knowledge rows.
+        //~    We currently expect the witness not to be of the same length as the domain,
+        //~    but instead be of the length of the (smaller) circuit.
+        //~    If we cannot add `ZK_ROWS` rows to the columns of the witness before reaching
+        //~    the size of the domain, abort.
+        let length_witness = witness[0].len();
+        let length_padding = d1_size
+            .checked_sub(length_witness)
+            .ok_or(ProverError::NoRoomForZkInWitness)?;
+
+        if length_padding < ZK_ROWS as usize {
+            return Err(ProverError::NoRoomForZkInWitness);
+        }
+
+        //~ 1. Pad the witness columns with Zero gates to make them the same length as the domain.
+        //~    Then, randomize the last `ZK_ROWS` of each columns.
+        for w in &mut witness {
+            if w.len() != length_witness {
+                return Err(ProverError::WitnessCsInconsistent);
+            }
+
+            // padding
+            w.extend(std::iter::repeat(G::ScalarField::zero()).take(length_padding));
+
+            // zk-rows
+            for row in w.iter_mut().rev().take(ZK_ROWS as usize) {
+                *row = <G::ScalarField as UniformRand>::rand(rng);
+            }
+        }
+
+        //~ 1. Setup the Fq-Sponge.
+        let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
+
+        //~ 1. Compute the negated public input polynomial as
+        //~    the polynomial that evaluates to $-p_i$ for the first `public_input_size` values of the domain,
+        //~    and $0$ for the rest.
+        let public = witness[0][0..index.cs.public].to_vec();
+        let public_poly = -Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+            public.clone(),
+            index.cs.domain.d1,
+        )
+        .interpolate();
+
+        //~ 1. Commit (non-hiding) to the negated public input polynomial.
+        let public_comm = index.srs.commit_non_hiding(&public_poly, None);
+
+        //~ 1. Absorb the commitment to the public polynomial with the Fq-Sponge.
+        //~
+        //~    Note: unlike the original PLONK protocol,
+        //~    the prover also provides evaluations of the public polynomial to help the verifier circuit.
+        //~    This is why we need to absorb the commitment to the public polynomial at this point.
+        fq_sponge.absorb_g(&public_comm.unshifted);
+
+        //~ 1. Commit to the witness columns by creating `COLUMNS` hidding commitments.
+        //~
+        //~    Note: since the witness is in evaluation form,
+        //~    we can use the `commit_evaluation` optimization.
+        let mut w_comm = vec![];
+        for col in 0..COLUMNS {
+            // witness coeff -> witness eval
+            let witness_eval =
+                Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+                    witness[col].clone(),
+                    index.cs.domain.d1,
+                );
+
+            let com = match blinders.as_ref().and_then(|b| b[col].as_ref()) {
+                // no blinders: blind the witness
+                None => index
+                    .srs
+                    .commit_evaluations(index.cs.domain.d1, &witness_eval, None, rng),
+                // blinders: blind the witness with them
+                Some(blinder) => {
+                    // TODO: make this a function rather no? mask_with_custom()
+                    let witness_com = index.srs.commit_evaluations_non_hiding(
+                        index.cs.domain.d1,
+                        &witness_eval,
+                        None,
+                    );
+                    index
+                        .srs
+                        .mask_custom(witness_com, blinder)
+                        .map_err(ProverError::WrongBlinders)?
+                }
+            };
+
+            w_comm.push(com);
+        }
+
+        let w_comm: [BlindedCommitment<G>; COLUMNS] = w_comm
+            .try_into()
+            .expect("previous loop is of the correct length");
+
+        //~ 1. Absorb the witness commitments with the Fq-Sponge.
+        w_comm
+            .iter()
+            .for_each(|c| fq_sponge.absorb_g(&c.commitment.unshifted));
+
+        //~ 1. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
+        //~    TODO: why not do this first, and then commit? Why commit from evaluation directly?
+        let witness_poly: [DensePolynomial<G::ScalarField>; COLUMNS] = array_init(|i| {
+            Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+                witness[i].clone(),
+                index.cs.domain.d1,
+            )
+            .interpolate()
+        });
+
         let mut lookup_context = LookupContext::default();
 
+        //~ 1. If using lookup:
         if let Some(lcs) = &index.cs.lookup_constraint_system {
-            let d1_size = index.cs.domain.d1.size();
             // if using runtime table
             if let Some(cfg_runtime_tables) = &lcs.runtime_tables {
                 // check that all the provided runtime tables have length and IDs that match the runtime table configuration of the index
@@ -324,36 +477,28 @@ impl<G: CommitmentCurve + ark_ec::AffineCurve<ScalarField = F>, F: PrimeField> L
             lookup_context.joint_lookup_table = Some(joint_lookup_table);
         }
 
-        Ok(lookup_context)
-    }
+        //~ 1. Sample $\beta$ with the Fq-Sponge.
+        let beta = fq_sponge.challenge();
 
-    pub fn compute_aggregation_polynomial<
-        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-    >(
-        &mut self,
-        witness: &[Vec<G::ScalarField>; COLUMNS],
-        index: &ProverIndex<G>,
-        rng: &mut (impl RngCore + CryptoRng),
-        fq_sponge: &mut EFqSponge,
-        beta: F,
-        gamma: F,
-    ) -> Result<()> {
+        //~ 1. Sample $\gamma$ with the Fq-Sponge.
+        let gamma = fq_sponge.challenge();
+
         //~ 1. If using lookup:
         if let Some(lcs) = &index.cs.lookup_constraint_system {
             //~~ - Compute the lookup aggregation polynomial.
-            let joint_lookup_table_d8 = self.joint_lookup_table_d8.as_ref().unwrap();
+            let joint_lookup_table_d8 = lookup_context.joint_lookup_table_d8.as_ref().unwrap();
 
             let aggreg = lookup::constraints::aggregation::<_, G::ScalarField>(
-                self.dummy_lookup_value.unwrap(),
+                lookup_context.dummy_lookup_value.unwrap(),
                 joint_lookup_table_d8,
                 index.cs.domain.d1,
                 &index.cs.gates,
                 &witness,
-                &self.joint_combiner.unwrap(),
-                &self.table_id_combiner.unwrap(),
+                &lookup_context.joint_combiner.unwrap(),
+                &lookup_context.table_id_combiner.unwrap(),
                 beta,
                 gamma,
-                self.sorted.as_ref().unwrap(),
+                lookup_context.sorted.as_ref().unwrap(),
                 rng,
                 &lcs.configuration.lookup_info,
             )?;
@@ -372,192 +517,10 @@ impl<G: CommitmentCurve + ark_ec::AffineCurve<ScalarField = F>, F: PrimeField> L
             // interpolating
             let aggreg8 = aggreg_coeffs.evaluate_over_domain_by_ref(index.cs.domain.d8);
 
-            self.aggreg_comm = Some(aggreg_comm);
-            self.aggreg_coeffs = Some(aggreg_coeffs);
-            self.aggreg8 = Some(aggreg8);
+            lookup_context.aggreg_comm = Some(aggreg_comm);
+            lookup_context.aggreg_coeffs = Some(aggreg_coeffs);
+            lookup_context.aggreg8 = Some(aggreg8);
         }
-
-        Ok(())
-    }
-}
-
-impl<G: CommitmentCurve> ProverProof<G>
-where
-    G::BaseField: PrimeField,
-{
-    /// This function constructs prover's zk-proof from the witness & the ProverIndex against SRS instance
-    pub fn create<
-        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-        EFrSponge: FrSponge<G::ScalarField>,
-    >(
-        groupmap: &G::Map,
-        witness: [Vec<G::ScalarField>; COLUMNS],
-        runtime_tables: &[RuntimeTable<G::ScalarField>],
-        index: &ProverIndex<G>,
-    ) -> Result<Self> {
-        Self::create_recursive::<EFqSponge, EFrSponge>(
-            groupmap,
-            witness,
-            runtime_tables,
-            index,
-            Vec::new(),
-            None,
-        )
-    }
-
-    /// This function constructs prover's recursive zk-proof from the witness & the ProverIndex against SRS instance
-    pub fn create_recursive<
-        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-        EFrSponge: FrSponge<G::ScalarField>,
-    >(
-        group_map: &G::Map,
-        mut witness: [Vec<G::ScalarField>; COLUMNS],
-        runtime_tables: &[RuntimeTable<G::ScalarField>],
-        index: &ProverIndex<G>,
-        prev_challenges: Vec<RecursionChallenge<G>>,
-        blinders: Option<[Option<PolyComm<G::ScalarField>>; COLUMNS]>,
-    ) -> Result<Self> {
-        // make sure that the SRS is not smaller than the domain size
-        let d1_size = index.cs.domain.d1.size();
-        if index.srs.max_degree() < d1_size {
-            return Err(ProverError::SRSTooSmall);
-        }
-
-        // TODO: rng should be passed as arg
-        let rng = &mut rand::rngs::OsRng;
-
-        // double-check the witness
-        if cfg!(debug_assertions) {
-            let public = witness[0][0..index.cs.public].to_vec();
-            index
-                .cs
-                .verify(&witness, &public)
-                .expect("incorrect witness");
-        }
-
-        //~ 1. Ensure we have room in the witness for the zero-knowledge rows.
-        //~    We currently expect the witness not to be of the same length as the domain,
-        //~    but instead be of the length of the (smaller) circuit.
-        //~    If we cannot add `ZK_ROWS` rows to the columns of the witness before reaching
-        //~    the size of the domain, abort.
-        let length_witness = witness[0].len();
-        let length_padding = d1_size
-            .checked_sub(length_witness)
-            .ok_or(ProverError::NoRoomForZkInWitness)?;
-
-        if length_padding < ZK_ROWS as usize {
-            return Err(ProverError::NoRoomForZkInWitness);
-        }
-
-        //~ 1. Pad the witness columns with Zero gates to make them the same length as the domain.
-        //~    Then, randomize the last `ZK_ROWS` of each columns.
-        for w in &mut witness {
-            if w.len() != length_witness {
-                return Err(ProverError::WitnessCsInconsistent);
-            }
-
-            // padding
-            w.extend(std::iter::repeat(G::ScalarField::zero()).take(length_padding));
-
-            // zk-rows
-            for row in w.iter_mut().rev().take(ZK_ROWS as usize) {
-                *row = <G::ScalarField as UniformRand>::rand(rng);
-            }
-        }
-
-        //~ 1. Setup the Fq-Sponge.
-        let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
-
-        //~ 1. Compute the negated public input polynomial as
-        //~    the polynomial that evaluates to $-p_i$ for the first `public_input_size` values of the domain,
-        //~    and $0$ for the rest.
-        let public = witness[0][0..index.cs.public].to_vec();
-        let public_poly = -Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-            public.clone(),
-            index.cs.domain.d1,
-        )
-        .interpolate();
-
-        //~ 1. Commit (non-hiding) to the negated public input polynomial.
-        let public_comm = index.srs.commit_non_hiding(&public_poly, None);
-
-        //~ 1. Absorb the commitment to the public polynomial with the Fq-Sponge.
-        //~
-        //~    Note: unlike the original PLONK protocol,
-        //~    the prover also provides evaluations of the public polynomial to help the verifier circuit.
-        //~    This is why we need to absorb the commitment to the public polynomial at this point.
-        fq_sponge.absorb_g(&public_comm.unshifted);
-
-        //~ 1. Commit to the witness columns by creating `COLUMNS` hidding commitments.
-        //~
-        //~    Note: since the witness is in evaluation form,
-        //~    we can use the `commit_evaluation` optimization.
-        let mut w_comm = vec![];
-        for col in 0..COLUMNS {
-            // witness coeff -> witness eval
-            let witness_eval =
-                Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-                    witness[col].clone(),
-                    index.cs.domain.d1,
-                );
-
-            let com = match blinders.as_ref().and_then(|b| b[col].as_ref()) {
-                // no blinders: blind the witness
-                None => index
-                    .srs
-                    .commit_evaluations(index.cs.domain.d1, &witness_eval, None, rng),
-                // blinders: blind the witness with them
-                Some(blinder) => {
-                    // TODO: make this a function rather no? mask_with_custom()
-                    let witness_com = index.srs.commit_evaluations_non_hiding(
-                        index.cs.domain.d1,
-                        &witness_eval,
-                        None,
-                    );
-                    index
-                        .srs
-                        .mask_custom(witness_com, blinder)
-                        .map_err(ProverError::WrongBlinders)?
-                }
-            };
-
-            w_comm.push(com);
-        }
-
-        let w_comm: [BlindedCommitment<G>; COLUMNS] = w_comm
-            .try_into()
-            .expect("previous loop is of the correct length");
-
-        //~ 1. Absorb the witness commitments with the Fq-Sponge.
-        w_comm
-            .iter()
-            .for_each(|c| fq_sponge.absorb_g(&c.commitment.unshifted));
-
-        //~ 1. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
-        //~    TODO: why not do this first, and then commit? Why commit from evaluation directly?
-        let witness_poly: [DensePolynomial<G::ScalarField>; COLUMNS] = array_init(|i| {
-            Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-                witness[i].clone(),
-                index.cs.domain.d1,
-            )
-            .interpolate()
-        });
-
-        // if using runtime table
-        let mut lookup_context =
-            LookupContext::create(&witness, runtime_tables, index, rng, &mut fq_sponge)
-                .map_err(|e| e)?;
-
-        //~ 1. Sample $\beta$ with the Fq-Sponge.
-        let beta = fq_sponge.challenge();
-
-        //~ 1. Sample $\gamma$ with the Fq-Sponge.
-        let gamma = fq_sponge.challenge();
-
-        //~ 1. If using lookup:
-        lookup_context
-            .compute_aggregation_polynomial(&witness, index, rng, &mut fq_sponge, beta, gamma)
-            .map_err(|e| e)?;
 
         //~ 1. Compute the permutation aggregation polynomial $z$.
         let z_poly = index.cs.perm_aggreg(&witness, &beta, &gamma, rng)?;
