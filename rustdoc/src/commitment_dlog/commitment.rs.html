@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `poly-commitment/src/commitment.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>commitment.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../commitment_dlog/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../commitment_dlog/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../commitment_dlog/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `poly-commitment/src/commitment.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>commitment.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../commitment_dlog/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../commitment_dlog/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../commitment_dlog/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -1536,8 +1536,8 @@
 </span><span class="attribute">#[allow(clippy::type_complexity)]
 </span><span class="kw">pub fn </span>combined_inner_product&lt;F: PrimeField&gt;(
     evaluation_points: <span class="kw-2">&amp;</span>[F],
-    xi: <span class="kw-2">&amp;</span>F,
-    r: <span class="kw-2">&amp;</span>F,
+    polyscale: <span class="kw-2">&amp;</span>F,
+    evalscale: <span class="kw-2">&amp;</span>F,
     <span class="comment">// TODO(mimoo): needs a type that can get you evaluations or segments
     </span>polys: <span class="kw-2">&amp;</span>[(Vec&lt;Vec&lt;F&gt;&gt;, <span class="prelude-ty">Option</span>&lt;usize&gt;)],
     srs_length: usize,
@@ -1553,14 +1553,14 @@
 
         <span class="comment">// iterating over the polynomial segments
         </span><span class="kw">for </span>eval <span class="kw">in </span>evals.iter() {
-            <span class="kw">let </span>term = DensePolynomial::&lt;F&gt;::eval_polynomial(eval, <span class="kw-2">*</span>r);
+            <span class="kw">let </span>term = DensePolynomial::&lt;F&gt;::eval_polynomial(eval, <span class="kw-2">*</span>evalscale);
 
             res += <span class="kw-2">&amp;</span>(xi_i * term);
-            xi_i <span class="kw-2">*</span>= xi;
+            xi_i <span class="kw-2">*</span>= polyscale;
         }
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(m) = shifted {
-            <span class="comment">// xi^i sum_j r^j elm_j^{N - m} f(elm_j)
+            <span class="comment">// polyscale^i sum_j evalscale^j elm_j^{N - m} f(elm_j)
             </span><span class="kw">let </span>last_evals = <span class="kw">if </span><span class="kw-2">*</span>m &gt; evals.len() * srs_length {
                 <span class="macro">vec!</span>[F::zero(); evaluation_points.len()]
             } <span class="kw">else </span>{
@@ -1572,8 +1572,8 @@
                 .map(|(elm, f_elm)| elm.pow(<span class="kw-2">&amp;</span>[(srs_length - (<span class="kw-2">*</span>m) % srs_length) <span class="kw">as </span>u64]) * f_elm)
                 .collect();
 
-            res += <span class="kw-2">&amp;</span>(xi_i * DensePolynomial::&lt;F&gt;::eval_polynomial(<span class="kw-2">&amp;</span>shifted_evals, <span class="kw-2">*</span>r));
-            xi_i <span class="kw-2">*</span>= xi;
+            res += <span class="kw-2">&amp;</span>(xi_i * DensePolynomial::&lt;F&gt;::eval_polynomial(<span class="kw-2">&amp;</span>shifted_evals, <span class="kw-2">*</span>evalscale));
+            xi_i <span class="kw-2">*</span>= polyscale;
         }
     }
     res
@@ -1606,9 +1606,9 @@
     <span class="doccomment">/// vector of evaluation points
     </span><span class="kw">pub </span>evaluation_points: Vec&lt;G::ScalarField&gt;,
     <span class="doccomment">/// scaling factor for evaluation point powers
-    </span><span class="kw">pub </span>xi: G::ScalarField,
+    </span><span class="kw">pub </span>polyscale: G::ScalarField,
     <span class="doccomment">/// scaling factor for polynomials
-    </span><span class="kw">pub </span>r: G::ScalarField,
+    </span><span class="kw">pub </span>evalscale: G::ScalarField,
     <span class="doccomment">/// batched opening proof
     </span><span class="kw">pub </span>opening: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>OpeningProof&lt;G&gt;,
 }
@@ -1792,19 +1792,19 @@
         <span class="comment">// Verifier checks for all i,
         // c_i Q_i + delta_i = z1_i (G_i + b_i U_i) + z2_i H
         //
-        // if we sample r at random, it suffices to check
+        // if we sample evalscale at random, it suffices to check
         //
-        // 0 == sum_i r^i (c_i Q_i + delta_i - ( z1_i (G_i + b_i U_i) + z2_i H ))
+        // 0 == sum_i evalscale^i (c_i Q_i + delta_i - ( z1_i (G_i + b_i U_i) + z2_i H ))
         //
         // and because each G_i is a multiexp on the same array self.g, we
         // can batch the multiexp across proofs.
         //
         // So for each proof in the batch, we add onto our big multiexp the following terms
-        // r^i c_i Q_i
-        // r^i delta_i
-        // - (r^i z1_i) G_i
-        // - (r^i z2_i) H
-        // - (r^i z1_i b_i) U_i
+        // evalscale^i c_i Q_i
+        // evalscale^i delta_i
+        // - (evalscale^i z1_i) G_i
+        // - (evalscale^i z2_i) H
+        // - (evalscale^i z1_i b_i) U_i
 
         // We also check that the sg component of the proof is equal to the polynomial commitment
         // to the &quot;s&quot; array
@@ -1834,8 +1834,8 @@
         <span class="kw">for </span>BatchEvaluationProof {
             sponge,
             evaluation_points,
-            xi,
-            r,
+            polyscale,
+            evalscale,
             evaluations,
             opening,
         } <span class="kw">in </span>batch.iter_mut()
@@ -1863,7 +1863,7 @@
                         },
                     )
                     .collect();
-                combined_inner_product(evaluation_points, xi, r, <span class="kw-2">&amp;</span>es, <span class="self">self</span>.g.len())
+                combined_inner_product(evaluation_points, polyscale, evalscale, <span class="kw-2">&amp;</span>es, <span class="self">self</span>.g.len())
             };
 
             sponge.absorb_fr(<span class="kw-2">&amp;</span>[shift_scalar::&lt;G&gt;(combined_inner_product0)]);
@@ -1877,16 +1877,16 @@
             sponge.absorb_g(<span class="kw-2">&amp;</span>[opening.delta]);
             <span class="kw">let </span>c = ScalarChallenge(sponge.challenge()).to_field(<span class="kw-2">&amp;</span><span class="self">self</span>.endo_r);
 
-            <span class="comment">// &lt; s, sum_i r^i pows(evaluation_point[i]) &gt;
+            <span class="comment">// &lt; s, sum_i evalscale^i pows(evaluation_point[i]) &gt;
             // ==
-            // sum_i r^i &lt; s, pows(evaluation_point[i]) &gt;
+            // sum_i evalscale^i &lt; s, pows(evaluation_point[i]) &gt;
             </span><span class="kw">let </span>b0 = {
                 <span class="kw">let </span><span class="kw-2">mut </span>scale = G::ScalarField::one();
                 <span class="kw">let </span><span class="kw-2">mut </span>res = G::ScalarField::zero();
                 <span class="kw">for </span><span class="kw-2">&amp;</span>e <span class="kw">in </span>evaluation_points.iter() {
                     <span class="kw">let </span>term = b_poly(<span class="kw-2">&amp;</span>chal, e);
                     res += <span class="kw-2">&amp;</span>(scale * term);
-                    scale <span class="kw-2">*</span>= <span class="kw-2">*</span>r;
+                    scale <span class="kw-2">*</span>= <span class="kw-2">*</span>evalscale;
                 }
                 res
             };
@@ -1940,9 +1940,9 @@
             }
 
             <span class="comment">// TERM
-            // sum_j r^j (sum_i xi^i f_i) (elm_j)
-            // == sum_j sum_i r^j xi^i f_i(elm_j)
-            // == sum_i xi^i sum_j r^j f_i(elm_j)
+            // sum_j evalscale^j (sum_i polyscale^i f_i) (elm_j)
+            // == sum_j sum_i evalscale^j polyscale^i f_i(elm_j)
+            // == sum_i polyscale^i sum_j evalscale^j f_i(elm_j)
             </span>{
                 <span class="kw">let </span><span class="kw-2">mut </span>xi_i = G::ScalarField::one();
 
@@ -1959,17 +1959,17 @@
                         scalars.push(rand_base_i_c_i * xi_i);
                         points.push(<span class="kw-2">*</span>comm_ch);
 
-                        xi_i <span class="kw-2">*</span>= <span class="kw-2">*</span>xi;
+                        xi_i <span class="kw-2">*</span>= <span class="kw-2">*</span>polyscale;
                     }
 
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(_m) = degree_bound {
                         <span class="kw">if let </span><span class="prelude-val">Some</span>(comm_ch) = commitment.shifted {
                             <span class="kw">if </span>!comm_ch.is_zero() {
-                                <span class="comment">// xi^i sum_j r^j elm_j^{N - m} f(elm_j)
+                                <span class="comment">// polyscale^i sum_j evalscale^j elm_j^{N - m} f(elm_j)
                                 </span>scalars.push(rand_base_i_c_i * xi_i);
                                 points.push(comm_ch);
 
-                                xi_i <span class="kw-2">*</span>= <span class="kw-2">*</span>xi;
+                                xi_i <span class="kw-2">*</span>= <span class="kw-2">*</span>polyscale;
                             }
                         }
                     }
@@ -2107,8 +2107,8 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>batch = <span class="macro">vec!</span>[BatchEvaluationProof {
             sponge,
             evaluation_points: elm.clone(),
-            xi: v,
-            r: u,
+            polyscale: v,
+            evalscale: u,
             evaluations: <span class="macro">vec!</span>[
                 Evaluation {
                     commitment: commitment.commitment,
@@ -2251,4 +2251,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (748038961 2022-08-25)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (9243168fa 2022-08-31)" ></div></body></html>
