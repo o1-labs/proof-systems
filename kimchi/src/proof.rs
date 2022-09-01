@@ -1,11 +1,17 @@
 //! This module implements the data structures of a proof.
 
-use crate::circuits::wires::{COLUMNS, PERMUTS};
+use crate::{
+    circuits::wires::{COLUMNS, PERMUTS},
+    plonk_sponge::{AbsorbableScalarField, FrSponge},
+};
 use ark_ec::AffineCurve;
-use ark_ff::{Field, Zero};
+use ark_ff::{Field, One, Zero};
 use array_init::array_init;
-use commitment_dlog::{commitment::PolyComm, evaluation_proof::OpeningProof};
-use itertools::chain;
+use commitment_dlog::{
+    commitment::{b_poly, b_poly_coefficients, PolyComm},
+    evaluation_proof::OpeningProof,
+};
+use itertools::{chain, Itertools};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 
@@ -191,13 +197,44 @@ impl<G: AffineCurve> RecursionChallenge<G> {
 
 impl<F: Field> ProofEvaluations<F> {
     pub fn iter(&self) -> impl Iterator<Item = F> {
-        chain![
-            std::iter::once(self.z),
-            std::iter::once(self.generic_selector),
-            std::iter::once(self.poseidon_selector),
-            self.w,
-            self.s
+        // important: we use a deconstruction pattern so that the compiler can tell us if we forget one of the evaluations
+        let ProofEvaluations {
+            w,
+            z,
+            s,
+            lookup,
+            generic_selector,
+            poseidon_selector,
+        } = self.clone();
+
+        let mut values: Vec<F> = chain![
+            std::iter::once(z),
+            std::iter::once(generic_selector),
+            std::iter::once(poseidon_selector),
+            w,
+            s,
         ]
+        .collect();
+
+        // important: at this point we assume that Self is well-formed and contains a lookup
+        if let Some(lookup_evals) = lookup {
+            // important: we use a deconstruction pattern so that the compiler can tell us if we forget one of the evaluations
+            let LookupEvaluations {
+                sorted,
+                aggreg,
+                table,
+                runtime,
+            } = lookup_evals;
+
+            values.extend(chain![
+                std::iter::once(aggreg),
+                std::iter::once(table),
+                sorted,
+                runtime,
+            ]);
+        }
+
+        values.into_iter()
     }
 
     pub fn dummy_with_witness_evaluations(w: [F; COLUMNS]) -> ProofEvaluations<F> {
@@ -209,6 +246,24 @@ impl<F: Field> ProofEvaluations<F> {
             generic_selector: F::zero(),
             poseidon_selector: F::zero(),
         }
+    }
+}
+
+impl<F> AbsorbableScalarField<F> for [&ProofEvaluations<F>; 2]
+where
+    F: Field,
+{
+    fn absorb(&self, sponge: &mut impl FrSponge<F>) {
+        let [zeta_evals, zeta_omega_evals] = &self;
+
+        // we interleave points from each evaluations,
+        // it makes it easier to absorb them in the verifier circuit
+        let points: Vec<F> = zeta_evals
+            .iter()
+            .interleave(zeta_omega_evals.iter())
+            .collect();
+
+        sponge.absorb_multiple(&points);
     }
 }
 

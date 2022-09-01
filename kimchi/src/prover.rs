@@ -23,7 +23,7 @@ use crate::{
     },
     curve::KimchiCurve,
     error::ProverError,
-    plonk_sponge::FrSponge,
+    plonk_sponge::{AbsorbableScalarField, FrSponge},
     proof::{
         LookupCommitments, LookupEvaluations, ProofEvaluations, ProverCommitments, ProverProof,
         RecursionChallenge,
@@ -759,7 +759,7 @@ where
         //~~ - 6 sigmas evaluations (the last one is not evaluated)
         fr_sponge.absorb_multiple(&public_evals[0]);
         fr_sponge.absorb_multiple(&public_evals[1]);
-        fr_sponge.absorb_evaluations([&evals[0], &evals[1]]);
+        [&evals[0], &evals[1]].absorb(&mut fr_sponge);
 
         //~ 1. Sample $v'$ with the Fr-Sponge
         let v_chal = fr_sponge.challenge();
