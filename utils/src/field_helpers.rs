@@ -37,9 +37,7 @@ pub trait FieldHelpers<F> {
     where
         F: PrimeField
     {
-        let mut bytes = big.to_bytes_le();
-        bytes.resize(F::size_in_bytes(), 0);
-        F::from_bytes(&bytes)
+        big.try_into().map_err(|_| FieldHelpersError::DeserializeBytes)
     }
 
     /// Serialize to bytes
