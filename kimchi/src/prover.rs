@@ -42,7 +42,7 @@ use commitment_dlog::commitment::{
 use itertools::Itertools;
 use o1_utils::ExtendedDensePolynomial as _;
 use oracle::{sponge::ScalarChallenge, FqSponge};
-use rand::{CryptoRng, RngCore};
+use rand::{RngCore, CryptoRng};
 use std::collections::HashMap;
 
 /// The result of a proof creation or verification.
@@ -279,7 +279,7 @@ impl<G: CommitmentCurve + ark_ec::AffineCurve<ScalarField = F>, F: PrimeField> L
                 &joint_lookup_table_d8,
                 index.cs.domain.d1,
                 &index.cs.gates,
-                witness,
+                &witness,
                 joint_combiner,
                 table_id_combiner,
                 &lcs.configuration.lookup_info,
@@ -348,7 +348,7 @@ impl<G: CommitmentCurve + ark_ec::AffineCurve<ScalarField = F>, F: PrimeField> L
                 joint_lookup_table_d8,
                 index.cs.domain.d1,
                 &index.cs.gates,
-                witness,
+                &witness,
                 &self.joint_combiner.unwrap(),
                 &self.table_id_combiner.unwrap(),
                 beta,
