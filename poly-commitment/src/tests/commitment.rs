@@ -87,8 +87,8 @@ impl AggregatedEvaluationProof {
         BatchEvaluationProof {
             sponge: self.fq_sponge.clone(),
             evaluation_points: self.eval_points.clone(),
-            xi: self.polymask,
-            r: self.evalmask,
+            polyscale: self.polymask,
+            evalscale: self.evalmask,
             evaluations: coms,
             opening: &self.proof,
         }

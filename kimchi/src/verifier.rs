@@ -851,8 +851,8 @@ where
         sponge: fq_sponge,
         evaluations,
         evaluation_points,
-        xi: oracles.v,
-        r: oracles.u,
+        polyscale: oracles.v,
+        evalscale: oracles.u,
         opening: &proof.proof,
     })
 }
