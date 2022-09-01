@@ -196,6 +196,7 @@ impl<G: AffineCurve> RecursionChallenge<G> {
 }
 
 impl<F: Field> ProofEvaluations<F> {
+    /// Returns an iterator over all evaluations contained in [Self].
     pub fn iter(&self) -> impl Iterator<Item = F> {
         // important: we use a deconstruction pattern so that the compiler can tell us if we forget one of the evaluations
         let ProofEvaluations {

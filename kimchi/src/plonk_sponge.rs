@@ -50,9 +50,12 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
     }
 }
 
+/// Implement this trait on a type to make it "absorbable" by a scalar sponge.
+/// All types that the prover sends to the verifier in the protocol should implement this trait.
 pub trait AbsorbableScalarField<F>
 where
     F: Field,
 {
+    /// Takes a sponge and absorbs the field element of the struct into it.
     fn absorb(&self, sponge: &mut impl FrSponge<F>);
 }
