@@ -1702,25 +1702,6 @@ Yet, it contains one extra row to take into account the last constraint (final v
 
 The prover then follows the following steps to create the proof:
 
-	- If queries involve a lookup table with multiple columns
-	  then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
-	  otherwise set the joint combiner challenge $j'$ to $0$.
-	- Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TOOD: specify)
-	- If multiple lookup tables are involved,
-	  set the `table_id_combiner` as the $j^i$ with $i$ the maximum width of any used table.
-	  Essentially, this is to add a last column of table ids to the concatenated lookup tables.
-	- Compute the dummy lookup value as the combination of the last entry of the XOR table (so `(0, 0, 0)`).
-	  Warning: This assumes that we always use the XOR table when using lookups.
-	- Compute the lookup table values as the combination of the lookup table entries.
-	- Compute the sorted evaluations.
-	- Randomize the last `EVALS` rows in each of the sorted polynomials
-	  in order to add zero-knowledge to the protocol.
-	- Commit each of the sorted polynomials.
-	- Absorb each commitments to the sorted polynomials.
-1. If using lookup:
-	- Compute the lookup aggregation polynomial.
-	- Commit to the aggregation polynomial.
-	- Absorb the commitment to the aggregation polynomial with the Fq-Sponge.
 1. Ensure we have room in the witness for the zero-knowledge rows.
    We currently expect the witness not to be of the same length as the domain,
    but instead be of the length of the (smaller) circuit.
@@ -1729,6 +1710,8 @@ The prover then follows the following steps to create the proof:
 1. Pad the witness columns with Zero gates to make them the same length as the domain.
    Then, randomize the last `ZK_ROWS` of each columns.
 1. Setup the Fq-Sponge.
+1. Absorb the digest of the VerifierIndex.
+1. Absorb the commitments of the previous challenges with the Fq-sponge.
 1. Compute the negated public input polynomial as
    the polynomial that evaluates to $-p_i$ for the first `public_input_size` values of the domain,
    and $0$ for the rest.
@@ -1745,9 +1728,28 @@ The prover then follows the following steps to create the proof:
 1. Absorb the witness commitments with the Fq-Sponge.
 1. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
    TODO: why not do this first, and then commit? Why commit from evaluation directly?
+1. If using lookup:
+	- If queries involve a lookup table with multiple columns
+	  then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
+	  otherwise set the joint combiner challenge $j'$ to $0$.
+	- Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TOOD: specify)
+	- If multiple lookup tables are involved,
+	  set the `table_id_combiner` as the $j^i$ with $i$ the maximum width of any used table.
+	  Essentially, this is to add a last column of table ids to the concatenated lookup tables.
+	- Compute the dummy lookup value as the combination of the last entry of the XOR table (so `(0, 0, 0)`).
+	  Warning: This assumes that we always use the XOR table when using lookups.
+	- Compute the lookup table values as the combination of the lookup table entries.
+	- Compute the sorted evaluations.
+	- Randomize the last `EVALS` rows in each of the sorted polynomials
+	  in order to add zero-knowledge to the protocol.
+	- Commit each of the sorted polynomials.
+	- Absorb each commitments to the sorted polynomials.
 1. Sample $\beta$ with the Fq-Sponge.
 1. Sample $\gamma$ with the Fq-Sponge.
 1. If using lookup:
+	- Compute the lookup aggregation polynomial.
+	- Commit to the aggregation polynomial.
+	- Absorb the commitment to the aggregation polynomial with the Fq-Sponge.
 1. Compute the permutation aggregation polynomial $z$.
 1. Commit (hidding) to the permutation aggregation polynomial $z$.
 1. Absorb the permutation aggregation polynomial $z$ with the Fq-Sponge.
@@ -1798,6 +1800,8 @@ The prover then follows the following steps to create the proof:
 1. Evaluate the ft polynomial at $\zeta\omega$ only.
 1. Setup the Fr-Sponge
 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
+1. Absorb the previous recursion challenges.
+1. Compute evaluations for the previous recursion challenges.
 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
 1. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
@@ -1823,6 +1827,11 @@ The prover then follows the following steps to create the proof:
 	- the 15 registers/witness columns
 	- the 6 sigmas
 	- optionally, the runtime table
+1. if using lookup:
+	- add the lookup sorted polynomials
+	- add the lookup aggreg polynomial
+	- add the combined table polynomial
+	- if present, add the runtime table polynomial
 1. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
 
 
