@@ -226,8 +226,8 @@ where
         // Intermediate products for better readability of the constraints
         // TODO: use a function with traits to reuse for Expr and Field as when we didnt have aux
         let (product_lo, product_mi, product_hi) = {
-            let add_lo = left_input_lo.clone() + right_input_lo.clone();
-            let sub_lo = quotient_lo.clone() + foreign_modulus_lo.clone();
+            let add_lo = left_input_lo.clone() * right_input_lo.clone();
+            let sub_lo = quotient_lo.clone() * foreign_modulus_lo.clone();
 
             let add_mi = left_input_lo.clone() * right_input_mi.clone()
                 + left_input_mi.clone() * right_input_lo.clone();
@@ -296,7 +296,6 @@ where
         let zero_bot =
             product_lo - remainder_lo + two_to_88.clone() * (product_mi_bot - remainder_mi);
         constraints.push(zero_bot - two_to_176 * carry_bot.clone());
-        // TODO: not working.
 
         // 7) Constraint carry_top to prove zero_top's bits are zero
         //    For details on zero_top and why this is valid, please see
