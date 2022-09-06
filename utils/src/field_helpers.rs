@@ -35,9 +35,10 @@ pub trait FieldHelpers<F> {
     /// Deserialize from BigUint
     fn from_biguint(big: BigUint) -> Result<F>
     where
-        F: PrimeField
+        F: PrimeField,
     {
-        big.try_into().map_err(|_| FieldHelpersError::DeserializeBytes)
+        big.try_into()
+            .map_err(|_| FieldHelpersError::DeserializeBytes)
     }
 
     /// Serialize to bytes
