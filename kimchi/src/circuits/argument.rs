@@ -6,9 +6,10 @@
 
 use crate::{alphas::Alphas, circuits::expr::prologue::*};
 use ark_ff::FftField;
+use array_init::array_init;
 use serde::{Deserialize, Serialize};
 
-use super::gate::GateType;
+use super::{expr::constraints::ArithmeticOps, gate::GateType, polynomial::COLUMNS};
 
 /// A constraint type represents a polynomial that will be part of the final equation f (the circuit equation)
 #[derive(PartialEq, Eq, Clone, Copy, Hash, Debug, Serialize, Deserialize)]
@@ -23,6 +24,11 @@ pub enum ArgumentType {
     Lookup,
 }
 
+pub struct GateWitness<T> {
+    pub curr: [T; COLUMNS],
+    pub next: [T; COLUMNS],
+}
+
 /// The interface for a minimal argument implementation.
 pub trait Argument<F: FftField> {
     /// The type of constraints that this will produce.
@@ -33,13 +39,27 @@ pub trait Argument<F: FftField> {
     /// The number of constraints created by the argument.
     const CONSTRAINTS: u32;
 
+    /// Constraints for this argument
+    fn constraints<T: ArithmeticOps>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T>;
+
+    /// Constants used by this argument
+    fn constants() -> Vec<E<F>>;
+
     /// Returns the set of constraints required to prove this argument.
-    // TODO: return a [_; Self::CONSTRAINTS] once generic consts are stable
-    fn constraints() -> Vec<E<F>>;
+    fn expression() -> Vec<E<F>> {
+        // Build expr witness
+        let witness = GateWitness {
+            curr: array_init(|i| witness_curr(i)),
+            next: array_init(|i| witness_next(i)),
+        };
+
+        // Generate constraints
+        Self::constraints(&witness, Self::constants())
+    }
 
     /// Returns constraints safely combined via the passed combinator.
     fn combined_constraints(alphas: &Alphas<F>) -> E<F> {
-        let constraints = Self::constraints();
+        let constraints = Self::expression();
         assert_eq!(constraints.len(), Self::CONSTRAINTS as usize);
         let alphas = alphas.get_exponents(Self::ARGUMENT_TYPE, Self::CONSTRAINTS);
         let combined_constraints = E::combine_constraints(alphas, constraints);

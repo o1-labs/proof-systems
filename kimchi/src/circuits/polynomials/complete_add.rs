@@ -14,8 +14,8 @@
 //~ - `same_x` is a boolean that is true iff `x1 == x2`.
 //~
 use crate::circuits::{
-    argument::{Argument, ArgumentType},
-    expr::{prologue::*, Cache},
+    argument::{Argument, ArgumentType, GateWitness},
+    expr::{prologue::*, Cache, constraints::ArithmeticOps},
     gate::{CircuitGate, GateType},
     wires::COLUMNS,
 };
@@ -29,8 +29,8 @@ use std::marker::PhantomData;
 /// Additionally, if r == 0, then z_inv = 1 / z.
 ///
 /// If r == 1 however (i.e., if z == 0), then z_inv is unconstrained.
-fn zero_check<F: Field>(z: E<F>, z_inv: E<F>, r: E<F>) -> Vec<E<F>> {
-    vec![z_inv * z.clone() - (E::one() - r.clone()), r * z]
+fn zero_check<T: ArithmeticOps>(z: T, z_inv: T, r: T) -> Vec<T> {
+    vec![z_inv * z.clone() - (T::one() - r.clone()), r * z]
 }
 
 //~ The following constraints are generated:
@@ -95,26 +95,30 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CompleteAdd);
     const CONSTRAINTS: u32 = 7;
 
-    fn constraints() -> Vec<E<F>> {
+    fn constants() -> Vec<E<F>> {
+        vec![]
+    }
+
+    fn constraints<T: ArithmeticOps>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T> {
         // This function makes 2 + 1 + 1 + 1 + 2 = 7 constraints
-        let x1 = witness_curr(0);
-        let y1 = witness_curr(1);
-        let x2 = witness_curr(2);
-        let y2 = witness_curr(3);
-        let x3 = witness_curr(4);
-        let y3 = witness_curr(5);
+        let x1 = witness.curr[0];
+        let y1 = witness.curr[1];
+        let x2 = witness.curr[2];
+        let y2 = witness.curr[3];
+        let x3 = witness.curr[4];
+        let y3 = witness.curr[5];
 
-        let inf = witness_curr(6);
+        let inf = witness.curr[6];
         // same_x is 1 if x1 == x2, 0 otherwise
-        let same_x = witness_curr(7);
+        let same_x = witness.curr[7];
 
-        let s = witness_curr(8);
+        let s = witness.curr[8];
 
         // This variable is used to constrain inf
-        let inf_z = witness_curr(9);
+        let inf_z = witness.curr[9];
 
         // This variable is used to constrain same_x
-        let x21_inv = witness_curr(10);
+        let x21_inv = witness.curr[10];
 
         let mut cache = Cache::default();
 
@@ -135,7 +139,7 @@ where
                 s.clone().double() * y1.clone() - x1_squared.clone().double() - x1_squared;
             let add_case = x21 * s.clone() - y21.clone();
 
-            res.push(same_x.clone() * dbl_case + (E::one() - same_x.clone()) * add_case);
+            res.push(same_x.clone() * dbl_case + (T::one() - same_x.clone()) * add_case);
         }
 
         // Unconditionally constrain

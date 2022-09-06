@@ -24,6 +24,8 @@ use std::{
 use thiserror::Error;
 use CurrOrNext::{Curr, Next};
 
+use self::constraints::ArithmeticOps;
+
 #[derive(Debug, Error)]
 pub enum ExprError {
     #[error("Empty stack")]
@@ -357,6 +359,7 @@ impl CacheId {
     }
 }
 
+
 impl Cache {
     fn next_id(&mut self) -> CacheId {
         let id = self.next_id;
@@ -364,9 +367,8 @@ impl Cache {
         CacheId(id)
     }
 
-    /// Cache the value of the given expression
-    pub fn cache<C>(&mut self, e: Expr<C>) -> Expr<C> {
-        Expr::Cache(self.next_id(), Box::new(e))
+    pub fn cache<T: ArithmeticOps>(&mut self, e: T) -> T {
+        e.cache(self)
     }
 }
 
@@ -2154,6 +2156,8 @@ pub mod constraints {
         + std::ops::Sub<Output = Self>
         + std::ops::Neg<Output = Self>
         + std::ops::Mul<Output = Self>
+        + std::ops::AddAssign<Self>
+        + std::ops::MulAssign<Self>
         + Clone
         + Zero
         + One
@@ -2170,17 +2174,26 @@ pub mod constraints {
 
         /// Raise the value to the given power
         fn pow(&self, p: u64) -> Self;
+
+        /// Cache item
+        fn cache(&self, cache: &mut Cache) -> Self;
     }
 
     impl<F: Field> ArithmeticOps for Expr<ConstantExpr<F>> {
         fn double(&self) -> Self {
             Expr::double(self.clone())
         }
+
         fn square(&self) -> Self {
             Expr::square(self.clone())
         }
+
         fn pow(&self, p: u64) -> Self {
             Expr::pow(self.clone(), p)
+        }
+
+        fn cache(&self, cache: &mut Cache) -> Self {
+            Expr::Cache(cache.next_id(), Box::new(*self))
         }
     }
 
@@ -2188,11 +2201,17 @@ pub mod constraints {
         fn double(&self) -> Self {
             *self * F::from(2u64)
         }
+
         fn square(&self) -> Self {
             *self * *self
         }
+
         fn pow(&self, p: u64) -> Self {
             self.pow([p])
+        }
+
+        fn cache(&self, cache: &mut Cache) -> Self {
+            *self
         }
     }
 

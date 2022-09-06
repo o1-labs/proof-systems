@@ -104,8 +104,10 @@
 use std::marker::PhantomData;
 
 use crate::circuits::{
-    argument::{Argument, ArgumentType},
-    expr::{constraints::crumb, witness_curr, witness_next, E},
+    argument::{Argument, ArgumentType, GateWitness},
+    expr::{
+        constraints::{crumb, ArithmeticOps}, E,
+    },
     gate::GateType,
     polynomial::COLUMNS,
 };
@@ -156,11 +158,15 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::RangeCheck0);
     const CONSTRAINTS: u32 = 9;
 
+    fn constants() -> Vec<E<F>> {
+        vec![]
+    }
+
     // Constraints for RangeCheck0
     //   * Operates on Curr row
     //   * Range constrain all limbs except vp0 and vp1 (barring plookup constraints, which are done elsewhere)
     //   * Constrain that combining all limbs equals the limb stored in column 0
-    fn constraints() -> Vec<E<F>> {
+    fn constraints<T: ArithmeticOps>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T> {
         // 1) Apply range constraints on the limbs
         //    * Columns 1-2 are 12-bit copy constraints
         //        * They are copied 3 rows ahead (to the final row) and are constrained by lookups
@@ -170,8 +176,8 @@ where
         //    * Columns 3-6 are 12-bit plookup range constraints (these are specified in the lookup gate)
         //    * Columns 7-14 are 2-bit crumb range constraints
         let mut constraints = (7..COLUMNS)
-            .map(|i| crumb(&witness_curr(i)))
-            .collect::<Vec<E<F>>>();
+            .map(|i| crumb(&witness.curr[i]))
+            .collect::<Vec<T>>();
 
         // 2) Constrain that the combined limbs equals the value v stored in w(0):
         //
@@ -183,23 +189,23 @@ where
         //    Cols: 0  1   2   3   4   5   6   7   8   9   10  11  12  13  14
         //    Curr: v  vp0 vp1 vp2 vp3 vp4 vp5 vc0 vc1 vc2 vc3 vc4 vc5 vc6 vc7  <- LSB
 
-        let mut power_of_2 = E::one();
-        let mut sum_of_limbs = E::zero();
+        let mut power_of_2 = T::one();
+        let mut sum_of_limbs = T::zero();
 
         // Sum 2-bit limbs
         for i in (7..COLUMNS).rev() {
-            sum_of_limbs += power_of_2.clone() * witness_curr(i);
-            power_of_2 *= 4u64.into(); // 2 bits
+            sum_of_limbs += power_of_2.clone() * witness.curr[i];
+            power_of_2 *= T::from(4u64); // 2 bits
         }
 
         // Sum 12-bit limbs
         for i in (1..=6).rev() {
-            sum_of_limbs += power_of_2.clone() * witness_curr(i);
+            sum_of_limbs += power_of_2.clone() * witness.curr[i];
             power_of_2 *= 4096u64.into(); // 12 bits
         }
 
         // Check value v against the sum of limbs
-        constraints.push(sum_of_limbs - witness_curr(0));
+        constraints.push(sum_of_limbs - witness.curr[0]);
 
         constraints
     }
@@ -246,39 +252,37 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::RangeCheck1);
     const CONSTRAINTS: u32 = 21;
 
+    fn constants() -> Vec<E<F>> {
+        vec![]
+    }
+
     // Constraints for RangeCheck1
     //   * Operates on Curr and Next row
     //   * Range constrain all limbs (barring plookup constraints, which are done elsewhere)
     //   * Constrain that combining all limbs equals the value v2 stored in row Curr, column 0
-    fn constraints() -> Vec<E<F>> {
+    fn constraints<T: ArithmeticOps>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T> {
         // 1) Apply range constraints on limbs for Curr row
         //    * Columns 1-2 are 2-bit crumbs
-        let mut constraints = (1..=2)
-            .map(|i| crumb(&witness_curr(i)))
-            .collect::<Vec<E<F>>>();
+        let mut constraints = (1..=2).map(|i| crumb(&witness.curr[i])).collect::<Vec<T>>();
         //    * Columns 3-6 are 12-bit plookup range constraints (these are specified
         //      in the lookup gate)
         //    * Columns 7-14 are 2-bit crumb range constraints
         constraints.append(
             &mut (7..COLUMNS)
-                .map(|i| crumb(&witness_curr(i)))
-                .collect::<Vec<E<F>>>(),
+                .map(|i| crumb(&witness.curr[i]))
+                .collect::<Vec<T>>(),
         );
 
         // 2) Apply range constraints on limbs for Next row
         //    * Columns 1-2 are 2-bit crumbs
-        constraints.append(
-            &mut (1..=2)
-                .map(|i| crumb(&witness_next(i)))
-                .collect::<Vec<E<F>>>(),
-        );
+        constraints.append(&mut (1..=2).map(|i| crumb(&witness.next[i])).collect::<Vec<T>>());
         //    * Columns 3-6 are 12-bit plookup range constraints for v0 and v1 (these
         //      are specified in the lookup gate)
         //    * Columns 7-14 are more 2-bit crumbs
         constraints.append(
             &mut (7..COLUMNS)
-                .map(|i| crumb(&witness_next(i)))
-                .collect::<Vec<E<F>>>(),
+                .map(|i| crumb(&witness.next[i]))
+                .collect::<Vec<T>>(),
         );
 
         // 2) Constrain that the combined limbs equals the value v2 stored in w(0) where
@@ -293,41 +297,41 @@ where
         //    Curr  v2 vc0 vc1 vp0 vp1 vp2  vp3  vc2  vc3  vc4  vc5  vc6  vc7  vc8  vc9
         //    Next                     vc10 vc11 vc12 vc13 vc14 vc15 vc16 vc17 vc18 vc19 <- LSB
 
-        let mut power_of_2 = E::one();
-        let mut sum_of_limbs = E::zero();
+        let mut power_of_2 = T::one();
+        let mut sum_of_limbs = T::zero();
 
         // Next row: Sum 2-bit limbs
         for i in (7..COLUMNS).rev() {
-            sum_of_limbs += power_of_2.clone() * witness_next(i);
+            sum_of_limbs += power_of_2.clone() * witness.next[i];
             power_of_2 *= 4u64.into(); // 2 bits
         }
 
         // Next row:  Sum remaining 2-bit limbs vc10 and vc11
         for i in (1..=2).rev() {
-            sum_of_limbs += power_of_2.clone() * witness_next(i);
+            sum_of_limbs += power_of_2.clone() * witness.next[i];
             power_of_2 *= 4u64.into(); // 2 bits
         }
 
         // Curr row:  Sum 2-bit limbs
         for i in (7..COLUMNS).rev() {
-            sum_of_limbs += power_of_2.clone() * witness_curr(i);
+            sum_of_limbs += power_of_2.clone() * witness.curr[i];
             power_of_2 *= 4u64.into(); // 2 bits
         }
 
         // Curr row: Sum 12-bit limbs
         for i in (3..=6).rev() {
-            sum_of_limbs += power_of_2.clone() * witness_curr(i);
+            sum_of_limbs += power_of_2.clone() * witness.curr[i];
             power_of_2 *= 4096u64.into(); // 12 bits
         }
 
         // Curr row:  Sum remaining 2-bit limbs: vc0 and vc1
         for i in (1..=2).rev() {
-            sum_of_limbs += power_of_2.clone() * witness_curr(i);
+            sum_of_limbs += power_of_2.clone() * witness.curr[i];
             power_of_2 *= 4u64.into(); // 2 bits
         }
 
         // Check value v2 against the sum of limbs
-        constraints.push(sum_of_limbs - witness_curr(0));
+        constraints.push(sum_of_limbs - witness.curr[0]);
 
         constraints
     }

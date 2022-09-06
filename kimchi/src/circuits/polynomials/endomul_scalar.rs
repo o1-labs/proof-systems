@@ -3,9 +3,9 @@
 
 use crate::{
     circuits::{
-        argument::{Argument, ArgumentType},
+        argument::{Argument, ArgumentType, GateWitness},
         constraints::ConstraintSystem,
-        expr::{prologue::*, Cache},
+        expr::{prologue::*, Cache, constraints::ArithmeticOps, Expr, ConstantExpr},
         gate::{CircuitGate, GateType},
         wires::COLUMNS,
     },
@@ -158,16 +158,25 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMulScalar);
     const CONSTRAINTS: u32 = 11;
 
-    fn constraints() -> Vec<E<F>> {
-        let n0 = witness_curr(0);
-        let n8 = witness_curr(1);
-        let a0 = witness_curr(2);
-        let b0 = witness_curr(3);
-        let a8 = witness_curr(4);
-        let b8 = witness_curr(5);
+    fn constants() -> Vec<E<F>> {
+        vec![
+            Expr::Constant(ConstantExpr::Literal(-F::from(6u64))),
+            Expr::Constant(ConstantExpr::Literal(F::from(11u64))),
+            Expr::Constant(ConstantExpr::Literal(-F::from(6u64))),
+            Expr::Constant(ConstantExpr::Literal(F::one())),
+        ]
+    }
+
+    fn constraints<T: ArithmeticOps>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T> {
+        let n0 = witness.curr[0];
+        let n8 = witness.curr[1];
+        let a0 = witness.curr[2];
+        let b0 = witness.curr[3];
+        let a8 = witness.curr[4];
+        let b8 = witness.curr[5];
 
         // x0..x7
-        let xs: [_; 8] = array_init(|i| witness_curr(6 + i));
+        let xs: [_; 8] = array_init(|i| witness.curr[6 + i]);
 
         let mut cache = Cache::default();
 

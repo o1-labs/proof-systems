@@ -143,9 +143,14 @@
 use std::marker::PhantomData;
 
 use crate::circuits::{
-    argument::{Argument, ArgumentType},
-    expr::{constraints::boolean, prologue::*, ConstantExpr as C},
+    argument::{Argument, ArgumentType, GateWitness},
+    expr::{
+        constraints::{boolean, ArithmeticOps},
+        prologue::*,
+        ConstantExpr as C,
+    },
     gate::{CurrOrNext, GateType},
+    polynomial::COLUMNS,
 };
 use ark_ff::{FftField, Field, Zero};
 
@@ -155,37 +160,37 @@ use ark_ff::{FftField, Field, Zero};
 
 /// 8-nybble sequences that are laid out as 4 nybbles per row over the two row,
 /// like y^x' or x+z
-fn chunks_over_2_rows<F>(col_offset: usize) -> Vec<E<F>> {
+fn chunks_over_2_rows<T: ArithmeticOps>(witness: &GateWitness<T>, col_offset: usize) -> Vec<T> {
     (0..8)
         .map(|i| {
-            use CurrOrNext::{Curr, Next};
-            let r = if i < 4 { Curr } else { Next };
-            witness(col_offset + (i % 4), r)
+            if i < 4 {
+                witness.curr[col_offset + (i % 4)]
+            } else {
+                witness.next[col_offset + (i % 4)]
+            }
         })
         .collect()
 }
 
-fn combine_nybbles<F: Field>(ns: Vec<E<F>>) -> E<F> {
+fn combine_nybbles<T: ArithmeticOps>(witness: &GateWitness<T>, ns: Vec<T>) -> T {
     ns.into_iter()
         .enumerate()
-        .fold(E::zero(), |acc: E<F>, (i, t)| {
-            acc + E::from(1 << (4 * i)) * t
-        })
+        .fold(T::zero(), |acc: T, (i, t)| acc + T::from(1 << (4 * i)) * t)
 }
 
 /// Constraints for the line L(x, x', y, y', z, k), where k = 4 * nybble_rotation
-fn line<F: Field>(nybble_rotation: usize) -> Vec<E<F>> {
-    let y_xor_xprime_nybbles = chunks_over_2_rows(3);
-    let x_plus_z_nybbles = chunks_over_2_rows(7);
-    let y_nybbles = chunks_over_2_rows(11);
+fn line<T: ArithmeticOps>(witness: &GateWitness<T>, nybble_rotation: usize) -> Vec<T> {
+    let y_xor_xprime_nybbles = chunks_over_2_rows(witness, 3);
+    let x_plus_z_nybbles = chunks_over_2_rows(witness, 7);
+    let y_nybbles = chunks_over_2_rows(witness, 11);
 
-    let x_plus_z_overflow_bit = witness_next(2);
+    let x_plus_z_overflow_bit = witness.next[2];
 
-    let x = witness_curr(0);
-    let xprime = witness_next(0);
-    let y = witness_curr(1);
-    let yprime = witness_next(1);
-    let z = witness_curr(2);
+    let x = witness.curr[0];
+    let xprime = witness.next[0];
+    let y = witness.curr[1];
+    let yprime = witness.next[1];
+    let z = witness.curr[2];
 
     // Because the nybbles are little-endian, rotating the vector "right"
     // is equivalent to left-shifting the nybbles.
@@ -196,13 +201,13 @@ fn line<F: Field>(nybble_rotation: usize) -> Vec<E<F>> {
         // booleanity of overflow bit
         boolean(&x_plus_z_overflow_bit),
         // x' = x + z (mod 2^32)
-        combine_nybbles(x_plus_z_nybbles) - xprime.clone(),
+        combine_nybbles(witness, x_plus_z_nybbles) - xprime.clone(),
         // Correctness of x+z nybbles
-        xprime + E::from(1 << 32) * x_plus_z_overflow_bit - (x + z),
+        xprime + T::from(1 << 32) * x_plus_z_overflow_bit - (x + z),
         // Correctness of y nybbles
-        combine_nybbles(y_nybbles) - y,
+        combine_nybbles(witness, y_nybbles) - y,
         // y' = (y ^ x') <<< 4 * nybble_rotation
-        combine_nybbles(y_xor_xprime_rotated) - yprime,
+        combine_nybbles(witness, y_xor_xprime_rotated) - yprime,
     ]
 }
 
@@ -220,9 +225,13 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha0);
     const CONSTRAINTS: u32 = 5;
 
-    fn constraints() -> Vec<E<F>> {
+    fn constants() -> Vec<E<F>> {
+        vec![]
+    }
+
+    fn constraints<T: ArithmeticOps>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T> {
         // a += b; d ^= a; d <<<= 16 (=4*4)
-        line(4)
+        line(witness, 4)
     }
 }
 
@@ -236,9 +245,13 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha1);
     const CONSTRAINTS: u32 = 5;
 
-    fn constraints() -> Vec<E<F>> {
+    fn constants() -> Vec<E<F>> {
+        vec![]
+    }
+
+    fn constraints<T: ArithmeticOps>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T> {
         // c += d; b ^= c; b <<<= 12 (=3*4)
-        line(3)
+        line(witness, 3)
     }
 }
 
@@ -252,9 +265,13 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha2);
     const CONSTRAINTS: u32 = 5;
 
-    fn constraints() -> Vec<E<F>> {
+    fn constants() -> Vec<E<F>> {
+        vec![]
+    }
+
+    fn constraints<T: ArithmeticOps>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T> {
         // a += b; d ^= a; d <<<= 8  (=2*4)
-        line(2)
+        line(witness, 2)
     }
 }
 
@@ -268,7 +285,11 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaChaFinal);
     const CONSTRAINTS: u32 = 9;
 
-    fn constraints() -> Vec<E<F>> {
+    fn constants() -> Vec<E<F>> {
+        vec![E::Constant(C::Literal(F::from(2u64).inverse().unwrap()))]
+    }
+
+    fn constraints<T: ArithmeticOps>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T> {
         // The last line, namely,
         // c += d; b ^= c; b <<<= 7;
         // is special.
@@ -276,26 +297,23 @@ where
         // will use a ChaCha0 gate to compute the nybbles of
         // all the relevant values, and the xors, and then do
         // the shifting using a ChaChaFinal gate.
-        let y_xor_xprime_nybbles = chunks_over_2_rows(1);
-        let low_bits = chunks_over_2_rows(5);
-        let yprime = witness_curr(0);
-
-        let one_half = F::from(2u64).inverse().unwrap();
+        let y_xor_xprime_nybbles = chunks_over_2_rows(witness, 1);
+        let low_bits = chunks_over_2_rows(witness, 5);
+        let yprime = witness.curr[0];
 
         // (y xor xprime) <<< 7
         // per the comment at the top of the file
         let y_xor_xprime_rotated: Vec<_> = [7, 0, 1, 2, 3, 4, 5, 6]
             .iter()
             .zip([6, 7, 0, 1, 2, 3, 4, 5].iter())
-            .map(|(&i, &j)| -> E<F> {
-                E::from(8) * low_bits[i].clone()
-                    + E::Constant(C::Literal(one_half))
-                        * (y_xor_xprime_nybbles[j].clone() - low_bits[j].clone())
+            .map(|(&i, &j)| -> T {
+                T::from(8) * low_bits[i].clone()
+                    + constants[0] * (y_xor_xprime_nybbles[j].clone() - low_bits[j].clone())
             })
             .collect();
 
-        let mut constraints: Vec<E<F>> = low_bits.iter().map(boolean).collect();
-        constraints.push(combine_nybbles(y_xor_xprime_rotated) - yprime);
+        let mut constraints: Vec<T> = low_bits.iter().map(boolean).collect();
+        constraints.push(combine_nybbles(witness, y_xor_xprime_rotated) - yprime);
         constraints
     }
 }
