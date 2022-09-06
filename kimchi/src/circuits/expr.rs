@@ -2162,24 +2162,38 @@ pub mod constraints {
     where
         Self: std::marker::Sized,
     {
+        /// Double the value
+        fn double(&self) -> Self;
+
         /// Compute the square of this value
+        fn square(&self) -> Self;
+
+        /// Raise the value to the given power
+        fn pow(&self, p: u64) -> Self;
+    }
+
+    impl<F: Field> ArithmeticOps for Expr<ConstantExpr<F>> {
+        fn double(&self) -> Self {
+            Expr::double(self.clone())
+        }
         fn square(&self) -> Self {
-            self.clone() * self.clone()
+            Expr::square(self.clone())
+        }
+        fn pow(&self, p: u64) -> Self {
+            Expr::pow(self.clone(), p)
         }
     }
 
-    impl<T> ArithmeticOps for T
-    where
-        T: std::ops::Add<Output = Self>
-            + std::ops::Sub<Output = Self>
-            + std::ops::Neg<Output = Self>
-            + std::ops::Mul<Output = Self>
-            + Clone
-            + Zero
-            + One
-            + From<u64>,
-    {
-        // Nothing required yet
+    impl<F: Field> ArithmeticOps for F {
+        fn double(&self) -> Self {
+            *self * F::from(2u64)
+        }
+        fn square(&self) -> Self {
+            *self * *self
+        }
+        fn pow(&self, p: u64) -> Self {
+            self.pow([p])
+        }
     }
 
     /// Creates a constraint to enforce that b is either 0 or 1.
