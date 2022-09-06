@@ -2373,6 +2373,20 @@
 <span id="2373">2373</span>
 <span id="2374">2374</span>
 <span id="2375">2375</span>
+<span id="2376">2376</span>
+<span id="2377">2377</span>
+<span id="2378">2378</span>
+<span id="2379">2379</span>
+<span id="2380">2380</span>
+<span id="2381">2381</span>
+<span id="2382">2382</span>
+<span id="2383">2383</span>
+<span id="2384">2384</span>
+<span id="2385">2385</span>
+<span id="2386">2386</span>
+<span id="2387">2387</span>
+<span id="2388">2388</span>
+<span id="2389">2389</span>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         domains::EvaluationDomains,
@@ -4537,25 +4551,39 @@
     </span><span class="kw">where
         </span><span class="self">Self</span>: std::marker::Sized,
     {
+        <span class="doccomment">/// Double the value
+        </span><span class="kw">fn </span>double(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>;
+
         <span class="doccomment">/// Compute the square of this value
-        </span><span class="kw">fn </span>square(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
-            <span class="self">self</span>.clone() * <span class="self">self</span>.clone()
+        </span><span class="kw">fn </span>square(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>;
+
+        <span class="doccomment">/// Raise the value to the given power
+        </span><span class="kw">fn </span>pow(<span class="kw-2">&amp;</span><span class="self">self</span>, p: u64) -&gt; <span class="self">Self</span>;
+    }
+
+    <span class="kw">impl</span>&lt;F: Field&gt; ArithmeticOps <span class="kw">for </span>Expr&lt;ConstantExpr&lt;F&gt;&gt; {
+        <span class="kw">fn </span>double(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
+            Expr::double(<span class="self">self</span>.clone())
+        }
+        <span class="kw">fn </span>square(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
+            Expr::square(<span class="self">self</span>.clone())
+        }
+        <span class="kw">fn </span>pow(<span class="kw-2">&amp;</span><span class="self">self</span>, p: u64) -&gt; <span class="self">Self </span>{
+            Expr::pow(<span class="self">self</span>.clone(), p)
         }
     }
 
-    <span class="kw">impl</span>&lt;T&gt; ArithmeticOps <span class="kw">for </span>T
-    <span class="kw">where
-        </span>T: std::ops::Add&lt;Output = <span class="self">Self</span>&gt;
-            + std::ops::Sub&lt;Output = <span class="self">Self</span>&gt;
-            + std::ops::Neg&lt;Output = <span class="self">Self</span>&gt;
-            + std::ops::Mul&lt;Output = <span class="self">Self</span>&gt;
-            + Clone
-            + Zero
-            + One
-            + From&lt;u64&gt;,
-    {
-        <span class="comment">// Nothing required yet
-    </span>}
+    <span class="kw">impl</span>&lt;F: Field&gt; ArithmeticOps <span class="kw">for </span>F {
+        <span class="kw">fn </span>double(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
+            <span class="kw-2">*</span><span class="self">self </span>* F::from(<span class="number">2u64</span>)
+        }
+        <span class="kw">fn </span>square(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
+            <span class="kw-2">*</span><span class="self">self </span>* <span class="kw-2">*</span><span class="self">self
+        </span>}
+        <span class="kw">fn </span>pow(<span class="kw-2">&amp;</span><span class="self">self</span>, p: u64) -&gt; <span class="self">Self </span>{
+            <span class="self">self</span>.pow([p])
+        }
+    }
 
     <span class="doccomment">/// Creates a constraint to enforce that b is either 0 or 1.
     </span><span class="kw">pub fn </span>boolean&lt;F: ArithmeticOps&gt;(b: <span class="kw-2">&amp;</span>F) -&gt; F {
@@ -4743,10 +4771,10 @@
         }
         <span class="macro">assert_eq!</span>(
             test_4::&lt;E&lt;Fp&gt;&gt;(E::from(<span class="number">5u64</span>)),
-            E::from(<span class="number">5u64</span>) * (E::from(<span class="number">5u64</span>) * E::from(<span class="number">5u64</span>) + E::from(<span class="number">7u64</span>))
+            E::from(<span class="number">5u64</span>) * (Expr::square(E::from(<span class="number">5u64</span>)) + E::from(<span class="number">7u64</span>))
         );
         <span class="macro">assert_eq!</span>(test_4::&lt;Fp&gt;(Fp::from(<span class="number">5u64</span>)), Fp::from(<span class="number">160u64</span>));
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (9243168fa 2022-08-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (b44197abb 2022-09-05)" ></div></body></html>
