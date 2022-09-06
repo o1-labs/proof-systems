@@ -925,6 +925,8 @@
 <span id="925">925</span>
 <span id="926">926</span>
 <span id="927">927</span>
+<span id="928">928</span>
+<span id="929">929</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements zk-proof batch verifier functionality.
 
 </span><span class="kw">use crate</span>::{
@@ -968,7 +970,7 @@
     &gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         index: <span class="kw-2">&amp;</span>VerifierIndex&lt;G&gt;,
-        p_comm: <span class="kw-2">&amp;</span>PolyComm&lt;G&gt;,
+        public_comm: <span class="kw-2">&amp;</span>PolyComm&lt;G&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;OraclesResult&lt;G, EFqSponge&gt;&gt; {
         <span class="comment">//~
         //~ #### Fiat-Shamir argument
@@ -991,7 +993,7 @@
         }
 
         <span class="comment">//~ 1. Absorb the commitment of the public input polynomial with the Fq-Sponge.
-        </span>fq_sponge.absorb_g(<span class="kw-2">&amp;</span>p_comm.unshifted);
+        </span>fq_sponge.absorb_g(<span class="kw-2">&amp;</span>public_comm.unshifted);
 
         <span class="comment">//~ 1. Absorb the commitments to the registers / witness columns with the Fq-Sponge.
         </span><span class="self">self</span>.commitments
@@ -1137,8 +1139,8 @@
         <span class="comment">//~ 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
         //~
         //~    NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
-        </span><span class="kw">let </span>p_eval = <span class="kw">if </span>!<span class="self">self</span>.public.is_empty() {
-            <span class="macro">vec!</span>[
+        </span><span class="kw">let </span>public_evals = <span class="kw">if </span>!<span class="self">self</span>.public.is_empty() {
+            [
                 <span class="macro">vec!</span>[
                     (<span class="self">self
                         </span>.public
@@ -1163,8 +1165,10 @@
                 ],
             ]
         } <span class="kw">else </span>{
-            <span class="macro">vec!</span>[Vec::&lt;G::ScalarField&gt;::new(), Vec::&lt;G::ScalarField&gt;::new()]
+            [Vec::&lt;G::ScalarField&gt;::new(), Vec::&lt;G::ScalarField&gt;::new()]
         };
+
+        <span class="macro">println!</span>(<span class="string">&quot;verifier public eval: {:?}&quot;</span>, public_evals);
 
         <span class="comment">//~ 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
         </span>fr_sponge.absorb(<span class="kw-2">&amp;</span><span class="self">self</span>.ft_eval1);
@@ -1176,8 +1180,8 @@
         //~~ - poseidon selector
         //~~ - the 15 register/witness
         //~~ - 6 sigmas evaluations (the last one is not evaluated)
-        </span>fr_sponge.absorb_multiple(<span class="kw-2">&amp;</span>p_eval[<span class="number">0</span>]);
-        fr_sponge.absorb_multiple(<span class="kw-2">&amp;</span>p_eval[<span class="number">1</span>]);
+        </span>fr_sponge.absorb_multiple(<span class="kw-2">&amp;</span>public_evals[<span class="number">0</span>]);
+        fr_sponge.absorb_multiple(<span class="kw-2">&amp;</span>public_evals[<span class="number">1</span>]);
         fr_sponge.absorb_evaluations([<span class="kw-2">&amp;</span><span class="self">self</span>.evals[<span class="number">0</span>], <span class="kw-2">&amp;</span><span class="self">self</span>.evals[<span class="number">1</span>]]);
 
         <span class="comment">//~ 1. Sample $v&#39;$ with the Fr-Sponge.
@@ -1224,8 +1228,8 @@
                 .map(|(w, s)| (beta * s) + w + gamma)
                 .fold(init, |x, y| x * y);
 
-            ft_eval0 -= <span class="kw">if </span>!p_eval[<span class="number">0</span>].is_empty() {
-                p_eval[<span class="number">0</span>][<span class="number">0</span>]
+            ft_eval0 -= <span class="kw">if </span>!public_evals[<span class="number">0</span>].is_empty() {
+                public_evals[<span class="number">0</span>][<span class="number">0</span>]
             } <span class="kw">else </span>{
                 G::ScalarField::zero()
             };
@@ -1273,7 +1277,7 @@
             <span class="attribute">#[allow(clippy::type_complexity)]
             </span><span class="kw">let </span><span class="kw-2">mut </span>es: Vec&lt;(Vec&lt;Vec&lt;G::ScalarField&gt;&gt;, <span class="prelude-ty">Option</span>&lt;usize&gt;)&gt; =
                 polys.iter().map(|(<span class="kw">_</span>, e)| (e.clone(), <span class="prelude-val">None</span>)).collect();
-            es.push((p_eval.clone(), <span class="prelude-val">None</span>));
+            es.push((public_evals.to_vec(), <span class="prelude-val">None</span>));
             es.push((<span class="macro">vec!</span>[ft_eval0, ft_eval1], <span class="prelude-val">None</span>));
             es.push((
                 <span class="self">self</span>.evals.iter().map(|e| e.z.clone()).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
@@ -1342,7 +1346,7 @@
             digest,
             oracles,
             all_alphas,
-            p_eval,
+            public_evals,
             powers_of_eval_points_for_chunks,
             polys,
             zeta1,
@@ -1396,20 +1400,20 @@
         <span class="kw">return </span><span class="prelude-val">Err</span>(VerifyError::IncorrectPubicInputLength(index.public));
     }
     <span class="kw">let </span>elm: Vec&lt;<span class="kw">_</span>&gt; = proof.public.iter().map(|s| -<span class="kw-2">*</span>s).collect();
-    <span class="kw">let </span>p_comm = PolyComm::&lt;G&gt;::multi_scalar_mul(<span class="kw-2">&amp;</span>com_ref, <span class="kw-2">&amp;</span>elm);
+    <span class="kw">let </span>public_comm = PolyComm::&lt;G&gt;::multi_scalar_mul(<span class="kw-2">&amp;</span>com_ref, <span class="kw-2">&amp;</span>elm);
 
     <span class="comment">//~ 1. Run the [Fiat-Shamir argument](#fiat-shamir-argument).
     </span><span class="kw">let </span>OraclesResult {
         fq_sponge,
         oracles,
         all_alphas,
-        p_eval,
+        public_evals,
         powers_of_eval_points_for_chunks,
         polys,
         zeta1: zeta_to_domain_size,
         ft_eval0,
         ..
-    } = proof.oracles::&lt;EFqSponge, EFrSponge&gt;(index, <span class="kw-2">&amp;</span>p_comm)<span class="question-mark">?</span>;
+    } = proof.oracles::&lt;EFqSponge, EFrSponge&gt;(index, <span class="kw-2">&amp;</span>public_comm)<span class="question-mark">?</span>;
 
     <span class="comment">//~ 1. Combine the chunked polynomials&#39; evaluations
     //~    (TODO: most likely only the quotient polynomial is chunked)
@@ -1594,8 +1598,8 @@
 
     <span class="comment">//~~ - public input commitment
     </span>evaluations.push(Evaluation {
-        commitment: p_comm,
-        evaluations: p_eval,
+        commitment: public_comm,
+        evaluations: public_evals.to_vec(),
         degree_bound: <span class="prelude-val">None</span>,
     });
 

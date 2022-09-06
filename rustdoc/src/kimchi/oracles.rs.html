@@ -124,7 +124,7 @@
     <span class="doccomment">/// the computed powers of alpha
     </span><span class="kw">pub </span>all_alphas: Alphas&lt;G::ScalarField&gt;,
     <span class="doccomment">/// public polynomial evaluations
-    </span><span class="kw">pub </span>p_eval: Vec&lt;Vec&lt;G::ScalarField&gt;&gt;,
+    </span><span class="kw">pub </span>public_evals: [Vec&lt;G::ScalarField&gt;; <span class="number">2</span>],
     <span class="doccomment">/// zeta^n and (zeta * omega)^n
     </span><span class="kw">pub </span>powers_of_eval_points_for_chunks: [G::ScalarField; <span class="number">2</span>],
     <span class="doccomment">/// recursion data
@@ -153,7 +153,7 @@
     <span class="attribute">#[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     </span><span class="kw">pub struct </span>CamlOracles&lt;CamlF&gt; {
         <span class="kw">pub </span>o: CamlRandomOracles&lt;CamlF&gt;,
-        <span class="kw">pub </span>p_eval: (CamlF, CamlF),
+        <span class="kw">pub </span>public_evals: (CamlF, CamlF),
         <span class="kw">pub </span>opening_prechallenges: Vec&lt;CamlF&gt;,
         <span class="kw">pub </span>digest_before_evaluations: CamlF,
     }
@@ -179,10 +179,10 @@
 
         <span class="kw">let </span>oracles_result = proof.oracles::&lt;EFqSponge, EFrSponge&gt;(<span class="kw-2">&amp;</span>index, <span class="kw-2">&amp;</span>p_comm)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>(<span class="kw-2">mut </span>sponge, combined_inner_product, p_eval, digest, oracles) = (
+        <span class="kw">let </span>(<span class="kw-2">mut </span>sponge, combined_inner_product, public_evals, digest, oracles) = (
             oracles_result.fq_sponge,
             oracles_result.combined_inner_product,
-            oracles_result.p_eval,
+            oracles_result.public_evals,
             oracles_result.digest,
             oracles_result.oracles,
         );
@@ -198,7 +198,7 @@
 
         <span class="prelude-val">Ok</span>(CamlOracles {
             o: oracles.into(),
-            p_eval: (p_eval[<span class="number">0</span>][<span class="number">0</span>].into(), p_eval[<span class="number">1</span>][<span class="number">0</span>].into()),
+            public_evals: (public_evals[<span class="number">0</span>][<span class="number">0</span>].into(), public_evals[<span class="number">1</span>][<span class="number">0</span>].into()),
             opening_prechallenges,
             digest_before_evaluations: digest.into(),
         })
