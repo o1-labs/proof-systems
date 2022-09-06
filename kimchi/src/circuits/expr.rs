@@ -2382,7 +2382,7 @@ pub mod test {
         }
         assert_eq!(
             test_4::<E<Fp>>(E::from(5u64)),
-            E::from(5u64) * (E::from(5u64) * E::from(5u64) + E::from(7u64))
+            E::from(5u64) * (Expr::square(E::from(5u64)) + E::from(7u64))
         );
         assert_eq!(test_4::<Fp>(Fp::from(5u64)), Fp::from(160u64));
     }
