@@ -471,7 +471,7 @@ where
         return Err(VerifyError::IncorrectPubicInputLength(index.public));
     }
     let elm: Vec<_> = proof.public.iter().map(|s| -*s).collect();
-    let mut public_comm = PolyComm::<G>::multi_scalar_mul(&com_ref, &elm);
+    let public_comm = PolyComm::<G>::multi_scalar_mul(&com_ref, &elm);
 
     //~ 1. Run the [Fiat-Shamir argument](#fiat-shamir-argument).
     let OraclesResult {
