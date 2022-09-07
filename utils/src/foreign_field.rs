@@ -61,6 +61,15 @@ impl<F: PrimeField, const N: usize> ForeignElement<F, N> {
         }
     }
 
+    /// Initializes a new foreign element from an absolute `BigUint` but the equivalent
+    /// foreign element obtained corresponds to the negated input.
+    pub fn new_from_neg(big: BigUint) -> Self {
+        let big_mod = BigUint::from_bytes_be(FOREIGN_MOD);
+        let neg_elem = big_mod - big;
+
+        ForeignElement::new_from_big(neg_elem)
+    }
+
     /// Initializes a new foreign element from a set of bytes in big endian
     pub fn new_from_be(bytes: &[u8]) -> Self {
         Self::new_from_big(BigUint::from_bytes_be(bytes))

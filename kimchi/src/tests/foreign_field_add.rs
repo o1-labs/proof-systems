@@ -1,13 +1,14 @@
 use crate::circuits::{
     constraints::ConstraintSystem,
     gate::{CircuitGate, CircuitGateError, GateType},
-    polynomials::foreign_field_add::witness::create_witness,
+    polynomials::foreign_field_add::witness::{check_witness, create_witness},
     wires::Wire,
 };
 use ark_ec::AffineCurve;
 use ark_ff::{One, Zero};
 use mina_curves::pasta::{pallas, vesta::Vesta};
 use num_bigint::BigUint;
+use num_traits::FromPrimitive;
 use o1_utils::{
     foreign_field::{ForeignElement, FOREIGN_MOD},
     FieldHelpers,
@@ -22,6 +23,40 @@ static MAX: &[u8] = &[
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0xFF, 0xFF, 0xFC, 0x2E,
 ];
 
+/// A value that produces a negative low carry when added to itself
+static OVF_NEG_LO: &[u8] = &[
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+];
+
+/// A value that produces a negative middle carry when added to itself
+static OVF_NEG_MI: &[u8] = &[
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0xFF, 0xFF, 0xFC, 0x2E,
+];
+
+/// A value that produces overflow but the high limb of the result is smaller than the high limb of the modulus
+static OVF_LESS_HI_LEFT: &[u8] = &[
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0xFF, 0xFF, 0xFC, 0x2E,
+];
+static OVF_LESS_HI_RIGHT: &[u8] = &[
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x03, 0xD1,
+];
+
+/// A value that produces two negative carries when added together with [OVF_ZERO_MI_NEG_LO]
+static OVF_NEG_BOTH: &[u8] = &[
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+];
+
+/// A value that produces two negative carries when added to itself with a middle limb that is all zeros
+static OVF_ZERO_MI_NEG_LO: &[u8] = &[
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+];
+
 /// All 0x55 bytes meaning [0101 0101]
 static TIC: &[u8] = &[
     0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55,
@@ -29,25 +64,25 @@ static TIC: &[u8] = &[
 ];
 
 // Prefix 0xAA bytes but fits in foreign field (suffix is zeros)
-static TAC: &[u8] = &[
+static TOC: &[u8] = &[
     0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA,
     0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0x00, 0x00, 0x00, 0x00, 0x00,
 ];
 
 // Bytestring that produces carry in low limb when added to TIC
-static TAC_LO: &[u8] = &[
+static TOC_LO: &[u8] = &[
     0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA,
     0xAA, 0xAA, 0xAA, 0xAA, 0xA9, 0xBA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0x00, 0x00, 0x00, 0x00, 0x00,
 ];
 
 // Bytestring that produces carry in mid limb when added to TIC
-static TAC_MI: &[u8] = &[
+static TOC_MI: &[u8] = &[
     0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xA9, 0xBA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA,
     0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0x00, 0x00, 0x00, 0x00, 0x00,
 ];
 
 // Bytestring that produces carry in low and mid limb when added to TIC
-static TAC_TWO: &[u8] = &[
+static TOC_TWO: &[u8] = &[
     0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xA9, 0xBA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA,
     0xAA, 0xAA, 0xAA, 0xAA, 0xA9, 0xBA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0x00, 0x00, 0x00, 0x00, 0x00,
 ];
@@ -209,18 +244,17 @@ fn test_max_number() {
 }
 
 #[test]
+// test 0 - 1 where (-1) is in the foreign field
 fn test_zero_minus_one() {
     let cs = create_test_constraint_system();
 
     let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
 
-    // we want to avoid use of BigUint in this case, because negative values are handled differently
-    let neg_one = -PallasField::one();
-    // convert it to big endian
-    let neg_one_be = neg_one.to_bytes().into_iter().rev().collect::<Vec<u8>>();
+    // big uint of the number 1
+    let big_one = BigUint::from_u32(1).unwrap();
 
     let left_input = ForeignElement::<PallasField, 3>::new_from_be(ZERO);
-    let right_input = ForeignElement::<PallasField, 3>::new_from_be(&neg_one_be);
+    let right_input = ForeignElement::<PallasField, 3>::new_from_neg(big_one);
 
     let witness = create_witness(left_input, right_input, foreign_modulus);
 
@@ -230,11 +264,121 @@ fn test_zero_minus_one() {
             Ok(())
         );
     }
-    // check what is the value of the carry bits
-    // only getting it to be zero
-    //assert_eq!(witness[7][16], -PallasField::one());
-    //assert_eq!(witness[8][16], -PallasField::one());
 }
+
+#[test]
+// test when the low carry is minus one
+fn test_neg_carry_lo() {
+    let cs = create_test_constraint_system();
+
+    let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
+
+    let left_input = ForeignElement::<PallasField, 3>::new_from_be(OVF_NEG_LO);
+    let right_input = ForeignElement::<PallasField, 3>::new_from_be(OVF_NEG_LO);
+
+    let witness = create_witness(left_input, right_input, foreign_modulus);
+
+    for row in 16..17 {
+        assert_eq!(
+            cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
+            Ok(())
+        );
+    }
+    assert_eq!(witness[7][16], -PallasField::one());
+    assert_eq!(witness[8][16], PallasField::zero());
+}
+
+#[test]
+// test when the middle carry is minus one
+fn test_neg_carry_mi() {
+    let cs = create_test_constraint_system();
+
+    let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
+
+    let left_input = ForeignElement::<PallasField, 3>::new_from_be(OVF_NEG_MI);
+    let right_input = ForeignElement::<PallasField, 3>::new_from_be(OVF_NEG_MI);
+
+    let witness = create_witness(left_input, right_input, foreign_modulus);
+
+    for row in 16..17 {
+        assert_eq!(
+            cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
+            Ok(())
+        );
+    }
+    assert_eq!(witness[7][16], PallasField::zero());
+    assert_eq!(witness[8][16], -PallasField::one());
+}
+
+#[test]
+// test when there is negative low carry and 0 middle limb
+fn test_zero_mi() {
+    let cs = create_test_constraint_system();
+
+    let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
+
+    let left_input = ForeignElement::<PallasField, 3>::new_from_be(OVF_ZERO_MI_NEG_LO);
+    let right_input = ForeignElement::<PallasField, 3>::new_from_be(OVF_ZERO_MI_NEG_LO);
+
+    let witness = create_witness(left_input, right_input, foreign_modulus);
+
+    for row in 0..17 {
+        assert_eq!(
+            cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
+            Ok(())
+        );
+    }
+    assert_eq!(witness[7][16], -PallasField::one());
+    assert_eq!(witness[8][16], -PallasField::one());
+}
+
+#[test]
+// test when the both carries are minus one
+fn test_neg_carries() {
+    let cs = create_test_constraint_system();
+
+    let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
+
+    let left_input = ForeignElement::<PallasField, 3>::new_from_be(OVF_NEG_BOTH);
+    let right_input = ForeignElement::<PallasField, 3>::new_from_be(OVF_ZERO_MI_NEG_LO);
+
+    let witness = create_witness(left_input, right_input, foreign_modulus);
+
+    for row in 0..17 {
+        assert_eq!(
+            cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
+            Ok(())
+        );
+    }
+    assert_eq!(witness[7][16], -PallasField::one());
+    assert_eq!(witness[8][16], -PallasField::one());
+}
+
+#[test]
+// test the upperbound of the result
+fn test_upperbound() {
+    let cs = create_test_constraint_system();
+
+    let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
+
+    let left_input = ForeignElement::<PallasField, 3>::new_from_be(OVF_LESS_HI_LEFT);
+    let right_input = ForeignElement::<PallasField, 3>::new_from_be(OVF_LESS_HI_RIGHT);
+
+    let witness = create_witness(left_input, right_input, foreign_modulus);
+
+    for row in 16..17 {
+        assert_eq!(
+            cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
+            Ok(())
+        );
+    }
+}
+
+#[test]
+fn test_pos_neg_lo_carry() {}
+
+#[test]
+fn test_pos_neg_mi_carry() {}
 
 #[test]
 // test sums without carry bits in any limb
@@ -244,7 +388,7 @@ fn test_no_carry_limbs() {
     let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
 
     let left_input = ForeignElement::<PallasField, 3>::new_from_be(TIC);
-    let right_input = ForeignElement::<PallasField, 3>::new_from_be(TAC);
+    let right_input = ForeignElement::<PallasField, 3>::new_from_be(TOC);
 
     let witness = create_witness(left_input, right_input, foreign_modulus);
 
@@ -266,12 +410,12 @@ fn test_no_carry_limbs() {
 
 #[test]
 // test sum with carry only in low part
-fn test_carry_limb_lo() {
+fn test_pos_carry_limb_lo() {
     let cs = create_test_constraint_system();
 
     let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
     let left_input = ForeignElement::<PallasField, 3>::new_from_be(TIC);
-    let right_input = ForeignElement::<PallasField, 3>::new_from_be(TAC_LO);
+    let right_input = ForeignElement::<PallasField, 3>::new_from_be(TOC_LO);
 
     let witness = create_witness(left_input, right_input, foreign_modulus);
 
@@ -289,12 +433,12 @@ fn test_carry_limb_lo() {
 }
 
 #[test]
-fn test_carry_limb_mid() {
+fn test_pos_carry_limb_mid() {
     let cs = create_test_constraint_system();
 
     let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
     let left_input = ForeignElement::<PallasField, 3>::new_from_be(TIC);
-    let right_input = ForeignElement::<PallasField, 3>::new_from_be(TAC_MI);
+    let right_input = ForeignElement::<PallasField, 3>::new_from_be(TOC_MI);
 
     let witness = create_witness(left_input, right_input, foreign_modulus);
 
@@ -312,12 +456,12 @@ fn test_carry_limb_mid() {
 }
 
 #[test]
-fn test_carry_limb_lo_mid() {
+fn test_pos_carry_limb_lo_mid() {
     let cs = create_test_constraint_system();
 
     let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
     let left_input = ForeignElement::<PallasField, 3>::new_from_be(TIC);
-    let right_input = ForeignElement::<PallasField, 3>::new_from_be(TAC_TWO);
+    let right_input = ForeignElement::<PallasField, 3>::new_from_be(TOC_TWO);
 
     let witness = create_witness(left_input, right_input, foreign_modulus);
 
@@ -341,7 +485,7 @@ fn test_wrong_sum() {
 
     let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
     let left_input = ForeignElement::<PallasField, 3>::new_from_be(TIC);
-    let right_input = ForeignElement::<PallasField, 3>::new_from_be(TAC);
+    let right_input = ForeignElement::<PallasField, 3>::new_from_be(TOC);
 
     let mut witness = create_witness(left_input, right_input, foreign_modulus);
 

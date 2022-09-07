@@ -23,6 +23,13 @@ pub fn create_witness<F: PrimeField>(
     extend_witness(&mut witness, right_input);
 
     // Compute helper variables for the upper bound check
+    // the -1 comes from the negative carry from the lower limb:
+    //     high   mid    low
+    // 1 | 0..0 | 0..0 | 0..0
+    // -   f_hi | f_mi | f_lo
+    // -----------------------
+    //         -1     -1
+    //
     let max_sub_foreign_modulus = ForeignElement::<F, 3>::new([
         two_to_limb - foreign_modulus.lo(),
         two_to_limb - foreign_modulus.mi() - F::one(),
@@ -34,7 +41,7 @@ pub fn create_witness<F: PrimeField>(
     let mut result_mi = *left_input.mi() + *right_input.mi();
     let mut result_hi = *left_input.hi() + *right_input.hi();
 
-    // If low limb of result exceeds limb-length, subtract modulus from low limb and add 1 carry to middle limb result
+    // If low limb of result exceeds limb-length, subtract max limb from low limb and add 1 carry to middle limb result
     let mut result_carry_lo = if result_lo >= two_to_limb {
         result_mi += F::one();
         result_lo -= two_to_limb;
@@ -43,7 +50,7 @@ pub fn create_witness<F: PrimeField>(
         F::zero()
     };
 
-    // If middle limb of result exceeds limb-length, subtract modulus from middle limb and add 1 carry to high limb result
+    // If middle limb of result exceeds limb-length, subtract max limb from middle limb and add 1 carry to high limb result
     let mut result_carry_mi = if result_mi >= two_to_limb {
         result_hi += F::one();
         result_mi -= two_to_limb;
@@ -51,8 +58,6 @@ pub fn create_witness<F: PrimeField>(
     } else {
         F::zero()
     };
-
-    // Using the BigUint library, the following should be easier. We would compute result at the beginning and obtain the field overflow trivially
 
     // Compute field overflow bit (if any)
     // It must be the case that the concatenation of the three limbs is larger than the modulus
@@ -70,8 +75,18 @@ pub fn create_witness<F: PrimeField>(
         // and then subtract 1 to the middle limb of the result (the above term)
         // to subtract 1 to the low carry of the result
         // and finally subtract the lower limb of the modulus from the lower limb of the result
+
         if result_lo < *foreign_modulus.lo() {
             result_lo += two_to_limb;
+            // cannot do simply `result_mi - 1` because when it is `0` it should contain
+            // all `FF`'s instead of a native field element -1.
+            // instead you want: `result_mi + 2^88 - 1 mod 2^88`
+            if result_mi == F::zero() {
+                result_mi = two_to_limb;
+                // also need to propagate the middle carry
+                result_carry_mi -= F::one();
+                result_hi -= F::one();
+            }
             result_mi -= F::one();
             result_carry_lo -= F::one();
         }
@@ -83,12 +98,19 @@ pub fn create_witness<F: PrimeField>(
         // to subtract 1 to the middle carry of the result
         // and finally subtract the middle limb of the modulus from the middle limb of the result
         if result_mi < *foreign_modulus.mi() {
+            // it cannot happen that `result_carry_mi = -1` due to the `result_mi` being all `FF`
+            // because that will always be larger or equal than `foreign_modulus.mi`
             result_mi += two_to_limb;
+            if result_hi == F::zero() {
+                result_hi = two_to_limb;
+                // would have negative high carry, but we are modulo 2^{3*limb}
+            }
             result_hi -= F::one();
             result_carry_mi -= F::one();
         }
         result_mi -= *foreign_modulus.mi();
 
+        // TODO: didnt find an example where this happens
         if result_hi < *foreign_modulus.hi() {
             result_hi += two_to_limb;
         }
@@ -99,6 +121,8 @@ pub fn create_witness<F: PrimeField>(
         F::zero()
     };
 
+    // computing an upper bound to make sure that the result is smaller than the modulus
+    // computed as u = r + 2^{3*limb} - f
     let mut upper_bound_lo = result_lo + *max_sub_foreign_modulus.lo();
     let mut upper_bound_mi = result_mi + *max_sub_foreign_modulus.mi();
     let mut upper_bound_hi = result_hi + *max_sub_foreign_modulus.hi();
@@ -147,6 +171,91 @@ pub fn create_witness<F: PrimeField>(
     );
 
     witness
+}
+
+pub fn check_witness<F: PrimeField>(
+    witness: &[Vec<F>; COLUMNS],
+    foreign_mod: ForeignElement<F, 3>,
+) -> Result<(), String> {
+    let [foreign_modulus_lo, foreign_modulus_mi, foreign_modulus_hi] = foreign_mod.limbs;
+
+    let two_to_88 = F::from(2u128.pow(88));
+
+    let max_sub_foreign_modulus_lo = two_to_88 - foreign_modulus_lo;
+    let max_sub_foreign_modulus_mi = two_to_88 - foreign_modulus_mi - F::one();
+    let max_sub_foreign_modulus_hi = two_to_88 - foreign_modulus_hi - F::one();
+
+    let left_input_lo = witness[0][16];
+    let left_input_mi = witness[1][16];
+    let left_input_hi = witness[2][16];
+
+    let right_input_lo = witness[3][16];
+    let right_input_mi = witness[4][16];
+    let right_input_hi = witness[5][16];
+
+    let field_overflow = witness[6][16];
+
+    // Carry bits for limb overflows / underflows.
+    let result_carry_lo = witness[7][16];
+    let result_carry_mi = witness[8][16];
+
+    let upper_bound_carry_lo = witness[9][16];
+    let upper_bound_carry_mi = witness[10][16];
+
+    let result_lo = witness[0][17];
+    let result_mi = witness[1][17];
+    let result_hi = witness[2][17];
+
+    let upper_bound_lo = witness[3][17];
+    let upper_bound_mi = witness[4][17];
+    let upper_bound_hi = witness[5][17];
+
+    assert_eq!(F::zero(), field_overflow * (field_overflow - F::one()));
+
+    assert_eq!(
+        F::zero(),
+        result_carry_lo * (result_carry_lo - F::one()) * (result_carry_lo + F::one())
+    );
+    assert_eq!(
+        F::zero(),
+        result_carry_mi * (result_carry_mi - F::one()) * (result_carry_mi + F::one())
+    );
+
+    let result_calculated_lo = left_input_lo + right_input_lo
+        - field_overflow * foreign_modulus_lo
+        - (result_carry_lo * two_to_88);
+    let result_calculated_mi = left_input_mi + right_input_mi
+        - field_overflow * foreign_modulus_mi
+        - (result_carry_mi * two_to_88)
+        + result_carry_lo;
+    let result_calculated_hi =
+        left_input_hi + right_input_hi - field_overflow * foreign_modulus_hi + result_carry_mi;
+
+    assert_eq!(result_lo, result_calculated_lo);
+    assert_eq!(result_mi, result_calculated_mi);
+    assert_eq!(result_hi, result_calculated_hi);
+
+    assert_eq!(
+        F::zero(),
+        upper_bound_carry_lo * (upper_bound_carry_lo - F::one())
+    );
+    assert_eq!(
+        F::zero(),
+        upper_bound_carry_mi * (upper_bound_carry_mi - F::one())
+    );
+
+    let upper_bound_calculated_lo =
+        result_lo + max_sub_foreign_modulus_lo - (upper_bound_carry_lo * two_to_88);
+    let upper_bound_calculated_mi = result_mi + max_sub_foreign_modulus_mi
+        - upper_bound_carry_mi * two_to_88
+        + upper_bound_carry_lo;
+    let upper_bound_calculated_hi = result_hi + max_sub_foreign_modulus_hi + upper_bound_carry_mi;
+
+    assert_eq!(upper_bound_lo, upper_bound_calculated_lo);
+    assert_eq!(upper_bound_mi, upper_bound_calculated_mi);
+    assert_eq!(upper_bound_hi, upper_bound_calculated_hi);
+
+    Ok(())
 }
 
 // Extend standard WitnessCell to support foreign field addition

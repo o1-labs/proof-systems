@@ -187,7 +187,7 @@ where
         // u_1 = r_1 + g_1 - k_1 * 2^88 + k_0
         let upper_bound_calculated_mi = result_mi + max_sub_foreign_modulus_mi
             - upper_bound_carry_mi.clone() * two_to_88
-            - upper_bound_carry_lo;
+            + upper_bound_carry_lo;
         // u_2 = r_2 + g_2 + k_1
         let upper_bound_calculated_hi =
             result_hi + max_sub_foreign_modulus_hi + upper_bound_carry_mi;
