@@ -435,7 +435,7 @@ pub fn combined_inner_product<F: PrimeField>(
 
         if let Some(m) = shifted {
             // polyscale^i sum_j evalscale^j elm_j^{N - m} f(elm_j)
-            let last_evals = if *m > evals.len() * srs_length {
+            let last_evals = if *m >= evals.len() * srs_length {
                 vec![F::zero(); evaluation_points.len()]
             } else {
                 evals[evals.len() - 1].clone()
