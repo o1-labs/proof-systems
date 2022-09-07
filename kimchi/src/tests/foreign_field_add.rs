@@ -104,6 +104,18 @@ static FOR_MOD_TOP: &[u8] = &[
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 ];
 
+/// Value that performs a + - 1 low carry when added to [MAX]
+static NULL_CARRY_LO: &[u8] = &[0x01, 0x00, 0x00, 0x03, 0xD2];
+
+/// Value that performs a + - 1 middle carry when added to [MAX]
+static NULL_CARRY_MI: &[u8] = &[
+    0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+];
+
+/// Value that performs two + - 1 carries when added to [MAX]
+static NULL_CARRY_BOTH: &[u8] = &[
+    0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x03, 0xD2,
+];
 /// The zero byte
 static ZERO: &[u8] = &[0x00];
 
@@ -438,10 +450,68 @@ fn test_upperbound() {
 }
 
 #[test]
-fn test_pos_neg_lo_carry() {}
+// test a carry that nullifies in the low limb
+fn test_null_lo_carry() {
+    let cs = create_test_constraint_system();
+
+    let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
+
+    let left_input = ForeignElement::<PallasField, 3>::new_from_be(MAX);
+    let right_input = ForeignElement::<PallasField, 3>::new_from_be(NULL_CARRY_LO);
+
+    let witness = create_witness(left_input, right_input, foreign_modulus);
+
+    for row in 16..=17 {
+        assert_eq!(
+            cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
+            Ok(())
+        );
+    }
+    assert_eq!(witness[7][16], PallasField::zero());
+}
 
 #[test]
-fn test_pos_neg_mi_carry() {}
+// test a carry that nullifies in the mid limb
+fn test_null_mi_carry() {
+    let cs = create_test_constraint_system();
+
+    let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
+
+    let left_input = ForeignElement::<PallasField, 3>::new_from_be(MAX);
+    let right_input = ForeignElement::<PallasField, 3>::new_from_be(NULL_CARRY_MI);
+
+    let witness = create_witness(left_input, right_input, foreign_modulus);
+
+    for row in 16..=17 {
+        assert_eq!(
+            cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
+            Ok(())
+        );
+    }
+    assert_eq!(witness[8][16], PallasField::zero());
+}
+
+#[test]
+// test a carry that nullifies in the mid limb
+fn test_null_both_carry() {
+    let cs = create_test_constraint_system();
+
+    let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
+
+    let left_input = ForeignElement::<PallasField, 3>::new_from_be(MAX);
+    let right_input = ForeignElement::<PallasField, 3>::new_from_be(NULL_CARRY_BOTH);
+
+    let witness = create_witness(left_input, right_input, foreign_modulus);
+
+    for row in 16..=17 {
+        assert_eq!(
+            cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
+            Ok(())
+        );
+    }
+    assert_eq!(witness[7][16], PallasField::zero());
+    assert_eq!(witness[8][16], PallasField::zero());
+}
 
 #[test]
 // test sums without carry bits in any limb
