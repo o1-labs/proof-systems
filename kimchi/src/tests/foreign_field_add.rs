@@ -6,7 +6,10 @@ use crate::circuits::{
 };
 use ark_ec::AffineCurve;
 use ark_ff::{One, Zero};
-use mina_curves::pasta::{pallas, vesta::Vesta};
+use mina_curves::pasta::{
+    pallas::{self, Pallas},
+    vesta::Vesta,
+};
 use num_bigint::BigUint;
 use num_traits::FromPrimitive;
 use o1_utils::{
@@ -267,6 +270,33 @@ fn test_zero_minus_one() {
     assert_eq!(witness[0][17], *right_input.lo());
     assert_eq!(witness[1][17], *right_input.mi());
     assert_eq!(witness[2][17], *right_input.hi());
+}
+
+#[test]
+// test 1 - 1 where (-1) is in the foreign field
+fn test_one_minus_one() {
+    let cs = create_test_constraint_system();
+
+    let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
+
+    // big uint of the number 1
+    let big_one = BigUint::from_u32(1).unwrap();
+
+    let left_input = ForeignElement::<PallasField, 3>::new_from_big(big_one.clone());
+    let right_input = ForeignElement::<PallasField, 3>::new_from_neg(big_one);
+
+    let witness = create_witness(left_input, right_input, foreign_modulus);
+
+    for row in 0..=17 {
+        assert_eq!(
+            cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
+            Ok(())
+        );
+    }
+
+    assert_eq!(witness[0][17], PallasField::zero());
+    assert_eq!(witness[1][17], PallasField::zero());
+    assert_eq!(witness[2][17], PallasField::zero());
 }
 
 #[test]
