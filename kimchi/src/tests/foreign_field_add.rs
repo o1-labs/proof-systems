@@ -1,7 +1,7 @@
 use crate::circuits::{
     constraints::ConstraintSystem,
     gate::{CircuitGate, CircuitGateError, GateType},
-    polynomials::foreign_field_add::witness::{check_witness, create_witness},
+    polynomials::foreign_field_add::witness::create_witness,
     wires::Wire,
 };
 use ark_ec::AffineCurve;
@@ -130,7 +130,7 @@ fn test_zero_add() {
 
     let witness = create_witness(left_input, right_input, foreign_modulus);
 
-    for row in 0..17 {
+    for row in 0..=17 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -149,7 +149,7 @@ fn test_zero_sum_foreign() {
 
     let witness = create_witness(left_input, right_input, foreign_modulus);
 
-    for row in 0..17 {
+    for row in 0..=17 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -176,7 +176,7 @@ fn test_zero_sum_native() {
 
     let witness = create_witness(left_input, right_input, foreign_modulus);
 
-    for row in 0..17 {
+    for row in 0..=17 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -201,7 +201,7 @@ fn test_one_plus_one() {
 
     let witness = create_witness(left_input, right_input, foreign_modulus);
 
-    for row in 0..17 {
+    for row in 0..=17 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -226,7 +226,7 @@ fn test_max_number() {
 
     let witness = create_witness(left_input, right_input, foreign_modulus);
 
-    for row in 0..17 {
+    for row in 0..=17 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -258,12 +258,45 @@ fn test_zero_minus_one() {
 
     let witness = create_witness(left_input, right_input, foreign_modulus);
 
-    for row in 0..17 {
+    for row in 0..=17 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
         );
     }
+    assert_eq!(witness[0][17], *right_input.lo());
+    assert_eq!(witness[1][17], *right_input.mi());
+    assert_eq!(witness[2][17], *right_input.hi());
+}
+
+#[test]
+// test -1-1 where (-1) is in the foreign field
+fn test_minus_minus() {
+    let cs = create_test_constraint_system();
+
+    let foreign_modulus = ForeignElement::<PallasField, 3>::new_from_be(FOREIGN_MOD);
+
+    // big uint of the number 1
+    let big_one = BigUint::from_u32(1).unwrap();
+    let big_two = big_one.clone() + big_one.clone();
+
+    let left_input = ForeignElement::<PallasField, 3>::new_from_neg(big_one.clone());
+    let right_input = ForeignElement::<PallasField, 3>::new_from_neg(big_one);
+
+    let witness = create_witness(left_input, right_input, foreign_modulus);
+
+    for row in 0..=17 {
+        assert_eq!(
+            cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
+            Ok(())
+        );
+    }
+
+    let for_neg_two = ForeignElement::<PallasField, 3>::new_from_neg(big_two);
+
+    assert_eq!(witness[0][17], *for_neg_two.lo());
+    assert_eq!(witness[1][17], *for_neg_two.mi());
+    assert_eq!(witness[2][17], *for_neg_two.hi());
 }
 
 #[test]
@@ -278,7 +311,7 @@ fn test_neg_carry_lo() {
 
     let witness = create_witness(left_input, right_input, foreign_modulus);
 
-    for row in 16..17 {
+    for row in 16..=17 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -300,7 +333,7 @@ fn test_neg_carry_mi() {
 
     let witness = create_witness(left_input, right_input, foreign_modulus);
 
-    for row in 16..17 {
+    for row in 16..=17 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -322,7 +355,7 @@ fn test_zero_mi() {
 
     let witness = create_witness(left_input, right_input, foreign_modulus);
 
-    for row in 0..17 {
+    for row in 0..=17 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -344,7 +377,7 @@ fn test_neg_carries() {
 
     let witness = create_witness(left_input, right_input, foreign_modulus);
 
-    for row in 0..17 {
+    for row in 0..=17 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -366,7 +399,7 @@ fn test_upperbound() {
 
     let witness = create_witness(left_input, right_input, foreign_modulus);
 
-    for row in 16..17 {
+    for row in 16..=17 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -392,7 +425,7 @@ fn test_no_carry_limbs() {
 
     let witness = create_witness(left_input, right_input, foreign_modulus);
 
-    for row in 0..17 {
+    for row in 0..=17 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -419,7 +452,7 @@ fn test_pos_carry_limb_lo() {
 
     let witness = create_witness(left_input, right_input, foreign_modulus);
 
-    for row in 0..17 {
+    for row in 0..=17 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -442,7 +475,7 @@ fn test_pos_carry_limb_mid() {
 
     let witness = create_witness(left_input, right_input, foreign_modulus);
 
-    for row in 0..17 {
+    for row in 0..=17 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -465,7 +498,7 @@ fn test_pos_carry_limb_lo_mid() {
 
     let witness = create_witness(left_input, right_input, foreign_modulus);
 
-    for row in 0..17 {
+    for row in 0..=17 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
