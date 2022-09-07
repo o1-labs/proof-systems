@@ -251,3 +251,104 @@ where
     let mut rng = <rand_chacha::ChaCha20Rng as SeedableRng>::from_seed(seed);
     test_randomised(&mut rng)
 }
+
+fn commit_and_open(
+    poly: DensePolynomial<Fp>,
+    eval_points: Vec<Fp>,
+    bound: Option<usize>,
+    mut rng: &mut (impl Rng + CryptoRng),
+    polymask: Fp,
+    evalmask: Fp,
+) -> bool {
+    let group_map = <Vesta as CommitmentCurve>::Map::setup();
+    let fq_sponge =
+        DefaultFqSponge::<VestaParameters, SC>::new(oracle::pasta::fq_kimchi::static_params());
+
+    // create an SRS optimized for polynomials of degree 2^7 - 1
+    let srs = SRS::<Vesta>::create(1 << 7);
+    let mut commitments = vec![];
+
+    let BlindedCommitment {
+        commitment: chunked_commitment,
+        blinders: chunked_blinding,
+    } = srs.commit(&poly, bound, rng);
+
+    let mut chunked_evals = vec![];
+    for point in eval_points.clone() {
+        chunked_evals.push(
+            poly.to_chunked_polynomial(srs.g.len())
+                .evaluate_chunks(point),
+        );
+    }
+
+    let commit = Commitment {
+        chunked_commitment,
+        bound,
+    };
+
+    let eval_commit = EvaluatedCommitment {
+        commit,
+        chunked_evals,
+    };
+
+    commitments.push(prover::CommitmentAndSecrets {
+        eval_commit,
+        poly,
+        chunked_blinding,
+    });
+
+    let mut polynomials = vec![];
+    for c in &commitments {
+        polynomials.push((
+            &c.poly,
+            c.eval_commit.commit.bound,
+            c.chunked_blinding.clone(),
+        ));
+    }
+    let proof = srs.open::<DefaultFqSponge<VestaParameters, SC>, _>(
+        &group_map,
+        &polynomials,
+        &eval_points.clone(),
+        polymask,
+        evalmask,
+        fq_sponge.clone(),
+        rng,
+    );
+
+    // prepare for batch verification
+    let eval_commitments = commitments.into_iter().map(|c| c.eval_commit).collect();
+    let proofs = vec![AggregatedEvaluationProof {
+        eval_points,
+        eval_commitments,
+        polymask,
+        evalmask,
+        fq_sponge: fq_sponge.clone(),
+        proof,
+    }];
+    let mut batch: Vec<_> = proofs.iter().map(|p| p.verify_type()).collect();
+    srs.verify::<DefaultFqSponge<VestaParameters, SC>, _>(&group_map, &mut batch, &mut rng)
+}
+
+#[test]
+fn test_commit_multiple_of_domain_size() {
+    use ark_ff::One;
+    let seed = [
+        17, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0,
+    ];
+    let mut rng = <rand_chacha::ChaCha20Rng as SeedableRng>::from_seed(seed);
+
+    let eval_points = vec![Fp::one()];
+    let poly = DensePolynomial::from_coefficients_vec(vec![Fp::one(); 256]);
+    let bound = Some(256);
+    let polymask = Fp::one();
+    let evalmask = Fp::one();
+    assert!(commit_and_open(
+        poly,
+        eval_points,
+        bound,
+        &mut rng,
+        polymask,
+        evalmask
+    ))
+}
