@@ -352,3 +352,29 @@ fn test_commit_multiple_of_domain_size() {
         evalmask
     ))
 }
+
+#[test]
+fn test_commit_zero_chunk() {
+    use ark_ff::One;
+    let seed = [
+        17, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0,
+    ];
+    let mut rng = <rand_chacha::ChaCha20Rng as SeedableRng>::from_seed(seed);
+
+    let eval_points = vec![Fp::one()];
+    let mut coefficients = vec![Fp::zero(); 256];
+    coefficients[255] = Fp::one();
+    let poly = DensePolynomial::from_coefficients_vec(coefficients);
+    let bound = Some(257);
+    let polymask = Fp::one();
+    let evalmask = Fp::one();
+    assert!(commit_and_open(
+        poly,
+        eval_points,
+        bound,
+        &mut rng,
+        polymask,
+        evalmask
+    ))
+}
