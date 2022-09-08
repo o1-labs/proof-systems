@@ -1552,7 +1552,7 @@
             .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
         <span class="comment">// iterating over the polynomial segments
-        </span><span class="kw">for </span>eval <span class="kw">in </span>evals.iter() {
+        </span><span class="kw">for </span>eval <span class="kw">in </span><span class="kw-2">&amp;</span>evals {
             <span class="kw">let </span>term = DensePolynomial::&lt;F&gt;::eval_polynomial(eval, <span class="kw-2">*</span>evalscale);
 
             res += <span class="kw-2">&amp;</span>(xi_i * term);
@@ -1568,7 +1568,7 @@
             };
             <span class="kw">let </span>shifted_evals: Vec&lt;<span class="kw">_</span>&gt; = evaluation_points
                 .iter()
-                .zip(last_evals.iter())
+                .zip(<span class="kw-2">&amp;</span>last_evals)
                 .map(|(elm, f_elm)| elm.pow(<span class="kw-2">&amp;</span>[(srs_length - (<span class="kw-2">*</span>m) % srs_length) <span class="kw">as </span>u64]) * f_elm)
                 .collect();
 
@@ -1738,7 +1738,7 @@
         plnm: <span class="kw-2">&amp;</span>Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;,
         max: <span class="prelude-ty">Option</span>&lt;usize&gt;,
     ) -&gt; PolyComm&lt;G&gt; {
-        <span class="kw">let </span>is_zero = plnm.evals.iter().all(|x| x.is_zero());
+        <span class="kw">let </span>is_zero = plnm.evals.par_iter().all(|x| x.is_zero());
         <span class="kw">let </span>basis = <span class="kw">match </span><span class="self">self</span>.lagrange_bases.get(<span class="kw-2">&amp;</span>domain.size()) {
             <span class="prelude-val">None </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;lagrange bases for size {} not found&quot;</span>, domain.size()),
             <span class="prelude-val">Some</span>(v) =&gt; <span class="kw-2">&amp;</span>v[..],
@@ -2251,4 +2251,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (b44197abb 2022-09-05)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c2804e6ec 2022-09-07)" ></div></body></html>
