@@ -44,6 +44,7 @@ use itertools::Itertools;
 use o1_utils::ExtendedDensePolynomial as _;
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand::{CryptoRng, RngCore};
+use rayon::prelude::*;
 use std::collections::HashMap;
 
 /// The result of a proof creation or verification.
@@ -507,7 +508,7 @@ where
                         constraints.into_iter().zip_eq(lookup_alphas).enumerate()
                     {
                         let mut eval = constraint.evaluations(&env);
-                        eval.evals.iter_mut().for_each(|x| *x *= alpha_pow);
+                        eval.evals.par_iter_mut().for_each(|x| *x *= alpha_pow);
 
                         if eval.domain().size == t4.domain().size {
                             t4 += &eval;
@@ -1052,9 +1053,13 @@ impl<G: KimchiCurve + ark_ec::AffineCurve<ScalarField = F>, F: PrimeField> Looku
 
                 // pre-compute the updated second column of the lookup table
                 let mut second_column_d8 = runtime_table_contribution_d8.clone();
-                for (row, e) in second_column_d8.evals.iter_mut().enumerate() {
-                    *e += lcs.lookup_table8[1][row];
-                }
+                second_column_d8
+                    .evals
+                    .par_iter_mut()
+                    .enumerate()
+                    .for_each(|(row, e)| {
+                        *e += lcs.lookup_table8[1][row];
+                    });
 
                 lookup_context.runtime_table = Some(runtime_table_contribution);
                 lookup_context.runtime_table_d8 = Some(runtime_table_contribution_d8);
