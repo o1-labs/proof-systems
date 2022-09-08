@@ -117,33 +117,25 @@ impl<G: CommitmentCurve> SRS<G> {
                 // iterating over chunks of the polynomial
                 if let Some(m) = degree_bound {
                     assert!(p_i.coeffs.len() <= m + 1);
-                    for j in 0..omegas.unshifted.len() {
-                        let segment = &p_i.coeffs
-                            [offset..std::cmp::min(offset + self.g.len(), p_i.coeffs.len())];
-                        // always mixing in the unshifted segments
-                        plnm.add_unshifted(scale, segment);
+                } else {
+                    assert!(omegas.shifted.is_none());
+                }
+                for j in 0..omegas.unshifted.len() {
+                    let segment =
+                        &p_i.coeffs[offset..std::cmp::min(offset + self.g.len(), p_i.coeffs.len())];
+                    // always mixing in the unshifted segments
+                    plnm.add_unshifted(scale, segment);
 
-                        omega += &(omegas.unshifted[j] * scale);
-                        scale *= &polyscale;
-                        offset += self.g.len();
+                    omega += &(omegas.unshifted[j] * scale);
+                    scale *= &polyscale;
+                    offset += self.g.len();
+                    if let Some(m) = degree_bound {
                         if offset > *m {
                             // mixing in the shifted segment since degree is bounded
                             plnm.add_shifted(scale, self.g.len() - m % self.g.len(), segment);
                             omega += &(omegas.shifted.unwrap() * scale);
                             scale *= &polyscale;
                         }
-                    }
-                } else {
-                    assert!(omegas.shifted.is_none());
-                    for j in 0..omegas.unshifted.len() {
-                        let segment = &p_i.coeffs
-                            [offset..std::cmp::min(offset + self.g.len(), p_i.coeffs.len())];
-
-                        // always mixing in the unshifted segments
-                        plnm.add_unshifted(scale, segment);
-                        omega += &(omegas.unshifted[j] * scale);
-                        scale *= &polyscale;
-                        offset += self.g.len();
                     }
                 }
             }
