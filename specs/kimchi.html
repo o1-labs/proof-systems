@@ -1072,9 +1072,16 @@ the 1st 10 crumbs</li>
 <li>The final row contains <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.58056em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.30110799999999993em;"><span style="top:-2.5500000000000003em;margin-left:-0.03588em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">0</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span>’s and <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.58056em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.30110799999999993em;"><span style="top:-2.5500000000000003em;margin-left:-0.03588em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span>’s 5th and 6th 12-bit limbs as well as the
 remaining 10 crumbs of <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.58056em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.30110799999999993em;"><span style="top:-2.5500000000000003em;margin-left:-0.03588em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span></li>
 </ul>
-<pre><code class="language-admonition::notice">Note: Because we are constrained to 4 lookups per row, we are forced to postpone
-some lookups of v0 and v1 to the final row.
-</code></pre>
+<div id="admonition-note-4" class="admonition note">
+<div class="admonition-title">
+<p>Note</p>
+<p><a class="admonition-anchor-link" href="#admonition-note-4"></a></p>
+</div>
+<div>
+<p>Because we are constrained to 4 lookups per row, we are forced to postpone
+some lookups of v0 and v1 to the final row.</p>
+</div>
+</div>
 <h5 id="constraints-1"><a class="header" href="#constraints-1">Constraints:</a></h5>
 <p>For efficiency, the limbs are constrained differently according to their type.</p>
 <ul>
@@ -1120,11 +1127,17 @@ The copies are constrained using the permutation argument.</p>
 <tr><td>2</td><td><code>RangeCheck1</code></td><td>Fully constrain <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.58056em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.30110799999999993em;"><span style="top:-2.5500000000000003em;margin-left:-0.03588em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span> (and trigger plookups constraints on row 3)</td></tr>
 <tr><td>3</td><td><code>Zero</code></td><td>Complete the constraining of <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.58056em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.30110799999999993em;"><span style="top:-2.5500000000000003em;margin-left:-0.03588em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">0</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span> and <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.58056em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.30110799999999993em;"><span style="top:-2.5500000000000003em;margin-left:-0.03588em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span> using lookups</td></tr>
 </tbody></table>
+</div><div id="admonition-note-5" class="admonition note">
+<div class="admonition-title">
+<p>Note</p>
+<p><a class="admonition-anchor-link" href="#admonition-note-5"></a></p>
 </div>
-<pre><code class="language-admonition::notice"> Note: Each CircuitGate type corresponds to a unique polynomial and thus is assigned
- its own unique powers of alpha
-</code></pre>
-<h5 id="rangecheck0---range-check-constraints"><a class="header" href="#rangecheck0---range-check-constraints"><code>RangeCheck0</code> - Range check constraints</a></h5>
+<div>
+<p>Each CircuitGate type corresponds to a unique polynomial and thus is assigned
+its own unique powers of alpha</p>
+</div>
+</div>
+##### `RangeCheck0` - Range check constraints
 <ul>
 <li>This circuit gate is used to partially constrain values <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.58056em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.30110799999999993em;"><span style="top:-2.5500000000000003em;margin-left:-0.03588em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">0</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span> and <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.58056em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.30110799999999993em;"><span style="top:-2.5500000000000003em;margin-left:-0.03588em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span></li>
 <li>Optionally, it can be used on its own as a single 64-bit range check by
@@ -1194,10 +1207,10 @@ constraining columns 1 and 2 to zero</li>
 <li>A <a href="#prover-index"><em>prover index</em></a>, necessary for the prover to to create proofs.</li>
 <li>A <a href="#verifier-index"><em>verifier index</em></a>, necessary for the verifier to verify proofs.</li>
 </ul>
-<div id="admonition-note-4" class="admonition note">
+<div id="admonition-note-6" class="admonition note">
 <div class="admonition-title">
 <p>Note</p>
-<p><a class="admonition-anchor-link" href="#admonition-note-4"></a></p>
+<p><a class="admonition-anchor-link" href="#admonition-note-6"></a></p>
 </div>
 <div>
 <p>The circuit creation part is not specified in this document. It might be specified in a separate document, or we might want to specify how to create the circuit description tables.</p>
@@ -1208,10 +1221,10 @@ constraining columns 1 and 2 to zero</li>
 <p>In this section we describe data that both the prover and the verifier index share.</p>
 <p><strong><code>URS</code> (Uniform Reference String)</strong> The URS is a set of parameters that is generated once, and shared between the prover and the verifier.
 It is used for polynomial commitments, so refer to the <a href="./poly-commitment.html">poly-commitment specification</a> for more details.</p>
-<div id="admonition-note-5" class="admonition note">
+<div id="admonition-note-7" class="admonition note">
 <div class="admonition-title">
 <p>Note</p>
-<p><a class="admonition-anchor-link" href="#admonition-note-5"></a></p>
+<p><a class="admonition-anchor-link" href="#admonition-note-7"></a></p>
 </div>
 <div>
 <p>Kimchi currently generates the URS based on the circuit, and attach it to the index. So each circuit can potentially be accompanied with a different URS. On the other hand, Mina reuses the same URS for multiple circuits (<a href="https://minaprotocol.com/blog/what-are-zkapps">see zkapps for more details</a>).</p>
@@ -1669,10 +1682,10 @@ where
 <li>A prover index, containing a representation of the circuit (and optionaly pre-computed values to be used in the proof creation).</li>
 <li>The (filled) registers table, representing parts of the execution trace of the circuit.</li>
 </ul>
-<div id="admonition-note-6" class="admonition note">
+<div id="admonition-note-8" class="admonition note">
 <div class="admonition-title">
 <p>Note</p>
-<p><a class="admonition-anchor-link" href="#admonition-note-6"></a></p>
+<p><a class="admonition-anchor-link" href="#admonition-note-8"></a></p>
 </div>
 <div>
 <p>The public input is expected to be passed in the first <code>Public</code> rows of the registers table.</p>
