@@ -160,7 +160,7 @@ use ark_ff::{FftField, Field, Zero};
 
 /// 8-nybble sequences that are laid out as 4 nybbles per row over the two row,
 /// like y^x' or x+z
-fn chunks_over_2_rows<T: ArithmeticOps>(witness: &GateWitness<T>, col_offset: usize) -> Vec<T> {
+fn chunks_over_2_rows<F: Field, T: ArithmeticOps<F>>(witness: &GateWitness<T>, col_offset: usize) -> Vec<T> {
     (0..8)
         .map(|i| {
             if i < 4 {
@@ -172,14 +172,14 @@ fn chunks_over_2_rows<T: ArithmeticOps>(witness: &GateWitness<T>, col_offset: us
         .collect()
 }
 
-fn combine_nybbles<T: ArithmeticOps>(witness: &GateWitness<T>, ns: Vec<T>) -> T {
+fn combine_nybbles<F: Field, T: ArithmeticOps<F>>(witness: &GateWitness<T>, ns: Vec<T>) -> T {
     ns.into_iter()
         .enumerate()
         .fold(T::zero(), |acc: T, (i, t)| acc + T::from(1 << (4 * i)) * t)
 }
 
 /// Constraints for the line L(x, x', y, y', z, k), where k = 4 * nybble_rotation
-fn line<T: ArithmeticOps>(witness: &GateWitness<T>, nybble_rotation: usize) -> Vec<T> {
+fn line<F: Field, T: ArithmeticOps<F>>(witness: &GateWitness<T>, nybble_rotation: usize) -> Vec<T> {
     let y_xor_xprime_nybbles = chunks_over_2_rows(witness, 3);
     let x_plus_z_nybbles = chunks_over_2_rows(witness, 7);
     let y_nybbles = chunks_over_2_rows(witness, 11);
@@ -225,11 +225,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha0);
     const CONSTRAINTS: u32 = 5;
 
-    fn constants() -> Vec<E<F>> {
-        vec![]
-    }
-
-    fn constraints<T: ArithmeticOps>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T> {
+    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T> {
         // a += b; d ^= a; d <<<= 16 (=4*4)
         line(witness, 4)
     }
@@ -245,11 +241,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha1);
     const CONSTRAINTS: u32 = 5;
 
-    fn constants() -> Vec<E<F>> {
-        vec![]
-    }
-
-    fn constraints<T: ArithmeticOps>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T> {
+    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T> {
         // c += d; b ^= c; b <<<= 12 (=3*4)
         line(witness, 3)
     }
@@ -265,11 +257,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha2);
     const CONSTRAINTS: u32 = 5;
 
-    fn constants() -> Vec<E<F>> {
-        vec![]
-    }
-
-    fn constraints<T: ArithmeticOps>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T> {
+    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T> {
         // a += b; d ^= a; d <<<= 8  (=2*4)
         line(witness, 2)
     }
@@ -285,11 +273,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaChaFinal);
     const CONSTRAINTS: u32 = 9;
 
-    fn constants() -> Vec<E<F>> {
-        vec![E::Constant(C::Literal(F::from(2u64).inverse().unwrap()))]
-    }
-
-    fn constraints<T: ArithmeticOps>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T> {
+    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T> {
         // The last line, namely,
         // c += d; b ^= c; b <<<= 7;
         // is special.
@@ -308,7 +292,7 @@ where
             .zip([6, 7, 0, 1, 2, 3, 4, 5].iter())
             .map(|(&i, &j)| -> T {
                 T::from(8) * low_bits[i].clone()
-                    + constants[0] * (y_xor_xprime_nybbles[j].clone() - low_bits[j].clone())
+                    + T::literal(F::from(2u64).inverse().unwrap()) * (y_xor_xprime_nybbles[j].clone() - low_bits[j].clone())
             })
             .collect();
 

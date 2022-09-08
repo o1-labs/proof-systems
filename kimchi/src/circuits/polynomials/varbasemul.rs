@@ -11,8 +11,8 @@
 //! and 3.1 of <https://arxiv.org/pdf/math/0208038.pdf> for details.
 
 use crate::circuits::{
-    argument::{Argument, ArgumentType},
-    expr::{prologue::*, Cache, Column, Variable},
+    argument::{Argument, ArgumentType, GateWitness},
+    expr::{prologue::*, Cache, Column, Variable, constraints::ArithmeticOps},
     gate::{CircuitGate, CurrOrNext, GateType},
     wires::{GateWires, COLUMNS},
 };
@@ -347,7 +347,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::VarBaseMul);
     const CONSTRAINTS: u32 = 21;
 
-    fn constraints() -> Vec<E<F>> {
+    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T> {
         let Layout {
             base,
             accs,

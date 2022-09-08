@@ -367,7 +367,7 @@ impl Cache {
         CacheId(id)
     }
 
-    pub fn cache<T: ArithmeticOps>(&mut self, e: T) -> T {
+    pub fn cache<F: Field, T: ArithmeticOps<F>>(&mut self, e: T) -> T {
         e.cache(self)
     }
 }
@@ -2151,7 +2151,7 @@ pub mod constraints {
     /// This trait defines a common arithmetic operations interface
     /// that can be used by constraints.  It allows us to reuse
     /// constraint code for witness computation.
-    pub trait ArithmeticOps:
+    pub trait ArithmeticOps<F>:
         std::ops::Add<Output = Self>
         + std::ops::Sub<Output = Self>
         + std::ops::Neg<Output = Self>
@@ -2166,6 +2166,7 @@ pub mod constraints {
     where
         Self: std::marker::Sized,
     {
+
         /// Double the value
         fn double(&self) -> Self;
 
@@ -2175,11 +2176,13 @@ pub mod constraints {
         /// Raise the value to the given power
         fn pow(&self, p: u64) -> Self;
 
+        fn literal(x: F) -> Self;
+
         /// Cache item
         fn cache(&self, cache: &mut Cache) -> Self;
     }
 
-    impl<F: Field> ArithmeticOps for Expr<ConstantExpr<F>> {
+    impl<F: Field> ArithmeticOps<F> for Expr<ConstantExpr<F>> {
         fn double(&self) -> Self {
             Expr::double(self.clone())
         }
@@ -2192,12 +2195,16 @@ pub mod constraints {
             Expr::pow(self.clone(), p)
         }
 
+        fn literal(x: F) -> Self {
+            Expr::Constant(ConstantExpr::Literal(x))
+        }
+
         fn cache(&self, cache: &mut Cache) -> Self {
             Expr::Cache(cache.next_id(), Box::new(*self))
         }
     }
 
-    impl<F: Field> ArithmeticOps for F {
+    impl<F: Field> ArithmeticOps<F> for F {
         fn double(&self) -> Self {
             *self * F::from(2u64)
         }
@@ -2210,18 +2217,22 @@ pub mod constraints {
             self.pow([p])
         }
 
+        fn literal(x: F) -> Self {
+            x
+        }
+
         fn cache(&self, cache: &mut Cache) -> Self {
             *self
         }
     }
 
     /// Creates a constraint to enforce that b is either 0 or 1.
-    pub fn boolean<F: ArithmeticOps>(b: &F) -> F {
+    pub fn boolean<F: Field, T: ArithmeticOps<F>>(b: &T) -> T {
         b.square() - b.clone()
     }
 
     /// Crumb constraint for 2-bit value x
-    pub fn crumb<F: ArithmeticOps>(x: &F) -> F {
+    pub fn crumb<F: Field, T: ArithmeticOps<F>>(x: &T) -> T {
         // Assert x \in [0,3] i.e. assert x*(x - 1)*(x - 2)*(x - 3) == 0
         x.clone()
             * (x.clone() - 1u64.into())
@@ -2284,9 +2295,10 @@ pub mod test {
         },
         curve::KimchiCurve,
     };
+    use ark_ec::AffineCurve;
     use ark_ff::UniformRand;
     use array_init::array_init;
-    use mina_curves::pasta::fp::Fp;
+    use mina_curves::pasta::{fp::Fp, pallas};
     use mina_curves::pasta::vesta::Vesta;
     use rand::{prelude::StdRng, SeedableRng};
 
@@ -2375,34 +2387,34 @@ pub mod test {
 
     #[test]
     fn test_arithmetic_ops() {
-        fn test_1<F: ArithmeticOps>() -> F {
-            F::zero() + F::one()
+        fn test_1<F: Field, T: ArithmeticOps<F>>() -> T {
+            T::zero() + T::one()
         }
-        assert_eq!(test_1::<E<Fp>>(), E::zero() + E::one());
-        assert_eq!(test_1::<Fp>(), Fp::one());
+        assert_eq!(test_1::<Fp, E<Fp>>(), E::zero() + E::one());
+        assert_eq!(test_1::<Fp, Fp>(), Fp::one());
 
-        fn test_2<F: ArithmeticOps>() -> F {
-            F::one() + F::one()
+        fn test_2<F: Field, T: ArithmeticOps<F>>() -> T {
+            T::one() + T::one()
         }
-        assert_eq!(test_2::<E<Fp>>(), E::one() + E::one());
-        assert_eq!(test_2::<Fp>(), Fp::from(2u64));
+        assert_eq!(test_2::<Fp, E<Fp>>(), E::one() + E::one());
+        assert_eq!(test_2::<Fp, Fp>(), Fp::from(2u64));
 
-        fn test_3<F: ArithmeticOps>(x: F) -> F {
-            F::from(2u64) * x
+        fn test_3<F: Field, T: ArithmeticOps<F>>(x: T) -> T {
+            T::from(2u64) * x
         }
         assert_eq!(
-            test_3::<E<Fp>>(E::from(3u64)),
+            test_3::<Fp, E<Fp>>(E::from(3u64)),
             E::from(2u64) * E::from(3u64)
         );
         assert_eq!(test_3(Fp::from(3u64)), Fp::from(6u64));
 
-        fn test_4<F: ArithmeticOps>(x: F) -> F {
-            x.clone() * (x.square() + F::from(7u64))
+        fn test_4<F: Field, T: ArithmeticOps<F>>(x: T) -> T {
+            x.clone() * (x.square() + T::from(7u64))
         }
         assert_eq!(
-            test_4::<E<Fp>>(E::from(5u64)),
+            test_4::<Fp, E<Fp>>(E::from(5u64)),
             E::from(5u64) * (Expr::square(E::from(5u64)) + E::from(7u64))
         );
-        assert_eq!(test_4::<Fp>(Fp::from(5u64)), Fp::from(160u64));
+        assert_eq!(test_4::<Fp, Fp>(Fp::from(5u64)), Fp::from(160u64));
     }
 }

@@ -45,11 +45,11 @@ impl<F: PrimeField> CircuitGate<F> {
     }
 }
 
-fn polynomial<F: Field>(coeffs: &[F], x: &E<F>) -> E<F> {
+fn polynomial<F: Field, T: ArithmeticOps<F>>(coeffs: &[T], x: &T) -> T {
     coeffs
         .iter()
         .rev()
-        .fold(E::zero(), |acc, c| acc * x.clone() + E::literal(*c))
+        .fold(T::zero(), |acc, c| acc * x.clone() + *c)
 }
 
 //~ We give constraints for the endomul scalar computation.
@@ -158,16 +158,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMulScalar);
     const CONSTRAINTS: u32 = 11;
 
-    fn constants() -> Vec<E<F>> {
-        vec![
-            Expr::Constant(ConstantExpr::Literal(-F::from(6u64))),
-            Expr::Constant(ConstantExpr::Literal(F::from(11u64))),
-            Expr::Constant(ConstantExpr::Literal(-F::from(6u64))),
-            Expr::Constant(ConstantExpr::Literal(F::one())),
-        ]
-    }
-
-    fn constraints<T: ArithmeticOps>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T> {
+    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T> {
         let n0 = witness.curr[0];
         let n8 = witness.curr[1];
         let a0 = witness.curr[2];
@@ -176,22 +167,23 @@ where
         let b8 = witness.curr[5];
 
         // x0..x7
-        let xs: [_; 8] = array_init(|i| witness.curr[6 + i]);
+        let xs: [T; 8] = array_init(|i| witness.curr[6 + i]);
 
         let mut cache = Cache::default();
 
         let c_coeffs = [
-            F::zero(),
-            F::from(11u64) / F::from(6u64),
-            -F::from(5u64) / F::from(2u64),
-            F::from(2u64) / F::from(3u64),
+            T::literal(F::zero()),
+            T::literal(F::from(11u64) / F::from(6u64)),
+            T::literal(-F::from(5u64) / F::from(2u64)),
+            T::literal(F::from(2u64) / F::from(3u64)),
         ];
-
-        let crumb_over_x_coeffs = [-F::from(6u64), F::from(11u64), -F::from(6u64), F::one()];
-        let crumb = |x: &E<F>| polynomial(&crumb_over_x_coeffs[..], x) * x.clone();
-        let d_minus_c_coeffs = [-F::one(), F::from(3u64), -F::one()];
-
         let c_funcs: [_; 8] = array_init(|i| cache.cache(polynomial(&c_coeffs[..], &xs[i])));
+
+        let d_minus_c_coeffs = [
+            T::literal(-F::one()),
+            T::literal(F::from(3u64)),
+            T::literal(-F::one()),
+        ];
         let d_funcs: [_; 8] =
             array_init(|i| c_funcs[i].clone() + polynomial(&d_minus_c_coeffs[..], &xs[i]));
 
@@ -209,6 +201,14 @@ where
         let b8_expected = d_funcs.iter().fold(b0, |acc, d| acc.double() + d.clone());
 
         let mut constraints = vec![n8_expected - n8, a8_expected - a8, b8_expected - b8];
+
+        let crumb_over_x_coeffs = [
+            T::literal(-F::from(6u64)),
+            T::literal(F::from(11u64)),
+            T::literal(-F::from(6u64)),
+            T::literal(F::one()),
+        ];
+        let crumb = |x: &T| polynomial(&crumb_over_x_coeffs[..], x) * x.clone();
         constraints.extend(xs.iter().map(crumb));
 
         constraints
@@ -316,7 +316,7 @@ mod tests {
     use mina_curves::pasta::fp::Fp as F;
 
     /// 2/3*x^3 - 5/2*x^2 + 11/6*x
-    fn c_poly(x: F) -> F {
+    fn c_poly<F: Field>(x: F) -> F {
         let x2 = x.square();
         let x3 = x * x2;
         (F::from(2u64) / F::from(3u64)) * x3 - (F::from(5u64) / F::from(2u64)) * x2
@@ -324,7 +324,7 @@ mod tests {
     }
 
     /// -x^2 + 3x - 1
-    fn d_minus_c_poly(x: F) -> F {
+    fn d_minus_c_poly<F: Field>(x: F) -> F {
         let x2 = x.square();
         -F::one() * x2 + F::from(3u64) * x - F::one()
     }

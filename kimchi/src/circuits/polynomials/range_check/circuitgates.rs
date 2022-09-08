@@ -158,15 +158,11 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::RangeCheck0);
     const CONSTRAINTS: u32 = 9;
 
-    fn constants() -> Vec<E<F>> {
-        vec![]
-    }
-
     // Constraints for RangeCheck0
     //   * Operates on Curr row
     //   * Range constrain all limbs except vp0 and vp1 (barring plookup constraints, which are done elsewhere)
     //   * Constrain that combining all limbs equals the limb stored in column 0
-    fn constraints<T: ArithmeticOps>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T> {
+    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T> {
         // 1) Apply range constraints on the limbs
         //    * Columns 1-2 are 12-bit copy constraints
         //        * They are copied 3 rows ahead (to the final row) and are constrained by lookups
@@ -252,15 +248,11 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::RangeCheck1);
     const CONSTRAINTS: u32 = 21;
 
-    fn constants() -> Vec<E<F>> {
-        vec![]
-    }
-
     // Constraints for RangeCheck1
     //   * Operates on Curr and Next row
     //   * Range constrain all limbs (barring plookup constraints, which are done elsewhere)
     //   * Constrain that combining all limbs equals the value v2 stored in row Curr, column 0
-    fn constraints<T: ArithmeticOps>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T> {
+    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T> {
         // 1) Apply range constraints on limbs for Curr row
         //    * Columns 1-2 are 2-bit crumbs
         let mut constraints = (1..=2).map(|i| crumb(&witness.curr[i])).collect::<Vec<T>>();

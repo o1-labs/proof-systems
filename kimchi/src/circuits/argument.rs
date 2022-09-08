@@ -40,10 +40,7 @@ pub trait Argument<F: FftField> {
     const CONSTRAINTS: u32;
 
     /// Constraints for this argument
-    fn constraints<T: ArithmeticOps>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T>;
-
-    /// Constants used by this argument
-    fn constants() -> Vec<E<F>>;
+    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T>;
 
     /// Returns the set of constraints required to prove this argument.
     fn expression() -> Vec<E<F>> {
@@ -54,7 +51,7 @@ pub trait Argument<F: FftField> {
         };
 
         // Generate constraints
-        Self::constraints(&witness, Self::constants())
+        Self::constraints(&witness, /* TODO */ vec![])
     }
 
     /// Returns constraints safely combined via the passed combinator.
