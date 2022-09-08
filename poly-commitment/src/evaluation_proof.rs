@@ -114,11 +114,10 @@ impl<G: CommitmentCurve> SRS<G> {
             // iterating over polynomials in the batch
             for (p_i, degree_bound, omegas) in plnms.iter().filter(|p| !p.0.is_zero()) {
                 let mut offset = 0;
-                let mut j = 0;
                 // iterating over chunks of the polynomial
                 if let Some(m) = degree_bound {
                     assert!(p_i.coeffs.len() <= m + 1);
-                    while j < omegas.unshifted.len() {
+                    for j in 0..omegas.unshifted.len() {
                         let segment = &p_i.coeffs[offset
                             ..if offset + self.g.len() > p_i.coeffs.len() {
                                 p_i.coeffs.len()
@@ -129,7 +128,6 @@ impl<G: CommitmentCurve> SRS<G> {
                         plnm.add_unshifted(scale, segment);
 
                         omega += &(omegas.unshifted[j] * scale);
-                        j += 1;
                         scale *= &polyscale;
                         offset += self.g.len();
                         if offset > *m {
@@ -141,7 +139,7 @@ impl<G: CommitmentCurve> SRS<G> {
                     }
                 } else {
                     assert!(omegas.shifted.is_none());
-                    while j < omegas.unshifted.len() {
+                    for j in 0..omegas.unshifted.len() {
                         let segment = &p_i.coeffs[offset
                             ..if offset + self.g.len() > p_i.coeffs.len() {
                                 p_i.coeffs.len()
@@ -152,12 +150,10 @@ impl<G: CommitmentCurve> SRS<G> {
                         // always mixing in the unshifted segments
                         plnm.add_unshifted(scale, segment);
                         omega += &(omegas.unshifted[j] * scale);
-                        j += 1;
                         scale *= &polyscale;
                         offset += self.g.len();
                     }
                 }
-                assert_eq!(j, omegas.unshifted.len());
             }
 
             (plnm.to_dense_polynomial(), omega)
