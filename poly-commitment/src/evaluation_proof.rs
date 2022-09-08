@@ -130,9 +130,11 @@ impl<G: CommitmentCurve> SRS<G> {
                     scale *= &polyscale;
                     offset += self.g.len();
                     if let Some(m) = degree_bound {
-                        if offset > *m {
-                            // mixing in the shifted segment since degree is bounded
-                            plnm.add_shifted(scale, self.g.len() - m % self.g.len(), segment);
+                        if offset >= *m {
+                            if offset > *m {
+                                // mixing in the shifted segment since degree is bounded
+                                plnm.add_shifted(scale, self.g.len() - m % self.g.len(), segment);
+                            }
                             omega += &(omegas.shifted.unwrap() * scale);
                             scale *= &polyscale;
                         }
