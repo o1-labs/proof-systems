@@ -118,7 +118,7 @@ fn get_xy<G: SWModelParameters>(
     t: G::BaseField,
 ) -> (G::BaseField, G::BaseField) {
     let xvec = potential_xs(params, t);
-    for x in xvec.iter() {
+    for x in &xvec {
         if let Some(y) = get_y::<G>(*x) {
             return (*x, y);
         }

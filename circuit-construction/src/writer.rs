@@ -991,7 +991,7 @@ impl<F: PrimeField> System<F> {
         }
 
         // finish the permutation cycle
-        for (var, first) in first_cell.iter() {
+        for (var, first) in &first_cell {
             let last = *most_recent_cell.get(var).unwrap();
             gates[first.row].wires[first.col] = last;
         }

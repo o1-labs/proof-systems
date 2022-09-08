@@ -159,7 +159,7 @@ impl<F: PrimeField> ToBytes for CircuitGate<F> {
         }
 
         (self.coeffs.len() as u8).write(&mut w)?;
-        for x in self.coeffs.iter() {
+        for x in &self.coeffs {
             x.write(&mut w)?;
         }
         Ok(())
