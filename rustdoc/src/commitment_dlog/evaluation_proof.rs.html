@@ -350,26 +350,6 @@
 <span id="350">350</span>
 <span id="351">351</span>
 <span id="352">352</span>
-<span id="353">353</span>
-<span id="354">354</span>
-<span id="355">355</span>
-<span id="356">356</span>
-<span id="357">357</span>
-<span id="358">358</span>
-<span id="359">359</span>
-<span id="360">360</span>
-<span id="361">361</span>
-<span id="362">362</span>
-<span id="363">363</span>
-<span id="364">364</span>
-<span id="365">365</span>
-<span id="366">366</span>
-<span id="367">367</span>
-<span id="368">368</span>
-<span id="369">369</span>
-<span id="370">370</span>
-<span id="371">371</span>
-<span id="372">372</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::commitment::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::srs::SRS;
 <span class="kw">use </span>ark_ec::{msm::VariableBaseMSM, AffineCurve, ProjectiveCurve};
@@ -486,24 +466,22 @@
             <span class="comment">// iterating over polynomials in the batch
             </span><span class="kw">for </span>(p_i, degree_bound, omegas) <span class="kw">in </span>plnms.iter().filter(|p| !p.<span class="number">0</span>.is_zero()) {
                 <span class="kw">let </span><span class="kw-2">mut </span>offset = <span class="number">0</span>;
-                <span class="kw">let </span><span class="kw-2">mut </span>j = <span class="number">0</span>;
                 <span class="comment">// iterating over chunks of the polynomial
                 </span><span class="kw">if let </span><span class="prelude-val">Some</span>(m) = degree_bound {
                     <span class="macro">assert!</span>(p_i.coeffs.len() &lt;= m + <span class="number">1</span>);
-                    <span class="kw">while </span>j &lt; omegas.unshifted.len() {
-                        <span class="kw">let </span>segment = <span class="kw-2">&amp;</span>p_i.coeffs[offset
-                            ..<span class="kw">if </span>offset + <span class="self">self</span>.g.len() &gt; p_i.coeffs.len() {
-                                p_i.coeffs.len()
-                            } <span class="kw">else </span>{
-                                offset + <span class="self">self</span>.g.len()
-                            }];
-                        <span class="comment">// always mixing in the unshifted segments
-                        </span>plnm.add_unshifted(scale, segment);
+                } <span class="kw">else </span>{
+                    <span class="macro">assert!</span>(omegas.shifted.is_none());
+                }
+                <span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..omegas.unshifted.len() {
+                    <span class="kw">let </span>segment =
+                        <span class="kw-2">&amp;</span>p_i.coeffs[offset..std::cmp::min(offset + <span class="self">self</span>.g.len(), p_i.coeffs.len())];
+                    <span class="comment">// always mixing in the unshifted segments
+                    </span>plnm.add_unshifted(scale, segment);
 
-                        omega += <span class="kw-2">&amp;</span>(omegas.unshifted[j] * scale);
-                        j += <span class="number">1</span>;
-                        scale <span class="kw-2">*</span>= <span class="kw-2">&amp;</span>polyscale;
-                        offset += <span class="self">self</span>.g.len();
+                    omega += <span class="kw-2">&amp;</span>(omegas.unshifted[j] * scale);
+                    scale <span class="kw-2">*</span>= <span class="kw-2">&amp;</span>polyscale;
+                    offset += <span class="self">self</span>.g.len();
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(m) = degree_bound {
                         <span class="kw">if </span>offset &gt; <span class="kw-2">*</span>m {
                             <span class="comment">// mixing in the shifted segment since degree is bounded
                             </span>plnm.add_shifted(scale, <span class="self">self</span>.g.len() - m % <span class="self">self</span>.g.len(), segment);
@@ -511,25 +489,7 @@
                             scale <span class="kw-2">*</span>= <span class="kw-2">&amp;</span>polyscale;
                         }
                     }
-                } <span class="kw">else </span>{
-                    <span class="macro">assert!</span>(omegas.shifted.is_none());
-                    <span class="kw">while </span>j &lt; omegas.unshifted.len() {
-                        <span class="kw">let </span>segment = <span class="kw-2">&amp;</span>p_i.coeffs[offset
-                            ..<span class="kw">if </span>offset + <span class="self">self</span>.g.len() &gt; p_i.coeffs.len() {
-                                p_i.coeffs.len()
-                            } <span class="kw">else </span>{
-                                offset + <span class="self">self</span>.g.len()
-                            }];
-
-                        <span class="comment">// always mixing in the unshifted segments
-                        </span>plnm.add_unshifted(scale, segment);
-                        omega += <span class="kw-2">&amp;</span>(omegas.unshifted[j] * scale);
-                        j += <span class="number">1</span>;
-                        scale <span class="kw-2">*</span>= <span class="kw-2">&amp;</span>polyscale;
-                        offset += <span class="self">self</span>.g.len();
-                    }
                 }
-                <span class="macro">assert_eq!</span>(j, omegas.unshifted.len());
             }
 
             (plnm.to_dense_polynomial(), omega)
