@@ -426,7 +426,7 @@ pub fn combined_inner_product<F: PrimeField>(
             .collect::<Vec<_>>();
 
         // iterating over the polynomial segments
-        for eval in evals.iter() {
+        for eval in &evals {
             let term = DensePolynomial::<F>::eval_polynomial(eval, *evalscale);
 
             res += &(xi_i * term);
@@ -442,7 +442,7 @@ pub fn combined_inner_product<F: PrimeField>(
             };
             let shifted_evals: Vec<_> = evaluation_points
                 .iter()
-                .zip(last_evals.iter())
+                .zip(&last_evals)
                 .map(|(elm, f_elm)| elm.pow(&[(srs_length - (*m) % srs_length) as u64]) * f_elm)
                 .collect();
 
@@ -612,7 +612,7 @@ impl<G: CommitmentCurve> SRS<G> {
         plnm: &Evaluations<G::ScalarField, D<G::ScalarField>>,
         max: Option<usize>,
     ) -> PolyComm<G> {
-        let is_zero = plnm.evals.iter().all(|x| x.is_zero());
+        let is_zero = plnm.evals.par_iter().all(|x| x.is_zero());
         let basis = match self.lagrange_bases.get(&domain.size()) {
             None => panic!("lagrange bases for size {} not found", domain.size()),
             Some(v) => &v[..],
