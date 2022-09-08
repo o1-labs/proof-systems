@@ -118,12 +118,8 @@ impl<G: CommitmentCurve> SRS<G> {
                 if let Some(m) = degree_bound {
                     assert!(p_i.coeffs.len() <= m + 1);
                     for j in 0..omegas.unshifted.len() {
-                        let segment = &p_i.coeffs[offset
-                            ..if offset + self.g.len() > p_i.coeffs.len() {
-                                p_i.coeffs.len()
-                            } else {
-                                offset + self.g.len()
-                            }];
+                        let segment = &p_i.coeffs
+                            [offset..std::cmp::min(offset + self.g.len(), p_i.coeffs.len())];
                         // always mixing in the unshifted segments
                         plnm.add_unshifted(scale, segment);
 
@@ -140,12 +136,8 @@ impl<G: CommitmentCurve> SRS<G> {
                 } else {
                     assert!(omegas.shifted.is_none());
                     for j in 0..omegas.unshifted.len() {
-                        let segment = &p_i.coeffs[offset
-                            ..if offset + self.g.len() > p_i.coeffs.len() {
-                                p_i.coeffs.len()
-                            } else {
-                                offset + self.g.len()
-                            }];
+                        let segment = &p_i.coeffs
+                            [offset..std::cmp::min(offset + self.g.len(), p_i.coeffs.len())];
 
                         // always mixing in the unshifted segments
                         plnm.add_unshifted(scale, segment);
