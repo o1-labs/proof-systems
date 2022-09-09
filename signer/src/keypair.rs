@@ -10,7 +10,7 @@ use rand::{self, CryptoRng, RngCore};
 use thiserror::Error;
 
 /// Keypair error
-#[derive(Error, Debug, Clone, PartialEq)]
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum KeypairError {
     /// Invalid secret key hex
     #[error("invalid secret key hex")]

@@ -115,13 +115,13 @@ impl<F: PrimeField> CircuitGate<F> {
             let wires = if rel_row == 0 {
                 first_and_last_row[0]
             } else {
-                array_init::array_init(|col| Wire { col, row: abs_row })
+                std::array::from_fn(|col| Wire { col, row: abs_row })
             };
 
             // round constant for this row
-            let coeffs = array_init::array_init(|offset| {
+            let coeffs = std::array::from_fn(|offset| {
                 let round = rel_row * ROUNDS_PER_ROW + offset;
-                array_init::array_init(|field_el| round_constants[round][field_el])
+                std::array::from_fn(|field_el| round_constants[round][field_el])
             });
 
             // create poseidon gate for this row
@@ -202,8 +202,8 @@ impl<F: PrimeField> CircuitGate<F> {
 
     /// round constant that are relevant for this specific gate
     pub fn rc(&self) -> [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW] {
-        array_init::array_init(|round| {
-            array_init::array_init(|col| {
+        std::array::from_fn(|round| {
+            std::array::from_fn(|col| {
                 if self.typ == GateType::Poseidon {
                     self.coeffs[SPONGE_WIDTH * round + col]
                 } else {

@@ -13,7 +13,7 @@ use crate::{BaseField, CurvePoint};
 use o1_utils::FieldHelpers;
 
 /// Public key errors
-#[derive(Error, Debug, Clone, PartialEq)]
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum PubKeyError {
     /// Invalid address length
     #[error("invalid address length")]

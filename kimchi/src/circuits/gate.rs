@@ -111,7 +111,7 @@ pub struct SelectorPolynomial<F: PrimeField> {
 }
 
 /// Gate error
-#[derive(Error, Debug, Clone, Copy, PartialEq)]
+#[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CircuitGateError {
     /// Invalid constraint
     #[error("Invalid circuit gate type {0:?}")]

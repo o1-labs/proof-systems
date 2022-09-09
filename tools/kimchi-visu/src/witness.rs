@@ -1,8 +1,8 @@
 use ark_ff::Field;
-use array_init::array_init;
 use kimchi::circuits::polynomial::COLUMNS;
 use serde::Serialize;
 use serde_with::serde_as;
+use std::array;
 
 /// The type that represents the execution trace.
 /// It represents a table of [COLUMNS] columns, with `n` rows.
@@ -25,7 +25,7 @@ where
     // TODO: deprecate this
     pub fn new(rows: usize) -> Self {
         Witness {
-            inner: array_init(|_| vec![F::zero(); rows]),
+            inner: array::from_fn(|_| vec![F::zero(); rows]),
         }
     }
 

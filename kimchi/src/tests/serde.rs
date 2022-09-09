@@ -11,7 +11,6 @@ use crate::{
 };
 use ark_ec::short_weierstrass_jacobian::GroupAffine;
 use ark_ff::Zero;
-use array_init::array_init;
 use commitment_dlog::{commitment::CommitmentCurve, srs::SRS};
 use groupmap::GroupMap;
 use mina_curves::pasta::{
@@ -22,6 +21,7 @@ use oracle::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
+use std::array;
 use std::time::Instant;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
@@ -57,7 +57,7 @@ mod tests {
         let gates = create_circuit(0, public.len());
 
         // create witness
-        let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![Fp::zero(); gates.len()]);
+        let mut witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![Fp::zero(); gates.len()]);
         fill_in_witness(0, &mut witness, &public);
 
         let index = new_index_for_test(gates, public.len());

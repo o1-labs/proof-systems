@@ -12,7 +12,7 @@ use crate::{
     curve::KimchiCurve,
 };
 use ark_ff::{BitIteratorLE, FftField, Field, PrimeField, Zero};
-use array_init::array_init;
+use std::array;
 use std::marker::PhantomData;
 
 impl<F: PrimeField> CircuitGate<F> {
@@ -31,7 +31,7 @@ impl<F: PrimeField> CircuitGate<F> {
         let a8 = witness[4][row];
         let b8 = witness[5][row];
 
-        let xs: [_; 8] = array_init(|i| witness[6 + i][row]);
+        let xs: [_; 8] = array::from_fn(|i| witness[6 + i][row]);
 
         let n8_expected = xs.iter().fold(n0, |acc, x| acc.double().double() + x);
         let a8_expected = xs.iter().fold(a0, |acc, x| acc.double() + c_func(*x));
@@ -167,7 +167,7 @@ where
         let b8 = witness_curr(5);
 
         // x0..x7
-        let xs: [_; 8] = array_init(|i| witness_curr(6 + i));
+        let xs: [_; 8] = array::from_fn(|i| witness_curr(6 + i));
 
         let mut cache = Cache::default();
 
@@ -182,9 +182,9 @@ where
         let crumb = |x: &E<F>| polynomial(&crumb_over_x_coeffs[..], x) * x.clone();
         let d_minus_c_coeffs = [-F::one(), F::from(3u64), -F::one()];
 
-        let c_funcs: [_; 8] = array_init(|i| cache.cache(polynomial(&c_coeffs[..], &xs[i])));
+        let c_funcs: [_; 8] = array::from_fn(|i| cache.cache(polynomial(&c_coeffs[..], &xs[i])));
         let d_funcs: [_; 8] =
-            array_init(|i| c_funcs[i].clone() + polynomial(&d_minus_c_coeffs[..], &xs[i]));
+            array::from_fn(|i| c_funcs[i].clone() + polynomial(&d_minus_c_coeffs[..], &xs[i]));
 
         let n8_expected = xs
             .iter()
