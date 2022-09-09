@@ -1165,7 +1165,7 @@
                 ],
             ]
         } <span class="kw">else </span>{
-            [Vec::&lt;G::ScalarField&gt;::new(), Vec::&lt;G::ScalarField&gt;::new()]
+            [<span class="macro">vec!</span>[G::ScalarField::zero()], <span class="macro">vec!</span>[G::ScalarField::zero()]]
         };
 
         <span class="macro">println!</span>(<span class="string">&quot;verifier public eval: {:?}&quot;</span>, public_evals);

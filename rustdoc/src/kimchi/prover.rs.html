@@ -2351,7 +2351,7 @@
 
         <span class="comment">//~ 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
         </span><span class="kw">let </span>public_evals = <span class="kw">if </span>public_poly.is_zero() {
-            [Vec::new(), Vec::new()]
+            [<span class="macro">vec!</span>[G::ScalarField::zero()], <span class="macro">vec!</span>[G::ScalarField::zero()]]
         } <span class="kw">else </span>{
             [
                 <span class="macro">vec!</span>[public_poly.evaluate(<span class="kw-2">&amp;</span>zeta)],

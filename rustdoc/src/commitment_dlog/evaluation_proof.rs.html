@@ -350,6 +350,8 @@
 <span id="350">350</span>
 <span id="351">351</span>
 <span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::commitment::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::srs::SRS;
 <span class="kw">use </span>ark_ec::{msm::VariableBaseMSM, AffineCurve, ProjectiveCurve};
@@ -464,7 +466,7 @@
             <span class="kw">let </span><span class="kw-2">mut </span>scale = G::ScalarField::one();
 
             <span class="comment">// iterating over polynomials in the batch
-            </span><span class="kw">for </span>(p_i, degree_bound, omegas) <span class="kw">in </span>plnms.iter().filter(|p| !p.<span class="number">0</span>.is_zero()) {
+            </span><span class="kw">for </span>(p_i, degree_bound, omegas) <span class="kw">in </span>plnms {
                 <span class="kw">let </span><span class="kw-2">mut </span>offset = <span class="number">0</span>;
                 <span class="comment">// iterating over chunks of the polynomial
                 </span><span class="kw">if let </span><span class="prelude-val">Some</span>(m) = degree_bound {
@@ -482,9 +484,11 @@
                     scale <span class="kw-2">*</span>= <span class="kw-2">&amp;</span>polyscale;
                     offset += <span class="self">self</span>.g.len();
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(m) = degree_bound {
-                        <span class="kw">if </span>offset &gt; <span class="kw-2">*</span>m {
-                            <span class="comment">// mixing in the shifted segment since degree is bounded
-                            </span>plnm.add_shifted(scale, <span class="self">self</span>.g.len() - m % <span class="self">self</span>.g.len(), segment);
+                        <span class="kw">if </span>offset &gt;= <span class="kw-2">*</span>m {
+                            <span class="kw">if </span>offset &gt; <span class="kw-2">*</span>m {
+                                <span class="comment">// mixing in the shifted segment since degree is bounded
+                                </span>plnm.add_shifted(scale, <span class="self">self</span>.g.len() - m % <span class="self">self</span>.g.len(), segment);
+                            }
                             omega += <span class="kw-2">&amp;</span>(omegas.shifted.unwrap() * scale);
                             scale <span class="kw-2">*</span>= <span class="kw-2">&amp;</span>polyscale;
                         }

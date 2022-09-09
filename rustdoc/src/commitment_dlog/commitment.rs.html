@@ -1118,12 +1118,6 @@
 <span id="1118">1118</span>
 <span id="1119">1119</span>
 <span id="1120">1120</span>
-<span id="1121">1121</span>
-<span id="1122">1122</span>
-<span id="1123">1123</span>
-<span id="1124">1124</span>
-<span id="1125">1125</span>
-<span id="1126">1126</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Dlog-based polynomial commitment schema.
 //! The folowing functionality is implemented
 //!
@@ -1358,7 +1352,7 @@
             },
             unshifted: {
                 <span class="kw">if </span>com.is_empty() || elm.is_empty() {
-                    Vec::new()
+                    <span class="macro">vec!</span>[C::zero()]
                 } <span class="kw">else </span>{
                     <span class="kw">let </span>n = Iterator::max(com.iter().map(|c| c.unshifted.len())).unwrap();
                     (<span class="number">0</span>..n)
@@ -1561,7 +1555,7 @@
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(m) = shifted {
             <span class="comment">// polyscale^i sum_j evalscale^j elm_j^{N - m} f(elm_j)
-            </span><span class="kw">let </span>last_evals = <span class="kw">if </span><span class="kw-2">*</span>m &gt; evals.len() * srs_length {
+            </span><span class="kw">let </span>last_evals = <span class="kw">if </span><span class="kw-2">*</span>m &gt;= evals.len() * srs_length {
                 <span class="macro">vec!</span>[F::zero(); evaluation_points.len()]
             } <span class="kw">else </span>{
                 evals[evals.len() - <span class="number">1</span>].clone()
@@ -1644,15 +1638,9 @@
             .zip(blinders)
             .ok_or_else(|| CommitmentError::BlindersDontMatch(blinders.len(), com.len()))<span class="question-mark">?
             </span>.map(|(g, b)| {
-                <span class="kw">if </span>g.is_zero() {
-                    <span class="comment">// TODO: This leaks information when g is the identity!
-                    // We should change this so that we still mask in this case
-                    </span>g
-                } <span class="kw">else </span>{
-                    <span class="kw">let </span><span class="kw-2">mut </span>g_masked = <span class="self">self</span>.h.mul(b);
-                    g_masked.add_assign_mixed(<span class="kw-2">&amp;</span>g);
-                    g_masked.into_affine()
-                }
+                <span class="kw">let </span><span class="kw-2">mut </span>g_masked = <span class="self">self</span>.h.mul(b);
+                g_masked.add_assign_mixed(<span class="kw-2">&amp;</span>g);
+                g_masked.into_affine()
             });
         <span class="prelude-val">Ok</span>(BlindedCommitment {
             commitment,
@@ -1689,7 +1677,7 @@
 
         <span class="comment">// committing all the segments without shifting
         </span><span class="kw">let </span>unshifted = <span class="kw">if </span>is_zero {
-            Vec::new()
+            <span class="macro">vec!</span>[G::zero()]
         } <span class="kw">else </span>{
             (<span class="number">0</span>..p / n + <span class="kw">if </span>p % n != <span class="number">0 </span>{ <span class="number">1 </span>} <span class="kw">else </span>{ <span class="number">0 </span>})
                 .map(|i| {
