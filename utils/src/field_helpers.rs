@@ -7,7 +7,7 @@ use thiserror::Error;
 
 /// Field helpers error
 #[allow(missing_docs)]
-#[derive(Error, Debug, Clone, PartialEq)]
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum FieldHelpersError {
     #[error("failed to deserialize field bytes")]
     DeserializeBytes,

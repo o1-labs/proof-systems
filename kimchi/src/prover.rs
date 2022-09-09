@@ -286,8 +286,7 @@ where
 
         //~ 1. If circuit uses lookups, create a lookup context (see [Lookup context creation](#lookup-context-creation) algorithm)
         let mut lookup_context =
-            LookupContext::create(&witness, runtime_tables, index, rng, &mut fq_sponge)
-                .map_err(|e| e)?;
+            LookupContext::create(&witness, runtime_tables, index, rng, &mut fq_sponge)?;
 
         //~ 1. Sample $\beta$ with the Fq-Sponge.
         let beta = fq_sponge.challenge();
@@ -296,9 +295,14 @@ where
         let gamma = fq_sponge.challenge();
 
         //~ 1. If circuit uses lookups, compute lookup context aggregation polynomial (see [Lookup context aggregation polynomial creation](#lookup-context-aggregation-polynomial-creation) algorithm)
-        lookup_context
-            .compute_aggregation_polynomial(&witness, index, rng, &mut fq_sponge, beta, gamma)
-            .map_err(|e| e)?;
+        lookup_context.compute_aggregation_polynomial(
+            &witness,
+            index,
+            rng,
+            &mut fq_sponge,
+            beta,
+            gamma,
+        )?;
 
         //~ 1. Compute the permutation aggregation polynomial $z$.
         let z_poly = index.cs.perm_aggreg(&witness, &beta, &gamma, rng)?;
