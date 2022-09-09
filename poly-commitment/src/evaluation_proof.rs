@@ -112,7 +112,7 @@ impl<G: CommitmentCurve> SRS<G> {
             let mut scale = G::ScalarField::one();
 
             // iterating over polynomials in the batch
-            for (p_i, degree_bound, omegas) in plnms.iter() {
+            for (p_i, degree_bound, omegas) in plnms {
                 let mut offset = 0;
                 // iterating over chunks of the polynomial
                 if let Some(m) = degree_bound {
