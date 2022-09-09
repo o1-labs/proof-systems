@@ -571,6 +571,7 @@
 <span id="571">571</span>
 <span id="572">572</span>
 <span id="573">573</span>
+<span id="574">574</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the double generic gate.
 
 </span><span class="comment">//~ The double generic gate contains two generic gates.
@@ -616,8 +617,8 @@
 <span class="kw">use </span>ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain <span class="kw">as </span>D,
 };
-<span class="kw">use </span>array_init::array_init;
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span>std::array;
 
 <span class="doccomment">/// Number of constraints produced by the gate.
 </span><span class="kw">pub const </span>CONSTRAINTS: u32 = <span class="number">2</span>;
@@ -900,7 +901,7 @@
             public: <span class="kw-2">&amp;</span>[F],
         ) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
             <span class="comment">// assignments
-            </span><span class="kw">let </span>this: [F; COLUMNS] = array_init(|i| witness[i][row]);
+            </span><span class="kw">let </span>this: [F; COLUMNS] = array::from_fn(|i| witness[i][row]);
 
             <span class="comment">// constants
             </span><span class="kw">let </span>zero = F::zero();
@@ -951,7 +952,7 @@
             public: <span class="kw-2">&amp;</span>DensePolynomial&lt;F&gt;,
         ) -&gt; bool {
             <span class="kw">let </span>coefficientsm: [<span class="kw">_</span>; COLUMNS] =
-                array_init(|i| <span class="self">self</span>.coefficients8[i].clone().interpolate());
+                array::from_fn(|i| <span class="self">self</span>.coefficients8[i].clone().interpolate());
 
             <span class="kw">let </span>generic_gate = |coeff_offset, register_offset| {
                 <span class="comment">// addition (of left, right, output wires)
@@ -1083,10 +1084,10 @@
     <span class="kw">use </span><span class="kw">crate</span>::circuits::wires::COLUMNS;
     <span class="kw">use </span>ark_ff::{UniformRand, Zero};
     <span class="kw">use </span>ark_poly::{EvaluationDomain, Polynomial};
-    <span class="kw">use </span>array_init::array_init;
     <span class="kw">use </span>mina_curves::pasta::fp::Fp;
     <span class="kw">use </span>mina_curves::pasta::vesta::Vesta;
     <span class="kw">use </span>rand::SeedableRng;
+    <span class="kw">use </span>std::array;
 
     <span class="attribute">#[test]
     </span><span class="kw">fn </span>test_generic_polynomial() {
@@ -1098,19 +1099,20 @@
 
         <span class="comment">// create witness
         </span><span class="kw">let </span>n = cs.domain.d1.size();
-        <span class="kw">let </span><span class="kw-2">mut </span>witness: [Vec&lt;Fp&gt;; COLUMNS] = array_init(|<span class="kw">_</span>| <span class="macro">vec!</span>[Fp::zero(); n]);
+        <span class="kw">let </span><span class="kw-2">mut </span>witness: [Vec&lt;Fp&gt;; COLUMNS] = array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[Fp::zero(); n]);
         testing::fill_in_witness(<span class="number">0</span>, <span class="kw-2">&amp;mut </span>witness, <span class="kw-2">&amp;</span>[]);
 
         <span class="comment">// make sure we&#39;re done filling the witness correctly
         </span>cs.verify::&lt;Vesta&gt;(<span class="kw-2">&amp;</span>witness, <span class="kw-2">&amp;</span>[]).unwrap();
 
         <span class="comment">// generate witness polynomials
-        </span><span class="kw">let </span>witness_evals: [Evaluations&lt;Fp, D&lt;Fp&gt;&gt;; COLUMNS] =
-            array_init(|col| Evaluations::from_vec_and_domain(witness[col].clone(), cs.domain.d1));
+        </span><span class="kw">let </span>witness_evals: [Evaluations&lt;Fp, D&lt;Fp&gt;&gt;; COLUMNS] = array::from_fn(|col| {
+            Evaluations::from_vec_and_domain(witness[col].clone(), cs.domain.d1)
+        });
         <span class="kw">let </span>witness: [DensePolynomial&lt;Fp&gt;; COLUMNS] =
-            array_init(|col| witness_evals[col].interpolate_by_ref());
+            array::from_fn(|col| witness_evals[col].interpolate_by_ref());
         <span class="kw">let </span>witness_d4: [Evaluations&lt;Fp, D&lt;Fp&gt;&gt;; COLUMNS] =
-            array_init(|col| witness[col].evaluate_over_domain_by_ref(cs.domain.d4));
+            array::from_fn(|col| witness[col].evaluate_over_domain_by_ref(cs.domain.d4));
 
         <span class="comment">// make sure we&#39;ve done that correctly
         </span><span class="kw">let </span>public = DensePolynomial::zero();
@@ -1131,7 +1133,7 @@
         <span class="kw">let </span>t_zeta = t.evaluate(<span class="kw-2">&amp;</span>zeta);
 
         <span class="comment">// compute linearization f(z)
-        </span><span class="kw">let </span>w_zeta: [Fp; COLUMNS] = array_init(|col| witness[col].evaluate(<span class="kw-2">&amp;</span>zeta));
+        </span><span class="kw">let </span>w_zeta: [Fp; COLUMNS] = array::from_fn(|col| witness[col].evaluate(<span class="kw-2">&amp;</span>zeta));
         <span class="kw">let </span>generic_zeta = cs.genericm.evaluate(<span class="kw-2">&amp;</span>zeta);
 
         <span class="kw">let </span>f = cs
@@ -1145,4 +1147,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c2804e6ec 2022-09-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

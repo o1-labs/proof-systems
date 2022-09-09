@@ -2010,11 +2010,11 @@
 
     <span class="kw">use </span><span class="kw">crate</span>::srs::SRS;
     <span class="kw">use </span>ark_poly::{Polynomial, UVPolynomial};
-    <span class="kw">use </span>array_init::array_init;
     <span class="kw">use </span>mina_curves::pasta::{fp::Fp, vesta::Vesta <span class="kw">as </span>VestaG};
     <span class="kw">use </span>oracle::constants::PlonkSpongeConstantsKimchi <span class="kw">as </span>SC;
     <span class="kw">use </span>oracle::sponge::DefaultFqSponge;
     <span class="kw">use </span>rand::{rngs::StdRng, SeedableRng};
+    <span class="kw">use </span>std::array;
 
     <span class="attribute">#[test]
     </span><span class="kw">fn </span>test_lagrange_commitments() {
@@ -2048,7 +2048,7 @@
     <span class="attribute">#[test]
     </span><span class="kw">fn </span>test_opening_proof() {
         <span class="comment">// create two polynomials
-        </span><span class="kw">let </span>coeffs: [Fp; <span class="number">10</span>] = array_init(|i| Fp::from(i <span class="kw">as </span>u32));
+        </span><span class="kw">let </span>coeffs: [Fp; <span class="number">10</span>] = array::from_fn(|i| Fp::from(i <span class="kw">as </span>u32));
         <span class="kw">let </span>poly1 = DensePolynomial::&lt;Fp&gt;::from_coefficients_slice(<span class="kw-2">&amp;</span>coeffs);
         <span class="kw">let </span>poly2 = DensePolynomial::&lt;Fp&gt;::from_coefficients_slice(<span class="kw-2">&amp;</span>coeffs[..<span class="number">5</span>]);
 
@@ -2251,4 +2251,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c2804e6ec 2022-09-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

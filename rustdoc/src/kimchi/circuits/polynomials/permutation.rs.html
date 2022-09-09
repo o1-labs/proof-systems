@@ -505,10 +505,10 @@
     EvaluationDomain, Evaluations, Radix2EvaluationDomain <span class="kw">as </span>D,
 };
 <span class="kw">use </span>ark_poly::{Polynomial, UVPolynomial};
-<span class="kw">use </span>array_init::array_init;
 <span class="kw">use </span>blake2::{Blake2b512, Digest};
 <span class="kw">use </span>o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
 <span class="kw">use </span>rand::{CryptoRng, RngCore};
+<span class="kw">use </span>std::array;
 
 <span class="doccomment">/// Number of constraints produced by the argument.
 </span><span class="kw">pub const </span>CONSTRAINTS: u32 = <span class="number">3</span>;
@@ -603,7 +603,7 @@
 
         <span class="comment">// create a map of cells to their shifted value
         </span><span class="kw">let </span>map: [Vec&lt;F&gt;; PERMUTS] =
-            array_init(|i| domain.elements().map(|elm| shifts[i] * elm).collect());
+            array::from_fn(|i| domain.elements().map(|elm| shifts[i] * elm).collect());
 
         <span class="comment">//
         </span><span class="self">Self </span>{ shifts, map }
@@ -907,4 +907,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c2804e6ec 2022-09-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

@@ -114,7 +114,10 @@
 <span id="114">114</span>
 <span id="115">115</span>
 <span id="116">116</span>
-</pre><pre class="rust"><code><span class="kw">use crate</span>::{
+<span id="117">117</span>
+</pre><pre class="rust"><code><span class="kw">use </span>std::array;
+
+<span class="kw">use crate</span>::{
     circuits::{
         gate::CircuitGate,
         polynomials::generic::GenericGateSpec,
@@ -125,7 +128,6 @@
     verifier::batch_verify,
     verifier_index::VerifierIndex,
 };
-<span class="kw">use </span>array_init::array_init;
 <span class="kw">use </span>commitment_dlog::commitment::CommitmentCurve;
 <span class="kw">use </span>groupmap::{BWParameters, GroupMap};
 <span class="kw">use </span>mina_curves::pasta::vesta::VestaParameters;
@@ -189,7 +191,7 @@
     <span class="doccomment">/// Produces a proof
     </span><span class="kw">pub fn </span>create_proof(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ProverProof&lt;Vesta&gt; {
         <span class="comment">// create witness
-        </span><span class="kw">let </span>witness: [Vec&lt;Fp&gt;; COLUMNS] = array_init(|<span class="kw">_</span>| <span class="macro">vec!</span>[<span class="number">1u32</span>.into(); <span class="self">self</span>.num_gates]);
+        </span><span class="kw">let </span>witness: [Vec&lt;Fp&gt;; COLUMNS] = array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[<span class="number">1u32</span>.into(); <span class="self">self</span>.num_gates]);
 
         <span class="comment">// add the proof to the batch
         </span>ProverProof::create::&lt;BaseSponge, ScalarSponge&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>.group_map, witness, <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span><span class="self">self</span>.index)
@@ -231,4 +233,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c2804e6ec 2022-09-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

@@ -499,7 +499,6 @@
 <span class="kw">use </span>ark_ec::AffineCurve;
 <span class="kw">use </span>ark_ff::{FftField, One, Zero};
 <span class="kw">use </span>ark_poly::univariate::DensePolynomial;
-<span class="kw">use </span>array_init::array_init;
 <span class="kw">use </span>commitment_dlog::{
     commitment::{b_poly, b_poly_coefficients, PolyComm},
     evaluation_proof::OpeningProof,
@@ -507,6 +506,7 @@
 <span class="kw">use </span>o1_utils::ExtendedDensePolynomial;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>serde_with::serde_as;
+<span class="kw">use </span>std::array;
 
 <span class="comment">//~ spec:startcode
 </span><span class="doccomment">/// Evaluations of lookup polynomials
@@ -647,21 +647,21 @@
                 .all(|e| e.lookup.as_ref().unwrap().runtime.is_some());
 
         ProofEvaluations {
-            generic_selector: array_init(|i| <span class="kw-2">&amp;</span>evals[i].generic_selector),
-            poseidon_selector: array_init(|i| <span class="kw-2">&amp;</span>evals[i].poseidon_selector),
-            z: array_init(|i| <span class="kw-2">&amp;</span>evals[i].z),
-            w: array_init(|j| array_init(|i| <span class="kw-2">&amp;</span>evals[i].w[j])),
-            s: array_init(|j| array_init(|i| <span class="kw-2">&amp;</span>evals[i].s[j])),
+            generic_selector: array::from_fn(|i| <span class="kw-2">&amp;</span>evals[i].generic_selector),
+            poseidon_selector: array::from_fn(|i| <span class="kw-2">&amp;</span>evals[i].poseidon_selector),
+            z: array::from_fn(|i| <span class="kw-2">&amp;</span>evals[i].z),
+            w: array::from_fn(|j| array::from_fn(|i| <span class="kw-2">&amp;</span>evals[i].w[j])),
+            s: array::from_fn(|j| array::from_fn(|i| <span class="kw-2">&amp;</span>evals[i].s[j])),
             lookup: <span class="kw">if </span>has_lookup {
                 <span class="kw">let </span>sorted_length = evals[<span class="number">0</span>].lookup.as_ref().unwrap().sorted.len();
                 <span class="prelude-val">Some</span>(LookupEvaluations {
-                    aggreg: array_init(|i| <span class="kw-2">&amp;</span>evals[i].lookup.as_ref().unwrap().aggreg),
-                    table: array_init(|i| <span class="kw-2">&amp;</span>evals[i].lookup.as_ref().unwrap().table),
+                    aggreg: array::from_fn(|i| <span class="kw-2">&amp;</span>evals[i].lookup.as_ref().unwrap().aggreg),
+                    table: array::from_fn(|i| <span class="kw-2">&amp;</span>evals[i].lookup.as_ref().unwrap().table),
                     sorted: (<span class="number">0</span>..sorted_length)
-                        .map(|j| array_init(|i| <span class="kw-2">&amp;</span>evals[i].lookup.as_ref().unwrap().sorted[j]))
+                        .map(|j| array::from_fn(|i| <span class="kw-2">&amp;</span>evals[i].lookup.as_ref().unwrap().sorted[j]))
                         .collect(),
                     runtime: <span class="kw">if </span>has_runtime {
-                        <span class="prelude-val">Some</span>(array_init(|i| {
+                        <span class="prelude-val">Some</span>(array::from_fn(|i| {
                             evals[i].lookup.as_ref().unwrap().runtime.as_ref().unwrap()
                         }))
                     } <span class="kw">else </span>{
@@ -727,7 +727,7 @@
         ProofEvaluations {
             w,
             z: F::zero(),
-            s: array_init(|<span class="kw">_</span>| F::zero()),
+            s: array::from_fn(|<span class="kw">_</span>| F::zero()),
             lookup: <span class="prelude-val">None</span>,
             generic_selector: F::zero(),
             poseidon_selector: F::zero(),
@@ -738,8 +738,8 @@
 <span class="kw">impl</span>&lt;F: FftField&gt; ProofEvaluations&lt;Vec&lt;F&gt;&gt; {
     <span class="kw">pub fn </span>combine(<span class="kw-2">&amp;</span><span class="self">self</span>, pt: F) -&gt; ProofEvaluations&lt;F&gt; {
         ProofEvaluations::&lt;F&gt; {
-            s: array_init(|i| DensePolynomial::eval_polynomial(<span class="kw-2">&amp;</span><span class="self">self</span>.s[i], pt)),
-            w: array_init(|i| DensePolynomial::eval_polynomial(<span class="kw-2">&amp;</span><span class="self">self</span>.w[i], pt)),
+            s: array::from_fn(|i| DensePolynomial::eval_polynomial(<span class="kw-2">&amp;</span><span class="self">self</span>.s[i], pt)),
+            w: array::from_fn(|i| DensePolynomial::eval_polynomial(<span class="kw-2">&amp;</span><span class="self">self</span>.w[i], pt)),
             z: DensePolynomial::eval_polynomial(<span class="kw-2">&amp;</span><span class="self">self</span>.z, pt),
             lookup: <span class="self">self</span>.lookup.as_ref().map(|l| LookupEvaluations {
                 table: DensePolynomial::eval_polynomial(<span class="kw-2">&amp;</span>l.table, pt),
@@ -989,4 +989,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c2804e6ec 2022-09-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

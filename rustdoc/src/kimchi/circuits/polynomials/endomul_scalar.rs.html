@@ -398,7 +398,7 @@
     curve::KimchiCurve,
 };
 <span class="kw">use </span>ark_ff::{BitIteratorLE, FftField, Field, PrimeField, Zero};
-<span class="kw">use </span>array_init::array_init;
+<span class="kw">use </span>std::array;
 <span class="kw">use </span>std::marker::PhantomData;
 
 <span class="kw">impl</span>&lt;F: PrimeField&gt; CircuitGate&lt;F&gt; {
@@ -417,7 +417,7 @@
         <span class="kw">let </span>a8 = witness[<span class="number">4</span>][row];
         <span class="kw">let </span>b8 = witness[<span class="number">5</span>][row];
 
-        <span class="kw">let </span>xs: [<span class="kw">_</span>; <span class="number">8</span>] = array_init(|i| witness[<span class="number">6 </span>+ i][row]);
+        <span class="kw">let </span>xs: [<span class="kw">_</span>; <span class="number">8</span>] = array::from_fn(|i| witness[<span class="number">6 </span>+ i][row]);
 
         <span class="kw">let </span>n8_expected = xs.iter().fold(n0, |acc, x| acc.double().double() + x);
         <span class="kw">let </span>a8_expected = xs.iter().fold(a0, |acc, x| acc.double() + c_func(<span class="kw-2">*</span>x));
@@ -553,7 +553,7 @@
         <span class="kw">let </span>b8 = witness_curr(<span class="number">5</span>);
 
         <span class="comment">// x0..x7
-        </span><span class="kw">let </span>xs: [<span class="kw">_</span>; <span class="number">8</span>] = array_init(|i| witness_curr(<span class="number">6 </span>+ i));
+        </span><span class="kw">let </span>xs: [<span class="kw">_</span>; <span class="number">8</span>] = array::from_fn(|i| witness_curr(<span class="number">6 </span>+ i));
 
         <span class="kw">let </span><span class="kw-2">mut </span>cache = Cache::default();
 
@@ -568,9 +568,9 @@
         <span class="kw">let </span>crumb = |x: <span class="kw-2">&amp;</span>E&lt;F&gt;| polynomial(<span class="kw-2">&amp;</span>crumb_over_x_coeffs[..], x) * x.clone();
         <span class="kw">let </span>d_minus_c_coeffs = [-F::one(), F::from(<span class="number">3u64</span>), -F::one()];
 
-        <span class="kw">let </span>c_funcs: [<span class="kw">_</span>; <span class="number">8</span>] = array_init(|i| cache.cache(polynomial(<span class="kw-2">&amp;</span>c_coeffs[..], <span class="kw-2">&amp;</span>xs[i])));
+        <span class="kw">let </span>c_funcs: [<span class="kw">_</span>; <span class="number">8</span>] = array::from_fn(|i| cache.cache(polynomial(<span class="kw-2">&amp;</span>c_coeffs[..], <span class="kw-2">&amp;</span>xs[i])));
         <span class="kw">let </span>d_funcs: [<span class="kw">_</span>; <span class="number">8</span>] =
-            array_init(|i| c_funcs[i].clone() + polynomial(<span class="kw-2">&amp;</span>d_minus_c_coeffs[..], <span class="kw-2">&amp;</span>xs[i]));
+            array::from_fn(|i| c_funcs[i].clone() + polynomial(<span class="kw-2">&amp;</span>d_minus_c_coeffs[..], <span class="kw-2">&amp;</span>xs[i]));
 
         <span class="kw">let </span>n8_expected = xs
             .iter()
@@ -771,4 +771,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c2804e6ec 2022-09-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

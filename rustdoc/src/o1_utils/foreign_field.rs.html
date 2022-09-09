@@ -207,7 +207,7 @@
 </span><span class="kw">pub const </span>FOREIGN_BITS: usize = <span class="number">8 </span>* FOREIGN_MOD.len(); <span class="comment">// 256 bits
 
 </span><span class="attribute">#[serde_as]
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 </span><span class="doccomment">/// Represents a foreign field element
 </span><span class="kw">pub struct </span>ForeignElement&lt;F: Field, <span class="kw">const </span>N: usize&gt; {
     <span class="doccomment">/// limbs in little endian order
@@ -359,4 +359,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="o1_utils" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c2804e6ec 2022-09-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="o1_utils" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

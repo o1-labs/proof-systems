@@ -398,8 +398,8 @@
 <span class="kw">use </span>ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain <span class="kw">as </span>D,
 };
-<span class="kw">use </span>array_init::array_init;
 <span class="kw">use </span>rand::{prelude::StdRng, SeedableRng};
+<span class="kw">use </span>std::array;
 <span class="kw">use </span>std::collections::HashMap;
 
 <span class="kw">use crate</span>::{
@@ -515,7 +515,7 @@
         }
 
         <span class="comment">// Compute witness polynomial
-        </span><span class="kw">let </span>witness_poly: [DensePolynomial&lt;F&gt;; COLUMNS] = array_init(|i| {
+        </span><span class="kw">let </span>witness_poly: [DensePolynomial&lt;F&gt;; COLUMNS] = array::from_fn(|i| {
             Evaluations::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(witness[i].clone(), cs.domain.d1)
                 .interpolate()
         });
@@ -787,4 +787,4 @@
     lookup::tables::get_table::&lt;F&gt;(GateLookupTable::RangeCheck)
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c2804e6ec 2022-09-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

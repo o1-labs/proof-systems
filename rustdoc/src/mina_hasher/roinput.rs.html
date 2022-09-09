@@ -966,7 +966,7 @@
 /// Additionally, during signing all members of the random oracle input get serialized
 /// together in two different ways: both as *bytes* and as a vector of *field elements*.
 /// The random oracle input automates and encapsulates this complexity.
-</span><span class="attribute">#[derive(Default, Debug, Clone, PartialEq)]
+</span><span class="attribute">#[derive(Default, Debug, Clone, PartialEq, Eq)]
 </span><span class="kw">pub struct </span>ROInput {
     fields: Vec&lt;Fp&gt;,
     bits: BitVec&lt;u8&gt;,
@@ -1823,4 +1823,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="mina_hasher" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c2804e6ec 2022-09-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="mina_hasher" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

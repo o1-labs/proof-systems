@@ -104,8 +104,8 @@
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk circuit gate wires primitive.
 
 </span><span class="kw">use </span>ark_ff::bytes::{FromBytes, ToBytes};
-<span class="kw">use </span>array_init::array_init;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>std::array;
 <span class="kw">use </span>std::io::{Read, <span class="prelude-ty">Result </span><span class="kw">as </span>IoResult, Write};
 
 <span class="doccomment">/// Number of registers
@@ -132,7 +132,7 @@
 <span class="kw">impl </span>Wire {
     <span class="doccomment">/// Creates a new set of wires for a given row.
     </span><span class="kw">pub fn </span>new(row: usize) -&gt; [<span class="self">Self</span>; PERMUTS] {
-        array_init(|col| <span class="self">Self </span>{ row, col })
+        array::from_fn(|col| <span class="self">Self </span>{ row, col })
     }
 }
 
@@ -205,4 +205,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c2804e6ec 2022-09-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

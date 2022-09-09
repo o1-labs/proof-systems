@@ -169,7 +169,7 @@
 <span class="kw">use </span>thiserror::Error;
 
 <span class="doccomment">/// Keypair error
-</span><span class="attribute">#[derive(Error, Debug, Clone, PartialEq)]
+</span><span class="attribute">#[derive(Error, Debug, Clone, PartialEq, Eq)]
 </span><span class="kw">pub enum </span>KeypairError {
     <span class="doccomment">/// Invalid secret key hex
     </span><span class="attribute">#[error(<span class="string">&quot;invalid secret key hex&quot;</span>)]
@@ -317,4 +317,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="mina_signer" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c2804e6ec 2022-09-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="mina_signer" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

@@ -479,8 +479,8 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
         <span class="macro">ensure_eq!</span>(<span class="self">self</span>.typ, GateType::EndoMul, <span class="string">&quot;incorrect gate type&quot;</span>);
 
-        <span class="kw">let </span>this: [F; COLUMNS] = array_init::array_init(|i| witness[i][row]);
-        <span class="kw">let </span>next: [F; COLUMNS] = array_init::array_init(|i| witness[i][row + <span class="number">1</span>]);
+        <span class="kw">let </span>this: [F; COLUMNS] = std::array::from_fn(|i| witness[i][row]);
+        <span class="kw">let </span>next: [F; COLUMNS] = std::array::from_fn(|i| witness[i][row + <span class="number">1</span>]);
 
         <span class="kw">let </span>pt = F::from(<span class="number">123456u64</span>);
 
@@ -707,4 +707,4 @@
     EndoMulResult { acc, n: n_acc }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c2804e6ec 2022-09-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

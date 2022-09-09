@@ -45,10 +45,10 @@
 <span id="45">45</span>
 <span id="46">46</span>
 </pre><pre class="rust"><code><span class="kw">use </span>ark_ff::Field;
-<span class="kw">use </span>array_init::array_init;
 <span class="kw">use </span>kimchi::circuits::polynomial::COLUMNS;
 <span class="kw">use </span>serde::Serialize;
 <span class="kw">use </span>serde_with::serde_as;
+<span class="kw">use </span>std::array;
 
 <span class="doccomment">/// The type that represents the execution trace.
 /// It represents a table of [COLUMNS] columns, with `n` rows.
@@ -71,7 +71,7 @@
     </span><span class="comment">// TODO: deprecate this
     </span><span class="kw">pub fn </span>new(rows: usize) -&gt; <span class="self">Self </span>{
         Witness {
-            inner: array_init(|<span class="kw">_</span>| <span class="macro">vec!</span>[F::zero(); rows]),
+            inner: array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[F::zero(); rows]),
         }
     }
 
@@ -91,4 +91,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi_visu" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c2804e6ec 2022-09-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi_visu" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

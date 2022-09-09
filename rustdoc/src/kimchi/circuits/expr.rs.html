@@ -2760,7 +2760,7 @@
 }
 
 <span class="doccomment">/// A binary operation
-</span><span class="attribute">#[derive(Clone, Debug, PartialEq)]
+</span><span class="attribute">#[derive(Clone, Debug, PartialEq, Eq)]
 </span><span class="kw">pub enum </span>Op2 {
     Add,
     Mul,
@@ -2806,7 +2806,7 @@
 <span class="doccomment">/// For efficiency of evaluation, we compile expressions to
 /// [reverse Polish notation](https://en.wikipedia.org/wiki/Reverse_Polish_notation)
 /// expressions, which are vectors of the below tokens.
-</span><span class="attribute">#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+</span><span class="attribute">#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 </span><span class="kw">pub enum </span>PolishToken&lt;F&gt; {
     Alpha,
     Beta,
@@ -4655,10 +4655,10 @@
         curve::KimchiCurve,
     };
     <span class="kw">use </span>ark_ff::UniformRand;
-    <span class="kw">use </span>array_init::array_init;
     <span class="kw">use </span>mina_curves::pasta::fp::Fp;
     <span class="kw">use </span>mina_curves::pasta::vesta::Vesta;
     <span class="kw">use </span>rand::{prelude::StdRng, SeedableRng};
+    <span class="kw">use </span>std::array;
 
     <span class="attribute">#[test]
     #[should_panic]
@@ -4699,7 +4699,7 @@
         ));
         <span class="kw">let </span>constraint_system = ConstraintSystem::fp_for_testing(gates);
 
-        <span class="kw">let </span>witness_cols: [<span class="kw">_</span>; COLUMNS] = array_init(|<span class="kw">_</span>| DensePolynomial::zero());
+        <span class="kw">let </span>witness_cols: [<span class="kw">_</span>; COLUMNS] = array::from_fn(|<span class="kw">_</span>| DensePolynomial::zero());
         <span class="kw">let </span>permutation = DensePolynomial::zero();
         <span class="kw">let </span>domain_evals = constraint_system.evaluate(<span class="kw-2">&amp;</span>witness_cols, <span class="kw-2">&amp;</span>permutation);
 
@@ -4777,4 +4777,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c2804e6ec 2022-09-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

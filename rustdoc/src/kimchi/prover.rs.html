@@ -1513,6 +1513,10 @@
 <span id="1513">1513</span>
 <span id="1514">1514</span>
 <span id="1515">1515</span>
+<span id="1516">1516</span>
+<span id="1517">1517</span>
+<span id="1518">1518</span>
+<span id="1519">1519</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements prover&#39;s zk-proof primitive.
 
 </span><span class="kw">use crate</span>::{
@@ -1551,7 +1555,6 @@
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
     Radix2EvaluationDomain <span class="kw">as </span>D, UVPolynomial,
 };
-<span class="kw">use </span>array_init::array_init;
 <span class="kw">use </span>commitment_dlog::commitment::{
     b_poly_coefficients, BlindedCommitment, CommitmentCurve, PolyComm,
 };
@@ -1560,6 +1563,7 @@
 <span class="kw">use </span>oracle::{sponge::ScalarChallenge, FqSponge};
 <span class="kw">use </span>rand::{CryptoRng, RngCore};
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span>std::array;
 <span class="kw">use </span>std::collections::HashMap;
 
 <span class="doccomment">/// The result of a proof creation or verification.
@@ -1791,7 +1795,7 @@
 
         <span class="comment">//~ 1. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
         //~    TODO: why not do this first, and then commit? Why commit from evaluation directly?
-        </span><span class="kw">let </span>witness_poly: [DensePolynomial&lt;G::ScalarField&gt;; COLUMNS] = array_init(|i| {
+        </span><span class="kw">let </span>witness_poly: [DensePolynomial&lt;G::ScalarField&gt;; COLUMNS] = array::from_fn(|i| {
             Evaluations::&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;::from_vec_and_domain(
                 witness[i].clone(),
                 index.cs.domain.d1,
@@ -1801,8 +1805,7 @@
 
         <span class="comment">//~ 1. If circuit uses lookups, create a lookup context (see [Lookup context creation](#lookup-context-creation) algorithm)
         </span><span class="kw">let </span><span class="kw-2">mut </span>lookup_context =
-            LookupContext::create(<span class="kw-2">&amp;</span>witness, runtime_tables, index, rng, <span class="kw-2">&amp;mut </span>fq_sponge)
-                .map_err(|e| e)<span class="question-mark">?</span>;
+            LookupContext::create(<span class="kw-2">&amp;</span>witness, runtime_tables, index, rng, <span class="kw-2">&amp;mut </span>fq_sponge)<span class="question-mark">?</span>;
 
         <span class="comment">//~ 1. Sample $\beta$ with the Fq-Sponge.
         </span><span class="kw">let </span>beta = fq_sponge.challenge();
@@ -1811,9 +1814,14 @@
         </span><span class="kw">let </span>gamma = fq_sponge.challenge();
 
         <span class="comment">//~ 1. If circuit uses lookups, compute lookup context aggregation polynomial (see [Lookup context aggregation polynomial creation](#lookup-context-aggregation-polynomial-creation) algorithm)
-        </span>lookup_context
-            .compute_aggregation_polynomial(<span class="kw-2">&amp;</span>witness, index, rng, <span class="kw-2">&amp;mut </span>fq_sponge, beta, gamma)
-            .map_err(|e| e)<span class="question-mark">?</span>;
+        </span>lookup_context.compute_aggregation_polynomial(
+            <span class="kw-2">&amp;</span>witness,
+            index,
+            rng,
+            <span class="kw-2">&amp;mut </span>fq_sponge,
+            beta,
+            gamma,
+        )<span class="question-mark">?</span>;
 
         <span class="comment">//~ 1. Compute the permutation aggregation polynomial $z$.
         </span><span class="kw">let </span>z_poly = index.cs.perm_aggreg(<span class="kw-2">&amp;</span>witness, <span class="kw-2">&amp;</span>beta, <span class="kw-2">&amp;</span>gamma, rng)<span class="question-mark">?</span>;
@@ -2154,12 +2162,12 @@
         //~    TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)
         </span><span class="kw">let </span>chunked_evals = {
             <span class="kw">let </span>chunked_evals_zeta = ProofEvaluations::&lt;Vec&lt;G::ScalarField&gt;&gt; {
-                s: array_init(|i| {
+                s: array::from_fn(|i| {
                     index.cs.sigmam[<span class="number">0</span>..PERMUTS - <span class="number">1</span>][i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta)
                 }),
-                w: array_init(|i| {
+                w: array::from_fn(|i| {
                     witness_poly[i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta)
@@ -2184,13 +2192,13 @@
                     .evaluate_chunks(zeta),
             };
             <span class="kw">let </span>chunked_evals_zeta_omega = ProofEvaluations::&lt;Vec&lt;G::ScalarField&gt;&gt; {
-                s: array_init(|i| {
+                s: array::from_fn(|i| {
                     index.cs.sigmam[<span class="number">0</span>..PERMUTS - <span class="number">1</span>][i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta_omega)
                 }),
 
-                w: array_init(|i| {
+                w: array::from_fn(|i| {
                     witness_poly[i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta_omega)
@@ -2230,8 +2238,8 @@
                 .iter()
                 .zip(power_of_eval_points_for_chunks.iter()) <span class="comment">// (zeta , zeta_omega)
                 </span>.map(|(es, <span class="kw-2">&amp;</span>e1)| ProofEvaluations::&lt;G::ScalarField&gt; {
-                    s: array_init(|i| DensePolynomial::eval_polynomial(<span class="kw-2">&amp;</span>es.s[i], e1)),
-                    w: array_init(|i| DensePolynomial::eval_polynomial(<span class="kw-2">&amp;</span>es.w[i], e1)),
+                    s: array::from_fn(|i| DensePolynomial::eval_polynomial(<span class="kw-2">&amp;</span>es.s[i], e1)),
+                    w: array::from_fn(|i| DensePolynomial::eval_polynomial(<span class="kw-2">&amp;</span>es.w[i], e1)),
                     z: DensePolynomial::eval_polynomial(<span class="kw-2">&amp;</span>es.z, e1),
                     lookup: es.lookup.as_ref().map(|l| LookupEvaluations {
                         table: DensePolynomial::eval_polynomial(<span class="kw-2">&amp;</span>l.table, e1),
@@ -2483,7 +2491,7 @@
 
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
             commitments: ProverCommitments {
-                w_comm: array_init(|i| w_comm[i].commitment.clone()),
+                w_comm: array::from_fn(|i| w_comm[i].commitment.clone()),
                 z_comm: z_comm.commitment,
                 t_comm: t_comm.commitment,
                 lookup,
@@ -3029,4 +3037,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c2804e6ec 2022-09-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

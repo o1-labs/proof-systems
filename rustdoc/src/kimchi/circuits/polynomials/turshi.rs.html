@@ -1125,12 +1125,12 @@
     proof::ProofEvaluations,
 };
 <span class="kw">use </span>ark_ff::{FftField, Field, One, PrimeField};
-<span class="kw">use </span>array_init::array_init;
 <span class="kw">use </span>cairo::{
     runner::{CairoInstruction, CairoProgram, Pointers},
     word::{FlagBits, Offsets},
 };
 <span class="kw">use </span>rand::{prelude::StdRng, SeedableRng};
+<span class="kw">use </span>std::array;
 <span class="kw">use </span>std::marker::PhantomData;
 
 <span class="kw">const </span>NUM_FLAGS: usize = <span class="number">16</span>;
@@ -1225,10 +1225,10 @@
         cs: <span class="kw-2">&amp;</span>ConstraintSystem&lt;F&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
         <span class="comment">// assignments
-        </span><span class="kw">let </span>curr: [F; COLUMNS] = array_init(|i| witness[i][row]);
-        <span class="kw">let </span><span class="kw-2">mut </span>next: [F; COLUMNS] = array_init(|<span class="kw">_</span>| F::zero());
+        </span><span class="kw">let </span>curr: [F; COLUMNS] = array::from_fn(|i| witness[i][row]);
+        <span class="kw">let </span><span class="kw-2">mut </span>next: [F; COLUMNS] = array::from_fn(|<span class="kw">_</span>| F::zero());
         <span class="kw">if </span><span class="self">self</span>.typ != GateType::Zero {
-            next = array_init(|i| witness[i][row + <span class="number">1</span>]);
+            next = array::from_fn(|i| witness[i][row + <span class="number">1</span>]);
         }
 
         <span class="comment">// column polynomials
@@ -1456,23 +1456,23 @@
         <span class="comment">//_cs: &amp;ConstraintSystem&lt;F&gt;,
     </span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
         <span class="comment">// assignments
-        </span><span class="kw">let </span>this: [F; COLUMNS] = array_init(|i| witness[i][row]);
+        </span><span class="kw">let </span>this: [F; COLUMNS] = array::from_fn(|i| witness[i][row]);
 
         <span class="kw">match </span>gate.typ {
             GateType::CairoClaim =&gt; {
-                <span class="kw">let </span>next: [F; COLUMNS] = array_init(|i| witness[i][row + <span class="number">1</span>]);
+                <span class="kw">let </span>next: [F; COLUMNS] = array::from_fn(|i| witness[i][row + <span class="number">1</span>]);
                 ensure_claim(<span class="kw-2">&amp;</span>this, <span class="kw-2">&amp;</span>next) <span class="comment">// CircuitGate::ensure_transition(&amp;this),
             </span>}
             GateType::CairoInstruction =&gt; {
-                <span class="kw">let </span>next: [F; COLUMNS] = array_init(|i| witness[i][row + <span class="number">1</span>]);
+                <span class="kw">let </span>next: [F; COLUMNS] = array::from_fn(|i| witness[i][row + <span class="number">1</span>]);
                 ensure_instruction(<span class="kw-2">&amp;</span>this, <span class="kw-2">&amp;</span>next)
             }
             GateType::CairoFlags =&gt; {
-                <span class="kw">let </span>next: [F; COLUMNS] = array_init(|i| witness[i][row + <span class="number">1</span>]);
+                <span class="kw">let </span>next: [F; COLUMNS] = array::from_fn(|i| witness[i][row + <span class="number">1</span>]);
                 ensure_flags(<span class="kw-2">&amp;</span>this, <span class="kw-2">&amp;</span>next)
             }
             GateType::CairoTransition =&gt; {
-                <span class="kw">let </span>next: [F; COLUMNS] = array_init(|i| witness[i][row + <span class="number">1</span>]);
+                <span class="kw">let </span>next: [F; COLUMNS] = array::from_fn(|i| witness[i][row + <span class="number">1</span>]);
                 ensure_transition(<span class="kw-2">&amp;</span>this, <span class="kw-2">&amp;</span>next)
             }
             GateType::Zero =&gt; <span class="prelude-val">Ok</span>(()),
@@ -2067,4 +2067,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c2804e6ec 2022-09-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

@@ -530,13 +530,13 @@
             </span><span class="kw">let </span>wires = <span class="kw">if </span>rel_row == <span class="number">0 </span>{
                 first_and_last_row[<span class="number">0</span>]
             } <span class="kw">else </span>{
-                array_init::array_init(|col| Wire { col, row: abs_row })
+                std::array::from_fn(|col| Wire { col, row: abs_row })
             };
 
             <span class="comment">// round constant for this row
-            </span><span class="kw">let </span>coeffs = array_init::array_init(|offset| {
+            </span><span class="kw">let </span>coeffs = std::array::from_fn(|offset| {
                 <span class="kw">let </span>round = rel_row * ROUNDS_PER_ROW + offset;
-                array_init::array_init(|field_el| round_constants[round][field_el])
+                std::array::from_fn(|field_el| round_constants[round][field_el])
             });
 
             <span class="comment">// create poseidon gate for this row
@@ -617,8 +617,8 @@
 
     <span class="doccomment">/// round constant that are relevant for this specific gate
     </span><span class="kw">pub fn </span>rc(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW] {
-        array_init::array_init(|round| {
-            array_init::array_init(|col| {
+        std::array::from_fn(|round| {
+            std::array::from_fn(|col| {
                 <span class="kw">if </span><span class="self">self</span>.typ == GateType::Poseidon {
                     <span class="self">self</span>.coeffs[SPONGE_WIDTH * round + col]
                 } <span class="kw">else </span>{
@@ -829,4 +829,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c2804e6ec 2022-09-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

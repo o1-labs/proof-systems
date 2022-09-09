@@ -1000,7 +1000,6 @@
 <span id="1000">1000</span>
 <span id="1001">1001</span>
 </pre><pre class="rust"><code><span class="kw">use </span>ark_ff::{BigInteger, FftField, PrimeField};
-<span class="kw">use </span>array_init::array_init;
 <span class="kw">use </span>kimchi::circuits::{
     gate::{CircuitGate, GateType},
     polynomials::generic::{
@@ -1009,6 +1008,7 @@
     wires::{Wire, COLUMNS},
 };
 <span class="kw">use </span>oracle::{constants::<span class="kw-2">*</span>, permutation::full_round};
+<span class="kw">use </span>std::array;
 <span class="kw">use </span>std::collections::HashMap;
 
 <span class="kw">use </span><span class="kw">crate</span>::constants::Constants;
@@ -1092,7 +1092,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>gen = <span class="self">Self</span>::default();
 
         <span class="kw">for </span>input <span class="kw">in </span>public_inputs {
-            <span class="kw">let </span>row = array_init(|i| <span class="kw">if </span>i == <span class="number">0 </span>{ <span class="kw-2">*</span>input } <span class="kw">else </span>{ F::zero() });
+            <span class="kw">let </span>row = array::from_fn(|i| <span class="kw">if </span>i == <span class="number">0 </span>{ <span class="kw-2">*</span>input } <span class="kw">else </span>{ F::zero() });
             gen.rows.push(row);
         }
 
@@ -1466,12 +1466,12 @@
     ) -&gt; (Var&lt;F&gt;, Var&lt;F&gt;) {
         <span class="kw">let </span>num_bits = <span class="number">255</span>;
         <span class="kw">let </span>num_row_pairs = num_bits / <span class="number">5</span>;
-        <span class="kw">let </span><span class="kw-2">mut </span>witness: [Vec&lt;F&gt;; COLUMNS] = array_init(|<span class="kw">_</span>| <span class="macro">vec!</span>[]);
+        <span class="kw">let </span><span class="kw-2">mut </span>witness: [Vec&lt;F&gt;; COLUMNS] = array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[]);
 
         <span class="kw">let </span>acc0 = <span class="self">self</span>.add_group(zero, (xt, yt), (xt, yt));
 
         <span class="kw">let _ </span>= <span class="self">self</span>.var(|| {
-            witness = array_init(|<span class="kw">_</span>| <span class="macro">vec!</span>[F::zero(); <span class="number">2 </span>* num_row_pairs]);
+            witness = array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[F::zero(); <span class="number">2 </span>* num_row_pairs]);
             <span class="comment">// Creates a vector of bits from the value inside the scalar, with the most significant bit upfront
             </span><span class="kw">let </span>bits_msb: Vec&lt;bool&gt; = scalar
                 .<span class="number">0
@@ -1497,8 +1497,8 @@
         <span class="comment">// For each of the pairs, it generates a VarBaseMul and a Zero gate.
         </span><span class="kw">let </span><span class="kw-2">mut </span>res = <span class="prelude-val">None</span>;
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..num_row_pairs {
-            <span class="kw">let </span><span class="kw-2">mut </span>row1: [<span class="kw">_</span>; COLUMNS] = array_init(|j| <span class="self">self</span>.var(|| witness[j][<span class="number">2 </span>* i]));
-            <span class="kw">let </span>row2: [<span class="kw">_</span>; COLUMNS] = array_init(|j| <span class="self">self</span>.var(|| witness[j][<span class="number">2 </span>* i + <span class="number">1</span>]));
+            <span class="kw">let </span><span class="kw-2">mut </span>row1: [<span class="kw">_</span>; COLUMNS] = array::from_fn(|j| <span class="self">self</span>.var(|| witness[j][<span class="number">2 </span>* i]));
+            <span class="kw">let </span>row2: [<span class="kw">_</span>; COLUMNS] = array::from_fn(|j| <span class="self">self</span>.var(|| witness[j][<span class="number">2 </span>* i + <span class="number">1</span>]));
 
             row1[<span class="number">0</span>] = xt;
             row1[<span class="number">1</span>] = yt;
@@ -1710,7 +1710,7 @@
 
         <span class="comment">// For each of the chunks, get the corresponding bits
         </span><span class="kw">for </span>(i, row_bits) <span class="kw">in </span>bits_msb[..].chunks(bits_per_row).enumerate() {
-            <span class="kw">let </span><span class="kw-2">mut </span>row: [Var&lt;F&gt;; COLUMNS] = array_init(|<span class="kw">_</span>| <span class="self">self</span>.var(|| F::zero()));
+            <span class="kw">let </span><span class="kw-2">mut </span>row: [Var&lt;F&gt;; COLUMNS] = array::from_fn(|<span class="kw">_</span>| <span class="self">self</span>.var(|| F::zero()));
             row[<span class="number">0</span>] = n;
             row[<span class="number">2</span>] = a;
             row[<span class="number">3</span>] = b;
@@ -1863,7 +1863,7 @@
     </span><span class="kw">fn </span>gate(<span class="kw-2">&amp;mut </span><span class="self">self</span>, g: GateSpec&lt;F&gt;) {
         <span class="macro">assert!</span>(g.row.len() &lt;= COLUMNS);
 
-        <span class="kw">let </span>row: [F; COLUMNS] = array_init(|col| g.get_var_val_or(col, F::zero()));
+        <span class="kw">let </span>row: [F; COLUMNS] = array::from_fn(|col| g.get_var_val_or(col, F::zero()));
         <span class="self">self</span>.rows.push(row)
     }
 
@@ -1899,7 +1899,7 @@
         }
 
         <span class="comment">// transpose
-        </span>array_init(|col| <span class="self">self</span>.rows.iter().map(|row| row[col]).collect())
+        </span>array::from_fn(|col| <span class="self">self</span>.rows.iter().map(|row| row[col]).collect())
     }
 }
 
@@ -1962,7 +1962,7 @@
         <span class="comment">// convert GateSpec into CircuitGate
         </span><span class="kw">for </span>(row, gate) <span class="kw">in </span><span class="self">self</span>.gates.iter().enumerate() {
             <span class="comment">// while tracking the wiring
-            </span><span class="kw">let </span>wires = array_init(|col| {
+            </span><span class="kw">let </span>wires = array::from_fn(|col| {
                 <span class="kw">let </span>curr = Wire { row, col };
 
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(index) = gate.get_var_idx(col) {
@@ -2001,4 +2001,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="circuit_construction" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c2804e6ec 2022-09-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="circuit_construction" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

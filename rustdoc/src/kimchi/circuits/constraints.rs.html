@@ -650,6 +650,7 @@
 <span id="650">650</span>
 <span id="651">651</span>
 <span id="652">652</span>
+<span id="653">653</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk circuit constraint primitive.
 </span><span class="kw">use super</span>::{gate::SelectorPolynomial, lookup::runtime_tables::RuntimeTableCfg};
 <span class="kw">use crate</span>::{
@@ -671,11 +672,11 @@
     univariate::DensePolynomial <span class="kw">as </span>DP, EvaluationDomain, Evaluations <span class="kw">as </span>E,
     Radix2EvaluationDomain <span class="kw">as </span>D,
 };
-<span class="kw">use </span>array_init::array_init;
 <span class="kw">use </span>o1_utils::ExtendedEvaluations;
 <span class="kw">use </span>once_cell::sync::OnceCell;
 <span class="kw">use </span>serde::{de::DeserializeOwned, Deserialize, Serialize};
 <span class="kw">use </span>serde_with::serde_as;
+<span class="kw">use </span>std::array;
 <span class="kw">use </span>std::{collections::HashSet, sync::Arc};
 
 <span class="comment">//
@@ -892,7 +893,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), GateError&gt; {
         <span class="comment">// pad the witness
         </span><span class="kw">let </span>pad = <span class="macro">vec!</span>[F::zero(); <span class="self">self</span>.domain.d1.size() - witness[<span class="number">0</span>].len()];
-        <span class="kw">let </span>witness: [Vec&lt;F&gt;; COLUMNS] = array_init(|i| {
+        <span class="kw">let </span>witness: [Vec&lt;F&gt;; COLUMNS] = array::from_fn(|i| {
             <span class="kw">let </span><span class="kw-2">mut </span>w = witness[i].to_vec();
             w.extend_from_slice(<span class="kw-2">&amp;</span>pad);
             w
@@ -943,10 +944,10 @@
     </span><span class="kw">pub fn </span>evaluate(<span class="kw-2">&amp;</span><span class="self">self</span>, w: <span class="kw-2">&amp;</span>[DP&lt;F&gt;; COLUMNS], z: <span class="kw-2">&amp;</span>DP&lt;F&gt;) -&gt; WitnessOverDomains&lt;F&gt; {
         <span class="comment">// compute shifted witness polynomials
         </span><span class="kw">let </span>w8: [E&lt;F, D&lt;F&gt;&gt;; COLUMNS] =
-            array_init(|i| w[i].evaluate_over_domain_by_ref(<span class="self">self</span>.domain.d8));
+            array::from_fn(|i| w[i].evaluate_over_domain_by_ref(<span class="self">self</span>.domain.d8));
         <span class="kw">let </span>z8 = z.evaluate_over_domain_by_ref(<span class="self">self</span>.domain.d8);
 
-        <span class="kw">let </span>w4: [E&lt;F, D&lt;F&gt;&gt;; COLUMNS] = array_init(|i| {
+        <span class="kw">let </span>w4: [E&lt;F, D&lt;F&gt;&gt;; COLUMNS] = array::from_fn(|i| {
             E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(
                 (<span class="number">0</span>..<span class="self">self</span>.domain.d4.size)
                     .map(|j| w8[i].evals[<span class="number">2 </span>* j <span class="kw">as </span>usize])
@@ -959,7 +960,7 @@
         WitnessOverDomains {
             d4: WitnessShifts {
                 next: WitnessEvals {
-                    w: array_init(|i| w4[i].shift(<span class="number">4</span>)),
+                    w: array::from_fn(|i| w4[i].shift(<span class="number">4</span>)),
                     <span class="comment">// TODO(mimoo): change z to an Option? Or maybe not, we might actually need this dummy evaluation in the aggregated evaluation proof
                     </span>z: z4.clone(), <span class="comment">// dummy evaluation
                 </span>},
@@ -970,7 +971,7 @@
             },
             d8: WitnessShifts {
                 next: WitnessEvals {
-                    w: array_init(|i| w8[i].shift(<span class="number">8</span>)),
+                    w: array::from_fn(|i| w8[i].shift(<span class="number">8</span>)),
                     z: z8.shift(<span class="number">8</span>),
                 },
                 this: WitnessEvals { w: w8, z: z8 },
@@ -1047,7 +1048,7 @@
         </span><span class="kw">let </span>d1_size = domain.d1.size();
         <span class="kw">let </span><span class="kw-2">mut </span>padding = (gates.len()..d1_size)
             .map(|i| {
-                CircuitGate::&lt;F&gt;::zero(array_init(|j| Wire {
+                CircuitGate::&lt;F&gt;::zero(array::from_fn(|j| Wire {
                     col: WIRES[j],
                     row: i,
                 }))
@@ -1073,7 +1074,7 @@
         // -----------
 
         // compute permutation polynomials
-        </span><span class="kw">let </span><span class="kw-2">mut </span>sigmal1: [Vec&lt;F&gt;; PERMUTS] = array_init(|<span class="kw">_</span>| <span class="macro">vec!</span>[F::zero(); domain.d1.size()]);
+        </span><span class="kw">let </span><span class="kw-2">mut </span>sigmal1: [Vec&lt;F&gt;; PERMUTS] = array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[F::zero(); domain.d1.size()]);
 
         <span class="kw">for </span>(row, gate) <span class="kw">in </span>gates.iter().enumerate() {
             <span class="kw">for </span>(cell, sigma) <span class="kw">in </span>gate.wires.iter().zip(sigmal1.iter_mut()) {
@@ -1094,9 +1095,9 @@
             ]
         };
 
-        <span class="kw">let </span>sigmam: [DP&lt;F&gt;; PERMUTS] = array_init(|i| sigmal1[i].clone().interpolate());
+        <span class="kw">let </span>sigmam: [DP&lt;F&gt;; PERMUTS] = array::from_fn(|i| sigmal1[i].clone().interpolate());
 
-        <span class="kw">let </span>sigmal8 = array_init(|i| sigmam[i].evaluate_over_domain_by_ref(domain.d8));
+        <span class="kw">let </span>sigmal8 = array::from_fn(|i| sigmam[i].evaluate_over_domain_by_ref(domain.d8));
 
         <span class="comment">// Gates
         // -----
@@ -1175,7 +1176,7 @@
             <span class="kw">if </span>!has_chacha_gate {
                 <span class="prelude-val">None
             </span>} <span class="kw">else </span>{
-                <span class="kw">let </span>a: [<span class="kw">_</span>; <span class="number">4</span>] = array_init(|i| {
+                <span class="kw">let </span>a: [<span class="kw">_</span>; <span class="number">4</span>] = array::from_fn(|i| {
                     <span class="kw">let </span>g = <span class="kw">match </span>i {
                         <span class="number">0 </span>=&gt; ChaCha0,
                         <span class="number">1 </span>=&gt; ChaCha1,
@@ -1203,7 +1204,7 @@
             <span class="kw">if </span>circuit_gates_used.is_disjoint(<span class="kw-2">&amp;</span>range_gates.into_iter().collect()) {
                 <span class="prelude-val">None
             </span>} <span class="kw">else </span>{
-                <span class="prelude-val">Some</span>(array_init(|i| {
+                <span class="prelude-val">Some</span>(array::from_fn(|i| {
                     selector_polynomial(range_gates[i], <span class="kw-2">&amp;</span>gates, <span class="kw-2">&amp;</span>domain)
                 }))
             }
@@ -1215,7 +1216,7 @@
         //
 
         // coefficient polynomial
-        </span><span class="kw">let </span>coefficientsm: [<span class="kw">_</span>; COLUMNS] = array_init(|i| {
+        </span><span class="kw">let </span>coefficientsm: [<span class="kw">_</span>; COLUMNS] = array::from_fn(|i| {
             <span class="kw">let </span>padded = gates
                 .iter()
                 .map(|gate| gate.coeffs.get(i).cloned().unwrap_or_else(F::zero))
@@ -1224,7 +1225,8 @@
             eval.interpolate()
         });
         <span class="comment">// TODO: This doesn&#39;t need to be degree 8 but that would require some changes in expr
-        </span><span class="kw">let </span>coefficients8 = array_init(|i| coefficientsm[i].evaluate_over_domain_by_ref(domain.d8));
+        </span><span class="kw">let </span>coefficients8 =
+            array::from_fn(|i| coefficientsm[i].evaluate_over_domain_by_ref(domain.d8));
 
         <span class="comment">//
         // Lookup
@@ -1303,4 +1305,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c2804e6ec 2022-09-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>

@@ -449,7 +449,6 @@
 };
 <span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain <span class="kw">as </span>D};
-<span class="kw">use </span>array_init::array_init;
 <span class="kw">use </span>commitment_dlog::{
     commitment::{CommitmentCurve, PolyComm},
     srs::SRS,
@@ -458,6 +457,7 @@
 <span class="kw">use </span>oracle::FqSponge;
 <span class="kw">use </span>serde::{de::DeserializeOwned, Deserialize, Serialize};
 <span class="kw">use </span>serde_with::serde_as;
+<span class="kw">use </span>std::array;
 <span class="kw">use </span>std::{
     fs::{File, OpenOptions},
     io::{BufReader, BufWriter, Seek, SeekFrom::Start},
@@ -619,8 +619,8 @@
                 cell
             },
 
-            sigma_comm: array_init(|i| <span class="self">self</span>.srs.commit_non_hiding(<span class="kw-2">&amp;</span><span class="self">self</span>.cs.sigmam[i], <span class="prelude-val">None</span>)),
-            coefficients_comm: array_init(|i| {
+            sigma_comm: array::from_fn(|i| <span class="self">self</span>.srs.commit_non_hiding(<span class="kw-2">&amp;</span><span class="self">self</span>.cs.sigmam[i], <span class="prelude-val">None</span>)),
+            coefficients_comm: array::from_fn(|i| {
                 <span class="self">self</span>.srs
                     .commit_evaluations_non_hiding(domain, <span class="kw-2">&amp;</span><span class="self">self</span>.cs.coefficients8[i], <span class="prelude-val">None</span>)
             }),
@@ -647,11 +647,11 @@
             ),
 
             chacha_comm: <span class="self">self</span>.cs.chacha8.as_ref().map(|c| {
-                array_init(|i| <span class="self">self</span>.srs.commit_evaluations_non_hiding(domain, <span class="kw-2">&amp;</span>c[i], <span class="prelude-val">None</span>))
+                array::from_fn(|i| <span class="self">self</span>.srs.commit_evaluations_non_hiding(domain, <span class="kw-2">&amp;</span>c[i], <span class="prelude-val">None</span>))
             }),
 
             range_check_comm: <span class="self">self</span>.cs.range_check_selector_polys.as_ref().map(|poly| {
-                array_init(|i| {
+                array::from_fn(|i| {
                     <span class="self">self</span>.srs
                         .commit_evaluations_non_hiding(domain, <span class="kw-2">&amp;</span>poly[i].eval8, <span class="prelude-val">None</span>)
                 })
@@ -861,4 +861,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (c2804e6ec 2022-09-07)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (1120c5e01 2022-09-08)" ></div></body></html>
