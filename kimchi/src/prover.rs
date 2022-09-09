@@ -832,7 +832,7 @@ where
 
         //~ 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
         let public_evals = if public_poly.is_zero() {
-            [Vec::new(), Vec::new()]
+            [vec![G::ScalarField::zero()], vec![G::ScalarField::zero()]]
         } else {
             [
                 vec![public_poly.evaluate(&zeta)],

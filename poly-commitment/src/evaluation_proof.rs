@@ -112,7 +112,7 @@ impl<G: CommitmentCurve> SRS<G> {
             let mut scale = G::ScalarField::one();
 
             // iterating over polynomials in the batch
-            for (p_i, degree_bound, omegas) in plnms.iter().filter(|p| !p.0.is_zero()) {
+            for (p_i, degree_bound, omegas) in plnms {
                 let mut offset = 0;
                 // iterating over chunks of the polynomial
                 if let Some(m) = degree_bound {
@@ -130,9 +130,11 @@ impl<G: CommitmentCurve> SRS<G> {
                     scale *= &polyscale;
                     offset += self.g.len();
                     if let Some(m) = degree_bound {
-                        if offset > *m {
-                            // mixing in the shifted segment since degree is bounded
-                            plnm.add_shifted(scale, self.g.len() - m % self.g.len(), segment);
+                        if offset >= *m {
+                            if offset > *m {
+                                // mixing in the shifted segment since degree is bounded
+                                plnm.add_shifted(scale, self.g.len() - m % self.g.len(), segment);
+                            }
                             omega += &(omegas.shifted.unwrap() * scale);
                             scale *= &polyscale;
                         }

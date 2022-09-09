@@ -232,7 +232,7 @@ impl<C: AffineCurve> PolyComm<C> {
             },
             unshifted: {
                 if com.is_empty() || elm.is_empty() {
-                    Vec::new()
+                    vec![C::zero()]
                 } else {
                     let n = Iterator::max(com.iter().map(|c| c.unshifted.len())).unwrap();
                     (0..n)
@@ -435,7 +435,7 @@ pub fn combined_inner_product<F: PrimeField>(
 
         if let Some(m) = shifted {
             // polyscale^i sum_j evalscale^j elm_j^{N - m} f(elm_j)
-            let last_evals = if *m > evals.len() * srs_length {
+            let last_evals = if *m >= evals.len() * srs_length {
                 vec![F::zero(); evaluation_points.len()]
             } else {
                 evals[evals.len() - 1].clone()
@@ -518,15 +518,9 @@ impl<G: CommitmentCurve> SRS<G> {
             .zip(blinders)
             .ok_or_else(|| CommitmentError::BlindersDontMatch(blinders.len(), com.len()))?
             .map(|(g, b)| {
-                if g.is_zero() {
-                    // TODO: This leaks information when g is the identity!
-                    // We should change this so that we still mask in this case
-                    g
-                } else {
-                    let mut g_masked = self.h.mul(b);
-                    g_masked.add_assign_mixed(&g);
-                    g_masked.into_affine()
-                }
+                let mut g_masked = self.h.mul(b);
+                g_masked.add_assign_mixed(&g);
+                g_masked.into_affine()
             });
         Ok(BlindedCommitment {
             commitment,
@@ -563,7 +557,7 @@ impl<G: CommitmentCurve> SRS<G> {
 
         // committing all the segments without shifting
         let unshifted = if is_zero {
-            Vec::new()
+            vec![G::zero()]
         } else {
             (0..p / n + if p % n != 0 { 1 } else { 0 })
                 .map(|i| {
