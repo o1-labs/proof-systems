@@ -39,14 +39,16 @@ a  =  (-------a0-------|-------a1-------|-------a2-------)
 + 
 b  =  (-------b0-------|-------b1-------|-------b2-------)
 =
-x  =  0 | 1
+o  =  0 | 1
 ·
 f  =  (-------f0-------|-------f1-------|-------f2-------)
 +
 r  =  (-------r0-------|-------r1-------|-------r2-------)
 ```
 
-In order to perform this operation in parts, we first take a look at the least significant limb, which is the easiest part. This means, we want to know how to compute $r_0$. First, if $a+b$ was larger than $f$, then we will have $x = 1$ and we will have to take into account the least significant limb of the modulus, $f_0$. It is also possible that the addition of the bits in $a_0$ and $b_0$ produce a carry bit that should propagate to the second limb. In that case, the carry bit would have a value of $2^{88}$, meaning a $1$ bit followed by $\ell=88$ zeros. Altogether, that means:
+First, if $a+b$ was larger than $f$, then we will have a field overflow (represented by $o = 1$) and we will have to subtract $f$ from the sum $s = a+b$ to obtain $r$. The fact that we introduce this subtraction operation means that the limbs could have a carry bit, but also a borrow. Meaning, these flags can be anything in $\{-1, 0, 1\}$. Next we see more clearly how this works. 
+
+In order to perform this operation in parts, we first take a look at the least significant limb, which is the easiest part. This means, we want to know how to compute $r_0$. First, if the addition of the bits in $a_0$ and $b_0$ produce a carry bit that should propagate to the second limb. That means one has to subtract $2^{88}$ from $s_0 = a_0 + b_0$, add 1 to $s_1 = a_1 + b_1$ and set the low carry bit $c_0$ to 1 (otherwise it is zero). take into account the least significant limb of the modulus, $f_0$. It is also possible that  In that case, the carry bit would have a value of $2^{88}$, meaning a $1$ bit followed by $\ell=88$ zeros. Altogether, that means:
 
 $$a_0 + b_0 = x \cdot f_0 + r_0 + c_0 \cdot 2^{88}$$
 
@@ -104,11 +106,11 @@ u  =  (-------u0-------|-------u1-------|-------u2-------)
 
 Following the steps above, and representing this equation in limb form, we have:
 
-\begin{align}
-u_0 &= r_0 + g_0 - k_0 \cdot 2^{88} \\
-u_1 &= r_1 + g_1 - k_1 \cdot 2^{88} + k_0\\
-u_2 &= r_2 + g_2 + k_1\\
-\end{align}
+\begin{eqnarray}
+u_0 &=& r_0 + g_0 - k_0 \cdot 2^{88} \\
+u_1 &=& r_1 + g_1 - k_1 \cdot 2^{88} + k_0\\
+u_2 &=& r_2 + g_2 + k_1\\
+\end{eqnarray}
 
 Finally, we perform a range check on the sum $u$, and we would know that $r < f$. 
 
@@ -127,38 +129,38 @@ For the second part of the gate, meaning the sum for the range check, the carry 
 
 The foreign field gadget will be composed by 4 sets of `RangeCheck` gadgets for witnesses $a, b, r, s$ accounting for 16 rows in total; followed by one row with `ForeignFieldAdd` gate type; and a final `Zero` row. A total of 18 rows with 15 columns in Kimchi.
 
-| Row(s) | Gate type(s) | Witness |
--|-|-
-0-3 | `multi-range-check` | $a$ |
-4-7 | `multi-range-check` | $b$ |
-8-11 | `multi-range-check` | $r$ |
-12-15 | `multi-range-check` | $s$ |
-16 | `ForeignFieldAdd` |  |
-17 | `Zero` |  |
+| Row(s) | Gate type(s)        | Witness |
+| ------ | ------------------- | ------- |
+| 0-3    | `multi-range-check` | $a$     |
+| 4-7    | `multi-range-check` | $b$     |
+| 8-11   | `multi-range-check` | $r$     |
+| 12-15  | `multi-range-check` | $s$     |
+| 16     | `ForeignFieldAdd`   |         |
+| 17     | `Zero`              |         |
 
 
 ### Layout
 
 For this gate, we need to perform 4 range checks to assert that the limbs of $a, b, r, s$ have a correct size, meaning they fit in $2^{88}$ (and thus, range-checking $a, b, r, s$ for $2^{264}$). Because each of these elements is split into 3 limbs, we will have to use 3 copy constraints between the `RangeCheck` gates and the `ForeignFieldAdd` rows (per element). That amounts to 12 copy constraints. Recalling that Kimchi only allows for the first 7 columns of each row to host a copy constraint, we necessarily have to use 2 rows for the actual addition gate. The layout of these two rows is the following:
 
-|                 | Curr              | Next |
-|-|-|-|
-| **Column**      | `ForeignFieldAdd` | `Zero` |
-0  | $a_0$ (copy) | $r_0$ (copy)
-1  | $a_1$ (copy) | $r_1$ (copy)
-2  | $a_2$ (copy) | $r_2$ (copy)
-3  | $b_0$ (copy) | $u_0$ (copy)
-4  | $b_1$ (copy) | $u_1$ (copy)
-5  | $b_2$ (copy) | $u_2$ (copy)
-6  | $x$          | 
-7  | $c_0$        |  
-8  | $c_1$        | 
-9  | $k_0$        | 
-10 | $k_1$        |
-11 |              |
-12 |              |
-13 |              |
-14 |              |
+|            | Curr              | Next         |
+| ---------- | ----------------- | ------------ |
+| **Column** | `ForeignFieldAdd` | `Zero`       |
+| 0          | $a_0$ (copy)      | $r_0$ (copy) |
+| 1          | $a_1$ (copy)      | $r_1$ (copy) |
+| 2          | $a_2$ (copy)      | $r_2$ (copy) |
+| 3          | $b_0$ (copy)      | $u_0$ (copy) |
+| 4          | $b_1$ (copy)      | $u_1$ (copy) |
+| 5          | $b_2$ (copy)      | $u_2$ (copy) |
+| 6          | $x$               |
+| 7          | $c_0$             |
+| 8          | $c_1$             |
+| 9          | $k_0$             |
+| 10         | $k_1$             |
+| 11         |                   |
+| 12         |                   |
+| 13         |                   |
+| 14         |                   |
 
 ### Constraints
 

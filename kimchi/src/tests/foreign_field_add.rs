@@ -6,10 +6,7 @@ use crate::circuits::{
 };
 use ark_ec::AffineCurve;
 use ark_ff::{One, Zero};
-use mina_curves::pasta::{
-    pallas::{self, Pallas},
-    vesta::Vesta,
-};
+use mina_curves::pasta::{pallas::Pallas, vesta::Vesta};
 use num_bigint::BigUint;
 use num_traits::FromPrimitive;
 use o1_utils::{
@@ -17,7 +14,7 @@ use o1_utils::{
     FieldHelpers,
 };
 
-type PallasField = <pallas::Pallas as AffineCurve>::BaseField;
+type PallasField = <Pallas as AffineCurve>::BaseField;
 
 /// Maximum value in the foreign field
 // BigEndian -> FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFE FFFFFC2E
@@ -131,7 +128,10 @@ fn create_test_constraint_system() -> ConstraintSystem<PallasField> {
         next_row += 1;
     }
 
-    ConstraintSystem::create(gates).build().unwrap()
+    ConstraintSystem::create(gates)
+        .foreign_field_modulus(BigUint::from_bytes_be(FOREIGN_MOD))
+        .build()
+        .unwrap()
 }
 
 #[test]
@@ -269,7 +269,7 @@ fn test_zero_minus_one() {
     let big_one = BigUint::from_u32(1).unwrap();
 
     let left_input = ForeignElement::<PallasField, 3>::new_from_be(ZERO);
-    let right_input = ForeignElement::<PallasField, 3>::new_from_neg(big_one);
+    let right_input = ForeignElement::<PallasField, 3>::new_from_neg(big_one).unwrap();
 
     let witness = create_witness(left_input, right_input, foreign_modulus);
 
@@ -295,7 +295,7 @@ fn test_one_minus_one() {
     let big_one = BigUint::from_u32(1).unwrap();
 
     let left_input = ForeignElement::<PallasField, 3>::new_from_big(big_one.clone());
-    let right_input = ForeignElement::<PallasField, 3>::new_from_neg(big_one);
+    let right_input = ForeignElement::<PallasField, 3>::new_from_neg(big_one).unwrap();
 
     let witness = create_witness(left_input, right_input, foreign_modulus);
 
@@ -322,8 +322,8 @@ fn test_minus_minus() {
     let big_one = BigUint::from_u32(1).unwrap();
     let big_two = big_one.clone() + big_one.clone();
 
-    let left_input = ForeignElement::<PallasField, 3>::new_from_neg(big_one.clone());
-    let right_input = ForeignElement::<PallasField, 3>::new_from_neg(big_one);
+    let left_input = ForeignElement::<PallasField, 3>::new_from_neg(big_one.clone()).unwrap();
+    let right_input = ForeignElement::<PallasField, 3>::new_from_neg(big_one).unwrap();
 
     let witness = create_witness(left_input, right_input, foreign_modulus);
 
@@ -334,7 +334,7 @@ fn test_minus_minus() {
         );
     }
 
-    let for_neg_two = ForeignElement::<PallasField, 3>::new_from_neg(big_two);
+    let for_neg_two = ForeignElement::<PallasField, 3>::new_from_neg(big_two).unwrap();
 
     assert_eq!(witness[0][17], *for_neg_two.lo());
     assert_eq!(witness[1][17], *for_neg_two.mi());

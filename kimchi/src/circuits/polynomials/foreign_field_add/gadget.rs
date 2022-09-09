@@ -5,7 +5,6 @@ use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
 use array_init::array_init;
-use o1_utils::foreign_field::{ForeignElement, FOREIGN_MOD};
 use rand::{prelude::StdRng, SeedableRng};
 
 use crate::{
@@ -176,7 +175,7 @@ impl<F: PrimeField> CircuitGate<F> {
 
         // Initialize the foreign field modulus constant
         // TODO: (querolita) new_from_be could return an option instead of panicking?
-        let foreign_field_modulus = Some(ForeignElement::<F, 3>::new_from_be(FOREIGN_MOD));
+        let foreign_field_modulus = cs.foreign_field_modulus;
 
         // Set up the environment
         let env = {

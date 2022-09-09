@@ -77,7 +77,6 @@ pub fn create_witness<F: PrimeField>(
         // and finally subtract the lower limb of the modulus from the lower limb of the result
 
         if result_lo < *foreign_modulus.lo() {
-            result_lo += two_to_limb;
             // cannot do simply `result_mi - 1` because when it is `0` it should contain
             // all `FF`'s instead of a native field element -1.
             // instead you want: `result_mi + 2^88 - 1 mod 2^88`
@@ -87,8 +86,7 @@ pub fn create_witness<F: PrimeField>(
                 result_carry_mi -= F::one();
                 result_hi -= F::one();
             }
-            result_mi -= F::one();
-            result_carry_lo -= F::one();
+            borrow(&mut result_lo, &mut result_mi, &mut result_carry_lo);
         }
         result_lo -= *foreign_modulus.lo();
 
@@ -98,19 +96,17 @@ pub fn create_witness<F: PrimeField>(
         // to subtract 1 to the middle carry of the result
         // and finally subtract the middle limb of the modulus from the middle limb of the result
         if result_mi < *foreign_modulus.mi() {
-            // it cannot happen that `result_carry_mi = -1` due to the `result_mi` being all `FF`
-            // because that will always be larger or equal than `foreign_modulus.mi`
-            result_mi += two_to_limb;
-            if result_hi == F::zero() {
-                result_hi = two_to_limb;
-                // would have negative high carry, but we are modulo 2^{3*limb}
-            }
-            result_hi -= F::one();
-            result_carry_mi -= F::one();
+            // no need to make sure result_hi != zero because if it was the case there
+            // wouldnt be any field overflow
+            borrow(&mut result_mi, &mut result_hi, &mut result_carry_mi);
         }
         result_mi -= *foreign_modulus.mi();
 
-        // TODO: didnt find an example where this happens
+        // This will only happen if initially result_hi = foreign_hi,
+        // and then there is a low borrow and result_mi - 1 < foreign_mi,
+        // or there is a middle borrow.
+        // In any case, this does not trigger when ForeignSECP256K1 is used,
+        // but could happen with different foreign moduli.
         if result_hi < *foreign_modulus.hi() {
             result_hi += two_to_limb;
         }
@@ -171,6 +167,13 @@ pub fn create_witness<F: PrimeField>(
     );
 
     witness
+}
+
+fn borrow<F: PrimeField>(small: &mut F, large: &mut F, carry: &mut F) {
+    let two_to_limb = F::from(2u128.pow(LIMB_BITS as u32));
+    *small += two_to_limb;
+    *large -= F::one();
+    *carry -= F::one();
 }
 
 pub fn check_witness<F: PrimeField>(
