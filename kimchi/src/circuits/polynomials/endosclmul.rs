@@ -4,9 +4,9 @@
 
 use crate::{
     circuits::{
-        argument::{Argument, ArgumentType},
+        argument::{Argument, ArgumentType, GateWitness},
         constraints::ConstraintSystem,
-        expr::{self, constraints::boolean, prologue::*, Cache, ConstantExpr},
+        expr::{self, constraints::{boolean, ArithmeticOps}, prologue::*, Cache, ConstantExpr, ConstantsEnv},
         gate::{CircuitGate, GateType},
         wires::{GateWires, COLUMNS},
     },
@@ -144,7 +144,7 @@ impl<F: PrimeField> CircuitGate<F> {
             ProofEvaluations::dummy_with_witness_evaluations(next),
         ];
 
-        let constraints = EndosclMul::constraints();
+        let constraints = EndosclMul::expression();
         for (i, c) in constraints.iter().enumerate() {
             match c.evaluate_(cs.domain.d1, pt, &evals, &constants) {
                 Ok(x) => {
@@ -178,42 +178,42 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMul);
     const CONSTRAINTS: u32 = 11;
 
-    fn constraints() -> Vec<E<F>> {
-        let b1 = witness_curr(11);
-        let b2 = witness_curr(12);
-        let b3 = witness_curr(13);
-        let b4 = witness_curr(14);
+    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: ConstantsEnv<F, T>) -> Vec<T> {
+        let b1 = witness.curr[11];
+        let b2 = witness.curr[12];
+        let b3 = witness.curr[13];
+        let b4 = witness.curr[14];
 
-        let xt = witness_curr(0);
-        let yt = witness_curr(1);
+        let xt = witness.curr[0];
+        let yt = witness.curr[1];
 
-        let xs = witness_next(4);
-        let ys = witness_next(5);
+        let xs = witness.next[4];
+        let ys = witness.next[5];
 
-        let xp = witness_curr(4);
-        let yp = witness_curr(5);
+        let xp = witness.curr[4];
+        let yp = witness.curr[5];
 
-        let xr = witness_curr(7);
-        let yr = witness_curr(8);
+        let xr = witness.curr[7];
+        let yr = witness.curr[8];
 
         let mut cache = Cache::default();
 
-        let s1 = witness_curr(9);
-        let s3 = witness_curr(10);
+        let s1 = witness.curr[9];
+        let s3 = witness.curr[10];
 
-        let endo_minus_1 = E::Constant(ConstantExpr::EndoCoefficient - ConstantExpr::one());
-        let xq1 = cache.cache((E::one() + b1.clone() * endo_minus_1.clone()) * xt.clone());
-        let xq2 = cache.cache((E::one() + b3.clone() * endo_minus_1) * xt);
+        let endo_minus_1 = constants.endo_coefficient() - T::one();
+        let xq1 = cache.cache((T::one() + b1.clone() * endo_minus_1.clone()) * xt.clone());
+        let xq2 = cache.cache((T::one() + b3.clone() * endo_minus_1) * xt);
 
-        let yq1 = (b2.clone().double() - E::one()) * yt.clone();
-        let yq2 = (b4.clone().double() - E::one()) * yt;
+        let yq1 = (b2.clone().double() - T::one()) * yt.clone();
+        let yq2 = (b4.clone().double() - T::one()) * yt;
 
         let s1_squared = cache.cache(s1.clone().square());
         let s3_squared = cache.cache(s3.clone().square());
 
         // n_next = 16*n + 8*b1 + 4*b2 + 2*b3 + b4
-        let n = witness_curr(6);
-        let n_next = witness_next(6);
+        let n = witness.curr[6];
+        let n_next = witness.next[6];
         let n_constraint =
             (((n.double() + b1.clone()).double() + b2.clone()).double() + b3.clone()).double()
                 + b4.clone()

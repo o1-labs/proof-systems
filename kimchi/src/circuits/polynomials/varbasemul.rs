@@ -12,7 +12,7 @@
 
 use crate::circuits::{
     argument::{Argument, ArgumentType, GateWitness},
-    expr::{prologue::*, Cache, Column, Variable, constraints::ArithmeticOps},
+    expr::{prologue::*, Cache, Column, Variable, constraints::ArithmeticOps, ConstantsEnv},
     gate::{CircuitGate, CurrOrNext, GateType},
     wires::{GateWires, COLUMNS},
 };
@@ -157,7 +157,25 @@ impl<F: PrimeField> CircuitGate<F> {
     }
 }
 
-type CurveVar = (Variable, Variable);
+struct Point<T> {
+    x: T,
+    y: T,
+}
+
+impl<T> Point<T> {
+    pub fn create(x: T, y: T) -> Self {
+        Point {
+            x,
+            y,
+        }
+    }
+}
+
+impl Point<Variable> {
+    pub fn from_witness<T>(&self, witness: &GateWitness<T>) -> Point<T> {
+        Point::create(self.x.from_witness(witness), self.y.from_witness(witness))
+    }
+}
 
 fn set<F>(w: &mut [Vec<F>; COLUMNS], row0: usize, var: Variable, x: F) {
     match var.col {
@@ -171,10 +189,10 @@ fn single_bit_witness<F: FftField>(
     w: &mut [Vec<F>; COLUMNS],
     row: usize,
     b: Variable,
-    base: CurveVar,
+    base: Point<Variable>,
     s1: Variable,
-    input: CurveVar,
-    output: CurveVar,
+    input: Point<Variable>,
+    output: Point<Variable>,
     b_value: F,
     base_value: (F, F),
     input_value: (F, F),
@@ -182,11 +200,11 @@ fn single_bit_witness<F: FftField>(
     let mut set = |var, x| set(w, row, var, x);
 
     set(b, b_value);
-    set(input.0, input_value.0);
-    set(input.1, input_value.1);
+    set(input.x, input_value.0);
+    set(input.y, input_value.1);
 
-    set(base.0, base_value.0);
-    set(base.1, base_value.1);
+    set(base.x, base_value.0);
+    set(base.y, base_value.1);
 
     let s1_value = (input_value.1 - (base_value.1 * (b_value.double() - F::one())))
         / (input_value.0 - base_value.0);
@@ -199,33 +217,31 @@ fn single_bit_witness<F: FftField>(
         input_value.1.double() / (input_value.0.double() + base_value.0 - s1_squared) - s1_value;
     let out_x = base_value.0 + s2.square() - s1_squared;
     let out_y = (input_value.0 - out_x) * s2 - input_value.1;
-    set(output.0, out_x);
-    set(output.1, out_y);
+    set(output.x, out_x);
+    set(output.y, out_y);
     (out_x, out_y)
 }
 
-fn single_bit<F: FftField>(
+fn single_bit<F: FftField, T: ArithmeticOps<F>>(
     cache: &mut Cache,
-    b: Variable,
-    base: CurveVar,
-    s1: Variable,
-    input: CurveVar,
-    output: CurveVar,
-) -> Vec<E<F>> {
-    let v = E::Cell;
+    b: T,
+    base: Point<T>,
+    s1: T,
+    input: Point<T>,
+    output: Point<T>,
+) -> Vec<T> {
+    let b_sign = b.double() - T::one();
 
-    let b_sign = v(b).double() - E::one();
-
-    let s1_squared = cache.cache(v(s1) * v(s1));
+    let s1_squared = cache.cache(s1 * s1);
 
     // s1 = (input.y - (2b - 1) * base.y) / (input.x - base.x)
     // s2 = 2*input.y / (2*input.x + base.x – s1^2) - s1
     // output.x = base.x + s2^2 - s1^2
     // output.y = (input.x – output.x) * s2 - input.y
 
-    let rx = s1_squared.clone() - v(input.0) - v(base.0);
-    let t = cache.cache(v(input.0) - rx);
-    let u = cache.cache(v(input.1).double() - t.clone() * v(s1));
+    let rx = s1_squared.clone() - input.x - base.x;
+    let t = cache.cache(input.x - rx);
+    let u = cache.cache(input.y.double() - t.clone() * s1);
     // s2 = u / t
 
     // output.x = base.x + s2^2 - s1^2
@@ -242,24 +258,79 @@ fn single_bit<F: FftField>(
 
     vec![
         // boolean constrain the bit.
-        v(b) * v(b) - v(b),
+        b * b - b,
         // constrain s1:
         //   (input.x - base.x) * s1 = input.y – (2b-1)*base.y
-        (v(input.0) - v(base.0)) * v(s1) - (v(input.1) - b_sign * v(base.1)),
+        (input.x - base.x) * s1 - (input.y - b_sign * base.y),
         // constrain output.x
-        (u.clone() * u.clone()) - (t.clone() * t.clone()) * (v(output.0) - v(base.0) + s1_squared),
+        (u.clone() * u.clone()) - (t.clone() * t.clone()) * (output.x - base.x + s1_squared),
         // constrain output.y
-        (v(output.1) + v(input.1)) * t - (v(input.0) - v(output.0)) * u,
+        (output.y + input.y) * t - (input.x - output.x) * u,
     ]
 }
 
-pub struct Layout {
-    accs: [(Variable, Variable); 6],
-    bits: [Variable; 5],
-    ss: [Variable; 5],
-    base: (Variable, Variable),
-    n_prev: Variable,
-    n_next: Variable,
+pub struct Layout<T> {
+    accs: [Point<T>; 6],
+    bits: [T; 5],
+    ss: [T; 5],
+    base: Point<T>,
+    n_prev: T,
+    n_next: T,
+}
+
+trait FromWitness<T> {
+    fn from_witness(&self, witness: &GateWitness<T>) -> T;
+}
+
+impl<T> FromWitness<T> for Variable {
+    fn from_witness(&self, witness: &GateWitness<T>) -> T {
+        let column_to_index = |col: Column| {
+            match self.col {
+                Column::Witness(i) => i,
+                _ => panic!("Can get index from witness columns"),
+            }
+        };
+
+        match self.row {
+            Curr => witness.curr[column_to_index(self.col)],
+            Next => witness.next[column_to_index(self.col)],
+        }
+    }
+}
+
+impl Layout<Variable> {
+    fn create() -> Self {
+        Layout {
+            accs: [
+                Point::create(v(Curr, 2), v(Curr, 3)),   // (x0, y0)
+                Point::create(v(Curr, 7), v(Curr, 8)),   // (x1, y1)
+                Point::create(v(Curr, 9), v(Curr, 10)),  // (x2, y2)
+                Point::create(v(Curr, 11), v(Curr, 12)), // (x3, y3)
+                Point::create(v(Curr, 13), v(Curr, 14)), // (x4, y4)
+                Point::create(v(Next, 0), v(Next, 1)),   // (x5, y5)
+            ],
+            // bits = [b0, b1, b2, b3, b4]
+            bits: [v(Next, 2), v(Next, 3), v(Next, 4), v(Next, 5), v(Next, 6)],
+
+            // ss = [ s0, s1, s2, s3, s4]
+            ss: [v(Next, 7), v(Next, 8), v(Next, 9), v(Next, 10), v(Next, 11)],
+
+            base: Point::create(v(Curr, 0), v(Curr, 1)), // (xT, yT)
+            n_prev: v(Curr, 4), // n
+            n_next: v(Curr, 5), // n'
+        }
+    }
+
+    fn from_witness<F, T: ArithmeticOps<F>>(&self, witness: &GateWitness<T>) -> Layout<T> {
+        Layout {
+            accs: self.accs.map(|point| point.from_witness(witness)),
+            bits: self.bits.map(|var| var.from_witness(witness)),
+            ss: self.ss.map(|s| s.from_witness(witness)),
+            base: self.base.from_witness(witness),
+            n_prev: self.n_prev.from_witness(witness),
+            n_next: self.n_next.from_witness(witness),
+        }
+    }
 }
 
 // We lay things out like
@@ -273,25 +344,7 @@ const fn v(row: CurrOrNext, col: usize) -> Variable {
     }
 }
 
-const LAYOUT: Layout = Layout {
-    accs: [
-        (v(Curr, 2), v(Curr, 3)),   // (x0, y0)
-        (v(Curr, 7), v(Curr, 8)),   // (x1, y1)
-        (v(Curr, 9), v(Curr, 10)),  // (x2, y2)
-        (v(Curr, 11), v(Curr, 12)), // (x3, y3)
-        (v(Curr, 13), v(Curr, 14)), // (x4, y4)
-        (v(Next, 0), v(Next, 1)),   // (x5, y5)
-    ],
-    // bits = [b0, b1, b2, b3, b4]
-    bits: [v(Next, 2), v(Next, 3), v(Next, 4), v(Next, 5), v(Next, 6)],
-
-    // ss = [ s0, s1, s2, s3, s4]
-    ss: [v(Next, 7), v(Next, 8), v(Next, 9), v(Next, 10), v(Next, 11)],
-
-    base: (v(Curr, 0), v(Curr, 1)), // (xT, yT)
-    n_prev: v(Curr, 4),             // n
-    n_next: v(Curr, 5),             // n'
-};
+const LAYOUT: Layout<Variable> = Layout::create();
 
 pub struct VarbaseMulResult<F> {
     pub acc: (F, F),
@@ -347,7 +400,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::VarBaseMul);
     const CONSTRAINTS: u32 = 21;
 
-    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T> {
+    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: ConstantsEnv<F, T>) -> Vec<T> {
         let Layout {
             base,
             accs,
@@ -355,7 +408,11 @@ where
             ss,
             n_prev,
             n_next,
-        } = LAYOUT;
+        } = LAYOUT.from_witness(witness);
+
+        let base = Point::create(witness.curr[0], witness.curr[1]); // (xT, yT)
+        let n_prev = witness.curr[4]; // n
+        let n_next =  witness.curr[5]; // n'
 
         let mut c = Cache::default();
 
@@ -365,13 +422,13 @@ where
         // = 2^5 * n + 2^4 b0 + 2^3 b1 + 2^2 b2 + 2^1 b3 + b4
         // = b4 + 2 (b3 + 2 (b2 + 2 (b1 + 2(b0 + 2 n))))
 
-        let n_prev = E::Cell(n_prev);
-        let n_next = E::Cell(n_next);
+        let n_prev = n_prev;
+        let n_next = n_next;
         let mut res = vec![
             n_next
                 - bits
                     .iter()
-                    .fold(n_prev, |acc, b| E::Cell(*b) + acc.double()),
+                    .fold(n_prev, |acc, b| *b + acc.double()),
         ];
 
         for i in 0..5 {

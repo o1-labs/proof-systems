@@ -106,7 +106,8 @@ use std::marker::PhantomData;
 use crate::circuits::{
     argument::{Argument, ArgumentType, GateWitness},
     expr::{
-        constraints::{crumb, ArithmeticOps}, E,
+        constraints::{crumb, ArithmeticOps},
+        E, ConstantsEnv,
     },
     gate::GateType,
     polynomial::COLUMNS,
@@ -162,7 +163,7 @@ where
     //   * Operates on Curr row
     //   * Range constrain all limbs except vp0 and vp1 (barring plookup constraints, which are done elsewhere)
     //   * Constrain that combining all limbs equals the limb stored in column 0
-    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T> {
+    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: ConstantsEnv<F, T>) -> Vec<T> {
         // 1) Apply range constraints on the limbs
         //    * Columns 1-2 are 12-bit copy constraints
         //        * They are copied 3 rows ahead (to the final row) and are constrained by lookups
@@ -252,7 +253,7 @@ where
     //   * Operates on Curr and Next row
     //   * Range constrain all limbs (barring plookup constraints, which are done elsewhere)
     //   * Constrain that combining all limbs equals the value v2 stored in row Curr, column 0
-    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T> {
+    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: ConstantsEnv<F, T>) -> Vec<T> {
         // 1) Apply range constraints on limbs for Curr row
         //    * Columns 1-2 are 2-bit crumbs
         let mut constraints = (1..=2).map(|i| crumb(&witness.curr[i])).collect::<Vec<T>>();

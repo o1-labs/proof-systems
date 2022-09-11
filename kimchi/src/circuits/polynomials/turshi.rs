@@ -83,7 +83,10 @@ use crate::{
     circuits::{
         argument::{Argument, ArgumentType, GateWitness},
         constraints::ConstraintSystem,
-        expr::{self, witness_curr, witness_next, Cache, Column, ConstantExpr, Expr, E, constraints::ArithmeticOps},
+        expr::{
+            self, constraints::ArithmeticOps, witness_curr, witness_next, Cache, Column,
+            ConstantExpr, Expr, E, ConstantsEnv,
+        },
         gate::{CircuitGate, GateType},
         wires::{GateWires, Wire, COLUMNS},
     },
@@ -762,7 +765,7 @@ where
 
     /// Generates the constraints for the Cairo initial claim and first memory checks
     ///     Accesses Curr and Next rows
-    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T> {
+    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: ConstantsEnv<F, T>) -> Vec<T> {
         let pc_ini = witness.curr[0]; // copy from public input
         let ap_ini = witness.curr[1]; // copy from public input
         let pc_fin = witness.curr[2]; // copy from public input
@@ -799,7 +802,7 @@ where
 
     /// Generates the constraints for the Cairo instruction
     ///     Accesses Curr and Next rows
-    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T> {
+    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: ConstantsEnv<F, T>) -> Vec<T> {
         // load all variables of the witness corresponding to Cairoinstruction gates
         let pc = witness.curr[0];
         let ap = witness.curr[1];
@@ -834,8 +837,7 @@ where
         let f_opc_aeq = witness.next[14];
 
         // collect flags in its natural ordering
-        let flags: Vec<T> =
-            (0..NUM_FLAGS - 1).map(|i| witness.next[i]).collect();
+        let flags: Vec<T> = (0..NUM_FLAGS - 1).map(|i| witness.next[i]).collect();
 
         // LIST OF CONSTRAINTS
         // -------------------
@@ -947,7 +949,7 @@ where
 
     /// Generates the constraints for the Cairo flags
     ///     Accesses Curr and Next rows
-    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T> {
+    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: ConstantsEnv<F, T>) -> Vec<T> {
         // Load current row
         let f_pc_abs = witness.curr[7];
         let f_pc_rel = witness.curr[8];
@@ -1015,7 +1017,7 @@ where
 
     /// Generates the constraints for the Cairo transition
     ///     Accesses Curr and Next rows (Next only first 3 entries)
-    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T> {
+    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: ConstantsEnv<F,T>) -> Vec<T> {
         // load computed updated registers
         let pcup = witness.curr[7];
         let apup = witness.curr[8];
@@ -1027,8 +1029,7 @@ where
 
         // * Check equality (like a copy constraint)
 
-        let constraints: Vec<T> =
-            vec![next_pc - pcup, next_ap - apup, next_fp - fpup];
+        let constraints: Vec<T> = vec![next_pc - pcup, next_ap - apup, next_fp - fpup];
 
         constraints
     }

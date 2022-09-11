@@ -15,7 +15,7 @@ use ark_poly::{
 use itertools::Itertools;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::iter::FromIterator;
+use std::{iter::FromIterator, marker::PhantomData};
 use std::ops::{Add, AddAssign, Mul, Neg, Sub};
 use std::{
     collections::{HashMap, HashSet},
@@ -25,6 +25,8 @@ use thiserror::Error;
 use CurrOrNext::{Curr, Next};
 
 use self::constraints::ArithmeticOps;
+
+use super::constraints::ConstraintSystem;
 
 #[derive(Debug, Error)]
 pub enum ExprError {
@@ -62,6 +64,39 @@ pub struct Constants<F: 'static> {
     pub endo_coefficient: F,
     /// The MDS matrix
     pub mds: &'static Vec<Vec<F>>,
+}
+
+pub struct ConstantsEnv<F: 'static, T> {
+    pub constants: Option<Constants<F>>,
+    phantom_data: PhantomData<T>,
+}
+
+impl<F: Field> Default for ConstantsEnv<F, Expr<ConstantExpr<F>>> {
+    fn default() -> Self {
+        ConstantsEnv {
+            constants: None,
+            phantom_data: PhantomData,
+        }
+    }
+}
+
+impl<F: PrimeField> ConstantsEnv<F, F> {
+    /// Create constants from constraint system
+    pub fn create(constants: Constants<F>) -> Self {
+        ConstantsEnv {
+            constants: Some(constants),
+            phantom_data: PhantomData,
+        }
+    }
+}
+
+impl<F: Field, T: ArithmeticOps<F>> ConstantsEnv<F, T> {
+    pub fn endo_coefficient(&self) -> T {
+        match self.constants {
+            None => T::expr(E::Constant(ConstantExpr::<F>::EndoCoefficient)),
+            Some(constants) => T::literal(constants.endo_coefficient)
+        }
+    }
 }
 
 /// The polynomials specific to the lookup argument.
@@ -358,7 +393,6 @@ impl CacheId {
         format!("x_{{{}}}", self.0)
     }
 }
-
 
 impl Cache {
     fn next_id(&mut self) -> CacheId {
@@ -2166,7 +2200,6 @@ pub mod constraints {
     where
         Self: std::marker::Sized,
     {
-
         /// Double the value
         fn double(&self) -> Self;
 
@@ -2176,7 +2209,11 @@ pub mod constraints {
         /// Raise the value to the given power
         fn pow(&self, p: u64) -> Self;
 
+        /// Create a constant
         fn literal(x: F) -> Self;
+
+        /// Crate an expr
+        fn expr(x: Expr<ConstantExpr<F>>) -> Self;
 
         /// Cache item
         fn cache(&self, cache: &mut Cache) -> Self;
@@ -2199,6 +2236,10 @@ pub mod constraints {
             Expr::Constant(ConstantExpr::Literal(x))
         }
 
+        fn expr(x: Expr<ConstantExpr<F>>) -> Self {
+            x
+        }
+
         fn cache(&self, cache: &mut Cache) -> Self {
             Expr::Cache(cache.next_id(), Box::new(*self))
         }
@@ -2219,6 +2260,10 @@ pub mod constraints {
 
         fn literal(x: F) -> Self {
             x
+        }
+
+        fn expr(x: Expr<ConstantExpr<F>>) -> Self {
+            unimplemented!()
         }
 
         fn cache(&self, cache: &mut Cache) -> Self {
@@ -2298,8 +2343,8 @@ pub mod test {
     use ark_ec::AffineCurve;
     use ark_ff::UniformRand;
     use array_init::array_init;
-    use mina_curves::pasta::{fp::Fp, pallas};
     use mina_curves::pasta::vesta::Vesta;
+    use mina_curves::pasta::{fp::Fp, pallas};
     use rand::{prelude::StdRng, SeedableRng};
 
     #[test]

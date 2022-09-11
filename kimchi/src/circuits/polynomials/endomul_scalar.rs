@@ -5,7 +5,7 @@ use crate::{
     circuits::{
         argument::{Argument, ArgumentType, GateWitness},
         constraints::ConstraintSystem,
-        expr::{prologue::*, Cache, constraints::ArithmeticOps, Expr, ConstantExpr},
+        expr::{constraints::ArithmeticOps, prologue::*, Cache, ConstantExpr, Expr, ConstantsEnv},
         gate::{CircuitGate, GateType},
         wires::COLUMNS,
     },
@@ -158,7 +158,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMulScalar);
     const CONSTRAINTS: u32 = 11;
 
-    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T> {
+    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: ConstantsEnv<F, T>) -> Vec<T> {
         let n0 = witness.curr[0];
         let n8 = witness.curr[1];
         let a0 = witness.curr[2];

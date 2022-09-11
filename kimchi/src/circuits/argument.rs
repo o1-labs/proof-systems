@@ -9,7 +9,7 @@ use ark_ff::FftField;
 use array_init::array_init;
 use serde::{Deserialize, Serialize};
 
-use super::{expr::constraints::ArithmeticOps, gate::GateType, polynomial::COLUMNS};
+use super::{expr::{constraints::ArithmeticOps, Constants, ConstantsEnv}, gate::GateType, polynomial::COLUMNS};
 
 /// A constraint type represents a polynomial that will be part of the final equation f (the circuit equation)
 #[derive(PartialEq, Eq, Clone, Copy, Hash, Debug, Serialize, Deserialize)]
@@ -40,7 +40,7 @@ pub trait Argument<F: FftField> {
     const CONSTRAINTS: u32;
 
     /// Constraints for this argument
-    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T>;
+    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: ConstantsEnv<F, T>) -> Vec<T>;
 
     /// Returns the set of constraints required to prove this argument.
     fn expression() -> Vec<E<F>> {
@@ -51,7 +51,7 @@ pub trait Argument<F: FftField> {
         };
 
         // Generate constraints
-        Self::constraints(&witness, /* TODO */ vec![])
+        Self::constraints(&witness, ConstantsEnv::default())
     }
 
     /// Returns constraints safely combined via the passed combinator.

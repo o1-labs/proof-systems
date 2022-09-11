@@ -15,7 +15,7 @@
 //~
 use crate::circuits::{
     argument::{Argument, ArgumentType, GateWitness},
-    expr::{prologue::*, Cache, constraints::ArithmeticOps},
+    expr::{constraints::ArithmeticOps, prologue::*, Cache, ConstantsEnv},
     gate::{CircuitGate, GateType},
     wires::COLUMNS,
 };
@@ -95,7 +95,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CompleteAdd);
     const CONSTRAINTS: u32 = 7;
 
-    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: Vec<T>) -> Vec<T> {
+    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: ConstantsEnv<F, T>) -> Vec<T> {
         // This function makes 2 + 1 + 1 + 1 + 2 = 7 constraints
         let x1 = witness.curr[0];
         let y1 = witness.curr[1];
