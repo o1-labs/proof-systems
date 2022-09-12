@@ -480,10 +480,10 @@ mod tests {
     };
     use ark_ff::{UniformRand, Zero};
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
-    use array_init::array_init;
     use mina_curves::pasta::fp::Fp as F;
     use mina_curves::pasta::vesta::Vesta;
     use rand::{rngs::StdRng, SeedableRng};
+    use std::array;
     use std::fmt::{Display, Formatter};
 
     struct Polish(Vec<PolishToken<F>>);
@@ -548,9 +548,9 @@ mod tests {
 
         let pt = F::rand(rng);
         let mut eval = || ProofEvaluations {
-            w: array_init(|_| F::rand(rng)),
+            w: array::from_fn(|_| F::rand(rng)),
             z: F::rand(rng),
-            s: array_init(|_| F::rand(rng)),
+            s: array::from_fn(|_| F::rand(rng)),
             generic_selector: F::zero(),
             poseidon_selector: F::zero(),
             lookup: Some(LookupEvaluations {

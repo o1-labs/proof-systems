@@ -4,7 +4,6 @@ use crate::circuits::wires::{COLUMNS, PERMUTS};
 use ark_ec::AffineCurve;
 use ark_ff::{FftField, One, Zero};
 use ark_poly::univariate::DensePolynomial;
-use array_init::array_init;
 use commitment_dlog::{
     commitment::{b_poly, b_poly_coefficients, PolyComm},
     evaluation_proof::OpeningProof,
@@ -12,6 +11,7 @@ use commitment_dlog::{
 use o1_utils::ExtendedDensePolynomial;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
+use std::array;
 
 //~ spec:startcode
 /// Evaluations of lookup polynomials
@@ -152,21 +152,21 @@ impl<F> ProofEvaluations<F> {
                 .all(|e| e.lookup.as_ref().unwrap().runtime.is_some());
 
         ProofEvaluations {
-            generic_selector: array_init(|i| &evals[i].generic_selector),
-            poseidon_selector: array_init(|i| &evals[i].poseidon_selector),
-            z: array_init(|i| &evals[i].z),
-            w: array_init(|j| array_init(|i| &evals[i].w[j])),
-            s: array_init(|j| array_init(|i| &evals[i].s[j])),
+            generic_selector: array::from_fn(|i| &evals[i].generic_selector),
+            poseidon_selector: array::from_fn(|i| &evals[i].poseidon_selector),
+            z: array::from_fn(|i| &evals[i].z),
+            w: array::from_fn(|j| array::from_fn(|i| &evals[i].w[j])),
+            s: array::from_fn(|j| array::from_fn(|i| &evals[i].s[j])),
             lookup: if has_lookup {
                 let sorted_length = evals[0].lookup.as_ref().unwrap().sorted.len();
                 Some(LookupEvaluations {
-                    aggreg: array_init(|i| &evals[i].lookup.as_ref().unwrap().aggreg),
-                    table: array_init(|i| &evals[i].lookup.as_ref().unwrap().table),
+                    aggreg: array::from_fn(|i| &evals[i].lookup.as_ref().unwrap().aggreg),
+                    table: array::from_fn(|i| &evals[i].lookup.as_ref().unwrap().table),
                     sorted: (0..sorted_length)
-                        .map(|j| array_init(|i| &evals[i].lookup.as_ref().unwrap().sorted[j]))
+                        .map(|j| array::from_fn(|i| &evals[i].lookup.as_ref().unwrap().sorted[j]))
                         .collect(),
                     runtime: if has_runtime {
-                        Some(array_init(|i| {
+                        Some(array::from_fn(|i| {
                             evals[i].lookup.as_ref().unwrap().runtime.as_ref().unwrap()
                         }))
                     } else {
@@ -232,7 +232,7 @@ impl<F: Zero> ProofEvaluations<F> {
         ProofEvaluations {
             w,
             z: F::zero(),
-            s: array_init(|_| F::zero()),
+            s: array::from_fn(|_| F::zero()),
             lookup: None,
             generic_selector: F::zero(),
             poseidon_selector: F::zero(),
@@ -243,8 +243,8 @@ impl<F: Zero> ProofEvaluations<F> {
 impl<F: FftField> ProofEvaluations<Vec<F>> {
     pub fn combine(&self, pt: F) -> ProofEvaluations<F> {
         ProofEvaluations::<F> {
-            s: array_init(|i| DensePolynomial::eval_polynomial(&self.s[i], pt)),
-            w: array_init(|i| DensePolynomial::eval_polynomial(&self.w[i], pt)),
+            s: array::from_fn(|i| DensePolynomial::eval_polynomial(&self.s[i], pt)),
+            w: array::from_fn(|i| DensePolynomial::eval_polynomial(&self.w[i], pt)),
             z: DensePolynomial::eval_polynomial(&self.z, pt),
             lookup: self.lookup.as_ref().map(|l| LookupEvaluations {
                 table: DensePolynomial::eval_polynomial(&l.table, pt),

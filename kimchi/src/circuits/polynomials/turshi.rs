@@ -91,12 +91,12 @@ use crate::{
     proof::ProofEvaluations,
 };
 use ark_ff::{FftField, Field, PrimeField};
-use array_init::array_init;
 use cairo::{
     runner::{CairoInstruction, CairoProgram, Pointers},
     word::{FlagBits, Offsets},
 };
 use rand::{prelude::StdRng, SeedableRng};
+use std::array;
 use std::marker::PhantomData;
 
 const NUM_FLAGS: usize = 16;
@@ -191,10 +191,10 @@ impl<F: PrimeField> CircuitGate<F> {
         cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
         // assignments
-        let curr: [F; COLUMNS] = array_init(|i| witness[i][row]);
-        let mut next: [F; COLUMNS] = array_init(|_| F::zero());
+        let curr: [F; COLUMNS] = array::from_fn(|i| witness[i][row]);
+        let mut next: [F; COLUMNS] = array::from_fn(|_| F::zero());
         if self.typ != GateType::Zero {
-            next = array_init(|i| witness[i][row + 1]);
+            next = array::from_fn(|i| witness[i][row + 1]);
         }
 
         // column polynomials
@@ -422,23 +422,23 @@ pub mod testing {
         //_cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
         // assignments
-        let this: [F; COLUMNS] = array_init(|i| witness[i][row]);
+        let this: [F; COLUMNS] = array::from_fn(|i| witness[i][row]);
 
         match gate.typ {
             GateType::CairoClaim => {
-                let next: [F; COLUMNS] = array_init(|i| witness[i][row + 1]);
+                let next: [F; COLUMNS] = array::from_fn(|i| witness[i][row + 1]);
                 ensure_claim(&this, &next) // CircuitGate::ensure_transition(&this),
             }
             GateType::CairoInstruction => {
-                let next: [F; COLUMNS] = array_init(|i| witness[i][row + 1]);
+                let next: [F; COLUMNS] = array::from_fn(|i| witness[i][row + 1]);
                 ensure_instruction(&this, &next)
             }
             GateType::CairoFlags => {
-                let next: [F; COLUMNS] = array_init(|i| witness[i][row + 1]);
+                let next: [F; COLUMNS] = array::from_fn(|i| witness[i][row + 1]);
                 ensure_flags(&this, &next)
             }
             GateType::CairoTransition => {
-                let next: [F; COLUMNS] = array_init(|i| witness[i][row + 1]);
+                let next: [F; COLUMNS] = array::from_fn(|i| witness[i][row + 1]);
                 ensure_transition(&this, &next)
             }
             GateType::Zero => Ok(()),

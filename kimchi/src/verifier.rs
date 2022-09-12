@@ -236,7 +236,7 @@ where
                 ],
             ]
         } else {
-            [Vec::<G::ScalarField>::new(), Vec::<G::ScalarField>::new()]
+            [vec![G::ScalarField::zero()], vec![G::ScalarField::zero()]]
         };
 
         println!("verifier public eval: {:?}", public_evals);

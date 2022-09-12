@@ -36,7 +36,6 @@ use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
     Radix2EvaluationDomain as D, UVPolynomial,
 };
-use array_init::array_init;
 use commitment_dlog::commitment::{
     b_poly_coefficients, BlindedCommitment, CommitmentCurve, PolyComm,
 };
@@ -44,6 +43,8 @@ use itertools::Itertools;
 use o1_utils::ExtendedDensePolynomial as _;
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand::{CryptoRng, RngCore};
+use rayon::prelude::*;
+use std::array;
 use std::collections::HashMap;
 
 /// The result of a proof creation or verification.
@@ -275,7 +276,7 @@ where
 
         //~ 1. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
         //~    TODO: why not do this first, and then commit? Why commit from evaluation directly?
-        let witness_poly: [DensePolynomial<G::ScalarField>; COLUMNS] = array_init(|i| {
+        let witness_poly: [DensePolynomial<G::ScalarField>; COLUMNS] = array::from_fn(|i| {
             Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
                 witness[i].clone(),
                 index.cs.domain.d1,
@@ -285,8 +286,7 @@ where
 
         //~ 1. If circuit uses lookups, create a lookup context (see [Lookup context creation](#lookup-context-creation) algorithm)
         let mut lookup_context =
-            LookupContext::create(&witness, runtime_tables, index, rng, &mut fq_sponge)
-                .map_err(|e| e)?;
+            LookupContext::create(&witness, runtime_tables, index, rng, &mut fq_sponge)?;
 
         //~ 1. Sample $\beta$ with the Fq-Sponge.
         let beta = fq_sponge.challenge();
@@ -295,9 +295,14 @@ where
         let gamma = fq_sponge.challenge();
 
         //~ 1. If circuit uses lookups, compute lookup context aggregation polynomial (see [Lookup context aggregation polynomial creation](#lookup-context-aggregation-polynomial-creation) algorithm)
-        lookup_context
-            .compute_aggregation_polynomial(&witness, index, rng, &mut fq_sponge, beta, gamma)
-            .map_err(|e| e)?;
+        lookup_context.compute_aggregation_polynomial(
+            &witness,
+            index,
+            rng,
+            &mut fq_sponge,
+            beta,
+            gamma,
+        )?;
 
         //~ 1. Compute the permutation aggregation polynomial $z$.
         let z_poly = index.cs.perm_aggreg(&witness, &beta, &gamma, rng)?;
@@ -507,7 +512,7 @@ where
                         constraints.into_iter().zip_eq(lookup_alphas).enumerate()
                     {
                         let mut eval = constraint.evaluations(&env);
-                        eval.evals.iter_mut().for_each(|x| *x *= alpha_pow);
+                        eval.evals.par_iter_mut().for_each(|x| *x *= alpha_pow);
 
                         if eval.domain().size == t4.domain().size {
                             t4 += &eval;
@@ -638,12 +643,12 @@ where
         //~    TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)
         let chunked_evals = {
             let chunked_evals_zeta = ProofEvaluations::<Vec<G::ScalarField>> {
-                s: array_init(|i| {
+                s: array::from_fn(|i| {
                     index.cs.sigmam[0..PERMUTS - 1][i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta)
                 }),
-                w: array_init(|i| {
+                w: array::from_fn(|i| {
                     witness_poly[i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta)
@@ -668,13 +673,13 @@ where
                     .evaluate_chunks(zeta),
             };
             let chunked_evals_zeta_omega = ProofEvaluations::<Vec<G::ScalarField>> {
-                s: array_init(|i| {
+                s: array::from_fn(|i| {
                     index.cs.sigmam[0..PERMUTS - 1][i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta_omega)
                 }),
 
-                w: array_init(|i| {
+                w: array::from_fn(|i| {
                     witness_poly[i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta_omega)
@@ -714,8 +719,8 @@ where
                 .iter()
                 .zip(power_of_eval_points_for_chunks.iter()) // (zeta , zeta_omega)
                 .map(|(es, &e1)| ProofEvaluations::<G::ScalarField> {
-                    s: array_init(|i| DensePolynomial::eval_polynomial(&es.s[i], e1)),
-                    w: array_init(|i| DensePolynomial::eval_polynomial(&es.w[i], e1)),
+                    s: array::from_fn(|i| DensePolynomial::eval_polynomial(&es.s[i], e1)),
+                    w: array::from_fn(|i| DensePolynomial::eval_polynomial(&es.w[i], e1)),
                     z: DensePolynomial::eval_polynomial(&es.z, e1),
                     lookup: es.lookup.as_ref().map(|l| LookupEvaluations {
                         table: DensePolynomial::eval_polynomial(&l.table, e1),
@@ -827,7 +832,7 @@ where
 
         //~ 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
         let public_evals = if public_poly.is_zero() {
-            [Vec::new(), Vec::new()]
+            [vec![G::ScalarField::zero()], vec![G::ScalarField::zero()]]
         } else {
             [
                 vec![public_poly.evaluate(&zeta)],
@@ -967,7 +972,7 @@ where
 
         Ok(Self {
             commitments: ProverCommitments {
-                w_comm: array_init(|i| w_comm[i].commitment.clone()),
+                w_comm: array::from_fn(|i| w_comm[i].commitment.clone()),
                 z_comm: z_comm.commitment,
                 t_comm: t_comm.commitment,
                 lookup,
@@ -1052,9 +1057,13 @@ impl<G: KimchiCurve + ark_ec::AffineCurve<ScalarField = F>, F: PrimeField> Looku
 
                 // pre-compute the updated second column of the lookup table
                 let mut second_column_d8 = runtime_table_contribution_d8.clone();
-                for (row, e) in second_column_d8.evals.iter_mut().enumerate() {
-                    *e += lcs.lookup_table8[1][row];
-                }
+                second_column_d8
+                    .evals
+                    .par_iter_mut()
+                    .enumerate()
+                    .for_each(|(row, e)| {
+                        *e += lcs.lookup_table8[1][row];
+                    });
 
                 lookup_context.runtime_table = Some(runtime_table_contribution);
                 lookup_context.runtime_table_d8 = Some(runtime_table_contribution_d8);

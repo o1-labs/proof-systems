@@ -9,8 +9,8 @@ use crate::circuits::{
     wires::Wire,
 };
 use ark_ff::Zero;
-use array_init::array_init;
 use mina_curves::pasta::fp::Fp;
+use std::array;
 
 fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_sizes: Vec<usize>) {
     let lookup_table_values: Vec<Vec<_>> = table_sizes
@@ -42,8 +42,8 @@ fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_siz
 
     let witness = {
         let mut lookup_table_ids = Vec::with_capacity(num_lookups);
-        let mut lookup_indexes: [_; 3] = array_init(|_| Vec::with_capacity(num_lookups));
-        let mut lookup_values: [_; 3] = array_init(|_| Vec::with_capacity(num_lookups));
+        let mut lookup_indexes: [_; 3] = array::from_fn(|_| Vec::with_capacity(num_lookups));
+        let mut lookup_values: [_; 3] = array::from_fn(|_| Vec::with_capacity(num_lookups));
         let unused = || vec![Fp::zero(); num_lookups];
 
         let num_tables = table_sizes.len();
@@ -159,7 +159,7 @@ fn runtime_table(num: usize, indexed: bool) {
 
     // witness
     let witness = {
-        let mut cols: [_; COLUMNS] = array_init(|_col| vec![Fp::zero(); gates.len()]);
+        let mut cols: [_; COLUMNS] = array::from_fn(|_col| vec![Fp::zero(); gates.len()]);
 
         // only the first 7 registers are used in the lookup gate
         let (lookup_cols, _rest) = cols.split_at_mut(7);

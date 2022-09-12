@@ -1070,8 +1070,8 @@ The values are decomposed into limbs as follows.
 * The final row contains $v_0$'s and $v_1$'s 5th and 6th 12-bit limbs as well as the
   remaining 10 crumbs of $v_2$
 
-```admonition::notice
-Note: Because we are constrained to 4 lookups per row, we are forced to postpone
+```admonish
+Because we are constrained to 4 lookups per row, we are forced to postpone
 some lookups of v0 and v1 to the final row.
 ```
 
@@ -1126,8 +1126,8 @@ Different rows are constrained using different `CircuitGate` types
 |   2 | `RangeCheck1` | Fully constrain $v_2$ (and trigger plookups constraints on row 3)  |
 |   3 | `Zero`        | Complete the constraining of $v_0$ and $v_1$ using lookups         |
 
-```admonition::notice
- Note: Each CircuitGate type corresponds to a unique polynomial and thus is assigned
+```admonish
+ Each CircuitGate type corresponds to a unique polynomial and thus is assigned
  its own unique powers of alpha
 ```
 ##### `RangeCheck0` - Range check constraints

@@ -18,7 +18,7 @@ use ark_ff::{Field, One, Zero};
 use mina_curves::pasta::{pallas, vesta::Vesta, Fp};
 use o1_utils::FieldHelpers;
 
-use array_init::array_init;
+use std::array;
 
 type PallasField = <pallas::Pallas as AffineCurve>::BaseField;
 
@@ -55,7 +55,7 @@ fn create_test_prover_index(public_size: usize) -> ProverIndex<Vesta> {
 #[test]
 fn verify_range_check0_zero_valid_witness() {
     let cs = create_test_constraint_system();
-    let witness: [Vec<PallasField>; COLUMNS] = array_init(|_| vec![PallasField::from(0); 4]);
+    let witness: [Vec<PallasField>; COLUMNS] = array::from_fn(|_| vec![PallasField::from(0); 4]);
 
     // gates[0] is RangeCheck0
     assert_eq!(
@@ -73,7 +73,7 @@ fn verify_range_check0_zero_valid_witness() {
 #[test]
 fn verify_range_check0_one_invalid_witness() {
     let cs = create_test_constraint_system();
-    let witness: [Vec<PallasField>; COLUMNS] = array_init(|_| vec![PallasField::from(1); 4]);
+    let witness: [Vec<PallasField>; COLUMNS] = array::from_fn(|_| vec![PallasField::from(1); 4]);
 
     // gates[0] is RangeCheck0
     assert_eq!(
@@ -475,7 +475,7 @@ fn verify_range_check0_v1_test_lookups() {
 #[test]
 fn verify_range_check1_zero_valid_witness() {
     let cs = create_test_constraint_system();
-    let witness: [Vec<PallasField>; COLUMNS] = array_init(|_| vec![PallasField::from(0); 4]);
+    let witness: [Vec<PallasField>; COLUMNS] = array::from_fn(|_| vec![PallasField::from(0); 4]);
 
     // gates[2] is RangeCheck1
     assert_eq!(
@@ -487,7 +487,7 @@ fn verify_range_check1_zero_valid_witness() {
 #[test]
 fn verify_range_check1_one_invalid_witness() {
     let cs = create_test_constraint_system();
-    let witness: [Vec<PallasField>; COLUMNS] = array_init(|_| vec![PallasField::from(1); 4]);
+    let witness: [Vec<PallasField>; COLUMNS] = array::from_fn(|_| vec![PallasField::from(1); 4]);
 
     // gates[2] is RangeCheck1
     assert_eq!(
@@ -786,7 +786,7 @@ fn verify_64_bit_range_check() {
     //   Row 0 1 2 3 ... 14  Gate
     //   0   0 0 0 0 ... 0   GenericPub
     //   1   0 0 X X ... X   RangeCheck0
-    let mut witness: [Vec<PallasField>; COLUMNS] = array_init(|_| vec![PallasField::zero()]);
+    let mut witness: [Vec<PallasField>; COLUMNS] = array::from_fn(|_| vec![PallasField::zero()]);
     range_check::witness::create_witness::<PallasField>(
         PallasField::from(2u64).pow([64]) - PallasField::one(), // in range
     )
@@ -804,7 +804,7 @@ fn verify_64_bit_range_check() {
     //   Row 0 1 2 3 ... 14  Gate
     //   0   0 0 0 0 ... 0   GenericPub
     //   1   0 X X X ... X   RangeCheck0
-    let mut witness: [Vec<PallasField>; COLUMNS] = array_init(|_| vec![PallasField::zero()]);
+    let mut witness: [Vec<PallasField>; COLUMNS] = array::from_fn(|_| vec![PallasField::zero()]);
     range_check::witness::create_witness::<PallasField>(
         PallasField::from(2u64).pow([64]), // out of range
     )

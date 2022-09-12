@@ -129,8 +129,8 @@ impl<F: PrimeField> CircuitGate<F> {
     ) -> Result<(), String> {
         ensure_eq!(self.typ, GateType::EndoMul, "incorrect gate type");
 
-        let this: [F; COLUMNS] = array_init::array_init(|i| witness[i][row]);
-        let next: [F; COLUMNS] = array_init::array_init(|i| witness[i][row + 1]);
+        let this: [F; COLUMNS] = std::array::from_fn(|i| witness[i][row]);
+        let next: [F; COLUMNS] = std::array::from_fn(|i| witness[i][row + 1]);
 
         let pt = F::from(123456u64);
 

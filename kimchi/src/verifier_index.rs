@@ -18,7 +18,6 @@ use crate::{
 };
 use ark_ff::PrimeField;
 use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D};
-use array_init::array_init;
 use commitment_dlog::{
     commitment::{CommitmentCurve, PolyComm},
     srs::SRS,
@@ -27,6 +26,7 @@ use once_cell::sync::OnceCell;
 use oracle::FqSponge;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
+use std::array;
 use std::{
     fs::{File, OpenOptions},
     io::{BufReader, BufWriter, Seek, SeekFrom::Start},
@@ -188,8 +188,8 @@ impl<G: KimchiCurve> ProverIndex<G> {
                 cell
             },
 
-            sigma_comm: array_init(|i| self.srs.commit_non_hiding(&self.cs.sigmam[i], None)),
-            coefficients_comm: array_init(|i| {
+            sigma_comm: array::from_fn(|i| self.srs.commit_non_hiding(&self.cs.sigmam[i], None)),
+            coefficients_comm: array::from_fn(|i| {
                 self.srs
                     .commit_evaluations_non_hiding(domain, &self.cs.coefficients8[i], None)
             }),
@@ -216,11 +216,11 @@ impl<G: KimchiCurve> ProverIndex<G> {
             ),
 
             chacha_comm: self.cs.chacha8.as_ref().map(|c| {
-                array_init(|i| self.srs.commit_evaluations_non_hiding(domain, &c[i], None))
+                array::from_fn(|i| self.srs.commit_evaluations_non_hiding(domain, &c[i], None))
             }),
 
             range_check_comm: self.cs.range_check_selector_polys.as_ref().map(|poly| {
-                array_init(|i| {
+                array::from_fn(|i| {
                     self.srs
                         .commit_evaluations_non_hiding(domain, &poly[i].eval8, None)
                 })
