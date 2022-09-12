@@ -3,20 +3,19 @@
 (rule
  (deps
   ; this lib
-  ../Cargo.toml
-  lib.rs
-  (source_tree ../.cargo)
+  ./Cargo.toml
+  ./src/lib.rs
+  (source_tree ./.cargo)
   ; ocaml-gen
-  (source_tree ../../ocaml-gen))
+  (source_tree ../ocaml-gen))
  (targets libocamlgen_test_stubs.a dllocamlgen_test_stubs.so)
- (locks /cargo-lock)
  (action
   (progn
    (run rm -rf ./target)
    (run rm -rf ./Cargo.lock)
    (run sh -c "touch dllocamlgen_test_stubs.so")
    (run cargo build --release)
-   (run sh -c "cp ../target/release/libocamlgen_test_stubs.a ."))))
+   (run sh -c "cp ./target/release/libocamlgen_test_stubs.a ."))))
 
 ;; generate the OCaml bindings from rust code
 
@@ -24,14 +23,14 @@
  (target bindings.ml)
  (deps
   ; this lib
-  ../Cargo.toml
-  lib.rs
-  (source_tree ../.cargo)
+  ./Cargo.toml
+  ./src/lib.rs
+  (source_tree ./.cargo)
   ; this bin
-  main.rs
+  ./src/main.rs
   ; ocaml-gen
-  (source_tree ../../ocaml-gen))
- (locks /cargo-lock)
+  (source_tree ../ocaml-gen))
+ (mode promote)
  (action
   (progn
    (run rm -rf ./target)
@@ -53,14 +52,14 @@
  (foreign_archives ocamlgen_test_stubs)
  (c_library_flags :standard "-lpthread"))
 
-;; test executable
+;; test executable (links to the library)
 
 (executable
  (name ocamlgen_test)
  (modules ocamlgen_test)
  (libraries ocamlgen_test_lib))
 
-;; rule for running the tests
+;; rule for running the tests (runs the executable)
 
 (rule
  (alias runtest)

@@ -1,7 +1,10 @@
 #![deny(missing_docs)]
 
+//! **This crate is not meant to be imported directly by users**.
+//! You should import [ocaml-gen](https://crates.io/crates/ocaml-gen) instead.
+//!
 //! ocaml-derive adds a number of derives to make ocaml-gen easier to use.
-//! Refer to the [ocaml-gen] documentation.
+//! Refer to the [ocaml-gen](https://o1-labs.github.io/ocaml-gen/ocaml_gen/index.html) documentation.
 
 extern crate proc_macro;
 use convert_case::{Case, Casing};
@@ -28,19 +31,19 @@ use syn::{
 ///
 #[proc_macro_attribute]
 pub fn func(_attribute: TokenStream, item: TokenStream) -> TokenStream {
-    let item_fn: syn::ItemFn = syn::parse(item).unwrap();
+    let item_fn: syn::ItemFn = syn::parse(item).expect("couldn't parse item");
 
     let rust_name = &item_fn.sig.ident;
     let inputs = &item_fn.sig.inputs;
     let output = &item_fn.sig.output;
 
-    let ocaml_name = rust_ident_to_ocaml(rust_name.to_string());
+    let ocaml_name = rust_ident_to_ocaml(&rust_name.to_string());
 
     let inputs: Vec<_> = inputs
         .into_iter()
         .filter_map(|i| match i {
             FnArg::Typed(t) => Some(&t.ty),
-            _ => None,
+            FnArg::Receiver(_) => None,
         })
         .collect();
 
@@ -98,9 +101,9 @@ pub fn func(_attribute: TokenStream, item: TokenStream) -> TokenStream {
 //
 
 /// The Enum derive macro.
-/// It generates implementations of ToOCaml and OCamlBinding on an enum type.
-/// The type must implement [ocaml::IntoValue](https://docs.rs/ocaml/latest/ocaml/trait.IntoValue.html)
-/// and [ocaml::FromValue](https://docs.rs/ocaml/latest/ocaml/trait.FromValue.html)
+/// It generates implementations of `ToOCaml` and `OCamlBinding` on an enum type.
+/// The type must implement [`ocaml::IntoValue`](https://docs.rs/ocaml/latest/ocaml/trait.IntoValue.html)
+/// and [`ocaml::FromValue`](https://docs.rs/ocaml/latest/ocaml/trait.FromValue.html)
 /// For example:
 ///
 /// ```
@@ -144,10 +147,10 @@ pub fn derive_ocaml_enum(item: TokenStream) -> TokenStream {
 
             // get name
             let type_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id();
-            let name = env.get_type(type_id, #name_str);
+            let (name, aliased) = env.get_type(type_id, #name_str);
 
             // return the type description in OCaml
-            if generics_ocaml.is_empty() {
+            if generics_ocaml.is_empty() || aliased {
                 name.to_string()
             } else {
                 format!("({}) {}", generics_ocaml.join(", "), name)
@@ -260,7 +263,7 @@ pub fn derive_ocaml_enum(item: TokenStream) -> TokenStream {
         }
     };
 
-    let ocaml_name = rust_ident_to_ocaml(name_str);
+    let ocaml_name = rust_ident_to_ocaml(&name_str);
 
     let ocaml_binding = quote! {
         fn ocaml_binding(
@@ -349,9 +352,9 @@ pub fn derive_ocaml_enum(item: TokenStream) -> TokenStream {
 //
 
 /// The Struct derive macro.
-/// It generates implementations of ToOCaml and OCamlBinding on a struct.
-/// The type must implement [ocaml::IntoValue](https://docs.rs/ocaml/latest/ocaml/trait.IntoValue.html)
-/// and [ocaml::FromValue](https://docs.rs/ocaml/latest/ocaml/trait.FromValue.html)
+/// It generates implementations of `ToOCaml` and `OCamlBinding` on a struct.
+/// The type must implement [`ocaml::IntoValue`](https://docs.rs/ocaml/latest/ocaml/trait.IntoValue.html)
+/// and [`ocaml::FromValue`](https://docs.rs/ocaml/latest/ocaml/trait.FromValue.html)
 ///
 /// For example:
 ///
@@ -396,10 +399,10 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
 
             // get name
             let type_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id();
-            let name = env.get_type(type_id, #name_str);
+            let (name, aliased) = env.get_type(type_id, #name_str);
 
             // return the type description in OCaml
-            if generics_ocaml.is_empty() {
+            if generics_ocaml.is_empty() || aliased {
                 name.to_string()
             } else {
                 format!("({}) {}", generics_ocaml.join(", "), name)
@@ -476,7 +479,7 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
                         );
                     }
                 }
-                format!("{{ {} }}", generics_ocaml.join("; "))
+                format!("{{ {} }} [@@boxed]", generics_ocaml.join("; "))
             }
         }
         Fields::Unnamed(fields) => {
@@ -528,10 +531,10 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
                 }
             }
         }
-        _ => panic!("only named, and unnamed field supported"),
+        Fields::Unit => panic!("only named, and unnamed field supported"),
     };
 
-    let ocaml_name = rust_ident_to_ocaml(name_str);
+    let ocaml_name = rust_ident_to_ocaml(&name_str);
 
     let ocaml_binding = quote! {
         fn ocaml_binding(
@@ -540,9 +543,10 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
             new_type: bool,
         ) -> String {
             // register the new type
+            let ty_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id();
+
             if new_type {
                 let ty_name = rename.unwrap_or(#ocaml_name);
-                let ty_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id();
                 env.new_type(ty_id, ty_name);
             }
 
@@ -556,7 +560,11 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
             if new_type {
                 format!("type nonrec {} = {}", name, generics_ocaml)
             } else {
-                format!("type nonrec {} = {}", rename.expect("type alias must have a name"), name)
+                // add the alias
+                let ty_name = rename.expect("bug in ocaml-gen: rename should be Some");
+                env.add_alias(ty_id, ty_name);
+
+                format!("type nonrec {} = {}", ty_name, name)
             }
         }
     };
@@ -618,7 +626,7 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
 // almost same code for custom types
 //
 
-/// Derives implementations for OCamlDesc and OCamlBinding on a custom type
+/// Derives implementations for `OCamlDesc` and `OCamlBinding` on a custom type
 /// For example:
 ///
 /// ```
@@ -645,7 +653,7 @@ pub fn derive_ocaml_custom(item: TokenStream) -> TokenStream {
     let ocaml_desc = quote! {
         fn ocaml_desc(env: &::ocaml_gen::Env, _generics: &[&str]) -> String {
             let type_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id();
-            env.get_type(type_id, #name_str)
+            env.get_type(type_id, #name_str).0
         }
     };
 
@@ -663,7 +671,7 @@ pub fn derive_ocaml_custom(item: TokenStream) -> TokenStream {
     // ocaml_binding
     //
 
-    let ocaml_name = rust_ident_to_ocaml(name_str);
+    let ocaml_name = rust_ident_to_ocaml(&name_str);
 
     let ocaml_binding = quote! {
         fn ocaml_binding(
@@ -672,9 +680,10 @@ pub fn derive_ocaml_custom(item: TokenStream) -> TokenStream {
             new_type: bool,
         ) -> String {
             // register the new type
+            let ty_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id();
+
             if new_type {
                 let ty_name = rename.unwrap_or(#ocaml_name);
-                let ty_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id();
                 env.new_type(ty_id, ty_name);
             }
 
@@ -683,7 +692,11 @@ pub fn derive_ocaml_custom(item: TokenStream) -> TokenStream {
             if new_type {
                 format!("type nonrec {}", name)
             } else {
-                format!("type nonrec {} = {}", rename.expect("type alias must have a name"), name)
+                // add the alias
+                let ty_name = rename.expect("bug in ocaml-gen: rename should be Some");
+                env.add_alias(ty_id, ty_name);
+
+                format!("type nonrec {} = {}", ty_name, name)
             }
         }
     };
@@ -713,8 +726,8 @@ pub fn derive_ocaml_custom(item: TokenStream) -> TokenStream {
 // helpers
 //
 
-/// OCaml identifiers are snake_case, whereas Rust identifiers are CamelCase
-fn rust_ident_to_ocaml(ident: String) -> String {
+/// OCaml identifiers are `snake_case`, whereas Rust identifiers are CamelCase
+fn rust_ident_to_ocaml(ident: &str) -> String {
     ident.to_case(Case::Snake)
 }
 
