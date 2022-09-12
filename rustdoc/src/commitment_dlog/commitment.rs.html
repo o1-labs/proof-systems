@@ -1943,7 +1943,7 @@
                     .filter(|x| !x.commitment.unshifted.is_empty())
                 {
                     <span class="comment">// iterating over the polynomial segments
-                    </span><span class="kw">for </span>comm_ch <span class="kw">in </span>commitment.unshifted.iter() {
+                    </span><span class="kw">for </span>comm_ch <span class="kw">in </span><span class="kw-2">&amp;</span>commitment.unshifted {
                         scalars.push(rand_base_i_c_i * xi_i);
                         points.push(<span class="kw-2">*</span>comm_ch);
 

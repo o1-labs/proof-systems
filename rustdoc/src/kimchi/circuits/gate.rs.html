@@ -544,7 +544,7 @@
         </span>}
 
         (<span class="self">self</span>.coeffs.len() <span class="kw">as </span>u8).write(<span class="kw-2">&amp;mut </span>w)<span class="question-mark">?</span>;
-        <span class="kw">for </span>x <span class="kw">in </span><span class="self">self</span>.coeffs.iter() {
+        <span class="kw">for </span>x <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.coeffs {
             x.write(<span class="kw-2">&amp;mut </span>w)<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())

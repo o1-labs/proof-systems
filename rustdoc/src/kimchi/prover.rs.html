@@ -1724,7 +1724,7 @@
         fq_sponge.absorb_fq(<span class="kw-2">&amp;</span>[verifier_index_digest]);
 
         <span class="comment">//~ 1. Absorb the commitments of the previous challenges with the Fq-sponge.
-        </span><span class="kw">for </span>RecursionChallenge { comm, .. } <span class="kw">in </span>prev_challenges.iter() {
+        </span><span class="kw">for </span>RecursionChallenge { comm, .. } <span class="kw">in </span><span class="kw-2">&amp;</span>prev_challenges {
             fq_sponge.absorb_g(<span class="kw-2">&amp;</span>comm.unshifted);
         }
 

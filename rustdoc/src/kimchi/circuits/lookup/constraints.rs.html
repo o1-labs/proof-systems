@@ -1307,13 +1307,13 @@
         sorted_counts.iter().fold(<span class="number">0</span>, |acc, (<span class="kw">_</span>, v)| acc + v)
     );
 
-    <span class="kw">for </span>(k, v) <span class="kw">in </span>all_lookups.iter() {
+    <span class="kw">for </span>(k, v) <span class="kw">in </span><span class="kw-2">&amp;</span>all_lookups {
         <span class="kw">let </span>s = sorted_counts.get(k).unwrap_or(<span class="kw-2">&amp;</span><span class="number">0</span>);
         <span class="kw">if </span>v != s {
             <span class="macro">panic!</span>(<span class="string">&quot;For {}:\nall_lookups    = {}\nsorted_lookups = {}&quot;</span>, k, v, s);
         }
     }
-    <span class="kw">for </span>(k, s) <span class="kw">in </span>sorted_counts.iter() {
+    <span class="kw">for </span>(k, s) <span class="kw">in </span><span class="kw-2">&amp;</span>sorted_counts {
         <span class="kw">let </span>v = all_lookups.get(k).unwrap_or(<span class="kw-2">&amp;</span><span class="number">0</span>);
         <span class="kw">if </span>v != s {
             <span class="macro">panic!</span>(<span class="string">&quot;For {}:\nall_lookups    = {}\nsorted_lookups = {}&quot;</span>, k, v, s);

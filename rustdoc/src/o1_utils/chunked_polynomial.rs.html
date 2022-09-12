@@ -96,7 +96,7 @@
     <span class="doccomment">/// This function evaluates polynomial in chunks.
     </span><span class="kw">pub fn </span>evaluate_chunks(<span class="kw-2">&amp;</span><span class="self">self</span>, elm: F) -&gt; Vec&lt;F&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>res: Vec&lt;F&gt; = <span class="macro">vec!</span>[];
-        <span class="kw">for </span>poly <span class="kw">in </span><span class="self">self</span>.polys.iter() {
+        <span class="kw">for </span>poly <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.polys {
             <span class="kw">let </span>eval = poly.evaluate(<span class="kw-2">&amp;</span>elm);
             res.push(eval);
         }
@@ -111,7 +111,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>scale = F::one();
         <span class="kw">let </span><span class="kw-2">mut </span>coeffs = <span class="macro">vec!</span>[F::zero(); <span class="self">self</span>.size];
 
-        <span class="kw">for </span>poly <span class="kw">in </span><span class="self">self</span>.polys.iter() {
+        <span class="kw">for </span>poly <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.polys {
             <span class="kw">for </span>(coeff, poly_coeff) <span class="kw">in </span>coeffs.iter_mut().zip(<span class="kw-2">&amp;</span>poly.coeffs) {
                 <span class="kw-2">*</span>coeff += scale * poly_coeff;
             }

@@ -1567,7 +1567,7 @@ connected to (wired_to), and the selector polynomial associated with the gate. *
     */
     </span><span class="kw">fn </span>equivalence_classes_to_hashtbl(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; HashMap&lt;Position&lt;Row&gt;, Position&lt;Row&gt;&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>equivalence_classes: HashMap&lt;usize, HashSet&lt;Position&lt;Row&gt;&gt;&gt; = HashMap::new();
-        <span class="kw">for </span>(key, data) <span class="kw">in </span><span class="self">self</span>.equivalence_classes.iter() {
+        <span class="kw">for </span>(key, data) <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.equivalence_classes {
             <span class="kw">let </span>u = <span class="self">self</span>.union_finds.find(<span class="kw-2">*</span>key).unwrap();
             <span class="kw">let </span>entry = equivalence_classes.entry(u).or_insert_with(HashSet::new);
             <span class="kw">for </span>position <span class="kw">in </span>data.iter() {

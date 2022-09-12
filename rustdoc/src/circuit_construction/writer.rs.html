@@ -1992,7 +1992,7 @@
         }
 
         <span class="comment">// finish the permutation cycle
-        </span><span class="kw">for </span>(var, first) <span class="kw">in </span>first_cell.iter() {
+        </span><span class="kw">for </span>(var, first) <span class="kw">in </span><span class="kw-2">&amp;</span>first_cell {
             <span class="kw">let </span>last = <span class="kw-2">*</span>most_recent_cell.get(var).unwrap();
             gates[first.row].wires[first.col] = last;
         }

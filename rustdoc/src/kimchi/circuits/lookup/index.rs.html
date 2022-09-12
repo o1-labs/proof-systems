@@ -810,7 +810,7 @@
                 <span class="kw">let </span><span class="kw-2">mut </span>non_zero_table_id = <span class="bool-val">false</span>;
                 <span class="kw">let </span><span class="kw-2">mut </span>has_table_id_0_with_zero_entry = <span class="bool-val">false</span>;
 
-                <span class="kw">for </span>table <span class="kw">in </span>lookup_tables.iter() {
+                <span class="kw">for </span>table <span class="kw">in </span><span class="kw-2">&amp;</span>lookup_tables {
                     <span class="kw">let </span>table_len = table.data[<span class="number">0</span>].len();
 
                     <span class="kw">if </span>table.id != <span class="number">0 </span>{
