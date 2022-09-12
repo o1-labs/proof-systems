@@ -285,7 +285,7 @@ impl<F: Field, T: ArithmeticOps<F>> FromWitness<F, T> for Variable {
     fn new_from_env(&self, env: &ArgumentEnv<F, T>) -> T {
         let column_to_index = |_| match self.col {
             Column::Witness(i) => i,
-            _ => panic!("Can get index from witness columns"),
+            _ => panic!("Can't get index from witness columns"),
         };
 
         match self.row {
@@ -353,7 +353,7 @@ pub fn witness<F: FftField + std::fmt::Display>(
     bits: &[bool],
     acc0: (F, F),
 ) -> VarbaseMulResult<F> {
-    let l = Layout::create();
+    let layout = Layout::create();
     let bits: Vec<_> = bits.iter().map(|b| F::from(*b as u64)).collect();
     let bits_per_chunk = 5;
     assert_eq!(bits_per_chunk * (bits.len() / bits_per_chunk), bits.len());
@@ -363,24 +363,24 @@ pub fn witness<F: FftField + std::fmt::Display>(
     for (chunk, bs) in bits.chunks(bits_per_chunk).enumerate() {
         let row = row0 + 2 * chunk;
 
-        set(w, row, l.n_prev, n_acc);
+        set(w, row, layout.n_prev, n_acc);
         for (i, bs) in bs.iter().enumerate().take(bits_per_chunk) {
             n_acc.double_in_place();
             n_acc += bs;
             acc = single_bit_witness(
                 w,
                 row,
-                l.bits[i],
-                &l.base,
-                l.ss[i],
-                &l.accs[i],
-                &l.accs[i + 1],
+                layout.bits[i],
+                &layout.base,
+                layout.ss[i],
+                &layout.accs[i],
+                &layout.accs[i + 1],
                 *bs,
                 base,
                 acc,
             );
         }
-        set(w, row, l.n_next, n_acc);
+        set(w, row, layout.n_next, n_acc);
     }
     VarbaseMulResult { acc, n: n_acc }
 }

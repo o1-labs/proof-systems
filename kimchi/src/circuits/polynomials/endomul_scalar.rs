@@ -192,7 +192,6 @@ where
         ];
 
         let c_funcs: [_; 8] = array::from_fn(|i| cache.cache(polynomial(&c_coeffs[..], &xs[i])));
-
         let d_funcs: [_; 8] =
             array::from_fn(|i| c_funcs[i].clone() + polynomial(&d_minus_c_coeffs[..], &xs[i]));
 
@@ -210,7 +209,6 @@ where
         let b8_expected = d_funcs.iter().fold(b0, |acc, d| acc.double() + d.clone());
 
         let mut constraints = vec![n8_expected - n8, a8_expected - a8, b8_expected - b8];
-
         constraints.extend(xs.iter().map(crumb));
 
         constraints
