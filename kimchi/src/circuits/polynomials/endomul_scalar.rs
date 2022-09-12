@@ -45,11 +45,11 @@ impl<F: PrimeField> CircuitGate<F> {
     }
 }
 
-fn polynomial<F: Field, T: ExprOps<F>>(coeffs: &[T], x: &T) -> T {
+fn polynomial<F: Field, T: ExprOps<F>>(coeffs: &[F], x: &T) -> T {
     coeffs
         .iter()
         .rev()
-        .fold(T::zero(), |acc, c| acc * x.clone() + c.clone())
+        .fold(T::zero(), |acc, c| acc * x.clone() + T::literal(*c))
 }
 
 //~ We give constraints for the endomul scalar computation.
@@ -172,24 +172,15 @@ where
         let mut cache = Cache::default();
 
         let c_coeffs = [
-            T::literal(F::zero()),
-            T::literal(F::from(11u64) / F::from(6u64)),
-            T::literal(-F::from(5u64) / F::from(2u64)),
-            T::literal(F::from(2u64) / F::from(3u64)),
+            F::zero(),
+            F::from(11u64) / F::from(6u64),
+            -F::from(5u64) / F::from(2u64),
+            F::from(2u64) / F::from(3u64),
         ];
 
-        let crumb_over_x_coeffs = [
-            T::literal(-F::from(6u64)),
-            T::literal(F::from(11u64)),
-            T::literal(-F::from(6u64)),
-            T::literal(F::one()),
-        ];
+        let crumb_over_x_coeffs = [-F::from(6u64), F::from(11u64), -F::from(6u64), F::one()];
         let crumb = |x: &T| polynomial(&crumb_over_x_coeffs[..], x) * x.clone();
-        let d_minus_c_coeffs = [
-            T::literal(-F::one()),
-            T::literal(F::from(3u64)),
-            T::literal(-F::one()),
-        ];
+        let d_minus_c_coeffs = [-F::one(), F::from(3u64), -F::one()];
 
         let c_funcs: [_; 8] = array::from_fn(|i| cache.cache(polynomial(&c_coeffs[..], &xs[i])));
         let d_funcs: [_; 8] =
