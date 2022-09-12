@@ -44,7 +44,7 @@ where
     F: PrimeField,
 {
     fn latex() -> Vec<Vec<String>> {
-        Self::constraints().iter().map(|c| c.latex_str()).collect()
+        Self::expression().iter().map(|c| c.latex_str()).collect()
     }
 }
 

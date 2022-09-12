@@ -8,14 +8,15 @@ use crate::{
     },
     proof::ProofEvaluations,
 };
-use ark_ff::{FftField, Field, One, PrimeField, Zero};
+use ark_ff::{FftField, Field, One, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
 use itertools::Itertools;
+use o1_utils::FieldHelpers;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::{iter::FromIterator, marker::PhantomData};
+use std::iter::FromIterator;
 use std::ops::{Add, AddAssign, Mul, Neg, Sub};
 use std::{
     collections::{HashMap, HashSet},
@@ -25,8 +26,6 @@ use thiserror::Error;
 use CurrOrNext::{Curr, Next};
 
 use self::constraints::ArithmeticOps;
-
-use super::constraints::ConstraintSystem;
 
 #[derive(Debug, Error)]
 pub enum ExprError {
@@ -64,39 +63,6 @@ pub struct Constants<F: 'static> {
     pub endo_coefficient: F,
     /// The MDS matrix
     pub mds: &'static Vec<Vec<F>>,
-}
-
-pub struct ConstantsEnv<F: 'static, T> {
-    pub constants: Option<Constants<F>>,
-    phantom_data: PhantomData<T>,
-}
-
-impl<F: Field> Default for ConstantsEnv<F, Expr<ConstantExpr<F>>> {
-    fn default() -> Self {
-        ConstantsEnv {
-            constants: None,
-            phantom_data: PhantomData,
-        }
-    }
-}
-
-impl<F: PrimeField> ConstantsEnv<F, F> {
-    /// Create constants from constraint system
-    pub fn create(constants: Constants<F>) -> Self {
-        ConstantsEnv {
-            constants: Some(constants),
-            phantom_data: PhantomData,
-        }
-    }
-}
-
-impl<F: Field, T: ArithmeticOps<F>> ConstantsEnv<F, T> {
-    pub fn endo_coefficient(&self) -> T {
-        match self.constants {
-            None => T::expr(E::Constant(ConstantExpr::<F>::EndoCoefficient)),
-            Some(constants) => T::literal(constants.endo_coefficient)
-        }
-    }
 }
 
 /// The polynomials specific to the lookup argument.
@@ -2043,7 +2009,7 @@ impl<F: Field> Mul<F> for Expr<ConstantExpr<F>> {
 // Display
 //
 
-impl<F: PrimeField> ConstantExpr<F> {
+impl<F: Field> ConstantExpr<F> {
     fn ocaml(&self) -> String {
         use ConstantExpr::*;
         match self {
@@ -2053,7 +2019,7 @@ impl<F: PrimeField> ConstantExpr<F> {
             JointCombiner => "joint_combiner".to_string(),
             EndoCoefficient => "endo_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
-            Literal(x) => format!("field(\"0x{}\")", x.into_repr()),
+            Literal(x) => format!("field(\"0x{}\")", x.to_hex()),
             Pow(x, n) => match x.as_ref() {
                 Alpha => format!("alpha_pow({n})"),
                 x => format!("pow({}, {n})", x.ocaml()),
@@ -2073,7 +2039,7 @@ impl<F: PrimeField> ConstantExpr<F> {
             JointCombiner => "joint\\_combiner".to_string(),
             EndoCoefficient => "endo\\_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
-            Literal(x) => format!("\\mathbb{{F}}({})", x.into_repr().into()),
+            Literal(x) => format!("\\mathbb{{F}}({})", x.to_hex()),
             Pow(x, n) => match x.as_ref() {
                 Alpha => format!("\\alpha^{{{n}}}"),
                 x => format!("{}^{n}", x.ocaml()),
@@ -2087,7 +2053,7 @@ impl<F: PrimeField> ConstantExpr<F> {
 
 impl<F> Expr<ConstantExpr<F>>
 where
-    F: PrimeField,
+    F: Field,
 {
     /// Converts the expression in OCaml code
     pub fn ocaml_str(&self) -> String {
@@ -2180,6 +2146,8 @@ where
 
 /// A number of useful constraints
 pub mod constraints {
+    use crate::circuits::argument::ArgumentData;
+
     use super::*;
 
     /// This trait defines a common arithmetic operations interface
@@ -2209,11 +2177,17 @@ pub mod constraints {
         /// Raise the value to the given power
         fn pow(&self, p: u64) -> Self;
 
-        /// Create a constant
+        /// Create a literal
         fn literal(x: F) -> Self;
 
-        /// Crate an expr
-        fn expr(x: Expr<ConstantExpr<F>>) -> Self;
+        // Witness variable
+        fn witness(row: CurrOrNext, col: usize, env: Option<&ArgumentData<F>>) -> Self;
+
+        /// Coefficient
+        fn coeff(col: usize, env: Option<&ArgumentData<F>>) -> Self;
+
+        /// Create a constant
+        fn constant(expr: ConstantExpr<F>, env: Option<&ArgumentData<F>>) -> Self;
 
         /// Cache item
         fn cache(&self, cache: &mut Cache) -> Self;
@@ -2236,12 +2210,20 @@ pub mod constraints {
             Expr::Constant(ConstantExpr::Literal(x))
         }
 
-        fn expr(x: Expr<ConstantExpr<F>>) -> Self {
-            x
+        fn witness(row: CurrOrNext, col: usize, _: Option<&ArgumentData<F>>) -> Self {
+            witness(col, row)
+        }
+
+        fn coeff(col: usize, _: Option<&ArgumentData<F>>) -> Self {
+            coeff(col)
+        }
+
+        fn constant(expr: ConstantExpr<F>, _: Option<&ArgumentData<F>>) -> Self {
+            Expr::Constant(expr)
         }
 
         fn cache(&self, cache: &mut Cache) -> Self {
-            Expr::Cache(cache.next_id(), Box::new(*self))
+            Expr::Cache(cache.next_id(), Box::new(self.clone()))
         }
     }
 
@@ -2262,11 +2244,28 @@ pub mod constraints {
             x
         }
 
-        fn expr(x: Expr<ConstantExpr<F>>) -> Self {
-            unimplemented!()
+        fn witness(row: CurrOrNext, col: usize, env: Option<&ArgumentData<F>>) -> Self {
+            match env {
+                Some(data) => data.witness[(row, col)],
+                None => panic!("Missing witness"),
+            }
         }
 
-        fn cache(&self, cache: &mut Cache) -> Self {
+        fn coeff(col: usize, env: Option<&ArgumentData<F>>) -> Self {
+            match env {
+                Some(data) => data.coeffs[col],
+                None => panic!("Missing coefficients"),
+            }
+        }
+
+        fn constant(expr: ConstantExpr<F>, env: Option<&ArgumentData<F>>) -> Self {
+            match env {
+                Some(data) => expr.value(&data.constants),
+                None => panic!("Missing constants"),
+            }
+        }
+
+        fn cache(&self, _: &mut Cache) -> Self {
             *self
         }
     }
@@ -2340,11 +2339,10 @@ pub mod test {
         },
         curve::KimchiCurve,
     };
-    use ark_ec::AffineCurve;
     use ark_ff::UniformRand;
     use array_init::array_init;
+    use mina_curves::pasta::fp::Fp;
     use mina_curves::pasta::vesta::Vesta;
-    use mina_curves::pasta::{fp::Fp, pallas};
     use rand::{prelude::StdRng, SeedableRng};
 
     #[test]

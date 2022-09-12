@@ -11,12 +11,12 @@
 //! and 3.1 of <https://arxiv.org/pdf/math/0208038.pdf> for details.
 
 use crate::circuits::{
-    argument::{Argument, ArgumentType, GateWitness},
-    expr::{prologue::*, Cache, Column, Variable, constraints::ArithmeticOps, ConstantsEnv},
+    argument::{Argument, ArgumentEnv, ArgumentType},
+    expr::{constraints::ArithmeticOps, Cache, Column, Variable},
     gate::{CircuitGate, CurrOrNext, GateType},
     wires::{GateWires, COLUMNS},
 };
-use ark_ff::{FftField, One, PrimeField};
+use ark_ff::{FftField, Field, PrimeField};
 use std::marker::PhantomData;
 use CurrOrNext::{Curr, Next};
 
@@ -157,6 +157,7 @@ impl<F: PrimeField> CircuitGate<F> {
     }
 }
 
+#[derive(Copy, Clone)]
 struct Point<T> {
     x: T,
     y: T,
@@ -164,16 +165,13 @@ struct Point<T> {
 
 impl<T> Point<T> {
     pub fn create(x: T, y: T) -> Self {
-        Point {
-            x,
-            y,
-        }
+        Point { x, y }
     }
 }
 
 impl Point<Variable> {
-    pub fn from_witness<T>(&self, witness: &GateWitness<T>) -> Point<T> {
-        Point::create(self.x.from_witness(witness), self.y.from_witness(witness))
+    pub fn from_env<F: Field, T: ArithmeticOps<F>>(&self, env: &ArgumentEnv<F, T>) -> Point<T> {
+        Point::create(self.x.from_env(env), self.y.from_env(env))
     }
 }
 
@@ -189,10 +187,10 @@ fn single_bit_witness<F: FftField>(
     w: &mut [Vec<F>; COLUMNS],
     row: usize,
     b: Variable,
-    base: Point<Variable>,
+    base: &Point<Variable>,
     s1: Variable,
-    input: Point<Variable>,
-    output: Point<Variable>,
+    input: &Point<Variable>,
+    output: &Point<Variable>,
     b_value: F,
     base_value: (F, F),
     input_value: (F, F),
@@ -224,24 +222,24 @@ fn single_bit_witness<F: FftField>(
 
 fn single_bit<F: FftField, T: ArithmeticOps<F>>(
     cache: &mut Cache,
-    b: T,
+    b: &T,
     base: Point<T>,
-    s1: T,
-    input: Point<T>,
-    output: Point<T>,
+    s1: &T,
+    input: &Point<T>,
+    output: &Point<T>,
 ) -> Vec<T> {
     let b_sign = b.double() - T::one();
 
-    let s1_squared = cache.cache(s1 * s1);
+    let s1_squared = cache.cache(s1.clone() * s1.clone());
 
     // s1 = (input.y - (2b - 1) * base.y) / (input.x - base.x)
     // s2 = 2*input.y / (2*input.x + base.x – s1^2) - s1
     // output.x = base.x + s2^2 - s1^2
     // output.y = (input.x – output.x) * s2 - input.y
 
-    let rx = s1_squared.clone() - input.x - base.x;
-    let t = cache.cache(input.x - rx);
-    let u = cache.cache(input.y.double() - t.clone() * s1);
+    let rx = s1_squared.clone() - input.x.clone() - base.x.clone();
+    let t = cache.cache(input.x.clone() - rx);
+    let u = cache.cache(input.y.double() - t.clone() * s1.clone());
     // s2 = u / t
 
     // output.x = base.x + s2^2 - s1^2
@@ -258,14 +256,15 @@ fn single_bit<F: FftField, T: ArithmeticOps<F>>(
 
     vec![
         // boolean constrain the bit.
-        b * b - b,
+        b.clone() * b.clone() - b.clone(),
         // constrain s1:
         //   (input.x - base.x) * s1 = input.y – (2b-1)*base.y
-        (input.x - base.x) * s1 - (input.y - b_sign * base.y),
+        (input.x.clone() - base.x.clone()) * s1.clone() - (input.y.clone() - b_sign * base.y),
         // constrain output.x
-        (u.clone() * u.clone()) - (t.clone() * t.clone()) * (output.x - base.x + s1_squared),
+        (u.clone() * u.clone())
+            - (t.clone() * t.clone()) * (output.x.clone() - base.x + s1_squared),
         // constrain output.y
-        (output.y + input.y) * t - (input.x - output.x) * u,
+        (output.y.clone() + input.y.clone()) * t - (input.x.clone() - output.x.clone()) * u,
     ]
 }
 
@@ -278,22 +277,20 @@ pub struct Layout<T> {
     n_next: T,
 }
 
-trait FromWitness<T> {
-    fn from_witness(&self, witness: &GateWitness<T>) -> T;
+trait FromWitness<F, T> {
+    fn from_env(&self, env: &ArgumentEnv<F, T>) -> T;
 }
 
-impl<T> FromWitness<T> for Variable {
-    fn from_witness(&self, witness: &GateWitness<T>) -> T {
-        let column_to_index = |col: Column| {
-            match self.col {
-                Column::Witness(i) => i,
-                _ => panic!("Can get index from witness columns"),
-            }
+impl<F: Field, T: ArithmeticOps<F>> FromWitness<F, T> for Variable {
+    fn from_env(&self, env: &ArgumentEnv<F, T>) -> T {
+        let column_to_index = |_| match self.col {
+            Column::Witness(i) => i,
+            _ => panic!("Can get index from witness columns"),
         };
 
         match self.row {
-            Curr => witness.curr[column_to_index(self.col)],
-            Next => witness.next[column_to_index(self.col)],
+            Curr => env.witness_curr(column_to_index(self.col)),
+            Next => env.witness_next(column_to_index(self.col)),
         }
     }
 }
@@ -316,19 +313,19 @@ impl Layout<Variable> {
             ss: [v(Next, 7), v(Next, 8), v(Next, 9), v(Next, 10), v(Next, 11)],
 
             base: Point::create(v(Curr, 0), v(Curr, 1)), // (xT, yT)
-            n_prev: v(Curr, 4), // n
-            n_next: v(Curr, 5), // n'
+            n_prev: v(Curr, 4),                          // n
+            n_next: v(Curr, 5),                          // n'
         }
     }
 
-    fn from_witness<F, T: ArithmeticOps<F>>(&self, witness: &GateWitness<T>) -> Layout<T> {
+    fn from_env<F: Field, T: ArithmeticOps<F>>(&self, env: &ArgumentEnv<F, T>) -> Layout<T> {
         Layout {
-            accs: self.accs.map(|point| point.from_witness(witness)),
-            bits: self.bits.map(|var| var.from_witness(witness)),
-            ss: self.ss.map(|s| s.from_witness(witness)),
-            base: self.base.from_witness(witness),
-            n_prev: self.n_prev.from_witness(witness),
-            n_next: self.n_next.from_witness(witness),
+            accs: self.accs.map(|point| point.from_env(env)),
+            bits: self.bits.map(|var| var.from_env(env)),
+            ss: self.ss.map(|s| s.from_env(env)),
+            base: self.base.from_env(env),
+            n_prev: self.n_prev.from_env(env),
+            n_next: self.n_next.from_env(env),
         }
     }
 }
@@ -344,8 +341,6 @@ const fn v(row: CurrOrNext, col: usize) -> Variable {
     }
 }
 
-const LAYOUT: Layout<Variable> = Layout::create();
-
 pub struct VarbaseMulResult<F> {
     pub acc: (F, F),
     pub n: F,
@@ -358,7 +353,7 @@ pub fn witness<F: FftField + std::fmt::Display>(
     bits: &[bool],
     acc0: (F, F),
 ) -> VarbaseMulResult<F> {
-    let l = LAYOUT;
+    let l = Layout::create();
     let bits: Vec<_> = bits.iter().map(|b| F::from(*b as u64)).collect();
     let bits_per_chunk = 5;
     assert_eq!(bits_per_chunk * (bits.len() / bits_per_chunk), bits.len());
@@ -376,10 +371,10 @@ pub fn witness<F: FftField + std::fmt::Display>(
                 w,
                 row,
                 l.bits[i],
-                l.base,
+                &l.base,
                 l.ss[i],
-                l.accs[i],
-                l.accs[i + 1],
+                &l.accs[i],
+                &l.accs[i + 1],
                 *bs,
                 base,
                 acc,
@@ -400,7 +395,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::VarBaseMul);
     const CONSTRAINTS: u32 = 21;
 
-    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: ConstantsEnv<F, T>) -> Vec<T> {
+    fn constraints<T: ArithmeticOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
         let Layout {
             base,
             accs,
@@ -408,15 +403,9 @@ where
             ss,
             n_prev,
             n_next,
-        } = LAYOUT.from_witness(witness);
-
-        let base = Point::create(witness.curr[0], witness.curr[1]); // (xT, yT)
-        let n_prev = witness.curr[4]; // n
-        let n_next =  witness.curr[5]; // n'
+        } = Layout::create().from_env::<F, T>(env);
 
         let mut c = Cache::default();
-
-        let mut constraint = |i| single_bit(&mut c, bits[i], base, ss[i], accs[i], accs[i + 1]);
 
         // n'
         // = 2^5 * n + 2^4 b0 + 2^3 b1 + 2^2 b2 + 2^1 b3 + b4
@@ -424,15 +413,17 @@ where
 
         let n_prev = n_prev;
         let n_next = n_next;
-        let mut res = vec![
-            n_next
-                - bits
-                    .iter()
-                    .fold(n_prev, |acc, b| *b + acc.double()),
-        ];
+        let mut res = vec![n_next - bits.iter().fold(n_prev, |acc, b| b.clone() + acc.double())];
 
         for i in 0..5 {
-            res.append(&mut constraint(i));
+            res.append(&mut single_bit(
+                &mut c,
+                &bits[i],
+                base.clone(),
+                &ss[i],
+                &accs[i],
+                &accs[i + 1],
+            ));
         }
 
         res

@@ -81,19 +81,16 @@
 use crate::{
     alphas::Alphas,
     circuits::{
-        argument::{Argument, ArgumentType, GateWitness},
+        argument::{Argument, ArgumentEnv, ArgumentType},
         constraints::ConstraintSystem,
-        expr::{
-            self, constraints::ArithmeticOps, witness_curr, witness_next, Cache, Column,
-            ConstantExpr, Expr, E, ConstantsEnv,
-        },
+        expr::{self, constraints::ArithmeticOps, Cache, Column, E},
         gate::{CircuitGate, GateType},
         wires::{GateWires, Wire, COLUMNS},
     },
     curve::KimchiCurve,
     proof::ProofEvaluations,
 };
-use ark_ff::{FftField, Field, One, PrimeField};
+use ark_ff::{FftField, Field, PrimeField};
 use array_init::array_init;
 use cairo::{
     runner::{CairoInstruction, CairoProgram, Pointers},
@@ -765,18 +762,18 @@ where
 
     /// Generates the constraints for the Cairo initial claim and first memory checks
     ///     Accesses Curr and Next rows
-    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: ConstantsEnv<F, T>) -> Vec<T> {
-        let pc_ini = witness.curr[0]; // copy from public input
-        let ap_ini = witness.curr[1]; // copy from public input
-        let pc_fin = witness.curr[2]; // copy from public input
-        let ap_fin = witness.curr[3]; // copy from public input
-        let pc_n = witness.curr[4]; // copy from public input
-        let ap_n = witness.curr[5]; // copy from public input
+    fn constraints<T: ArithmeticOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+        let pc_ini = env.witness_curr(0); // copy from public input
+        let ap_ini = env.witness_curr(1); // copy from public input
+        let pc_fin = env.witness_curr(2); // copy from public input
+        let ap_fin = env.witness_curr(3); // copy from public input
+        let pc_n = env.witness_curr(4); // copy from public input
+        let ap_n = env.witness_curr(5); // copy from public input
 
         // load address / value pairs from next row
-        let pc0 = witness.next[0];
-        let ap0 = witness.next[1];
-        let fp0 = witness.next[2];
+        let pc0 = env.witness_next(0);
+        let ap0 = env.witness_next(1);
+        let fp0 = env.witness_next(2);
 
         // Initial claim
         let mut constraints: Vec<T> = vec![ap0 - ap_ini.clone()]; // ap0 = ini_ap
@@ -802,42 +799,42 @@ where
 
     /// Generates the constraints for the Cairo instruction
     ///     Accesses Curr and Next rows
-    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: ConstantsEnv<F, T>) -> Vec<T> {
+    fn constraints<T: ArithmeticOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
         // load all variables of the witness corresponding to Cairoinstruction gates
-        let pc = witness.curr[0];
-        let ap = witness.curr[1];
-        let fp = witness.curr[2];
-        let size = witness.curr[3];
-        let res = witness.curr[4];
-        let dst = witness.curr[5];
-        let op1 = witness.curr[6];
-        let op0 = witness.curr[7];
-        let off_dst = witness.curr[8];
-        let off_op1 = witness.curr[9];
-        let off_op0 = witness.curr[10];
-        let adr_dst = witness.curr[11];
-        let adr_op1 = witness.curr[12];
-        let adr_op0 = witness.curr[13];
-        let instr = witness.curr[14];
+        let pc = env.witness_curr(0);
+        let ap = env.witness_curr(1);
+        let fp = env.witness_curr(2);
+        let size = env.witness_curr(3);
+        let res = env.witness_curr(4);
+        let dst = env.witness_curr(5);
+        let op1 = env.witness_curr(6);
+        let op0 = env.witness_curr(7);
+        let off_dst = env.witness_curr(8);
+        let off_op1 = env.witness_curr(9);
+        let off_op0 = env.witness_curr(10);
+        let adr_dst = env.witness_curr(11);
+        let adr_op1 = env.witness_curr(12);
+        let adr_op0 = env.witness_curr(13);
+        let instr = env.witness_curr(14);
         // Load flags from the following row
-        let f_dst_fp = witness.next[0];
-        let f_op0_fp = witness.next[1];
-        let f_op1_val = witness.next[2];
-        let f_op1_fp = witness.next[3];
-        let f_op1_ap = witness.next[4];
-        let f_res_add = witness.next[5];
-        let f_res_mul = witness.next[6];
-        let f_pc_abs = witness.next[7];
-        let f_pc_rel = witness.next[8];
-        let f_pc_jnz = witness.next[9];
-        let f_ap_add = witness.next[10];
-        let f_ap_one = witness.next[11];
-        let f_opc_call = witness.next[12];
-        let f_opc_ret = witness.next[13];
-        let f_opc_aeq = witness.next[14];
+        let f_dst_fp = env.witness_next(0);
+        let f_op0_fp = env.witness_next(1);
+        let f_op1_val = env.witness_next(2);
+        let f_op1_fp = env.witness_next(3);
+        let f_op1_ap = env.witness_next(4);
+        let f_res_add = env.witness_next(5);
+        let f_res_mul = env.witness_next(6);
+        let f_pc_abs = env.witness_next(7);
+        let f_pc_rel = env.witness_next(8);
+        let f_pc_jnz = env.witness_next(9);
+        let f_ap_add = env.witness_next(10);
+        let f_ap_one = env.witness_next(11);
+        let f_opc_call = env.witness_next(12);
+        let f_opc_ret = env.witness_next(13);
+        let f_opc_aeq = env.witness_next(14);
 
         // collect flags in its natural ordering
-        let flags: Vec<T> = (0..NUM_FLAGS - 1).map(|i| witness.next[i]).collect();
+        let flags: Vec<T> = (0..NUM_FLAGS - 1).map(|i| env.witness_next(i)).collect();
 
         // LIST OF CONSTRAINTS
         // -------------------
@@ -949,26 +946,26 @@ where
 
     /// Generates the constraints for the Cairo flags
     ///     Accesses Curr and Next rows
-    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: ConstantsEnv<F, T>) -> Vec<T> {
+    fn constraints<T: ArithmeticOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
         // Load current row
-        let f_pc_abs = witness.curr[7];
-        let f_pc_rel = witness.curr[8];
-        let f_pc_jnz = witness.curr[9];
-        let f_ap_add = witness.curr[10];
-        let f_ap_one = witness.curr[11];
-        let f_opc_call = witness.curr[12];
-        let f_opc_ret = witness.curr[13];
+        let f_pc_abs = env.witness_curr(7);
+        let f_pc_rel = env.witness_curr(8);
+        let f_pc_jnz = env.witness_curr(9);
+        let f_ap_add = env.witness_curr(10);
+        let f_ap_one = env.witness_curr(11);
+        let f_opc_call = env.witness_curr(12);
+        let f_opc_ret = env.witness_curr(13);
         // Load next row
-        let pc = witness.next[0];
-        let ap = witness.next[1];
-        let fp = witness.next[2];
-        let size = witness.next[3];
-        let res = witness.next[4];
-        let dst = witness.next[5];
-        let op1 = witness.next[6];
-        let pcup = witness.next[7];
-        let apup = witness.next[8];
-        let fpup = witness.next[9];
+        let pc = env.witness_next(0);
+        let ap = env.witness_next(1);
+        let fp = env.witness_next(2);
+        let size = env.witness_next(3);
+        let res = env.witness_next(4);
+        let dst = env.witness_next(5);
+        let op1 = env.witness_next(6);
+        let pcup = env.witness_next(7);
+        let apup = env.witness_next(8);
+        let fpup = env.witness_next(9);
 
         // REGISTERS-RELATED
         // * Check next allocation pointer
@@ -977,9 +974,8 @@ where
         //  if ap_up == 1  : res
         //  if ap_up == 2  : 1
         // if opcode == 1  : 2
-        let mut constraints: Vec<T> = vec![
-            apup - (ap.clone() + f_ap_add * res.clone() + f_ap_one + f_opc_call.clone().double()),
-        ];
+        let mut constraints: Vec<T> =
+            vec![apup - (ap.clone() + f_ap_add * res.clone() + f_ap_one + f_opc_call.double())];
 
         // * Check next frame pointer
         constraints.push(
@@ -1017,15 +1013,15 @@ where
 
     /// Generates the constraints for the Cairo transition
     ///     Accesses Curr and Next rows (Next only first 3 entries)
-    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: ConstantsEnv<F,T>) -> Vec<T> {
+    fn constraints<T: ArithmeticOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
         // load computed updated registers
-        let pcup = witness.curr[7];
-        let apup = witness.curr[8];
-        let fpup = witness.curr[9];
+        let pcup = env.witness_curr(7);
+        let apup = env.witness_curr(8);
+        let fpup = env.witness_curr(9);
         // load next registers
-        let next_pc = witness.next[0];
-        let next_ap = witness.next[1];
-        let next_fp = witness.next[2];
+        let next_pc = env.witness_next(0);
+        let next_ap = env.witness_next(1);
+        let next_fp = env.witness_next(2);
 
         // * Check equality (like a copy constraint)
 

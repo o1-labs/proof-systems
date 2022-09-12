@@ -3,15 +3,15 @@
 
 use crate::{
     circuits::{
-        argument::{Argument, ArgumentType, GateWitness},
+        argument::{Argument, ArgumentEnv, ArgumentType},
         constraints::ConstraintSystem,
-        expr::{constraints::ArithmeticOps, prologue::*, Cache, ConstantExpr, Expr, ConstantsEnv},
+        expr::{constraints::ArithmeticOps, Cache},
         gate::{CircuitGate, GateType},
         wires::COLUMNS,
     },
     curve::KimchiCurve,
 };
-use ark_ff::{BitIteratorLE, FftField, Field, PrimeField, Zero};
+use ark_ff::{BitIteratorLE, FftField, Field, PrimeField};
 use array_init::array_init;
 use std::marker::PhantomData;
 
@@ -49,7 +49,7 @@ fn polynomial<F: Field, T: ArithmeticOps<F>>(coeffs: &[T], x: &T) -> T {
     coeffs
         .iter()
         .rev()
-        .fold(T::zero(), |acc, c| acc * x.clone() + *c)
+        .fold(T::zero(), |acc, c| acc * x.clone() + c.clone())
 }
 
 //~ We give constraints for the endomul scalar computation.
@@ -158,16 +158,16 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMulScalar);
     const CONSTRAINTS: u32 = 11;
 
-    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: ConstantsEnv<F, T>) -> Vec<T> {
-        let n0 = witness.curr[0];
-        let n8 = witness.curr[1];
-        let a0 = witness.curr[2];
-        let b0 = witness.curr[3];
-        let a8 = witness.curr[4];
-        let b8 = witness.curr[5];
+    fn constraints<T: ArithmeticOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+        let n0 = env.witness_curr(0);
+        let n8 = env.witness_curr(1);
+        let a0 = env.witness_curr(2);
+        let b0 = env.witness_curr(3);
+        let a8 = env.witness_curr(4);
+        let b8 = env.witness_curr(5);
 
         // x0..x7
-        let xs: [T; 8] = array_init(|i| witness.curr[6 + i]);
+        let xs: [T; 8] = array_init(|i| env.witness_curr(6 + i));
 
         let mut cache = Cache::default();
 

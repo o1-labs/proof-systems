@@ -14,12 +14,12 @@
 //~ - `same_x` is a boolean that is true iff `x1 == x2`.
 //~
 use crate::circuits::{
-    argument::{Argument, ArgumentType, GateWitness},
-    expr::{constraints::ArithmeticOps, prologue::*, Cache, ConstantsEnv},
+    argument::{Argument, ArgumentEnv, ArgumentType},
+    expr::{constraints::ArithmeticOps, Cache},
     gate::{CircuitGate, GateType},
     wires::COLUMNS,
 };
-use ark_ff::{FftField, Field, One, PrimeField};
+use ark_ff::{FftField, Field, PrimeField};
 use std::marker::PhantomData;
 
 /// This enforces that
@@ -95,26 +95,26 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CompleteAdd);
     const CONSTRAINTS: u32 = 7;
 
-    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: ConstantsEnv<F, T>) -> Vec<T> {
+    fn constraints<T: ArithmeticOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
         // This function makes 2 + 1 + 1 + 1 + 2 = 7 constraints
-        let x1 = witness.curr[0];
-        let y1 = witness.curr[1];
-        let x2 = witness.curr[2];
-        let y2 = witness.curr[3];
-        let x3 = witness.curr[4];
-        let y3 = witness.curr[5];
+        let x1 = env.witness_curr(0);
+        let y1 = env.witness_curr(1);
+        let x2 = env.witness_curr(2);
+        let y2 = env.witness_curr(3);
+        let x3 = env.witness_curr(4);
+        let y3 = env.witness_curr(5);
 
-        let inf = witness.curr[6];
+        let inf = env.witness_curr(6);
         // same_x is 1 if x1 == x2, 0 otherwise
-        let same_x = witness.curr[7];
+        let same_x = env.witness_curr(7);
 
-        let s = witness.curr[8];
+        let s = env.witness_curr(8);
 
         // This variable is used to constrain inf
-        let inf_z = witness.curr[9];
+        let inf_z = env.witness_curr(9);
 
         // This variable is used to constrain same_x
-        let x21_inv = witness.curr[10];
+        let x21_inv = env.witness_curr(10);
 
         let mut cache = Cache::default();
 
@@ -131,8 +131,7 @@ where
         //   (x2 - x1) * s = y2 - y1
         {
             let x1_squared = cache.cache(x1.clone() * x1.clone());
-            let dbl_case =
-                s.clone().double() * y1.clone() - x1_squared.clone().double() - x1_squared;
+            let dbl_case = s.double() * y1.clone() - x1_squared.clone().double() - x1_squared;
             let add_case = x21 * s.clone() - y21.clone();
 
             res.push(same_x.clone() * dbl_case + (T::one() - same_x.clone()) * add_case);

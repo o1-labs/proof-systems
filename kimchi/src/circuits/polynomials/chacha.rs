@@ -143,16 +143,11 @@
 use std::marker::PhantomData;
 
 use crate::circuits::{
-    argument::{Argument, ArgumentType, GateWitness},
-    expr::{
-        constraints::{boolean, ArithmeticOps},
-        prologue::*,
-        ConstantExpr as C, ConstantsEnv,
-    },
-    gate::{CurrOrNext, GateType},
-    polynomial::COLUMNS,
+    argument::{Argument, ArgumentEnv, ArgumentType},
+    expr::constraints::{boolean, ArithmeticOps},
+    gate::GateType,
 };
-use ark_ff::{FftField, Field, Zero};
+use ark_ff::{FftField, Field};
 
 //
 // Implementation internals
@@ -161,39 +156,39 @@ use ark_ff::{FftField, Field, Zero};
 /// 8-nybble sequences that are laid out as 4 nybbles per row over the two row,
 /// like y^x' or x+z
 fn chunks_over_2_rows<F: Field, T: ArithmeticOps<F>>(
-    witness: &GateWitness<T>,
+    env: &ArgumentEnv<F, T>,
     col_offset: usize,
 ) -> Vec<T> {
     (0..8)
         .map(|i| {
             if i < 4 {
-                witness.curr[col_offset + (i % 4)]
+                env.witness_curr(col_offset + (i % 4))
             } else {
-                witness.next[col_offset + (i % 4)]
+                env.witness_next(col_offset + (i % 4))
             }
         })
         .collect()
 }
 
-fn combine_nybbles<F: Field, T: ArithmeticOps<F>>(witness: &GateWitness<T>, ns: Vec<T>) -> T {
+fn combine_nybbles<F: Field, T: ArithmeticOps<F>>(ns: Vec<T>) -> T {
     ns.into_iter()
         .enumerate()
         .fold(T::zero(), |acc: T, (i, t)| acc + T::from(1 << (4 * i)) * t)
 }
 
 /// Constraints for the line L(x, x', y, y', z, k), where k = 4 * nybble_rotation
-fn line<F: Field, T: ArithmeticOps<F>>(witness: &GateWitness<T>, nybble_rotation: usize) -> Vec<T> {
-    let y_xor_xprime_nybbles = chunks_over_2_rows(witness, 3);
-    let x_plus_z_nybbles = chunks_over_2_rows(witness, 7);
-    let y_nybbles = chunks_over_2_rows(witness, 11);
+fn line<F: Field, T: ArithmeticOps<F>>(env: &ArgumentEnv<F, T>, nybble_rotation: usize) -> Vec<T> {
+    let y_xor_xprime_nybbles = chunks_over_2_rows(env, 3);
+    let x_plus_z_nybbles = chunks_over_2_rows(env, 7);
+    let y_nybbles = chunks_over_2_rows(env, 11);
 
-    let x_plus_z_overflow_bit = witness.next[2];
+    let x_plus_z_overflow_bit = env.witness_next(2);
 
-    let x = witness.curr[0];
-    let xprime = witness.next[0];
-    let y = witness.curr[1];
-    let yprime = witness.next[1];
-    let z = witness.curr[2];
+    let x = env.witness_curr(0);
+    let xprime = env.witness_next(0);
+    let y = env.witness_curr(1);
+    let yprime = env.witness_next(1);
+    let z = env.witness_curr(2);
 
     // Because the nybbles are little-endian, rotating the vector "right"
     // is equivalent to left-shifting the nybbles.
@@ -204,13 +199,13 @@ fn line<F: Field, T: ArithmeticOps<F>>(witness: &GateWitness<T>, nybble_rotation
         // booleanity of overflow bit
         boolean(&x_plus_z_overflow_bit),
         // x' = x + z (mod 2^32)
-        combine_nybbles(witness, x_plus_z_nybbles) - xprime.clone(),
+        combine_nybbles(x_plus_z_nybbles) - xprime.clone(),
         // Correctness of x+z nybbles
         xprime + T::from(1 << 32) * x_plus_z_overflow_bit - (x + z),
         // Correctness of y nybbles
-        combine_nybbles(witness, y_nybbles) - y,
+        combine_nybbles(y_nybbles) - y,
         // y' = (y ^ x') <<< 4 * nybble_rotation
-        combine_nybbles(witness, y_xor_xprime_rotated) - yprime,
+        combine_nybbles(y_xor_xprime_rotated) - yprime,
     ]
 }
 
@@ -228,9 +223,9 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha0);
     const CONSTRAINTS: u32 = 5;
 
-    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: ConstantsEnv<F, T>) -> Vec<T> {
+    fn constraints<T: ArithmeticOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
         // a += b; d ^= a; d <<<= 16 (=4*4)
-        line(witness, 4)
+        line(env, 4)
     }
 }
 
@@ -244,9 +239,9 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha1);
     const CONSTRAINTS: u32 = 5;
 
-    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: ConstantsEnv<F, T>) -> Vec<T> {
+    fn constraints<T: ArithmeticOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
         // c += d; b ^= c; b <<<= 12 (=3*4)
-        line(witness, 3)
+        line(env, 3)
     }
 }
 
@@ -260,9 +255,9 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha2);
     const CONSTRAINTS: u32 = 5;
 
-    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: ConstantsEnv<F, T>) -> Vec<T> {
+    fn constraints<T: ArithmeticOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
         // a += b; d ^= a; d <<<= 8  (=2*4)
-        line(witness, 2)
+        line(env, 2)
     }
 }
 
@@ -276,7 +271,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaChaFinal);
     const CONSTRAINTS: u32 = 9;
 
-    fn constraints<T: ArithmeticOps<F>>(witness: &GateWitness<T>, constants: ConstantsEnv<F, T>) -> Vec<T> {
+    fn constraints<T: ArithmeticOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
         // The last line, namely,
         // c += d; b ^= c; b <<<= 7;
         // is special.
@@ -284,9 +279,9 @@ where
         // will use a ChaCha0 gate to compute the nybbles of
         // all the relevant values, and the xors, and then do
         // the shifting using a ChaChaFinal gate.
-        let y_xor_xprime_nybbles = chunks_over_2_rows(witness, 1);
-        let low_bits = chunks_over_2_rows(witness, 5);
-        let yprime = witness.curr[0];
+        let y_xor_xprime_nybbles = chunks_over_2_rows(env, 1);
+        let low_bits = chunks_over_2_rows(env, 5);
+        let yprime = env.witness_curr(0);
 
         // (y xor xprime) <<< 7
         // per the comment at the top of the file
@@ -301,7 +296,7 @@ where
             .collect();
 
         let mut constraints: Vec<T> = low_bits.iter().map(boolean).collect();
-        constraints.push(combine_nybbles(witness, y_xor_xprime_rotated) - yprime);
+        constraints.push(combine_nybbles(y_xor_xprime_rotated) - yprime);
         constraints
     }
 }
@@ -483,7 +478,7 @@ mod tests {
         curve::KimchiCurve,
         proof::{LookupEvaluations, ProofEvaluations},
     };
-    use ark_ff::UniformRand;
+    use ark_ff::{UniformRand, Zero};
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
     use array_init::array_init;
     use mina_curves::pasta::fp::Fp as F;
