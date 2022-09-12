@@ -5,7 +5,7 @@ use crate::{
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
         constraints::ConstraintSystem,
-        expr::{constraints::ArithmeticOps, Cache},
+        expr::{constraints::ExprOps, Cache},
         gate::{CircuitGate, GateType},
         wires::COLUMNS,
     },
@@ -45,7 +45,7 @@ impl<F: PrimeField> CircuitGate<F> {
     }
 }
 
-fn polynomial<F: Field, T: ArithmeticOps<F>>(coeffs: &[T], x: &T) -> T {
+fn polynomial<F: Field, T: ExprOps<F>>(coeffs: &[T], x: &T) -> T {
     coeffs
         .iter()
         .rev()
@@ -158,7 +158,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMulScalar);
     const CONSTRAINTS: u32 = 11;
 
-    fn constraints<T: ArithmeticOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
         let n0 = env.witness_curr(0);
         let n8 = env.witness_curr(1);
         let a0 = env.witness_curr(2);

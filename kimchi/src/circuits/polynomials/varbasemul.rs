@@ -12,7 +12,7 @@
 
 use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
-    expr::{constraints::ArithmeticOps, Cache, Column, Variable},
+    expr::{constraints::ExprOps, Cache, Column, Variable},
     gate::{CircuitGate, CurrOrNext, GateType},
     wires::{GateWires, COLUMNS},
 };
@@ -170,7 +170,7 @@ impl<T> Point<T> {
 }
 
 impl Point<Variable> {
-    pub fn new_from_env<F: Field, T: ArithmeticOps<F>>(&self, env: &ArgumentEnv<F, T>) -> Point<T> {
+    pub fn new_from_env<F: Field, T: ExprOps<F>>(&self, env: &ArgumentEnv<F, T>) -> Point<T> {
         Point::create(self.x.new_from_env(env), self.y.new_from_env(env))
     }
 }
@@ -220,7 +220,7 @@ fn single_bit_witness<F: FftField>(
     (out_x, out_y)
 }
 
-fn single_bit<F: FftField, T: ArithmeticOps<F>>(
+fn single_bit<F: FftField, T: ExprOps<F>>(
     cache: &mut Cache,
     b: &T,
     base: Point<T>,
@@ -281,7 +281,7 @@ trait FromWitness<F, T> {
     fn new_from_env(&self, env: &ArgumentEnv<F, T>) -> T;
 }
 
-impl<F: Field, T: ArithmeticOps<F>> FromWitness<F, T> for Variable {
+impl<F: Field, T: ExprOps<F>> FromWitness<F, T> for Variable {
     fn new_from_env(&self, env: &ArgumentEnv<F, T>) -> T {
         let column_to_index = |_| match self.col {
             Column::Witness(i) => i,
@@ -318,7 +318,7 @@ impl Layout<Variable> {
         }
     }
 
-    fn new_from_env<F: Field, T: ArithmeticOps<F>>(&self, env: &ArgumentEnv<F, T>) -> Layout<T> {
+    fn new_from_env<F: Field, T: ExprOps<F>>(&self, env: &ArgumentEnv<F, T>) -> Layout<T> {
         Layout {
             accs: self.accs.map(|point| point.new_from_env(env)),
             bits: self.bits.map(|var| var.new_from_env(env)),
@@ -395,7 +395,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::VarBaseMul);
     const CONSTRAINTS: u32 = 21;
 
-    fn constraints<T: ArithmeticOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
         let Layout {
             base,
             accs,

@@ -24,7 +24,7 @@ use std::{
 use thiserror::Error;
 use CurrOrNext::{Curr, Next};
 
-use self::constraints::ArithmeticOps;
+use self::constraints::ExprOps;
 
 #[derive(Debug, Error)]
 pub enum ExprError {
@@ -366,7 +366,7 @@ impl Cache {
         CacheId(id)
     }
 
-    pub fn cache<F: Field, T: ArithmeticOps<F>>(&mut self, e: T) -> T {
+    pub fn cache<F: Field, T: ExprOps<F>>(&mut self, e: T) -> T {
         e.cache(self)
     }
 }
@@ -2152,7 +2152,7 @@ pub mod constraints {
     /// This trait defines a common arithmetic operations interface
     /// that can be used by constraints.  It allows us to reuse
     /// constraint code for witness computation.
-    pub trait ArithmeticOps<F>:
+    pub trait ExprOps<F>:
         std::ops::Add<Output = Self>
         + std::ops::Sub<Output = Self>
         + std::ops::Neg<Output = Self>
@@ -2195,7 +2195,7 @@ pub mod constraints {
         fn cache(&self, cache: &mut Cache) -> Self;
     }
 
-    impl<F: Field> ArithmeticOps<F> for Expr<ConstantExpr<F>> {
+    impl<F: Field> ExprOps<F> for Expr<ConstantExpr<F>> {
         fn double(&self) -> Self {
             Expr::double(self.clone())
         }
@@ -2233,7 +2233,7 @@ pub mod constraints {
         }
     }
 
-    impl<F: Field> ArithmeticOps<F> for F {
+    impl<F: Field> ExprOps<F> for F {
         fn double(&self) -> Self {
             *self * F::from(2u64)
         }
@@ -2281,12 +2281,12 @@ pub mod constraints {
     }
 
     /// Creates a constraint to enforce that b is either 0 or 1.
-    pub fn boolean<F: Field, T: ArithmeticOps<F>>(b: &T) -> T {
+    pub fn boolean<F: Field, T: ExprOps<F>>(b: &T) -> T {
         b.square() - b.clone()
     }
 
     /// Crumb constraint for 2-bit value x
-    pub fn crumb<F: Field, T: ArithmeticOps<F>>(x: &T) -> T {
+    pub fn crumb<F: Field, T: ExprOps<F>>(x: &T) -> T {
         // Assert x \in [0,3] i.e. assert x*(x - 1)*(x - 2)*(x - 3) == 0
         x.clone()
             * (x.clone() - 1u64.into())
@@ -2342,7 +2342,7 @@ pub mod test {
     use crate::{
         circuits::{
             constraints::ConstraintSystem,
-            expr::constraints::ArithmeticOps,
+            expr::constraints::ExprOps,
             gate::CircuitGate,
             polynomials::{generic::GenericGateSpec, permutation::ZK_ROWS},
             wires::Wire,
@@ -2440,19 +2440,19 @@ pub mod test {
 
     #[test]
     fn test_arithmetic_ops() {
-        fn test_1<F: Field, T: ArithmeticOps<F>>() -> T {
+        fn test_1<F: Field, T: ExprOps<F>>() -> T {
             T::zero() + T::one()
         }
         assert_eq!(test_1::<Fp, E<Fp>>(), E::zero() + E::one());
         assert_eq!(test_1::<Fp, Fp>(), Fp::one());
 
-        fn test_2<F: Field, T: ArithmeticOps<F>>() -> T {
+        fn test_2<F: Field, T: ExprOps<F>>() -> T {
             T::one() + T::one()
         }
         assert_eq!(test_2::<Fp, E<Fp>>(), E::one() + E::one());
         assert_eq!(test_2::<Fp, Fp>(), Fp::from(2u64));
 
-        fn test_3<F: Field, T: ArithmeticOps<F>>(x: T) -> T {
+        fn test_3<F: Field, T: ExprOps<F>>(x: T) -> T {
             T::from(2u64) * x
         }
         assert_eq!(
@@ -2461,7 +2461,7 @@ pub mod test {
         );
         assert_eq!(test_3(Fp::from(3u64)), Fp::from(6u64));
 
-        fn test_4<F: Field, T: ArithmeticOps<F>>(x: T) -> T {
+        fn test_4<F: Field, T: ExprOps<F>>(x: T) -> T {
             x.clone() * (x.square() + T::from(7u64))
         }
         assert_eq!(

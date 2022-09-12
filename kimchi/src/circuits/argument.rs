@@ -11,7 +11,7 @@ use ark_ff::{FftField, Field};
 use serde::{Deserialize, Serialize};
 
 use super::{
-    expr::{constraints::ArithmeticOps, ConstantExpr, Constants},
+    expr::{constraints::ExprOps, ConstantExpr, Constants},
     gate::{CurrOrNext, GateType},
     polynomial::COLUMNS,
 };
@@ -52,7 +52,7 @@ impl<F, T> Default for ArgumentEnv<F, T> {
     }
 }
 
-impl<F: Field, T: ArithmeticOps<F>> ArgumentEnv<F, T> {
+impl<F: Field, T: ExprOps<F>> ArgumentEnv<F, T> {
     /// Initialize the environment for creating constraints of real field elements that can be
     /// evaluated directly over the witness without the prover/verifier
     pub fn create(witness: ArgumentWitness<F>, coeffs: Vec<F>, constants: Constants<F>) -> Self {
@@ -142,17 +142,17 @@ pub trait Argument<F: FftField> {
     const CONSTRAINTS: u32;
 
     /// Constraints for this argument
-    fn constraints<T: ArithmeticOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T>;
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T>;
 
     /// Returns the set of constraints required to prove this argument.
-    fn expression() -> Vec<E<F>> {
+    fn constraints() -> Vec<E<F>> {
         // Generate constraints
-        Self::constraints(&ArgumentEnv::default())
+        Self::constraint_checks(&ArgumentEnv::default())
     }
 
     /// Returns constraints safely combined via the passed combinator.
     fn combined_constraints(alphas: &Alphas<F>) -> E<F> {
-        let constraints = Self::expression();
+        let constraints = Self::constraints();
         assert_eq!(constraints.len(), Self::CONSTRAINTS as usize);
         let alphas = alphas.get_exponents(Self::ARGUMENT_TYPE, Self::CONSTRAINTS);
         let combined_constraints = E::combine_constraints(alphas, constraints);

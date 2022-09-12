@@ -144,7 +144,7 @@ use std::marker::PhantomData;
 
 use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
-    expr::constraints::{boolean, ArithmeticOps},
+    expr::constraints::{boolean, ExprOps},
     gate::{CurrOrNext, GateType},
 };
 use ark_ff::{FftField, Field};
@@ -155,7 +155,7 @@ use ark_ff::{FftField, Field};
 
 /// 8-nybble sequences that are laid out as 4 nybbles per row over the two row,
 /// like y^x' or x+z
-fn chunks_over_2_rows<F: Field, T: ArithmeticOps<F>>(
+fn chunks_over_2_rows<F: Field, T: ExprOps<F>>(
     env: &ArgumentEnv<F, T>,
     col_offset: usize,
 ) -> Vec<T> {
@@ -168,14 +168,14 @@ fn chunks_over_2_rows<F: Field, T: ArithmeticOps<F>>(
         .collect()
 }
 
-fn combine_nybbles<F: Field, T: ArithmeticOps<F>>(ns: Vec<T>) -> T {
+fn combine_nybbles<F: Field, T: ExprOps<F>>(ns: Vec<T>) -> T {
     ns.into_iter()
         .enumerate()
         .fold(T::zero(), |acc: T, (i, t)| acc + T::from(1 << (4 * i)) * t)
 }
 
 /// Constraints for the line L(x, x', y, y', z, k), where k = 4 * nybble_rotation
-fn line<F: Field, T: ArithmeticOps<F>>(env: &ArgumentEnv<F, T>, nybble_rotation: usize) -> Vec<T> {
+fn line<F: Field, T: ExprOps<F>>(env: &ArgumentEnv<F, T>, nybble_rotation: usize) -> Vec<T> {
     let y_xor_xprime_nybbles = chunks_over_2_rows(env, 3);
     let x_plus_z_nybbles = chunks_over_2_rows(env, 7);
     let y_nybbles = chunks_over_2_rows(env, 11);
@@ -221,7 +221,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha0);
     const CONSTRAINTS: u32 = 5;
 
-    fn constraints<T: ArithmeticOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
         // a += b; d ^= a; d <<<= 16 (=4*4)
         line(env, 4)
     }
@@ -237,7 +237,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha1);
     const CONSTRAINTS: u32 = 5;
 
-    fn constraints<T: ArithmeticOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
         // c += d; b ^= c; b <<<= 12 (=3*4)
         line(env, 3)
     }
@@ -253,7 +253,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha2);
     const CONSTRAINTS: u32 = 5;
 
-    fn constraints<T: ArithmeticOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
         // a += b; d ^= a; d <<<= 8  (=2*4)
         line(env, 2)
     }
@@ -269,7 +269,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaChaFinal);
     const CONSTRAINTS: u32 = 9;
 
-    fn constraints<T: ArithmeticOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
         // The last line, namely,
         // c += d; b ^= c; b <<<= 7;
         // is special.
