@@ -145,7 +145,7 @@ use std::marker::PhantomData;
 use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
     expr::constraints::{boolean, ArithmeticOps},
-    gate::GateType,
+    gate::{CurrOrNext, GateType},
 };
 use ark_ff::{FftField, Field};
 
@@ -161,11 +161,9 @@ fn chunks_over_2_rows<F: Field, T: ArithmeticOps<F>>(
 ) -> Vec<T> {
     (0..8)
         .map(|i| {
-            if i < 4 {
-                env.witness_curr(col_offset + (i % 4))
-            } else {
-                env.witness_next(col_offset + (i % 4))
-            }
+            use CurrOrNext::{Curr, Next};
+            let r = if i < 4 { Curr } else { Next };
+            env.witness(r, col_offset + (i % 4))
         })
         .collect()
 }
@@ -283,6 +281,8 @@ where
         let low_bits = chunks_over_2_rows(env, 5);
         let yprime = env.witness_curr(0);
 
+        let one_half = F::from(2u64).inverse().unwrap();
+
         // (y xor xprime) <<< 7
         // per the comment at the top of the file
         let y_xor_xprime_rotated: Vec<_> = [7, 0, 1, 2, 3, 4, 5, 6]
@@ -290,8 +290,7 @@ where
             .zip([6, 7, 0, 1, 2, 3, 4, 5].iter())
             .map(|(&i, &j)| -> T {
                 T::from(8) * low_bits[i].clone()
-                    + T::literal(F::from(2u64).inverse().unwrap())
-                        * (y_xor_xprime_nybbles[j].clone() - low_bits[j].clone())
+                    + T::literal(one_half) * (y_xor_xprime_nybbles[j].clone() - low_bits[j].clone())
             })
             .collect();
 

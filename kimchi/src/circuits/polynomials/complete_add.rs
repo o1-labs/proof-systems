@@ -131,7 +131,7 @@ where
         //   (x2 - x1) * s = y2 - y1
         {
             let x1_squared = cache.cache(x1.clone() * x1.clone());
-            let dbl_case = s.double() * y1.clone() - x1_squared.clone().double() - x1_squared;
+            let dbl_case = s.double() * y1.clone() - x1_squared.double() - x1_squared;
             let add_case = x21 * s.clone() - y21.clone();
 
             res.push(same_x.clone() * dbl_case + (T::one() - same_x.clone()) * add_case);

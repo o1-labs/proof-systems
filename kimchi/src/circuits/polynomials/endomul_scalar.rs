@@ -178,13 +178,20 @@ where
             T::literal(F::from(2u64) / F::from(3u64)),
         ];
 
-        let c_funcs: [_; 8] = array::from_fn(|i| cache.cache(polynomial(&c_coeffs[..], &xs[i])));
-
+        let crumb_over_x_coeffs = [
+            T::literal(-F::from(6u64)),
+            T::literal(F::from(11u64)),
+            T::literal(-F::from(6u64)),
+            T::literal(F::one()),
+        ];
+        let crumb = |x: &T| polynomial(&crumb_over_x_coeffs[..], x) * x.clone();
         let d_minus_c_coeffs = [
             T::literal(-F::one()),
             T::literal(F::from(3u64)),
             T::literal(-F::one()),
         ];
+
+        let c_funcs: [_; 8] = array::from_fn(|i| cache.cache(polynomial(&c_coeffs[..], &xs[i])));
 
         let d_funcs: [_; 8] =
             array::from_fn(|i| c_funcs[i].clone() + polynomial(&d_minus_c_coeffs[..], &xs[i]));
@@ -204,13 +211,6 @@ where
 
         let mut constraints = vec![n8_expected - n8, a8_expected - a8, b8_expected - b8];
 
-        let crumb_over_x_coeffs = [
-            T::literal(-F::from(6u64)),
-            T::literal(F::from(11u64)),
-            T::literal(-F::from(6u64)),
-            T::literal(F::one()),
-        ];
-        let crumb = |x: &T| polynomial(&crumb_over_x_coeffs[..], x) * x.clone();
         constraints.extend(xs.iter().map(crumb));
 
         constraints

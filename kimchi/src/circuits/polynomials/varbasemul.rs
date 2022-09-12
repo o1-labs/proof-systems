@@ -256,7 +256,7 @@ fn single_bit<F: FftField, T: ArithmeticOps<F>>(
 
     vec![
         // boolean constrain the bit.
-        b.clone() * b.clone() - b.clone(),
+        b.boolean(),
         // constrain s1:
         //   (input.x - base.x) * s1 = input.y – (2b-1)*base.y
         (input.x.clone() - base.x.clone()) * s1.clone() - (input.y.clone() - b_sign * base.y),
@@ -411,8 +411,6 @@ where
         // = 2^5 * n + 2^4 b0 + 2^3 b1 + 2^2 b2 + 2^1 b3 + b4
         // = b4 + 2 (b3 + 2 (b2 + 2 (b1 + 2(b0 + 2 n))))
 
-        let n_prev = n_prev;
-        let n_next = n_next;
         let mut res = vec![n_next - bits.iter().fold(n_prev, |acc, b| b.clone() + acc.double())];
 
         for i in 0..5 {

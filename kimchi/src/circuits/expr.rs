@@ -8,7 +8,7 @@ use crate::{
     },
     proof::ProofEvaluations,
 };
-use ark_ff::{FftField, Field, One, Zero};
+use ark_ff::{FftField, Field, One, PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
@@ -2009,7 +2009,7 @@ impl<F: Field> Mul<F> for Expr<ConstantExpr<F>> {
 // Display
 //
 
-impl<F: Field> ConstantExpr<F> {
+impl<F: PrimeField> ConstantExpr<F> {
     fn ocaml(&self) -> String {
         use ConstantExpr::*;
         match self {
@@ -2053,7 +2053,7 @@ impl<F: Field> ConstantExpr<F> {
 
 impl<F> Expr<ConstantExpr<F>>
 where
-    F: Field,
+    F: PrimeField,
 {
     /// Converts the expression in OCaml code
     pub fn ocaml_str(&self) -> String {
@@ -2177,6 +2177,9 @@ pub mod constraints {
         /// Raise the value to the given power
         fn pow(&self, p: u64) -> Self;
 
+        /// Constrain to boolean
+        fn boolean(&self) -> Self;
+
         /// Create a literal
         fn literal(x: F) -> Self;
 
@@ -2204,6 +2207,10 @@ pub mod constraints {
 
         fn pow(&self, p: u64) -> Self {
             Expr::pow(self.clone(), p)
+        }
+
+        fn boolean(&self) -> Self {
+            constraints::boolean(self)
         }
 
         fn literal(x: F) -> Self {
@@ -2238,6 +2245,10 @@ pub mod constraints {
 
         fn pow(&self, p: u64) -> Self {
             self.pow([p])
+        }
+
+        fn boolean(&self) -> Self {
+            constraints::boolean(self)
         }
 
         fn literal(x: F) -> Self {
