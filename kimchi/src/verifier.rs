@@ -59,7 +59,7 @@ where
         fq_sponge.absorb_fq(&[verifier_index_digest]);
 
         //~ 1. Absorb the commitments of the previous challenges with the Fq-sponge.
-        for RecursionChallenge { comm, .. } in self.prev_challenges.iter() {
+        for RecursionChallenge { comm, .. } in &self.prev_challenges {
             fq_sponge.absorb_g(&comm.unshifted);
         }
 

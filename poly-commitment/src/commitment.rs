@@ -823,7 +823,7 @@ impl<G: CommitmentCurve> SRS<G> {
                     .filter(|x| !x.commitment.unshifted.is_empty())
                 {
                     // iterating over the polynomial segments
-                    for comm_ch in commitment.unshifted.iter() {
+                    for comm_ch in &commitment.unshifted {
                         scalars.push(rand_base_i_c_i * xi_i);
                         points.push(*comm_ch);
 

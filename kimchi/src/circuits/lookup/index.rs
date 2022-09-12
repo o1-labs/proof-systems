@@ -352,7 +352,7 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                 let mut non_zero_table_id = false;
                 let mut has_table_id_0_with_zero_entry = false;
 
-                for table in lookup_tables.iter() {
+                for table in &lookup_tables {
                     let table_len = table.data[0].len();
 
                     if table.id != 0 {

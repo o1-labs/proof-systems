@@ -265,7 +265,7 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
     */
     fn equivalence_classes_to_hashtbl(&mut self) -> HashMap<Position<Row>, Position<Row>> {
         let mut equivalence_classes: HashMap<usize, HashSet<Position<Row>>> = HashMap::new();
-        for (key, data) in self.equivalence_classes.iter() {
+        for (key, data) in &self.equivalence_classes {
             let u = self.union_finds.find(*key).unwrap();
             let entry = equivalence_classes.entry(u).or_insert_with(HashSet::new);
             for position in data.iter() {

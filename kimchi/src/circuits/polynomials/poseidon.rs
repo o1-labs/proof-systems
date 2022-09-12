@@ -346,7 +346,7 @@ where
             })
             .collect();
 
-        for e in ROUND_EQUATIONS.iter() {
+        for e in &ROUND_EQUATIONS {
             let &RoundEquation {
                 source,
                 target: (target_row, target_round),
