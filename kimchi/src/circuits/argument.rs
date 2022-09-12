@@ -30,17 +30,20 @@ pub enum ArgumentType {
     Lookup,
 }
 
-pub struct ArgumentData<F: 'static> {
-    pub witness: GateWitness<F>,
-    pub coeffs: Vec<F>,
-    pub constants: Constants<F>,
-}
+/// The argument environment is used to specify how the argument's constraints are
+/// represented when they are built.  If the environment is created without ArgumentData
+/// and with F = Expr<F>, then the constraints are built as Expr expressions (e.g. for
+/// use with the prover/verifier).  On the other hand, if the environment is
+/// created with ArgumentData and F = Field or F = PrimeField, then the constraints
+/// are built as expressions of real field elements and can be evaluated directly on
+/// the witness without using the prover.
 pub struct ArgumentEnv<F: 'static, T> {
     data: Option<ArgumentData<F>>,
     phantom_data: PhantomData<T>,
 }
 
 impl<F, T> Default for ArgumentEnv<F, T> {
+    /// Initialize the environment for creating Expr constraints for use with prover/verifier
     fn default() -> Self {
         ArgumentEnv {
             data: None,
@@ -50,7 +53,9 @@ impl<F, T> Default for ArgumentEnv<F, T> {
 }
 
 impl<F: Field, T: ArithmeticOps<F>> ArgumentEnv<F, T> {
-    pub fn create(witness: GateWitness<F>, coeffs: Vec<F>, constants: Constants<F>) -> Self {
+    /// Initialize the environment for creating constraints of real field elements that can be
+    /// evaluated directly over the witness without the prover/verifier
+    pub fn create(witness: ArgumentWitness<F>, coeffs: Vec<F>, constants: Constants<F>) -> Self {
         ArgumentEnv {
             data: Some(ArgumentData {
                 witness,
@@ -61,41 +66,61 @@ impl<F: Field, T: ArithmeticOps<F>> ArgumentEnv<F, T> {
         }
     }
 
+    /// Witness cell (row, col)
     pub fn witness(&self, row: CurrOrNext, col: usize) -> T {
         T::witness(row, col, self.data.as_ref())
     }
 
+    /// Witness cell on current row
     pub fn witness_curr(&self, col: usize) -> T {
         T::witness(Curr, col, self.data.as_ref())
     }
 
+    /// Witness cell on next row
     pub fn witness_next(&self, col: usize) -> T {
         T::witness(Next, col, self.data.as_ref())
     }
 
+    /// Coefficient value at index idx
     pub fn coeff(&self, idx: usize) -> T {
         T::coeff(idx, self.data.as_ref())
     }
 
+    /// Constant value (see [ConstantExpr] for supported constants)
     pub fn constant(&self, expr: ConstantExpr<F>) -> T {
         T::constant(expr, self.data.as_ref())
     }
 
+    /// Helper to access endomorphism coefficient constant
     pub fn endo_coefficient(&self) -> T {
         T::constant(ConstantExpr::<F>::EndoCoefficient, self.data.as_ref())
     }
 
+    /// Helper to access maximum distance separable matrix constant at row, col
     pub fn mds(&self, row: usize, col: usize) -> T {
         T::constant(ConstantExpr::<F>::Mds { row, col }, self.data.as_ref())
     }
 }
 
-pub struct GateWitness<T> {
+/// Argument environment data for constraints of field elements
+pub struct ArgumentData<F: 'static> {
+    /// Witness rows
+    pub witness: ArgumentWitness<F>,
+    /// Gate coefficients
+    pub coeffs: Vec<F>,
+    /// Constants
+    pub constants: Constants<F>,
+}
+
+/// Witness data for a argument
+pub struct ArgumentWitness<T> {
+    /// Witness for current row
     pub curr: [T; COLUMNS],
+    /// Witness for next row
     pub next: [T; COLUMNS],
 }
 
-impl<T> std::ops::Index<(CurrOrNext, usize)> for GateWitness<T> {
+impl<T> std::ops::Index<(CurrOrNext, usize)> for ArgumentWitness<T> {
     type Output = T;
 
     fn index(&self, idx: (CurrOrNext, usize)) -> &T {
