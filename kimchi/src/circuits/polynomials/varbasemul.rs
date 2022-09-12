@@ -170,8 +170,8 @@ impl<T> Point<T> {
 }
 
 impl Point<Variable> {
-    pub fn from_env<F: Field, T: ArithmeticOps<F>>(&self, env: &ArgumentEnv<F, T>) -> Point<T> {
-        Point::create(self.x.from_env(env), self.y.from_env(env))
+    pub fn new_from_env<F: Field, T: ArithmeticOps<F>>(&self, env: &ArgumentEnv<F, T>) -> Point<T> {
+        Point::create(self.x.new_from_env(env), self.y.new_from_env(env))
     }
 }
 
@@ -278,11 +278,11 @@ pub struct Layout<T> {
 }
 
 trait FromWitness<F, T> {
-    fn from_env(&self, env: &ArgumentEnv<F, T>) -> T;
+    fn new_from_env(&self, env: &ArgumentEnv<F, T>) -> T;
 }
 
 impl<F: Field, T: ArithmeticOps<F>> FromWitness<F, T> for Variable {
-    fn from_env(&self, env: &ArgumentEnv<F, T>) -> T {
+    fn new_from_env(&self, env: &ArgumentEnv<F, T>) -> T {
         let column_to_index = |_| match self.col {
             Column::Witness(i) => i,
             _ => panic!("Can get index from witness columns"),
@@ -318,14 +318,14 @@ impl Layout<Variable> {
         }
     }
 
-    fn from_env<F: Field, T: ArithmeticOps<F>>(&self, env: &ArgumentEnv<F, T>) -> Layout<T> {
+    fn new_from_env<F: Field, T: ArithmeticOps<F>>(&self, env: &ArgumentEnv<F, T>) -> Layout<T> {
         Layout {
-            accs: self.accs.map(|point| point.from_env(env)),
-            bits: self.bits.map(|var| var.from_env(env)),
-            ss: self.ss.map(|s| s.from_env(env)),
-            base: self.base.from_env(env),
-            n_prev: self.n_prev.from_env(env),
-            n_next: self.n_next.from_env(env),
+            accs: self.accs.map(|point| point.new_from_env(env)),
+            bits: self.bits.map(|var| var.new_from_env(env)),
+            ss: self.ss.map(|s| s.new_from_env(env)),
+            base: self.base.new_from_env(env),
+            n_prev: self.n_prev.new_from_env(env),
+            n_next: self.n_next.new_from_env(env),
         }
     }
 }
@@ -403,7 +403,7 @@ where
             ss,
             n_prev,
             n_next,
-        } = Layout::create().from_env::<F, T>(env);
+        } = Layout::create().new_from_env::<F, T>(env);
 
         let mut c = Cache::default();
 
