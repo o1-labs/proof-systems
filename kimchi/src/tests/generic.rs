@@ -45,7 +45,7 @@ fn test_generic_gate_pub_all_zeros() {
     let gates = create_circuit(0, public.len());
 
     // create witness
-    let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![Fp::zero(); gates.len()]);
+    let mut witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![Fp::zero(); gates.len()]);
     fill_in_witness(0, &mut witness, &public);
 
     // create and verify proof based on the witness
@@ -63,7 +63,7 @@ fn test_generic_gate_pub_empty() {
     let gates = create_circuit(0, public.len());
 
     // create witness
-    let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![Fp::zero(); gates.len()]);
+    let mut witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![Fp::zero(); gates.len()]);
     fill_in_witness(0, &mut witness, &public);
 
     // create and verify proof based on the witness
