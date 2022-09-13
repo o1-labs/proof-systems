@@ -1,7 +1,15 @@
 //! This module implements Plonk constraint gate primitive.
 
 use crate::{
-    circuits::{constraints::ConstraintSystem, wires::*},
+    circuits::{
+        argument::{Argument, ArgumentEnv},
+        constraints::ConstraintSystem,
+        polynomials::{
+            chacha, complete_add, endomul_scalar, endosclmul, poseidon, range_check, turshi,
+            varbasemul,
+        },
+        wires::*,
+    },
     curve::KimchiCurve,
 };
 use ark_ff::{bytes::ToBytes, PrimeField};
@@ -13,6 +21,8 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::io::{Result as IoResult, Write};
 use thiserror::Error;
+
+use super::{argument::ArgumentWitness, expr};
 
 /// A row accessible from a given row, corresponds to the fact that we open all polynomials
 /// at `zeta` **and** `omega * zeta`.
@@ -119,6 +129,9 @@ pub enum CircuitGateError {
     /// Invalid constraint
     #[error("Invalid {0:?} constraint")]
     InvalidConstraint(GateType),
+    /// Invalid constraint with number
+    #[error("Invalid {0:?} constraint: {1:?}")]
+    InvalidConstraintNumber(GateType, usize),
     /// Invalid copy constraint
     #[error("Invalid {0:?} copy constraint")]
     InvalidCopyConstraint(GateType),
@@ -131,6 +144,9 @@ pub enum CircuitGateError {
     /// Missing lookup constraint system
     #[error("Failed to get lookup constraint system for {0:?}")]
     MissingLookupConstraintSystem(GateType),
+    /// Failed to get witness for row
+    #[error("Failed to get {0:?} witness for row {1}")]
+    FailedToGetWitnessForRow(GateType, usize),
 }
 
 /// Gate result
@@ -205,6 +221,100 @@ impl<F: PrimeField> CircuitGate<F> {
                 .verify_range_check::<G>(row, witness, cs)
                 .map_err(|e| e.to_string()),
         }
+    }
+
+    /// Verify the witness against the constraints
+    pub fn verify_witness<G: KimchiCurve<ScalarField = F>>(
+        &self,
+        row: usize,
+        witness: &[Vec<F>; COLUMNS],
+        cs: &ConstraintSystem<F>,
+        _public: &[F],
+    ) -> CircuitGateResult<()> {
+        // Grab the relevant part of the witness
+        let argument_witness = self.argument_witness(row, witness)?;
+        // Set up the constants.  Note that alpha, beta, gamma and joint_combiner because this
+        // function is not running the prover.
+        let constants = expr::Constants::<F> {
+            alpha: F::zero(),
+            beta: F::zero(),
+            gamma: F::zero(),
+            joint_combiner: Some(F::zero()),
+            endo_coefficient: cs.endo,
+            mds: &G::sponge_params().mds,
+        };
+        // Create the argument environment for the constraints over field elements
+        let env = ArgumentEnv::<F, F>::create(argument_witness, self.coeffs.clone(), constants);
+
+        // Perform witness verification on each constraint for this gate
+        let results = match self.typ {
+            GateType::Zero => {
+                vec![]
+            }
+            GateType::Generic => {
+                // TODO: implement the verification for the generic gate
+                vec![]
+            }
+            GateType::Poseidon => poseidon::Poseidon::constraint_checks(&env),
+            GateType::CompleteAdd => complete_add::CompleteAdd::constraint_checks(&env),
+            GateType::VarBaseMul => varbasemul::VarbaseMul::constraint_checks(&env),
+            GateType::EndoMul => endosclmul::EndosclMul::constraint_checks(&env),
+            GateType::EndoMulScalar => endomul_scalar::EndomulScalar::constraint_checks(&env),
+            GateType::ChaCha0 => chacha::ChaCha0::constraint_checks(&env),
+            GateType::ChaCha1 => chacha::ChaCha1::constraint_checks(&env),
+            GateType::ChaCha2 => chacha::ChaCha2::constraint_checks(&env),
+            GateType::ChaChaFinal => chacha::ChaChaFinal::constraint_checks(&env),
+            GateType::Lookup => {
+                // TODO: implement the verification for the lookup gate
+                vec![]
+            }
+            GateType::CairoClaim => turshi::Claim::constraint_checks(&env),
+            GateType::CairoInstruction => turshi::Instruction::constraint_checks(&env),
+            GateType::CairoFlags => turshi::Flags::constraint_checks(&env),
+            GateType::CairoTransition => turshi::Transition::constraint_checks(&env),
+            GateType::RangeCheck0 => {
+                range_check::circuitgates::RangeCheck0::constraint_checks(&env)
+            }
+            GateType::RangeCheck1 => {
+                range_check::circuitgates::RangeCheck1::constraint_checks(&env)
+            }
+        };
+
+        // Check for invalid constraints
+        for (i, result) in results.iter().enumerate() {
+            if !result.is_zero() {
+                // Pinpoint invalid constraint
+                return Err(CircuitGateError::InvalidConstraintNumber(self.typ, i));
+            }
+        }
+
+        // TODO: implement generic perm witness verification
+        // TODO: implement generic plookup witness verification
+
+        Ok(())
+    }
+
+    // Return the part of the witness relevant to this gate at the given row offset
+    fn argument_witness(
+        &self,
+        row: usize,
+        witness: &[Vec<F>; COLUMNS],
+    ) -> CircuitGateResult<ArgumentWitness<F>> {
+        // Get the part of the witness relevant to this gate
+        let witness_curr: [F; COLUMNS] = (0..witness.len())
+            .map(|col| witness[col][row])
+            .collect::<Vec<F>>()
+            .try_into()
+            .map_err(|_| CircuitGateError::FailedToGetWitnessForRow(self.typ, row))?;
+        let witness_next: [F; COLUMNS] = (0..witness.len())
+            .map(|col| witness[col][row + 1])
+            .collect::<Vec<F>>()
+            .try_into()
+            .map_err(|_| CircuitGateError::FailedToGetWitnessForRow(self.typ, row))?;
+        Ok(ArgumentWitness::<F> {
+            curr: witness_curr,
+            next: witness_next,
+        })
     }
 }
 
