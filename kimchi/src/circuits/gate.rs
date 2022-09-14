@@ -233,8 +233,8 @@ impl<F: PrimeField> CircuitGate<F> {
     ) -> CircuitGateResult<()> {
         // Grab the relevant part of the witness
         let argument_witness = self.argument_witness(row, witness)?;
-        // Set up the constants.  Note that alpha, beta, gamma and joint_combiner because this
-        // function is not running the prover.
+        // Set up the constants.  Note that alpha, beta, gamma and joint_combiner
+        // are zero because this function is not running the prover.
         let constants = expr::Constants::<F> {
             alpha: F::zero(),
             beta: F::zero(),
@@ -280,10 +280,10 @@ impl<F: PrimeField> CircuitGate<F> {
             }
         };
 
-        // Check for invalid constraints
+        // Check for failed constraints
         for (i, result) in results.iter().enumerate() {
             if !result.is_zero() {
-                // Pinpoint invalid constraint
+                // Pinpoint failed constraint
                 return Err(CircuitGateError::InvalidConstraintNumber(self.typ, i));
             }
         }
