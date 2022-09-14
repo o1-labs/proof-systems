@@ -10,7 +10,6 @@ ark-ec = { version = "0.3.0", features = [ "parallel" ] }
 ark-poly = { version = "0.3.0", features = [ "parallel" ] }
 ark-serialize = "0.3.0"
 
-array-init = "2.0.0"
 blake2 = "0.10.0"
 rand = "0.8.0"
 rand_core = { version = "0.6.0" }
