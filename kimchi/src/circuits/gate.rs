@@ -130,8 +130,14 @@ pub enum CircuitGateError {
     #[error("Invalid {0:?} constraint")]
     InvalidConstraint(GateType),
     /// Invalid constraint with number
-    #[error("Invalid {0:?} constraint: {1:?}")]
-    InvalidConstraintNumber(GateType, usize),
+    #[error("Invalid {0:?} constraint: {1}")]
+    Constraint(GateType, usize),
+    /// Invalid wire column
+    #[error("Invalid {0:?} wire column: {1}")]
+    WireColumn(GateType, usize),
+    /// Disconnected wires
+    #[error("Invalid {0:?} copy constraint: {1},{2} -> {3}{4}")]
+    CopyConstraint(GateType, usize, usize, usize, usize),
     /// Invalid copy constraint
     #[error("Invalid {0:?} copy constraint")]
     InvalidCopyConstraint(GateType),
@@ -284,11 +290,25 @@ impl<F: PrimeField> CircuitGate<F> {
         for (i, result) in results.iter().enumerate() {
             if !result.is_zero() {
                 // Pinpoint failed constraint
-                return Err(CircuitGateError::InvalidConstraintNumber(self.typ, i));
+                return Err(CircuitGateError::Constraint(self.typ, i));
             }
         }
 
-        // TODO: implement generic perm witness verification
+        // Check the wiring (i.e. copy constraints) for this gate
+        for col in 0..PERMUTS {
+            let wire = self.wires[col];
+
+            if wire.col >= PERMUTS {
+                return Err(CircuitGateError::WireColumn(self.typ, col));
+            }
+
+            if witness[col][row] != witness[wire.col][wire.row] {
+                return Err(CircuitGateError::CopyConstraint(
+                    self.typ, col, row, wire.col, wire.row,
+                ));
+            }
+        }
+
         // TODO: implement generic plookup witness verification
 
         Ok(())
@@ -306,11 +326,16 @@ impl<F: PrimeField> CircuitGate<F> {
             .collect::<Vec<F>>()
             .try_into()
             .map_err(|_| CircuitGateError::FailedToGetWitnessForRow(self.typ, row))?;
-        let witness_next: [F; COLUMNS] = (0..witness.len())
-            .map(|col| witness[col][row + 1])
-            .collect::<Vec<F>>()
-            .try_into()
-            .map_err(|_| CircuitGateError::FailedToGetWitnessForRow(self.typ, row))?;
+        let witness_next: [F; COLUMNS] = if witness.len() > row + 1 {
+            (0..witness.len())
+                .map(|col| witness[col][row + 1])
+                .collect::<Vec<F>>()
+                .try_into()
+                .map_err(|_| CircuitGateError::FailedToGetWitnessForRow(self.typ, row))?
+        } else {
+            [F::zero(); COLUMNS]
+        };
+
         Ok(ArgumentWitness::<F> {
             curr: witness_curr,
             next: witness_next,
