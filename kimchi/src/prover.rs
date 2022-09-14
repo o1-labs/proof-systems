@@ -229,43 +229,59 @@ where
         //~    This is why we need to absorb the commitment to the public polynomial at this point.
         fq_sponge.absorb_g(&public_comm.unshifted);
 
-        //~ 1. Commit to the witness columns by creating `COLUMNS` hidding commitments.
-        //~
-        //~    Note: since the witness is in evaluation form,
-        //~    we can use the `commit_evaluation` optimization.
-        let mut w_comm = vec![];
-        for col in 0..COLUMNS {
-            // witness coeff -> witness eval
-            let witness_eval =
-                Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-                    witness[col].clone(),
-                    index.cs.domain.d1,
-                );
-
-            let com = match blinders.as_ref().and_then(|b| b[col].as_ref()) {
-                // no blinders: blind the witness
-                None => index
-                    .srs
-                    .commit_evaluations(index.cs.domain.d1, &witness_eval, None, rng),
-                // blinders: blind the witness with them
-                Some(blinder) => {
-                    // TODO: make this a function rather no? mask_with_custom()
-                    let witness_com = index.srs.commit_evaluations_non_hiding(
+        let (w_comm, witness_poly): (Vec<_>, Vec<_>) = witness
+            .par_iter()
+            .take(COLUMNS)
+            .enumerate()
+            .map(|(col, witness_col)| {
+                //~ 1. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
+                let witness_eval =
+                    Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+                        witness_col.clone(),
                         index.cs.domain.d1,
-                        &witness_eval,
-                        None,
                     );
-                    index
-                        .srs
-                        .mask_custom(witness_com, blinder)
-                        .map_err(ProverError::WrongBlinders)?
-                }
-            };
 
-            w_comm.push(com);
-        }
+                //~ 1. Commit to the witness columns by creating `COLUMNS` hidding commitments.
+                //~
+                //~    Note: since the witness is in evaluation form,
+                //~    we can use the `commit_evaluation` optimization.
+                let com = match blinders.as_ref().and_then(|b| b[col].as_ref()) {
+                    // no blinders: blind the witness
+                    None => {
+                        let com = index.srs.commit_evaluations(
+                            index.cs.domain.d1,
+                            &witness_eval,
+                            None,
+                            &mut rand::rngs::OsRng,
+                        );
+                        Ok(com)
+                    }
+                    // blinders: blind the witness with them
+                    Some(blinder) => {
+                        // TODO: make this a function rather no? mask_with_custom()
+                        let witness_com = index.srs.commit_evaluations_non_hiding(
+                            index.cs.domain.d1,
+                            &witness_eval,
+                            None,
+                        );
+                        index
+                            .srs
+                            .mask_custom(witness_com, blinder)
+                            .map_err(ProverError::WrongBlinders)
+                    }
+                };
 
-        let w_comm: [BlindedCommitment<G>; COLUMNS] = w_comm
+                (com, witness_eval.interpolate())
+            })
+            .unzip();
+
+        let w_comm: [_; COLUMNS] = w_comm
+            .into_iter()
+            .collect::<Result<Vec<_>>>()?
+            .try_into()
+            .expect("previous loop is of the correct length");
+
+        let witness_poly: [_; COLUMNS] = witness_poly
             .try_into()
             .expect("previous loop is of the correct length");
 
@@ -273,16 +289,6 @@ where
         w_comm
             .iter()
             .for_each(|c| fq_sponge.absorb_g(&c.commitment.unshifted));
-
-        //~ 1. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
-        //~    TODO: why not do this first, and then commit? Why commit from evaluation directly?
-        let witness_poly: [DensePolynomial<G::ScalarField>; COLUMNS] = array::from_fn(|i| {
-            Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-                witness[i].clone(),
-                index.cs.domain.d1,
-            )
-            .interpolate()
-        });
 
         //~ 1. If circuit uses lookups, create a lookup context (see [Lookup context creation](#lookup-context-creation) algorithm)
         let mut lookup_context =

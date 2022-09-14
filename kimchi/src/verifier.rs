@@ -239,8 +239,6 @@ where
             [vec![G::ScalarField::zero()], vec![G::ScalarField::zero()]]
         };
 
-        println!("verifier public eval: {:?}", public_evals);
-
         //~ 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
         fr_sponge.absorb(&self.ft_eval1);
 
