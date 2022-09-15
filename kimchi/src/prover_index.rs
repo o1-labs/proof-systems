@@ -1,11 +1,11 @@
-//! This module implements the prover index as [ProverIndex].
+//! This module implements the prover index as [`ProverIndex`].
 
 use crate::{
     alphas::Alphas,
     circuits::{
         constraints::ConstraintSystem,
         expr::{Linearization, PolishToken},
-        wires::*,
+        wires::PERMUTS,
     },
     curve::KimchiCurve,
     linearization::expr_linearization,
@@ -137,7 +137,7 @@ impl<G: KimchiCurve> ProverIndex<G> {
 }
 
 pub mod testing {
-    use super::*;
+    use super::{Arc, ConstraintSystem, EvaluationDomain, FqSponge, ProverIndex, SRS};
     use crate::circuits::{
         gate::CircuitGate,
         lookup::{runtime_tables::RuntimeTableCfg, tables::LookupTable},
@@ -145,6 +145,7 @@ pub mod testing {
     use commitment_dlog::srs::endos;
     use mina_curves::pasta::{pallas::Pallas, vesta::Vesta, Fp};
 
+    #[must_use]
     pub fn new_index_for_test_with_lookups(
         gates: Vec<CircuitGate<Fp>>,
         public: usize,
@@ -167,6 +168,7 @@ pub mod testing {
         let (endo_q, _endo_r) = endos::<Pallas>();
         ProverIndex::<Vesta>::create(cs, endo_q, srs)
     }
+    #[must_use]
     pub fn new_index_for_test(gates: Vec<CircuitGate<Fp>>, public: usize) -> ProverIndex<Vesta> {
         new_index_for_test_with_lookups(gates, public, 0, vec![], None)
     }

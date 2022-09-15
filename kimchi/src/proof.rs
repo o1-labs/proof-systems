@@ -101,6 +101,7 @@ pub struct ProverCommitments<G: AffineCurve> {
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
+#[allow(clippy::module_name_repetitions)]
 pub struct ProverProof<G: AffineCurve> {
     /// All the polynomial commitments required in the proof
     pub commitments: ProverCommitments<G>,

@@ -114,7 +114,7 @@ impl<G: KimchiCurve> ProverProof<G>
 where
     G::BaseField: PrimeField,
 {
-    /// This function constructs prover's zk-proof from the witness & the ProverIndex against SRS instance
+    /// This function constructs prover's zk-proof from the witness & the `ProverIndex` against SRS instance
     pub fn create<
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
         EFrSponge: FrSponge<G::ScalarField>,
@@ -134,7 +134,8 @@ where
         )
     }
 
-    /// This function constructs prover's recursive zk-proof from the witness & the ProverIndex against SRS instance
+    /// This function constructs prover's recursive zk-proof from the witness & the `ProverIndex` against SRS instance
+    #[allow(clippy::needless_pass_by_value, clippy::too_many_lines)]
     pub fn create_recursive<
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
         EFrSponge: FrSponge<G::ScalarField>,
@@ -583,7 +584,10 @@ where
         let lagrange = index.cs.evaluate(&witness_poly, &z_poly);
         let env = {
             let mut index_evals = HashMap::new();
-            use GateType::*;
+            use GateType::{
+                ChaCha0, ChaCha1, ChaCha2, ChaChaFinal, CompleteAdd, EndoMul, EndoMulScalar,
+                Poseidon, VarBaseMul,
+            };
             index_evals.insert(Poseidon, &index.cs.ps8);
             index_evals.insert(CompleteAdd, &index.cs.complete_addl4);
             index_evals.insert(VarBaseMul, &index.cs.mull8);
