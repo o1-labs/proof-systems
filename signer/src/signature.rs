@@ -16,6 +16,8 @@ pub struct Signature {
 
 impl Signature {
     /// Create a new signature
+    #[must_use]
+    #[allow(clippy::needless_pass_by_value)]
     pub fn new(rx: BaseField, s: ScalarField) -> Self {
         Self { rx, s }
     }

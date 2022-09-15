@@ -300,8 +300,15 @@ impl<G: KimchiCurve> VerifierIndex<G> {
         Ok(verifier_index)
     }
 
-    /// Writes a [VerifierIndex] to a file, potentially appending it to the already-existing content (if append is set to true)
+    /// Writes a [`VerifierIndex`] to a file, potentially appending it to the already-existing content (if append is set to true)
     // TODO: append should be a bool, not an option
+    /// # Errors
+    ///
+    /// Will give error if it fails to open a file or writes to the file.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `path` is invalid or `file serialization` has issue.
     pub fn to_file(&self, path: &Path, append: Option<bool>) -> Result<(), String> {
         let append = append.unwrap_or(true);
         let file = OpenOptions::new()
@@ -315,7 +322,7 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             .map_err(|e| e.to_string())
     }
 
-    /// Compute the digest of the [VerifierIndex], which can be used for the Fiat-Shamir
+    /// Compute the digest of the [`VerifierIndex`], which can be used for the Fiat-Shamir
     /// transformation while proving / verifying.
     pub fn digest<EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>>(
         &self,
@@ -359,10 +366,10 @@ impl<G: KimchiCurve> VerifierIndex<G> {
         // Always present
 
         for comm in sigma_comm.iter() {
-            fq_sponge.absorb_g(&comm.unshifted)
+            fq_sponge.absorb_g(&comm.unshifted);
         }
         for comm in coefficients_comm.iter() {
-            fq_sponge.absorb_g(&comm.unshifted)
+            fq_sponge.absorb_g(&comm.unshifted);
         }
         fq_sponge.absorb_g(&generic_comm.unshifted);
         fq_sponge.absorb_g(&psm_comm.unshifted);

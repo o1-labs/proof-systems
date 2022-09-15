@@ -101,11 +101,15 @@ impl Cycle for FqInner {
 }
 
 /// Given an index, a group map, custom blinders for the witness, a public input vector, and a circuit `main`, it creates a proof.
+///
+/// # Panics
+///
+/// Will panic if recursive proof creation returns `ProverError`.
 pub fn prove<G, H, EFqSponge, EFrSponge>(
     index: &ProverIndex<G>,
     group_map: &G::Map,
     blinders: Option<[Option<G::ScalarField>; COLUMNS]>,
-    public_input: Vec<G::ScalarField>,
+    public_input: &[G::ScalarField],
     mut main: H,
 ) -> ProverProof<G>
 where
@@ -116,7 +120,7 @@ where
     EFrSponge: FrSponge<G::ScalarField>,
 {
     // create the witness generator
-    let mut gen: WitnessGenerator<G::ScalarField> = WitnessGenerator::new(&public_input);
+    let mut gen: WitnessGenerator<G::ScalarField> = WitnessGenerator::new(public_input);
 
     // run the witness generation
     let public_vars = public_input

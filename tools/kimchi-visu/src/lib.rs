@@ -44,7 +44,10 @@ where
     F: PrimeField,
 {
     fn latex() -> Vec<Vec<String>> {
-        Self::constraints().iter().map(|c| c.latex_str()).collect()
+        Self::constraints()
+            .iter()
+            .map(kimchi::circuits::expr::Expr::latex_str)
+            .collect()
     }
 }
 
@@ -57,6 +60,7 @@ where
 }
 
 ///
+#[must_use]
 pub fn latex_constraints<G>() -> HashMap<&'static str, Vec<Vec<String>>>
 where
     G: CommitmentCurve,
@@ -75,6 +79,10 @@ where
 }
 
 /// Produces a `circuit.html` in the current folder.
+///
+/// # Panics
+///
+/// Will panic if `TinyTemplate::render()` returns `Error` or `std::fs::File::create()` returns `Error`.
 pub fn visu<G: KimchiCurve>(index: &ProverIndex<G>, witness: Option<Witness<G::ScalarField>>) {
     // serialize index
     let index = serde_json::to_string(index).expect("couldn't serialize index");

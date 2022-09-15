@@ -54,11 +54,16 @@ pub struct PubKey(CurvePoint);
 impl PubKey {
     /// Create a public key from curve point
     /// Note: Does not check point is on curve
+    #[must_use]
     pub fn from_point_unsafe(point: CurvePoint) -> Self {
         Self(point)
     }
 
     /// Deserialize Mina address into public key
+    ///
+    /// # Errors
+    ///
+    /// Will give error if `address` string does not match certain requirements.
     pub fn from_address(address: &str) -> Result<Self> {
         if address.len() != MINA_ADDRESS_LEN {
             return Err(PubKeyError::AddressLength);
@@ -113,6 +118,7 @@ impl PubKey {
     }
 
     /// Convert public key into compressed public key
+    #[must_use]
     pub fn into_compressed(&self) -> CompressedPubKey {
         let point = self.0;
         CompressedPubKey {
@@ -122,6 +128,7 @@ impl PubKey {
     }
 
     /// Serialize public key into corresponding Mina address
+    #[must_use]
     pub fn into_address(&self) -> String {
         let point = self.point();
         into_address(&point.x, point.y.into_repr().is_odd())
@@ -161,7 +168,7 @@ fn into_address(x: &BaseField, is_odd: bool) -> String {
     raw.extend(x.to_bytes());
 
     // pub key y-coordinate parity
-    raw.push(is_odd as u8);
+    raw.push(u8::from(is_odd));
 
     // 4-byte checksum
     let hash = Sha256::digest(&Sha256::digest(&raw[..])[..]);
@@ -173,17 +180,23 @@ fn into_address(x: &BaseField, is_odd: bool) -> String {
 
 impl CompressedPubKey {
     /// Serialize compressed public key into corresponding Mina address
+    #[must_use]
     pub fn into_address(&self) -> String {
         into_address(&self.x, self.is_odd)
     }
 
-    /// Deserialize Mina address into compressed public key (via an uncompressed PubKey)
+    /// Deserialize Mina address into compressed public key (via an uncompressed `PubKey`)
+    ///
+    /// # Errors
+    ///
+    /// Will give error if `PubKey::from_address()` returns error.
     pub fn from_address(address: &str) -> Result<Self> {
         Ok(PubKey::from_address(address)?.into_compressed())
     }
 
-    /// The empty [CompressedPubKey] value that is used as `public_key` in empty account
+    /// The empty [`CompressedPubKey`] value that is used as `public_key` in empty account
     /// and [None] value for calculating the hash of [Option<CompressedPubKey>], etc.
+    #[must_use]
     pub fn empty() -> Self {
         Self {
             x: BaseField::zero(),

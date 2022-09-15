@@ -6,7 +6,10 @@ use kimchi::circuits::{
     },
     wires::{Wire, COLUMNS},
 };
-use oracle::{constants::*, permutation::full_round};
+use oracle::{
+    constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
+    permutation::full_round,
+};
 use std::array;
 use std::collections::HashMap;
 
@@ -23,7 +26,10 @@ pub struct Var<F> {
 
 impl<F: Copy> Var<F> {
     /// Returns the value inside a variable [Var].
-    /// It panics if it is `None`.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if it is `None`.
     pub fn val(&self) -> F {
         self.value.unwrap()
     }
@@ -50,6 +56,7 @@ impl<F: FftField> GateSpec<F> {
         }
     }
 
+    #[must_use]
     pub fn get_var_idx(&self, col: usize) -> Option<usize> {
         match self.row.get(col) {
             Some(Some(var)) => Some(var.index),
@@ -60,7 +67,7 @@ impl<F: FftField> GateSpec<F> {
 
 /// A set of gates within the circuit.
 /// It carries the index for the next available variable,
-/// and the vector of [GateSpec] created so far.
+/// and the vector of [`GateSpec`] created so far.
 /// It also keeps track of the queue of generic gates and cached constants.
 #[derive(Default)]
 pub struct System<F> {
@@ -145,7 +152,7 @@ pub trait Cs<F: PrimeField> {
         })
     }
 
-    /// This function creates a [ShiftedScalar] variable from a field element that is
+    /// This function creates a [`ShiftedScalar`] variable from a field element that is
     /// returned by function `g()`, and a length that should be a multiple of 5.
     fn scalar<G, Fr: PrimeField>(&mut self, length: usize, g: G) -> ShiftedScalar<F>
     where
@@ -264,7 +271,7 @@ pub trait Cs<F: PrimeField> {
         let same_x = self.var(|| {
             let same_x = x1.val() == x2.val();
             same_x_bool = same_x;
-            F::from(same_x as u64)
+            F::from(u64::from(same_x))
         });
 
         let inf = zero;
@@ -341,7 +348,7 @@ pub trait Cs<F: PrimeField> {
         let same_x = self.var(|| {
             let same_x = x1.val() == x2.val();
             same_x_bool = same_x;
-            F::from(same_x as u64)
+            F::from(u64::from(same_x))
         });
 
         let inf = zero;
@@ -407,7 +414,7 @@ pub trait Cs<F: PrimeField> {
     /// For (1):
     /// - Creates a row with left wire `t`, right wire `f`, and output wire `delta`
     /// - Assigns `1` to the left coefficient, `-1` to the right coefficient, and `-1` to the output coefficient.
-    /// - That way, it creates a first gate constraining: `1 * t - 1 * f - delta = 0``
+    /// - That way, it creates a first gate constraining: `1 * t - 1 * f - delta = 0`
     /// For (2):
     /// - Creates a row with left wire `b`, right wire `delta`, and output wire `res1`.
     /// - Assigns `-1` to the output coefficient, and `1` to the multiplication coefficient.
@@ -455,7 +462,7 @@ pub trait Cs<F: PrimeField> {
         res
     }
 
-    /// Performs a scalar multiplication between a [ShiftedScalar] and a point `(xt, yt)`.
+    /// Performs a scalar multiplication between a [`ShiftedScalar`] and a point `(xt, yt)`.
     /// This function creates 51 rows pairs of rows.
     fn scalar_mul(
         &mut self,
@@ -521,7 +528,7 @@ pub trait Cs<F: PrimeField> {
                 row: row2.into_iter().map(Some).collect(),
                 typ: GateType::Zero,
                 coeffs: vec![],
-            })
+            });
         }
 
         res.unwrap()
@@ -538,6 +545,7 @@ pub trait Cs<F: PrimeField> {
     /// |  r  | `EndoMul`  |
     /// | r+1 | `Zero`     |
     ///
+    #[allow(clippy::too_many_lines)]
     fn endo(
         &mut self,
         zero: Var<F>,
@@ -563,9 +571,9 @@ pub trait Cs<F: PrimeField> {
                             .take(length_in_bits)
                             .copied()
                             .rev()
-                            .collect()
+                            .collect();
                     }
-                    F::from(bits_[i] as u64)
+                    F::from(u64::from(bits_[i]))
                 })
             })
             .collect();
@@ -759,7 +767,7 @@ pub trait Cs<F: PrimeField> {
     /// Creates a Poseidon gadget for given constants and a given input.
     /// It generates a number of `Poseidon` gates followed by a final `Zero` gate.
     fn poseidon(&mut self, constants: &Constants<F>, input: Vec<Var<F>>) -> Vec<Var<F>> {
-        use kimchi::circuits::polynomials::poseidon::*;
+        use kimchi::circuits::polynomials::poseidon::{POS_ROWS_PER_HASH, ROUNDS_PER_ROW};
 
         let params = constants.poseidon;
         let rc = &params.round_constants;
@@ -782,7 +790,7 @@ pub trait Cs<F: PrimeField> {
                                         // Do one full round on the previous value
                                         let mut acc = states[states.len() - 1]
                                             .iter()
-                                            .map(|x| x.val())
+                                            .map(crate::writer::Var::val)
                                             .collect();
                                         full_round::<F, PlonkSpongeConstantsKimchi>(
                                             params,
@@ -863,7 +871,7 @@ impl<F: PrimeField> Cs<F> for WitnessGenerator<F> {
         assert!(g.row.len() <= COLUMNS);
 
         let row: [F; COLUMNS] = array::from_fn(|col| g.get_var_val_or(col, F::zero()));
-        self.rows.push(row)
+        self.rows.push(row);
     }
 
     fn generic_queue(&mut self, gate: GateSpec<F>) -> Option<GateSpec<F>> {
@@ -948,6 +956,10 @@ impl<F: PrimeField> Cs<F> for System<F> {
 
 impl<F: PrimeField> System<F> {
     /// Compiles our intermediate representation into a circuit.
+    ///
+    /// # Panics
+    ///
+    /// Will not panic ever since it is permutation inside gates
     pub fn gates(&mut self) -> Vec<CircuitGate<F>> {
         let mut first_cell: HashMap<usize, Wire> = HashMap::new();
         let mut most_recent_cell: HashMap<usize, Wire> = HashMap::new();
