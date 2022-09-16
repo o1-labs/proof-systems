@@ -240,7 +240,7 @@ impl<F: PrimeField> CircuitGate<F> {
         // Grab the relevant part of the witness
         let argument_witness = self.argument_witness(row, witness)?;
         // Set up the constants.  Note that alpha, beta, gamma and joint_combiner
-        // are zero because this function is not running the prover.
+        // are one because this function is not running the prover.
         let constants = expr::Constants::<F> {
             alpha: F::one(),
             beta: F::one(),
