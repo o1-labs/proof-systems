@@ -35,7 +35,6 @@ use std::{
 };
 
 //~spec:startcode
-#[allow(clippy::module_name_repetitions)]
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LookupVerifierIndex<G: CommitmentCurve> {
