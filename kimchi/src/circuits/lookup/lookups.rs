@@ -25,8 +25,8 @@ fn max_lookups_per_row(kinds: &[LookupPattern]) -> usize {
 
 /// Specifies whether a constraint system uses joint lookups. Used to make sure we
 /// squeeze the challenge `joint_combiner` when needed, and not when not needed.
-#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 #[allow(clippy::module_name_repetitions)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum LookupsUsed {
     Single,
     Joint,

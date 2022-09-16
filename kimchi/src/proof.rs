@@ -42,13 +42,13 @@ pub struct LookupEvaluations<Field> {
 /// Polynomial evaluations contained in a `ProverProof`.
 /// - **Chunked evaluations** `Field` is instantiated with vectors with a length that equals the length of the chunk
 /// - **Non chunked evaluations** `Field` is instantiated with a field, so they are single-sized#[serde_as]
+#[allow(clippy::module_name_repetitions)]
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(bound(
     serialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::SerializeAs<Field>",
     deserialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::DeserializeAs<'de, Field>"
 ))]
-#[allow(clippy::module_name_repetitions)]
 pub struct ProofEvaluations<Field> {
     /// witness polynomials
     #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; COLUMNS]")]
@@ -99,10 +99,10 @@ pub struct ProverCommitments<G: AffineCurve> {
 }
 
 /// The proof that the prover creates from a [ProverIndex](super::prover_index::ProverIndex) and a `witness`.
+#[allow(clippy::module_name_repetitions)]
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
-#[allow(clippy::module_name_repetitions)]
 pub struct ProverProof<G: AffineCurve> {
     /// All the polynomial commitments required in the proof
     pub commitments: ProverCommitments<G>,

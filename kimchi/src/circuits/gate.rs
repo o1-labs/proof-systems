@@ -57,6 +57,7 @@ impl CurrOrNext {
 /// they cannot be used at the same time on single row.
 /// If we were ever to support this feature, we would have to make sure
 /// not to re-use powers of alpha across constraints.
+#[allow(clippy::module_name_repetitions)]
 #[repr(C)]
 #[derive(
     Clone,
@@ -78,7 +79,6 @@ impl CurrOrNext {
 )]
 #[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
-#[allow(clippy::module_name_repetitions)]
 pub enum GateType {
     /// Zero gate
     Zero = 0,
@@ -160,9 +160,9 @@ pub enum CircuitGateError {
 /// Gate result
 pub type CircuitGateResult<T> = std::result::Result<T, CircuitGateError>;
 
+#[allow(clippy::module_name_repetitions)]
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[allow(clippy::module_name_repetitions)]
 /// A single gate in a circuit.
 pub struct CircuitGate<F: PrimeField> {
     /// type of the gate

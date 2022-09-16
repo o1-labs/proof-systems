@@ -35,9 +35,9 @@ use std::{
 };
 
 //~spec:startcode
+#[allow(clippy::module_name_repetitions)]
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[allow(clippy::module_name_repetitions)]
 pub struct LookupVerifierIndex<G: CommitmentCurve> {
     pub lookup_used: LookupsUsed,
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
