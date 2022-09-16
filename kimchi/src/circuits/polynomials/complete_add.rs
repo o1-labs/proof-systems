@@ -15,11 +15,7 @@
 //~
 use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
-    expr::{
-        constraints::ExprOps,
-        prologue::{witness_curr, E},
-        Cache,
-    },
+    expr::{constraints::ExprOps, Cache},
     gate::{CircuitGate, GateType},
     wires::COLUMNS,
 };

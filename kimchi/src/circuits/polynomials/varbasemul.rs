@@ -12,7 +12,7 @@
 
 use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
-    expr::{constraints::ExprOps, prologue::E, Cache, Column, Variable},
+    expr::{constraints::ExprOps, Cache, Column, Variable},
     gate::{CircuitGate, CurrOrNext, GateType},
     wires::{GateWires, COLUMNS},
 };

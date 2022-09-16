@@ -144,11 +144,7 @@ use std::marker::PhantomData;
 
 use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
-    expr::{
-        constraints::{boolean, ExprOps},
-        prologue::{witness, witness_curr, witness_next, E},
-        ConstantExpr as C,
-    },
+    expr::constraints::{boolean, ExprOps},
     gate::{CurrOrNext, GateType},
 };
 use ark_ff::{FftField, Field};

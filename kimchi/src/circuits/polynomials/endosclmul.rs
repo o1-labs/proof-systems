@@ -9,8 +9,7 @@ use crate::{
         expr::{
             self,
             constraints::{boolean, ExprOps},
-            prologue::{witness_curr, witness_next, E},
-            Cache, ConstantExpr,
+            Cache,
         },
         gate::{CircuitGate, GateType},
         wires::{GateWires, COLUMNS},
