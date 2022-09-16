@@ -43,6 +43,7 @@ impl CurrOrNext {
     /// Compute the offset corresponding to the `CurrOrNext` value.
     /// - `Curr.shift() == 0`
     /// - `Next.shift() == 1`
+    #[must_use]
     pub fn shift(&self) -> usize {
         match self {
             CurrOrNext::Curr => 0,
@@ -77,6 +78,7 @@ impl CurrOrNext {
 )]
 #[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
+#[allow(clippy::module_name_repetitions)]
 pub enum GateType {
     /// Zero gate
     Zero = 0,
@@ -160,6 +162,7 @@ pub type CircuitGateResult<T> = std::result::Result<T, CircuitGateError>;
 
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[allow(clippy::module_name_repetitions)]
 /// A single gate in a circuit.
 pub struct CircuitGate<F: PrimeField> {
     /// type of the gate
@@ -172,12 +175,13 @@ pub struct CircuitGate<F: PrimeField> {
 }
 
 impl<F: PrimeField> ToBytes for CircuitGate<F> {
+    #[allow(clippy::cast_possible_truncation)]
     #[inline]
     fn write<W: Write>(&self, mut w: W) -> IoResult<()> {
         let typ: u8 = ToPrimitive::to_u8(&self.typ).unwrap();
         typ.write(&mut w)?;
         for i in 0..COLUMNS {
-            self.wires[i].write(&mut w)?
+            self.wires[i].write(&mut w)?;
         }
 
         (self.coeffs.len() as u8).write(&mut w)?;
@@ -190,6 +194,7 @@ impl<F: PrimeField> ToBytes for CircuitGate<F> {
 
 impl<F: PrimeField> CircuitGate<F> {
     /// this function creates "empty" circuit gate
+    #[must_use]
     pub fn zero(wires: GateWires) -> Self {
         CircuitGate {
             typ: GateType::Zero,
@@ -200,6 +205,11 @@ impl<F: PrimeField> CircuitGate<F> {
 
     /// This function verifies the consistency of the wire
     /// assignments (witness) against the constraints
+    ///
+    /// # Errors
+    ///
+    /// Will give error if verify process returns error.
+    #[allow(clippy::match_same_arms)]
     pub fn verify<G: KimchiCurve<ScalarField = F>>(
         &self,
         row: usize,
@@ -207,7 +217,11 @@ impl<F: PrimeField> CircuitGate<F> {
         cs: &ConstraintSystem<F>,
         public: &[F],
     ) -> Result<(), String> {
-        use GateType::*;
+        use GateType::{
+            CairoClaim, CairoFlags, CairoInstruction, CairoTransition, ChaCha0, ChaCha1, ChaCha2,
+            ChaChaFinal, CompleteAdd, EndoMul, EndoMulScalar, Generic, Lookup, Poseidon,
+            RangeCheck0, RangeCheck1, VarBaseMul, Zero,
+        };
         match self.typ {
             Zero => Ok(()),
             Generic => self.verify_generic(row, witness, public),
@@ -353,7 +367,7 @@ impl<F: PrimeField> CircuitGate<F> {
 /// Trait to connect a pair of cells in a circuit
 pub trait Connect {
     /// Connect the pair of cells specified by the cell1 and cell2 parameters
-    /// cell_pre --> cell_new && cell_new --> wire_tmp
+    /// `cell_pre` --> `cell_new` && `cell_new` --> `wire_tmp`
     ///
     /// Note: This function assumes that the targeted cells are freshly instantiated
     ///       with self-connections.  If the two cells are transitively already part
@@ -369,7 +383,7 @@ impl<F: PrimeField> Connect for Vec<CircuitGate<F>> {
     }
 }
 
-/// A circuit is specified as a series of [CircuitGate].
+/// A circuit is specified as a series of [`CircuitGate`].
 #[derive(Serialize)]
 pub struct Circuit<'a, F: PrimeField>(
     #[serde(bound = "CircuitGate<F>: Serialize")] pub &'a [CircuitGate<F>],
@@ -477,6 +491,8 @@ pub mod caml {
 
 #[cfg(test)]
 mod tests {
+    use crate::circuits::wires::PERMUTS;
+
     use super::*;
     use ark_ff::UniformRand as _;
     use mina_curves::pasta::Fp;

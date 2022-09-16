@@ -1618,6 +1618,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
     // is called repeatedly in monomials, yielding quadratic behavior for
     // that function. It's ok for now as we only call that function once on
     // a small input when producing the verification key.
+    #[allow(clippy::match_same_arms)]
     fn is_constant(&self, evaluated: &HashSet<Column>) -> bool {
         use Expr::*;
         match self {
@@ -1640,7 +1641,10 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
             h
         };
         let constant = |e: Expr<F>| sing(vec![], e);
-        use Expr::*;
+        use Expr::{
+            BinOp, Cache, Cell, Constant, Double, Pow, Square, UnnormalizedLagrangeBasis,
+            VanishesOnLast4Rows,
+        };
 
         if self.is_constant(ev) {
             return constant(self.clone());
@@ -1735,6 +1739,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
     /// this function computes `lin_or_err(factor_{V_0}(e))`, although it does not
     /// compute it in that way. Instead, it computes it by reducing the expression into
     /// a sum of monomials with `F` coefficients, and then factors the monomials.
+    #[allow(clippy::needless_pass_by_value)]
     pub fn linearize(
         &self,
         evaluated: HashSet<Column>,
@@ -1827,7 +1832,7 @@ impl<F: One + Neg<Output = F>> Neg for ConstantExpr<F> {
 impl<F: Field> Add<ConstantExpr<F>> for ConstantExpr<F> {
     type Output = ConstantExpr<F>;
     fn add(self, other: Self) -> Self {
-        use ConstantExpr::*;
+        use ConstantExpr::{Add, Literal};
         if self.is_zero() {
             return other;
         }
@@ -1844,7 +1849,7 @@ impl<F: Field> Add<ConstantExpr<F>> for ConstantExpr<F> {
 impl<F: Field> Sub<ConstantExpr<F>> for ConstantExpr<F> {
     type Output = ConstantExpr<F>;
     fn sub(self, other: Self) -> Self {
-        use ConstantExpr::*;
+        use ConstantExpr::{Literal, Sub};
         if other.is_zero() {
             return self;
         }
@@ -1858,7 +1863,7 @@ impl<F: Field> Sub<ConstantExpr<F>> for ConstantExpr<F> {
 impl<F: Field> Mul<ConstantExpr<F>> for ConstantExpr<F> {
     type Output = ConstantExpr<F>;
     fn mul(self, other: Self) -> Self {
-        use ConstantExpr::*;
+        use ConstantExpr::{Literal, Mul};
         if self.is_one() {
             return other;
         }
@@ -1931,7 +1936,7 @@ impl<F: Zero + Clone> AddAssign<Expr<F>> for Expr<F> {
         if self.is_zero() {
             *self = other;
         } else if !other.is_zero() {
-            *self = Expr::BinOp(Op2::Add, Box::new(self.clone()), Box::new(other))
+            *self = Expr::BinOp(Op2::Add, Box::new(self.clone()), Box::new(other));
         }
     }
 }
@@ -2010,7 +2015,9 @@ impl<F: Field> Mul<F> for Expr<ConstantExpr<F>> {
 
 impl<F: PrimeField> ConstantExpr<F> {
     fn ocaml(&self) -> String {
-        use ConstantExpr::*;
+        use ConstantExpr::{
+            Add, Alpha, Beta, EndoCoefficient, Gamma, JointCombiner, Literal, Mds, Mul, Pow, Sub,
+        };
         match self {
             Alpha => "alpha".to_string(),
             Beta => "beta".to_string(),
@@ -2030,7 +2037,9 @@ impl<F: PrimeField> ConstantExpr<F> {
     }
 
     fn latex(&self) -> String {
-        use ConstantExpr::*;
+        use ConstantExpr::{
+            Add, Alpha, Beta, EndoCoefficient, Gamma, JointCombiner, Literal, Mds, Mul, Pow, Sub,
+        };
         match self {
             Alpha => "\\alpha".to_string(),
             Beta => "\\beta".to_string(),
@@ -2065,7 +2074,7 @@ where
         env.sort_by(|(x, _), (y, _)| x.cmp(y));
 
         let mut res = String::new();
-        for (k, v) in env.into_iter() {
+        for (k, v) in env {
             let rhs = v.ocaml_str();
             let cached = format!("let {} = {rhs} in ", k.var_name());
             res.push_str(&cached);
@@ -2078,7 +2087,10 @@ where
     /// Recursively print the expression,
     /// except for the cached expression that are stored in the `cache`.
     fn ocaml(&self, cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>>>) -> String {
-        use Expr::*;
+        use Expr::{
+            BinOp, Cache, Cell, Constant, Double, Pow, Square, UnnormalizedLagrangeBasis,
+            VanishesOnLast4Rows,
+        };
         match self {
             Double(x) => format!("double({})", x.ocaml(cache)),
             Constant(x) => x.ocaml(),
@@ -2108,7 +2120,7 @@ where
         env.sort_by(|(x, _), (y, _)| x.cmp(y));
 
         let mut res = vec![];
-        for (k, v) in env.into_iter() {
+        for (k, v) in env {
             let mut rhs = v.latex_str();
             let last = rhs.pop().expect("returned an empty expression");
             res.push(format!("{} = {last}", k.latex_name()));
@@ -2119,7 +2131,10 @@ where
     }
 
     fn latex(&self, cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>>>) -> String {
-        use Expr::*;
+        use Expr::{
+            BinOp, Cache, Cell, Constant, Double, Pow, Square, UnnormalizedLagrangeBasis,
+            VanishesOnLast4Rows,
+        };
         match self {
             Double(x) => format!("2 ({})", x.latex(cache)),
             Constant(x) => x.latex(),
@@ -2168,12 +2183,15 @@ pub mod constraints {
         Self: std::marker::Sized,
     {
         /// Double the value
+        #[must_use]
         fn double(&self) -> Self;
 
         /// Compute the square of this value
+        #[must_use]
         fn square(&self) -> Self;
 
         /// Raise the value to the given power
+        #[must_use]
         fn pow(&self, p: u64) -> Self;
 
         /// Constrain to boolean
@@ -2308,25 +2326,30 @@ pub fn constant<F>(x: F) -> E<F> {
 }
 
 /// Helper function to quickly create an expression for a witness.
+#[must_use]
 pub fn witness<F>(i: usize, row: CurrOrNext) -> E<F> {
     E::<F>::cell(Column::Witness(i), row)
 }
 
 /// Same as [witness] but for the current row.
+#[must_use]
 pub fn witness_curr<F>(i: usize) -> E<F> {
     witness(i, CurrOrNext::Curr)
 }
 
 /// Same as [witness] but for the next row.
+#[must_use]
 pub fn witness_next<F>(i: usize) -> E<F> {
     witness(i, CurrOrNext::Next)
 }
 
 /// Handy function to quickly create an expression for a gate.
+#[must_use]
 pub fn index<F>(g: GateType) -> E<F> {
     E::<F>::cell(Column::Index(g), CurrOrNext::Curr)
 }
 
+#[must_use]
 pub fn coeff<F>(i: usize) -> E<F> {
     E::<F>::cell(Column::Coefficient(i), CurrOrNext::Curr)
 }
