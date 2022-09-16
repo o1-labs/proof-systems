@@ -41,7 +41,11 @@
 //~
 
 use crate::{
-    circuits::{constraints::ConstraintSystem, polynomial::WitnessOverDomains, wires::*},
+    circuits::{
+        constraints::ConstraintSystem,
+        polynomial::WitnessOverDomains,
+        wires::{Wire, COLUMNS, PERMUTS},
+    },
     error::ProverError,
     proof::ProofEvaluations,
 };
@@ -188,6 +192,13 @@ where
 
 impl<F: PrimeField> ConstraintSystem<F> {
     /// permutation quotient poly contribution computation
+    ///
+    /// # Errors
+    ///
+    /// Will give error if `polynomial division` fails.
+    ///
+    /// # Panics
+    /// Will panic if `power of alpha` is missing.
     #[allow(clippy::type_complexity)]
     pub fn perm_quot(
         &self,
@@ -277,7 +288,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
                 &z_minus_1.clone().into(),
                 &x_minus_1.into(),
             )
-            .map_or(Err(ProverError::Permutation("first division")), Ok)?;
+            .ok_or(ProverError::Permutation("first division"))?;
             if !res.is_zero() {
                 return Err(ProverError::Permutation("first division rest"));
             }
@@ -291,7 +302,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
                 &z_minus_1.into(),
                 &denominator.into(),
             )
-            .map_or(Err(ProverError::Permutation("second division")), Ok)?;
+            .ok_or(ProverError::Permutation("second division"))?;
             if !res.is_zero() {
                 return Err(ProverError::Permutation("second division rest"));
             }
@@ -364,6 +375,13 @@ impl<F: PrimeField> ConstraintSystem<F> {
     }
 
     /// permutation aggregation polynomial computation
+    ///
+    /// # Errors
+    ///
+    /// Will give error if permutation result is not correct.
+    ///
+    /// # Panics
+    /// Will panic if `first element` is not 1.
     pub fn perm_aggreg(
         &self,
         witness: &[Vec<F>; COLUMNS],
@@ -423,7 +441,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
                 .iter()
                 .zip(self.sigmal1.iter())
                 .map(|(w, s)| w[j] + (s[j] * beta) + gamma)
-                .fold(F::one(), |x, y| x * y)
+                .fold(F::one(), |x, y| x * y);
         }
 
         ark_ff::fields::batch_inversion::<F>(&mut z[1..=n - 3]);
@@ -434,7 +452,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
                 .iter()
                 .zip(self.shift.iter())
                 .map(|(w, s)| w[j] + (self.sid[j] * beta * s) + gamma)
-                .fold(x, |z, y| z * y)
+                .fold(x, |z, y| z * y);
         }
 
         //~ If computed correctly, we should have $z(g^{n-3}) = 1$.

@@ -1,11 +1,15 @@
-//! Implementation of the EndomulScalar gate for the endomul scalar multiplication.
+//! Implementation of the `EndomulScalar` gate for the endomul scalar multiplication.
 //! This gate checks 8 rounds of the Algorithm 2 in the [Halo paper](https://eprint.iacr.org/2019/1021.pdf) per row.
 
 use crate::{
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
         constraints::ConstraintSystem,
-        expr::{constraints::ExprOps, Cache},
+        expr::{
+            constraints::ExprOps,
+            prologue::{witness_curr, E},
+            Cache,
+        },
         gate::{CircuitGate, GateType},
         wires::COLUMNS,
     },
@@ -16,6 +20,11 @@ use std::array;
 use std::marker::PhantomData;
 
 impl<F: PrimeField> CircuitGate<F> {
+    /// Verify the `EndoMulscalar` gate.
+    ///
+    /// # Errors
+    ///
+    /// Will give error if `self.typ` is not `GateType::EndoMulScalar`, or there are errors in gate values.
     pub fn verify_endomul_scalar<G: KimchiCurve<ScalarField = F>>(
         &self,
         row: usize,
@@ -206,6 +215,11 @@ where
     }
 }
 
+/// Generate the `witness`
+///
+/// # Panics
+///
+/// Will panic if `num_bits` length is not multiple of `bits_per_row` length.
 pub fn gen_witness<F: PrimeField + std::fmt::Display>(
     witness_cols: &mut [Vec<F>; COLUMNS],
     scalar: F,
@@ -237,7 +251,7 @@ pub fn gen_witness<F: PrimeField + std::fmt::Display>(
             let b0 = *crumb_bits[1];
             let b1 = *crumb_bits[0];
 
-            let crumb = F::from(b0 as u64) + F::from(b1 as u64).double();
+            let crumb = F::from(u64::from(b0)) + F::from(u64::from(b1)).double();
             witness_cols[6 + j].push(crumb);
 
             a.double_in_place();
@@ -246,10 +260,10 @@ pub fn gen_witness<F: PrimeField + std::fmt::Display>(
             let s = if b0 { &one } else { &neg_one };
 
             let a_prev = a;
-            if !b1 {
-                b += s;
-            } else {
+            if b1 {
                 a += s;
+            } else {
+                b += s;
             }
             assert_eq!(a, a_prev + c_func(crumb));
 

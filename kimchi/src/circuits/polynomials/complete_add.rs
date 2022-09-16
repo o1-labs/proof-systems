@@ -15,7 +15,11 @@
 //~
 use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
-    expr::{constraints::ExprOps, Cache},
+    expr::{
+        constraints::ExprOps,
+        prologue::{witness_curr, E},
+        Cache,
+    },
     gate::{CircuitGate, GateType},
     wires::COLUMNS,
 };
@@ -26,7 +30,7 @@ use std::marker::PhantomData;
 ///
 /// r = (z == 0) ? 1 : 0
 ///
-/// Additionally, if r == 0, then z_inv = 1 / z.
+/// Additionally, if r == 0, then `z_inv` = 1 / z.
 ///
 /// If r == 1 however (i.e., if z == 0), then z_inv is unconstrained.
 fn zero_check<F: Field, T: ExprOps<F>>(z: T, z_inv: T, r: T) -> Vec<T> {
@@ -70,7 +74,7 @@ fn zero_check<F: Field, T: ExprOps<F>>(z: T, z_inv: T, r: T) -> Vec<T> {
 //~ * $x_{1} \cdot w_{9} - w_{6}$
 //~
 
-/// Implementation of the CompleteAdd gate
+/// Implementation of the `CompleteAdd` gate
 /// It uses the constraints
 ///
 ///   (x2 - x1) * s = y2 - y1
@@ -219,6 +223,15 @@ where
 
 impl<F: PrimeField> CircuitGate<F> {
     /// Check the correctness of witness values for a complete-add gate.
+    ///
+    /// # Errors
+    ///
+    /// Will give error if the gate value validations are not met.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `multiplicative inverse` operation between gate values fails.
+    #[allow(clippy::unused_self)]
     pub fn verify_complete_add(
         &self,
         row: usize,
@@ -261,7 +274,7 @@ impl<F: PrimeField> CircuitGate<F> {
             format!("y3 wrong {}: (expected {}, got {})", row, expected_y3, y3)
         );
 
-        let not_same_y = F::from((y1 != y2) as u64);
+        let not_same_y = F::from(u64::from(y1 != y2));
         ensure_eq!(inf, same_x * not_same_y, "inf wrong");
 
         if y1 == y2 {

@@ -32,6 +32,7 @@ where
     F: FftField,
 {
     /// Return true if the table has an entry containing all zeros.
+    #[must_use]
     pub fn has_zero_entry(&self) -> bool {
         // reminder: a table is written as a list of columns,
         // not as a list of row entries.
@@ -48,17 +49,20 @@ where
     }
 
     /// Returns the length of the table.
+    #[must_use]
     pub fn len(&self) -> usize {
         self.data[0].len()
     }
 
     /// Returns `true` if the lookup table is empty, `false` otherwise.
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
     }
 }
 
-/// Returns the lookup table associated to a [GateLookupTable].
+/// Returns the lookup table associated to a [`GateLookupTable`].
+#[must_use]
 pub fn get_table<F: FftField>(table_name: GateLookupTable) -> LookupTable<F> {
     match table_name {
         GateLookupTable::Xor => xor::xor_table(),
@@ -96,8 +100,12 @@ where
         + table_id_combiner.clone() * table_id.clone()
 }
 
-/// Same as [combine_table_entry], but for an entire table.
+/// Same as [`combine_table_entry`], but for an entire table.
 /// The function will panic if given an empty table (0 columns).
+///
+/// # Panics
+///
+/// Will panic if `columns` is empty.
 pub fn combine_table<G>(
     columns: &[&PolyComm<G>],
     column_combiner: G::ScalarField,

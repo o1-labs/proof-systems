@@ -136,6 +136,7 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
 ///
 /// Will panic if the `linearization` process fails.
 #[must_use]
+#[allow(clippy::module_name_repetitions)]
 pub fn expr_linearization<F: FftField + SquareRootField>(
     chacha: bool,
     range_check: bool,

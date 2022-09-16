@@ -12,7 +12,7 @@
 
 use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
-    expr::{constraints::ExprOps, Cache, Column, Variable},
+    expr::{constraints::ExprOps, prologue::E, Cache, Column, Variable},
     gate::{CircuitGate, CurrOrNext, GateType},
     wires::{GateWires, COLUMNS},
 };
@@ -128,6 +128,7 @@ use CurrOrNext::{Curr, Next};
 //~
 
 impl<F: PrimeField> CircuitGate<F> {
+    #[must_use]
     pub fn create_vbmul(wires: &[GateWires; 2]) -> Vec<Self> {
         vec![
             CircuitGate {
@@ -143,11 +144,18 @@ impl<F: PrimeField> CircuitGate<F> {
         ]
     }
 
+    /// Verify the `GateType::VarBaseMul`(TODO)
+    ///
+    /// # Errors
+    ///
+    /// TODO
+    #[allow(clippy::unused_self)]
     pub fn verify_vbmul(&self, _row: usize, _witness: &[Vec<F>; COLUMNS]) -> Result<(), String> {
         // TODO: implement
         Ok(())
     }
 
+    #[must_use]
     pub fn vbmul(&self) -> F {
         if self.typ == GateType::VarBaseMul {
             F::one()
@@ -345,7 +353,11 @@ pub struct VarbaseMulResult<F> {
     pub acc: (F, F),
     pub n: F,
 }
-
+/// Apply the `witness` value.
+///
+/// # Panics
+///
+/// Will panic if `bits chunk` length validation fails.
 pub fn witness<F: FftField + std::fmt::Display>(
     w: &mut [Vec<F>; COLUMNS],
     row0: usize,
@@ -354,7 +366,7 @@ pub fn witness<F: FftField + std::fmt::Display>(
     acc0: (F, F),
 ) -> VarbaseMulResult<F> {
     let layout = Layout::create();
-    let bits: Vec<_> = bits.iter().map(|b| F::from(*b as u64)).collect();
+    let bits: Vec<_> = bits.iter().map(|b| F::from(u64::from(*b))).collect();
     let bits_per_chunk = 5;
     assert_eq!(bits_per_chunk * (bits.len() / bits_per_chunk), bits.len());
 
@@ -385,7 +397,7 @@ pub fn witness<F: FftField + std::fmt::Display>(
     VarbaseMulResult { acc, n: n_acc }
 }
 
-/// Implementation of the VarbaseMul gate
+/// Implementation of the `VarbaseMul` gate
 pub struct VarbaseMul<F>(PhantomData<F>);
 
 impl<F> Argument<F> for VarbaseMul<F>

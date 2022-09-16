@@ -109,7 +109,7 @@ pub fn prove<G, H, EFqSponge, EFrSponge>(
     index: &ProverIndex<G>,
     group_map: &G::Map,
     blinders: Option<[Option<G::ScalarField>; COLUMNS]>,
-    public_input: &[G::ScalarField],
+    public_input: Vec<G::ScalarField>,
     mut main: H,
 ) -> ProverProof<G>
 where
@@ -120,7 +120,7 @@ where
     EFrSponge: FrSponge<G::ScalarField>,
 {
     // create the witness generator
-    let mut gen: WitnessGenerator<G::ScalarField> = WitnessGenerator::new(public_input);
+    let mut gen: WitnessGenerator<G::ScalarField> = WitnessGenerator::new(&public_input);
 
     // run the witness generation
     let public_vars = public_input

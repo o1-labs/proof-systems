@@ -1,9 +1,9 @@
 //! Runtime tables are tables (or arrays) that can be produced during proof creation.
-//! The setup has to prepare for their presence using [RuntimeTableCfg].
-//! At proving time, the prover can use [RuntimeTable] to specify the actual tables.
+//! The setup has to prepare for their presence using [`RuntimeTableCfg`].
+//! At proving time, the prover can use [`RuntimeTable`] to specify the actual tables.
 
 use crate::circuits::{
-    expr::{prologue::*, Column},
+    expr::{prologue::E, Column},
     gate::CurrOrNext,
 };
 use ark_ff::Field;
@@ -35,8 +35,9 @@ pub enum RuntimeTableCfg<F> {
 
 impl<F> RuntimeTableCfg<F> {
     /// Returns the ID of the runtime table.
+    #[must_use]
     pub fn id(&self) -> i32 {
-        use RuntimeTableCfg::*;
+        use RuntimeTableCfg::{Custom, Indexed};
         match self {
             Indexed(cfg) => cfg.id,
             &Custom { id, .. } => id,
@@ -44,8 +45,9 @@ impl<F> RuntimeTableCfg<F> {
     }
 
     /// Returns the length of the runtime table.
+    #[must_use]
     pub fn len(&self) -> usize {
-        use RuntimeTableCfg::*;
+        use RuntimeTableCfg::{Custom, Indexed};
         match self {
             Indexed(cfg) => cfg.len,
             Custom { first_column, .. } => first_column.len(),
@@ -53,8 +55,9 @@ impl<F> RuntimeTableCfg<F> {
     }
 
     /// Returns `true` if the runtime table is empty.
+    #[must_use]
     pub fn is_empty(&self) -> bool {
-        use RuntimeTableCfg::*;
+        use RuntimeTableCfg::{Custom, Indexed};
         match self {
             Indexed(cfg) => cfg.len == 0,
             Custom { first_column, .. } => first_column.is_empty(),
@@ -64,7 +67,7 @@ impl<F> RuntimeTableCfg<F> {
 
 impl<F> From<RuntimeTableCfg<F>> for RuntimeTableSpec {
     fn from(from: RuntimeTableCfg<F>) -> Self {
-        use RuntimeTableCfg::*;
+        use RuntimeTableCfg::{Custom, Indexed};
         match from {
             Indexed(cfg) => cfg,
             Custom { id, first_column } => RuntimeTableSpec {
@@ -76,7 +79,7 @@ impl<F> From<RuntimeTableCfg<F>> for RuntimeTableSpec {
 }
 
 /// A runtime table. Runtime tables must match the configuration
-/// that was specified in [RuntimeTableCfg].
+/// that was specified in [`RuntimeTableCfg`].
 #[derive(Debug, Clone)]
 pub struct RuntimeTable<F> {
     /// The table id.
@@ -86,6 +89,7 @@ pub struct RuntimeTable<F> {
 }
 
 /// Returns the constraints related to the runtime tables.
+#[must_use]
 pub fn constraints<F>() -> Vec<E<F>>
 where
     F: Field,

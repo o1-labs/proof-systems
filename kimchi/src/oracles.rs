@@ -7,6 +7,7 @@ use commitment_dlog::commitment::{CommitmentCurve, PolyComm};
 use oracle::FqSponge;
 
 /// The result of running the oracle protocol
+#[allow(clippy::module_name_repetitions)]
 pub struct OraclesResult<G, EFqSponge>
 where
     G: CommitmentCurve,

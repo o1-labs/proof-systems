@@ -33,9 +33,10 @@ pub const GATE_COUNT: usize = 2;
 impl<F: PrimeField> CircuitGate<F> {
     /// Create range check gate for constraining three 88-bit values.
     ///     Inputs the starting row
-    ///     Outputs tuple (next_row, circuit_gates) where
-    ///       next_row      - next row after this gate
-    ///       circuit_gates - vector of circuit gates comprising this gate
+    ///     Outputs tuple (`next_row`, `circuit_gates`) where
+    ///       `next_row`      - next row after this gate
+    ///       `circuit_gates` - vector of circuit gates comprising this gate
+    #[must_use]
     pub fn create_multi_range_check(start_row: usize) -> (usize, Vec<Self>) {
         let mut circuit_gates = vec![
             CircuitGate {
@@ -77,9 +78,10 @@ impl<F: PrimeField> CircuitGate<F> {
 
     /// Create single range check gate
     ///     Inputs the starting row
-    ///     Outputs tuple (next_row, circuit_gates) where
-    ///       next_row      - next row after this gate
-    ///       circuit_gates - vector of circuit gates comprising this gate
+    ///     Outputs tuple (`next_row`, `circuit_gates`) where
+    ///       `next_row`      - next row after this gate
+    ///       `circuit_gates` - vector of circuit gates comprising this gate
+    #[must_use]
     pub fn create_range_check(start_row: usize) -> (usize, Vec<Self>) {
         (
             start_row + 1,
@@ -95,9 +97,18 @@ impl<F: PrimeField> CircuitGate<F> {
     ///
     /// The following verification checks are performed
     ///   * Constraint checks for circuit gates matching the self.typ kind
-    ///     Circuit gates used by the range check gate are: RangeChange0 and RangeCheck1
+    ///     Circuit gates used by the range check gate are: `RangeChange0` and `RangeCheck1`
     ///   * Permutation argument checks for copied cells / wiring
     ///   * Plookup checks for any lookups defined
+    ///
+    /// # Errors
+    ///
+    /// Will give error if `self.typ` is invalid `GateType`.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `padding_length` is None.
+    #[allow(clippy::cast_possible_truncation)]
     pub fn verify_range_check<G: KimchiCurve<ScalarField = F>>(
         &self,
         _: usize,
@@ -252,7 +263,7 @@ fn set_up_lookup_env_data<F: PrimeField>(
         F::zero()
     };
     let table_id_combiner: F = if lcs.table_ids8.as_ref().is_some() {
-        joint_combiner.pow([lcs.configuration.lookup_info.max_joint_size as u64])
+        joint_combiner.pow([u64::from(lcs.configuration.lookup_info.max_joint_size)])
     } else {
         // TODO: just set this to None in case multiple tables are not used
         F::zero()
@@ -361,11 +372,17 @@ fn circuit_gate_selector_index(typ: GateType) -> usize {
 }
 
 /// Get vector of range check circuit gate types
+#[must_use]
 pub fn circuit_gates() -> [GateType; GATE_COUNT] {
     [GateType::RangeCheck0, GateType::RangeCheck1]
 }
 
 /// Number of constraints for a given range check circuit gate type
+///
+/// # Panics
+///
+/// Will panic if `typ` is not `RangeCheck`-related gate type.
+#[must_use]
 pub fn circuit_gate_constraint_count<F: FftField>(typ: GateType) -> u32 {
     match typ {
         GateType::RangeCheck0 => RangeCheck0::<F>::CONSTRAINTS,
@@ -375,6 +392,11 @@ pub fn circuit_gate_constraint_count<F: FftField>(typ: GateType) -> u32 {
 }
 
 /// Get combined constraints for a given range check circuit gate type
+///
+/// # Panics
+///
+/// Will panic if `typ` is not `RangeCheck`-related gate type.
+#[must_use]
 pub fn circuit_gate_constraints<F: FftField>(typ: GateType, alphas: &Alphas<F>) -> E<F> {
     match typ {
         GateType::RangeCheck0 => RangeCheck0::combined_constraints(alphas),
@@ -384,11 +406,13 @@ pub fn circuit_gate_constraints<F: FftField>(typ: GateType, alphas: &Alphas<F>) 
 }
 
 /// Get the combined constraints for all range check circuit gate types
+#[must_use]
 pub fn combined_constraints<F: FftField>(alphas: &Alphas<F>) -> E<F> {
     RangeCheck0::combined_constraints(alphas) + RangeCheck1::combined_constraints(alphas)
 }
 
 /// Get the range check lookup table
+#[must_use]
 pub fn lookup_table<F: FftField>() -> LookupTable<F> {
     lookup::tables::get_table::<F>(GateLookupTable::RangeCheck)
 }

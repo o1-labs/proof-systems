@@ -115,6 +115,10 @@ where
     G::BaseField: PrimeField,
 {
     /// This function constructs prover's zk-proof from the witness & the `ProverIndex` against SRS instance
+    ///
+    /// # Errors
+    ///
+    /// Will give error if `create_recursive` process fails.
     pub fn create<
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
         EFrSponge: FrSponge<G::ScalarField>,
@@ -139,6 +143,10 @@ where
     /// # Errors
     ///
     /// Will give error if inputs(like `lookup_context.joint_lookup_table_d8`) are None.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `lookup_context.joint_lookup_table_d8` is None.
     #[allow(
         clippy::needless_pass_by_value,
         clippy::too_many_lines,

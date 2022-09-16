@@ -28,7 +28,11 @@
 use crate::{
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
-        expr::{constraints::ExprOps, Cache},
+        expr::{
+            constraints::ExprOps,
+            prologue::{coeff, witness, witness_curr, E},
+            Cache, ConstantExpr,
+        },
         gate::{CircuitGate, CurrOrNext, GateType},
         polynomial::COLUMNS,
         wires::{GateWires, Wire},
@@ -71,6 +75,7 @@ pub const STATE_ORDER: [usize; ROUNDS_PER_ROW] = [
 
 /// Given a Poseidon round from 0 to 4 (inclusive),
 /// returns the columns (as a range) that are used in this round.
+#[must_use]
 pub const fn round_to_cols(i: usize) -> Range<usize> {
     let slot = STATE_ORDER[i];
     let start = slot * SPONGE_WIDTH;
@@ -96,6 +101,7 @@ impl<F: PrimeField> CircuitGate<F> {
     /// - the first and last rows' wires (because they are used in the permutation)
     /// - the round constants
     /// The function returns a set of gates, as well as the next pointer to the circuit (next empty absolute row)
+    #[must_use]
     pub fn create_poseidon_gadget(
         // the absolute row in the circuit
         row: usize,
@@ -136,6 +142,10 @@ impl<F: PrimeField> CircuitGate<F> {
     }
 
     /// Checks if a witness verifies a poseidon gate
+    ///
+    /// # Errors
+    ///
+    /// Will give error if `self.typ` is not `Poseidon` gate, or `state` does not match after `permutation`.
     pub fn verify_poseidon<G: KimchiCurve<ScalarField = F>>(
         &self,
         row: usize,
@@ -192,6 +202,7 @@ impl<F: PrimeField> CircuitGate<F> {
         Ok(())
     }
 
+    #[must_use]
     pub fn ps(&self) -> F {
         if self.typ == GateType::Poseidon {
             F::one()
@@ -201,6 +212,7 @@ impl<F: PrimeField> CircuitGate<F> {
     }
 
     /// round constant that are relevant for this specific gate
+    #[must_use]
     pub fn rc(&self) -> [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW] {
         std::array::from_fn(|round| {
             std::array::from_fn(|col| {
@@ -217,6 +229,11 @@ impl<F: PrimeField> CircuitGate<F> {
 /// `generate_witness(row, params, witness_cols, input)` uses a sponge initialized with
 /// `params` to generate a witness for starting at row `row` in `witness_cols`,
 /// and with input `input`.
+///
+/// # Panics
+///
+/// Will panic if the `circuit` has `INITIAL_ARK`.
+#[allow(clippy::assertions_on_constants)]
 pub fn generate_witness<F: Field>(
     row: usize,
     params: &'static ArithmeticSpongeParams<F>,
@@ -247,9 +264,10 @@ pub fn generate_witness<F: Field>(
             let abs_round = round + row_idx * ROUNDS_PER_ROW;
 
             // apply the sponge and record the result in the witness
-            if PlonkSpongeConstantsKimchi::PERM_INITIAL_ARK {
-                panic!("this won't work if the circuit has an INITIAL_ARK")
-            }
+            assert!(
+                !PlonkSpongeConstantsKimchi::PERM_INITIAL_ARK,
+                "this won't work if the circuit has an INITIAL_ARK"
+            );
             sponge.full_round(abs_round);
 
             // apply the sponge and record the result in the witness
@@ -353,7 +371,7 @@ where
                 .map(|i| {
                     cache.cache(
                         env.witness_curr(i)
-                            .pow(PlonkSpongeConstantsKimchi::PERM_SBOX as u64),
+                            .pow(u64::from(PlonkSpongeConstantsKimchi::PERM_SBOX)),
                     )
                 })
                 .collect();

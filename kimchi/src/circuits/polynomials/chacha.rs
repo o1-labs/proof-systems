@@ -1,4 +1,4 @@
-//! This module implements the ChaCha constraints.
+//! This module implements the `ChaCha` constraints.
 
 //~ There are four chacha constraint types, corresponding to the four lines in each quarter round.
 //~
@@ -144,7 +144,11 @@ use std::marker::PhantomData;
 
 use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
-    expr::constraints::{boolean, ExprOps},
+    expr::{
+        constraints::{boolean, ExprOps},
+        prologue::{witness, witness_curr, witness_next, E},
+        ConstantExpr as C,
+    },
     gate::{CurrOrNext, GateType},
 };
 use ark_ff::{FftField, Field};
@@ -174,7 +178,7 @@ fn combine_nybbles<F: Field, T: ExprOps<F>>(ns: Vec<T>) -> T {
         .fold(T::zero(), |acc: T, (i, t)| acc + T::from(1 << (4 * i)) * t)
 }
 
-/// Constraints for the line L(x, x', y, y', z, k), where k = 4 * nybble_rotation
+/// Constraints for the line L(x, x', y, y', z, k), where k = 4 * `nybble_rotation`
 fn line<F: Field, T: ExprOps<F>>(env: &ArgumentEnv<F, T>, nybble_rotation: usize) -> Vec<T> {
     let y_xor_xprime_nybbles = chunks_over_2_rows(env, 3);
     let x_plus_z_nybbles = chunks_over_2_rows(env, 7);
@@ -211,7 +215,7 @@ fn line<F: Field, T: ExprOps<F>>(env: &ArgumentEnv<F, T>, nybble_rotation: usize
 // Gates
 //
 
-/// Implementation of the ChaCha0 gate
+/// Implementation of the `ChaCha0` gate
 pub struct ChaCha0<F>(PhantomData<F>);
 
 impl<F> Argument<F> for ChaCha0<F>
@@ -227,7 +231,7 @@ where
     }
 }
 
-/// Implementation of the ChaCha1 gate
+/// Implementation of the `ChaCha1` gate
 pub struct ChaCha1<F>(PhantomData<F>);
 
 impl<F> Argument<F> for ChaCha1<F>
@@ -243,7 +247,7 @@ where
     }
 }
 
-/// Implementation of the ChaCha2 gate
+/// Implementation of the `ChaCha2` gate
 pub struct ChaCha2<F>(PhantomData<F>);
 
 impl<F> Argument<F> for ChaCha2<F>
@@ -259,7 +263,7 @@ where
     }
 }
 
-/// Implementation of the ChaChaFinal gate
+/// Implementation of the `ChaChaFinal` gate
 pub struct ChaChaFinal<F>(PhantomData<F>);
 
 impl<F> Argument<F> for ChaChaFinal<F>
@@ -302,13 +306,14 @@ where
 
 // TODO: move this to test file
 pub mod testing {
-    use super::*;
+    use super::{FftField, GateType};
 
     /// This is just for tests. It doesn't set up the permutations
+    #[must_use]
     pub fn chacha20_gates() -> Vec<GateType> {
         let mut gs = vec![];
         for _ in 0..20 {
-            use GateType::*;
+            use GateType::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal, Zero};
             for _ in 0..4 {
                 for &g in &[ChaCha0, ChaCha1, ChaCha2, ChaCha0, ChaChaFinal] {
                     gs.push(g);
@@ -331,6 +336,7 @@ pub mod testing {
         [3, 4, 9, 14],
     ];
 
+    #[must_use]
     pub fn chacha20_rows<F: FftField>(s0: Vec<u32>) -> Vec<Vec<F>> {
         let mut rows = vec![];
 
@@ -339,7 +345,7 @@ pub mod testing {
             let f = |t: u32| F::from(t);
             let nyb = |t: u32, i: usize| f((t >> (4 * i)) & 0b1111);
 
-            let top_bit = (((s[x] as u64) + (s[z] as u64)) >> 32) as u32;
+            let top_bit = ((u64::from(s[x]) + (u64::from(s[z]))) >> 32) as u32;
             let xprime = u32::wrapping_add(s[x], s[z]);
             let y_xor_xprime = s[y] ^ xprime;
             let yprime = y_xor_xprime.rotate_left(k);
@@ -442,6 +448,7 @@ pub mod testing {
         rows
     }
 
+    #[must_use]
     pub fn chacha20(mut s: Vec<u32>) -> Vec<u32> {
         let mut line = |x, y, z, k| {
             s[x] = u32::wrapping_add(s[x], s[z]);

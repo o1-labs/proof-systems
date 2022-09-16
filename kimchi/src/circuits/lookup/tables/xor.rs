@@ -14,6 +14,12 @@ use ark_ff::Field;
 //~ will translate into a scalar multiplication by 0, which is free.
 
 /// Returns the XOR lookup table
+///
+/// # Panics
+///
+/// Will panic if `data` is invalid.
+#[must_use]
+#[allow(clippy::module_name_repetitions)]
 pub fn xor_table<F: Field>() -> LookupTable<F> {
     let mut data = vec![vec![]; 3];
 

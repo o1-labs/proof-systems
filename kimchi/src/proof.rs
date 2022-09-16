@@ -48,6 +48,7 @@ pub struct LookupEvaluations<Field> {
     serialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::SerializeAs<Field>",
     deserialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::DeserializeAs<'de, Field>"
 ))]
+#[allow(clippy::module_name_repetitions)]
 pub struct ProofEvaluations<Field> {
     /// witness polynomials
     #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; COLUMNS]")]
