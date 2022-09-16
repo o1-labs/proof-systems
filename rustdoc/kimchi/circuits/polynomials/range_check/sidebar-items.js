@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":[["gadget","Range check gate"],["witness","Range check witness computation"]]};
+window.SIDEBAR_ITEMS = {"mod":[["circuitgates",""],["gadget","Range check gate"],["witness","Range check witness computation"]]};

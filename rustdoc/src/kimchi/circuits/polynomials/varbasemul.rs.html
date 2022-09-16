@@ -381,6 +381,52 @@
 <span id="381">381</span>
 <span id="382">382</span>
 <span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
+<span id="391">391</span>
+<span id="392">392</span>
+<span id="393">393</span>
+<span id="394">394</span>
+<span id="395">395</span>
+<span id="396">396</span>
+<span id="397">397</span>
+<span id="398">398</span>
+<span id="399">399</span>
+<span id="400">400</span>
+<span id="401">401</span>
+<span id="402">402</span>
+<span id="403">403</span>
+<span id="404">404</span>
+<span id="405">405</span>
+<span id="406">406</span>
+<span id="407">407</span>
+<span id="408">408</span>
+<span id="409">409</span>
+<span id="410">410</span>
+<span id="411">411</span>
+<span id="412">412</span>
+<span id="413">413</span>
+<span id="414">414</span>
+<span id="415">415</span>
+<span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements short Weierstrass curve variable base scalar multiplication custom Plonk polynomials.
 //!
 //! ```ignore
@@ -394,12 +440,12 @@
 //! and 3.1 of &lt;https://arxiv.org/pdf/math/0208038.pdf&gt; for details.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::circuits::{
-    argument::{Argument, ArgumentType},
-    expr::{prologue::<span class="kw-2">*</span>, Cache, Column, Variable},
+    argument::{Argument, ArgumentEnv, ArgumentType},
+    expr::{constraints::ExprOps, Cache, Column, Variable},
     gate::{CircuitGate, CurrOrNext, GateType},
     wires::{GateWires, COLUMNS},
 };
-<span class="kw">use </span>ark_ff::{FftField, One, PrimeField};
+<span class="kw">use </span>ark_ff::{FftField, Field, PrimeField};
 <span class="kw">use </span>std::marker::PhantomData;
 <span class="kw">use </span>CurrOrNext::{Curr, Next};
 
@@ -540,7 +586,23 @@
     }
 }
 
-<span class="kw">type </span>CurveVar = (Variable, Variable);
+<span class="attribute">#[derive(Copy, Clone)]
+</span><span class="kw">struct </span>Point&lt;T&gt; {
+    x: T,
+    y: T,
+}
+
+<span class="kw">impl</span>&lt;T&gt; Point&lt;T&gt; {
+    <span class="kw">pub fn </span>create(x: T, y: T) -&gt; <span class="self">Self </span>{
+        Point { x, y }
+    }
+}
+
+<span class="kw">impl </span>Point&lt;Variable&gt; {
+    <span class="kw">pub fn </span>new_from_env&lt;F: Field, T: ExprOps&lt;F&gt;&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;) -&gt; Point&lt;T&gt; {
+        Point::create(<span class="self">self</span>.x.new_from_env(env), <span class="self">self</span>.y.new_from_env(env))
+    }
+}
 
 <span class="kw">fn </span>set&lt;F&gt;(w: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS], row0: usize, var: Variable, x: F) {
     <span class="kw">match </span>var.col {
@@ -554,10 +616,10 @@
     w: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS],
     row: usize,
     b: Variable,
-    base: CurveVar,
+    base: <span class="kw-2">&amp;</span>Point&lt;Variable&gt;,
     s1: Variable,
-    input: CurveVar,
-    output: CurveVar,
+    input: <span class="kw-2">&amp;</span>Point&lt;Variable&gt;,
+    output: <span class="kw-2">&amp;</span>Point&lt;Variable&gt;,
     b_value: F,
     base_value: (F, F),
     input_value: (F, F),
@@ -565,11 +627,11 @@
     <span class="kw">let </span><span class="kw-2">mut </span>set = |var, x| set(w, row, var, x);
 
     set(b, b_value);
-    set(input.<span class="number">0</span>, input_value.<span class="number">0</span>);
-    set(input.<span class="number">1</span>, input_value.<span class="number">1</span>);
+    set(input.x, input_value.<span class="number">0</span>);
+    set(input.y, input_value.<span class="number">1</span>);
 
-    set(base.<span class="number">0</span>, base_value.<span class="number">0</span>);
-    set(base.<span class="number">1</span>, base_value.<span class="number">1</span>);
+    set(base.x, base_value.<span class="number">0</span>);
+    set(base.y, base_value.<span class="number">1</span>);
 
     <span class="kw">let </span>s1_value = (input_value.<span class="number">1 </span>- (base_value.<span class="number">1 </span>* (b_value.double() - F::one())))
         / (input_value.<span class="number">0 </span>- base_value.<span class="number">0</span>);
@@ -582,33 +644,31 @@
         input_value.<span class="number">1</span>.double() / (input_value.<span class="number">0</span>.double() + base_value.<span class="number">0 </span>- s1_squared) - s1_value;
     <span class="kw">let </span>out_x = base_value.<span class="number">0 </span>+ s2.square() - s1_squared;
     <span class="kw">let </span>out_y = (input_value.<span class="number">0 </span>- out_x) * s2 - input_value.<span class="number">1</span>;
-    set(output.<span class="number">0</span>, out_x);
-    set(output.<span class="number">1</span>, out_y);
+    set(output.x, out_x);
+    set(output.y, out_y);
     (out_x, out_y)
 }
 
-<span class="kw">fn </span>single_bit&lt;F: FftField&gt;(
+<span class="kw">fn </span>single_bit&lt;F: FftField, T: ExprOps&lt;F&gt;&gt;(
     cache: <span class="kw-2">&amp;mut </span>Cache,
-    b: Variable,
-    base: CurveVar,
-    s1: Variable,
-    input: CurveVar,
-    output: CurveVar,
-) -&gt; Vec&lt;E&lt;F&gt;&gt; {
-    <span class="kw">let </span>v = E::Cell;
+    b: <span class="kw-2">&amp;</span>T,
+    base: Point&lt;T&gt;,
+    s1: <span class="kw-2">&amp;</span>T,
+    input: <span class="kw-2">&amp;</span>Point&lt;T&gt;,
+    output: <span class="kw-2">&amp;</span>Point&lt;T&gt;,
+) -&gt; Vec&lt;T&gt; {
+    <span class="kw">let </span>b_sign = b.double() - T::one();
 
-    <span class="kw">let </span>b_sign = v(b).double() - E::one();
-
-    <span class="kw">let </span>s1_squared = cache.cache(v(s1) * v(s1));
+    <span class="kw">let </span>s1_squared = cache.cache(s1.clone() * s1.clone());
 
     <span class="comment">// s1 = (input.y - (2b - 1) * base.y) / (input.x - base.x)
     // s2 = 2*input.y / (2*input.x + base.x – s1^2) - s1
     // output.x = base.x + s2^2 - s1^2
     // output.y = (input.x – output.x) * s2 - input.y
 
-    </span><span class="kw">let </span>rx = s1_squared.clone() - v(input.<span class="number">0</span>) - v(base.<span class="number">0</span>);
-    <span class="kw">let </span>t = cache.cache(v(input.<span class="number">0</span>) - rx);
-    <span class="kw">let </span>u = cache.cache(v(input.<span class="number">1</span>).double() - t.clone() * v(s1));
+    </span><span class="kw">let </span>rx = s1_squared.clone() - input.x.clone() - base.x.clone();
+    <span class="kw">let </span>t = cache.cache(input.x.clone() - rx);
+    <span class="kw">let </span>u = cache.cache(input.y.double() - t.clone() * s1.clone());
     <span class="comment">// s2 = u / t
 
     // output.x = base.x + s2^2 - s1^2
@@ -625,24 +685,78 @@
 
     </span><span class="macro">vec!</span>[
         <span class="comment">// boolean constrain the bit.
-        </span>v(b) * v(b) - v(b),
+        </span>b.boolean(),
         <span class="comment">// constrain s1:
         //   (input.x - base.x) * s1 = input.y – (2b-1)*base.y
-        </span>(v(input.<span class="number">0</span>) - v(base.<span class="number">0</span>)) * v(s1) - (v(input.<span class="number">1</span>) - b_sign * v(base.<span class="number">1</span>)),
+        </span>(input.x.clone() - base.x.clone()) * s1.clone() - (input.y.clone() - b_sign * base.y),
         <span class="comment">// constrain output.x
-        </span>(u.clone() * u.clone()) - (t.clone() * t.clone()) * (v(output.<span class="number">0</span>) - v(base.<span class="number">0</span>) + s1_squared),
+        </span>(u.clone() * u.clone())
+            - (t.clone() * t.clone()) * (output.x.clone() - base.x + s1_squared),
         <span class="comment">// constrain output.y
-        </span>(v(output.<span class="number">1</span>) + v(input.<span class="number">1</span>)) * t - (v(input.<span class="number">0</span>) - v(output.<span class="number">0</span>)) * u,
+        </span>(output.y.clone() + input.y.clone()) * t - (input.x.clone() - output.x.clone()) * u,
     ]
 }
 
-<span class="kw">pub struct </span>Layout {
-    accs: [(Variable, Variable); <span class="number">6</span>],
-    bits: [Variable; <span class="number">5</span>],
-    ss: [Variable; <span class="number">5</span>],
-    base: (Variable, Variable),
-    n_prev: Variable,
-    n_next: Variable,
+<span class="kw">pub struct </span>Layout&lt;T&gt; {
+    accs: [Point&lt;T&gt;; <span class="number">6</span>],
+    bits: [T; <span class="number">5</span>],
+    ss: [T; <span class="number">5</span>],
+    base: Point&lt;T&gt;,
+    n_prev: T,
+    n_next: T,
+}
+
+<span class="kw">trait </span>FromWitness&lt;F, T&gt; {
+    <span class="kw">fn </span>new_from_env(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;) -&gt; T;
+}
+
+<span class="kw">impl</span>&lt;F: Field, T: ExprOps&lt;F&gt;&gt; FromWitness&lt;F, T&gt; <span class="kw">for </span>Variable {
+    <span class="kw">fn </span>new_from_env(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;) -&gt; T {
+        <span class="kw">let </span>column_to_index = |<span class="kw">_</span>| <span class="kw">match </span><span class="self">self</span>.col {
+            Column::Witness(i) =&gt; i,
+            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Can&#39;t get index from witness columns&quot;</span>),
+        };
+
+        <span class="kw">match </span><span class="self">self</span>.row {
+            Curr =&gt; env.witness_curr(column_to_index(<span class="self">self</span>.col)),
+            Next =&gt; env.witness_next(column_to_index(<span class="self">self</span>.col)),
+        }
+    }
+}
+
+<span class="kw">impl </span>Layout&lt;Variable&gt; {
+    <span class="kw">fn </span>create() -&gt; <span class="self">Self </span>{
+        Layout {
+            accs: [
+                Point::create(v(Curr, <span class="number">2</span>), v(Curr, <span class="number">3</span>)),   <span class="comment">// (x0, y0)
+                </span>Point::create(v(Curr, <span class="number">7</span>), v(Curr, <span class="number">8</span>)),   <span class="comment">// (x1, y1)
+                </span>Point::create(v(Curr, <span class="number">9</span>), v(Curr, <span class="number">10</span>)),  <span class="comment">// (x2, y2)
+                </span>Point::create(v(Curr, <span class="number">11</span>), v(Curr, <span class="number">12</span>)), <span class="comment">// (x3, y3)
+                </span>Point::create(v(Curr, <span class="number">13</span>), v(Curr, <span class="number">14</span>)), <span class="comment">// (x4, y4)
+                </span>Point::create(v(Next, <span class="number">0</span>), v(Next, <span class="number">1</span>)),   <span class="comment">// (x5, y5)
+            </span>],
+            <span class="comment">// bits = [b0, b1, b2, b3, b4]
+            </span>bits: [v(Next, <span class="number">2</span>), v(Next, <span class="number">3</span>), v(Next, <span class="number">4</span>), v(Next, <span class="number">5</span>), v(Next, <span class="number">6</span>)],
+
+            <span class="comment">// ss = [ s0, s1, s2, s3, s4]
+            </span>ss: [v(Next, <span class="number">7</span>), v(Next, <span class="number">8</span>), v(Next, <span class="number">9</span>), v(Next, <span class="number">10</span>), v(Next, <span class="number">11</span>)],
+
+            base: Point::create(v(Curr, <span class="number">0</span>), v(Curr, <span class="number">1</span>)), <span class="comment">// (xT, yT)
+            </span>n_prev: v(Curr, <span class="number">4</span>),                          <span class="comment">// n
+            </span>n_next: v(Curr, <span class="number">5</span>),                          <span class="comment">// n&#39;
+        </span>}
+    }
+
+    <span class="kw">fn </span>new_from_env&lt;F: Field, T: ExprOps&lt;F&gt;&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;) -&gt; Layout&lt;T&gt; {
+        Layout {
+            accs: <span class="self">self</span>.accs.map(|point| point.new_from_env(env)),
+            bits: <span class="self">self</span>.bits.map(|var| var.new_from_env(env)),
+            ss: <span class="self">self</span>.ss.map(|s| s.new_from_env(env)),
+            base: <span class="self">self</span>.base.new_from_env(env),
+            n_prev: <span class="self">self</span>.n_prev.new_from_env(env),
+            n_next: <span class="self">self</span>.n_next.new_from_env(env),
+        }
+    }
 }
 
 <span class="comment">// We lay things out like
@@ -656,26 +770,6 @@
     }
 }
 
-<span class="kw">const </span>LAYOUT: Layout = Layout {
-    accs: [
-        (v(Curr, <span class="number">2</span>), v(Curr, <span class="number">3</span>)),   <span class="comment">// (x0, y0)
-        </span>(v(Curr, <span class="number">7</span>), v(Curr, <span class="number">8</span>)),   <span class="comment">// (x1, y1)
-        </span>(v(Curr, <span class="number">9</span>), v(Curr, <span class="number">10</span>)),  <span class="comment">// (x2, y2)
-        </span>(v(Curr, <span class="number">11</span>), v(Curr, <span class="number">12</span>)), <span class="comment">// (x3, y3)
-        </span>(v(Curr, <span class="number">13</span>), v(Curr, <span class="number">14</span>)), <span class="comment">// (x4, y4)
-        </span>(v(Next, <span class="number">0</span>), v(Next, <span class="number">1</span>)),   <span class="comment">// (x5, y5)
-    </span>],
-    <span class="comment">// bits = [b0, b1, b2, b3, b4]
-    </span>bits: [v(Next, <span class="number">2</span>), v(Next, <span class="number">3</span>), v(Next, <span class="number">4</span>), v(Next, <span class="number">5</span>), v(Next, <span class="number">6</span>)],
-
-    <span class="comment">// ss = [ s0, s1, s2, s3, s4]
-    </span>ss: [v(Next, <span class="number">7</span>), v(Next, <span class="number">8</span>), v(Next, <span class="number">9</span>), v(Next, <span class="number">10</span>), v(Next, <span class="number">11</span>)],
-
-    base: (v(Curr, <span class="number">0</span>), v(Curr, <span class="number">1</span>)), <span class="comment">// (xT, yT)
-    </span>n_prev: v(Curr, <span class="number">4</span>),             <span class="comment">// n
-    </span>n_next: v(Curr, <span class="number">5</span>),             <span class="comment">// n&#39;
-</span>};
-
 <span class="kw">pub struct </span>VarbaseMulResult&lt;F&gt; {
     <span class="kw">pub </span>acc: (F, F),
     <span class="kw">pub </span>n: F,
@@ -688,7 +782,7 @@
     bits: <span class="kw-2">&amp;</span>[bool],
     acc0: (F, F),
 ) -&gt; VarbaseMulResult&lt;F&gt; {
-    <span class="kw">let </span>l = LAYOUT;
+    <span class="kw">let </span>layout = Layout::create();
     <span class="kw">let </span>bits: Vec&lt;<span class="kw">_</span>&gt; = bits.iter().map(|b| F::from(<span class="kw-2">*</span>b <span class="kw">as </span>u64)).collect();
     <span class="kw">let </span>bits_per_chunk = <span class="number">5</span>;
     <span class="macro">assert_eq!</span>(bits_per_chunk * (bits.len() / bits_per_chunk), bits.len());
@@ -698,24 +792,24 @@
     <span class="kw">for </span>(chunk, bs) <span class="kw">in </span>bits.chunks(bits_per_chunk).enumerate() {
         <span class="kw">let </span>row = row0 + <span class="number">2 </span>* chunk;
 
-        set(w, row, l.n_prev, n_acc);
+        set(w, row, layout.n_prev, n_acc);
         <span class="kw">for </span>(i, bs) <span class="kw">in </span>bs.iter().enumerate().take(bits_per_chunk) {
             n_acc.double_in_place();
             n_acc += bs;
             acc = single_bit_witness(
                 w,
                 row,
-                l.bits[i],
-                l.base,
-                l.ss[i],
-                l.accs[i],
-                l.accs[i + <span class="number">1</span>],
+                layout.bits[i],
+                <span class="kw-2">&amp;</span>layout.base,
+                layout.ss[i],
+                <span class="kw-2">&amp;</span>layout.accs[i],
+                <span class="kw-2">&amp;</span>layout.accs[i + <span class="number">1</span>],
                 <span class="kw-2">*</span>bs,
                 base,
                 acc,
             );
         }
-        set(w, row, l.n_next, n_acc);
+        set(w, row, layout.n_next, n_acc);
     }
     VarbaseMulResult { acc, n: n_acc }
 }
@@ -730,7 +824,7 @@
     <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::VarBaseMul);
     <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">21</span>;
 
-    <span class="kw">fn </span>constraints() -&gt; Vec&lt;E&lt;F&gt;&gt; {
+    <span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;) -&gt; Vec&lt;T&gt; {
         <span class="kw">let </span>Layout {
             base,
             accs,
@@ -738,31 +832,29 @@
             ss,
             n_prev,
             n_next,
-        } = LAYOUT;
+        } = Layout::create().new_from_env::&lt;F, T&gt;(env);
 
         <span class="kw">let </span><span class="kw-2">mut </span>c = Cache::default();
-
-        <span class="kw">let </span><span class="kw-2">mut </span>constraint = |i| single_bit(<span class="kw-2">&amp;mut </span>c, bits[i], base, ss[i], accs[i], accs[i + <span class="number">1</span>]);
 
         <span class="comment">// n&#39;
         // = 2^5 * n + 2^4 b0 + 2^3 b1 + 2^2 b2 + 2^1 b3 + b4
         // = b4 + 2 (b3 + 2 (b2 + 2 (b1 + 2(b0 + 2 n))))
 
-        </span><span class="kw">let </span>n_prev = E::Cell(n_prev);
-        <span class="kw">let </span>n_next = E::Cell(n_next);
-        <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="macro">vec!</span>[
-            n_next
-                - bits
-                    .iter()
-                    .fold(n_prev, |acc, b| E::Cell(<span class="kw-2">*</span>b) + acc.double()),
-        ];
+        </span><span class="kw">let </span><span class="kw-2">mut </span>res = <span class="macro">vec!</span>[n_next - bits.iter().fold(n_prev, |acc, b| b.clone() + acc.double())];
 
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">5 </span>{
-            res.append(<span class="kw-2">&amp;mut </span>constraint(i));
+            res.append(<span class="kw-2">&amp;mut </span>single_bit(
+                <span class="kw-2">&amp;mut </span>c,
+                <span class="kw-2">&amp;</span>bits[i],
+                base.clone(),
+                <span class="kw-2">&amp;</span>ss[i],
+                <span class="kw-2">&amp;</span>accs[i],
+                <span class="kw-2">&amp;</span>accs[i + <span class="number">1</span>],
+            ));
         }
 
         res
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (750bd1a7f 2022-09-14)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (cf9ed0dd5 2022-09-15)" ></div></body></html>

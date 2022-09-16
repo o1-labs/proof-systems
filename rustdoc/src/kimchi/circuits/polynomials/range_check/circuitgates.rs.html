@@ -438,12 +438,12 @@
 </span><span class="kw">use </span>std::marker::PhantomData;
 
 <span class="kw">use </span><span class="kw">crate</span>::circuits::{
-    argument::{Argument, ArgumentType},
-    expr::{constraints::crumb, witness_curr, witness_next, E},
+    argument::{Argument, ArgumentEnv, ArgumentType},
+    expr::constraints::{crumb, ExprOps},
     gate::GateType,
     polynomial::COLUMNS,
 };
-<span class="kw">use </span>ark_ff::{FftField, One, Zero};
+<span class="kw">use </span>ark_ff::FftField;
 
 <span class="comment">//~ ##### `RangeCheck0` - Range check constraints
 //~
@@ -494,7 +494,7 @@
     //   * Operates on Curr row
     //   * Range constrain all limbs except vp0 and vp1 (barring plookup constraints, which are done elsewhere)
     //   * Constrain that combining all limbs equals the limb stored in column 0
-    </span><span class="kw">fn </span>constraints() -&gt; Vec&lt;E&lt;F&gt;&gt; {
+    </span><span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;) -&gt; Vec&lt;T&gt; {
         <span class="comment">// 1) Apply range constraints on the limbs
         //    * Columns 1-2 are 12-bit copy constraints
         //        * They are copied 3 rows ahead (to the final row) and are constrained by lookups
@@ -504,8 +504,8 @@
         //    * Columns 3-6 are 12-bit plookup range constraints (these are specified in the lookup gate)
         //    * Columns 7-14 are 2-bit crumb range constraints
         </span><span class="kw">let </span><span class="kw-2">mut </span>constraints = (<span class="number">7</span>..COLUMNS)
-            .map(|i| crumb(<span class="kw-2">&amp;</span>witness_curr(i)))
-            .collect::&lt;Vec&lt;E&lt;F&gt;&gt;&gt;();
+            .map(|i| crumb(<span class="kw-2">&amp;</span>env.witness_curr(i)))
+            .collect::&lt;Vec&lt;T&gt;&gt;();
 
         <span class="comment">// 2) Constrain that the combined limbs equals the value v stored in w(0):
         //
@@ -517,23 +517,23 @@
         //    Cols: 0  1   2   3   4   5   6   7   8   9   10  11  12  13  14
         //    Curr: v  vp0 vp1 vp2 vp3 vp4 vp5 vc0 vc1 vc2 vc3 vc4 vc5 vc6 vc7  &lt;- LSB
 
-        </span><span class="kw">let </span><span class="kw-2">mut </span>power_of_2 = E::one();
-        <span class="kw">let </span><span class="kw-2">mut </span>sum_of_limbs = E::zero();
+        </span><span class="kw">let </span><span class="kw-2">mut </span>power_of_2 = T::one();
+        <span class="kw">let </span><span class="kw-2">mut </span>sum_of_limbs = T::zero();
 
         <span class="comment">// Sum 2-bit limbs
         </span><span class="kw">for </span>i <span class="kw">in </span>(<span class="number">7</span>..COLUMNS).rev() {
-            sum_of_limbs += power_of_2.clone() * witness_curr(i);
-            power_of_2 <span class="kw-2">*</span>= <span class="number">4u64</span>.into(); <span class="comment">// 2 bits
+            sum_of_limbs += power_of_2.clone() * env.witness_curr(i);
+            power_of_2 <span class="kw-2">*</span>= T::from(<span class="number">4u64</span>); <span class="comment">// 2 bits
         </span>}
 
         <span class="comment">// Sum 12-bit limbs
         </span><span class="kw">for </span>i <span class="kw">in </span>(<span class="number">1</span>..=<span class="number">6</span>).rev() {
-            sum_of_limbs += power_of_2.clone() * witness_curr(i);
+            sum_of_limbs += power_of_2.clone() * env.witness_curr(i);
             power_of_2 <span class="kw-2">*</span>= <span class="number">4096u64</span>.into(); <span class="comment">// 12 bits
         </span>}
 
         <span class="comment">// Check value v against the sum of limbs
-        </span>constraints.push(sum_of_limbs - witness_curr(<span class="number">0</span>));
+        </span>constraints.push(sum_of_limbs - env.witness_curr(<span class="number">0</span>));
 
         constraints
     }
@@ -584,35 +584,35 @@
     //   * Operates on Curr and Next row
     //   * Range constrain all limbs (barring plookup constraints, which are done elsewhere)
     //   * Constrain that combining all limbs equals the value v2 stored in row Curr, column 0
-    </span><span class="kw">fn </span>constraints() -&gt; Vec&lt;E&lt;F&gt;&gt; {
+    </span><span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;) -&gt; Vec&lt;T&gt; {
         <span class="comment">// 1) Apply range constraints on limbs for Curr row
         //    * Columns 1-2 are 2-bit crumbs
         </span><span class="kw">let </span><span class="kw-2">mut </span>constraints = (<span class="number">1</span>..=<span class="number">2</span>)
-            .map(|i| crumb(<span class="kw-2">&amp;</span>witness_curr(i)))
-            .collect::&lt;Vec&lt;E&lt;F&gt;&gt;&gt;();
+            .map(|i| crumb(<span class="kw-2">&amp;</span>env.witness_curr(i)))
+            .collect::&lt;Vec&lt;T&gt;&gt;();
         <span class="comment">//    * Columns 3-6 are 12-bit plookup range constraints (these are specified
         //      in the lookup gate)
         //    * Columns 7-14 are 2-bit crumb range constraints
         </span>constraints.append(
             <span class="kw-2">&amp;mut </span>(<span class="number">7</span>..COLUMNS)
-                .map(|i| crumb(<span class="kw-2">&amp;</span>witness_curr(i)))
-                .collect::&lt;Vec&lt;E&lt;F&gt;&gt;&gt;(),
+                .map(|i| crumb(<span class="kw-2">&amp;</span>env.witness_curr(i)))
+                .collect::&lt;Vec&lt;T&gt;&gt;(),
         );
 
         <span class="comment">// 2) Apply range constraints on limbs for Next row
         //    * Columns 1-2 are 2-bit crumbs
         </span>constraints.append(
             <span class="kw-2">&amp;mut </span>(<span class="number">1</span>..=<span class="number">2</span>)
-                .map(|i| crumb(<span class="kw-2">&amp;</span>witness_next(i)))
-                .collect::&lt;Vec&lt;E&lt;F&gt;&gt;&gt;(),
+                .map(|i| crumb(<span class="kw-2">&amp;</span>env.witness_next(i)))
+                .collect::&lt;Vec&lt;T&gt;&gt;(),
         );
         <span class="comment">//    * Columns 3-6 are 12-bit plookup range constraints for v0 and v1 (these
         //      are specified in the lookup gate)
         //    * Columns 7-14 are more 2-bit crumbs
         </span>constraints.append(
             <span class="kw-2">&amp;mut </span>(<span class="number">7</span>..COLUMNS)
-                .map(|i| crumb(<span class="kw-2">&amp;</span>witness_next(i)))
-                .collect::&lt;Vec&lt;E&lt;F&gt;&gt;&gt;(),
+                .map(|i| crumb(<span class="kw-2">&amp;</span>env.witness_next(i)))
+                .collect::&lt;Vec&lt;T&gt;&gt;(),
         );
 
         <span class="comment">// 2) Constrain that the combined limbs equals the value v2 stored in w(0) where
@@ -627,44 +627,44 @@
         //    Curr  v2 vc0 vc1 vp0 vp1 vp2  vp3  vc2  vc3  vc4  vc5  vc6  vc7  vc8  vc9
         //    Next                     vc10 vc11 vc12 vc13 vc14 vc15 vc16 vc17 vc18 vc19 &lt;- LSB
 
-        </span><span class="kw">let </span><span class="kw-2">mut </span>power_of_2 = E::one();
-        <span class="kw">let </span><span class="kw-2">mut </span>sum_of_limbs = E::zero();
+        </span><span class="kw">let </span><span class="kw-2">mut </span>power_of_2 = T::one();
+        <span class="kw">let </span><span class="kw-2">mut </span>sum_of_limbs = T::zero();
 
         <span class="comment">// Next row: Sum 2-bit limbs
         </span><span class="kw">for </span>i <span class="kw">in </span>(<span class="number">7</span>..COLUMNS).rev() {
-            sum_of_limbs += power_of_2.clone() * witness_next(i);
+            sum_of_limbs += power_of_2.clone() * env.witness_next(i);
             power_of_2 <span class="kw-2">*</span>= <span class="number">4u64</span>.into(); <span class="comment">// 2 bits
         </span>}
 
         <span class="comment">// Next row:  Sum remaining 2-bit limbs vc10 and vc11
         </span><span class="kw">for </span>i <span class="kw">in </span>(<span class="number">1</span>..=<span class="number">2</span>).rev() {
-            sum_of_limbs += power_of_2.clone() * witness_next(i);
+            sum_of_limbs += power_of_2.clone() * env.witness_next(i);
             power_of_2 <span class="kw-2">*</span>= <span class="number">4u64</span>.into(); <span class="comment">// 2 bits
         </span>}
 
         <span class="comment">// Curr row:  Sum 2-bit limbs
         </span><span class="kw">for </span>i <span class="kw">in </span>(<span class="number">7</span>..COLUMNS).rev() {
-            sum_of_limbs += power_of_2.clone() * witness_curr(i);
+            sum_of_limbs += power_of_2.clone() * env.witness_curr(i);
             power_of_2 <span class="kw-2">*</span>= <span class="number">4u64</span>.into(); <span class="comment">// 2 bits
         </span>}
 
         <span class="comment">// Curr row: Sum 12-bit limbs
         </span><span class="kw">for </span>i <span class="kw">in </span>(<span class="number">3</span>..=<span class="number">6</span>).rev() {
-            sum_of_limbs += power_of_2.clone() * witness_curr(i);
+            sum_of_limbs += power_of_2.clone() * env.witness_curr(i);
             power_of_2 <span class="kw-2">*</span>= <span class="number">4096u64</span>.into(); <span class="comment">// 12 bits
         </span>}
 
         <span class="comment">// Curr row:  Sum remaining 2-bit limbs: vc0 and vc1
         </span><span class="kw">for </span>i <span class="kw">in </span>(<span class="number">1</span>..=<span class="number">2</span>).rev() {
-            sum_of_limbs += power_of_2.clone() * witness_curr(i);
+            sum_of_limbs += power_of_2.clone() * env.witness_curr(i);
             power_of_2 <span class="kw-2">*</span>= <span class="number">4u64</span>.into(); <span class="comment">// 2 bits
         </span>}
 
         <span class="comment">// Check value v2 against the sum of limbs
-        </span>constraints.push(sum_of_limbs - witness_curr(<span class="number">0</span>));
+        </span>constraints.push(sum_of_limbs - env.witness_curr(<span class="number">0</span>));
 
         constraints
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (750bd1a7f 2022-09-14)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (cf9ed0dd5 2022-09-15)" ></div></body></html>

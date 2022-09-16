@@ -389,15 +389,15 @@
 
 </span><span class="kw">use crate</span>::{
     circuits::{
-        argument::{Argument, ArgumentType},
+        argument::{Argument, ArgumentEnv, ArgumentType},
         constraints::ConstraintSystem,
-        expr::{prologue::<span class="kw-2">*</span>, Cache},
+        expr::{constraints::ExprOps, Cache},
         gate::{CircuitGate, GateType},
         wires::COLUMNS,
     },
     curve::KimchiCurve,
 };
-<span class="kw">use </span>ark_ff::{BitIteratorLE, FftField, Field, PrimeField, Zero};
+<span class="kw">use </span>ark_ff::{BitIteratorLE, FftField, Field, PrimeField};
 <span class="kw">use </span>std::array;
 <span class="kw">use </span>std::marker::PhantomData;
 
@@ -431,11 +431,11 @@
     }
 }
 
-<span class="kw">fn </span>polynomial&lt;F: Field&gt;(coeffs: <span class="kw-2">&amp;</span>[F], x: <span class="kw-2">&amp;</span>E&lt;F&gt;) -&gt; E&lt;F&gt; {
+<span class="kw">fn </span>polynomial&lt;F: Field, T: ExprOps&lt;F&gt;&gt;(coeffs: <span class="kw-2">&amp;</span>[F], x: <span class="kw-2">&amp;</span>T) -&gt; T {
     coeffs
         .iter()
         .rev()
-        .fold(E::zero(), |acc, c| acc * x.clone() + E::literal(<span class="kw-2">*</span>c))
+        .fold(T::zero(), |acc, c| acc * x.clone() + T::literal(<span class="kw-2">*</span>c))
 }
 
 <span class="comment">//~ We give constraints for the endomul scalar computation.
@@ -544,16 +544,16 @@
     <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMulScalar);
     <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">11</span>;
 
-    <span class="kw">fn </span>constraints() -&gt; Vec&lt;E&lt;F&gt;&gt; {
-        <span class="kw">let </span>n0 = witness_curr(<span class="number">0</span>);
-        <span class="kw">let </span>n8 = witness_curr(<span class="number">1</span>);
-        <span class="kw">let </span>a0 = witness_curr(<span class="number">2</span>);
-        <span class="kw">let </span>b0 = witness_curr(<span class="number">3</span>);
-        <span class="kw">let </span>a8 = witness_curr(<span class="number">4</span>);
-        <span class="kw">let </span>b8 = witness_curr(<span class="number">5</span>);
+    <span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;) -&gt; Vec&lt;T&gt; {
+        <span class="kw">let </span>n0 = env.witness_curr(<span class="number">0</span>);
+        <span class="kw">let </span>n8 = env.witness_curr(<span class="number">1</span>);
+        <span class="kw">let </span>a0 = env.witness_curr(<span class="number">2</span>);
+        <span class="kw">let </span>b0 = env.witness_curr(<span class="number">3</span>);
+        <span class="kw">let </span>a8 = env.witness_curr(<span class="number">4</span>);
+        <span class="kw">let </span>b8 = env.witness_curr(<span class="number">5</span>);
 
         <span class="comment">// x0..x7
-        </span><span class="kw">let </span>xs: [<span class="kw">_</span>; <span class="number">8</span>] = array::from_fn(|i| witness_curr(<span class="number">6 </span>+ i));
+        </span><span class="kw">let </span>xs: [<span class="kw">_</span>; <span class="number">8</span>] = array::from_fn(|i| env.witness_curr(<span class="number">6 </span>+ i));
 
         <span class="kw">let </span><span class="kw-2">mut </span>cache = Cache::default();
 
@@ -565,7 +565,7 @@
         ];
 
         <span class="kw">let </span>crumb_over_x_coeffs = [-F::from(<span class="number">6u64</span>), F::from(<span class="number">11u64</span>), -F::from(<span class="number">6u64</span>), F::one()];
-        <span class="kw">let </span>crumb = |x: <span class="kw-2">&amp;</span>E&lt;F&gt;| polynomial(<span class="kw-2">&amp;</span>crumb_over_x_coeffs[..], x) * x.clone();
+        <span class="kw">let </span>crumb = |x: <span class="kw-2">&amp;</span>T| polynomial(<span class="kw-2">&amp;</span>crumb_over_x_coeffs[..], x) * x.clone();
         <span class="kw">let </span>d_minus_c_coeffs = [-F::one(), F::from(<span class="number">3u64</span>), -F::one()];
 
         <span class="kw">let </span>c_funcs: [<span class="kw">_</span>; <span class="number">8</span>] = array::from_fn(|i| cache.cache(polynomial(<span class="kw-2">&amp;</span>c_coeffs[..], <span class="kw-2">&amp;</span>xs[i])));
@@ -693,7 +693,7 @@
     <span class="kw">use </span>mina_curves::pasta::fp::Fp <span class="kw">as </span>F;
 
     <span class="doccomment">/// 2/3*x^3 - 5/2*x^2 + 11/6*x
-    </span><span class="kw">fn </span>c_poly(x: F) -&gt; F {
+    </span><span class="kw">fn </span>c_poly&lt;F: Field&gt;(x: F) -&gt; F {
         <span class="kw">let </span>x2 = x.square();
         <span class="kw">let </span>x3 = x * x2;
         (F::from(<span class="number">2u64</span>) / F::from(<span class="number">3u64</span>)) * x3 - (F::from(<span class="number">5u64</span>) / F::from(<span class="number">2u64</span>)) * x2
@@ -701,7 +701,7 @@
     }
 
     <span class="doccomment">/// -x^2 + 3x - 1
-    </span><span class="kw">fn </span>d_minus_c_poly(x: F) -&gt; F {
+    </span><span class="kw">fn </span>d_minus_c_poly&lt;F: Field&gt;(x: F) -&gt; F {
         <span class="kw">let </span>x2 = x.square();
         -F::one() * x2 + F::from(<span class="number">3u64</span>) * x - F::one()
     }
@@ -771,4 +771,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (750bd1a7f 2022-09-14)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (cf9ed0dd5 2022-09-15)" ></div></body></html>

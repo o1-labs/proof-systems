@@ -383,10 +383,160 @@
 <span id="383">383</span>
 <span id="384">384</span>
 <span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
+<span id="391">391</span>
+<span id="392">392</span>
+<span id="393">393</span>
+<span id="394">394</span>
+<span id="395">395</span>
+<span id="396">396</span>
+<span id="397">397</span>
+<span id="398">398</span>
+<span id="399">399</span>
+<span id="400">400</span>
+<span id="401">401</span>
+<span id="402">402</span>
+<span id="403">403</span>
+<span id="404">404</span>
+<span id="405">405</span>
+<span id="406">406</span>
+<span id="407">407</span>
+<span id="408">408</span>
+<span id="409">409</span>
+<span id="410">410</span>
+<span id="411">411</span>
+<span id="412">412</span>
+<span id="413">413</span>
+<span id="414">414</span>
+<span id="415">415</span>
+<span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
+<span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
+<span id="494">494</span>
+<span id="495">495</span>
+<span id="496">496</span>
+<span id="497">497</span>
+<span id="498">498</span>
+<span id="499">499</span>
+<span id="500">500</span>
+<span id="501">501</span>
+<span id="502">502</span>
+<span id="503">503</span>
+<span id="504">504</span>
+<span id="505">505</span>
+<span id="506">506</span>
+<span id="507">507</span>
+<span id="508">508</span>
+<span id="509">509</span>
+<span id="510">510</span>
+<span id="511">511</span>
+<span id="512">512</span>
+<span id="513">513</span>
+<span id="514">514</span>
+<span id="515">515</span>
+<span id="516">516</span>
+<span id="517">517</span>
+<span id="518">518</span>
+<span id="519">519</span>
+<span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk constraint gate primitive.
 
 </span><span class="kw">use crate</span>::{
-    circuits::{constraints::ConstraintSystem, wires::<span class="kw-2">*</span>},
+    circuits::{
+        argument::{Argument, ArgumentEnv},
+        constraints::ConstraintSystem,
+        polynomials::{
+            chacha, complete_add, endomul_scalar, endosclmul, poseidon, range_check, turshi,
+            varbasemul,
+        },
+        wires::<span class="kw-2">*</span>,
+    },
     curve::KimchiCurve,
 };
 <span class="kw">use </span>ark_ff::{bytes::ToBytes, PrimeField};
@@ -398,6 +548,8 @@
 <span class="kw">use </span>serde_with::serde_as;
 <span class="kw">use </span>std::io::{<span class="prelude-ty">Result </span><span class="kw">as </span>IoResult, Write};
 <span class="kw">use </span>thiserror::Error;
+
+<span class="kw">use super</span>::{argument::ArgumentWitness, expr};
 
 <span class="doccomment">/// A row accessible from a given row, corresponds to the fact that we open all polynomials
 /// at `zeta` **and** `omega * zeta`.
@@ -504,6 +656,15 @@
     <span class="doccomment">/// Invalid constraint
     </span><span class="attribute">#[error(<span class="string">&quot;Invalid {0:?} constraint&quot;</span>)]
     </span>InvalidConstraint(GateType),
+    <span class="doccomment">/// Invalid constraint with number
+    </span><span class="attribute">#[error(<span class="string">&quot;Invalid {0:?} constraint: {1}&quot;</span>)]
+    </span>Constraint(GateType, usize),
+    <span class="doccomment">/// Invalid wire column
+    </span><span class="attribute">#[error(<span class="string">&quot;Invalid {0:?} wire column: {1}&quot;</span>)]
+    </span>WireColumn(GateType, usize),
+    <span class="doccomment">/// Disconnected wires
+    </span><span class="attribute">#[error(<span class="string">&quot;Invalid {typ:?} copy constraint: {},{} -&gt; {},{}&quot;</span>, .src.row, .src.col, .dst.row, .dst.col)]
+    </span>CopyConstraint { typ: GateType, src: Wire, dst: Wire },
     <span class="doccomment">/// Invalid copy constraint
     </span><span class="attribute">#[error(<span class="string">&quot;Invalid {0:?} copy constraint&quot;</span>)]
     </span>InvalidCopyConstraint(GateType),
@@ -516,6 +677,9 @@
     <span class="doccomment">/// Missing lookup constraint system
     </span><span class="attribute">#[error(<span class="string">&quot;Failed to get lookup constraint system for {0:?}&quot;</span>)]
     </span>MissingLookupConstraintSystem(GateType),
+    <span class="doccomment">/// Failed to get witness for row
+    </span><span class="attribute">#[error(<span class="string">&quot;Failed to get {0:?} witness for row {1}&quot;</span>)]
+    </span>FailedToGetWitnessForRow(GateType, usize),
 }
 
 <span class="doccomment">/// Gate result
@@ -590,6 +754,126 @@
                 </span>.verify_range_check::&lt;G&gt;(row, witness, cs)
                 .map_err(|e| e.to_string()),
         }
+    }
+
+    <span class="doccomment">/// Verify the witness against the constraints
+    </span><span class="kw">pub fn </span>verify_witness&lt;G: KimchiCurve&lt;ScalarField = F&gt;&gt;(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        row: usize,
+        witness: <span class="kw-2">&amp;</span>[Vec&lt;F&gt;; COLUMNS],
+        cs: <span class="kw-2">&amp;</span>ConstraintSystem&lt;F&gt;,
+        _public: <span class="kw-2">&amp;</span>[F],
+    ) -&gt; CircuitGateResult&lt;()&gt; {
+        <span class="comment">// Grab the relevant part of the witness
+        </span><span class="kw">let </span>argument_witness = <span class="self">self</span>.argument_witness(row, witness)<span class="question-mark">?</span>;
+        <span class="comment">// Set up the constants.  Note that alpha, beta, gamma and joint_combiner
+        // are one because this function is not running the prover.
+        </span><span class="kw">let </span>constants = expr::Constants::&lt;F&gt; {
+            alpha: F::one(),
+            beta: F::one(),
+            gamma: F::one(),
+            joint_combiner: <span class="prelude-val">Some</span>(F::one()),
+            endo_coefficient: cs.endo,
+            mds: <span class="kw-2">&amp;</span>G::sponge_params().mds,
+        };
+        <span class="comment">// Create the argument environment for the constraints over field elements
+        </span><span class="kw">let </span>env = ArgumentEnv::&lt;F, F&gt;::create(argument_witness, <span class="self">self</span>.coeffs.clone(), constants);
+
+        <span class="comment">// Check the wiring (i.e. copy constraints) for this gate
+        // Note: Gates can operated on row Curr or Curr and Next.
+        //       It could be nice for gates to know this and then
+        //       this code could be adapted to check Curr or Curr
+        //       and Next depending on the gate definition
+        </span><span class="kw">for </span>col <span class="kw">in </span><span class="number">0</span>..PERMUTS {
+            <span class="kw">let </span>wire = <span class="self">self</span>.wires[col];
+
+            <span class="kw">if </span>wire.col &gt;= PERMUTS {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(CircuitGateError::WireColumn(<span class="self">self</span>.typ, col));
+            }
+
+            <span class="kw">if </span>witness[col][row] != witness[wire.col][wire.row] {
+                <span class="comment">// Pinpoint failed copy constraint
+                </span><span class="kw">return </span><span class="prelude-val">Err</span>(CircuitGateError::CopyConstraint {
+                    typ: <span class="self">self</span>.typ,
+                    src: Wire { row, col },
+                    dst: wire,
+                });
+            }
+        }
+
+        <span class="comment">// Perform witness verification on each constraint for this gate
+        </span><span class="kw">let </span>results = <span class="kw">match </span><span class="self">self</span>.typ {
+            GateType::Zero =&gt; {
+                <span class="macro">vec!</span>[]
+            }
+            GateType::Generic =&gt; {
+                <span class="comment">// TODO: implement the verification for the generic gate
+                </span><span class="macro">vec!</span>[]
+            }
+            GateType::Poseidon =&gt; poseidon::Poseidon::constraint_checks(<span class="kw-2">&amp;</span>env),
+            GateType::CompleteAdd =&gt; complete_add::CompleteAdd::constraint_checks(<span class="kw-2">&amp;</span>env),
+            GateType::VarBaseMul =&gt; varbasemul::VarbaseMul::constraint_checks(<span class="kw-2">&amp;</span>env),
+            GateType::EndoMul =&gt; endosclmul::EndosclMul::constraint_checks(<span class="kw-2">&amp;</span>env),
+            GateType::EndoMulScalar =&gt; endomul_scalar::EndomulScalar::constraint_checks(<span class="kw-2">&amp;</span>env),
+            GateType::ChaCha0 =&gt; chacha::ChaCha0::constraint_checks(<span class="kw-2">&amp;</span>env),
+            GateType::ChaCha1 =&gt; chacha::ChaCha1::constraint_checks(<span class="kw-2">&amp;</span>env),
+            GateType::ChaCha2 =&gt; chacha::ChaCha2::constraint_checks(<span class="kw-2">&amp;</span>env),
+            GateType::ChaChaFinal =&gt; chacha::ChaChaFinal::constraint_checks(<span class="kw-2">&amp;</span>env),
+            GateType::Lookup =&gt; {
+                <span class="comment">// TODO: implement the verification for the lookup gate
+                </span><span class="macro">vec!</span>[]
+            }
+            GateType::CairoClaim =&gt; turshi::Claim::constraint_checks(<span class="kw-2">&amp;</span>env),
+            GateType::CairoInstruction =&gt; turshi::Instruction::constraint_checks(<span class="kw-2">&amp;</span>env),
+            GateType::CairoFlags =&gt; turshi::Flags::constraint_checks(<span class="kw-2">&amp;</span>env),
+            GateType::CairoTransition =&gt; turshi::Transition::constraint_checks(<span class="kw-2">&amp;</span>env),
+            GateType::RangeCheck0 =&gt; {
+                range_check::circuitgates::RangeCheck0::constraint_checks(<span class="kw-2">&amp;</span>env)
+            }
+            GateType::RangeCheck1 =&gt; {
+                range_check::circuitgates::RangeCheck1::constraint_checks(<span class="kw-2">&amp;</span>env)
+            }
+        };
+
+        <span class="comment">// Check for failed constraints
+        </span><span class="kw">for </span>(i, result) <span class="kw">in </span>results.iter().enumerate() {
+            <span class="kw">if </span>!result.is_zero() {
+                <span class="comment">// Pinpoint failed constraint
+                </span><span class="kw">return </span><span class="prelude-val">Err</span>(CircuitGateError::Constraint(<span class="self">self</span>.typ, i));
+            }
+        }
+
+        <span class="comment">// TODO: implement generic plookup witness verification
+
+        </span><span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="comment">// Return the part of the witness relevant to this gate at the given row offset
+    </span><span class="kw">fn </span>argument_witness(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        row: usize,
+        witness: <span class="kw-2">&amp;</span>[Vec&lt;F&gt;; COLUMNS],
+    ) -&gt; CircuitGateResult&lt;ArgumentWitness&lt;F&gt;&gt; {
+        <span class="comment">// Get the part of the witness relevant to this gate
+        </span><span class="kw">let </span>witness_curr: [F; COLUMNS] = (<span class="number">0</span>..witness.len())
+            .map(|col| witness[col][row])
+            .collect::&lt;Vec&lt;F&gt;&gt;()
+            .try_into()
+            .map_err(|<span class="kw">_</span>| CircuitGateError::FailedToGetWitnessForRow(<span class="self">self</span>.typ, row))<span class="question-mark">?</span>;
+        <span class="kw">let </span>witness_next: [F; COLUMNS] = <span class="kw">if </span>witness[<span class="number">0</span>].len() &gt; row + <span class="number">1 </span>{
+            (<span class="number">0</span>..witness.len())
+                .map(|col| witness[col][row + <span class="number">1</span>])
+                .collect::&lt;Vec&lt;F&gt;&gt;()
+                .try_into()
+                .map_err(|<span class="kw">_</span>| CircuitGateError::FailedToGetWitnessForRow(<span class="self">self</span>.typ, row))<span class="question-mark">?
+        </span>} <span class="kw">else </span>{
+            [F::zero(); COLUMNS]
+        };
+
+        <span class="prelude-val">Ok</span>(ArgumentWitness::&lt;F&gt; {
+            curr: witness_curr,
+            next: witness_next,
+        })
     }
 }
 
@@ -769,4 +1053,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (750bd1a7f 2022-09-14)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (cf9ed0dd5 2022-09-15)" ></div></body></html>

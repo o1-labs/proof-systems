@@ -412,7 +412,6 @@
 <span id="412">412</span>
 <span id="413">413</span>
 <span id="414">414</span>
-<span id="415">415</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the Poseidon constraint polynomials.
 
 </span><span class="comment">//~ The poseidon gate encodes 5 rounds of the poseidon permutation.
@@ -442,8 +441,8 @@
 
 </span><span class="kw">use crate</span>::{
     circuits::{
-        argument::{Argument, ArgumentType},
-        expr::{prologue::<span class="kw-2">*</span>, Cache, ConstantExpr},
+        argument::{Argument, ArgumentEnv, ArgumentType},
+        expr::{constraints::ExprOps, Cache},
         gate::{CircuitGate, CurrOrNext, GateType},
         polynomial::COLUMNS,
         wires::{GateWires, Wire},
@@ -746,7 +745,7 @@
     <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Poseidon);
     <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">15</span>;
 
-    <span class="kw">fn </span>constraints() -&gt; Vec&lt;E&lt;F&gt;&gt; {
+    <span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;) -&gt; Vec&lt;T&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="macro">vec!</span>[];
         <span class="kw">let </span><span class="kw-2">mut </span>cache = Cache::default();
 
@@ -754,11 +753,7 @@
 
         <span class="comment">//~ We define $M_{r, c}$ as the MDS matrix at row $r$ and column $c$.
         </span><span class="kw">let </span>mds: Vec&lt;Vec&lt;<span class="kw">_</span>&gt;&gt; = (<span class="number">0</span>..SPONGE_WIDTH)
-            .map(|row| {
-                (<span class="number">0</span>..SPONGE_WIDTH)
-                    .map(|col| ConstantExpr::Mds { row, col })
-                    .collect()
-            })
+            .map(|row| (<span class="number">0</span>..SPONGE_WIDTH).map(|col| env.mds(row, col)).collect())
             .collect();
 
         <span class="kw">for </span>e <span class="kw">in </span><span class="kw-2">&amp;</span>ROUND_EQUATIONS {
@@ -770,7 +765,10 @@
             //~ We define the S-box operation as $w^S$ for $S$ the `SPONGE_BOX` constant.
             </span><span class="kw">let </span>sboxed: Vec&lt;<span class="kw">_</span>&gt; = round_to_cols(source)
                 .map(|i| {
-                    cache.cache(witness_curr(i).pow(PlonkSpongeConstantsKimchi::PERM_SBOX <span class="kw">as </span>u64))
+                    cache.cache(
+                        env.witness_curr(i)
+                            .pow(PlonkSpongeConstantsKimchi::PERM_SBOX <span class="kw">as </span>u64),
+                    )
                 })
                 .collect();
 
@@ -781,7 +779,7 @@
                 //~ |  0 |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |  9 | 10 | 11 | 12 | 13 | 14 |
                 //~ |:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
                 //~ | r0 | r1 | r2 | r3 | r4 | r5 | r6 | r7 | r8 | r9 | r10 | r11 | r12 | r13 | r14 |
-                </span><span class="kw">let </span>rc = coeff(idx);
+                </span><span class="kw">let </span>rc = env.coeff(idx);
 
                 idx += <span class="number">1</span>;
 
@@ -817,11 +815,11 @@
                 //~ * $w_{2, next} - [r_{14} + (M_{2, 0} w_3^S + M_{2, 1} w_4^S + M_{2, 2} w_5^S)]$
                 //~
                 //~ where $w_{i, next}$ is the polynomial $w_i(\omega x)$ which points to the next row.
-                </span><span class="kw">let </span>constraint = witness(col, target_row)
+                </span><span class="kw">let </span>constraint = env.witness(target_row, col)
                     - sboxed
                         .iter()
                         .zip(mds[j].iter())
-                        .fold(rc, |acc, (x, c)| acc + E::Constant(c.clone()) * x.clone());
+                        .fold(rc, |acc, (x, c)| acc + c.clone() * x.clone());
                 res.push(constraint);
             }
         }
@@ -829,4 +827,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (750bd1a7f 2022-09-14)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (cf9ed0dd5 2022-09-15)" ></div></body></html>

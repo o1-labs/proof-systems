@@ -752,11 +752,11 @@
 </span><span class="kw">use </span>std::marker::PhantomData;
 
 <span class="kw">use </span><span class="kw">crate</span>::circuits::{
-    argument::{Argument, ArgumentType},
-    expr::{constraints::boolean, prologue::<span class="kw-2">*</span>, ConstantExpr <span class="kw">as </span>C},
+    argument::{Argument, ArgumentEnv, ArgumentType},
+    expr::constraints::{boolean, ExprOps},
     gate::{CurrOrNext, GateType},
 };
-<span class="kw">use </span>ark_ff::{FftField, Field, Zero};
+<span class="kw">use </span>ark_ff::{FftField, Field};
 
 <span class="comment">//
 // Implementation internals
@@ -764,37 +764,38 @@
 
 </span><span class="doccomment">/// 8-nybble sequences that are laid out as 4 nybbles per row over the two row,
 /// like y^x&#39; or x+z
-</span><span class="kw">fn </span>chunks_over_2_rows&lt;F&gt;(col_offset: usize) -&gt; Vec&lt;E&lt;F&gt;&gt; {
+</span><span class="kw">fn </span>chunks_over_2_rows&lt;F: Field, T: ExprOps&lt;F&gt;&gt;(
+    env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;,
+    col_offset: usize,
+) -&gt; Vec&lt;T&gt; {
     (<span class="number">0</span>..<span class="number">8</span>)
         .map(|i| {
             <span class="kw">use </span>CurrOrNext::{Curr, Next};
             <span class="kw">let </span>r = <span class="kw">if </span>i &lt; <span class="number">4 </span>{ Curr } <span class="kw">else </span>{ Next };
-            witness(col_offset + (i % <span class="number">4</span>), r)
+            env.witness(r, col_offset + (i % <span class="number">4</span>))
         })
         .collect()
 }
 
-<span class="kw">fn </span>combine_nybbles&lt;F: Field&gt;(ns: Vec&lt;E&lt;F&gt;&gt;) -&gt; E&lt;F&gt; {
+<span class="kw">fn </span>combine_nybbles&lt;F: Field, T: ExprOps&lt;F&gt;&gt;(ns: Vec&lt;T&gt;) -&gt; T {
     ns.into_iter()
         .enumerate()
-        .fold(E::zero(), |acc: E&lt;F&gt;, (i, t)| {
-            acc + E::from(<span class="number">1 </span>&lt;&lt; (<span class="number">4 </span>* i)) * t
-        })
+        .fold(T::zero(), |acc: T, (i, t)| acc + T::from(<span class="number">1 </span>&lt;&lt; (<span class="number">4 </span>* i)) * t)
 }
 
 <span class="doccomment">/// Constraints for the line L(x, x&#39;, y, y&#39;, z, k), where k = 4 * nybble_rotation
-</span><span class="kw">fn </span>line&lt;F: Field&gt;(nybble_rotation: usize) -&gt; Vec&lt;E&lt;F&gt;&gt; {
-    <span class="kw">let </span>y_xor_xprime_nybbles = chunks_over_2_rows(<span class="number">3</span>);
-    <span class="kw">let </span>x_plus_z_nybbles = chunks_over_2_rows(<span class="number">7</span>);
-    <span class="kw">let </span>y_nybbles = chunks_over_2_rows(<span class="number">11</span>);
+</span><span class="kw">fn </span>line&lt;F: Field, T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;, nybble_rotation: usize) -&gt; Vec&lt;T&gt; {
+    <span class="kw">let </span>y_xor_xprime_nybbles = chunks_over_2_rows(env, <span class="number">3</span>);
+    <span class="kw">let </span>x_plus_z_nybbles = chunks_over_2_rows(env, <span class="number">7</span>);
+    <span class="kw">let </span>y_nybbles = chunks_over_2_rows(env, <span class="number">11</span>);
 
-    <span class="kw">let </span>x_plus_z_overflow_bit = witness_next(<span class="number">2</span>);
+    <span class="kw">let </span>x_plus_z_overflow_bit = env.witness_next(<span class="number">2</span>);
 
-    <span class="kw">let </span>x = witness_curr(<span class="number">0</span>);
-    <span class="kw">let </span>xprime = witness_next(<span class="number">0</span>);
-    <span class="kw">let </span>y = witness_curr(<span class="number">1</span>);
-    <span class="kw">let </span>yprime = witness_next(<span class="number">1</span>);
-    <span class="kw">let </span>z = witness_curr(<span class="number">2</span>);
+    <span class="kw">let </span>x = env.witness_curr(<span class="number">0</span>);
+    <span class="kw">let </span>xprime = env.witness_next(<span class="number">0</span>);
+    <span class="kw">let </span>y = env.witness_curr(<span class="number">1</span>);
+    <span class="kw">let </span>yprime = env.witness_next(<span class="number">1</span>);
+    <span class="kw">let </span>z = env.witness_curr(<span class="number">2</span>);
 
     <span class="comment">// Because the nybbles are little-endian, rotating the vector &quot;right&quot;
     // is equivalent to left-shifting the nybbles.
@@ -807,7 +808,7 @@
         <span class="comment">// x&#39; = x + z (mod 2^32)
         </span>combine_nybbles(x_plus_z_nybbles) - xprime.clone(),
         <span class="comment">// Correctness of x+z nybbles
-        </span>xprime + E::from(<span class="number">1 </span>&lt;&lt; <span class="number">32</span>) * x_plus_z_overflow_bit - (x + z),
+        </span>xprime + T::from(<span class="number">1 </span>&lt;&lt; <span class="number">32</span>) * x_plus_z_overflow_bit - (x + z),
         <span class="comment">// Correctness of y nybbles
         </span>combine_nybbles(y_nybbles) - y,
         <span class="comment">// y&#39; = (y ^ x&#39;) &lt;&lt;&lt; 4 * nybble_rotation
@@ -829,9 +830,9 @@
     <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha0);
     <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">5</span>;
 
-    <span class="kw">fn </span>constraints() -&gt; Vec&lt;E&lt;F&gt;&gt; {
+    <span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;) -&gt; Vec&lt;T&gt; {
         <span class="comment">// a += b; d ^= a; d &lt;&lt;&lt;= 16 (=4*4)
-        </span>line(<span class="number">4</span>)
+        </span>line(env, <span class="number">4</span>)
     }
 }
 
@@ -845,9 +846,9 @@
     <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha1);
     <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">5</span>;
 
-    <span class="kw">fn </span>constraints() -&gt; Vec&lt;E&lt;F&gt;&gt; {
+    <span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;) -&gt; Vec&lt;T&gt; {
         <span class="comment">// c += d; b ^= c; b &lt;&lt;&lt;= 12 (=3*4)
-        </span>line(<span class="number">3</span>)
+        </span>line(env, <span class="number">3</span>)
     }
 }
 
@@ -861,9 +862,9 @@
     <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha2);
     <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">5</span>;
 
-    <span class="kw">fn </span>constraints() -&gt; Vec&lt;E&lt;F&gt;&gt; {
+    <span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;) -&gt; Vec&lt;T&gt; {
         <span class="comment">// a += b; d ^= a; d &lt;&lt;&lt;= 8  (=2*4)
-        </span>line(<span class="number">2</span>)
+        </span>line(env, <span class="number">2</span>)
     }
 }
 
@@ -877,7 +878,7 @@
     <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaChaFinal);
     <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">9</span>;
 
-    <span class="kw">fn </span>constraints() -&gt; Vec&lt;E&lt;F&gt;&gt; {
+    <span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;) -&gt; Vec&lt;T&gt; {
         <span class="comment">// The last line, namely,
         // c += d; b ^= c; b &lt;&lt;&lt;= 7;
         // is special.
@@ -885,9 +886,9 @@
         // will use a ChaCha0 gate to compute the nybbles of
         // all the relevant values, and the xors, and then do
         // the shifting using a ChaChaFinal gate.
-        </span><span class="kw">let </span>y_xor_xprime_nybbles = chunks_over_2_rows(<span class="number">1</span>);
-        <span class="kw">let </span>low_bits = chunks_over_2_rows(<span class="number">5</span>);
-        <span class="kw">let </span>yprime = witness_curr(<span class="number">0</span>);
+        </span><span class="kw">let </span>y_xor_xprime_nybbles = chunks_over_2_rows(env, <span class="number">1</span>);
+        <span class="kw">let </span>low_bits = chunks_over_2_rows(env, <span class="number">5</span>);
+        <span class="kw">let </span>yprime = env.witness_curr(<span class="number">0</span>);
 
         <span class="kw">let </span>one_half = F::from(<span class="number">2u64</span>).inverse().unwrap();
 
@@ -896,14 +897,13 @@
         </span><span class="kw">let </span>y_xor_xprime_rotated: Vec&lt;<span class="kw">_</span>&gt; = [<span class="number">7</span>, <span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>]
             .iter()
             .zip([<span class="number">6</span>, <span class="number">7</span>, <span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>].iter())
-            .map(|(<span class="kw-2">&amp;</span>i, <span class="kw-2">&amp;</span>j)| -&gt; E&lt;F&gt; {
-                E::from(<span class="number">8</span>) * low_bits[i].clone()
-                    + E::Constant(C::Literal(one_half))
-                        * (y_xor_xprime_nybbles[j].clone() - low_bits[j].clone())
+            .map(|(<span class="kw-2">&amp;</span>i, <span class="kw-2">&amp;</span>j)| -&gt; T {
+                T::from(<span class="number">8</span>) * low_bits[i].clone()
+                    + T::literal(one_half) * (y_xor_xprime_nybbles[j].clone() - low_bits[j].clone())
             })
             .collect();
 
-        <span class="kw">let </span><span class="kw-2">mut </span>constraints: Vec&lt;E&lt;F&gt;&gt; = low_bits.iter().map(boolean).collect();
+        <span class="kw">let </span><span class="kw-2">mut </span>constraints: Vec&lt;T&gt; = low_bits.iter().map(boolean).collect();
         constraints.push(combine_nybbles(y_xor_xprime_rotated) - yprime);
         constraints
     }
@@ -1086,7 +1086,7 @@
         curve::KimchiCurve,
         proof::{LookupEvaluations, ProofEvaluations},
     };
-    <span class="kw">use </span>ark_ff::UniformRand;
+    <span class="kw">use </span>ark_ff::{UniformRand, Zero};
     <span class="kw">use </span>ark_poly::{EvaluationDomain, Radix2EvaluationDomain <span class="kw">as </span>D};
     <span class="kw">use </span>mina_curves::pasta::fp::Fp <span class="kw">as </span>F;
     <span class="kw">use </span>mina_curves::pasta::vesta::Vesta;
@@ -1217,4 +1217,4 @@
     </span>}
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (750bd1a7f 2022-09-14)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (cf9ed0dd5 2022-09-15)" ></div></body></html>

@@ -1030,8 +1030,6 @@
 <span id="1030">1030</span>
 <span id="1031">1031</span>
 <span id="1032">1032</span>
-<span id="1033">1033</span>
-<span id="1034">1034</span>
 </pre><pre class="rust"><code><span class="doccomment">//!This implements the constraints of the Cairo gates
 //!
 //! Cairo programs can have the following assembly-like instructions:
@@ -1115,16 +1113,16 @@
 </span><span class="kw">use crate</span>::{
     alphas::Alphas,
     circuits::{
-        argument::{Argument, ArgumentType},
+        argument::{Argument, ArgumentEnv, ArgumentType},
         constraints::ConstraintSystem,
-        expr::{<span class="self">self</span>, witness_curr, witness_next, Cache, Column, ConstantExpr, Expr, E},
+        expr::{<span class="self">self</span>, constraints::ExprOps, Cache, Column, E},
         gate::{CircuitGate, GateType},
         wires::{GateWires, Wire, COLUMNS},
     },
     curve::KimchiCurve,
     proof::ProofEvaluations,
 };
-<span class="kw">use </span>ark_ff::{FftField, Field, One, PrimeField};
+<span class="kw">use </span>ark_ff::{FftField, Field, PrimeField};
 <span class="kw">use </span>cairo::{
     runner::{CairoInstruction, CairoProgram, Pointers},
     word::{FlagBits, Offsets},
@@ -1769,8 +1767,8 @@
 // CONSTRAINTS-RELATED
 
 </span><span class="doccomment">/// Returns the expression corresponding to the literal &quot;2&quot;
-</span><span class="kw">fn </span>two&lt;F: Field&gt;() -&gt; E&lt;F&gt; {
-    Expr::Constant(ConstantExpr::Literal(<span class="number">2u16</span>.into())) <span class="comment">// 2
+</span><span class="kw">fn </span>two&lt;F: Field, T: ExprOps&lt;F&gt;&gt;() -&gt; T {
+    T::literal(<span class="number">2u64</span>.into()) <span class="comment">// 2
 </span>}
 
 <span class="doccomment">/// Combines the constraints for the Cairo gates depending on its type
@@ -1796,21 +1794,21 @@
 
     <span class="doccomment">/// Generates the constraints for the Cairo initial claim and first memory checks
     ///     Accesses Curr and Next rows
-    </span><span class="kw">fn </span>constraints() -&gt; Vec&lt;E&lt;F&gt;&gt; {
-        <span class="kw">let </span>pc_ini = witness_curr(<span class="number">0</span>); <span class="comment">// copy from public input
-        </span><span class="kw">let </span>ap_ini = witness_curr(<span class="number">1</span>); <span class="comment">// copy from public input
-        </span><span class="kw">let </span>pc_fin = witness_curr(<span class="number">2</span>); <span class="comment">// copy from public input
-        </span><span class="kw">let </span>ap_fin = witness_curr(<span class="number">3</span>); <span class="comment">// copy from public input
-        </span><span class="kw">let </span>pc_n = witness_curr(<span class="number">4</span>); <span class="comment">// copy from public input
-        </span><span class="kw">let </span>ap_n = witness_curr(<span class="number">5</span>); <span class="comment">// copy from public input
+    </span><span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;) -&gt; Vec&lt;T&gt; {
+        <span class="kw">let </span>pc_ini = env.witness_curr(<span class="number">0</span>); <span class="comment">// copy from public input
+        </span><span class="kw">let </span>ap_ini = env.witness_curr(<span class="number">1</span>); <span class="comment">// copy from public input
+        </span><span class="kw">let </span>pc_fin = env.witness_curr(<span class="number">2</span>); <span class="comment">// copy from public input
+        </span><span class="kw">let </span>ap_fin = env.witness_curr(<span class="number">3</span>); <span class="comment">// copy from public input
+        </span><span class="kw">let </span>pc_n = env.witness_curr(<span class="number">4</span>); <span class="comment">// copy from public input
+        </span><span class="kw">let </span>ap_n = env.witness_curr(<span class="number">5</span>); <span class="comment">// copy from public input
 
         // load address / value pairs from next row
-        </span><span class="kw">let </span>pc0 = witness_next(<span class="number">0</span>);
-        <span class="kw">let </span>ap0 = witness_next(<span class="number">1</span>);
-        <span class="kw">let </span>fp0 = witness_next(<span class="number">2</span>);
+        </span><span class="kw">let </span>pc0 = env.witness_next(<span class="number">0</span>);
+        <span class="kw">let </span>ap0 = env.witness_next(<span class="number">1</span>);
+        <span class="kw">let </span>fp0 = env.witness_next(<span class="number">2</span>);
 
         <span class="comment">// Initial claim
-        </span><span class="kw">let </span><span class="kw-2">mut </span>constraints: Vec&lt;Expr&lt;ConstantExpr&lt;F&gt;&gt;&gt; = <span class="macro">vec!</span>[ap0 - ap_ini.clone()]; <span class="comment">// ap0 = ini_ap
+        </span><span class="kw">let </span><span class="kw-2">mut </span>constraints: Vec&lt;T&gt; = <span class="macro">vec!</span>[ap0 - ap_ini.clone()]; <span class="comment">// ap0 = ini_ap
         </span>constraints.push(fp0 - ap_ini); <span class="comment">// fp0 = ini_ap
         </span>constraints.push(pc0 - pc_ini); <span class="comment">// pc0 = ini_pc
 
@@ -1833,47 +1831,46 @@
 
     <span class="doccomment">/// Generates the constraints for the Cairo instruction
     ///     Accesses Curr and Next rows
-    </span><span class="kw">fn </span>constraints() -&gt; Vec&lt;E&lt;F&gt;&gt; {
+    </span><span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;) -&gt; Vec&lt;T&gt; {
         <span class="comment">// load all variables of the witness corresponding to Cairoinstruction gates
-        </span><span class="kw">let </span>pc = witness_curr(<span class="number">0</span>);
-        <span class="kw">let </span>ap = witness_curr(<span class="number">1</span>);
-        <span class="kw">let </span>fp = witness_curr(<span class="number">2</span>);
-        <span class="kw">let </span>size = witness_curr(<span class="number">3</span>);
-        <span class="kw">let </span>res = witness_curr(<span class="number">4</span>);
-        <span class="kw">let </span>dst = witness_curr(<span class="number">5</span>);
-        <span class="kw">let </span>op1 = witness_curr(<span class="number">6</span>);
-        <span class="kw">let </span>op0 = witness_curr(<span class="number">7</span>);
-        <span class="kw">let </span>off_dst = witness_curr(<span class="number">8</span>);
-        <span class="kw">let </span>off_op1 = witness_curr(<span class="number">9</span>);
-        <span class="kw">let </span>off_op0 = witness_curr(<span class="number">10</span>);
-        <span class="kw">let </span>adr_dst = witness_curr(<span class="number">11</span>);
-        <span class="kw">let </span>adr_op1 = witness_curr(<span class="number">12</span>);
-        <span class="kw">let </span>adr_op0 = witness_curr(<span class="number">13</span>);
-        <span class="kw">let </span>instr = witness_curr(<span class="number">14</span>);
+        </span><span class="kw">let </span>pc = env.witness_curr(<span class="number">0</span>);
+        <span class="kw">let </span>ap = env.witness_curr(<span class="number">1</span>);
+        <span class="kw">let </span>fp = env.witness_curr(<span class="number">2</span>);
+        <span class="kw">let </span>size = env.witness_curr(<span class="number">3</span>);
+        <span class="kw">let </span>res = env.witness_curr(<span class="number">4</span>);
+        <span class="kw">let </span>dst = env.witness_curr(<span class="number">5</span>);
+        <span class="kw">let </span>op1 = env.witness_curr(<span class="number">6</span>);
+        <span class="kw">let </span>op0 = env.witness_curr(<span class="number">7</span>);
+        <span class="kw">let </span>off_dst = env.witness_curr(<span class="number">8</span>);
+        <span class="kw">let </span>off_op1 = env.witness_curr(<span class="number">9</span>);
+        <span class="kw">let </span>off_op0 = env.witness_curr(<span class="number">10</span>);
+        <span class="kw">let </span>adr_dst = env.witness_curr(<span class="number">11</span>);
+        <span class="kw">let </span>adr_op1 = env.witness_curr(<span class="number">12</span>);
+        <span class="kw">let </span>adr_op0 = env.witness_curr(<span class="number">13</span>);
+        <span class="kw">let </span>instr = env.witness_curr(<span class="number">14</span>);
         <span class="comment">// Load flags from the following row
-        </span><span class="kw">let </span>f_dst_fp = witness_next(<span class="number">0</span>);
-        <span class="kw">let </span>f_op0_fp = witness_next(<span class="number">1</span>);
-        <span class="kw">let </span>f_op1_val = witness_next(<span class="number">2</span>);
-        <span class="kw">let </span>f_op1_fp = witness_next(<span class="number">3</span>);
-        <span class="kw">let </span>f_op1_ap = witness_next(<span class="number">4</span>);
-        <span class="kw">let </span>f_res_add = witness_next(<span class="number">5</span>);
-        <span class="kw">let </span>f_res_mul = witness_next(<span class="number">6</span>);
-        <span class="kw">let </span>f_pc_abs = witness_next(<span class="number">7</span>);
-        <span class="kw">let </span>f_pc_rel = witness_next(<span class="number">8</span>);
-        <span class="kw">let </span>f_pc_jnz = witness_next(<span class="number">9</span>);
-        <span class="kw">let </span>f_ap_add = witness_next(<span class="number">10</span>);
-        <span class="kw">let </span>f_ap_one = witness_next(<span class="number">11</span>);
-        <span class="kw">let </span>f_opc_call = witness_next(<span class="number">12</span>);
-        <span class="kw">let </span>f_opc_ret = witness_next(<span class="number">13</span>);
-        <span class="kw">let </span>f_opc_aeq = witness_next(<span class="number">14</span>);
+        </span><span class="kw">let </span>f_dst_fp = env.witness_next(<span class="number">0</span>);
+        <span class="kw">let </span>f_op0_fp = env.witness_next(<span class="number">1</span>);
+        <span class="kw">let </span>f_op1_val = env.witness_next(<span class="number">2</span>);
+        <span class="kw">let </span>f_op1_fp = env.witness_next(<span class="number">3</span>);
+        <span class="kw">let </span>f_op1_ap = env.witness_next(<span class="number">4</span>);
+        <span class="kw">let </span>f_res_add = env.witness_next(<span class="number">5</span>);
+        <span class="kw">let </span>f_res_mul = env.witness_next(<span class="number">6</span>);
+        <span class="kw">let </span>f_pc_abs = env.witness_next(<span class="number">7</span>);
+        <span class="kw">let </span>f_pc_rel = env.witness_next(<span class="number">8</span>);
+        <span class="kw">let </span>f_pc_jnz = env.witness_next(<span class="number">9</span>);
+        <span class="kw">let </span>f_ap_add = env.witness_next(<span class="number">10</span>);
+        <span class="kw">let </span>f_ap_one = env.witness_next(<span class="number">11</span>);
+        <span class="kw">let </span>f_opc_call = env.witness_next(<span class="number">12</span>);
+        <span class="kw">let </span>f_opc_ret = env.witness_next(<span class="number">13</span>);
+        <span class="kw">let </span>f_opc_aeq = env.witness_next(<span class="number">14</span>);
 
         <span class="comment">// collect flags in its natural ordering
-        </span><span class="kw">let </span>flags: Vec&lt;Expr&lt;ConstantExpr&lt;F&gt;&gt;&gt; =
-            (<span class="number">0</span>..NUM_FLAGS - <span class="number">1</span>).map(|i| witness_next(i)).collect();
+        </span><span class="kw">let </span>flags: Vec&lt;T&gt; = (<span class="number">0</span>..NUM_FLAGS - <span class="number">1</span>).map(|i| env.witness_next(i)).collect();
 
         <span class="comment">// LIST OF CONSTRAINTS
         // -------------------
-        </span><span class="kw">let </span><span class="kw-2">mut </span>constraints: Vec&lt;Expr&lt;ConstantExpr&lt;F&gt;&gt;&gt; = <span class="macro">vec!</span>[];
+        </span><span class="kw">let </span><span class="kw-2">mut </span>constraints: Vec&lt;T&gt; = <span class="macro">vec!</span>[];
         <span class="kw">let </span><span class="kw-2">mut </span>cache = Cache::default();
 
         <span class="comment">// INSTRUCTIONS RELATED
@@ -1883,7 +1880,7 @@
         // * Check booleanity of all flags
         // fi * (1-fi) == 0 for i=[0..15)
         </span><span class="kw">for </span>flag <span class="kw">in </span>flags.iter().take(NUM_FLAGS - <span class="number">1</span>) {
-            constraints.push(flag.clone() * (E::one() - flag.clone()));
+            constraints.push(flag.clone() * (T::one() - flag.clone()));
         }
 
         <span class="comment">// * Check no two flagbits of the same flagset are nonzero
@@ -1893,21 +1890,22 @@
         <span class="kw">let </span>pc_up = cache.cache(f_pc_jnz.clone() + f_pc_rel + f_pc_abs);
         <span class="kw">let </span>ap_up = cache.cache(f_ap_one + f_ap_add);
         <span class="kw">let </span>opcode = cache.cache(f_opc_aeq.clone() + f_opc_ret + f_opc_call.clone());
-        constraints.push(op1_src.clone() * (E::one() - op1_src));
-        constraints.push(res_log.clone() * (E::one() - res_log));
-        constraints.push(pc_up.clone() * (E::one() - pc_up));
-        constraints.push(ap_up.clone() * (E::one() - ap_up));
-        constraints.push(opcode.clone() * (E::one() - opcode));
+        constraints.push(op1_src.clone() * (T::one() - op1_src));
+        constraints.push(res_log.clone() * (T::one() - res_log));
+        constraints.push(pc_up.clone() * (T::one() - pc_up));
+        constraints.push(ap_up.clone() * (T::one() - ap_up));
+        constraints.push(opcode.clone() * (T::one() - opcode));
 
         <span class="comment">// * Shape of instruction
         </span><span class="kw">let </span>shape = {
-            <span class="kw">let </span>shift = cache.cache(E::Pow(Box::new(two()), <span class="number">15</span>)); <span class="comment">// 2^15;
-            </span><span class="kw">let </span>pow16 = cache.cache(Expr::Double(Box::new(shift.clone()))); <span class="comment">// 2^16
+            <span class="kw">let </span>shift: T = cache.cache(two::&lt;F, T&gt;().pow(<span class="number">15</span>)); <span class="comment">// 2^15;
+            </span><span class="kw">let </span>double_shift = shift.double();
+            <span class="kw">let </span>pow16 = cache.cache(double_shift); <span class="comment">// 2^16
             </span><span class="kw">let </span>dst_sft = off_dst.clone() + shift.clone();
             <span class="kw">let </span>op0_sft = off_op0.clone() + shift.clone();
             <span class="kw">let </span>op1_sft = off_op1.clone() + shift;
             <span class="comment">// recompose instruction as: flags[14..0] | op1_sft | op0_sft | dst_sft
-            </span><span class="kw">let </span><span class="kw-2">mut </span>aux: Expr&lt;ConstantExpr&lt;F&gt;&gt; = flags[<span class="number">14</span>].clone();
+            </span><span class="kw">let </span><span class="kw-2">mut </span>aux: T = flags[<span class="number">14</span>].clone();
             <span class="kw">for </span>i <span class="kw">in </span>(<span class="number">0</span>..<span class="number">14</span>).rev() {
                 aux = aux * two() + flags[i].clone();
             }
@@ -1923,14 +1921,14 @@
         // if dst_fp = 0 : dst_dir = ap + off_dst
         // if dst_fp = 1 : dst_dir = fp + off_dst
         </span>constraints.push(
-            f_dst_fp.clone() * fp.clone() + (E::one() - f_dst_fp) * ap.clone() + off_dst - adr_dst,
+            f_dst_fp.clone() * fp.clone() + (T::one() - f_dst_fp) * ap.clone() + off_dst - adr_dst,
         );
 
         <span class="comment">// * First operand address
         // if op0_fp = 0 : op0_dir = ap + off_dst
         // if op0_fp = 1 : op0_dir = fp + off_dst
         </span>constraints.push(
-            f_op0_fp.clone() * fp.clone() + (E::one() - f_op0_fp) * ap.clone() + off_op0 - adr_op0,
+            f_op0_fp.clone() * fp.clone() + (T::one() - f_op0_fp) * ap.clone() + off_op0 - adr_op0,
         );
 
         <span class="comment">// * Second operand address
@@ -1939,7 +1937,7 @@
           </span>- (f_op1_ap.clone() * ap                                                     <span class="comment">// if op1_src == 4 : ap
           </span>+ f_op1_fp.clone() * fp.clone()                                                      <span class="comment">// if op1_src == 2 : fp
           </span>+ f_op1_val.clone() * pc.clone()                                                     <span class="comment">// if op1_src == 1 : pc
-          </span>+ (E::one() - f_op1_fp - f_op1_ap - f_op1_val) * op0.clone() <span class="comment">// if op1_src == 0 : op0
+          </span>+ (T::one() - f_op1_fp - f_op1_ap - f_op1_val) * op0.clone() <span class="comment">// if op1_src == 0 : op0
           </span>+ off_op1), <span class="comment">//                                                                                        + off_op1
         </span>);
 
@@ -1947,10 +1945,10 @@
 
         // * Check value of result
         </span>constraints.push(
-            (E::one() - f_pc_jnz) * res.clone()                              <span class="comment">// if pc_up != 4 : res = ..        // no res in conditional jumps
+            (T::one() - f_pc_jnz) * res.clone()                              <span class="comment">// if pc_up != 4 : res = ..        // no res in conditional jumps
           </span>- (f_res_mul.clone() * op0.clone() * op1.clone()                     <span class="comment">//      if res_log = 2 : op0 * op1
           </span>+ f_res_add.clone() * (op0.clone() + op1.clone())                    <span class="comment">//      if res_log = 1 : op0 + op1
-          </span>+ (E::one() - f_res_add - f_res_mul) * op1), <span class="comment">//      if res_log = 0 : op1
+          </span>+ (T::one() - f_res_add - f_res_mul) * op1), <span class="comment">//      if res_log = 0 : op1
         </span>);
 
         <span class="comment">// * Check storage of current fp for a call instruction
@@ -1980,26 +1978,26 @@
 
     <span class="doccomment">/// Generates the constraints for the Cairo flags
     ///     Accesses Curr and Next rows
-    </span><span class="kw">fn </span>constraints() -&gt; Vec&lt;E&lt;F&gt;&gt; {
+    </span><span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;) -&gt; Vec&lt;T&gt; {
         <span class="comment">// Load current row
-        </span><span class="kw">let </span>f_pc_abs = witness_curr(<span class="number">7</span>);
-        <span class="kw">let </span>f_pc_rel = witness_curr(<span class="number">8</span>);
-        <span class="kw">let </span>f_pc_jnz = witness_curr(<span class="number">9</span>);
-        <span class="kw">let </span>f_ap_add = witness_curr(<span class="number">10</span>);
-        <span class="kw">let </span>f_ap_one = witness_curr(<span class="number">11</span>);
-        <span class="kw">let </span>f_opc_call = witness_curr(<span class="number">12</span>);
-        <span class="kw">let </span>f_opc_ret = witness_curr(<span class="number">13</span>);
+        </span><span class="kw">let </span>f_pc_abs = env.witness_curr(<span class="number">7</span>);
+        <span class="kw">let </span>f_pc_rel = env.witness_curr(<span class="number">8</span>);
+        <span class="kw">let </span>f_pc_jnz = env.witness_curr(<span class="number">9</span>);
+        <span class="kw">let </span>f_ap_add = env.witness_curr(<span class="number">10</span>);
+        <span class="kw">let </span>f_ap_one = env.witness_curr(<span class="number">11</span>);
+        <span class="kw">let </span>f_opc_call = env.witness_curr(<span class="number">12</span>);
+        <span class="kw">let </span>f_opc_ret = env.witness_curr(<span class="number">13</span>);
         <span class="comment">// Load next row
-        </span><span class="kw">let </span>pc = witness_next(<span class="number">0</span>);
-        <span class="kw">let </span>ap = witness_next(<span class="number">1</span>);
-        <span class="kw">let </span>fp = witness_next(<span class="number">2</span>);
-        <span class="kw">let </span>size = witness_next(<span class="number">3</span>);
-        <span class="kw">let </span>res = witness_next(<span class="number">4</span>);
-        <span class="kw">let </span>dst = witness_next(<span class="number">5</span>);
-        <span class="kw">let </span>op1 = witness_next(<span class="number">6</span>);
-        <span class="kw">let </span>pcup = witness_next(<span class="number">7</span>);
-        <span class="kw">let </span>apup = witness_next(<span class="number">8</span>);
-        <span class="kw">let </span>fpup = witness_next(<span class="number">9</span>);
+        </span><span class="kw">let </span>pc = env.witness_next(<span class="number">0</span>);
+        <span class="kw">let </span>ap = env.witness_next(<span class="number">1</span>);
+        <span class="kw">let </span>fp = env.witness_next(<span class="number">2</span>);
+        <span class="kw">let </span>size = env.witness_next(<span class="number">3</span>);
+        <span class="kw">let </span>res = env.witness_next(<span class="number">4</span>);
+        <span class="kw">let </span>dst = env.witness_next(<span class="number">5</span>);
+        <span class="kw">let </span>op1 = env.witness_next(<span class="number">6</span>);
+        <span class="kw">let </span>pcup = env.witness_next(<span class="number">7</span>);
+        <span class="kw">let </span>apup = env.witness_next(<span class="number">8</span>);
+        <span class="kw">let </span>fpup = env.witness_next(<span class="number">9</span>);
 
         <span class="comment">// REGISTERS-RELATED
         // * Check next allocation pointer
@@ -2008,28 +2006,27 @@
         //  if ap_up == 1  : res
         //  if ap_up == 2  : 1
         // if opcode == 1  : 2
-        </span><span class="kw">let </span><span class="kw-2">mut </span>constraints: Vec&lt;Expr&lt;ConstantExpr&lt;F&gt;&gt;&gt; = <span class="macro">vec!</span>[
-            apup - (ap.clone() + f_ap_add * res.clone() + f_ap_one + f_opc_call.clone().double()),
-        ];
+        </span><span class="kw">let </span><span class="kw-2">mut </span>constraints: Vec&lt;T&gt; =
+            <span class="macro">vec!</span>[apup - (ap.clone() + f_ap_add * res.clone() + f_ap_one + f_opc_call.double())];
 
         <span class="comment">// * Check next frame pointer
         </span>constraints.push(
             fpup                                               <span class="comment">//             next_fp =
                 </span>- (f_opc_call.clone() * (ap + two())           <span class="comment">// if opcode == 1      : ap + 2
                 </span>+ f_opc_ret.clone() * dst.clone()              <span class="comment">// if opcode == 2      : dst
-                </span>+ (E::one() - f_opc_call - f_opc_ret) * fp ), <span class="comment">// if opcode == 4 or 0 : fp
+                </span>+ (T::one() - f_opc_call - f_opc_ret) * fp ), <span class="comment">// if opcode == 4 or 0 : fp
         </span>);
 
         <span class="comment">// * Check next program counter (pc update)
         </span>constraints.push(
             f_pc_jnz.clone()
-                * (dst.clone() * res.clone() - E::one())
+                * (dst.clone() * res.clone() - T::one())
                 * (pcup.clone() - (pc.clone() + size.clone())),
         ); <span class="comment">// &lt;=&gt; pc_up = 4 and dst = 0 : next_pc = pc + size // no jump
         </span>constraints.push(
             f_pc_jnz.clone() * dst * (pcup.clone() - (pc.clone() + op1))                         <span class="comment">// &lt;=&gt; pc_up = 4 and dst != 0 : next_pc = pc + op1  // condition holds
-                    </span>+ (E::one() - f_pc_jnz.clone()) * pcup                                                       <span class="comment">// &lt;=&gt; pc_up = {0,1,2}        : next_pc = ... // not a conditional jump
-                        </span>- (E::one() - f_pc_abs.clone() - f_pc_rel.clone() - f_pc_jnz) * (pc.clone() + size) <span class="comment">// &lt;=&gt; pc_up = 0              : next_pc = pc + size // common case
+                    </span>+ (T::one() - f_pc_jnz.clone()) * pcup                                                       <span class="comment">// &lt;=&gt; pc_up = {0,1,2}        : next_pc = ... // not a conditional jump
+                        </span>- (T::one() - f_pc_abs.clone() - f_pc_rel.clone() - f_pc_jnz) * (pc.clone() + size) <span class="comment">// &lt;=&gt; pc_up = 0              : next_pc = pc + size // common case
                         </span>- f_pc_abs * res.clone()                                                                    <span class="comment">// &lt;=&gt; pc_up = 1              : next_pc = res       // absolute jump
                         </span>- f_pc_rel * (pc + res), <span class="comment">//                                                    &lt;=&gt; pc_up = 2              : next_pc = pc + res  // relative jump
         </span>);
@@ -2048,23 +2045,22 @@
 
     <span class="doccomment">/// Generates the constraints for the Cairo transition
     ///     Accesses Curr and Next rows (Next only first 3 entries)
-    </span><span class="kw">fn </span>constraints() -&gt; Vec&lt;E&lt;F&gt;&gt; {
+    </span><span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;) -&gt; Vec&lt;T&gt; {
         <span class="comment">// load computed updated registers
-        </span><span class="kw">let </span>pcup = witness_curr(<span class="number">7</span>);
-        <span class="kw">let </span>apup = witness_curr(<span class="number">8</span>);
-        <span class="kw">let </span>fpup = witness_curr(<span class="number">9</span>);
+        </span><span class="kw">let </span>pcup = env.witness_curr(<span class="number">7</span>);
+        <span class="kw">let </span>apup = env.witness_curr(<span class="number">8</span>);
+        <span class="kw">let </span>fpup = env.witness_curr(<span class="number">9</span>);
         <span class="comment">// load next registers
-        </span><span class="kw">let </span>next_pc = witness_next(<span class="number">0</span>);
-        <span class="kw">let </span>next_ap = witness_next(<span class="number">1</span>);
-        <span class="kw">let </span>next_fp = witness_next(<span class="number">2</span>);
+        </span><span class="kw">let </span>next_pc = env.witness_next(<span class="number">0</span>);
+        <span class="kw">let </span>next_ap = env.witness_next(<span class="number">1</span>);
+        <span class="kw">let </span>next_fp = env.witness_next(<span class="number">2</span>);
 
         <span class="comment">// * Check equality (like a copy constraint)
 
-        </span><span class="kw">let </span>constraints: Vec&lt;Expr&lt;ConstantExpr&lt;F&gt;&gt;&gt; =
-            <span class="macro">vec!</span>[next_pc - pcup, next_ap - apup, next_fp - fpup];
+        </span><span class="kw">let </span>constraints: Vec&lt;T&gt; = <span class="macro">vec!</span>[next_pc - pcup, next_ap - apup, next_fp - fpup];
 
         constraints
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (750bd1a7f 2022-09-14)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (cf9ed0dd5 2022-09-15)" ></div></body></html>

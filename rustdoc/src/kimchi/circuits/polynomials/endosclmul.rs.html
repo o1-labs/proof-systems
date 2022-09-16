@@ -352,22 +352,30 @@
 <span id="352">352</span>
 <span id="353">353</span>
 <span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
+<span id="357">357</span>
+<span id="358">358</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements short Weierstrass curve
 //! endomorphism optimised variable base
 //! scalar multiplication custom Plonk polynomials.
 
 </span><span class="kw">use crate</span>::{
     circuits::{
-        argument::{Argument, ArgumentType},
+        argument::{Argument, ArgumentEnv, ArgumentType},
         constraints::ConstraintSystem,
-        expr::{<span class="self">self</span>, constraints::boolean, prologue::<span class="kw-2">*</span>, Cache, ConstantExpr},
+        expr::{
+            <span class="self">self</span>,
+            constraints::{boolean, ExprOps},
+            Cache,
+        },
         gate::{CircuitGate, GateType},
         wires::{GateWires, COLUMNS},
     },
     curve::KimchiCurve,
     proof::ProofEvaluations,
 };
-<span class="kw">use </span>ark_ff::{FftField, Field, One, PrimeField};
+<span class="kw">use </span>ark_ff::{FftField, Field, PrimeField};
 <span class="kw">use </span>std::marker::PhantomData;
 
 <span class="comment">//~ We implement custom gate constraints for short Weierstrass curve
@@ -532,42 +540,42 @@
     <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMul);
     <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">11</span>;
 
-    <span class="kw">fn </span>constraints() -&gt; Vec&lt;E&lt;F&gt;&gt; {
-        <span class="kw">let </span>b1 = witness_curr(<span class="number">11</span>);
-        <span class="kw">let </span>b2 = witness_curr(<span class="number">12</span>);
-        <span class="kw">let </span>b3 = witness_curr(<span class="number">13</span>);
-        <span class="kw">let </span>b4 = witness_curr(<span class="number">14</span>);
+    <span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;) -&gt; Vec&lt;T&gt; {
+        <span class="kw">let </span>b1 = env.witness_curr(<span class="number">11</span>);
+        <span class="kw">let </span>b2 = env.witness_curr(<span class="number">12</span>);
+        <span class="kw">let </span>b3 = env.witness_curr(<span class="number">13</span>);
+        <span class="kw">let </span>b4 = env.witness_curr(<span class="number">14</span>);
 
-        <span class="kw">let </span>xt = witness_curr(<span class="number">0</span>);
-        <span class="kw">let </span>yt = witness_curr(<span class="number">1</span>);
+        <span class="kw">let </span>xt = env.witness_curr(<span class="number">0</span>);
+        <span class="kw">let </span>yt = env.witness_curr(<span class="number">1</span>);
 
-        <span class="kw">let </span>xs = witness_next(<span class="number">4</span>);
-        <span class="kw">let </span>ys = witness_next(<span class="number">5</span>);
+        <span class="kw">let </span>xs = env.witness_next(<span class="number">4</span>);
+        <span class="kw">let </span>ys = env.witness_next(<span class="number">5</span>);
 
-        <span class="kw">let </span>xp = witness_curr(<span class="number">4</span>);
-        <span class="kw">let </span>yp = witness_curr(<span class="number">5</span>);
+        <span class="kw">let </span>xp = env.witness_curr(<span class="number">4</span>);
+        <span class="kw">let </span>yp = env.witness_curr(<span class="number">5</span>);
 
-        <span class="kw">let </span>xr = witness_curr(<span class="number">7</span>);
-        <span class="kw">let </span>yr = witness_curr(<span class="number">8</span>);
+        <span class="kw">let </span>xr = env.witness_curr(<span class="number">7</span>);
+        <span class="kw">let </span>yr = env.witness_curr(<span class="number">8</span>);
 
         <span class="kw">let </span><span class="kw-2">mut </span>cache = Cache::default();
 
-        <span class="kw">let </span>s1 = witness_curr(<span class="number">9</span>);
-        <span class="kw">let </span>s3 = witness_curr(<span class="number">10</span>);
+        <span class="kw">let </span>s1 = env.witness_curr(<span class="number">9</span>);
+        <span class="kw">let </span>s3 = env.witness_curr(<span class="number">10</span>);
 
-        <span class="kw">let </span>endo_minus_1 = E::Constant(ConstantExpr::EndoCoefficient - ConstantExpr::one());
-        <span class="kw">let </span>xq1 = cache.cache((E::one() + b1.clone() * endo_minus_1.clone()) * xt.clone());
-        <span class="kw">let </span>xq2 = cache.cache((E::one() + b3.clone() * endo_minus_1) * xt);
+        <span class="kw">let </span>endo_minus_1 = env.endo_coefficient() - T::one();
+        <span class="kw">let </span>xq1 = cache.cache((T::one() + b1.clone() * endo_minus_1.clone()) * xt.clone());
+        <span class="kw">let </span>xq2 = cache.cache((T::one() + b3.clone() * endo_minus_1) * xt);
 
-        <span class="kw">let </span>yq1 = (b2.clone().double() - E::one()) * yt.clone();
-        <span class="kw">let </span>yq2 = (b4.clone().double() - E::one()) * yt;
+        <span class="kw">let </span>yq1 = (b2.double() - T::one()) * yt.clone();
+        <span class="kw">let </span>yq2 = (b4.double() - T::one()) * yt;
 
-        <span class="kw">let </span>s1_squared = cache.cache(s1.clone().square());
-        <span class="kw">let </span>s3_squared = cache.cache(s3.clone().square());
+        <span class="kw">let </span>s1_squared = cache.cache(s1.square());
+        <span class="kw">let </span>s3_squared = cache.cache(s3.square());
 
         <span class="comment">// n_next = 16*n + 8*b1 + 4*b2 + 2*b3 + b4
-        </span><span class="kw">let </span>n = witness_curr(<span class="number">6</span>);
-        <span class="kw">let </span>n_next = witness_next(<span class="number">6</span>);
+        </span><span class="kw">let </span>n = env.witness_curr(<span class="number">6</span>);
+        <span class="kw">let </span>n_next = env.witness_next(<span class="number">6</span>);
         <span class="kw">let </span>n_constraint =
             (((n.double() + b1.clone()).double() + b2.clone()).double() + b3.clone()).double()
                 + b4.clone()
@@ -707,4 +715,4 @@
     EndoMulResult { acc, n: n_acc }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (750bd1a7f 2022-09-14)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0-nightly (cf9ed0dd5 2022-09-15)" ></div></body></html>
