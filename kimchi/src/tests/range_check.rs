@@ -507,15 +507,20 @@ fn verify_range_check0_test_copy_constraints() {
                 PallasField::zero(),
             );
 
-            // Positive test case (gates[0] is a RangeCheck0 circuit gate)
+            // Positive test case (gates[row] is a RangeCheck0 circuit gate)
             assert_eq!(
-                cs.gates[0].verify_range_check::<Vesta>(0, &witness, &cs),
+                cs.gates[row].verify_range_check::<Vesta>(row, &witness, &cs),
                 Ok(())
             );
 
-            // Positive test case (gates[1] is a RangeCheck0 circuit gate)
+            // Generic witness verification test
             assert_eq!(
-                cs.gates[1].verify_range_check::<Vesta>(1, &witness, &cs),
+                cs.gates[row].verify_witness::<Vesta>(
+                    row,
+                    &witness,
+                    &cs,
+                    &witness[0][0..cs.public].to_vec()
+                ),
                 Ok(())
             );
 
@@ -523,16 +528,26 @@ fn verify_range_check0_test_copy_constraints() {
             assert_ne!(witness[col][row], PallasField::zero());
             witness[col][row] = PallasField::zero();
             assert_eq!(
-                cs.gates[0].verify_range_check::<Vesta>(0, &witness, &cs),
-                Err(CircuitGateError::InvalidCopyConstraint(
-                    GateType::RangeCheck0
-                ))
+                cs.gates[row].verify_range_check::<Vesta>(row, &witness, &cs),
+                Err(CircuitGateError::InvalidCopyConstraint(cs.gates[row].typ))
             );
+
+            // Generic witness verification test
             assert_eq!(
-                cs.gates[1].verify_range_check::<Vesta>(1, &witness, &cs),
-                Err(CircuitGateError::InvalidCopyConstraint(
-                    GateType::RangeCheck0
-                ))
+                cs.gates[row].verify_witness::<Vesta>(
+                    row,
+                    &witness,
+                    &cs,
+                    &witness[0][0..cs.public].to_vec()
+                ),
+                Err(CircuitGateError::CopyConstraint {
+                    typ: cs.gates[row].typ,
+                    src: Wire::create(row as i32, col as i32),
+                    dst: Wire::create(
+                        row as i32 + 3 - row as i32,
+                        2 * (row as i32) + col as i32 + 2
+                    )
+                })
             );
         }
     }
@@ -885,6 +900,34 @@ fn verify_range_check1_test_copy_constraints() {
                 Err(CircuitGateError::InvalidCopyConstraint(
                     GateType::RangeCheck1
                 ))
+            );
+
+            // Generic witness verification test
+            // RangeCheck1's current row doesn't have any copy constraints
+            assert_eq!(
+                cs.gates[2].verify_witness::<Vesta>(
+                    2,
+                    &witness,
+                    &cs,
+                    &witness[0][0..cs.public].to_vec()
+                ),
+                Ok(())
+            );
+
+            // Generic witness verification test
+            // RangeCheck1's next row has copy constraints, but it's a Zero gate
+            assert_eq!(
+                cs.gates[3].verify_witness::<Vesta>(
+                    3,
+                    &witness,
+                    &cs,
+                    &witness[0][0..cs.public].to_vec()
+                ),
+                Err(CircuitGateError::CopyConstraint {
+                    typ: GateType::Zero,
+                    src: Wire::create(3, 2 * (row as i32) + col as i32 + 2),
+                    dst: Wire::create(row as i32, col as i32)
+                })
             );
         }
     }

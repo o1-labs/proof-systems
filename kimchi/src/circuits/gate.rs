@@ -136,8 +136,8 @@ pub enum CircuitGateError {
     #[error("Invalid {0:?} wire column: {1}")]
     WireColumn(GateType, usize),
     /// Disconnected wires
-    #[error("Invalid {0:?} copy constraint: {1},{2} -> {3}{4}")]
-    CopyConstraint(GateType, usize, usize, usize, usize),
+    #[error("Invalid {typ:?} copy constraint: {},{} -> {},{}", .src.row, .src.col, .dst.row, .dst.col)]
+    CopyConstraint { typ: GateType, src: Wire, dst: Wire },
     /// Invalid copy constraint
     #[error("Invalid {0:?} copy constraint")]
     InvalidCopyConstraint(GateType),
@@ -242,15 +242,36 @@ impl<F: PrimeField> CircuitGate<F> {
         // Set up the constants.  Note that alpha, beta, gamma and joint_combiner
         // are zero because this function is not running the prover.
         let constants = expr::Constants::<F> {
-            alpha: F::zero(),
-            beta: F::zero(),
-            gamma: F::zero(),
-            joint_combiner: Some(F::zero()),
+            alpha: F::one(),
+            beta: F::one(),
+            gamma: F::one(),
+            joint_combiner: Some(F::one()),
             endo_coefficient: cs.endo,
             mds: &G::sponge_params().mds,
         };
         // Create the argument environment for the constraints over field elements
         let env = ArgumentEnv::<F, F>::create(argument_witness, self.coeffs.clone(), constants);
+
+        // Check the wiring (i.e. copy constraints) for this gate
+        // Note: Gates can operated on row Curr or Curr and Next.
+        //       It could be nice for gates to know this and then
+        //       this code could be adapted to check Curr or Curr
+        //       and Next depending on the gate definition
+        for col in 0..PERMUTS {
+            let wire = self.wires[col];
+
+            if wire.col >= PERMUTS {
+                return Err(CircuitGateError::WireColumn(self.typ, col));
+            }
+
+            if witness[col][row] != witness[wire.col][wire.row] {
+                return Err(CircuitGateError::CopyConstraint {
+                    typ: self.typ,
+                    src: Wire { row, col },
+                    dst: wire,
+                });
+            }
+        }
 
         // Perform witness verification on each constraint for this gate
         let results = match self.typ {
@@ -294,21 +315,6 @@ impl<F: PrimeField> CircuitGate<F> {
             }
         }
 
-        // Check the wiring (i.e. copy constraints) for this gate
-        for col in 0..PERMUTS {
-            let wire = self.wires[col];
-
-            if wire.col >= PERMUTS {
-                return Err(CircuitGateError::WireColumn(self.typ, col));
-            }
-
-            if witness[col][row] != witness[wire.col][wire.row] {
-                return Err(CircuitGateError::CopyConstraint(
-                    self.typ, col, row, wire.col, wire.row,
-                ));
-            }
-        }
-
         // TODO: implement generic plookup witness verification
 
         Ok(())
@@ -326,7 +332,7 @@ impl<F: PrimeField> CircuitGate<F> {
             .collect::<Vec<F>>()
             .try_into()
             .map_err(|_| CircuitGateError::FailedToGetWitnessForRow(self.typ, row))?;
-        let witness_next: [F; COLUMNS] = if witness.len() > row + 1 {
+        let witness_next: [F; COLUMNS] = if witness[0].len() > row + 1 {
             (0..witness.len())
                 .map(|col| witness[col][row + 1])
                 .collect::<Vec<F>>()
