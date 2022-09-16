@@ -265,6 +265,7 @@ impl<F: PrimeField> CircuitGate<F> {
             }
 
             if witness[col][row] != witness[wire.col][wire.row] {
+                // Pinpoint failed copy constraint
                 return Err(CircuitGateError::CopyConstraint {
                     typ: self.typ,
                     src: Wire { row, col },
