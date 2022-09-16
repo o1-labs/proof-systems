@@ -1,10 +1,11 @@
-//! This module implements the [ProverError] type.
+//! This module implements the [`ProverError`] type.
 
 use commitment_dlog::error::CommitmentError;
 use thiserror::Error;
 
 /// Errors that can arise when creating a proof
 // TODO(mimoo): move this out of oracle
+#[allow(clippy::module_name_repetitions)]
 #[derive(Error, Debug, Clone, Copy)]
 pub enum ProverError {
     #[error("the circuit is too large")]
@@ -33,6 +34,7 @@ pub enum ProverError {
 }
 
 /// Errors that can arise when verifying a proof
+#[allow(clippy::module_name_repetitions)]
 #[derive(Error, Debug, Clone, Copy)]
 pub enum VerifyError {
     #[error("the commitment to {0} is of an unexpected size")]
@@ -67,6 +69,7 @@ pub enum VerifyError {
 }
 
 /// Errors that can arise when preparing the setup
+#[allow(clippy::module_name_repetitions)]
 #[derive(Error, Debug, Clone)]
 pub enum SetupError {
     #[error("the domain could not be constructed: {0}")]
@@ -77,6 +80,7 @@ pub enum SetupError {
 }
 
 /// Errors that can arise when creating a verifier index
+#[allow(clippy::module_name_repetitions)]
 #[derive(Error, Debug, Clone)]
 pub enum VerifierIndexError {
     #[error("srs has already been set")]

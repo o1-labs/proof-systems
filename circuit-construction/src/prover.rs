@@ -160,6 +160,10 @@ where
 }
 
 /// Creates the prover index on input an `srs`, used `constants`, parameters for Poseidon, number of public inputs, and a specific circuit
+///
+/// # Panics
+///
+/// Will panic if `constraint_system` is not built with `public` input.
 pub fn generate_prover_index<C, H>(
     srs: std::sync::Arc<SRS<C::Outer>>,
     public: usize,
@@ -190,7 +194,7 @@ where
     main(&mut system, public_input);
 
     let gates = system.gates();
-    println!("gates: {}", gates.len());
+
     // Other base field = self scalar field
     let (endo_q, _endo_r) = endos::<C::Inner>();
 

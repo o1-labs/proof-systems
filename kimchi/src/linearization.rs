@@ -15,10 +15,16 @@ use crate::circuits::polynomials::varbasemul::VarbaseMul;
 use crate::circuits::{
     expr::{Column, ConstantExpr, Expr, Linearization, PolishToken},
     gate::GateType,
-    wires::*,
+    wires::COLUMNS,
 };
 use ark_ff::{FftField, SquareRootField};
 
+/// Get the expresion of constraints.
+///
+/// # Panics
+///
+/// Will panic if `generic_gate` is not associate with `alpha^0`.
+#[must_use]
 pub fn constraints_expr<F: FftField + SquareRootField>(
     chacha: bool,
     range_check: bool,
@@ -85,11 +91,13 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
 
 /// Adds the polynomials that are evaluated as part of the proof
 /// for the linearization to work.
+#[must_use]
+#[allow(clippy::module_name_repetitions)]
 pub fn linearization_columns<F: FftField + SquareRootField>(
     lookup_constraint_system: Option<&LookupConfiguration<F>>,
 ) -> std::collections::HashSet<Column> {
     let mut h = std::collections::HashSet::new();
-    use Column::*;
+    use Column::{Index, LookupAggreg, LookupRuntimeTable, LookupSorted, LookupTable, Witness, Z};
 
     // the witness polynomials
     for i in 0..COLUMNS {
@@ -98,7 +106,7 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
 
     // the lookup polynomials
     if let Some(lcs) = &lookup_constraint_system {
-        for i in 0..(lcs.lookup_info.max_per_row + 1) {
+        for i in 0..=lcs.lookup_info.max_per_row {
             h.insert(LookupSorted(i));
         }
         h.insert(LookupAggreg);
@@ -122,6 +130,12 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
     h
 }
 
+/// Linearize the `expr`.
+///
+/// # Panics
+///
+/// Will panic if the `linearization` process fails.
+#[must_use]
 pub fn expr_linearization<F: FftField + SquareRootField>(
     chacha: bool,
     range_check: bool,
@@ -134,7 +148,7 @@ pub fn expr_linearization<F: FftField + SquareRootField>(
     let linearization = expr
         .linearize(evaluated_cols)
         .unwrap()
-        .map(|e| e.to_polish());
+        .map(crate::circuits::expr::Expr::to_polish);
 
     (linearization, powers_of_alpha)
 }

@@ -135,7 +135,15 @@ where
     }
 
     /// This function constructs prover's recursive zk-proof from the witness & the `ProverIndex` against SRS instance
-    #[allow(clippy::needless_pass_by_value, clippy::too_many_lines)]
+    ///
+    /// # Errors
+    ///
+    /// Will give error if inputs(like `lookup_context.joint_lookup_table_d8`) are None.
+    #[allow(
+        clippy::needless_pass_by_value,
+        clippy::too_many_lines,
+        clippy::cast_possible_truncation
+    )]
     pub fn create_recursive<
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
         EFrSponge: FrSponge<G::ScalarField>,

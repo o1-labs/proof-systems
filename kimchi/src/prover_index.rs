@@ -57,6 +57,10 @@ pub struct ProverIndex<G: KimchiCurve> {
 
 impl<G: KimchiCurve> ProverIndex<G> {
     /// this function compiles the index from constraints
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `polynomial segment size` is bigger than `circuit`.
     pub fn create(
         mut cs: ConstraintSystem<G::ScalarField>,
         endo_q: G::ScalarField,
@@ -145,6 +149,11 @@ pub mod testing {
     use commitment_dlog::srs::endos;
     use mina_curves::pasta::{pallas::Pallas, vesta::Vesta, Fp};
 
+    /// Create new index for lookups.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `constraint system` is not built with `gates` input.
     #[must_use]
     pub fn new_index_for_test_with_lookups(
         gates: Vec<CircuitGate<Fp>>,

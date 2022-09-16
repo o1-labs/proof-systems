@@ -28,17 +28,20 @@ pub struct Wire {
 
 impl Wire {
     /// Creates a new set of wires for a given row.
+    #[must_use]
     pub fn new(row: usize) -> [Self; PERMUTS] {
         array::from_fn(|col| Self { row, col })
     }
 }
 
-/// GateWires document the wiring of a gate. More specifically, each value either
+/// `GateWires` document the wiring of a gate. More specifically, each value either
 /// represents the same cell (row and column) or a different cell in another row.
 /// (This is to help the permutation argument.)
+#[allow(clippy::module_name_repetitions)]
 pub type GateWires = [Wire; PERMUTS];
 
 impl ToBytes for Wire {
+    #[allow(clippy::cast_possible_truncation)]
     #[inline]
     fn write<W: Write>(&self, mut w: W) -> IoResult<()> {
         (self.row as u32).write(&mut w)?;

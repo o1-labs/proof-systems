@@ -35,6 +35,14 @@ where
     G::BaseField: PrimeField,
 {
     /// This function runs the random oracle argument
+    ///
+    /// # Errors
+    ///
+    /// Will give error if `commitment(s)` are invalid(missing or wrong length), or `proof` is verified as invalid.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `PolishToken` evaluation is invalid.
     #[allow(clippy::too_many_lines)]
     pub fn oracles<
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
@@ -239,8 +247,6 @@ where
                 ],
             ]
         };
-
-        println!("verifier public eval: {:?}", public_evals);
 
         //~ 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
         fr_sponge.absorb(&self.ft_eval1);
@@ -869,6 +875,10 @@ where
 }
 
 /// Verify a proof [`ProverProof`] using a [`VerifierIndex`] and a `group_map`.
+///
+/// # Errors
+///
+/// Will give error if `proof(s)` are not verified as valid.
 pub fn verify<G, EFqSponge, EFrSponge>(
     group_map: &G::Map,
     verifier_index: &VerifierIndex<G>,
@@ -888,6 +898,10 @@ where
 ///     proofs: vector of Plonk proofs
 ///     index: `VerifierIndex`
 ///     RETURN: verification status
+///
+/// # Errors
+///
+/// Will give error if `srs` of `proof` is invalid or `verify` process fails.
 pub fn batch_verify<G, EFqSponge, EFrSponge>(
     group_map: &G::Map,
     proofs: &[(&VerifierIndex<G>, &ProverProof<G>)],

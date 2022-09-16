@@ -52,7 +52,7 @@ impl Position<usize> {
 }
 
 /** A gate/row/constraint consists of a type (kind), a row, the other cells its columns/cells are
-connected to (wired_to), and the selector polynomial associated with the gate. */
+connected to (`wired_to`), and the selector polynomial associated with the gate. */
 struct GateSpec<Row, Field> {
     kind: GateType,
     wired_to: Vec<Position<Row>>,
@@ -60,7 +60,7 @@ struct GateSpec<Row, Field> {
 }
 
 impl<Row, Field> GateSpec<Row, Field> {
-    /** Applies a function [f] to the [row] of [t] and all the rows of its [wired_to]. */
+    /** Applies a function [f] to the [row] of [t] and all the rows of its [`wired_to`]. */
     fn map_rows<Row2, F: Fn(Row) -> Row2>(self, f: F) -> GateSpec<Row2, Field> {
         let GateSpec {
             kind,
@@ -285,9 +285,9 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
         res
     }
 
-    /** Compute the witness, given the constraint system `sys`
-       and a function that converts the indexed secret inputs to their concrete values.
-    */
+    /// Compute the witness, given the constraint system `sys`
+    /// and a function that converts the indexed secret inputs to their concrete values.
+    ///
     /// # Panics
     ///
     /// Will panic if some inputs like `public_input_size` are unknown(None value).
@@ -368,7 +368,8 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
         self.auxiliary_input_size
     }
 
-    /** Returns the number of public inputs. */
+    /// Returns the number of public inputs.
+    ///
     /// # Panics
     ///
     /// Will panic if `public_input_size` is None.
@@ -772,6 +773,12 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
         }
     }
 
+    /// Applies the basic `SnarkyConstraint`.
+    /// Simply, place the values of `selector`(`sl`, `sr`, `so` ...) and `input`(`l`, `r`, `o`, `m`).
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `constant selector` constraints are not matching.
     #[allow(clippy::too_many_lines)]
     pub fn add_basic_snarky_constraint<Cvar>(&mut self, constraint: BasicSnarkyConstraint<Cvar>)
     where
@@ -1011,7 +1018,7 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
         }
     }
 
-    ///
+    /// Applies the `KimchiConstraint(s)` to the `circuit`.
     ///
     /// # Panics
     ///
