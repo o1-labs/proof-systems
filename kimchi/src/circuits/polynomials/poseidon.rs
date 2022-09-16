@@ -27,8 +27,8 @@
 
 use crate::{
     circuits::{
-        argument::{Argument, ArgumentType},
-        expr::{prologue::*, Cache, ConstantExpr},
+        argument::{Argument, ArgumentEnv, ArgumentType},
+        expr::{constraints::ExprOps, Cache},
         gate::{CircuitGate, CurrOrNext, GateType},
         polynomial::COLUMNS,
         wires::{GateWires, Wire},
@@ -331,7 +331,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Poseidon);
     const CONSTRAINTS: u32 = 15;
 
-    fn constraints() -> Vec<E<F>> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
         let mut res = vec![];
         let mut cache = Cache::default();
 
@@ -339,11 +339,7 @@ where
 
         //~ We define $M_{r, c}$ as the MDS matrix at row $r$ and column $c$.
         let mds: Vec<Vec<_>> = (0..SPONGE_WIDTH)
-            .map(|row| {
-                (0..SPONGE_WIDTH)
-                    .map(|col| ConstantExpr::Mds { row, col })
-                    .collect()
-            })
+            .map(|row| (0..SPONGE_WIDTH).map(|col| env.mds(row, col)).collect())
             .collect();
 
         for e in &ROUND_EQUATIONS {
@@ -355,7 +351,10 @@ where
             //~ We define the S-box operation as $w^S$ for $S$ the `SPONGE_BOX` constant.
             let sboxed: Vec<_> = round_to_cols(source)
                 .map(|i| {
-                    cache.cache(witness_curr(i).pow(PlonkSpongeConstantsKimchi::PERM_SBOX as u64))
+                    cache.cache(
+                        env.witness_curr(i)
+                            .pow(PlonkSpongeConstantsKimchi::PERM_SBOX as u64),
+                    )
                 })
                 .collect();
 
@@ -366,7 +365,7 @@ where
                 //~ |  0 |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |  9 | 10 | 11 | 12 | 13 | 14 |
                 //~ |:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
                 //~ | r0 | r1 | r2 | r3 | r4 | r5 | r6 | r7 | r8 | r9 | r10 | r11 | r12 | r13 | r14 |
-                let rc = coeff(idx);
+                let rc = env.coeff(idx);
 
                 idx += 1;
 
@@ -402,11 +401,11 @@ where
                 //~ * $w_{2, next} - [r_{14} + (M_{2, 0} w_3^S + M_{2, 1} w_4^S + M_{2, 2} w_5^S)]$
                 //~
                 //~ where $w_{i, next}$ is the polynomial $w_i(\omega x)$ which points to the next row.
-                let constraint = witness(col, target_row)
+                let constraint = env.witness(target_row, col)
                     - sboxed
                         .iter()
                         .zip(mds[j].iter())
-                        .fold(rc, |acc, (x, c)| acc + E::Constant(c.clone()) * x.clone());
+                        .fold(rc, |acc, (x, c)| acc + c.clone() * x.clone());
                 res.push(constraint);
             }
         }

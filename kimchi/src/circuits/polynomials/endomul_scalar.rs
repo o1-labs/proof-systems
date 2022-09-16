@@ -3,15 +3,15 @@
 
 use crate::{
     circuits::{
-        argument::{Argument, ArgumentType},
+        argument::{Argument, ArgumentEnv, ArgumentType},
         constraints::ConstraintSystem,
-        expr::{prologue::*, Cache},
+        expr::{constraints::ExprOps, Cache},
         gate::{CircuitGate, GateType},
         wires::COLUMNS,
     },
     curve::KimchiCurve,
 };
-use ark_ff::{BitIteratorLE, FftField, Field, PrimeField, Zero};
+use ark_ff::{BitIteratorLE, FftField, Field, PrimeField};
 use std::array;
 use std::marker::PhantomData;
 
@@ -45,11 +45,11 @@ impl<F: PrimeField> CircuitGate<F> {
     }
 }
 
-fn polynomial<F: Field>(coeffs: &[F], x: &E<F>) -> E<F> {
+fn polynomial<F: Field, T: ExprOps<F>>(coeffs: &[F], x: &T) -> T {
     coeffs
         .iter()
         .rev()
-        .fold(E::zero(), |acc, c| acc * x.clone() + E::literal(*c))
+        .fold(T::zero(), |acc, c| acc * x.clone() + T::literal(*c))
 }
 
 //~ We give constraints for the endomul scalar computation.
@@ -158,16 +158,16 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMulScalar);
     const CONSTRAINTS: u32 = 11;
 
-    fn constraints() -> Vec<E<F>> {
-        let n0 = witness_curr(0);
-        let n8 = witness_curr(1);
-        let a0 = witness_curr(2);
-        let b0 = witness_curr(3);
-        let a8 = witness_curr(4);
-        let b8 = witness_curr(5);
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+        let n0 = env.witness_curr(0);
+        let n8 = env.witness_curr(1);
+        let a0 = env.witness_curr(2);
+        let b0 = env.witness_curr(3);
+        let a8 = env.witness_curr(4);
+        let b8 = env.witness_curr(5);
 
         // x0..x7
-        let xs: [_; 8] = array::from_fn(|i| witness_curr(6 + i));
+        let xs: [_; 8] = array::from_fn(|i| env.witness_curr(6 + i));
 
         let mut cache = Cache::default();
 
@@ -179,7 +179,7 @@ where
         ];
 
         let crumb_over_x_coeffs = [-F::from(6u64), F::from(11u64), -F::from(6u64), F::one()];
-        let crumb = |x: &E<F>| polynomial(&crumb_over_x_coeffs[..], x) * x.clone();
+        let crumb = |x: &T| polynomial(&crumb_over_x_coeffs[..], x) * x.clone();
         let d_minus_c_coeffs = [-F::one(), F::from(3u64), -F::one()];
 
         let c_funcs: [_; 8] = array::from_fn(|i| cache.cache(polynomial(&c_coeffs[..], &xs[i])));
@@ -307,7 +307,7 @@ mod tests {
     use mina_curves::pasta::fp::Fp as F;
 
     /// 2/3*x^3 - 5/2*x^2 + 11/6*x
-    fn c_poly(x: F) -> F {
+    fn c_poly<F: Field>(x: F) -> F {
         let x2 = x.square();
         let x3 = x * x2;
         (F::from(2u64) / F::from(3u64)) * x3 - (F::from(5u64) / F::from(2u64)) * x2
@@ -315,7 +315,7 @@ mod tests {
     }
 
     /// -x^2 + 3x - 1
-    fn d_minus_c_poly(x: F) -> F {
+    fn d_minus_c_poly<F: Field>(x: F) -> F {
         let x2 = x.square();
         -F::one() * x2 + F::from(3u64) * x - F::one()
     }
