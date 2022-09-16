@@ -149,6 +149,28 @@ pub struct CircuitGate<F: PrimeField> {
     pub coeffs: Vec<F>,
 }
 
+/*
+impl<F> std::fmt::Debug for CircuitGate<F>
+where
+    F: PrimeField,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let coeffs: Vec<_> = self
+            .coeffs
+            .iter()
+            .map(|c| c.into_repr().to_string())
+            .collect();
+        let coeffs = if coeffs.is_empty() {
+            "".to_string()
+        } else {
+            format!("<{}>", coeffs.join(", "))
+        };
+
+        writeln!(f, "{:?}{coeffs}", self.typ)
+    }
+}
+*/
+
 impl<F: PrimeField> ToBytes for CircuitGate<F> {
     #[inline]
     fn write<W: Write>(&self, mut w: W) -> IoResult<()> {

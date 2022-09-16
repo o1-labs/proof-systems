@@ -1,3 +1,5 @@
+#![allow(clippy::all)]
+
 use crate::circuits::gate::{CircuitGate, GateType};
 use crate::circuits::polynomials::poseidon::{ROUNDS_PER_HASH, SPONGE_WIDTH};
 use crate::circuits::wires::{Wire, COLUMNS, PERMUTS};
@@ -5,15 +7,9 @@ use ark_ff::PrimeField;
 use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
 
+use super::checked_runner::WitnessGeneration;
 use super::constants::Constants;
-
-/** A gate interface, parameterized by a field. */
-pub trait GateVector<Field: PrimeField> {
-    fn create() -> Self;
-    fn add(&mut self, gate: CircuitGate<Field>);
-    fn get(&self, idx: usize) -> CircuitGate<Field>;
-    fn digest(&self) -> [u8; 32];
-}
+use super::cvar::CVar;
 
 /** A row indexing in a constraint system.
     Either a public input row, or a non-public input row that starts at index 0.
@@ -140,6 +136,7 @@ pub struct EndoscaleScalarRound<A> {
     pub x7: A,
 }
 
+// TODO: get rid of this
 pub enum BasicSnarkyConstraint<Var> {
     Boolean(Var),
     Equal(Var, Var),
@@ -202,19 +199,22 @@ enum V {
 /** Keeps track of a circuit (which is a list of gates)
   while it is being written.
 */
-enum Circuit<Field, RustGates> {
+enum Circuit<F>
+where
+    F: PrimeField,
+{
     /** A circuit still being written. */
-    Unfinalized(Vec<GateSpec<(), Field>>),
+    Unfinalized(Vec<GateSpec<(), F>>),
     /** Once finalized, a circuit is represented as a digest
         and a list of gates that corresponds to the circuit.
     */
-    Compiled([u8; 32], RustGates),
+    Compiled([u8; 32], Vec<CircuitGate<F>>),
 }
 
 /** The constraint system. */
-pub struct SnarkyConstraintSystem<Field, RustGates>
+pub struct SnarkyConstraintSystem<Field>
 where
-    Field: ark_ff::Field,
+    Field: PrimeField,
 {
     // TODO: once we have a trait we can get these via the Curve (if we parameterize SnarkyConstraintSystem on the curve)
     constants: Constants<Field>,
@@ -230,7 +230,7 @@ where
        A gate is finalized once [finalize_and_get_gates](SnarkyConstraintSystem::finalize_and_get_gates) is called.
        The finalized tag contains the digest of the circuit.
     */
-    gates: Circuit<Field, RustGates>,
+    gates: Circuit<Field>,
     /** The row to use the next time we add a constraint. */
     next_row: usize,
     /** The size of the public input (which fills the first rows of our constraint system. */
@@ -256,7 +256,15 @@ where
     union_finds: disjoint_set::DisjointSet<V>,
 }
 
-impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Gates> {
+impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
+    /** Sets the number of public-input. It must and can only be called once. */
+    pub fn set_primary_input_size(&mut self, num_pub_inputs: usize) {
+        if self.public_input_size.is_some() {
+            panic!("set_primary_input_size can only be called once");
+        }
+        self.public_input_size = Some(num_pub_inputs);
+    }
+
     /** Converts the set of permutations (equivalence_classes) to
       a hash table that maps each position to the next one.
       For example, if one of the equivalence class is [pos1, pos3, pos7],
@@ -287,7 +295,10 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
     /** Compute the witness, given the constraint system `sys`
        and a function that converts the indexed secret inputs to their concrete values.
     */
-    pub fn compute_witness<F: Fn(usize) -> Field>(&self, external_values: F) -> Vec<Vec<Field>> {
+    pub fn compute_witness<FUNC>(&self, external_values: FUNC) -> Vec<Vec<Field>>
+    where
+        FUNC: Fn(usize) -> Field,
+    {
         let mut internal_values = HashMap::new();
         let public_input_size = self.public_input_size.unwrap();
         let num_rows = public_input_size + self.next_row;
@@ -352,6 +363,7 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
             rows: Vec::new(),
             next_row: 0,
             equivalence_classes: HashMap::new(),
+            // TODO: remove this field, it's unused
             auxiliary_input_size: 0,
             pending_generic_gate: None,
             cached_constants: HashMap::new(),
@@ -446,6 +458,7 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
         let public_input_size = self.public_input_size.unwrap();
         let pub_selectors: Vec<_> = vec![
             Field::one(),
+            // TODO: unecessary
             Field::zero(),
             Field::zero(),
             Field::zero(),
@@ -501,20 +514,27 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
             |gate: GateSpec<_, _>| gate.map_rows(|row: Row| row.to_absolute(public_input_size));
 
         /* convert all the gates into our Gates.t Rust vector type */
-        let mut rust_gates = Gates::create();
+        let mut rust_gates = vec![];
         let mut add_gates = |gates: Vec<_>| {
             for gate in gates.into_iter() {
                 let g = to_absolute_row(gate);
-                rust_gates.add(g.to_rust_gate());
+                rust_gates.push(g.to_rust_gate());
             }
         };
         add_gates(public_gates);
         add_gates(gates);
 
-        self.gates = Circuit::Compiled(rust_gates.digest(), rust_gates);
+        let digest = {
+            use o1_utils::hasher::CryptoDigest as _;
+            let circuit = crate::circuits::gate::Circuit(&rust_gates);
+            circuit.digest()
+        };
+
+        self.gates = Circuit::Compiled(digest, rust_gates);
     }
 
-    pub fn finalize_and_get_gates(&mut self) -> &mut Gates {
+    // TODO: why does it return a mutable reference?
+    pub fn finalize_and_get_gates(&mut self) -> &mut Vec<CircuitGate<Field>> {
         self.finalize();
         match &mut self.gates {
             Circuit::Compiled(_, gates) => gates,
@@ -581,7 +601,7 @@ where
     Some((terms_list, num_terms, has_constant_term))
 }
 
-impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Gates> {
+impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
     /** Adds a generic constraint to the constraint system.
     As there are two generic gates per row, we queue
     every other generic gate.
@@ -1299,4 +1319,56 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
 enum ConstantOrVar {
     Constant,
     Var(V),
+}
+
+impl<F> BasicSnarkyConstraint<CVar<F>>
+where
+    F: PrimeField,
+{
+    pub fn check_constraint(&self, env: &impl WitnessGeneration<F>) {
+        match self {
+            BasicSnarkyConstraint::Boolean(v) => {
+                let v = env.read_var(v);
+                assert!(v.is_one() || v.is_zero());
+            }
+            BasicSnarkyConstraint::Equal(v1, v2) => {
+                let v1 = env.read_var(v1);
+                let v2 = env.read_var(v2);
+                assert!(v1 == v2);
+            }
+            BasicSnarkyConstraint::Square(_, _) => todo!(),
+            BasicSnarkyConstraint::R1CS(_, _, _) => todo!(),
+        }
+    }
+}
+
+impl<F> KimchiConstraint<CVar<F>, F>
+where
+    F: PrimeField,
+{
+    pub fn check_constraint(&self, witness_env: &impl WitnessGeneration<F>) {
+        match self {
+            // we only check the basic gate
+            KimchiConstraint::Basic {
+                l: (c0, l_var),
+                r: (c1, r_var),
+                o: (c2, o_var),
+                m: c3,
+                c: c4,
+            } => {
+                let l = witness_env.read_var(l_var);
+                let r = witness_env.read_var(r_var);
+                let o = witness_env.read_var(o_var);
+                let res = l + r + o + l * r * c3 + c4;
+                assert!(res.is_zero());
+            }
+
+            // we trust the witness generation to be correct for other gates
+            KimchiConstraint::Poseidon { .. }
+            | KimchiConstraint::EcAddComplete { .. }
+            | KimchiConstraint::EcScale { .. }
+            | KimchiConstraint::EcEndoscale { .. }
+            | KimchiConstraint::EcEndoscalar { .. } => (),
+        }
+    }
 }

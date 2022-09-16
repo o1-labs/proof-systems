@@ -1,0 +1,103 @@
+# Vars
+
+In this section we will introduce two types of variables:
+
+* Circuit vars, or `CVar`s, which are low-level variables representing field elements.
+* Snarky vars, which are high-level variables that user can use to create more meaningful programs.
+
+## Circuit vars
+
+In snarky, we first define circuit variables (TODO: rename Field variable?) which represent field elements in a circuit.
+These circuit variables, or cvars, can be represented differently in the system:
+
+```rust
+pub enum CVar<F>
+where
+    F: PrimeField,
+{
+    /// A constant.
+    Constant(F),
+
+    /// A variable that can be refered to via a `usize`.
+    Var(usize),
+
+    /// The addition of two other [CVar]s.
+    Add(Box<CVar<F>>, Box<CVar<F>>),
+
+    /// Scaling of a [CVar].
+    Scale(F, Box<CVar<F>>),
+}
+```
+
+### Constants
+
+Note that a cvar does not represent a value that has been constrained in the circuit (yet).
+This is why we need to know if a cvar is a constant, so that we can avoid constraining it too early. 
+For example, the following code does not encode 2 or 1 in the circuit, but will encode 3:
+
+```rust
+let x: CVar = state.exists(|_| 2) + state.exists(|_| 3);
+state.assert_eq(x, y); // 3 and y will be encoded in the circuit
+```
+
+whereas the following code will encode all variables:
+
+```rust
+let x = y + y;
+let one: CVar = state.exists(|_| 1);
+assert_eq(x, one);
+```
+
+### Non-constants
+
+A `CVar` is always constructed by `compute()` (perhaps behind the scene after calling a function like `poseidon`).
+Right after being created, a `CVar` is not constrained yet, and needs to be constrained by the application.
+That is unless the application wants the `CVar` to be a constant that will not need to be constrained (see previous example) or because the application wants the `CVar` to be a random value (unlikely) (TODO: we should add a "rand" function for that).
+
+In any case, a CVar which is not a constant has a value that is not known yet at circuit-generation time.
+In some situations, we might not want to constrain the 
+
+## Snarky vars
+
+Handling `CVar`s can be constraining, as they can only represent field elements.
+We might want to represent values that are either in a smaller range (e.g. [booleans](./booleans.md)) or that are made out of several `CVar`s.
+
+For this, snarky's API exposes the following trait, which allows users to define their own types:
+
+```rust
+pub trait SnarkyType<F>: Sized
+where
+    F: PrimeField,
+{
+    /// ?
+    type Auxiliary;
+
+    /// The equivalent type outside of the circuit.
+    type OutOfCircuit;
+
+    const SIZE_IN_FIELD_ELEMENTS: usize;
+
+    fn to_cvars(&self) -> (Vec<CVar<F>>, Self::Auxiliary);
+
+    fn from_cvars_unsafe(cvars: Vec<CVar<F>>, aux: Self::Auxiliary) -> Self;
+
+    fn check(&self, cs: &mut RunState<F>);
+
+    fn deserialize(&self) -> (Self::OutOfCircuit, Self::Auxiliary);
+
+    fn serialize(out_of_circuit: Self::OutOfCircuit, aux: Self::Auxiliary) -> Self;
+
+    fn constraint_system_auxiliary() -> Self::Auxiliary;
+
+    fn value_to_field_elements(x: &Self::OutOfCircuit) -> (Vec<F>, Self::Auxiliary);
+
+    fn value_of_field_elements(x: (Vec<F>, Self::Auxiliary)) -> Self::OutOfCircuit;
+}
+```
+
+Such types are always handled as `OutOfCircuit` types by the users, and as `Self` by snarky.
+Thus, the user can pass them to snarky in two ways:
+
+**As public inputs**. In this case they will be serialized into field elements for snarky before [witness-generation](./witness-generation.md) (via the `value_to_field_elements()` function)
+
+**As private inputs**. In this case, they must be created using the `compute()` function with a closure returning an `OutOfCircuit` value by the user. The call to `compute()` will need to have some type hint, for snarky to understand what `SnarkyType` it is creating. (Without that, it wouldn't understand if a value of type `Field`, for example, has to be converted to a `CVar` or to something else.)

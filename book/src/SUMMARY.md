@@ -43,6 +43,15 @@
     - [Permutation](./kimchi/permut.md)
     - [Lookup](./kimchi/lookup.md)
 
+# Snarky
+
+- [Overview](./snarky/overview.md)
+- [Kimchi backend](./snarky/kimchi-backend.md)
+- [Vars](./snarky/vars.md)
+- [Booleans](./snarky/booleans.md)
+- [Circuit generation](./snarky/circuit-generation.md)
+- [Witness generation](./snarky/witness-generation.md)
+
 # Pickles & Inductive Proof Systems
 
 - [Overview](./fundamentals/zkbook_ips.md)
