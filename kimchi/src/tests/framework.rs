@@ -57,6 +57,7 @@ impl TestFramework {
         self.gates = Some(gates);
         self
     }
+
     #[must_use]
     pub(crate) fn witness(mut self, witness: [Vec<Fp>; COLUMNS]) -> Self {
         self.witness = Some(witness);

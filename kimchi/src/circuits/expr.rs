@@ -2006,6 +2006,7 @@ impl<F: Field> Mul<F> for Expr<ConstantExpr<F>> {
 //
 // Display
 //
+
 impl<F: PrimeField> ConstantExpr<F> {
     fn ocaml(&self) -> String {
         use ConstantExpr::*;

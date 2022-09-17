@@ -422,7 +422,6 @@ pub mod testing {
     /// # Panics
     ///
     /// Will panic if `gates_row` is None.
-
     pub fn create_circuit<F: PrimeField>(start_row: usize, public: usize) -> Vec<CircuitGate<F>> {
         // create constraint system with a single generic gate
         let mut gates = vec![];

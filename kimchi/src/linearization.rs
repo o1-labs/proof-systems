@@ -144,7 +144,7 @@ pub fn expr_linearization<F: FftField + SquareRootField>(
     let linearization = expr
         .linearize(evaluated_cols)
         .unwrap()
-        .map(|x| x.to_polish());
+        .map(|e| e.to_polish());
 
     (linearization, powers_of_alpha)
 }

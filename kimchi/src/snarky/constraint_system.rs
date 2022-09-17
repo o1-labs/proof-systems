@@ -88,7 +88,7 @@ impl<Field: PrimeField> GateSpec<usize, Field> {
         let wires: Vec<_> = wired_to
             .into_iter()
             .take(PERMUTS)
-            .map(Position::to_rust_wire)
+            .map(|x| x.to_rust_wire())
             .collect();
         CircuitGate {
             typ: kind,
@@ -666,7 +666,6 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
       It returns the output variable as (1, `Var res),
       unless the output is a constant, in which case it returns (c, `Constant).
     */
-
     fn reduce_lincom<Cvar>(&mut self, x: Cvar) -> (Field, ConstantOrVar)
     where
         Cvar: SnarkyCvar<Field = Field>,

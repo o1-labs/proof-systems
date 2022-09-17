@@ -405,7 +405,7 @@ impl LookupPattern {
     /// Returns the lookup pattern used by a [`GateType`] on a given row (current or next).
     pub fn from_gate(gate_type: GateType, curr_or_next: CurrOrNext) -> Option<Self> {
         use CurrOrNext::{Curr, Next};
-        use GateType::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal, Lookup, RangeCheck0, RangeCheck1};
+        use GateType::*;
         match (gate_type, curr_or_next) {
             (ChaCha0 | ChaCha1 | ChaCha2, Curr | Next) => Some(LookupPattern::ChaCha),
             (ChaChaFinal, Curr | Next) => Some(LookupPattern::ChaChaFinal),
