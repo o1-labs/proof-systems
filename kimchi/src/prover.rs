@@ -600,10 +600,7 @@ where
         let lagrange = index.cs.evaluate(&witness_poly, &z_poly);
         let env = {
             let mut index_evals = HashMap::new();
-            use GateType::{
-                ChaCha0, ChaCha1, ChaCha2, ChaChaFinal, CompleteAdd, EndoMul, EndoMulScalar,
-                Poseidon, VarBaseMul,
-            };
+            use GateType::*;
             index_evals.insert(Poseidon, &index.cs.ps8);
             index_evals.insert(CompleteAdd, &index.cs.complete_addl4);
             index_evals.insert(VarBaseMul, &index.cs.mull8);

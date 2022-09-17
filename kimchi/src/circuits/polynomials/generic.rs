@@ -314,10 +314,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
 // -------------------------------------------------
 
 pub mod testing {
-    use super::{
-        array, CircuitGate, ConstraintSystem, DensePolynomial, FftField, GateType, GenericGateSpec,
-        PrimeField, Zero, COLUMNS, GENERIC_COEFFS, GENERIC_REGISTERS,
-    };
+    use super::*;
     use crate::circuits::wires::Wire;
     use itertools::iterate;
 

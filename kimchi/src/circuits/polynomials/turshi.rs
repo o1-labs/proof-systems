@@ -274,7 +274,7 @@ impl<F: PrimeField> CircuitGate<F> {
 }
 
 pub mod witness {
-    use super::{CairoInstruction, CairoProgram, Field, FlagBits, Offsets, Pointers, COLUMNS};
+    use super::*;
 
     /// Returns the witness of an execution of a Cairo program in `CircuitGate` format
     pub fn cairo_witness<F: Field>(prog: &CairoProgram<F>) -> [Vec<F>; COLUMNS] {
@@ -425,7 +425,7 @@ pub mod witness {
 }
 
 pub mod testing {
-    use super::{array, CircuitGate, FftField, GateType, PrimeField, COLUMNS, NUM_FLAGS};
+    use super::*;
 
     /// verifies that the Cairo gate constraints are solved by the witness depending on its type
     ///

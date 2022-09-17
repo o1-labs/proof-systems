@@ -1640,10 +1640,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
             h
         };
         let constant = |e: Expr<F>| sing(vec![], e);
-        use Expr::{
-            BinOp, Cache, Cell, Constant, Double, Pow, Square, UnnormalizedLagrangeBasis,
-            VanishesOnLast4Rows,
-        };
+        use Expr::*;
 
         if self.is_constant(ev) {
             return constant(self.clone());
@@ -2013,9 +2010,7 @@ impl<F: Field> Mul<F> for Expr<ConstantExpr<F>> {
 
 impl<F: PrimeField> ConstantExpr<F> {
     fn ocaml(&self) -> String {
-        use ConstantExpr::{
-            Add, Alpha, Beta, EndoCoefficient, Gamma, JointCombiner, Literal, Mds, Mul, Pow, Sub,
-        };
+        use ConstantExpr::*;
         match self {
             Alpha => "alpha".to_string(),
             Beta => "beta".to_string(),
@@ -2035,9 +2030,7 @@ impl<F: PrimeField> ConstantExpr<F> {
     }
 
     fn latex(&self) -> String {
-        use ConstantExpr::{
-            Add, Alpha, Beta, EndoCoefficient, Gamma, JointCombiner, Literal, Mds, Mul, Pow, Sub,
-        };
+        use ConstantExpr::*;
         match self {
             Alpha => "\\alpha".to_string(),
             Beta => "\\beta".to_string(),
@@ -2353,7 +2346,7 @@ pub fn coeff<F>(i: usize) -> E<F> {
 
 /// You can import this module like `use kimchi::circuits::expr::prologue::*` to obtain a number of handy aliases and helpers
 pub mod prologue {
-    pub use super::{coeff, constant, index, witness, witness_curr, witness_next, E};
+    pub use super::*;
 }
 
 #[cfg(test)]

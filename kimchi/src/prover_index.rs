@@ -141,7 +141,7 @@ impl<G: KimchiCurve> ProverIndex<G> {
 }
 
 pub mod testing {
-    use super::{Arc, ConstraintSystem, EvaluationDomain, ProverIndex, SRS};
+    use super::*;
     use crate::circuits::{
         gate::CircuitGate,
         lookup::{runtime_tables::RuntimeTableCfg, tables::LookupTable},
