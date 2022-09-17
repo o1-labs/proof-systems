@@ -480,7 +480,6 @@ pub mod caml {
 
 #[cfg(test)]
 mod tests {
-    use crate::circuits::wires::PERMUTS;
 
     use super::*;
     use ark_ff::UniformRand as _;
