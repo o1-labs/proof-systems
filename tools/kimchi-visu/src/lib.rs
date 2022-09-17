@@ -57,7 +57,6 @@ where
 }
 
 ///
-
 pub fn latex_constraints<G>() -> HashMap<&'static str, Vec<Vec<String>>>
 where
     G: CommitmentCurve,

@@ -71,7 +71,6 @@ pub const STATE_ORDER: [usize; ROUNDS_PER_ROW] = [
 
 /// Given a Poseidon round from 0 to 4 (inclusive),
 /// returns the columns (as a range) that are used in this round.
-
 pub const fn round_to_cols(i: usize) -> Range<usize> {
     let slot = STATE_ORDER[i];
     let start = slot * SPONGE_WIDTH;
@@ -97,7 +96,6 @@ impl<F: PrimeField> CircuitGate<F> {
     /// - the first and last rows' wires (because they are used in the permutation)
     /// - the round constants
     /// The function returns a set of gates, as well as the next pointer to the circuit (next empty absolute row)
-
     pub fn create_poseidon_gadget(
         // the absolute row in the circuit
         row: usize,
@@ -207,7 +205,6 @@ impl<F: PrimeField> CircuitGate<F> {
     }
 
     /// round constant that are relevant for this specific gate
-
     pub fn rc(&self) -> [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW] {
         std::array::from_fn(|round| {
             std::array::from_fn(|col| {

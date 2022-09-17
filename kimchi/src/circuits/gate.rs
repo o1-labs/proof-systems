@@ -1,4 +1,5 @@
 //! This module implements Plonk constraint gate primitive.
+
 use crate::{
     circuits::{
         argument::{Argument, ArgumentEnv},
@@ -480,7 +481,6 @@ pub mod caml {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
     use ark_ff::UniformRand as _;
     use mina_curves::pasta::Fp;

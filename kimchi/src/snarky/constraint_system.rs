@@ -777,7 +777,6 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
     /// # Panics
     ///
     /// Will panic if `constant selector` constraints are not matching.
-
     pub fn add_basic_snarky_constraint<Cvar>(&mut self, constraint: BasicSnarkyConstraint<Cvar>)
     where
         Cvar: SnarkyCvar<Field = Field>,
@@ -1021,7 +1020,6 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
     /// # Panics
     ///
     /// Will panic if `witness` fields are empty.
-
     pub fn add_constraint<Cvar>(&mut self, constraint: KimchiConstraint<Cvar, Field>)
     where
         Cvar: SnarkyCvar<Field = Field>,

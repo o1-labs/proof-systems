@@ -23,7 +23,6 @@ where
 {
     /// Creates a new witness with `rows` rows.
     // TODO: deprecate this
-
     pub fn new(rows: usize) -> Self {
         Witness {
             inner: array::from_fn(|_| vec![F::zero(); rows]),
@@ -32,7 +31,6 @@ where
 
     /// Returns the inner witness.
     // TODO: deprecate this
-
     pub fn inner(self) -> [Vec<F>; COLUMNS] {
         self.inner
     }

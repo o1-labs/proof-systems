@@ -559,10 +559,7 @@ where
                     PolishToken::evaluate(tokens, index.domain, oracles.zeta, &evals, &constants)
                         .expect("should evaluate");
 
-                use Column::{
-                    Coefficient, Index, LookupAggreg, LookupKindIndex, LookupRuntimeSelector,
-                    LookupRuntimeTable, LookupSorted, LookupTable, Witness, Z,
-                };
+                use Column::*;
                 match col {
                     Witness(i) => {
                         scalars.push(scalar);
@@ -625,11 +622,7 @@ where
                         panic!("runtime lookup table is unused in the linearization")
                     }
                     Index(t) => {
-                        use GateType::{
-                            CairoClaim, CairoFlags, CairoInstruction, CairoTransition, ChaCha0,
-                            ChaCha1, ChaCha2, ChaChaFinal, CompleteAdd, EndoMul, EndoMulScalar,
-                            Generic, Lookup, Poseidon, RangeCheck0, RangeCheck1, VarBaseMul, Zero,
-                        };
+                        use GateType::*;
                         let c = match t {
                             Zero | Generic | Lookup => {
                                 panic!("Selector for {:?} not defined", t)

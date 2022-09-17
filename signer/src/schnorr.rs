@@ -136,7 +136,6 @@ impl<H: 'static + Hashable> Schnorr<H> {
     /// randomly distributed scalar field element.  It uses Mina's variant of the Poseidon
     /// SNARK-friendly cryptographic hash function.
     /// Details: <https://github.com/o1-labs/cryptography-rfcs/blob/httpsnapps-notary-signatures/mina/001-poseidon-sponge.md>
-
     fn message_hash(&mut self, pub_key: &PubKey, rx: BaseField, input: &H) -> ScalarField {
         let schnorr_input = Message::<H> {
             input: input.clone(),

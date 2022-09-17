@@ -154,7 +154,6 @@ pub mod testing {
     /// # Panics
     ///
     /// Will panic if `constraint system` is not built with `gates` input.
-
     pub fn new_index_for_test_with_lookups(
         gates: Vec<CircuitGate<Fp>>,
         public: usize,

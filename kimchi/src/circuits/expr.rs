@@ -2120,10 +2120,7 @@ where
     }
 
     fn latex(&self, cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>>>) -> String {
-        use Expr::{
-            BinOp, Cache, Cell, Constant, Double, Pow, Square, UnnormalizedLagrangeBasis,
-            VanishesOnLast4Rows,
-        };
+        use Expr::*;
         match self {
             Double(x) => format!("2 ({})", x.latex(cache)),
             Constant(x) => x.latex(),

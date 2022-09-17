@@ -32,7 +32,6 @@ where
     F: FftField,
 {
     /// Return true if the table has an entry containing all zeros.
-
     pub fn has_zero_entry(&self) -> bool {
         // reminder: a table is written as a list of columns,
         // not as a list of row entries.
@@ -49,20 +48,17 @@ where
     }
 
     /// Returns the length of the table.
-
     pub fn len(&self) -> usize {
         self.data[0].len()
     }
 
     /// Returns `true` if the lookup table is empty, `false` otherwise.
-
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
     }
 }
 
 /// Returns the lookup table associated to a [`GateLookupTable`].
-
 pub fn get_table<F: FftField>(table_name: GateLookupTable) -> LookupTable<F> {
     match table_name {
         GateLookupTable::Xor => xor::xor_table(),

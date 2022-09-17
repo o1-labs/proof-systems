@@ -198,6 +198,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
     /// Will give error if `polynomial division` fails.
     ///
     /// # Panics
+    ///
     /// Will panic if `power of alpha` is missing.
     #[allow(clippy::type_complexity)]
     pub fn perm_quot(
@@ -381,6 +382,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
     /// Will give error if permutation result is not correct.
     ///
     /// # Panics
+    ///
     /// Will panic if `first element` is not 1.
     pub fn perm_aggreg(
         &self,

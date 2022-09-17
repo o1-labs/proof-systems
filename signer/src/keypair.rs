@@ -37,7 +37,6 @@ pub struct Keypair {
 impl Keypair {
     /// Create a keypair from scalar field `secret` element and curve point `public`
     /// Note: Does not check point `public` is on curve
-
     pub fn from_parts_unsafe(secret: ScalarField, public: CurvePoint) -> Self {
         Self {
             secret: SecKey::new(secret),
@@ -80,7 +79,6 @@ impl Keypair {
     }
 
     /// Obtain the Mina address corresponding to the keypair's public key
-
     pub fn get_address(self) -> String {
         self.public.into_address()
     }

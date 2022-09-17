@@ -16,7 +16,6 @@ pub struct Signature {
 
 impl Signature {
     /// Create a new signature
-
     pub fn new(rx: BaseField, s: ScalarField) -> Self {
         Self { rx, s }
     }

@@ -106,7 +106,6 @@ pub const CIRCUIT_GATE_COUNT: usize = 4;
 
 impl<F: PrimeField> CircuitGate<F> {
     /// This function creates a `CairoClaim` gate
-
     pub fn create_cairo_claim(wires: GateWires) -> Self {
         CircuitGate {
             typ: GateType::CairoClaim,
@@ -115,7 +114,6 @@ impl<F: PrimeField> CircuitGate<F> {
         }
     }
     /// This function creates a `CairoInstruction` gate
-
     pub fn create_cairo_instruction(wires: GateWires) -> Self {
         CircuitGate {
             typ: GateType::CairoInstruction,
@@ -125,7 +123,6 @@ impl<F: PrimeField> CircuitGate<F> {
     }
 
     /// This function creates a `CairoFlags` gate
-
     pub fn create_cairo_flags(wires: GateWires) -> Self {
         CircuitGate {
             typ: GateType::CairoFlags,
@@ -135,7 +132,6 @@ impl<F: PrimeField> CircuitGate<F> {
     }
 
     /// This function creates a `CairoTransition` gate
-
     pub fn create_cairo_transition(wires: GateWires) -> Self {
         CircuitGate {
             typ: GateType::CairoTransition,
@@ -146,7 +142,6 @@ impl<F: PrimeField> CircuitGate<F> {
 
     /// Gadget generator of the whole cairo circuits from an absolute row and number of instructions
     /// Returns a vector of gates, and the next available row after the gadget
-
     pub fn create_cairo_gadget(
         // the absolute row in the circuit
         row: usize,
@@ -761,7 +756,6 @@ fn two<F: Field, T: ExprOps<F>>() -> T {
 /// # Panics
 ///
 /// Will panic if the `typ` is not `Cairo`-related gate type or `zero` gate type.
-
 pub fn circuit_gate_combined_constraints<F: FftField>(typ: GateType, alphas: &Alphas<F>) -> E<F> {
     match typ {
         GateType::CairoClaim => Claim::combined_constraints(alphas),

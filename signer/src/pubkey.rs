@@ -54,7 +54,6 @@ pub struct PubKey(CurvePoint);
 impl PubKey {
     /// Create a public key from curve point
     /// Note: Does not check point is on curve
-
     pub fn from_point_unsafe(point: CurvePoint) -> Self {
         Self(point)
     }
@@ -118,7 +117,6 @@ impl PubKey {
     }
 
     /// Convert public key into compressed public key
-
     pub fn into_compressed(&self) -> CompressedPubKey {
         let point = self.0;
         CompressedPubKey {
@@ -128,7 +126,6 @@ impl PubKey {
     }
 
     /// Serialize public key into corresponding Mina address
-
     pub fn into_address(&self) -> String {
         let point = self.point();
         into_address(&point.x, point.y.into_repr().is_odd())
@@ -180,7 +177,6 @@ fn into_address(x: &BaseField, is_odd: bool) -> String {
 
 impl CompressedPubKey {
     /// Serialize compressed public key into corresponding Mina address
-
     pub fn into_address(&self) -> String {
         into_address(&self.x, self.is_odd)
     }
@@ -196,7 +192,6 @@ impl CompressedPubKey {
 
     /// The empty [`CompressedPubKey`] value that is used as `public_key` in empty account
     /// and [None] value for calculating the hash of [Option<CompressedPubKey>], etc.
-
     pub fn empty() -> Self {
         Self {
             x: BaseField::zero(),

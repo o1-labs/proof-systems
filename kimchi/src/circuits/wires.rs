@@ -28,7 +28,6 @@ pub struct Wire {
 
 impl Wire {
     /// Creates a new set of wires for a given row.
-
     pub fn new(row: usize) -> [Self; PERMUTS] {
         array::from_fn(|col| Self { row, col })
     }

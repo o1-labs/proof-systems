@@ -22,7 +22,6 @@ pub struct CopyWitnessCell {
 
 impl CopyWitnessCell {
     /// Create a copy witness cell
-
     pub const fn create(row: usize, col: usize) -> WitnessCell {
         WitnessCell::Copy(CopyWitnessCell { row, col })
     }
@@ -33,7 +32,6 @@ pub struct ValueWitnessCell;
 
 impl ValueWitnessCell {
     /// Create a value witness cell
-
     pub const fn create() -> WitnessCell {
         WitnessCell::Value
     }
@@ -50,7 +48,6 @@ pub struct LimbWitnessCell {
 impl LimbWitnessCell {
     /// Creates a limb witness cell.
     /// Params: source (row, col), starting bit offset and ending bit offset (exclusive)
-
     pub const fn create(row: usize, col: usize, start: usize, end: usize) -> WitnessCell {
         WitnessCell::Limb(LimbWitnessCell {
             row,
@@ -66,7 +63,6 @@ pub struct ZeroWitnessCell;
 
 impl ZeroWitnessCell {
     /// Create a zero witness cell
-
     pub const fn create() -> WitnessCell {
         WitnessCell::Zero
     }

@@ -305,11 +305,10 @@ pub mod testing {
     use super::{FftField, GateType};
 
     /// This is just for tests. It doesn't set up the permutations
-
     pub fn chacha20_gates() -> Vec<GateType> {
         let mut gs = vec![];
         for _ in 0..20 {
-            use GateType::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal, Zero};
+            use GateType::*;
             for _ in 0..4 {
                 for &g in &[ChaCha0, ChaCha1, ChaCha2, ChaCha0, ChaChaFinal] {
                     gs.push(g);

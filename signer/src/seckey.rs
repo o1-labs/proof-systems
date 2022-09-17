@@ -17,19 +17,16 @@ impl SecKey {
     }
 
     /// Create a secret key from scalar field element
-
     pub fn new(scalar: ScalarField) -> Self {
         Self(scalar)
     }
 
     /// Borrows secret key as scalar field element
-
     pub fn scalar(&self) -> &ScalarField {
         &self.0
     }
 
     /// Convert secret key into scalar field element
-
     pub fn into_scalar(self) -> ScalarField {
         self.0
     }
