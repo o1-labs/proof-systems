@@ -1583,7 +1583,6 @@ impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
 
 impl<F: One> Expr<F> {
     /// Exponentiate an expression
-
     pub fn pow(self, p: u64) -> Self {
         use Expr::*;
         if p == 0 {
@@ -2007,7 +2006,6 @@ impl<F: Field> Mul<F> for Expr<ConstantExpr<F>> {
 //
 // Display
 //
-
 impl<F: PrimeField> ConstantExpr<F> {
     fn ocaml(&self) -> String {
         use ConstantExpr::*;
@@ -2174,15 +2172,12 @@ pub mod constraints {
         Self: std::marker::Sized,
     {
         /// Double the value
-
         fn double(&self) -> Self;
 
         /// Compute the square of this value
-
         fn square(&self) -> Self;
 
         /// Raise the value to the given power
-
         fn pow(&self, p: u64) -> Self;
 
         /// Constrain to boolean
@@ -2317,25 +2312,21 @@ pub fn constant<F>(x: F) -> E<F> {
 }
 
 /// Helper function to quickly create an expression for a witness.
-
 pub fn witness<F>(i: usize, row: CurrOrNext) -> E<F> {
     E::<F>::cell(Column::Witness(i), row)
 }
 
 /// Same as [witness] but for the current row.
-
 pub fn witness_curr<F>(i: usize) -> E<F> {
     witness(i, CurrOrNext::Curr)
 }
 
 /// Same as [witness] but for the next row.
-
 pub fn witness_next<F>(i: usize) -> E<F> {
     witness(i, CurrOrNext::Next)
 }
 
 /// Handy function to quickly create an expression for a gate.
-
 pub fn index<F>(g: GateType) -> E<F> {
     E::<F>::cell(Column::Index(g), CurrOrNext::Curr)
 }
@@ -2346,7 +2337,7 @@ pub fn coeff<F>(i: usize) -> E<F> {
 
 /// You can import this module like `use kimchi::circuits::expr::prologue::*` to obtain a number of handy aliases and helpers
 pub mod prologue {
-    pub use super::*;
+    pub use super::{coeff, constant, index, witness, witness_curr, witness_next, E};
 }
 
 #[cfg(test)]

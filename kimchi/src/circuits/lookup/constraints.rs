@@ -1,9 +1,6 @@
 use crate::{
     circuits::{
-        expr::{
-            prologue::{witness, E},
-            Column, ConstantExpr,
-        },
+        expr::{prologue::*, Column, ConstantExpr},
         gate::{CircuitGate, CurrOrNext},
         lookup::lookups::{
             JointLookup, JointLookupSpec, JointLookupValue, LocalPosition, LookupInfo, LookupsUsed,

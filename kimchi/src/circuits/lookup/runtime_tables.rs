@@ -3,7 +3,7 @@
 //! At proving time, the prover can use [`RuntimeTable`] to specify the actual tables.
 
 use crate::circuits::{
-    expr::{prologue::E, Column},
+    expr::{prologue::*, Column},
     gate::CurrOrNext,
 };
 use ark_ff::Field;

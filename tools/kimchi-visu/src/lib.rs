@@ -44,10 +44,7 @@ where
     F: PrimeField,
 {
     fn latex() -> Vec<Vec<String>> {
-        Self::constraints()
-            .iter()
-            .map(kimchi::circuits::expr::Expr::latex_str)
-            .collect()
+        Self::constraints().iter().map(|c| c.latex_str()).collect()
     }
 }
 

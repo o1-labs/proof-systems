@@ -147,11 +147,6 @@ where
     /// # Panics
     ///
     /// Will panic if `lookup_context.joint_lookup_table_d8` is None.
-    #[allow(
-        clippy::needless_pass_by_value,
-        clippy::too_many_lines,
-        clippy::cast_possible_truncation
-    )]
     pub fn create_recursive<
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
         EFrSponge: FrSponge<G::ScalarField>,

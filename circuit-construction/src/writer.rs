@@ -788,7 +788,7 @@ pub trait Cs<F: PrimeField> {
                                         // Do one full round on the previous value
                                         let mut acc = states[states.len() - 1]
                                             .iter()
-                                            .map(crate::writer::Var::val)
+                                            .map(|x| x.val())
                                             .collect();
                                         full_round::<F, PlonkSpongeConstantsKimchi>(
                                             params,

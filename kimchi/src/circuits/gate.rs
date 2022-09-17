@@ -1,5 +1,4 @@
 //! This module implements Plonk constraint gate primitive.
-
 use crate::{
     circuits::{
         argument::{Argument, ArgumentEnv},
@@ -43,7 +42,6 @@ impl CurrOrNext {
     /// Compute the offset corresponding to the `CurrOrNext` value.
     /// - `Curr.shift() == 0`
     /// - `Next.shift() == 1`
-
     pub fn shift(&self) -> usize {
         match self {
             CurrOrNext::Curr => 0,
@@ -191,7 +189,6 @@ impl<F: PrimeField> ToBytes for CircuitGate<F> {
 
 impl<F: PrimeField> CircuitGate<F> {
     /// this function creates "empty" circuit gate
-
     pub fn zero(wires: GateWires) -> Self {
         CircuitGate {
             typ: GateType::Zero,
@@ -213,11 +210,7 @@ impl<F: PrimeField> CircuitGate<F> {
         cs: &ConstraintSystem<F>,
         public: &[F],
     ) -> Result<(), String> {
-        use GateType::{
-            CairoClaim, CairoFlags, CairoInstruction, CairoTransition, ChaCha0, ChaCha1, ChaCha2,
-            ChaChaFinal, CompleteAdd, EndoMul, EndoMulScalar, Generic, Lookup, Poseidon,
-            RangeCheck0, RangeCheck1, VarBaseMul, Zero,
-        };
+        use GateType::*;
         match self.typ {
             Zero => Ok(()),
             Generic => self.verify_generic(row, witness, public),

@@ -62,6 +62,7 @@ impl TestFramework {
         self
     }
 
+    #[must_use]
     pub(crate) fn public_inputs(mut self, public_inputs: Vec<Fp>) -> Self {
         self.public_inputs = public_inputs;
         self
