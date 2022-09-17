@@ -1583,6 +1583,7 @@ impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
 
 impl<F: One> Expr<F> {
     /// Exponentiate an expression
+    #[must_use]
     pub fn pow(self, p: u64) -> Self {
         use Expr::*;
         if p == 0 {
@@ -2077,10 +2078,7 @@ where
     /// Recursively print the expression,
     /// except for the cached expression that are stored in the `cache`.
     fn ocaml(&self, cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>>>) -> String {
-        use Expr::{
-            BinOp, Cache, Cell, Constant, Double, Pow, Square, UnnormalizedLagrangeBasis,
-            VanishesOnLast4Rows,
-        };
+        use Expr::*;
         match self {
             Double(x) => format!("double({})", x.ocaml(cache)),
             Constant(x) => x.ocaml(),

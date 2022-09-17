@@ -350,6 +350,7 @@ pub struct VarbaseMulResult<F> {
     pub acc: (F, F),
     pub n: F,
 }
+
 /// Apply the `witness` value.
 ///
 /// # Panics
