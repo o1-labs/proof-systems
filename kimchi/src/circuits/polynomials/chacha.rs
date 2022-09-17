@@ -305,7 +305,7 @@ pub mod testing {
     use super::{FftField, GateType};
 
     /// This is just for tests. It doesn't set up the permutations
-    #[must_use]
+
     pub fn chacha20_gates() -> Vec<GateType> {
         let mut gs = vec![];
         for _ in 0..20 {
@@ -332,7 +332,6 @@ pub mod testing {
         [3, 4, 9, 14],
     ];
 
-    #[must_use]
     pub fn chacha20_rows<F: FftField>(s0: Vec<u32>) -> Vec<Vec<F>> {
         let mut rows = vec![];
 
@@ -444,7 +443,6 @@ pub mod testing {
         rows
     }
 
-    #[must_use]
     pub fn chacha20(mut s: Vec<u32>) -> Vec<u32> {
         let mut line = |x, y, z, k| {
             s[x] = u32::wrapping_add(s[x], s[z]);

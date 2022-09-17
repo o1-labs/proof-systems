@@ -65,7 +65,6 @@ pub const DOUBLE_GENERIC_REGISTERS: usize = GENERIC_REGISTERS * 2;
 
 /// The different type of computation that are possible with a generic gate.
 /// This type is useful to create a generic gate via the [`CircuitGate::create_generic_gadget`] function.
-#[allow(clippy::module_name_repetitions)]
 pub enum GenericGateSpec<F> {
     /// Add two values.
     Add {
@@ -101,7 +100,6 @@ impl<F: PrimeField> CircuitGate<F> {
 
     /// This allows you to create two generic gates by passing the desired
     /// `gate1` and `gate2` as two [`GenericGateSpec`].
-    #[allow(clippy::needless_pass_by_value)]
     pub fn create_generic_gadget(
         wires: GateWires,
         gate1: GenericGateSpec<F>,
@@ -427,7 +425,7 @@ pub mod testing {
     /// # Panics
     ///
     /// Will panic if `gates_row` is None.
-    #[must_use]
+
     pub fn create_circuit<F: PrimeField>(start_row: usize, public: usize) -> Vec<CircuitGate<F>> {
         // create constraint system with a single generic gate
         let mut gates = vec![];

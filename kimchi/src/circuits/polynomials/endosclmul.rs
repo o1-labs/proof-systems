@@ -113,7 +113,6 @@ use std::marker::PhantomData;
 /// Implementation of group endomorphism optimised
 /// variable base scalar multiplication custom Plonk constraints.
 impl<F: PrimeField> CircuitGate<F> {
-    #[must_use]
     pub fn create_endomul(wires: GateWires) -> Self {
         CircuitGate {
             typ: GateType::EndoMul,
@@ -169,7 +168,6 @@ impl<F: PrimeField> CircuitGate<F> {
         Ok(())
     }
 
-    #[must_use]
     pub fn endomul(&self) -> F {
         if self.typ == GateType::EndoMul {
             F::one()

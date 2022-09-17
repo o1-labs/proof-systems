@@ -8,7 +8,6 @@ use once_cell::sync::Lazy;
 use oracle::poseidon::ArithmeticSpongeParams;
 
 ///Represents additional information that a curve needs in order to be used with Kimchi
-#[allow(clippy::module_name_repetitions)]
 pub trait KimchiCurve: CommitmentCurve {
     /// The other curve that forms the cycle used for recursion
     type OtherCurve: KimchiCurve<

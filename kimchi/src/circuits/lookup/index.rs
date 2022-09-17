@@ -199,7 +199,6 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
     /// # Errors
     ///
     /// Will give error if inputs validation do not match.
-    #[allow(clippy::cast_possible_truncation, clippy::too_many_lines)]
     pub fn create(
         gates: &[CircuitGate<F>],
         lookup_tables: Vec<LookupTable<F>>,

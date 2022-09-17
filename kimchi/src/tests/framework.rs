@@ -52,37 +52,31 @@ pub(crate) struct TestFramework {
 pub(crate) struct TestRunner(TestFramework);
 
 impl TestFramework {
-    #[must_use]
     pub(crate) fn gates(mut self, gates: Vec<CircuitGate<Fp>>) -> Self {
         self.gates = Some(gates);
         self
     }
 
-    #[must_use]
     pub(crate) fn witness(mut self, witness: [Vec<Fp>; COLUMNS]) -> Self {
         self.witness = Some(witness);
         self
     }
 
-    #[must_use]
     pub(crate) fn public_inputs(mut self, public_inputs: Vec<Fp>) -> Self {
         self.public_inputs = public_inputs;
         self
     }
 
-    #[must_use]
     pub(crate) fn num_prev_challenges(mut self, num_prev_challenges: usize) -> Self {
         self.num_prev_challenges = num_prev_challenges;
         self
     }
 
-    #[must_use]
     pub(crate) fn lookup_tables(mut self, lookup_tables: Vec<LookupTable<Fp>>) -> Self {
         self.lookup_tables = lookup_tables;
         self
     }
 
-    #[must_use]
     pub(crate) fn runtime_tables_setup(
         mut self,
         runtime_tables_setup: Vec<RuntimeTableCfg<Fp>>,
@@ -92,7 +86,7 @@ impl TestFramework {
     }
 
     /// creates the indexes
-    #[must_use]
+
     pub(crate) fn setup(mut self) -> TestRunner {
         let start = Instant::now();
 
@@ -119,13 +113,11 @@ impl TestFramework {
 }
 
 impl TestRunner {
-    #[must_use]
     pub(crate) fn runtime_tables(mut self, runtime_tables: Vec<RuntimeTable<Fp>>) -> Self {
         self.0.runtime_tables = runtime_tables;
         self
     }
 
-    #[must_use]
     pub(crate) fn recursion(mut self, recursion: Vec<RecursionChallenge<Vesta>>) -> Self {
         self.0.recursion = recursion;
         self

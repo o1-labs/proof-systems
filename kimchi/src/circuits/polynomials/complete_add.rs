@@ -227,7 +227,6 @@ impl<F: PrimeField> CircuitGate<F> {
     /// # Panics
     ///
     /// Will panic if `multiplicative inverse` operation between gate values fails.
-    #[allow(clippy::unused_self)]
     pub fn verify_complete_add(
         &self,
         row: usize,

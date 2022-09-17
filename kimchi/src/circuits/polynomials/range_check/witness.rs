@@ -7,7 +7,6 @@ use std::array;
 use crate::circuits::polynomial::COLUMNS;
 
 /// Witness cell for range check gadget
-#[allow(clippy::module_name_repetitions)]
 pub enum WitnessCell {
     Copy(CopyWitnessCell),
     Value,
@@ -23,7 +22,7 @@ pub struct CopyWitnessCell {
 
 impl CopyWitnessCell {
     /// Create a copy witness cell
-    #[must_use]
+
     pub const fn create(row: usize, col: usize) -> WitnessCell {
         WitnessCell::Copy(CopyWitnessCell { row, col })
     }
@@ -34,7 +33,7 @@ pub struct ValueWitnessCell;
 
 impl ValueWitnessCell {
     /// Create a value witness cell
-    #[must_use]
+
     pub const fn create() -> WitnessCell {
         WitnessCell::Value
     }
@@ -51,7 +50,7 @@ pub struct LimbWitnessCell {
 impl LimbWitnessCell {
     /// Creates a limb witness cell.
     /// Params: source (row, col), starting bit offset and ending bit offset (exclusive)
-    #[must_use]
+
     pub const fn create(row: usize, col: usize, start: usize, end: usize) -> WitnessCell {
         WitnessCell::Limb(LimbWitnessCell {
             row,
@@ -67,7 +66,7 @@ pub struct ZeroWitnessCell;
 
 impl ZeroWitnessCell {
     /// Create a zero witness cell
-    #[must_use]
+
     pub const fn create() -> WitnessCell {
         WitnessCell::Zero
     }
@@ -194,7 +193,6 @@ fn init_range_check_row<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], row: usi
 
 /// Create a multi range check witness
 /// Input: three 88-bit values: v0, v1 and v2
-#[allow(clippy::module_name_repetitions)]
 pub fn create_multi_witness<F: PrimeField>(v0: F, v1: F, v2: F) -> [Vec<F>; COLUMNS] {
     let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 4]);
 
@@ -208,7 +206,6 @@ pub fn create_multi_witness<F: PrimeField>(v0: F, v1: F, v2: F) -> [Vec<F>; COLU
 
 /// Create a single range check witness
 /// Input: 88-bit value v0
-#[allow(clippy::module_name_repetitions)]
 pub fn create_witness<F: PrimeField>(v0: F) -> [Vec<F>; COLUMNS] {
     let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 4]);
 

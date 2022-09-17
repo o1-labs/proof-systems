@@ -212,7 +212,6 @@ enum Circuit<Field, RustGates> {
 }
 
 /** The constraint system. */
-#[allow(clippy::module_name_repetitions)]
 pub struct SnarkyConstraintSystem<Field, RustGates>
 where
     Field: ark_ff::Field,
@@ -573,7 +572,6 @@ pub trait SnarkyCvar: Clone {
     fn to_constant_and_terms(&self) -> (Option<Self::Field>, Vec<(Self::Field, usize)>);
 }
 
-#[allow(clippy::needless_pass_by_value)]
 pub fn canonicalize<Cvar>(x: Cvar) -> Option<(Vec<(Cvar::Field, usize)>, usize, bool)>
 where
     Cvar: SnarkyCvar,
@@ -668,7 +666,7 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
       It returns the output variable as (1, `Var res),
       unless the output is a constant, in which case it returns (c, `Constant).
     */
-    #[allow(clippy::needless_pass_by_value)]
+
     fn reduce_lincom<Cvar>(&mut self, x: Cvar) -> (Field, ConstantOrVar)
     where
         Cvar: SnarkyCvar<Field = Field>,
@@ -779,7 +777,7 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
     /// # Panics
     ///
     /// Will panic if `constant selector` constraints are not matching.
-    #[allow(clippy::too_many_lines)]
+
     pub fn add_basic_snarky_constraint<Cvar>(&mut self, constraint: BasicSnarkyConstraint<Cvar>)
     where
         Cvar: SnarkyCvar<Field = Field>,
@@ -1023,7 +1021,7 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
     /// # Panics
     ///
     /// Will panic if `witness` fields are empty.
-    #[allow(clippy::too_many_lines)]
+
     pub fn add_constraint<Cvar>(&mut self, constraint: KimchiConstraint<Cvar, Field>)
     where
         Cvar: SnarkyCvar<Field = Field>,

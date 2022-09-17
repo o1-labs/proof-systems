@@ -25,7 +25,6 @@ fn max_lookups_per_row(kinds: &[LookupPattern]) -> usize {
 
 /// Specifies whether a constraint system uses joint lookups. Used to make sure we
 /// squeeze the challenge `joint_combiner` when needed, and not when not needed.
-#[allow(clippy::module_name_repetitions)]
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum LookupsUsed {
     Single,
@@ -48,7 +47,7 @@ pub struct LookupInfo {
 
 impl LookupInfo {
     /// Create the default lookup configuration.
-    #[must_use]
+
     pub fn create(patterns: HashSet<LookupPattern>, uses_runtime_tables: bool) -> Self {
         let mut kinds: Vec<LookupPattern> = patterns.into_iter().collect();
         kinds.sort();
@@ -66,7 +65,6 @@ impl LookupInfo {
         }
     }
 
-    #[must_use]
     pub fn create_from_gates<F: PrimeField>(
         gates: &[CircuitGate<F>],
         uses_runtime_tables: bool,
@@ -87,7 +85,7 @@ impl LookupInfo {
     }
 
     /// Check what kind of lookups, if any, are used by this circuit.
-    #[must_use]
+
     pub fn lookup_used(&self) -> Option<LookupsUsed> {
         let mut lookups_used = None;
         for lookup_pattern in &self.kinds {
@@ -153,8 +151,6 @@ impl LookupInfo {
     }
 
     /// For each row in the circuit, which lookup-constraints should be enforced at that row.
-    #[allow(clippy::unused_self)]
-    #[must_use]
     pub fn by_row<F: PrimeField>(&self, gates: &[CircuitGate<F>]) -> Vec<Vec<JointLookupSpec<F>>> {
         let mut kinds = vec![vec![]; gates.len() + 1];
         for i in 0..gates.len() {
@@ -293,7 +289,7 @@ pub enum LookupPattern {
 
 impl LookupPattern {
     /// Returns the maximum number of lookups per row that are used by the pattern.
-    #[must_use]
+
     pub fn max_lookups_per_row(&self) -> usize {
         match self {
             LookupPattern::ChaCha | LookupPattern::ChaChaFinal | LookupPattern::RangeCheckGate => 4,
@@ -302,7 +298,7 @@ impl LookupPattern {
     }
 
     /// Returns the maximum number of values that are used in any vector lookup in this pattern.
-    #[must_use]
+
     pub fn max_joint_size(&self) -> u32 {
         match self {
             LookupPattern::ChaCha | LookupPattern::ChaChaFinal => 3,
@@ -316,7 +312,7 @@ impl LookupPattern {
     /// # Panics
     ///
     /// Will panic if `multiplicative inverse` operation fails.
-    #[must_use]
+
     pub fn lookups<F: Field>(&self) -> Vec<JointLookupSpec<F>> {
         let curr_row = |column| LocalPosition {
             row: CurrOrNext::Curr,
@@ -403,7 +399,7 @@ impl LookupPattern {
     }
 
     /// Returns the lookup table used by the pattern, or `None` if no specific table is rqeuired.
-    #[must_use]
+
     pub fn table(&self) -> Option<GateLookupTable> {
         match self {
             LookupPattern::ChaCha | LookupPattern::ChaChaFinal => Some(GateLookupTable::Xor),
@@ -413,7 +409,7 @@ impl LookupPattern {
     }
 
     /// Returns the lookup pattern used by a [`GateType`] on a given row (current or next).
-    #[must_use]
+
     pub fn from_gate(gate_type: GateType, curr_or_next: CurrOrNext) -> Option<Self> {
         use CurrOrNext::{Curr, Next};
         use GateType::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal, Lookup, RangeCheck0, RangeCheck1};
@@ -434,7 +430,7 @@ impl GateType {
     ///
     /// See circuits/kimchi/src/polynomials/chacha.rs for an explanation of
     /// how these work.
-    #[must_use]
+
     pub fn lookup_kinds() -> Vec<LookupPattern> {
         vec![
             LookupPattern::ChaCha,

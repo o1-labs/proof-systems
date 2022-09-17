@@ -35,7 +35,7 @@ pub enum RuntimeTableCfg<F> {
 
 impl<F> RuntimeTableCfg<F> {
     /// Returns the ID of the runtime table.
-    #[must_use]
+
     pub fn id(&self) -> i32 {
         use RuntimeTableCfg::{Custom, Indexed};
         match self {
@@ -45,7 +45,7 @@ impl<F> RuntimeTableCfg<F> {
     }
 
     /// Returns the length of the runtime table.
-    #[must_use]
+
     pub fn len(&self) -> usize {
         use RuntimeTableCfg::{Custom, Indexed};
         match self {
@@ -55,7 +55,7 @@ impl<F> RuntimeTableCfg<F> {
     }
 
     /// Returns `true` if the runtime table is empty.
-    #[must_use]
+
     pub fn is_empty(&self) -> bool {
         use RuntimeTableCfg::{Custom, Indexed};
         match self {
@@ -89,7 +89,7 @@ pub struct RuntimeTable<F> {
 }
 
 /// Returns the constraints related to the runtime tables.
-#[must_use]
+
 pub fn constraints<F>() -> Vec<E<F>>
 where
     F: Field,

@@ -43,7 +43,6 @@ where
     /// # Panics
     ///
     /// Will panic if `PolishToken` evaluation is invalid.
-    #[allow(clippy::too_many_lines)]
     pub fn oracles<
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
         EFrSponge: FrSponge<G::ScalarField>,
@@ -434,7 +433,6 @@ where
     }
 }
 
-#[allow(clippy::too_many_lines)]
 fn to_batch<'a, G, EFqSponge, EFrSponge>(
     index: &VerifierIndex<G>,
     proof: &'a ProverProof<G>,

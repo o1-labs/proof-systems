@@ -43,7 +43,7 @@ impl CurrOrNext {
     /// Compute the offset corresponding to the `CurrOrNext` value.
     /// - `Curr.shift() == 0`
     /// - `Next.shift() == 1`
-    #[must_use]
+
     pub fn shift(&self) -> usize {
         match self {
             CurrOrNext::Curr => 0,
@@ -57,7 +57,6 @@ impl CurrOrNext {
 /// they cannot be used at the same time on single row.
 /// If we were ever to support this feature, we would have to make sure
 /// not to re-use powers of alpha across constraints.
-#[allow(clippy::module_name_repetitions)]
 #[repr(C)]
 #[derive(
     Clone,
@@ -160,7 +159,6 @@ pub enum CircuitGateError {
 /// Gate result
 pub type CircuitGateResult<T> = std::result::Result<T, CircuitGateError>;
 
-#[allow(clippy::module_name_repetitions)]
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 /// A single gate in a circuit.
@@ -175,7 +173,6 @@ pub struct CircuitGate<F: PrimeField> {
 }
 
 impl<F: PrimeField> ToBytes for CircuitGate<F> {
-    #[allow(clippy::cast_possible_truncation)]
     #[inline]
     fn write<W: Write>(&self, mut w: W) -> IoResult<()> {
         let typ: u8 = ToPrimitive::to_u8(&self.typ).unwrap();
@@ -194,7 +191,7 @@ impl<F: PrimeField> ToBytes for CircuitGate<F> {
 
 impl<F: PrimeField> CircuitGate<F> {
     /// this function creates "empty" circuit gate
-    #[must_use]
+
     pub fn zero(wires: GateWires) -> Self {
         CircuitGate {
             typ: GateType::Zero,
@@ -209,7 +206,6 @@ impl<F: PrimeField> CircuitGate<F> {
     /// # Errors
     ///
     /// Will give error if verify process returns error.
-    #[allow(clippy::match_same_arms)]
     pub fn verify<G: KimchiCurve<ScalarField = F>>(
         &self,
         row: usize,

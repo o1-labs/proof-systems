@@ -56,7 +56,6 @@ impl<F: FftField> GateSpec<F> {
         }
     }
 
-    #[must_use]
     pub fn get_var_idx(&self, col: usize) -> Option<usize> {
         match self.row.get(col) {
             Some(Some(var)) => Some(var.index),
@@ -545,7 +544,6 @@ pub trait Cs<F: PrimeField> {
     /// |  r  | `EndoMul`  |
     /// | r+1 | `Zero`     |
     ///
-    #[allow(clippy::too_many_lines)]
     fn endo(
         &mut self,
         zero: Var<F>,

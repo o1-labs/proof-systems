@@ -24,7 +24,7 @@ use ark_ff::{FftField, SquareRootField};
 /// # Panics
 ///
 /// Will panic if `generic_gate` is not associate with `alpha^0`.
-#[must_use]
+
 pub fn constraints_expr<F: FftField + SquareRootField>(
     chacha: bool,
     range_check: bool,
@@ -91,8 +91,6 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
 
 /// Adds the polynomials that are evaluated as part of the proof
 /// for the linearization to work.
-#[must_use]
-#[allow(clippy::module_name_repetitions)]
 pub fn linearization_columns<F: FftField + SquareRootField>(
     lookup_constraint_system: Option<&LookupConfiguration<F>>,
 ) -> std::collections::HashSet<Column> {
@@ -135,8 +133,6 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
 /// # Panics
 ///
 /// Will panic if the `linearization` process fails.
-#[must_use]
-#[allow(clippy::module_name_repetitions)]
 pub fn expr_linearization<F: FftField + SquareRootField>(
     chacha: bool,
     range_check: bool,

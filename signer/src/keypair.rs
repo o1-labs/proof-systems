@@ -10,7 +10,6 @@ use rand::{self, CryptoRng, RngCore};
 use thiserror::Error;
 
 /// Keypair error
-#[allow(clippy::module_name_repetitions)]
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum KeypairError {
     /// Invalid secret key hex
@@ -38,8 +37,7 @@ pub struct Keypair {
 impl Keypair {
     /// Create a keypair from scalar field `secret` element and curve point `public`
     /// Note: Does not check point `public` is on curve
-    #[allow(clippy::needless_pass_by_value)]
-    #[must_use]
+
     pub fn from_parts_unsafe(secret: ScalarField, public: CurvePoint) -> Self {
         Self {
             secret: SecKey::new(secret),
@@ -82,7 +80,7 @@ impl Keypair {
     }
 
     /// Obtain the Mina address corresponding to the keypair's public key
-    #[must_use]
+
     pub fn get_address(self) -> String {
         self.public.into_address()
     }

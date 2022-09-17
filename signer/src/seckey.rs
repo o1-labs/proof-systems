@@ -17,20 +17,19 @@ impl SecKey {
     }
 
     /// Create a secret key from scalar field element
-    #[must_use]
-    #[allow(clippy::needless_pass_by_value)]
+
     pub fn new(scalar: ScalarField) -> Self {
         Self(scalar)
     }
 
     /// Borrows secret key as scalar field element
-    #[must_use]
+
     pub fn scalar(&self) -> &ScalarField {
         &self.0
     }
 
     /// Convert secret key into scalar field element
-    #[must_use]
+
     pub fn into_scalar(self) -> ScalarField {
         self.0
     }

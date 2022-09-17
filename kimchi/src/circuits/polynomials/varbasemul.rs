@@ -128,7 +128,6 @@ use CurrOrNext::{Curr, Next};
 //~
 
 impl<F: PrimeField> CircuitGate<F> {
-    #[must_use]
     pub fn create_vbmul(wires: &[GateWires; 2]) -> Vec<Self> {
         vec![
             CircuitGate {
@@ -149,13 +148,11 @@ impl<F: PrimeField> CircuitGate<F> {
     /// # Errors
     ///
     /// TODO
-    #[allow(clippy::unused_self)]
     pub fn verify_vbmul(&self, _row: usize, _witness: &[Vec<F>; COLUMNS]) -> Result<(), String> {
         // TODO: implement
         Ok(())
     }
 
-    #[must_use]
     pub fn vbmul(&self) -> F {
         if self.typ == GateType::VarBaseMul {
             F::one()
@@ -190,7 +187,6 @@ fn set<F>(w: &mut [Vec<F>; COLUMNS], row0: usize, var: Variable, x: F) {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 fn single_bit_witness<F: FftField>(
     w: &mut [Vec<F>; COLUMNS],
     row: usize,

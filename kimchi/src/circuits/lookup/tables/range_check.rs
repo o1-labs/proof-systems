@@ -7,8 +7,6 @@ use ark_ff::Field;
 pub const RANGE_CHECK_UPPERBOUND: u32 = 1 << 12;
 
 /// A single-column table containing the numbers from 0 to [`RANGE_CHECK_UPPERBOUND`] (inclusive)
-#[must_use]
-#[allow(clippy::module_name_repetitions)]
 pub fn range_check_table<F>() -> LookupTable<F>
 where
     F: Field,

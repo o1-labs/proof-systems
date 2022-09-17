@@ -29,7 +29,6 @@ where
 impl<'de, F, G: DeserializeAs<'de, F>> DeserializeAs<'de, JointLookupValue<F>>
     for JointLookupValue<G>
 {
-    #[allow(clippy::too_many_lines)]
     fn deserialize_as<D>(deserializer: D) -> Result<JointLookupValue<F>, D::Error>
     where
         D: Deserializer<'de>,

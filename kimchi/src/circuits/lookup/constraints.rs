@@ -88,7 +88,6 @@ pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
 /// # Panics
 ///
 /// Will panic if `value(s)` are missing from the `table`.
-#[allow(clippy::too_many_arguments)]
 pub fn sorted<F: PrimeField>(
     dummy_lookup_value: F,
     joint_lookup_table_d8: &Evaluations<F, D<F>>,
@@ -229,7 +228,6 @@ pub fn sorted<F: PrimeField>(
 /// # Panics
 ///
 /// Will panic if final evaluation is not 1.
-#[allow(clippy::too_many_arguments, clippy::manual_assert)]
 pub fn aggregation<R, F>(
     dummy_lookup_value: F,
     joint_lookup_table_d8: &Evaluations<F, D<F>>,
@@ -359,7 +357,6 @@ pub struct LookupConfiguration<F: FftField> {
 /// # Panics
 ///
 /// Will panic if single `element` length is bigger than `max_per_row` length.
-#[allow(clippy::cast_possible_truncation, clippy::too_many_lines)]
 pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>) -> Vec<E<F>> {
     // Something important to keep in mind is that the last 2 rows of
     // all columns will have random values in them to maintain zero-knowledge.
@@ -576,7 +573,6 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>) -> Vec<E
 /// # Panics
 ///
 /// Will panic if `d1` and `s` domain sizes do not match.
-#[allow(clippy::too_many_arguments, clippy::manual_assert)]
 pub fn verify<F: PrimeField, I: Iterator<Item = F>, TABLE: Fn() -> I>(
     dummy_lookup_value: F,
     lookup_table: TABLE,

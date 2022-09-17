@@ -154,7 +154,7 @@ pub mod testing {
     /// # Panics
     ///
     /// Will panic if `constraint system` is not built with `gates` input.
-    #[must_use]
+
     pub fn new_index_for_test_with_lookups(
         gates: Vec<CircuitGate<Fp>>,
         public: usize,
@@ -177,7 +177,7 @@ pub mod testing {
         let (endo_q, _endo_r) = endos::<Pallas>();
         ProverIndex::<Vesta>::create(cs, endo_q, srs)
     }
-    #[must_use]
+
     pub fn new_index_for_test(gates: Vec<CircuitGate<Fp>>, public: usize) -> ProverIndex<Vesta> {
         new_index_for_test_with_lookups(gates, public, 0, vec![], None)
     }

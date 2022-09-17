@@ -1583,7 +1583,7 @@ impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
 
 impl<F: One> Expr<F> {
     /// Exponentiate an expression
-    #[must_use]
+
     pub fn pow(self, p: u64) -> Self {
         use Expr::*;
         if p == 0 {
@@ -1618,7 +1618,6 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
     // is called repeatedly in monomials, yielding quadratic behavior for
     // that function. It's ok for now as we only call that function once on
     // a small input when producing the verification key.
-    #[allow(clippy::match_same_arms)]
     fn is_constant(&self, evaluated: &HashSet<Column>) -> bool {
         use Expr::*;
         match self {
@@ -1739,7 +1738,6 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
     /// this function computes `lin_or_err(factor_{V_0}(e))`, although it does not
     /// compute it in that way. Instead, it computes it by reducing the expression into
     /// a sum of monomials with `F` coefficients, and then factors the monomials.
-    #[allow(clippy::needless_pass_by_value)]
     pub fn linearize(
         &self,
         evaluated: HashSet<Column>,
@@ -2183,15 +2181,15 @@ pub mod constraints {
         Self: std::marker::Sized,
     {
         /// Double the value
-        #[must_use]
+
         fn double(&self) -> Self;
 
         /// Compute the square of this value
-        #[must_use]
+
         fn square(&self) -> Self;
 
         /// Raise the value to the given power
-        #[must_use]
+
         fn pow(&self, p: u64) -> Self;
 
         /// Constrain to boolean
@@ -2326,30 +2324,29 @@ pub fn constant<F>(x: F) -> E<F> {
 }
 
 /// Helper function to quickly create an expression for a witness.
-#[must_use]
+
 pub fn witness<F>(i: usize, row: CurrOrNext) -> E<F> {
     E::<F>::cell(Column::Witness(i), row)
 }
 
 /// Same as [witness] but for the current row.
-#[must_use]
+
 pub fn witness_curr<F>(i: usize) -> E<F> {
     witness(i, CurrOrNext::Curr)
 }
 
 /// Same as [witness] but for the next row.
-#[must_use]
+
 pub fn witness_next<F>(i: usize) -> E<F> {
     witness(i, CurrOrNext::Next)
 }
 
 /// Handy function to quickly create an expression for a gate.
-#[must_use]
+
 pub fn index<F>(g: GateType) -> E<F> {
     E::<F>::cell(Column::Index(g), CurrOrNext::Curr)
 }
 
-#[must_use]
 pub fn coeff<F>(i: usize) -> E<F> {
     E::<F>::cell(Column::Coefficient(i), CurrOrNext::Curr)
 }
