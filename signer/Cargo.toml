@@ -23,5 +23,3 @@ sha2 = "0.10.0"
 bs58 = "0.4.0"
 thiserror = "1.0.30"
 
-[dev-dependencies]
-array-init = "2.0.0"

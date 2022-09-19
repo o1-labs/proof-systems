@@ -36,13 +36,15 @@ use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
     Radix2EvaluationDomain as D, UVPolynomial,
 };
-use array_init::array_init;
 use commitment_dlog::commitment::{
     b_poly_coefficients, BlindedCommitment, CommitmentCurve, PolyComm,
 };
 use itertools::Itertools;
 use o1_utils::ExtendedDensePolynomial as _;
 use oracle::{sponge::ScalarChallenge, FqSponge};
+use rand::{CryptoRng, RngCore};
+use rayon::prelude::*;
+use std::array;
 use std::collections::HashMap;
 
 /// The result of a proof creation or verification.
@@ -203,7 +205,7 @@ where
         fq_sponge.absorb_fq(&[verifier_index_digest]);
 
         //~ 1. Absorb the commitments of the previous challenges with the Fq-sponge.
-        for RecursionChallenge { comm, .. } in prev_challenges.iter() {
+        for RecursionChallenge { comm, .. } in &prev_challenges {
             fq_sponge.absorb_g(&comm.unshifted);
         }
 
@@ -274,7 +276,7 @@ where
 
         //~ 1. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
         //~    TODO: why not do this first, and then commit? Why commit from evaluation directly?
-        let witness_poly: [DensePolynomial<G::ScalarField>; COLUMNS] = array_init(|i| {
+        let witness_poly: [DensePolynomial<G::ScalarField>; COLUMNS] = array::from_fn(|i| {
             Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
                 witness[i].clone(),
                 index.cs.domain.d1,
@@ -495,7 +497,6 @@ where
         //~ 1. Sample $\gamma$ with the Fq-Sponge.
         let gamma = fq_sponge.challenge();
 
-        //~ 1. If using lookup:
         if let Some(lcs) = &index.cs.lookup_constraint_system {
             //~~ - Compute the lookup aggregation polynomial.
             let joint_lookup_table_d8 = lookup_context.joint_lookup_table_d8.as_ref().unwrap();
@@ -742,7 +743,7 @@ where
                         constraints.into_iter().zip_eq(lookup_alphas).enumerate()
                     {
                         let mut eval = constraint.evaluations(&env);
-                        eval.evals.iter_mut().for_each(|x| *x *= alpha_pow);
+                        eval.evals.par_iter_mut().for_each(|x| *x *= alpha_pow);
 
                         if eval.domain().size == t4.domain().size {
                             t4 += &eval;
@@ -873,12 +874,12 @@ where
         //~    TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)
         let chunked_evals = {
             let chunked_evals_zeta = ProofEvaluations::<Vec<G::ScalarField>> {
-                s: array_init(|i| {
+                s: array::from_fn(|i| {
                     index.cs.sigmam[0..PERMUTS - 1][i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta)
                 }),
-                w: array_init(|i| {
+                w: array::from_fn(|i| {
                     witness_poly[i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta)
@@ -903,13 +904,13 @@ where
                     .evaluate_chunks(zeta),
             };
             let chunked_evals_zeta_omega = ProofEvaluations::<Vec<G::ScalarField>> {
-                s: array_init(|i| {
+                s: array::from_fn(|i| {
                     index.cs.sigmam[0..PERMUTS - 1][i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta_omega)
                 }),
 
-                w: array_init(|i| {
+                w: array::from_fn(|i| {
                     witness_poly[i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta_omega)
@@ -949,8 +950,8 @@ where
                 .iter()
                 .zip(power_of_eval_points_for_chunks.iter()) // (zeta , zeta_omega)
                 .map(|(es, &e1)| ProofEvaluations::<G::ScalarField> {
-                    s: array_init(|i| DensePolynomial::eval_polynomial(&es.s[i], e1)),
-                    w: array_init(|i| DensePolynomial::eval_polynomial(&es.w[i], e1)),
+                    s: array::from_fn(|i| DensePolynomial::eval_polynomial(&es.s[i], e1)),
+                    w: array::from_fn(|i| DensePolynomial::eval_polynomial(&es.w[i], e1)),
                     z: DensePolynomial::eval_polynomial(&es.z, e1),
                     lookup: es.lookup.as_ref().map(|l| LookupEvaluations {
                         table: DensePolynomial::eval_polynomial(&l.table, e1),
@@ -1062,7 +1063,7 @@ where
 
         //~ 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
         let public_evals = if public_poly.is_zero() {
-            [Vec::new(), Vec::new()]
+            [vec![G::ScalarField::zero()], vec![G::ScalarField::zero()]]
         } else {
             [
                 vec![public_poly.evaluate(&zeta)],
@@ -1202,7 +1203,7 @@ where
 
         Ok(Self {
             commitments: ProverCommitments {
-                w_comm: array_init(|i| w_comm[i].commitment.clone()),
+                w_comm: array::from_fn(|i| w_comm[i].commitment.clone()),
                 z_comm: z_comm.commitment,
                 t_comm: t_comm.commitment,
                 lookup,

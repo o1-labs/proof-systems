@@ -6,8 +6,6 @@ members = [
     "hasher",
     "kimchi",
     "circuit-construction",
-    "ocaml/ocaml-gen",
-    "ocaml/ocaml-gen/derive",
     "oracle",
     "oracle/export_test_vectors",
     "poly-commitment",

@@ -646,13 +646,13 @@ pub fn verify<F: PrimeField, I: Iterator<Item = F>, TABLE: Fn() -> I>(
         sorted_counts.iter().fold(0, |acc, (_, v)| acc + v)
     );
 
-    for (k, v) in all_lookups.iter() {
+    for (k, v) in &all_lookups {
         let s = sorted_counts.get(k).unwrap_or(&0);
         if v != s {
             panic!("For {}:\nall_lookups    = {}\nsorted_lookups = {}", k, v, s);
         }
     }
-    for (k, s) in sorted_counts.iter() {
+    for (k, s) in &sorted_counts {
         let v = all_lookups.get(k).unwrap_or(&0);
         if v != s {
             panic!("For {}:\nall_lookups    = {}\nsorted_lookups = {}", k, v, s);

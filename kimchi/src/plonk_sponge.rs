@@ -91,7 +91,7 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
         if let Some(l) = e.lookup.as_ref() {
             points.push(&l.aggreg);
             points.push(&l.table);
-            for s in l.sorted.iter() {
+            for s in &l.sorted {
                 points.push(s);
             }
             l.runtime.iter().for_each(|x| points.push(x));

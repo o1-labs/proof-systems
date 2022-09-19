@@ -232,7 +232,7 @@ impl<C: AffineCurve> PolyComm<C> {
             },
             unshifted: {
                 if com.is_empty() || elm.is_empty() {
-                    Vec::new()
+                    vec![C::zero()]
                 } else {
                     let n = Iterator::max(com.iter().map(|c| c.unshifted.len())).unwrap();
                     (0..n)
@@ -426,7 +426,7 @@ pub fn combined_inner_product<F: PrimeField>(
             .collect::<Vec<_>>();
 
         // iterating over the polynomial segments
-        for eval in evals.iter() {
+        for eval in &evals {
             let term = DensePolynomial::<F>::eval_polynomial(eval, *evalscale);
 
             res += &(xi_i * term);
@@ -435,14 +435,14 @@ pub fn combined_inner_product<F: PrimeField>(
 
         if let Some(m) = shifted {
             // polyscale^i sum_j evalscale^j elm_j^{N - m} f(elm_j)
-            let last_evals = if *m > evals.len() * srs_length {
+            let last_evals = if *m >= evals.len() * srs_length {
                 vec![F::zero(); evaluation_points.len()]
             } else {
                 evals[evals.len() - 1].clone()
             };
             let shifted_evals: Vec<_> = evaluation_points
                 .iter()
-                .zip(last_evals.iter())
+                .zip(&last_evals)
                 .map(|(elm, f_elm)| elm.pow(&[(srs_length - (*m) % srs_length) as u64]) * f_elm)
                 .collect();
 
@@ -518,15 +518,9 @@ impl<G: CommitmentCurve> SRS<G> {
             .zip(blinders)
             .ok_or_else(|| CommitmentError::BlindersDontMatch(blinders.len(), com.len()))?
             .map(|(g, b)| {
-                if g.is_zero() {
-                    // TODO: This leaks information when g is the identity!
-                    // We should change this so that we still mask in this case
-                    g
-                } else {
-                    let mut g_masked = self.h.mul(b);
-                    g_masked.add_assign_mixed(&g);
-                    g_masked.into_affine()
-                }
+                let mut g_masked = self.h.mul(b);
+                g_masked.add_assign_mixed(&g);
+                g_masked.into_affine()
             });
         Ok(BlindedCommitment {
             commitment,
@@ -563,7 +557,7 @@ impl<G: CommitmentCurve> SRS<G> {
 
         // committing all the segments without shifting
         let unshifted = if is_zero {
-            Vec::new()
+            vec![G::zero()]
         } else {
             (0..p / n + if p % n != 0 { 1 } else { 0 })
                 .map(|i| {
@@ -612,7 +606,7 @@ impl<G: CommitmentCurve> SRS<G> {
         plnm: &Evaluations<G::ScalarField, D<G::ScalarField>>,
         max: Option<usize>,
     ) -> PolyComm<G> {
-        let is_zero = plnm.evals.iter().all(|x| x.is_zero());
+        let is_zero = plnm.evals.par_iter().all(|x| x.is_zero());
         let basis = match self.lagrange_bases.get(&domain.size()) {
             None => panic!("lagrange bases for size {} not found", domain.size()),
             Some(v) => &v[..],
@@ -829,7 +823,7 @@ impl<G: CommitmentCurve> SRS<G> {
                     .filter(|x| !x.commitment.unshifted.is_empty())
                 {
                     // iterating over the polynomial segments
-                    for comm_ch in commitment.unshifted.iter() {
+                    for comm_ch in &commitment.unshifted {
                         scalars.push(rand_base_i_c_i * xi_i);
                         points.push(*comm_ch);
 
@@ -884,11 +878,11 @@ mod tests {
 
     use crate::srs::SRS;
     use ark_poly::{Polynomial, UVPolynomial};
-    use array_init::array_init;
     use mina_curves::pasta::{fp::Fp, vesta::Vesta as VestaG};
     use oracle::constants::PlonkSpongeConstantsKimchi as SC;
     use oracle::sponge::DefaultFqSponge;
     use rand::{rngs::StdRng, SeedableRng};
+    use std::array;
 
     #[test]
     fn test_lagrange_commitments() {
@@ -922,7 +916,7 @@ mod tests {
     #[test]
     fn test_opening_proof() {
         // create two polynomials
-        let coeffs: [Fp; 10] = array_init(|i| Fp::from(i as u32));
+        let coeffs: [Fp; 10] = array::from_fn(|i| Fp::from(i as u32));
         let poly1 = DensePolynomial::<Fp>::from_coefficients_slice(&coeffs);
         let poly2 = DensePolynomial::<Fp>::from_coefficients_slice(&coeffs[..5]);
 

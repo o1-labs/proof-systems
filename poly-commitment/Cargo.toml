@@ -10,7 +10,6 @@ ark-ec = { version = "0.3.0", features = [ "parallel" ] }
 ark-poly = { version = "0.3.0", features = [ "parallel" ] }
 ark-serialize = "0.3.0"
 
-array-init = "2.0.0"
 blake2 = "0.10.0"
 rand = "0.8.0"
 rand_core = { version = "0.6.0" }
@@ -27,7 +26,7 @@ o1-utils = { path = "../utils" }
 oracle = { path = "../oracle" }
 
 ocaml = { version = "0.22.2", optional = true }
-ocaml-gen = { path = "../ocaml/ocaml-gen", optional = true }
+ocaml-gen = { version = "0.1.0", optional = true }
 
 [dev-dependencies]
 colored = "2.0.0"

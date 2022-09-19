@@ -143,11 +143,11 @@
 use std::marker::PhantomData;
 
 use crate::circuits::{
-    argument::{Argument, ArgumentType},
-    expr::{constraints::boolean, prologue::*, ConstantExpr as C},
+    argument::{Argument, ArgumentEnv, ArgumentType},
+    expr::constraints::{boolean, ExprOps},
     gate::{CurrOrNext, GateType},
 };
-use ark_ff::{FftField, Field, Zero};
+use ark_ff::{FftField, Field};
 
 //
 // Implementation internals
@@ -155,37 +155,38 @@ use ark_ff::{FftField, Field, Zero};
 
 /// 8-nybble sequences that are laid out as 4 nybbles per row over the two row,
 /// like y^x' or x+z
-fn chunks_over_2_rows<F>(col_offset: usize) -> Vec<E<F>> {
+fn chunks_over_2_rows<F: Field, T: ExprOps<F>>(
+    env: &ArgumentEnv<F, T>,
+    col_offset: usize,
+) -> Vec<T> {
     (0..8)
         .map(|i| {
             use CurrOrNext::{Curr, Next};
             let r = if i < 4 { Curr } else { Next };
-            witness(col_offset + (i % 4), r)
+            env.witness(r, col_offset + (i % 4))
         })
         .collect()
 }
 
-fn combine_nybbles<F: Field>(ns: Vec<E<F>>) -> E<F> {
+fn combine_nybbles<F: Field, T: ExprOps<F>>(ns: Vec<T>) -> T {
     ns.into_iter()
         .enumerate()
-        .fold(E::zero(), |acc: E<F>, (i, t)| {
-            acc + E::from(1 << (4 * i)) * t
-        })
+        .fold(T::zero(), |acc: T, (i, t)| acc + T::from(1 << (4 * i)) * t)
 }
 
 /// Constraints for the line L(x, x', y, y', z, k), where k = 4 * nybble_rotation
-fn line<F: Field>(nybble_rotation: usize) -> Vec<E<F>> {
-    let y_xor_xprime_nybbles = chunks_over_2_rows(3);
-    let x_plus_z_nybbles = chunks_over_2_rows(7);
-    let y_nybbles = chunks_over_2_rows(11);
+fn line<F: Field, T: ExprOps<F>>(env: &ArgumentEnv<F, T>, nybble_rotation: usize) -> Vec<T> {
+    let y_xor_xprime_nybbles = chunks_over_2_rows(env, 3);
+    let x_plus_z_nybbles = chunks_over_2_rows(env, 7);
+    let y_nybbles = chunks_over_2_rows(env, 11);
 
-    let x_plus_z_overflow_bit = witness_next(2);
+    let x_plus_z_overflow_bit = env.witness_next(2);
 
-    let x = witness_curr(0);
-    let xprime = witness_next(0);
-    let y = witness_curr(1);
-    let yprime = witness_next(1);
-    let z = witness_curr(2);
+    let x = env.witness_curr(0);
+    let xprime = env.witness_next(0);
+    let y = env.witness_curr(1);
+    let yprime = env.witness_next(1);
+    let z = env.witness_curr(2);
 
     // Because the nybbles are little-endian, rotating the vector "right"
     // is equivalent to left-shifting the nybbles.
@@ -198,7 +199,7 @@ fn line<F: Field>(nybble_rotation: usize) -> Vec<E<F>> {
         // x' = x + z (mod 2^32)
         combine_nybbles(x_plus_z_nybbles) - xprime.clone(),
         // Correctness of x+z nybbles
-        xprime + E::from(1 << 32) * x_plus_z_overflow_bit - (x + z),
+        xprime + T::from(1 << 32) * x_plus_z_overflow_bit - (x + z),
         // Correctness of y nybbles
         combine_nybbles(y_nybbles) - y,
         // y' = (y ^ x') <<< 4 * nybble_rotation
@@ -220,9 +221,9 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha0);
     const CONSTRAINTS: u32 = 5;
 
-    fn constraints() -> Vec<E<F>> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
         // a += b; d ^= a; d <<<= 16 (=4*4)
-        line(4)
+        line(env, 4)
     }
 }
 
@@ -236,9 +237,9 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha1);
     const CONSTRAINTS: u32 = 5;
 
-    fn constraints() -> Vec<E<F>> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
         // c += d; b ^= c; b <<<= 12 (=3*4)
-        line(3)
+        line(env, 3)
     }
 }
 
@@ -252,9 +253,9 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha2);
     const CONSTRAINTS: u32 = 5;
 
-    fn constraints() -> Vec<E<F>> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
         // a += b; d ^= a; d <<<= 8  (=2*4)
-        line(2)
+        line(env, 2)
     }
 }
 
@@ -268,7 +269,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaChaFinal);
     const CONSTRAINTS: u32 = 9;
 
-    fn constraints() -> Vec<E<F>> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
         // The last line, namely,
         // c += d; b ^= c; b <<<= 7;
         // is special.
@@ -276,9 +277,9 @@ where
         // will use a ChaCha0 gate to compute the nybbles of
         // all the relevant values, and the xors, and then do
         // the shifting using a ChaChaFinal gate.
-        let y_xor_xprime_nybbles = chunks_over_2_rows(1);
-        let low_bits = chunks_over_2_rows(5);
-        let yprime = witness_curr(0);
+        let y_xor_xprime_nybbles = chunks_over_2_rows(env, 1);
+        let low_bits = chunks_over_2_rows(env, 5);
+        let yprime = env.witness_curr(0);
 
         let one_half = F::from(2u64).inverse().unwrap();
 
@@ -287,14 +288,13 @@ where
         let y_xor_xprime_rotated: Vec<_> = [7, 0, 1, 2, 3, 4, 5, 6]
             .iter()
             .zip([6, 7, 0, 1, 2, 3, 4, 5].iter())
-            .map(|(&i, &j)| -> E<F> {
-                E::from(8) * low_bits[i].clone()
-                    + E::Constant(C::Literal(one_half))
-                        * (y_xor_xprime_nybbles[j].clone() - low_bits[j].clone())
+            .map(|(&i, &j)| -> T {
+                T::from(8) * low_bits[i].clone()
+                    + T::literal(one_half) * (y_xor_xprime_nybbles[j].clone() - low_bits[j].clone())
             })
             .collect();
 
-        let mut constraints: Vec<E<F>> = low_bits.iter().map(boolean).collect();
+        let mut constraints: Vec<T> = low_bits.iter().map(boolean).collect();
         constraints.push(combine_nybbles(y_xor_xprime_rotated) - yprime);
         constraints
     }
@@ -477,12 +477,12 @@ mod tests {
         curve::KimchiCurve,
         proof::{LookupEvaluations, ProofEvaluations},
     };
-    use ark_ff::UniformRand;
+    use ark_ff::{UniformRand, Zero};
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
-    use array_init::array_init;
     use mina_curves::pasta::fp::Fp as F;
     use mina_curves::pasta::vesta::Vesta;
     use rand::{rngs::StdRng, SeedableRng};
+    use std::array;
     use std::fmt::{Display, Formatter};
 
     struct Polish(Vec<PolishToken<F>>);
@@ -547,9 +547,9 @@ mod tests {
 
         let pt = F::rand(rng);
         let mut eval = || ProofEvaluations {
-            w: array_init(|_| F::rand(rng)),
+            w: array::from_fn(|_| F::rand(rng)),
             z: F::rand(rng),
-            s: array_init(|_| F::rand(rng)),
+            s: array::from_fn(|_| F::rand(rng)),
             generic_selector: F::zero(),
             poseidon_selector: F::zero(),
             lookup: Some(LookupEvaluations {

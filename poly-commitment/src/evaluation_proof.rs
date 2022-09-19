@@ -112,52 +112,34 @@ impl<G: CommitmentCurve> SRS<G> {
             let mut scale = G::ScalarField::one();
 
             // iterating over polynomials in the batch
-            for (p_i, degree_bound, omegas) in plnms.iter().filter(|p| !p.0.is_zero()) {
+            for (p_i, degree_bound, omegas) in plnms {
                 let mut offset = 0;
-                let mut j = 0;
                 // iterating over chunks of the polynomial
                 if let Some(m) = degree_bound {
                     assert!(p_i.coeffs.len() <= m + 1);
-                    while j < omegas.unshifted.len() {
-                        let segment = &p_i.coeffs[offset
-                            ..if offset + self.g.len() > p_i.coeffs.len() {
-                                p_i.coeffs.len()
-                            } else {
-                                offset + self.g.len()
-                            }];
-                        // always mixing in the unshifted segments
-                        plnm.add_unshifted(scale, segment);
+                } else {
+                    assert!(omegas.shifted.is_none());
+                }
+                for j in 0..omegas.unshifted.len() {
+                    let segment =
+                        &p_i.coeffs[offset..std::cmp::min(offset + self.g.len(), p_i.coeffs.len())];
+                    // always mixing in the unshifted segments
+                    plnm.add_unshifted(scale, segment);
 
-                        omega += &(omegas.unshifted[j] * scale);
-                        j += 1;
-                        scale *= &polyscale;
-                        offset += self.g.len();
-                        if offset > *m {
-                            // mixing in the shifted segment since degree is bounded
-                            plnm.add_shifted(scale, self.g.len() - m % self.g.len(), segment);
+                    omega += &(omegas.unshifted[j] * scale);
+                    scale *= &polyscale;
+                    offset += self.g.len();
+                    if let Some(m) = degree_bound {
+                        if offset >= *m {
+                            if offset > *m {
+                                // mixing in the shifted segment since degree is bounded
+                                plnm.add_shifted(scale, self.g.len() - m % self.g.len(), segment);
+                            }
                             omega += &(omegas.shifted.unwrap() * scale);
                             scale *= &polyscale;
                         }
                     }
-                } else {
-                    assert!(omegas.shifted.is_none());
-                    while j < omegas.unshifted.len() {
-                        let segment = &p_i.coeffs[offset
-                            ..if offset + self.g.len() > p_i.coeffs.len() {
-                                p_i.coeffs.len()
-                            } else {
-                                offset + self.g.len()
-                            }];
-
-                        // always mixing in the unshifted segments
-                        plnm.add_unshifted(scale, segment);
-                        omega += &(omegas.unshifted[j] * scale);
-                        j += 1;
-                        scale *= &polyscale;
-                        offset += self.g.len();
-                    }
                 }
-                assert_eq!(j, omegas.unshifted.len());
             }
 
             (plnm.to_dense_polynomial(), omega)
