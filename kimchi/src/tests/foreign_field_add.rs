@@ -368,7 +368,7 @@ fn test_neg_carry_lo() {
     let right_input = ForeignElement::<PallasField, 3>::new_from_be(OVF_NEG_LO);
 
     let witness = create_witness(vec![left_input, right_input], vec![ADD], foreign_modulus);
-view_witness(&witness);
+    view_witness(&witness);
     for row in 16..=18 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),

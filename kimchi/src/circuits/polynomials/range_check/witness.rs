@@ -201,7 +201,7 @@ fn init_range_check_row<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], row: usi
 /// Create a multi range check witness
 /// Input: three 88-bit values: v0, v1 and v2
 pub fn create_multi_witness<F: PrimeField>(v0: F, v1: F, v2: F) -> [Vec<F>; COLUMNS] {
-    let mut witness: [Vec<F>; COLUMNS] = array_init(|_| vec![F::zero(); 4]);
+    let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 4]);
 
     init_range_check_row(&mut witness, 0, v0);
     init_range_check_row(&mut witness, 1, v1);
@@ -214,7 +214,7 @@ pub fn create_multi_witness<F: PrimeField>(v0: F, v1: F, v2: F) -> [Vec<F>; COLU
 /// Create a single range check witness
 /// Input: 88-bit value v0
 pub fn create_witness<F: PrimeField>(v0: F) -> [Vec<F>; COLUMNS] {
-    let mut witness: [Vec<F>; COLUMNS] = array_init(|_| vec![F::zero(); 4]);
+    let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 4]);
 
     init_range_check_row(&mut witness, 0, v0);
 

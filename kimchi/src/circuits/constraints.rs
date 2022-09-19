@@ -28,6 +28,7 @@ use o1_utils::{
 use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
+use std::array;
 use std::{collections::HashSet, sync::Arc};
 
 //
@@ -255,7 +256,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
     ) -> Result<(), GateError> {
         // pad the witness
         let pad = vec![F::zero(); self.domain.d1.size() - witness[0].len()];
-        let witness: [Vec<F>; COLUMNS] = array_init(|i| {
+        let witness: [Vec<F>; COLUMNS] = array::from_fn(|i| {
             let mut w = witness[i].to_vec();
             w.extend_from_slice(&pad);
             w
@@ -306,10 +307,10 @@ impl<F: PrimeField> ConstraintSystem<F> {
     pub fn evaluate(&self, w: &[DP<F>; COLUMNS], z: &DP<F>) -> WitnessOverDomains<F> {
         // compute shifted witness polynomials
         let w8: [E<F, D<F>>; COLUMNS] =
-            array_init(|i| w[i].evaluate_over_domain_by_ref(self.domain.d8));
+            array::from_fn(|i| w[i].evaluate_over_domain_by_ref(self.domain.d8));
         let z8 = z.evaluate_over_domain_by_ref(self.domain.d8);
 
-        let w4: [E<F, D<F>>; COLUMNS] = array_init(|i| {
+        let w4: [E<F, D<F>>; COLUMNS] = array::from_fn(|i| {
             E::<F, D<F>>::from_vec_and_domain(
                 (0..self.domain.d4.size)
                     .map(|j| w8[i].evals[2 * j as usize])
@@ -322,7 +323,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
         WitnessOverDomains {
             d4: WitnessShifts {
                 next: WitnessEvals {
-                    w: array_init(|i| w4[i].shift(4)),
+                    w: array::from_fn(|i| w4[i].shift(4)),
                     // TODO(mimoo): change z to an Option? Or maybe not, we might actually need this dummy evaluation in the aggregated evaluation proof
                     z: z4.clone(), // dummy evaluation
                 },
@@ -333,7 +334,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
             },
             d8: WitnessShifts {
                 next: WitnessEvals {
-                    w: array_init(|i| w8[i].shift(8)),
+                    w: array::from_fn(|i| w8[i].shift(8)),
                     z: z8.shift(8),
                 },
                 this: WitnessEvals { w: w8, z: z8 },
@@ -423,7 +424,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         let d1_size = domain.d1.size();
         let mut padding = (gates.len()..d1_size)
             .map(|i| {
-                CircuitGate::<F>::zero(array_init(|j| Wire {
+                CircuitGate::<F>::zero(array::from_fn(|j| Wire {
                     col: WIRES[j],
                     row: i,
                 }))
@@ -449,7 +450,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         // -----------
 
         // compute permutation polynomials
-        let mut sigmal1: [Vec<F>; PERMUTS] = array_init(|_| vec![F::zero(); domain.d1.size()]);
+        let mut sigmal1: [Vec<F>; PERMUTS] = array::from_fn(|_| vec![F::zero(); domain.d1.size()]);
 
         for (row, gate) in gates.iter().enumerate() {
             for (cell, sigma) in gate.wires.iter().zip(sigmal1.iter_mut()) {
@@ -470,9 +471,9 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             ]
         };
 
-        let sigmam: [DP<F>; PERMUTS] = array_init(|i| sigmal1[i].clone().interpolate());
+        let sigmam: [DP<F>; PERMUTS] = array::from_fn(|i| sigmal1[i].clone().interpolate());
 
-        let sigmal8 = array_init(|i| sigmam[i].evaluate_over_domain_by_ref(domain.d8));
+        let sigmal8 = array::from_fn(|i| sigmam[i].evaluate_over_domain_by_ref(domain.d8));
 
         // Gates
         // -----
@@ -551,7 +552,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             if !has_chacha_gate {
                 None
             } else {
-                let a: [_; 4] = array_init(|i| {
+                let a: [_; 4] = array::from_fn(|i| {
                     let g = match i {
                         0 => ChaCha0,
                         1 => ChaCha1,
@@ -579,7 +580,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             if circuit_gates_used.is_disjoint(&range_gates.into_iter().collect()) {
                 None
             } else {
-                Some(array_init(|i| {
+                Some(array::from_fn(|i| {
                     selector_polynomial(range_gates[i], &gates, &domain)
                 }))
             }
@@ -603,7 +604,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         //
 
         // coefficient polynomial
-        let coefficientsm: [_; COLUMNS] = array_init(|i| {
+        let coefficientsm: [_; COLUMNS] = array::from_fn(|i| {
             let padded = gates
                 .iter()
                 .map(|gate| gate.coeffs.get(i).cloned().unwrap_or_else(F::zero))
@@ -612,7 +613,8 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             eval.interpolate()
         });
         // TODO: This doesn't need to be degree 8 but that would require some changes in expr
-        let coefficients8 = array_init(|i| coefficientsm[i].evaluate_over_domain_by_ref(domain.d8));
+        let coefficients8 =
+            array::from_fn(|i| coefficientsm[i].evaluate_over_domain_by_ref(domain.d8));
 
         //
         // Lookup

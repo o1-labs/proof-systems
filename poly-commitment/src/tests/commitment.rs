@@ -15,7 +15,7 @@ use o1_utils::ExtendedDensePolynomial as _;
 use oracle::constants::PlonkSpongeConstantsKimchi as SC;
 use oracle::sponge::DefaultFqSponge;
 use oracle::FqSponge as _;
-use rand::Rng;
+use rand::{CryptoRng, Rng, SeedableRng};
 use std::time::{Duration, Instant};
 
 // Note: Because the current API uses large tuples of types, I re-create types
@@ -87,23 +87,15 @@ impl AggregatedEvaluationProof {
         BatchEvaluationProof {
             sponge: self.fq_sponge.clone(),
             evaluation_points: self.eval_points.clone(),
-            xi: self.polymask,
-            r: self.evalmask,
+            polyscale: self.polymask,
+            evalscale: self.evalmask,
             evaluations: coms,
             opening: &self.proof,
         }
     }
 }
 
-#[test]
-/// Tests polynomial commitments, batched openings and
-/// verification of a batch of batched opening proofs of polynomial commitments
-fn test_commit()
-where
-    <Fp as std::str::FromStr>::Err: std::fmt::Debug,
-{
-    // setup
-    let mut rng = rand::thread_rng();
+fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
     let group_map = <Vesta as CommitmentCurve>::Map::setup();
     let fq_sponge =
         DefaultFqSponge::<VestaParameters, SC>::new(oracle::pasta::fq_kimchi::static_params());
@@ -229,4 +221,33 @@ where
         "batch verification time:".green(),
         timer.elapsed()
     );
+}
+
+#[test]
+/// Tests polynomial commitments, batched openings and
+/// verification of a batch of batched opening proofs of polynomial commitments
+fn test_commit()
+where
+    <Fp as std::str::FromStr>::Err: std::fmt::Debug,
+{
+    // setup
+    let mut rng = rand::thread_rng();
+    test_randomised(&mut rng)
+}
+
+#[test]
+/// Deterministic tests of polynomial commitments, batched openings and
+/// verification of a batch of batched opening proofs of polynomial commitments
+fn test_commit_deterministic()
+where
+    <Fp as std::str::FromStr>::Err: std::fmt::Debug,
+{
+    // Seed deliberately chosen to exercise zero commitments
+    let seed = [
+        17, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0,
+    ];
+
+    let mut rng = <rand_chacha::ChaCha20Rng as SeedableRng>::from_seed(seed);
+    test_randomised(&mut rng)
 }

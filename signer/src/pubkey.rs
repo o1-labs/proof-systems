@@ -2,7 +2,7 @@
 //!
 //! Definition of public key structure and helpers
 
-use ark_ff::{BigInteger, PrimeField};
+use ark_ff::{BigInteger, PrimeField, Zero};
 use bs58;
 use core::fmt;
 use sha2::{Digest, Sha256};
@@ -13,7 +13,7 @@ use crate::{BaseField, CurvePoint};
 use o1_utils::FieldHelpers;
 
 /// Public key errors
-#[derive(Error, Debug, Clone, PartialEq)]
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum PubKeyError {
     /// Invalid address length
     #[error("invalid address length")]
@@ -180,6 +180,15 @@ impl CompressedPubKey {
     /// Deserialize Mina address into compressed public key (via an uncompressed PubKey)
     pub fn from_address(address: &str) -> Result<Self> {
         Ok(PubKey::from_address(address)?.into_compressed())
+    }
+
+    /// The empty [CompressedPubKey] value that is used as `public_key` in empty account
+    /// and [None] value for calculating the hash of [Option<CompressedPubKey>], etc.
+    pub fn empty() -> Self {
+        Self {
+            x: BaseField::zero(),
+            is_odd: false,
+        }
     }
 }
 

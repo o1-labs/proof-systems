@@ -1,7 +1,6 @@
 use crate::writer::{Cs, GateSpec, System, Var, WitnessGenerator};
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{FftField, One, PrimeField, SquareRootField, Zero};
-use array_init::array_init;
 use commitment_dlog::{
     commitment::{CommitmentCurve, PolyComm},
     srs::{endos, SRS},
@@ -15,6 +14,7 @@ use kimchi::{
 };
 use mina_curves::pasta::{fp::Fp, fq::Fq, pallas::Pallas as Other, vesta::Vesta};
 use oracle::FqSponge;
+use std::array;
 
 /// A [Cycle] represents the algebraic structure that
 /// allows for recursion using elliptic curves.
@@ -134,8 +134,8 @@ where
 
     // custom blinders for the witness commitment
     let blinders: [Option<PolyComm<G::ScalarField>>; COLUMNS] = match blinders {
-        None => array_init(|_| None),
-        Some(bs) => array_init(|i| {
+        None => array::from_fn(|_| None),
+        Some(bs) => array::from_fn(|i| {
             bs[i].map(|b| PolyComm {
                 unshifted: vec![b],
                 shifted: None,

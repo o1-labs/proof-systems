@@ -51,10 +51,10 @@ use ark_poly::{
     EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
 use ark_poly::{Polynomial, UVPolynomial};
-use array_init::array_init;
 use blake2::{Blake2b512, Digest};
 use o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
 use rand::{CryptoRng, RngCore};
+use std::array;
 
 /// Number of constraints produced by the argument.
 pub const CONSTRAINTS: u32 = 3;
@@ -149,7 +149,7 @@ where
 
         // create a map of cells to their shifted value
         let map: [Vec<F>; PERMUTS] =
-            array_init(|i| domain.elements().map(|elm| shifts[i] * elm).collect());
+            array::from_fn(|i| domain.elements().map(|elm| shifts[i] * elm).collect());
 
         //
         Self { shifts, map }

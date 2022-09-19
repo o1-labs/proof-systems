@@ -43,8 +43,8 @@ use ark_ff::{FftField, PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
-use array_init::array_init;
 use rayon::prelude::*;
+use std::array;
 
 /// Number of constraints produced by the gate.
 pub const CONSTRAINTS: u32 = 2;
@@ -327,7 +327,7 @@ pub mod testing {
             public: &[F],
         ) -> Result<(), String> {
             // assignments
-            let this: [F; COLUMNS] = array_init(|i| witness[i][row]);
+            let this: [F; COLUMNS] = array::from_fn(|i| witness[i][row]);
 
             // constants
             let zero = F::zero();
@@ -378,7 +378,7 @@ pub mod testing {
             public: &DensePolynomial<F>,
         ) -> bool {
             let coefficientsm: [_; COLUMNS] =
-                array_init(|i| self.coefficients8[i].clone().interpolate());
+                array::from_fn(|i| self.coefficients8[i].clone().interpolate());
 
             let generic_gate = |coeff_offset, register_offset| {
                 // addition (of left, right, output wires)
@@ -510,10 +510,10 @@ mod tests {
     use crate::circuits::wires::COLUMNS;
     use ark_ff::{UniformRand, Zero};
     use ark_poly::{EvaluationDomain, Polynomial};
-    use array_init::array_init;
     use mina_curves::pasta::fp::Fp;
     use mina_curves::pasta::vesta::Vesta;
     use rand::SeedableRng;
+    use std::array;
 
     #[test]
     fn test_generic_polynomial() {
@@ -525,19 +525,20 @@ mod tests {
 
         // create witness
         let n = cs.domain.d1.size();
-        let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![Fp::zero(); n]);
+        let mut witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![Fp::zero(); n]);
         testing::fill_in_witness(0, &mut witness, &[]);
 
         // make sure we're done filling the witness correctly
         cs.verify::<Vesta>(&witness, &[]).unwrap();
 
         // generate witness polynomials
-        let witness_evals: [Evaluations<Fp, D<Fp>>; COLUMNS] =
-            array_init(|col| Evaluations::from_vec_and_domain(witness[col].clone(), cs.domain.d1));
+        let witness_evals: [Evaluations<Fp, D<Fp>>; COLUMNS] = array::from_fn(|col| {
+            Evaluations::from_vec_and_domain(witness[col].clone(), cs.domain.d1)
+        });
         let witness: [DensePolynomial<Fp>; COLUMNS] =
-            array_init(|col| witness_evals[col].interpolate_by_ref());
+            array::from_fn(|col| witness_evals[col].interpolate_by_ref());
         let witness_d4: [Evaluations<Fp, D<Fp>>; COLUMNS] =
-            array_init(|col| witness[col].evaluate_over_domain_by_ref(cs.domain.d4));
+            array::from_fn(|col| witness[col].evaluate_over_domain_by_ref(cs.domain.d4));
 
         // make sure we've done that correctly
         let public = DensePolynomial::zero();
@@ -558,7 +559,7 @@ mod tests {
         let t_zeta = t.evaluate(&zeta);
 
         // compute linearization f(z)
-        let w_zeta: [Fp; COLUMNS] = array_init(|col| witness[col].evaluate(&zeta));
+        let w_zeta: [Fp; COLUMNS] = array::from_fn(|col| witness[col].evaluate(&zeta));
         let generic_zeta = cs.genericm.evaluate(&zeta);
 
         let f = cs

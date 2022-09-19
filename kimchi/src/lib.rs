@@ -21,6 +21,7 @@ pub mod plonk_sponge;
 pub mod proof;
 pub mod prover;
 pub mod prover_index;
+pub mod snarky;
 pub mod verifier;
 pub mod verifier_index;
 

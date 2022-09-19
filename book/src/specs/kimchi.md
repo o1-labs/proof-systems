@@ -1029,61 +1029,64 @@ This equation is translated as the constraint:
 
 #### Range Check
 
-The range check gate is comprised of three circuit gates (RangeCheck0, RangeCheck1
-and Zero) and can perform range checks on three values of up to 88 bits: v0, v1 and v2.
+The range check gadget is comprised of three circuit gates (`RangeCheck0`, `RangeCheck1`
+and `Zero`) and can perform range checks on three values of up to 88 bits: $v_0, v_1$ and $v_2$.
 
-##### Byte-order:
-* Each value is in little-endian byte order
+Optionally, `RangeCheck0` can be used on its own to perform 64-bit range checks by
+constraining witness cells 1-2 to zero.
+
+**Byte-order:**
+* Each cell value is in little-endian byte order
 * Limbs are mapped to columns in big-endian order (i.e. the lowest columns
   contain the highest bits)
 * We also have the highest bits covered by copy constraints and plookups, so that
   we can copy the highest two constraints to zero and get a 64-bit lookup, which
-  are envisioned as a common case
+  are envisioned to be a common case
 
 The values are decomposed into limbs as follows.
 - `L` is a 12-bit lookup (or copy) limb,
-- `C` is a 2-bit "crumb" limb.
+- `C` is a 2-bit "crumb" limb (we call half a nybble a crumb).
 
 ```text
         <----6----> <------8------>
    v0 = L L L L L L C C C C C C C C
    v1 = L L L L L L C C C C C C C C
-        <--4--> <------------------20----------------->
-   v2 = L L L L C C C C C C C C C C C C C C C C C C C C
+        <2> <--4--> <---------------18---------------->
+   v2 = C C L L L L C C C C C C C C C C C C C C C C C C
 ```
 ##### Witness structure:
 
-| Row | Contents |
-| --- | ---------|
-|  0  | v0       |
-|  1  | v1       |
-|  2  | v2       |
-|  3  | v0,v1,v2 |
+| Row | Contents        |
+| --- | --------------- |
+|  0  | $v_0$           |
+|  1  | $v_1$           |
+|  2  | $v_2$           |
+|  3  | $v_0, v_1, v_2$ |
 
-* The first 2 rows contain v0 and v1 and their respective decompositions
+* The first 2 rows contain $v_0$ and $v_1$ and their respective decompositions
   into 12-bit and 2-bit limbs
-* The 3rd row contains v2 and part of its decomposition: four 12-bit limbs and
+* The 3rd row contains $v_2$ and part of its decomposition: four 12-bit limbs and
   the 1st 10 crumbs
-* The final row contains v0's and v1's 5th and 6th 12-bit limbs as well as the
-  remaining 10 crumbs of v2
+* The final row contains $v_0$'s and $v_1$'s 5th and 6th 12-bit limbs as well as the
+  remaining 10 crumbs of $v_2$
 
-```admonition::notice
-because we are constrained to 4 lookups per row, we are forced to postpone
-some lookups to an extra row
+```admonish
+Because we are constrained to 4 lookups per row, we are forced to postpone
+some lookups of v0 and v1 to the final row.
 ```
 
 ##### Constraints:
 
-For efficiency, the values are constrained differently according to their type.
+For efficiency, the limbs are constrained differently according to their type.
 * 12-bit limbs are constrained with plookups
 * 2-bit crumbs are constrained with degree-4 constraints $x(x-1)(x-2)(x-3)$
 
 ##### Layout:
 
-This is how three 88-bit inputs `v0`, `v1` and `v2` are layed out and constrained.
+This is how the three 88-bit inputs $v_0, v_1$ and $v_2$ are layed out and constrained.
 
-* `vipj` is the jth 12-bit limb of value `vi`
-* `vicj` is the jth 2-bit crumb limb of value `vi`
+* `vipj` is the jth 12-bit limb of value $v_i$
+* `vicj` is the jth 2-bit crumb limb of value $v_i$
 
 | Gates | `RangeCheck0`  | `RangeCheck0`  | `RangeCheck1`  | `Zero`          |
 | ----- | -------------- | -------------- | -------------- | --------------- |
@@ -1102,35 +1105,37 @@ This is how three 88-bit inputs `v0`, `v1` and `v2` are layed out and constraine
 |    10 | crumb   `v0c3` | crumb   `v1c3` | crumb   `v2c5` | crumb   `v2c15` |
 |    11 | crumb   `v0c4` | crumb   `v1c4` | crumb   `v2c6` | crumb   `v2c16` |
 |    12 | crumb   `v0c5` | crumb   `v1c5` | crumb   `v2c7` | crumb   `v2c17` |
-|    13 | crumb   `v0p6` | copy    `v1c6` | crumb   `v2c8` | crumb   `v2c18` |
-| LS:14 | crumb   `v0p7` | copy    `v1c7` | crumb   `v2c9` | crumb   `v2c19` |
+|    13 | crumb   `v0p6` | crumb   `v1c6` | crumb   `v2c8` | crumb   `v2c18` |
+| LS:14 | crumb   `v0p7` | crumb   `v1c7` | crumb   `v2c9` | crumb   `v2c19` |
 
-The 12-bit chunks are constrained with plookups and the 2-bit crumbs
+The 12-bit chunks are constrained with plookups and the 2-bit crumbs are
 constrained with degree-4 constraints of the form $x (x - 1) (x - 2) (x - 3)$.
 
 Note that copy denotes a plookup that is deferred to the 4th gate (i.e. `Zero`).
 This is because of the limitation that we have at most 4 lookups per row.
 The copies are constrained using the permutation argument.
 
-##### Gate types:
+**Gate types:**
 
-Different rows are constrained using different CircuitGate types
+Different rows are constrained using different `CircuitGate` types
 
- | Row | `CircuitGate` | Purpose                                                        |
- | --- | ------------- | -------------------------------------------------------------- |
- |   0 | `RangeCheck0` | Partially constrain v0                                         |
- |   1 | `RangeCheck0` | Partially constrain v1                                         |
- |   2 | `RangeCheck1` | Fully constrain v2 (and trigger plookups constraints on row 3) |
- |   3 | `Zero`        | Complete the constraining of v0 and v1 using lookups           |
+| Row | `CircuitGate` | Purpose                                                            |
+| --- | ------------- | ------------------------------------------------------------------ |
+|   0 | `RangeCheck0` | Partially constrain $v_0$                                          |
+|   1 | `RangeCheck0` | Partially constrain $v_1$                                          |
+|   2 | `RangeCheck1` | Fully constrain $v_2$ (and trigger plookups constraints on row 3)  |
+|   3 | `Zero`        | Complete the constraining of $v_0$ and $v_1$ using lookups         |
 
-```admonition::notice
+```admonish
  Each CircuitGate type corresponds to a unique polynomial and thus is assigned
  its own unique powers of alpha
 ```
 ##### `RangeCheck0` - Range check constraints
 
-* This circuit gate is used to partially constrain values `v0` and `v1`
-* The rest of `v0` and `v1` are constrained by the lookups in the `Zero` gate row
+* This circuit gate is used to partially constrain values $v_0$ and $v_1$
+* Optionally, it can be used on its own as a single 64-bit range check by
+  constraining columns 1 and 2 to zero
+* The rest of $v_0$ and $v_1$ are constrained by the lookups in the `Zero` gate row
 * This gate operates on the `Curr` row
 
 It uses three different types of constraints
@@ -1159,9 +1164,9 @@ Given value `v` the layout looks like this
 |     14 | crumb   `vc7` |
 
 where the notation `vpi` and `vci` defined in the "Layout" section above.
-##### RangeCheck1 - Range check constraints
+##### `RangeCheck1` - Range check constraints
 
-* This circuit gate is used to fully constrain `v2`
+* This circuit gate is used to fully constrain $v_2$
 * It operates on the `Curr` and `Next` rows
 
 It uses two different types of constraints
@@ -1188,7 +1193,7 @@ Given value `v2` the layout looks like this
 |     13 | crumb   `v2c8` | crumb `v2c18` |
 |     14 | crumb   `v2c9` | crumb `v2c19` |
 
-where the notation v2i and v2i defined in the "Layout" section above.
+where the notation `v2ci` and `v2pi` defined in the "Layout" section above.
 
 
 #### Foreign Field Addition
@@ -1439,6 +1444,14 @@ pub struct ProverIndex<G: KimchiCurve> {
 
     /// maximal size of the quotient polynomial according to the supported constraints
     pub max_quot_size: usize,
+
+    /// The verifier index corresponding to this prover index
+    #[serde(skip)]
+    pub verifier_index: Option<VerifierIndex<G>>,
+
+    /// The verifier index digest corresponding to this prover index
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    pub verifier_index_digest: Option<G::BaseField>,
 }
 ```
 
@@ -1449,7 +1462,7 @@ Same as the prover index, we have a number of pre-computations as part of the ve
 
 ```rs
 #[serde_as]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LookupVerifierIndex<G: CommitmentCurve> {
     pub lookup_used: LookupsUsed,
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
@@ -1471,7 +1484,7 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 }
 
 #[serde_as]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct VerifierIndex<G: KimchiCurve> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
@@ -1791,6 +1804,7 @@ The prover then follows the following steps to create the proof:
 1. Pad the witness columns with Zero gates to make them the same length as the domain.
    Then, randomize the last `ZK_ROWS` of each columns.
 1. Setup the Fq-Sponge.
+1. Absorb the digest of the VerifierIndex.
 1. Absorb the commitments of the previous challenges with the Fq-sponge.
 1. Compute the negated public input polynomial as
    the polynomial that evaluates to $-p_i$ for the first `public_input_size` values of the domain,
@@ -1808,33 +1822,10 @@ The prover then follows the following steps to create the proof:
 1. Absorb the witness commitments with the Fq-Sponge.
 1. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
    TODO: why not do this first, and then commit? Why commit from evaluation directly?
-1. If using lookup:
-	- if using runtime table:
-		- check that all the provided runtime tables have length and IDs that match the runtime table configuration of the index
-		  we expect the given runtime tables to be sorted as configured, this makes it easier afterwards
-		- calculate the contribution to the second column of the lookup table
-		  (the runtime vector)
-	- If queries involve a lookup table with multiple columns
-	  then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
-	  otherwise set the joint combiner challenge $j'$ to $0$.
-	- Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TOOD: specify)
-	- If multiple lookup tables are involved,
-	  set the `table_id_combiner` as the $j^i$ with $i$ the maximum width of any used table.
-	  Essentially, this is to add a last column of table ids to the concatenated lookup tables.
-	- Compute the dummy lookup value as the combination of the last entry of the XOR table (so `(0, 0, 0)`).
-	  Warning: This assumes that we always use the XOR table when using lookups.
-	- Compute the lookup table values as the combination of the lookup table entries.
-	- Compute the sorted evaluations.
-	- Randomize the last `EVALS` rows in each of the sorted polynomials
-	  in order to add zero-knowledge to the protocol.
-	- Commit each of the sorted polynomials.
-	- Absorb each commitments to the sorted polynomials.
+1. If circuit uses lookups, create a lookup context (see [Lookup context creation](#lookup-context-creation) algorithm)
 1. Sample $\beta$ with the Fq-Sponge.
 1. Sample $\gamma$ with the Fq-Sponge.
-1. If using lookup:
-	- Compute the lookup aggregation polynomial.
-	- Commit to the aggregation polynomial.
-	- Absorb the commitment to the aggregation polynomial with the Fq-Sponge.
+1. If circuit uses lookups, compute lookup context aggregation polynomial (see [Lookup context aggregation polynomial creation](#lookup-context-aggregation-polynomial-creation) algorithm)
 1. Compute the permutation aggregation polynomial $z$.
 1. Commit (hidding) to the permutation aggregation polynomial $z$.
 1. Absorb the permutation aggregation polynomial $z$ with the Fq-Sponge.
@@ -1885,6 +1876,8 @@ The prover then follows the following steps to create the proof:
 1. Evaluate the ft polynomial at $\zeta\omega$ only.
 1. Setup the Fr-Sponge
 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
+1. Absorb the previous recursion challenges.
+1. Compute evaluations for the previous recursion challenges.
 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
 1. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
@@ -1917,6 +1910,37 @@ The prover then follows the following steps to create the proof:
 	- if present, add the runtime table polynomial
 1. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
 
+#### Lookup context creation
+
+When we want to create a proof for a circuit that uses lookups, we must create a lookup context.
+	- if using runtime table:
+		- check that all the provided runtime tables have length and IDs that match the runtime table configuration of the index
+		  we expect the given runtime tables to be sorted as configured, this makes it easier afterwards
+		- calculate the contribution to the second column of the lookup table
+		  (the runtime vector)
+	- If queries involve a lookup table with multiple columns
+	  then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
+	  otherwise set the joint combiner challenge $j'$ to $0$.
+	- Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TOOD: specify)
+	- If multiple lookup tables are involved,
+	  set the `table_id_combiner` as the $j^i$ with $i$ the maximum width of any used table.
+	  Essentially, this is to add a last column of table ids to the concatenated lookup tables.
+	- Compute the dummy lookup value as the combination of the last entry of the XOR table (so `(0, 0, 0)`).
+	  Warning: This assumes that we always use the XOR table when using lookups.
+	- Compute the lookup table values as the combination of the lookup table entries.
+	- Compute the sorted evaluations.
+	- Randomize the last `EVALS` rows in each of the sorted polynomials
+	  in order to add zero-knowledge to the protocol.
+	- Commit each of the sorted polynomials.
+	- Absorb each commitments to the sorted polynomials.
+
+#### Lookup context aggregation polynomial creation
+
+When we have a lookup context, we must compute its aggregation polynomial.
+- Compute the lookup aggregation polynomial.
+- Commit to the aggregation polynomial.
+- Absorb the commitment to the aggregation polynomial with the Fq-Sponge.
+
 
 ### Proof Verification
 
@@ -1930,6 +1954,7 @@ We define two helper algorithms below, used in the batch verification of proofs.
 We run the following algorithm:
 
 1. Setup the Fq-Sponge.
+1. Absorb the digest of the VerifierIndex.
 1. Absorb the commitments of the previous challenges with the Fq-sponge.
 1. Absorb the commitment of the public input polynomial with the Fq-Sponge.
 1. Absorb the commitments to the registers / witness columns with the Fq-Sponge.
@@ -1952,6 +1977,8 @@ We run the following algorithm:
 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
 1. Setup the Fr-Sponge.
 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
+1. Compute evaluations for the previous recursion challenges.
+1. Absorb the previous recursion challenges.
 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
 
    NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
