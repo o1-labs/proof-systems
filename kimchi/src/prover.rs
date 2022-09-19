@@ -13,11 +13,10 @@ use crate::{
             complete_add::CompleteAdd,
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
-            foreign_field_add::{self, circuitgates::ForeignFieldAdd},
-            generic, permutation,
+            foreign_field_add, generic, permutation,
             permutation::ZK_ROWS,
             poseidon::Poseidon,
-            range_check::{self},
+            range_check::self,
             varbasemul::VarbaseMul,
         },
         wires::{COLUMNS, PERMUTS},
@@ -599,12 +598,12 @@ where
                 );
             }
 
-            if let Some(selector) = index.cs.foreign_field_add_selector_poly.as_ref() {
+            if let Some(selector) = &index.cs.foreign_field_add_selector_polys.as_ref() {
                 index_evals.extend(
                     foreign_field_add::gadget::circuit_gates()
                         .iter()
                         .enumerate()
-                        .map(|(_, gate_type)| (*gate_type, &selector.eval8)),
+                        .map(|(i, gate_type)| (*gate_type, &selector[i].eval8)),
                 );
             }
 
@@ -735,12 +734,17 @@ where
 
             // foreign field addition
             {
-                if index.cs.foreign_field_add_selector_poly.is_some() {
-                    let ffadd =
-                        ForeignFieldAdd::combined_constraints(&all_alphas).evaluations(&env);
-                    assert_eq!(ffadd.domain().size, t4.domain().size);
-                    t4 += &ffadd;
-                    check_constraint!(index, ffadd);
+                if index.cs.foreign_field_add_selector_polys.is_some() {
+                    for gate_type in range_check::gadget::circuit_gates() {
+                        let ffadd = foreign_field_add::gadget::circuit_gate_constraints(
+                            gate_type,
+                            &all_alphas,
+                        )
+                        .evaluations(&env);
+                        assert_eq!(ffadd.domain().size, t4.domain().size);
+                        t4 += &ffadd;
+                        check_constraint!(index, ffadd);
+                    }
                 }
             }
 

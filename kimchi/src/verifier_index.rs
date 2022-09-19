@@ -7,6 +7,7 @@ use crate::{
         expr::{Linearization, PolishToken},
         lookup::{index::LookupSelectors, lookups::LookupsUsed},
         polynomials::{
+            foreign_field_add,
             permutation::{zk_polynomial, zk_w3},
             range_check,
         },
@@ -120,7 +121,7 @@ pub struct VerifierIndex<G: KimchiCurve> {
 
     // Foreign field addition gates polynomial commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
-    pub foreign_field_add_comm: Option<PolyComm<G>>,
+    pub foreign_field_add_comm: Option<[PolyComm<G>; foreign_field_add::gadget::GATE_COUNT]>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -233,11 +234,13 @@ impl<G: KimchiCurve> ProverIndex<G> {
 
             foreign_field_add_comm: self
                 .cs
-                .foreign_field_add_selector_poly
+                .foreign_field_add_selector_polys
                 .as_ref()
                 .map(|poly| {
-                    self.srs
-                        .commit_evaluations_non_hiding(domain, &poly.eval8, None)
+                    array_init(|i| {
+                        self.srs
+                            .commit_evaluations_non_hiding(domain, &poly[i].eval8, None)
+                    })
                 }),
 
             shift: self.cs.shift,
