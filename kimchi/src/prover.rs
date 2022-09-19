@@ -341,9 +341,13 @@ where
 
                 // pre-compute the updated second column of the lookup table
                 let mut second_column_d8 = runtime_table_contribution_d8.clone();
-                for (row, e) in second_column_d8.evals.iter_mut().enumerate() {
-                    *e += lcs.lookup_table8[1][row];
-                }
+                second_column_d8
+                    .evals
+                    .par_iter_mut()
+                    .enumerate()
+                    .for_each(|(row, e)| {
+                        *e += lcs.lookup_table8[1][row];
+                    });
 
                 lookup_context.runtime_table = Some(runtime_table_contribution);
                 lookup_context.runtime_table_d8 = Some(runtime_table_contribution_d8);
