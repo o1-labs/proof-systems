@@ -42,7 +42,6 @@ use commitment_dlog::commitment::{
 use itertools::Itertools;
 use o1_utils::ExtendedDensePolynomial as _;
 use oracle::{sponge::ScalarChallenge, FqSponge};
-use rand::{CryptoRng, RngCore};
 use rayon::prelude::*;
 use std::array;
 use std::collections::HashMap;
