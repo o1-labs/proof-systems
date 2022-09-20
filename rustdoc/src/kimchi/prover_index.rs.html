@@ -171,14 +171,24 @@
 <span id="171">171</span>
 <span id="172">172</span>
 <span id="173">173</span>
-</pre><pre class="rust"><code><span class="doccomment">//! This module implements the prover index as [ProverIndex].
+<span id="174">174</span>
+<span id="175">175</span>
+<span id="176">176</span>
+<span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This module implements the prover index as [`ProverIndex`].
 
 </span><span class="kw">use crate</span>::{
     alphas::Alphas,
     circuits::{
         constraints::ConstraintSystem,
         expr::{Linearization, PolishToken},
-        wires::<span class="kw-2">*</span>,
+        wires::PERMUTS,
     },
     curve::KimchiCurve,
     linearization::expr_linearization,
@@ -230,6 +240,10 @@
 
 </span><span class="kw">impl</span>&lt;G: KimchiCurve&gt; ProverIndex&lt;G&gt; {
     <span class="doccomment">/// this function compiles the index from constraints
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `polynomial segment size` is bigger than `circuit`.
     </span><span class="kw">pub fn </span>create(
         <span class="kw-2">mut </span>cs: ConstraintSystem&lt;G::ScalarField&gt;,
         endo_q: G::ScalarField,
@@ -318,7 +332,12 @@
     <span class="kw">use </span>commitment_dlog::srs::endos;
     <span class="kw">use </span>mina_curves::pasta::{pallas::Pallas, vesta::Vesta, Fp};
 
-    <span class="kw">pub fn </span>new_index_for_test_with_lookups(
+    <span class="doccomment">/// Create new index for lookups.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `constraint system` is not built with `gates` input.
+    </span><span class="kw">pub fn </span>new_index_for_test_with_lookups(
         gates: Vec&lt;CircuitGate&lt;Fp&gt;&gt;,
         public: usize,
         prev_challenges: usize,
@@ -340,6 +359,7 @@
         <span class="kw">let </span>(endo_q, _endo_r) = endos::&lt;Pallas&gt;();
         ProverIndex::&lt;Vesta&gt;::create(cs, endo_q, srs)
     }
+
     <span class="kw">pub fn </span>new_index_for_test(gates: Vec&lt;CircuitGate&lt;Fp&gt;&gt;, public: usize) -&gt; ProverIndex&lt;Vesta&gt; {
         new_index_for_test_with_lookups(gates, public, <span class="number">0</span>, <span class="macro">vec!</span>[], <span class="prelude-val">None</span>)
     }

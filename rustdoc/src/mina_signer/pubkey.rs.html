@@ -213,6 +213,14 @@
 <span id="213">213</span>
 <span id="214">214</span>
 <span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Public key structures and algorithms
 //!
 //! Definition of public key structure and helpers
@@ -274,6 +282,10 @@
     }
 
     <span class="doccomment">/// Deserialize Mina address into public key
+    ///
+    /// # Errors
+    ///
+    /// Will give error if `address` string does not match certain requirements.
     </span><span class="kw">pub fn </span>from_address(address: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt; {
         <span class="kw">if </span>address.len() != MINA_ADDRESS_LEN {
             <span class="kw">return </span><span class="prelude-val">Err</span>(PubKeyError::AddressLength);
@@ -376,7 +388,7 @@
     </span>raw.extend(x.to_bytes());
 
     <span class="comment">// pub key y-coordinate parity
-    </span>raw.push(is_odd <span class="kw">as </span>u8);
+    </span>raw.push(u8::from(is_odd));
 
     <span class="comment">// 4-byte checksum
     </span><span class="kw">let </span>hash = Sha256::digest(<span class="kw-2">&amp;</span>Sha256::digest(<span class="kw-2">&amp;</span>raw[..])[..]);
@@ -392,12 +404,16 @@
         into_address(<span class="kw-2">&amp;</span><span class="self">self</span>.x, <span class="self">self</span>.is_odd)
     }
 
-    <span class="doccomment">/// Deserialize Mina address into compressed public key (via an uncompressed PubKey)
+    <span class="doccomment">/// Deserialize Mina address into compressed public key (via an uncompressed `PubKey`)
+    ///
+    /// # Errors
+    ///
+    /// Will give error if `PubKey::from_address()` returns error.
     </span><span class="kw">pub fn </span>from_address(address: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt; {
         <span class="prelude-val">Ok</span>(PubKey::from_address(address)<span class="question-mark">?</span>.into_compressed())
     }
 
-    <span class="doccomment">/// The empty [CompressedPubKey] value that is used as `public_key` in empty account
+    <span class="doccomment">/// The empty [`CompressedPubKey`] value that is used as `public_key` in empty account
     /// and [None] value for calculating the hash of [Option&lt;CompressedPubKey&gt;], etc.
     </span><span class="kw">pub fn </span>empty() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{

@@ -1466,6 +1466,18 @@
 <span id="1466">1466</span>
 <span id="1467">1467</span>
 <span id="1468">1468</span>
+<span id="1469">1469</span>
+<span id="1470">1470</span>
+<span id="1471">1471</span>
+<span id="1472">1472</span>
+<span id="1473">1473</span>
+<span id="1474">1474</span>
+<span id="1475">1475</span>
+<span id="1476">1476</span>
+<span id="1477">1477</span>
+<span id="1478">1478</span>
+<span id="1479">1479</span>
+<span id="1480">1480</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements prover&#39;s zk-proof primitive.
 
 </span><span class="kw">use crate</span>::{
@@ -1582,7 +1594,11 @@
 <span class="kw">where
     </span>G::BaseField: PrimeField,
 {
-    <span class="doccomment">/// This function constructs prover&#39;s zk-proof from the witness &amp; the ProverIndex against SRS instance
+    <span class="doccomment">/// This function constructs prover&#39;s zk-proof from the witness &amp; the `ProverIndex` against SRS instance
+    ///
+    /// # Errors
+    ///
+    /// Will give error if `create_recursive` process fails.
     </span><span class="kw">pub fn </span>create&lt;
         EFqSponge: Clone + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
         EFrSponge: FrSponge&lt;G::ScalarField&gt;,
@@ -1602,7 +1618,15 @@
         )
     }
 
-    <span class="doccomment">/// This function constructs prover&#39;s recursive zk-proof from the witness &amp; the ProverIndex against SRS instance
+    <span class="doccomment">/// This function constructs prover&#39;s recursive zk-proof from the witness &amp; the `ProverIndex` against SRS instance
+    ///
+    /// # Errors
+    ///
+    /// Will give error if inputs(like `lookup_context.joint_lookup_table_d8`) are None.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `lookup_context.joint_lookup_table_d8` is None.
     </span><span class="kw">pub fn </span>create_recursive&lt;
         EFqSponge: Clone + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
         EFrSponge: FrSponge&lt;G::ScalarField&gt;,

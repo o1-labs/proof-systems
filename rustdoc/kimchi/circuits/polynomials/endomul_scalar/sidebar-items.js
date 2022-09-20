@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":[["gen_witness",""]],"struct":[["EndomulScalar",""]]};
+window.SIDEBAR_ITEMS = {"fn":[["gen_witness","Generate the `witness`"]],"struct":[["EndomulScalar",""]]};

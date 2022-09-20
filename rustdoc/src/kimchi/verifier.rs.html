@@ -927,6 +927,21 @@
 <span id="927">927</span>
 <span id="928">928</span>
 <span id="929">929</span>
+<span id="930">930</span>
+<span id="931">931</span>
+<span id="932">932</span>
+<span id="933">933</span>
+<span id="934">934</span>
+<span id="935">935</span>
+<span id="936">936</span>
+<span id="937">937</span>
+<span id="938">938</span>
+<span id="939">939</span>
+<span id="940">940</span>
+<span id="941">941</span>
+<span id="942">942</span>
+<span id="943">943</span>
+<span id="944">944</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements zk-proof batch verifier functionality.
 
 </span><span class="kw">use crate</span>::{
@@ -938,7 +953,7 @@
         lookup::{lookups::LookupsUsed, tables::combine_table},
         polynomials::{generic, permutation},
         scalars::RandomOracles,
-        wires::<span class="kw-2">*</span>,
+        wires::{COLUMNS, PERMUTS},
     },
     curve::KimchiCurve,
     error::VerifyError,
@@ -964,6 +979,14 @@
     </span>G::BaseField: PrimeField,
 {
     <span class="doccomment">/// This function runs the random oracle argument
+    ///
+    /// # Errors
+    ///
+    /// Will give error if `commitment(s)` are invalid(missing or wrong length), or `proof` is verified as invalid.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `PolishToken` evaluation is invalid.
     </span><span class="kw">pub fn </span>oracles&lt;
         EFqSponge: Clone + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
         EFrSponge: FrSponge&lt;G::ScalarField&gt;,
@@ -1139,7 +1162,9 @@
         <span class="comment">//~ 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
         //~
         //~    NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
-        </span><span class="kw">let </span>public_evals = <span class="kw">if </span>!<span class="self">self</span>.public.is_empty() {
+        </span><span class="kw">let </span>public_evals = <span class="kw">if </span><span class="self">self</span>.public.is_empty() {
+            [<span class="macro">vec!</span>[G::ScalarField::zero()], <span class="macro">vec!</span>[G::ScalarField::zero()]]
+        } <span class="kw">else </span>{
             [
                 <span class="macro">vec!</span>[
                     (<span class="self">self
@@ -1164,11 +1189,7 @@
                         * (zetaw.pow(<span class="kw-2">&amp;</span>[n <span class="kw">as </span>u64]) - G::ScalarField::one()),
                 ],
             ]
-        } <span class="kw">else </span>{
-            [<span class="macro">vec!</span>[G::ScalarField::zero()], <span class="macro">vec!</span>[G::ScalarField::zero()]]
         };
-
-        <span class="macro">println!</span>(<span class="string">&quot;verifier public eval: {:?}&quot;</span>, public_evals);
 
         <span class="comment">//~ 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
         </span>fr_sponge.absorb(<span class="kw-2">&amp;</span><span class="self">self</span>.ft_eval1);
@@ -1228,10 +1249,10 @@
                 .map(|(w, s)| (beta * s) + w + gamma)
                 .fold(init, |x, y| x * y);
 
-            ft_eval0 -= <span class="kw">if </span>!public_evals[<span class="number">0</span>].is_empty() {
-                public_evals[<span class="number">0</span>][<span class="number">0</span>]
-            } <span class="kw">else </span>{
+            ft_eval0 -= <span class="kw">if </span>public_evals[<span class="number">0</span>].is_empty() {
                 G::ScalarField::zero()
+            } <span class="kw">else </span>{
+                public_evals[<span class="number">0</span>][<span class="number">0</span>]
             };
 
             ft_eval0 -= evals[<span class="number">0</span>]
@@ -1328,6 +1349,7 @@
         };
 
         <span class="kw">let </span>oracles = RandomOracles {
+            joint_combiner,
             beta,
             gamma,
             alpha_chal,
@@ -1338,7 +1360,6 @@
             zeta_chal,
             v_chal,
             u_chal,
-            joint_combiner,
         };
 
         <span class="prelude-val">Ok</span>(OraclesResult {
@@ -1486,11 +1507,11 @@
                 <span class="kw">match </span>col {
                     Witness(i) =&gt; {
                         scalars.push(scalar);
-                        commitments.push(<span class="kw-2">&amp;</span>proof.commitments.w_comm[<span class="kw-2">*</span>i])
+                        commitments.push(<span class="kw-2">&amp;</span>proof.commitments.w_comm[<span class="kw-2">*</span>i]);
                     }
                     Coefficient(i) =&gt; {
                         scalars.push(scalar);
-                        commitments.push(<span class="kw-2">&amp;</span>index.coefficients_comm[<span class="kw-2">*</span>i])
+                        commitments.push(<span class="kw-2">&amp;</span>index.coefficients_comm[<span class="kw-2">*</span>i]);
                     }
                     Z =&gt; {
                         scalars.push(scalar);
@@ -1503,7 +1524,7 @@
                             .as_ref()
                             .ok_or(VerifyError::LookupCommitmentMissing)<span class="question-mark">?</span>;
                         scalars.push(scalar);
-                        commitments.push(<span class="kw-2">&amp;</span>lookup_coms.sorted[<span class="kw-2">*</span>i])
+                        commitments.push(<span class="kw-2">&amp;</span>lookup_coms.sorted[<span class="kw-2">*</span>i]);
                     }
                     LookupAggreg =&gt; {
                         <span class="kw">let </span>lookup_coms = proof
@@ -1512,7 +1533,7 @@
                             .as_ref()
                             .ok_or(VerifyError::LookupCommitmentMissing)<span class="question-mark">?</span>;
                         scalars.push(scalar);
-                        commitments.push(<span class="kw-2">&amp;</span>lookup_coms.aggreg)
+                        commitments.push(<span class="kw-2">&amp;</span>lookup_coms.aggreg);
                     }
                     LookupKindIndex(i) =&gt; <span class="kw">match </span>index.lookup_index.as_ref() {
                         <span class="prelude-val">None </span>=&gt; {
@@ -1731,7 +1752,7 @@
             <span class="kw">let </span>joint_combiner = oracles
                 .joint_combiner
                 .expect(<span class="string">&quot;joint_combiner should be present if lookups are used&quot;</span>);
-            <span class="kw">let </span>table_id_combiner = joint_combiner.<span class="number">1</span>.pow([li.max_joint_size <span class="kw">as </span>u64]);
+            <span class="kw">let </span>table_id_combiner = joint_combiner.<span class="number">1</span>.pow([u64::from(li.max_joint_size)]);
             <span class="kw">let </span>lookup_table: Vec&lt;<span class="kw">_</span>&gt; = li.lookup_table.iter().collect();
             <span class="kw">let </span>runtime = lookup_comms.runtime.as_ref();
 
@@ -1788,7 +1809,11 @@
     })
 }
 
-<span class="doccomment">/// Verify a proof [ProverProof] using a [VerifierIndex] and a `group_map`.
+<span class="doccomment">/// Verify a proof [`ProverProof`] using a [`VerifierIndex`] and a `group_map`.
+///
+/// # Errors
+///
+/// Will give error if `proof(s)` are not verified as valid.
 </span><span class="kw">pub fn </span>verify&lt;G, EFqSponge, EFrSponge&gt;(
     group_map: <span class="kw-2">&amp;</span>G::Map,
     verifier_index: <span class="kw-2">&amp;</span>VerifierIndex&lt;G&gt;,
@@ -1806,8 +1831,12 @@
 
 <span class="doccomment">/// This function verifies the batch of zk-proofs
 ///     proofs: vector of Plonk proofs
-///     index: VerifierIndex
+///     index: `VerifierIndex`
 ///     RETURN: verification status
+///
+/// # Errors
+///
+/// Will give error if `srs` of `proof` is invalid or `verify` process fails.
 </span><span class="kw">pub fn </span>batch_verify&lt;G, EFqSponge, EFrSponge&gt;(
     group_map: <span class="kw-2">&amp;</span>G::Map,
     proofs: <span class="kw-2">&amp;</span>[(<span class="kw-2">&amp;</span>VerifierIndex&lt;G&gt;, <span class="kw-2">&amp;</span>ProverProof&lt;G&gt;)],
@@ -1851,9 +1880,10 @@
     }
 
     <span class="comment">//~ 1. Use the [`PolyCom.verify`](#polynomial-commitments) to verify the partially evaluated proofs.
-    </span><span class="kw">match </span>srs.verify::&lt;EFqSponge, <span class="kw">_</span>&gt;(group_map, <span class="kw-2">&amp;mut </span>batch, <span class="kw-2">&amp;mut </span>thread_rng()) {
-        <span class="bool-val">false </span>=&gt; <span class="prelude-val">Err</span>(VerifyError::OpenProof),
-        <span class="bool-val">true </span>=&gt; <span class="prelude-val">Ok</span>(()),
+    </span><span class="kw">if </span>srs.verify::&lt;EFqSponge, <span class="kw">_</span>&gt;(group_map, <span class="kw-2">&amp;mut </span>batch, <span class="kw-2">&amp;mut </span>thread_rng()) {
+        <span class="prelude-val">Ok</span>(())
+    } <span class="kw">else </span>{
+        <span class="prelude-val">Err</span>(VerifyError::OpenProof)
     }
 }
 </code></pre></div>

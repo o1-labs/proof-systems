@@ -138,6 +138,16 @@
 <span id="138">138</span>
 <span id="139">139</span>
 <span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the linearization.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::alphas::Alphas;
@@ -155,11 +165,16 @@
 <span class="kw">use </span><span class="kw">crate</span>::circuits::{
     expr::{Column, ConstantExpr, Expr, Linearization, PolishToken},
     gate::GateType,
-    wires::<span class="kw-2">*</span>,
+    wires::COLUMNS,
 };
 <span class="kw">use </span>ark_ff::{FftField, SquareRootField};
 
-<span class="kw">pub fn </span>constraints_expr&lt;F: FftField + SquareRootField&gt;(
+<span class="doccomment">/// Get the expresion of constraints.
+///
+/// # Panics
+///
+/// Will panic if `generic_gate` is not associate with `alpha^0`.
+</span><span class="kw">pub fn </span>constraints_expr&lt;F: FftField + SquareRootField&gt;(
     chacha: bool,
     range_check: bool,
     lookup_constraint_system: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>LookupConfiguration&lt;F&gt;&gt;,
@@ -238,7 +253,7 @@
 
     <span class="comment">// the lookup polynomials
     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(lcs) = <span class="kw-2">&amp;</span>lookup_constraint_system {
-        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..(lcs.lookup_info.max_per_row + <span class="number">1</span>) {
+        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..=lcs.lookup_info.max_per_row {
             h.insert(LookupSorted(i));
         }
         h.insert(LookupAggreg);
@@ -262,7 +277,12 @@
     h
 }
 
-<span class="kw">pub fn </span>expr_linearization&lt;F: FftField + SquareRootField&gt;(
+<span class="doccomment">/// Linearize the `expr`.
+///
+/// # Panics
+///
+/// Will panic if the `linearization` process fails.
+</span><span class="kw">pub fn </span>expr_linearization&lt;F: FftField + SquareRootField&gt;(
     chacha: bool,
     range_check: bool,
     lookup_constraint_system: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>LookupConfiguration&lt;F&gt;&gt;,

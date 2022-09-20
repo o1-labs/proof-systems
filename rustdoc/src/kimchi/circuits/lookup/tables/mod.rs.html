@@ -134,6 +134,10 @@
 <span id="134">134</span>
 <span id="135">135</span>
 <span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
 </pre><pre class="rust"><code><span class="kw">use </span>ark_ff::{FftField, One, Zero};
 <span class="kw">use </span>commitment_dlog::PolyComm;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -194,7 +198,7 @@
     }
 }
 
-<span class="doccomment">/// Returns the lookup table associated to a [GateLookupTable].
+<span class="doccomment">/// Returns the lookup table associated to a [`GateLookupTable`].
 </span><span class="kw">pub fn </span>get_table&lt;F: FftField&gt;(table_name: GateLookupTable) -&gt; LookupTable&lt;F&gt; {
     <span class="kw">match </span>table_name {
         GateLookupTable::Xor =&gt; xor::xor_table(),
@@ -232,8 +236,12 @@
         + table_id_combiner.clone() * table_id.clone()
 }
 
-<span class="doccomment">/// Same as [combine_table_entry], but for an entire table.
+<span class="doccomment">/// Same as [`combine_table_entry`], but for an entire table.
 /// The function will panic if given an empty table (0 columns).
+///
+/// # Panics
+///
+/// Will panic if `columns` is empty.
 </span><span class="kw">pub fn </span>combine_table&lt;G&gt;(
     columns: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>PolyComm&lt;G&gt;],
     column_combiner: G::ScalarField,

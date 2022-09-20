@@ -1300,6 +1300,29 @@
 <span id="1300">1300</span>
 <span id="1301">1301</span>
 <span id="1302">1302</span>
+<span id="1303">1303</span>
+<span id="1304">1304</span>
+<span id="1305">1305</span>
+<span id="1306">1306</span>
+<span id="1307">1307</span>
+<span id="1308">1308</span>
+<span id="1309">1309</span>
+<span id="1310">1310</span>
+<span id="1311">1311</span>
+<span id="1312">1312</span>
+<span id="1313">1313</span>
+<span id="1314">1314</span>
+<span id="1315">1315</span>
+<span id="1316">1316</span>
+<span id="1317">1317</span>
+<span id="1318">1318</span>
+<span id="1319">1319</span>
+<span id="1320">1320</span>
+<span id="1321">1321</span>
+<span id="1322">1322</span>
+<span id="1323">1323</span>
+<span id="1324">1324</span>
+<span id="1325">1325</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::circuits::gate::{CircuitGate, GateType};
 <span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::poseidon::{ROUNDS_PER_HASH, SPONGE_WIDTH};
 <span class="kw">use </span><span class="kw">crate</span>::circuits::wires::{Wire, COLUMNS, PERMUTS};
@@ -1354,7 +1377,7 @@ A position is a row and a column. */
 }
 
 <span class="doccomment">/** A gate/row/constraint consists of a type (kind), a row, the other cells its columns/cells are
-connected to (wired_to), and the selector polynomial associated with the gate. */
+connected to (`wired_to`), and the selector polynomial associated with the gate. */
 </span><span class="kw">struct </span>GateSpec&lt;Row, Field&gt; {
     kind: GateType,
     wired_to: Vec&lt;Position&lt;Row&gt;&gt;,
@@ -1362,7 +1385,7 @@ connected to (wired_to), and the selector polynomial associated with the gate. *
 }
 
 <span class="kw">impl</span>&lt;Row, Field&gt; GateSpec&lt;Row, Field&gt; {
-    <span class="doccomment">/** Applies a function [f] to the [row] of [t] and all the rows of its [wired_to]. */
+    <span class="doccomment">/** Applies a function [f] to the [row] of [t] and all the rows of its [`wired_to`]. */
     </span><span class="kw">fn </span>map_rows&lt;Row2, F: Fn(Row) -&gt; Row2&gt;(<span class="self">self</span>, f: F) -&gt; GateSpec&lt;Row2, Field&gt; {
         <span class="kw">let </span>GateSpec {
             kind,
@@ -1449,9 +1472,9 @@ connected to (wired_to), and the selector polynomial associated with the gate. *
     R1CS(Var, Var, Var),
 }
 
-<span class="doccomment">/** A PLONK constraint (or gate) can be [Basic](KimchiConstraint::Basic), [Poseidon](KimchiConstraint::Poseidon),
- * [EcAddComplete](KimchiConstraint::EcAddComplete), [EcScale](KimchiConstraint::EcScale),
- * [EcEndoscale](KimchiConstraint::EcEndoscale), or [EcEndoscalar](KimchiConstraint::EcEndoscalar). */
+<span class="doccomment">/** A PLONK constraint (or gate) can be [`Basic`](KimchiConstraint::Basic), [`Poseidon`](KimchiConstraint::Poseidon),
+ * [`EcAddComplete`](KimchiConstraint::EcAddComplete), [`EcScale`](KimchiConstraint::EcScale),
+ * [`EcEndoscale`](KimchiConstraint::EcEndoscale), or [`EcEndoscalar`](KimchiConstraint::EcEndoscalar). */
 </span><span class="kw">pub enum </span>KimchiConstraint&lt;Var, Field&gt; {
     Basic {
         l: (Field, Var),
@@ -1559,7 +1582,7 @@ connected to (wired_to), and the selector polynomial associated with the gate. *
 }
 
 <span class="kw">impl</span>&lt;Field: PrimeField, Gates: GateVector&lt;Field&gt;&gt; SnarkyConstraintSystem&lt;Field, Gates&gt; {
-    <span class="doccomment">/** Converts the set of permutations (equivalence_classes) to
+    <span class="doccomment">/** Converts the set of permutations (`equivalence_classes`) to
       a hash table that maps each position to the next one.
       For example, if one of the equivalence class is [pos1, pos3, pos7],
       the function will return a hashtable that maps pos1 to pos3,
@@ -1586,9 +1609,12 @@ connected to (wired_to), and the selector polynomial associated with the gate. *
         res
     }
 
-    <span class="doccomment">/** Compute the witness, given the constraint system `sys`
-       and a function that converts the indexed secret inputs to their concrete values.
-    */
+    <span class="doccomment">/// Compute the witness, given the constraint system `sys`
+    /// and a function that converts the indexed secret inputs to their concrete values.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if some inputs like `public_input_size` are unknown(None value).
     </span><span class="kw">pub fn </span>compute_witness&lt;F: Fn(usize) -&gt; Field&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, external_values: F) -&gt; Vec&lt;Vec&lt;Field&gt;&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>internal_values = HashMap::new();
         <span class="kw">let </span>public_input_size = <span class="self">self</span>.public_input_size.unwrap();
@@ -1632,7 +1658,7 @@ connected to (wired_to), and the selector polynomial associated with the gate. *
     }
 
     <span class="kw">fn </span>union_find(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: V) {
-        <span class="self">self</span>.union_finds.make_set(value)
+        <span class="self">self</span>.union_finds.make_set(value);
     }
 
     <span class="kw">fn </span>create_internal(<span class="kw-2">&amp;mut </span><span class="self">self</span>, constant: <span class="prelude-ty">Option</span>&lt;Field&gt;, lc: Vec&lt;(Field, V)&gt;) -&gt; V {
@@ -1666,19 +1692,23 @@ connected to (wired_to), and the selector polynomial associated with the gate. *
         <span class="self">self</span>.auxiliary_input_size
     }
 
-    <span class="doccomment">/** Returns the number of public inputs. */
+    <span class="doccomment">/// Returns the number of public inputs.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `public_input_size` is None.
     </span><span class="kw">pub fn </span>get_primary_input_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="self">self</span>.public_input_size.unwrap()
     }
 
     <span class="doccomment">/** Non-public part of the witness. */
     </span><span class="kw">pub fn </span>set_auxiliary_input_size(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: usize) {
-        <span class="self">self</span>.auxiliary_input_size = x
+        <span class="self">self</span>.auxiliary_input_size = x;
     }
 
     <span class="doccomment">/** Sets the number of public-input. It should only be called once. */
     </span><span class="kw">pub fn </span>set_public_input_size(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: usize) {
-        <span class="self">self</span>.public_input_size = <span class="prelude-val">Some</span>(x)
+        <span class="self">self</span>.public_input_size = <span class="prelude-val">Some</span>(x);
     }
 
     <span class="doccomment">/** Adds {row; col} to the system&#39;s wiring under a specific key.
@@ -1690,12 +1720,12 @@ connected to (wired_to), and the selector polynomial associated with the gate. *
         <span class="self">self</span>.equivalence_classes
             .entry(key)
             .or_insert_with(Vec::new)
-            .push(Position { row, col })
+            .push(Position { row, col });
     }
 
     <span class="doccomment">/** Same as wire&#39;, except that the row must be given relatively to the end of the public-input rows. */
     </span><span class="kw">fn </span>wire(<span class="kw-2">&amp;mut </span><span class="self">self</span>, key: V, row: usize, col: usize) {
-        <span class="self">self</span>.wire_(key, Row::AfterPublicInput(row), col)
+        <span class="self">self</span>.wire_(key, Row::AfterPublicInput(row), col);
     }
 
     <span class="doccomment">/** Adds a row/gate/constraint to a constraint system `sys`. */
@@ -1725,7 +1755,12 @@ connected to (wired_to), and the selector polynomial associated with the gate. *
         <span class="self">self</span>.rows.push(vars);
     }
 
-    <span class="kw">pub fn </span>finalize(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+    <span class="doccomment">/// Fill the `gate` values(input and output), and finalize the `circuit`.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `circuit` is completed.
+    </span><span class="kw">pub fn </span>finalize(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="comment">// if it&#39;s already finalized, return early
         </span><span class="kw">if </span><span class="macro">matches!</span>(<span class="self">self</span>.gates, Circuit::Compiled(..)) {
             <span class="comment">// TODO: return an error?
@@ -1741,7 +1776,7 @@ connected to (wired_to), and the selector polynomial associated with the gate. *
         <span class="comment">// get gates without holding on an immutable reference
         </span><span class="kw">let </span>gates = <span class="kw">match </span>std::mem::replace(<span class="kw-2">&amp;mut </span><span class="self">self</span>.gates, Circuit::Unfinalized(<span class="macro">vec!</span>[])) {
             Circuit::Unfinalized(gates) =&gt; gates,
-            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;we expect the gates to be unfinalized&quot;</span>),
+            Circuit::Compiled(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;we expect the gates to be unfinalized&quot;</span>),
         };
 
         <span class="comment">/* Create rows for public input. */
@@ -1805,7 +1840,7 @@ connected to (wired_to), and the selector polynomial associated with the gate. *
         <span class="comment">/* convert all the gates into our Gates.t Rust vector type */
         </span><span class="kw">let </span><span class="kw-2">mut </span>rust_gates = Gates::create();
         <span class="kw">let </span><span class="kw-2">mut </span>add_gates = |gates: Vec&lt;<span class="kw">_</span>&gt;| {
-            <span class="kw">for </span>gate <span class="kw">in </span>gates.into_iter() {
+            <span class="kw">for </span>gate <span class="kw">in </span>gates {
                 <span class="kw">let </span>g = to_absolute_row(gate);
                 rust_gates.add(g.to_rust_gate());
             }
@@ -1820,7 +1855,7 @@ connected to (wired_to), and the selector polynomial associated with the gate. *
         <span class="self">self</span>.finalize();
         <span class="kw">match </span><span class="kw-2">&amp;mut </span><span class="self">self</span>.gates {
             Circuit::Compiled(<span class="kw">_</span>, gates) =&gt; gates,
-            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+            Circuit::Unfinalized(<span class="kw">_</span>) =&gt; <span class="macro">unreachable!</span>(),
         }
     }
 }
@@ -1836,7 +1871,7 @@ connected to (wired_to), and the selector polynomial associated with the gate. *
 */
 </span><span class="kw">fn </span>accumulate_terms&lt;Field: PrimeField&gt;(terms: Vec&lt;(Field, usize)&gt;) -&gt; HashMap&lt;usize, Field&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>acc = HashMap::new();
-    <span class="kw">for </span>(x, i) <span class="kw">in </span>terms.into_iter() {
+    <span class="kw">for </span>(x, i) <span class="kw">in </span>terms {
         <span class="kw">match </span>acc.entry(i) {
             std::collections::hash_map::Entry::Occupied(<span class="kw-2">mut </span>entry) =&gt; {
                 <span class="kw">let </span>res = x + entry.get();
@@ -1908,7 +1943,7 @@ connected to (wired_to), and the selector polynomial associated with the gate. *
         }
     }
 
-    <span class="doccomment">/** Converts a number of scaled additions \sum s_i * x_i
+    <span class="doccomment">/** Converts a number of scaled additions \sum `s_i` * `x_i`
     to as many constraints as needed,
     creating temporary variables for each new row/constraint,
     and returning the output variable.
@@ -2060,7 +2095,13 @@ connected to (wired_to), and the selector polynomial associated with the gate. *
         }
     }
 
-    <span class="kw">pub fn </span>add_basic_snarky_constraint&lt;Cvar&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, constraint: BasicSnarkyConstraint&lt;Cvar&gt;)
+    <span class="doccomment">/// Applies the basic `SnarkyConstraint`.
+    /// Simply, place the values of `selector`(`sl`, `sr`, `so` ...) and `input`(`l`, `r`, `o`, `m`).
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `constant selector` constraints are not matching.
+    </span><span class="kw">pub fn </span>add_basic_snarky_constraint&lt;Cvar&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, constraint: BasicSnarkyConstraint&lt;Cvar&gt;)
     <span class="kw">where
         </span>Cvar: SnarkyCvar&lt;Field = Field&gt;,
     {
@@ -2077,7 +2118,7 @@ connected to (wired_to), and the selector polynomial associated with the gate. *
                             <span class="prelude-val">Some</span>(xl),
                             <span class="prelude-val">Some</span>(xo),
                             <span class="macro">vec!</span>[Field::zero(), Field::zero(), -so, sl * sl, Field::zero()],
-                        )
+                        );
                     }
                     ((sl, ConstantOrVar::Var(xl)), (so, ConstantOrVar::Constant)) =&gt;
                     <span class="comment">/* TODO: it&#39;s hard to read the array of selector values, name them! */
@@ -2087,7 +2128,7 @@ connected to (wired_to), and the selector polynomial associated with the gate. *
                             <span class="prelude-val">Some</span>(xl),
                             <span class="prelude-val">None</span>,
                             <span class="macro">vec!</span>[Field::zero(), Field::zero(), Field::zero(), sl * sl, -so],
-                        )
+                        );
                     }
                     ((sl, ConstantOrVar::Constant), (so, ConstantOrVar::Var(xo))) =&gt;
                     <span class="comment">/* sl^2 = so * xo */
@@ -2097,10 +2138,10 @@ connected to (wired_to), and the selector polynomial associated with the gate. *
                             <span class="prelude-val">None</span>,
                             <span class="prelude-val">Some</span>(xo),
                             <span class="macro">vec!</span>[Field::zero(), Field::zero(), so, Field::zero(), -(sl * sl)],
-                        )
+                        );
                     }
                     ((sl, ConstantOrVar::Constant), (so, ConstantOrVar::Constant)) =&gt; {
-                        <span class="macro">assert_eq!</span>(sl * sl, so)
+                        <span class="macro">assert_eq!</span>(sl * sl, so);
                     }
                 }
             }
@@ -2123,7 +2164,7 @@ connected to (wired_to), and the selector polynomial associated with the gate. *
                         <span class="prelude-val">Some</span>(x2),
                         <span class="prelude-val">Some</span>(x3),
                         <span class="macro">vec!</span>[Field::zero(), Field::zero(), s3, (-s1) * s2, Field::zero()],
-                    )
+                    );
                 }
                 (
                     (s1, ConstantOrVar::Var(x1)),
@@ -2147,7 +2188,7 @@ connected to (wired_to), and the selector polynomial associated with the gate. *
                         <span class="prelude-val">None</span>,
                         <span class="prelude-val">Some</span>(x3),
                         <span class="macro">vec!</span>[(s1 * s2), Field::zero(), -s3, Field::zero(), Field::zero()],
-                    )
+                    );
                 }
                 (
                     (s1, ConstantOrVar::Constant),
@@ -2212,7 +2253,7 @@ connected to (wired_to), and the selector polynomial associated with the gate. *
                                 Field::one(),
                                 Field::zero(),
                             ],
-                        )
+                        );
                     }
                     ConstantOrVar::Constant =&gt; <span class="macro">assert_eq!</span>(s, (s * s)),
                 }
@@ -2227,7 +2268,7 @@ connected to (wired_to), and the selector polynomial associated with the gate. *
                                 <span class="self">self</span>.union_find(x1);
                                 <span class="self">self</span>.union_find(x2);
                                 <span class="macro">assert!</span>(<span class="self">self</span>.union_finds.union(x1, x2).is_ok());
-                            }
+                            };
                         } <span class="kw">else if
                         </span><span class="comment">/* s1 x1 - s2 x2 = 0 */
                         </span>s1 != s2 {
@@ -2236,14 +2277,14 @@ connected to (wired_to), and the selector polynomial associated with the gate. *
                                 <span class="prelude-val">Some</span>(x2),
                                 <span class="prelude-val">None</span>,
                                 <span class="macro">vec!</span>[s1, -s2, Field::zero(), Field::zero(), Field::zero()],
-                            )
+                            );
                         } <span class="kw">else </span>{
                             <span class="self">self</span>.add_generic_constraint(
                                 <span class="prelude-val">Some</span>(x1),
                                 <span class="prelude-val">Some</span>(x2),
                                 <span class="prelude-val">None</span>,
                                 <span class="macro">vec!</span>[s1, -s2, Field::zero(), Field::zero(), Field::zero()],
-                            )
+                            );
                         }
                     }
                     (ConstantOrVar::Var(x1), ConstantOrVar::Constant) =&gt; {
@@ -2298,7 +2339,12 @@ connected to (wired_to), and the selector polynomial associated with the gate. *
         }
     }
 
-    <span class="kw">pub fn </span>add_constraint&lt;Cvar&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, constraint: KimchiConstraint&lt;Cvar, Field&gt;)
+    <span class="doccomment">/// Applies the `KimchiConstraint(s)` to the `circuit`.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `witness` fields are empty.
+    </span><span class="kw">pub fn </span>add_constraint&lt;Cvar&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, constraint: KimchiConstraint&lt;Cvar, Field&gt;)
     <span class="kw">where
         </span>Cvar: SnarkyCvar&lt;Field = Field&gt;,
     {
@@ -2360,7 +2406,7 @@ connected to (wired_to), and the selector polynomial associated with the gate. *
                     var(r),
                     var(o),
                     <span class="macro">vec!</span>[coeff(l), coeff(r), coeff(o), m, c],
-                )
+                );
             }
             <span class="comment">// TODO: the code in circuit-writer was better
             // TODO: also `rounds` would be a better name than `state`

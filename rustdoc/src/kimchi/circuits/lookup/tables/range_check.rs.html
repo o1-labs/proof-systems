@@ -25,7 +25,7 @@
 <span class="doccomment">/// The range check will be performed on 12-bit values, i.e. those in `[0, 2^12]`
 </span><span class="kw">pub const </span>RANGE_CHECK_UPPERBOUND: u32 = <span class="number">1 </span>&lt;&lt; <span class="number">12</span>;
 
-<span class="doccomment">/// A single-column table containing the numbers from 0 to [RANGE_CHECK_UPPERBOUND] (inclusive)
+<span class="doccomment">/// A single-column table containing the numbers from 0 to [`RANGE_CHECK_UPPERBOUND`] (inclusive)
 </span><span class="kw">pub fn </span>range_check_table&lt;F&gt;() -&gt; LookupTable&lt;F&gt;
 <span class="kw">where
     </span>F: Field,

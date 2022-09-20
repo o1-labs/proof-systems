@@ -287,7 +287,7 @@
 ///   * Limbs are mapped to columns so that those containing the MSBs
 ///     are in lower numbered columns (i.e. big-endian column mapping).
 ///     This is important so that copy constraints are possible on the MSBs.
-///     For example, we can convert the RangeCheck0 circuit gate into
+///     For example, we can convert the `RangeCheck0` circuit gate into
 ///     a 64-bit lookup by adding two copy constraints to constrain
 ///     columns 1 and 2 to zero.
 </span><span class="kw">pub const </span>WITNESS_SHAPE: [[WitnessCell; COLUMNS]; <span class="number">4</span>] = [
@@ -341,7 +341,7 @@
     ],
 ];
 
-<span class="doccomment">/// The row layout for RangeCheck0
+<span class="doccomment">/// The row layout for `RangeCheck0`
 </span><span class="kw">const fn </span>range_check_row(row: usize) -&gt; [WitnessCell; COLUMNS] {
     [
         ValueWitnessCell::create(),

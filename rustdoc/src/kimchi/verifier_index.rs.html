@@ -429,8 +429,23 @@
 <span id="429">429</span>
 <span id="430">430</span>
 <span id="431">431</span>
-</pre><pre class="rust"><code><span class="doccomment">//! This module implements the verifier index as [VerifierIndex].
-//! You can derive this struct from the [ProverIndex] struct.
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This module implements the verifier index as [`VerifierIndex`].
+//! You can derive this struct from the [`ProverIndex`] struct.
 
 </span><span class="kw">use crate</span>::{
     alphas::Alphas,
@@ -441,7 +456,7 @@
             permutation::{zk_polynomial, zk_w3},
             range_check,
         },
-        wires::<span class="kw-2">*</span>,
+        wires::{COLUMNS, PERMUTS},
     },
     curve::KimchiCurve,
     error::VerifierIndexError,
@@ -570,7 +585,11 @@
 <span class="comment">//~spec:endcode
 
 </span><span class="kw">impl</span>&lt;G: KimchiCurve&gt; ProverIndex&lt;G&gt; {
-    <span class="doccomment">/// Produces the [VerifierIndex] from the prover&#39;s [ProverIndex].
+    <span class="doccomment">/// Produces the [`VerifierIndex`] from the prover&#39;s [`ProverIndex`].
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `srs` cannot be in `cell`.
     </span><span class="kw">pub fn </span>verifier_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; VerifierIndex&lt;G&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(verifier_index) = <span class="kw-2">&amp;</span><span class="self">self</span>.verifier_index {
             <span class="kw">return </span>verifier_index.clone();
@@ -675,7 +694,7 @@
 }
 
 <span class="kw">impl</span>&lt;G: KimchiCurve&gt; VerifierIndex&lt;G&gt; {
-    <span class="doccomment">/// Gets srs from [VerifierIndex] lazily
+    <span class="doccomment">/// Gets srs from [`VerifierIndex`] lazily
     </span><span class="kw">pub fn </span>srs(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Arc&lt;SRS&lt;G&gt;&gt;
     <span class="kw">where
         </span>G::BaseField: PrimeField,
@@ -687,17 +706,21 @@
         })
     }
 
-    <span class="doccomment">/// Gets zkpm from [VerifierIndex] lazily
+    <span class="doccomment">/// Gets zkpm from [`VerifierIndex`] lazily
     </span><span class="kw">pub fn </span>zkpm(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt; {
         <span class="self">self</span>.zkpm.get_or_init(|| zk_polynomial(<span class="self">self</span>.domain))
     }
 
-    <span class="doccomment">/// Gets w from [VerifierIndex] lazily
+    <span class="doccomment">/// Gets w from [`VerifierIndex`] lazily
     </span><span class="kw">pub fn </span>w(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>G::ScalarField {
         <span class="self">self</span>.w.get_or_init(|| zk_w3(<span class="self">self</span>.domain))
     }
 
-    <span class="doccomment">/// Deserializes a [VerifierIndex] from a file, given a pointer to an SRS and an optional offset in the file.
+    <span class="doccomment">/// Deserializes a [`VerifierIndex`] from a file, given a pointer to an SRS and an optional offset in the file.
+    ///
+    /// # Errors
+    ///
+    /// Will give error if it fails to deserialize from file or unable to set `srs` in `verifier_index`.
     </span><span class="kw">pub fn </span>from_file(
         srs: <span class="prelude-ty">Option</span>&lt;Arc&lt;SRS&lt;G&gt;&gt;&gt;,
         path: <span class="kw-2">&amp;</span>Path,
@@ -719,10 +742,10 @@
             .map_err(|e| e.to_string())<span class="question-mark">?</span>;
 
         <span class="comment">// fill in the rest
-        </span><span class="kw">if </span>srs.is_some() {
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(srs) = srs {
             verifier_index
                 .srs
-                .set(srs.unwrap())
+                .set(srs)
                 .map_err(|<span class="kw">_</span>| VerifierIndexError::SRSHasBeenSet.to_string())<span class="question-mark">?</span>;
         };
 
@@ -731,8 +754,15 @@
         <span class="prelude-val">Ok</span>(verifier_index)
     }
 
-    <span class="doccomment">/// Writes a [VerifierIndex] to a file, potentially appending it to the already-existing content (if append is set to true)
+    <span class="doccomment">/// Writes a [`VerifierIndex`] to a file, potentially appending it to the already-existing content (if append is set to true)
     </span><span class="comment">// TODO: append should be a bool, not an option
+    </span><span class="doccomment">/// # Errors
+    ///
+    /// Will give error if it fails to open a file or writes to the file.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `path` is invalid or `file serialization` has issue.
     </span><span class="kw">pub fn </span>to_file(<span class="kw-2">&amp;</span><span class="self">self</span>, path: <span class="kw-2">&amp;</span>Path, append: <span class="prelude-ty">Option</span>&lt;bool&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
         <span class="kw">let </span>append = append.unwrap_or(<span class="bool-val">true</span>);
         <span class="kw">let </span>file = OpenOptions::new()
@@ -746,7 +776,7 @@
             .map_err(|e| e.to_string())
     }
 
-    <span class="doccomment">/// Compute the digest of the [VerifierIndex], which can be used for the Fiat-Shamir
+    <span class="doccomment">/// Compute the digest of the [`VerifierIndex`], which can be used for the Fiat-Shamir
     /// transformation while proving / verifying.
     </span><span class="kw">pub fn </span>digest&lt;EFqSponge: Clone + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -790,10 +820,10 @@
         <span class="comment">// Always present
 
         </span><span class="kw">for </span>comm <span class="kw">in </span>sigma_comm.iter() {
-            fq_sponge.absorb_g(<span class="kw-2">&amp;</span>comm.unshifted)
+            fq_sponge.absorb_g(<span class="kw-2">&amp;</span>comm.unshifted);
         }
         <span class="kw">for </span>comm <span class="kw">in </span>coefficients_comm.iter() {
-            fq_sponge.absorb_g(<span class="kw-2">&amp;</span>comm.unshifted)
+            fq_sponge.absorb_g(<span class="kw-2">&amp;</span>comm.unshifted);
         }
         fq_sponge.absorb_g(<span class="kw-2">&amp;</span>generic_comm.unshifted);
         fq_sponge.absorb_g(<span class="kw-2">&amp;</span>psm_comm.unshifted);

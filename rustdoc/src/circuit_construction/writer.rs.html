@@ -999,6 +999,16 @@
 <span id="999">999</span>
 <span id="1000">1000</span>
 <span id="1001">1001</span>
+<span id="1002">1002</span>
+<span id="1003">1003</span>
+<span id="1004">1004</span>
+<span id="1005">1005</span>
+<span id="1006">1006</span>
+<span id="1007">1007</span>
+<span id="1008">1008</span>
+<span id="1009">1009</span>
+<span id="1010">1010</span>
+<span id="1011">1011</span>
 </pre><pre class="rust"><code><span class="kw">use </span>ark_ff::{BigInteger, FftField, PrimeField};
 <span class="kw">use </span>kimchi::circuits::{
     gate::{CircuitGate, GateType},
@@ -1007,7 +1017,10 @@
     },
     wires::{Wire, COLUMNS},
 };
-<span class="kw">use </span>oracle::{constants::<span class="kw-2">*</span>, permutation::full_round};
+<span class="kw">use </span>oracle::{
+    constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
+    permutation::full_round,
+};
 <span class="kw">use </span>std::array;
 <span class="kw">use </span>std::collections::HashMap;
 
@@ -1024,7 +1037,10 @@
 
 <span class="kw">impl</span>&lt;F: Copy&gt; Var&lt;F&gt; {
     <span class="doccomment">/// Returns the value inside a variable [Var].
-    /// It panics if it is `None`.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if it is `None`.
     </span><span class="kw">pub fn </span>val(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
         <span class="self">self</span>.value.unwrap()
     }
@@ -1061,7 +1077,7 @@
 
 <span class="doccomment">/// A set of gates within the circuit.
 /// It carries the index for the next available variable,
-/// and the vector of [GateSpec] created so far.
+/// and the vector of [`GateSpec`] created so far.
 /// It also keeps track of the queue of generic gates and cached constants.
 </span><span class="attribute">#[derive(Default)]
 </span><span class="kw">pub struct </span>System&lt;F&gt; {
@@ -1146,7 +1162,7 @@
         })
     }
 
-    <span class="doccomment">/// This function creates a [ShiftedScalar] variable from a field element that is
+    <span class="doccomment">/// This function creates a [`ShiftedScalar`] variable from a field element that is
     /// returned by function `g()`, and a length that should be a multiple of 5.
     </span><span class="kw">fn </span>scalar&lt;G, Fr: PrimeField&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, length: usize, g: G) -&gt; ShiftedScalar&lt;F&gt;
     <span class="kw">where
@@ -1265,7 +1281,7 @@
         <span class="kw">let </span>same_x = <span class="self">self</span>.var(|| {
             <span class="kw">let </span>same_x = x1.val() == x2.val();
             same_x_bool = same_x;
-            F::from(same_x <span class="kw">as </span>u64)
+            F::from(u64::from(same_x))
         });
 
         <span class="kw">let </span>inf = zero;
@@ -1342,7 +1358,7 @@
         <span class="kw">let </span>same_x = <span class="self">self</span>.var(|| {
             <span class="kw">let </span>same_x = x1.val() == x2.val();
             same_x_bool = same_x;
-            F::from(same_x <span class="kw">as </span>u64)
+            F::from(u64::from(same_x))
         });
 
         <span class="kw">let </span>inf = zero;
@@ -1408,7 +1424,7 @@
     /// For (1):
     /// - Creates a row with left wire `t`, right wire `f`, and output wire `delta`
     /// - Assigns `1` to the left coefficient, `-1` to the right coefficient, and `-1` to the output coefficient.
-    /// - That way, it creates a first gate constraining: `1 * t - 1 * f - delta = 0``
+    /// - That way, it creates a first gate constraining: `1 * t - 1 * f - delta = 0`
     /// For (2):
     /// - Creates a row with left wire `b`, right wire `delta`, and output wire `res1`.
     /// - Assigns `-1` to the output coefficient, and `1` to the multiplication coefficient.
@@ -1456,7 +1472,7 @@
         res
     }
 
-    <span class="doccomment">/// Performs a scalar multiplication between a [ShiftedScalar] and a point `(xt, yt)`.
+    <span class="doccomment">/// Performs a scalar multiplication between a [`ShiftedScalar`] and a point `(xt, yt)`.
     /// This function creates 51 rows pairs of rows.
     </span><span class="kw">fn </span>scalar_mul(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
@@ -1522,7 +1538,7 @@
                 row: row2.into_iter().map(<span class="prelude-val">Some</span>).collect(),
                 typ: GateType::Zero,
                 coeffs: <span class="macro">vec!</span>[],
-            })
+            });
         }
 
         res.unwrap()
@@ -1564,9 +1580,9 @@
                             .take(length_in_bits)
                             .copied()
                             .rev()
-                            .collect()
+                            .collect();
                     }
-                    F::from(bits_[i] <span class="kw">as </span>u64)
+                    F::from(u64::from(bits_[i]))
                 })
             })
             .collect();
@@ -1760,7 +1776,7 @@
     <span class="doccomment">/// Creates a Poseidon gadget for given constants and a given input.
     /// It generates a number of `Poseidon` gates followed by a final `Zero` gate.
     </span><span class="kw">fn </span>poseidon(<span class="kw-2">&amp;mut </span><span class="self">self</span>, constants: <span class="kw-2">&amp;</span>Constants&lt;F&gt;, input: Vec&lt;Var&lt;F&gt;&gt;) -&gt; Vec&lt;Var&lt;F&gt;&gt; {
-        <span class="kw">use </span>kimchi::circuits::polynomials::poseidon::<span class="kw-2">*</span>;
+        <span class="kw">use </span>kimchi::circuits::polynomials::poseidon::{POS_ROWS_PER_HASH, ROUNDS_PER_ROW};
 
         <span class="kw">let </span>params = constants.poseidon;
         <span class="kw">let </span>rc = <span class="kw-2">&amp;</span>params.round_constants;
@@ -1864,7 +1880,7 @@
         <span class="macro">assert!</span>(g.row.len() &lt;= COLUMNS);
 
         <span class="kw">let </span>row: [F; COLUMNS] = array::from_fn(|col| g.get_var_val_or(col, F::zero()));
-        <span class="self">self</span>.rows.push(row)
+        <span class="self">self</span>.rows.push(row);
     }
 
     <span class="kw">fn </span>generic_queue(<span class="kw-2">&amp;mut </span><span class="self">self</span>, gate: GateSpec&lt;F&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;GateSpec&lt;F&gt;&gt; {
@@ -1949,6 +1965,10 @@
 
 <span class="kw">impl</span>&lt;F: PrimeField&gt; System&lt;F&gt; {
     <span class="doccomment">/// Compiles our intermediate representation into a circuit.
+    ///
+    /// # Panics
+    ///
+    /// Will not panic ever since it is permutation inside gates
     </span><span class="kw">pub fn </span>gates(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; Vec&lt;CircuitGate&lt;F&gt;&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>first_cell: HashMap&lt;usize, Wire&gt; = HashMap::new();
         <span class="kw">let </span><span class="kw-2">mut </span>most_recent_cell: HashMap&lt;usize, Wire&gt; = HashMap::new();

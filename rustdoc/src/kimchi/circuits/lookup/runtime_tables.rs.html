@@ -102,8 +102,8 @@
 <span id="102">102</span>
 <span id="103">103</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Runtime tables are tables (or arrays) that can be produced during proof creation.
-//! The setup has to prepare for their presence using [RuntimeTableCfg].
-//! At proving time, the prover can use [RuntimeTable] to specify the actual tables.
+//! The setup has to prepare for their presence using [`RuntimeTableCfg`].
+//! At proving time, the prover can use [`RuntimeTable`] to specify the actual tables.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::circuits::{
     expr::{prologue::<span class="kw-2">*</span>, Column},
@@ -139,7 +139,7 @@
 <span class="kw">impl</span>&lt;F&gt; RuntimeTableCfg&lt;F&gt; {
     <span class="doccomment">/// Returns the ID of the runtime table.
     </span><span class="kw">pub fn </span>id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; i32 {
-        <span class="kw">use </span>RuntimeTableCfg::<span class="kw-2">*</span>;
+        <span class="kw">use </span>RuntimeTableCfg::{Custom, Indexed};
         <span class="kw">match </span><span class="self">self </span>{
             Indexed(cfg) =&gt; cfg.id,
             <span class="kw-2">&amp;</span>Custom { id, .. } =&gt; id,
@@ -148,7 +148,7 @@
 
     <span class="doccomment">/// Returns the length of the runtime table.
     </span><span class="kw">pub fn </span>len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
-        <span class="kw">use </span>RuntimeTableCfg::<span class="kw-2">*</span>;
+        <span class="kw">use </span>RuntimeTableCfg::{Custom, Indexed};
         <span class="kw">match </span><span class="self">self </span>{
             Indexed(cfg) =&gt; cfg.len,
             Custom { first_column, .. } =&gt; first_column.len(),
@@ -157,7 +157,7 @@
 
     <span class="doccomment">/// Returns `true` if the runtime table is empty.
     </span><span class="kw">pub fn </span>is_empty(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="kw">use </span>RuntimeTableCfg::<span class="kw-2">*</span>;
+        <span class="kw">use </span>RuntimeTableCfg::{Custom, Indexed};
         <span class="kw">match </span><span class="self">self </span>{
             Indexed(cfg) =&gt; cfg.len == <span class="number">0</span>,
             Custom { first_column, .. } =&gt; first_column.is_empty(),
@@ -167,7 +167,7 @@
 
 <span class="kw">impl</span>&lt;F&gt; From&lt;RuntimeTableCfg&lt;F&gt;&gt; <span class="kw">for </span>RuntimeTableSpec {
     <span class="kw">fn </span>from(from: RuntimeTableCfg&lt;F&gt;) -&gt; <span class="self">Self </span>{
-        <span class="kw">use </span>RuntimeTableCfg::<span class="kw-2">*</span>;
+        <span class="kw">use </span>RuntimeTableCfg::{Custom, Indexed};
         <span class="kw">match </span>from {
             Indexed(cfg) =&gt; cfg,
             Custom { id, first_column } =&gt; RuntimeTableSpec {
@@ -179,7 +179,7 @@
 }
 
 <span class="doccomment">/// A runtime table. Runtime tables must match the configuration
-/// that was specified in [RuntimeTableCfg].
+/// that was specified in [`RuntimeTableCfg`].
 </span><span class="attribute">#[derive(Debug, Clone)]
 </span><span class="kw">pub struct </span>RuntimeTable&lt;F&gt; {
     <span class="doccomment">/// The table id.

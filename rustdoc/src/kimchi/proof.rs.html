@@ -493,6 +493,11 @@
 <span id="493">493</span>
 <span id="494">494</span>
 <span id="495">495</span>
+<span id="496">496</span>
+<span id="497">497</span>
+<span id="498">498</span>
+<span id="499">499</span>
+<span id="500">500</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the data structures of a proof.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::circuits::wires::{COLUMNS, PERMUTS};
@@ -637,7 +642,12 @@
 <span class="comment">//~ spec:endcode
 
 </span><span class="kw">impl</span>&lt;F&gt; ProofEvaluations&lt;F&gt; {
-    <span class="kw">pub fn </span>transpose&lt;<span class="kw">const </span>N: usize&gt;(
+    <span class="doccomment">/// Transpose the `ProofEvaluations`.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `ProofEvaluation` is None.
+    </span><span class="kw">pub fn </span>transpose&lt;<span class="kw">const </span>N: usize&gt;(
         evals: [<span class="kw-2">&amp;</span>ProofEvaluations&lt;F&gt;; N],
     ) -&gt; ProofEvaluations&lt;[<span class="kw-2">&amp;</span>F; N]&gt; {
         <span class="kw">let </span>has_lookup = evals.iter().all(|e| e.lookup.is_some());

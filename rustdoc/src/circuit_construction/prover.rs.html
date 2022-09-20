@@ -210,6 +210,14 @@
 <span id="210">210</span>
 <span id="211">211</span>
 <span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::writer::{Cs, GateSpec, System, Var, WitnessGenerator};
 <span class="kw">use </span>ark_ec::{AffineCurve, ProjectiveCurve};
 <span class="kw">use </span>ark_ff::{FftField, One, PrimeField, SquareRootField, Zero};
@@ -313,6 +321,10 @@
 }
 
 <span class="doccomment">/// Given an index, a group map, custom blinders for the witness, a public input vector, and a circuit `main`, it creates a proof.
+///
+/// # Panics
+///
+/// Will panic if recursive proof creation returns `ProverError`.
 </span><span class="kw">pub fn </span>prove&lt;G, H, EFqSponge, EFrSponge&gt;(
     index: <span class="kw-2">&amp;</span>ProverIndex&lt;G&gt;,
     group_map: <span class="kw-2">&amp;</span>G::Map,
@@ -368,6 +380,10 @@
 }
 
 <span class="doccomment">/// Creates the prover index on input an `srs`, used `constants`, parameters for Poseidon, number of public inputs, and a specific circuit
+///
+/// # Panics
+///
+/// Will panic if `constraint_system` is not built with `public` input.
 </span><span class="kw">pub fn </span>generate_prover_index&lt;C, H&gt;(
     srs: std::sync::Arc&lt;SRS&lt;C::Outer&gt;&gt;,
     public: usize,
@@ -398,7 +414,7 @@
     main(<span class="kw-2">&amp;mut </span>system, public_input);
 
     <span class="kw">let </span>gates = system.gates();
-    <span class="macro">println!</span>(<span class="string">&quot;gates: {}&quot;</span>, gates.len());
+
     <span class="comment">// Other base field = self scalar field
     </span><span class="kw">let </span>(endo_q, _endo_r) = endos::&lt;C::Inner&gt;();
 

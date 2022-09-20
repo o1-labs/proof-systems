@@ -412,6 +412,16 @@
 <span id="412">412</span>
 <span id="413">413</span>
 <span id="414">414</span>
+<span id="415">415</span>
+<span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the Poseidon constraint polynomials.
 
 </span><span class="comment">//~ The poseidon gate encodes 5 rounds of the poseidon permutation.
@@ -550,6 +560,10 @@
     }
 
     <span class="doccomment">/// Checks if a witness verifies a poseidon gate
+    ///
+    /// # Errors
+    ///
+    /// Will give error if `self.typ` is not `Poseidon` gate, or `state` does not match after `permutation`.
     </span><span class="kw">pub fn </span>verify_poseidon&lt;G: KimchiCurve&lt;ScalarField = F&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         row: usize,
@@ -631,6 +645,11 @@
 <span class="doccomment">/// `generate_witness(row, params, witness_cols, input)` uses a sponge initialized with
 /// `params` to generate a witness for starting at row `row` in `witness_cols`,
 /// and with input `input`.
+///
+/// # Panics
+///
+/// Will panic if the `circuit` has `INITIAL_ARK`.
+</span><span class="attribute">#[allow(clippy::assertions_on_constants)]
 </span><span class="kw">pub fn </span>generate_witness&lt;F: Field&gt;(
     row: usize,
     params: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>ArithmeticSpongeParams&lt;F&gt;,
@@ -661,9 +680,10 @@
             </span><span class="kw">let </span>abs_round = round + row_idx * ROUNDS_PER_ROW;
 
             <span class="comment">// apply the sponge and record the result in the witness
-            </span><span class="kw">if </span>PlonkSpongeConstantsKimchi::PERM_INITIAL_ARK {
-                <span class="macro">panic!</span>(<span class="string">&quot;this won&#39;t work if the circuit has an INITIAL_ARK&quot;</span>)
-            }
+            </span><span class="macro">assert!</span>(
+                !PlonkSpongeConstantsKimchi::PERM_INITIAL_ARK,
+                <span class="string">&quot;this won&#39;t work if the circuit has an INITIAL_ARK&quot;
+            </span>);
             sponge.full_round(abs_round);
 
             <span class="comment">// apply the sponge and record the result in the witness
@@ -767,7 +787,7 @@
                 .map(|i| {
                     cache.cache(
                         env.witness_curr(i)
-                            .pow(PlonkSpongeConstantsKimchi::PERM_SBOX <span class="kw">as </span>u64),
+                            .pow(u64::from(PlonkSpongeConstantsKimchi::PERM_SBOX)),
                     )
                 })
                 .collect();

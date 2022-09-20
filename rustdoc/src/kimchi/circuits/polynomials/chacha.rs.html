@@ -607,7 +607,7 @@
 <span id="607">607</span>
 <span id="608">608</span>
 <span id="609">609</span>
-</pre><pre class="rust"><code><span class="doccomment">//! This module implements the ChaCha constraints.
+</pre><pre class="rust"><code><span class="doccomment">//! This module implements the `ChaCha` constraints.
 
 </span><span class="comment">//~ There are four chacha constraint types, corresponding to the four lines in each quarter round.
 //~
@@ -783,7 +783,7 @@
         .fold(T::zero(), |acc: T, (i, t)| acc + T::from(<span class="number">1 </span>&lt;&lt; (<span class="number">4 </span>* i)) * t)
 }
 
-<span class="doccomment">/// Constraints for the line L(x, x&#39;, y, y&#39;, z, k), where k = 4 * nybble_rotation
+<span class="doccomment">/// Constraints for the line L(x, x&#39;, y, y&#39;, z, k), where k = 4 * `nybble_rotation`
 </span><span class="kw">fn </span>line&lt;F: Field, T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;, nybble_rotation: usize) -&gt; Vec&lt;T&gt; {
     <span class="kw">let </span>y_xor_xprime_nybbles = chunks_over_2_rows(env, <span class="number">3</span>);
     <span class="kw">let </span>x_plus_z_nybbles = chunks_over_2_rows(env, <span class="number">7</span>);
@@ -820,7 +820,7 @@
 // Gates
 //
 
-</span><span class="doccomment">/// Implementation of the ChaCha0 gate
+</span><span class="doccomment">/// Implementation of the `ChaCha0` gate
 </span><span class="kw">pub struct </span>ChaCha0&lt;F&gt;(PhantomData&lt;F&gt;);
 
 <span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>ChaCha0&lt;F&gt;
@@ -836,7 +836,7 @@
     }
 }
 
-<span class="doccomment">/// Implementation of the ChaCha1 gate
+<span class="doccomment">/// Implementation of the `ChaCha1` gate
 </span><span class="kw">pub struct </span>ChaCha1&lt;F&gt;(PhantomData&lt;F&gt;);
 
 <span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>ChaCha1&lt;F&gt;
@@ -852,7 +852,7 @@
     }
 }
 
-<span class="doccomment">/// Implementation of the ChaCha2 gate
+<span class="doccomment">/// Implementation of the `ChaCha2` gate
 </span><span class="kw">pub struct </span>ChaCha2&lt;F&gt;(PhantomData&lt;F&gt;);
 
 <span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>ChaCha2&lt;F&gt;
@@ -868,7 +868,7 @@
     }
 }
 
-<span class="doccomment">/// Implementation of the ChaChaFinal gate
+<span class="doccomment">/// Implementation of the `ChaChaFinal` gate
 </span><span class="kw">pub struct </span>ChaChaFinal&lt;F&gt;(PhantomData&lt;F&gt;);
 
 <span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>ChaChaFinal&lt;F&gt;
@@ -911,7 +911,7 @@
 
 <span class="comment">// TODO: move this to test file
 </span><span class="kw">pub mod </span>testing {
-    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use super</span>::{FftField, GateType};
 
     <span class="doccomment">/// This is just for tests. It doesn&#39;t set up the permutations
     </span><span class="kw">pub fn </span>chacha20_gates() -&gt; Vec&lt;GateType&gt; {
@@ -948,7 +948,7 @@
             <span class="kw">let </span>f = |t: u32| F::from(t);
             <span class="kw">let </span>nyb = |t: u32, i: usize| f((t &gt;&gt; (<span class="number">4 </span>* i)) &amp; <span class="number">0b1111</span>);
 
-            <span class="kw">let </span>top_bit = (((s[x] <span class="kw">as </span>u64) + (s[z] <span class="kw">as </span>u64)) &gt;&gt; <span class="number">32</span>) <span class="kw">as </span>u32;
+            <span class="kw">let </span>top_bit = ((u64::from(s[x]) + (u64::from(s[z]))) &gt;&gt; <span class="number">32</span>) <span class="kw">as </span>u32;
             <span class="kw">let </span>xprime = u32::wrapping_add(s[x], s[z]);
             <span class="kw">let </span>y_xor_xprime = s[y] ^ xprime;
             <span class="kw">let </span>yprime = y_xor_xprime.rotate_left(k);

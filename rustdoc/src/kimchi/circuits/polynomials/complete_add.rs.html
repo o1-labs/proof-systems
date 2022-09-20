@@ -288,6 +288,14 @@
 <span id="288">288</span>
 <span id="289">289</span>
 <span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements a complete EC addition gate.
 
 </span><span class="comment">//~ The layout is
@@ -316,7 +324,7 @@
 ///
 /// r = (z == 0) ? 1 : 0
 ///
-/// Additionally, if r == 0, then z_inv = 1 / z.
+/// Additionally, if r == 0, then `z_inv` = 1 / z.
 ///
 /// If r == 1 however (i.e., if z == 0), then z_inv is unconstrained.
 </span><span class="kw">fn </span>zero_check&lt;F: Field, T: ExprOps&lt;F&gt;&gt;(z: T, z_inv: T, r: T) -&gt; Vec&lt;T&gt; {
@@ -360,7 +368,7 @@
 //~ * $x_{1} \cdot w_{9} - w_{6}$
 //~
 
-</span><span class="doccomment">/// Implementation of the CompleteAdd gate
+</span><span class="doccomment">/// Implementation of the `CompleteAdd` gate
 /// It uses the constraints
 ///
 ///   (x2 - x1) * s = y2 - y1
@@ -509,6 +517,14 @@
 
 <span class="kw">impl</span>&lt;F: PrimeField&gt; CircuitGate&lt;F&gt; {
     <span class="doccomment">/// Check the correctness of witness values for a complete-add gate.
+    ///
+    /// # Errors
+    ///
+    /// Will give error if the gate value validations are not met.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `multiplicative inverse` operation between gate values fails.
     </span><span class="kw">pub fn </span>verify_complete_add(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         row: usize,
@@ -551,7 +567,7 @@
             <span class="macro">format!</span>(<span class="string">&quot;y3 wrong {}: (expected {}, got {})&quot;</span>, row, expected_y3, y3)
         );
 
-        <span class="kw">let </span>not_same_y = F::from((y1 != y2) <span class="kw">as </span>u64);
+        <span class="kw">let </span>not_same_y = F::from(u64::from(y1 != y2));
         <span class="macro">ensure_eq!</span>(inf, same_x * not_same_y, <span class="string">&quot;inf wrong&quot;</span>);
 
         <span class="kw">if </span>y1 == y2 {

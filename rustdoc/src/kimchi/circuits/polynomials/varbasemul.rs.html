@@ -427,6 +427,16 @@
 <span id="427">427</span>
 <span id="428">428</span>
 <span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements short Weierstrass curve variable base scalar multiplication custom Plonk polynomials.
 //!
 //! ```ignore
@@ -572,7 +582,12 @@
         ]
     }
 
-    <span class="kw">pub fn </span>verify_vbmul(<span class="kw-2">&amp;</span><span class="self">self</span>, _row: usize, _witness: <span class="kw-2">&amp;</span>[Vec&lt;F&gt;; COLUMNS]) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
+    <span class="doccomment">/// Verify the `GateType::VarBaseMul`(TODO)
+    ///
+    /// # Errors
+    ///
+    /// TODO
+    </span><span class="kw">pub fn </span>verify_vbmul(<span class="kw-2">&amp;</span><span class="self">self</span>, _row: usize, _witness: <span class="kw-2">&amp;</span>[Vec&lt;F&gt;; COLUMNS]) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
         <span class="comment">// TODO: implement
         </span><span class="prelude-val">Ok</span>(())
     }
@@ -775,7 +790,12 @@
     <span class="kw">pub </span>n: F,
 }
 
-<span class="kw">pub fn </span>witness&lt;F: FftField + std::fmt::Display&gt;(
+<span class="doccomment">/// Apply the `witness` value.
+///
+/// # Panics
+///
+/// Will panic if `bits chunk` length validation fails.
+</span><span class="kw">pub fn </span>witness&lt;F: FftField + std::fmt::Display&gt;(
     w: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS],
     row0: usize,
     base: (F, F),
@@ -783,7 +803,7 @@
     acc0: (F, F),
 ) -&gt; VarbaseMulResult&lt;F&gt; {
     <span class="kw">let </span>layout = Layout::create();
-    <span class="kw">let </span>bits: Vec&lt;<span class="kw">_</span>&gt; = bits.iter().map(|b| F::from(<span class="kw-2">*</span>b <span class="kw">as </span>u64)).collect();
+    <span class="kw">let </span>bits: Vec&lt;<span class="kw">_</span>&gt; = bits.iter().map(|b| F::from(u64::from(<span class="kw-2">*</span>b))).collect();
     <span class="kw">let </span>bits_per_chunk = <span class="number">5</span>;
     <span class="macro">assert_eq!</span>(bits_per_chunk * (bits.len() / bits_per_chunk), bits.len());
 
@@ -814,7 +834,7 @@
     VarbaseMulResult { acc, n: n_acc }
 }
 
-<span class="doccomment">/// Implementation of the VarbaseMul gate
+<span class="doccomment">/// Implementation of the `VarbaseMul` gate
 </span><span class="kw">pub struct </span>VarbaseMul&lt;F&gt;(PhantomData&lt;F&gt;);
 
 <span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>VarbaseMul&lt;F&gt;

@@ -157,6 +157,10 @@
 <span id="157">157</span>
 <span id="158">158</span>
 <span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Keypair structures and algorithms
 //!
 //! Definition of secret key, keypairs and related helpers
@@ -216,6 +220,10 @@
     }
 
     <span class="doccomment">/// Deserialize a keypair from secret key hex
+    ///
+    /// # Errors
+    ///
+    /// Will give error if `hex` string does not match certain requirements.
     </span><span class="kw">pub fn </span>from_hex(secret_hex: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>bytes: Vec&lt;u8&gt; = hex::decode(secret_hex).map_err(|<span class="kw">_</span>| KeypairError::SecretKeyHex)<span class="question-mark">?</span>;
         bytes.reverse(); <span class="comment">// mina scalars hex format is in big-endian order

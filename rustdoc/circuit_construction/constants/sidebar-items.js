@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":[["fp_constants","Constants for the base field of Pallas"],["fq_constants","Constants for the base field of Vesta"]],"struct":[["Constants","The type of possible constants in the circuit"]]};
+window.SIDEBAR_ITEMS = {"fn":[["fp_constants","Constants for the base field of Pallas ///"],["fq_constants","Constants for the base field of Vesta"]],"struct":[["Constants","The type of possible constants in the circuit"]]};

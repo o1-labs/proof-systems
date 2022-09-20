@@ -572,6 +572,18 @@
 <span id="572">572</span>
 <span id="573">573</span>
 <span id="574">574</span>
+<span id="575">575</span>
+<span id="576">576</span>
+<span id="577">577</span>
+<span id="578">578</span>
+<span id="579">579</span>
+<span id="580">580</span>
+<span id="581">581</span>
+<span id="582">582</span>
+<span id="583">583</span>
+<span id="584">584</span>
+<span id="585">585</span>
+<span id="586">586</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the double generic gate.
 
 </span><span class="comment">//~ The double generic gate contains two generic gates.
@@ -638,7 +650,7 @@
 </span><span class="kw">pub const </span>DOUBLE_GENERIC_REGISTERS: usize = GENERIC_REGISTERS * <span class="number">2</span>;
 
 <span class="doccomment">/// The different type of computation that are possible with a generic gate.
-/// This type is useful to create a generic gate via the [CircuitGate::create_generic_gadget] function.
+/// This type is useful to create a generic gate via the [`CircuitGate::create_generic_gadget`] function.
 </span><span class="kw">pub enum </span>GenericGateSpec&lt;F&gt; {
     <span class="doccomment">/// Add two values.
     </span>Add {
@@ -663,7 +675,7 @@
 }
 
 <span class="kw">impl</span>&lt;F: PrimeField&gt; CircuitGate&lt;F&gt; {
-    <span class="doccomment">/// This allows you to create two generic gates that will fit in one row, check [Self::create_generic_gadget] for a better to way to create these gates.
+    <span class="doccomment">/// This allows you to create two generic gates that will fit in one row, check [`Self::create_generic_gadget`] for a better to way to create these gates.
     </span><span class="kw">pub fn </span>create_generic(wires: GateWires, c: [F; GENERIC_COEFFS * <span class="number">2</span>]) -&gt; <span class="self">Self </span>{
         CircuitGate {
             typ: GateType::Generic,
@@ -673,7 +685,7 @@
     }
 
     <span class="doccomment">/// This allows you to create two generic gates by passing the desired
-    /// `gate1` and `gate2` as two [GenericGateSpec].
+    /// `gate1` and `gate2` as two [`GenericGateSpec`].
     </span><span class="kw">pub fn </span>create_generic_gadget(
         wires: GateWires,
         gate1: GenericGateSpec&lt;F&gt;,
@@ -768,7 +780,7 @@
                 res.evals
                     .par_iter_mut()
                     .enumerate()
-                    .for_each(|(i, eval)| <span class="kw-2">*</span>eval += witness_d4.evals[i] * selector_d8[<span class="number">2 </span>* i])
+                    .for_each(|(i, eval)| <span class="kw-2">*</span>eval += witness_d4.evals[i] * selector_d8[<span class="number">2 </span>* i]);
             }
 
             <span class="comment">// multiplication
@@ -894,6 +906,10 @@
 
     <span class="kw">impl</span>&lt;F: PrimeField&gt; CircuitGate&lt;F&gt; {
         <span class="doccomment">/// verifies that the generic gate constraints are solved by the witness
+        ///
+        /// # Errors
+        ///
+        /// Will give error if `self.typ` is not `GateType::Generic`.
         </span><span class="kw">pub fn </span>verify_generic(
             <span class="kw-2">&amp;</span><span class="self">self</span>,
             row: usize,
@@ -913,7 +929,7 @@
                 <span class="kw">let </span>get = |offset| {
                     <span class="self">self</span>.coeffs
                         .get(offset)
-                        .cloned()
+                        .copied()
                         .unwrap_or_else(|| F::zero())
                 };
                 <span class="kw">let </span>l_coeff = get(coeffs_offset);
@@ -927,7 +943,7 @@
                     + o_coeff * this[register_offset + <span class="number">2</span>];
                 <span class="kw">let </span>mul = m_coeff * this[register_offset] * this[register_offset + <span class="number">1</span>];
                 <span class="kw">let </span>public = <span class="kw">if </span>coeffs_offset == <span class="number">0 </span>{
-                    public.get(row).cloned().unwrap_or_else(F::zero)
+                    public.get(row).copied().unwrap_or_else(F::zero)
                 } <span class="kw">else </span>{
                     F::zero()
                 };
@@ -987,7 +1003,11 @@
         }
     }
 
-    <span class="doccomment">/// function to create a generic circuit
+    <span class="doccomment">/// Create a generic circuit
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `gates_row` is None.
     </span><span class="kw">pub fn </span>create_circuit&lt;F: PrimeField&gt;(start_row: usize, public: usize) -&gt; Vec&lt;CircuitGate&lt;F&gt;&gt; {
         <span class="comment">// create constraint system with a single generic gate
         </span><span class="kw">let </span><span class="kw-2">mut </span>gates = <span class="macro">vec!</span>[];
@@ -1039,7 +1059,11 @@
         gates
     }
 
-    <span class="comment">// function to fill in a witness created via [create_circuit]
+    <span class="doccomment">/// Fill in a witness created via [`create_circuit`]
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `witness_row` is None.
     </span><span class="kw">pub fn </span>fill_in_witness&lt;F: FftField&gt;(
         start_row: usize,
         witness: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS],

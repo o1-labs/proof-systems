@@ -123,7 +123,7 @@
     <span class="doccomment">/// Absorbs a slice of field elements into the sponge.
     </span><span class="kw">fn </span>absorb_multiple(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span>[Fr]);
 
-    <span class="doccomment">/// Creates a [ScalarChallenge] by squeezing the sponge.
+    <span class="doccomment">/// Creates a [`ScalarChallenge`] by squeezing the sponge.
     </span><span class="kw">fn </span>challenge(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; ScalarChallenge&lt;Fr&gt;;
 
     <span class="doccomment">/// Consumes the sponge and returns the current digest, by squeezing.

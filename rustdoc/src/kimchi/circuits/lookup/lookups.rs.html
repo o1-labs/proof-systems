@@ -448,6 +448,7 @@
 <span id="448">448</span>
 <span id="449">449</span>
 <span id="450">450</span>
+<span id="451">451</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::circuits::{
     domains::EvaluationDomains,
     gate::{CircuitGate, CurrOrNext, GateType},
@@ -739,24 +740,25 @@
     <span class="doccomment">/// Returns the maximum number of lookups per row that are used by the pattern.
     </span><span class="kw">pub fn </span>max_lookups_per_row(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="kw">match </span><span class="self">self </span>{
-            LookupPattern::ChaCha =&gt; <span class="number">4</span>,
-            LookupPattern::ChaChaFinal =&gt; <span class="number">4</span>,
+            LookupPattern::ChaCha | LookupPattern::ChaChaFinal | LookupPattern::RangeCheckGate =&gt; <span class="number">4</span>,
             LookupPattern::LookupGate =&gt; <span class="number">3</span>,
-            LookupPattern::RangeCheckGate =&gt; <span class="number">4</span>,
         }
     }
 
     <span class="doccomment">/// Returns the maximum number of values that are used in any vector lookup in this pattern.
     </span><span class="kw">pub fn </span>max_joint_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
         <span class="kw">match </span><span class="self">self </span>{
-            LookupPattern::ChaCha =&gt; <span class="number">3</span>,
-            LookupPattern::ChaChaFinal =&gt; <span class="number">3</span>,
+            LookupPattern::ChaCha | LookupPattern::ChaChaFinal =&gt; <span class="number">3</span>,
             LookupPattern::LookupGate =&gt; <span class="number">2</span>,
             LookupPattern::RangeCheckGate =&gt; <span class="number">1</span>,
         }
     }
 
     <span class="doccomment">/// Returns the layout of the lookups used by this pattern.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `multiplicative inverse` operation fails.
     </span><span class="kw">pub fn </span>lookups&lt;F: Field&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;JointLookupSpec&lt;F&gt;&gt; {
         <span class="kw">let </span>curr_row = |column| LocalPosition {
             row: CurrOrNext::Curr,
@@ -851,9 +853,9 @@
         }
     }
 
-    <span class="doccomment">/// Returns the lookup pattern used by a [GateType] on a given row (current or next).
+    <span class="doccomment">/// Returns the lookup pattern used by a [`GateType`] on a given row (current or next).
     </span><span class="kw">pub fn </span>from_gate(gate_type: GateType, curr_or_next: CurrOrNext) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
-        <span class="kw">use </span>CurrOrNext::<span class="kw-2">*</span>;
+        <span class="kw">use </span>CurrOrNext::{Curr, Next};
         <span class="kw">use </span>GateType::<span class="kw-2">*</span>;
         <span class="kw">match </span>(gate_type, curr_or_next) {
             (ChaCha0 | ChaCha1 | ChaCha2, Curr | Next) =&gt; <span class="prelude-val">Some</span>(LookupPattern::ChaCha),
@@ -867,8 +869,8 @@
 
 <span class="kw">impl </span>GateType {
     <span class="doccomment">/// Which lookup-patterns should be applied on which rows.
-    /// Currently there is only the lookup pattern used in the ChaCha rows, and it
-    /// is applied to each ChaCha row and its successor.
+    /// Currently there is only the lookup pattern used in the `ChaCha` rows, and it
+    /// is applied to each `ChaCha` row and its successor.
     ///
     /// See circuits/kimchi/src/polynomials/chacha.rs for an explanation of
     /// how these work.

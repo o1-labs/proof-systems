@@ -1,8 +1,8 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="This implements the constraints of the Cairo gates"><meta name="keywords" content="rust, rustlang, rust-lang, turshi"><title>kimchi::circuits::polynomials::turshi - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../normalize.css"><link rel="stylesheet" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../dark.css" disabled><link rel="stylesheet" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../kimchi/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../kimchi/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"><a href="#">Module turshi</a></h2><div class="sidebar-elems"><section><div class="block"><ul><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li><li><a href="#constants">Constants</a></li><li><a href="#functions">Functions</a></li></ul></div></section></div></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../kimchi/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="main-heading"><h1 class="fqn"><span class="in-band">Module <a href="../../../index.html">kimchi</a>::<wbr><a href="../../index.html">circuits</a>::<wbr><a href="../index.html">polynomials</a>::<wbr><a class="mod" href="#">turshi</a><button id="copy-path" onclick="copy_path(this)" title="Copy item path to clipboard"><img src="../../../../clipboard.svg" width="19" height="18" alt="Copy item path"></button></span></h1><span class="out-of-band"><a class="srclink" href="../../../../src/kimchi/circuits/polynomials/turshi.rs.html#1-1032">source</a> · <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class="inner">&#x2212;</span>]</a></span></div><details class="rustdoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>This implements the constraints of the Cairo gates</p>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="This implements the constraints of the Cairo gates"><meta name="keywords" content="rust, rustlang, rust-lang, turshi"><title>kimchi::circuits::polynomials::turshi - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../normalize.css"><link rel="stylesheet" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../dark.css" disabled><link rel="stylesheet" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../kimchi/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../kimchi/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"><a href="#">Module turshi</a></h2><div class="sidebar-elems"><section><div class="block"><ul><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li><li><a href="#constants">Constants</a></li><li><a href="#functions">Functions</a></li></ul></div></section></div></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../kimchi/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="main-heading"><h1 class="fqn"><span class="in-band">Module <a href="../../../index.html">kimchi</a>::<wbr><a href="../../index.html">circuits</a>::<wbr><a href="../index.html">polynomials</a>::<wbr><a class="mod" href="#">turshi</a><button id="copy-path" onclick="copy_path(this)" title="Copy item path to clipboard"><img src="../../../../clipboard.svg" width="19" height="18" alt="Copy item path"></button></span></h1><span class="out-of-band"><a class="srclink" href="../../../../src/kimchi/circuits/polynomials/turshi.rs.html#1-1048">source</a> · <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class="inner">&#x2212;</span>]</a></span></div><details class="rustdoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>This implements the constraints of the Cairo gates</p>
 <p>Cairo programs can have the following assembly-like instructions:</p>
 <ul>
 <li>Memory access: [x]</li>
-<li>Assert equal: &lt;left_hand_op&gt; = &lt;right_hand_op&gt;
+<li>Assert equal: &lt;<code>left_hand_op</code>&gt; = &lt;<code>right_hand_op</code>&gt;
 · val
 · [reg1 + off_op1]
 · [reg0 + off_op0] +|* [reg1 + off_op1]
@@ -35,9 +35,9 @@ Each state transition has the following structure:</p>
 <li>Output:</li>
 </ul>
 <ul>
-<li>next_pc: address of next instruction</li>
-<li>next_ap: address of next free memory slot</li>
-<li>next_fp: pointer to stack (can remain the same as fp)</li>
+<li><code>next_pc</code>: address of next instruction</li>
+<li><code>next_ap</code>: address of next free memory slot</li>
+<li><code>next_fp</code>: pointer to stack (can remain the same as fp)</li>
 </ul>
 <p>Cairo words are field elements of characteristic &gt; 2^64
 Cairo instructions are stored as words (63 or 64 bits - actual instruction or immediate value)
@@ -51,40 +51,40 @@ Words of instructions consist of</li>
 <li>3 signed offsets of 16 bits each, in the range [-2^15,2^15) biased representation</li>
 </ul>
 <ul>
-<li>off_dst (= offset from destination address): used to compute address of assignment</li>
-<li>off_op0 (= offset from first operand): used to compute address of first operand in instruction</li>
-<li>off_op1 (= offset from second operand): used to compute address of second operand in instruction</li>
+<li><code>off_dst</code> (= offset from destination address): used to compute address of assignment</li>
+<li><code>off_op0</code> (= offset from first operand): used to compute address of first operand in instruction</li>
+<li><code>off_op1</code> (= offset from second operand): used to compute address of second operand in instruction</li>
 </ul>
 <ul>
 <li>15 bits of flags divided into 7 groups
 When multiple bits, at most one can be 1 and the rest must be 0</li>
 </ul>
 <ul>
-<li>dst_reg [0] = fDST_REG : indicates what pointer off_dst refers to ( 0 =&gt; ap , 1 =&gt; fp )</li>
-<li>op0_reg [1] = fOP0_REG : indicates what pointer off_op0 refers to ( 0 =&gt; ap , 1 =&gt; fp )</li>
-<li>op1_src [2..4] : encodes the type of second operand
-· 0: indicates off_op1 is b in the double indexing [[ point + a ] + b ]
-· 1: indicates off_op1 is an immediate value = fOP1_VAL = 1
-· 2: indicates offset off_op1 relative to fp = fOP1_FP = 1
-· 4: indicates offset off_op1 relative to ap = fOP1_AP = 1</li>
-<li>res_logic [5..6]: defines (if any) arithmetic operation in right part
+<li><code>dst_reg</code> [0] = fDST_REG : indicates what pointer <code>off_dst</code> refers to ( 0 =&gt; ap , 1 =&gt; fp )</li>
+<li><code>op0_reg</code> [1] = fOP0_REG : indicates what pointer <code>off_op0</code> refers to ( 0 =&gt; ap , 1 =&gt; fp )</li>
+<li><code>op1_src</code> [2..4] : encodes the type of second operand
+· 0: indicates <code>off_op1</code> is b in the double indexing [[ point + a ] + b ]
+· 1: indicates <code>off_op1</code> is an immediate value = <code>fOP1_VAL</code> = 1
+· 2: indicates offset <code>off_op1</code> relative to fp = <code>fOP1_FP</code> = 1
+· 4: indicates offset <code>off_op1</code> relative to ap = <code>fOP1_AP</code> = 1</li>
+<li><code>res_logic</code> [5..6]: defines (if any) arithmetic operation in right part
 · 0: right part is single operand
-· 1: right part is addition = fRES_ADD = 1
-· 2: right part is multiplication = fRES_MUL = 1</li>
-<li>pc_update [7..9]: defines the type of update for the pc
+· 1: right part is addition = <code>fRES_ADD</code> = 1
+· 2: right part is multiplication = <code>fRES_MUL</code> = 1</li>
+<li><code>pc_update</code> [7..9]: defines the type of update for the pc
 · 0 = regular increase by size of current instruction
-· 1 = absolute jump to res address = fPC_ABS_JMP = 1
-· 2 = relative jump of step res = fPC_REL_JMP = 1
-· 4 = conditional jump (jnz) with step in op1 = fPC_JNZ = 1</li>
-<li>ap_update [10..11]: defines the type of update for the ap
+· 1 = absolute jump to res address = <code>fPC_ABS_JMP</code> = 1
+· 2 = relative jump of step res = <code>fPC_REL_JMP</code> = 1
+· 4 = conditional jump (jnz) with step in op1 = <code>fPC_JNZ</code> = 1</li>
+<li><code>ap_update</code> [10..11]: defines the type of update for the ap
 · 0: means the new ap is the same, same free position
-· 1: means there is an ap+=<op> instruction = fAP_INC = 1
-· 2: means there is an ap++ instruction = fAP_ADD1 = 1</li>
+· 1: means there is an ap+=<op> instruction = <code>fAP_INC</code> = 1
+· 2: means there is an ap++ instruction = <code>fAP_ADD1</code> = 1</li>
 <li>opcode [12..14]: encodes type of assembly instruction
 · 0: jumps or increments instruction
-· 1: call instruction = fOPC_CALL = 1
-· 2: return instruction = fOPC_RET = 1
-· 4: assert equal instruction (assignment to value or check equality) = fOPC_ASSEQ = 1</li>
+· 1: call instruction = <code>fOPC_CALL</code> = 1
+· 2: return instruction = <code>fOPC_RET</code> = 1
+· 4: assert equal instruction (assignment to value or check equality) = <code>fOPC_ASSEQ</code> = 1</li>
 </ul>
 <ul>
 <li>in little-endian form = leftmost least significant bit</li>

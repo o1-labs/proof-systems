@@ -659,6 +659,26 @@
 <span id="659">659</span>
 <span id="660">660</span>
 <span id="661">661</span>
+<span id="662">662</span>
+<span id="663">663</span>
+<span id="664">664</span>
+<span id="665">665</span>
+<span id="666">666</span>
+<span id="667">667</span>
+<span id="668">668</span>
+<span id="669">669</span>
+<span id="670">670</span>
+<span id="671">671</span>
+<span id="672">672</span>
+<span id="673">673</span>
+<span id="674">674</span>
+<span id="675">675</span>
+<span id="676">676</span>
+<span id="677">677</span>
+<span id="678">678</span>
+<span id="679">679</span>
+<span id="680">680</span>
+<span id="681">681</span>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         expr::{prologue::<span class="kw-2">*</span>, Column, ConstantExpr},
@@ -689,6 +709,10 @@
 
 <span class="doccomment">/// Pad with zeroes and then add 3 random elements in the last two
 /// rows for zero knowledge.
+///
+/// # Panics
+///
+/// Will panic if `evaluation` and `domain` length do not meet the requirement.
 </span><span class="kw">pub fn </span>zk_patch&lt;R: Rng + <span class="question-mark">?</span>Sized, F: FftField&gt;(
     <span class="kw-2">mut </span>e: Vec&lt;F&gt;,
     d: D&lt;F&gt;,
@@ -738,6 +762,10 @@
 //~
 
 </span><span class="doccomment">/// Computes the sorted lookup tables required by the lookup argument.
+///
+/// # Panics
+///
+/// Will panic if `value(s)` are missing from the `table`.
 </span><span class="attribute">#[allow(clippy::too_many_arguments)]
 </span><span class="kw">pub fn </span>sorted&lt;F: PrimeField&gt;(
     dummy_lookup_value: F,
@@ -875,6 +903,10 @@
 ///
 /// after multiplying all of the values, all of the terms will have cancelled if s is a sorting of f and t, and the final term will be 1
 /// because of the random choice of beta and gamma, there is negligible probability that the terms will cancel if s is not a sorting of f and t
+///
+/// # Panics
+///
+/// Will panic if final evaluation is not 1.
 </span><span class="attribute">#[allow(clippy::too_many_arguments)]
 </span><span class="kw">pub fn </span>aggregation&lt;R, F&gt;(
     dummy_lookup_value: F,
@@ -921,8 +953,8 @@
     <span class="kw">let </span>complements_with_beta_term = {
         <span class="kw">let </span><span class="kw-2">mut </span>v = <span class="macro">vec!</span>[F::one()];
         <span class="kw">let </span>x = gamma + dummy_lookup_value;
-        <span class="kw">for </span>i <span class="kw">in </span><span class="number">1</span>..(max_lookups_per_row + <span class="number">1</span>) {
-            v.push(v[i - <span class="number">1</span>] * x)
+        <span class="kw">for </span>i <span class="kw">in </span><span class="number">1</span>..=max_lookups_per_row {
+            v.push(v[i - <span class="number">1</span>] * x);
         }
 
         <span class="kw">let </span>beta1_per_row = beta1.pow(<span class="kw-2">&amp;</span>[max_lookups_per_row <span class="kw">as </span>u64]);
@@ -1001,6 +1033,10 @@
 }
 
 <span class="doccomment">/// Specifies the lookup constraints as expressions.
+///
+/// # Panics
+///
+/// Will panic if single `element` length is bigger than `max_per_row` length.
 </span><span class="kw">pub fn </span>constraints&lt;F: FftField&gt;(configuration: <span class="kw-2">&amp;</span>LookupConfiguration&lt;F&gt;) -&gt; Vec&lt;E&lt;F&gt;&gt; {
     <span class="comment">// Something important to keep in mind is that the last 2 rows of
     // all columns will have random values in them to maintain zero-knowledge.
@@ -1064,8 +1100,8 @@
             // v[i] = (gamma + dummy)^i
             </span><span class="kw">let </span><span class="kw-2">mut </span>dummies = <span class="macro">vec!</span>[ConstantExpr::one()];
             <span class="kw">let </span>dummy = ConstantExpr::Gamma + dummy_lookup;
-            <span class="kw">for </span>i <span class="kw">in </span><span class="number">1</span>..(lookup_info.max_per_row + <span class="number">1</span>) {
-                dummies.push(dummies[i - <span class="number">1</span>].clone() * dummy.clone())
+            <span class="kw">for </span>i <span class="kw">in </span><span class="number">1</span>..=lookup_info.max_per_row {
+                dummies.push(dummies[i - <span class="number">1</span>].clone() * dummy.clone());
             }
 
             <span class="comment">// TODO: we can just multiply with (1+beta)^max_per_row at the end for any f_term, it feels weird to do it here
@@ -1213,6 +1249,10 @@
 }
 
 <span class="doccomment">/// Checks that all the lookup constraints are satisfied.
+///
+/// # Panics
+///
+/// Will panic if `d1` and `s` domain sizes do not match.
 </span><span class="attribute">#[allow(clippy::too_many_arguments)]
 </span><span class="kw">pub fn </span>verify&lt;F: PrimeField, I: Iterator&lt;Item = F&gt;, TABLE: Fn() -&gt; I&gt;(
     dummy_lookup_value: F,
@@ -1248,9 +1288,9 @@
     <span class="kw">for </span>(i, s) <span class="kw">in </span>sorted.iter().enumerate() {
         <span class="kw">let </span>es = s.evals.iter().take(lookup_rows + <span class="number">1</span>);
         <span class="kw">if </span>i % <span class="number">2 </span>== <span class="number">0 </span>{
-            sorted_joined.extend(es)
+            sorted_joined.extend(es);
         } <span class="kw">else </span>{
-            sorted_joined.extend(es.rev())
+            sorted_joined.extend(es.rev());
         }
     }
 
@@ -1270,12 +1310,12 @@
         <span class="kw">for </span>(i, s) <span class="kw">in </span>sorted.iter().enumerate() {
             <span class="kw">if </span>i % <span class="number">2 </span>== <span class="number">0 </span>{
                 <span class="kw">for </span>x <span class="kw">in </span>s.evals.iter().take(lookup_rows) {
-                    <span class="kw-2">*</span>counts.entry(<span class="kw-2">*</span>x).or_insert(<span class="number">0</span>) += <span class="number">1
-                </span>}
+                    <span class="kw-2">*</span>counts.entry(<span class="kw-2">*</span>x).or_insert(<span class="number">0</span>) += <span class="number">1</span>;
+                }
             } <span class="kw">else </span>{
                 <span class="kw">for </span>x <span class="kw">in </span>s.evals.iter().skip(<span class="number">1</span>).take(lookup_rows) {
-                    <span class="kw-2">*</span>counts.entry(<span class="kw-2">*</span>x).or_insert(<span class="number">0</span>) += <span class="number">1
-                </span>}
+                    <span class="kw-2">*</span>counts.entry(<span class="kw-2">*</span>x).or_insert(<span class="number">0</span>) += <span class="number">1</span>;
+                }
             }
         }
         counts
@@ -1296,10 +1336,10 @@
         <span class="kw">for </span>joint_lookup <span class="kw">in </span>spec.iter() {
             <span class="kw">let </span>joint_lookup_evaluation =
                 joint_lookup.evaluate(joint_combiner, table_id_combiner, <span class="kw-2">&amp;</span>eval);
-            <span class="kw-2">*</span>all_lookups.entry(joint_lookup_evaluation).or_insert(<span class="number">0</span>) += <span class="number">1
-        </span>}
+            <span class="kw-2">*</span>all_lookups.entry(joint_lookup_evaluation).or_insert(<span class="number">0</span>) += <span class="number">1</span>;
+        }
 
-        <span class="kw-2">*</span>all_lookups.entry(dummy_lookup_value).or_insert(<span class="number">0</span>) += lookup_info.max_per_row - spec.len()
+        <span class="kw-2">*</span>all_lookups.entry(dummy_lookup_value).or_insert(<span class="number">0</span>) += lookup_info.max_per_row - spec.len();
     }
 
     <span class="macro">assert_eq!</span>(

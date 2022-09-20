@@ -456,6 +456,11 @@
 <span id="456">456</span>
 <span id="457">457</span>
 <span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::runtime_tables::{RuntimeTableCfg, RuntimeTableSpec};
 <span class="kw">use </span><span class="kw">crate</span>::circuits::{
     domains::EvaluationDomains,
@@ -652,7 +657,12 @@
 }
 
 <span class="kw">impl</span>&lt;F: PrimeField + SquareRootField&gt; LookupConstraintSystem&lt;F&gt; {
-    <span class="kw">pub fn </span>create(
+    <span class="doccomment">/// Create the `LookupConstraintSystem`.
+    ///
+    /// # Errors
+    ///
+    /// Will give error if inputs validation do not match.
+    </span><span class="kw">pub fn </span>create(
         gates: <span class="kw-2">&amp;</span>[CircuitGate&lt;F&gt;],
         lookup_tables: Vec&lt;LookupTable&lt;F&gt;&gt;,
         runtime_tables: <span class="prelude-ty">Option</span>&lt;Vec&lt;RuntimeTableCfg&lt;F&gt;&gt;&gt;,
@@ -726,7 +736,7 @@
 
                         <span class="comment">// create fixed tables for indexing the runtime tables
                         </span><span class="kw">for </span>runtime_table <span class="kw">in </span>runtime_tables {
-                            <span class="kw">use </span>RuntimeTableCfg::<span class="kw-2">*</span>;
+                            <span class="kw">use </span>RuntimeTableCfg::{Custom, Indexed};
                             <span class="kw">let </span>(id, first_column) = <span class="kw">match </span>runtime_table {
                                 <span class="kw-2">&amp;</span>Indexed(RuntimeTableSpec { id, len }) =&gt; {
                                     <span class="kw">let </span>indexes = (<span class="number">0</span>..(len <span class="kw">as </span>u32)).map(F::from).collect();
@@ -813,13 +823,13 @@
                 <span class="kw">for </span>table <span class="kw">in </span><span class="kw-2">&amp;</span>lookup_tables {
                     <span class="kw">let </span>table_len = table.data[<span class="number">0</span>].len();
 
-                    <span class="kw">if </span>table.id != <span class="number">0 </span>{
-                        non_zero_table_id = <span class="bool-val">true</span>;
-                    } <span class="kw">else </span>{
+                    <span class="kw">if </span>table.id == <span class="number">0 </span>{
                         has_table_id_0 = <span class="bool-val">true</span>;
                         <span class="kw">if </span>table.has_zero_entry() {
                             has_table_id_0_with_zero_entry = <span class="bool-val">true</span>;
                         }
+                    } <span class="kw">else </span>{
+                        non_zero_table_id = <span class="bool-val">true</span>;
                     }
 
                     <span class="comment">//~~ - Update the corresponding entries in a table id vector (of size the domain as well)
@@ -837,7 +847,7 @@
 
                     <span class="comment">//~~ - Fill in any unused columns with 0 (to match the dummy value)
                     </span><span class="kw">for </span>lookup_table <span class="kw">in </span>lookup_table.iter_mut().skip(table.data.len()) {
-                        lookup_table.extend(repeat_n(F::zero(), table_len))
+                        lookup_table.extend(repeat_n(F::zero(), table_len));
                     }
                 }
 
@@ -873,7 +883,7 @@
                 <span class="comment">//~ 8. pre-compute polynomial and evaluation form for the look up tables
                 </span><span class="kw">let </span><span class="kw-2">mut </span>lookup_table_polys: Vec&lt;DP&lt;F&gt;&gt; = <span class="macro">vec!</span>[];
                 <span class="kw">let </span><span class="kw-2">mut </span>lookup_table8: Vec&lt;E&lt;F, D&lt;F&gt;&gt;&gt; = <span class="macro">vec!</span>[];
-                <span class="kw">for </span>col <span class="kw">in </span>lookup_table.into_iter() {
+                <span class="kw">for </span>col <span class="kw">in </span>lookup_table {
                     <span class="kw">let </span>poly = E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(col, domain.d1).interpolate();
                     <span class="kw">let </span>eval = poly.evaluate_over_domain_by_ref(domain.d8);
                     lookup_table_polys.push(poly);

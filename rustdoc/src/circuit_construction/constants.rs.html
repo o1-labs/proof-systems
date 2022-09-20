@@ -38,6 +38,14 @@
 <span id="38">38</span>
 <span id="39">39</span>
 <span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
+<span id="48">48</span>
 </pre><pre class="rust"><code><span class="kw">use </span>ark_ec::AffineCurve;
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>commitment_dlog::{commitment::CommitmentCurve, srs::endos};
@@ -54,6 +62,10 @@
 }
 
 <span class="doccomment">/// Constants for the base field of Pallas
+/// ///
+/// # Panics
+///
+/// Will panic if `PallasAffine::prime_subgroup_generator()` returns None.
 </span><span class="kw">pub fn </span>fp_constants() -&gt; Constants&lt;Fp&gt; {
     <span class="kw">let </span>(endo_q, _endo_r) = endos::&lt;PallasAffine&gt;();
     <span class="kw">let </span>base = PallasAffine::prime_subgroup_generator()
@@ -67,6 +79,10 @@
 }
 
 <span class="doccomment">/// Constants for the base field of Vesta
+///
+/// # Panics
+///
+/// Will panic if `VestaAffine::prime_subgroup_generator()` returns None.
 </span><span class="kw">pub fn </span>fq_constants() -&gt; Constants&lt;Fq&gt; {
     <span class="kw">let </span>(endo_q, _endo_r) = endos::&lt;VestaAffine&gt;();
     <span class="kw">let </span>base = VestaAffine::prime_subgroup_generator()
