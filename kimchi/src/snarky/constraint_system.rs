@@ -52,7 +52,7 @@ impl Position<usize> {
 }
 
 /** A gate/row/constraint consists of a type (kind), a row, the other cells its columns/cells are
-connected to (wired_to), and the selector polynomial associated with the gate. */
+connected to (`wired_to`), and the selector polynomial associated with the gate. */
 struct GateSpec<Row, Field> {
     kind: GateType,
     wired_to: Vec<Position<Row>>,
@@ -60,7 +60,7 @@ struct GateSpec<Row, Field> {
 }
 
 impl<Row, Field> GateSpec<Row, Field> {
-    /** Applies a function [f] to the [row] of [t] and all the rows of its [wired_to]. */
+    /** Applies a function [f] to the [row] of [t] and all the rows of its [`wired_to`]. */
     fn map_rows<Row2, F: Fn(Row) -> Row2>(self, f: F) -> GateSpec<Row2, Field> {
         let GateSpec {
             kind,
@@ -147,9 +147,9 @@ pub enum BasicSnarkyConstraint<Var> {
     R1CS(Var, Var, Var),
 }
 
-/** A PLONK constraint (or gate) can be [Basic](KimchiConstraint::Basic), [Poseidon](KimchiConstraint::Poseidon),
- * [EcAddComplete](KimchiConstraint::EcAddComplete), [EcScale](KimchiConstraint::EcScale),
- * [EcEndoscale](KimchiConstraint::EcEndoscale), or [EcEndoscalar](KimchiConstraint::EcEndoscalar). */
+/** A PLONK constraint (or gate) can be [`Basic`](KimchiConstraint::Basic), [`Poseidon`](KimchiConstraint::Poseidon),
+ * [`EcAddComplete`](KimchiConstraint::EcAddComplete), [`EcScale`](KimchiConstraint::EcScale),
+ * [`EcEndoscale`](KimchiConstraint::EcEndoscale), or [`EcEndoscalar`](KimchiConstraint::EcEndoscalar). */
 pub enum KimchiConstraint<Var, Field> {
     Basic {
         l: (Field, Var),
@@ -257,7 +257,7 @@ where
 }
 
 impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, Gates> {
-    /** Converts the set of permutations (equivalence_classes) to
+    /** Converts the set of permutations (`equivalence_classes`) to
       a hash table that maps each position to the next one.
       For example, if one of the equivalence class is [pos1, pos3, pos7],
       the function will return a hashtable that maps pos1 to pos3,
@@ -284,9 +284,12 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
         res
     }
 
-    /** Compute the witness, given the constraint system `sys`
-       and a function that converts the indexed secret inputs to their concrete values.
-    */
+    /// Compute the witness, given the constraint system `sys`
+    /// and a function that converts the indexed secret inputs to their concrete values.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if some inputs like `public_input_size` are unknown(None value).
     pub fn compute_witness<F: Fn(usize) -> Field>(&self, external_values: F) -> Vec<Vec<Field>> {
         let mut internal_values = HashMap::new();
         let public_input_size = self.public_input_size.unwrap();
@@ -330,7 +333,7 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
     }
 
     fn union_find(&mut self, value: V) {
-        self.union_finds.make_set(value)
+        self.union_finds.make_set(value);
     }
 
     fn create_internal(&mut self, constant: Option<Field>, lc: Vec<(Field, V)>) -> V {
@@ -364,19 +367,23 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
         self.auxiliary_input_size
     }
 
-    /** Returns the number of public inputs. */
+    /// Returns the number of public inputs.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `public_input_size` is None.
     pub fn get_primary_input_size(&self) -> usize {
         self.public_input_size.unwrap()
     }
 
     /** Non-public part of the witness. */
     pub fn set_auxiliary_input_size(&mut self, x: usize) {
-        self.auxiliary_input_size = x
+        self.auxiliary_input_size = x;
     }
 
     /** Sets the number of public-input. It should only be called once. */
     pub fn set_public_input_size(&mut self, x: usize) {
-        self.public_input_size = Some(x)
+        self.public_input_size = Some(x);
     }
 
     /** Adds {row; col} to the system's wiring under a specific key.
@@ -388,12 +395,12 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
         self.equivalence_classes
             .entry(key)
             .or_insert_with(Vec::new)
-            .push(Position { row, col })
+            .push(Position { row, col });
     }
 
     /** Same as wire', except that the row must be given relatively to the end of the public-input rows. */
     fn wire(&mut self, key: V, row: usize, col: usize) {
-        self.wire_(key, Row::AfterPublicInput(row), col)
+        self.wire_(key, Row::AfterPublicInput(row), col);
     }
 
     /** Adds a row/gate/constraint to a constraint system `sys`. */
@@ -423,6 +430,11 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
         self.rows.push(vars);
     }
 
+    /// Fill the `gate` values(input and output), and finalize the `circuit`.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `circuit` is completed.
     pub fn finalize(&mut self) {
         // if it's already finalized, return early
         if matches!(self.gates, Circuit::Compiled(..)) {
@@ -439,7 +451,7 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
         // get gates without holding on an immutable reference
         let gates = match std::mem::replace(&mut self.gates, Circuit::Unfinalized(vec![])) {
             Circuit::Unfinalized(gates) => gates,
-            _ => panic!("we expect the gates to be unfinalized"),
+            Circuit::Compiled(_, _) => panic!("we expect the gates to be unfinalized"),
         };
 
         /* Create rows for public input. */
@@ -503,7 +515,7 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
         /* convert all the gates into our Gates.t Rust vector type */
         let mut rust_gates = Gates::create();
         let mut add_gates = |gates: Vec<_>| {
-            for gate in gates.into_iter() {
+            for gate in gates {
                 let g = to_absolute_row(gate);
                 rust_gates.add(g.to_rust_gate());
             }
@@ -518,7 +530,7 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
         self.finalize();
         match &mut self.gates {
             Circuit::Compiled(_, gates) => gates,
-            _ => unreachable!(),
+            Circuit::Unfinalized(_) => unreachable!(),
         }
     }
 }
@@ -534,7 +546,7 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
 */
 fn accumulate_terms<Field: PrimeField>(terms: Vec<(Field, usize)>) -> HashMap<usize, Field> {
     let mut acc = HashMap::new();
-    for (x, i) in terms.into_iter() {
+    for (x, i) in terms {
         match acc.entry(i) {
             std::collections::hash_map::Entry::Occupied(mut entry) => {
                 let res = x + entry.get();
@@ -606,7 +618,7 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
         }
     }
 
-    /** Converts a number of scaled additions \sum s_i * x_i
+    /** Converts a number of scaled additions \sum `s_i` * `x_i`
     to as many constraints as needed,
     creating temporary variables for each new row/constraint,
     and returning the output variable.
@@ -758,6 +770,12 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
         }
     }
 
+    /// Applies the basic `SnarkyConstraint`.
+    /// Simply, place the values of `selector`(`sl`, `sr`, `so` ...) and `input`(`l`, `r`, `o`, `m`).
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `constant selector` constraints are not matching.
     pub fn add_basic_snarky_constraint<Cvar>(&mut self, constraint: BasicSnarkyConstraint<Cvar>)
     where
         Cvar: SnarkyCvar<Field = Field>,
@@ -775,7 +793,7 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
                             Some(xl),
                             Some(xo),
                             vec![Field::zero(), Field::zero(), -so, sl * sl, Field::zero()],
-                        )
+                        );
                     }
                     ((sl, ConstantOrVar::Var(xl)), (so, ConstantOrVar::Constant)) =>
                     /* TODO: it's hard to read the array of selector values, name them! */
@@ -785,7 +803,7 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
                             Some(xl),
                             None,
                             vec![Field::zero(), Field::zero(), Field::zero(), sl * sl, -so],
-                        )
+                        );
                     }
                     ((sl, ConstantOrVar::Constant), (so, ConstantOrVar::Var(xo))) =>
                     /* sl^2 = so * xo */
@@ -795,10 +813,10 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
                             None,
                             Some(xo),
                             vec![Field::zero(), Field::zero(), so, Field::zero(), -(sl * sl)],
-                        )
+                        );
                     }
                     ((sl, ConstantOrVar::Constant), (so, ConstantOrVar::Constant)) => {
-                        assert_eq!(sl * sl, so)
+                        assert_eq!(sl * sl, so);
                     }
                 }
             }
@@ -821,7 +839,7 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
                         Some(x2),
                         Some(x3),
                         vec![Field::zero(), Field::zero(), s3, (-s1) * s2, Field::zero()],
-                    )
+                    );
                 }
                 (
                     (s1, ConstantOrVar::Var(x1)),
@@ -845,7 +863,7 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
                         None,
                         Some(x3),
                         vec![(s1 * s2), Field::zero(), -s3, Field::zero(), Field::zero()],
-                    )
+                    );
                 }
                 (
                     (s1, ConstantOrVar::Constant),
@@ -910,7 +928,7 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
                                 Field::one(),
                                 Field::zero(),
                             ],
-                        )
+                        );
                     }
                     ConstantOrVar::Constant => assert_eq!(s, (s * s)),
                 }
@@ -925,7 +943,7 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
                                 self.union_find(x1);
                                 self.union_find(x2);
                                 assert!(self.union_finds.union(x1, x2).is_ok());
-                            }
+                            };
                         } else if
                         /* s1 x1 - s2 x2 = 0 */
                         s1 != s2 {
@@ -934,14 +952,14 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
                                 Some(x2),
                                 None,
                                 vec![s1, -s2, Field::zero(), Field::zero(), Field::zero()],
-                            )
+                            );
                         } else {
                             self.add_generic_constraint(
                                 Some(x1),
                                 Some(x2),
                                 None,
                                 vec![s1, -s2, Field::zero(), Field::zero(), Field::zero()],
-                            )
+                            );
                         }
                     }
                     (ConstantOrVar::Var(x1), ConstantOrVar::Constant) => {
@@ -996,6 +1014,11 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
         }
     }
 
+    /// Applies the `KimchiConstraint(s)` to the `circuit`.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `witness` fields are empty.
     pub fn add_constraint<Cvar>(&mut self, constraint: KimchiConstraint<Cvar, Field>)
     where
         Cvar: SnarkyCvar<Field = Field>,
@@ -1058,7 +1081,7 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
                     var(r),
                     var(o),
                     vec![coeff(l), coeff(r), coeff(o), m, c],
-                )
+                );
             }
             // TODO: the code in circuit-writer was better
             // TODO: also `rounds` would be a better name than `state`

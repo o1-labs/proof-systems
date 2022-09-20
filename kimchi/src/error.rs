@@ -1,4 +1,4 @@
-//! This module implements the [ProverError] type.
+//! This module implements the [`ProverError`] type.
 
 use commitment_dlog::error::CommitmentError;
 use thiserror::Error;

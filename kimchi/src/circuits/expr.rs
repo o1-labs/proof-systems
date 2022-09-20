@@ -1827,7 +1827,7 @@ impl<F: One + Neg<Output = F>> Neg for ConstantExpr<F> {
 impl<F: Field> Add<ConstantExpr<F>> for ConstantExpr<F> {
     type Output = ConstantExpr<F>;
     fn add(self, other: Self) -> Self {
-        use ConstantExpr::*;
+        use ConstantExpr::{Add, Literal};
         if self.is_zero() {
             return other;
         }
@@ -1844,7 +1844,7 @@ impl<F: Field> Add<ConstantExpr<F>> for ConstantExpr<F> {
 impl<F: Field> Sub<ConstantExpr<F>> for ConstantExpr<F> {
     type Output = ConstantExpr<F>;
     fn sub(self, other: Self) -> Self {
-        use ConstantExpr::*;
+        use ConstantExpr::{Literal, Sub};
         if other.is_zero() {
             return self;
         }
@@ -1858,7 +1858,7 @@ impl<F: Field> Sub<ConstantExpr<F>> for ConstantExpr<F> {
 impl<F: Field> Mul<ConstantExpr<F>> for ConstantExpr<F> {
     type Output = ConstantExpr<F>;
     fn mul(self, other: Self) -> Self {
-        use ConstantExpr::*;
+        use ConstantExpr::{Literal, Mul};
         if self.is_one() {
             return other;
         }
@@ -1931,7 +1931,7 @@ impl<F: Zero + Clone> AddAssign<Expr<F>> for Expr<F> {
         if self.is_zero() {
             *self = other;
         } else if !other.is_zero() {
-            *self = Expr::BinOp(Op2::Add, Box::new(self.clone()), Box::new(other))
+            *self = Expr::BinOp(Op2::Add, Box::new(self.clone()), Box::new(other));
         }
     }
 }
@@ -2065,7 +2065,7 @@ where
         env.sort_by(|(x, _), (y, _)| x.cmp(y));
 
         let mut res = String::new();
-        for (k, v) in env.into_iter() {
+        for (k, v) in env {
             let rhs = v.ocaml_str();
             let cached = format!("let {} = {rhs} in ", k.var_name());
             res.push_str(&cached);
@@ -2108,7 +2108,7 @@ where
         env.sort_by(|(x, _), (y, _)| x.cmp(y));
 
         let mut res = vec![];
-        for (k, v) in env.into_iter() {
+        for (k, v) in env {
             let mut rhs = v.latex_str();
             let last = rhs.pop().expect("returned an empty expression");
             res.push(format!("{} = {last}", k.latex_name()));
