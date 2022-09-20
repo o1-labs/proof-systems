@@ -1,13 +1,13 @@
 //! Foreign field addition gate.
 
 use crate::circuits::{
-    argument::{Argument, ArgumentType},
-    expr::{constraints::boolean, prologue::*, ConstantExpr::ForeignFieldModulus},
+    argument::{Argument, ArgumentEnv, ArgumentType},
+    expr::constraints::ExprOps,
     gate::GateType,
 };
 use ark_ff::FftField;
-use o1_utils::foreign_field::LIMB_BITS;
-use std::marker::PhantomData;
+use o1_utils::{foreign_field::LIMB_BITS, LIMB_COUNT};
+use std::{array, marker::PhantomData};
 
 //~ These circuit gates are used to constrain that
 //~
@@ -77,10 +77,10 @@ use std::marker::PhantomData;
 //~ |   0 | `left_input_lo` (copy)  | `result_lo` (copy) | `resmin_lo` (copy) | `bound_lo` (copy)  |
 //~ |   1 | `left_input_mi` (copy)  | `result_mi` (copy) | `resmin_mi` (copy) | `bound_mi`  (copy) |
 //~ |   2 | `left_input_hi` (copy)  | `result_hi` (copy) | `resmin_hi` (copy) | `bound_hi`  (copy) |
-//~ |   3 | `right_input_lo` (copy) |  ...               |  0                 |
-//~ |   4 | `right_input_mi` (copy) |  ...               |  0                 |
-//~ |   5 | `right_input_hi` (copy) |  ...               |  2^88              |
-//~ |   6 | `field_overflow`        |  ...               |  1                 |
+//~ |   3 | `right_input_lo` (copy) |  ...               | `(limb - mod)_lo`  |
+//~ |   4 | `right_input_mi` (copy) |  ...               | `(limb - mod)_mi`  |
+//~ |   5 | `right_input_hi` (copy) |  ...               | `(limb - mod)_hi`  |
+//~ |   6 | `field_overflow`        |  ...               |  ovf               |
 //~ |   7 | `carry_lo`              |  ...               | `bound_carry_lo`   |
 //~ |   8 | `carry_mi`              |  ...               | `bound_carry_mi`   |
 //~ |   9 | `sign`                  |  ...               |  1                 |
@@ -103,63 +103,24 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldAdd);
     const CONSTRAINTS: u32 = 7;
 
-    fn constraints() -> Vec<E<F>> {
-        let foreign_modulus_lo = E::constant(ForeignFieldModulus(0));
-        let foreign_modulus_mi = E::constant(ForeignFieldModulus(1));
-        let foreign_modulus_hi = E::constant(ForeignFieldModulus(2));
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+        let field_overflow = env.witness_curr(6);
+        let sign = env.witness_curr(9);
 
-        let two_to_88 = constant(F::from(2u128.pow(LIMB_BITS as u32)));
-
-        let left_input_lo = witness_curr::<F>(0);
-        let left_input_mi = witness_curr::<F>(1);
-        let left_input_hi = witness_curr::<F>(2);
-
-        let right_input_lo = witness_curr::<F>(3);
-        let right_input_mi = witness_curr::<F>(4);
-        let right_input_hi = witness_curr::<F>(5);
-
-        let field_overflow = witness_curr::<F>(6);
-
-        // Result carry bits for limb overflows / underflows.
-        let carry_lo = witness_curr::<F>(7);
-        let carry_mi = witness_curr::<F>(8);
-
-        let sign = witness_curr::<F>(9);
-
-        let result_lo = witness_next::<F>(0);
-        let result_mi = witness_next::<F>(1);
-        let result_hi = witness_next::<F>(2);
-
-        let mut res = vec![
+        let mut checks = vec![
             // Field overflow bit is 0 or s.
             field_overflow.clone() * (field_overflow.clone() - sign.clone()),
-            // Carry bits are -1, 0, or 1.
-            carry_lo.clone() * (carry_lo.clone() - 1u64.into()) * (carry_lo.clone() + 1u64.into()),
-            carry_mi.clone() * (carry_mi.clone() - 1u64.into()) * (carry_mi.clone() + 1u64.into()),
             // Sign flag is 1 or -1
-            (sign.clone() + 1u64.into()) * (sign.clone() - 1u64.into()),
+            (sign.clone() + T::one()) * (sign.clone() - T::one()),
         ];
 
-        // r_0 = a_0 + s * b_0 - o * m_0 - 2^88 * c_0
-        let result_calculated_lo = left_input_lo + sign.clone() * right_input_lo
-            - field_overflow.clone() * foreign_modulus_lo.clone()
-            - (carry_lo.clone() * two_to_88.clone());
-        // r_1 = a_1 + s * b_1 - o * m_1 - 2^88 * c_1 + c_0
-        let result_calculated_mi = left_input_mi + sign.clone() * right_input_mi
-            - field_overflow.clone() * foreign_modulus_mi.clone()
-            - (carry_mi.clone() * two_to_88.clone())
-            + carry_lo;
-        // r_2 = a_2 + s * b_2 - o * m_2 + c_1
-        let result_calculated_hi = left_input_hi + sign * right_input_hi
-            - field_overflow * foreign_modulus_hi.clone()
-            + carry_mi;
+        // Carry bits are -1, 0, or 1.
+        checks.append(&mut carry(&env));
 
         // Result values match
-        res.push(result_lo.clone() - result_calculated_lo);
-        res.push(result_mi.clone() - result_calculated_mi);
-        res.push(result_hi.clone() - result_calculated_hi);
+        checks.append(&mut result(&env));
 
-        res
+        checks
     }
 }
 
@@ -171,92 +132,101 @@ where
     F: FftField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldFin);
-    const CONSTRAINTS: u32 = 7; // if not call FFAdd we could have less than in FFAdd
+    const CONSTRAINTS: u32 = 5;
 
-    fn constraints() -> Vec<E<F>> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
         // Perform a foreign field addition gate with these inputs
         // left_input_lo -> resmin_lo  right_input_lo -> 0     result_lo -> bound_lo  carry_lo -> bound_carry_lo
         // left_input_mi -> resmin_mi  right_input_mi -> 0     result_mi -> bound_mi  carry_mi -> bound_carry_mi
         // left_input_hi -> resmin_hi  right_input_hi -> 2^88  result_hi -> bound_hi
         // field_overflow -> 1         sign -> 1
-        let mut res = ForeignFieldAdd::constraints();
 
-        let foreign_modulus_lo = E::constant(ForeignFieldModulus(0));
-        let foreign_modulus_mi = E::constant(ForeignFieldModulus(1));
-        let foreign_modulus_hi = E::constant(ForeignFieldModulus(2));
+        // check addition for bound was performed correctly
 
-        let right_lo = witness_curr::<F>(3);
-        let right_mi = witness_curr::<F>(4);
-        let right_hi = witness_curr::<F>(5);
-        let field_overflow = witness_curr::<F>(6);
-        //let bound_carry_lo = witness_curr::<F>(7);
-        //let bound_carry_mi = witness_curr::<F>(8);
+        let resmin_lo = env.witness_curr(0);
+        let resmin_mi = env.witness_curr(1);
+        let resmin_hi = env.witness_curr(2);
 
-        // check that mod_mi nor mod_lo are zero
-        let two_to_88 = constant(F::from(2u128.pow(LIMB_BITS as u32)));
-        let max_sub_foreign_modulus_lo = two_to_88.clone() - foreign_modulus_lo.clone();
-        let max_sub_foreign_modulus_mi =
-            two_to_88.clone() - foreign_modulus_mi.clone() - 1u64.into();
-        let max_sub_foreign_modulus_hi =
-            two_to_88.clone() - foreign_modulus_hi.clone() - 1u64.into();
+        let bound_lo = env.witness_curr(3);
+        let bound_mi = env.witness_curr(4);
+        let bound_hi = env.witness_curr(5);
 
-        //res.push(right_lo - max_sub_foreign_modulus_lo);
-        //res.push(right_mi - max_sub_foreign_modulus_mi);
-        //res.push(right_hi - max_sub_foreign_modulus_hi);
+        let carry_lo = env.witness_curr(7);
+        let carry_mi = env.witness_curr(8);
 
-        //res.push(field_overflow - 1u64.into()); // ovf = 1
-        // no need to check sign = 1 because redundant with above
+        let modulus: [T; LIMB_COUNT] = array::from_fn(|i| env.foreign_modulus(i));
+        let two_to_limb = T::literal(F::from(2u128.pow(LIMB_BITS as u32)));
 
-        // Upper bound check`s carry bits are 0 or 1
-        //res.push(boolean(&bound_carry_lo));
-        //res.push(boolean(&bound_carry_mi));
+        // check values of carry bits
+        let mut checks = carry(&env);
 
-        res
+        let computed_bound_lo =
+            resmin_lo - modulus[0].clone() - carry_lo.clone() * two_to_limb.clone();
+        let computed_bound_mi =
+            resmin_mi - modulus[1].clone() - carry_mi.clone() * two_to_limb.clone() + carry_lo;
+        let computed_bound_hi = resmin_hi - modulus[2].clone() + carry_mi + two_to_limb;
 
-        /*
-        //   2^(2*88) * m_2 + 2^(88) * m_1 + m_0
-        // + 2^(2*88) * g_2 + 2^(88) * g_1 + g_0
-        // = 2^(3*88)
-        // Assume that m_0 != 0, m_1 != 0, m_2 != 0 (otherwise overflows are annoying)
-        // TODO: Assert this somewhere
-        // => g_0 = 2^(88) - m_0
-        // => g_1 = 2^(88) - m_1 - 1 (extra 1 comes from overflow of m_0 + g_0)
-        // => g_2 = 2^(88) - m_2 - 1 (extra 1 comes from overflow of m_1 + g_1 + 1)
-        let max_sub_foreign_modulus_lo = two_to_88.clone() - foreign_modulus_lo.clone();
-        let max_sub_foreign_modulus_mi =
-            two_to_88.clone() - foreign_modulus_mi.clone() - 1u64.into();
-        let max_sub_foreign_modulus_hi =
-            two_to_88.clone() - foreign_modulus_hi.clone() - 1u64.into();
-
-
-               // u_0 = r_0 + g_0 - k_0 * 2^88
-               let upper_bound_calculated_lo = result_lo + max_sub_foreign_modulus_lo
-                   - (upper_bound_carry_lo.clone() * two_to_88.clone());
-               // u_1 = r_1 + g_1 - k_1 * 2^88 + k_0
-               let upper_bound_calculated_mi = result_mi + max_sub_foreign_modulus_mi
-                   - upper_bound_carry_mi.clone() * two_to_88
-                   + upper_bound_carry_lo;
-               // u_2 = r_2 + g_2 + k_1
-               let upper_bound_calculated_hi =
-                   result_hi + max_sub_foreign_modulus_hi + upper_bound_carry_mi;
-
-        // Upper bound values match
-        // u_0 = r_0 - f_0 - k_0 * 2^88
-        // u_1 = r_1 - f_1 - k_1 * 2^88 + k0
-        // u_2 = r_2 - f_2 + k_1
-        res.push(
-            bound_lo
-                - (result_lo - foreign_modulus_lo - bound_carry_lo.clone() * two_to_88.clone()),
-        );
-        res.push(
-            bound_mi
-                - (result_mi - foreign_modulus_mi - bound_carry_mi.clone() * two_to_88.clone()
-                    + bound_carry_lo),
-        );
-        res.push(
-            bound_hi
-                - (result_hi + two_to_88.clone() - foreign_modulus_hi + bound_carry_mi.clone()),
-        );
-        */
+        checks.push(bound_lo - computed_bound_lo);
+        checks.push(bound_mi - computed_bound_mi);
+        checks.push(bound_hi - computed_bound_hi);
+        checks
     }
+}
+
+fn result<F: FftField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+    let foreign_modulus: [T; LIMB_COUNT] = array::from_fn(|i| env.foreign_modulus(i));
+
+    let two_to_limb = T::literal(F::from(2u128.pow(LIMB_BITS as u32)));
+
+    let left_input_lo = env.witness_curr(0);
+    let left_input_mi = env.witness_curr(1);
+    let left_input_hi = env.witness_curr(2);
+
+    let right_input_lo = env.witness_curr(3);
+    let right_input_mi = env.witness_curr(4);
+    let right_input_hi = env.witness_curr(5);
+
+    let field_overflow = env.witness_curr(6);
+
+    // Result carry bits for limb overflows / underflows.
+    let carry_lo = env.witness_curr(7);
+    let carry_mi = env.witness_curr(8);
+
+    let sign = env.witness_curr(9);
+
+    let result_lo = env.witness_next(0);
+    let result_mi = env.witness_next(1);
+    let result_hi = env.witness_next(2);
+
+    // r_0 = a_0 + s * b_0 - o * m_0 - 2^88 * c_0
+    let result_calculated_lo = left_input_lo + sign.clone() * right_input_lo
+        - field_overflow.clone() * foreign_modulus[0].clone()
+        - carry_lo.clone() * two_to_limb.clone();
+    // r_1 = a_1 + s * b_1 - o * m_1 - 2^88 * c_1 + c_0
+    let result_calculated_mi = left_input_mi + sign.clone() * right_input_mi
+        - field_overflow.clone() * foreign_modulus[1].clone()
+        - carry_mi.clone() * two_to_limb.clone()
+        + carry_lo;
+    // r_2 = a_2 + s * b_2 - o * m_2 + c_1
+    let result_calculated_hi = left_input_hi + sign * right_input_hi
+        - field_overflow * foreign_modulus[2].clone()
+        + carry_mi;
+
+    // Result values match
+    vec![
+        result_lo.clone() - result_calculated_lo,
+        result_mi.clone() - result_calculated_mi,
+        result_hi.clone() - result_calculated_hi,
+    ]
+}
+
+fn carry<F: FftField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+    // Result carry bits for limb overflows / underflows.
+    let carry_lo = env.witness_curr(7);
+    let carry_mi = env.witness_curr(8);
+    vec![
+        // Carry bits are -1, 0, or 1.
+        carry_lo.clone() * (carry_lo.clone() - T::one()) * (carry_lo.clone() + T::one()),
+        carry_mi.clone() * (carry_mi.clone() - T::one()) * (carry_mi.clone() + T::one()),
+    ]
 }

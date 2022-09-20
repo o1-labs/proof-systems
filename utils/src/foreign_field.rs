@@ -2,11 +2,9 @@
 
 use std::fmt::Display;
 
-use crate::{field_helpers::FieldHelpers, serialization::SerdeAs};
+use crate::field_helpers::FieldHelpers;
 use ark_ff::{FftField, Field, PrimeField};
 use num_bigint::BigUint;
-use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
 
 /// Limb length for foreign field elements
 pub const LIMB_BITS: usize = 88;
@@ -26,21 +24,24 @@ pub const FOREIGN_MOD: &[u8] = &[
 /// Bit length of the foreign field modulus
 pub const FOREIGN_BITS: usize = 8 * FOREIGN_MOD.len(); // 256 bits
 
-#[serde_as]
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 /// Represents a foreign field element
 pub struct ForeignElement<F: Field, const N: usize> {
     /// limbs in little endian order
-    #[serde_as(as = "[SerdeAs; N]")]
     pub limbs: [F; N],
     /// number of limbs used for the foreign field element
     pub len: usize,
 }
 
-impl<F: PrimeField, const N: usize> ForeignElement<F, N> {
+impl<F: Field, const N: usize> ForeignElement<F, N> {
+    /// Creates a new foreign element from an array containing N limbs
+    pub fn new(limbs: [F; N]) -> Self {
+        Self { limbs, len: N }
+    }
+
     /// Initializes a new foreign element from a big unsigned integer
     /// Panics if the BigUint is too large to fit in the `N` limbs
-    pub fn new_from_big(big: BigUint) -> Self {
+    pub fn from_big(big: BigUint) -> Self {
         let vec = ForeignElement::<F, N>::big_to_vec(big);
 
         // create an array of N native elements containing the limbs
@@ -63,24 +64,15 @@ impl<F: PrimeField, const N: usize> ForeignElement<F, N> {
 
     /// Initializes a new foreign element from an absolute `BigUint` but the equivalent
     /// foreign element obtained corresponds to the negated input.
-    pub fn new_from_neg(big: BigUint) -> Option<Self> {
-        let big_mod = BigUint::from_bytes_be(FOREIGN_MOD);
-        if big <= big_mod {
-            let neg_elem = big_mod - big;
-            Some(Self::new_from_big(neg_elem))
-        } else {
-            None
-        }
+    pub fn neg(&self, modulus: &BigUint) -> Self {
+        let big = self.to_big();
+        let neg = modulus - big;
+        Self::from_big(neg)
     }
 
     /// Initializes a new foreign element from a set of bytes in big endian
-    pub fn new_from_be(bytes: &[u8]) -> Self {
-        Self::new_from_big(BigUint::from_bytes_be(bytes))
-    }
-
-    /// Initializes a new foreign element from an element in the native field
-    pub fn new_from_field(field: F) -> Self {
-        Self::new_from_big(field.into())
+    pub fn from_be(bytes: &[u8]) -> Self {
+        Self::from_big(BigUint::from_bytes_be(bytes))
     }
 
     /// Obtains the big integer representation of the foreign field element
@@ -106,12 +98,14 @@ impl<F: PrimeField, const N: usize> ForeignElement<F, N> {
     }
 }
 
-impl<F: FftField> ForeignElement<F, 3> {
-    /// Creates a new foreign element from an array containing 3 limbs
-    pub fn new(limbs: [F; 3]) -> Self {
-        Self { limbs, len: 3 }
+impl<F: PrimeField, const N: usize> ForeignElement<F, N> {
+    /// Initializes a new foreign element from an element in the native field
+    pub fn from_field(field: F) -> Self {
+        Self::from_big(field.into())
     }
+}
 
+impl<F: FftField> ForeignElement<F, 3> {
     /// Returns a reference to the lowest limb of the foreign element
     pub fn lo(&self) -> &F {
         &self.limbs[0]
@@ -128,7 +122,7 @@ impl<F: FftField> ForeignElement<F, 3> {
     }
 }
 
-impl<F: FftField, const N: usize> Display for ForeignElement<F, N> {
+impl<F: FftField> Display for ForeignElement<F, 3> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut s = String::new();
         let order = ["lo", "mi", "hi"];
@@ -136,9 +130,9 @@ impl<F: FftField, const N: usize> Display for ForeignElement<F, N> {
         for (i, limb) in self.limbs.iter().enumerate() {
             let hex = limb.to_hex();
             let len = LIMB_BITS / 8 * 2;
-            s += &(order[i % N].to_owned() + ": ");
+            s += &(order[i % 3].to_owned() + ": ");
             s.push_str(&hex[0..len as usize]);
-            if i < N - 1 {
+            if i < 2 {
                 s += " , ";
             }
         }
@@ -164,8 +158,8 @@ mod tests {
         let bytes = FOREIGN_MOD;
         let big = BigUint::from_bytes_be(bytes);
         assert_eq!(
-            ForeignElement::<BaseField, 3>::new_from_be(bytes),
-            ForeignElement::<BaseField, 3>::new_from_big(big)
+            ForeignElement::<BaseField, 3>::from_be(bytes),
+            ForeignElement::<BaseField, 3>::from_big(big)
         );
     }
 
@@ -173,17 +167,17 @@ mod tests {
     fn test_to_big() {
         let bytes = FOREIGN_MOD;
         let big = BigUint::from_bytes_be(bytes);
-        let fe = ForeignElement::<BaseField, 3>::new_from_be(bytes);
+        let fe = ForeignElement::<BaseField, 3>::from_be(bytes);
         assert_eq!(fe.to_big(), big);
     }
 
     #[test]
     fn test_from_big() {
-        let one = ForeignElement::<BaseField, 3>::new_from_be(&[0x01]);
+        let one = ForeignElement::<BaseField, 3>::from_be(&[0x01]);
         assert_eq!(BaseField::from_big(one.to_big()).unwrap(), BaseField::one());
 
         let max_big = BaseField::modulus_biguint() - 1u32;
-        let max_fe = ForeignElement::<BaseField, 3>::new_from_big(max_big.clone());
+        let max_fe = ForeignElement::<BaseField, 3>::from_big(max_big.clone());
         assert_eq!(
             BaseField::from_big(max_fe.to_big()).unwrap(),
             BaseField::from_bytes(&max_big.to_bytes_le()).unwrap(),

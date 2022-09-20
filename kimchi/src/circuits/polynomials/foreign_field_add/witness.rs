@@ -6,35 +6,38 @@ use crate::circuits::{
     },
 };
 use ark_ff::{Field, PrimeField};
-use array_init::array_init;
+use num_bigint::BigUint;
 use o1_utils::foreign_field::{ForeignElement, LIMB_BITS};
+use std::array;
 
-pub fn view_witness<F: PrimeField>(witness: &[Vec<F>; COLUMNS]) {
-    for i in 0..witness[0].len() {
-        if i == 18 || i == 17 || i == 16 {
-            for j in 0..COLUMNS {
-                println!(
-                    "row {}, col {} : {:?}",
-                    i,
-                    j,
-                    o1_utils::FieldHelpers::to_hex(&witness[j][i])
-                );
-            }
-        }
-    }
+fn compute_bound_values<F: PrimeField>(
+    result: &ForeignElement<F, 3>,
+    modulus: &ForeignElement<F, 3>,
+) -> (ForeignElement<F, 3>, F, F) {
+    let two_to_limb = 2u128.pow(88);
+    let max = BigUint::from(two_to_limb).pow(3);
+    let big_mod = modulus.to_big();
+    let bound = result.to_big() + max - big_mod.clone();
+    let bound_limbs = ForeignElement::<F, 3>::from_big(bound);
+    let carry_mi = *bound_limbs.hi() - *result.hi() + *modulus.hi() - F::from(two_to_limb);
+    let carry_lo =
+        *bound_limbs.mi() - *result.mi() + *modulus.mi() + carry_mi * F::from(two_to_limb);
+
+    (bound_limbs, carry_lo, carry_mi)
 }
 
 fn compute_subadd_values<F: PrimeField>(
-    left_input: ForeignElement<F, 3>,
-    right_input: ForeignElement<F, 3>,
+    left_input: &ForeignElement<F, 3>,
+    right_input: &ForeignElement<F, 3>,
     add: bool,
-    foreign_modulus: ForeignElement<F, 3>,
+    foreign_modulus: &ForeignElement<F, 3>,
 ) -> (ForeignElement<F, 3>, F, F, F, F) {
     let two_to_limb = F::from(2u128.pow(LIMB_BITS as u32));
 
     // Compute bigint version of the inputs
     let left = left_input.to_big();
     let right = right_input.to_big();
+
     let modulus = foreign_modulus.to_big();
 
     if add {
@@ -43,15 +46,17 @@ fn compute_subadd_values<F: PrimeField>(
         let sum = left + right;
         let overflows = sum >= modulus;
         let ovf = if overflows { F::one() } else { F::zero() };
-        let out = if overflows { sum - modulus } else { sum };
-        let out_limbs = ForeignElement::new_from_big(out);
+        let out = if overflows {
+            sum - modulus.clone()
+        } else {
+            sum
+        };
+        let out_limbs = ForeignElement::from_big(out);
         let carry_mi =
             *out_limbs.hi() - *left_input.hi() - *right_input.hi() + ovf * *foreign_modulus.hi();
         let carry_lo = *out_limbs.mi() - *left_input.mi() - *right_input.mi()
             + ovf * *foreign_modulus.mi()
             + two_to_limb * carry_mi;
-        println!("carry_lo: {:?}", o1_utils::FieldHelpers::to_hex(&carry_lo));
-        println!("carry_mi: {:?}", o1_utils::FieldHelpers::to_hex(&carry_mi));
         (out_limbs, sig, ovf, carry_lo, carry_mi)
     } else {
         // subtraction
@@ -59,15 +64,15 @@ fn compute_subadd_values<F: PrimeField>(
         let overflows = left < right;
         let ovf = if overflows { -F::one() } else { F::zero() };
         let out = if overflows {
-            modulus + left - right
+            modulus.clone() + left - right
         } else {
             left - right
         };
-        let out_limbs = ForeignElement::new_from_big(out);
+        let out_limbs = ForeignElement::from_big(out);
         let carry_mi =
-            *out_limbs.hi() - *left_input.hi() + *right_input.hi() + ovf * *foreign_modulus.hi();
+            *out_limbs.hi() - *left_input.hi() + right_input.limbs[2] + ovf * *foreign_modulus.hi();
         let carry_lo = *out_limbs.mi() - *left_input.mi()
-            + *right_input.mi()
+            + right_input.limbs[1]
             + ovf * *foreign_modulus.mi()
             + two_to_limb * carry_mi;
         (out_limbs, sig, ovf, carry_lo, carry_mi)
@@ -77,9 +82,9 @@ fn compute_subadd_values<F: PrimeField>(
 /// Creates a FFAdd witness
 /// opcode = true for subtraction, false for addition
 pub fn create_witness<F: PrimeField>(
-    inputs: Vec<ForeignElement<F, 3>>,
+    inputs: Vec<BigUint>,
     opcode: Vec<bool>,
-    foreign_modulus: ForeignElement<F, 3>,
+    modulus: BigUint,
 ) -> [Vec<F>; COLUMNS] {
     let num = inputs.len() - 1; // number of chained additions
 
@@ -89,36 +94,31 @@ pub fn create_witness<F: PrimeField>(
         "The number of inputs does not correspond with the number of operations"
     );*/
 
-    let mut witness = array_init(|_| vec![F::zero(); 0]);
+    let mut witness = array::from_fn(|_| vec![F::zero(); 0]);
+
+    let foreign_modulus = ForeignElement::from_big(modulus.clone());
 
     // Create multi-range-check witness for first left input
-    extend_witness(&mut witness, inputs[0]);
-    let mut left = inputs[0];
+    let mut left = ForeignElement::from_big(inputs[0].clone());
+    extend_witness(&mut witness, left.clone());
     let mut add_values: Vec<(F, F, F, F)> = vec![];
     for i in 0..num {
-        let right = inputs[i + 1];
+        let right = ForeignElement::from_big(inputs[i + 1].clone());
         let (out, sig, ovf, carry_lo, carry_mi) =
-            compute_subadd_values(left, right, opcode[i], foreign_modulus);
-
+            compute_subadd_values(&left, &right, opcode[i], &foreign_modulus);
         // Create multi-range-check witness for right_input (left_input was done in previous iteration) and output
-        extend_witness(&mut witness, right);
-        extend_witness(&mut witness, out);
+        extend_witness(&mut witness, right.clone());
+        extend_witness(&mut witness, out.clone());
 
         add_values.append(&mut vec![(sig, ovf, carry_lo, carry_mi)]);
         left = out; // output
     }
 
-    // Compute values for final bound check
-    let two_to_limb = F::from(2u128.pow(LIMB_BITS as u32));
-    let right_lo = two_to_limb.clone() - *foreign_modulus.lo();
-    let right_mi = two_to_limb.clone() - *foreign_modulus.mi() - F::one();
-    let right_hi = two_to_limb.clone() - *foreign_modulus.hi() - F::one(); // 2^264 - m
-    let right = ForeignElement::new([right_lo, right_mi, right_hi]);
-    let (bound_out, bound_sig, bound_ovf, bound_carry_lo, bound_carry_mi) =
-        compute_subadd_values(left, right, true, foreign_modulus);
+    // Compute values for final bound check, needs a 4 limb right input
+    let (bound, bound_carry_lo, bound_carry_mi) = compute_bound_values(&left, &foreign_modulus);
 
     // Final RangeCheck for bound
-    extend_witness(&mut witness, bound_out);
+    extend_witness(&mut witness, bound);
     let mut offset = witness[0].len(); // number of witness rows of the gadget before the first row of the addition gate
 
     // Include FFAdd and FFFin and Zero gates
@@ -142,17 +142,9 @@ pub fn create_witness<F: PrimeField>(
     }
 
     for w in &mut witness {
-        w.extend(std::iter::repeat(F::zero()).take(2));
+        w.extend(std::iter::repeat(F::zero()).take(1));
     }
-    init_foreign_field_fin_rows(
-        &mut witness,
-        foreign_modulus,
-        offset,
-        num,
-        bound_sig,
-        bound_ovf,
-        [bound_carry_mi, bound_carry_lo],
-    );
+    init_foreign_field_fin_rows(&mut witness, offset, num, [bound_carry_lo, bound_carry_mi]);
 
     witness
 }
@@ -200,98 +192,6 @@ impl FieldElemWitnessCell {
     }
 }
 
-fn handle_ffadd_rows<F: PrimeField>(
-    witness: &mut [Vec<F>; COLUMNS],
-    witness_cell: &WitnessCell<F>,
-    row: usize,
-    col: usize,
-    offset: usize,
-    sign: F,
-    overflow: F,
-    carry: [F; 2],
-) {
-    match witness_cell {
-        WitnessCell::Standard(standard_cell) => {
-            handle_standard_witness_cell(
-                witness,
-                standard_cell,
-                offset + row,
-                col,
-                F::zero(), /* unused by this gate */
-            )
-        }
-        WitnessCell::FieldElem(elem_cell) => {
-            witness[col][offset + row] = {
-                match elem_cell.kind {
-                    FieldElemType::Overflow => overflow,
-                    FieldElemType::Carry => carry[elem_cell.order as usize],
-                    FieldElemType::Sign => sign,
-                }
-            }
-        }
-        WitnessCell::Constant(field_elem) => witness[col][offset + row] = *field_elem,
-        WitnessCell::Ignore => (),
-    }
-}
-
-fn init_foreign_field_fin_rows<F: PrimeField>(
-    witness: &mut [Vec<F>; COLUMNS],
-    modulus: ForeignElement<F, 3>,
-    offset: usize,
-    num: usize,
-    sign: F,
-    overflow: F,
-    carry: [F; 2],
-) {
-    let out_row = 8 * num;
-    let bound_row = 8 * num + 4;
-    let two_to_limb = F::from(2u128.pow(LIMB_BITS as u32));
-    let witness_shape: [[WitnessCell<F>; COLUMNS]; 2] = [
-        // ForeignFieldFin row
-        [
-            WitnessCell::Standard(CopyWitnessCell::create(out_row, 0)), // result_lo
-            WitnessCell::Standard(CopyWitnessCell::create(out_row + 1, 0)), // result_mi
-            WitnessCell::Standard(CopyWitnessCell::create(out_row + 2, 0)), // result_hi
-            WitnessCell::Constant(two_to_limb.clone() - *modulus.lo()), // input_lo =
-            WitnessCell::Constant(two_to_limb.clone() - *modulus.mi() - F::one()), // input_mi =
-            WitnessCell::Constant(two_to_limb.clone() - *modulus.hi() - F::one()), // input_hi =
-            FieldElemWitnessCell::create(FieldElemType::Overflow, FieldElemOrder::No), // field_overflow
-            FieldElemWitnessCell::create(FieldElemType::Carry, FieldElemOrder::Lo),    // carry_lo
-            FieldElemWitnessCell::create(FieldElemType::Carry, FieldElemOrder::Mi),    // carry_mi
-            FieldElemWitnessCell::create(FieldElemType::Sign, FieldElemOrder::No),     // sign
-            WitnessCell::Standard(ZeroWitnessCell::create()),
-            WitnessCell::Standard(ZeroWitnessCell::create()),
-            WitnessCell::Standard(ZeroWitnessCell::create()),
-            WitnessCell::Standard(ZeroWitnessCell::create()),
-            WitnessCell::Standard(ZeroWitnessCell::create()),
-        ],
-        // Next row
-        [
-            WitnessCell::Standard(CopyWitnessCell::create(bound_row, 0)), // bound_lo
-            WitnessCell::Standard(CopyWitnessCell::create(bound_row + 1, 0)), // bound_mi
-            WitnessCell::Standard(CopyWitnessCell::create(bound_row + 2, 0)), // bound_hi
-            WitnessCell::Standard(ZeroWitnessCell::create()),
-            WitnessCell::Standard(ZeroWitnessCell::create()),
-            WitnessCell::Standard(ZeroWitnessCell::create()),
-            WitnessCell::Standard(ZeroWitnessCell::create()),
-            WitnessCell::Standard(ZeroWitnessCell::create()),
-            WitnessCell::Standard(ZeroWitnessCell::create()),
-            WitnessCell::Standard(ZeroWitnessCell::create()),
-            WitnessCell::Standard(ZeroWitnessCell::create()),
-            WitnessCell::Standard(ZeroWitnessCell::create()),
-            WitnessCell::Standard(ZeroWitnessCell::create()),
-            WitnessCell::Standard(ZeroWitnessCell::create()),
-            WitnessCell::Standard(ZeroWitnessCell::create()),
-        ],
-    ];
-
-    for (row, wit) in witness_shape.iter().enumerate() {
-        for col in 0..COLUMNS {
-            handle_ffadd_rows(witness, &wit[col], row, col, offset, sign, overflow, carry);
-        }
-    }
-}
-
 fn init_foreign_field_add_rows<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
     offset: usize,
@@ -327,5 +227,80 @@ fn init_foreign_field_add_rows<F: PrimeField>(
         for col in 0..COLUMNS {
             handle_ffadd_rows(witness, &wit[col], row, col, offset, sign, overflow, carry);
         }
+    }
+}
+
+fn init_foreign_field_fin_rows<F: PrimeField>(
+    witness: &mut [Vec<F>; COLUMNS],
+    offset: usize,
+    num: usize,
+    carry: [F; 2],
+) {
+    let out_row = 8 * num; // row where the final result is stored in RC
+    let bound_row = 8 * num + 4; // row where the final bound is stored in RC
+    let witness_shape: [WitnessCell<F>; COLUMNS] = [
+        // ForeignFieldFin row
+        WitnessCell::Standard(CopyWitnessCell::create(out_row, 0)), // result_lo
+        WitnessCell::Standard(CopyWitnessCell::create(out_row + 1, 0)), // result_mi
+        WitnessCell::Standard(CopyWitnessCell::create(out_row + 2, 0)), // result_hi
+        WitnessCell::Standard(CopyWitnessCell::create(bound_row, 0)), // bound_lo
+        WitnessCell::Standard(CopyWitnessCell::create(bound_row + 1, 0)), // bound_mi
+        WitnessCell::Standard(CopyWitnessCell::create(bound_row + 2, 0)), // bound_hi
+        WitnessCell::Standard(ZeroWitnessCell::create()),
+        FieldElemWitnessCell::create(FieldElemType::Carry, FieldElemOrder::Lo), // carry_lo
+        FieldElemWitnessCell::create(FieldElemType::Carry, FieldElemOrder::Mi), // carry_mi
+        WitnessCell::Standard(ZeroWitnessCell::create()),
+        WitnessCell::Standard(ZeroWitnessCell::create()),
+        WitnessCell::Standard(ZeroWitnessCell::create()),
+        WitnessCell::Standard(ZeroWitnessCell::create()),
+        WitnessCell::Standard(ZeroWitnessCell::create()),
+        WitnessCell::Standard(ZeroWitnessCell::create()),
+    ];
+
+    for col in 0..COLUMNS {
+        handle_ffadd_rows(
+            witness,
+            &witness_shape[col],
+            0,
+            col,
+            offset,
+            F::zero(),
+            F::zero(),
+            carry,
+        );
+    }
+}
+
+fn handle_ffadd_rows<F: PrimeField>(
+    witness: &mut [Vec<F>; COLUMNS],
+    witness_cell: &WitnessCell<F>,
+    row: usize,
+    col: usize,
+    offset: usize,
+    sign: F,
+    overflow: F,
+    carry: [F; 2],
+) {
+    match witness_cell {
+        WitnessCell::Standard(standard_cell) => {
+            handle_standard_witness_cell(
+                witness,
+                standard_cell,
+                offset + row,
+                col,
+                F::zero(), /* unused by this gate */
+            )
+        }
+        WitnessCell::FieldElem(elem_cell) => {
+            witness[col][offset + row] = {
+                match elem_cell.kind {
+                    FieldElemType::Overflow => overflow,
+                    FieldElemType::Carry => carry[elem_cell.order as usize],
+                    FieldElemType::Sign => sign,
+                }
+            }
+        }
+        WitnessCell::Constant(field_elem) => witness[col][offset + row] = *field_elem,
+        WitnessCell::Ignore => (),
     }
 }

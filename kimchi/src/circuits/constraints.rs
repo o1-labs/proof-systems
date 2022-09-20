@@ -19,12 +19,8 @@ use ark_poly::{
     univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
     Radix2EvaluationDomain as D,
 };
-use array_init::array_init;
 use num_bigint::BigUint;
-use o1_utils::{
-    foreign_field::{ForeignElement, LIMB_COUNT},
-    ExtendedEvaluations, FieldHelpers,
-};
+use o1_utils::{ExtendedEvaluations, FieldHelpers};
 use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
@@ -124,8 +120,7 @@ pub struct ConstraintSystem<F: PrimeField> {
         Option<[SelectorPolynomial<F>; range_check::gadget::GATE_COUNT]>,
 
     /// Foreign field modulus
-    #[serde(bound = "Option<ForeignElement<F, LIMB_COUNT>>: Serialize + DeserializeOwned")]
-    pub foreign_field_modulus: Option<ForeignElement<F, LIMB_COUNT>>,
+    pub foreign_field_modulus: Option<BigUint>,
 
     /// Foreign field addition gate selector polynomial
     #[serde(bound = "Option<SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
@@ -164,7 +159,7 @@ pub struct Builder<F: PrimeField> {
     lookup_tables: Vec<LookupTable<F>>,
     runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
     precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
-    foreign_field_modulus: Option<ForeignElement<F, LIMB_COUNT>>,
+    foreign_field_modulus: Option<BigUint>,
 }
 
 /// Create selector polynomial for a circuit gate
@@ -398,8 +393,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         if foreign_field_modulus <= F::modulus_biguint() {
             panic!("Foreign field modulus must be greater than the native modulus");
         }
-        self.foreign_field_modulus =
-            Some(ForeignElement::<F, 3>::new_from_big(foreign_field_modulus));
+        self.foreign_field_modulus = Some(foreign_field_modulus);
         self
     }
 
@@ -592,7 +586,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             if circuit_gates_used.is_disjoint(&ffadd_gates.into_iter().collect()) {
                 None
             } else {
-                Some(array_init(|i| {
+                Some(array::from_fn(|i| {
                     selector_polynomial(ffadd_gates[i], &gates, &domain)
                 }))
             }

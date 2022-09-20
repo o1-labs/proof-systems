@@ -6,7 +6,7 @@ use crate::{
         constraints::ConstraintSystem,
         polynomials::{
             chacha, complete_add, endomul_scalar, endosclmul, poseidon, range_check, turshi,
-            varbasemul,
+            varbasemul, foreign_field_add,
         },
         wires::*,
     },
@@ -252,6 +252,7 @@ impl<F: PrimeField> CircuitGate<F> {
             joint_combiner: Some(F::one()),
             endo_coefficient: cs.endo,
             mds: &G::sponge_params().mds,
+            foreign_field_modulus: cs.foreign_field_modulus.clone(),
         };
         // Create the argument environment for the constraints over field elements
         let env = ArgumentEnv::<F, F>::create(argument_witness, self.coeffs.clone(), constants);
@@ -309,6 +310,12 @@ impl<F: PrimeField> CircuitGate<F> {
             }
             GateType::RangeCheck1 => {
                 range_check::circuitgates::RangeCheck1::constraint_checks(&env)
+            }
+            GateType::ForeignFieldAdd => {
+                foreign_field_add::circuitgates::ForeignFieldAdd::constraint_checks(&env)
+            }
+            GateType::ForeignFieldFin => {
+                foreign_field_add::circuitgates::ForeignFieldFin::constraint_checks(&env)
             }
         };
 

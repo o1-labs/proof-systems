@@ -1,7 +1,7 @@
 //! Range check witness computation
 
 use ark_ff::PrimeField;
-use array_init::array_init;
+use std::array;
 use o1_utils::{FieldHelpers, ForeignElement};
 
 use crate::circuits::polynomial::COLUMNS;

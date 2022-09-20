@@ -4,8 +4,8 @@ use ark_ff::{FftField, PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
-use array_init::array_init;
 use rand::{prelude::StdRng, SeedableRng};
+use std::array;
 
 use crate::{
     alphas::Alphas,
@@ -58,7 +58,6 @@ impl<F: PrimeField> CircuitGate<F> {
         //        [8n+i+8] ->    -> 1 ForeignFieldAdd row
         //      } * num times
         //      [9n+8]           -> 1 ForeignFieldFin row
-        //      [9n+9]           -> 1 Zero row
         // ]
 
         // Create multi-range-check gates for $a, b, r, s$
@@ -86,18 +85,11 @@ impl<F: PrimeField> CircuitGate<F> {
             }]);
         }
         // Then the final bound gate and the zero gate
-        circuit_gates.append(&mut vec![
-            CircuitGate {
-                typ: GateType::ForeignFieldFin,
-                wires: Wire::new(next_row + num),
-                coeffs: vec![],
-            },
-            CircuitGate {
-                typ: GateType::Zero,
-                wires: Wire::new(next_row + num + 1),
-                coeffs: vec![],
-            },
-        ]);
+        circuit_gates.append(&mut vec![CircuitGate {
+            typ: GateType::ForeignFieldFin,
+            wires: Wire::new(next_row + num),
+            coeffs: vec![],
+        }]);
 
         // Connect the num FFAdd gates with the range-check cells
         for i in 0..num {
@@ -105,6 +97,7 @@ impl<F: PrimeField> CircuitGate<F> {
             let right_row = 8 * i + 4;
             let out_row = 8 * i + 8;
             let ffadd_row = 8 * num + i + 8;
+
             // Copy left_input_lo -> Curr(0)
             circuit_gates.connect_cell_pair((left_row, 0), (ffadd_row, 0));
             // Copy left_input_mi -> Curr(1)
@@ -129,17 +122,13 @@ impl<F: PrimeField> CircuitGate<F> {
 
         // Connect final bound gate to range-check cells
         let bound_row = 8 * num + 4;
-        let zero_row = 9 * num + 9;
+        let final_row = 9 * num + 8;
         // Copy bound_lo -> Next(3)
-        circuit_gates.connect_cell_pair((bound_row, 0), (zero_row, 0));
+        circuit_gates.connect_cell_pair((bound_row, 0), (final_row, 3));
         // Copy bound_mi -> Next(4)
-        circuit_gates.connect_cell_pair((bound_row + 1, 0), (zero_row, 1));
+        circuit_gates.connect_cell_pair((bound_row + 1, 0), (final_row, 4));
         // Copy bound_hi -> Next(5)
-        circuit_gates.connect_cell_pair((bound_row + 2, 0), (zero_row, 2));
-
-        //for i in 0..circuit_gates.len() {
-        //    println!("row {}: {:?}", i, circuit_gates[i].typ);
-        //}
+        circuit_gates.connect_cell_pair((bound_row + 2, 0), (final_row, 5));
 
         (start_row + circuit_gates.len(), circuit_gates)
     }
@@ -168,7 +157,7 @@ impl<F: PrimeField> CircuitGate<F> {
         }
 
         // Compute witness polynomial
-        let witness_poly: [DensePolynomial<F>; COLUMNS] = array_init(|i| {
+        let witness_poly: [DensePolynomial<F>; COLUMNS] = array::from_fn(|i| {
             Evaluations::<F, D<F>>::from_vec_and_domain(witness[i].clone(), cs.domain.d1)
                 .interpolate()
         });
@@ -218,7 +207,7 @@ impl<F: PrimeField> CircuitGate<F> {
 
         // Initialize the foreign field modulus constant
         // TODO: (querolita) new_from_be could return an option instead of panicking?
-        let foreign_field_modulus = cs.foreign_field_modulus;
+        let foreign_field_modulus = cs.foreign_field_modulus.clone();
 
         // Set up the environment
         let env = {
