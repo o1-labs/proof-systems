@@ -542,10 +542,10 @@ fn verify_range_check0_test_copy_constraints() {
                 ),
                 Err(CircuitGateError::CopyConstraint {
                     typ: cs.gates[row].typ,
-                    src: Wire::create(row as u32, col as u32),
+                    src: Wire::create(row as i32, col as i32),
                     dst: Wire::create(
-                        (row as u32) + 3 - (row as u32),
-                        2 * (row as u32) + (col as u32) + 2
+                        (row as i32) + 3 - (row as i32),
+                        2 * (row as i32) + (col as i32) + 2
                     )
                 })
             );
@@ -925,8 +925,8 @@ fn verify_range_check1_test_copy_constraints() {
                 ),
                 Err(CircuitGateError::CopyConstraint {
                     typ: GateType::Zero,
-                    src: Wire::create(3, 2 * (row as u32) + (col as u32) + 2),
-                    dst: Wire::create(row as u32, col as u32)
+                    src: Wire::create(3, 2 * (row as i32) + (col as i32) + 2),
+                    dst: Wire::create(row as i32, col as i32)
                 })
             );
         }
