@@ -5,8 +5,8 @@ use crate::{
         argument::{Argument, ArgumentEnv},
         constraints::ConstraintSystem,
         polynomials::{
-            chacha, complete_add, endomul_scalar, endosclmul, poseidon, range_check, turshi,
-            varbasemul, foreign_field_add,
+            chacha, complete_add, endomul_scalar, endosclmul, foreign_field_add, poseidon,
+            range_check, turshi, varbasemul,
         },
         wires::*,
     },

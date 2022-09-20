@@ -413,7 +413,6 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             }
         }
 
-
         // Lookup index; optional
 
         if let Some(LookupVerifierIndex {

@@ -16,7 +16,7 @@ use crate::{
             foreign_field_add, generic, permutation,
             permutation::ZK_ROWS,
             poseidon::Poseidon,
-            range_check::self,
+            range_check,
             varbasemul::VarbaseMul,
         },
         wires::{COLUMNS, PERMUTS},
