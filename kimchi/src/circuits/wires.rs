@@ -31,12 +31,6 @@ impl Wire {
     pub fn new(row: usize) -> [Self; PERMUTS] {
         array::from_fn(|col| Self { row, col })
     }
-
-    /// Creates a new wire for a given row and column.
-    pub fn create(row: usize, col: usize) -> Self {
-        Self { row, col }
-    }
-
 }
 
 /// GateWires document the wiring of a gate. More specifically, each value either
