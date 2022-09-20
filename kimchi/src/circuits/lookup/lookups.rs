@@ -290,10 +290,11 @@ impl LookupPattern {
     /// Returns the maximum number of lookups per row that are used by the pattern.
     pub fn max_lookups_per_row(&self) -> usize {
         match self {
-            LookupPattern::ChaCha => 4,
-            LookupPattern::ChaChaFinal => 4,
+            LookupPattern::ChaCha
+            | LookupPattern::ChaChaFinal
+            | LookupPattern::RangeCheckGate
+            | LookupPattern::RangeCheckGate => 4,
             LookupPattern::LookupGate => 3,
-            LookupPattern::RangeCheckGate => 4,
             LookupPattern::ForeignFieldMulGate => 2,
         }
     }
@@ -301,8 +302,7 @@ impl LookupPattern {
     /// Returns the maximum number of values that are used in any vector lookup in this pattern.
     pub fn max_joint_size(&self) -> u32 {
         match self {
-            LookupPattern::ChaCha => 3,
-            LookupPattern::ChaChaFinal => 3,
+            LookupPattern::ChaCha | LookupPattern::ChaChaFinal => 3,
             LookupPattern::LookupGate => 2,
             LookupPattern::RangeCheckGate => 1,
             LookupPattern::ForeignFieldMulGate => 1,
@@ -310,6 +310,10 @@ impl LookupPattern {
     }
 
     /// Returns the layout of the lookups used by this pattern.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `multiplicative inverse` operation fails.
     pub fn lookups<F: Field>(&self) -> Vec<JointLookupSpec<F>> {
         let curr_row = |column| LocalPosition {
             row: CurrOrNext::Curr,
@@ -419,9 +423,9 @@ impl LookupPattern {
         }
     }
 
-    /// Returns the lookup pattern used by a [GateType] on a given row (current or next).
+    /// Returns the lookup pattern used by a [`GateType`] on a given row (current or next).
     pub fn from_gate(gate_type: GateType, curr_or_next: CurrOrNext) -> Option<Self> {
-        use CurrOrNext::*;
+        use CurrOrNext::{Curr, Next};
         use GateType::*;
         match (gate_type, curr_or_next) {
             (ChaCha0 | ChaCha1 | ChaCha2, Curr | Next) => Some(LookupPattern::ChaCha),
@@ -436,8 +440,8 @@ impl LookupPattern {
 
 impl GateType {
     /// Which lookup-patterns should be applied on which rows.
-    /// Currently there is only the lookup pattern used in the ChaCha rows, and it
-    /// is applied to each ChaCha row and its successor.
+    /// Currently there is only the lookup pattern used in the `ChaCha` rows, and it
+    /// is applied to each `ChaCha` row and its successor.
     ///
     /// See circuits/kimchi/src/polynomials/chacha.rs for an explanation of
     /// how these work.

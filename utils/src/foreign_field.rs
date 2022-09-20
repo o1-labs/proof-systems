@@ -27,7 +27,7 @@ pub const SECP256K1_MOD: &[u8] = &[
 pub const FOREIGN_BITS: usize = 8 * SECP256K1_MOD.len(); // 256 bits
 
 #[serde_as]
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 /// Represents a foreign field element
 pub struct ForeignElement<F: Field, const N: usize> {
     /// limbs in little endian order

@@ -17,7 +17,7 @@ pub trait KimchiCurve: CommitmentCurve {
     >;
 
     /// Provides the sponge params to be used with this curve
-    /// If the params for the base field are needed, they can be obtained from [KimchiCurve::OtherCurve]
+    /// If the params for the base field are needed, they can be obtained from [`KimchiCurve::OtherCurve`]
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField>;
 
     /// Provides the coefficients for the curve endomorphism

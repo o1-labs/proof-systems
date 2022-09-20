@@ -159,7 +159,7 @@ impl<'de, F, G: DeserializeAs<'de, F>> DeserializeAs<'de, JointLookupValue<F>>
                                 .into_inner(),
                             );
                         }
-                        _ => {
+                        Field::ignore => {
                             let _ = MapAccess::next_value::<IgnoredAny>(&mut map)?;
                         }
                     }

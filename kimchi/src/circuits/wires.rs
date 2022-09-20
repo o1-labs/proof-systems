@@ -1,8 +1,8 @@
 //! This module implements Plonk circuit gate wires primitive.
 
 use ark_ff::bytes::{FromBytes, ToBytes};
-use array_init::array_init;
 use serde::{Deserialize, Serialize};
+use std::array;
 use std::io::{Read, Result as IoResult, Write};
 
 /// Number of registers
@@ -29,11 +29,11 @@ pub struct Wire {
 impl Wire {
     /// Creates a new set of wires for a given row.
     pub fn new(row: usize) -> [Self; PERMUTS] {
-        array_init(|col| Self { row, col })
+        array::from_fn(|col| Self { row, col })
     }
 }
 
-/// GateWires document the wiring of a gate. More specifically, each value either
+/// `GateWires` document the wiring of a gate. More specifically, each value either
 /// represents the same cell (row and column) or a different cell in another row.
 /// (This is to help the permutation argument.)
 pub type GateWires = [Wire; PERMUTS];

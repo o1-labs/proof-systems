@@ -17,7 +17,7 @@ pub trait FrSponge<Fr: Field> {
     /// Absorbs a slice of field elements into the sponge.
     fn absorb_multiple(&mut self, x: &[Fr]);
 
-    /// Creates a [ScalarChallenge] by squeezing the sponge.
+    /// Creates a [`ScalarChallenge`] by squeezing the sponge.
     fn challenge(&mut self) -> ScalarChallenge<Fr>;
 
     /// Consumes the sponge and returns the current digest, by squeezing.
@@ -91,7 +91,7 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
         if let Some(l) = e.lookup.as_ref() {
             points.push(&l.aggreg);
             points.push(&l.table);
-            for s in l.sorted.iter() {
+            for s in &l.sorted {
                 points.push(s);
             }
             l.runtime.iter().for_each(|x| points.push(x));

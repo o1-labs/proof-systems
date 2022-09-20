@@ -11,7 +11,6 @@ use crate::{
     verifier::verify,
 };
 use ark_ff::Zero;
-use array_init::array_init;
 use colored::Colorize;
 use commitment_dlog::commitment::CommitmentCurve;
 use groupmap::GroupMap;
@@ -24,6 +23,7 @@ use oracle::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
+use std::array;
 use std::time::Instant;
 
 // aliases
@@ -76,7 +76,7 @@ fn chacha_prover() {
     for _ in 0..num_chachas {
         rows.extend(chacha::testing::chacha20_rows::<Fp>(s0.clone()))
     }
-    let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![]);
+    let mut witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![]);
     for r in rows.into_iter() {
         for (col, c) in r.into_iter().enumerate() {
             witness[col].push(c);
@@ -213,7 +213,7 @@ fn chacha_setup_bad_lookup(table_id: i32) {
         },
     ];
 
-    let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![]);
+    let mut witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![]);
     for r in rows.into_iter() {
         for (col, c) in r.into_iter().enumerate() {
             witness[col].push(c);

@@ -59,7 +59,7 @@ where
     }
 }
 
-/// Returns the lookup table associated to a [GateLookupTable].
+/// Returns the lookup table associated to a [`GateLookupTable`].
 pub fn get_table<F: FftField>(table_name: GateLookupTable) -> LookupTable<F> {
     match table_name {
         GateLookupTable::Xor => xor::xor_table(),
@@ -97,8 +97,12 @@ where
         + table_id_combiner.clone() * table_id.clone()
 }
 
-/// Same as [combine_table_entry], but for an entire table.
+/// Same as [`combine_table_entry`], but for an entire table.
 /// The function will panic if given an empty table (0 columns).
+///
+/// # Panics
+///
+/// Will panic if `columns` is empty.
 pub fn combine_table<G>(
     columns: &[&PolyComm<G>],
     column_combiner: G::ScalarField,

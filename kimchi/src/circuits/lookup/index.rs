@@ -206,6 +206,11 @@ pub struct LookupConstraintSystem<F: FftField> {
 }
 
 impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
+    /// Create the `LookupConstraintSystem`.
+    ///
+    /// # Errors
+    ///
+    /// Will give error if inputs validation do not match.
     pub fn create(
         gates: &[CircuitGate<F>],
         lookup_tables: Vec<LookupTable<F>>,
@@ -280,7 +285,7 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
 
                         // create fixed tables for indexing the runtime tables
                         for runtime_table in runtime_tables {
-                            use RuntimeTableCfg::*;
+                            use RuntimeTableCfg::{Custom, Indexed};
                             let (id, first_column) = match runtime_table {
                                 &Indexed(RuntimeTableSpec { id, len }) => {
                                     let indexes = (0..(len as u32)).map(F::from).collect();
@@ -364,16 +369,16 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                 let mut non_zero_table_id = false;
                 let mut has_table_id_0_with_zero_entry = false;
 
-                for table in lookup_tables.iter() {
+                for table in &lookup_tables {
                     let table_len = table.data[0].len();
 
-                    if table.id != 0 {
-                        non_zero_table_id = true;
-                    } else {
+                    if table.id == 0 {
                         has_table_id_0 = true;
                         if table.has_zero_entry() {
                             has_table_id_0_with_zero_entry = true;
                         }
+                    } else {
+                        non_zero_table_id = true;
                     }
 
                     //~~ - Update the corresponding entries in a table id vector (of size the domain as well)
@@ -391,7 +396,7 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
 
                     //~~ - Fill in any unused columns with 0 (to match the dummy value)
                     for lookup_table in lookup_table.iter_mut().skip(table.data.len()) {
-                        lookup_table.extend(repeat_n(F::zero(), table_len))
+                        lookup_table.extend(repeat_n(F::zero(), table_len));
                     }
                 }
 
@@ -427,7 +432,7 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                 //~ 8. pre-compute polynomial and evaluation form for the look up tables
                 let mut lookup_table_polys: Vec<DP<F>> = vec![];
                 let mut lookup_table8: Vec<E<F, D<F>>> = vec![];
-                for col in lookup_table.into_iter() {
+                for col in lookup_table {
                     let poly = E::<F, D<F>>::from_vec_and_domain(col, domain.d1).interpolate();
                     let eval = poly.evaluate_over_domain_by_ref(domain.d8);
                     lookup_table_polys.push(poly);

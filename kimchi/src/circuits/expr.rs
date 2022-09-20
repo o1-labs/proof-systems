@@ -25,6 +25,8 @@ use std::{
 use thiserror::Error;
 use CurrOrNext::{Curr, Next};
 
+use self::constraints::ExprOps;
+
 #[derive(Debug, Error)]
 pub enum ExprError {
     #[error("Empty stack")]
@@ -370,14 +372,13 @@ impl Cache {
         CacheId(id)
     }
 
-    /// Cache the value of the given expression
-    pub fn cache<C>(&mut self, e: Expr<C>) -> Expr<C> {
-        Expr::Cache(self.next_id(), Box::new(e))
+    pub fn cache<F: Field, T: ExprOps<F>>(&mut self, e: T) -> T {
+        e.cache(self)
     }
 }
 
 /// A binary operation
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Op2 {
     Add,
     Mul,
@@ -423,7 +424,7 @@ pub enum Expr<C> {
 /// For efficiency of evaluation, we compile expressions to
 /// [reverse Polish notation](https://en.wikipedia.org/wiki/Reverse_Polish_notation)
 /// expressions, which are vectors of the below tokens.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PolishToken<F> {
     Alpha,
     Beta,
@@ -1834,7 +1835,7 @@ impl<F: One + Neg<Output = F>> Neg for ConstantExpr<F> {
 impl<F: Field> Add<ConstantExpr<F>> for ConstantExpr<F> {
     type Output = ConstantExpr<F>;
     fn add(self, other: Self) -> Self {
-        use ConstantExpr::*;
+        use ConstantExpr::{Add, Literal};
         if self.is_zero() {
             return other;
         }
@@ -1851,7 +1852,7 @@ impl<F: Field> Add<ConstantExpr<F>> for ConstantExpr<F> {
 impl<F: Field> Sub<ConstantExpr<F>> for ConstantExpr<F> {
     type Output = ConstantExpr<F>;
     fn sub(self, other: Self) -> Self {
-        use ConstantExpr::*;
+        use ConstantExpr::{Literal, Sub};
         if other.is_zero() {
             return self;
         }
@@ -1865,7 +1866,7 @@ impl<F: Field> Sub<ConstantExpr<F>> for ConstantExpr<F> {
 impl<F: Field> Mul<ConstantExpr<F>> for ConstantExpr<F> {
     type Output = ConstantExpr<F>;
     fn mul(self, other: Self) -> Self {
-        use ConstantExpr::*;
+        use ConstantExpr::{Literal, Mul};
         if self.is_one() {
             return other;
         }
@@ -1938,7 +1939,7 @@ impl<F: Zero + Clone> AddAssign<Expr<F>> for Expr<F> {
         if self.is_zero() {
             *self = other;
         } else if !other.is_zero() {
-            *self = Expr::BinOp(Op2::Add, Box::new(self.clone()), Box::new(other))
+            *self = Expr::BinOp(Op2::Add, Box::new(self.clone()), Box::new(other));
         }
     }
 }
@@ -2074,7 +2075,7 @@ where
         env.sort_by(|(x, _), (y, _)| x.cmp(y));
 
         let mut res = String::new();
-        for (k, v) in env.into_iter() {
+        for (k, v) in env {
             let rhs = v.ocaml_str();
             let cached = format!("let {} = {rhs} in ", k.var_name());
             res.push_str(&cached);
@@ -2117,7 +2118,7 @@ where
         env.sort_by(|(x, _), (y, _)| x.cmp(y));
 
         let mut res = vec![];
-        for (k, v) in env.into_iter() {
+        for (k, v) in env {
             let mut rhs = v.latex_str();
             let last = rhs.pop().expect("returned an empty expression");
             res.push(format!("{} = {last}", k.latex_name()));
@@ -2154,16 +2155,20 @@ where
 
 /// A number of useful constraints
 pub mod constraints {
+    use crate::circuits::argument::ArgumentData;
+
     use super::*;
 
     /// This trait defines a common arithmetic operations interface
     /// that can be used by constraints.  It allows us to reuse
     /// constraint code for witness computation.
-    pub trait ArithmeticOps:
+    pub trait ExprOps<F>:
         std::ops::Add<Output = Self>
         + std::ops::Sub<Output = Self>
         + std::ops::Neg<Output = Self>
         + std::ops::Mul<Output = Self>
+        + std::ops::AddAssign<Self>
+        + std::ops::MulAssign<Self>
         + Clone
         + Zero
         + One
@@ -2180,39 +2185,118 @@ pub mod constraints {
 
         /// Raise the value to the given power
         fn pow(&self, p: u64) -> Self;
+
+        /// Constrain to boolean
+        fn boolean(&self) -> Self;
+
+        /// Create a literal
+        fn literal(x: F) -> Self;
+
+        // Witness variable
+        fn witness(row: CurrOrNext, col: usize, env: Option<&ArgumentData<F>>) -> Self;
+
+        /// Coefficient
+        fn coeff(col: usize, env: Option<&ArgumentData<F>>) -> Self;
+
+        /// Create a constant
+        fn constant(expr: ConstantExpr<F>, env: Option<&ArgumentData<F>>) -> Self;
+
+        /// Cache item
+        fn cache(&self, cache: &mut Cache) -> Self;
     }
 
-    impl<F: Field> ArithmeticOps for Expr<ConstantExpr<F>> {
+    impl<F: Field> ExprOps<F> for Expr<ConstantExpr<F>> {
         fn double(&self) -> Self {
             Expr::double(self.clone())
         }
+
         fn square(&self) -> Self {
             Expr::square(self.clone())
         }
+
         fn pow(&self, p: u64) -> Self {
             Expr::pow(self.clone(), p)
         }
+
+        fn boolean(&self) -> Self {
+            constraints::boolean(self)
+        }
+
+        fn literal(x: F) -> Self {
+            Expr::Constant(ConstantExpr::Literal(x))
+        }
+
+        fn witness(row: CurrOrNext, col: usize, _: Option<&ArgumentData<F>>) -> Self {
+            witness(col, row)
+        }
+
+        fn coeff(col: usize, _: Option<&ArgumentData<F>>) -> Self {
+            coeff(col)
+        }
+
+        fn constant(expr: ConstantExpr<F>, _: Option<&ArgumentData<F>>) -> Self {
+            Expr::Constant(expr)
+        }
+
+        fn cache(&self, cache: &mut Cache) -> Self {
+            Expr::Cache(cache.next_id(), Box::new(self.clone()))
+        }
     }
 
-    impl<F: Field> ArithmeticOps for F {
+    impl<F: Field> ExprOps<F> for F {
         fn double(&self) -> Self {
             *self * F::from(2u64)
         }
+
         fn square(&self) -> Self {
             *self * *self
         }
+
         fn pow(&self, p: u64) -> Self {
             self.pow([p])
+        }
+
+        fn boolean(&self) -> Self {
+            constraints::boolean(self)
+        }
+
+        fn literal(x: F) -> Self {
+            x
+        }
+
+        fn witness(row: CurrOrNext, col: usize, env: Option<&ArgumentData<F>>) -> Self {
+            match env {
+                Some(data) => data.witness[(row, col)],
+                None => panic!("Missing witness"),
+            }
+        }
+
+        fn coeff(col: usize, env: Option<&ArgumentData<F>>) -> Self {
+            match env {
+                Some(data) => data.coeffs[col],
+                None => panic!("Missing coefficients"),
+            }
+        }
+
+        fn constant(expr: ConstantExpr<F>, env: Option<&ArgumentData<F>>) -> Self {
+            match env {
+                Some(data) => expr.value(&data.constants),
+                None => panic!("Missing constants"),
+            }
+        }
+
+        fn cache(&self, _: &mut Cache) -> Self {
+            *self
         }
     }
 
     /// Creates a constraint to enforce that b is either 0 or 1.
-    pub fn boolean<F: ArithmeticOps>(b: &F) -> F {
+    pub fn boolean<F: Field, T: ExprOps<F>>(b: &T) -> T {
         b.square() - b.clone()
     }
 
     /// Crumb constraint for 2-bit value x
-    pub fn crumb<F: ArithmeticOps>(x: &F) -> F {
+    pub fn crumb<F: Field, T: ExprOps<F>>(x: &T) -> T {
         // Assert x \in [0,3] i.e. assert x*(x - 1)*(x - 2)*(x - 3) == 0
         x.clone()
             * (x.clone() - 1u64.into())
@@ -2268,7 +2352,7 @@ pub mod test {
     use crate::{
         circuits::{
             constraints::ConstraintSystem,
-            expr::constraints::ArithmeticOps,
+            expr::constraints::ExprOps,
             gate::CircuitGate,
             polynomials::{generic::GenericGateSpec, permutation::ZK_ROWS},
             wires::Wire,
@@ -2276,10 +2360,10 @@ pub mod test {
         curve::KimchiCurve,
     };
     use ark_ff::UniformRand;
-    use array_init::array_init;
     use mina_curves::pasta::fp::Fp;
     use mina_curves::pasta::vesta::Vesta;
     use rand::{prelude::StdRng, SeedableRng};
+    use std::array;
 
     #[test]
     #[should_panic]
@@ -2320,7 +2404,7 @@ pub mod test {
         ));
         let constraint_system = ConstraintSystem::fp_for_testing(gates);
 
-        let witness_cols: [_; COLUMNS] = array_init(|_| DensePolynomial::zero());
+        let witness_cols: [_; COLUMNS] = array::from_fn(|_| DensePolynomial::zero());
         let permutation = DensePolynomial::zero();
         let domain_evals = constraint_system.evaluate(&witness_cols, &permutation);
 
@@ -2367,34 +2451,34 @@ pub mod test {
 
     #[test]
     fn test_arithmetic_ops() {
-        fn test_1<F: ArithmeticOps>() -> F {
-            F::zero() + F::one()
+        fn test_1<F: Field, T: ExprOps<F>>() -> T {
+            T::zero() + T::one()
         }
-        assert_eq!(test_1::<E<Fp>>(), E::zero() + E::one());
-        assert_eq!(test_1::<Fp>(), Fp::one());
+        assert_eq!(test_1::<Fp, E<Fp>>(), E::zero() + E::one());
+        assert_eq!(test_1::<Fp, Fp>(), Fp::one());
 
-        fn test_2<F: ArithmeticOps>() -> F {
-            F::one() + F::one()
+        fn test_2<F: Field, T: ExprOps<F>>() -> T {
+            T::one() + T::one()
         }
-        assert_eq!(test_2::<E<Fp>>(), E::one() + E::one());
-        assert_eq!(test_2::<Fp>(), Fp::from(2u64));
+        assert_eq!(test_2::<Fp, E<Fp>>(), E::one() + E::one());
+        assert_eq!(test_2::<Fp, Fp>(), Fp::from(2u64));
 
-        fn test_3<F: ArithmeticOps>(x: F) -> F {
-            F::from(2u64) * x
+        fn test_3<F: Field, T: ExprOps<F>>(x: T) -> T {
+            T::from(2u64) * x
         }
         assert_eq!(
-            test_3::<E<Fp>>(E::from(3u64)),
+            test_3::<Fp, E<Fp>>(E::from(3u64)),
             E::from(2u64) * E::from(3u64)
         );
         assert_eq!(test_3(Fp::from(3u64)), Fp::from(6u64));
 
-        fn test_4<F: ArithmeticOps>(x: F) -> F {
-            x.clone() * (x.square() + F::from(7u64))
+        fn test_4<F: Field, T: ExprOps<F>>(x: T) -> T {
+            x.clone() * (x.square() + T::from(7u64))
         }
         assert_eq!(
-            test_4::<E<Fp>>(E::from(5u64)),
-            E::from(5u64) * (E::from(5u64) * E::from(5u64) + E::from(7u64))
+            test_4::<Fp, E<Fp>>(E::from(5u64)),
+            E::from(5u64) * (Expr::square(E::from(5u64)) + E::from(7u64))
         );
-        assert_eq!(test_4::<Fp>(Fp::from(5u64)), Fp::from(160u64));
+        assert_eq!(test_4::<Fp, Fp>(Fp::from(5u64)), Fp::from(160u64));
     }
 }

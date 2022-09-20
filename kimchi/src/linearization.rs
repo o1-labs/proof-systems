@@ -16,10 +16,15 @@ use crate::circuits::polynomials::varbasemul::VarbaseMul;
 use crate::circuits::{
     expr::{Column, ConstantExpr, Expr, Linearization, PolishToken},
     gate::GateType,
-    wires::*,
+    wires::COLUMNS,
 };
 use ark_ff::{FftField, SquareRootField};
 
+/// Get the expresion of constraints.
+///
+/// # Panics
+///
+/// Will panic if `generic_gate` is not associate with `alpha^0`.
 pub fn constraints_expr<F: FftField + SquareRootField>(
     chacha: bool,
     range_check: bool,
@@ -104,7 +109,7 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
 
     // the lookup polynomials
     if let Some(lcs) = &lookup_constraint_system {
-        for i in 0..(lcs.lookup_info.max_per_row + 1) {
+        for i in 0..=lcs.lookup_info.max_per_row {
             h.insert(LookupSorted(i));
         }
         h.insert(LookupAggreg);
@@ -128,6 +133,11 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
     h
 }
 
+/// Linearize the `expr`.
+///
+/// # Panics
+///
+/// Will panic if the `linearization` process fails.
 pub fn expr_linearization<F: FftField + SquareRootField>(
     chacha: bool,
     range_check: bool,

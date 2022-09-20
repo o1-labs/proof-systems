@@ -4,9 +4,9 @@ use crate::circuits::{
 };
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
-use array_init::array_init;
 use mina_curves::pasta::{fp::Fp as F, pallas::Pallas as Other};
 use rand::{rngs::StdRng, SeedableRng};
+use std::array;
 
 use super::framework::TestFramework;
 
@@ -27,7 +27,7 @@ fn ec_test() {
         });
     }
 
-    let mut witness: [Vec<F>; COLUMNS] = array_init(|_| vec![]);
+    let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![]);
 
     let rng = &mut StdRng::from_seed([0; 32]);
 
