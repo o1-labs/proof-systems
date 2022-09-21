@@ -28,7 +28,6 @@ fn compute_bound_values<F: PrimeField>(
     let carry_mi = *bound_limbs.hi() - *result.hi() + *modulus.hi() - F::from(two_to_limb);
     let carry_lo =
         *bound_limbs.mi() - *result.mi() + *modulus.mi() + carry_mi * F::from(two_to_limb);
-
     (bound_limbs, carry_lo, carry_mi)
 }
 
@@ -99,18 +98,25 @@ pub fn create_witness<F: PrimeField>(
     let num = inputs.len() - 1; // number of chained additions
 
     // make sure there are as many operands as operations
-    assert_eq!(opcode.len(), num,);
+    assert_eq!(opcode.len(), num);
+
+    let mut inputs_ok = inputs.clone();
+    for (i, input) in inputs.iter().enumerate() {
+        if *input > modulus {
+            inputs_ok[i] = input % modulus.clone();
+        }
+    }
 
     let mut witness = array::from_fn(|_| vec![F::zero(); 0]);
 
     let foreign_modulus = ForeignElement::from_big(modulus);
 
     // Create multi-range-check witness for first left input
-    let mut left = ForeignElement::from_big(inputs[0].clone());
+    let mut left = ForeignElement::from_big(inputs_ok[0].clone());
     extend_witness(&mut witness, left.clone());
     let mut add_values: Vec<(F, F, F, F)> = vec![];
     for i in 0..num {
-        let right = ForeignElement::from_big(inputs[i + 1].clone());
+        let right = ForeignElement::from_big(inputs_ok[i + 1].clone());
         let (out, sig, ovf, carry_lo, carry_mi) =
             compute_subadd_values(&left, &right, opcode[i], &foreign_modulus);
         // Create multi-range-check witness for right_input (left_input was done in previous iteration) and output

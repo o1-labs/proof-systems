@@ -63,10 +63,13 @@ impl<F: Field, const N: usize> ForeignElement<F, N> {
     }
 
     /// Initializes a new foreign element from an absolute `BigUint` but the equivalent
-    /// foreign element obtained corresponds to the negated input.
+    /// foreign element obtained corresponds to the negated input. It first converts the
+    /// input big element to a big integer modulo the foreign field modulus, and then
+    /// computes the negation of the result.
     pub fn neg(&self, modulus: &BigUint) -> Self {
         let big = self.to_big();
-        let neg = modulus - big;
+        let ok = big % modulus;
+        let neg = modulus - ok;
         Self::from_big(neg)
     }
 
