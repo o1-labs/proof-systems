@@ -115,7 +115,7 @@ pub struct VerifierIndex<G: KimchiCurve> {
     pub range_check_comm: Option<[PolyComm<G>; range_check::gadget::GATE_COUNT]>,
 
     // Foreign field modulus
-    //#[serde(bound = "Option<ForeignElement<G::ScalarField, LIMB_COUNT>>: Serialize + DeserializeOwned")]
+    #[serde(bound = "Option<BigUint>: Serialize + DeserializeOwned")]
     pub foreign_field_modulus: Option<BigUint>,
 
     /// Foreign field multiplication gates polynomial commitments
