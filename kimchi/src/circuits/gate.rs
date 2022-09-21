@@ -16,7 +16,7 @@ use ark_ff::{bytes::ToBytes, PrimeField};
 use ark_poly::Evaluations;
 use ark_poly::Radix2EvaluationDomain as D;
 use num_traits::cast::ToPrimitive;
-use o1_utils::{hasher::CryptoDigest, ForeignElement};
+use o1_utils::hasher::CryptoDigest;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::io::{Result as IoResult, Write};

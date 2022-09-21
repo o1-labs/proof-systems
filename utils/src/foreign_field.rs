@@ -37,7 +37,7 @@ pub struct ForeignElement<F: Field, const N: usize> {
     pub len: usize,
 }
 
-impl<F: PrimeField, const N: usize> ForeignElement<F, N> {
+impl<F: Field, const N: usize> ForeignElement<F, N> {
     /// Initializes a new foreign element from a big unsigned integer
     /// Panics if the BigUint is too large to fit in the `N` limbs
     pub fn from_biguint(big: BigUint) -> Self {
@@ -66,11 +66,6 @@ impl<F: PrimeField, const N: usize> ForeignElement<F, N> {
         Self::from_biguint(BigUint::from_bytes_be(bytes))
     }
 
-    /// Initializes a new foreign element from an element in the native field
-    pub fn from_field(field: F) -> Self {
-        Self::from_biguint(field.into())
-    }
-
     /// Obtains the big integer representation of the foreign field element
     pub fn to_biguint(&self) -> BigUint {
         let mut bytes = vec![];
@@ -91,6 +86,13 @@ impl<F: PrimeField, const N: usize> ForeignElement<F, N> {
             .iter()
             .map(|chunk| F::from_random_bytes(chunk).expect("failed to deserialize"))
             .collect()
+    }
+}
+
+impl<F: PrimeField, const N: usize> ForeignElement<F, N> {
+    /// Initializes a new foreign element from an element in the native field
+    pub fn from_field(field: F) -> Self {
+        Self::from_biguint(field.into())
     }
 }
 

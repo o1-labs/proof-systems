@@ -4,7 +4,6 @@ use ark_ff::{FftField, PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
-use o1_utils::foreign_field::{ForeignElement, SECP256K1_MOD};
 use rand::{prelude::StdRng, SeedableRng};
 use std::array;
 
@@ -154,8 +153,8 @@ impl<F: PrimeField> CircuitGate<F> {
             &beta,
             &gamma,
             &lcs.configuration.lookup_info,
-        )
-        .map_err(|e| e)?;
+        )?;
+
         let lookup_env = Some(LookupEnvironment {
             aggreg: &lookup_env_data.aggreg8,
             sorted: &lookup_env_data.sorted8,
@@ -164,10 +163,6 @@ impl<F: PrimeField> CircuitGate<F> {
             runtime_selector: None,
             runtime_table: None,
         });
-
-        // Initialize the foreign field modulus constant
-        // TODO: (querolita) new_from_be could return an option instead of panicking?
-        let foreign_field_modulus = Some(ForeignElement::<F, 3>::from_be(SECP256K1_MOD));
 
         // Set up the environment
         let env = {
@@ -179,7 +174,7 @@ impl<F: PrimeField> CircuitGate<F> {
                     joint_combiner: Some(F::rand(rng)),
                     endo_coefficient: cs.endo,
                     mds: &G::sponge_params().mds,
-                    foreign_field_modulus,
+                    foreign_field_modulus: cs.foreign_field_modulus.clone(),
                 },
                 witness: &witness_evals.d8.this.w,
                 coefficient: &cs.coefficients8,

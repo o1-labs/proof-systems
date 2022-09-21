@@ -84,7 +84,7 @@ use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
     expr::{
         constraints::{boolean, crumb, ExprOps},
-        ConstantExpr, E,
+        ConstantExpr,
     },
     gate::GateType,
 };
@@ -207,7 +207,7 @@ where
 
         // Powers of 2 for range constraints
         let two = T::from(2u64);
-        let two_to_limb = two.clone().pow(LIMB_BITS as u64);
+        let two_to_limb = two.pow(LIMB_BITS as u64);
         let power_lo = two_to_limb.clone() * two_to_limb.clone() * two.clone(); // 2^{2L+1}
         let power_mi = power_lo.clone() * two.clone(); // 2^{2L+2}
         let power_hi = power_mi.clone() * two.clone(); // 2^{2L+3}

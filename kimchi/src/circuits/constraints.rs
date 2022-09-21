@@ -20,10 +20,7 @@ use ark_poly::{
     Radix2EvaluationDomain as D,
 };
 use num_bigint::BigUint;
-use o1_utils::{
-    foreign_field::{ForeignElement, LIMB_COUNT},
-    ExtendedEvaluations, FieldHelpers,
-};
+use o1_utils::{ExtendedEvaluations, FieldHelpers};
 use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
@@ -123,8 +120,7 @@ pub struct ConstraintSystem<F: PrimeField> {
         Option<[SelectorPolynomial<F>; range_check::gadget::GATE_COUNT]>,
 
     /// Foreign field modulus
-    #[serde(bound = "Option<ForeignElement<F, LIMB_COUNT>>: Serialize + DeserializeOwned")]
-    pub foreign_field_modulus: Option<ForeignElement<F, LIMB_COUNT>>,
+    pub foreign_field_modulus: Option<BigUint>,
 
     /// Foreign field multiplication gate selector polynomial
     #[serde(bound = "Option<SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
@@ -162,7 +158,7 @@ pub struct Builder<F: PrimeField> {
     lookup_tables: Vec<LookupTable<F>>,
     runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
     precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
-    foreign_field_modulus: Option<ForeignElement<F, LIMB_COUNT>>,
+    foreign_field_modulus: Option<BigUint>,
 }
 
 /// Create selector polynomial for a circuit gate
@@ -393,17 +389,12 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
     /// Panics if the BigUint being passed needs more than 3 limbs of 88 bits each
     /// or if the foreign modulus being passed is smaller than the native modulus.
     pub fn foreign_field_modulus(mut self, foreign_field_modulus: Option<BigUint>) -> Self {
-        self.foreign_field_modulus = {
-            if let Some(modulus) = foreign_field_modulus {
-                if modulus <= F::modulus_biguint() {
-                    panic!("Foreign field modulus must be greater than the native modulus");
-                }
-                Some(ForeignElement::<F, 3>::from_biguint(modulus))
-            } else {
-                None
+        if let Some(modulus) = foreign_field_modulus.clone() {
+            if modulus <= F::modulus_biguint() {
+                panic!("Foreign field modulus must be greater than the native modulus");
             }
-        };
-
+        }
+        self.foreign_field_modulus = foreign_field_modulus;
         self
     }
 
