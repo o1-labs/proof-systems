@@ -9,7 +9,7 @@ use crate::{
         lookup::{lookups::LookupsUsed, tables::combine_table},
         polynomials::{generic, permutation},
         scalars::RandomOracles,
-        wires::*,
+        wires::{COLUMNS, PERMUTS},
     },
     curve::KimchiCurve,
     error::VerifyError,
@@ -35,13 +35,21 @@ where
     G::BaseField: PrimeField,
 {
     /// This function runs the random oracle argument
+    ///
+    /// # Errors
+    ///
+    /// Will give error if `commitment(s)` are invalid(missing or wrong length), or `proof` is verified as invalid.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `PolishToken` evaluation is invalid.
     pub fn oracles<
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
         EFrSponge: FrSponge<G::ScalarField>,
     >(
         &self,
         index: &VerifierIndex<G>,
-        p_comm: &PolyComm<G>,
+        public_comm: &PolyComm<G>,
     ) -> Result<OraclesResult<G, EFqSponge>> {
         //~
         //~ #### Fiat-Shamir argument
@@ -59,12 +67,12 @@ where
         fq_sponge.absorb_fq(&[verifier_index_digest]);
 
         //~ 1. Absorb the commitments of the previous challenges with the Fq-sponge.
-        for RecursionChallenge { comm, .. } in self.prev_challenges.iter() {
+        for RecursionChallenge { comm, .. } in &self.prev_challenges {
             fq_sponge.absorb_g(&comm.unshifted);
         }
 
         //~ 1. Absorb the commitment of the public input polynomial with the Fq-Sponge.
-        fq_sponge.absorb_g(&p_comm.unshifted);
+        fq_sponge.absorb_g(&public_comm.unshifted);
 
         //~ 1. Absorb the commitments to the registers / witness columns with the Fq-Sponge.
         self.commitments
@@ -210,8 +218,10 @@ where
         //~ 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
         //~
         //~    NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
-        let p_eval = if !self.public.is_empty() {
-            vec![
+        let public_evals = if self.public.is_empty() {
+            [vec![G::ScalarField::zero()], vec![G::ScalarField::zero()]]
+        } else {
+            [
                 vec![
                     (self
                         .public
@@ -235,8 +245,6 @@ where
                         * (zetaw.pow(&[n as u64]) - G::ScalarField::one()),
                 ],
             ]
-        } else {
-            vec![Vec::<G::ScalarField>::new(), Vec::<G::ScalarField>::new()]
         };
 
         //~ 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
@@ -249,8 +257,8 @@ where
         //~~ - poseidon selector
         //~~ - the 15 register/witness
         //~~ - 6 sigmas evaluations (the last one is not evaluated)
-        fr_sponge.absorb_multiple(&p_eval[0]);
-        fr_sponge.absorb_multiple(&p_eval[1]);
+        fr_sponge.absorb_multiple(&public_evals[0]);
+        fr_sponge.absorb_multiple(&public_evals[1]);
         fr_sponge.absorb_evaluations([&self.evals[0], &self.evals[1]]);
 
         //~ 1. Sample $v'$ with the Fr-Sponge.
@@ -297,10 +305,10 @@ where
                 .map(|(w, s)| (beta * s) + w + gamma)
                 .fold(init, |x, y| x * y);
 
-            ft_eval0 -= if !p_eval[0].is_empty() {
-                p_eval[0][0]
-            } else {
+            ft_eval0 -= if public_evals[0].is_empty() {
                 G::ScalarField::zero()
+            } else {
+                public_evals[0][0]
             };
 
             ft_eval0 -= evals[0]
@@ -346,7 +354,7 @@ where
             #[allow(clippy::type_complexity)]
             let mut es: Vec<(Vec<Vec<G::ScalarField>>, Option<usize>)> =
                 polys.iter().map(|(_, e)| (e.clone(), None)).collect();
-            es.push((p_eval.clone(), None));
+            es.push((public_evals.to_vec(), None));
             es.push((vec![ft_eval0, ft_eval1], None));
             es.push((
                 self.evals.iter().map(|e| e.z.clone()).collect::<Vec<_>>(),
@@ -393,10 +401,11 @@ where
                     .collect::<Vec<_>>(),
             );
 
-            combined_inner_product::<G>(&evaluation_points, &v, &u, &es, index.srs().g.len())
+            combined_inner_product(&evaluation_points, &v, &u, &es, index.srs().g.len())
         };
 
         let oracles = RandomOracles {
+            joint_combiner,
             beta,
             gamma,
             alpha_chal,
@@ -407,7 +416,6 @@ where
             zeta_chal,
             v_chal,
             u_chal,
-            joint_combiner,
         };
 
         Ok(OraclesResult {
@@ -415,7 +423,7 @@ where
             digest,
             oracles,
             all_alphas,
-            p_eval,
+            public_evals,
             powers_of_eval_points_for_chunks,
             polys,
             zeta1,
@@ -469,20 +477,20 @@ where
         return Err(VerifyError::IncorrectPubicInputLength(index.public));
     }
     let elm: Vec<_> = proof.public.iter().map(|s| -*s).collect();
-    let p_comm = PolyComm::<G>::multi_scalar_mul(&com_ref, &elm);
+    let public_comm = PolyComm::<G>::multi_scalar_mul(&com_ref, &elm);
 
     //~ 1. Run the [Fiat-Shamir argument](#fiat-shamir-argument).
     let OraclesResult {
         fq_sponge,
         oracles,
         all_alphas,
-        p_eval,
+        public_evals,
         powers_of_eval_points_for_chunks,
         polys,
         zeta1: zeta_to_domain_size,
         ft_eval0,
         ..
-    } = proof.oracles::<EFqSponge, EFrSponge>(index, &p_comm)?;
+    } = proof.oracles::<EFqSponge, EFrSponge>(index, &public_comm)?;
 
     //~ 1. Combine the chunked polynomials' evaluations
     //~    (TODO: most likely only the quotient polynomial is chunked)
@@ -555,11 +563,11 @@ where
                 match col {
                     Witness(i) => {
                         scalars.push(scalar);
-                        commitments.push(&proof.commitments.w_comm[*i])
+                        commitments.push(&proof.commitments.w_comm[*i]);
                     }
                     Coefficient(i) => {
                         scalars.push(scalar);
-                        commitments.push(&index.coefficients_comm[*i])
+                        commitments.push(&index.coefficients_comm[*i]);
                     }
                     Z => {
                         scalars.push(scalar);
@@ -572,7 +580,7 @@ where
                             .as_ref()
                             .ok_or(VerifyError::LookupCommitmentMissing)?;
                         scalars.push(scalar);
-                        commitments.push(&lookup_coms.sorted[*i])
+                        commitments.push(&lookup_coms.sorted[*i]);
                     }
                     LookupAggreg => {
                         let lookup_coms = proof
@@ -581,7 +589,7 @@ where
                             .as_ref()
                             .ok_or(VerifyError::LookupCommitmentMissing)?;
                         scalars.push(scalar);
-                        commitments.push(&lookup_coms.aggreg)
+                        commitments.push(&lookup_coms.aggreg);
                     }
                     LookupKindIndex(i) => match index.lookup_index.as_ref() {
                         None => {
@@ -668,8 +676,8 @@ where
 
     //~~ - public input commitment
     evaluations.push(Evaluation {
-        commitment: p_comm,
-        evaluations: p_eval,
+        commitment: public_comm,
+        evaluations: public_evals.to_vec(),
         degree_bound: None,
     });
 
@@ -801,7 +809,7 @@ where
             let joint_combiner = oracles
                 .joint_combiner
                 .expect("joint_combiner should be present if lookups are used");
-            let table_id_combiner = joint_combiner.1.pow([li.max_joint_size as u64]);
+            let table_id_combiner = joint_combiner.1.pow([u64::from(li.max_joint_size)]);
             let lookup_table: Vec<_> = li.lookup_table.iter().collect();
             let runtime = lookup_comms.runtime.as_ref();
 
@@ -852,13 +860,17 @@ where
         sponge: fq_sponge,
         evaluations,
         evaluation_points,
-        xi: oracles.v,
-        r: oracles.u,
+        polyscale: oracles.v,
+        evalscale: oracles.u,
         opening: &proof.proof,
     })
 }
 
-/// Verify a proof [ProverProof] using a [VerifierIndex] and a `group_map`.
+/// Verify a proof [`ProverProof`] using a [`VerifierIndex`] and a `group_map`.
+///
+/// # Errors
+///
+/// Will give error if `proof(s)` are not verified as valid.
 pub fn verify<G, EFqSponge, EFrSponge>(
     group_map: &G::Map,
     verifier_index: &VerifierIndex<G>,
@@ -876,8 +888,12 @@ where
 
 /// This function verifies the batch of zk-proofs
 ///     proofs: vector of Plonk proofs
-///     index: VerifierIndex
+///     index: `VerifierIndex`
 ///     RETURN: verification status
+///
+/// # Errors
+///
+/// Will give error if `srs` of `proof` is invalid or `verify` process fails.
 pub fn batch_verify<G, EFqSponge, EFrSponge>(
     group_map: &G::Map,
     proofs: &[(&VerifierIndex<G>, &ProverProof<G>)],
@@ -921,8 +937,9 @@ where
     }
 
     //~ 1. Use the [`PolyCom.verify`](#polynomial-commitments) to verify the partially evaluated proofs.
-    match srs.verify::<EFqSponge, _>(group_map, &mut batch, &mut thread_rng()) {
-        false => Err(VerifyError::OpenProof),
-        true => Ok(()),
+    if srs.verify::<EFqSponge, _>(group_map, &mut batch, &mut thread_rng()) {
+        Ok(())
+    } else {
+        Err(VerifyError::OpenProof)
     }
 }

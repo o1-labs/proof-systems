@@ -1,8 +1,8 @@
 //! Range check witness computation
 
 use ark_ff::PrimeField;
-use array_init::array_init;
 use o1_utils::FieldHelpers;
+use std::array;
 
 use crate::circuits::polynomial::COLUMNS;
 
@@ -76,7 +76,7 @@ impl ZeroWitnessCell {
 ///   * Limbs are mapped to columns so that those containing the MSBs
 ///     are in lower numbered columns (i.e. big-endian column mapping).
 ///     This is important so that copy constraints are possible on the MSBs.
-///     For example, we can convert the RangeCheck0 circuit gate into
+///     For example, we can convert the `RangeCheck0` circuit gate into
 ///     a 64-bit lookup by adding two copy constraints to constrain
 ///     columns 1 and 2 to zero.
 pub const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 4] = [
@@ -130,7 +130,7 @@ pub const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 4] = [
     ],
 ];
 
-/// The row layout for RangeCheck0
+/// The row layout for `RangeCheck0`
 const fn range_check_row(row: usize) -> [WitnessCell; COLUMNS] {
     [
         ValueWitnessCell::create(),
@@ -201,7 +201,7 @@ pub fn init_range_check_row<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], row:
 /// Create a multi range check witness
 /// Input: three 88-bit values: v0, v1 and v2
 pub fn create_multi_witness<F: PrimeField>(v0: F, v1: F, v2: F) -> [Vec<F>; COLUMNS] {
-    let mut witness: [Vec<F>; COLUMNS] = array_init(|_| vec![F::zero(); 4]);
+    let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 4]);
 
     init_range_check_row(&mut witness, 0, v0);
     init_range_check_row(&mut witness, 1, v1);
@@ -214,7 +214,7 @@ pub fn create_multi_witness<F: PrimeField>(v0: F, v1: F, v2: F) -> [Vec<F>; COLU
 /// Create a single range check witness
 /// Input: 88-bit value v0
 pub fn create_witness<F: PrimeField>(v0: F) -> [Vec<F>; COLUMNS] {
-    let mut witness: [Vec<F>; COLUMNS] = array_init(|_| vec![F::zero(); 4]);
+    let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 4]);
 
     init_range_check_row(&mut witness, 0, v0);
 

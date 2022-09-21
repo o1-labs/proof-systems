@@ -13,7 +13,7 @@ use crate::{BaseField, CurvePoint};
 use o1_utils::FieldHelpers;
 
 /// Public key errors
-#[derive(Error, Debug, Clone, PartialEq)]
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum PubKeyError {
     /// Invalid address length
     #[error("invalid address length")]
@@ -59,6 +59,10 @@ impl PubKey {
     }
 
     /// Deserialize Mina address into public key
+    ///
+    /// # Errors
+    ///
+    /// Will give error if `address` string does not match certain requirements.
     pub fn from_address(address: &str) -> Result<Self> {
         if address.len() != MINA_ADDRESS_LEN {
             return Err(PubKeyError::AddressLength);
@@ -161,7 +165,7 @@ fn into_address(x: &BaseField, is_odd: bool) -> String {
     raw.extend(x.to_bytes());
 
     // pub key y-coordinate parity
-    raw.push(is_odd as u8);
+    raw.push(u8::from(is_odd));
 
     // 4-byte checksum
     let hash = Sha256::digest(&Sha256::digest(&raw[..])[..]);
@@ -177,12 +181,16 @@ impl CompressedPubKey {
         into_address(&self.x, self.is_odd)
     }
 
-    /// Deserialize Mina address into compressed public key (via an uncompressed PubKey)
+    /// Deserialize Mina address into compressed public key (via an uncompressed `PubKey`)
+    ///
+    /// # Errors
+    ///
+    /// Will give error if `PubKey::from_address()` returns error.
     pub fn from_address(address: &str) -> Result<Self> {
         Ok(PubKey::from_address(address)?.into_compressed())
     }
 
-    /// The empty [CompressedPubKey] value that is used as `public_key` in empty account
+    /// The empty [`CompressedPubKey`] value that is used as `public_key` in empty account
     /// and [None] value for calculating the hash of [Option<CompressedPubKey>], etc.
     pub fn empty() -> Self {
         Self {

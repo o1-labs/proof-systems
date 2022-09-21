@@ -1,7 +1,6 @@
 use crate::writer::{Cs, GateSpec, System, Var, WitnessGenerator};
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{FftField, One, PrimeField, SquareRootField, Zero};
-use array_init::array_init;
 use commitment_dlog::{
     commitment::{CommitmentCurve, PolyComm},
     srs::{endos, SRS},
@@ -15,6 +14,7 @@ use kimchi::{
 };
 use mina_curves::pasta::{fp::Fp, fq::Fq, pallas::Pallas as Other, vesta::Vesta};
 use oracle::FqSponge;
+use std::array;
 
 /// A [Cycle] represents the algebraic structure that
 /// allows for recursion using elliptic curves.
@@ -101,6 +101,10 @@ impl Cycle for FqInner {
 }
 
 /// Given an index, a group map, custom blinders for the witness, a public input vector, and a circuit `main`, it creates a proof.
+///
+/// # Panics
+///
+/// Will panic if recursive proof creation returns `ProverError`.
 pub fn prove<G, H, EFqSponge, EFrSponge>(
     index: &ProverIndex<G>,
     group_map: &G::Map,
@@ -134,8 +138,8 @@ where
 
     // custom blinders for the witness commitment
     let blinders: [Option<PolyComm<G::ScalarField>>; COLUMNS] = match blinders {
-        None => array_init(|_| None),
-        Some(bs) => array_init(|i| {
+        None => array::from_fn(|_| None),
+        Some(bs) => array::from_fn(|i| {
             bs[i].map(|b| PolyComm {
                 unshifted: vec![b],
                 shifted: None,
@@ -156,6 +160,10 @@ where
 }
 
 /// Creates the prover index on input an `srs`, used `constants`, parameters for Poseidon, number of public inputs, and a specific circuit
+///
+/// # Panics
+///
+/// Will panic if `constraint_system` is not built with `public` input.
 pub fn generate_prover_index<C, H>(
     srs: std::sync::Arc<SRS<C::Outer>>,
     public: usize,
@@ -186,7 +194,7 @@ where
     main(&mut system, public_input);
 
     let gates = system.gates();
-    println!("gates: {}", gates.len());
+
     // Other base field = self scalar field
     let (endo_q, _endo_r) = endos::<C::Inner>();
 

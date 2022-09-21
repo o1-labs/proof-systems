@@ -8,7 +8,7 @@ use crate::circuits::{
     },
 };
 use ark_ff::PrimeField;
-use array_init::array_init;
+use std::array;
 
 const fn xor_row(row: usize, offset: usize) -> [WitnessCell; COLUMNS] {
     [
@@ -90,7 +90,7 @@ fn init_keccak_xor_rows<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], curr_row
 /// Create a foreign field multiplication witness
 /// Input: multiplicands left_input and right_input
 pub fn create_witness<F: PrimeField>(input1: u64, input2: u64) -> [Vec<F>; COLUMNS] {
-    let mut witness = array_init(|_| vec![F::zero(); 0]);
+    let mut witness = array::from_fn(|_| vec![F::zero(); 0]);
 
     let output = input1 ^ input2;
 
