@@ -1,3 +1,5 @@
+//! This module computes the witness of a foreign field addition circuit.
+
 use crate::circuits::{
     polynomial::COLUMNS,
     polynomials::range_check::{
@@ -10,6 +12,10 @@ use num_bigint::BigUint;
 use o1_utils::foreign_field::{ForeignElement, LIMB_BITS};
 use std::array;
 
+/// Given a result from a chain of additions/subtraction and even multiplications, and a modulus, it computes
+/// all necessary values needed for the final bound check witness. Meaning:
+/// - the bound as a ForeignElement
+/// - the carry_lo and carry_mi values
 fn compute_bound_values<F: PrimeField>(
     result: &ForeignElement<F, 3>,
     modulus: &ForeignElement<F, 3>,
@@ -26,6 +32,12 @@ fn compute_bound_values<F: PrimeField>(
     (bound_limbs, carry_lo, carry_mi)
 }
 
+/// Given a left and right inputs to an addition or subtraction, and a modulus, it computes
+/// all necessary values needed for the witness layout. Meaning:
+/// - the result of the addition/subtraction as a ForeignElement
+/// - the sign of the operation
+/// - the overflow flag
+/// - the carry_lo and carry_mi values
 fn compute_subadd_values<F: PrimeField>(
     left_input: &ForeignElement<F, 3>,
     right_input: &ForeignElement<F, 3>,
@@ -75,8 +87,10 @@ fn compute_subadd_values<F: PrimeField>(
     }
 }
 
-/// Creates a FFAdd witness
-/// opcode = true for subtraction, false for addition
+/// Creates a FFAdd witness (including range checks, `ForeignFieldAdd` rows, and one `ForeignFieldFin` row.)
+/// inputs: list of all inputs to the chain of additions/subtractions
+/// opcode: true for addition, false for subtraction
+/// modulus: modulus of the foreign field
 pub fn create_witness<F: PrimeField>(
     inputs: Vec<BigUint>,
     opcode: Vec<bool>,
@@ -84,11 +98,8 @@ pub fn create_witness<F: PrimeField>(
 ) -> [Vec<F>; COLUMNS] {
     let num = inputs.len() - 1; // number of chained additions
 
-    /*ensure_eq!(
-        opcode.len(),
-        num,
-        "The number of inputs does not correspond with the number of operations"
-    );*/
+    // make sure there are as many operands as operations
+    assert_eq!(opcode.len(), num,);
 
     let mut witness = array::from_fn(|_| vec![F::zero(); 0]);
 
@@ -117,7 +128,7 @@ pub fn create_witness<F: PrimeField>(
     extend_witness(&mut witness, bound);
     let mut offset = witness[0].len(); // number of witness rows of the gadget before the first row of the addition gate
 
-    // Include FFAdd and FFFin and Zero gates
+    // Include FFAdd and FFFin gates
 
     for (i, value) in add_values.iter().enumerate() {
         // Create foreign field addition row
@@ -263,7 +274,7 @@ fn init_foreign_field_fin_rows<F: PrimeField>(
 fn handle_ffadd_rows<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
     witness_cell: &WitnessCell<F>,
-    coordinates: (usize, usize), // row, col
+    coordinates: (usize, usize), /* row, col */
     offset: usize,
     sign: F,
     overflow: F,

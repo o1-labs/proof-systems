@@ -1200,7 +1200,7 @@ where the notation `v2ci` and `v2pi` defined in the "Layout" section above.
 
 These circuit gates are used to constrain that
 
-    $$left_input + right_input = field_overflow * foreign_modulus + result$$
+    $$left_input +/- right_input = field_overflow * foreign_modulus + result$$
 
  Documentation:
 
@@ -1211,20 +1211,16 @@ These circuit gates are used to constrain that
     used in the code and those of the document can be helpful.
 
 ```text
-    left_input_lo -> a0  right_input_lo -> b0  result_lo -> r0  upper_bound_lo -> u0
-    left_input_mi -> a1  right_input_mi -> b1  result_mi -> r1  upper_bound_mi -> u1
-    left_input_hi -> a2  right_input_hi -> b2  result_hi -> r2  upper_bound_hi -> u2
+    left_input_lo -> a0  right_input_lo -> b0  result_lo -> r0  bound_lo -> u0
+    left_input_mi -> a1  right_input_mi -> b1  result_mi -> r1  bound_mi -> u1
+    left_input_hi -> a2  right_input_hi -> b2  result_hi -> r2  bound_hi -> u2
 
     field_overflow  -> x
-    result_carry_lo -> c0
-    result_carry_mi -> c1
-
-    upper_bound_carry_lo -> k0
-    upper_bound_carry_mi -> k1
-
-    max_sub_foreign_modulus_lo -> g_0 = 2^88 - m_0
-    max_sub_foreign_modulus_mi -> g_1 = 2^88 - m_1 - 1
-    max_sub_foreign_modulus_hi -> g_2 = 2^88 - m_2 - 1
+    sign            -> s
+    carry_lo        -> c0
+    carry_mi        -> c1
+    bound_carry_lo -> k0
+    bound_carry_mi -> k1
 ```
 
 Let `left_input_lo`, `left_input_mi`, `left_input_hi` be 88-bit limbs of the left element
@@ -1235,50 +1231,53 @@ Let `foreign_modulus_lo`, `foreign_modulus_mi`, `foreign_modulus_hi` be 88-bit l
 
 Then the limbs of the result are
 
-- `result_lo = left_input_lo + right_input_lo - field_overflow * foreign_modulus_lo - 2^{88} * result_carry_lo`
-- `result_mi = left_input_mi + right_input_mi - field_overflow * foreign_modulus_mi - 2^{88} * result_carry_mi + result_carry_lo`
-- `result_hi = left_input_hi + right_input_hi - field_overflow * foreign_modulus_hi + result_carry_mi`
+- `result_lo = left_input_lo +/- right_input_lo - field_overflow * foreign_modulus_lo - 2^{88} * result_carry_lo`
+- `result_mi = left_input_mi +/- right_input_mi - field_overflow * foreign_modulus_mi - 2^{88} * result_carry_mi + result_carry_lo`
+- `result_hi = left_input_hi +/- right_input_hi - field_overflow * foreign_modulus_hi + result_carry_mi`
 
-`field_overflow` $=0$ or $1$ handles overflows in the field
+`field_overflow` $=0$ or $1$ or $-1$ handles overflows in the field
 
-`result_carry_i` $= -1, 0, 1$ are auxiliary variables that handle carries between limbs
+`carry_i` $= -1, 0, 1$ are auxiliary variables that handle carries between limbs
 
-We need to do an additional range check to make sure that the result is less than the modulus, by
-adding `2^{3*88} - foreign_modulus`. (This can be computed easily from the limbs of the modulus)
-Represent this as limbs
-`max_sub_foreign_modulus_lo, max_sub_foreign_modulus_mi, max_sub_foreign_modulus_hi`.
+Appart from the rangechecks of the chained inputs, we need to do an additional range check for a final bound
+to make sure that the result is less than the modulus, by adding `2^{3*88} - foreign_modulus` to it.
+ (This can be computed easily from the limbs of the modulus)
+Note that `2^{264}` as limbs reprsents: (0, 0, 0, 1) then:
 
 The upper-bound check can be calculated as
-- `upper_bound_hi = result_hi + max_sub_foreign_modulus_hi + upper_bound_carry_mi`
-- `upper_bound_mi = result_mi + max_sub_foreign_modulus_mi - upper_bound_carry_mi * 2^{88} + upper_bound_carry_lo`
-- `upper_bound_lo = result_lo + max_sub_foreign_modulus_lo - upper_bound_carry_lo * 2^{88}`
+- `bound_lo = result_lo - foreign_modulus_lo - bound_carry_lo * 2^{88}`
+- `bound_mi = result_mi - foreign_modulus_mi - bound_carry_mi * 2^{88} + bound_carry_lo`
+- `bound_hi = result_hi - foreign_modulus_hi + 2^{88} + bound_carry_mi`
 
-`upper_bound_carry_i` $= 0$ or $1$ are auxiliary variables that handle carries between limbs
+`bound_carry_i` $= 0$ or $1$ or $-1$ are auxiliary variables that handle carries between limbs
 
-Then, range check `result` and `upper_bound`. The range check of `upper_bound` can be skipped if there are
-multiple additions and `result` is an intermediate value that is unused elsewhere (since the final `result`
+The range check of `bound` can be skipped until the end of the operations
+and `result` is an intermediate value that is unused elsewhere (since the final `result`
 must have had the right number of moduluses subtracted along the way).
 
-You could lay this out as a double-width gate, e.g.
+You could lay this out as a double-width gate for chained foreign additions and a final row, e.g.
 
-| col | `ForeignFieldAdd`       | `Zero`                  |
-| --- | ----------------------- | ----------------------- |
-|   0 | `left_input_lo` (copy)  | `result_lo` (copy)      |
-|   1 | `left_input_mi` (copy)  | `result_mi` (copy)      |
-|   2 | `left_input_hi` (copy)  | `result_hi` (copy)      |
-|   3 | `right_input_lo` (copy) | `upper_bound_lo` (copy) |
-|   4 | `right_input_mi` (copy) | `upper_bound_mi` (copy) |
-|   5 | `right_input_hi` (copy) | `upper_bound_hi` (copy) |
-|   6 | `field_overflow`        |                         |
-|   7 | `result_carry_lo`       |                         |
-|   8 | `result_carry_mi`       |                         |
-|   9 | `upper_bound_carry_lo`  |                         |
-|  10 | `upper_bound_carry_mi`  |                         |
-|  11 |                         |                         |
-|  12 |                         |                         |
-|  13 |                         |                         |
-|  14 |                         |                         |
+| col | `FFAdd`                 | more `FFAdd`       | or `FFFin`         |
+| --- | ----------------------- | ------------------ | ------------------ |
+|   0 | `left_input_lo` (copy)  | `result_lo` (copy) | `resmin_lo` (copy) |
+|   1 | `left_input_mi` (copy)  | `result_mi` (copy) | `resmin_mi` (copy) |
+|   2 | `left_input_hi` (copy)  | `result_hi` (copy) | `resmin_hi` (copy) |
+|   3 | `right_input_lo` (copy) |  ...               | `bound_lo`  (copy) |
+|   4 | `right_input_mi` (copy) |  ...               | `bound_mi`  (copy) |
+|   5 | `right_input_hi` (copy) |  ...               | `bound_hi`  (copy) |
+|   6 | `field_overflow`        |  ...               |  -                 |
+|   7 | `carry_lo`              |  ...               | `bound_carry_lo`   |
+|   8 | `carry_mi`              |  ...               | `bound_carry_mi`   |
+|   9 | `sign`                  |  ...               |  -                 |
+|  10 |                         |                    |                    |
+|  11 |                         |                    |                    |
+|  12 |                         |                    |                    |
+|  13 |                         |                    |                    |
+|  14 |                         |                    |                    |
 
+Having a specific final row that checks the bound is useful as it checks the upper bound
+without reusing the same constraints in the `ForeignFieldAdd` rows (which would require
+some extra constraints to be added to the circuit).
 
 
 ## Setup
@@ -1539,14 +1538,12 @@ pub struct VerifierIndex<G: KimchiCurve> {
     pub range_check_comm: Option<[PolyComm<G>; range_check::gadget::GATE_COUNT]>,
 
     // Foreign field modulus
-    #[serde(
-        bound = "Option<ForeignElement<G::ScalarField, LIMB_COUNT>>: Serialize + DeserializeOwned"
-    )]
-    pub foreign_field_modulus: Option<ForeignElement<G::ScalarField, LIMB_COUNT>>,
+    //#[serde(bound = "Option<ForeignElement<G::ScalarField, LIMB_COUNT>>: Serialize + DeserializeOwned")]
+    pub foreign_field_modulus: Option<BigUint>,
 
     // Foreign field addition gates polynomial commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
-    pub foreign_field_add_comm: Option<PolyComm<G>>,
+    pub foreign_field_add_comm: Option<[PolyComm<G>; foreign_field_add::gadget::GATE_COUNT]>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]

@@ -1,3 +1,5 @@
+//! This module obtains the gates of a foreign field addition circuit.
+
 use std::collections::HashMap;
 
 use ark_ff::{FftField, PrimeField, Zero};
@@ -46,21 +48,23 @@ impl<F: PrimeField> CircuitGate<F> {
     ///     Outputs tuple (next_row, circuit_gates) where
     ///       next_row      - next row after this gate
     ///       circuit_gates - vector of circuit gates comprising this gate
+    ///
+    /// Note that te final structure of the circuit is as follows:
+    /// circuit_gates = [
+    ///        [0..3]      -> 1 RangeCheck for left_input
+    ///      {
+    ///        [8i+4..8i+7]   -> 1 RangeCheck for right_input
+    ///        [8i+8..8i+11]  -> 1 RangeCheck for result
+    ///      } * num times
+    ///      [8n+4..8n+7]     -> 1 RangeCheck for bound
+    ///      {
+    ///        [8n+i+8] ->    -> 1 ForeignFieldAdd row
+    ///      } * num times
+    ///      [9n+8]           -> 1 ForeignFieldFin row
+    /// ]
+    ///
     pub fn create_foreign_field_add(start_row: usize, num: usize) -> (usize, Vec<Self>) {
-        // circuit_gates = [
-        //        [0..3]      -> 1 RangeCheck for left_input
-        //      {
-        //        [8i+4..8i+7]   -> 1 RangeCheck for right_input
-        //        [8i+8..8i+11]  -> 1 RangeCheck for result
-        //      } * num times
-        //      [8n+4..8n+7]     -> 1 RangeCheck for bound
-        //      {
-        //        [8n+i+8] ->    -> 1 ForeignFieldAdd row
-        //      } * num times
-        //      [9n+8]           -> 1 ForeignFieldFin row
-        // ]
-
-        // Create multi-range-check gates for $a, b, r, s$
+        // Create multi-range-check gates for $a, b, r, u$
         // ----------------------------------------------
         let mut circuit_gates = vec![];
         let mut next_row = start_row;
@@ -205,7 +209,6 @@ impl<F: PrimeField> CircuitGate<F> {
         });
 
         // Initialize the foreign field modulus constant
-        // TODO: (querolita) new_from_be could return an option instead of panicking?
         let foreign_field_modulus = cs.foreign_field_modulus.clone();
 
         // Set up the environment
@@ -394,6 +397,7 @@ fn set_up_lookup_env_data<F: PrimeField>(
     })
 }
 
+/// Gets an array index of each of the polynomials in the gate selector
 fn circuit_gate_selector_index(typ: GateType) -> usize {
     match typ {
         GateType::ForeignFieldAdd => 0,
