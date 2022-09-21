@@ -17,7 +17,7 @@ fn compute_bound_values<F: PrimeField>(
     let two_to_limb = 2u128.pow(88);
     let max = BigUint::from(two_to_limb).pow(3);
     let big_mod = modulus.to_big();
-    let bound = result.to_big() + max - big_mod.clone();
+    let bound = result.to_big() + max - big_mod;
     let bound_limbs = ForeignElement::<F, 3>::from_big(bound);
     let carry_mi = *bound_limbs.hi() - *result.hi() + *modulus.hi() - F::from(two_to_limb);
     let carry_lo =
@@ -46,11 +46,7 @@ fn compute_subadd_values<F: PrimeField>(
         let sum = left + right;
         let overflows = sum >= modulus;
         let ovf = if overflows { F::one() } else { F::zero() };
-        let out = if overflows {
-            sum - modulus.clone()
-        } else {
-            sum
-        };
+        let out = if overflows { sum - modulus } else { sum };
         let out_limbs = ForeignElement::from_big(out);
         let carry_mi =
             *out_limbs.hi() - *left_input.hi() - *right_input.hi() + ovf * *foreign_modulus.hi();
@@ -64,7 +60,7 @@ fn compute_subadd_values<F: PrimeField>(
         let overflows = left < right;
         let ovf = if overflows { -F::one() } else { F::zero() };
         let out = if overflows {
-            modulus.clone() + left - right
+            modulus + left - right
         } else {
             left - right
         };
@@ -96,7 +92,7 @@ pub fn create_witness<F: PrimeField>(
 
     let mut witness = array::from_fn(|_| vec![F::zero(); 0]);
 
-    let foreign_modulus = ForeignElement::from_big(modulus.clone());
+    let foreign_modulus = ForeignElement::from_big(modulus);
 
     // Create multi-range-check witness for first left input
     let mut left = ForeignElement::from_big(inputs[0].clone());
@@ -123,20 +119,22 @@ pub fn create_witness<F: PrimeField>(
 
     // Include FFAdd and FFFin and Zero gates
 
-    for i in 0..num {
+    for (i, value) in add_values.iter().enumerate() {
         // Create foreign field addition row
         for w in &mut witness {
             w.extend(std::iter::repeat(F::zero()).take(1));
         }
+
+        let (sign, overflow, carry_lo, carry_mi) = *value;
 
         // ForeignFieldAdd row and Zero row
         init_foreign_field_add_rows(
             &mut witness,
             offset,
             i,
-            add_values[i].0,
-            add_values[i].1,
-            [add_values[i].2, add_values[i].3],
+            sign,
+            overflow,
+            [carry_lo, carry_mi],
         );
         offset += 1;
     }
@@ -224,8 +222,8 @@ fn init_foreign_field_add_rows<F: PrimeField>(
     ];
 
     for (row, wit) in witness_shape.iter().enumerate() {
-        for col in 0..COLUMNS {
-            handle_ffadd_rows(witness, &wit[col], row, col, offset, sign, overflow, carry);
+        for (col, cell) in wit.iter().enumerate() {
+            handle_ffadd_rows(witness, cell, (row, col), offset, sign, overflow, carry);
         }
     }
 }
@@ -257,30 +255,21 @@ fn init_foreign_field_fin_rows<F: PrimeField>(
         WitnessCell::Standard(ZeroWitnessCell::create()),
     ];
 
-    for col in 0..COLUMNS {
-        handle_ffadd_rows(
-            witness,
-            &witness_shape[col],
-            0,
-            col,
-            offset,
-            F::zero(),
-            F::zero(),
-            carry,
-        );
+    for (col, cell) in witness_shape.iter().enumerate() {
+        handle_ffadd_rows(witness, cell, (0, col), offset, F::zero(), F::zero(), carry);
     }
 }
 
 fn handle_ffadd_rows<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
     witness_cell: &WitnessCell<F>,
-    row: usize,
-    col: usize,
+    coordinates: (usize, usize), // row, col
     offset: usize,
     sign: F,
     overflow: F,
     carry: [F; 2],
 ) {
+    let (row, col) = coordinates;
     match witness_cell {
         WitnessCell::Standard(standard_cell) => {
             handle_standard_witness_cell(

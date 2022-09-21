@@ -109,16 +109,16 @@ where
 
         let mut checks = vec![
             // Field overflow bit is 0 or s.
-            field_overflow.clone() * (field_overflow.clone() - sign.clone()),
+            field_overflow.clone() * (field_overflow - sign.clone()),
             // Sign flag is 1 or -1
-            (sign.clone() + T::one()) * (sign.clone() - T::one()),
+            (sign.clone() + T::one()) * (sign - T::one()),
         ];
 
         // Carry bits are -1, 0, or 1.
-        checks.append(&mut carry(&env));
+        checks.append(&mut carry(env));
 
         // Result values match
-        checks.append(&mut result(&env));
+        checks.append(&mut result(env));
 
         checks
     }
@@ -158,7 +158,7 @@ where
         let two_to_limb = T::literal(F::from(2u128.pow(LIMB_BITS as u32)));
 
         // check values of carry bits
-        let mut checks = carry(&env);
+        let mut checks = carry(env);
 
         let computed_bound_lo =
             resmin_lo - modulus[0].clone() - carry_lo.clone() * two_to_limb.clone();
@@ -205,7 +205,7 @@ fn result<F: FftField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
     // r_1 = a_1 + s * b_1 - o * m_1 - 2^88 * c_1 + c_0
     let result_calculated_mi = left_input_mi + sign.clone() * right_input_mi
         - field_overflow.clone() * foreign_modulus[1].clone()
-        - carry_mi.clone() * two_to_limb.clone()
+        - carry_mi.clone() * two_to_limb
         + carry_lo;
     // r_2 = a_2 + s * b_2 - o * m_2 + c_1
     let result_calculated_hi = left_input_hi + sign * right_input_hi
@@ -214,9 +214,9 @@ fn result<F: FftField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
 
     // Result values match
     vec![
-        result_lo.clone() - result_calculated_lo,
-        result_mi.clone() - result_calculated_mi,
-        result_hi.clone() - result_calculated_hi,
+        result_lo - result_calculated_lo,
+        result_mi - result_calculated_mi,
+        result_hi - result_calculated_hi,
     ]
 }
 
@@ -226,7 +226,7 @@ fn carry<F: FftField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
     let carry_mi = env.witness_curr(8);
     vec![
         // Carry bits are -1, 0, or 1.
-        carry_lo.clone() * (carry_lo.clone() - T::one()) * (carry_lo.clone() + T::one()),
-        carry_mi.clone() * (carry_mi.clone() - T::one()) * (carry_mi.clone() + T::one()),
+        carry_lo.clone() * (carry_lo.clone() - T::one()) * (carry_lo + T::one()),
+        carry_mi.clone() * (carry_mi.clone() - T::one()) * (carry_mi + T::one()),
     ]
 }

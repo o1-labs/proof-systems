@@ -315,7 +315,7 @@ impl<F: Field> ConstantExpr<F> {
             Mds { row, col } => c.mds[*row][*col],
             ForeignFieldModulus(i) => {
                 if let Some(modulus) = c.foreign_field_modulus.clone() {
-                    ForeignElement::<F, 3>::from_big(modulus.clone()).limbs[*i]
+                    ForeignElement::<F, 3>::from_big(modulus).limbs[*i]
                 } else {
                     F::zero()
                 }
