@@ -5,8 +5,8 @@ use crate::{
         argument::{Argument, ArgumentEnv},
         constraints::ConstraintSystem,
         polynomials::{
-            chacha, complete_add, endomul_scalar, endosclmul, poseidon, range_check, turshi,
-            varbasemul,
+            chacha, complete_add, endomul_scalar, endosclmul, foreign_field_mul, poseidon,
+            range_check, turshi, varbasemul,
         },
         wires::*,
     },
@@ -16,7 +16,7 @@ use ark_ff::{bytes::ToBytes, PrimeField};
 use ark_poly::Evaluations;
 use ark_poly::Radix2EvaluationDomain as D;
 use num_traits::cast::ToPrimitive;
-use o1_utils::hasher::CryptoDigest;
+use o1_utils::{hasher::CryptoDigest, ForeignElement};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::io::{Result as IoResult, Write};
@@ -255,6 +255,7 @@ impl<F: PrimeField> CircuitGate<F> {
             joint_combiner: Some(F::one()),
             endo_coefficient: cs.endo,
             mds: &G::sponge_params().mds,
+            foreign_field_modulus: None,
         };
         // Create the argument environment for the constraints over field elements
         let env = ArgumentEnv::<F, F>::create(argument_witness, self.coeffs.clone(), constants);
@@ -312,6 +313,9 @@ impl<F: PrimeField> CircuitGate<F> {
             }
             GateType::RangeCheck1 => {
                 range_check::circuitgates::RangeCheck1::constraint_checks(&env)
+            }
+            GateType::ForeignFieldMul => {
+                foreign_field_mul::circuitgates::ForeignFieldMul::constraint_checks(&env)
             }
         };
 

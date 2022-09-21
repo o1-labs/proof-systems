@@ -81,10 +81,10 @@
 //~ |  14 |                           |                         |
 
 use crate::circuits::{
-    argument::{Argument, ArgumentType},
+    argument::{Argument, ArgumentEnv, ArgumentType},
     expr::{
-        constraints::{boolean, crumb, ArithmeticOps},
-        witness_curr, witness_next, ConstantExpr, E,
+        constraints::{boolean, crumb, ExprOps},
+        ConstantExpr, E,
     },
     gate::GateType,
 };
@@ -101,20 +101,20 @@ use std::marker::PhantomData;
 /// Note: Thanks to the below trait bound, this code is reusable
 ///       as constraint code or as witness generation code
 #[allow(clippy::too_many_arguments)] // Our use of many arguments is intentional
-pub fn compute_intermediate_products<F: ArithmeticOps>(
-    left_input_lo: F,
-    left_input_mi: F,
-    left_input_hi: F,
-    right_input_lo: F,
-    right_input_mi: F,
-    right_input_hi: F,
-    quotient_lo: F,
-    quotient_mi: F,
-    quotient_hi: F,
-    foreign_modulus_lo: F,
-    foreign_modulus_mi: F,
-    foreign_modulus_hi: F,
-) -> (F, F, F) {
+pub fn compute_intermediate_products<T: ExprOps<T>>(
+    left_input_lo: T,
+    left_input_mi: T,
+    left_input_hi: T,
+    right_input_lo: T,
+    right_input_mi: T,
+    right_input_hi: T,
+    quotient_lo: T,
+    quotient_mi: T,
+    quotient_hi: T,
+    foreign_modulus_lo: T,
+    foreign_modulus_mi: T,
+    foreign_modulus_hi: T,
+) -> (T, T, T) {
     //
     //               p0 := a0 * b0 - q0 * f0
     //  <=>  product_lo := left_input_lo * right_input_lo - quotient_lo * foreign_modulus_lo
@@ -157,7 +157,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldMul);
     const CONSTRAINTS: u32 = 10;
 
-    fn constraints() -> Vec<E<F>> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
         let mut constraints = vec![];
 
         //
@@ -166,62 +166,62 @@ where
         //
 
         // -> define top, middle and lower limbs of the foreign field element `a`
-        let left_input_lo = witness_curr(0);
-        let left_input_mi = witness_curr(1);
-        let left_input_hi = witness_curr(2);
+        let left_input_lo = env.witness_curr(0);
+        let left_input_mi = env.witness_curr(1);
+        let left_input_hi = env.witness_curr(2);
 
         // -> define top, middle and lower limbs of the foreign field element `b`
-        let right_input_lo = witness_curr(3);
-        let right_input_mi = witness_curr(4);
-        let right_input_hi = witness_next(0);
+        let right_input_lo = env.witness_curr(3);
+        let right_input_mi = env.witness_curr(4);
+        let right_input_hi = env.witness_next(0);
 
         // -> define top, middle and lower limbs of the quotient and remainder
-        let quotient_lo = witness_next(1);
-        let quotient_mi = witness_next(2);
-        let quotient_hi = witness_next(3);
-        let remainder_lo = witness_next(4);
-        let remainder_mi = witness_next(5);
-        let remainder_hi = witness_next(6);
+        let quotient_lo = env.witness_next(1);
+        let quotient_mi = env.witness_next(2);
+        let quotient_hi = env.witness_next(3);
+        let remainder_lo = env.witness_next(4);
+        let remainder_mi = env.witness_next(5);
+        let remainder_hi = env.witness_next(6);
 
-        let aux_lo = witness_next(7);
-        let aux_mi = witness_next(8);
-        let aux_hi = witness_next(9);
+        let aux_lo = env.witness_next(7);
+        let aux_mi = env.witness_next(8);
+        let aux_hi = env.witness_next(9);
 
         // -> define shifted values of the quotient and witness values
-        let carry_shift = witness_curr(5);
-        let product_shift = witness_curr(6);
+        let carry_shift = env.witness_curr(5);
+        let product_shift = env.witness_curr(6);
 
         // -> define decomposition values of the intermediate multiplication
-        let product_mi_bot = witness_curr(7);
-        let product_mi_top_limb = witness_curr(8);
-        let product_mi_top_over = witness_curr(9);
+        let product_mi_bot = env.witness_curr(7);
+        let product_mi_top_limb = env.witness_curr(8);
+        let product_mi_top_over = env.witness_curr(9);
 
         // -> define witness values for the zero sum
-        let carry_bot = witness_curr(10);
-        let carry_top_limb = witness_curr(11);
-        let carry_top_over = witness_curr(12);
+        let carry_bot = env.witness_curr(10);
+        let carry_top_limb = env.witness_curr(11);
+        let carry_top_over = env.witness_curr(12);
 
         //
         // Define some helpers to be used in the constraints
         //
 
         // Powers of 2 for range constraints
-        let two = E::from(2u64);
+        let two = T::from(2u64);
         let two_to_limb = two.clone().pow(LIMB_BITS as u64);
         let power_lo = two_to_limb.clone() * two_to_limb.clone() * two.clone(); // 2^{2L+1}
         let power_mi = power_lo.clone() * two.clone(); // 2^{2L+2}
         let power_hi = power_mi.clone() * two.clone(); // 2^{2L+3}
         let power_lo_top = two.clone();
         let power_mi_top = two.clone() * two * two_to_limb;
-        let two_to_8 = E::from(256);
-        let two_to_9 = E::from(512);
-        let two_to_88 = E::from(2).pow(88);
-        let two_to_176 = E::from(2).pow(176);
+        let two_to_8 = T::from(256);
+        let two_to_9 = T::from(512);
+        let two_to_88 = T::from(2).pow(88);
+        let two_to_176 = T::from(2).pow(176);
 
         // Foreign field modulus in 3 limbs: low, middle and high
-        let foreign_modulus_lo = E::constant(ConstantExpr::ForeignFieldModulus(0));
-        let foreign_modulus_mi = E::constant(ConstantExpr::ForeignFieldModulus(1));
-        let foreign_modulus_hi = E::constant(ConstantExpr::ForeignFieldModulus(2));
+        let foreign_modulus_lo = env.constant(ConstantExpr::ForeignFieldModulus(0));
+        let foreign_modulus_mi = env.constant(ConstantExpr::ForeignFieldModulus(1));
+        let foreign_modulus_hi = env.constant(ConstantExpr::ForeignFieldModulus(2));
 
         // Intermediate products for better readability of the constraints
         // TODO: use a function with traits to reuse for Expr and Field as when we didnt have aux

@@ -12,13 +12,13 @@ use crate::circuits::{
     },
 };
 use ark_ff::{Field, PrimeField};
-use array_init::array_init;
 use num_bigint::BigUint;
 use num_integer::Integer;
 use o1_utils::{
     field_helpers::FieldHelpers,
     foreign_field::{ForeignElement, LIMB_BITS},
 };
+use std::array;
 
 // Extend standard WitnessCell to support foreign field multiplication
 // specific cell types
@@ -165,7 +165,7 @@ pub fn create_witness<F: PrimeField>(
     right_input: ForeignElement<F, 3>,
     foreign_modulus: ForeignElement<F, 3>,
 ) -> [Vec<F>; COLUMNS] {
-    let mut witness = array_init(|_| vec![F::zero(); 0]);
+    let mut witness = array::from_fn(|_| vec![F::zero(); 0]);
 
     // Create multi-range-check witness for left_input and right_input
     extend_witness(&mut witness, left_input);

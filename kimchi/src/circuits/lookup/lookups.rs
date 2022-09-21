@@ -290,11 +290,9 @@ impl LookupPattern {
     /// Returns the maximum number of lookups per row that are used by the pattern.
     pub fn max_lookups_per_row(&self) -> usize {
         match self {
-            LookupPattern::ChaCha
-            | LookupPattern::ChaChaFinal
-            | LookupPattern::RangeCheckGate
-            | LookupPattern::RangeCheckGate => 4,
+            LookupPattern::ChaCha | LookupPattern::ChaChaFinal => 4,
             LookupPattern::LookupGate => 3,
+            LookupPattern::RangeCheckGate => 4,
             LookupPattern::ForeignFieldMulGate => 2,
         }
     }

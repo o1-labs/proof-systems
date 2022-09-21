@@ -4,9 +4,9 @@ use ark_ff::{FftField, PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
-use array_init::array_init;
 use o1_utils::foreign_field::{ForeignElement, SECP256K1_MOD};
 use rand::{prelude::StdRng, SeedableRng};
+use std::array;
 
 use crate::{
     alphas::Alphas,
@@ -120,7 +120,7 @@ impl<F: PrimeField> CircuitGate<F> {
         }
 
         // Compute witness polynomial
-        let witness_poly: [DensePolynomial<F>; COLUMNS] = array_init(|i| {
+        let witness_poly: [DensePolynomial<F>; COLUMNS] = array::from_fn(|i| {
             Evaluations::<F, D<F>>::from_vec_and_domain(witness[i].clone(), cs.domain.d1)
                 .interpolate()
         });
