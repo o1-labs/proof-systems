@@ -15,6 +15,7 @@ use o1_utils::{
 };
 
 type PallasField = <Pallas as AffineCurve>::BaseField;
+type VestaField = <Vesta as AffineCurve>::BaseField;
 
 /// Addition operation
 static ADD: bool = true;
@@ -22,11 +23,25 @@ static ADD: bool = true;
 /// Subtraction operation
 static SUB: bool = false;
 
-/// Maximum value in the foreign field
+/// Maximum value in the foreign field of seckp256k1
 // BigEndian -> FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFE FFFFFC2E
 static MAX: &[u8] = &[
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0xFF, 0xFF, 0xFC, 0x2E,
+];
+
+/// Maximum value in the foreign field of Vesta
+// BigEndian -> 40000000 00000000 00000000 00000000 224698fc 094cf91b 992d30ed 00000000
+static MAX_VESTA: &[u8] = &[
+    0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x22, 0x46, 0x98, 0xFC,
+    0x09, 0x4C, 0xF9, 0x1B, 0x99, 0x2D, 0x30, 0xED, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+];
+
+/// Maximum value in the foreign field of Pallas
+// BigEndian -> 40000000 00000000 00000000 00000000 224698fc 0994a8dd 8c46eb21 00000000
+static MAX_PALLAS: &[u8] = &[
+    0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x22, 0x46, 0x98, 0xFC,
+    0x09, 0x94, 0xA8, 0xDD, 0x8C, 0x46, 0xEB, 0x21, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 ];
 
 /// A value that produces a negative low carry when added to itself
@@ -125,7 +140,10 @@ static ZERO: &[u8] = &[0x00];
 /// The one byte
 static ONE: &[u8] = &[0x01];
 
-fn create_test_constraint_system_ffadd(num: usize) -> ConstraintSystem<PallasField> {
+fn create_test_constraint_system_ffadd(
+    num: usize,
+    modulus: &BigUint,
+) -> ConstraintSystem<PallasField> {
     let (mut next_row, mut gates) = CircuitGate::<PallasField>::create_foreign_field_add(0, num);
 
     // Temporary workaround for lookup-table/domain-size issue
@@ -135,7 +153,7 @@ fn create_test_constraint_system_ffadd(num: usize) -> ConstraintSystem<PallasFie
     }
 
     ConstraintSystem::create(gates)
-        .foreign_field_modulus(BigUint::from_bytes_be(FOREIGN_MOD))
+        .foreign_field_modulus(modulus)
         .build()
         .unwrap()
 }
@@ -143,9 +161,8 @@ fn create_test_constraint_system_ffadd(num: usize) -> ConstraintSystem<PallasFie
 #[test]
 // Add zero to zero. This checks that small amounts also get packed into limbs
 fn test_zero_add() {
-    let cs = create_test_constraint_system_ffadd(1);
-
     let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let cs = create_test_constraint_system_ffadd(1, &foreign_modulus);
 
     let left_input = BigUint::from_bytes_be(ZERO);
     let right_input = BigUint::from_bytes_be(ZERO);
@@ -175,9 +192,9 @@ fn test_zero_add() {
 #[test]
 // Adding terms that are zero modulo the foreign field
 fn test_zero_sum_foreign() {
-    let cs = create_test_constraint_system_ffadd(1);
-
     let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let cs = create_test_constraint_system_ffadd(1, &foreign_modulus);
+
     let left_input = BigUint::from_bytes_be(FOR_MOD_BOT);
     let right_input = BigUint::from_bytes_be(FOR_MOD_TOP);
 
@@ -210,10 +227,9 @@ fn test_zero_sum_foreign() {
 #[test]
 // Adding terms that are zero modulo the native field
 fn test_zero_sum_native() {
-    let cs = create_test_constraint_system_ffadd(1);
-
-    let native_modulus = PallasField::modulus_biguint();
     let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let native_modulus = PallasField::modulus_biguint();
+    let cs = create_test_constraint_system_ffadd(1, &foreign_modulus);
 
     let one = BigUint::new(vec![1u32]);
     let mod_minus_one = native_modulus.clone() - one.clone();
@@ -254,9 +270,8 @@ fn test_zero_sum_native() {
 
 #[test]
 fn test_one_plus_one() {
-    let cs = create_test_constraint_system_ffadd(1);
-
     let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let cs = create_test_constraint_system_ffadd(1, &foreign_modulus);
 
     let left_input = BigUint::from_bytes_be(ONE);
     let right_input = BigUint::from_bytes_be(ONE);
@@ -291,9 +306,8 @@ fn test_one_plus_one() {
 #[test]
 // Adds two terms that are the maximum value in the foreign field
 fn test_max_number() {
-    let cs = create_test_constraint_system_ffadd(1);
-
     let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let cs = create_test_constraint_system_ffadd(1, &foreign_modulus);
 
     let left_input = BigUint::from_bytes_be(MAX);
     let right_input = BigUint::from_bytes_be(MAX);
@@ -339,9 +353,8 @@ fn test_max_number() {
 // and then as 0 - 1
 // and it is checked that in both cases the result is the same
 fn test_zero_minus_one() {
-    let cs = create_test_constraint_system_ffadd(1);
-
     let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let cs = create_test_constraint_system_ffadd(1, &foreign_modulus);
 
     // FIRST AS NEG
 
@@ -418,9 +431,8 @@ fn test_zero_minus_one() {
 // test 1 - 1 + 1 where (-1) is in the foreign field
 // the first check is done with sub(1, 1) and then with add(neg(neg(1)))
 fn test_one_minus_one_plus_one() {
-    let cs = create_test_constraint_system_ffadd(2);
-
     let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let cs = create_test_constraint_system_ffadd(2, &foreign_modulus);
 
     // big uint of the number 1
     let big_one = BigUint::from_u32(1).unwrap();
@@ -470,9 +482,8 @@ fn test_one_minus_one_plus_one() {
 // test -1-1 where (-1) is in the foreign field
 // tested as neg(1) + neg(1)
 fn test_minus_minus() {
-    let cs = create_test_constraint_system_ffadd(1);
-
     let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let cs = create_test_constraint_system_ffadd(1, &foreign_modulus);
 
     // big uint of the number 1
     let big_one = BigUint::from_u32(1).unwrap();
@@ -520,9 +531,8 @@ fn test_minus_minus() {
 #[test]
 // test when the low carry is minus one
 fn test_neg_carry_lo() {
-    let cs = create_test_constraint_system_ffadd(1);
-
     let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let cs = create_test_constraint_system_ffadd(1, &foreign_modulus);
 
     let left_input = BigUint::from_bytes_be(OVF_NEG_LO);
     let right_input = BigUint::from_bytes_be(OVF_NEG_LO);
@@ -554,9 +564,8 @@ fn test_neg_carry_lo() {
 #[test]
 // test when the middle carry is minus one
 fn test_neg_carry_mi() {
-    let cs = create_test_constraint_system_ffadd(1);
-
     let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let cs = create_test_constraint_system_ffadd(1, &foreign_modulus);
 
     let left_input = BigUint::from_bytes_be(OVF_NEG_MI);
     let right_input = BigUint::from_bytes_be(OVF_NEG_MI);
@@ -588,9 +597,8 @@ fn test_neg_carry_mi() {
 #[test]
 // test when there is negative low carry and 0 middle limb (carry bit propagates)
 fn test_zero_mi() {
-    let cs = create_test_constraint_system_ffadd(1);
-
     let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let cs = create_test_constraint_system_ffadd(1, &foreign_modulus);
 
     let left_input = BigUint::from_bytes_be(OVF_ZERO_MI_NEG_LO);
     let right_input = BigUint::from_bytes_be(OVF_ZERO_MI_NEG_LO);
@@ -622,9 +630,8 @@ fn test_zero_mi() {
 #[test]
 // test when the both carries are minus one
 fn test_neg_carries() {
-    let cs = create_test_constraint_system_ffadd(1);
-
     let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let cs = create_test_constraint_system_ffadd(1, &foreign_modulus);
 
     let left_input = BigUint::from_bytes_be(OVF_NEG_BOTH);
     let right_input = BigUint::from_bytes_be(OVF_ZERO_MI_NEG_LO);
@@ -656,9 +663,8 @@ fn test_neg_carries() {
 #[test]
 // test the upperbound of the result
 fn test_upperbound() {
-    let cs = create_test_constraint_system_ffadd(1);
-
     let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let cs = create_test_constraint_system_ffadd(1, &foreign_modulus);
 
     let left_input = BigUint::from_bytes_be(OVF_LESS_HI_LEFT);
     let right_input = BigUint::from_bytes_be(OVF_LESS_HI_RIGHT);
@@ -688,9 +694,9 @@ fn test_upperbound() {
 #[test]
 // test a carry that nullifies in the low limb
 fn test_null_lo_carry() {
-    let cs = create_test_constraint_system_ffadd(1);
-
     let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let foreign_modulus = Vesta::from_biguint(&foreign_modulus);
+    let cs = create_test_constraint_system_ffadd(1, &foreign_modulus);
 
     let left_input = BigUint::from_bytes_be(MAX);
     let right_input = BigUint::from_bytes_be(NULL_CARRY_LO);
@@ -721,9 +727,8 @@ fn test_null_lo_carry() {
 #[test]
 // test a carry that nullifies in the mid limb
 fn test_null_mi_carry() {
-    let cs = create_test_constraint_system_ffadd(1);
-
     let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let cs = create_test_constraint_system_ffadd(1, &foreign_modulus);
 
     let left_input = BigUint::from_bytes_be(MAX);
     let right_input = BigUint::from_bytes_be(NULL_CARRY_MI);
@@ -754,9 +759,8 @@ fn test_null_mi_carry() {
 #[test]
 // test a carry that nullifies in the mid limb
 fn test_null_both_carry() {
-    let cs = create_test_constraint_system_ffadd(1);
-
     let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let cs = create_test_constraint_system_ffadd(1, &foreign_modulus);
 
     let left_input = BigUint::from_bytes_be(MAX);
     let right_input = BigUint::from_bytes_be(NULL_CARRY_BOTH);
@@ -788,9 +792,8 @@ fn test_null_both_carry() {
 #[test]
 // test sums without carry bits in any limb
 fn test_no_carry_limbs() {
-    let cs = create_test_constraint_system_ffadd(1);
-
     let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let cs = create_test_constraint_system_ffadd(1, &foreign_modulus);
 
     let left_input = BigUint::from_bytes_be(TIC);
     let right_input = BigUint::from_bytes_be(TOC);
@@ -828,9 +831,9 @@ fn test_no_carry_limbs() {
 #[test]
 // test sum with carry only in low part
 fn test_pos_carry_limb_lo() {
-    let cs = create_test_constraint_system_ffadd(1);
-
     let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let cs = create_test_constraint_system_ffadd(1, &foreign_modulus);
+
     let left_input = BigUint::from_bytes_be(TIC);
     let right_input = BigUint::from_bytes_be(TOC_LO);
 
@@ -863,9 +866,9 @@ fn test_pos_carry_limb_lo() {
 
 #[test]
 fn test_pos_carry_limb_mid() {
-    let cs = create_test_constraint_system_ffadd(1);
-
     let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let cs = create_test_constraint_system_ffadd(1, &foreign_modulus);
+
     let left_input = BigUint::from_bytes_be(TIC);
     let right_input = BigUint::from_bytes_be(TOC_MI);
 
@@ -898,9 +901,9 @@ fn test_pos_carry_limb_mid() {
 
 #[test]
 fn test_pos_carry_limb_lo_mid() {
-    let cs = create_test_constraint_system_ffadd(1);
-
     let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let cs = create_test_constraint_system_ffadd(1, &foreign_modulus);
+
     let left_input = BigUint::from_bytes_be(TIC);
     let right_input = BigUint::from_bytes_be(TOC_TWO);
 
@@ -934,9 +937,9 @@ fn test_pos_carry_limb_lo_mid() {
 #[test]
 // Check it fails if given a wrong result
 fn test_wrong_sum() {
-    let cs = create_test_constraint_system_ffadd(1);
-
     let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let cs = create_test_constraint_system_ffadd(1, &foreign_modulus);
+
     let left_input = BigUint::from_bytes_be(TIC);
     let right_input = BigUint::from_bytes_be(TOC);
 
@@ -965,6 +968,234 @@ fn test_wrong_sum() {
             GateType::ForeignFieldAdd
         )),
     );
+}
+
+#[test]
+// Test subtraction of the foreign field
+fn test_zero_sub_fmod() {
+    let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let cs = create_test_constraint_system_ffadd(1, &foreign_modulus);
+
+    let left_input = BigUint::from_bytes_be(ZERO);
+    let right_input = BigUint::from_bytes_be(FOREIGN_MOD);
+
+    let witness = create_witness(vec![left_input, right_input], vec![SUB], foreign_modulus);
+
+    for row in 0..=17 {
+        assert_eq!(
+            cs.gates[row].verify_witness::<Vesta>(
+                row,
+                &witness,
+                &cs,
+                &witness[0][0..cs.public].to_vec()
+            ),
+            Ok(())
+        );
+    }
+
+    for row in 16..=17 {
+        assert_eq!(
+            cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
+            Ok(())
+        );
+    }
+
+    // -f should be 0 mod f
+    assert_eq!(witness[0][17], PallasField::zero());
+    assert_eq!(witness[1][17], PallasField::zero());
+    assert_eq!(witness[2][17], PallasField::zero());
+}
+
+#[test]
+// Test subtraction of the foreign field maximum value
+fn test_zero_sub_fmax() {
+    let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let cs = create_test_constraint_system_ffadd(1, &foreign_modulus);
+
+    let left_input = BigUint::from_bytes_be(ZERO);
+    let right_input = BigUint::from_bytes_be(MAX);
+
+    let witness = create_witness(vec![left_input, right_input], vec![SUB], foreign_modulus);
+
+    for row in 0..=17 {
+        assert_eq!(
+            cs.gates[row].verify_witness::<Vesta>(
+                row,
+                &witness,
+                &cs,
+                &witness[0][0..cs.public].to_vec()
+            ),
+            Ok(())
+        );
+    }
+
+    for row in 16..=17 {
+        assert_eq!(
+            cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
+            Ok(())
+        );
+    }
+
+    assert_eq!(witness[0][17], *ForeignElement::from_big(right_input).lo());
+    assert_eq!(witness[1][17], *ForeignElement::from_big(right_input).mi());
+    assert_eq!(witness[2][17], *ForeignElement::from_big(right_input).hi());
+}
+
+#[test]
+// Test with Pasta curves where foreign field is smaller than the native field
+fn test_pasta_add_max_vesta() {
+    // The order of the Pallas curve is 0x40000000000000000000000000000000224698fc0994a8dd8c46eb2100000001.
+    // The order of the Vesta curve is  0x40000000000000000000000000000000224698fc094cf91b992d30ed00000001.
+    let vesta_modulus = VestaField::modulus_biguint();
+
+    let cs = create_test_constraint_system_ffadd(1, &vesta_modulus);
+
+    let left_input = BigUint::from_bytes_be(ZERO);
+    let right_input = BigUint::from_bytes_be(MAX_VESTA);
+
+    let witness = create_witness(vec![left_input, right_input], vec![ADD], vesta_modulus);
+
+    for row in 0..=17 {
+        assert_eq!(
+            cs.gates[row].verify_witness::<Vesta>(
+                row,
+                &witness,
+                &cs,
+                &witness[0][0..cs.public].to_vec()
+            ),
+            Ok(())
+        );
+    }
+
+    for row in 16..=17 {
+        assert_eq!(
+            cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
+            Ok(())
+        );
+    }
+
+    assert_eq!(witness[0][17], *ForeignElement::from_big(right_input).lo());
+    assert_eq!(witness[1][17], *ForeignElement::from_big(right_input).mi());
+    assert_eq!(witness[2][17], *ForeignElement::from_big(right_input).hi());
+}
+
+#[test]
+// Test with Pasta curves where foreign field is smaller than the native field
+fn test_pasta_sub_max_vesta() {
+    // The order of the Pallas curve is 0x40000000000000000000000000000000224698fc0994a8dd8c46eb2100000001.
+    // The order of the Vesta curve is  0x40000000000000000000000000000000224698fc094cf91b992d30ed00000001.
+    let vesta_modulus = VestaField::modulus_biguint();
+
+    let cs = create_test_constraint_system_ffadd(1, &vesta_modulus);
+
+    let left_input = BigUint::from_bytes_be(ZERO);
+    let right_input = BigUint::from_bytes_be(MAX_VESTA);
+
+    let witness = create_witness(vec![left_input, right_input], vec![SUB], vesta_modulus);
+
+    for row in 0..=17 {
+        assert_eq!(
+            cs.gates[row].verify_witness::<Vesta>(
+                row,
+                &witness,
+                &cs,
+                &witness[0][0..cs.public].to_vec()
+            ),
+            Ok(())
+        );
+    }
+
+    for row in 16..=17 {
+        assert_eq!(
+            cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
+            Ok(())
+        );
+    }
+
+    let neg_max_vesta = ForeignElement::<PallasField, 3>::from_big(right_input).neg(&vesta_modulus);
+
+    assert_eq!(witness[0][17], *neg_max_vesta.lo());
+    assert_eq!(witness[1][17], *neg_max_vesta.mi());
+    assert_eq!(witness[2][17], *neg_max_vesta.hi());
+}
+
+#[test]
+// Test with Pasta curves where foreign field is smaller than the native field
+fn test_pasta_sub_max_pallas() {
+    // The order of the Pallas curve is 0x40000000000000000000000000000000224698fc0994a8dd8c46eb2100000001.
+    // The order of the Vesta curve is  0x40000000000000000000000000000000224698fc094cf91b992d30ed00000001.
+    let vesta_modulus = VestaField::modulus_biguint();
+
+    let cs = create_test_constraint_system_ffadd(1, &vesta_modulus);
+
+    let left_input = BigUint::from_bytes_be(ZERO);
+    let right_input = BigUint::from_bytes_be(MAX_PALLAS);
+
+    let witness = create_witness(vec![left_input, right_input], vec![ADD], vesta_modulus);
+
+    for row in 0..=17 {
+        assert_eq!(
+            cs.gates[row].verify_witness::<Vesta>(
+                row,
+                &witness,
+                &cs,
+                &witness[0][0..cs.public].to_vec()
+            ),
+            Ok(())
+        );
+    }
+
+    for row in 16..=17 {
+        assert_eq!(
+            cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
+            Ok(())
+        );
+    }
+
+    assert_eq!(witness[0][17], *right_input.lo());
+    assert_eq!(witness[1][17], *right_input.mi());
+    assert_eq!(witness[2][17], *right_input.hi());
+}
+
+#[test]
+// Test with Pasta curves where foreign field is smaller than the native field
+fn test_pasta_sub_max_pallas() {
+    // The order of the Pallas curve is 0x40000000000000000000000000000000224698fc0994a8dd8c46eb2100000001.
+    // The order of the Vesta curve is  0x40000000000000000000000000000000224698fc094cf91b992d30ed00000001.
+    let vesta_modulus = VestaField::modulus_biguint();
+
+    let cs = create_test_constraint_system_ffadd(1, &vesta_modulus);
+
+    let left_input = BigUint::from_bytes_be(ZERO);
+    let right_input = BigUint::from_bytes_be(MAX_PALLAS);
+
+    let witness = create_witness(vec![left_input, right_input], vec![SUB], vesta_modulus);
+
+    for row in 0..=17 {
+        assert_eq!(
+            cs.gates[row].verify_witness::<Vesta>(
+                row,
+                &witness,
+                &cs,
+                &witness[0][0..cs.public].to_vec()
+            ),
+            Ok(())
+        );
+    }
+
+    for row in 16..=17 {
+        assert_eq!(
+            cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
+            Ok(())
+        );
+    }
+
+    let neg_max_pallas =
+        ForeignElement::<PallasField, 3>::from_big(right_input).neg(&vesta_modulus);
+
+    assert_eq!(witness[0][17], *neg_max_pallas.lo());
+    assert_eq!(witness[1][17], *neg_max_pallas.mi());
+    assert_eq!(witness[2][17], *neg_max_pallas.hi());
 }
 
 /*
