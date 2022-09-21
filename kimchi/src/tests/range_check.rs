@@ -545,7 +545,7 @@ fn verify_range_check0_test_copy_constraints() {
                     typ: cs.gates[row].typ,
                     src: Wire { row, col },
                     dst: Wire {
-                        row: row + 3 - row,
+                        row: 3,
                         col: 2 * row + col + 2,
                     }
                 })
