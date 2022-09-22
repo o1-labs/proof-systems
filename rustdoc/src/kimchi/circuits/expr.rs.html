@@ -2471,6 +2471,107 @@
 <span id="2471">2471</span>
 <span id="2472">2472</span>
 <span id="2473">2473</span>
+<span id="2474">2474</span>
+<span id="2475">2475</span>
+<span id="2476">2476</span>
+<span id="2477">2477</span>
+<span id="2478">2478</span>
+<span id="2479">2479</span>
+<span id="2480">2480</span>
+<span id="2481">2481</span>
+<span id="2482">2482</span>
+<span id="2483">2483</span>
+<span id="2484">2484</span>
+<span id="2485">2485</span>
+<span id="2486">2486</span>
+<span id="2487">2487</span>
+<span id="2488">2488</span>
+<span id="2489">2489</span>
+<span id="2490">2490</span>
+<span id="2491">2491</span>
+<span id="2492">2492</span>
+<span id="2493">2493</span>
+<span id="2494">2494</span>
+<span id="2495">2495</span>
+<span id="2496">2496</span>
+<span id="2497">2497</span>
+<span id="2498">2498</span>
+<span id="2499">2499</span>
+<span id="2500">2500</span>
+<span id="2501">2501</span>
+<span id="2502">2502</span>
+<span id="2503">2503</span>
+<span id="2504">2504</span>
+<span id="2505">2505</span>
+<span id="2506">2506</span>
+<span id="2507">2507</span>
+<span id="2508">2508</span>
+<span id="2509">2509</span>
+<span id="2510">2510</span>
+<span id="2511">2511</span>
+<span id="2512">2512</span>
+<span id="2513">2513</span>
+<span id="2514">2514</span>
+<span id="2515">2515</span>
+<span id="2516">2516</span>
+<span id="2517">2517</span>
+<span id="2518">2518</span>
+<span id="2519">2519</span>
+<span id="2520">2520</span>
+<span id="2521">2521</span>
+<span id="2522">2522</span>
+<span id="2523">2523</span>
+<span id="2524">2524</span>
+<span id="2525">2525</span>
+<span id="2526">2526</span>
+<span id="2527">2527</span>
+<span id="2528">2528</span>
+<span id="2529">2529</span>
+<span id="2530">2530</span>
+<span id="2531">2531</span>
+<span id="2532">2532</span>
+<span id="2533">2533</span>
+<span id="2534">2534</span>
+<span id="2535">2535</span>
+<span id="2536">2536</span>
+<span id="2537">2537</span>
+<span id="2538">2538</span>
+<span id="2539">2539</span>
+<span id="2540">2540</span>
+<span id="2541">2541</span>
+<span id="2542">2542</span>
+<span id="2543">2543</span>
+<span id="2544">2544</span>
+<span id="2545">2545</span>
+<span id="2546">2546</span>
+<span id="2547">2547</span>
+<span id="2548">2548</span>
+<span id="2549">2549</span>
+<span id="2550">2550</span>
+<span id="2551">2551</span>
+<span id="2552">2552</span>
+<span id="2553">2553</span>
+<span id="2554">2554</span>
+<span id="2555">2555</span>
+<span id="2556">2556</span>
+<span id="2557">2557</span>
+<span id="2558">2558</span>
+<span id="2559">2559</span>
+<span id="2560">2560</span>
+<span id="2561">2561</span>
+<span id="2562">2562</span>
+<span id="2563">2563</span>
+<span id="2564">2564</span>
+<span id="2565">2565</span>
+<span id="2566">2566</span>
+<span id="2567">2567</span>
+<span id="2568">2568</span>
+<span id="2569">2569</span>
+<span id="2570">2570</span>
+<span id="2571">2571</span>
+<span id="2572">2572</span>
+<span id="2573">2573</span>
+<span id="2574">2574</span>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         domains::EvaluationDomains,
@@ -2481,19 +2582,20 @@
     },
     proof::ProofEvaluations,
 };
-<span class="kw">use </span>ark_ff::{FftField, Field, One, PrimeField, Zero};
+<span class="kw">use </span>ark_ff::{FftField, Field, One, Zero};
 <span class="kw">use </span>ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain <span class="kw">as </span>D,
 };
 <span class="kw">use </span>itertools::Itertools;
+<span class="kw">use </span>o1_utils::FieldHelpers;
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="kw">use </span>std::iter::FromIterator;
 <span class="kw">use </span>std::ops::{Add, AddAssign, Mul, Neg, Sub};
 <span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
     ops::MulAssign,
 };
+<span class="kw">use </span>std::{fmt, iter::FromIterator};
 <span class="kw">use </span>thiserror::Error;
 <span class="kw">use </span>CurrOrNext::{Curr, Next};
 
@@ -2670,6 +2772,23 @@
             Column::Coefficient(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;c_{{{}}}&quot;</span>, i),
         }
     }
+
+    <span class="kw">fn </span>text(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
+        <span class="kw">match </span><span class="self">self </span>{
+            Column::Witness(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;w[{i}]&quot;</span>),
+            Column::Z =&gt; <span class="string">&quot;Z&quot;</span>.to_string(),
+            Column::LookupSorted(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;s[{}]&quot;</span>, i),
+            Column::LookupAggreg =&gt; <span class="string">&quot;a&quot;</span>.to_string(),
+            Column::LookupTable =&gt; <span class="string">&quot;t&quot;</span>.to_string(),
+            Column::LookupKindIndex(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;k[{:?}]&quot;</span>, i),
+            Column::LookupRuntimeSelector =&gt; <span class="string">&quot;rts&quot;</span>.to_string(),
+            Column::LookupRuntimeTable =&gt; <span class="string">&quot;rt&quot;</span>.to_string(),
+            Column::Index(gate) =&gt; {
+                <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, gate)
+            }
+            Column::Coefficient(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;c[{}]&quot;</span>, i),
+        }
+    }
 }
 
 <span class="attribute">#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -2692,6 +2811,14 @@
         <span class="kw">match </span><span class="self">self</span>.row {
             Curr =&gt; col,
             Next =&gt; <span class="macro">format!</span>(<span class="string">&quot;\\tilde{{{col}}}&quot;</span>),
+        }
+    }
+
+    <span class="kw">fn </span>text(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
+        <span class="kw">let </span>col = <span class="self">self</span>.col.text();
+        <span class="kw">match </span><span class="self">self</span>.row {
+            Curr =&gt; <span class="macro">format!</span>(<span class="string">&quot;Curr({col})&quot;</span>),
+            Next =&gt; <span class="macro">format!</span>(<span class="string">&quot;Next({col})&quot;</span>),
         }
     }
 }
@@ -2829,6 +2956,10 @@
 
     <span class="kw">fn </span>latex_name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
         <span class="macro">format!</span>(<span class="string">&quot;x_{{{}}}&quot;</span>, <span class="self">self</span>.<span class="number">0</span>)
+    }
+
+    <span class="kw">fn </span>text_name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
+        <span class="macro">format!</span>(<span class="string">&quot;x[{}]&quot;</span>, <span class="self">self</span>.<span class="number">0</span>)
     }
 }
 
@@ -3036,6 +3167,12 @@
             Pow(e, d) =&gt; d * e.degree(d1_size),
             Cache(<span class="kw">_</span>, e) =&gt; e.degree(d1_size),
         }
+    }
+}
+
+<span class="kw">impl</span>&lt;F: Field&gt; fmt::Display <span class="kw">for </span>Expr&lt;ConstantExpr&lt;F&gt;&gt; {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter) -&gt; fmt::Result {
+        <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.text_str())
     }
 }
 
@@ -4481,7 +4618,7 @@
 // Display
 //
 
-</span><span class="kw">impl</span>&lt;F: PrimeField&gt; ConstantExpr&lt;F&gt; {
+</span><span class="kw">impl</span>&lt;F: Field&gt; ConstantExpr&lt;F&gt; {
     <span class="kw">fn </span>ocaml(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
         <span class="kw">use </span>ConstantExpr::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
@@ -4491,7 +4628,7 @@
             JointCombiner =&gt; <span class="string">&quot;joint_combiner&quot;</span>.to_string(),
             EndoCoefficient =&gt; <span class="string">&quot;endo_coefficient&quot;</span>.to_string(),
             Mds { row, col } =&gt; <span class="macro">format!</span>(<span class="string">&quot;mds({row}, {col})&quot;</span>),
-            Literal(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;field(\&quot;0x{}\&quot;)&quot;</span>, x.into_repr()),
+            Literal(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;field(\&quot;0x{}\&quot;)&quot;</span>, x.to_hex()),
             Pow(x, n) =&gt; <span class="kw">match </span>x.as_ref() {
                 Alpha =&gt; <span class="macro">format!</span>(<span class="string">&quot;alpha_pow({n})&quot;</span>),
                 x =&gt; <span class="macro">format!</span>(<span class="string">&quot;pow({}, {n})&quot;</span>, x.ocaml()),
@@ -4511,7 +4648,7 @@
             JointCombiner =&gt; <span class="string">&quot;joint\\_combiner&quot;</span>.to_string(),
             EndoCoefficient =&gt; <span class="string">&quot;endo\\_coefficient&quot;</span>.to_string(),
             Mds { row, col } =&gt; <span class="macro">format!</span>(<span class="string">&quot;mds({row}, {col})&quot;</span>),
-            Literal(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;\\mathbb{{F}}({})&quot;</span>, x.into_repr().into()),
+            Literal(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;\\mathbb{{F}}({})&quot;</span>, x.to_hex()),
             Pow(x, n) =&gt; <span class="kw">match </span>x.as_ref() {
                 Alpha =&gt; <span class="macro">format!</span>(<span class="string">&quot;\\alpha^{{{n}}}&quot;</span>),
                 x =&gt; <span class="macro">format!</span>(<span class="string">&quot;{}^{n}&quot;</span>, x.ocaml()),
@@ -4521,11 +4658,31 @@
             Sub(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} - {})&quot;</span>, x.ocaml(), y.ocaml()),
         }
     }
+
+    <span class="kw">fn </span>text(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
+        <span class="kw">use </span>ConstantExpr::<span class="kw-2">*</span>;
+        <span class="kw">match </span><span class="self">self </span>{
+            Alpha =&gt; <span class="string">&quot;alpha&quot;</span>.to_string(),
+            Beta =&gt; <span class="string">&quot;beta&quot;</span>.to_string(),
+            Gamma =&gt; <span class="string">&quot;gamma&quot;</span>.to_string(),
+            JointCombiner =&gt; <span class="string">&quot;joint_combiner&quot;</span>.to_string(),
+            EndoCoefficient =&gt; <span class="string">&quot;endo_coefficient&quot;</span>.to_string(),
+            Mds { row, col } =&gt; <span class="macro">format!</span>(<span class="string">&quot;mds({row}, {col})&quot;</span>),
+            Literal(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;0x{}&quot;</span>, x.to_hex()),
+            Pow(x, n) =&gt; <span class="kw">match </span>x.as_ref() {
+                Alpha =&gt; <span class="macro">format!</span>(<span class="string">&quot;alpha^{}&quot;</span>, n),
+                x =&gt; <span class="macro">format!</span>(<span class="string">&quot;{}^{n}&quot;</span>, x.text()),
+            },
+            Add(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} + {})&quot;</span>, x.text(), y.text()),
+            Mul(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} * {})&quot;</span>, x.text(), y.text()),
+            Sub(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} - {})&quot;</span>, x.text(), y.text()),
+        }
+    }
 }
 
 <span class="kw">impl</span>&lt;F&gt; Expr&lt;ConstantExpr&lt;F&gt;&gt;
 <span class="kw">where
-    </span>F: PrimeField,
+    </span>F: Field,
 {
     <span class="doccomment">/// Converts the expression in OCaml code
     </span><span class="kw">pub fn </span>ocaml_str(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
@@ -4610,6 +4767,48 @@
             }
         }
     }
+
+    <span class="doccomment">/// Recursively print the expression,
+    /// except for the cached expression that are stored in the `cache`.
+    </span><span class="kw">fn </span>text(<span class="kw-2">&amp;</span><span class="self">self</span>, cache: <span class="kw-2">&amp;mut </span>HashMap&lt;CacheId, Expr&lt;ConstantExpr&lt;F&gt;&gt;&gt;) -&gt; String {
+        <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
+        <span class="kw">match </span><span class="self">self </span>{
+            Double(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;double({})&quot;</span>, x.text(cache)),
+            Constant(x) =&gt; x.text(),
+            Cell(v) =&gt; v.text(),
+            UnnormalizedLagrangeBasis(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;unnormalized_lagrange_basis({})&quot;</span>, <span class="kw-2">*</span>i),
+            VanishesOnLast4Rows =&gt; <span class="string">&quot;vanishes_on_last_4_rows&quot;</span>.to_string(),
+            BinOp(Op2::Add, x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} + {})&quot;</span>, x.text(cache), y.text(cache)),
+            BinOp(Op2::Mul, x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} * {})&quot;</span>, x.text(cache), y.text(cache)),
+            BinOp(Op2::Sub, x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} - {})&quot;</span>, x.text(cache), y.text(cache)),
+            Pow(x, d) =&gt; <span class="macro">format!</span>(<span class="string">&quot;pow({}, {d})&quot;</span>, x.text(cache)),
+            Square(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;square({})&quot;</span>, x.text(cache)),
+            Cache(id, e) =&gt; {
+                cache.insert(<span class="kw-2">*</span>id, e.as_ref().clone());
+                id.var_name()
+            }
+        }
+    }
+
+    <span class="doccomment">/// Converts the expression to a text string
+    </span><span class="kw">pub fn </span>text_str(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
+        <span class="kw">let </span><span class="kw-2">mut </span>env = HashMap::new();
+        <span class="kw">let </span>e = <span class="self">self</span>.text(<span class="kw-2">&amp;mut </span>env);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>env: Vec&lt;<span class="kw">_</span>&gt; = env.into_iter().collect();
+        <span class="comment">// HashMap deliberately uses an unstable order; here we sort to ensure that the output is
+        // consistent when printing.
+        </span>env.sort_by(|(x, <span class="kw">_</span>), (y, <span class="kw">_</span>)| x.cmp(y));
+
+        <span class="kw">let </span><span class="kw-2">mut </span>res = String::new();
+        <span class="kw">for </span>(k, v) <span class="kw">in </span>env {
+            <span class="kw">let </span>str = <span class="macro">format!</span>(<span class="string">&quot;{} = {}&quot;</span>, k.text_name(), v.text_str());
+            res.push_str(<span class="kw-2">&amp;</span>str);
+        }
+
+        res.push_str(<span class="kw-2">&amp;</span>e);
+        res
+    }
 }
 
 <span class="comment">//
@@ -4618,6 +4817,8 @@
 
 </span><span class="doccomment">/// A number of useful constraints
 </span><span class="kw">pub mod </span>constraints {
+    <span class="kw">use </span>std::fmt;
+
     <span class="kw">use </span><span class="kw">crate</span>::circuits::argument::ArgumentData;
 
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
@@ -4636,6 +4837,7 @@
         + Zero
         + One
         + From&lt;u64&gt;
+        + fmt::Display
     <span class="comment">// Add more as necessary
     </span><span class="kw">where
         </span><span class="self">Self</span>: std::marker::Sized,
@@ -4945,4 +5147,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (a37499ae6 2022-09-18)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (9062b780b 2022-09-21)" ></div></body></html>
