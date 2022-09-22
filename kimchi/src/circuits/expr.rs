@@ -14,6 +14,7 @@ use ark_poly::{
 };
 use itertools::Itertools;
 use num_bigint::BigUint;
+use o1_utils::foreign_field::ForeignElement;
 use o1_utils::FieldHelpers;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -2073,8 +2074,11 @@ impl<F: Field> ConstantExpr<F> {
             EndoCoefficient => "endo_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
             ForeignFieldModulus(i) => format!("foreign_field_modulus({i})"),
-            Literal(x) => format!("field(\"0x{}\")", x.to_hex()),
-                x => format!("pow({}, {n})", x.ocaml()),
+            Literal(x) => format!("\\mathbb{{F}}({})", x.to_hex()),
+            Pow(x, n) => match x.as_ref() {
+                Alpha => format!("\\alpha^{{{n}}}"),
+                x => format!("{}^{n}", x.ocaml()),
+            },
             Add(x, y) => format!("({} + {})", x.ocaml(), y.ocaml()),
             Mul(x, y) => format!("({} * {})", x.ocaml(), y.ocaml()),
             Sub(x, y) => format!("({} - {})", x.ocaml(), y.ocaml()),
@@ -2111,6 +2115,7 @@ impl<F: Field> ConstantExpr<F> {
             JointCombiner => "joint_combiner".to_string(),
             EndoCoefficient => "endo_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
+            ForeignFieldModulus(i) => format!("foreign\\_field\\_modulus({i})"),
             Literal(x) => format!("0x{}", x.to_hex()),
             Pow(x, n) => match x.as_ref() {
                 Alpha => format!("alpha^{}", n),
