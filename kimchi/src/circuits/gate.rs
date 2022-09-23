@@ -178,7 +178,7 @@ impl<F: PrimeField> ToBytes for CircuitGate<F> {
         let typ: u8 = ToPrimitive::to_u8(&self.typ).unwrap();
         typ.write(&mut w)?;
         for i in 0..COLUMNS {
-            self.wires[i].write(&mut w)?
+            self.wires[i].write(&mut w)?;
         }
 
         (self.coeffs.len() as u8).write(&mut w)?;
@@ -201,6 +201,10 @@ impl<F: PrimeField> CircuitGate<F> {
 
     /// This function verifies the consistency of the wire
     /// assignments (witness) against the constraints
+    ///
+    /// # Errors
+    ///
+    /// Will give error if verify process returns error.
     pub fn verify<G: KimchiCurve<ScalarField = F>>(
         &self,
         row: usize,
@@ -364,7 +368,7 @@ impl<F: PrimeField> CircuitGate<F> {
 /// Trait to connect a pair of cells in a circuit
 pub trait Connect {
     /// Connect the pair of cells specified by the cell1 and cell2 parameters
-    /// cell_pre --> cell_new && cell_new --> wire_tmp
+    /// `cell_pre` --> `cell_new` && `cell_new` --> `wire_tmp`
     ///
     /// Note: This function assumes that the targeted cells are freshly instantiated
     ///       with self-connections.  If the two cells are transitively already part
@@ -380,7 +384,7 @@ impl<F: PrimeField> Connect for Vec<CircuitGate<F>> {
     }
 }
 
-/// A circuit is specified as a series of [CircuitGate].
+/// A circuit is specified as a series of [`CircuitGate`].
 #[derive(Serialize)]
 pub struct Circuit<'a, F: PrimeField>(
     #[serde(bound = "CircuitGate<F>: Serialize")] pub &'a [CircuitGate<F>],

@@ -76,7 +76,7 @@ impl ZeroWitnessCell {
 ///   * Limbs are mapped to columns so that those containing the MSBs
 ///     are in lower numbered columns (i.e. big-endian column mapping).
 ///     This is important so that copy constraints are possible on the MSBs.
-///     For example, we can convert the RangeCheck0 circuit gate into
+///     For example, we can convert the `RangeCheck0` circuit gate into
 ///     a 64-bit lookup by adding two copy constraints to constrain
 ///     columns 1 and 2 to zero.
 pub const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 4] = [
@@ -130,7 +130,7 @@ pub const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 4] = [
     ],
 ];
 
-/// The row layout for RangeCheck0
+/// The row layout for `RangeCheck0`
 const fn range_check_row(row: usize) -> [WitnessCell; COLUMNS] {
     [
         ValueWitnessCell::create(),

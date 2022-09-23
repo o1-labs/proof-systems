@@ -57,6 +57,10 @@ impl Keypair {
     }
 
     /// Deserialize a keypair from secret key hex
+    ///
+    /// # Errors
+    ///
+    /// Will give error if `hex` string does not match certain requirements.
     pub fn from_hex(secret_hex: &str) -> Result<Self> {
         let mut bytes: Vec<u8> = hex::decode(secret_hex).map_err(|_| KeypairError::SecretKeyHex)?;
         bytes.reverse(); // mina scalars hex format is in big-endian order

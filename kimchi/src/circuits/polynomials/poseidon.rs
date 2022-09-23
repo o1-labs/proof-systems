@@ -136,6 +136,10 @@ impl<F: PrimeField> CircuitGate<F> {
     }
 
     /// Checks if a witness verifies a poseidon gate
+    ///
+    /// # Errors
+    ///
+    /// Will give error if `self.typ` is not `Poseidon` gate, or `state` does not match after `permutation`.
     pub fn verify_poseidon<G: KimchiCurve<ScalarField = F>>(
         &self,
         row: usize,
@@ -217,6 +221,11 @@ impl<F: PrimeField> CircuitGate<F> {
 /// `generate_witness(row, params, witness_cols, input)` uses a sponge initialized with
 /// `params` to generate a witness for starting at row `row` in `witness_cols`,
 /// and with input `input`.
+///
+/// # Panics
+///
+/// Will panic if the `circuit` has `INITIAL_ARK`.
+#[allow(clippy::assertions_on_constants)]
 pub fn generate_witness<F: Field>(
     row: usize,
     params: &'static ArithmeticSpongeParams<F>,
@@ -247,9 +256,10 @@ pub fn generate_witness<F: Field>(
             let abs_round = round + row_idx * ROUNDS_PER_ROW;
 
             // apply the sponge and record the result in the witness
-            if PlonkSpongeConstantsKimchi::PERM_INITIAL_ARK {
-                panic!("this won't work if the circuit has an INITIAL_ARK")
-            }
+            assert!(
+                !PlonkSpongeConstantsKimchi::PERM_INITIAL_ARK,
+                "this won't work if the circuit has an INITIAL_ARK"
+            );
             sponge.full_round(abs_round);
 
             // apply the sponge and record the result in the witness
@@ -353,7 +363,7 @@ where
                 .map(|i| {
                     cache.cache(
                         env.witness_curr(i)
-                            .pow(PlonkSpongeConstantsKimchi::PERM_SBOX as u64),
+                            .pow(u64::from(PlonkSpongeConstantsKimchi::PERM_SBOX)),
                     )
                 })
                 .collect();

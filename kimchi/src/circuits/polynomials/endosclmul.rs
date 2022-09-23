@@ -121,6 +121,11 @@ impl<F: PrimeField> CircuitGate<F> {
         }
     }
 
+    /// Verify the `EndoMul` gate.
+    ///
+    /// # Errors
+    ///
+    /// Will give error if `self.typ` is not `GateType::EndoMul`, or `constraint evaluation` fails.
     pub fn verify_endomul<G: KimchiCurve<ScalarField = F>>(
         &self,
         row: usize,
@@ -173,7 +178,7 @@ impl<F: PrimeField> CircuitGate<F> {
     }
 }
 
-/// Implementation of the EndosclMul gate.
+/// Implementation of the `EndosclMul` gate.
 pub struct EndosclMul<F>(PhantomData<F>);
 
 impl<F> Argument<F> for EndosclMul<F>
@@ -264,7 +269,11 @@ pub struct EndoMulResult<F> {
     pub n: F,
 }
 
-/// Generates the witness_curr values for a series of endoscaling constraints.
+/// Generates the `witness_curr` values for a series of endoscaling constraints.
+///
+/// # Panics
+///
+/// Will panic if `bits` length does not match the requirement.
 pub fn gen_witness<F: Field + std::fmt::Display>(
     w: &mut [Vec<F>; COLUMNS],
     row0: usize,
@@ -277,7 +286,7 @@ pub fn gen_witness<F: Field + std::fmt::Display>(
     let rows = bits.len() / 4;
     assert_eq!(0, bits.len() % 4);
 
-    let bits: Vec<_> = bits.iter().map(|x| F::from(*x as u64)).collect();
+    let bits: Vec<_> = bits.iter().map(|x| F::from(u64::from(*x))).collect();
     let one = F::one();
 
     let mut acc = acc0;

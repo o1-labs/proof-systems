@@ -42,7 +42,6 @@ use commitment_dlog::commitment::{
 use itertools::Itertools;
 use o1_utils::ExtendedDensePolynomial as _;
 use oracle::{sponge::ScalarChallenge, FqSponge};
-use rand::{CryptoRng, RngCore};
 use rayon::prelude::*;
 use std::array;
 use std::collections::HashMap;
@@ -70,7 +69,7 @@ macro_rules! check_constraint {
 
 /// Contains variables needed for lookup in the prover algorithm.
 #[derive(Default)]
-pub struct LookupContext<G, F>
+struct LookupContext<G, F>
 where
     G: CommitmentCurve,
     F: FftField,
@@ -115,7 +114,11 @@ impl<G: KimchiCurve> ProverProof<G>
 where
     G::BaseField: PrimeField,
 {
-    /// This function constructs prover's zk-proof from the witness & the ProverIndex against SRS instance
+    /// This function constructs prover's zk-proof from the witness & the `ProverIndex` against SRS instance
+    ///
+    /// # Errors
+    ///
+    /// Will give error if `create_recursive` process fails.
     pub fn create<
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
         EFrSponge: FrSponge<G::ScalarField>,
@@ -135,7 +138,15 @@ where
         )
     }
 
-    /// This function constructs prover's recursive zk-proof from the witness & the ProverIndex against SRS instance
+    /// This function constructs prover's recursive zk-proof from the witness & the `ProverIndex` against SRS instance
+    ///
+    /// # Errors
+    ///
+    /// Will give error if inputs(like `lookup_context.joint_lookup_table_d8`) are None.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `lookup_context.joint_lookup_table_d8` is None.
     pub fn create_recursive<
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
         EFrSponge: FrSponge<G::ScalarField>,
@@ -284,9 +295,215 @@ where
             .interpolate()
         });
 
-        //~ 1. If circuit uses lookups, create a lookup context (see [Lookup context creation](#lookup-context-creation) algorithm)
-        let mut lookup_context =
-            LookupContext::create(&witness, runtime_tables, index, rng, &mut fq_sponge)?;
+        let mut lookup_context = LookupContext::default();
+
+        //~ 1. If using lookup:
+        if let Some(lcs) = &index.cs.lookup_constraint_system {
+            //~~ - if using runtime table:
+            if let Some(cfg_runtime_tables) = &lcs.runtime_tables {
+                //~~~ - check that all the provided runtime tables have length and IDs that match the runtime table configuration of the index
+                //~~~   we expect the given runtime tables to be sorted as configured, this makes it easier afterwards
+                let expected_runtime: Vec<_> = cfg_runtime_tables
+                    .iter()
+                    .map(|rt| (rt.id, rt.len))
+                    .collect();
+                let runtime: Vec<_> = runtime_tables
+                    .iter()
+                    .map(|rt| (rt.id, rt.data.len()))
+                    .collect();
+                if expected_runtime != runtime {
+                    return Err(ProverError::RuntimeTablesInconsistent);
+                }
+
+                //~~~ - calculate the contribution to the second column of the lookup table
+                //~~~   (the runtime vector)
+                let (runtime_table_contribution, runtime_table_contribution_d8) = {
+                    let mut offset = lcs
+                        .runtime_table_offset
+                        .expect("runtime configuration missing offset");
+
+                    let mut evals = vec![G::ScalarField::zero(); d1_size];
+                    for rt in runtime_tables {
+                        let range = offset..(offset + rt.data.len());
+                        evals[range].copy_from_slice(&rt.data);
+                        offset += rt.data.len();
+                    }
+
+                    // zero-knowledge
+                    for e in evals.iter_mut().rev().take(ZK_ROWS as usize) {
+                        *e = <G::ScalarField as UniformRand>::rand(rng);
+                    }
+
+                    // get coeff and evaluation form
+                    let runtime_table_contribution =
+                        Evaluations::from_vec_and_domain(evals, index.cs.domain.d1).interpolate();
+
+                    let runtime_table_contribution_d8 =
+                        runtime_table_contribution.evaluate_over_domain_by_ref(index.cs.domain.d8);
+
+                    (runtime_table_contribution, runtime_table_contribution_d8)
+                };
+
+                // commit the runtime polynomial
+                // (and save it to the proof)
+                let runtime_table_comm = index.srs.commit(&runtime_table_contribution, None, rng);
+
+                // absorb the commitment
+                fq_sponge.absorb_g(&runtime_table_comm.commitment.unshifted);
+
+                // pre-compute the updated second column of the lookup table
+                let mut second_column_d8 = runtime_table_contribution_d8.clone();
+                second_column_d8
+                    .evals
+                    .par_iter_mut()
+                    .enumerate()
+                    .for_each(|(row, e)| {
+                        *e += lcs.lookup_table8[1][row];
+                    });
+
+                lookup_context.runtime_table = Some(runtime_table_contribution);
+                lookup_context.runtime_table_d8 = Some(runtime_table_contribution_d8);
+                lookup_context.runtime_table_comm = Some(runtime_table_comm);
+                lookup_context.runtime_second_col_d8 = Some(second_column_d8);
+            }
+
+            //~~ - If queries involve a lookup table with multiple columns
+            //~~   then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
+            //~~   otherwise set the joint combiner challenge $j'$ to $0$.
+            let joint_lookup_used = matches!(lcs.configuration.lookup_used, LookupsUsed::Joint);
+
+            let joint_combiner = if joint_lookup_used {
+                fq_sponge.challenge()
+            } else {
+                G::ScalarField::zero()
+            };
+
+            //~~ - Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TOOD: specify)
+            let joint_combiner: G::ScalarField = ScalarChallenge(joint_combiner).to_field(endo_r);
+
+            //~~ - If multiple lookup tables are involved,
+            //~~   set the `table_id_combiner` as the $j^i$ with $i$ the maximum width of any used table.
+            //~~   Essentially, this is to add a last column of table ids to the concatenated lookup tables.
+            let table_id_combiner: G::ScalarField = if lcs.table_ids8.as_ref().is_some() {
+                joint_combiner.pow([lcs.configuration.lookup_info.max_joint_size as u64])
+            } else {
+                // TODO: just set this to None in case multiple tables are not used
+                G::ScalarField::zero()
+            };
+            lookup_context.table_id_combiner = Some(table_id_combiner);
+
+            //~~ - Compute the dummy lookup value as the combination of the last entry of the XOR table (so `(0, 0, 0)`).
+            //~~   Warning: This assumes that we always use the XOR table when using lookups.
+            let dummy_lookup_value = lcs
+                .configuration
+                .dummy_lookup
+                .evaluate(&joint_combiner, &table_id_combiner);
+            lookup_context.dummy_lookup_value = Some(dummy_lookup_value);
+
+            //~~ - Compute the lookup table values as the combination of the lookup table entries.
+            let joint_lookup_table_d8 = {
+                let mut evals = Vec::with_capacity(d1_size);
+
+                for idx in 0..(d1_size * 8) {
+                    let table_id = match lcs.table_ids8.as_ref() {
+                        Some(table_ids8) => table_ids8.evals[idx],
+                        None =>
+                        // If there is no `table_ids8` in the constraint system,
+                        // every table ID is identically 0.
+                        {
+                            G::ScalarField::zero()
+                        }
+                    };
+
+                    let combined_entry = if !lcs.configuration.lookup_info.uses_runtime_tables {
+                        let table_row = lcs.lookup_table8.iter().map(|e| &e.evals[idx]);
+
+                        combine_table_entry(
+                            &joint_combiner,
+                            &table_id_combiner,
+                            table_row,
+                            &table_id,
+                        )
+                    } else {
+                        // if runtime table are used, the second row is modified
+                        let second_col = lookup_context.runtime_second_col_d8.as_ref().unwrap();
+
+                        let table_row = lcs.lookup_table8.iter().enumerate().map(|(col, e)| {
+                            if col == 1 {
+                                &second_col.evals[idx]
+                            } else {
+                                &e.evals[idx]
+                            }
+                        });
+
+                        combine_table_entry(
+                            &joint_combiner,
+                            &table_id_combiner,
+                            table_row,
+                            &table_id,
+                        )
+                    };
+                    evals.push(combined_entry);
+                }
+
+                Evaluations::from_vec_and_domain(evals, index.cs.domain.d8)
+            };
+
+            let joint_lookup_table = joint_lookup_table_d8.interpolate_by_ref();
+
+            //~~ - Compute the sorted evaluations.
+            // TODO: Once we switch to committing using lagrange commitments,
+            // `witness` will be consumed when we interpolate, so interpolation will
+            // have to moved below this.
+            let sorted: Vec<_> = lookup::constraints::sorted(
+                dummy_lookup_value,
+                &joint_lookup_table_d8,
+                index.cs.domain.d1,
+                &index.cs.gates,
+                &witness,
+                joint_combiner,
+                table_id_combiner,
+                &lcs.configuration.lookup_info,
+            )?;
+
+            //~~ - Randomize the last `EVALS` rows in each of the sorted polynomials
+            //~~   in order to add zero-knowledge to the protocol.
+            let sorted: Vec<_> = sorted
+                .into_iter()
+                .map(|chunk| lookup::constraints::zk_patch(chunk, index.cs.domain.d1, rng))
+                .collect();
+
+            //~~ - Commit each of the sorted polynomials.
+            let sorted_comms: Vec<_> = sorted
+                .iter()
+                .map(|v| {
+                    index
+                        .srs
+                        .commit_evaluations(index.cs.domain.d1, v, None, rng)
+                })
+                .collect();
+
+            //~~ - Absorb each commitments to the sorted polynomials.
+            sorted_comms
+                .iter()
+                .for_each(|c| fq_sponge.absorb_g(&c.commitment.unshifted));
+
+            // precompute different forms of the sorted polynomials for later
+            // TODO: We can avoid storing these coefficients.
+            let sorted_coeffs: Vec<_> = sorted.iter().map(|e| e.clone().interpolate()).collect();
+            let sorted8: Vec<_> = sorted_coeffs
+                .iter()
+                .map(|v| v.evaluate_over_domain_by_ref(index.cs.domain.d8))
+                .collect();
+
+            lookup_context.joint_combiner = Some(joint_combiner);
+            lookup_context.sorted = Some(sorted);
+            lookup_context.sorted_coeffs = Some(sorted_coeffs);
+            lookup_context.sorted_comms = Some(sorted_comms);
+            lookup_context.sorted8 = Some(sorted8);
+            lookup_context.joint_lookup_table_d8 = Some(joint_lookup_table_d8);
+            lookup_context.joint_lookup_table = Some(joint_lookup_table);
+        }
 
         //~ 1. Sample $\beta$ with the Fq-Sponge.
         let beta = fq_sponge.challenge();
@@ -294,15 +511,44 @@ where
         //~ 1. Sample $\gamma$ with the Fq-Sponge.
         let gamma = fq_sponge.challenge();
 
-        //~ 1. If circuit uses lookups, compute lookup context aggregation polynomial (see [Lookup context aggregation polynomial creation](#lookup-context-aggregation-polynomial-creation) algorithm)
-        lookup_context.compute_aggregation_polynomial(
-            &witness,
-            index,
-            rng,
-            &mut fq_sponge,
-            beta,
-            gamma,
-        )?;
+        //~ 1. If using lookup:
+        if let Some(lcs) = &index.cs.lookup_constraint_system {
+            //~~ - Compute the lookup aggregation polynomial.
+            let joint_lookup_table_d8 = lookup_context.joint_lookup_table_d8.as_ref().unwrap();
+
+            let aggreg = lookup::constraints::aggregation::<_, G::ScalarField>(
+                lookup_context.dummy_lookup_value.unwrap(),
+                joint_lookup_table_d8,
+                index.cs.domain.d1,
+                &index.cs.gates,
+                &witness,
+                &lookup_context.joint_combiner.unwrap(),
+                &lookup_context.table_id_combiner.unwrap(),
+                beta,
+                gamma,
+                lookup_context.sorted.as_ref().unwrap(),
+                rng,
+                &lcs.configuration.lookup_info,
+            )?;
+
+            //~~ - Commit to the aggregation polynomial.
+            let aggreg_comm = index
+                .srs
+                .commit_evaluations(index.cs.domain.d1, &aggreg, None, rng);
+
+            //~~ - Absorb the commitment to the aggregation polynomial with the Fq-Sponge.
+            fq_sponge.absorb_g(&aggreg_comm.commitment.unshifted);
+
+            // precompute different forms of the aggregation polynomial for later
+            let aggreg_coeffs = aggreg.interpolate();
+            // TODO: There's probably a clever way to expand the domain without
+            // interpolating
+            let aggreg8 = aggreg_coeffs.evaluate_over_domain_by_ref(index.cs.domain.d8);
+
+            lookup_context.aggreg_comm = Some(aggreg_comm);
+            lookup_context.aggreg_coeffs = Some(aggreg_coeffs);
+            lookup_context.aggreg8 = Some(aggreg8);
+        }
 
         //~ 1. Compute the permutation aggregation polynomial $z$.
         let z_poly = index.cs.perm_aggreg(&witness, &beta, &gamma, rng)?;
@@ -498,12 +744,12 @@ where
             // range check gates
             if index.cs.range_check_selector_polys.is_some() {
                 for gate_type in range_check::gadget::circuit_gates() {
-                    let range =
+                    let range_check_constraint =
                         range_check::gadget::circuit_gate_constraints(gate_type, &all_alphas)
                             .evaluations(&env);
-                    assert_eq!(range.domain().size, t8.domain().size);
-                    t8 += &range;
-                    check_constraint!(index, range);
+                    assert_eq!(range_check_constraint.domain().size, t8.domain().size);
+                    t8 += &range_check_constraint;
+                    check_constraint!(index, range_check_constraint);
                 }
             }
 
@@ -1009,291 +1255,6 @@ where
             public,
             prev_challenges,
         })
-    }
-}
-
-impl<G: KimchiCurve + ark_ec::AffineCurve<ScalarField = F>, F: PrimeField> LookupContext<G, F> {
-    pub fn create<EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>>(
-        witness: &[Vec<G::ScalarField>; COLUMNS],
-        runtime_tables: &[RuntimeTable<G::ScalarField>],
-        index: &ProverIndex<G>,
-        rng: &mut (impl RngCore + CryptoRng),
-        fq_sponge: &mut EFqSponge,
-    ) -> Result<LookupContext<G, F>> {
-        //~
-        //~ #### Lookup context creation
-        //~
-        //~ When we want to create a proof for a circuit that uses lookups, we must create a lookup context.
-
-        let mut lookup_context = LookupContext::default();
-
-        if let Some(lcs) = &index.cs.lookup_constraint_system {
-            //~~ - if using runtime table:
-            let d1_size = index.cs.domain.d1.size();
-            if let Some(cfg_runtime_tables) = &lcs.runtime_tables {
-                //~~~ - check that all the provided runtime tables have length and IDs that match the runtime table configuration of the index
-                //~~~   we expect the given runtime tables to be sorted as configured, this makes it easier afterwards
-                let expected_runtime: Vec<_> = cfg_runtime_tables
-                    .iter()
-                    .map(|rt| (rt.id, rt.len))
-                    .collect();
-                let runtime: Vec<_> = runtime_tables
-                    .iter()
-                    .map(|rt| (rt.id, rt.data.len()))
-                    .collect();
-                if expected_runtime != runtime {
-                    return Err(ProverError::RuntimeTablesInconsistent);
-                }
-
-                //~~~ - calculate the contribution to the second column of the lookup table
-                //~~~   (the runtime vector)
-                let (runtime_table_contribution, runtime_table_contribution_d8) = {
-                    let mut offset = lcs
-                        .runtime_table_offset
-                        .expect("runtime configuration missing offset");
-
-                    let mut evals = vec![G::ScalarField::zero(); d1_size];
-                    for rt in runtime_tables {
-                        let range = offset..(offset + rt.data.len());
-                        evals[range].copy_from_slice(&rt.data);
-                        offset += rt.data.len();
-                    }
-
-                    // zero-knowledge
-                    for e in evals.iter_mut().rev().take(ZK_ROWS as usize) {
-                        *e = <G::ScalarField as UniformRand>::rand(rng);
-                    }
-
-                    // get coeff and evaluation form
-                    let runtime_table_contribution =
-                        Evaluations::from_vec_and_domain(evals, index.cs.domain.d1).interpolate();
-
-                    let runtime_table_contribution_d8 =
-                        runtime_table_contribution.evaluate_over_domain_by_ref(index.cs.domain.d8);
-
-                    (runtime_table_contribution, runtime_table_contribution_d8)
-                };
-
-                // commit the runtime polynomial
-                // (and save it to the proof)
-                let runtime_table_comm = index.srs.commit(&runtime_table_contribution, None, rng);
-
-                // absorb the commitment
-                fq_sponge.absorb_g(&runtime_table_comm.commitment.unshifted);
-
-                // pre-compute the updated second column of the lookup table
-                let mut second_column_d8 = runtime_table_contribution_d8.clone();
-                second_column_d8
-                    .evals
-                    .par_iter_mut()
-                    .enumerate()
-                    .for_each(|(row, e)| {
-                        *e += lcs.lookup_table8[1][row];
-                    });
-
-                lookup_context.runtime_table = Some(runtime_table_contribution);
-                lookup_context.runtime_table_d8 = Some(runtime_table_contribution_d8);
-                lookup_context.runtime_table_comm = Some(runtime_table_comm);
-                lookup_context.runtime_second_col_d8 = Some(second_column_d8);
-            }
-
-            //~~ - If queries involve a lookup table with multiple columns
-            //~~   then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
-            //~~   otherwise set the joint combiner challenge $j'$ to $0$.
-            let joint_lookup_used = matches!(lcs.configuration.lookup_used, LookupsUsed::Joint);
-
-            let joint_combiner = if joint_lookup_used {
-                fq_sponge.challenge()
-            } else {
-                G::ScalarField::zero()
-            };
-
-            //~~ - Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TOOD: specify)
-            let joint_combiner: G::ScalarField =
-                ScalarChallenge(joint_combiner).to_field(&index.srs.endo_r);
-
-            //~~ - If multiple lookup tables are involved,
-            //~~   set the `table_id_combiner` as the $j^i$ with $i$ the maximum width of any used table.
-            //~~   Essentially, this is to add a last column of table ids to the concatenated lookup tables.
-            let table_id_combiner: G::ScalarField = if lcs.table_ids8.as_ref().is_some() {
-                joint_combiner.pow([lcs.configuration.lookup_info.max_joint_size as u64])
-            } else {
-                // TODO: just set this to None in case multiple tables are not used
-                G::ScalarField::zero()
-            };
-            lookup_context.table_id_combiner = Some(table_id_combiner);
-
-            //~~ - Compute the dummy lookup value as the combination of the last entry of the XOR table (so `(0, 0, 0)`).
-            //~~   Warning: This assumes that we always use the XOR table when using lookups.
-            let dummy_lookup_value = lcs
-                .configuration
-                .dummy_lookup
-                .evaluate(&joint_combiner, &table_id_combiner);
-            lookup_context.dummy_lookup_value = Some(dummy_lookup_value);
-
-            //~~ - Compute the lookup table values as the combination of the lookup table entries.
-            let joint_lookup_table_d8 = {
-                let mut evals = Vec::with_capacity(d1_size);
-
-                for idx in 0..(d1_size * 8) {
-                    let table_id = match lcs.table_ids8.as_ref() {
-                        Some(table_ids8) => table_ids8.evals[idx],
-                        None =>
-                        // If there is no `table_ids8` in the constraint system,
-                        // every table ID is identically 0.
-                        {
-                            G::ScalarField::zero()
-                        }
-                    };
-
-                    let combined_entry = if !lcs.configuration.lookup_info.uses_runtime_tables {
-                        let table_row = lcs.lookup_table8.iter().map(|e| &e.evals[idx]);
-
-                        combine_table_entry(
-                            &joint_combiner,
-                            &table_id_combiner,
-                            table_row,
-                            &table_id,
-                        )
-                    } else {
-                        // if runtime table are used, the second row is modified
-                        let second_col = lookup_context.runtime_second_col_d8.as_ref().unwrap();
-
-                        let table_row = lcs.lookup_table8.iter().enumerate().map(|(col, e)| {
-                            if col == 1 {
-                                &second_col.evals[idx]
-                            } else {
-                                &e.evals[idx]
-                            }
-                        });
-
-                        combine_table_entry(
-                            &joint_combiner,
-                            &table_id_combiner,
-                            table_row,
-                            &table_id,
-                        )
-                    };
-                    evals.push(combined_entry);
-                }
-
-                Evaluations::from_vec_and_domain(evals, index.cs.domain.d8)
-            };
-
-            let joint_lookup_table = joint_lookup_table_d8.interpolate_by_ref();
-
-            //~~ - Compute the sorted evaluations.
-            // TODO: Once we switch to committing using lagrange commitments,
-            // `witness` will be consumed when we interpolate, so interpolation will
-            // have to moved below this.
-            let sorted: Vec<_> = lookup::constraints::sorted(
-                dummy_lookup_value,
-                &joint_lookup_table_d8,
-                index.cs.domain.d1,
-                &index.cs.gates,
-                witness,
-                joint_combiner,
-                table_id_combiner,
-                &lcs.configuration.lookup_info,
-            )?;
-
-            //~~ - Randomize the last `EVALS` rows in each of the sorted polynomials
-            //~~   in order to add zero-knowledge to the protocol.
-            let sorted: Vec<_> = sorted
-                .into_iter()
-                .map(|chunk| lookup::constraints::zk_patch(chunk, index.cs.domain.d1, rng))
-                .collect();
-
-            //~~ - Commit each of the sorted polynomials.
-            let sorted_comms: Vec<_> = sorted
-                .iter()
-                .map(|v| {
-                    index
-                        .srs
-                        .commit_evaluations(index.cs.domain.d1, v, None, rng)
-                })
-                .collect();
-
-            //~~ - Absorb each commitments to the sorted polynomials.
-            sorted_comms
-                .iter()
-                .for_each(|c| fq_sponge.absorb_g(&c.commitment.unshifted));
-
-            // precompute different forms of the sorted polynomials for later
-            // TODO: We can avoid storing these coefficients.
-            let sorted_coeffs: Vec<_> = sorted.iter().map(|e| e.clone().interpolate()).collect();
-            let sorted8: Vec<_> = sorted_coeffs
-                .iter()
-                .map(|v| v.evaluate_over_domain_by_ref(index.cs.domain.d8))
-                .collect();
-
-            lookup_context.joint_combiner = Some(joint_combiner);
-            lookup_context.sorted = Some(sorted);
-            lookup_context.sorted_coeffs = Some(sorted_coeffs);
-            lookup_context.sorted_comms = Some(sorted_comms);
-            lookup_context.sorted8 = Some(sorted8);
-            lookup_context.joint_lookup_table_d8 = Some(joint_lookup_table_d8);
-            lookup_context.joint_lookup_table = Some(joint_lookup_table);
-        }
-
-        Ok(lookup_context)
-    }
-
-    pub fn compute_aggregation_polynomial<
-        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-    >(
-        &mut self,
-        witness: &[Vec<G::ScalarField>; COLUMNS],
-        index: &ProverIndex<G>,
-        rng: &mut (impl RngCore + CryptoRng),
-        fq_sponge: &mut EFqSponge,
-        beta: F,
-        gamma: F,
-    ) -> Result<()> {
-        //~
-        //~ #### Lookup context aggregation polynomial creation
-        //~
-        //~ When we have a lookup context, we must compute its aggregation polynomial.
-
-        if let Some(lcs) = &index.cs.lookup_constraint_system {
-            //~ - Compute the lookup aggregation polynomial.
-            let joint_lookup_table_d8 = self.joint_lookup_table_d8.as_ref().unwrap();
-
-            let aggreg = lookup::constraints::aggregation::<_, G::ScalarField>(
-                self.dummy_lookup_value.unwrap(),
-                joint_lookup_table_d8,
-                index.cs.domain.d1,
-                &index.cs.gates,
-                witness,
-                &self.joint_combiner.unwrap(),
-                &self.table_id_combiner.unwrap(),
-                beta,
-                gamma,
-                self.sorted.as_ref().unwrap(),
-                rng,
-                &lcs.configuration.lookup_info,
-            )?;
-
-            //~ - Commit to the aggregation polynomial.
-            let aggreg_comm = index
-                .srs
-                .commit_evaluations(index.cs.domain.d1, &aggreg, None, rng);
-
-            //~ - Absorb the commitment to the aggregation polynomial with the Fq-Sponge.
-            fq_sponge.absorb_g(&aggreg_comm.commitment.unshifted);
-
-            // precompute different forms of the aggregation polynomial for later
-            let aggreg_coeffs = aggreg.interpolate();
-            // TODO: There's probably a clever way to expand the domain without
-            // interpolating
-            let aggreg8 = aggreg_coeffs.evaluate_over_domain_by_ref(index.cs.domain.d8);
-
-            self.aggreg_comm = Some(aggreg_comm);
-            self.aggreg_coeffs = Some(aggreg_coeffs);
-            self.aggreg8 = Some(aggreg8);
-        }
-
-        Ok(())
     }
 }
 

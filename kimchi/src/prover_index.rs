@@ -1,11 +1,11 @@
-//! This module implements the prover index as [ProverIndex].
+//! This module implements the prover index as [`ProverIndex`].
 
 use crate::{
     alphas::Alphas,
     circuits::{
         constraints::ConstraintSystem,
         expr::{Linearization, PolishToken},
-        wires::*,
+        wires::PERMUTS,
     },
     curve::KimchiCurve,
     linearization::expr_linearization,
@@ -57,6 +57,10 @@ pub struct ProverIndex<G: KimchiCurve> {
 
 impl<G: KimchiCurve> ProverIndex<G> {
     /// this function compiles the index from constraints
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `polynomial segment size` is bigger than `circuit`.
     pub fn create(
         mut cs: ConstraintSystem<G::ScalarField>,
         endo_q: G::ScalarField,
@@ -146,6 +150,11 @@ pub mod testing {
     use commitment_dlog::srs::endos;
     use mina_curves::pasta::{pallas::Pallas, vesta::Vesta, Fp};
 
+    /// Create new index for lookups.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `constraint system` is not built with `gates` input.
     pub fn new_index_for_test_with_lookups(
         gates: Vec<CircuitGate<Fp>>,
         public: usize,
@@ -168,6 +177,7 @@ pub mod testing {
         let (endo_q, _endo_r) = endos::<Pallas>();
         ProverIndex::<Vesta>::create(cs, endo_q, srs)
     }
+
     pub fn new_index_for_test(gates: Vec<CircuitGate<Fp>>, public: usize) -> ProverIndex<Vesta> {
         new_index_for_test_with_lookups(gates, public, 0, vec![], None)
     }

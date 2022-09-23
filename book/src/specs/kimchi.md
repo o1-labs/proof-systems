@@ -1819,10 +1819,33 @@ The prover then follows the following steps to create the proof:
 1. Absorb the witness commitments with the Fq-Sponge.
 1. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
    TODO: why not do this first, and then commit? Why commit from evaluation directly?
-1. If circuit uses lookups, create a lookup context (see [Lookup context creation](#lookup-context-creation) algorithm)
+1. If using lookup:
+	- if using runtime table:
+		- check that all the provided runtime tables have length and IDs that match the runtime table configuration of the index
+		  we expect the given runtime tables to be sorted as configured, this makes it easier afterwards
+		- calculate the contribution to the second column of the lookup table
+		  (the runtime vector)
+	- If queries involve a lookup table with multiple columns
+	  then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
+	  otherwise set the joint combiner challenge $j'$ to $0$.
+	- Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TOOD: specify)
+	- If multiple lookup tables are involved,
+	  set the `table_id_combiner` as the $j^i$ with $i$ the maximum width of any used table.
+	  Essentially, this is to add a last column of table ids to the concatenated lookup tables.
+	- Compute the dummy lookup value as the combination of the last entry of the XOR table (so `(0, 0, 0)`).
+	  Warning: This assumes that we always use the XOR table when using lookups.
+	- Compute the lookup table values as the combination of the lookup table entries.
+	- Compute the sorted evaluations.
+	- Randomize the last `EVALS` rows in each of the sorted polynomials
+	  in order to add zero-knowledge to the protocol.
+	- Commit each of the sorted polynomials.
+	- Absorb each commitments to the sorted polynomials.
 1. Sample $\beta$ with the Fq-Sponge.
 1. Sample $\gamma$ with the Fq-Sponge.
-1. If circuit uses lookups, compute lookup context aggregation polynomial (see [Lookup context aggregation polynomial creation](#lookup-context-aggregation-polynomial-creation) algorithm)
+1. If using lookup:
+	- Compute the lookup aggregation polynomial.
+	- Commit to the aggregation polynomial.
+	- Absorb the commitment to the aggregation polynomial with the Fq-Sponge.
 1. Compute the permutation aggregation polynomial $z$.
 1. Commit (hidding) to the permutation aggregation polynomial $z$.
 1. Absorb the permutation aggregation polynomial $z$ with the Fq-Sponge.
@@ -1906,37 +1929,6 @@ The prover then follows the following steps to create the proof:
 	- add the combined table polynomial
 	- if present, add the runtime table polynomial
 1. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
-
-#### Lookup context creation
-
-When we want to create a proof for a circuit that uses lookups, we must create a lookup context.
-	- if using runtime table:
-		- check that all the provided runtime tables have length and IDs that match the runtime table configuration of the index
-		  we expect the given runtime tables to be sorted as configured, this makes it easier afterwards
-		- calculate the contribution to the second column of the lookup table
-		  (the runtime vector)
-	- If queries involve a lookup table with multiple columns
-	  then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
-	  otherwise set the joint combiner challenge $j'$ to $0$.
-	- Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TOOD: specify)
-	- If multiple lookup tables are involved,
-	  set the `table_id_combiner` as the $j^i$ with $i$ the maximum width of any used table.
-	  Essentially, this is to add a last column of table ids to the concatenated lookup tables.
-	- Compute the dummy lookup value as the combination of the last entry of the XOR table (so `(0, 0, 0)`).
-	  Warning: This assumes that we always use the XOR table when using lookups.
-	- Compute the lookup table values as the combination of the lookup table entries.
-	- Compute the sorted evaluations.
-	- Randomize the last `EVALS` rows in each of the sorted polynomials
-	  in order to add zero-knowledge to the protocol.
-	- Commit each of the sorted polynomials.
-	- Absorb each commitments to the sorted polynomials.
-
-#### Lookup context aggregation polynomial creation
-
-When we have a lookup context, we must compute its aggregation polynomial.
-- Compute the lookup aggregation polynomial.
-- Commit to the aggregation polynomial.
-- Absorb the commitment to the aggregation polynomial with the Fq-Sponge.
 
 
 ### Proof Verification
