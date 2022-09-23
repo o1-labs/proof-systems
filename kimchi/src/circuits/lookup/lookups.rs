@@ -290,19 +290,20 @@ impl LookupPattern {
     /// Returns the maximum number of lookups per row that are used by the pattern.
     pub fn max_lookups_per_row(&self) -> usize {
         match self {
-            LookupPattern::ChaCha | LookupPattern::ChaChaFinal | LookupPattern::RangeCheckGate => 4,
+            LookupPattern::ChaCha
+            | LookupPattern::ChaChaFinal
+            | LookupPattern::RangeCheckGate
+            | LookupPattern::KeccakXOR => 4,
             LookupPattern::LookupGate => 3,
-            LookupPattern::KeccakXOR => 5,
         }
     }
 
     /// Returns the maximum number of values that are used in any vector lookup in this pattern.
     pub fn max_joint_size(&self) -> u32 {
         match self {
-            LookupPattern::ChaCha | LookupPattern::ChaChaFinal => 3,
+            LookupPattern::ChaCha | LookupPattern::ChaChaFinal | LookupPattern::KeccakXOR => 3,
             LookupPattern::LookupGate => 2,
             LookupPattern::RangeCheckGate => 1,
-            LookupPattern::KeccakXOR => 12,
         }
     }
 

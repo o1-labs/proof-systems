@@ -367,6 +367,9 @@ pub trait Connect {
     ///       with self-connections.  If the two cells are transitively already part
     ///       of the same permutation then this would split it.
     fn connect_cell_pair(&mut self, cell1: (usize, usize), cell2: (usize, usize));
+
+    /// Connects a generic gate cell with zeros to a given row for 64bit range check
+    fn connect_64bit(&mut self, zero_row: usize, start_row: usize);
 }
 
 impl<F: PrimeField> Connect for Vec<CircuitGate<F>> {
@@ -374,6 +377,13 @@ impl<F: PrimeField> Connect for Vec<CircuitGate<F>> {
         let wire_tmp = self[cell_pre.0].wires[cell_pre.1];
         self[cell_pre.0].wires[cell_pre.1] = self[cell_new.0].wires[cell_new.1];
         self[cell_new.0].wires[cell_new.1] = wire_tmp;
+    }
+
+    fn connect_64bit(&mut self, zero_row: usize, start_row: usize) {
+        // Connect the 64-bit cells from previous Generic gate with zeros in first 12 bits
+        self.connect_cell_pair((start_row, 1), (start_row, 2));
+        self.connect_cell_pair((start_row, 2), (zero_row, 0));
+        self.connect_cell_pair((zero_row, 0), (start_row, 1));
     }
 }
 

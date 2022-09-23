@@ -7,11 +7,12 @@ use crate::{
     circuits::{
         argument::Argument,
         expr::E,
-        gate::{CircuitGate, GateType},
+        gate::{CircuitGate, Connect, GateType},
         lookup::{
             self,
             tables::{GateLookupTable, LookupTable},
         },
+        polynomials::generic::GenericGateSpec,
         wires::Wire,
     },
 };
@@ -27,32 +28,49 @@ impl<F: PrimeField> CircuitGate<F> {
     ///       next_row      - next row after this gate
     ///       circuit_gates - vector of circuit gates comprising this gate
     pub fn create_keccak_xor(start_row: usize) -> (usize, Vec<Self>) {
-        let circuit_gates = vec![
+        let mut gates = vec![];
+        let zero_row = start_row;
+        gates.push(CircuitGate::<F>::create_generic_gadget(
+            Wire::new(start_row),
+            GenericGateSpec::Pub,
+            None,
+        ));
+
+        let mut new_row = start_row;
+        for _ in 0..3 {
+            // 64bit checks for 3 elements: input1, input2, and output
+            new_row = new_row + 1;
+            println!("new_row: {}", new_row);
+            gates.append(&mut CircuitGate::<F>::create_range_check(new_row).1);
+            gates.connect_64bit(zero_row, new_row);
+        }
+
+        gates.append(&mut vec![
             CircuitGate {
                 typ: GateType::Xor,
-                wires: Wire::new(start_row),
+                wires: Wire::new(new_row + 1),
                 coeffs: vec![],
             },
             CircuitGate {
                 typ: GateType::Zero,
-                wires: Wire::new(start_row + 1),
+                wires: Wire::new(new_row + 2),
                 coeffs: vec![],
             },
             CircuitGate {
                 typ: GateType::Xor,
-                wires: Wire::new(start_row + 2),
+                wires: Wire::new(new_row + 3),
                 coeffs: vec![],
             },
             CircuitGate {
                 typ: GateType::Zero,
-                wires: Wire::new(start_row + 3),
+                wires: Wire::new(new_row + 4),
                 coeffs: vec![],
             },
-        ];
+        ]);
 
         // TODO: copies when other gates are added using connect_cell_pair
 
-        (start_row + circuit_gates.len(), circuit_gates)
+        (start_row + gates.len(), gates)
     }
 
     /// Create single 32-bit xor gate
@@ -87,7 +105,7 @@ pub fn circuit_gates() -> [GateType; GATE_COUNT] {
 /// Number of constraints for a given range check circuit gate type
 pub fn circuit_gate_constraint_count<F: FftField>(typ: GateType) -> u32 {
     match typ {
-        GateType::RangeCheck0 => Xor::<F>::CONSTRAINTS,
+        GateType::Xor => Xor::<F>::CONSTRAINTS,
         _ => panic!("invalid gate type"),
     }
 }

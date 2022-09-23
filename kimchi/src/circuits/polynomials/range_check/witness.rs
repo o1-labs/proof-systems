@@ -1,7 +1,7 @@
 //! Range check witness computation
 
 use ark_ff::PrimeField;
-use o1_utils::FieldHelpers;
+use o1_utils::{FieldHelpers, ForeignElement};
 use std::array;
 
 use crate::circuits::polynomial::COLUMNS;
@@ -173,12 +173,20 @@ pub fn handle_standard_witness_cell<F: PrimeField>(
 ) {
     match witness_cell {
         WitnessCell::Copy(copy_cell) => {
+            println!(
+                "copying (col: {} , row: {} ) to (col: {} , row: {})",
+                copy_cell.col, copy_cell.row, col, row
+            );
             witness[col][row] = witness[copy_cell.col][copy_cell.row];
         }
         WitnessCell::Value => {
             witness[col][row] = value;
         }
         WitnessCell::Limb(limb_cell) => {
+            println!(
+                "connecting limbs (col: {} , row: {} ) to (col: {} , row: {})",
+                limb_cell.col, limb_cell.row, col, row
+            );
             witness[col][row] = value_to_limb(
                 witness[limb_cell.col][limb_cell.row], // limb cell (row, col)
                 limb_cell.start,                       // starting bit
@@ -214,9 +222,26 @@ pub fn create_multi_witness<F: PrimeField>(v0: F, v1: F, v2: F) -> [Vec<F>; COLU
 /// Create a single range check witness
 /// Input: 88-bit value v0
 pub fn create_witness<F: PrimeField>(v0: F) -> [Vec<F>; COLUMNS] {
-    let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 4]);
+    let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero()]);
 
     init_range_check_row(&mut witness, 0, v0);
 
     witness
+}
+
+/// Extend an existing witness with a multi-range-check gate for foreign field
+/// elements fe
+pub fn extend_witness<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], fe: ForeignElement<F, 3>) {
+    let limbs_witness = create_multi_witness(*fe.lo(), *fe.mi(), *fe.hi());
+    for col in 0..COLUMNS {
+        witness[col].extend(limbs_witness[col].iter())
+    }
+}
+
+/// Extend an existing witness with a single-range-check gate for 88bits
+pub fn extend_single<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], elem: F) {
+    let single_wit = create_witness(elem);
+    for col in 0..COLUMNS {
+        witness[col].extend(single_wit[col].iter())
+    }
 }
