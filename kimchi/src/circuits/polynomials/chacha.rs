@@ -479,8 +479,7 @@ mod tests {
     };
     use ark_ff::UniformRand;
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
-    use mina_curves::pasta::fp::Fp as F;
-    use mina_curves::pasta::vesta::Vesta;
+    use mina_curves::pasta::{Fp as F, Vesta};
     use rand::{rngs::StdRng, SeedableRng};
     use std::array;
     use std::fmt::{Display, Formatter};

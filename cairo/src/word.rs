@@ -247,7 +247,7 @@ mod tests {
     use crate::flags::*;
     use crate::word::{FlagBits, FlagSets, Offsets};
     use ark_ff::{One, Zero};
-    use mina_curves::pasta::fp::Fp as F;
+    use mina_curves::pasta::Fp as F;
 
     #[test]
     fn test_biased() {

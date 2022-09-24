@@ -510,8 +510,7 @@ mod tests {
     use crate::circuits::wires::COLUMNS;
     use ark_ff::{UniformRand, Zero};
     use ark_poly::{EvaluationDomain, Polynomial};
-    use mina_curves::pasta::fp::Fp;
-    use mina_curves::pasta::vesta::Vesta;
+    use mina_curves::pasta::{Fp, Vesta};
     use rand::SeedableRng;
     use std::array;
 

@@ -2266,8 +2266,7 @@ pub mod test {
         curve::KimchiCurve,
     };
     use ark_ff::UniformRand;
-    use mina_curves::pasta::fp::Fp;
-    use mina_curves::pasta::vesta::Vesta;
+    use mina_curves::pasta::{Fp, Vesta};
     use rand::{prelude::StdRng, SeedableRng};
     use std::array;
 

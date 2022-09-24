@@ -2,7 +2,7 @@ use super::framework::TestFramework;
 use crate::circuits::polynomials::generic::testing::{create_circuit, fill_in_witness};
 use crate::circuits::wires::COLUMNS;
 use ark_ff::Zero;
-use mina_curves::pasta::fp::Fp;
+use mina_curves::pasta::Fp;
 use std::array;
 
 #[test]
