@@ -13,10 +13,7 @@ use ark_ec::short_weierstrass_jacobian::GroupAffine;
 use ark_ff::Zero;
 use commitment_dlog::{commitment::CommitmentCurve, srs::SRS};
 use groupmap::GroupMap;
-use mina_curves::pasta::{
-    fp::Fp,
-    vesta::{Vesta, VestaParameters},
-};
+use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use oracle::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},

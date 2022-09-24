@@ -104,7 +104,7 @@ impl<F: Field> CairoMemory<F> {
 mod tests {
     use super::*;
     use ark_ff::One;
-    use mina_curves::pasta::fp::Fp as F;
+    use mina_curves::pasta::Fp as F;
 
     #[test]
     fn test_cairo_bytecode() {

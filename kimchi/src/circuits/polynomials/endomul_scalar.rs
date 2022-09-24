@@ -304,7 +304,7 @@ mod tests {
     use super::*;
 
     use ark_ff::{BigInteger, Field, One, PrimeField, Zero};
-    use mina_curves::pasta::fp::Fp as F;
+    use mina_curves::pasta::Fp as F;
 
     /// 2/3*x^3 - 5/2*x^2 + 11/6*x
     fn c_poly(x: F) -> F {

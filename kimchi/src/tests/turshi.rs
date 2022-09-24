@@ -3,7 +3,7 @@ use crate::circuits::{
     polynomials::turshi::{testing::*, witness::*},
 };
 use cairo::{CairoMemory, CairoProgram};
-use mina_curves::pasta::fp::Fp as F;
+use mina_curves::pasta::Fp as F;
 
 #[test]
 fn test_cairo_should_fail() {

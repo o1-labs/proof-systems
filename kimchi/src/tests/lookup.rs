@@ -9,7 +9,7 @@ use crate::circuits::{
     wires::Wire,
 };
 use ark_ff::Zero;
-use mina_curves::pasta::fp::Fp;
+use mina_curves::pasta::Fp;
 use std::array;
 
 fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_sizes: Vec<usize>) {
