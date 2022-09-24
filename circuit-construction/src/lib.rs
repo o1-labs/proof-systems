@@ -22,9 +22,7 @@ pub mod prologue {
     pub use groupmap::GroupMap;
     pub use kimchi::verifier::verify;
     pub use mina_curves::pasta::{
-        fp::Fp,
-        pallas::Pallas as PallasAffine,
-        vesta::{Vesta as VestaAffine, VestaParameters},
+        Fp, Pallas as PallasAffine, Vesta as VestaAffine, VestaParameters,
     };
     pub use oracle::{
         constants::*,

@@ -143,7 +143,7 @@ pub mod testing {
         lookup::{runtime_tables::RuntimeTableCfg, tables::LookupTable},
     };
     use commitment_dlog::srs::endos;
-    use mina_curves::pasta::{pallas::Pallas, vesta::Vesta, Fp};
+    use mina_curves::pasta::{Fp, Pallas, Vesta};
 
     pub fn new_index_for_test_with_lookups(
         gates: Vec<CircuitGate<Fp>>,

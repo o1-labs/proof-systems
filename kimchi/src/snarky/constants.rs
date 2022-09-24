@@ -1,8 +1,8 @@
 //! Constants used for poseidon.
 
 use ark_ec::AffineCurve;
-use ark_ff::{Field};
-use commitment_dlog::{commitment::CommitmentCurve};
+use ark_ff::Field;
+use commitment_dlog::commitment::CommitmentCurve;
 use oracle::poseidon::ArithmeticSpongeParams;
 
 use crate::curve::KimchiCurve;
