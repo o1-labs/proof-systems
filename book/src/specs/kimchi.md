@@ -1204,26 +1204,32 @@ These circuit gates are used to constrain that
 left_input +/- right_input = field_overflow * foreign_modulus + result
 ```
 
- Documentation:
+Documentation:
 
-  For more details please see the [FFadd RFC](../rfcs/ffadd.md)
+ For more details please see the [FFadd RFC](../rfcs/ffadd.md)
 
-  Mapping:
-    To make things clearer, the following mapping between the variable names
-    used in the code and those of the document can be helpful.
+Mapping:
+ To make things clearer, the following mapping between the variable names
+ used in the code and those of the RFC document can be helpful.
 
 ```text
     left_input_lo -> a0  right_input_lo -> b0  result_lo -> r0  bound_lo -> u0
     left_input_mi -> a1  right_input_mi -> b1  result_mi -> r1  bound_mi -> u1
     left_input_hi -> a2  right_input_hi -> b2  result_hi -> r2  bound_hi -> u2
 
-    field_overflow  -> x
+    field_overflow  -> q
     sign            -> s
     carry_lo        -> c0
     carry_mi        -> c1
     bound_carry_lo  -> k0
     bound_carry_mi  -> k1
 ```
+
+Note:
+ Our limbs are 88-bit long. We denote with:
+ - `lo` the least significant limb (in big-endian, this is from 0 to 87)
+ - `mi` the middle limb            (in big-endian, this is from 88 to 175)
+ - `hi` the most significant limb  (in big-endian, this is from 176 to 263)
 
 Let `left_input_lo`, `left_input_mi`, `left_input_hi` be 88-bit limbs of the left element
 
@@ -1255,27 +1261,27 @@ The upper-bound check can be calculated as
 
 The range check of `bound` can be skipped until the end of the operations
 and `result` is an intermediate value that is unused elsewhere (since the final `result`
-must have had the right number of moduli subtracted along the way).
+must have had the right amount of moduli subtracted along the way, meaning a multiple of the modulus).
 
 You could lay this out as a double-width gate for chained foreign additions and a final row, e.g.
 
-| col | `ForeignFieldAdd`       | more `ForeignFieldAdd` | or `ForeignFieldFin` |
-| --- | ----------------------- | ---------------------- | -------------------- |
-|   0 | `left_input_lo`  (copy) | `result_lo` (copy)     | `resmin_lo` (copy)   |
-|   1 | `left_input_mi`  (copy) | `result_mi` (copy)     | `resmin_mi` (copy)   |
-|   2 | `left_input_hi`  (copy) | `result_hi` (copy)     | `resmin_hi` (copy)   |
-|   3 | `right_input_lo` (copy) |  ...                   | `bound_lo`  (copy)   |
-|   4 | `right_input_mi` (copy) |  ...                   | `bound_mi`  (copy)   |
-|   5 | `right_input_hi` (copy) |  ...                   | `bound_hi`  (copy)   |
-|   6 | `field_overflow`        |  ...                   |  -                   |
-|   7 | `carry_lo`              |  ...                   | `bound_carry_lo`     |
-|   8 | `carry_mi`              |  ...                   | `bound_carry_mi`     |
-|   9 | `sign`                  |  ...                   |  -                   |
-|  10 |                         |                        |                      |
-|  11 |                         |                        |                      |
-|  12 |                         |                        |                      |
-|  13 |                         |                        |                      |
-|  14 |                         |                        |                      |
+| col | `ForeignFieldAdd`       | more `ForeignFieldAdd` | or `ForeignFieldFin`   |
+| --- | ----------------------- | ---------------------- | ---------------------- |
+|   0 | `left_input_lo`  (copy) | `result_lo` (copy)     | `min_result_lo` (copy) |
+|   1 | `left_input_mi`  (copy) | `result_mi` (copy)     | `min_result_mi` (copy) |
+|   2 | `left_input_hi`  (copy) | `result_hi` (copy)     | `min_result_hi` (copy) |
+|   3 | `right_input_lo` (copy) |  ...                   | `bound_lo`  (copy)     |
+|   4 | `right_input_mi` (copy) |  ...                   | `bound_mi`  (copy)     |
+|   5 | `right_input_hi` (copy) |  ...                   | `bound_hi`  (copy)     |
+|   6 | `field_overflow`        |  ...                   |  -                     |
+|   7 | `carry_lo`              |  ...                   | `bound_carry_lo`       |
+|   8 | `carry_mi`              |  ...                   | `bound_carry_mi`       |
+|   9 | `sign`                  |  ...                   |  -                     |
+|  10 |                         |                        |                        |
+|  11 |                         |                        |                        |
+|  12 |                         |                        |                        |
+|  13 |                         |                        |                        |
+|  14 |                         |                        |                        |
 
 Having a specific final row that checks the bound is useful as it checks the upper bound
 without reusing the same constraints in the `ForeignFieldAdd` rows (which would require

@@ -24,6 +24,9 @@ pub const FOREIGN_MOD: &[u8] = &[
 /// Bit length of the foreign field modulus
 pub const FOREIGN_BITS: usize = 8 * FOREIGN_MOD.len(); // 256 bits
 
+/// Two to the power of the limb length
+pub const TWO_TO_LIMB: u128 = 2u128.pow(LIMB_BITS as u32);
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// Represents a foreign field element
 pub struct ForeignElement<F: Field, const N: usize> {
@@ -41,7 +44,7 @@ impl<F: Field, const N: usize> ForeignElement<F, N> {
 
     /// Initializes a new foreign element from a big unsigned integer
     /// Panics if the BigUint is too large to fit in the `N` limbs
-    pub fn from_big(big: BigUint) -> Self {
+    pub fn from_biguint(big: BigUint) -> Self {
         let vec = ForeignElement::<F, N>::big_to_vec(big);
 
         // create an array of N native elements containing the limbs
@@ -70,12 +73,12 @@ impl<F: Field, const N: usize> ForeignElement<F, N> {
         let big = self.to_big();
         let ok = big % modulus;
         let neg = modulus - ok;
-        Self::from_big(neg)
+        Self::from_biguint(neg)
     }
 
     /// Initializes a new foreign element from a set of bytes in big endian
     pub fn from_be(bytes: &[u8]) -> Self {
-        Self::from_big(BigUint::from_bytes_be(bytes))
+        Self::from_biguint(BigUint::from_bytes_be(bytes))
     }
 
     /// Obtains the big integer representation of the foreign field element
@@ -104,7 +107,7 @@ impl<F: Field, const N: usize> ForeignElement<F, N> {
 impl<F: PrimeField, const N: usize> ForeignElement<F, N> {
     /// Initializes a new foreign element from an element in the native field
     pub fn from_field(field: F) -> Self {
-        Self::from_big(field.into())
+        Self::from_biguint(field.into())
     }
 }
 
@@ -162,7 +165,7 @@ mod tests {
         let big = BigUint::from_bytes_be(bytes);
         assert_eq!(
             ForeignElement::<BaseField, 3>::from_be(bytes),
-            ForeignElement::<BaseField, 3>::from_big(big)
+            ForeignElement::<BaseField, 3>::from_biguint(big)
         );
     }
 
@@ -175,14 +178,17 @@ mod tests {
     }
 
     #[test]
-    fn test_from_big() {
+    fn test_from_biguint() {
         let one = ForeignElement::<BaseField, 3>::from_be(&[0x01]);
-        assert_eq!(BaseField::from_big(one.to_big()).unwrap(), BaseField::one());
+        assert_eq!(
+            BaseField::from_biguint(one.to_big()).unwrap(),
+            BaseField::one()
+        );
 
         let max_big = BaseField::modulus_biguint() - 1u32;
-        let max_fe = ForeignElement::<BaseField, 3>::from_big(max_big.clone());
+        let max_fe = ForeignElement::<BaseField, 3>::from_biguint(max_big.clone());
         assert_eq!(
-            BaseField::from_big(max_fe.to_big()).unwrap(),
+            BaseField::from_biguint(max_fe.to_big()).unwrap(),
             BaseField::from_bytes(&max_big.to_bytes_le()).unwrap(),
         );
     }

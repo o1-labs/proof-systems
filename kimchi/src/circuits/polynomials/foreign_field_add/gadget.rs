@@ -60,7 +60,7 @@ impl<F: PrimeField> CircuitGate<F> {
     ///      {
     ///        [8n+i+8] ->    -> 1 ForeignFieldAdd row
     ///      } * num times
-    ///      [9n+8]           -> 1 ForeignFieldFin row
+    ///      [9n+8]           -> 1 ForeignFieldFin row (this is where the final result goes)
     /// ]
     ///
     pub fn create_foreign_field_add(start_row: usize, num: usize) -> (usize, Vec<Self>) {
@@ -208,9 +208,6 @@ impl<F: PrimeField> CircuitGate<F> {
             runtime_table: None,
         });
 
-        // Initialize the foreign field modulus constant
-        let foreign_field_modulus = cs.foreign_field_modulus.clone();
-
         // Set up the environment
         let env = {
             Environment {
@@ -221,7 +218,7 @@ impl<F: PrimeField> CircuitGate<F> {
                     joint_combiner: Some(F::rand(rng)),
                     endo_coefficient: cs.endo,
                     mds: &G::sponge_params().mds,
-                    foreign_field_modulus,
+                    foreign_field_modulus: cs.foreign_field_modulus.clone(),
                 },
                 witness: &witness_evals.d8.this.w,
                 coefficient: &cs.coefficients8,

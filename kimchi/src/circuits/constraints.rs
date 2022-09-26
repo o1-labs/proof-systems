@@ -385,15 +385,18 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         self
     }
 
-    /// Set up the foreign field modulus passed as a BigUint
+    /// Set up the foreign field modulus passed as an optional BigUint
     /// If not invoked, it is `None` by default.
     /// Panics if the BigUint being passed needs more than 3 limbs of 88 bits each
-    /// or if the foreign modulus being passed is smaller than the native modulus.
-    pub fn foreign_field_modulus(mut self, foreign_field_modulus: BigUint) -> Self {
-        if foreign_field_modulus <= F::modulus_biguint() {
-            panic!("Foreign field modulus must be greater than the native modulus");
+    /// or if the foreign modulus being passed is smaller than the native modulus
+    /// because right now we only support foreign modulus that are larger than the native modulus.
+    pub fn foreign_field_modulus(mut self, foreign_field_modulus: &Option<BigUint>) -> Self {
+        if let Some(ffmod) = foreign_field_modulus.clone() {
+            if ffmod <= F::modulus_biguint() {
+                panic!("Smaller foreign field modulus is still only supported by FFAdd but not yet for FFMul");
+            }
         }
-        self.foreign_field_modulus = Some(foreign_field_modulus);
+        self.foreign_field_modulus = foreign_field_modulus.clone();
         self
     }
 

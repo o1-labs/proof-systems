@@ -9,7 +9,7 @@ use crate::circuits::{
 };
 use ark_ff::{Field, PrimeField};
 use num_bigint::BigUint;
-use o1_utils::foreign_field::{ForeignElement, LIMB_BITS};
+use o1_utils::foreign_field::{ForeignElement, LIMB_BITS, TWO_TO_LIMB};
 use std::array;
 
 /// Given a result from a chain of additions/subtraction and even multiplications, and a modulus, it computes
@@ -20,14 +20,13 @@ fn compute_bound_values<F: PrimeField>(
     result: &ForeignElement<F, 3>,
     modulus: &ForeignElement<F, 3>,
 ) -> (ForeignElement<F, 3>, F, F) {
-    let two_to_limb = 2u128.pow(88);
-    let max = BigUint::from(two_to_limb).pow(3);
+    let max = BigUint::from(TWO_TO_LIMB).pow(3);
     let big_mod = modulus.to_big();
     let bound = result.to_big() + max - big_mod;
-    let bound_limbs = ForeignElement::<F, 3>::from_big(bound);
-    let carry_mi = *bound_limbs.hi() - *result.hi() + *modulus.hi() - F::from(two_to_limb);
+    let bound_limbs = ForeignElement::<F, 3>::from_biguint(bound);
+    let carry_mi = *bound_limbs.hi() - *result.hi() + *modulus.hi() - F::from(TWO_TO_LIMB);
     let carry_lo =
-        *bound_limbs.mi() - *result.mi() + *modulus.mi() + carry_mi * F::from(two_to_limb);
+        *bound_limbs.mi() - *result.mi() + *modulus.mi() + carry_mi * F::from(TWO_TO_LIMB);
     (bound_limbs, carry_lo, carry_mi)
 }
 
@@ -58,7 +57,7 @@ fn compute_subadd_values<F: PrimeField>(
         let overflows = sum >= modulus;
         let ovf = if overflows { F::one() } else { F::zero() };
         let out = if overflows { sum - modulus } else { sum };
-        let out_limbs = ForeignElement::from_big(out);
+        let out_limbs = ForeignElement::from_biguint(out);
         let carry_mi =
             *out_limbs.hi() - *left_input.hi() - *right_input.hi() + ovf * *foreign_modulus.hi();
         let carry_lo = *out_limbs.mi() - *left_input.mi() - *right_input.mi()
@@ -75,7 +74,7 @@ fn compute_subadd_values<F: PrimeField>(
         } else {
             left - right
         };
-        let out_limbs = ForeignElement::from_big(out);
+        let out_limbs = ForeignElement::from_biguint(out);
         let carry_mi =
             *out_limbs.hi() - *left_input.hi() + right_input.limbs[2] + ovf * *foreign_modulus.hi();
         let carry_lo = *out_limbs.mi() - *left_input.mi()
@@ -109,14 +108,14 @@ pub fn create_witness<F: PrimeField>(
 
     let mut witness = array::from_fn(|_| vec![F::zero(); 0]);
 
-    let foreign_modulus = ForeignElement::from_big(modulus);
+    let foreign_modulus = ForeignElement::from_biguint(modulus);
 
     // Create multi-range-check witness for first left input
-    let mut left = ForeignElement::from_big(inputs_ok[0].clone());
+    let mut left = ForeignElement::from_biguint(inputs_ok[0].clone());
     extend_witness(&mut witness, left.clone());
     let mut add_values: Vec<(F, F, F, F)> = vec![];
     for i in 0..num {
-        let right = ForeignElement::from_big(inputs_ok[i + 1].clone());
+        let right = ForeignElement::from_biguint(inputs_ok[i + 1].clone());
         let (out, sig, ovf, carry_lo, carry_mi) =
             compute_subadd_values(&left, &right, opcode[i], &foreign_modulus);
         // Create multi-range-check witness for right_input (left_input was done in previous iteration) and output

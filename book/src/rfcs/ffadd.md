@@ -15,6 +15,8 @@ If $f<n$ then we can easily perform the above computation. But in this gate we a
 - our foreign field will have 256-bit length
 - our native field has 255-bit length
 
+In other words, using 3 limbs of 88 bits each allows us to represent any foreign field element in the range $[0,2^{264})$ for foreign field addition, but only up to $2^{259}$ for foreign field multiplication. Thus, with the current configuration of our limbs, our foreign field must be smaller than $2^{259}$ (because $2^{264} \cdot 2^{255} > 2^{259}^2 + 2^{259}$, more on this in the [FFmul RFC](../rfcs/ffmul.md).
+
 ### Splitting the addition
 
 Let's take a closer look at what we have, if we split our variables in limbs (using little endian)
@@ -62,9 +64,9 @@ $$a_1 + b_1 = q \cdot f_1 + r_1 + c_1 \cdot 2^{88} - c_0$$
 
 Note that in this case, the carry coefficient from the least significant limb is not multiplied by $2^{88}$, but instead is used as is, since it occupies the least significant position of the second limb. Here, the second carry bit $c_1$ is the one being followed by $88$ zeros. Again, we will have to check that $c_1$ is a bit.
 
-Finally, for the third limb, we obtain a similar equation. But in this case, we do not have to take into account $c_0$ anymore, since it was already considered within $c_1$. Again, the most significant carry bit $c_2$ should be a bit.
+Finally, for the third limb, we obtain a similar equation. But in this case, we do not have to take into account $c_0$ anymore, since it was already considered within $c_1$. Here, the most significant carry bit $c_2$ should always be a zero so we can ignore it.
 
-$$a_2 + b_2 = q \cdot f_2 + r_2 + c_2 \cdot 2^{88} - c_1$$
+$$a_2 + b_2 = q \cdot f_2 + r_2 - c_1$$
 
 Graphically, this is what is happening:
 
@@ -116,7 +118,7 @@ $$
 
 Finally, we perform a range check on the sum $u$, and we would know that $r < f$.
 
-But now we also have to check that $0\leq r$ or, equivalently, $g\leq u$. Isn't the first check trivial because $r$ is a field element?
+But now we also have to check that $0\leq r$ or, equivalently, $g\leq u$. But this is implicitly covered by r being a field element of at most 264 bits (range check).
 
 
 ### Subtractions
@@ -129,14 +131,14 @@ For the second part of the gate, meaning the sum for the range check, the carry 
 
 ## Gadget
 
-The foreign field gadget will be composed by 4 sets of `RangeCheck` gadgets for witnesses $a, b, r, s$ accounting for 16 rows in total; followed by one row with `ForeignFieldAdd` gate type; and a final `Zero` row. A total of 18 rows with 15 columns in Kimchi.
+The foreign field gadget will be composed by 4 sets of `RangeCheck` gadgets for witnesses $a, b, r, u$ accounting for 16 rows in total; followed by one row with `ForeignFieldAdd` gate type; and a final `Zero` row. A total of 18 rows with 15 columns in Kimchi.
 
 | Row(s) | Gate type(s)        | Witness |
 | ------ | ------------------- | ------- |
 | 0-3    | `multi-range-check` | $a$     |
 | 4-7    | `multi-range-check` | $b$     |
 | 8-11   | `multi-range-check` | $r$     |
-| 12-15  | `multi-range-check` | $s$     |
+| 12-15  | `multi-range-check` | $u$     |
 | 16     | `ForeignFieldAdd`   |         |
 | 17     | `Zero`              |         |
 
@@ -170,9 +172,9 @@ So far, we have pointed out the following sets of constraints:
 
 #### Main addition
 
-- $2^{88} \cdot c_0 = a_0 + b_0 - q \cdot f_0$
-- $2^{88} \cdot c_1 = a_1 + b_1 - q \cdot f_1 + c_0$
-- $2^{88} \cdot c_2 = a_2 + b_2 - q \cdot f_2 + c_1$
+- $2^{88} \cdot c_0 = a_0 + b_0 - r_0 - q \cdot f_0$
+- $2^{88} \cdot c_1 = a_1 + b_1 - r_1 - q \cdot f_1 + c_0$
+- $2^{88} \cdot c_2 = a_2 + b_2 - r_2 - q \cdot f_2 + c_1$
 
 #### Field check
 
@@ -184,7 +186,7 @@ So far, we have pointed out the following sets of constraints:
 
 - $0 = c_0 \cdot (c_0 + 1) \cdot (c_0 - 1)$
 - $0 = c_1 \cdot (c_0 + 1) \cdot (c_1 - 1)$
-- $0 = c_2 \cdot (c_0 + 1) \cdot (c_2 - 1)$
+
 - $0 = k_0 \cdot (k_0 - 1)$
 - $0 = k_1 \cdot (k_1 - 1)$
 
