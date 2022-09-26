@@ -17,24 +17,28 @@ macro_rules! impl_field {
             //
 
             impl From<$ArkF> for $CamlF {
+                #[inline]
                 fn from(ark_fp: $ArkF) -> Self {
                     Self(ark_fp)
                 }
             }
 
             impl From<&$ArkF> for $CamlF {
+                #[inline]
                 fn from(ark_fp: &$ArkF) -> Self {
                     Self(*ark_fp)
                 }
             }
 
             impl From<$CamlF> for $ArkF {
+                #[inline]
                 fn from(fp: $CamlF) -> Self {
                     fp.0
                 }
             }
 
             impl From<&$CamlF> for $ArkF {
+                #[inline]
                 fn from(fp: &$CamlF) -> Self {
                     fp.0
                 }
@@ -45,27 +49,32 @@ macro_rules! impl_field {
             //
 
             impl Default for $CamlF {
+                #[inline]
                 fn default() -> Self {
                     ark_ff::Fp256::default().into()
                 }
             }
             impl Hash for $CamlF {
+                #[inline]
                 fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
                     self.0.hash(state);
                 }
             }
             impl Clone for $CamlF {
+                #[inline]
                 fn clone(&self) -> Self {
                     self.0.clone().into()
                 }
             }
             impl Copy for $CamlF {}
             impl Debug for $CamlF {
+                #[inline]
                 fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
                     f.debug_tuple("Fp256").field(&self.0).finish()
                 }
             }
             impl PartialEq for $CamlF {
+                #[inline]
                 fn eq(&self, other: &Self) -> bool {
                     self.0.eq(&other.0)
                 }
@@ -77,6 +86,7 @@ macro_rules! impl_field {
             //
 
             impl $CamlF {
+                #[inline]
                 pub fn new(x: ark_ff::BigInteger256) -> Self {
                     ark_ff::Fp256::new(x).into()
                 }
@@ -109,10 +119,12 @@ macro_rules! impl_field {
             impl ark_ff::Field for $CamlF {
                 type BasePrimeField = Self;
 
+                #[inline]
                 fn extension_degree() -> u64 {
                     $ArkF::extension_degree()
                 }
 
+                #[inline]
                 fn from_base_prime_field_elems(elems: &[Self::BasePrimeField]) -> Option<Self> {
                     // TODO: this looks suboptimal
                     let elems: Vec<<$ArkF as ark_ff::Field>::BasePrimeField> =
@@ -160,6 +172,7 @@ macro_rules! impl_field {
                     self.0.inverse().map(Into::into)
                 }
 
+                #[inline]
                 fn inverse_in_place(&mut self) -> Option<&mut Self> {
                     if self.0.inverse_in_place().is_some() {
                         Some(self)
@@ -184,6 +197,7 @@ macro_rules! impl_field {
                     ark_ff::Fp256::from_repr(r).map(Into::into)
                 }
 
+                #[inline]
                 fn into_repr(&self) -> Self::BigInt {
                     self.0.into_repr()
                 }
@@ -219,6 +233,7 @@ macro_rules! impl_field {
                     self.0.sqrt().map(Into::into)
                 }
 
+                #[inline]
                 fn sqrt_in_place(&mut self) -> Option<&mut Self> {
                     if self.0.sqrt_in_place().is_some() {
                         Some(self)
@@ -243,66 +258,77 @@ macro_rules! impl_field {
             }
 
             impl From<u128> for $CamlF {
+                #[inline]
                 fn from(other: u128) -> Self {
                     ark_ff::Fp256::from(other).into()
                 }
             }
 
             impl From<i128> for $CamlF {
+                #[inline]
                 fn from(other: i128) -> Self {
                     ark_ff::Fp256::from(other).into()
                 }
             }
 
             impl From<bool> for $CamlF {
+                #[inline]
                 fn from(other: bool) -> Self {
                     ark_ff::Fp256::from(other).into()
                 }
             }
 
             impl From<u64> for $CamlF {
+                #[inline]
                 fn from(other: u64) -> Self {
                     ark_ff::Fp256::from(other).into()
                 }
             }
 
             impl From<i64> for $CamlF {
+                #[inline]
                 fn from(other: i64) -> Self {
                     ark_ff::Fp256::from(other).into()
                 }
             }
 
             impl From<u32> for $CamlF {
+                #[inline]
                 fn from(other: u32) -> Self {
                     ark_ff::Fp256::from(other).into()
                 }
             }
 
             impl From<i32> for $CamlF {
+                #[inline]
                 fn from(other: i32) -> Self {
                     ark_ff::Fp256::from(other).into()
                 }
             }
 
             impl From<u16> for $CamlF {
+                #[inline]
                 fn from(other: u16) -> Self {
                     ark_ff::Fp256::from(other).into()
                 }
             }
 
             impl From<i16> for $CamlF {
+                #[inline]
                 fn from(other: i16) -> Self {
                     ark_ff::Fp256::from(other).into()
                 }
             }
 
             impl From<u8> for $CamlF {
+                #[inline]
                 fn from(other: u8) -> Self {
                     ark_ff::Fp256::from(other).into()
                 }
             }
 
             impl From<i8> for $CamlF {
+                #[inline]
                 fn from(other: i8) -> Self {
                     ark_ff::Fp256::from(other).into()
                 }
@@ -325,6 +351,7 @@ macro_rules! impl_field {
             impl FromStr for $CamlF {
                 type Err = ();
 
+                #[inline]
                 fn from_str(s: &str) -> Result<Self, Self::Err> {
                     ark_ff::Fp256::from_str(s).map(Into::into)
                 }
@@ -339,6 +366,7 @@ macro_rules! impl_field {
 
             impl Neg for $CamlF {
                 type Output = Self;
+
                 #[inline]
                 #[must_use]
                 fn neg(self) -> Self {
@@ -454,6 +482,7 @@ macro_rules! impl_field {
 
             #[allow(unused_qualifications)]
             impl core::iter::Sum<Self> for $CamlF {
+                #[inline]
                 fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
                     $ArkF::sum(iter.map(|x| x.0)).into()
                 }
@@ -461,6 +490,7 @@ macro_rules! impl_field {
 
             #[allow(unused_qualifications)]
             impl<'a> core::iter::Sum<&'a Self> for $CamlF {
+                #[inline]
                 fn sum<I: Iterator<Item = &'a Self>>(iter: I) -> Self {
                     $ArkF::sum(iter.map(|x| x.0)).into()
                 }
@@ -468,6 +498,7 @@ macro_rules! impl_field {
 
             #[allow(unused_qualifications)]
             impl core::ops::AddAssign<Self> for $CamlF {
+                #[inline]
                 fn add_assign(&mut self, other: Self) {
                     self.0.add_assign(&other.0)
                 }
@@ -475,6 +506,7 @@ macro_rules! impl_field {
 
             #[allow(unused_qualifications)]
             impl core::ops::SubAssign<Self> for $CamlF {
+                #[inline]
                 fn sub_assign(&mut self, other: Self) {
                     self.0.sub_assign(&other.0)
                 }
@@ -482,6 +514,7 @@ macro_rules! impl_field {
 
             #[allow(unused_qualifications)]
             impl<'a> core::ops::AddAssign<&'a mut Self> for $CamlF {
+                #[inline]
                 fn add_assign(&mut self, other: &'a mut Self) {
                     self.0.add_assign(&other.0)
                 }
@@ -489,6 +522,7 @@ macro_rules! impl_field {
 
             #[allow(unused_qualifications)]
             impl<'a> core::ops::SubAssign<&'a mut Self> for $CamlF {
+                #[inline]
                 fn sub_assign(&mut self, other: &'a mut Self) {
                     self.0.sub_assign(&other.0)
                 }
@@ -536,6 +570,7 @@ macro_rules! impl_field {
 
             #[allow(unused_qualifications)]
             impl core::iter::Product<Self> for $CamlF {
+                #[inline]
                 fn product<I: Iterator<Item = Self>>(iter: I) -> Self {
                     ark_ff::Fp256::product(iter.map(|x| x.0)).into()
                 }
@@ -543,6 +578,7 @@ macro_rules! impl_field {
 
             #[allow(unused_qualifications)]
             impl<'a> core::iter::Product<&'a Self> for $CamlF {
+                #[inline]
                 fn product<I: Iterator<Item = &'a Self>>(iter: I) -> Self {
                     ark_ff::Fp256::product(iter.map(|x| x.0)).into()
                 }
@@ -550,6 +586,7 @@ macro_rules! impl_field {
 
             #[allow(unused_qualifications)]
             impl core::ops::MulAssign<Self> for $CamlF {
+                #[inline]
                 fn mul_assign(&mut self, other: Self) {
                     self.0.mul_assign(&other.0)
                 }
@@ -557,6 +594,7 @@ macro_rules! impl_field {
 
             #[allow(unused_qualifications)]
             impl<'a> core::ops::DivAssign<&'a mut Self> for $CamlF {
+                #[inline]
                 fn div_assign(&mut self, other: &'a mut Self) {
                     self.0.div_assign(&other.0)
                 }
@@ -564,6 +602,7 @@ macro_rules! impl_field {
 
             #[allow(unused_qualifications)]
             impl<'a> core::ops::MulAssign<&'a mut Self> for $CamlF {
+                #[inline]
                 fn mul_assign(&mut self, other: &'a mut Self) {
                     self.0.mul_assign(&other.0)
                 }
@@ -571,6 +610,7 @@ macro_rules! impl_field {
 
             #[allow(unused_qualifications)]
             impl core::ops::DivAssign<Self> for $CamlF {
+                #[inline]
                 fn div_assign(&mut self, other: Self) {
                     self.0.div_assign(&other.0)
                 }
@@ -579,12 +619,14 @@ macro_rules! impl_field {
             impl zeroize::Zeroize for $CamlF {
                 // The phantom data does not contain element-specific data
                 // and thus does not need to be zeroized.
+                #[inline]
                 fn zeroize(&mut self) {
                     self.0.zeroize();
                 }
             }
 
             impl Into<ark_ff::BigInteger256> for $CamlF {
+                #[inline]
                 fn into(self) -> ark_ff::BigInteger256 {
                     self.0.into()
                 }
@@ -595,6 +637,7 @@ macro_rules! impl_field {
                 ///
                 /// # Panics
                 /// This method panics if `int` is larger than `P::MODULUS`.
+                #[inline]
                 fn from(int: ark_ff::BigInteger256) -> Self {
                     ark_ff::Fp256::from(int).into()
                 }
@@ -615,6 +658,7 @@ macro_rules! impl_field {
             }
 
             impl ark_serialize::CanonicalSerializeWithFlags for $CamlF {
+                #[inline]
                 fn serialize_with_flags<W: std::io::Write, F: ark_serialize::Flags>(
                     &self,
                     writer: W,
@@ -623,6 +667,7 @@ macro_rules! impl_field {
                     self.0.serialize_with_flags(writer, flags)
                 }
 
+                #[inline]
                 fn serialized_size_with_flags<F: ark_serialize::Flags>(&self) -> usize {
                     self.0.serialized_size_with_flags::<F>()
                 }
@@ -644,6 +689,7 @@ macro_rules! impl_field {
             }
 
             impl ark_serialize::CanonicalDeserializeWithFlags for $CamlF {
+                #[inline]
                 fn deserialize_with_flags<R: std::io::Read, F: ark_serialize::Flags>(
                     reader: R,
                 ) -> Result<(Self, F), ark_serialize::SerializationError> {
@@ -652,6 +698,7 @@ macro_rules! impl_field {
             }
 
             impl ark_serialize::CanonicalDeserialize for $CamlF {
+                #[inline]
                 fn deserialize<R: std::io::Read>(reader: R) -> Result<Self, ark_serialize::SerializationError> {
                     ark_ff::Fp256::deserialize(reader).map(Into::into)
                 }
