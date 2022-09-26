@@ -11,8 +11,11 @@ ark-poly = { version = "0.3.0", features = [ "parallel" ] }
 ark-serialize = "0.3.0"
 ark-std = "0.3.0"
 num-bigint = { version = "0.4.0" }
+o1-utils = { path = "../utils" }
 paste = "1.0.9"
 rand = "0.8.5"
+serde = { version = "1.0", features = ["derive"] }
+serde_with = "1.10.0"
 zeroize = "1.5.5"
 
 # for ocaml

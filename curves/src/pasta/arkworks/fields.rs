@@ -28,7 +28,12 @@ macro_rules! impl_fp256 {
             //
 
             #[cfg_attr(feature = "ocaml_types", derive(ocaml_gen::CustomType))]
-            pub struct $CamlF($ArkF);
+            #[serde_with::serde_as]
+            #[derive(serde::Serialize, serde::Deserialize)]
+            pub struct $CamlF(
+                #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+                $ArkF
+            );
 
             //
             // Field implementation
