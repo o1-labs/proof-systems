@@ -846,8 +846,13 @@ dependencies = [
  "ark-algebra-test-templates",
  "ark-ec",
  "ark-ff",
+ "ark-serialize",
  "ark-std",
+ "num-bigint",
+ "ocaml",
+ "ocaml-gen",
  "rand",
+ "zeroize",
 ]
 
 [[package]]
