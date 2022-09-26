@@ -7,10 +7,7 @@ use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use colored::Colorize;
 use groupmap::GroupMap;
-use mina_curves::pasta::{
-    vesta::{Vesta, VestaParameters},
-    Fp,
-};
+use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use o1_utils::ExtendedDensePolynomial as _;
 use oracle::constants::PlonkSpongeConstantsKimchi as SC;
 use oracle::sponge::DefaultFqSponge;

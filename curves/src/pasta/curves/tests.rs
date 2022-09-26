@@ -1,8 +1,9 @@
-use crate::pasta::*;
 use ark_algebra_test_templates::{curves::*, groups::*};
 use ark_ec::AffineCurve;
 use ark_std::test_rng;
 use rand::Rng;
+
+use super::pallas;
 
 #[test]
 fn test_pallas_projective_curve() {

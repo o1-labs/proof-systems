@@ -1,7 +1,7 @@
 use ark_ec::AffineCurve;
 use ark_ff::{Field, PrimeField};
 use commitment_dlog::{commitment::CommitmentCurve, srs::endos};
-use mina_curves::pasta::{pallas::Pallas as PallasAffine, vesta::Vesta as VestaAffine, Fp, Fq};
+use mina_curves::pasta::{Fp, Fq, Pallas as PallasAffine, Vesta as VestaAffine};
 use oracle::poseidon::ArithmeticSpongeParams;
 
 #[derive(Clone)]

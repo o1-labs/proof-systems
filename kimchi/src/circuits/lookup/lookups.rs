@@ -438,7 +438,7 @@ fn lookup_pattern_constants_correct() {
     use strum::IntoEnumIterator;
 
     for pat in LookupPattern::iter() {
-        let lookups = pat.lookups::<mina_curves::pasta::fp::Fp>();
+        let lookups = pat.lookups::<mina_curves::pasta::Fp>();
         let max_joint_size = lookups
             .iter()
             .map(|lookup| lookup.entry.len())
