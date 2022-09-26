@@ -28,7 +28,7 @@ use std::{array, marker::PhantomData};
 //~     left_input_mi -> a1  right_input_mi -> b1  result_mi -> r1  bound_mi -> u1
 //~     left_input_hi -> a2  right_input_hi -> b2  result_hi -> r2  bound_hi -> u2
 //~
-//~     field_overflow  -> q
+//~     field_overflow  -> x
 //~     sign            -> s
 //~     carry_lo        -> c0
 //~     carry_mi        -> c1
@@ -191,6 +191,8 @@ where
     const CONSTRAINTS: u32 = 5;
 
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+        ForeignFieldAdd::constraint_checks(env)
+        /*
         // Similar to performing a foreign field addition gate with these inputs
         // left_input_lo -> min_result_lo  right_input_lo -> 0     result_lo -> bound_lo  carry_lo -> bound_carry_lo
         // left_input_mi -> min_result_mi  right_input_mi -> 0     result_mi -> bound_mi  carry_mi -> bound_carry_mi
@@ -198,6 +200,7 @@ where
         // field_overflow -> 1         sign -> 1
 
         // check addition for bound was performed correctly
+
 
         let min_result_lo = env.witness_curr(0);
         let min_result_mi = env.witness_curr(1);
@@ -227,6 +230,7 @@ where
         checks.push(bound_mi - bound_computed_mi);
         checks.push(bound_hi - bound_computed_hi);
         checks
+        */
     }
 }
 
