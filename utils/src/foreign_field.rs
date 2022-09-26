@@ -153,12 +153,11 @@ mod tests {
     use crate::field_helpers::FieldFromBig;
     use ark_ec::AffineCurve;
     use ark_ff::One;
-    use mina_curves::pasta::pallas;
+    use mina_curves::pasta::Pallas as CurvePoint;
 
-    /// Affine curve point type
-    pub use pallas::Pallas as CurvePoint;
     /// Base field element type
     pub type BaseField = <CurvePoint as AffineCurve>::BaseField;
+
     #[test]
     fn test_big_be() {
         let bytes = FOREIGN_MOD;

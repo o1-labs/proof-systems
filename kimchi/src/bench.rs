@@ -13,8 +13,7 @@ use crate::{
 };
 use commitment_dlog::commitment::CommitmentCurve;
 use groupmap::{BWParameters, GroupMap};
-use mina_curves::pasta::vesta::VestaParameters;
-use mina_curves::pasta::{fp::Fp, vesta::Vesta};
+use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use oracle::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
