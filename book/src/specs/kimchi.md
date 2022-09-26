@@ -1257,6 +1257,11 @@ The upper-bound check can be calculated as
 - `bound_mi = result_mi - foreign_modulus_mi - bound_carry_mi * 2^{88} + bound_carry_lo`
 - `bound_hi = result_hi - foreign_modulus_hi + 2^{88} + bound_carry_mi`
 
+Which is equivalent to another foreign field addition with right input 2^{264}, x = 1 and s = 1
+- `bound_lo = result_lo + s *      0 - x * foreign_modulus_lo - bound_carry_lo * 2^{88}`
+- `bound_mi = result_mi + s *      0 - x * foreign_modulus_mi - bound_carry_mi * 2^{88} + bound_carry_lo`
+- `bound_hi = result_hi + s * 2^{88} - x * foreign_modulus_hi                           + bound_carry_mi`
+
 `bound_carry_i` $= 0$ or $1$ or $-1$ are auxiliary variables that handle carries between limbs
 
 The range check of `bound` can be skipped until the end of the operations
@@ -1273,19 +1278,19 @@ You could lay this out as a double-width gate for chained foreign additions and 
 |   3 | `right_input_lo` (copy) |  ...                   |  0              (check) |                   |
 |   4 | `right_input_mi` (copy) |  ...                   |  0              (check) |                   |
 |   5 | `right_input_hi` (copy) |  ...                   |  2^88           (check) |                   |
-|   6 | `field_overflow`        |  ...                   |  1                      |                   |
+|   6 | `field_overflow`        |  ...                   |  1              (check) |                   |
 |   7 | `carry_lo`              |  ...                   | `bound_carry_lo`        |                   |
 |   8 | `carry_mi`              |  ...                   | `bound_carry_mi`        |                   |
-|   9 | `sign`                  |  ...                   |  1                      |                   |
+|   9 | `sign`                  |  ...                   |  1              (check) |                   |
 |  10 |                         |                        |                         |                   |
 |  11 |                         |                        |                         |                   |
 |  12 |                         |                        |                         |                   |
 |  13 |                         |                        |                         |                   |
 |  14 |                         |                        |                         |                   |
 
-Having a specific final row that checks the bound is useful as it checks the upper bound
-without reusing the same constraints in the `ForeignFieldAdd` rows (which would require
-some extra constraints to be added to the circuit).
+We reuse the foreign field addition gate for the final bound check since this is an addition with a
+specific parameter structure. Checking that the correct right input, overflow, and sign are used shall
+be done by copy constraining these values with a public input value.
 
 
 ## Setup
