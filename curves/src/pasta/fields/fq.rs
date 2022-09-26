@@ -4,7 +4,8 @@ use ark_ff::{
 
 pub struct FqParameters;
 
-pub type Fq = Fp256<FqParameters>;
+/// We only expose this to the crate as we eventually expose a wrapper type to other users.
+pub(crate) type Fq = Fp256<FqParameters>;
 
 impl Fp256Parameters for FqParameters {}
 impl FftParameters for FqParameters {

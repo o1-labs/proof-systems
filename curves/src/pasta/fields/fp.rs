@@ -1,6 +1,7 @@
 use ark_ff::{biginteger::BigInteger256 as BigInteger, FftParameters, Fp256, Fp256Parameters};
 
-pub type Fp = Fp256<FpParameters>;
+/// We only expose this to the crate as we eventually expose a wrapper type to other users.
+pub(crate) type Fp = Fp256<FpParameters>;
 
 pub struct FpParameters;
 
