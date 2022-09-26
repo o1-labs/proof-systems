@@ -1200,7 +1200,9 @@ where the notation `v2ci` and `v2pi` defined in the "Layout" section above.
 
 These circuit gates are used to constrain that
 
-    $$left_input +/- right_input = field_overflow * foreign_modulus + result$$
+```text
+left_input +/- right_input = field_overflow * foreign_modulus + result
+```
 
  Documentation:
 
@@ -1219,8 +1221,8 @@ These circuit gates are used to constrain that
     sign            -> s
     carry_lo        -> c0
     carry_mi        -> c1
-    bound_carry_lo -> k0
-    bound_carry_mi -> k1
+    bound_carry_lo  -> k0
+    bound_carry_mi  -> k1
 ```
 
 Let `left_input_lo`, `left_input_mi`, `left_input_hi` be 88-bit limbs of the left element

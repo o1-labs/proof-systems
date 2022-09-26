@@ -11,7 +11,9 @@ use std::{array, marker::PhantomData};
 
 //~ These circuit gates are used to constrain that
 //~
-//~     $$left_input +/- right_input = field_overflow * foreign_modulus + result$$
+//~ ```text
+//~ left_input +/- right_input = field_overflow * foreign_modulus + result
+//~```
 //~
 //~  Documentation:
 //~
@@ -30,8 +32,8 @@ use std::{array, marker::PhantomData};
 //~     sign            -> s
 //~     carry_lo        -> c0
 //~     carry_mi        -> c1
-//~     bound_carry_lo -> k0
-//~     bound_carry_mi -> k1
+//~     bound_carry_lo  -> k0
+//~     bound_carry_mi  -> k1
 //~```
 //~
 //~ Let `left_input_lo`, `left_input_mi`, `left_input_hi` be 88-bit limbs of the left element
@@ -48,12 +50,12 @@ use std::{array, marker::PhantomData};
 //~
 //~ `field_overflow` $=0$ or $1$ or $-1$ handles overflows in the field
 //~
-//~ `carry_i` $= -1, 0, 1$ are auxiliary variables that handle carries between limbs
+//~ `result_carry_i` $= -1, 0, 1$ are auxiliary variables that handle carries between limbs
 //~
-//~ Appart from the rangechecks of the chained inputs, we need to do an additional range check for a final bound
+//~ Apart from the range checks of the chained inputs, we need to do an additional range check for a final bound
 //~ to make sure that the result is less than the modulus, by adding `2^{3*88} - foreign_modulus` to it.
 //~ (This can be computed easily from the limbs of the modulus)
-//~ Note that `2^{264}` as limbs reprsents: (0, 0, 0, 1) then:
+//~ Note that `2^{264}` as limbs represents: (0, 0, 0, 1) then:
 //~
 //~ The upper-bound check can be calculated as
 //~ - `bound_lo = result_lo - foreign_modulus_lo - bound_carry_lo * 2^{88}`
@@ -64,7 +66,7 @@ use std::{array, marker::PhantomData};
 //~
 //~ The range check of `bound` can be skipped until the end of the operations
 //~ and `result` is an intermediate value that is unused elsewhere (since the final `result`
-//~ must have had the right number of moduluses subtracted along the way).
+//~ must have had the right number of moduli subtracted along the way).
 //~
 //~ You could lay this out as a double-width gate for chained foreign additions and a final row, e.g.
 //~
