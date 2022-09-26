@@ -17,7 +17,7 @@ pub trait FrSponge<Fr: Field> {
     /// Absorbs a slice of field elements into the sponge.
     fn absorb_multiple(&mut self, x: &[Fr]);
 
-    /// Creates a [ScalarChallenge] by squeezing the sponge.
+    /// Creates a [`ScalarChallenge`] by squeezing the sponge.
     fn challenge(&mut self) -> ScalarChallenge<Fr>;
 
     /// Consumes the sponge and returns the current digest, by squeezing.

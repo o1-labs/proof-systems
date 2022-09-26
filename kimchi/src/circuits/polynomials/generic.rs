@@ -64,7 +64,7 @@ pub const DOUBLE_GENERIC_COEFFS: usize = GENERIC_COEFFS * 2;
 pub const DOUBLE_GENERIC_REGISTERS: usize = GENERIC_REGISTERS * 2;
 
 /// The different type of computation that are possible with a generic gate.
-/// This type is useful to create a generic gate via the [CircuitGate::create_generic_gadget] function.
+/// This type is useful to create a generic gate via the [`CircuitGate::create_generic_gadget`] function.
 pub enum GenericGateSpec<F> {
     /// Add two values.
     Add {
@@ -89,7 +89,7 @@ pub enum GenericGateSpec<F> {
 }
 
 impl<F: PrimeField> CircuitGate<F> {
-    /// This allows you to create two generic gates that will fit in one row, check [Self::create_generic_gadget] for a better to way to create these gates.
+    /// This allows you to create two generic gates that will fit in one row, check [`Self::create_generic_gadget`] for a better to way to create these gates.
     pub fn create_generic(wires: GateWires, c: [F; GENERIC_COEFFS * 2]) -> Self {
         CircuitGate {
             typ: GateType::Generic,
@@ -99,7 +99,7 @@ impl<F: PrimeField> CircuitGate<F> {
     }
 
     /// This allows you to create two generic gates by passing the desired
-    /// `gate1` and `gate2` as two [GenericGateSpec].
+    /// `gate1` and `gate2` as two [`GenericGateSpec`].
     pub fn create_generic_gadget(
         wires: GateWires,
         gate1: GenericGateSpec<F>,
@@ -194,7 +194,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
                 res.evals
                     .par_iter_mut()
                     .enumerate()
-                    .for_each(|(i, eval)| *eval += witness_d4.evals[i] * selector_d8[2 * i])
+                    .for_each(|(i, eval)| *eval += witness_d4.evals[i] * selector_d8[2 * i]);
             }
 
             // multiplication
@@ -320,6 +320,10 @@ pub mod testing {
 
     impl<F: PrimeField> CircuitGate<F> {
         /// verifies that the generic gate constraints are solved by the witness
+        ///
+        /// # Errors
+        ///
+        /// Will give error if `self.typ` is not `GateType::Generic`.
         pub fn verify_generic(
             &self,
             row: usize,
@@ -339,7 +343,7 @@ pub mod testing {
                 let get = |offset| {
                     self.coeffs
                         .get(offset)
-                        .cloned()
+                        .copied()
                         .unwrap_or_else(|| F::zero())
                 };
                 let l_coeff = get(coeffs_offset);
@@ -353,7 +357,7 @@ pub mod testing {
                     + o_coeff * this[register_offset + 2];
                 let mul = m_coeff * this[register_offset] * this[register_offset + 1];
                 let public = if coeffs_offset == 0 {
-                    public.get(row).cloned().unwrap_or_else(F::zero)
+                    public.get(row).copied().unwrap_or_else(F::zero)
                 } else {
                     F::zero()
                 };
@@ -413,7 +417,11 @@ pub mod testing {
         }
     }
 
-    /// function to create a generic circuit
+    /// Create a generic circuit
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `gates_row` is None.
     pub fn create_circuit<F: PrimeField>(start_row: usize, public: usize) -> Vec<CircuitGate<F>> {
         // create constraint system with a single generic gate
         let mut gates = vec![];
@@ -465,7 +473,11 @@ pub mod testing {
         gates
     }
 
-    // function to fill in a witness created via [create_circuit]
+    /// Fill in a witness created via [`create_circuit`]
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `witness_row` is None.
     pub fn fill_in_witness<F: FftField>(
         start_row: usize,
         witness: &mut [Vec<F>; COLUMNS],

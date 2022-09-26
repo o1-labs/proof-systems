@@ -1,5 +1,5 @@
-//! This module implements the verifier index as [VerifierIndex].
-//! You can derive this struct from the [ProverIndex] struct.
+//! This module implements the verifier index as [`VerifierIndex`].
+//! You can derive this struct from the [`ProverIndex`] struct.
 
 use crate::{
     alphas::Alphas,
@@ -10,7 +10,7 @@ use crate::{
             permutation::{zk_polynomial, zk_w3},
             range_check,
         },
-        wires::*,
+        wires::{COLUMNS, PERMUTS},
     },
     curve::KimchiCurve,
     error::VerifierIndexError,
@@ -139,7 +139,11 @@ pub struct VerifierIndex<G: KimchiCurve> {
 //~spec:endcode
 
 impl<G: KimchiCurve> ProverIndex<G> {
-    /// Produces the [VerifierIndex] from the prover's [ProverIndex].
+    /// Produces the [`VerifierIndex`] from the prover's [`ProverIndex`].
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `srs` cannot be in `cell`.
     pub fn verifier_index(&self) -> VerifierIndex<G> {
         if let Some(verifier_index) = &self.verifier_index {
             return verifier_index.clone();
@@ -244,7 +248,7 @@ impl<G: KimchiCurve> ProverIndex<G> {
 }
 
 impl<G: KimchiCurve> VerifierIndex<G> {
-    /// Gets srs from [VerifierIndex] lazily
+    /// Gets srs from [`VerifierIndex`] lazily
     pub fn srs(&self) -> &Arc<SRS<G>>
     where
         G::BaseField: PrimeField,
@@ -256,17 +260,21 @@ impl<G: KimchiCurve> VerifierIndex<G> {
         })
     }
 
-    /// Gets zkpm from [VerifierIndex] lazily
+    /// Gets zkpm from [`VerifierIndex`] lazily
     pub fn zkpm(&self) -> &DensePolynomial<G::ScalarField> {
         self.zkpm.get_or_init(|| zk_polynomial(self.domain))
     }
 
-    /// Gets w from [VerifierIndex] lazily
+    /// Gets w from [`VerifierIndex`] lazily
     pub fn w(&self) -> &G::ScalarField {
         self.w.get_or_init(|| zk_w3(self.domain))
     }
 
-    /// Deserializes a [VerifierIndex] from a file, given a pointer to an SRS and an optional offset in the file.
+    /// Deserializes a [`VerifierIndex`] from a file, given a pointer to an SRS and an optional offset in the file.
+    ///
+    /// # Errors
+    ///
+    /// Will give error if it fails to deserialize from file or unable to set `srs` in `verifier_index`.
     pub fn from_file(
         srs: Option<Arc<SRS<G>>>,
         path: &Path,
@@ -288,10 +296,10 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             .map_err(|e| e.to_string())?;
 
         // fill in the rest
-        if srs.is_some() {
+        if let Some(srs) = srs {
             verifier_index
                 .srs
-                .set(srs.unwrap())
+                .set(srs)
                 .map_err(|_| VerifierIndexError::SRSHasBeenSet.to_string())?;
         };
 
@@ -300,8 +308,15 @@ impl<G: KimchiCurve> VerifierIndex<G> {
         Ok(verifier_index)
     }
 
-    /// Writes a [VerifierIndex] to a file, potentially appending it to the already-existing content (if append is set to true)
+    /// Writes a [`VerifierIndex`] to a file, potentially appending it to the already-existing content (if append is set to true)
     // TODO: append should be a bool, not an option
+    /// # Errors
+    ///
+    /// Will give error if it fails to open a file or writes to the file.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `path` is invalid or `file serialization` has issue.
     pub fn to_file(&self, path: &Path, append: Option<bool>) -> Result<(), String> {
         let append = append.unwrap_or(true);
         let file = OpenOptions::new()
@@ -315,7 +330,7 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             .map_err(|e| e.to_string())
     }
 
-    /// Compute the digest of the [VerifierIndex], which can be used for the Fiat-Shamir
+    /// Compute the digest of the [`VerifierIndex`], which can be used for the Fiat-Shamir
     /// transformation while proving / verifying.
     pub fn digest<EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>>(
         &self,
@@ -359,10 +374,10 @@ impl<G: KimchiCurve> VerifierIndex<G> {
         // Always present
 
         for comm in sigma_comm.iter() {
-            fq_sponge.absorb_g(&comm.unshifted)
+            fq_sponge.absorb_g(&comm.unshifted);
         }
         for comm in coefficients_comm.iter() {
-            fq_sponge.absorb_g(&comm.unshifted)
+            fq_sponge.absorb_g(&comm.unshifted);
         }
         fq_sponge.absorb_g(&generic_comm.unshifted);
         fq_sponge.absorb_g(&psm_comm.unshifted);

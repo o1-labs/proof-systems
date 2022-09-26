@@ -142,6 +142,11 @@ where
 //~ spec:endcode
 
 impl<F> ProofEvaluations<F> {
+    /// Transpose the `ProofEvaluations`.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `ProofEvaluation` is None.
     pub fn transpose<const N: usize>(
         evals: [&ProofEvaluations<F>; N],
     ) -> ProofEvaluations<[&F; N]> {
