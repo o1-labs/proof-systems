@@ -233,7 +233,7 @@ impl From<BigInteger256> for BigUint {
 }
 
 #[cfg(feature = "ocaml_types")]
-mod caml {
+pub mod caml {
     use super::*;
 
     use crate::arkworks::caml_bytes_string::CamlBytesString;
