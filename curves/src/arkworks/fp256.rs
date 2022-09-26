@@ -626,10 +626,10 @@ macro_rules! impl_field {
                 }
             }
 
-            impl Into<ark_ff::BigInteger256> for $Wrapper {
+            impl From<$Wrapper> for ark_ff::BigInteger256 {
                 #[inline]
-                fn into(self) -> ark_ff::BigInteger256 {
-                    self.0.into()
+                fn from(other: $Wrapper) -> Self {
+                    other.0.into()
                 }
             }
 
@@ -651,10 +651,10 @@ macro_rules! impl_field {
                 }
             }
 
-            impl Into<num_bigint::BigUint> for $Wrapper {
+            impl From<$Wrapper> for num_bigint::BigUint {
                 #[inline]
-                fn into(self) -> num_bigint::BigUint {
-                    self.0.into()
+                fn from(val: $Wrapper) -> Self {
+                    val.0.into()
                 }
             }
 

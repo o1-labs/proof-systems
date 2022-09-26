@@ -31,10 +31,10 @@ impl From<ark_ff::BigInteger256> for BigInteger256 {
     }
 }
 
-impl Into<ark_ff::BigInteger256> for BigInteger256 {
+impl From<BigInteger256> for ark_ff::BigInteger256 {
     #[inline]
-    fn into(self) -> ark_ff::BigInteger256 {
-        self.0
+    fn from(other: BigInteger256) -> Self {
+        other.0
     }
 }
 
@@ -225,10 +225,10 @@ impl TryFrom<BigUint> for BigInteger256 {
     }
 }
 
-impl Into<BigUint> for BigInteger256 {
+impl From<BigInteger256> for BigUint {
     #[inline]
-    fn into(self) -> BigUint {
-        BigUint::from_bytes_le(&self.to_bytes_le())
+    fn from(val: BigInteger256) -> BigUint {
+        BigUint::from_bytes_le(&val.to_bytes_le())
     }
 }
 
