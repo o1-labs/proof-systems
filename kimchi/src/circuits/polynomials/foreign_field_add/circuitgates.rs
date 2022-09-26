@@ -198,16 +198,16 @@ fn result<F: FftField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
     let result_mi = env.witness_next(1);
     let result_hi = env.witness_next(2);
 
-    // r_0 = a_0 + s * b_0 - q * m_0 - 2^88 * c_0
+    // r_0 = a_0 + s * b_0 - q * f_0 - 2^88 * c_0
     let result_calculated_lo = left_input_lo + sign.clone() * right_input_lo
         - field_overflow.clone() * foreign_modulus[0].clone()
         - carry_lo.clone() * two_to_limb.clone();
-    // r_1 = a_1 + s * b_1 - q * m_1 - 2^88 * c_1 + c_0
+    // r_1 = a_1 + s * b_1 - q * f_1 - 2^88 * c_1 + c_0
     let result_calculated_mi = left_input_mi + sign.clone() * right_input_mi
         - field_overflow.clone() * foreign_modulus[1].clone()
         - carry_mi.clone() * two_to_limb
         + carry_lo;
-    // r_2 = a_2 + s * b_2 - q * m_2 + c_1
+    // r_2 = a_2 + s * b_2 - q * f_2 + c_1
     let result_calculated_hi = left_input_hi + sign * right_input_hi
         - field_overflow * foreign_modulus[2].clone()
         + carry_mi;
