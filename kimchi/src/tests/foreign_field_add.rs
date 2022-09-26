@@ -153,7 +153,7 @@ fn create_test_constraint_system_ffadd(
     }
 
     ConstraintSystem::create(gates)
-        .foreign_field_modulus(Some(modulus))
+        .foreign_field_modulus(&Some(modulus))
         .build()
         .unwrap()
 }
