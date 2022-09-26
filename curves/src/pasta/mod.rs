@@ -9,4 +9,4 @@ pub use curves::{
 };
 pub use fields::{FpParameters, FqParameters};
 
-pub use arkworks::fields::{fp::Fp, fq::Fq};
+pub use arkworks::{Fp, Fq};

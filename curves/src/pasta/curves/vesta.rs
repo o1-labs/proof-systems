@@ -1,4 +1,4 @@
-use crate::pasta::{Fp, Fq};
+use crate::pasta::arkworks::{Fp, Fq}; // use wrapper types
 use ark_ec::{
     models::short_weierstrass_jacobian::{GroupAffine, GroupProjective},
     ModelParameters, SWModelParameters,

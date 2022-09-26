@@ -5,3 +5,5 @@
 
 #[macro_use]
 pub mod fields;
+
+pub use fields::{fp::Fp, fq::Fq};
