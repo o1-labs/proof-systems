@@ -27,10 +27,10 @@ use crate::{
     curve::KimchiCurve,
 };
 
-use super::circuitgates::{ForeignFieldAdd, ForeignFieldFin};
+use super::circuitgates::ForeignFieldAdd;
 
 /// Number of gates used by the foreign field addition gadget
-pub const GATE_COUNT: usize = 2;
+pub const GATE_COUNT: usize = 1;
 
 impl<F: PrimeField> CircuitGate<F> {
     /// Outputs next row
@@ -60,7 +60,8 @@ impl<F: PrimeField> CircuitGate<F> {
     ///      {
     ///        [8n+i+8] ->    -> 1 ForeignFieldAdd row
     ///      } * num times
-    ///      [9n+8]           -> 1 ForeignFieldFin row (this is where the final result goes)
+    ///      [9n+8]           -> 1 ForeignFieldAdd row (this is where the final result goes)
+    ///      [9n+9]           -> 1 Zero row for bound result
     /// ]
     ///
     pub fn create_foreign_field_add(start_row: usize, num: usize) -> (usize, Vec<Self>) {
@@ -89,11 +90,18 @@ impl<F: PrimeField> CircuitGate<F> {
             }]);
         }
         // Then the final bound gate and the zero gate
-        circuit_gates.append(&mut vec![CircuitGate {
-            typ: GateType::ForeignFieldFin,
-            wires: Wire::new(next_row + num),
-            coeffs: vec![],
-        }]);
+        circuit_gates.append(&mut vec![
+            CircuitGate {
+                typ: GateType::ForeignFieldAdd,
+                wires: Wire::new(next_row + num),
+                coeffs: vec![],
+            },
+            CircuitGate {
+                typ: GateType::Zero,
+                wires: Wire::new(next_row + num + 1),
+                coeffs: vec![],
+            },
+        ]);
 
         // Connect the num FFAdd gates with the range-check cells
         for i in 0..num {
@@ -126,13 +134,13 @@ impl<F: PrimeField> CircuitGate<F> {
 
         // Connect final bound gate to range-check cells
         let bound_row = 8 * num + 4;
-        let final_row = 9 * num + 8;
+        let final_row = 9 * num + 9;
         // Copy bound_lo -> Next(3)
-        circuit_gates.connect_cell_pair((bound_row, 0), (final_row, 3));
+        circuit_gates.connect_cell_pair((bound_row, 0), (final_row, 0));
         // Copy bound_mi -> Next(4)
-        circuit_gates.connect_cell_pair((bound_row + 1, 0), (final_row, 4));
+        circuit_gates.connect_cell_pair((bound_row + 1, 0), (final_row, 1));
         // Copy bound_hi -> Next(5)
-        circuit_gates.connect_cell_pair((bound_row + 2, 0), (final_row, 5));
+        circuit_gates.connect_cell_pair((bound_row + 2, 0), (final_row, 2));
 
         (start_row + circuit_gates.len(), circuit_gates)
     }
@@ -180,9 +188,7 @@ impl<F: PrimeField> CircuitGate<F> {
         let mut index_evals = HashMap::new();
         index_evals.insert(
             self.typ,
-            &cs.foreign_field_add_selector_polys.as_ref().unwrap()
-                [circuit_gate_selector_index(self.typ)]
-            .eval8,
+            &cs.foreign_field_add_selector_poly.as_ref().unwrap().eval8,
         );
 
         // Set up lookup environment
@@ -394,25 +400,15 @@ fn set_up_lookup_env_data<F: PrimeField>(
     })
 }
 
-/// Gets an array index of each of the polynomials in the gate selector
-fn circuit_gate_selector_index(typ: GateType) -> usize {
-    match typ {
-        GateType::ForeignFieldAdd => 0,
-        GateType::ForeignFieldFin => 1,
-        _ => panic!("invalid gate type"),
-    }
-}
-
 /// Get array of foreign field addition circuit gate types
 pub fn circuit_gates() -> [GateType; GATE_COUNT] {
-    [GateType::ForeignFieldAdd, GateType::ForeignFieldFin]
+    [GateType::ForeignFieldAdd]
 }
 
 /// Get combined constraints for a given foreign field multiplication circuit gate
 pub fn circuit_gate_constraints<F: FftField>(typ: GateType, alphas: &Alphas<F>) -> E<F> {
     match typ {
         GateType::ForeignFieldAdd => ForeignFieldAdd::combined_constraints(alphas),
-        GateType::ForeignFieldFin => ForeignFieldFin::combined_constraints(alphas),
         _ => panic!("invalid gate type"),
     }
 }
@@ -421,14 +417,13 @@ pub fn circuit_gate_constraints<F: FftField>(typ: GateType, alphas: &Alphas<F>) 
 pub fn circuit_gate_constraint_count<F: FftField>(typ: GateType) -> u32 {
     match typ {
         GateType::ForeignFieldAdd => ForeignFieldAdd::<F>::CONSTRAINTS,
-        GateType::ForeignFieldFin => ForeignFieldFin::<F>::CONSTRAINTS,
         _ => panic!("invalid gate type"),
     }
 }
 
 /// Get the combined constraints for all foreign field addition circuit gates
 pub fn combined_constraints<F: FftField>(alphas: &Alphas<F>) -> E<F> {
-    ForeignFieldAdd::combined_constraints(alphas) + ForeignFieldFin::combined_constraints(alphas)
+    ForeignFieldAdd::combined_constraints(alphas)
 }
 
 /// Get the foreign field multiplication lookup table

@@ -619,12 +619,12 @@ where
                 );
             }
 
-            if let Some(selector) = &index.cs.foreign_field_add_selector_polys.as_ref() {
+            if let Some(selector) = index.cs.foreign_field_add_selector_poly.as_ref() {
                 index_evals.extend(
                     foreign_field_add::gadget::circuit_gates()
                         .iter()
                         .enumerate()
-                        .map(|(i, gate_type)| (*gate_type, &selector[i].eval8)),
+                        .map(|(_, gate_type)| (*gate_type, &selector.eval8)),
                 );
             }
 
@@ -755,17 +755,12 @@ where
 
             // foreign field addition
             {
-                if index.cs.foreign_field_add_selector_polys.is_some() {
-                    for gate_type in range_check::gadget::circuit_gates() {
-                        let ffadd = foreign_field_add::gadget::circuit_gate_constraints(
-                            gate_type,
-                            &all_alphas,
-                        )
+                if index.cs.foreign_field_add_selector_poly.is_some() {
+                    let ffadd = foreign_field_add::gadget::combined_constraints(&all_alphas)
                         .evaluations(&env);
-                        assert_eq!(ffadd.domain().size, t4.domain().size);
-                        t4 += &ffadd;
-                        check_constraint!(index, ffadd);
-                    }
+                    assert_eq!(ffadd.domain().size, t4.domain().size);
+                    t4 += &ffadd;
+                    check_constraint!(index, ffadd);
                 }
             }
 

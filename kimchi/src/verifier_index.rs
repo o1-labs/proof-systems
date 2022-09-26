@@ -7,7 +7,6 @@ use crate::{
         expr::{Linearization, PolishToken},
         lookup::{index::LookupSelectors, lookups::LookupsUsed},
         polynomials::{
-            foreign_field_add,
             permutation::{zk_polynomial, zk_w3},
             range_check,
         },
@@ -115,12 +114,11 @@ pub struct VerifierIndex<G: KimchiCurve> {
     pub range_check_comm: Option<[PolyComm<G>; range_check::gadget::GATE_COUNT]>,
 
     // Foreign field modulus
-    //#[serde(bound = "Option<ForeignElement<G::ScalarField, LIMB_COUNT>>: Serialize + DeserializeOwned")]
     pub foreign_field_modulus: Option<BigUint>,
 
     // Foreign field addition gates polynomial commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
-    pub foreign_field_add_comm: Option<[PolyComm<G>; foreign_field_add::gadget::GATE_COUNT]>,
+    pub foreign_field_add_comm: Option<PolyComm<G>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -241,13 +239,11 @@ impl<G: KimchiCurve> ProverIndex<G> {
 
             foreign_field_add_comm: self
                 .cs
-                .foreign_field_add_selector_polys
+                .foreign_field_add_selector_poly
                 .as_ref()
                 .map(|poly| {
-                    array::from_fn(|i| {
-                        self.srs
-                            .commit_evaluations_non_hiding(domain, &poly[i].eval8, None)
-                    })
+                    self.srs
+                        .commit_evaluations_non_hiding(domain, &poly.eval8, None)
                 }),
 
             shift: self.cs.shift,
@@ -423,9 +419,7 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             }
         }
         if let Some(foreign_field_add_comm) = foreign_field_add_comm {
-            for foreign_field_add_comm in foreign_field_add_comm {
-                fq_sponge.absorb_g(&foreign_field_add_comm.unshifted);
-            }
+            fq_sponge.absorb_g(&foreign_field_add_comm.unshifted);
         }
 
         // Lookup index; optional

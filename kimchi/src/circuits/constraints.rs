@@ -124,8 +124,7 @@ pub struct ConstraintSystem<F: PrimeField> {
 
     /// Foreign field addition gate selector polynomial
     #[serde(bound = "Option<SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
-    pub foreign_field_add_selector_polys:
-        Option<[SelectorPolynomial<F>; range_check::gadget::GATE_COUNT]>,
+    pub foreign_field_add_selector_poly: Option<SelectorPolynomial<F>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -585,13 +584,11 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
 
         // Foreign field addition constraint selector polynomial
         let ffadd_gates = foreign_field_add::gadget::circuit_gates();
-        let foreign_field_add_selector_polys = {
+        let foreign_field_add_selector_poly = {
             if circuit_gates_used.is_disjoint(&ffadd_gates.into_iter().collect()) {
                 None
             } else {
-                Some(array::from_fn(|i| {
-                    selector_polynomial(ffadd_gates[i], &gates, &domain)
-                }))
+                Some(selector_polynomial(ffadd_gates[0], &gates, &domain))
             }
         };
 
@@ -646,7 +643,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             mull8,
             emull,
             range_check_selector_polys,
-            foreign_field_add_selector_polys,
+            foreign_field_add_selector_poly,
             foreign_field_modulus: self.foreign_field_modulus,
             gates,
             shift: shifts.shifts,

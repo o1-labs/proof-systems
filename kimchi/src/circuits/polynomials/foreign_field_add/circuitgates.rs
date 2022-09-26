@@ -76,23 +76,23 @@ use std::{array, marker::PhantomData};
 //~
 //~ You could lay this out as a double-width gate for chained foreign additions and a final row, e.g.
 //~
-//~ | col | `ForeignFieldAdd`       | more `ForeignFieldAdd` | or `ForeignFieldFin`   |
-//~ | --- | ----------------------- | ---------------------- | ---------------------- |
-//~ |   0 | `left_input_lo`  (copy) | `result_lo` (copy)     | `min_result_lo` (copy) |
-//~ |   1 | `left_input_mi`  (copy) | `result_mi` (copy)     | `min_result_mi` (copy) |
-//~ |   2 | `left_input_hi`  (copy) | `result_hi` (copy)     | `min_result_hi` (copy) |
-//~ |   3 | `right_input_lo` (copy) |  ...                   | `bound_lo`  (copy)     |
-//~ |   4 | `right_input_mi` (copy) |  ...                   | `bound_mi`  (copy)     |
-//~ |   5 | `right_input_hi` (copy) |  ...                   | `bound_hi`  (copy)     |
-//~ |   6 | `field_overflow`        |  ...                   |  -                     |
-//~ |   7 | `carry_lo`              |  ...                   | `bound_carry_lo`       |
-//~ |   8 | `carry_mi`              |  ...                   | `bound_carry_mi`       |
-//~ |   9 | `sign`                  |  ...                   |  -                     |
-//~ |  10 |                         |                        |                        |
-//~ |  11 |                         |                        |                        |
-//~ |  12 |                         |                        |                        |
-//~ |  13 |                         |                        |                        |
-//~ |  14 |                         |                        |                        |
+//~ | col | `ForeignFieldAdd`       | more `ForeignFieldAdd` | final `ForeignFieldAdd` | final `Zero`      |
+//~ | --- | ----------------------- | ---------------------- | ----------------------- | ----------------- |
+//~ |   0 | `left_input_lo`  (copy) | `result_lo` (copy)     | `min_result_lo` (copy)  | `bound_lo` (copy) |
+//~ |   1 | `left_input_mi`  (copy) | `result_mi` (copy)     | `min_result_mi` (copy)  | `bound_mi` (copy) |
+//~ |   2 | `left_input_hi`  (copy) | `result_hi` (copy)     | `min_result_hi` (copy)  | `bound_hi` (copy) |
+//~ |   3 | `right_input_lo` (copy) |  ...                   |  0              (check) |                   |
+//~ |   4 | `right_input_mi` (copy) |  ...                   |  0              (check) |                   |
+//~ |   5 | `right_input_hi` (copy) |  ...                   |  2^88           (check) |                   |
+//~ |   6 | `field_overflow`        |  ...                   |  1                      |                   |
+//~ |   7 | `carry_lo`              |  ...                   | `bound_carry_lo`        |                   |
+//~ |   8 | `carry_mi`              |  ...                   | `bound_carry_mi`        |                   |
+//~ |   9 | `sign`                  |  ...                   |  1                      |                   |
+//~ |  10 |                         |                        |                         |                   |
+//~ |  11 |                         |                        |                         |                   |
+//~ |  12 |                         |                        |                         |                   |
+//~ |  13 |                         |                        |                         |                   |
+//~ |  14 |                         |                        |                         |                   |
 //~
 //~ Having a specific final row that checks the bound is useful as it checks the upper bound
 //~ without reusing the same constraints in the `ForeignFieldAdd` rows (which would require
@@ -121,8 +121,20 @@ where
             (sign.clone() + T::one()) * (sign - T::one()),
         ];
 
+        // Auxiliary inline function to obtain the constraints to check the carry bits
+        let mut carry = {
+            // Result carry bits for limb overflows / underflows.
+            let carry_lo = env.witness_curr(7);
+            let carry_mi = env.witness_curr(8);
+            vec![
+                // Carry bits are -1, 0, or 1.
+                carry_lo.clone() * (carry_lo.clone() - T::one()) * (carry_lo + T::one()),
+                carry_mi.clone() * (carry_mi.clone() - T::one()) * (carry_mi + T::one()),
+            ]
+        };
+
         // Carry bits are -1, 0, or 1.
-        checks.append(&mut carry(env));
+        checks.append(&mut carry);
 
         // Auxiliary inline function to obtain the constraints of a foreign field addition result
         let mut result = {
@@ -163,6 +175,9 @@ where
             let result_computed_hi = left_input_hi + sign * right_input_hi
                 - field_overflow * foreign_modulus[2].clone()
                 + carry_mi;
+            println!("result_lo: {}", result_lo);
+
+            println!("result_computed_lo: {}", result_computed_lo);
 
             // Result values match
             vec![
@@ -177,67 +192,4 @@ where
 
         checks
     }
-}
-
-/// Implementation of the gate for the final bound check for foreign field operations
-/// - Operates on Curr row.
-pub struct ForeignFieldFin<F>(PhantomData<F>);
-
-impl<F> Argument<F> for ForeignFieldFin<F>
-where
-    F: FftField,
-{
-    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldFin);
-    const CONSTRAINTS: u32 = 5;
-
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
-        // Similar to performing a foreign field addition gate with these inputs
-        // left_input_lo -> min_result_lo  right_input_lo -> 0     result_lo -> bound_lo  carry_lo -> bound_carry_lo
-        // left_input_mi -> min_result_mi  right_input_mi -> 0     result_mi -> bound_mi  carry_mi -> bound_carry_mi
-        // left_input_hi -> min_result_hi  right_input_hi -> 2^88  result_hi -> bound_hi
-        // field_overflow -> 1         sign -> 1
-
-        // check addition for bound was performed correctly
-
-        let min_result_lo = env.witness_curr(0);
-        let min_result_mi = env.witness_curr(1);
-        let min_result_hi = env.witness_curr(2);
-
-        let bound_lo = env.witness_curr(3);
-        let bound_mi = env.witness_curr(4);
-        let bound_hi = env.witness_curr(5);
-
-        let bound_carry_lo = env.witness_curr(7);
-        let bound_carry_mi = env.witness_curr(8);
-
-        let modulus: [T; LIMB_COUNT] = array::from_fn(|i| env.foreign_modulus(i));
-        let two_to_limb = T::literal(F::from(TWO_TO_LIMB));
-
-        // check values of carry bits
-        let mut checks = carry(env);
-
-        let bound_computed_lo =
-            min_result_lo - modulus[0].clone() - bound_carry_lo.clone() * two_to_limb.clone();
-        let bound_computed_mi =
-            min_result_mi - modulus[1].clone() - bound_carry_mi.clone() * two_to_limb.clone()
-                + bound_carry_lo;
-        let bound_computed_hi = min_result_hi - modulus[2].clone() + bound_carry_mi + two_to_limb;
-
-        checks.push(bound_lo - bound_computed_lo);
-        checks.push(bound_mi - bound_computed_mi);
-        checks.push(bound_hi - bound_computed_hi);
-        checks
-    }
-}
-
-/// Auxiliary function to obtain the constraints to check the carry bits
-fn carry<F: FftField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
-    // Result carry bits for limb overflows / underflows.
-    let carry_lo = env.witness_curr(7);
-    let carry_mi = env.witness_curr(8);
-    vec![
-        // Carry bits are -1, 0, or 1.
-        carry_lo.clone() * (carry_lo.clone() - T::one()) * (carry_lo + T::one()),
-        carry_mi.clone() * (carry_mi.clone() - T::one()) * (carry_mi + T::one()),
-    ]
 }

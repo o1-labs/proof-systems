@@ -169,7 +169,7 @@ fn test_zero_add() {
 
     let witness = create_witness(vec![left_input, right_input], vec![ADD], foreign_modulus);
 
-    for row in 0..=17 {
+    for row in 0..=18 {
         assert_eq!(
             cs.gates[row].verify_witness::<Vesta>(
                 row,
@@ -181,7 +181,7 @@ fn test_zero_add() {
         );
     }
 
-    for row in 16..=17 {
+    for row in 16..=18 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -200,7 +200,7 @@ fn test_zero_sum_foreign() {
 
     let witness = create_witness(vec![left_input, right_input], vec![ADD], foreign_modulus);
 
-    for row in 0..=17 {
+    for row in 0..=18 {
         assert_eq!(
             cs.gates[row].verify_witness::<Vesta>(
                 row,
@@ -212,7 +212,7 @@ fn test_zero_sum_foreign() {
         );
     }
 
-    for row in 16..=17 {
+    for row in 16..=18 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -242,7 +242,7 @@ fn test_zero_sum_native() {
         foreign_modulus.clone(),
     );
 
-    for row in 0..=17 {
+    for row in 0..=18 {
         assert_eq!(
             cs.gates[row].verify_witness::<Vesta>(
                 row,
@@ -254,7 +254,7 @@ fn test_zero_sum_native() {
         );
     }
 
-    for row in 16..=17 {
+    for row in 16..=18 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -278,7 +278,7 @@ fn test_one_plus_one() {
 
     let witness = create_witness(vec![left_input, right_input], vec![ADD], foreign_modulus);
 
-    for row in 0..=17 {
+    for row in 0..=18 {
         assert_eq!(
             cs.gates[row].verify_witness::<Vesta>(
                 row,
@@ -290,7 +290,7 @@ fn test_one_plus_one() {
         );
     }
 
-    for row in 16..=17 {
+    for row in 16..=18 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -318,7 +318,7 @@ fn test_max_number() {
         foreign_modulus.clone(),
     );
 
-    for row in 0..=17 {
+    for row in 0..=18 {
         assert_eq!(
             cs.gates[row].verify_witness::<Vesta>(
                 row,
@@ -330,7 +330,7 @@ fn test_max_number() {
         );
     }
 
-    for row in 16..=17 {
+    for row in 16..=18 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -372,7 +372,7 @@ fn test_zero_minus_one() {
         foreign_modulus.clone(),
     );
 
-    for row in 0..=17 {
+    for row in 0..=18 {
         assert_eq!(
             cs.gates[row].verify_witness::<Vesta>(
                 row,
@@ -384,7 +384,7 @@ fn test_zero_minus_one() {
         );
     }
 
-    for row in 16..=17 {
+    for row in 16..=18 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness_neg, &cs, &[]),
             Ok(())
@@ -404,7 +404,7 @@ fn test_zero_minus_one() {
         foreign_modulus.clone(),
     );
 
-    for row in 0..=17 {
+    for row in 0..=18 {
         assert_eq!(
             cs.gates[row].verify_witness::<Vesta>(
                 row,
@@ -416,7 +416,7 @@ fn test_zero_minus_one() {
         );
     }
 
-    for row in 16..=17 {
+    for row in 16..=18 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness_sub, &cs, &[]),
             Ok(())
@@ -502,7 +502,7 @@ fn test_minus_minus() {
         foreign_modulus.clone(),
     );
 
-    for row in 0..=17 {
+    for row in 0..=18 {
         assert_eq!(
             cs.gates[row].verify_witness::<Vesta>(
                 row,
@@ -514,7 +514,7 @@ fn test_minus_minus() {
         );
     }
 
-    for row in 16..=17 {
+    for row in 16..=18 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -539,7 +539,7 @@ fn test_neg_carry_lo() {
 
     let witness = create_witness(vec![left_input, right_input], vec![ADD], foreign_modulus);
 
-    for row in 0..=17 {
+    for row in 0..=18 {
         assert_eq!(
             cs.gates[row].verify_witness::<Vesta>(
                 row,
@@ -551,7 +551,7 @@ fn test_neg_carry_lo() {
         );
     }
 
-    for row in 16..=17 {
+    for row in 16..=18 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -572,7 +572,7 @@ fn test_neg_carry_mi() {
 
     let witness = create_witness(vec![left_input, right_input], vec![ADD], foreign_modulus);
 
-    for row in 0..=17 {
+    for row in 0..=18 {
         assert_eq!(
             cs.gates[row].verify_witness::<Vesta>(
                 row,
@@ -584,7 +584,7 @@ fn test_neg_carry_mi() {
         );
     }
 
-    for row in 16..=17 {
+    for row in 16..=18 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -605,7 +605,7 @@ fn test_zero_mi() {
 
     let witness = create_witness(vec![left_input, right_input], vec![ADD], foreign_modulus);
 
-    for row in 0..=17 {
+    for row in 0..=18 {
         assert_eq!(
             cs.gates[row].verify_witness::<Vesta>(
                 row,
@@ -617,7 +617,7 @@ fn test_zero_mi() {
         );
     }
 
-    for row in 16..=17 {
+    for row in 16..=18 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -638,7 +638,7 @@ fn test_neg_carries() {
 
     let witness = create_witness(vec![left_input, right_input], vec![ADD], foreign_modulus);
 
-    for row in 0..=17 {
+    for row in 0..=18 {
         assert_eq!(
             cs.gates[row].verify_witness::<Vesta>(
                 row,
@@ -650,7 +650,7 @@ fn test_neg_carries() {
         );
     }
 
-    for row in 16..=17 {
+    for row in 16..=18 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -671,7 +671,7 @@ fn test_upperbound() {
 
     let witness = create_witness(vec![left_input, right_input], vec![ADD], foreign_modulus);
 
-    for row in 0..=17 {
+    for row in 0..=18 {
         assert_eq!(
             cs.gates[row].verify_witness::<Vesta>(
                 row,
@@ -683,7 +683,7 @@ fn test_upperbound() {
         );
     }
 
-    for row in 16..=17 {
+    for row in 16..=18 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -702,7 +702,7 @@ fn test_null_lo_carry() {
 
     let witness = create_witness(vec![left_input, right_input], vec![ADD], foreign_modulus);
 
-    for row in 0..=17 {
+    for row in 0..=18 {
         assert_eq!(
             cs.gates[row].verify_witness::<Vesta>(
                 row,
@@ -714,7 +714,7 @@ fn test_null_lo_carry() {
         );
     }
 
-    for row in 16..=17 {
+    for row in 16..=18 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -734,7 +734,7 @@ fn test_null_mi_carry() {
 
     let witness = create_witness(vec![left_input, right_input], vec![ADD], foreign_modulus);
 
-    for row in 0..=17 {
+    for row in 0..=18 {
         assert_eq!(
             cs.gates[row].verify_witness::<Vesta>(
                 row,
@@ -746,7 +746,7 @@ fn test_null_mi_carry() {
         );
     }
 
-    for row in 16..=17 {
+    for row in 16..=18 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -766,7 +766,7 @@ fn test_null_both_carry() {
 
     let witness = create_witness(vec![left_input, right_input], vec![ADD], foreign_modulus);
 
-    for row in 0..=17 {
+    for row in 0..=18 {
         assert_eq!(
             cs.gates[row].verify_witness::<Vesta>(
                 row,
@@ -778,7 +778,7 @@ fn test_null_both_carry() {
         );
     }
 
-    for row in 16..=17 {
+    for row in 16..=18 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -799,7 +799,7 @@ fn test_no_carry_limbs() {
 
     let witness = create_witness(vec![left_input, right_input], vec![ADD], foreign_modulus);
 
-    for row in 0..=17 {
+    for row in 0..=18 {
         assert_eq!(
             cs.gates[row].verify_witness::<Vesta>(
                 row,
@@ -811,7 +811,7 @@ fn test_no_carry_limbs() {
         );
     }
 
-    for row in 16..=17 {
+    for row in 16..=18 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -838,7 +838,7 @@ fn test_pos_carry_limb_lo() {
 
     let witness = create_witness(vec![left_input, right_input], vec![ADD], foreign_modulus);
 
-    for row in 0..=17 {
+    for row in 0..=18 {
         assert_eq!(
             cs.gates[row].verify_witness::<Vesta>(
                 row,
@@ -850,7 +850,7 @@ fn test_pos_carry_limb_lo() {
         );
     }
 
-    for row in 16..=17 {
+    for row in 16..=18 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -873,7 +873,7 @@ fn test_pos_carry_limb_mid() {
 
     let witness = create_witness(vec![left_input, right_input], vec![ADD], foreign_modulus);
 
-    for row in 0..=17 {
+    for row in 0..=18 {
         assert_eq!(
             cs.gates[row].verify_witness::<Vesta>(
                 row,
@@ -885,7 +885,7 @@ fn test_pos_carry_limb_mid() {
         );
     }
 
-    for row in 16..=17 {
+    for row in 16..=18 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -908,7 +908,7 @@ fn test_pos_carry_limb_lo_mid() {
 
     let witness = create_witness(vec![left_input, right_input], vec![ADD], foreign_modulus);
 
-    for row in 0..=17 {
+    for row in 0..=18 {
         assert_eq!(
             cs.gates[row].verify_witness::<Vesta>(
                 row,
@@ -920,7 +920,7 @@ fn test_pos_carry_limb_lo_mid() {
         );
     }
 
-    for row in 16..=17 {
+    for row in 16..=18 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -944,7 +944,7 @@ fn test_wrong_sum() {
 
     let mut witness = create_witness(vec![left_input, right_input], vec![ADD], foreign_modulus);
 
-    for row in 0..=17 {
+    for row in 0..=18 {
         assert_eq!(
             cs.gates[row].verify_witness::<Vesta>(
                 row,
@@ -980,7 +980,7 @@ fn test_zero_sub_fmod() {
 
     let witness = create_witness(vec![left_input, right_input], vec![SUB], foreign_modulus);
 
-    for row in 0..=17 {
+    for row in 0..=18 {
         assert_eq!(
             cs.gates[row].verify_witness::<Vesta>(
                 row,
@@ -992,7 +992,7 @@ fn test_zero_sub_fmod() {
         );
     }
 
-    for row in 16..=17 {
+    for row in 16..=18 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -1020,7 +1020,7 @@ fn test_zero_sub_fmax() {
         foreign_modulus.clone(),
     );
 
-    for row in 0..=17 {
+    for row in 0..=18 {
         assert_eq!(
             cs.gates[row].verify_witness::<Vesta>(
                 row,
@@ -1032,7 +1032,7 @@ fn test_zero_sub_fmax() {
         );
     }
 
-    for row in 16..=17 {
+    for row in 16..=18 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -1064,7 +1064,7 @@ fn test_pasta_add_max_vesta() {
         vesta_modulus.clone(),
     );
 
-    for row in 0..=17 {
+    for row in 0..=18 {
         assert_eq!(
             cs.gates[row].verify_witness::<Vesta>(
                 row,
@@ -1076,7 +1076,7 @@ fn test_pasta_add_max_vesta() {
         );
     }
 
-    for row in 16..=17 {
+    for row in 16..=18 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -1108,7 +1108,7 @@ fn test_pasta_sub_max_vesta() {
         vesta_modulus.clone(),
     );
 
-    for row in 0..=17 {
+    for row in 0..=18 {
         assert_eq!(
             cs.gates[row].verify_witness::<Vesta>(
                 row,
@@ -1120,7 +1120,7 @@ fn test_pasta_sub_max_vesta() {
         );
     }
 
-    for row in 16..=17 {
+    for row in 16..=18 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -1153,7 +1153,7 @@ fn test_pasta_add_max_pallas() {
         vesta_modulus.clone(),
     );
 
-    for row in 0..=17 {
+    for row in 0..=18 {
         assert_eq!(
             cs.gates[row].verify_witness::<Vesta>(
                 row,
@@ -1165,7 +1165,7 @@ fn test_pasta_add_max_pallas() {
         );
     }
 
-    for row in 16..=17 {
+    for row in 16..=18 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
@@ -1198,7 +1198,7 @@ fn test_pasta_sub_max_pallas() {
         vesta_modulus.clone(),
     );
 
-    for row in 0..=17 {
+    for row in 0..=18 {
         assert_eq!(
             cs.gates[row].verify_witness::<Vesta>(
                 row,
@@ -1210,7 +1210,7 @@ fn test_pasta_sub_max_pallas() {
         );
     }
 
-    for row in 16..=17 {
+    for row in 16..=18 {
         assert_eq!(
             cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
