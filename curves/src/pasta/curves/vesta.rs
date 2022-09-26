@@ -14,7 +14,7 @@ impl ModelParameters for VestaParameters {
 }
 
 pub type Vesta = GroupAffine<VestaParameters>;
-pub type Projective = GroupProjective<VestaParameters>;
+pub type ProjectiveVesta = GroupProjective<VestaParameters>;
 
 impl SWModelParameters for VestaParameters {
     /// COEFF_A = 0

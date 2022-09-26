@@ -14,7 +14,7 @@ impl ModelParameters for PallasParameters {
 }
 
 pub type Pallas = GroupAffine<PallasParameters>;
-pub type Projective = GroupProjective<PallasParameters>;
+pub type ProjectivePallas = GroupProjective<PallasParameters>;
 
 impl SWModelParameters for PallasParameters {
     /// COEFF_A = 0
