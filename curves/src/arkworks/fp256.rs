@@ -1,45 +1,42 @@
-//! While we could have create a custom type Fp256, and type aliases for Fp and Fq,
-//! We create two custom types using this macro: one for Fp and one for Fq.
-//! This makes bindings easier to reason about.
-//!
-//! The strategy used is to create wrappers around `ark_ff::Fp256<Fp_params>` and `ark_ff::Fp256<Fq_params>`,
-//! and implement `ark_ff::Field` and related traits that are needed
-//! to pretend that these are the actual types.
-//!
-//! Note: We can't use ark_ff::Fp256 directly because it doesn't implement `ocaml::ToValue`.
-//! And we can't implement `ocaml::ToValue` for `ark_ff::Fp256` because it's not defined in this crate.
+//! This module introduces a macro that helps you implement the `Field` trait,
+//! and other useful traits that field types usually implement in arkworks,
+//! for a wrapper trait.
 
+/// Use `impl_field(wrapper, arkf, params)` with:
+/// - `wrapper` being the name of the wrapper type
+/// - `arkf` being the name of the arkworks field type (a type that implements `ark_ff::Fp256<SomeParams>`)
+/// - `params` being the name of the arkworks field parameters type (a type that implements `ark_ff::Fp256Parameters`)
 macro_rules! impl_field {
-    ($name: ident, $CamlF: ident, $ArkF: ty, $Params: ty) => {
+    ($Wrapper: ident, $ArkF: ty, $Params: ty) => {
         paste! {
             //
             // Conversions
             //
 
-            impl From<$ArkF> for $CamlF {
+            impl From<$ArkF> for $Wrapper {
                 #[inline]
                 fn from(ark_fp: $ArkF) -> Self {
                     Self(ark_fp)
                 }
             }
 
-            impl From<&$ArkF> for $CamlF {
+            impl From<&$ArkF> for $Wrapper {
                 #[inline]
                 fn from(ark_fp: &$ArkF) -> Self {
                     Self(*ark_fp)
                 }
             }
 
-            impl From<$CamlF> for $ArkF {
+            impl From<$Wrapper> for $ArkF {
                 #[inline]
-                fn from(fp: $CamlF) -> Self {
+                fn from(fp: $Wrapper) -> Self {
                     fp.0
                 }
             }
 
-            impl From<&$CamlF> for $ArkF {
+            impl From<&$Wrapper> for $ArkF {
                 #[inline]
-                fn from(fp: &$CamlF) -> Self {
+                fn from(fp: &$Wrapper) -> Self {
                     fp.0
                 }
             }
@@ -48,44 +45,44 @@ macro_rules! impl_field {
             //
             //
 
-            impl Default for $CamlF {
+            impl Default for $Wrapper {
                 #[inline]
                 fn default() -> Self {
                     ark_ff::Fp256::default().into()
                 }
             }
-            impl Hash for $CamlF {
+            impl Hash for $Wrapper {
                 #[inline]
                 fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
                     self.0.hash(state);
                 }
             }
-            impl Clone for $CamlF {
+            impl Clone for $Wrapper {
                 #[inline]
                 fn clone(&self) -> Self {
                     self.0.clone().into()
                 }
             }
-            impl Copy for $CamlF {}
-            impl Debug for $CamlF {
+            impl Copy for $Wrapper {}
+            impl Debug for $Wrapper {
                 #[inline]
                 fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
                     f.debug_tuple("Fp256").field(&self.0).finish()
                 }
             }
-            impl PartialEq for $CamlF {
+            impl PartialEq for $Wrapper {
                 #[inline]
                 fn eq(&self, other: &Self) -> bool {
                     self.0.eq(&other.0)
                 }
             }
-            impl Eq for $CamlF {}
+            impl Eq for $Wrapper {}
 
             //
             //
             //
 
-            impl $CamlF {
+            impl $Wrapper {
                 #[inline]
                 pub fn new(x: ark_ff::BigInteger256) -> Self {
                     ark_ff::Fp256::new(x).into()
@@ -96,7 +93,7 @@ macro_rules! impl_field {
                 }
             }
 
-            impl ark_ff::Zero for $CamlF {
+            impl ark_ff::Zero for $Wrapper {
                 #[inline]
                 fn zero() -> Self {
                     ark_ff::Fp256::zero().into()
@@ -108,7 +105,7 @@ macro_rules! impl_field {
                 }
             }
 
-            impl ark_ff::One for $CamlF {
+            impl ark_ff::One for $Wrapper {
                 #[inline]
                 fn one() -> Self {
                     ark_ff::Fp256::one().into()
@@ -120,7 +117,7 @@ macro_rules! impl_field {
                 }
             }
 
-            impl ark_ff::Field for $CamlF {
+            impl ark_ff::Field for $Wrapper {
                 type BasePrimeField = Self;
 
                 #[inline]
@@ -192,7 +189,7 @@ macro_rules! impl_field {
                 }
             }
 
-            impl ark_ff::PrimeField for $CamlF {
+            impl ark_ff::PrimeField for $Wrapper {
                 type Params = $Params;
                 type BigInt = ark_ff::BigInteger256;
 
@@ -207,7 +204,7 @@ macro_rules! impl_field {
                 }
             }
 
-            impl ark_ff::FftField for $CamlF {
+            impl ark_ff::FftField for $Wrapper {
                 type FftParams = $Params;
 
                 #[inline]
@@ -226,7 +223,7 @@ macro_rules! impl_field {
                 }
             }
 
-            impl ark_ff::SquareRootField for $CamlF {
+            impl ark_ff::SquareRootField for $Wrapper {
                 #[inline]
                 fn legendre(&self) -> ark_ff::LegendreSymbol {
                     self.0.legendre()
@@ -247,112 +244,112 @@ macro_rules! impl_field {
                 }
             }
 
-            impl Ord for $CamlF {
+            impl Ord for $Wrapper {
                 #[inline(always)]
                 fn cmp(&self, other: &Self) -> Ordering {
                     self.0.cmp(&other.0)
                 }
             }
 
-            impl PartialOrd for $CamlF {
+            impl PartialOrd for $Wrapper {
                 #[inline(always)]
                 fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
                     self.0.partial_cmp(&other.0)
                 }
             }
 
-            impl From<u128> for $CamlF {
+            impl From<u128> for $Wrapper {
                 #[inline]
                 fn from(other: u128) -> Self {
                     ark_ff::Fp256::from(other).into()
                 }
             }
 
-            impl From<i128> for $CamlF {
+            impl From<i128> for $Wrapper {
                 #[inline]
                 fn from(other: i128) -> Self {
                     ark_ff::Fp256::from(other).into()
                 }
             }
 
-            impl From<bool> for $CamlF {
+            impl From<bool> for $Wrapper {
                 #[inline]
                 fn from(other: bool) -> Self {
                     ark_ff::Fp256::from(other).into()
                 }
             }
 
-            impl From<u64> for $CamlF {
+            impl From<u64> for $Wrapper {
                 #[inline]
                 fn from(other: u64) -> Self {
                     ark_ff::Fp256::from(other).into()
                 }
             }
 
-            impl From<i64> for $CamlF {
+            impl From<i64> for $Wrapper {
                 #[inline]
                 fn from(other: i64) -> Self {
                     ark_ff::Fp256::from(other).into()
                 }
             }
 
-            impl From<u32> for $CamlF {
+            impl From<u32> for $Wrapper {
                 #[inline]
                 fn from(other: u32) -> Self {
                     ark_ff::Fp256::from(other).into()
                 }
             }
 
-            impl From<i32> for $CamlF {
+            impl From<i32> for $Wrapper {
                 #[inline]
                 fn from(other: i32) -> Self {
                     ark_ff::Fp256::from(other).into()
                 }
             }
 
-            impl From<u16> for $CamlF {
+            impl From<u16> for $Wrapper {
                 #[inline]
                 fn from(other: u16) -> Self {
                     ark_ff::Fp256::from(other).into()
                 }
             }
 
-            impl From<i16> for $CamlF {
+            impl From<i16> for $Wrapper {
                 #[inline]
                 fn from(other: i16) -> Self {
                     ark_ff::Fp256::from(other).into()
                 }
             }
 
-            impl From<u8> for $CamlF {
+            impl From<u8> for $Wrapper {
                 #[inline]
                 fn from(other: u8) -> Self {
                     ark_ff::Fp256::from(other).into()
                 }
             }
 
-            impl From<i8> for $CamlF {
+            impl From<i8> for $Wrapper {
                 #[inline]
                 fn from(other: i8) -> Self {
                     ark_ff::Fp256::from(other).into()
                 }
             }
 
-            impl ark_ff::ToBytes for $CamlF {
+            impl ark_ff::ToBytes for $Wrapper {
                 #[inline]
                 fn write<W: Write>(&self, writer: W) -> IoResult<()> {
                     self.0.write(writer)
                 }
             }
 
-            impl ark_ff::FromBytes for $CamlF {
+            impl ark_ff::FromBytes for $Wrapper {
                 #[inline]
                 fn read<R: Read>(reader: R) -> IoResult<Self> {
                     ark_ff::Fp256::read(reader).map(Into::into)
                 }
             }
 
-            impl FromStr for $CamlF {
+            impl FromStr for $Wrapper {
                 type Err = ();
 
                 #[inline]
@@ -361,14 +358,14 @@ macro_rules! impl_field {
                 }
             }
 
-            impl Display for $CamlF {
+            impl Display for $Wrapper {
                 #[inline]
                 fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
                     Display::fmt(&self.0, f)
                 }
             }
 
-            impl Neg for $CamlF {
+            impl Neg for $Wrapper {
                 type Output = Self;
 
                 #[inline]
@@ -378,7 +375,7 @@ macro_rules! impl_field {
                 }
             }
 
-            impl<'a> Add<&'a $CamlF> for $CamlF {
+            impl<'a> Add<&'a $Wrapper> for $Wrapper {
                 type Output = Self;
 
                 #[inline]
@@ -387,7 +384,7 @@ macro_rules! impl_field {
                 }
             }
 
-            impl<'a> Sub<&'a $CamlF> for $CamlF {
+            impl<'a> Sub<&'a $Wrapper> for $Wrapper {
                 type Output = Self;
 
                 #[inline]
@@ -396,7 +393,7 @@ macro_rules! impl_field {
                 }
             }
 
-            impl<'a> Mul<&'a $CamlF> for $CamlF {
+            impl<'a> Mul<&'a $Wrapper> for $Wrapper {
                 type Output = Self;
 
                 #[inline]
@@ -405,7 +402,7 @@ macro_rules! impl_field {
                 }
             }
 
-            impl<'a> Div<&'a $CamlF> for $CamlF {
+            impl<'a> Div<&'a $Wrapper> for $Wrapper {
                 type Output = Self;
 
                 /// Returns `self * other.inverse()` if `other.inverse()` is `Some`, and
@@ -416,28 +413,28 @@ macro_rules! impl_field {
                 }
             }
 
-            impl<'a> AddAssign<&'a Self> for $CamlF {
+            impl<'a> AddAssign<&'a Self> for $Wrapper {
                 #[inline]
                 fn add_assign(&mut self, other: &Self) {
                     self.0.add_assign(&other.0);
                 }
             }
 
-            impl<'a> SubAssign<&'a Self> for $CamlF {
+            impl<'a> SubAssign<&'a Self> for $Wrapper {
                 #[inline]
                 fn sub_assign(&mut self, other: &Self) {
                     self.0.sub_assign(&other.0);
                 }
             }
 
-            impl<'a> MulAssign<&'a Self> for $CamlF {
+            impl<'a> MulAssign<&'a Self> for $Wrapper {
                 #[inline]
                 fn mul_assign(&mut self, other: &Self) {
                     self.0.mul_assign(&other.0);
                 }
             }
 
-            impl<'a> DivAssign<&'a Self> for $CamlF {
+            impl<'a> DivAssign<&'a Self> for $Wrapper {
                 #[inline]
                 fn div_assign(&mut self, other: &Self) {
                     self.0.div_assign(&other.0);
@@ -445,7 +442,7 @@ macro_rules! impl_field {
             }
 
             #[allow(unused_qualifications)]
-            impl core::ops::Add<Self> for $CamlF {
+            impl core::ops::Add<Self> for $Wrapper {
                 type Output = Self;
 
                 #[inline]
@@ -455,7 +452,7 @@ macro_rules! impl_field {
             }
 
             #[allow(unused_qualifications)]
-            impl<'a> core::ops::Add<&'a mut Self> for $CamlF {
+            impl<'a> core::ops::Add<&'a mut Self> for $Wrapper {
                 type Output = Self;
 
                 #[inline]
@@ -465,7 +462,7 @@ macro_rules! impl_field {
             }
 
             #[allow(unused_qualifications)]
-            impl core::ops::Sub<Self> for $CamlF {
+            impl core::ops::Sub<Self> for $Wrapper {
                 type Output = Self;
 
                 #[inline]
@@ -475,7 +472,7 @@ macro_rules! impl_field {
             }
 
             #[allow(unused_qualifications)]
-            impl<'a> core::ops::Sub<&'a mut Self> for $CamlF {
+            impl<'a> core::ops::Sub<&'a mut Self> for $Wrapper {
                 type Output = Self;
 
                 #[inline]
@@ -485,7 +482,7 @@ macro_rules! impl_field {
             }
 
             #[allow(unused_qualifications)]
-            impl core::iter::Sum<Self> for $CamlF {
+            impl core::iter::Sum<Self> for $Wrapper {
                 #[inline]
                 fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
                     $ArkF::sum(iter.map(|x| x.0)).into()
@@ -493,7 +490,7 @@ macro_rules! impl_field {
             }
 
             #[allow(unused_qualifications)]
-            impl<'a> core::iter::Sum<&'a Self> for $CamlF {
+            impl<'a> core::iter::Sum<&'a Self> for $Wrapper {
                 #[inline]
                 fn sum<I: Iterator<Item = &'a Self>>(iter: I) -> Self {
                     $ArkF::sum(iter.map(|x| x.0)).into()
@@ -501,7 +498,7 @@ macro_rules! impl_field {
             }
 
             #[allow(unused_qualifications)]
-            impl core::ops::AddAssign<Self> for $CamlF {
+            impl core::ops::AddAssign<Self> for $Wrapper {
                 #[inline]
                 fn add_assign(&mut self, other: Self) {
                     self.0.add_assign(&other.0)
@@ -509,7 +506,7 @@ macro_rules! impl_field {
             }
 
             #[allow(unused_qualifications)]
-            impl core::ops::SubAssign<Self> for $CamlF {
+            impl core::ops::SubAssign<Self> for $Wrapper {
                 #[inline]
                 fn sub_assign(&mut self, other: Self) {
                     self.0.sub_assign(&other.0)
@@ -517,7 +514,7 @@ macro_rules! impl_field {
             }
 
             #[allow(unused_qualifications)]
-            impl<'a> core::ops::AddAssign<&'a mut Self> for $CamlF {
+            impl<'a> core::ops::AddAssign<&'a mut Self> for $Wrapper {
                 #[inline]
                 fn add_assign(&mut self, other: &'a mut Self) {
                     self.0.add_assign(&other.0)
@@ -525,7 +522,7 @@ macro_rules! impl_field {
             }
 
             #[allow(unused_qualifications)]
-            impl<'a> core::ops::SubAssign<&'a mut Self> for $CamlF {
+            impl<'a> core::ops::SubAssign<&'a mut Self> for $Wrapper {
                 #[inline]
                 fn sub_assign(&mut self, other: &'a mut Self) {
                     self.0.sub_assign(&other.0)
@@ -533,7 +530,7 @@ macro_rules! impl_field {
             }
 
             #[allow(unused_qualifications)]
-            impl core::ops::Mul<Self> for $CamlF {
+            impl core::ops::Mul<Self> for $Wrapper {
                 type Output = Self;
 
                 #[inline]
@@ -543,7 +540,7 @@ macro_rules! impl_field {
             }
 
             #[allow(unused_qualifications)]
-            impl core::ops::Div<Self> for $CamlF {
+            impl core::ops::Div<Self> for $Wrapper {
                 type Output = Self;
 
                 #[inline]
@@ -553,7 +550,7 @@ macro_rules! impl_field {
             }
 
             #[allow(unused_qualifications)]
-            impl<'a> core::ops::Mul<&'a mut Self> for $CamlF {
+            impl<'a> core::ops::Mul<&'a mut Self> for $Wrapper {
                 type Output = Self;
 
                 #[inline]
@@ -563,7 +560,7 @@ macro_rules! impl_field {
             }
 
             #[allow(unused_qualifications)]
-            impl<'a> core::ops::Div<&'a mut Self> for $CamlF {
+            impl<'a> core::ops::Div<&'a mut Self> for $Wrapper {
                 type Output = Self;
 
                 #[inline]
@@ -573,7 +570,7 @@ macro_rules! impl_field {
             }
 
             #[allow(unused_qualifications)]
-            impl core::iter::Product<Self> for $CamlF {
+            impl core::iter::Product<Self> for $Wrapper {
                 #[inline]
                 fn product<I: Iterator<Item = Self>>(iter: I) -> Self {
                     ark_ff::Fp256::product(iter.map(|x| x.0)).into()
@@ -581,7 +578,7 @@ macro_rules! impl_field {
             }
 
             #[allow(unused_qualifications)]
-            impl<'a> core::iter::Product<&'a Self> for $CamlF {
+            impl<'a> core::iter::Product<&'a Self> for $Wrapper {
                 #[inline]
                 fn product<I: Iterator<Item = &'a Self>>(iter: I) -> Self {
                     ark_ff::Fp256::product(iter.map(|x| x.0)).into()
@@ -589,7 +586,7 @@ macro_rules! impl_field {
             }
 
             #[allow(unused_qualifications)]
-            impl core::ops::MulAssign<Self> for $CamlF {
+            impl core::ops::MulAssign<Self> for $Wrapper {
                 #[inline]
                 fn mul_assign(&mut self, other: Self) {
                     self.0.mul_assign(&other.0)
@@ -597,7 +594,7 @@ macro_rules! impl_field {
             }
 
             #[allow(unused_qualifications)]
-            impl<'a> core::ops::DivAssign<&'a mut Self> for $CamlF {
+            impl<'a> core::ops::DivAssign<&'a mut Self> for $Wrapper {
                 #[inline]
                 fn div_assign(&mut self, other: &'a mut Self) {
                     self.0.div_assign(&other.0)
@@ -605,7 +602,7 @@ macro_rules! impl_field {
             }
 
             #[allow(unused_qualifications)]
-            impl<'a> core::ops::MulAssign<&'a mut Self> for $CamlF {
+            impl<'a> core::ops::MulAssign<&'a mut Self> for $Wrapper {
                 #[inline]
                 fn mul_assign(&mut self, other: &'a mut Self) {
                     self.0.mul_assign(&other.0)
@@ -613,14 +610,14 @@ macro_rules! impl_field {
             }
 
             #[allow(unused_qualifications)]
-            impl core::ops::DivAssign<Self> for $CamlF {
+            impl core::ops::DivAssign<Self> for $Wrapper {
                 #[inline]
                 fn div_assign(&mut self, other: Self) {
                     self.0.div_assign(&other.0)
                 }
             }
 
-            impl zeroize::Zeroize for $CamlF {
+            impl zeroize::Zeroize for $Wrapper {
                 // The phantom data does not contain element-specific data
                 // and thus does not need to be zeroized.
                 #[inline]
@@ -629,14 +626,14 @@ macro_rules! impl_field {
                 }
             }
 
-            impl Into<ark_ff::BigInteger256> for $CamlF {
+            impl Into<ark_ff::BigInteger256> for $Wrapper {
                 #[inline]
                 fn into(self) -> ark_ff::BigInteger256 {
                     self.0.into()
                 }
             }
 
-            impl From<ark_ff::BigInteger256> for $CamlF {
+            impl From<ark_ff::BigInteger256> for $Wrapper {
                 /// Converts `Self::BigInteger` into `Self`
                 ///
                 /// # Panics
@@ -647,21 +644,21 @@ macro_rules! impl_field {
                 }
             }
 
-            impl From<num_bigint::BigUint> for $CamlF {
+            impl From<num_bigint::BigUint> for $Wrapper {
                 #[inline]
                 fn from(val: num_bigint::BigUint) -> Self {
                     ark_ff::Fp256::from(val).into()
                 }
             }
 
-            impl Into<num_bigint::BigUint> for $CamlF {
+            impl Into<num_bigint::BigUint> for $Wrapper {
                 #[inline]
                 fn into(self) -> num_bigint::BigUint {
                     self.0.into()
                 }
             }
 
-            impl ark_serialize::CanonicalSerializeWithFlags for $CamlF {
+            impl ark_serialize::CanonicalSerializeWithFlags for $Wrapper {
                 #[inline]
                 fn serialize_with_flags<W: std::io::Write, F: ark_serialize::Flags>(
                     &self,
@@ -677,7 +674,7 @@ macro_rules! impl_field {
                 }
             }
 
-            impl ark_serialize::CanonicalSerialize for $CamlF {
+            impl ark_serialize::CanonicalSerialize for $Wrapper {
                 #[inline]
                 fn serialize<W: std::io::Write>(
                     &self,
@@ -692,7 +689,7 @@ macro_rules! impl_field {
                 }
             }
 
-            impl ark_serialize::CanonicalDeserializeWithFlags for $CamlF {
+            impl ark_serialize::CanonicalDeserializeWithFlags for $Wrapper {
                 #[inline]
                 fn deserialize_with_flags<R: std::io::Read, F: ark_serialize::Flags>(
                     reader: R,
@@ -701,20 +698,20 @@ macro_rules! impl_field {
                 }
             }
 
-            impl ark_serialize::CanonicalDeserialize for $CamlF {
+            impl ark_serialize::CanonicalDeserialize for $Wrapper {
                 #[inline]
                 fn deserialize<R: std::io::Read>(reader: R) -> Result<Self, ark_serialize::SerializationError> {
                     ark_ff::Fp256::deserialize(reader).map(Into::into)
                 }
             }
 
-            impl ark_std::rand::distributions::Distribution<$CamlF>
+            impl ark_std::rand::distributions::Distribution<$Wrapper>
                 for ark_std::rand::distributions::Standard
             {
                 #[inline]
-                fn sample<R: ark_std::rand::Rng + ?Sized>(&self, rng: &mut R) -> $CamlF {
+                fn sample<R: ark_std::rand::Rng + ?Sized>(&self, rng: &mut R) -> $Wrapper {
                     let ark_fp: $ArkF = self.sample(rng);
-                    $CamlF(ark_fp)
+                    $Wrapper(ark_fp)
                 }
             }
 

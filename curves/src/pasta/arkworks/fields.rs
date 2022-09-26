@@ -34,7 +34,7 @@ macro_rules! impl_fp256 {
             // Field implementation
             //
 
-            impl_field!($name, $CamlF, $ArkF, $Params);
+            impl_field!($CamlF, $ArkF, $Params);
 
             //
             // OCaml
