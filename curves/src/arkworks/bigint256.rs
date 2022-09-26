@@ -249,7 +249,7 @@ mod caml {
     unsafe impl<'a> ocaml::FromValue<'a> for BigInteger256 {
         fn from_value(value: ocaml::Value) -> Self {
             let x: ocaml::Pointer<Self> = ocaml::FromValue::from_value(value);
-            x.as_ref().clone()
+            *x.as_ref()
         }
     }
 
@@ -315,8 +315,7 @@ mod caml {
         let x: BigUint = x.into();
         let y: BigUint = y.into();
         let res: BigUint = x / y;
-        let inner: BigInteger256 = res.try_into().expect("BigUint division has a bug");
-        inner.into()
+        res.try_into().expect("BigUint division has a bug")
     }
 
     #[ocaml_gen::func]
@@ -335,7 +334,7 @@ mod caml {
     #[ocaml_gen::func]
     #[ocaml::func]
     pub fn caml_bigint_256_print(x: BigInteger256) {
-        println!("{}", x.to_string());
+        println!("{}", x);
     }
 
     #[ocaml_gen::func]
