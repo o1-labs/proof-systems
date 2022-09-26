@@ -6,7 +6,7 @@ use crate::circuits::{
 };
 use ark_ec::AffineCurve;
 use ark_ff::{One, Zero};
-use mina_curves::pasta::{pallas::Pallas, vesta::Vesta};
+use mina_curves::pasta::{Pallas, Vesta};
 use num_bigint::BigUint;
 use num_traits::FromPrimitive;
 use o1_utils::{
