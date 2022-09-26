@@ -1,11 +1,10 @@
 use ark_ff::One;
-use mina_curves::pasta::{Vesta, Fp};
+use mina_curves::pasta::{Fp, Vesta};
 
 use crate::{
     loc,
     snarky::{
-        checked_runner::{Mode, RunState, TypeCreation},
-        constraint_system::SnarkyConstraintSystem,
+        checked_runner::{RunState, TypeCreation},
         cvar::CVar,
     },
 };

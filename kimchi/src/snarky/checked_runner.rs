@@ -16,6 +16,7 @@ use crate::{
 
 use super::constants::Constants;
 
+/// A wrapper around [BasicSnarkyConstraint] and [KimchiConstraintSystem] that allows for an optional label (for debugging).
 pub struct AnnotatedConstraint<F: PrimeField> {
     annotation: Option<&'static str>,
     constraint: Constraint<F>,
@@ -25,6 +26,7 @@ impl<F> AnnotatedConstraint<F>
 where
     F: PrimeField,
 {
+    /// In witness generation, this checks if the constraint is satisfied by some witness values.
     pub fn check_constraint(&self, env: &impl WitnessGeneration<F>) {
         match &self.constraint {
             Constraint::BasicSnarkyConstraint(c) => c.check_constraint(env),
@@ -33,22 +35,37 @@ where
     }
 }
 
+/// An enum that wraps either a [BasicSnarkyConstraint] or a [KimchiConstraintSystem].
+// TODO: we should get rid of this once basic constraint system is gone
 pub enum Constraint<F: PrimeField> {
+    /// Old R1CS-like constraints.
     BasicSnarkyConstraint(BasicSnarkyConstraint<CVar<F>>),
+
+    /// Custom gates in kimchi.
     KimchiConstraint(KimchiConstraint<CVar<F>, F>),
 }
 
+/// The two ways to create a [SnarkyType].
 #[derive(Default)]
 pub enum TypeCreation {
+    /// This will create constraints in the constraint system to ensure that the type is valid.
+    /// This is done by calling [SnarkyType::check] on a snarky type.
     #[default]
     Checked,
+
+    /// This will create a new type without any constraints.
+    /// This should only be used internally when we know the type is already constrained to be valid.
     Unsafe,
 }
 
+/// The mode in which the [RunState] is running.
 #[derive(Default, Clone, Copy)]
 pub enum Mode {
+    /// This will construct the kimchi gates for the circuit.
     #[default]
     CircuitGeneration,
+
+    /// This will construct the execution trace (or witness) for the circuit.
     WitnessGeneration,
 }
 
@@ -87,10 +104,13 @@ where
 // witness generation
 //
 
+/// A witness generation environment.
+/// This is passed to any closure in [RunState::compute] so that they can access the witness generation environment.
 pub trait WitnessGeneration<F>
 where
     F: PrimeField,
 {
+    /// Allows the caller to obtain the value behind a circuit variable.
     fn read_var(&self, var: &CVar<F>) -> F;
 }
 
@@ -134,6 +154,7 @@ where
     F: PrimeField,
 {
     // TODO: builder pattern?
+    /// Creates a new [Self].
     pub fn new<Curve: KimchiCurve<ScalarField = F>>(num_public_inputs: usize) -> Self {
         let next_private_input = 1 + num_public_inputs;
 
@@ -168,6 +189,7 @@ where
         CVar::Var(v)
     }
 
+    /// Useful to debug. Similar to calling [Self::compute] on a unit type.
     pub fn debug() {
         todo!();
     }
@@ -233,6 +255,8 @@ where
         }
     }
 
+    // TODO: get rid of this.
+    /// Handles a list of [BasicSnarkyConstraint].
     pub fn assert_(
         &mut self,
         annotation: Option<&'static str>,
@@ -249,6 +273,8 @@ where
         self.add_constraint(constraints);
     }
 
+    // TODO: get rid of this.
+    /// Creates a constraint for `assert_eq!(a * b, c)`.
     pub fn assert_r1cs(
         &mut self,
         annotation: Option<&'static str>,
@@ -260,12 +286,15 @@ where
         self.assert_(annotation, vec![constraint]);
     }
 
+    // TODO: get rid of this
+    /// Creates a constraint for `assert_eq!(x, y)`;
     pub fn assert_eq(&mut self, annotation: Option<&'static str>, x: CVar<F>, y: CVar<F>) {
         let constraint = BasicSnarkyConstraint::Equal(x, y);
         self.assert_(annotation, vec![constraint]);
     }
 
-    // TODO: what's the difference with assert_ ?
+    // TODO: what's the difference with assert_ ? get rid of this no?
+    /// Asserts the given list of [BasicSnarkyConstraint].
     pub fn assert_all(
         &mut self,
         annotation: Option<&'static str>,
@@ -275,6 +304,7 @@ where
     }
 
     // TODO: rename to add_constraint"s"
+    /// Adds a list of [AnnotatedConstraint]s to the circuit.
     pub fn add_constraint(&mut self, constraints: Vec<AnnotatedConstraint<F>>) {
         match self.mode {
             Mode::WitnessGeneration => {
@@ -310,6 +340,8 @@ where
         }
     }
 
+    /// Adds a constraint that returns `then_` if `b` is `true`, `else_` otherwise.
+    /// Equivalent to `if b { then_ } else { else_ }`.
     pub fn if_(&mut self, b: Boolean<F>, then_: CVar<F>, else_: CVar<F>) -> CVar<F> {
         // r = e + b (t - e)
         // r - e = b (t - e)
