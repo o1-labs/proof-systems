@@ -606,7 +606,6 @@
 <span id="606">606</span>
 <span id="607">607</span>
 <span id="608">608</span>
-<span id="609">609</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the `ChaCha` constraints.
 
 </span><span class="comment">//~ There are four chacha constraint types, corresponding to the four lines in each quarter round.
@@ -1088,8 +1087,7 @@
     };
     <span class="kw">use </span>ark_ff::{UniformRand, Zero};
     <span class="kw">use </span>ark_poly::{EvaluationDomain, Radix2EvaluationDomain <span class="kw">as </span>D};
-    <span class="kw">use </span>mina_curves::pasta::fp::Fp <span class="kw">as </span>F;
-    <span class="kw">use </span>mina_curves::pasta::vesta::Vesta;
+    <span class="kw">use </span>mina_curves::pasta::{Fp <span class="kw">as </span>F, Vesta};
     <span class="kw">use </span>rand::{rngs::StdRng, SeedableRng};
     <span class="kw">use </span>std::array;
     <span class="kw">use </span>std::fmt::{Display, Formatter};
@@ -1217,4 +1215,4 @@
     </span>}
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (9062b780b 2022-09-21)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (f5193a9fc 2022-09-25)" ></div></body></html>

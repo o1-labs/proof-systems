@@ -79,9 +79,13 @@
 <span id="79">79</span>
 <span id="80">80</span>
 <span id="81">81</span>
+<span id="82">82</span>
+<span id="83">83</span>
+<span id="84">84</span>
+<span id="85">85</span>
 </pre><pre class="rust"><code><span class="kw">use </span>ark_ec::{short_weierstrass_jacobian::GroupAffine, ModelParameters};
 <span class="kw">use </span>commitment_dlog::{commitment::CommitmentCurve, srs::endos};
-<span class="kw">use </span>mina_curves::pasta::{
+<span class="kw">use </span>mina_curves::pasta::curves::{
     pallas::{LegacyPallasParameters, PallasParameters},
     vesta::{LegacyVestaParameters, VestaParameters},
 };
@@ -137,7 +141,11 @@
         <span class="kw-2">&amp;</span>PALLAS_ENDOS
     }
 }
-<span class="comment">//legacy curves
+
+<span class="comment">//
+// legacy curves
+//
+
 </span><span class="kw">impl </span>KimchiCurve <span class="kw">for </span>GroupAffine&lt;LegacyVestaParameters&gt; {
     <span class="kw">type </span>OtherCurve = GroupAffine&lt;LegacyPallasParameters&gt;;
 
@@ -161,4 +169,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (9062b780b 2022-09-21)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (f5193a9fc 2022-09-25)" ></div></body></html>

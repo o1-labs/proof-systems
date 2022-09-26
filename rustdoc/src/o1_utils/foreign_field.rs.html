@@ -177,7 +177,6 @@
 <span id="177">177</span>
 <span id="178">178</span>
 <span id="179">179</span>
-<span id="180">180</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Describes helpers for foreign field arithmetics
 
 </span><span class="kw">use </span>std::fmt::Display;
@@ -321,12 +320,11 @@
     <span class="kw">use </span><span class="kw">crate</span>::field_helpers::FieldFromBig;
     <span class="kw">use </span>ark_ec::AffineCurve;
     <span class="kw">use </span>ark_ff::One;
-    <span class="kw">use </span>mina_curves::pasta::pallas;
+    <span class="kw">use </span>mina_curves::pasta::Pallas <span class="kw">as </span>CurvePoint;
 
-    <span class="doccomment">/// Affine curve point type
-    </span><span class="kw">pub use </span>pallas::Pallas <span class="kw">as </span>CurvePoint;
     <span class="doccomment">/// Base field element type
     </span><span class="kw">pub type </span>BaseField = &lt;CurvePoint <span class="kw">as </span>AffineCurve&gt;::BaseField;
+
     <span class="attribute">#[test]
     </span><span class="kw">fn </span>test_big_be() {
         <span class="kw">let </span>bytes = FOREIGN_MOD;
@@ -359,4 +357,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="o1_utils" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (9062b780b 2022-09-21)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="o1_utils" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (f5193a9fc 2022-09-25)" ></div></body></html>

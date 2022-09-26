@@ -889,7 +889,7 @@
     <span class="kw">use </span>strum::IntoEnumIterator;
 
     <span class="kw">for </span>pat <span class="kw">in </span>LookupPattern::iter() {
-        <span class="kw">let </span>lookups = pat.lookups::&lt;mina_curves::pasta::fp::Fp&gt;();
+        <span class="kw">let </span>lookups = pat.lookups::&lt;mina_curves::pasta::Fp&gt;();
         <span class="kw">let </span>max_joint_size = lookups
             .iter()
             .map(|lookup| lookup.entry.len())
@@ -901,4 +901,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (9062b780b 2022-09-21)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (f5193a9fc 2022-09-25)" ></div></body></html>
