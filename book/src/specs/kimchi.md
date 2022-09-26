@@ -1217,7 +1217,7 @@ Mapping:
     left_input_mi -> a1  right_input_mi -> b1  result_mi -> r1  bound_mi -> u1
     left_input_hi -> a2  right_input_hi -> b2  result_hi -> r2  bound_hi -> u2
 
-    field_overflow  -> q
+    field_overflow  -> x
     sign            -> s
     carry_lo        -> c0
     carry_mi        -> c1
