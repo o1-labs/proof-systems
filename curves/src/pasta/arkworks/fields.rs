@@ -311,14 +311,14 @@ macro_rules! impl_fp256 {
 
 pub mod fp {
     use super::*;
-    use crate::pasta::{Fp, FpParameters};
+    use crate::pasta::{fields::fp::Fp as PastaFp, FpParameters};
 
-    impl_fp256!(caml_pasta_fp, CamlFp, Fp, FpParameters);
+    impl_fp256!(caml_pasta_fp, Fp, PastaFp, FpParameters);
 }
 
 pub mod fq {
     use super::*;
-    use crate::pasta::{Fq, FqParameters};
+    use crate::pasta::{fields::fq::Fq as PastaFq, FqParameters};
 
-    impl_fp256!(caml_pasta_fq, CamlFq, Fq, FqParameters);
+    impl_fp256!(caml_pasta_fq, Fq, PastaFq, FqParameters);
 }

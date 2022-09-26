@@ -1,4 +1,4 @@
-use crate::pasta::*;
+use crate::pasta::{Fp, Fq};
 use ark_ec::{
     models::short_weierstrass_jacobian::{GroupAffine, GroupProjective},
     ModelParameters, SWModelParameters,

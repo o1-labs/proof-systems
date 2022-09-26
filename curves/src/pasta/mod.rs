@@ -7,4 +7,6 @@ pub use curves::{
     pallas::{Pallas, PallasParameters},
     vesta::{Vesta, VestaParameters},
 };
-pub use fields::{Fp, FpParameters, Fq, FqParameters};
+pub use fields::{FpParameters, FqParameters};
+
+pub use arkworks::fields::{fp::Fp, fq::Fq};

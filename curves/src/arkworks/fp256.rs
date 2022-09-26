@@ -90,6 +90,10 @@ macro_rules! impl_field {
                 pub fn new(x: ark_ff::BigInteger256) -> Self {
                     ark_ff::Fp256::new(x).into()
                 }
+
+                pub const fn const_from_str(limbs: &[u64], is_positive: bool, r2: ark_ff::BigInteger256, modulus: ark_ff::BigInteger256, inv: u64) -> Self {
+                    Self(ark_ff::Fp256::const_from_str(limbs, is_positive, r2, modulus, inv))
+                }
             }
 
             impl ark_ff::Zero for $CamlF {
