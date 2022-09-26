@@ -70,23 +70,23 @@ use std::{array, marker::PhantomData};
 //~
 //~ You could lay this out as a double-width gate for chained foreign additions and a final row, e.g.
 //~
-//~ | col | `FFAdd`                 | more `FFAdd`       | or `FFFin`         |
-//~ | --- | ----------------------- | ------------------ | ------------------ |
-//~ |   0 | `left_input_lo` (copy)  | `result_lo` (copy) | `resmin_lo` (copy) |
-//~ |   1 | `left_input_mi` (copy)  | `result_mi` (copy) | `resmin_mi` (copy) |
-//~ |   2 | `left_input_hi` (copy)  | `result_hi` (copy) | `resmin_hi` (copy) |
-//~ |   3 | `right_input_lo` (copy) |  ...               | `bound_lo`  (copy) |
-//~ |   4 | `right_input_mi` (copy) |  ...               | `bound_mi`  (copy) |
-//~ |   5 | `right_input_hi` (copy) |  ...               | `bound_hi`  (copy) |
-//~ |   6 | `field_overflow`        |  ...               |  -                 |
-//~ |   7 | `carry_lo`              |  ...               | `bound_carry_lo`   |
-//~ |   8 | `carry_mi`              |  ...               | `bound_carry_mi`   |
-//~ |   9 | `sign`                  |  ...               |  -                 |
-//~ |  10 |                         |                    |                    |
-//~ |  11 |                         |                    |                    |
-//~ |  12 |                         |                    |                    |
-//~ |  13 |                         |                    |                    |
-//~ |  14 |                         |                    |                    |
+//~ | col | `ForeignFieldAdd`       | more `ForeignFieldAdd` | or `ForeignFieldFin` |
+//~ | --- | ----------------------- | ---------------------- | -------------------- |
+//~ |   0 | `left_input_lo`  (copy) | `result_lo` (copy)     | `resmin_lo` (copy)   |
+//~ |   1 | `left_input_mi`  (copy) | `result_mi` (copy)     | `resmin_mi` (copy)   |
+//~ |   2 | `left_input_hi`  (copy) | `result_hi` (copy)     | `resmin_hi` (copy)   |
+//~ |   3 | `right_input_lo` (copy) |  ...                   | `bound_lo`  (copy)   |
+//~ |   4 | `right_input_mi` (copy) |  ...                   | `bound_mi`  (copy)   |
+//~ |   5 | `right_input_hi` (copy) |  ...                   | `bound_hi`  (copy)   |
+//~ |   6 | `field_overflow`        |  ...                   |  -                   |
+//~ |   7 | `carry_lo`              |  ...                   | `bound_carry_lo`     |
+//~ |   8 | `carry_mi`              |  ...                   | `bound_carry_mi`     |
+//~ |   9 | `sign`                  |  ...                   |  -                   |
+//~ |  10 |                         |                        |                      |
+//~ |  11 |                         |                        |                      |
+//~ |  12 |                         |                        |                      |
+//~ |  13 |                         |                        |                      |
+//~ |  14 |                         |                        |                      |
 //~
 //~ Having a specific final row that checks the bound is useful as it checks the upper bound
 //~ without reusing the same constraints in the `ForeignFieldAdd` rows (which would require
