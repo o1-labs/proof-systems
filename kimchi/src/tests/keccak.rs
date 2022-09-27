@@ -1,21 +1,12 @@
-use crate::{
-    circuits::{
-        constraints::ConstraintSystem,
-        gate::{CircuitGate, CircuitGateError, GateType},
-        polynomial::COLUMNS,
-        polynomials::{generic::GenericGateSpec, keccak::witness::create_witness},
-        wires::{Wire, PERMUTS},
-    },
-    proof::ProverProof,
-    prover_index::testing::new_index_for_test_with_lookups,
+use crate::circuits::{
+    constraints::ConstraintSystem, gate::CircuitGate, polynomials::keccak::witness::create_witness,
+    wires::Wire,
 };
 
 use ark_ec::AffineCurve;
-use mina_curves::pasta::{pallas, vesta::Vesta, Fp};
+use mina_curves::pasta::{Fp, Pallas, Vesta};
 
-use std::array;
-
-type PallasField = <pallas::Pallas as AffineCurve>::BaseField;
+type PallasField = <Pallas as AffineCurve>::BaseField;
 
 fn create_test_constraint_system() -> ConstraintSystem<Fp> {
     let (mut next_row, mut gates) = CircuitGate::<Fp>::create_keccak_xor(0);
@@ -33,18 +24,11 @@ fn create_test_constraint_system() -> ConstraintSystem<Fp> {
 fn test_64bit_xor() {
     let cs = create_test_constraint_system();
 
-    let all_ones: u64 = (2u128.pow(64) - 1) as u64;
-    let witness = create_witness(all_ones, all_ones);
+    let zero_ones: u64 = 6510615555426900570;
+    let one_zeros: u64 = 11936128518282651045;
+    let witness = create_witness(zero_ones, one_zeros);
 
-    /*     for row in 0..=7 {
-            println!("row: {}", row);
-            for col in 0..PERMUTS {
-                println!("col {} connected to {:?}", col, cs.gates[row].wires[col]);
-            }
-        }
-    */
     for row in 0..=7 {
-        println!("verify row: {}", row);
         assert_eq!(
             cs.gates[row].verify_witness::<Vesta>(
                 row,
@@ -55,4 +39,7 @@ fn test_64bit_xor() {
             Ok(())
         );
     }
+
+    assert_eq!(witness[0][5], PallasField::from(2u64.pow(32) - 1));
+    assert_eq!(witness[0][7], PallasField::from(2u64.pow(32) - 1));
 }

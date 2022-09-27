@@ -7,7 +7,6 @@ use crate::circuits::{
     },
 };
 use ark_ff::PrimeField;
-use o1_utils::FieldHelpers;
 use std::array;
 
 const fn xor_row(rc_row: usize, curr_row: usize, offset: usize) -> [WitnessCell; COLUMNS] {
@@ -70,17 +69,6 @@ const fn xor_rows(rc_row: usize, curr_row: usize) -> [[WitnessCell; COLUMNS]; 4]
     ]
 }
 
-pub fn view_witness<F: PrimeField>(witness: &[Vec<F>; COLUMNS]) {
-    let len = witness[0].len();
-    println!("witness len: {}", len);
-    for i in 0..len {
-        println!("row {}:", i);
-        for j in 0..COLUMNS {
-            println!("col {}: {}", j, witness[j][i].to_hex());
-        }
-    }
-}
-
 fn init_keccak_xor_rows<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
     rc_row: usize,
@@ -91,18 +79,15 @@ fn init_keccak_xor_rows<F: PrimeField>(
     // First, the two first columns of all rows
     for (i, wit) in xor_rows.iter().enumerate() {
         for col in 0..2 {
-            println!("row {} col {}", curr_row + i, col);
             handle_standard_witness_cell(witness, &wit[col], curr_row + i, col, F::zero())
         }
     }
     // Next, the rest of the columns of all rows
     for (i, wit) in xor_rows.iter().enumerate() {
         for col in 2..COLUMNS {
-            println!("row {} col {}", curr_row + i, col);
             handle_standard_witness_cell(witness, &wit[col], curr_row + i, col, F::zero())
         }
     }
-    view_witness(&witness);
 }
 
 /// Extends the xor rows to the full witness
