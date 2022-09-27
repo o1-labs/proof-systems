@@ -87,7 +87,7 @@ pub fn circuit_gates() -> [GateType; GATE_COUNT] {
 /// Number of constraints for a given range check circuit gate type
 pub fn circuit_gate_constraint_count<F: FftField>(typ: GateType) -> u32 {
     match typ {
-        GateType::RangeCheck0 => Xor::<F>::CONSTRAINTS,
+        GateType::Xor => Xor::<F>::CONSTRAINTS,
         _ => panic!("invalid gate type"),
     }
 }
