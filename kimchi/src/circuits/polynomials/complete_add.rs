@@ -19,7 +19,7 @@ use crate::circuits::{
     gate::{CircuitGate, GateType},
     wires::COLUMNS,
 };
-use ark_ff::{FftField, Field, PrimeField};
+use ark_ff::{Field, PrimeField};
 use std::marker::PhantomData;
 
 /// This enforces that
@@ -90,7 +90,7 @@ pub struct CompleteAdd<F>(PhantomData<F>);
 
 impl<F> Argument<F> for CompleteAdd<F>
 where
-    F: FftField,
+    F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CompleteAdd);
     const CONSTRAINTS: u32 = 7;

@@ -8,7 +8,7 @@ use crate::{
     },
     proof::ProofEvaluations,
 };
-use ark_ff::{FftField, Field, One, Zero};
+use ark_ff::{FftField, Field, One, PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
@@ -596,7 +596,10 @@ impl<C> Expr<C> {
     }
 }
 
-impl<F: Field> fmt::Display for Expr<ConstantExpr<F>> {
+impl<F> fmt::Display for Expr<ConstantExpr<F>>
+where
+    F: PrimeField,
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.text_str())
     }
@@ -2044,7 +2047,10 @@ impl<F: Field> Mul<F> for Expr<ConstantExpr<F>> {
 // Display
 //
 
-impl<F: Field> ConstantExpr<F> {
+impl<F> ConstantExpr<F>
+where
+    F: PrimeField,
+{
     fn ocaml(&self) -> String {
         use ConstantExpr::*;
         match self {
@@ -2054,7 +2060,7 @@ impl<F: Field> ConstantExpr<F> {
             JointCombiner => "joint_combiner".to_string(),
             EndoCoefficient => "endo_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
-            Literal(x) => format!("field(\"0x{}\")", x.to_hex()),
+            Literal(x) => format!("field(\"0x{}\")", x.into_repr()),
             Pow(x, n) => match x.as_ref() {
                 Alpha => format!("alpha_pow({n})"),
                 x => format!("pow({}, {n})", x.ocaml()),
@@ -2108,7 +2114,7 @@ impl<F: Field> ConstantExpr<F> {
 
 impl<F> Expr<ConstantExpr<F>>
 where
-    F: Field,
+    F: PrimeField,
 {
     /// Converts the expression in OCaml code
     pub fn ocaml_str(&self) -> String {
@@ -2296,7 +2302,10 @@ pub mod constraints {
         fn cache(&self, cache: &mut Cache) -> Self;
     }
 
-    impl<F: Field> ExprOps<F> for Expr<ConstantExpr<F>> {
+    impl<F> ExprOps<F> for Expr<ConstantExpr<F>>
+    where
+        F: PrimeField,
+    {
         fn double(&self) -> Self {
             Expr::double(self.clone())
         }
