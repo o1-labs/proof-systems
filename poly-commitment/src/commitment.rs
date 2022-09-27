@@ -878,7 +878,7 @@ mod tests {
 
     use crate::srs::SRS;
     use ark_poly::{Polynomial, UVPolynomial};
-    use mina_curves::pasta::{fp::Fp, vesta::Vesta as VestaG};
+    use mina_curves::pasta::{Fp, Vesta as VestaG};
     use oracle::constants::PlonkSpongeConstantsKimchi as SC;
     use oracle::sponge::DefaultFqSponge;
     use rand::{rngs::StdRng, SeedableRng};

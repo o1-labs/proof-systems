@@ -7,7 +7,7 @@ use crate::tests::framework::TestFramework;
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zero};
 use colored::Colorize;
-use mina_curves::pasta::{fp::Fp as F, pallas::Pallas as Other};
+use mina_curves::pasta::{Fp as F, Pallas as Other};
 use rand::{rngs::StdRng, SeedableRng};
 use std::array;
 use std::time::Instant;

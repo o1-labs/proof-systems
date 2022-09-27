@@ -8,19 +8,20 @@ use crate::{
     },
     proof::ProofEvaluations,
 };
-use ark_ff::{FftField, Field, One, PrimeField, Zero};
+use ark_ff::{FftField, Field, One, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
 use itertools::Itertools;
+use o1_utils::FieldHelpers;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::iter::FromIterator;
 use std::ops::{Add, AddAssign, Mul, Neg, Sub};
 use std::{
     collections::{HashMap, HashSet},
     ops::MulAssign,
 };
+use std::{fmt, iter::FromIterator};
 use thiserror::Error;
 use CurrOrNext::{Curr, Next};
 
@@ -197,6 +198,23 @@ impl Column {
             Column::Coefficient(i) => format!("c_{{{}}}", i),
         }
     }
+
+    fn text(&self) -> String {
+        match self {
+            Column::Witness(i) => format!("w[{i}]"),
+            Column::Z => "Z".to_string(),
+            Column::LookupSorted(i) => format!("s[{}]", i),
+            Column::LookupAggreg => "a".to_string(),
+            Column::LookupTable => "t".to_string(),
+            Column::LookupKindIndex(i) => format!("k[{:?}]", i),
+            Column::LookupRuntimeSelector => "rts".to_string(),
+            Column::LookupRuntimeTable => "rt".to_string(),
+            Column::Index(gate) => {
+                format!("{:?}", gate)
+            }
+            Column::Coefficient(i) => format!("c[{}]", i),
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -219,6 +237,14 @@ impl Variable {
         match self.row {
             Curr => col,
             Next => format!("\\tilde{{{col}}}"),
+        }
+    }
+
+    fn text(&self) -> String {
+        let col = self.col.text();
+        match self.row {
+            Curr => format!("Curr({col})"),
+            Next => format!("Next({col})"),
         }
     }
 }
@@ -356,6 +382,10 @@ impl CacheId {
 
     fn latex_name(&self) -> String {
         format!("x_{{{}}}", self.0)
+    }
+
+    fn text_name(&self) -> String {
+        format!("x[{}]", self.0)
     }
 }
 
@@ -563,6 +593,12 @@ impl<C> Expr<C> {
             Pow(e, d) => d * e.degree(d1_size),
             Cache(_, e) => e.degree(d1_size),
         }
+    }
+}
+
+impl<F: Field> fmt::Display for Expr<ConstantExpr<F>> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.text_str())
     }
 }
 
@@ -2008,7 +2044,7 @@ impl<F: Field> Mul<F> for Expr<ConstantExpr<F>> {
 // Display
 //
 
-impl<F: PrimeField> ConstantExpr<F> {
+impl<F: Field> ConstantExpr<F> {
     fn ocaml(&self) -> String {
         use ConstantExpr::*;
         match self {
@@ -2018,7 +2054,7 @@ impl<F: PrimeField> ConstantExpr<F> {
             JointCombiner => "joint_combiner".to_string(),
             EndoCoefficient => "endo_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
-            Literal(x) => format!("field(\"0x{}\")", x.into_repr()),
+            Literal(x) => format!("field(\"0x{}\")", x.to_hex()),
             Pow(x, n) => match x.as_ref() {
                 Alpha => format!("alpha_pow({n})"),
                 x => format!("pow({}, {n})", x.ocaml()),
@@ -2038,7 +2074,7 @@ impl<F: PrimeField> ConstantExpr<F> {
             JointCombiner => "joint\\_combiner".to_string(),
             EndoCoefficient => "endo\\_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
-            Literal(x) => format!("\\mathbb{{F}}({})", x.into_repr().into()),
+            Literal(x) => format!("\\mathbb{{F}}({})", x.to_hex()),
             Pow(x, n) => match x.as_ref() {
                 Alpha => format!("\\alpha^{{{n}}}"),
                 x => format!("{}^{n}", x.ocaml()),
@@ -2048,11 +2084,31 @@ impl<F: PrimeField> ConstantExpr<F> {
             Sub(x, y) => format!("({} - {})", x.ocaml(), y.ocaml()),
         }
     }
+
+    fn text(&self) -> String {
+        use ConstantExpr::*;
+        match self {
+            Alpha => "alpha".to_string(),
+            Beta => "beta".to_string(),
+            Gamma => "gamma".to_string(),
+            JointCombiner => "joint_combiner".to_string(),
+            EndoCoefficient => "endo_coefficient".to_string(),
+            Mds { row, col } => format!("mds({row}, {col})"),
+            Literal(x) => format!("0x{}", x.to_hex()),
+            Pow(x, n) => match x.as_ref() {
+                Alpha => format!("alpha^{}", n),
+                x => format!("{}^{n}", x.text()),
+            },
+            Add(x, y) => format!("({} + {})", x.text(), y.text()),
+            Mul(x, y) => format!("({} * {})", x.text(), y.text()),
+            Sub(x, y) => format!("({} - {})", x.text(), y.text()),
+        }
+    }
 }
 
 impl<F> Expr<ConstantExpr<F>>
 where
-    F: PrimeField,
+    F: Field,
 {
     /// Converts the expression in OCaml code
     pub fn ocaml_str(&self) -> String {
@@ -2137,6 +2193,48 @@ where
             }
         }
     }
+
+    /// Recursively print the expression,
+    /// except for the cached expression that are stored in the `cache`.
+    fn text(&self, cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>>>) -> String {
+        use Expr::*;
+        match self {
+            Double(x) => format!("double({})", x.text(cache)),
+            Constant(x) => x.text(),
+            Cell(v) => v.text(),
+            UnnormalizedLagrangeBasis(i) => format!("unnormalized_lagrange_basis({})", *i),
+            VanishesOnLast4Rows => "vanishes_on_last_4_rows".to_string(),
+            BinOp(Op2::Add, x, y) => format!("({} + {})", x.text(cache), y.text(cache)),
+            BinOp(Op2::Mul, x, y) => format!("({} * {})", x.text(cache), y.text(cache)),
+            BinOp(Op2::Sub, x, y) => format!("({} - {})", x.text(cache), y.text(cache)),
+            Pow(x, d) => format!("pow({}, {d})", x.text(cache)),
+            Square(x) => format!("square({})", x.text(cache)),
+            Cache(id, e) => {
+                cache.insert(*id, e.as_ref().clone());
+                id.var_name()
+            }
+        }
+    }
+
+    /// Converts the expression to a text string
+    pub fn text_str(&self) -> String {
+        let mut env = HashMap::new();
+        let e = self.text(&mut env);
+
+        let mut env: Vec<_> = env.into_iter().collect();
+        // HashMap deliberately uses an unstable order; here we sort to ensure that the output is
+        // consistent when printing.
+        env.sort_by(|(x, _), (y, _)| x.cmp(y));
+
+        let mut res = String::new();
+        for (k, v) in env {
+            let str = format!("{} = {}", k.text_name(), v.text_str());
+            res.push_str(&str);
+        }
+
+        res.push_str(&e);
+        res
+    }
 }
 
 //
@@ -2145,6 +2243,8 @@ where
 
 /// A number of useful constraints
 pub mod constraints {
+    use std::fmt;
+
     use crate::circuits::argument::ArgumentData;
 
     use super::*;
@@ -2163,6 +2263,7 @@ pub mod constraints {
         + Zero
         + One
         + From<u64>
+        + fmt::Display
     // Add more as necessary
     where
         Self: std::marker::Sized,
@@ -2350,8 +2451,7 @@ pub mod test {
         curve::KimchiCurve,
     };
     use ark_ff::UniformRand;
-    use mina_curves::pasta::fp::Fp;
-    use mina_curves::pasta::vesta::Vesta;
+    use mina_curves::pasta::{Fp, Vesta};
     use rand::{prelude::StdRng, SeedableRng};
     use std::array;
 

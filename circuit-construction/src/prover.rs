@@ -12,7 +12,7 @@ use kimchi::{
     proof::ProverProof,
     prover_index::ProverIndex,
 };
-use mina_curves::pasta::{fp::Fp, fq::Fq, pallas::Pallas as Other, vesta::Vesta};
+use mina_curves::pasta::{Fp, Fq, Pallas as Other, Vesta};
 use oracle::FqSponge;
 use std::array;
 

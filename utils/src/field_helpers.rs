@@ -132,10 +132,8 @@ mod tests {
 
     use ark_ec::AffineCurve;
     use ark_ff::One;
-    use mina_curves::pasta::pallas;
+    use mina_curves::pasta::Pallas as CurvePoint;
 
-    /// Affine curve point type
-    pub use pallas::Pallas as CurvePoint;
     /// Base field element type
     pub type BaseField = <CurvePoint as AffineCurve>::BaseField;
 

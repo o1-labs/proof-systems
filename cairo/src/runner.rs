@@ -576,7 +576,7 @@ impl<'a, F: Field> CairoProgram<'a, F> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mina_curves::pasta::fp::Fp as F;
+    use mina_curves::pasta::Fp as F;
 
     #[test]
     fn test_cairo_step() {
