@@ -7,7 +7,7 @@
 use std::marker::PhantomData;
 
 use crate::{alphas::Alphas, circuits::expr::prologue::*};
-use ark_ff::{PrimeField, Field};
+use ark_ff::{Field, PrimeField};
 use serde::{Deserialize, Serialize};
 
 use super::{
