@@ -173,20 +173,17 @@ pub fn handle_standard_witness_cell<F: PrimeField>(
 ) {
     match witness_cell {
         WitnessCell::Copy(copy_cell) => {
-            println!(
-                "copying (col: {} , row: {} ) to (col: {} , row: {})",
-                copy_cell.col, copy_cell.row, col, row
-            );
             witness[col][row] = witness[copy_cell.col][copy_cell.row];
         }
         WitnessCell::Value => {
             witness[col][row] = value;
         }
         WitnessCell::Limb(limb_cell) => {
+            /*
             println!(
                 "connecting limbs (col: {} , row: {} ) to (col: {} , row: {})",
                 limb_cell.col, limb_cell.row, col, row
-            );
+            );*/
             witness[col][row] = value_to_limb(
                 witness[limb_cell.col][limb_cell.row], // limb cell (row, col)
                 limb_cell.start,                       // starting bit

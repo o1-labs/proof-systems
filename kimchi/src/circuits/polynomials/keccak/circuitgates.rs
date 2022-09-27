@@ -178,6 +178,13 @@ where
         let in1_sum = four_bit(env, 10);
         let in2_sum = four_bit(env, 6);
 
+        println!("Xor: out_sum: {}", out_sum);
+        println!("Xor:     out: {}", env.witness_next(0));
+        println!("Xor: in1_sum: {}", in1_sum);
+        println!("Xor:     in1: {}", env.witness_curr(0));
+        println!("Xor: in2_sum: {}", in2_sum);
+        println!("Xor:     in2: {}", env.witness_next(1));
+
         // Check first input is well formed
         constraints.push(in1_sum - env.witness_curr(0));
         // Check second input is well formed
@@ -200,11 +207,9 @@ where
 fn four_bit<F: FftField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>, max: usize) -> T {
     let mut sum = T::zero();
     let two = T::one() + T::one();
+    let four_bit = two.pow(4);
     for i in (max - 4..max).rev() {
-        sum = two.clone() * sum + env.witness_next(i);
-    }
-    for i in (max - 4..max).rev() {
-        sum = two.clone() * sum + env.witness_curr(i);
+        sum = four_bit.clone() * sum + env.witness_next(i);
     }
     sum
 }

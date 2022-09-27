@@ -30,19 +30,19 @@ fn create_test_constraint_system() -> ConstraintSystem<Fp> {
 }
 
 #[test]
-fn test_32bit_xor() {
+fn test_64bit_xor() {
     let cs = create_test_constraint_system();
 
     let all_ones: u64 = (2u128.pow(64) - 1) as u64;
     let witness = create_witness(all_ones, all_ones);
 
-    for row in 0..=7 {
-        println!("row: {}", row);
-        for col in 0..PERMUTS {
-            println!("col {} connected to {:?}", col, cs.gates[row].wires[col]);
+    /*     for row in 0..=7 {
+            println!("row: {}", row);
+            for col in 0..PERMUTS {
+                println!("col {} connected to {:?}", col, cs.gates[row].wires[col]);
+            }
         }
-    }
-
+    */
     for row in 0..=7 {
         println!("verify row: {}", row);
         assert_eq!(

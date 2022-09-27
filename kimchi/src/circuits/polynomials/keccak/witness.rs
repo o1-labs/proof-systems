@@ -7,6 +7,7 @@ use crate::circuits::{
     },
 };
 use ark_ff::PrimeField;
+use o1_utils::FieldHelpers;
 use std::array;
 
 const fn xor_row(rc_row: usize, curr_row: usize, offset: usize) -> [WitnessCell; COLUMNS] {
@@ -75,7 +76,7 @@ pub fn view_witness<F: PrimeField>(witness: &[Vec<F>; COLUMNS]) {
     for i in 0..len {
         println!("row {}:", i);
         for j in 0..COLUMNS {
-            println!("col {}: {}", j, witness[j][i]);
+            println!("col {}: {}", j, witness[j][i].to_hex());
         }
     }
 }
@@ -90,16 +91,31 @@ fn init_keccak_xor_rows<F: PrimeField>(
     // First, the two first columns of all rows
     for (i, wit) in xor_rows.iter().enumerate() {
         for col in 0..2 {
-            println!("row {} col {}", curr_row+i, col);
+            println!("row {} col {}", curr_row + i, col);
             handle_standard_witness_cell(witness, &wit[col], curr_row + i, col, F::zero())
         }
     }
+    // Next, the rest of the columns of all rows
     for (i, wit) in xor_rows.iter().enumerate() {
         for col in 2..COLUMNS {
-            println!("row {} col {}", curr_row+i, col);
+            println!("row {} col {}", curr_row + i, col);
             handle_standard_witness_cell(witness, &wit[col], curr_row + i, col, F::zero())
         }
     }
+    view_witness(&witness);
+}
+
+/// Extends the xor rows to the full witness
+pub fn extend_xor_rows<F: PrimeField>(
+    witness: &mut [Vec<F>; COLUMNS],
+    rc_row: usize,
+    curr_row: usize,
+) {
+    let xor_witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 4]);
+    for col in 0..COLUMNS {
+        witness[col].extend(xor_witness[col].iter());
+    }
+    init_keccak_xor_rows(witness, rc_row, curr_row);
 }
 
 /// Create a keccak xor multiplication witness
@@ -116,16 +132,4 @@ pub fn create_witness<F: PrimeField>(input1: u64, input2: u64) -> [Vec<F>; COLUM
     extend_xor_rows(&mut witness, 1, 4);
 
     witness
-}
-
-pub fn extend_xor_rows<F: PrimeField>(
-    witness: &mut [Vec<F>; COLUMNS],
-    rc_row: usize,
-    curr_row: usize,
-) {
-    let xor_witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 4]);
-    for col in 0..COLUMNS {
-        witness[col].extend(xor_witness[col].iter());
-    }
-    init_keccak_xor_rows(witness, rc_row, curr_row);
 }
