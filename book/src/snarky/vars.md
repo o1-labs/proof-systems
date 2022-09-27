@@ -48,8 +48,6 @@ let one: CVar = state.exists(|_| 1);
 assert_eq(x, one);
 ```
 
-In general, a circuit variable only gets constrained by an assertion call like `assert` or `assert_equals`.
-
 ### Non-constants
 
 Right after being created, a `CVar` is not constrained yet, and needs to be constrained by the application.
@@ -57,6 +55,29 @@ That is unless the application wants the `CVar` to be a constant that will not n
 
 In any case, a circuit variable which is not a constant has a value that is not known yet at circuit-generation time.
 In some situations, we might not want to constrain the 
+
+
+### When do variables get constrained?
+
+In general, a circuit variable only gets constrained by an assertion call like `assert` or `assert_equals`.
+
+When variables are added together, or scaled, they do not directly get constrained. 
+This is due to optimizations targetting R1CS (which we don't support anymore) that were implemented in the original snarky library, and that we have kept in snarky-rs.
+
+Imagine the following example:
+
+```rust
+let y = x1 + x2 + x3 +.... ;
+let z = y + 3;
+assert_eq(y, 6);
+assert_eq(z, 7);
+```
+
+The first two lines will not create constraints, but simply create minimal ASTs that track all of the additions.
+
+Both assert calls will then reduce the variables to a single circuit variable, creating the same constraints twice.
+
+For this reason, there's a function `seal()` defined in pickles and snarkyjs. (TODO: more about `seal()`, and why is it not in snarky?) (TODO: remove the R1CS optimization)
 
 ## Snarky vars
 
