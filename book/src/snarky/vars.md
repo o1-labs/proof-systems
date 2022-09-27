@@ -31,7 +31,7 @@ where
 
 ### Constants
 
-Note that a cvar does not represent a value that has been constrained in the circuit (yet).
+Note that a circuit variable does not represent a value that has been constrained in the circuit (yet).
 This is why we need to know if a cvar is a constant, so that we can avoid constraining it too early. 
 For example, the following code does not encode 2 or 1 in the circuit, but will encode 3:
 
@@ -48,18 +48,19 @@ let one: CVar = state.exists(|_| 1);
 assert_eq(x, one);
 ```
 
+In general, a circuit variable only gets constrained by an assertion call like `assert` or `assert_equals`.
+
 ### Non-constants
 
-A `CVar` is always constructed by `compute()` (perhaps behind the scene after calling a function like `poseidon`).
 Right after being created, a `CVar` is not constrained yet, and needs to be constrained by the application.
 That is unless the application wants the `CVar` to be a constant that will not need to be constrained (see previous example) or because the application wants the `CVar` to be a random value (unlikely) (TODO: we should add a "rand" function for that).
 
-In any case, a CVar which is not a constant has a value that is not known yet at circuit-generation time.
+In any case, a circuit variable which is not a constant has a value that is not known yet at circuit-generation time.
 In some situations, we might not want to constrain the 
 
 ## Snarky vars
 
-Handling `CVar`s can be constraining, as they can only represent field elements.
+Handling `CVar`s can be cumbersome, as they can only represent a single field element.
 We might want to represent values that are either in a smaller range (e.g. [booleans](./booleans.md)) or that are made out of several `CVar`s.
 
 For this, snarky's API exposes the following trait, which allows users to define their own types:
@@ -95,9 +96,16 @@ where
 }
 ```
 
-Such types are always handled as `OutOfCircuit` types by the users, and as `Self` by snarky.
+Such types are always handled as `OutOfCircuit` types (e.g. `bool`) by the users, and as a type implementing `SnarkyType` by snarky (e.g. [`Boolean`](./booleans.md)).
 Thus, the user can pass them to snarky in two ways:
 
 **As public inputs**. In this case they will be serialized into field elements for snarky before [witness-generation](./witness-generation.md) (via the `value_to_field_elements()` function)
 
-**As private inputs**. In this case, they must be created using the `compute()` function with a closure returning an `OutOfCircuit` value by the user. The call to `compute()` will need to have some type hint, for snarky to understand what `SnarkyType` it is creating. (Without that, it wouldn't understand if a value of type `Field`, for example, has to be converted to a `CVar` or to something else.)
+**As private inputs**. In this case, they must be created using the `compute()` function with a closure returning an `OutOfCircuit` value by the user. 
+The call to `compute()` will need to have some type hint, for snarky to understand what `SnarkyType` it is creating. 
+This is because the relationship is currently only one-way: a `SnarkyType` knows what out-of-circuit type it relates to, but not the other way is not true.
+(TODO: should we implement that though?)
+
+A `SnarkyType` always implements a `check()` function, which is called by snarky when `compute()` is called to create such a type.
+The `check()` function is responsible for creating the constraints that sanitize the newly-created `SnarkyType` (and its underlying `CVar`s).
+For example, creating a boolean would make sure that the underlying `CVar` is either 0 or 1.
