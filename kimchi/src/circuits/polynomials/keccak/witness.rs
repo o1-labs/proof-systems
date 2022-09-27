@@ -11,7 +11,7 @@ use std::array;
 
 const fn xor_row(rc_row: usize, curr_row: usize, offset: usize) -> [WitnessCell; COLUMNS] {
     [
-        LimbWitnessCell::create(rc_row, 0, 0 + offset, 32 + offset), // in1
+        LimbWitnessCell::create(rc_row, 0, offset, 32 + offset), // in1
         ZeroWitnessCell::create(),
         ZeroWitnessCell::create(),
         LimbWitnessCell::create(curr_row + 1, 1, 0, 4), // in2_0
@@ -78,14 +78,14 @@ fn init_keccak_xor_rows<F: PrimeField>(
 
     // First, the two first columns of all rows
     for (i, wit) in xor_rows.iter().enumerate() {
-        for col in 0..2 {
-            handle_standard_witness_cell(witness, &wit[col], curr_row + i, col, F::zero())
+        for (col, cell) in wit.iter().enumerate().take(2) {
+            handle_standard_witness_cell(witness, cell, curr_row + i, col, F::zero())
         }
     }
     // Next, the rest of the columns of all rows
     for (i, wit) in xor_rows.iter().enumerate() {
-        for col in 2..COLUMNS {
-            handle_standard_witness_cell(witness, &wit[col], curr_row + i, col, F::zero())
+        for (col, cell) in wit.iter().enumerate().take(COLUMNS).skip(2) {
+            handle_standard_witness_cell(witness, cell, curr_row + i, col, F::zero())
         }
     }
 }

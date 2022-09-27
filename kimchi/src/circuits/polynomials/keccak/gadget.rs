@@ -39,7 +39,7 @@ impl<F: PrimeField> CircuitGate<F> {
         let mut new_row = start_row;
         for _ in 0..3 {
             // 64bit checks for 3 elements: input1, input2, and output
-            new_row = new_row + 1;
+            new_row += 1;
             gates.append(&mut CircuitGate::<F>::create_range_check(new_row).1);
             gates.connect_64bit(zero_row, new_row);
         }
