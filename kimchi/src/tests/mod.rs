@@ -4,6 +4,7 @@ mod endomul;
 mod endomul_scalar;
 mod framework;
 mod generic;
+mod keccak;
 mod lookup;
 mod poseidon;
 mod range_check;

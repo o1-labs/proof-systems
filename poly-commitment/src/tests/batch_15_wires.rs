@@ -114,8 +114,8 @@ where
         .map(|proof| BatchEvaluationProof {
             sponge: proof.0.clone(),
             evaluation_points: proof.1.clone(),
-            xi: proof.2,
-            r: proof.3,
+            polyscale: proof.2,
+            evalscale: proof.3,
             evaluations: proof
                 .4
                 .iter()

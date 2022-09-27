@@ -75,6 +75,10 @@ where
 }
 
 /// Produces a `circuit.html` in the current folder.
+///
+/// # Panics
+///
+/// Will panic if `TinyTemplate::render()` returns `Error` or `std::fs::File::create()` returns `Error`.
 pub fn visu<G: KimchiCurve>(index: &ProverIndex<G>, witness: Option<Witness<G::ScalarField>>) {
     // serialize index
     let index = serde_json::to_string(index).expect("couldn't serialize index");

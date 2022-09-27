@@ -28,6 +28,10 @@ pub const ZK_ROWS: usize = 3;
 
 /// Pad with zeroes and then add 3 random elements in the last two
 /// rows for zero knowledge.
+///
+/// # Panics
+///
+/// Will panic if `evaluation` and `domain` length do not meet the requirement.
 pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
     mut e: Vec<F>,
     d: D<F>,
@@ -77,6 +81,10 @@ pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
 //~
 
 /// Computes the sorted lookup tables required by the lookup argument.
+///
+/// # Panics
+///
+/// Will panic if `value(s)` are missing from the `table`.
 #[allow(clippy::too_many_arguments)]
 pub fn sorted<F: PrimeField>(
     dummy_lookup_value: F,
@@ -214,6 +222,10 @@ pub fn sorted<F: PrimeField>(
 ///
 /// after multiplying all of the values, all of the terms will have cancelled if s is a sorting of f and t, and the final term will be 1
 /// because of the random choice of beta and gamma, there is negligible probability that the terms will cancel if s is not a sorting of f and t
+///
+/// # Panics
+///
+/// Will panic if final evaluation is not 1.
 #[allow(clippy::too_many_arguments)]
 pub fn aggregation<R, F>(
     dummy_lookup_value: F,
@@ -260,8 +272,8 @@ where
     let complements_with_beta_term = {
         let mut v = vec![F::one()];
         let x = gamma + dummy_lookup_value;
-        for i in 1..(max_lookups_per_row + 1) {
-            v.push(v[i - 1] * x)
+        for i in 1..=max_lookups_per_row {
+            v.push(v[i - 1] * x);
         }
 
         let beta1_per_row = beta1.pow(&[max_lookups_per_row as u64]);
@@ -340,6 +352,10 @@ pub struct LookupConfiguration<F: FftField> {
 }
 
 /// Specifies the lookup constraints as expressions.
+///
+/// # Panics
+///
+/// Will panic if single `element` length is bigger than `max_per_row` length.
 pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>) -> Vec<E<F>> {
     // Something important to keep in mind is that the last 2 rows of
     // all columns will have random values in them to maintain zero-knowledge.
@@ -403,8 +419,8 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>) -> Vec<E
             // v[i] = (gamma + dummy)^i
             let mut dummies = vec![ConstantExpr::one()];
             let dummy = ConstantExpr::Gamma + dummy_lookup;
-            for i in 1..(lookup_info.max_per_row + 1) {
-                dummies.push(dummies[i - 1].clone() * dummy.clone())
+            for i in 1..=lookup_info.max_per_row {
+                dummies.push(dummies[i - 1].clone() * dummy.clone());
             }
 
             // TODO: we can just multiply with (1+beta)^max_per_row at the end for any f_term, it feels weird to do it here
@@ -552,6 +568,10 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>) -> Vec<E
 }
 
 /// Checks that all the lookup constraints are satisfied.
+///
+/// # Panics
+///
+/// Will panic if `d1` and `s` domain sizes do not match.
 #[allow(clippy::too_many_arguments)]
 pub fn verify<F: PrimeField, I: Iterator<Item = F>, TABLE: Fn() -> I>(
     dummy_lookup_value: F,
@@ -587,9 +607,9 @@ pub fn verify<F: PrimeField, I: Iterator<Item = F>, TABLE: Fn() -> I>(
     for (i, s) in sorted.iter().enumerate() {
         let es = s.evals.iter().take(lookup_rows + 1);
         if i % 2 == 0 {
-            sorted_joined.extend(es)
+            sorted_joined.extend(es);
         } else {
-            sorted_joined.extend(es.rev())
+            sorted_joined.extend(es.rev());
         }
     }
 
@@ -609,11 +629,11 @@ pub fn verify<F: PrimeField, I: Iterator<Item = F>, TABLE: Fn() -> I>(
         for (i, s) in sorted.iter().enumerate() {
             if i % 2 == 0 {
                 for x in s.evals.iter().take(lookup_rows) {
-                    *counts.entry(*x).or_insert(0) += 1
+                    *counts.entry(*x).or_insert(0) += 1;
                 }
             } else {
                 for x in s.evals.iter().skip(1).take(lookup_rows) {
-                    *counts.entry(*x).or_insert(0) += 1
+                    *counts.entry(*x).or_insert(0) += 1;
                 }
             }
         }
@@ -635,10 +655,10 @@ pub fn verify<F: PrimeField, I: Iterator<Item = F>, TABLE: Fn() -> I>(
         for joint_lookup in spec.iter() {
             let joint_lookup_evaluation =
                 joint_lookup.evaluate(joint_combiner, table_id_combiner, &eval);
-            *all_lookups.entry(joint_lookup_evaluation).or_insert(0) += 1
+            *all_lookups.entry(joint_lookup_evaluation).or_insert(0) += 1;
         }
 
-        *all_lookups.entry(dummy_lookup_value).or_insert(0) += lookup_info.max_per_row - spec.len()
+        *all_lookups.entry(dummy_lookup_value).or_insert(0) += lookup_info.max_per_row - spec.len();
     }
 
     assert_eq!(
@@ -646,13 +666,13 @@ pub fn verify<F: PrimeField, I: Iterator<Item = F>, TABLE: Fn() -> I>(
         sorted_counts.iter().fold(0, |acc, (_, v)| acc + v)
     );
 
-    for (k, v) in all_lookups.iter() {
+    for (k, v) in &all_lookups {
         let s = sorted_counts.get(k).unwrap_or(&0);
         if v != s {
             panic!("For {}:\nall_lookups    = {}\nsorted_lookups = {}", k, v, s);
         }
     }
-    for (k, s) in sorted_counts.iter() {
+    for (k, s) in &sorted_counts {
         let v = all_lookups.get(k).unwrap_or(&0);
         if v != s {
             panic!("For {}:\nall_lookups    = {}\nsorted_lookups = {}", k, v, s);

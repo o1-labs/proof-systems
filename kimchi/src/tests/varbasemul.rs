@@ -6,10 +6,10 @@ use crate::circuits::{
 use crate::tests::framework::TestFramework;
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zero};
-use array_init::array_init;
 use colored::Colorize;
 use mina_curves::pasta::{fp::Fp as F, pallas::Pallas as Other};
 use rand::{rngs::StdRng, SeedableRng};
+use std::array;
 use std::time::Instant;
 
 #[test]
@@ -39,7 +39,7 @@ fn varbase_mul_test() {
     }
 
     let mut witness: [Vec<F>; COLUMNS] =
-        array_init(|_| vec![F::zero(); rows_per_scalar * num_scalars]);
+        array::from_fn(|_| vec![F::zero(); rows_per_scalar * num_scalars]);
 
     let rng = &mut StdRng::from_seed([0; 32]);
 

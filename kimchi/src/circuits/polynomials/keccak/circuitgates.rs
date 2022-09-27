@@ -120,11 +120,11 @@
 use std::marker::PhantomData;
 
 use crate::circuits::{
-    argument::{Argument, ArgumentType},
-    expr::{witness_curr, witness_next, ConstantExpr, Expr, E},
+    argument::{Argument, ArgumentEnv, ArgumentType},
+    expr::constraints::ExprOps,
     gate::GateType,
 };
-use ark_ff::{FftField, One, Zero};
+use ark_ff::FftField;
 
 //~ ##### `Xor` - XOR constraints for 32-bit words
 //~
@@ -171,19 +171,19 @@ where
     //   * Operates on Curr and Next rows
     //   * Constrain the decomposition of `in1`, `in2` and `out`
     //   * The actual XOR is performed thanks to the plookups.
-    fn constraints() -> Vec<E<F>> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
         let mut constraints = vec![];
 
-        let out_sum = four_bit(14);
-        let in1_sum = four_bit(10);
-        let in2_sum = four_bit(6);
+        let out_sum = four_bit(env, 14);
+        let in1_sum = four_bit(env, 10);
+        let in2_sum = four_bit(env, 6);
 
         // Check first input is well formed
-        constraints.push(in1_sum - witness_curr(0));
+        constraints.push(in1_sum - env.witness_curr(0));
         // Check second input is well formed
-        constraints.push(in2_sum - witness_next(1));
+        constraints.push(in2_sum - env.witness_next(1));
         // Check output input is well formed
-        constraints.push(out_sum - witness_next(0));
+        constraints.push(out_sum - env.witness_next(0));
 
         constraints
     }
@@ -197,14 +197,14 @@ where
 /// | `Curr` |  crumb0 |  crumb1 |  crumb2 |  crumb3 |
 /// | `Next` |  crumb4 |  crumb5 |  crumb6 |  crumb7 |
 ///
-fn four_bit<F: FftField>(max: usize) -> E<F> {
-    let mut sum = E::zero();
-    let two: Expr<ConstantExpr<F>> = E::one() + E::one();
+fn four_bit<F: FftField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>, max: usize) -> T {
+    let mut sum = T::zero();
+    let two = T::one() + T::one();
     for i in (max - 4..max).rev() {
-        sum = two.clone() * sum + witness_next(i);
+        sum = two.clone() * sum + env.witness_next(i);
     }
     for i in (max - 4..max).rev() {
-        sum = two.clone() * sum + witness_curr(i);
+        sum = two.clone() * sum + env.witness_curr(i);
     }
     sum
 }
