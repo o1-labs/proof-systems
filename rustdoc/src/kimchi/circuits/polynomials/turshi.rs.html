@@ -1804,7 +1804,7 @@
 /// # Panics
 ///
 /// Will panic if the `typ` is not `Cairo`-related gate type or `zero` gate type.
-</span><span class="kw">pub fn </span>circuit_gate_combined_constraints&lt;F: FftField&gt;(typ: GateType, alphas: <span class="kw-2">&amp;</span>Alphas&lt;F&gt;) -&gt; E&lt;F&gt; {
+</span><span class="kw">pub fn </span>circuit_gate_combined_constraints&lt;F: PrimeField&gt;(typ: GateType, alphas: <span class="kw-2">&amp;</span>Alphas&lt;F&gt;) -&gt; E&lt;F&gt; {
     <span class="kw">match </span>typ {
         GateType::CairoClaim =&gt; Claim::combined_constraints(alphas),
         GateType::CairoInstruction =&gt; Instruction::combined_constraints(alphas),
@@ -1819,7 +1819,7 @@
 
 <span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>Claim&lt;F&gt;
 <span class="kw">where
-    </span>F: FftField,
+    </span>F: PrimeField,
 {
     <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CairoClaim);
     <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">5</span>;
@@ -1856,7 +1856,7 @@
 
 <span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>Instruction&lt;F&gt;
 <span class="kw">where
-    </span>F: FftField,
+    </span>F: PrimeField,
 {
     <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CairoInstruction);
     <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">28</span>;
@@ -2003,7 +2003,7 @@
 
 <span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>Flags&lt;F&gt;
 <span class="kw">where
-    </span>F: FftField,
+    </span>F: PrimeField,
 {
     <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CairoFlags);
     <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">4</span>;
@@ -2070,7 +2070,7 @@
 
 <span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>Transition&lt;F&gt;
 <span class="kw">where
-    </span>F: FftField,
+    </span>F: PrimeField,
 {
     <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CairoTransition);
     <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">3</span>;
@@ -2095,4 +2095,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (f5193a9fc 2022-09-25)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (8b705839c 2022-09-26)" ></div></body></html>

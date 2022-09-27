@@ -755,7 +755,7 @@
     expr::constraints::{boolean, ExprOps},
     gate::{CurrOrNext, GateType},
 };
-<span class="kw">use </span>ark_ff::{FftField, Field};
+<span class="kw">use </span>ark_ff::{FftField, Field, PrimeField};
 
 <span class="comment">//
 // Implementation internals
@@ -763,7 +763,7 @@
 
 </span><span class="doccomment">/// 8-nybble sequences that are laid out as 4 nybbles per row over the two row,
 /// like y^x&#39; or x+z
-</span><span class="kw">fn </span>chunks_over_2_rows&lt;F: Field, T: ExprOps&lt;F&gt;&gt;(
+</span><span class="kw">fn </span>chunks_over_2_rows&lt;F: PrimeField, T: ExprOps&lt;F&gt;&gt;(
     env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;,
     col_offset: usize,
 ) -&gt; Vec&lt;T&gt; {
@@ -783,7 +783,7 @@
 }
 
 <span class="doccomment">/// Constraints for the line L(x, x&#39;, y, y&#39;, z, k), where k = 4 * `nybble_rotation`
-</span><span class="kw">fn </span>line&lt;F: Field, T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;, nybble_rotation: usize) -&gt; Vec&lt;T&gt; {
+</span><span class="kw">fn </span>line&lt;F: PrimeField, T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;, nybble_rotation: usize) -&gt; Vec&lt;T&gt; {
     <span class="kw">let </span>y_xor_xprime_nybbles = chunks_over_2_rows(env, <span class="number">3</span>);
     <span class="kw">let </span>x_plus_z_nybbles = chunks_over_2_rows(env, <span class="number">7</span>);
     <span class="kw">let </span>y_nybbles = chunks_over_2_rows(env, <span class="number">11</span>);
@@ -824,7 +824,7 @@
 
 <span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>ChaCha0&lt;F&gt;
 <span class="kw">where
-    </span>F: FftField,
+    </span>F: PrimeField,
 {
     <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha0);
     <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">5</span>;
@@ -840,7 +840,7 @@
 
 <span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>ChaCha1&lt;F&gt;
 <span class="kw">where
-    </span>F: FftField,
+    </span>F: PrimeField,
 {
     <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha1);
     <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">5</span>;
@@ -856,7 +856,7 @@
 
 <span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>ChaCha2&lt;F&gt;
 <span class="kw">where
-    </span>F: FftField,
+    </span>F: PrimeField,
 {
     <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha2);
     <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">5</span>;
@@ -872,7 +872,7 @@
 
 <span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>ChaChaFinal&lt;F&gt;
 <span class="kw">where
-    </span>F: FftField,
+    </span>F: PrimeField,
 {
     <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaChaFinal);
     <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">9</span>;
@@ -1215,4 +1215,4 @@
     </span>}
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (f5193a9fc 2022-09-25)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (8b705839c 2022-09-26)" ></div></body></html>

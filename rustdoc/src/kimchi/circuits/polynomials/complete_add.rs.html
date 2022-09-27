@@ -317,7 +317,7 @@
     gate::{CircuitGate, GateType},
     wires::COLUMNS,
 };
-<span class="kw">use </span>ark_ff::{FftField, Field, PrimeField};
+<span class="kw">use </span>ark_ff::{Field, PrimeField};
 <span class="kw">use </span>std::marker::PhantomData;
 
 <span class="doccomment">/// This enforces that
@@ -388,7 +388,7 @@
 
 <span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>CompleteAdd&lt;F&gt;
 <span class="kw">where
-    </span>F: FftField,
+    </span>F: PrimeField,
 {
     <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CompleteAdd);
     <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">7</span>;
@@ -595,4 +595,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (f5193a9fc 2022-09-25)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (8b705839c 2022-09-26)" ></div></body></html>

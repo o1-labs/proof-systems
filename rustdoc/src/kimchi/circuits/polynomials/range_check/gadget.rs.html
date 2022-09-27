@@ -788,7 +788,7 @@
 /// # Panics
 ///
 /// Will panic if `typ` is not `RangeCheck`-related gate type.
-</span><span class="kw">pub fn </span>circuit_gate_constraint_count&lt;F: FftField&gt;(typ: GateType) -&gt; u32 {
+</span><span class="kw">pub fn </span>circuit_gate_constraint_count&lt;F: PrimeField&gt;(typ: GateType) -&gt; u32 {
     <span class="kw">match </span>typ {
         GateType::RangeCheck0 =&gt; RangeCheck0::&lt;F&gt;::CONSTRAINTS,
         GateType::RangeCheck1 =&gt; RangeCheck1::&lt;F&gt;::CONSTRAINTS,
@@ -801,7 +801,7 @@
 /// # Panics
 ///
 /// Will panic if `typ` is not `RangeCheck`-related gate type.
-</span><span class="kw">pub fn </span>circuit_gate_constraints&lt;F: FftField&gt;(typ: GateType, alphas: <span class="kw-2">&amp;</span>Alphas&lt;F&gt;) -&gt; E&lt;F&gt; {
+</span><span class="kw">pub fn </span>circuit_gate_constraints&lt;F: PrimeField&gt;(typ: GateType, alphas: <span class="kw-2">&amp;</span>Alphas&lt;F&gt;) -&gt; E&lt;F&gt; {
     <span class="kw">match </span>typ {
         GateType::RangeCheck0 =&gt; RangeCheck0::combined_constraints(alphas),
         GateType::RangeCheck1 =&gt; RangeCheck1::combined_constraints(alphas),
@@ -810,7 +810,7 @@
 }
 
 <span class="doccomment">/// Get the combined constraints for all range check circuit gate types
-</span><span class="kw">pub fn </span>combined_constraints&lt;F: FftField&gt;(alphas: <span class="kw-2">&amp;</span>Alphas&lt;F&gt;) -&gt; E&lt;F&gt; {
+</span><span class="kw">pub fn </span>combined_constraints&lt;F: PrimeField&gt;(alphas: <span class="kw-2">&amp;</span>Alphas&lt;F&gt;) -&gt; E&lt;F&gt; {
     RangeCheck0::combined_constraints(alphas) + RangeCheck1::combined_constraints(alphas)
 }
 
@@ -819,4 +819,4 @@
     lookup::tables::get_table::&lt;F&gt;(GateLookupTable::RangeCheck)
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (f5193a9fc 2022-09-25)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (8b705839c 2022-09-26)" ></div></body></html>

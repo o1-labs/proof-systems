@@ -437,6 +437,13 @@
 <span id="437">437</span>
 <span id="438">438</span>
 <span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements short Weierstrass curve variable base scalar multiplication custom Plonk polynomials.
 //!
 //! ```ignore
@@ -455,7 +462,7 @@
     gate::{CircuitGate, CurrOrNext, GateType},
     wires::{GateWires, COLUMNS},
 };
-<span class="kw">use </span>ark_ff::{FftField, Field, PrimeField};
+<span class="kw">use </span>ark_ff::{FftField, PrimeField};
 <span class="kw">use </span>std::marker::PhantomData;
 <span class="kw">use </span>CurrOrNext::{Curr, Next};
 
@@ -614,7 +621,7 @@
 }
 
 <span class="kw">impl </span>Point&lt;Variable&gt; {
-    <span class="kw">pub fn </span>new_from_env&lt;F: Field, T: ExprOps&lt;F&gt;&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;) -&gt; Point&lt;T&gt; {
+    <span class="kw">pub fn </span>new_from_env&lt;F: PrimeField, T: ExprOps&lt;F&gt;&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;) -&gt; Point&lt;T&gt; {
         Point::create(<span class="self">self</span>.x.new_from_env(env), <span class="self">self</span>.y.new_from_env(env))
     }
 }
@@ -721,11 +728,18 @@
     n_next: T,
 }
 
-<span class="kw">trait </span>FromWitness&lt;F, T&gt; {
+<span class="kw">trait </span>FromWitness&lt;F, T&gt;
+<span class="kw">where
+    </span>F: PrimeField,
+{
     <span class="kw">fn </span>new_from_env(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;) -&gt; T;
 }
 
-<span class="kw">impl</span>&lt;F: Field, T: ExprOps&lt;F&gt;&gt; FromWitness&lt;F, T&gt; <span class="kw">for </span>Variable {
+<span class="kw">impl</span>&lt;F, T&gt; FromWitness&lt;F, T&gt; <span class="kw">for </span>Variable
+<span class="kw">where
+    </span>F: PrimeField,
+    T: ExprOps&lt;F&gt;,
+{
     <span class="kw">fn </span>new_from_env(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;) -&gt; T {
         <span class="kw">let </span>column_to_index = |<span class="kw">_</span>| <span class="kw">match </span><span class="self">self</span>.col {
             Column::Witness(i) =&gt; i,
@@ -762,7 +776,7 @@
         </span>}
     }
 
-    <span class="kw">fn </span>new_from_env&lt;F: Field, T: ExprOps&lt;F&gt;&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;) -&gt; Layout&lt;T&gt; {
+    <span class="kw">fn </span>new_from_env&lt;F: PrimeField, T: ExprOps&lt;F&gt;&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;) -&gt; Layout&lt;T&gt; {
         Layout {
             accs: <span class="self">self</span>.accs.map(|point| point.new_from_env(env)),
             bits: <span class="self">self</span>.bits.map(|var| var.new_from_env(env)),
@@ -839,7 +853,7 @@
 
 <span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>VarbaseMul&lt;F&gt;
 <span class="kw">where
-    </span>F: FftField,
+    </span>F: PrimeField,
 {
     <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::VarBaseMul);
     <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">21</span>;
@@ -877,4 +891,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (f5193a9fc 2022-09-25)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (8b705839c 2022-09-26)" ></div></body></html>

@@ -167,14 +167,14 @@
     gate::GateType,
     wires::COLUMNS,
 };
-<span class="kw">use </span>ark_ff::{FftField, SquareRootField};
+<span class="kw">use </span>ark_ff::{FftField, PrimeField, SquareRootField};
 
 <span class="doccomment">/// Get the expresion of constraints.
 ///
 /// # Panics
 ///
 /// Will panic if `generic_gate` is not associate with `alpha^0`.
-</span><span class="kw">pub fn </span>constraints_expr&lt;F: FftField + SquareRootField&gt;(
+</span><span class="kw">pub fn </span>constraints_expr&lt;F: PrimeField + SquareRootField&gt;(
     chacha: bool,
     range_check: bool,
     lookup_constraint_system: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>LookupConfiguration&lt;F&gt;&gt;,
@@ -282,7 +282,7 @@
 /// # Panics
 ///
 /// Will panic if the `linearization` process fails.
-</span><span class="kw">pub fn </span>expr_linearization&lt;F: FftField + SquareRootField&gt;(
+</span><span class="kw">pub fn </span>expr_linearization&lt;F: PrimeField + SquareRootField&gt;(
     chacha: bool,
     range_check: bool,
     lookup_constraint_system: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>LookupConfiguration&lt;F&gt;&gt;,
@@ -299,4 +299,4 @@
     (linearization, powers_of_alpha)
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (f5193a9fc 2022-09-25)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (8b705839c 2022-09-26)" ></div></body></html>

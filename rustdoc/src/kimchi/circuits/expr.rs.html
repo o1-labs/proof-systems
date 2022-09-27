@@ -2571,6 +2571,15 @@
 <span id="2571">2571</span>
 <span id="2572">2572</span>
 <span id="2573">2573</span>
+<span id="2574">2574</span>
+<span id="2575">2575</span>
+<span id="2576">2576</span>
+<span id="2577">2577</span>
+<span id="2578">2578</span>
+<span id="2579">2579</span>
+<span id="2580">2580</span>
+<span id="2581">2581</span>
+<span id="2582">2582</span>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         domains::EvaluationDomains,
@@ -2581,7 +2590,7 @@
     },
     proof::ProofEvaluations,
 };
-<span class="kw">use </span>ark_ff::{FftField, Field, One, Zero};
+<span class="kw">use </span>ark_ff::{FftField, Field, One, PrimeField, Zero};
 <span class="kw">use </span>ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain <span class="kw">as </span>D,
 };
@@ -3169,7 +3178,10 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: Field&gt; fmt::Display <span class="kw">for </span>Expr&lt;ConstantExpr&lt;F&gt;&gt; {
+<span class="kw">impl</span>&lt;F&gt; fmt::Display <span class="kw">for </span>Expr&lt;ConstantExpr&lt;F&gt;&gt;
+<span class="kw">where
+    </span>F: PrimeField,
+{
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter) -&gt; fmt::Result {
         <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.text_str())
     }
@@ -4617,7 +4629,10 @@
 // Display
 //
 
-</span><span class="kw">impl</span>&lt;F: Field&gt; ConstantExpr&lt;F&gt; {
+</span><span class="kw">impl</span>&lt;F&gt; ConstantExpr&lt;F&gt;
+<span class="kw">where
+    </span>F: PrimeField,
+{
     <span class="kw">fn </span>ocaml(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
         <span class="kw">use </span>ConstantExpr::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
@@ -4627,7 +4642,7 @@
             JointCombiner =&gt; <span class="string">&quot;joint_combiner&quot;</span>.to_string(),
             EndoCoefficient =&gt; <span class="string">&quot;endo_coefficient&quot;</span>.to_string(),
             Mds { row, col } =&gt; <span class="macro">format!</span>(<span class="string">&quot;mds({row}, {col})&quot;</span>),
-            Literal(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;field(\&quot;0x{}\&quot;)&quot;</span>, x.to_hex()),
+            Literal(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;field(\&quot;0x{}\&quot;)&quot;</span>, x.into_repr()),
             Pow(x, n) =&gt; <span class="kw">match </span>x.as_ref() {
                 Alpha =&gt; <span class="macro">format!</span>(<span class="string">&quot;alpha_pow({n})&quot;</span>),
                 x =&gt; <span class="macro">format!</span>(<span class="string">&quot;pow({}, {n})&quot;</span>, x.ocaml()),
@@ -4681,7 +4696,7 @@
 
 <span class="kw">impl</span>&lt;F&gt; Expr&lt;ConstantExpr&lt;F&gt;&gt;
 <span class="kw">where
-    </span>F: Field,
+    </span>F: PrimeField,
 {
     <span class="doccomment">/// Converts the expression in OCaml code
     </span><span class="kw">pub fn </span>ocaml_str(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
@@ -4869,7 +4884,10 @@
         </span><span class="kw">fn </span>cache(<span class="kw-2">&amp;</span><span class="self">self</span>, cache: <span class="kw-2">&amp;mut </span>Cache) -&gt; <span class="self">Self</span>;
     }
 
-    <span class="kw">impl</span>&lt;F: Field&gt; ExprOps&lt;F&gt; <span class="kw">for </span>Expr&lt;ConstantExpr&lt;F&gt;&gt; {
+    <span class="kw">impl</span>&lt;F&gt; ExprOps&lt;F&gt; <span class="kw">for </span>Expr&lt;ConstantExpr&lt;F&gt;&gt;
+    <span class="kw">where
+        </span>F: PrimeField,
+    {
         <span class="kw">fn </span>double(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
             Expr::double(<span class="self">self</span>.clone())
         }
@@ -5145,4 +5163,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (f5193a9fc 2022-09-25)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (8b705839c 2022-09-26)" ></div></body></html>

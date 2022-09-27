@@ -175,7 +175,7 @@
 </span><span class="kw">use </span>std::marker::PhantomData;
 
 <span class="kw">use crate</span>::{alphas::Alphas, circuits::expr::prologue::<span class="kw-2">*</span>};
-<span class="kw">use </span>ark_ff::{FftField, Field};
+<span class="kw">use </span>ark_ff::{Field, PrimeField};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 
 <span class="kw">use super</span>::{
@@ -300,7 +300,7 @@
 }
 
 <span class="doccomment">/// The interface for a minimal argument implementation.
-</span><span class="kw">pub trait </span>Argument&lt;F: FftField&gt; {
+</span><span class="kw">pub trait </span>Argument&lt;F: PrimeField&gt; {
     <span class="doccomment">/// The type of constraints that this will produce.
     /// This is important to enforce that we don&#39;t combine the constraints
     /// with powers of alpha that collide with other mutually inclusive arguments.
@@ -335,4 +335,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (f5193a9fc 2022-09-25)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (8b705839c 2022-09-26)" ></div></body></html>

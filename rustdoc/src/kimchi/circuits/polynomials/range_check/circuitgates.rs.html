@@ -443,7 +443,7 @@
     gate::GateType,
     polynomial::COLUMNS,
 };
-<span class="kw">use </span>ark_ff::FftField;
+<span class="kw">use </span>ark_ff::PrimeField;
 
 <span class="comment">//~ ##### `RangeCheck0` - Range check constraints
 //~
@@ -485,7 +485,7 @@
 
 <span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>RangeCheck0&lt;F&gt;
 <span class="kw">where
-    </span>F: FftField,
+    </span>F: PrimeField,
 {
     <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::RangeCheck0);
     <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">9</span>;
@@ -575,7 +575,7 @@
 
 <span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>RangeCheck1&lt;F&gt;
 <span class="kw">where
-    </span>F: FftField,
+    </span>F: PrimeField,
 {
     <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::RangeCheck1);
     <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">21</span>;
@@ -667,4 +667,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (f5193a9fc 2022-09-25)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (8b705839c 2022-09-26)" ></div></body></html>
