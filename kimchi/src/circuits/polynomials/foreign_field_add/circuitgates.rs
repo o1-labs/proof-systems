@@ -89,10 +89,10 @@ use std::{array, marker::PhantomData};
 //~ |   3 | `right_input_lo` (copy) |  ...                   |  0              (check) |                   |
 //~ |   4 | `right_input_mi` (copy) |  ...                   |  0              (check) |                   |
 //~ |   5 | `right_input_hi` (copy) |  ...                   |  2^88           (check) |                   |
-//~ |   6 | `field_overflow`        |  ...                   |  1              (check) |                   |
-//~ |   7 | `carry_lo`              |  ...                   | `bound_carry_lo`        |                   |
-//~ |   8 | `carry_mi`              |  ...                   | `bound_carry_mi`        |                   |
-//~ |   9 | `sign`                  |  ...                   |  1              (check) |                   |
+//~ |   6 | `sign`           (copy) |  ...                   |  1              (check) |                   |
+//~ |   7 | `field_overflow`        |  ...                   |  1              (check) |                   |
+//~ |   8 | `carry_lo`              |  ...                   | `bound_carry_lo`        |                   |
+//~ |   9 | `carry_mi`              |  ...                   | `bound_carry_mi`        |                   |
 //~ |  10 |                         |                        |                         |                   |
 //~ |  11 |                         |                        |                         |                   |
 //~ |  12 |                         |                        |                         |                   |
@@ -115,58 +115,44 @@ where
     const CONSTRAINTS: u32 = 7;
 
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
-        let field_overflow = env.witness_curr(6);
-        let sign = env.witness_curr(9);
+        let foreign_modulus: [T; LIMB_COUNT] = array::from_fn(|i| env.foreign_modulus(i));
+        let two_to_limb = T::literal(F::from(TWO_TO_LIMB));
+
+        let left_input_lo = env.witness_curr(0);
+        let left_input_mi = env.witness_curr(1);
+        let left_input_hi = env.witness_curr(2);
+
+        let right_input_lo = env.witness_curr(3);
+        let right_input_mi = env.witness_curr(4);
+        let right_input_hi = env.witness_curr(5);
+
+        // sign in <7 to be able to check against public input of opcodes
+        let sign = env.witness_curr(6);
+
+        let field_overflow = env.witness_curr(7);
+
+        // Result carry bits for limb overflows / underflows.
+        let carry_lo = env.witness_curr(8);
+        let carry_mi = env.witness_curr(9);
+
+        let result_lo = env.witness_next(0);
+        let result_mi = env.witness_next(1);
+        let result_hi = env.witness_next(2);
 
         // Field overflow and sign constraints
         let mut checks = vec![
             // Field overflow bit is 0 or s.
-            field_overflow.clone() * (field_overflow - sign.clone()),
+            field_overflow.clone() * (field_overflow.clone() - sign.clone()),
             // Sign flag is 1 or -1
-            (sign.clone() + T::one()) * (sign - T::one()),
+            (sign.clone() + T::one()) * (sign.clone() - T::one()),
         ];
 
-        // Auxiliary inline function to obtain the constraints to check the carry bits
-        let mut carry = {
-            // Result carry bits for limb overflows / underflows.
-            let carry_lo = env.witness_curr(7);
-            let carry_mi = env.witness_curr(8);
-            vec![
-                // Carry bits are -1, 0, or 1.
-                carry_lo.clone() * (carry_lo.clone() - T::one()) * (carry_lo + T::one()),
-                carry_mi.clone() * (carry_mi.clone() - T::one()) * (carry_mi + T::one()),
-            ]
-        };
-
-        // Carry bits are -1, 0, or 1.
-        checks.append(&mut carry);
+        // Constraints to check the carry flags are -1, 0, or 1.
+        checks.push(carry(&carry_lo));
+        checks.push(carry(&carry_mi));
 
         // Auxiliary inline function to obtain the constraints of a foreign field addition result
         let mut result = {
-            let foreign_modulus: [T; LIMB_COUNT] = array::from_fn(|i| env.foreign_modulus(i));
-
-            let two_to_limb = T::literal(F::from(TWO_TO_LIMB));
-
-            let left_input_lo = env.witness_curr(0);
-            let left_input_mi = env.witness_curr(1);
-            let left_input_hi = env.witness_curr(2);
-
-            let right_input_lo = env.witness_curr(3);
-            let right_input_mi = env.witness_curr(4);
-            let right_input_hi = env.witness_curr(5);
-
-            let field_overflow = env.witness_curr(6);
-
-            // Result carry bits for limb overflows / underflows.
-            let carry_lo = env.witness_curr(7);
-            let carry_mi = env.witness_curr(8);
-
-            let sign = env.witness_curr(9);
-
-            let result_lo = env.witness_next(0);
-            let result_mi = env.witness_next(1);
-            let result_hi = env.witness_next(2);
-
             // r_0 = a_0 + s * b_0 - q * f_0 - 2^88 * c_0
             let result_computed_lo = left_input_lo + sign.clone() * right_input_lo
                 - field_overflow.clone() * foreign_modulus[0].clone()
@@ -180,9 +166,6 @@ where
             let result_computed_hi = left_input_hi + sign * right_input_hi
                 - field_overflow * foreign_modulus[2].clone()
                 + carry_mi;
-            println!("result_lo: {}", result_lo);
-
-            println!("result_computed_lo: {}", result_computed_lo);
 
             // Result values match
             vec![
@@ -197,4 +180,10 @@ where
 
         checks
     }
+}
+
+// Auxiliary function to obtain the constraints to check a carry flag
+fn carry<F: FftField, T: ExprOps<F>>(flag: &T) -> T {
+    // Carry bits are -1, 0, or 1.
+    flag.clone() * (flag.clone() - T::one()) * (flag.clone() + T::one())
 }

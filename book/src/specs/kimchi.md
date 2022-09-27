@@ -1278,10 +1278,10 @@ You could lay this out as a double-width gate for chained foreign additions and 
 |   3 | `right_input_lo` (copy) |  ...                   |  0              (check) |                   |
 |   4 | `right_input_mi` (copy) |  ...                   |  0              (check) |                   |
 |   5 | `right_input_hi` (copy) |  ...                   |  2^88           (check) |                   |
-|   6 | `field_overflow`        |  ...                   |  1              (check) |                   |
-|   7 | `carry_lo`              |  ...                   | `bound_carry_lo`        |                   |
-|   8 | `carry_mi`              |  ...                   | `bound_carry_mi`        |                   |
-|   9 | `sign`                  |  ...                   |  1              (check) |                   |
+|   6 | `sign`           (copy) |  ...                   |  1              (check) |                   |
+|   7 | `field_overflow`        |  ...                   |  1              (check) |                   |
+|   8 | `carry_lo`              |  ...                   | `bound_carry_lo`        |                   |
+|   9 | `carry_mi`              |  ...                   | `bound_carry_mi`        |                   |
 |  10 |                         |                        |                         |                   |
 |  11 |                         |                        |                         |                   |
 |  12 |                         |                        |                         |                   |

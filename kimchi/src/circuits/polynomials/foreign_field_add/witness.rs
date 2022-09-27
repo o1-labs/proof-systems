@@ -10,7 +10,6 @@ use crate::circuits::{
 use ark_ff::{Field, PrimeField};
 use num_bigint::BigUint;
 use o1_utils::foreign_field::{ForeignElement, TWO_TO_LIMB};
-use o1_utils::FieldHelpers;
 use std::array;
 
 /*
@@ -131,8 +130,7 @@ pub fn create_witness<F: PrimeField>(
 
     // Compute values for final bound check, needs a 4 limb right input
     let right = ForeignElement::<F, 4>::from_biguint(BigUint::from(TWO_TO_LIMB).pow(3));
-    println!("right: {:?}", right);
-    println!("field one: {:?}", F::one().to_hex());
+
     let (bound, _sig, _ovf, bound_carry_lo, bound_carry_mi) =
         compute_subadd_values(&left, &right, true, &foreign_modulus);
 
@@ -167,22 +165,7 @@ pub fn create_witness<F: PrimeField>(
     }
     init_foreign_field_fin_rows(&mut witness, offset, num, [bound_carry_lo, bound_carry_mi]);
 
-    view_witness(&witness);
-
     witness
-}
-
-fn view_witness<F: Field>(witness: &[Vec<F>; COLUMNS]) {
-    println!("Witness:");
-    for i in 0..witness[0].len() {
-        if i == 16 || i == 17 || i == 18 {
-            println!("row {}", i);
-            for j in 0..COLUMNS {
-                println!("col {}, {:?} ", j, witness[j][i].to_hex());
-            }
-            println!();
-        }
-    }
 }
 
 // ==================
@@ -247,10 +230,10 @@ fn init_foreign_field_add_rows<F: PrimeField>(
             WitnessCell::Standard(CopyWitnessCell::create(right_row, 0)), // right_input_lo
             WitnessCell::Standard(CopyWitnessCell::create(right_row + 1, 0)), // right_input_mi
             WitnessCell::Standard(CopyWitnessCell::create(right_row + 2, 0)), // right_input_hi
+            FieldElemWitnessCell::create(FieldElemType::Sign, FieldElemOrder::No), // sign
             FieldElemWitnessCell::create(FieldElemType::Overflow, FieldElemOrder::No), // field_overflow
             FieldElemWitnessCell::create(FieldElemType::Carry, FieldElemOrder::Lo),    // carry_lo
             FieldElemWitnessCell::create(FieldElemType::Carry, FieldElemOrder::Mi),    // carry_mi
-            FieldElemWitnessCell::create(FieldElemType::Sign, FieldElemOrder::No),     // sign
             WitnessCell::Standard(ZeroWitnessCell::create()),
             WitnessCell::Standard(ZeroWitnessCell::create()),
             WitnessCell::Standard(ZeroWitnessCell::create()),
@@ -283,10 +266,10 @@ fn init_foreign_field_fin_rows<F: PrimeField>(
             WitnessCell::Constant(F::zero()),                           // 0
             WitnessCell::Constant(F::zero()),                           // 0
             WitnessCell::Constant(F::from(TWO_TO_LIMB)),                // 2^88
+            WitnessCell::Constant(F::one()),                            // sign
             WitnessCell::Constant(F::one()),                            // field_overflow
             FieldElemWitnessCell::create(FieldElemType::Carry, FieldElemOrder::Lo), // carry_lo
             FieldElemWitnessCell::create(FieldElemType::Carry, FieldElemOrder::Mi), // carry_mi
-            WitnessCell::Constant(F::one()),                            // sign
             WitnessCell::Standard(ZeroWitnessCell::create()),
             WitnessCell::Standard(ZeroWitnessCell::create()),
             WitnessCell::Standard(ZeroWitnessCell::create()),

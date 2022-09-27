@@ -341,7 +341,7 @@ fn test_max_number() {
     let sum = BigUint::from_bytes_be(MAX) + BigUint::from_bytes_be(MAX);
     let sum_mod = sum - foreign_modulus.clone();
     let sum_mod_limbs = ForeignElement::<PallasField, 3>::from_biguint(sum_mod);
-    assert_eq!(witness[6][16], PallasField::one()); // field overflow
+    assert_eq!(witness[7][16], PallasField::one()); // field overflow
     assert_eq!(witness[0][17], *sum_mod_limbs.lo()); // result limbs
     assert_eq!(witness[1][17], *sum_mod_limbs.mi());
     assert_eq!(witness[2][17], *sum_mod_limbs.hi());
@@ -557,8 +557,8 @@ fn test_neg_carry_lo() {
             Ok(())
         );
     }
-    assert_eq!(witness[7][16], -PallasField::one());
-    assert_eq!(witness[8][16], PallasField::zero());
+    assert_eq!(witness[8][16], -PallasField::one());
+    assert_eq!(witness[9][16], PallasField::zero());
 }
 
 #[test]
@@ -590,8 +590,8 @@ fn test_neg_carry_mi() {
             Ok(())
         );
     }
-    assert_eq!(witness[7][16], PallasField::zero());
-    assert_eq!(witness[8][16], -PallasField::one());
+    assert_eq!(witness[8][16], PallasField::zero());
+    assert_eq!(witness[9][16], -PallasField::one());
 }
 
 #[test]
@@ -623,8 +623,8 @@ fn test_zero_mi() {
             Ok(())
         );
     }
-    assert_eq!(witness[7][16], -PallasField::one());
     assert_eq!(witness[8][16], -PallasField::one());
+    assert_eq!(witness[9][16], -PallasField::one());
 }
 
 #[test]
@@ -656,8 +656,8 @@ fn test_neg_carries() {
             Ok(())
         );
     }
-    assert_eq!(witness[7][16], -PallasField::one());
     assert_eq!(witness[8][16], -PallasField::one());
+    assert_eq!(witness[9][16], -PallasField::one());
 }
 
 #[test]
@@ -720,7 +720,7 @@ fn test_null_lo_carry() {
             Ok(())
         );
     }
-    assert_eq!(witness[7][16], PallasField::zero());
+    assert_eq!(witness[8][16], PallasField::zero());
 }
 
 #[test]
@@ -752,7 +752,7 @@ fn test_null_mi_carry() {
             Ok(())
         );
     }
-    assert_eq!(witness[8][16], PallasField::zero());
+    assert_eq!(witness[9][16], PallasField::zero());
 }
 
 #[test]
@@ -784,8 +784,8 @@ fn test_null_both_carry() {
             Ok(())
         );
     }
-    assert_eq!(witness[7][16], PallasField::zero());
     assert_eq!(witness[8][16], PallasField::zero());
+    assert_eq!(witness[9][16], PallasField::zero());
 }
 
 #[test]
@@ -819,9 +819,9 @@ fn test_no_carry_limbs() {
     }
 
     // check carry_lo is zero
-    assert_eq!(witness[7][16], PallasField::zero());
-    // check carry_mi is zero
     assert_eq!(witness[8][16], PallasField::zero());
+    // check carry_mi is zero
+    assert_eq!(witness[9][16], PallasField::zero());
     // check middle limb is all ones
     let all_one_limb = PallasField::from(2u128.pow(88) - 1);
     assert_eq!(witness[1][17], all_one_limb);
@@ -858,9 +858,9 @@ fn test_pos_carry_limb_lo() {
     }
 
     // check carry_lo is one
-    assert_eq!(witness[7][16], PallasField::one());
+    assert_eq!(witness[8][16], PallasField::one());
     // check carry_mi is zero
-    assert_eq!(witness[8][16], PallasField::zero());
+    assert_eq!(witness[9][16], PallasField::zero());
 }
 
 #[test]
@@ -893,9 +893,9 @@ fn test_pos_carry_limb_mid() {
     }
 
     // check carry_lo is one
-    assert_eq!(witness[7][16], PallasField::zero());
+    assert_eq!(witness[8][16], PallasField::zero());
     // check carry_mi is zero
-    assert_eq!(witness[8][16], PallasField::one());
+    assert_eq!(witness[9][16], PallasField::one());
 }
 
 #[test]
@@ -928,9 +928,9 @@ fn test_pos_carry_limb_lo_mid() {
     }
 
     // check carry_lo is one
-    assert_eq!(witness[7][16], PallasField::one());
-    // check carry_mi is one
     assert_eq!(witness[8][16], PallasField::one());
+    // check carry_mi is one
+    assert_eq!(witness[9][16], PallasField::one());
 }
 
 #[test]
