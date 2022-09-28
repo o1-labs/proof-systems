@@ -59,36 +59,25 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
     fn absorb_evaluations<const N: usize>(&mut self, e: [&ProofEvaluations<Vec<Fr>>; N]) {
         self.last_squeezed = vec![];
 
-        let e = ProofEvaluations::transpose(e);
+        let ProofEvaluations {
+            w,
+            z,
+            s,
+            lookup,
+            generic_selector,
+            poseidon_selector,
+        } = ProofEvaluations::transpose(e);
 
-        let mut points = vec![
-            &e.z,
-            &e.generic_selector,
-            &e.poseidon_selector,
-            &e.w[0],
-            &e.w[1],
-            &e.w[2],
-            &e.w[3],
-            &e.w[4],
-            &e.w[5],
-            &e.w[6],
-            &e.w[7],
-            &e.w[8],
-            &e.w[9],
-            &e.w[10],
-            &e.w[11],
-            &e.w[12],
-            &e.w[13],
-            &e.w[14],
-            &e.s[0],
-            &e.s[1],
-            &e.s[2],
-            &e.s[3],
-            &e.s[4],
-            &e.s[5],
-        ];
+        let mut points = vec![&z, &generic_selector, &poseidon_selector];
 
-        if let Some(l) = e.lookup.as_ref() {
+        for w in w.iter() {
+            points.push(w);
+        }
+        for s in s.iter() {
+            points.push(s);
+        }
+
+        if let Some(l) = lookup.as_ref() {
             points.push(&l.aggreg);
             points.push(&l.table);
             for s in &l.sorted {
