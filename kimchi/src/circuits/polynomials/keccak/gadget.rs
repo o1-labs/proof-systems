@@ -1,6 +1,6 @@
 //! Keccak gate
 
-use ark_ff::{FftField, PrimeField};
+use ark_ff::PrimeField;
 
 use crate::{
     alphas::Alphas,
@@ -121,7 +121,7 @@ pub fn circuit_gates() -> [GateType; GATE_COUNT] {
 }
 
 /// Number of constraints for a given range check circuit gate type
-pub fn circuit_gate_constraint_count<F: FftField>(typ: GateType) -> u32 {
+pub fn circuit_gate_constraint_count<F: PrimeField>(typ: GateType) -> u32 {
     match typ {
         GateType::KeccakXor => KeccakXor::<F>::CONSTRAINTS,
         GateType::KeccakBits => KeccakBits::<F>::CONSTRAINTS,
@@ -130,7 +130,7 @@ pub fn circuit_gate_constraint_count<F: FftField>(typ: GateType) -> u32 {
 }
 
 /// Get combined constraints for a given range check circuit gate type
-pub fn circuit_gate_constraints<F: FftField>(typ: GateType, alphas: &Alphas<F>) -> E<F> {
+pub fn circuit_gate_constraints<F: PrimeField>(typ: GateType, alphas: &Alphas<F>) -> E<F> {
     match typ {
         GateType::KeccakXor => KeccakXor::combined_constraints(alphas),
         GateType::KeccakBits => KeccakBits::<F>::combined_constraints(alphas),
@@ -139,11 +139,11 @@ pub fn circuit_gate_constraints<F: FftField>(typ: GateType, alphas: &Alphas<F>) 
 }
 
 /// Get the combined constraints for all range check circuit gate types
-pub fn combined_constraints<F: FftField>(alphas: &Alphas<F>) -> E<F> {
+pub fn combined_constraints<F: PrimeField>(alphas: &Alphas<F>) -> E<F> {
     KeccakXor::combined_constraints(alphas) + KeccakBits::combined_constraints(alphas)
 }
 
 /// Get the range check lookup table
-pub fn lookup_table<F: FftField>() -> LookupTable<F> {
+pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
     lookup::tables::get_table::<F>(GateLookupTable::Xor)
 }
