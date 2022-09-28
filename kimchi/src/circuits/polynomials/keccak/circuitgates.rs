@@ -126,7 +126,7 @@ use crate::circuits::{
 };
 use ark_ff::FftField;
 
-//~ ##### `Xor` - XOR constraints for 32-bit words
+//~ ##### `KeccakXor` - XOR constraints for 32-bit words
 //~
 //~ * This circuit gate is used to constrain that `in1` xored with `in2` equals `out`.
 //~ * This gate operates on the `Curr` row and the `Next` row.
@@ -158,13 +158,13 @@ use ark_ff::FftField;
 //~
 
 #[derive(Default)]
-pub struct Xor<F>(PhantomData<F>);
+pub struct KeccakXor<F>(PhantomData<F>);
 
-impl<F> Argument<F> for Xor<F>
+impl<F> Argument<F> for KeccakXor<F>
 where
     F: FftField,
 {
-    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Xor);
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::KeccakXor);
     const CONSTRAINTS: u32 = 3;
 
     // Constraints for Xor

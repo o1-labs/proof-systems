@@ -17,7 +17,7 @@ use crate::{
     },
 };
 
-use super::circuitgates::Xor;
+use super::circuitgates::KeccakXor;
 
 pub const GATE_COUNT: usize = 1;
 
@@ -46,7 +46,7 @@ impl<F: PrimeField> CircuitGate<F> {
 
         gates.append(&mut vec![
             CircuitGate {
-                typ: GateType::Xor,
+                typ: GateType::KeccakXor,
                 wires: Wire::new(new_row + 1),
                 coeffs: vec![],
             },
@@ -56,7 +56,7 @@ impl<F: PrimeField> CircuitGate<F> {
                 coeffs: vec![],
             },
             CircuitGate {
-                typ: GateType::Xor,
+                typ: GateType::KeccakXor,
                 wires: Wire::new(new_row + 3),
                 coeffs: vec![],
             },
@@ -71,40 +71,17 @@ impl<F: PrimeField> CircuitGate<F> {
 
         (start_row + gates.len(), gates)
     }
-
-    /// Create single 32-bit xor gate
-    ///     Inputs the starting row
-    ///     Outputs tuple (next_row, circuit_gates) where
-    ///       next_row      - next row after this gate
-    ///       circuit_gates - vector of circuit gates comprising this gate
-    pub fn create_xor(start_row: usize) -> (usize, Vec<Self>) {
-        (
-            start_row + 2,
-            vec![
-                CircuitGate {
-                    typ: GateType::Xor,
-                    wires: Wire::new(start_row),
-                    coeffs: vec![],
-                },
-                CircuitGate {
-                    typ: GateType::Zero,
-                    wires: Wire::new(start_row + 1),
-                    coeffs: vec![],
-                },
-            ],
-        )
-    }
 }
 
 /// Get vector of range check circuit gate types
 pub fn circuit_gates() -> [GateType; GATE_COUNT] {
-    [GateType::Xor]
+    [GateType::KeccakXor]
 }
 
 /// Number of constraints for a given range check circuit gate type
 pub fn circuit_gate_constraint_count<F: FftField>(typ: GateType) -> u32 {
     match typ {
-        GateType::Xor => Xor::<F>::CONSTRAINTS,
+        GateType::KeccakXor => KeccakXor::<F>::CONSTRAINTS,
         _ => panic!("invalid gate type"),
     }
 }
@@ -112,14 +89,14 @@ pub fn circuit_gate_constraint_count<F: FftField>(typ: GateType) -> u32 {
 /// Get combined constraints for a given range check circuit gate type
 pub fn circuit_gate_constraints<F: FftField>(typ: GateType, alphas: &Alphas<F>) -> E<F> {
     match typ {
-        GateType::Xor => Xor::combined_constraints(alphas),
+        GateType::KeccakXor => KeccakXor::combined_constraints(alphas),
         _ => panic!("invalid gate type"),
     }
 }
 
 /// Get the combined constraints for all range check circuit gate types
 pub fn combined_constraints<F: FftField>(alphas: &Alphas<F>) -> E<F> {
-    Xor::combined_constraints(alphas)
+    KeccakXor::combined_constraints(alphas)
 }
 
 /// Get the range check lookup table
