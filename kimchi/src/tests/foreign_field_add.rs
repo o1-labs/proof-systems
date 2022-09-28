@@ -263,9 +263,9 @@ fn test_zero_sum_native() {
 
     // Check result is the native modulus
     let native_limbs = ForeignElement::<PallasField, 3>::from_biguint(native_modulus);
-    assert_eq!(witness[0][17], *native_limbs.lo());
-    assert_eq!(witness[1][17], *native_limbs.mi());
-    assert_eq!(witness[2][17], *native_limbs.hi());
+    assert_eq!(witness[0][17], native_limbs[0]);
+    assert_eq!(witness[1][17], native_limbs[1]);
+    assert_eq!(witness[2][17], native_limbs[2]);
 }
 
 #[test]
@@ -342,9 +342,9 @@ fn test_max_number() {
     let sum_mod = sum - foreign_modulus.clone();
     let sum_mod_limbs = ForeignElement::<PallasField, 3>::from_biguint(sum_mod);
     assert_eq!(witness[7][16], PallasField::one()); // field overflow
-    assert_eq!(witness[0][17], *sum_mod_limbs.lo()); // result limbs
-    assert_eq!(witness[1][17], *sum_mod_limbs.mi());
-    assert_eq!(witness[2][17], *sum_mod_limbs.hi());
+    assert_eq!(witness[0][17], sum_mod_limbs[0]); // result limbs
+    assert_eq!(witness[1][17], sum_mod_limbs[1]);
+    assert_eq!(witness[2][17], sum_mod_limbs[2]);
 }
 
 #[test]
@@ -390,9 +390,9 @@ fn test_zero_minus_one() {
             Ok(())
         );
     }
-    assert_eq!(witness_neg[0][17], *right_foreign_neg.lo());
-    assert_eq!(witness_neg[1][17], *right_foreign_neg.mi());
-    assert_eq!(witness_neg[2][17], *right_foreign_neg.hi());
+    assert_eq!(witness_neg[0][17], right_foreign_neg[0]);
+    assert_eq!(witness_neg[1][17], right_foreign_neg[1]);
+    assert_eq!(witness_neg[2][17], right_foreign_neg[2]);
 
     // NEXT AS SUB
 
@@ -422,9 +422,9 @@ fn test_zero_minus_one() {
             Ok(())
         );
     }
-    assert_eq!(witness_sub[0][17], *right_foreign_neg.lo());
-    assert_eq!(witness_sub[1][17], *right_foreign_neg.mi());
-    assert_eq!(witness_sub[2][17], *right_foreign_neg.hi());
+    assert_eq!(witness_sub[0][17], right_foreign_neg[0]);
+    assert_eq!(witness_sub[1][17], right_foreign_neg[1]);
+    assert_eq!(witness_sub[2][17], right_foreign_neg[2]);
 }
 
 #[test]
@@ -523,9 +523,9 @@ fn test_minus_minus() {
 
     let for_neg_two = ForeignElement::<PallasField, 3>::from_biguint(big_two).neg(&foreign_modulus);
 
-    assert_eq!(witness[0][17], *for_neg_two.lo());
-    assert_eq!(witness[1][17], *for_neg_two.mi());
-    assert_eq!(witness[2][17], *for_neg_two.hi());
+    assert_eq!(witness[0][17], for_neg_two[0]);
+    assert_eq!(witness[1][17], for_neg_two[1]);
+    assert_eq!(witness[2][17], for_neg_two[2]);
 }
 
 #[test]
@@ -1041,9 +1041,9 @@ fn test_zero_sub_fmax() {
 
     let negated = ForeignElement::<PallasField, 3>::from_biguint(right_input).neg(&foreign_modulus);
 
-    assert_eq!(witness[0][17], *negated.lo());
-    assert_eq!(witness[1][17], *negated.mi());
-    assert_eq!(witness[2][17], *negated.hi());
+    assert_eq!(witness[0][17], negated[0]);
+    assert_eq!(witness[1][17], negated[1]);
+    assert_eq!(witness[2][17], negated[2]);
 }
 
 #[test]
@@ -1085,9 +1085,9 @@ fn test_pasta_add_max_vesta() {
     let right = right_input % vesta_modulus;
     let foreign_right = ForeignElement::<PallasField, 3>::from_biguint(right);
 
-    assert_eq!(witness[0][17], *foreign_right.lo());
-    assert_eq!(witness[1][17], *foreign_right.mi());
-    assert_eq!(witness[2][17], *foreign_right.hi());
+    assert_eq!(witness[0][17], foreign_right[0]);
+    assert_eq!(witness[1][17], foreign_right[1]);
+    assert_eq!(witness[2][17], foreign_right[2]);
 }
 
 #[test]
@@ -1130,9 +1130,9 @@ fn test_pasta_sub_max_vesta() {
     let neg_max_vesta =
         ForeignElement::<PallasField, 3>::from_biguint(right_input).neg(&vesta_modulus);
 
-    assert_eq!(witness[0][17], *neg_max_vesta.lo());
-    assert_eq!(witness[1][17], *neg_max_vesta.mi());
-    assert_eq!(witness[2][17], *neg_max_vesta.hi());
+    assert_eq!(witness[0][17], neg_max_vesta[0]);
+    assert_eq!(witness[1][17], neg_max_vesta[1]);
+    assert_eq!(witness[2][17], neg_max_vesta[2]);
 }
 
 #[test]
@@ -1175,9 +1175,9 @@ fn test_pasta_add_max_pallas() {
     let right = right_input % vesta_modulus;
     let foreign_right = ForeignElement::<PallasField, 3>::from_biguint(right);
 
-    assert_eq!(witness[0][17], *foreign_right.lo());
-    assert_eq!(witness[1][17], *foreign_right.mi());
-    assert_eq!(witness[2][17], *foreign_right.hi());
+    assert_eq!(witness[0][17], foreign_right[0]);
+    assert_eq!(witness[1][17], foreign_right[1]);
+    assert_eq!(witness[2][17], foreign_right[2]);
 }
 
 #[test]
@@ -1220,9 +1220,9 @@ fn test_pasta_sub_max_pallas() {
     let neg_max_pallas =
         ForeignElement::<PallasField, 3>::from_biguint(right_input).neg(&vesta_modulus);
 
-    assert_eq!(witness[0][17], *neg_max_pallas.lo());
-    assert_eq!(witness[1][17], *neg_max_pallas.mi());
-    assert_eq!(witness[2][17], *neg_max_pallas.hi());
+    assert_eq!(witness[0][17], neg_max_pallas[0]);
+    assert_eq!(witness[1][17], neg_max_pallas[1]);
+    assert_eq!(witness[2][17], neg_max_pallas[2]);
 }
 
 /*

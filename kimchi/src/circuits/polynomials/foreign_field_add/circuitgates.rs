@@ -5,7 +5,7 @@ use crate::circuits::{
     expr::constraints::ExprOps,
     gate::GateType,
 };
-use ark_ff::FftField;
+use ark_ff::PrimeField;
 use o1_utils::{foreign_field::TWO_TO_LIMB, LIMB_COUNT};
 use std::{array, marker::PhantomData};
 
@@ -109,7 +109,7 @@ pub struct ForeignFieldAdd<F>(PhantomData<F>);
 
 impl<F> Argument<F> for ForeignFieldAdd<F>
 where
-    F: FftField,
+    F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldAdd);
     const CONSTRAINTS: u32 = 7;
@@ -183,7 +183,7 @@ where
 }
 
 // Auxiliary function to obtain the constraints to check a carry flag
-fn carry<F: FftField, T: ExprOps<F>>(flag: &T) -> T {
+fn carry<F: PrimeField, T: ExprOps<F>>(flag: &T) -> T {
     // Carry bits are -1, 0, or 1.
     flag.clone() * (flag.clone() - T::one()) * (flag.clone() + T::one())
 }

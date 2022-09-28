@@ -340,7 +340,7 @@ impl<F: Field> ConstantExpr<F> {
             Mds { row, col } => c.mds[*row][*col],
             ForeignFieldModulus(i) => {
                 if let Some(modulus) = c.foreign_field_modulus.clone() {
-                    ForeignElement::<F, 3>::from_biguint(modulus).limbs[*i]
+                    ForeignElement::<F, 3>::from_biguint(modulus)[*i]
                 } else {
                     F::zero()
                 }
@@ -531,7 +531,7 @@ impl<F: FftField> PolishToken<F> {
                 Mds { row, col } => stack.push(c.mds[*row][*col]),
                 ForeignFieldModulus(i) => {
                     if let Some(modulus) = c.foreign_field_modulus.clone() {
-                        stack.push(ForeignElement::<F, 3>::from_biguint(modulus.clone()).limbs[*i])
+                        stack.push(ForeignElement::<F, 3>::from_biguint(modulus.clone())[*i])
                     }
                 }
                 VanishesOnLast4Rows => stack.push(eval_vanishes_on_last_4_rows(d, pt)),

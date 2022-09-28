@@ -224,7 +224,7 @@ pub fn create_witness<F: PrimeField>(v0: F) -> [Vec<F>; COLUMNS] {
 /// Extend an existing witness with a multi-range-check gate for foreign field
 /// elements fe
 pub fn extend_witness<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], fe: ForeignElement<F, 3>) {
-    let limbs_witness = create_multi_witness(*fe.lo(), *fe.mi(), *fe.hi());
+    let limbs_witness = create_multi_witness(fe[0], fe[1], fe[2]);
     for col in 0..COLUMNS {
         witness[col].extend(limbs_witness[col].iter())
     }

@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use ark_ff::{FftField, PrimeField, Zero};
+use ark_ff::{PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
@@ -264,7 +264,7 @@ impl<F: PrimeField> CircuitGate<F> {
 }
 
 // Data required by the lookup environment
-struct LookupEnvironmentData<F: FftField> {
+struct LookupEnvironmentData<F: PrimeField> {
     // Aggregation evaluations
     aggreg8: Evaluations<F, D<F>>,
     // Sorted evaluations
@@ -406,7 +406,7 @@ pub fn circuit_gates() -> [GateType; GATE_COUNT] {
 }
 
 /// Get combined constraints for a given foreign field multiplication circuit gate
-pub fn circuit_gate_constraints<F: FftField>(typ: GateType, alphas: &Alphas<F>) -> E<F> {
+pub fn circuit_gate_constraints<F: PrimeField>(typ: GateType, alphas: &Alphas<F>) -> E<F> {
     match typ {
         GateType::ForeignFieldAdd => ForeignFieldAdd::combined_constraints(alphas),
         _ => panic!("invalid gate type"),
@@ -414,7 +414,7 @@ pub fn circuit_gate_constraints<F: FftField>(typ: GateType, alphas: &Alphas<F>) 
 }
 
 /// Number of constraints for a given foreign field mul circuit gate type
-pub fn circuit_gate_constraint_count<F: FftField>(typ: GateType) -> u32 {
+pub fn circuit_gate_constraint_count<F: PrimeField>(typ: GateType) -> u32 {
     match typ {
         GateType::ForeignFieldAdd => ForeignFieldAdd::<F>::CONSTRAINTS,
         _ => panic!("invalid gate type"),
@@ -422,11 +422,11 @@ pub fn circuit_gate_constraint_count<F: FftField>(typ: GateType) -> u32 {
 }
 
 /// Get the combined constraints for all foreign field addition circuit gates
-pub fn combined_constraints<F: FftField>(alphas: &Alphas<F>) -> E<F> {
+pub fn combined_constraints<F: PrimeField>(alphas: &Alphas<F>) -> E<F> {
     ForeignFieldAdd::combined_constraints(alphas)
 }
 
 /// Get the foreign field multiplication lookup table
-pub fn lookup_table<F: FftField>() -> LookupTable<F> {
+pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
     lookup::tables::get_table::<F>(GateLookupTable::RangeCheck)
 }

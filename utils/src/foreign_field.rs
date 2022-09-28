@@ -1,10 +1,9 @@
 //! Describes helpers for foreign field arithmetics
 
-use std::fmt::Display;
-
 use crate::field_helpers::FieldHelpers;
-use ark_ff::{FftField, Field, PrimeField};
+use ark_ff::{Field, PrimeField};
 use num_bigint::BigUint;
+use std::ops::{Index, IndexMut};
 
 /// Limb length for foreign field elements
 pub const LIMB_BITS: usize = 88;
@@ -31,9 +30,9 @@ pub const TWO_TO_LIMB: u128 = 2u128.pow(LIMB_BITS as u32);
 /// Represents a foreign field element
 pub struct ForeignElement<F: Field, const N: usize> {
     /// limbs in little endian order
-    pub limbs: [F; N],
+    limbs: [F; N],
     /// number of limbs used for the foreign field element
-    pub len: usize,
+    len: usize,
 }
 
 impl<F: Field, const N: usize> ForeignElement<F, N> {
@@ -111,39 +110,16 @@ impl<F: PrimeField, const N: usize> ForeignElement<F, N> {
     }
 }
 
-impl<F: FftField> ForeignElement<F, 3> {
-    /// Returns a reference to the lowest limb of the foreign element
-    pub fn lo(&self) -> &F {
-        &self.limbs[0]
-    }
-
-    /// Returns a reference to the middle limb of the foreign element
-    pub fn mi(&self) -> &F {
-        &self.limbs[1]
-    }
-
-    /// Returns a reference to the highest limb of the foreign element
-    pub fn hi(&self) -> &F {
-        &self.limbs[2]
+impl<F: Field, const N: usize> Index<usize> for ForeignElement<F, N> {
+    type Output = F;
+    fn index(&self, idx: usize) -> &Self::Output {
+        &self.limbs[idx]
     }
 }
 
-impl<F: FftField> Display for ForeignElement<F, 3> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut s = String::new();
-        let order = ["lo", "mi", "hi"];
-        s += "{ ";
-        for (i, limb) in self.limbs.iter().enumerate() {
-            let hex = limb.to_hex();
-            let len = LIMB_BITS / 8 * 2;
-            s += &(order[i % 3].to_owned() + ": ");
-            s.push_str(&hex[0..len as usize]);
-            if i < 2 {
-                s += " , ";
-            }
-        }
-        s += " }";
-        write!(f, "{}", s)
+impl<F: Field, const N: usize> IndexMut<usize> for ForeignElement<F, N> {
+    fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
+        &mut self.limbs[idx]
     }
 }
 
