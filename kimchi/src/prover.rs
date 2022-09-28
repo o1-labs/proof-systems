@@ -874,6 +874,11 @@ where
             .map(|(p, d1_size)| (p, None, non_hiding(*d1_size)))
             .collect::<Vec<_>>();
 
+        let fixed_hiding = |d1_size: usize| PolyComm {
+            unshifted: vec![G::ScalarField::one(); d1_size],
+            shifted: None,
+        };
+
         //~ 1. Then, include:
         //~~ - the negated public polynomial
         //~~ - the ft polynomial
@@ -886,8 +891,8 @@ where
         polynomials.extend(vec![(&public_poly, None, non_hiding(1))]);
         polynomials.extend(vec![(&ft, None, blinding_ft)]);
         polynomials.extend(vec![(&z_poly, None, z_comm.blinders)]);
-        polynomials.extend(vec![(&index.cs.genericm, None, non_hiding(1))]);
-        polynomials.extend(vec![(&index.cs.psm, None, non_hiding(1))]);
+        polynomials.extend(vec![(&index.cs.genericm, None, fixed_hiding(1))]);
+        polynomials.extend(vec![(&index.cs.psm, None, fixed_hiding(1))]);
         polynomials.extend(
             witness_poly
                 .iter()
