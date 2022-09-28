@@ -226,7 +226,7 @@ pub struct KeccakBits<F>(PhantomData<F>);
 
 impl<F> Argument<F> for KeccakBits<F>
 where
-    F: FftField,
+    F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::KeccakBits);
     const CONSTRAINTS: u32 = 2;
@@ -241,7 +241,7 @@ where
 
 /// Constrains the decomposition of an input of 64 bits located in position `idx`
 /// into halves of 32 bits located in positions `idx+1` and `idx+2` in the `Curr` row.
-fn half<F: FftField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>, idx: usize) -> T {
+fn half<F: PrimeField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>, idx: usize) -> T {
     let two = T::one() + T::one();
     let half_bits = two.pow(32);
     env.witness_curr(idx) - (env.witness_curr(idx + 2) * half_bits + env.witness_curr(idx + 1))
