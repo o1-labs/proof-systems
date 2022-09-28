@@ -109,7 +109,7 @@ use crate::circuits::{
     gate::GateType,
     polynomial::COLUMNS,
 };
-use ark_ff::FftField;
+use ark_ff::PrimeField;
 
 //~ ##### `RangeCheck0` - Range check constraints
 //~
@@ -151,7 +151,7 @@ pub struct RangeCheck0<F>(PhantomData<F>);
 
 impl<F> Argument<F> for RangeCheck0<F>
 where
-    F: FftField,
+    F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::RangeCheck0);
     const CONSTRAINTS: u32 = 9;
@@ -241,7 +241,7 @@ pub struct RangeCheck1<F>(PhantomData<F>);
 
 impl<F> Argument<F> for RangeCheck1<F>
 where
-    F: FftField,
+    F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::RangeCheck1);
     const CONSTRAINTS: u32 = 21;

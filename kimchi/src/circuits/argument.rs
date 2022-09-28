@@ -7,7 +7,7 @@
 use std::marker::PhantomData;
 
 use crate::{alphas::Alphas, circuits::expr::prologue::*};
-use ark_ff::{FftField, Field};
+use ark_ff::{Field, PrimeField};
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -140,7 +140,7 @@ impl<T> std::ops::Index<(CurrOrNext, usize)> for ArgumentWitness<T> {
 }
 
 /// The interface for a minimal argument implementation.
-pub trait Argument<F: FftField> {
+pub trait Argument<F: PrimeField> {
     /// The type of constraints that this will produce.
     /// This is important to enforce that we don't combine the constraints
     /// with powers of alpha that collide with other mutually inclusive arguments.

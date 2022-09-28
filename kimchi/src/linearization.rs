@@ -18,14 +18,14 @@ use crate::circuits::{
     gate::GateType,
     wires::COLUMNS,
 };
-use ark_ff::{FftField, SquareRootField};
+use ark_ff::{FftField, PrimeField, SquareRootField};
 
 /// Get the expresion of constraints.
 ///
 /// # Panics
 ///
 /// Will panic if `generic_gate` is not associate with `alpha^0`.
-pub fn constraints_expr<F: FftField + SquareRootField>(
+pub fn constraints_expr<F: PrimeField + SquareRootField>(
     chacha: bool,
     range_check: bool,
     lookup_constraint_system: Option<&LookupConfiguration<F>>,
@@ -138,7 +138,7 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
 /// # Panics
 ///
 /// Will panic if the `linearization` process fails.
-pub fn expr_linearization<F: FftField + SquareRootField>(
+pub fn expr_linearization<F: PrimeField + SquareRootField>(
     chacha: bool,
     range_check: bool,
     lookup_constraint_system: Option<&LookupConfiguration<F>>,

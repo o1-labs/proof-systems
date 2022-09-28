@@ -379,7 +379,7 @@ pub fn circuit_gates() -> [GateType; GATE_COUNT] {
 /// # Panics
 ///
 /// Will panic if `typ` is not `RangeCheck`-related gate type.
-pub fn circuit_gate_constraint_count<F: FftField>(typ: GateType) -> u32 {
+pub fn circuit_gate_constraint_count<F: PrimeField>(typ: GateType) -> u32 {
     match typ {
         GateType::RangeCheck0 => RangeCheck0::<F>::CONSTRAINTS,
         GateType::RangeCheck1 => RangeCheck1::<F>::CONSTRAINTS,
@@ -392,7 +392,7 @@ pub fn circuit_gate_constraint_count<F: FftField>(typ: GateType) -> u32 {
 /// # Panics
 ///
 /// Will panic if `typ` is not `RangeCheck`-related gate type.
-pub fn circuit_gate_constraints<F: FftField>(typ: GateType, alphas: &Alphas<F>) -> E<F> {
+pub fn circuit_gate_constraints<F: PrimeField>(typ: GateType, alphas: &Alphas<F>) -> E<F> {
     match typ {
         GateType::RangeCheck0 => RangeCheck0::combined_constraints(alphas),
         GateType::RangeCheck1 => RangeCheck1::combined_constraints(alphas),
@@ -401,7 +401,7 @@ pub fn circuit_gate_constraints<F: FftField>(typ: GateType, alphas: &Alphas<F>) 
 }
 
 /// Get the combined constraints for all range check circuit gate types
-pub fn combined_constraints<F: FftField>(alphas: &Alphas<F>) -> E<F> {
+pub fn combined_constraints<F: PrimeField>(alphas: &Alphas<F>) -> E<F> {
     RangeCheck0::combined_constraints(alphas) + RangeCheck1::combined_constraints(alphas)
 }
 

@@ -147,7 +147,7 @@ use crate::circuits::{
     expr::constraints::{boolean, ExprOps},
     gate::{CurrOrNext, GateType},
 };
-use ark_ff::{FftField, Field};
+use ark_ff::{FftField, Field, PrimeField};
 
 //
 // Implementation internals
@@ -155,7 +155,7 @@ use ark_ff::{FftField, Field};
 
 /// 8-nybble sequences that are laid out as 4 nybbles per row over the two row,
 /// like y^x' or x+z
-fn chunks_over_2_rows<F: Field, T: ExprOps<F>>(
+fn chunks_over_2_rows<F: PrimeField, T: ExprOps<F>>(
     env: &ArgumentEnv<F, T>,
     col_offset: usize,
 ) -> Vec<T> {
@@ -175,7 +175,7 @@ fn combine_nybbles<F: Field, T: ExprOps<F>>(ns: Vec<T>) -> T {
 }
 
 /// Constraints for the line L(x, x', y, y', z, k), where k = 4 * `nybble_rotation`
-fn line<F: Field, T: ExprOps<F>>(env: &ArgumentEnv<F, T>, nybble_rotation: usize) -> Vec<T> {
+fn line<F: PrimeField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>, nybble_rotation: usize) -> Vec<T> {
     let y_xor_xprime_nybbles = chunks_over_2_rows(env, 3);
     let x_plus_z_nybbles = chunks_over_2_rows(env, 7);
     let y_nybbles = chunks_over_2_rows(env, 11);
@@ -216,7 +216,7 @@ pub struct ChaCha0<F>(PhantomData<F>);
 
 impl<F> Argument<F> for ChaCha0<F>
 where
-    F: FftField,
+    F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha0);
     const CONSTRAINTS: u32 = 5;
@@ -232,7 +232,7 @@ pub struct ChaCha1<F>(PhantomData<F>);
 
 impl<F> Argument<F> for ChaCha1<F>
 where
-    F: FftField,
+    F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha1);
     const CONSTRAINTS: u32 = 5;
@@ -248,7 +248,7 @@ pub struct ChaCha2<F>(PhantomData<F>);
 
 impl<F> Argument<F> for ChaCha2<F>
 where
-    F: FftField,
+    F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha2);
     const CONSTRAINTS: u32 = 5;
@@ -264,7 +264,7 @@ pub struct ChaChaFinal<F>(PhantomData<F>);
 
 impl<F> Argument<F> for ChaChaFinal<F>
 where
-    F: FftField,
+    F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaChaFinal);
     const CONSTRAINTS: u32 = 9;

@@ -35,7 +35,7 @@ use crate::{
     },
     curve::KimchiCurve,
 };
-use ark_ff::{FftField, Field, PrimeField};
+use ark_ff::{Field, PrimeField};
 use oracle::{
     constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
     poseidon::{sbox, ArithmeticSponge, ArithmeticSpongeParams, Sponge},
@@ -336,7 +336,7 @@ impl<F> Poseidon<F> where F: Field {}
 
 impl<F> Argument<F> for Poseidon<F>
 where
-    F: FftField,
+    F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Poseidon);
     const CONSTRAINTS: u32 = 15;
