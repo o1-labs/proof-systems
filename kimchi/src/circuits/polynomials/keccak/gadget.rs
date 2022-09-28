@@ -113,29 +113,6 @@ impl<F: PrimeField> CircuitGate<F> {
 
         (start_row + gates.len(), gates)
     }
-
-    /// Create single 32-bit xor gate
-    ///     Inputs the starting row
-    ///     Outputs tuple (next_row, circuit_gates) where
-    ///       next_row      - next row after this gate
-    ///       circuit_gates - vector of circuit gates comprising this gate
-    pub fn create_xor(start_row: usize) -> (usize, Vec<Self>) {
-        (
-            start_row + 2,
-            vec![
-                CircuitGate {
-                    typ: GateType::KeccakXor,
-                    wires: Wire::new(start_row),
-                    coeffs: vec![],
-                },
-                CircuitGate {
-                    typ: GateType::Zero,
-                    wires: Wire::new(start_row + 1),
-                    coeffs: vec![],
-                },
-            ],
-        )
-    }
 }
 
 /// Get vector of range check circuit gate types
