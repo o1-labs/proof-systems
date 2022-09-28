@@ -126,7 +126,7 @@ use crate::circuits::{
 };
 use ark_ff::FftField;
 
-//~ ##### `Xor` - XOR constraints for 32-bit words
+//~ ##### `KeccakXor` - XOR constraints for 32-bit words
 //~
 //~ * This circuit gate is used to constrain that `in1` xored with `in2` equals `out`.
 //~ * This gate operates on the `Curr` row and the `Next` row.
@@ -158,13 +158,13 @@ use ark_ff::FftField;
 //~
 
 #[derive(Default)]
-pub struct Xor<F>(PhantomData<F>);
+pub struct KeccakXor<F>(PhantomData<F>);
 
-impl<F> Argument<F> for Xor<F>
+impl<F> Argument<F> for KeccakXor<F>
 where
     F: FftField,
 {
-    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Xor);
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::KeccakXor);
     const CONSTRAINTS: u32 = 3;
 
     // Constraints for Xor
@@ -187,6 +187,64 @@ where
 
         constraints
     }
+}
+
+//~ ##### `KeccakBits` - 32-bit decomposition gate
+//~
+//~ * This circuit gate is used to constrain that two values of 64 bits are decomposed
+//~   correctly in two halves of 32 bits. It will be used to constrain all inputs and
+//~   intermediate values of the XOR gates.
+//~ * This gate operates on the `Curr` row.
+//~ * This is not a definitive gate. It may be integrated with other gates in the future.
+//~
+//~ It uses one type of constraints
+//~ * copy    - copy to another cell (32-bits to the XOR gate, and 64-bits to the RangeCheck gate)
+//~
+//~ | Column |      `Curr`   |
+//~ | ------ | ------------- |
+//~ |      0 | copy `in1`    |
+//~ |      1 | copy `in1_lo` |
+//~ |      2 | copy `in1_hi` |
+//~ |      3 | copy `in2`    |
+//~ |      4 | copy `in2_lo` |
+//~ |      5 | copy `in2_hi` |
+//~ |      6 |               |
+//~ |      7 |               |
+//~ |      8 |               |
+//~ |      9 |               |
+//~ |     10 |               |
+//~ |     11 |               |
+//~ |     12 |               |
+//~ |     13 |               |
+//~ |     14 |               |
+//~
+//~ Note that these gates can be concatenated and the final output will still be satisfied
+//~ despite having the positions for the second input to zero, because zero is a valid instance.
+
+#[derive(Default)]
+pub struct KeccakBits<F>(PhantomData<F>);
+
+impl<F> Argument<F> for KeccakBits<F>
+where
+    F: FftField,
+{
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::KeccakBits);
+    const CONSTRAINTS: u32 = 2;
+
+    // Constraints for Bits
+    //   * Operates on Curr row
+    //   * Constrain the decomposition of `in1` and `in2` in halves
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+        vec![half(env, 0), half(env, 3)]
+    }
+}
+
+/// Constrains the decomposition of an input of 64 bits located in position `idx`
+/// into halves of 32 bits located in positions `idx+1` and `idx+2` in the `Curr` row.
+fn half<F: FftField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>, idx: usize) -> T {
+    let two = T::one() + T::one();
+    let half_bits = two.pow(32);
+    env.witness_curr(idx) - (env.witness_curr(idx + 2) * half_bits + env.witness_curr(idx + 1))
 }
 
 /// Computes the decomposition of a 32-bit word whose most significant 4-bit crumb

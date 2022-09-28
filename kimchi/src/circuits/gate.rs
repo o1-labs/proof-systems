@@ -110,7 +110,8 @@ pub enum GateType {
     // ForeignFieldAdd = 25,
     // ForeignFieldMul = 26,
     // Gates for Keccak follow:
-    Xor = 27,
+    KeccakXor = 27,
+    KeccakBits = 28,
 }
 
 /// Selector polynomial
@@ -232,7 +233,7 @@ impl<F: PrimeField> CircuitGate<F> {
             RangeCheck0 | RangeCheck1 => self
                 .verify_range_check::<G>(row, witness, cs)
                 .map_err(|e| e.to_string()),
-            Xor => Ok(()), // TODO
+            KeccakXor | KeccakBits => Ok(()), // TODO
         }
     }
 
@@ -313,7 +314,8 @@ impl<F: PrimeField> CircuitGate<F> {
             GateType::RangeCheck1 => {
                 range_check::circuitgates::RangeCheck1::constraint_checks(&env)
             }
-            GateType::Xor => keccak::circuitgates::Xor::constraint_checks(&env),
+            GateType::KeccakXor => keccak::circuitgates::KeccakXor::constraint_checks(&env),
+            GateType::KeccakBits => keccak::circuitgates::KeccakBits::constraint_checks(&env),
         };
 
         // Check for failed constraints

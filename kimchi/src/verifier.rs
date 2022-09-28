@@ -641,7 +641,8 @@ where
                             }
                             RangeCheck0 => &index.range_check_comm.as_ref().unwrap()[0],
                             RangeCheck1 => &index.range_check_comm.as_ref().unwrap()[1],
-                            Xor => unimplemented!(),
+                            KeccakXor => unimplemented!(),
+                            KeccakBits => unimplemented!(),
                         };
                         scalars.push(scalar);
                         commitments.push(c);

@@ -3,7 +3,8 @@
 use crate::circuits::{
     polynomial::COLUMNS,
     polynomials::range_check::witness::{
-        extend_single, handle_standard_witness_cell, LimbWitnessCell, WitnessCell, ZeroWitnessCell,
+        extend_single, handle_standard_witness_cell, CopyWitnessCell, LimbWitnessCell, WitnessCell,
+        ZeroWitnessCell,
     },
 };
 use ark_ff::PrimeField;
@@ -69,6 +70,56 @@ const fn xor_rows(rc_row: usize, curr_row: usize) -> [[WitnessCell; COLUMNS]; 4]
     ]
 }
 
+/// Initializes two rows of inputs pairs and one output value
+fn init_keccak_bit_rows<F: PrimeField>(
+    witness: &mut [Vec<F>; COLUMNS],
+    rc_row: usize,
+    xor_row: usize,
+    bit_row: usize,
+) {
+    let bit_rows = [
+        [
+            CopyWitnessCell::create(rc_row, 0),      // 64 bit first input
+            CopyWitnessCell::create(xor_row, 0),     // 32 bit low half of first input
+            CopyWitnessCell::create(xor_row + 2, 0), // 32 bit high half of first input
+            CopyWitnessCell::create(rc_row + 1, 0),  // 64 bit second input
+            CopyWitnessCell::create(xor_row + 1, 1), // 32 bit low half of second input
+            CopyWitnessCell::create(xor_row + 3, 1), // 32 bit high half of second input
+            ZeroWitnessCell::create(),
+            ZeroWitnessCell::create(),
+            ZeroWitnessCell::create(),
+            ZeroWitnessCell::create(),
+            ZeroWitnessCell::create(),
+            ZeroWitnessCell::create(),
+            ZeroWitnessCell::create(),
+            ZeroWitnessCell::create(),
+            ZeroWitnessCell::create(),
+        ],
+        [
+            CopyWitnessCell::create(rc_row + 2, 0),  // 64 bit output
+            CopyWitnessCell::create(xor_row + 1, 0), // 32 bit low half of output
+            CopyWitnessCell::create(xor_row + 3, 0), // 32 bit high half of output
+            ZeroWitnessCell::create(),
+            ZeroWitnessCell::create(),
+            ZeroWitnessCell::create(),
+            ZeroWitnessCell::create(),
+            ZeroWitnessCell::create(),
+            ZeroWitnessCell::create(),
+            ZeroWitnessCell::create(),
+            ZeroWitnessCell::create(),
+            ZeroWitnessCell::create(),
+            ZeroWitnessCell::create(),
+            ZeroWitnessCell::create(),
+            ZeroWitnessCell::create(),
+        ],
+    ];
+    for (i, wit) in bit_rows.iter().enumerate() {
+        for (col, cell) in wit.iter().enumerate() {
+            handle_standard_witness_cell(witness, cell, bit_row + i, col, F::zero())
+        }
+    }
+}
+
 fn init_keccak_xor_rows<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
     rc_row: usize,
@@ -91,16 +142,15 @@ fn init_keccak_xor_rows<F: PrimeField>(
 }
 
 /// Extends the xor rows to the full witness
-pub fn extend_xor_rows<F: PrimeField>(
-    witness: &mut [Vec<F>; COLUMNS],
-    rc_row: usize,
-    curr_row: usize,
-) {
-    let xor_witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 4]);
+pub fn extend_xor_rows<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], rc_row: usize) {
+    let xor_witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 6]);
     for col in 0..COLUMNS {
         witness[col].extend(xor_witness[col].iter());
     }
-    init_keccak_xor_rows(witness, rc_row, curr_row);
+    init_keccak_xor_rows(witness, rc_row, rc_row + 5);
+
+    // this needs to be initialized after xor if we copy limbs for xor from range check
+    init_keccak_bit_rows(witness, rc_row, rc_row + 5, rc_row + 3);
 }
 
 /// Create a keccak xor multiplication witness
@@ -114,7 +164,7 @@ pub fn create_witness<F: PrimeField>(input1: u64, input2: u64) -> [Vec<F>; COLUM
     extend_single(&mut witness, input1.into());
     extend_single(&mut witness, input2.into());
     extend_single(&mut witness, output.into());
-    extend_xor_rows(&mut witness, 1, 4);
+    extend_xor_rows(&mut witness, 1);
 
     witness
 }
