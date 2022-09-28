@@ -124,7 +124,7 @@ use crate::circuits::{
     expr::constraints::ExprOps,
     gate::GateType,
 };
-use ark_ff::FftField;
+use ark_ff::PrimeField;
 
 //~ ##### `KeccakXor` - XOR constraints for 32-bit words
 //~
@@ -162,7 +162,7 @@ pub struct KeccakXor<F>(PhantomData<F>);
 
 impl<F> Argument<F> for KeccakXor<F>
 where
-    F: FftField,
+    F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::KeccakXor);
     const CONSTRAINTS: u32 = 3;
@@ -197,7 +197,7 @@ where
 /// | `Curr` |  crumb0 |  crumb1 |  crumb2 |  crumb3 |
 /// | `Next` |  crumb4 |  crumb5 |  crumb6 |  crumb7 |
 ///
-fn four_bit<F: FftField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>, max: usize) -> T {
+fn four_bit<F: PrimeField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>, max: usize) -> T {
     let mut sum = T::zero();
     let two = T::one() + T::one();
     let four_bit = two.pow(4);
