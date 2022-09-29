@@ -52,9 +52,9 @@ r  =  (-------r0-------|-------r1-------|-------r2-------)
 
 First, if $a + b$ was larger than $f$, then we will have a field overflow (represented by $q = 1$) and we will have to subtract $f$ from the sum $a + b$ to obtain $r$. Whereas the foreign field overflow necessitates an overflow bit $q$ for the foreign field equation above, when $q = 1$ there is a corresponding subtraction that may introduce carries (or even borrows) between the limbs. This is because $r = a + b - q \cdot f \mod 2^{264}$.  Therefore, in the equations for the limbs we will use a carry flag $c_i$ for limb $i$ to represent both carries and borrows. The carry flags can be anything in $\{-1, 0, 1\}$, where $c_i = -1$ represents a borrow and $c_i = 1$ represents a carry.  Next we see more clearly how this works.
 
-In order to perform this operation in parts, we first take a look at the least significant limb, which is the easiest part. This means we want to know how to compute $r_0$. First, if the addition of the bits in $a_0$ and $b_0$ produce a carry (or borrow) bit, then it should propagate to the second limb. That means one has to subtract $2^{88}$ from $s_0 = a_0 + b_0$, add $1$ to $s_1 = a_1 + b_1$ and set the low carry flag $c_0$ to 1 (otherwise it is zero).  Thus, the equation for the lowest bit is
+In order to perform this operation in parts, we first take a look at the least significant limb, which is the easiest part. This means we want to know how to compute $r_0$. First, if the addition of the bits in $a_0$ and $b_0$ produce a carry (or borrow) bit, then it should propagate to the second limb. That means one has to subtract $2^{88}$ from $a_0 + b_0$, add $1$ to $a_1 + b_1$ and set the low carry flag $c_0$ to 1 (otherwise it is zero).  Thus, the equation for the lowest bit is
 
-$$a_0 + b_0 = q \cdot f_0 + r_0 + c_0 \cdot 2^{88}$$
+$$a_0 + s \cdot b_0 = q \cdot f_0 + r_0 + c_0 \cdot 2^{88}$$
 
 Or put in another way, this is equivalent to saying that $a_0 + b_0 - q \cdot f_0 - r_0$ is a multiple of $2^{88}$ (or, the existence of the carry coefficient $c_0$).
 
@@ -62,13 +62,13 @@ This kind of equation needs an additional check that the carry coefficient $c_0$
 
 Looking at the second limb, we first need to observe that the addition of $a_1$ and $b_1$ can, not only produce a carry bit $c_1$, but they may need to take into account the carry bit from the first limb; $c_0$. Similarly to the above,
 
-$$a_1 + b_1 = q \cdot f_1 + r_1 + c_1 \cdot 2^{88} - c_0$$
+$$a_1 + s \cdot b_1 = q \cdot f_1 + r_1 + c_1 \cdot 2^{88} - c_0$$
 
 Note that in this case, the carry coefficient from the least significant limb is not multiplied by $2^{88}$, but instead is used as is, since it occupies the least significant position of the second limb. Here, the second carry bit $c_1$ is the one being followed by $88$ zeros. Again, we will have to check that $c_1$ is a bit.
 
 Finally, for the third limb, we obtain a similar equation. But in this case, we do not have to take into account $c_0$ anymore, since it was already considered within $c_1$. Here, the most significant carry bit $c_2$ should always be a zero so we can ignore it.
 
-$$a_2 + b_2 = q \cdot f_2 + r_2 - c_1$$
+$$a_2 + s \cdot b_2 = q \cdot f_2 + r_2 - c_1$$
 
 
 Graphically, this is what is happening:
@@ -95,20 +95,22 @@ Our witness computation is currently using the `BigUint` library, which takes ca
 
 ### Upper bound check
 
-Last but not least, we should perform some range checks to make sure that the result $r$ is contained in $\mathbb{F}_f$. Ideally, we would like to reuse some gates that we already have. In particular, we can perform range checks for $0\leq X <2^{3\ell}=2^{3\cdot 88}$. But we want to check that $0\leq r<f$. The way we can tweak this gate to behave as we want, is the following. First, the above inequality is equivalent to saying that $-f \leq r - f < 0$. Then we add $2^{264}$ on both sides to obtain $2^{264} - f \leq r - f + 2^{264} < 2^{264}$. Thus, all there is left to check is that a given bound value is indeed computed correctly.
+Last but not least, we should perform some range checks to make sure that the result $r$ is contained in $\mathbb{F}_f$. This is important because there could be other values of the result which still fit in $<2^{264}$ but are larger than $f$, and we must make sure that the final result is the minimum one (that we will be referring to as $r_{min}$ in the following). 
 
-This is very similar to a foreign field addition, but simpler: the overflow bit will always be $1$, the sign is positive $1$, and the right input is formed by the limbs $(0, 0, 2^{88})$ standing for the number $2^{264}$.  There could be intermediate limb carry bits $k_0$ and $k_1$ as above. Observe that, because the sum is meant to be $<2^{264}$, then the carry bit for the most significant limb should always be zero $k_2 = 0$, so we do not use it. Happily, we can apply the addition gate again to perform the addition limb-wise, by selecting the following parameters:
+Ideally, we would like to reuse some gates that we already have. In particular, we can perform range checks for $0\leq X <2^{3\ell}=2^{3\cdot 88}$. But we want to check that $0\leq r_{min}<f$. The way we can tweak this gate to behave as we want, is the following. First, the above inequality is equivalent to saying that $-f \leq r_{min} - f < 0$. Then we add $2^{264}$ on both sides to obtain $2^{264} - f \leq r_{min} - f + 2^{264} < 2^{264}$. Thus, all there is left to check is that a given bound value is indeed computed correctly. Meaning, that an upperbound term $u$ is correctly obtained as $r_{min} + 2^{264} - f$. Even if we could apply this check for all intermediate results of foreign field additions, it is sufficient to apply it only once at the end of the computations.
+
+This is very similar to a foreign field addition, but simpler: the field overflow bit will always be $1$, the sign is positive $1$, and the right input is formed by the limbs $(0, 0, 2^{88})$ standing for the number $2^{264}$.  There could be intermediate limb carry bits $k_0$ and $k_1$ as above. Observe that, because the sum is meant to be $<2^{264}$, then the carry bit for the most significant limb should always be zero $k_2 = 0$, so we do not use it. Happily, we can apply the addition gate again to perform the addition limb-wise, by selecting the following parameters:
 
 $$
 \begin{aligned}
 a_0 &=& r_{min_{0}}, \\ a_1 &=& r_{min_{1}}, \\ a_2 &=& r_{min_{2}} , \\
 b_0 &=& 0, \\ b_1 &=& 0, \\ b_2 &=& 2^{88} , \\
 s &=& 1 \\
-o &=& 1
+q &=& 1
 \end{aligned}
 $$
 
-Calling $u$ the upper bound term, the equation $r + 2^{264} - f $ can be expressed as $r + 2^{264} = 1 * f + u$. Finally, we perform a range check on the sum $u$, and we would know that $r < f$.
+Calling $u$ the upper bound term, the equation $r_{min} + 2^{264} - f $ can be expressed as $r_{min} + 2^{264} = 1 * f + u$. Finally, we perform a range check on the sum $u$, and we would know that $r_{min} < f$.
 
 
 ```text
@@ -128,9 +130,9 @@ Following the steps above, and representing this equation in limb form, we have:
 
 $$
 \begin{aligned}
-u_0 &= r_0 + 0 - k_0 \cdot 2^{88} \\
-u_1 &= r_1 + 0 - k_1 \cdot 2^{88} + k_0 \\
-u_2 &= r_2 + 2^{88} + k_1 \\
+u_0 &= r_0 + 0 - f_0 - k_0 \cdot 2^{88} \\
+u_1 &= r_1 + 0 - f_1 - k_1 \cdot 2^{88} + k_0 \\
+u_2 &= r_2 + 2^{88} - f_2 + k_1 \\
 \end{aligned}
 $$
 
@@ -146,7 +148,7 @@ Instead, our gate encodes subtractions and additions directly within the sign te
 
 ## Gadget
 
-The foreign field gadget will be composed by 4 sets of `RangeCheck` gadgets for witnesses $a, b, r, u$ accounting for 16 rows in total; followed by one row with `ForeignFieldAdd` gate type; a final `ForeignFieldAdd` with a `Zero` row. A total of 19 rows with 15 columns in Kimchi.
+The foreign field gadget will be composed by 4 sets of `RangeCheck` gadgets for witnesses $a, b, r, u$ accounting for 16 rows in total; followed by one row with `ForeignFieldAdd` gate type; a final `ForeignFieldAdd` with a `Zero` row. The first four rows constrain the range of the left input. The following four constrain the range of the right input. The next range check is for the result of the addition of left and right. Next, a final range check for the upper bound therm. Then the foreign field addition gate performs the actual addition. And the final foreign field addition gate (followed by a zero gate) takes care of the final upper bound operation. A total of 19 rows with 15 columns in Kimchi.
 
 | Row(s) | Gate type(s)        | Witness |
 | ------ | ------------------- | ------- |

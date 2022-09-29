@@ -28,7 +28,7 @@ use std::{array, marker::PhantomData};
 //~     left_input_mi -> a1  right_input_mi -> b1  result_mi -> r1  bound_mi -> u1
 //~     left_input_hi -> a2  right_input_hi -> b2  result_hi -> r2  bound_hi -> u2
 //~
-//~     field_overflow  -> x
+//~     field_overflow  -> q
 //~     sign            -> s
 //~     carry_lo        -> c0
 //~     carry_mi        -> c1
@@ -38,9 +38,9 @@ use std::{array, marker::PhantomData};
 //~
 //~ Note:
 //~  Our limbs are 88-bit long. We denote with:
-//~  - `lo` the least significant limb (in big-endian, this is from 0 to 87)
-//~  - `mi` the middle limb            (in big-endian, this is from 88 to 175)
-//~  - `hi` the most significant limb  (in big-endian, this is from 176 to 263)
+//~  - `lo` the least significant limb (in little-endian, this is from 0 to 87)
+//~  - `mi` the middle limb            (in little-endian, this is from 88 to 175)
+//~  - `hi` the most significant limb  (in little-endian, this is from 176 to 263)
 //~
 //~ Let `left_input_lo`, `left_input_mi`, `left_input_hi` be 88-bit limbs of the left element
 //~
@@ -68,16 +68,20 @@ use std::{array, marker::PhantomData};
 //~ - `bound_mi = result_mi - foreign_modulus_mi - bound_carry_mi * 2^{88} + bound_carry_lo`
 //~ - `bound_hi = result_hi - foreign_modulus_hi + 2^{88} + bound_carry_mi`
 //~
-//~ Which is equivalent to another foreign field addition with right input 2^{264}, x = 1 and s = 1
-//~ - `bound_lo = result_lo + s *      0 - x * foreign_modulus_lo - bound_carry_lo * 2^{88}`
-//~ - `bound_mi = result_mi + s *      0 - x * foreign_modulus_mi - bound_carry_mi * 2^{88} + bound_carry_lo`
-//~ - `bound_hi = result_hi + s * 2^{88} - x * foreign_modulus_hi                           + bound_carry_mi`
+//~ Which is equivalent to another foreign field addition with right input 2^{264}, q = 1 and s = 1
+//~ - `bound_lo = result_lo + s *      0 - q * foreign_modulus_lo - bound_carry_lo * 2^{88}`
+//~ - `bound_mi = result_mi + s *      0 - q * foreign_modulus_mi - bound_carry_mi * 2^{88} + bound_carry_lo`
+//~ - `bound_hi = result_hi + s * 2^{88} - q * foreign_modulus_hi                           + bound_carry_mi`
 //~
 //~ `bound_carry_i` $= 0$ or $1$ or $-1$ are auxiliary variables that handle carries between limbs
 //~
 //~ The range check of `bound` can be skipped until the end of the operations
 //~ and `result` is an intermediate value that is unused elsewhere (since the final `result`
 //~ must have had the right amount of moduli subtracted along the way, meaning a multiple of the modulus).
+//~ In other words, intermediate results could potentially give a valid witness that satisfies the constraints
+//~ but where the result is larger than the modulus (yet smaller than 2^{264}). The reason that we have a
+//~ final bound check is to make sure that the final result (`min_result`) is indeed the minimum one
+//~ (meaning less than the modulus).
 //~
 //~ You could lay this out as a double-width gate for chained foreign additions and a final row, e.g.
 //~
@@ -101,7 +105,9 @@ use std::{array, marker::PhantomData};
 //~
 //~ We reuse the foreign field addition gate for the final bound check since this is an addition with a
 //~ specific parameter structure. Checking that the correct right input, overflow, and sign are used shall
-//~ be done by copy constraining these values with a public input value.
+//~ be done by copy constraining these values with a public input value. One could have a specific gate
+//~ for just this check requiring less constrains, but the cost of adding one more selector gate outweights
+//~ the savings of one row and a few constraints of difference.
 
 /// Implementation of the foreign field addition gate
 /// - Operates on Curr and Next rows.

@@ -5,6 +5,13 @@ use ark_ff::{Field, PrimeField};
 use num_bigint::BigUint;
 use std::ops::{Index, IndexMut};
 
+/// Index of low limb (in 3-limb foreign elements)
+pub const LO: usize = 0;
+/// Index of middle limb (in 3-limb foreign elements)
+pub const MI: usize = 1;
+/// Index of high limb (in 3-limb foreign elements)
+pub const HI: usize = 2;
+
 /// Limb length for foreign field elements
 pub const LIMB_BITS: usize = 88;
 
@@ -15,13 +22,13 @@ pub const LIMB_COUNT: usize = 3;
 /// FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFE FFFFFC2F
 /// given by the computation 2^256 - 2^32 - 2^9 - 2^8 - 2^7 - 2^6 - 2^4 - 1
 /// more information here  <https://en.bitcoin.it/wiki/Secp256k1>
-pub const FOREIGN_MOD: &[u8] = &[
+pub const SECP256K1_MOD: &[u8] = &[
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0xFF, 0xFF, 0xFC, 0x2F,
 ];
 
 /// Bit length of the foreign field modulus
-pub const FOREIGN_BITS: usize = 8 * FOREIGN_MOD.len(); // 256 bits
+pub const FOREIGN_BITS: usize = 8 * SECP256K1_MOD.len(); // 256 bits
 
 /// Two to the power of the limb length
 pub const TWO_TO_LIMB: u128 = 2u128.pow(LIMB_BITS as u32);
@@ -136,7 +143,7 @@ mod tests {
 
     #[test]
     fn test_big_be() {
-        let bytes = FOREIGN_MOD;
+        let bytes = SECP256K1_MOD;
         let big = BigUint::from_bytes_be(bytes);
         assert_eq!(
             ForeignElement::<BaseField, 3>::from_be(bytes),
@@ -146,7 +153,7 @@ mod tests {
 
     #[test]
     fn test_to_big() {
-        let bytes = FOREIGN_MOD;
+        let bytes = SECP256K1_MOD;
         let big = BigUint::from_bytes_be(bytes);
         let fe = ForeignElement::<BaseField, 3>::from_be(bytes);
         assert_eq!(fe.to_big(), big);

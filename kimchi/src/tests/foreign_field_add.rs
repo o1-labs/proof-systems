@@ -1,7 +1,7 @@
 use crate::circuits::{
     constraints::ConstraintSystem,
     gate::{CircuitGate, CircuitGateError, GateType},
-    polynomials::foreign_field_add::witness::create_witness,
+    polynomials::foreign_field_add::witness::{create_witness, FFOps},
     wires::Wire,
 };
 use ark_ec::AffineCurve;
@@ -10,53 +10,50 @@ use mina_curves::pasta::{Pallas, Vesta};
 use num_bigint::BigUint;
 use num_traits::FromPrimitive;
 use o1_utils::{
-    foreign_field::{ForeignElement, FOREIGN_MOD},
+    foreign_field::{ForeignElement, SECP256K1_MOD},
     FieldHelpers,
 };
 
 type PallasField = <Pallas as AffineCurve>::BaseField;
 type VestaField = <Vesta as AffineCurve>::BaseField;
 
-/// Addition operation
-static ADD: bool = true;
-
-/// Subtraction operation
-static SUB: bool = false;
-
-/// Maximum value in the foreign field of seckp256k1
+// Maximum value in the foreign field of secp256k1
 // BigEndian -> FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFE FFFFFC2E
-static MAX: &[u8] = &[
+static MAX_SECP256K1: &[u8] = &[
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0xFF, 0xFF, 0xFC, 0x2E,
 ];
 
-/// Maximum value in the foreign field of Vesta
+// TODO: not hardcoded, extract from library
+//const MAX_VESTA: &[u8] = &(VestaField::modulus_biguint() - 1u32).to_bytes_be();
+// Maximum value in the foreign field of Vesta
 // BigEndian -> 40000000 00000000 00000000 00000000 224698fc 094cf91b 992d30ed 00000000
 static MAX_VESTA: &[u8] = &[
     0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x22, 0x46, 0x98, 0xFC,
     0x09, 0x4C, 0xF9, 0x1B, 0x99, 0x2D, 0x30, 0xED, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 ];
 
-/// Maximum value in the foreign field of Pallas
+// TODO: not hardcoded, extract from library
+//static MAX_PALLAS: &[u8] = &(PallasField::modulus_biguint() - 1u32).to_bytes_be();
+// Maximum value in the foreign field of Pallas
 // BigEndian -> 40000000 00000000 00000000 00000000 224698fc 0994a8dd 8c46eb21 00000000
 static MAX_PALLAS: &[u8] = &[
     0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x22, 0x46, 0x98, 0xFC,
     0x09, 0x94, 0xA8, 0xDD, 0x8C, 0x46, 0xEB, 0x21, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 ];
-
-/// A value that produces a negative low carry when added to itself
+// A value that produces a negative low carry when added to itself
 static OVF_NEG_LO: &[u8] = &[
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 ];
 
-/// A value that produces a negative middle carry when added to itself
+// A value that produces a negative middle carry when added to itself
 static OVF_NEG_MI: &[u8] = &[
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0xFF, 0xFF, 0xFC, 0x2E,
 ];
 
-/// A value that produces overflow but the high limb of the result is smaller than the high limb of the modulus
+// A value that produces overflow but the high limb of the result is smaller than the high limb of the modulus
 static OVF_LESS_HI_LEFT: &[u8] = &[
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0xFF, 0xFF, 0xFC, 0x2E,
@@ -66,19 +63,19 @@ static OVF_LESS_HI_RIGHT: &[u8] = &[
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x03, 0xD1,
 ];
 
-/// A value that produces two negative carries when added together with [OVF_ZERO_MI_NEG_LO]
+// A value that produces two negative carries when added together with [OVF_ZERO_MI_NEG_LO]
 static OVF_NEG_BOTH: &[u8] = &[
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 ];
 
-/// A value that produces two negative carries when added to itself with a middle limb that is all zeros
+// A value that produces two negative carries when added to itself with a middle limb that is all zeros
 static OVF_ZERO_MI_NEG_LO: &[u8] = &[
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 ];
 
-/// All 0x55 bytes meaning [0101 0101]
+// All 0x55 bytes meaning [0101 0101]
 static TIC: &[u8] = &[
     0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55,
     0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55,
@@ -109,35 +106,35 @@ static TOC_TWO: &[u8] = &[
 ];
 
 // BigEndian -> 00000000 00000000 00000000 00000000 FFFFFFFF FFFFFFFF FFFFFFFE FFFFFC2F
-/// Bottom half of the foreign modulus
+// Bottom half of the foreign modulus
 static FOR_MOD_BOT: &[u8] = &[
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0xFF, 0xFF, 0xFC, 0x2F,
 ];
 
 // BigEndian -> FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF 00000000 00000000 00000000 00000000
-/// Top half of the foreign modulus
+// Top half of the foreign modulus
 static FOR_MOD_TOP: &[u8] = &[
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 ];
 
-/// Value that performs a + - 1 low carry when added to [MAX]
+// Value that performs a + - 1 low carry when added to [MAX]
 static NULL_CARRY_LO: &[u8] = &[0x01, 0x00, 0x00, 0x03, 0xD2];
 
-/// Value that performs a + - 1 middle carry when added to [MAX]
+// Value that performs a + - 1 middle carry when added to [MAX]
 static NULL_CARRY_MI: &[u8] = &[
     0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
 ];
 
-/// Value that performs two + - 1 carries when added to [MAX]
+// Value that performs two + - 1 carries when added to [MAX]
 static NULL_CARRY_BOTH: &[u8] = &[
     0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x03, 0xD2,
 ];
-/// The zero byte
+// The zero byte
 static ZERO: &[u8] = &[0x00];
 
-/// The one byte
+// The one byte
 static ONE: &[u8] = &[0x01];
 
 fn create_test_constraint_system_ffadd(
@@ -161,13 +158,17 @@ fn create_test_constraint_system_ffadd(
 #[test]
 // Add zero to zero. This checks that small amounts also get packed into limbs
 fn test_zero_add() {
-    let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let foreign_modulus = BigUint::from_bytes_be(SECP256K1_MOD);
     let cs = create_test_constraint_system_ffadd(1, foreign_modulus.clone());
 
     let left_input = BigUint::from_bytes_be(ZERO);
     let right_input = BigUint::from_bytes_be(ZERO);
 
-    let witness = create_witness(vec![left_input, right_input], vec![ADD], foreign_modulus);
+    let witness = create_witness(
+        vec![left_input, right_input],
+        vec![FFOps::Add],
+        foreign_modulus,
+    );
 
     for row in 0..=18 {
         assert_eq!(
@@ -192,13 +193,17 @@ fn test_zero_add() {
 #[test]
 // Adding terms that are zero modulo the foreign field
 fn test_zero_sum_foreign() {
-    let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let foreign_modulus = BigUint::from_bytes_be(SECP256K1_MOD);
     let cs = create_test_constraint_system_ffadd(1, foreign_modulus.clone());
 
     let left_input = BigUint::from_bytes_be(FOR_MOD_BOT);
     let right_input = BigUint::from_bytes_be(FOR_MOD_TOP);
 
-    let witness = create_witness(vec![left_input, right_input], vec![ADD], foreign_modulus);
+    let witness = create_witness(
+        vec![left_input, right_input],
+        vec![FFOps::Add],
+        foreign_modulus,
+    );
 
     for row in 0..=18 {
         assert_eq!(
@@ -227,7 +232,7 @@ fn test_zero_sum_foreign() {
 #[test]
 // Adding terms that are zero modulo the native field
 fn test_zero_sum_native() {
-    let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let foreign_modulus = BigUint::from_bytes_be(SECP256K1_MOD);
     let native_modulus = PallasField::modulus_biguint();
     let cs = create_test_constraint_system_ffadd(1, foreign_modulus.clone());
 
@@ -238,7 +243,7 @@ fn test_zero_sum_native() {
 
     let witness = create_witness(
         vec![left_input, right_input],
-        vec![ADD],
+        vec![FFOps::Add],
         foreign_modulus.clone(),
     );
 
@@ -270,13 +275,17 @@ fn test_zero_sum_native() {
 
 #[test]
 fn test_one_plus_one() {
-    let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let foreign_modulus = BigUint::from_bytes_be(SECP256K1_MOD);
     let cs = create_test_constraint_system_ffadd(1, foreign_modulus.clone());
 
     let left_input = BigUint::from_bytes_be(ONE);
     let right_input = BigUint::from_bytes_be(ONE);
 
-    let witness = create_witness(vec![left_input, right_input], vec![ADD], foreign_modulus);
+    let witness = create_witness(
+        vec![left_input, right_input],
+        vec![FFOps::Add],
+        foreign_modulus,
+    );
 
     for row in 0..=18 {
         assert_eq!(
@@ -306,15 +315,15 @@ fn test_one_plus_one() {
 #[test]
 // Adds two terms that are the maximum value in the foreign field
 fn test_max_number() {
-    let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let foreign_modulus = BigUint::from_bytes_be(SECP256K1_MOD);
     let cs = create_test_constraint_system_ffadd(1, foreign_modulus.clone());
 
-    let left_input = BigUint::from_bytes_be(MAX);
-    let right_input = BigUint::from_bytes_be(MAX);
+    let left_input = BigUint::from_bytes_be(MAX_SECP256K1);
+    let right_input = BigUint::from_bytes_be(MAX_SECP256K1);
 
     let witness = create_witness(
         vec![left_input, right_input],
-        vec![ADD],
+        vec![FFOps::Add],
         foreign_modulus.clone(),
     );
 
@@ -338,7 +347,7 @@ fn test_max_number() {
     }
 
     // compute result in the foreign field after taking care of the exceeding bits
-    let sum = BigUint::from_bytes_be(MAX) + BigUint::from_bytes_be(MAX);
+    let sum = BigUint::from_bytes_be(MAX_SECP256K1) + BigUint::from_bytes_be(MAX_SECP256K1);
     let sum_mod = sum - foreign_modulus.clone();
     let sum_mod_limbs = ForeignElement::<PallasField, 3>::from_biguint(sum_mod);
     assert_eq!(witness[7][16], PallasField::one()); // field overflow
@@ -353,7 +362,7 @@ fn test_max_number() {
 // and then as 0 - 1
 // and it is checked that in both cases the result is the same
 fn test_zero_minus_one() {
-    let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let foreign_modulus = BigUint::from_bytes_be(SECP256K1_MOD);
     let cs = create_test_constraint_system_ffadd(1, foreign_modulus.clone());
 
     // FIRST AS NEG
@@ -368,7 +377,7 @@ fn test_zero_minus_one() {
 
     let witness_neg = create_witness(
         vec![left_input.clone(), right_input_neg],
-        vec![ADD],
+        vec![FFOps::Add],
         foreign_modulus.clone(),
     );
 
@@ -400,7 +409,7 @@ fn test_zero_minus_one() {
 
     let witness_sub = create_witness(
         vec![left_input, right_input_sub],
-        vec![SUB],
+        vec![FFOps::Sub],
         foreign_modulus.clone(),
     );
 
@@ -431,7 +440,7 @@ fn test_zero_minus_one() {
 // test 1 - 1 + 1 where (-1) is in the foreign field
 // the first check is done with sub(1, 1) and then with add(neg(neg(1)))
 fn test_one_minus_one_plus_one() {
-    let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let foreign_modulus = BigUint::from_bytes_be(SECP256K1_MOD);
     let cs = create_test_constraint_system_ffadd(2, foreign_modulus.clone());
 
     // big uint of the number 1
@@ -446,7 +455,7 @@ fn test_one_minus_one_plus_one() {
 
     let witness = create_witness(
         vec![left_input, minus_one, neg_neg_one],
-        vec![SUB, ADD],
+        vec![FFOps::Sub, FFOps::Add],
         foreign_modulus,
     );
 
@@ -482,7 +491,7 @@ fn test_one_minus_one_plus_one() {
 // test -1-1 where (-1) is in the foreign field
 // tested as neg(1) + neg(1)
 fn test_minus_minus() {
-    let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let foreign_modulus = BigUint::from_bytes_be(SECP256K1_MOD);
     let cs = create_test_constraint_system_ffadd(1, foreign_modulus.clone());
 
     // big uint of the number 1
@@ -498,7 +507,7 @@ fn test_minus_minus() {
 
     let witness = create_witness(
         vec![left_input, right_input],
-        vec![ADD],
+        vec![FFOps::Add],
         foreign_modulus.clone(),
     );
 
@@ -531,13 +540,17 @@ fn test_minus_minus() {
 #[test]
 // test when the low carry is minus one
 fn test_neg_carry_lo() {
-    let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let foreign_modulus = BigUint::from_bytes_be(SECP256K1_MOD);
     let cs = create_test_constraint_system_ffadd(1, foreign_modulus.clone());
 
     let left_input = BigUint::from_bytes_be(OVF_NEG_LO);
     let right_input = BigUint::from_bytes_be(OVF_NEG_LO);
 
-    let witness = create_witness(vec![left_input, right_input], vec![ADD], foreign_modulus);
+    let witness = create_witness(
+        vec![left_input, right_input],
+        vec![FFOps::Add],
+        foreign_modulus,
+    );
 
     for row in 0..=18 {
         assert_eq!(
@@ -564,13 +577,17 @@ fn test_neg_carry_lo() {
 #[test]
 // test when the middle carry is minus one
 fn test_neg_carry_mi() {
-    let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let foreign_modulus = BigUint::from_bytes_be(SECP256K1_MOD);
     let cs = create_test_constraint_system_ffadd(1, foreign_modulus.clone());
 
     let left_input = BigUint::from_bytes_be(OVF_NEG_MI);
     let right_input = BigUint::from_bytes_be(OVF_NEG_MI);
 
-    let witness = create_witness(vec![left_input, right_input], vec![ADD], foreign_modulus);
+    let witness = create_witness(
+        vec![left_input, right_input],
+        vec![FFOps::Add],
+        foreign_modulus,
+    );
 
     for row in 0..=18 {
         assert_eq!(
@@ -597,13 +614,17 @@ fn test_neg_carry_mi() {
 #[test]
 // test when there is negative low carry and 0 middle limb (carry bit propagates)
 fn test_zero_mi() {
-    let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let foreign_modulus = BigUint::from_bytes_be(SECP256K1_MOD);
     let cs = create_test_constraint_system_ffadd(1, foreign_modulus.clone());
 
     let left_input = BigUint::from_bytes_be(OVF_ZERO_MI_NEG_LO);
     let right_input = BigUint::from_bytes_be(OVF_ZERO_MI_NEG_LO);
 
-    let witness = create_witness(vec![left_input, right_input], vec![ADD], foreign_modulus);
+    let witness = create_witness(
+        vec![left_input, right_input],
+        vec![FFOps::Add],
+        foreign_modulus,
+    );
 
     for row in 0..=18 {
         assert_eq!(
@@ -630,13 +651,17 @@ fn test_zero_mi() {
 #[test]
 // test when the both carries are minus one
 fn test_neg_carries() {
-    let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let foreign_modulus = BigUint::from_bytes_be(SECP256K1_MOD);
     let cs = create_test_constraint_system_ffadd(1, foreign_modulus.clone());
 
     let left_input = BigUint::from_bytes_be(OVF_NEG_BOTH);
     let right_input = BigUint::from_bytes_be(OVF_ZERO_MI_NEG_LO);
 
-    let witness = create_witness(vec![left_input, right_input], vec![ADD], foreign_modulus);
+    let witness = create_witness(
+        vec![left_input, right_input],
+        vec![FFOps::Add],
+        foreign_modulus,
+    );
 
     for row in 0..=18 {
         assert_eq!(
@@ -663,13 +688,17 @@ fn test_neg_carries() {
 #[test]
 // test the upperbound of the result
 fn test_upperbound() {
-    let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let foreign_modulus = BigUint::from_bytes_be(SECP256K1_MOD);
     let cs = create_test_constraint_system_ffadd(1, foreign_modulus.clone());
 
     let left_input = BigUint::from_bytes_be(OVF_LESS_HI_LEFT);
     let right_input = BigUint::from_bytes_be(OVF_LESS_HI_RIGHT);
 
-    let witness = create_witness(vec![left_input, right_input], vec![ADD], foreign_modulus);
+    let witness = create_witness(
+        vec![left_input, right_input],
+        vec![FFOps::Add],
+        foreign_modulus,
+    );
 
     for row in 0..=18 {
         assert_eq!(
@@ -694,13 +723,17 @@ fn test_upperbound() {
 #[test]
 // test a carry that nullifies in the low limb
 fn test_null_lo_carry() {
-    let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let foreign_modulus = BigUint::from_bytes_be(SECP256K1_MOD);
     let cs = create_test_constraint_system_ffadd(1, foreign_modulus.clone());
 
-    let left_input = BigUint::from_bytes_be(MAX);
+    let left_input = BigUint::from_bytes_be(MAX_SECP256K1);
     let right_input = BigUint::from_bytes_be(NULL_CARRY_LO);
 
-    let witness = create_witness(vec![left_input, right_input], vec![ADD], foreign_modulus);
+    let witness = create_witness(
+        vec![left_input, right_input],
+        vec![FFOps::Add],
+        foreign_modulus,
+    );
 
     for row in 0..=18 {
         assert_eq!(
@@ -726,13 +759,17 @@ fn test_null_lo_carry() {
 #[test]
 // test a carry that nullifies in the mid limb
 fn test_null_mi_carry() {
-    let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let foreign_modulus = BigUint::from_bytes_be(SECP256K1_MOD);
     let cs = create_test_constraint_system_ffadd(1, foreign_modulus.clone());
 
-    let left_input = BigUint::from_bytes_be(MAX);
+    let left_input = BigUint::from_bytes_be(MAX_SECP256K1);
     let right_input = BigUint::from_bytes_be(NULL_CARRY_MI);
 
-    let witness = create_witness(vec![left_input, right_input], vec![ADD], foreign_modulus);
+    let witness = create_witness(
+        vec![left_input, right_input],
+        vec![FFOps::Add],
+        foreign_modulus,
+    );
 
     for row in 0..=18 {
         assert_eq!(
@@ -758,13 +795,17 @@ fn test_null_mi_carry() {
 #[test]
 // test a carry that nullifies in the mid limb
 fn test_null_both_carry() {
-    let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let foreign_modulus = BigUint::from_bytes_be(SECP256K1_MOD);
     let cs = create_test_constraint_system_ffadd(1, foreign_modulus.clone());
 
-    let left_input = BigUint::from_bytes_be(MAX);
+    let left_input = BigUint::from_bytes_be(MAX_SECP256K1);
     let right_input = BigUint::from_bytes_be(NULL_CARRY_BOTH);
 
-    let witness = create_witness(vec![left_input, right_input], vec![ADD], foreign_modulus);
+    let witness = create_witness(
+        vec![left_input, right_input],
+        vec![FFOps::Add],
+        foreign_modulus,
+    );
 
     for row in 0..=18 {
         assert_eq!(
@@ -791,13 +832,17 @@ fn test_null_both_carry() {
 #[test]
 // test sums without carry bits in any limb
 fn test_no_carry_limbs() {
-    let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let foreign_modulus = BigUint::from_bytes_be(SECP256K1_MOD);
     let cs = create_test_constraint_system_ffadd(1, foreign_modulus.clone());
 
     let left_input = BigUint::from_bytes_be(TIC);
     let right_input = BigUint::from_bytes_be(TOC);
 
-    let witness = create_witness(vec![left_input, right_input], vec![ADD], foreign_modulus);
+    let witness = create_witness(
+        vec![left_input, right_input],
+        vec![FFOps::Add],
+        foreign_modulus,
+    );
 
     for row in 0..=18 {
         assert_eq!(
@@ -830,13 +875,17 @@ fn test_no_carry_limbs() {
 #[test]
 // test sum with carry only in low part
 fn test_pos_carry_limb_lo() {
-    let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let foreign_modulus = BigUint::from_bytes_be(SECP256K1_MOD);
     let cs = create_test_constraint_system_ffadd(1, foreign_modulus.clone());
 
     let left_input = BigUint::from_bytes_be(TIC);
     let right_input = BigUint::from_bytes_be(TOC_LO);
 
-    let witness = create_witness(vec![left_input, right_input], vec![ADD], foreign_modulus);
+    let witness = create_witness(
+        vec![left_input, right_input],
+        vec![FFOps::Add],
+        foreign_modulus,
+    );
 
     for row in 0..=18 {
         assert_eq!(
@@ -865,13 +914,17 @@ fn test_pos_carry_limb_lo() {
 
 #[test]
 fn test_pos_carry_limb_mid() {
-    let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let foreign_modulus = BigUint::from_bytes_be(SECP256K1_MOD);
     let cs = create_test_constraint_system_ffadd(1, foreign_modulus.clone());
 
     let left_input = BigUint::from_bytes_be(TIC);
     let right_input = BigUint::from_bytes_be(TOC_MI);
 
-    let witness = create_witness(vec![left_input, right_input], vec![ADD], foreign_modulus);
+    let witness = create_witness(
+        vec![left_input, right_input],
+        vec![FFOps::Add],
+        foreign_modulus,
+    );
 
     for row in 0..=18 {
         assert_eq!(
@@ -900,13 +953,17 @@ fn test_pos_carry_limb_mid() {
 
 #[test]
 fn test_pos_carry_limb_lo_mid() {
-    let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let foreign_modulus = BigUint::from_bytes_be(SECP256K1_MOD);
     let cs = create_test_constraint_system_ffadd(1, foreign_modulus.clone());
 
     let left_input = BigUint::from_bytes_be(TIC);
     let right_input = BigUint::from_bytes_be(TOC_TWO);
 
-    let witness = create_witness(vec![left_input, right_input], vec![ADD], foreign_modulus);
+    let witness = create_witness(
+        vec![left_input, right_input],
+        vec![FFOps::Add],
+        foreign_modulus,
+    );
 
     for row in 0..=18 {
         assert_eq!(
@@ -936,13 +993,17 @@ fn test_pos_carry_limb_lo_mid() {
 #[test]
 // Check it fails if given a wrong result
 fn test_wrong_sum() {
-    let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let foreign_modulus = BigUint::from_bytes_be(SECP256K1_MOD);
     let cs = create_test_constraint_system_ffadd(1, foreign_modulus.clone());
 
     let left_input = BigUint::from_bytes_be(TIC);
     let right_input = BigUint::from_bytes_be(TOC);
 
-    let mut witness = create_witness(vec![left_input, right_input], vec![ADD], foreign_modulus);
+    let mut witness = create_witness(
+        vec![left_input, right_input],
+        vec![FFOps::Add],
+        foreign_modulus,
+    );
 
     for row in 0..=18 {
         assert_eq!(
@@ -972,13 +1033,17 @@ fn test_wrong_sum() {
 #[test]
 // Test subtraction of the foreign field
 fn test_zero_sub_fmod() {
-    let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let foreign_modulus = BigUint::from_bytes_be(SECP256K1_MOD);
     let cs = create_test_constraint_system_ffadd(1, foreign_modulus.clone());
 
     let left_input = BigUint::from_bytes_be(ZERO);
-    let right_input = BigUint::from_bytes_be(FOREIGN_MOD);
+    let right_input = BigUint::from_bytes_be(SECP256K1_MOD);
 
-    let witness = create_witness(vec![left_input, right_input], vec![SUB], foreign_modulus);
+    let witness = create_witness(
+        vec![left_input, right_input],
+        vec![FFOps::Sub],
+        foreign_modulus,
+    );
 
     for row in 0..=18 {
         assert_eq!(
@@ -1008,15 +1073,15 @@ fn test_zero_sub_fmod() {
 #[test]
 // Test subtraction of the foreign field maximum value
 fn test_zero_sub_fmax() {
-    let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let foreign_modulus = BigUint::from_bytes_be(SECP256K1_MOD);
     let cs = create_test_constraint_system_ffadd(1, foreign_modulus.clone());
 
     let left_input = BigUint::from_bytes_be(ZERO);
-    let right_input = BigUint::from_bytes_be(MAX);
+    let right_input = BigUint::from_bytes_be(MAX_SECP256K1);
 
     let witness = create_witness(
         vec![left_input, right_input.clone()],
-        vec![SUB],
+        vec![FFOps::Sub],
         foreign_modulus.clone(),
     );
 
@@ -1060,7 +1125,7 @@ fn test_pasta_add_max_vesta() {
 
     let witness = create_witness(
         vec![left_input, right_input.clone()],
-        vec![ADD],
+        vec![FFOps::Add],
         vesta_modulus.clone(),
     );
 
@@ -1104,7 +1169,7 @@ fn test_pasta_sub_max_vesta() {
 
     let witness = create_witness(
         vec![left_input, right_input.clone()],
-        vec![SUB],
+        vec![FFOps::Sub],
         vesta_modulus.clone(),
     );
 
@@ -1149,7 +1214,7 @@ fn test_pasta_add_max_pallas() {
 
     let witness = create_witness(
         vec![left_input, right_input.clone()],
-        vec![ADD],
+        vec![FFOps::Add],
         vesta_modulus.clone(),
     );
 
@@ -1194,7 +1259,7 @@ fn test_pasta_sub_max_pallas() {
 
     let witness: [Vec<PallasField>; 15] = create_witness(
         vec![left_input, right_input.clone()],
-        vec![SUB],
+        vec![FFOps::Sub],
         vesta_modulus.clone(),
     );
 
@@ -1226,6 +1291,10 @@ fn test_pasta_sub_max_pallas() {
 }
 
 /*
+TODO: do we want the current treatment of foreign elements?
+      if so, these tests do not work like this, but instead
+      produce other error names
+
 #[test]
 // Test addends which are larger than the field but smaller than the limbs
 // With the current witness code, we cannot generate a result ForignElement for this case because
@@ -1233,11 +1302,11 @@ fn test_pasta_sub_max_pallas() {
 fn test_larger_sum() {
     let cs = create_test_constraint_system_one_ffadd();
 
-    let foreign_modulus = ForeignElement::<PallasField, 3>::from_be(FOREIGN_MOD);
+    let foreign_modulus = ForeignElement::<PallasField, 3>::from_be(SECP256K1_MOD);
     let left_input = ForeignElement::<PallasField, 3>::from_be(MAX_3_LIMBS);
     let right_input = ForeignElement::<PallasField, 3>::from_be(ZERO);
 
-    let witness = create_witness(vec![left_input, right_input], vec![ADD], foreign_modulus);
+    let witness = create_witness(vec![left_input, right_input], vec![FFOps::Add], foreign_modulus);
 
     // highest limb of the result
     assert_eq!(
@@ -1258,13 +1327,13 @@ fn test_larger_sum() {
 // when input is BigUint we prevent this from happenning
 fn test_larger_than_limbs() {
     let cs = create_test_constraint_system_one_ffadd();
-    let foreign_modulus = BigUint::from_bytes_be(FOREIGN_MOD);
+    let foreign_modulus = BigUint::from_bytes_be(SECP256K1_MOD);
     let right_input = BigUint::from_bytes_be(ZERO);
 
     // Value 2^88 does not fit in 3 limbs
     let left_input = BigUint::from(2u128.pow(88)).pow(3);
 
-    let mut witness = create_witness(vec![left_input, right_input], vec![ADD], foreign_modulus);
+    let mut witness = create_witness(vec![left_input, right_input], vec![FFOps::Add], foreign_modulus);
 
     assert_eq!(
         cs.gates[0].verify_range_check::<Vesta>(0, &witness, &cs),
