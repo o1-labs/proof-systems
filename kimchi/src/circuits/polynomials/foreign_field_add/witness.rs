@@ -13,7 +13,7 @@ use o1_utils::foreign_field::{ForeignElement, HI, LO, MI, TWO_TO_LIMB};
 use std::array;
 
 /// All foreign field operations allowed
-#[derive(PartialEq, Debug, Copy, Clone)]
+#[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum FFOps {
     /// Addition
     Add,
