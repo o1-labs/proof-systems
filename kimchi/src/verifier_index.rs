@@ -16,7 +16,7 @@ use crate::{
     error::VerifierIndexError,
     prover_index::ProverIndex,
 };
-use ark_ff::PrimeField;
+use ark_ff::{One, PrimeField};
 use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D};
 use commitment_dlog::{
     commitment::{CommitmentCurve, PolyComm},
@@ -149,6 +149,14 @@ impl<G: KimchiCurve> ProverIndex<G> {
             return verifier_index.clone();
         }
 
+        let mask_fixed = |commitment: PolyComm<G>| {
+            let blinders = commitment.map(|_| G::ScalarField::one());
+            self.srs
+                .mask_custom(commitment, &blinders)
+                .unwrap()
+                .commitment
+        };
+
         let domain = self.cs.domain.d1;
 
         let lookup_index = {
@@ -197,9 +205,9 @@ impl<G: KimchiCurve> ProverIndex<G> {
                 self.srs
                     .commit_evaluations_non_hiding(domain, &self.cs.coefficients8[i], None)
             }),
-            generic_comm: self.srs.commit_non_hiding(&self.cs.genericm, None),
+            generic_comm: mask_fixed(self.srs.commit_non_hiding(&self.cs.genericm, None)),
 
-            psm_comm: self.srs.commit_non_hiding(&self.cs.psm, None),
+            psm_comm: mask_fixed(self.srs.commit_non_hiding(&self.cs.psm, None)),
 
             complete_add_comm: self.srs.commit_evaluations_non_hiding(
                 domain,
