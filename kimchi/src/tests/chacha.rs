@@ -14,10 +14,7 @@ use ark_ff::Zero;
 use colored::Colorize;
 use commitment_dlog::commitment::CommitmentCurve;
 use groupmap::GroupMap;
-use mina_curves::pasta::{
-    fp::Fp,
-    vesta::{Vesta, VestaParameters},
-};
+use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use o1_utils::math;
 use oracle::{
     constants::PlonkSpongeConstantsKimchi,

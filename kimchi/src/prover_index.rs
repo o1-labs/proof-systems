@@ -148,7 +148,7 @@ pub mod testing {
         lookup::{runtime_tables::RuntimeTableCfg, tables::LookupTable},
     };
     use commitment_dlog::srs::endos;
-    use mina_curves::pasta::{pallas::Pallas, vesta::Vesta, Fp};
+    use mina_curves::pasta::{Fp, Pallas, Vesta};
     use num_bigint::BigUint;
 
     /// Create new index for lookups.

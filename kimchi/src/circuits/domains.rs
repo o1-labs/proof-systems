@@ -57,7 +57,7 @@ impl<F: FftField> EvaluationDomains<F> {
 mod tests {
     use super::*;
     use ark_ff::Field;
-    use mina_curves::pasta::fp::Fp;
+    use mina_curves::pasta::Fp;
 
     #[test]
     #[ignore] // TODO(mimoo): wait for fix upstream (https://github.com/arkworks-rs/algebra/pull/307)

@@ -6,7 +6,7 @@ use ark_ff::{UniformRand, Zero};
 use ark_poly::univariate::DensePolynomial;
 use ark_poly::UVPolynomial;
 use commitment_dlog::commitment::b_poly_coefficients;
-use mina_curves::pasta::fp::Fp;
+use mina_curves::pasta::Fp;
 use o1_utils::math;
 use rand::prelude::*;
 use std::array;

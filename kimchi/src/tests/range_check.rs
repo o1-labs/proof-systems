@@ -15,12 +15,23 @@ use crate::{
 
 use ark_ec::AffineCurve;
 use ark_ff::{Field, One, Zero};
-use mina_curves::pasta::{pallas, vesta::Vesta, Fp};
+use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
 use o1_utils::FieldHelpers;
 
 use std::array;
 
-type PallasField = <pallas::Pallas as AffineCurve>::BaseField;
+use crate::{prover_index::ProverIndex, verifier::verify};
+use commitment_dlog::commitment::CommitmentCurve;
+use groupmap::GroupMap;
+use oracle::{
+    constants::PlonkSpongeConstantsKimchi,
+    sponge::{DefaultFqSponge, DefaultFrSponge},
+};
+
+type BaseSponge = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
+type ScalarSponge = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>;
+
+type PallasField = <Pallas as AffineCurve>::BaseField;
 
 fn create_test_constraint_system() -> ConstraintSystem<Fp> {
     let (mut next_row, mut gates) = CircuitGate::<Fp>::create_multi_range_check(0);
@@ -1077,18 +1088,6 @@ fn verify_64_bit_range_check() {
         ))
     );
 }
-
-use crate::{prover_index::ProverIndex, verifier::verify};
-use commitment_dlog::commitment::CommitmentCurve;
-use groupmap::GroupMap;
-use mina_curves::pasta as pasta_curves;
-use oracle::{
-    constants::PlonkSpongeConstantsKimchi,
-    sponge::{DefaultFqSponge, DefaultFrSponge},
-};
-
-type BaseSponge = DefaultFqSponge<pasta_curves::vesta::VestaParameters, PlonkSpongeConstantsKimchi>;
-type ScalarSponge = DefaultFrSponge<pasta_curves::Fp, PlonkSpongeConstantsKimchi>;
 
 #[test]
 fn verify_range_check_valid_proof1() {

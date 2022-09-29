@@ -667,7 +667,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use mina_curves::pasta::fp::Fp;
+    use mina_curves::pasta::Fp;
 
     impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
         pub fn for_testing(gates: Vec<CircuitGate<F>>) -> Self {

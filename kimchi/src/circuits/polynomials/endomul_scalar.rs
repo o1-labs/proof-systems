@@ -11,7 +11,7 @@ use crate::{
     },
     curve::KimchiCurve,
 };
-use ark_ff::{BitIteratorLE, FftField, Field, PrimeField};
+use ark_ff::{BitIteratorLE, Field, PrimeField};
 use std::array;
 use std::marker::PhantomData;
 
@@ -158,7 +158,7 @@ pub struct EndomulScalar<F>(PhantomData<F>);
 
 impl<F> Argument<F> for EndomulScalar<F>
 where
-    F: FftField,
+    F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMulScalar);
     const CONSTRAINTS: u32 = 11;
@@ -314,7 +314,7 @@ mod tests {
     use super::*;
 
     use ark_ff::{BigInteger, Field, One, PrimeField, Zero};
-    use mina_curves::pasta::fp::Fp as F;
+    use mina_curves::pasta::Fp as F;
 
     /// 2/3*x^3 - 5/2*x^2 + 11/6*x
     fn c_poly<F: Field>(x: F) -> F {

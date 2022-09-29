@@ -8,7 +8,7 @@ use kimchi::{
     prover_index::testing::new_index_for_test,
 };
 use kimchi_visu::{visu, Witness};
-use mina_curves::pasta::{vesta::Vesta, Fp};
+use mina_curves::pasta::{Fp, Vesta};
 
 fn main() {
     let public = 3;

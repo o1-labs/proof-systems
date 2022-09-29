@@ -9,7 +9,7 @@ use crate::{
     tests::framework::TestFramework,
 };
 use ark_ff::Zero;
-use mina_curves::pasta::{fp::Fp, vesta::Vesta};
+use mina_curves::pasta::{Fp, Vesta};
 use o1_utils::math;
 use oracle::constants::{PlonkSpongeConstantsKimchi, SpongeConstants};
 use std::array;

@@ -4,7 +4,7 @@ use crate::circuits::{
 };
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
-use mina_curves::pasta::{fp::Fp as F, pallas::Pallas as Other};
+use mina_curves::pasta::{Fp as F, Pallas as Other};
 use rand::{rngs::StdRng, SeedableRng};
 use std::array;
 

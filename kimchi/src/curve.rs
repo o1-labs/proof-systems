@@ -1,6 +1,6 @@
 use ark_ec::{short_weierstrass_jacobian::GroupAffine, ModelParameters};
 use commitment_dlog::{commitment::CommitmentCurve, srs::endos};
-use mina_curves::pasta::{
+use mina_curves::pasta::curves::{
     pallas::{LegacyPallasParameters, PallasParameters},
     vesta::{LegacyVestaParameters, VestaParameters},
 };
@@ -56,7 +56,11 @@ impl KimchiCurve for GroupAffine<PallasParameters> {
         &PALLAS_ENDOS
     }
 }
-//legacy curves
+
+//
+// legacy curves
+//
+
 impl KimchiCurve for GroupAffine<LegacyVestaParameters> {
     type OtherCurve = GroupAffine<LegacyPallasParameters>;
 
