@@ -24,23 +24,6 @@ static MAX_SECP256K1: &[u8] = &[
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0xFF, 0xFF, 0xFC, 0x2E,
 ];
 
-// TODO: not hardcoded, extract from library
-//const MAX_VESTA: &[u8] = &(VestaField::modulus_biguint() - 1u32).to_bytes_be();
-// Maximum value in the foreign field of Vesta
-// BigEndian -> 40000000 00000000 00000000 00000000 224698fc 094cf91b 992d30ed 00000000
-static MAX_VESTA: &[u8] = &[
-    0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x22, 0x46, 0x98, 0xFC,
-    0x09, 0x4C, 0xF9, 0x1B, 0x99, 0x2D, 0x30, 0xED, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-];
-
-// TODO: not hardcoded, extract from library
-//static MAX_PALLAS: &[u8] = &(PallasField::modulus_biguint() - 1u32).to_bytes_be();
-// Maximum value in the foreign field of Pallas
-// BigEndian -> 40000000 00000000 00000000 00000000 224698fc 0994a8dd 8c46eb21 00000000
-static MAX_PALLAS: &[u8] = &[
-    0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x22, 0x46, 0x98, 0xFC,
-    0x09, 0x94, 0xA8, 0xDD, 0x8C, 0x46, 0xEB, 0x21, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-];
 // A value that produces a negative low carry when added to itself
 static OVF_NEG_LO: &[u8] = &[
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
@@ -153,6 +136,11 @@ fn create_test_constraint_system_ffadd(
         .foreign_field_modulus(&Some(modulus))
         .build()
         .unwrap()
+}
+
+// returns the maximum value for a field of modulus size
+fn field_max_as_biguint(modulus: BigUint) -> BigUint {
+    modulus - 1u32
 }
 
 #[test]
@@ -1121,7 +1109,7 @@ fn test_pasta_add_max_vesta() {
     let cs = create_test_constraint_system_ffadd(1, vesta_modulus.clone());
 
     let left_input = BigUint::from_bytes_be(ZERO);
-    let right_input = BigUint::from_bytes_be(MAX_VESTA);
+    let right_input = field_max_as_biguint(vesta_modulus.clone());
 
     let witness = create_witness(
         vec![left_input, right_input.clone()],
@@ -1165,7 +1153,7 @@ fn test_pasta_sub_max_vesta() {
     let cs = create_test_constraint_system_ffadd(1, vesta_modulus.clone());
 
     let left_input = BigUint::from_bytes_be(ZERO);
-    let right_input = BigUint::from_bytes_be(MAX_VESTA);
+    let right_input = field_max_as_biguint(vesta_modulus.clone());
 
     let witness = create_witness(
         vec![left_input, right_input.clone()],
@@ -1210,7 +1198,7 @@ fn test_pasta_add_max_pallas() {
     let cs = create_test_constraint_system_ffadd(1, vesta_modulus.clone());
 
     let left_input = BigUint::from_bytes_be(ZERO);
-    let right_input = BigUint::from_bytes_be(MAX_PALLAS);
+    let right_input = field_max_as_biguint(PallasField::modulus_biguint());
 
     let witness = create_witness(
         vec![left_input, right_input.clone()],
@@ -1255,7 +1243,7 @@ fn test_pasta_sub_max_pallas() {
     let cs = create_test_constraint_system_ffadd(1, vesta_modulus.clone());
 
     let left_input = BigUint::from_bytes_be(ZERO);
-    let right_input = BigUint::from_bytes_be(MAX_PALLAS);
+    let right_input = field_max_as_biguint(PallasField::modulus_biguint());
 
     let witness: [Vec<PallasField>; 15] = create_witness(
         vec![left_input, right_input.clone()],
