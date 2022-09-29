@@ -88,7 +88,7 @@ use crate::circuits::{
     },
     gate::GateType,
 };
-use ark_ff::FftField;
+use ark_ff::PrimeField;
 use o1_utils::foreign_field::LIMB_BITS;
 use std::marker::PhantomData;
 
@@ -152,7 +152,7 @@ pub struct ForeignFieldMul<F>(PhantomData<F>);
 
 impl<F> Argument<F> for ForeignFieldMul<F>
 where
-    F: FftField,
+    F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldMul);
     const CONSTRAINTS: u32 = 10;

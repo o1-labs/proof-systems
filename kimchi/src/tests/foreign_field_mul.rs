@@ -9,11 +9,11 @@ use crate::{
 };
 use ark_ec::AffineCurve;
 use ark_ff::Zero;
-use mina_curves::pasta::{pallas, vesta::Vesta, Fp};
+use mina_curves::pasta::{Fp, Pallas, Vesta};
 use num_bigint::BigUint;
 use o1_utils::foreign_field::{ForeignElement, SECP256K1_MOD};
 
-type PallasField = <pallas::Pallas as AffineCurve>::BaseField;
+type PallasField = <Pallas as AffineCurve>::BaseField;
 
 // foreign modulus: BigEndian -> FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFE FFFFFC2F
 // -> limbs: [FFFFFFFFFFFFFFFFFFFF] [FFFFFFFFFFFFFFFFFFFF] [FFFFFFFFFFFFFFFEFFFFFC2F]
