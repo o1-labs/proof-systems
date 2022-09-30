@@ -48,6 +48,14 @@ impl<F: Field, const N: usize> ForeignElement<F, N> {
         Self { limbs, len: N }
     }
 
+    /// Creates a new foreign element representing the value zero
+    pub fn zero() -> Self {
+        Self {
+            limbs: [F::zero(); N],
+            len: N,
+        }
+    }
+
     /// Initializes a new foreign element from a big unsigned integer
     /// Panics if the BigUint is too large to fit in the `N` limbs
     pub fn from_biguint(big: BigUint) -> Self {

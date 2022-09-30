@@ -42,6 +42,8 @@ fn compute_subadd_values<F: PrimeField>(
     // Compute bigint version of the inputs
     let left = left_input.to_big();
     let right = right_input.to_big();
+
+    // Clarification:
     let right_hi = right_input[3] * two_to_limb + right_input[HI]; // This allows to store 2^88 in the high limb
 
     let modulus = foreign_modulus.to_big();
@@ -107,8 +109,8 @@ fn compute_subadd_values<F: PrimeField>(
 /// opcode: true for addition, false for subtraction
 /// modulus: modulus of the foreign field
 pub fn create_witness<F: PrimeField>(
-    inputs: Vec<BigUint>,
-    opcodes: Vec<FFOps>,
+    inputs: &Vec<BigUint>,
+    opcodes: &Vec<FFOps>,
     modulus: BigUint,
 ) -> [Vec<F>; COLUMNS] {
     let num = inputs.len() - 1; // number of chained additions
