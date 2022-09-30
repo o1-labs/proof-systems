@@ -11,9 +11,10 @@ use mina_curves::pasta::{Pallas, Vesta};
 use num_bigint::BigUint;
 use num_traits::FromPrimitive;
 use o1_utils::{
-    foreign_field::{ForeignElement, HI, LO, MI, SECP256K1_MOD},
+    foreign_field::{ForeignElement, HI, LO, MI, SECP256K1_MOD, TWO_TO_LIMB},
     FieldHelpers,
 };
+use rand::Rng;
 
 type PallasField = <Pallas as AffineCurve>::BaseField;
 type VestaField = <Vesta as AffineCurve>::BaseField;
@@ -196,15 +197,50 @@ fn check_result(witness: [Vec<PallasField>; COLUMNS], result: Vec<ForeignElement
     }
 }
 
+// checks the result of the overflow bit
 fn check_ovf(witness: [Vec<PallasField>; COLUMNS], ovf: PallasField) {
     let ovf_row = witness[0].len() - 3;
     assert_eq!(witness[7][ovf_row], ovf);
 }
 
+// checks the result of the carry bits
 fn check_carry(witness: [Vec<PallasField>; COLUMNS], lo: PallasField, mi: PallasField) {
     let carry_row = witness[0].len() - 3;
     assert_eq!(witness[8][carry_row], lo);
     assert_eq!(witness[9][carry_row], mi);
+}
+
+// computes the result of an addition
+fn compute_sum(modulus: BigUint, left: &[u8], right: &[u8]) -> BigUint {
+    let left_big = BigUint::from_bytes_be(&left);
+    let right_big = BigUint::from_bytes_be(&right);
+    (left_big + right_big) % modulus
+}
+
+// computes the result of a subtraction
+fn compute_dif(modulus: BigUint, left: &[u8], right: &[u8]) -> BigUint {
+    let left_big = BigUint::from_bytes_be(&left);
+    let right_big = BigUint::from_bytes_be(&right);
+    if left_big < right_big {
+        left_big + modulus - right_big
+    } else {
+        left_big - right_big
+    }
+}
+
+// obtains a random input of 32 bytes that fits in the foreign modulus
+fn random_input(modulus: BigUint, big: bool) -> Vec<u8> {
+    let mut random_str = vec![];
+    let mut random_big = BigUint::from_u128(2u128.pow(88)).unwrap().pow(3);
+    while random_big > modulus {
+        random_str = if big {
+            rand::thread_rng().gen::<[u8; 32]>().to_vec()
+        } else {
+            rand::thread_rng().gen::<[u8; 20]>().to_vec()
+        };
+        random_big = BigUint::from_bytes_be(&random_str);
+    }
+    random_str
 }
 
 #[test]
@@ -549,4 +585,141 @@ fn test_pasta_sub_max_pallas() {
     let neg_max_pallas =
         ForeignElement::<PallasField, 3>::from_biguint(right_input).neg(&vesta_modulus);
     check_result(witness, vec![neg_max_pallas]);
+}
+
+#[test]
+// Test with a random addition
+fn test_random_add() {
+    let foreign_mod = BigUint::from_bytes_be(SECP256K1_MOD);
+    let left_input = random_input(foreign_mod.clone(), true);
+    let right_input = random_input(foreign_mod.clone(), true);
+    let (witness, _cs) = test_ffadd(
+        SECP256K1_MOD,
+        vec![&left_input.clone(), &right_input.clone()],
+        &vec![FFOps::Add],
+    );
+    let left_big = BigUint::from_bytes_be(&left_input);
+    let right_big = BigUint::from_bytes_be(&right_input);
+    let result =
+        ForeignElement::<PallasField, 3>::from_biguint((left_big + right_big) % foreign_mod);
+    check_result(witness, vec![result]);
+}
+
+#[test]
+// Test with a random subtraction
+fn test_random_sub() {
+    let foreign_mod = BigUint::from_bytes_be(SECP256K1_MOD);
+    let left_input = random_input(foreign_mod.clone(), true);
+    let right_input = random_input(foreign_mod.clone(), true);
+    let (witness, _cs) = test_ffadd(
+        SECP256K1_MOD,
+        vec![&left_input.clone(), &right_input.clone()],
+        &vec![FFOps::Sub],
+    );
+    let left_big = BigUint::from_bytes_be(&left_input);
+    let right_big = BigUint::from_bytes_be(&right_input);
+    let result = if left_big < right_big {
+        ForeignElement::<PallasField, 3>::from_biguint(left_big + foreign_mod - right_big)
+    } else {
+        ForeignElement::<PallasField, 3>::from_biguint(left_big - right_big)
+    };
+    check_result(witness, vec![result]);
+}
+
+#[test]
+// Random test with foreign field being the native field add
+fn test_foreign_is_native_add() {
+    let pallas = PallasField::modulus_biguint();
+    let left_input = random_input(pallas.clone(), true);
+    let right_input = random_input(pallas.clone(), true);
+    let (witness, _cs) = test_ffadd(
+        &pallas.to_bytes_be(),
+        vec![&left_input.clone(), &right_input.clone()],
+        &vec![FFOps::Add],
+    );
+    // check result was computed correctly
+    let sum_big = compute_sum(pallas.clone(), &left_input, &right_input);
+    let result = ForeignElement::<PallasField, 3>::from_biguint(sum_big.clone());
+    check_result(witness, vec![result.clone()]);
+    // check result is in the native field
+    let two_to_limb = PallasField::from(TWO_TO_LIMB);
+    let left = ForeignElement::<PallasField, 3>::from_be(&left_input);
+    let right = ForeignElement::<PallasField, 3>::from_be(&right_input);
+    let left = (left[HI] * two_to_limb + left[MI]) * two_to_limb + left[LO];
+    let right = (right[HI] * two_to_limb + right[MI]) * two_to_limb + right[LO];
+    let sum = left + right;
+    let result = (result[HI] * two_to_limb + result[MI]) * two_to_limb + result[LO];
+    let sum_from = PallasField::from(sum_big);
+    assert_eq!(result, sum);
+    assert_eq!(result, sum_from);
+}
+
+#[test]
+// Random test with foreign field being the native field add
+fn test_foreign_is_native_sub() {
+    let pallas = PallasField::modulus_biguint();
+    let left_input = random_input(pallas.clone(), true);
+    let right_input = random_input(pallas.clone(), true);
+    let (witness, _cs) = test_ffadd(
+        &pallas.to_bytes_be(),
+        vec![&left_input.clone(), &right_input.clone()],
+        &vec![FFOps::Sub],
+    );
+    // check result was computed correctly
+    let dif_big = compute_dif(pallas.clone(), &left_input, &right_input);
+    let result = ForeignElement::<PallasField, 3>::from_biguint(dif_big.clone());
+    check_result(witness, vec![result.clone()]);
+    // check result is in the native field
+    let two_to_limb = PallasField::from(TWO_TO_LIMB);
+    let left = ForeignElement::<PallasField, 3>::from_be(&left_input);
+    let right = ForeignElement::<PallasField, 3>::from_be(&right_input);
+    let left = (left[HI] * two_to_limb + left[MI]) * two_to_limb + left[LO];
+    let right = (right[HI] * two_to_limb + right[MI]) * two_to_limb + right[LO];
+    let dif = left - right;
+    let result = (result[HI] * two_to_limb + result[MI]) * two_to_limb + result[LO];
+    let dif_from = PallasField::from(dif_big);
+    assert_eq!(result, dif);
+    assert_eq!(result, dif_from);
+}
+
+#[test]
+// Test with a random addition
+fn test_random_small_add() {
+    // 2^200 - 75 is prime with 200 bits (3 limbs but smaller than Pallas)
+    let prime = BigUint::from_u128(2u128.pow(100)).unwrap().pow(2) - BigUint::from_u32(75).unwrap();
+    let prime_be = prime.to_bytes_be();
+    let foreign_mod = BigUint::from_bytes_be(&prime_be);
+    let left_input = random_input(foreign_mod.clone(), false);
+    let right_input = random_input(foreign_mod.clone(), false);
+    let (witness, _cs) = test_ffadd(
+        &prime_be,
+        vec![&left_input.clone(), &right_input.clone()],
+        &vec![FFOps::Add],
+    );
+    let result = compute_sum(foreign_mod.clone(), &left_input, &right_input);
+    check_result(
+        witness,
+        vec![ForeignElement::<PallasField, 3>::from_biguint(result)],
+    );
+}
+
+#[test]
+// Test with a random subtraction
+fn test_random_small_sub() {
+    // 2^200 - 75 is prime with 200 bits (3 limbs but smaller than Pallas)
+    let prime = BigUint::from_u128(2u128.pow(100)).unwrap().pow(2) - BigUint::from_u32(75).unwrap();
+    let prime_be = prime.to_bytes_be();
+    let foreign_mod = BigUint::from_bytes_be(&prime_be);
+    let left_input = random_input(foreign_mod.clone(), false);
+    let right_input = random_input(foreign_mod.clone(), false);
+    let (witness, _cs) = test_ffadd(
+        &prime_be,
+        vec![&left_input.clone(), &right_input.clone()],
+        &vec![FFOps::Sub],
+    );
+    let result = compute_dif(foreign_mod.clone(), &left_input, &right_input);
+    check_result(
+        witness,
+        vec![ForeignElement::<PallasField, 3>::from_biguint(result)],
+    );
 }

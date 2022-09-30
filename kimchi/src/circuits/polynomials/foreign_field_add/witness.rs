@@ -119,10 +119,7 @@ pub fn create_witness<F: PrimeField>(
     assert_eq!(opcodes.len(), num);
 
     // Make sure that the inputs are smaller than the modulus just in case
-    let inputs: Vec<BigUint> = inputs
-        .into_iter()
-        .map(|input| input % modulus.clone())
-        .collect();
+    let inputs: Vec<BigUint> = inputs.iter().map(|input| input % modulus.clone()).collect();
 
     let mut witness = array::from_fn(|_| vec![F::zero(); 0]);
 
