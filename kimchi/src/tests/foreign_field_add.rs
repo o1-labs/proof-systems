@@ -487,13 +487,29 @@ fn test_pos_carry_limb_lo_mid() {
 }
 
 #[test]
-// Check it fails if given a wrong result
+// Check it fails if given a wrong result (sum)
 fn test_wrong_sum() {
     let (mut witness, cs) = test_ffadd(SECP256K1_MOD, vec![TIC, TOC], &vec![FFOps::Add]);
     // wrong result
     let all_ones_limb = PallasField::from(2u128.pow(88) - 1);
     witness[0][8] = all_ones_limb.clone();
     witness[0][17] = all_ones_limb.clone();
+
+    assert_eq!(
+        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
+        Err(CircuitGateError::InvalidConstraint(
+            GateType::ForeignFieldAdd
+        )),
+    );
+}
+
+#[test]
+// Check it fails if given a wrong result (difference)
+fn test_wrong_dif() {
+    let (mut witness, cs) = test_ffadd(SECP256K1_MOD, vec![TIC, TOC], &vec![FFOps::Sub]);
+    // wrong result
+    witness[0][8] = PallasField::zero();
+    witness[0][17] = PallasField::zero();
 
     assert_eq!(
         cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
@@ -723,3 +739,120 @@ fn test_random_small_sub() {
         vec![ForeignElement::<PallasField, 3>::from_biguint(result)],
     );
 }
+
+#[test]
+// Test with bad left input
+fn test_random_bad_input() {
+    let foreign_mod = BigUint::from_bytes_be(&SECP256K1_MOD);
+    let left_input = random_input(foreign_mod.clone(), false);
+    let right_input = random_input(foreign_mod.clone(), false);
+    let (mut witness, cs) = test_ffadd(
+        SECP256K1_MOD,
+        vec![&left_input.clone(), &right_input.clone()],
+        &vec![FFOps::Sub],
+    );
+    // First modify left input only to cause an invalid copy constraint
+    witness[0][16] = witness[0][16] + PallasField::one();
+    assert_eq!(
+        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
+        Err(CircuitGateError::InvalidCopyConstraint(
+            GateType::ForeignFieldAdd
+        )),
+    );
+    // then modify the value in the range check to cause an invalid FFAdd constraint
+    witness[0][0] = witness[0][0] + PallasField::one();
+    assert_eq!(
+        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
+        Err(CircuitGateError::InvalidConstraint(
+            GateType::ForeignFieldAdd
+        )),
+    );
+}
+
+#[test]
+// Test with bad parameters
+fn test_random_bad_parameters() {
+    let foreign_mod = BigUint::from_bytes_be(&SECP256K1_MOD);
+    let left_input = random_input(foreign_mod.clone(), false);
+    let right_input = random_input(foreign_mod.clone(), false);
+    let (mut witness, cs) = test_ffadd(
+        SECP256K1_MOD,
+        vec![&left_input.clone(), &right_input.clone()],
+        &vec![FFOps::Add],
+    );
+    // Modify low carry
+    witness[8][16] = witness[8][16] + PallasField::one();
+    assert_eq!(
+        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
+        Err(CircuitGateError::InvalidConstraint(
+            GateType::ForeignFieldAdd
+        )),
+    );
+    witness[8][16] = witness[8][16] - PallasField::one();
+    // Modify high carry
+    witness[9][16] = witness[9][16] - PallasField::one();
+    assert_eq!(
+        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
+        Err(CircuitGateError::InvalidConstraint(
+            GateType::ForeignFieldAdd
+        )),
+    );
+    witness[9][16] = witness[9][16] + PallasField::one();
+    // Modify overflow
+    witness[7][16] = witness[7][16] + PallasField::one();
+    assert_eq!(
+        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
+        Err(CircuitGateError::InvalidConstraint(
+            GateType::ForeignFieldAdd
+        )),
+    );
+    witness[7][16] = witness[7][16] - PallasField::one();
+    // Modify sign
+    witness[6][16] = PallasField::zero() - witness[10][16];
+    assert_eq!(
+        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
+        Err(CircuitGateError::InvalidConstraint(
+            GateType::ForeignFieldAdd
+        )),
+    );
+    witness[6][16] = PallasField::zero() - witness[10][16];
+    // Check back to normal
+    assert_eq!(
+        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
+        Ok(()),
+    );
+}
+
+/*
+#[test]
+// Test with bad parameters in bound check
+// TODO
+fn test_bad_bound() {
+    let foreign_mod = BigUint::from_bytes_be(&SECP256K1_MOD);
+    let left_input = random_input(foreign_mod.clone(), false);
+    let right_input = random_input(foreign_mod.clone(), false);
+    let (mut witness, cs) = test_ffadd(
+        SECP256K1_MOD,
+        vec![&left_input.clone(), &right_input.clone()],
+        &vec![FFOps::Add],
+    );
+    // Modify sign of bound
+    // It should be constrained that sign needs to be 1
+    witness[6][17] = -PallasField::one();
+    assert_eq!(
+        cs.gates[17].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
+        Err(CircuitGateError::InvalidCopyConstraint(
+            GateType::ForeignFieldAdd
+        )),
+    );
+    witness[6][17] = PallasField::one();
+    // Modify overflow
+        witness[7][17] = -PallasField::one();
+    assert_eq!(
+        cs.gates[17].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
+        Err(CircuitGateError::InvalidCopyConstraint(
+            GateType::ForeignFieldAdd
+        )),
+    );
+    witness[7][17] = PallasField::one();
+}*/
