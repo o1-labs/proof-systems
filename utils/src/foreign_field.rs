@@ -3,6 +3,7 @@
 use crate::field_helpers::FieldHelpers;
 use ark_ff::{Field, PrimeField};
 use num_bigint::BigUint;
+use std::fmt::{Debug, Formatter};
 use std::ops::{Index, IndexMut};
 
 /// Index of low limb (in 3-limb foreign elements)
@@ -33,13 +34,26 @@ pub const FOREIGN_BITS: usize = 8 * SECP256K1_MOD.len(); // 256 bits
 /// Two to the power of the limb length
 pub const TWO_TO_LIMB: u128 = 2u128.pow(LIMB_BITS as u32);
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 /// Represents a foreign field element
 pub struct ForeignElement<F: Field, const N: usize> {
     /// limbs in little endian order
     limbs: [F; N],
     /// number of limbs used for the foreign field element
     len: usize,
+}
+
+impl<F: Field, const N: usize> Debug for ForeignElement<F, N> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "ForeignElement(")?;
+        for i in 0..self.len {
+            write!(f, "{:?}", self.limbs[i].to_hex())?;
+            if i != self.len - 1 {
+                write!(f, ", ")?;
+            }
+        }
+        write!(f, ")")
+    }
 }
 
 impl<F: Field, const N: usize> ForeignElement<F, N> {

@@ -156,7 +156,7 @@ pub fn create_witness<F: PrimeField>(
     extend_witness(&mut witness, bound);
     let mut offset = witness[LO].len(); // number of witness rows of the gadget before the first row of the addition gate
 
-    // Include FFAdd and FFFin gates
+    // Include FFAdds gates for operations and final bound check
 
     for (i, value) in add_values.iter().enumerate() {
         // Create foreign field addition row
