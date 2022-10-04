@@ -60,6 +60,7 @@ fn create_test_prover_index(public_size: usize) -> ProverIndex<Vesta> {
         0,
         vec![range_check::gadget::lookup_table()],
         None,
+        None,
     )
 }
 

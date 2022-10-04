@@ -1,20 +1,37 @@
-use crate::circuits::{
-    constraints::ConstraintSystem,
-    gate::{CircuitGate, CircuitGateError, GateType},
-    polynomial::COLUMNS,
-    polynomials::foreign_field_add::witness::{create_witness, FFOps},
-    wires::Wire,
+use crate::{
+    circuits::{
+        constraints::ConstraintSystem,
+        gate::{CircuitGate, CircuitGateError, GateType},
+        polynomial::COLUMNS,
+        polynomials::foreign_field_add::{
+            self,
+            witness::{create_witness, FFOps},
+        },
+        wires::Wire,
+    },
+    proof::ProverProof,
+    prover_index::{testing::new_index_for_test_with_lookups, ProverIndex},
+    verifier::verify,
 };
 use ark_ec::AffineCurve;
 use ark_ff::{One, Zero};
-use mina_curves::pasta::{Pallas, Vesta};
+use commitment_dlog::commitment::CommitmentCurve;
+use groupmap::GroupMap;
+use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
 use num_bigint::BigUint;
 use num_traits::FromPrimitive;
 use o1_utils::{
     foreign_field::{ForeignElement, HI, LO, MI, SECP256K1_MOD, TWO_TO_LIMB},
     FieldHelpers,
 };
+use oracle::{
+    constants::PlonkSpongeConstantsKimchi,
+    sponge::{DefaultFqSponge, DefaultFrSponge},
+};
 use rand::Rng;
+
+type BaseSponge = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
+type ScalarSponge = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>;
 
 type PallasField = <Pallas as AffineCurve>::BaseField;
 type VestaField = <Vesta as AffineCurve>::BaseField;
@@ -138,6 +155,25 @@ fn create_test_constraint_system_ffadd(
         .foreign_field_modulus(&Some(modulus))
         .build()
         .unwrap()
+}
+
+fn create_test_prover_index(num: usize, modulus: BigUint) -> ProverIndex<Vesta> {
+    let (mut next_row, mut gates) = CircuitGate::<PallasField>::create_foreign_field_add(0, num);
+
+    // Temporary workaround for lookup-table/domain-size issue
+    for _ in 0..(1 << 13) {
+        gates.push(CircuitGate::zero(Wire::new(next_row)));
+        next_row += 1;
+    }
+
+    new_index_for_test_with_lookups(
+        gates,
+        0,
+        0,
+        vec![foreign_field_add::gadget::lookup_table()],
+        None,
+        Some(modulus),
+    )
 }
 
 // returns the maximum value for a field of modulus size
@@ -889,11 +925,11 @@ fn test_random_bad_parameters() {
 fn test_random_chain() {
     let nops = 20;
     let foreign_mod = BigUint::from_bytes_be(SECP256K1_MOD);
-    let inputs = (0..nops)
+    let inputs = (0..nops + 1)
         .into_iter()
         .map(|_| random_input(foreign_mod.clone(), true))
         .collect::<Vec<_>>();
-    let operations = (0..nops - 1)
+    let operations = (0..nops)
         .into_iter()
         .map(|_| random_operation())
         .collect::<Vec<_>>();
@@ -913,6 +949,45 @@ fn test_random_chain() {
         })
         .collect();
     check_result(witness, results);
+}
+
+#[test]
+// Tests a proof generation and verification
+fn test_prover_ffadd() {
+    let foreign_mod = BigUint::from_bytes_be(SECP256K1_MOD);
+    let nops = 4;
+
+    // Create prover index
+    let prover_index = create_test_prover_index(nops, foreign_mod.clone());
+
+    // Create inputs and operations
+    let inputs = (0..nops + 1)
+        .into_iter()
+        .map(|_| BigUint::from_bytes_be(&random_input(foreign_mod.clone(), true)))
+        .collect::<Vec<BigUint>>();
+    let operations = (0..nops)
+        .into_iter()
+        .map(|_| random_operation())
+        .collect::<Vec<_>>();
+    // Create witness
+    let witness = create_witness(&inputs, &operations, foreign_mod);
+
+    // Verify computed witness satisfies the circuit
+    prover_index.cs.verify::<Vesta>(&witness, &[]).unwrap();
+
+    // Generate proof
+    let group_map = <Vesta as CommitmentCurve>::Map::setup();
+    let proof =
+        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &[], &prover_index)
+            .expect("failed to generate proof");
+
+    // Get the verifier index
+    let verifier_index = prover_index.verifier_index();
+
+    // Verify proof
+    let res = verify::<Vesta, BaseSponge, ScalarSponge>(&group_map, &verifier_index, &proof);
+
+    assert!(!res.is_err());
 }
 
 /*
