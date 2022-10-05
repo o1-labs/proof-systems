@@ -11,6 +11,7 @@ use crate::circuits::polynomials::endosclmul::EndosclMul;
 use crate::circuits::polynomials::permutation;
 use crate::circuits::polynomials::poseidon::Poseidon;
 use crate::circuits::polynomials::range_check;
+use crate::circuits::polynomials::unpacking::Unpacking;
 use crate::circuits::polynomials::varbasemul::VarbaseMul;
 use crate::circuits::{
     expr::{Column, ConstantExpr, Expr, Linearization, PolishToken},
@@ -36,7 +37,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     // The gate type argument can just be the zero gate.
     powers_of_alpha.register(
         ArgumentType::Gate(GateType::Zero),
-        VarbaseMul::<F>::CONSTRAINTS,
+        Unpacking::<F>::CONSTRAINTS, // This was a mistake; should be automatic.
     );
 
     let mut expr = Poseidon::combined_constraints(&powers_of_alpha);
@@ -55,6 +56,8 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     if range_check {
         expr += range_check::gadget::combined_constraints(&powers_of_alpha);
     }
+
+   expr += Unpacking::combined_constraints(&powers_of_alpha);
 
     // permutation
     powers_of_alpha.register(ArgumentType::Permutation, permutation::CONSTRAINTS);

@@ -7,4 +7,5 @@ pub mod permutation;
 pub mod poseidon;
 pub mod range_check;
 pub mod turshi;
+pub mod unpacking;
 pub mod varbasemul;

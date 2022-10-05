@@ -113,6 +113,10 @@ pub struct VerifierIndex<G: KimchiCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub range_check_comm: Option<[PolyComm<G>; range_check::gadget::GATE_COUNT]>,
 
+    // Verifier commitment to unpacking gate selector
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub unpacking_comm: PolyComm<G>,
+
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub shift: [G::ScalarField; PERMUTS],
@@ -237,6 +241,9 @@ impl<G: KimchiCurve> ProverIndex<G> {
                         .commit_evaluations_non_hiding(domain, &poly[i].eval8, None)
                 })
             }),
+            unpacking_comm: self
+                .srs
+                .commit_evaluations_non_hiding(domain, &self.cs.unpacking8, None),
             shift: self.cs.shift,
             zkpm: {
                 let cell = OnceCell::new();
@@ -367,6 +374,8 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             chacha_comm,
             range_check_comm,
 
+            unpacking_comm,
+
             // Lookup index; optional
             lookup_index,
 
@@ -393,6 +402,7 @@ impl<G: KimchiCurve> VerifierIndex<G> {
         fq_sponge.absorb_g(&mul_comm.unshifted);
         fq_sponge.absorb_g(&emul_comm.unshifted);
         fq_sponge.absorb_g(&endomul_scalar_comm.unshifted);
+        fq_sponge.absorb_g(&unpacking_comm.unshifted);
 
         // Optional gates
 

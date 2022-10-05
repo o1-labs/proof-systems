@@ -17,6 +17,7 @@ use crate::{
             permutation::ZK_ROWS,
             poseidon::Poseidon,
             range_check,
+            unpacking::Unpacking,
             varbasemul::VarbaseMul,
         },
         wires::{COLUMNS, PERMUTS},
@@ -601,6 +602,7 @@ where
             index_evals.insert(VarBaseMul, &index.cs.mull8);
             index_evals.insert(EndoMul, &index.cs.emull);
             index_evals.insert(EndoMulScalar, &index.cs.endomul_scalar8);
+            index_evals.insert(Unpacking, &index.cs.unpacking8);
             [ChaCha0, ChaCha1, ChaCha2, ChaChaFinal]
                 .iter()
                 .enumerate()
@@ -729,6 +731,13 @@ where
                     check_constraint!(index, chacha2);
                     check_constraint!(index, chacha_final);
                 }
+            }
+
+            // Unpacking
+            {
+                let unpacking = Unpacking::combined_constraints(&all_alphas).evaluations(&env);
+                t4 += &unpacking;
+                check_constraint!(index, unpacking);
             }
 
             // range check gates

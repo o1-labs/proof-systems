@@ -111,6 +111,10 @@ pub struct ConstraintSystem<F: PrimeField> {
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub endomul_scalar8: E<F, D<F>>,
 
+    // Unpacking gate 'selector' in evaluation form
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub unpacking8: E<F, D<F>>,
+
     /// Range check gate selector polynomials
     #[serde(
         bound = "[SelectorPolynomial<F>; range_check::gadget::GATE_COUNT]: Serialize + DeserializeOwned"
@@ -557,6 +561,22 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             }
         };
 
+        let unpacking8 = E::<F, D<F>>::from_vec_and_domain(
+            gates
+                .iter()
+                .map(|gate| {
+                    if gate.typ == GateType::Unpacking {
+                        F::one()
+                    } else {
+                        F::zero()
+                    }
+                })
+                .collect(),
+            domain.d1,
+        )
+        .interpolate()
+        .evaluate_over_domain(domain.d8);
+
         //
         // Coefficient
         // -----------
@@ -607,6 +627,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             complete_addl4,
             mull8,
             emull,
+            unpacking8,
             range_check_selector_polys,
             gates,
             shift: shifts.shifts,

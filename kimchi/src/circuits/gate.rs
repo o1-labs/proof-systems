@@ -6,7 +6,7 @@ use crate::{
         constraints::ConstraintSystem,
         polynomials::{
             chacha, complete_add, endomul_scalar, endosclmul, poseidon, range_check, turshi,
-            varbasemul,
+            unpacking, varbasemul,
         },
         wires::*,
     },
@@ -109,6 +109,7 @@ pub enum GateType {
     RangeCheck1 = 17,
     // ForeignFieldAdd = 25,
     // ForeignFieldMul = 26,
+    Unpacking = 30,
 }
 
 /// Selector polynomial
@@ -230,6 +231,10 @@ impl<F: PrimeField> CircuitGate<F> {
             RangeCheck0 | RangeCheck1 => self
                 .verify_range_check::<G>(row, witness, cs)
                 .map_err(|e| e.to_string()),
+            Unpacking => {
+                // TODO: This should be auto-derived from the constraints
+                Ok(())
+            }
         }
     }
 
@@ -310,6 +315,7 @@ impl<F: PrimeField> CircuitGate<F> {
             GateType::RangeCheck1 => {
                 range_check::circuitgates::RangeCheck1::constraint_checks(&env)
             }
+            GateType::Unpacking => unpacking::Unpacking::constraint_checks(&env),
         };
 
         // Check for failed constraints

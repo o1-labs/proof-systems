@@ -632,6 +632,7 @@ where
                             EndoMul => &index.emul_comm,
                             EndoMulScalar => &index.endomul_scalar_comm,
                             Poseidon => &index.psm_comm,
+                            Unpacking => &index.unpacking_comm,
                             ChaCha0 => &index.chacha_comm.as_ref().unwrap()[0],
                             ChaCha1 => &index.chacha_comm.as_ref().unwrap()[1],
                             ChaCha2 => &index.chacha_comm.as_ref().unwrap()[2],
