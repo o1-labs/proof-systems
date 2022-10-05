@@ -112,6 +112,7 @@ pub enum GateType {
     // Gates for Keccak follow:
     KeccakXor = 27,
     KeccakBits = 28,
+    KeccakRot1 = 29,
 }
 
 /// Selector polynomial
@@ -233,7 +234,7 @@ impl<F: PrimeField> CircuitGate<F> {
             RangeCheck0 | RangeCheck1 => self
                 .verify_range_check::<G>(row, witness, cs)
                 .map_err(|e| e.to_string()),
-            KeccakXor | KeccakBits => Ok(()), // TODO
+            KeccakXor | KeccakBits | KeccakRot1 => Ok(()), // TODO
         }
     }
 
@@ -316,6 +317,7 @@ impl<F: PrimeField> CircuitGate<F> {
             }
             GateType::KeccakXor => keccak::circuitgates::KeccakXor::constraint_checks(&env),
             GateType::KeccakBits => keccak::circuitgates::KeccakBits::constraint_checks(&env),
+            GateType::KeccakRot1 => keccak::circuitgates::KeccakRot1::constraint_checks(&env),
         };
 
         // Check for failed constraints

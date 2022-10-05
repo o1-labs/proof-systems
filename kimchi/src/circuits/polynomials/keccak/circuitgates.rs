@@ -38,83 +38,11 @@
 //~ * only 4 lookups per row
 //~ * only first 7 columns are available to the permutation polynomial
 //~
-//~ ##### 32-bit decomposition gate
-//~
-//~ This is a basic operation that is typically done for 64-bit initial state and
-//~ intermediate values.
-//~
-//~ Let `inp` be a 64-bit word. The constraint is: `in` $= 2^32 \cdot$ `in_hi` $+$ `in_lo`.
-//~ It takes 3 cells for values `in`, `in_hi`, `in_lo`. We have not yet placed them w.r.t
-//~ other rows of the Keccak computation; the only requirement is that all these cells be
-//~ within the first 7 columns for permutation equation accessibility.
-//
-//~ ##### XOR gate
-//~
-//~ First we consider a XOR gate that checks that a 32-bit word `out` is the XOR of `in1` and `in2`.
-//~ This gate will use 2 rows, with a `Xor` row followed by a `Zero` row.
-//~
-//~ | Gates |          `Xor`   |          `Zero`  |
-//~ | ----- | ---------------- | ---------------- |
-//~ | Rows  |           0      |           1      |
-//~ | Cols  |                  |                  |
-//~ |     0 | copy     `in1`   | copy     `out`   |
-//~ |     1 |                  | copy     `in2`   |
-//~ |     2 |                  |                  |
-//~ |     3 | plookup0 `in2_0` | plookup4 `in2_4` |
-//~ |     4 | plookup1 `in2_1` | plookup5 `in2_5` |
-//~ |     5 | plookup2 `in2_2` | plookup6 `in2_6` |
-//~ |     6 | plookup3 `in2_3` | plookup8 `in2_7` |
-//~ |     7 | plookup0 `in1_0` | plookup4 `in1_4` |
-//~ |     8 | plookup1 `in1_1` | plookup5 `in1_5` |
-//~ |     9 | plookup2 `in1_2` | plookup6 `in1_6` |
-//~ |    10 | plookup3 `in1_3` | plookup7 `in1_7` |
-//~ |    11 | plookup0 `out_0` | plookup4 `out_4` |
-//~ |    12 | plookup1 `out_1` | plookup5 `out_5` |
-//~ |    13 | plookup2 `out_2` | plookup6 `out_6` |
-//~ |    14 | plookup3 `out_3` | plookup7 `out_7` |
-//~
-//~ Now we apply this gate twice to obtain a XOR gadget for 64-bit words by halving:
-//~
-//~ Consider the following operations:
-//~ * `out_lo` $=$ `in1_lo` $\oplus$ `in2_lo` and
-//~ * `out_hi` $=$ `in1_hi` $\oplus$ `in2_hi`,
-//~ where each element is 32 bits long.
-//~
-//~ | Gates |    `Xor` |   `Zero` |    `Xor` |   `Zero` |
-//~ | ----- | -------- | -------- | -------- | -------- |
-//~ | Rows  |       0  |       1  |       2  |        3 |
-//~ | Cols  |          |          |          |          |
-//~ |     0 | `in1_lo` | `out_lo` | `in1_hi` | `out_hi` |
-//~ |     1 |          | `in2_lo` |          | `in2_hi` |
-//~ |     2 |          |          |          |          |
-//~ |     3 |  `in2_0` |  `in2_4` |  `in2_8` | `in2_12` |
-//~ |     4 |  `in2_1` |  `in2_5` |  `in2_9` | `in2_13` |
-//~ |     5 |  `in2_2` |  `in2_6` | `in2_10` | `in2_14` |
-//~ |     6 |  `in2_3` |  `in2_7` | `in2_11` | `in2_15` |
-//~ |     7 |  `in1_0` |  `in1_4` |  `in2_8` | `in2_12` |
-//~ |     8 |  `in1_1` |  `in1_5` |  `in2_9` | `in2_13` |
-//~ |     9 |  `in1_2` |  `in1_6` | `in2_10` | `in2_14` |
-//~ |    10 |  `in1_3` |  `in1_7` | `in2_11` | `in2_15` |
-//~ |    11 |  `out_0` |  `out_4` |  `in2_8` | `in2_12` |
-//~ |    12 |  `out_1` |  `out_5` |  `in2_9` | `in2_13` |
-//~ |    13 |  `out_2` |  `out_6` | `in2_10` | `in2_14` |
-//~ |    14 |  `out_3` |  `out_7` | `in2_11` | `in2_15` |
-//~
 //~ ```admonition::notice
 //~  We could half the number of rows of the 64-bit XOR gadget by having lookups
 //~  for 8 bits at a time, but for now we will use the 4-bit XOR table that we have.
+//~  If we had 8-bit XOR table, we could half rotation rows as well but with twice as many rotation gate types.
 //~ ```
-//~
-//~ ###### Gate types:
-//~
-//~ Different rows are constrained using different CircuitGate types
-//~
-//~  | Row | `CircuitGate` | Purpose                        |
-//~  | --- | ------------- | ------------------------------ |
-//~  |   0 | `Xor`         | Xor first 2 bytes of low  half |
-//~  |   1 | `Zero`        | Xor last  2 bytes of low  half |
-//~  |   2 | `Xor`         | Xor first 2 bytes of high half |
-//~  |   3 | `Zero`        | Xor last  2 bytes of high half |
 //~
 //~ ##### Rotation gates
 //~
@@ -127,8 +55,25 @@
 //~ - a multiple of 4 bits
 //~ To rotate a word by $n = 4m + r$ bits where $r < 4$, we first invoke the gate for rotation by $m/2$ bytes.
 //~ Then we invoke the gate to rotate by r bits.
-//~~
-//~ ###### Rotation by 1 bit
+//~
+use std::marker::PhantomData;
+
+use crate::circuits::{
+    argument::{Argument, ArgumentEnv, ArgumentType},
+    expr::constraints::ExprOps,
+    gate::GateType,
+};
+use ark_ff::PrimeField;
+
+//~ ##### `KeccakRot1` - Rotation by 1-bit constraints
+//~
+//~ * This circuit gate is used to constrain that a 64-bit word is rotated by 1 bit to its shifted value.
+//~ * The rotation is performed towards the most significant side (thus, the new LSB is fed with the old MSB).
+//~ * This gate operates on the `Curr` row and the `Next` row (if we stick to 4-bit XOR table).
+//~
+//~ It uses three different types of constraints
+//~ * copy    - copy to another cell (32-bits)
+//~ * plookup - xor-table plookup (4-bits)
 //~
 //~ Consider rotating 64 bit $C[x]$ by 1 bit. We first decompose it to $C[x]_{lo}$ and $C[x]_{hi}$
 //~ (32-bit components). Consider $C[x]_{lo}. In the gate described below, we first
@@ -138,6 +83,75 @@
 //~ that we need to “copy” the edge elements between $C[x]_{lo}$ and $C[x]_{hi}$ as shown in
 //~ the diagram. We also need to check that $(C[x]_i − c[x]_i , C[x]_i − c[x]_i , 0)$ in XOR
 //~ table to ensure that $c[x]_i$ is the LSB of $C[x]_i$.
+//~
+//~ Here we show the full layout for the whole 64-bit word, which is a concatenation of the following gates:
+//~
+//~  | Row | `CircuitGate` | Purpose                        |
+//~  | --- | ------------- | ------------------------------ |
+//~  |   0 | `KeccakRot1`  | Rot first 2 bytes of low  half |
+//~  |   1 | `Zero`        | Rot last  2 bytes of low  half |
+//~  |   2 | `KeccakRot1`  | Rot first 2 bytes of high half |
+//~  |   3 | `Zero`        | Rot last  2 bytes of high half |
+//~
+//~
+//~ The 4-bit crumbs are assumed to be laid out with `0` being the least significant crumb.
+//~ We split the 64-bit word into two 32-bit halves and then split each of these into 4-bit crumbs `crumb_i`.
+//~ We call the most significant bit of each crumb `msb_i`.
+//~
+//~ | Gate   | `KeccakRot1`   | `Zero          | `KeccakRot1`    | `Zero`          |
+//~ | ------ | -------------- | -------------- | --------------- | --------------- |
+//~ | Column | `Curr`         | `Next`         | `Curr`          | `Next`          |
+//~ | ------ | -------------- | -------------- | --------------- | --------------- |
+//~ |      0 | copy `lo`      | copy `msb_15`  | copy   `hi`     | copy  `msb_7`   |
+//~ |      1 |                | copy `sft_lo`  |                 | copy  `sft_hi`  |
+//~ |      2 |                |                |                 |                 |
+//~ |      3 | copy `sft_0`   | copy `sft_4`   | copy `sft_8`    | copy `sft_12`   |
+//~ |      4 | copy `sft_1`   | copy `sft_5`   | copy `sft_9`    | copy `sft_13`   |
+//~ |      5 | copy `sft_2`   | copy `sft_6`   | copy `sft_10`   | copy `sft_14`   |
+//~ |      6 | copy `sft_3`   | copy `sft_7`   | copy `sft_11`   | copy `sft_15`   |
+//~ |      7 |      `msb_0`   |      `msb_4`   |      `msb_8`    |      `msb_12`   |
+//~ |      8 |      `msb_1`   |      `msb_5`   |      `msb_9`    |      `msb_13`   |
+//~ |      9 |      `msb_2`   |      `msb_6`   |      `msb_10`   |      `msb_14`   |
+//~ |     10 |      `msb_3`   |      `msb_7`   |      `msb_11`   |      `msb_15`   |
+//~ |     11 |      `crumb_0` |      `crumb_4` |      `crumb_8`  |      `crumb_12` |
+//~ |     12 |      `crumb_1` |      `crumb_5` |      `crumb_9`  |      `crumb_13` |
+//~ |     13 |      `crumb_2` |      `crumb_6` |      `crumb_10` |      `crumb_14` |
+//~ |     14 |      `crumb_3` |      `crumb_7` |      `crumb_11` |      `crumb_15` |
+//~
+#[derive(Default)]
+pub struct KeccakRot1<F>(PhantomData<F>);
+
+impl<F> Argument<F> for KeccakRot1<F>
+where
+    F: PrimeField,
+{
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::KeccakRot1);
+    const CONSTRAINTS: u32 = 10;
+
+    // Constraints for rotation by 1 bit
+    //   * Operates on Curr and Next rows
+    //   * Constrain the decomposition of `half` into crumbs and check rotation of 1 bit between them
+    //   * The actual XOR is performed thanks to the plookups.
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+        let mut constraints = vec![];
+
+        let half = env.witness_curr(0);
+        let half_decomp = four_bit(env, 10);
+
+        let shift = env.witness_next(1);
+        let shift_decomp = four_bit(env, 6);
+
+        // Check half is well decomposed
+        constraints.push(half_decomp - half);
+        // Check shift is well decomposed
+        constraints.push(shift_decomp - shift);
+        // Check crumb rotations
+        constraints.append(&mut rot_one_bit(&env));
+
+        constraints
+    }
+}
+
 //~
 //~ ###### Rotation by 2 bits
 //~
@@ -178,14 +192,6 @@
 //~ $c_{2i,2i+1}$ which are zeroes for all $E_{2i,2i+1}$ except $c_{8,9}$. The weights $c_{2i,2i+1}$ will be combined into
 //~ a 32 bit value $c$ whose value will be enforced using the permutation polynomial.
 //~
-use std::marker::PhantomData;
-
-use crate::circuits::{
-    argument::{Argument, ArgumentEnv, ArgumentType},
-    expr::constraints::ExprOps,
-    gate::GateType,
-};
-use ark_ff::PrimeField;
 
 //~ ##### `KeccakXor` - XOR constraints for 32-bit words
 //~
@@ -198,26 +204,67 @@ use ark_ff::PrimeField;
 //~
 //~ The 4-bit crumbs are assumed to be laid out with `0` being the least significant crumb.
 //~ Given values `in1`, `in2` and `out`, the layout looks like this:
+//~ ##### XOR gate
 //~
-//~ | Column |          `Curr`  |          `Next`  |
-//~ | ------ | ---------------- | ---------------- |
-//~ |      0 | copy     `in1`   | copy     `out`   |
-//~ |      1 |                  | copy     `in2`   |
-//~ |      2 |                  |                  |
-//~ |      3 | plookup0 `in2_0` | plookup4 `in2_4` |
-//~ |      4 | plookup1 `in2_1` | plookup5 `in2_5` |
-//~ |      5 | plookup2 `in2_2` | plookup6 `in2_6` |
-//~ |      6 | plookup3 `in2_3` | plookup8 `in2_7` |
-//~ |      7 | plookup0 `in1_0` | plookup4 `in1_4` |
-//~ |      8 | plookup1 `in1_1` | plookup5 `in1_5` |
-//~ |      9 | plookup2 `in1_2` | plookup6 `in1_6` |
-//~ |     10 | plookup3 `in1_3` | plookup7 `in1_7` |
-//~ |     11 | plookup0 `out_0` | plookup4 `out_4` |
-//~ |     12 | plookup1 `out_1` | plookup5 `out_5` |
-//~ |     13 | plookup2 `out_2` | plookup6 `out_6` |
-//~ |     14 | plookup3 `out_3` | plookup7 `out_7` |
+//~ First we consider a XOR gate that checks that a 32-bit word `out` is the XOR of `in1` and `in2`.
+//~ This gate will use 2 rows, with a `Xor` row followed by a `Zero` row.
 //~
-
+//~ | Gates | `KeccakXor`      | `Zero`           |
+//~ | ----- | ---------------- | ---------------- |
+//~ | Rows  |           0      |           1      |
+//~ | Cols  |                  |                  |
+//~ |     0 | copy     `in1`   | copy     `out`   |
+//~ |     1 |                  | copy     `in2`   |
+//~ |     2 |                  |                  |
+//~ |     3 | plookup0 `in2_0` | plookup4 `in2_4` |
+//~ |     4 | plookup1 `in2_1` | plookup5 `in2_5` |
+//~ |     5 | plookup2 `in2_2` | plookup6 `in2_6` |
+//~ |     6 | plookup3 `in2_3` | plookup8 `in2_7` |
+//~ |     7 | plookup0 `in1_0` | plookup4 `in1_4` |
+//~ |     8 | plookup1 `in1_1` | plookup5 `in1_5` |
+//~ |     9 | plookup2 `in1_2` | plookup6 `in1_6` |
+//~ |    10 | plookup3 `in1_3` | plookup7 `in1_7` |
+//~ |    11 | plookup0 `out_0` | plookup4 `out_4` |
+//~ |    12 | plookup1 `out_1` | plookup5 `out_5` |
+//~ |    13 | plookup2 `out_2` | plookup6 `out_6` |
+//~ |    14 | plookup3 `out_3` | plookup7 `out_7` |
+//~
+//~ Now we apply this gate twice to obtain a XOR gadget for 64-bit words by halving:
+//~
+//~ Consider the following operations:
+//~ * `out_lo` $=$ `in1_lo` $\oplus$ `in2_lo` and
+//~ * `out_hi` $=$ `in1_hi` $\oplus$ `in2_hi`,
+//~ where each element is 32 bits long.
+//~
+//~ | Gates | `KeccakXor` |   `Zero` | `KeccakXor` |   `Zero` |
+//~ | ----- | ----------- | -------- | ----------- | -------- |
+//~ | Rows  |          0  |       1  |          2  |        3 |
+//~ | Cols  |             |          |             |          |
+//~ |     0 |    `in1_lo` | `out_lo` |    `in1_hi` | `out_hi` |
+//~ |     1 |             | `in2_lo` |             | `in2_hi` |
+//~ |     2 |             |          |             |          |
+//~ |     3 |     `in2_0` |  `in2_4` |     `in2_8` | `in2_12` |
+//~ |     4 |     `in2_1` |  `in2_5` |     `in2_9` | `in2_13` |
+//~ |     5 |     `in2_2` |  `in2_6` |    `in2_10` | `in2_14` |
+//~ |     6 |     `in2_3` |  `in2_7` |    `in2_11` | `in2_15` |
+//~ |     7 |     `in1_0` |  `in1_4` |     `in2_8` | `in2_12` |
+//~ |     8 |     `in1_1` |  `in1_5` |     `in2_9` | `in2_13` |
+//~ |     9 |     `in1_2` |  `in1_6` |    `in2_10` | `in2_14` |
+//~ |    10 |     `in1_3` |  `in1_7` |    `in2_11` | `in2_15` |
+//~ |    11 |     `out_0` |  `out_4` |     `in2_8` | `in2_12` |
+//~ |    12 |     `out_1` |  `out_5` |     `in2_9` | `in2_13` |
+//~ |    13 |     `out_2` |  `out_6` |    `in2_10` | `in2_14` |
+//~ |    14 |     `out_3` |  `out_7` |    `in2_11` | `in2_15` |
+//~
+//~ Different rows are constrained using different CircuitGate types
+//~
+//~  | Row | `CircuitGate` | Purpose                        |
+//~  | --- | ------------- | ------------------------------ |
+//~  |   0 | `KeccakXor`   | Xor first 2 bytes of low  half |
+//~  |   1 | `Zero`        | Xor last  2 bytes of low  half |
+//~  |   2 | `KeccakXor`   | Xor first 2 bytes of high half |
+//~  |   3 | `Zero`        | Xor last  2 bytes of high half |
+//~
 #[derive(Default)]
 pub struct KeccakXor<F>(PhantomData<F>);
 
@@ -251,6 +298,14 @@ where
 }
 
 //~ ##### `KeccakBits` - 32-bit decomposition gate
+//~
+//~ This is a basic operation that is typically done for 64-bit initial state and
+//~ intermediate values.
+//~
+//~ Let `inp` be a 64-bit word. The constraint is: `in` $= 2^32 \cdot$ `in_hi` $+$ `in_lo`.
+//~ It takes 3 cells for values `in`, `in_hi`, `in_lo`. We have not yet placed them w.r.t
+//~ other rows of the Keccak computation; the only requirement is that all these cells be
+//~ within the first 7 columns for permutation equation accessibility.
 //~
 //~ * This circuit gate is used to constrain that two values of 64 bits are decomposed
 //~   correctly in two halves of 32 bits. It will be used to constrain all inputs and
@@ -308,14 +363,14 @@ fn half<F: PrimeField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>, idx: usize) -> T 
     env.witness_curr(idx) - (env.witness_curr(idx + 2) * half_bits + env.witness_curr(idx + 1))
 }
 
-/// Computes the decomposition of a 32-bit word whose most significant 4-bit crumb
-/// is located in the `max` column of `witness_next`. The layout is the following:
-///
-/// |        | max - 3 | max - 2 | max - 1 |     max |
-/// | ------ | ------- | ------- | ------- | ------- |
-/// | `Curr` |  crumb0 |  crumb1 |  crumb2 |  crumb3 |
-/// | `Next` |  crumb4 |  crumb5 |  crumb6 |  crumb7 |
-///
+// Computes the decomposition of a 32-bit word whose most significant 4-bit crumb
+// is located in the `max` column of `witness_next`. The layout is the following:
+//
+// |        | max - 3 | max - 2 | max - 1 |     max |
+// | ------ | ------- | ------- | ------- | ------- |
+// | `Curr` |  crumb0 |  crumb1 |  crumb2 |  crumb3 |
+// | `Next` |  crumb4 |  crumb5 |  crumb6 |  crumb7 |
+//
 fn four_bit<F: PrimeField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>, max: usize) -> T {
     let mut sum = T::zero();
     let two = T::one() + T::one();
@@ -327,4 +382,34 @@ fn four_bit<F: PrimeField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>, max: usize) -
         sum = four_bit.clone() * sum + env.witness_curr(i);
     }
     sum
+}
+
+// Computes the rotation of eight 4-bit crumbs by 1 bit to the most significant position.
+// It performs the following operation:
+// `shift_i = 2 · ( crumb_i - 2^3 · msb_i ) + msb_{i-1}`
+//
+fn rot_one_bit<F: PrimeField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+    let mut constraints = vec![];
+    let two = T::one() + T::one();
+    let weight = two.pow(3);
+    let mut prev = env.witness_next(0); // first previous msb is located in auxiliary position
+    for i in 0..4 {
+        // curr row
+        let shift = env.witness_curr(3 + i);
+        let msb = env.witness_curr(7 + i);
+        let crumb = env.witness_curr(11 + i);
+        let rot = two.clone() * (crumb - weight.clone() * msb.clone()) + prev;
+        constraints.push(rot - shift);
+        prev = msb;
+    }
+    // next row
+    for i in 0..4 {
+        let shift = env.witness_next(3 + i);
+        let msb = env.witness_next(7 + i);
+        let crumb = env.witness_next(11 + i);
+        let rot = two.clone() * (crumb - weight.clone() * msb.clone()) + prev;
+        constraints.push(rot - shift);
+        prev = msb;
+    }
+    constraints
 }
