@@ -105,7 +105,7 @@
 //~  for 8 bits at a time, but for now we will use the 4-bit XOR table that we have.
 //~ ```
 //~
-//~ ##### Gate types:
+//~ ###### Gate types:
 //~
 //~ Different rows are constrained using different CircuitGate types
 //~
@@ -116,7 +116,68 @@
 //~  |   2 | `Xor`         | Xor first 2 bytes of high half |
 //~  |   3 | `Zero`        | Xor last  2 bytes of high half |
 //~
-
+//~ ##### Rotation gates
+//~
+//~ Notice that the keccak hash function involves rotation operations with different offsets at different points of the computation.
+//~ In fact, every word is rotated by a different offset at a certain stage. Instead of creating different gates for each offset,
+//~ we take the following approach that is much more efficient.
+//~ - 1 bit
+//~ - 2 bits
+//~ - 3 bits
+//~ - a multiple of 4 bits
+//~ To rotate a word by $n = 4m + r$ bits where $r < 4$, we first invoke the gate for rotation by $m/2$ bytes.
+//~ Then we invoke the gate to rotate by r bits.
+//~~
+//~ ###### Rotation by 1 bit
+//~
+//~ Consider rotating 64 bit $C[x]$ by 1 bit. We first decompose it to $C[x]_{lo}$ and $C[x]_{hi}$
+//~ (32-bit components). Consider $C[x]_{lo}. In the gate described below, we first
+//~ decompose $C[x]_{lo}$ into bytes. For each byte, we also consider the LSB; denote
+//~ the LSB of $C[x]_i$ by $c[x]_i$. We constrain that $CS[x]_i = 2(C[x]_i − 2^3 c[x]_i )+c[x]_{i−1}$.
+//~ (To clarify, $C[x]_i$ is a byte and $c[x]_i$ is the least significant bit of $C[x]_i$). Note
+//~ that we need to “copy” the edge elements between $C[x]_{lo}$ and $C[x]_{hi}$ as shown in
+//~ the diagram. We also need to check that $(C[x]_i − c[x]_i , C[x]_i − c[x]_i , 0)$ in XOR
+//~ table to ensure that $c[x]_i$ is the LSB of $C[x]_i$.
+//~
+//~ ###### Rotation by 2 bits
+//~
+//~ Consider rotating 64 bit $B[x]$ by 2 bits. We first decompose it to $B[x]_{lo}$ and
+//~ $B[x]_{hi}$. Consider $B[x]_{lo}. In the gate described below, we first decompose $B[x]_{lo}$
+//~ into bytes. For each byte, we also consider two LSBs; denote LSB of $B[x]_i$ by
+//~ $b[x]_i$. We constrain that $B[x]_i = 2^2 bs[x]_i + (BS[x]_{i−1} − bs[x]_{i−1} )/2^2$. Note that
+//~ we need to “copy” the edge elements between $B[x]_{lo}$ and $B[x]_{hi}$ as shown in the
+//~ diagram. We also need to check that $(B[x]_i −b[x]_i , B[x]_i −b[x]_i , 0)$ in XOR table
+// to ensure that $b[x]_i$ is the LSBs of $B[x]_i$. We will denote the shifted word as $BS[x]$.
+//~
+//~ ###### Rotation by 3 bits
+//~
+//~ Consider rotating 64 bit $E$ by 3 bits to $B$. We first decompose it to $E_{lo}$ and
+//~ $E_{hi}$. Consider $E_{lo}$. In the gate described below, we first decompose $E$ lo into
+//~ bytes. For each byte, we also consider two LSBs; denote LSB of $E_i$ by $e_i$. We
+//~ constrain that $B_i = 2^3 e_i + (E_{i−1} − e_{i−1} )/2$. Note that we need to “copy” the
+//~ edge elements between $E_{lo}$ and $E_{hi}$ as shown in the diagram. We also need to
+//~ check that $(E_i − e_i , E_i − e_i , 0)$ in XOR table to ensure that $e_i$ is the LSBs of $E_i$ .
+//~
+//~ ###### Rotation by integral multiple of 4 bits
+//~
+//~ Consider rotating 64 bit $E$ by a multiple $m$ of 4 bits to get $B$. We first decompose
+//~ $E$ into chunks of 8 bits $E_{14,15}$ , $E_{12,13}$ , $E_{10,11}$ , $E_{8,9} , $E_{6,7}$ , $E_{4,5}$ , $E_{2,3}$ , $E_{0,1}$ so that
+//~ $E = \sum_{i = 0}^7 (2^8)^i \cdot E_{2i,2i+1}$. Here, we chose the subscripts this way to continue
+//~ the byte narrative while temporarily switching to 8-bit chunks. $E_{2i,2i+1}$ is the ith 8-bit chunk.
+//~
+//~ Depending on the value of m we write the corresponding weights for these 8-bit values like in
+//~ the decomposition of $B$. The weight corresponding to $E_{2i,2i+1}$ is denoted by $w_{2i,2i+1}$. However,
+//~ depending on the value of $m$, there can be one 8-bit component that could get split between the
+//~ most significant and the least significant part of B. In the example in the diagram, it is $E_{8,9}$.
+//~ For this element the weight assigned will be $0$; we will incorporate this element by splitting it
+//~ up with the constraint $E_{8,9} = 2^4 E_9 + E_8$. We will incorporate these elements by always giving
+//~ the weight $(2^4)^{15} to the lower significant part – namely $E_8$ in this example and $1$ to the other
+//~ part $E_9$. The values of the weights will be enforced using permutation polynomial.
+//~
+//~ Towards specifying the right 8-bit element to be split, we will use a sequence of separate weights
+//~ $c_{2i,2i+1}$ which are zeroes for all $E_{2i,2i+1}$ except $c_{8,9}$. The weights $c_{2i,2i+1}$ will be combined into
+//~ a 32 bit value $c$ whose value will be enforced using the permutation polynomial.
+//~
 use std::marker::PhantomData;
 
 use crate::circuits::{
