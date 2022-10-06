@@ -65,9 +65,9 @@ use crate::circuits::{
 };
 use ark_ff::PrimeField;
 
-//~ ##### `KeccakRot1` - Constraints for rotation by 1 bit
+//~ ##### `KeccakRot` - Constraints for rotation by 1 or 2 or 3 bits
 //~
-//~ * This circuit gate is used to constrain that a 64-bit word is rotated by 1 bit to its shifted value.
+//~ * This circuit gate is used to constrain that a 64-bit word is rotated by 1-2-3 bit to its shifted value.
 //~ * The rotation is performed towards the most significant side (thus, the new LSB is fed with the old MSB).
 //~ * This gate operates on the `Curr` row and the `Next` row (if we stick to 4-bit XOR table).
 //~
@@ -75,29 +75,29 @@ use ark_ff::PrimeField;
 //~ * copy    - copy to another cell (32-bits)
 //~ * plookup - xor-table plookup (4-bits)
 //~
-//~ Consider rotating 64 bit $C[x]$ by 1 bit. We first decompose it to $C[x]_{lo}$ and $C[x]_{hi}$
+//~ Consider rotating 64 bit $C[x]$ by 1, 2 or 3 bits. We first decompose it to $C[x]_{lo}$ and $C[x]_{hi}$
 //~ (32-bit components). Consider $C[x]_{lo}. In the gate described below, we first
-//~ decompose $C[x]_{lo}$ into bytes. For each byte, we also consider the LSB; denote
-//~ the LSB of $C[x]_i$ by $c[x]_i$. We constrain that $CS[x]_i = 2(C[x]_i − 2^3 c[x]_i )+c[x]_{i−1}$.
-//~ (To clarify, $C[x]_i$ is a byte and $c[x]_i$ is the least significant bit of $C[x]_i$). Note
+//~ decompose $C[x]_{lo}$ into bytes. For each byte, we also consider the MSBs; denote
+//~ the MSBs of $C[x]_i$ by $c[x]_i$. We constrain that $CS[x]_i = 2^n(C[x]_i − 2^(4-n) c[x]_i )+c[x]_{i−1}$.
+//~ (To clarify, $C[x]_i$ is a crumb and $c[x]_i$ is the most significant bit of $C[x]_i$). Note
 //~ that we need to “copy” the edge elements between $C[x]_{lo}$ and $C[x]_{hi}$ as shown in
 //~ the diagram. We also need to check that $(C[x]_i − c[x]_i , C[x]_i − c[x]_i , 0)$ in XOR
-//~ table to ensure that $c[x]_i$ is the LSB of $C[x]_i$.
+//~ table to ensure that $c[x]_i$ is the MSB of $C[x]_i$. TODO: ??
 //~
 //~ Here we show the full layout for the whole 64-bit word, which is a concatenation of the following gates:
 //~
 //~  | Row | `CircuitGate` | Purpose                        |
 //~  | --- | ------------- | ------------------------------ |
-//~  |   0 | `KeccakRot1`  | Rot first 2 bytes of low  half |
+//~  |   0 | `KeccakRot`   | Rot first 2 bytes of low  half |
 //~  |   1 | `Zero`        | Rot last  2 bytes of low  half |
-//~  |   2 | `KeccakRot1`  | Rot first 2 bytes of high half |
+//~  |   2 | `KeccakRot`   | Rot first 2 bytes of high half |
 //~  |   3 | `Zero`        | Rot last  2 bytes of high half |
 //~
 //~ The 4-bit crumbs are assumed to be laid out with `0` being the least significant crumb.
 //~ We split the 64-bit word into two 32-bit halves and then split each of these into 4-bit crumbs `crumb_i`.
-//~ We call the most significant bit of each crumb `msb_i`.
+//~ We call the `n` most significant bits of each crumb `msb_i` (where `n` is a coefficient of the gate and ranges between 1,2,3)
 //~
-//~ | Gate   | `KeccakRot1`   | `Zero          | `KeccakRot1`    | `Zero`          |
+//~ | Gate   | `KeccakRot`    | `Zero          | `KeccakRot`     | `Zero`          |
 //~ | ------ | -------------- | -------------- | --------------- | --------------- |
 //~ | Column | `Curr`         | `Next`         | `Curr`          | `Next`          |
 //~ | ------ | -------------- | -------------- | --------------- | --------------- |
@@ -118,18 +118,18 @@ use ark_ff::PrimeField;
 //~ |     14 |      `crumb_3` |      `crumb_7` |      `crumb_11` |      `crumb_15` |
 //~
 #[derive(Default)]
-pub struct KeccakRot1<F>(PhantomData<F>);
+pub struct KeccakRot<F>(PhantomData<F>);
 
-impl<F> Argument<F> for KeccakRot1<F>
+impl<F> Argument<F> for KeccakRot<F>
 where
     F: PrimeField,
 {
-    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::KeccakRot1);
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::KeccakRot);
     const CONSTRAINTS: u32 = 10;
 
-    // Constraints for rotation by 1 bit
+    // Constraints for rotation by 1, 2 or 3 bits
     //   * Operates on Curr and Next rows
-    //   * Constrain the decomposition of `half` into crumbs and check rotation of 1 bit between them
+    //   * Constrain the decomposition of `half` into crumbs and check rotation of 1, 2 or 3 bits between them
     //   * The actual XOR is performed thanks to the plookups.
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
         let mut constraints = vec![];
@@ -140,176 +140,29 @@ where
         let shift = env.witness_next(1);
         let shift_decomp = four_bit(env, 6);
 
+        let aux = env.witness_curr(1); // TODO: substitute by coefficient
+        let one = T::one();
+        let two = T::one().double();
+        let three = T::one().double() + T::one();
+
         // Check half is well decomposed
         constraints.push(half_decomp - half);
         // Check shift is well decomposed
         constraints.push(shift_decomp - shift);
         // Check crumb rotations
-        constraints.append(&mut rot_1_bit(&env));
+        let rot1 = rot_bits(&env, 1);
+        let rot2 = rot_bits(&env, 2);
+        let rot3 = rot_bits(&env, 3);
+        for i in 0..rot1.len() {
+            // 8
+            constraints.push(
+                rot1[i].clone() * (aux.clone() - two.clone()) * (aux.clone() - three.clone())
+                    + rot2[i].clone() * (aux.clone() - one.clone()) * (aux.clone() - three.clone())
+                    + rot3[i].clone() * (aux.clone() - one.clone()) * (aux.clone() - two.clone()),
+            );
+        }
 
         // TODO: how do we check that the msb is only 1 bit? binary check?
-
-        constraints
-    }
-}
-
-//~
-//~ ##### `KeccakRot2` - Constraints for rotation by 2 bits
-//~
-//~ * This circuit gate is used to constrain that a 64-bit word is rotated by 1 bit to its shifted value.
-//~ * The rotation is performed towards the most significant side (thus, the new LSB is fed with the old MSB).
-//~ * This gate operates on the `Curr` row and the `Next` row (if we stick to 4-bit XOR table).
-//~
-//~ Consider rotating 64 bit $B[x]$ by 2 bits. We first decompose it to $B[x]_{lo}$ and
-//~ $B[x]_{hi}$. Consider $B[x]_{lo}. In the gate described below, we first decompose $B[x]_{lo}$
-//~ into bytes. For each byte, we also consider two LSBs; denote LSB of $B[x]_i$ by
-//~ $b[x]_i$. We constrain that $B[x]_i = 2^2 bs[x]_i + (BS[x]_{i−1} − bs[x]_{i−1} )/2^2$. Note that
-//~ we need to “copy” the edge elements between $B[x]_{lo}$ and $B[x]_{hi}$ as shown in the
-//~ diagram. We also need to check that $(B[x]_i −b[x]_i , B[x]_i −b[x]_i , 0)$ in XOR table
-// to ensure that $b[x]_i$ is the LSBs of $B[x]_i$. We will denote the shifted word as $BS[x]$.
-//~
-//~ Here we show the full layout for the whole 64-bit word, which is a concatenation of the following gates:
-//~
-//~  | Row | `CircuitGate` | Purpose                        |
-//~  | --- | ------------- | ------------------------------ |
-//~  |   0 | `KeccakRot2`  | Rot first 2 bytes of low  half |
-//~  |   1 | `Zero`        | Rot last  2 bytes of low  half |
-//~  |   2 | `KeccakRot2`  | Rot first 2 bytes of high half |
-//~  |   3 | `Zero`        | Rot last  2 bytes of high half |
-//~
-//~ The 4-bit crumbs are assumed to be laid out with `0` being the least significant crumb.
-//~ We split the 64-bit word into two 32-bit halves and then split each of these into 4-bit crumbs `crumb_i`.
-//~ We call the 2 most significant bits of each crumb `msb_i`.
-//~
-//~ | Gate   | `KeccakRot2`   | `Zero          | `KeccakRot2`    | `Zero`          |
-//~ | ------ | -------------- | -------------- | --------------- | --------------- |
-//~ | Column | `Curr`         | `Next`         | `Curr`          | `Next`          |
-//~ | ------ | -------------- | -------------- | --------------- | --------------- |
-//~ |      0 | copy `lo`      | copy `msb_15`  | copy   `hi`     | copy  `msb_7`   |
-//~ |      1 |                | copy `sft_lo`  |                 | copy  `sft_hi`  |
-//~ |      2 |                |                |                 |                 |
-//~ |      3 | copy `sft_0`   | copy `sft_4`   | copy `sft_8`    | copy `sft_12`   |
-//~ |      4 | copy `sft_1`   | copy `sft_5`   | copy `sft_9`    | copy `sft_13`   |
-//~ |      5 | copy `sft_2`   | copy `sft_6`   | copy `sft_10`   | copy `sft_14`   |
-//~ |      6 | copy `sft_3`   | copy `sft_7`   | copy `sft_11`   | copy `sft_15`   |
-//~ |      7 |      `msb_0`   |      `msb_4`   |      `msb_8`    |      `msb_12`   |
-//~ |      8 |      `msb_1`   |      `msb_5`   |      `msb_9`    |      `msb_13`   |
-//~ |      9 |      `msb_2`   |      `msb_6`   |      `msb_10`   |      `msb_14`   |
-//~ |     10 |      `msb_3`   |      `msb_7`   |      `msb_11`   |      `msb_15`   |
-//~ |     11 |      `crumb_0` |      `crumb_4` |      `crumb_8`  |      `crumb_12` |
-//~ |     12 |      `crumb_1` |      `crumb_5` |      `crumb_9`  |      `crumb_13` |
-//~ |     13 |      `crumb_2` |      `crumb_6` |      `crumb_10` |      `crumb_14` |
-//~ |     14 |      `crumb_3` |      `crumb_7` |      `crumb_11` |      `crumb_15` |
-//~
-#[derive(Default)]
-pub struct KeccakRot2<F>(PhantomData<F>);
-
-impl<F> Argument<F> for KeccakRot2<F>
-where
-    F: PrimeField,
-{
-    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::KeccakRot2);
-    const CONSTRAINTS: u32 = 10;
-
-    // Constraints for rotation by 2 bits
-    //   * Operates on Curr and Next rows
-    //   * Constrain the decomposition of `half` into crumbs and check rotation of 2 bits between them
-    //   * The actual XOR is performed thanks to the plookups.
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
-        let mut constraints = vec![];
-
-        let half = env.witness_curr(0);
-        let half_decomp = four_bit(env, 10);
-
-        let shift = env.witness_next(1);
-        let shift_decomp = four_bit(env, 6);
-
-        // Check half is well decomposed
-        constraints.push(half_decomp - half);
-        // Check shift is well decomposed
-        constraints.push(shift_decomp - shift);
-        // Check crumb rotations
-        constraints.append(&mut rot_2_bit(&env));
-
-        // TODO: how do we check that the msbs is 2 bits? degree-4 constraint?
-
-        constraints
-    }
-}
-
-//~ ##### `KeccakRot3` - Constraints for rotation by 3 bits
-//~
-//~ Consider rotating 64 bit $E$ by 3 bits to $B$. We first decompose it to $E_{lo}$ and
-//~ $E_{hi}$. Consider $E_{lo}$. In the gate described below, we first decompose $E$ lo into
-//~ bytes. For each byte, we also consider two LSBs; denote LSB of $E_i$ by $e_i$. We
-//~ constrain that $B_i = 2^3 e_i + (E_{i−1} − e_{i−1} )/2$. Note that we need to “copy” the
-//~ edge elements between $E_{lo}$ and $E_{hi}$ as shown in the diagram. We also need to
-//~ check that $(E_i − e_i , E_i − e_i , 0)$ in XOR table to ensure that $e_i$ is the LSBs of $E_i$ .
-//~
-//~ Here we show the full layout for the whole 64-bit word, which is a concatenation of the following gates:
-//~
-//~  | Row | `CircuitGate` | Purpose                        |
-//~  | --- | ------------- | ------------------------------ |
-//~  |   0 | `KeccakRot3`  | Rot first 2 bytes of low  half |
-//~  |   1 | `Zero`        | Rot last  2 bytes of low  half |
-//~  |   2 | `KeccakRot3`  | Rot first 2 bytes of high half |
-//~  |   3 | `Zero`        | Rot last  2 bytes of high half |
-//~
-//~ The 4-bit crumbs are assumed to be laid out with `0` being the least significant crumb.
-//~ We split the 64-bit word into two 32-bit halves and then split each of these into 4-bit crumbs `crumb_i`.
-//~ We call the 3 most significant bits of each crumb `msb_i`.
-//~
-//~ | Gate   | `KeccakRot3`   | `Zero          | `KeccakRot3`    | `Zero`          |
-//~ | ------ | -------------- | -------------- | --------------- | --------------- |
-//~ | Column | `Curr`         | `Next`         | `Curr`          | `Next`          |
-//~ | ------ | -------------- | -------------- | --------------- | --------------- |
-//~ |      0 | copy `lo`      | copy `msb_15`  | copy   `hi`     | copy  `msb_7`   |
-//~ |      1 |                | copy `sft_lo`  |                 | copy  `sft_hi`  |
-//~ |      2 |                |                |                 |                 |
-//~ |      3 | copy `sft_0`   | copy `sft_4`   | copy `sft_8`    | copy `sft_12`   |
-//~ |      4 | copy `sft_1`   | copy `sft_5`   | copy `sft_9`    | copy `sft_13`   |
-//~ |      5 | copy `sft_2`   | copy `sft_6`   | copy `sft_10`   | copy `sft_14`   |
-//~ |      6 | copy `sft_3`   | copy `sft_7`   | copy `sft_11`   | copy `sft_15`   |
-//~ |      7 |      `msb_0`   |      `msb_4`   |      `msb_8`    |      `msb_12`   |
-//~ |      8 |      `msb_1`   |      `msb_5`   |      `msb_9`    |      `msb_13`   |
-//~ |      9 |      `msb_2`   |      `msb_6`   |      `msb_10`   |      `msb_14`   |
-//~ |     10 |      `msb_3`   |      `msb_7`   |      `msb_11`   |      `msb_15`   |
-//~ |     11 |      `crumb_0` |      `crumb_4` |      `crumb_8`  |      `crumb_12` |
-//~ |     12 |      `crumb_1` |      `crumb_5` |      `crumb_9`  |      `crumb_13` |
-//~ |     13 |      `crumb_2` |      `crumb_6` |      `crumb_10` |      `crumb_14` |
-//~ |     14 |      `crumb_3` |      `crumb_7` |      `crumb_11` |      `crumb_15` |
-//~
-#[derive(Default)]
-pub struct KeccakRot3<F>(PhantomData<F>);
-
-impl<F> Argument<F> for KeccakRot3<F>
-where
-    F: PrimeField,
-{
-    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::KeccakRot3);
-    const CONSTRAINTS: u32 = 10;
-
-    // Constraints for rotation by 3 bits
-    //   * Operates on Curr and Next rows
-    //   * Constrain the decomposition of `half` into crumbs and check rotation of 3 bits between them
-    //   * The actual XOR is performed thanks to the plookups.
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
-        let mut constraints = vec![];
-
-        let half = env.witness_curr(0);
-        let half_decomp = four_bit(env, 10);
-
-        let shift = env.witness_next(1);
-        let shift_decomp = four_bit(env, 6);
-
-        // Check half is well decomposed
-        constraints.push(half_decomp - half);
-        // Check shift is well decomposed
-        constraints.push(shift_decomp - shift);
-        // Check crumb rotations
-        constraints.append(&mut rot_3_bit(&env));
-
-        // TODO: how do we check that the msbs is 3 bits? plookup?
 
         constraints
     }
@@ -525,30 +378,6 @@ fn four_bit<F: PrimeField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>, max: usize) -
         sum = four_bit.clone() * sum + env.witness_curr(i);
     }
     sum
-}
-
-// Computes the rotation of eight 4-bit crumbs by 1 bit to the most significant position.
-// It performs the following operation:
-// `shift_i = 2 · ( crumb_i - 2^3 · msb_i ) + msb_{i-1}`
-//
-fn rot_1_bit<F: PrimeField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
-    rot_bits(&env, 1)
-}
-
-// Computes the rotation of eight 4-bit crumbs by 2 bits to the most significant position.
-// It performs the following operation:
-// `shift_i = 2^2 · ( crumb_i - 2^2 · msb_i ) + msb_{i-1}`
-//
-fn rot_2_bit<F: PrimeField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
-    rot_bits(&env, 2)
-}
-
-// Computes the rotation of eight 4-bit crumbs by 3 bits to the most significant position.
-// It performs the following operation:
-// `shift_i = 2^3 · ( crumb_i - 2 · msb_i ) + msb_{i-1}`
-//
-fn rot_3_bit<F: PrimeField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
-    rot_bits(&env, 3)
 }
 
 // Computes the rotation of eight 4-bit crumbs by 1,2 or 3 bits to the most significant position.

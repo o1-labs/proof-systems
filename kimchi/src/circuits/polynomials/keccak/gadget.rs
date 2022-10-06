@@ -17,7 +17,7 @@ use crate::{
     },
 };
 
-use super::circuitgates::{KeccakBits, KeccakRot1, KeccakXor};
+use super::circuitgates::{KeccakBits, KeccakRot, KeccakXor};
 
 pub const GATE_COUNT: usize = 3;
 
@@ -120,7 +120,7 @@ pub fn circuit_gates() -> [GateType; GATE_COUNT] {
     [
         GateType::KeccakXor,
         GateType::KeccakBits,
-        GateType::KeccakRot1,
+        GateType::KeccakRot,
     ]
 }
 
@@ -129,7 +129,7 @@ pub fn circuit_gate_constraint_count<F: PrimeField>(typ: GateType) -> u32 {
     match typ {
         GateType::KeccakXor => KeccakXor::<F>::CONSTRAINTS,
         GateType::KeccakBits => KeccakBits::<F>::CONSTRAINTS,
-        GateType::KeccakRot1 => KeccakRot1::<F>::CONSTRAINTS,
+        GateType::KeccakRot => KeccakRot::<F>::CONSTRAINTS,
         _ => panic!("invalid gate type"),
     }
 }
@@ -139,7 +139,7 @@ pub fn circuit_gate_constraints<F: PrimeField>(typ: GateType, alphas: &Alphas<F>
     match typ {
         GateType::KeccakXor => KeccakXor::combined_constraints(alphas),
         GateType::KeccakBits => KeccakBits::<F>::combined_constraints(alphas),
-        GateType::KeccakRot1 => KeccakRot1::<F>::combined_constraints(alphas),
+        GateType::KeccakRot => KeccakRot::<F>::combined_constraints(alphas),
         _ => panic!("invalid gate type"),
     }
 }
@@ -148,7 +148,7 @@ pub fn circuit_gate_constraints<F: PrimeField>(typ: GateType, alphas: &Alphas<F>
 pub fn combined_constraints<F: PrimeField>(alphas: &Alphas<F>) -> E<F> {
     KeccakXor::combined_constraints(alphas)
         + KeccakBits::combined_constraints(alphas)
-        + KeccakRot1::combined_constraints(alphas)
+        + KeccakRot::combined_constraints(alphas)
 }
 
 /// Get the range check lookup table
