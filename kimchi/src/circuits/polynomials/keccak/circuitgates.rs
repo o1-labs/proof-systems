@@ -147,7 +147,7 @@ where
         // Check crumb rotations
         constraints.append(&mut rot_1_bit(&env));
 
-        // TODO: how do we check that the msb is only 1 bit?
+        // TODO: how do we check that the msb is only 1 bit? binary check?
 
         constraints
     }
@@ -213,7 +213,7 @@ where
 
     // Constraints for rotation by 2 bits
     //   * Operates on Curr and Next rows
-    //   * Constrain the decomposition of `half` into crumbs and check rotation of 2 bit between them
+    //   * Constrain the decomposition of `half` into crumbs and check rotation of 2 bits between them
     //   * The actual XOR is performed thanks to the plookups.
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
         let mut constraints = vec![];
@@ -231,7 +231,7 @@ where
         // Check crumb rotations
         constraints.append(&mut rot_2_bit(&env));
 
-        // TODO: how do we check that the msbs is 2 bits?
+        // TODO: how do we check that the msbs is 2 bits? degree-4 constraint?
 
         constraints
     }
@@ -250,16 +250,16 @@ where
 //~
 //~  | Row | `CircuitGate` | Purpose                        |
 //~  | --- | ------------- | ------------------------------ |
-//~  |   0 | `KeccakRot1`  | Rot first 2 bytes of low  half |
+//~  |   0 | `KeccakRot3`  | Rot first 2 bytes of low  half |
 //~  |   1 | `Zero`        | Rot last  2 bytes of low  half |
-//~  |   2 | `KeccakRot1`  | Rot first 2 bytes of high half |
+//~  |   2 | `KeccakRot3`  | Rot first 2 bytes of high half |
 //~  |   3 | `Zero`        | Rot last  2 bytes of high half |
 //~
 //~ The 4-bit crumbs are assumed to be laid out with `0` being the least significant crumb.
 //~ We split the 64-bit word into two 32-bit halves and then split each of these into 4-bit crumbs `crumb_i`.
 //~ We call the 3 most significant bits of each crumb `msb_i`.
 //~
-//~ | Gate   | `KeccakRot1`   | `Zero          | `KeccakRot1`    | `Zero`          |
+//~ | Gate   | `KeccakRot3`   | `Zero          | `KeccakRot3`    | `Zero`          |
 //~ | ------ | -------------- | -------------- | --------------- | --------------- |
 //~ | Column | `Curr`         | `Next`         | `Curr`          | `Next`          |
 //~ | ------ | -------------- | -------------- | --------------- | --------------- |
@@ -289,9 +289,9 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::KeccakRot3);
     const CONSTRAINTS: u32 = 10;
 
-    // Constraints for rotation by 2 bits
+    // Constraints for rotation by 3 bits
     //   * Operates on Curr and Next rows
-    //   * Constrain the decomposition of `half` into crumbs and check rotation of 2 bit between them
+    //   * Constrain the decomposition of `half` into crumbs and check rotation of 3 bits between them
     //   * The actual XOR is performed thanks to the plookups.
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
         let mut constraints = vec![];
@@ -309,7 +309,7 @@ where
         // Check crumb rotations
         constraints.append(&mut rot_3_bit(&env));
 
-        // TODO: how do we check that the msbs is 3 bits?
+        // TODO: how do we check that the msbs is 3 bits? plookup?
 
         constraints
     }
