@@ -112,7 +112,10 @@ pub enum GateType {
     // Gates for Keccak follow:
     KeccakXor = 27,
     KeccakBits = 28,
+    // TODO (querolita): can we merge 1-2-3 into one gate?
     KeccakRot1 = 29,
+    KeccakRot2 = 30,
+    KeccakRot3 = 31,
 }
 
 /// Selector polynomial
@@ -234,7 +237,7 @@ impl<F: PrimeField> CircuitGate<F> {
             RangeCheck0 | RangeCheck1 => self
                 .verify_range_check::<G>(row, witness, cs)
                 .map_err(|e| e.to_string()),
-            KeccakXor | KeccakBits | KeccakRot1 => Ok(()), // TODO
+            KeccakXor | KeccakBits | KeccakRot1 | KeccakRot2 | KeccakRot3 => Ok(()), // TODO
         }
     }
 
@@ -318,6 +321,8 @@ impl<F: PrimeField> CircuitGate<F> {
             GateType::KeccakXor => keccak::circuitgates::KeccakXor::constraint_checks(&env),
             GateType::KeccakBits => keccak::circuitgates::KeccakBits::constraint_checks(&env),
             GateType::KeccakRot1 => keccak::circuitgates::KeccakRot1::constraint_checks(&env),
+            GateType::KeccakRot2 => keccak::circuitgates::KeccakRot2::constraint_checks(&env),
+            GateType::KeccakRot3 => keccak::circuitgates::KeccakRot3::constraint_checks(&env),
         };
 
         // Check for failed constraints
