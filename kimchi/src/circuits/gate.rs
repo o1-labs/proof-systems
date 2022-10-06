@@ -5,8 +5,8 @@ use crate::{
         argument::{Argument, ArgumentEnv},
         constraints::ConstraintSystem,
         polynomials::{
-            chacha, complete_add, endomul_scalar, endosclmul, poseidon, range_check, turshi,
-            varbasemul,
+            chacha, complete_add, endomul_scalar, endosclmul, foreign_field_add, poseidon,
+            range_check, turshi, varbasemul,
         },
         wires::*,
     },
@@ -107,8 +107,8 @@ pub enum GateType {
     /// Range check (16-24)
     RangeCheck0 = 16,
     RangeCheck1 = 17,
-    // ForeignFieldAdd = 25,
-    // ForeignFieldMul = 26,
+    ForeignFieldAdd = 25,
+    //ForeignFieldMul = 26,
 }
 
 /// Selector polynomial
@@ -230,6 +230,9 @@ impl<F: PrimeField> CircuitGate<F> {
             RangeCheck0 | RangeCheck1 => self
                 .verify_range_check::<G>(row, witness, cs)
                 .map_err(|e| e.to_string()),
+            ForeignFieldAdd => self
+                .verify_foreign_field_add::<G>(row, witness, cs)
+                .map_err(|e| e.to_string()),
         }
     }
 
@@ -252,6 +255,7 @@ impl<F: PrimeField> CircuitGate<F> {
             joint_combiner: Some(F::one()),
             endo_coefficient: cs.endo,
             mds: &G::sponge_params().mds,
+            foreign_field_modulus: cs.foreign_field_modulus.clone(),
         };
         // Create the argument environment for the constraints over field elements
         let env = ArgumentEnv::<F, F>::create(argument_witness, self.coeffs.clone(), constants);
@@ -309,6 +313,9 @@ impl<F: PrimeField> CircuitGate<F> {
             }
             GateType::RangeCheck1 => {
                 range_check::circuitgates::RangeCheck1::constraint_checks(&env)
+            }
+            GateType::ForeignFieldAdd => {
+                foreign_field_add::circuitgates::ForeignFieldAdd::constraint_checks(&env)
             }
         };
 

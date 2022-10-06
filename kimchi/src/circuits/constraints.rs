@@ -8,7 +8,7 @@ use crate::{
         lookup::{index::LookupConstraintSystem, tables::LookupTable},
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
         polynomials::permutation::{Shifts, ZK_ROWS},
-        polynomials::range_check,
+        polynomials::{foreign_field_add, range_check},
         wires::*,
     },
     curve::KimchiCurve,
@@ -19,7 +19,8 @@ use ark_poly::{
     univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
     Radix2EvaluationDomain as D,
 };
-use o1_utils::ExtendedEvaluations;
+use num_bigint::BigUint;
+use o1_utils::{ExtendedEvaluations, FieldHelpers};
 use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
@@ -118,6 +119,13 @@ pub struct ConstraintSystem<F: PrimeField> {
     pub range_check_selector_polys:
         Option<[SelectorPolynomial<F>; range_check::gadget::GATE_COUNT]>,
 
+    /// Foreign field modulus
+    pub foreign_field_modulus: Option<BigUint>,
+
+    /// Foreign field addition gate selector polynomial
+    #[serde(bound = "Option<SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
+    pub foreign_field_add_selector_poly: Option<SelectorPolynomial<F>>,
+
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub shift: [F; PERMUTS],
@@ -150,6 +158,7 @@ pub struct Builder<F: PrimeField> {
     lookup_tables: Vec<LookupTable<F>>,
     runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
     precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
+    foreign_field_modulus: Option<BigUint>,
 }
 
 /// Create selector polynomial for a circuit gate
@@ -215,6 +224,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
             lookup_tables: vec![],
             runtime_tables: None,
             precomputations: None,
+            foreign_field_modulus: None,
         }
     }
 
@@ -371,6 +381,21 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         shared_precomputations: Arc<DomainConstantEvaluations<F>>,
     ) -> Self {
         self.precomputations = Some(shared_precomputations);
+        self
+    }
+
+    /// Set up the foreign field modulus passed as an optional BigUint
+    /// If not invoked, it is `None` by default.
+    /// Panics if the BigUint being passed needs more than 3 limbs of 88 bits each
+    /// and warns if the foreign modulus being passed is smaller than the native modulus
+    /// because right now we only support foreign modulus that are larger than the native modulus.
+    pub fn foreign_field_modulus(mut self, foreign_field_modulus: &Option<BigUint>) -> Self {
+        if let Some(ffmod) = foreign_field_modulus.clone() {
+            if ffmod <= F::modulus_biguint() {
+                println!("Smaller foreign field modulus is still only supported by FFAdd but not yet for FFMul");
+            }
+        }
+        self.foreign_field_modulus = foreign_field_modulus.clone();
         self
     }
 
@@ -557,6 +582,16 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             }
         };
 
+        // Foreign field addition constraint selector polynomial
+        let ffadd_gates = foreign_field_add::gadget::circuit_gates();
+        let foreign_field_add_selector_poly = {
+            if circuit_gates_used.is_disjoint(&ffadd_gates.into_iter().collect()) {
+                None
+            } else {
+                Some(selector_polynomial(ffadd_gates[0], &gates, &domain))
+            }
+        };
+
         //
         // Coefficient
         // -----------
@@ -608,6 +643,8 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             mull8,
             emull,
             range_check_selector_polys,
+            foreign_field_add_selector_poly,
+            foreign_field_modulus: self.foreign_field_modulus,
             gates,
             shift: shifts.shifts,
             endo,
