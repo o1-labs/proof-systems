@@ -96,14 +96,15 @@ use ark_ff::PrimeField;
 //~ The 4-bit crumbs are assumed to be laid out with `0` being the least significant crumb.
 //~ We split the 64-bit word into two 32-bit halves and then split each of these into 4-bit crumbs `crumb_i`.
 //~ We call the `n` most significant bits of each crumb `msb_i` (where `n` is a coefficient of the gate and ranges between 1,2,3)
+//~ Two consecutive Keccak rotation gates need to have the same `bits`=n value
 //~
 //~ | Gate   | `KeccakRot`    | `Zero          | `KeccakRot`     | `Zero`          |
 //~ | ------ | -------------- | -------------- | --------------- | --------------- |
 //~ | Column | `Curr`         | `Next`         | `Curr`          | `Next`          |
 //~ | ------ | -------------- | -------------- | --------------- | --------------- |
-//~ |      0 | copy `lo`      | copy `msb_15`  | copy   `hi`     | copy  `msb_7`   |
-//~ |      1 |                | copy `sft_lo`  |                 | copy  `sft_hi`  |
-//~ |      2 |                |                |                 |                 |
+//~ |      0 | copy `lo`      | copy `msb_15`  | copy `hi`       | copy  `msb_7`   |
+//~ |      1 | copy `sft_lo`  | copy `edge`    | copy `sft_hi`   |       `edge`    |
+//~ |      2 | copy `bits`    |                | copy `bits`     |                 |
 //~ |      3 | copy `sft_0`   | copy `sft_4`   | copy `sft_8`    | copy `sft_12`   |
 //~ |      4 | copy `sft_1`   | copy `sft_5`   | copy `sft_9`    | copy `sft_13`   |
 //~ |      5 | copy `sft_2`   | copy `sft_6`   | copy `sft_10`   | copy `sft_14`   |
@@ -125,7 +126,7 @@ where
     F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::KeccakRot);
-    const CONSTRAINTS: u32 = 10;
+    const CONSTRAINTS: u32 = 11;
 
     // Constraints for rotation by 1, 2 or 3 bits
     //   * Operates on Curr and Next rows
@@ -137,10 +138,10 @@ where
         let half = env.witness_curr(0);
         let half_decomp = four_bit(env, 10);
 
-        let shift = env.witness_next(1);
+        let shift = env.witness_curr(1);
         let shift_decomp = four_bit(env, 6);
 
-        let aux = env.witness_curr(1); // TODO: substitute by coefficient
+        let bits = env.witness_curr(2); // TODO: substitute by coefficient
         let one = T::one();
         let two = T::one().double();
         let three = T::one().double() + T::one();
@@ -149,6 +150,9 @@ where
         constraints.push(half_decomp - half);
         // Check shift is well decomposed
         constraints.push(shift_decomp - shift);
+        // Check edge msb is well stored
+        constraints.push(env.witness_next(1) - env.witness_next(14));
+
         // Check crumb rotations
         let rot1 = rot_bits(&env, 1);
         let rot2 = rot_bits(&env, 2);
@@ -156,9 +160,11 @@ where
         for i in 0..rot1.len() {
             // 8
             constraints.push(
-                rot1[i].clone() * (aux.clone() - two.clone()) * (aux.clone() - three.clone())
-                    + rot2[i].clone() * (aux.clone() - one.clone()) * (aux.clone() - three.clone())
-                    + rot3[i].clone() * (aux.clone() - one.clone()) * (aux.clone() - two.clone()),
+                rot1[i].clone() * (bits.clone() - two.clone()) * (bits.clone() - three.clone())
+                    + rot2[i].clone()
+                        * (bits.clone() - one.clone())
+                        * (bits.clone() - three.clone())
+                    + rot3[i].clone() * (bits.clone() - one.clone()) * (bits.clone() - two.clone()),
             );
         }
 
