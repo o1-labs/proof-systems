@@ -2580,6 +2580,28 @@
 <span id="2580">2580</span>
 <span id="2581">2581</span>
 <span id="2582">2582</span>
+<span id="2583">2583</span>
+<span id="2584">2584</span>
+<span id="2585">2585</span>
+<span id="2586">2586</span>
+<span id="2587">2587</span>
+<span id="2588">2588</span>
+<span id="2589">2589</span>
+<span id="2590">2590</span>
+<span id="2591">2591</span>
+<span id="2592">2592</span>
+<span id="2593">2593</span>
+<span id="2594">2594</span>
+<span id="2595">2595</span>
+<span id="2596">2596</span>
+<span id="2597">2597</span>
+<span id="2598">2598</span>
+<span id="2599">2599</span>
+<span id="2600">2600</span>
+<span id="2601">2601</span>
+<span id="2602">2602</span>
+<span id="2603">2603</span>
+<span id="2604">2604</span>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         domains::EvaluationDomains,
@@ -2595,7 +2617,8 @@
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain <span class="kw">as </span>D,
 };
 <span class="kw">use </span>itertools::Itertools;
-<span class="kw">use </span>o1_utils::FieldHelpers;
+<span class="kw">use </span>num_bigint::BigUint;
+<span class="kw">use </span>o1_utils::{FieldHelpers, ForeignElement};
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>std::ops::{Add, AddAssign, Mul, Neg, Sub};
@@ -2645,6 +2668,8 @@
     </span><span class="kw">pub </span>endo_coefficient: F,
     <span class="doccomment">/// The MDS matrix
     </span><span class="kw">pub </span>mds: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>Vec&lt;Vec&lt;F&gt;&gt;,
+    <span class="doccomment">/// The modulus for foreign field operations
+    </span><span class="kw">pub </span>foreign_field_modulus: <span class="prelude-ty">Option</span>&lt;BigUint&gt;,
 }
 
 <span class="doccomment">/// The polynomials specific to the lookup argument.
@@ -2847,6 +2872,7 @@
     // separate constant expression types.
     </span>EndoCoefficient,
     Mds { row: usize, col: usize },
+    ForeignFieldModulus(usize),
     Literal(F),
     Pow(Box&lt;ConstantExpr&lt;F&gt;&gt;, u64),
     <span class="comment">// TODO: I think having separate Add, Sub, Mul constructors is faster than
@@ -2868,6 +2894,7 @@
                 row: <span class="kw-2">*</span>row,
                 col: <span class="kw-2">*</span>col,
             }),
+            ConstantExpr::ForeignFieldModulus(i) =&gt; res.push(PolishToken::ForeignFieldModulus(<span class="kw-2">*</span>i)),
             ConstantExpr::Add(x, y) =&gt; {
                 x.as_ref().to_polish_(res);
                 y.as_ref().to_polish_(res);
@@ -2915,6 +2942,13 @@
             JointCombiner =&gt; c.joint_combiner.expect(<span class="string">&quot;joint lookup was not expected&quot;</span>),
             EndoCoefficient =&gt; c.endo_coefficient,
             Mds { row, col } =&gt; c.mds[<span class="kw-2">*</span>row][<span class="kw-2">*</span>col],
+            ForeignFieldModulus(i) =&gt; {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(modulus) = c.foreign_field_modulus.clone() {
+                    ForeignElement::&lt;F, <span class="number">3</span>&gt;::from_biguint(modulus)[<span class="kw-2">*</span>i]
+                } <span class="kw">else </span>{
+                    F::zero()
+                }
+            }
             Literal(x) =&gt; <span class="kw-2">*</span>x,
             Pow(x, p) =&gt; x.value(c).pow(<span class="kw-2">&amp;</span>[<span class="kw-2">*</span>p <span class="kw">as </span>u64]),
             Mul(x, y) =&gt; x.value(c) * y.value(c),
@@ -3038,6 +3072,7 @@
     JointCombiner,
     EndoCoefficient,
     Mds { row: usize, col: usize },
+    ForeignFieldModulus(usize),
     Literal(F),
     Cell(Variable),
     Dup,
@@ -3098,6 +3133,11 @@
                 }
                 EndoCoefficient =&gt; stack.push(c.endo_coefficient),
                 Mds { row, col } =&gt; stack.push(c.mds[<span class="kw-2">*</span>row][<span class="kw-2">*</span>col]),
+                ForeignFieldModulus(i) =&gt; {
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(modulus) = c.foreign_field_modulus.clone() {
+                        stack.push(ForeignElement::&lt;F, <span class="number">3</span>&gt;::from_biguint(modulus.clone())[<span class="kw-2">*</span>i])
+                    }
+                }
                 VanishesOnLast4Rows =&gt; stack.push(eval_vanishes_on_last_4_rows(d, pt)),
                 UnnormalizedLagrangeBasis(i) =&gt; {
                     stack.push(unnormalized_lagrange_basis(<span class="kw-2">&amp;</span>d, <span class="kw-2">*</span>i, <span class="kw-2">&amp;</span>pt))
@@ -4642,7 +4682,8 @@
             JointCombiner =&gt; <span class="string">&quot;joint_combiner&quot;</span>.to_string(),
             EndoCoefficient =&gt; <span class="string">&quot;endo_coefficient&quot;</span>.to_string(),
             Mds { row, col } =&gt; <span class="macro">format!</span>(<span class="string">&quot;mds({row}, {col})&quot;</span>),
-            Literal(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;field(\&quot;0x{}\&quot;)&quot;</span>, x.into_repr()),
+            ForeignFieldModulus(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;foreign_field_modulus({i})&quot;</span>),
+            Literal(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;field(\&quot;0x{}\&quot;)&quot;</span>, x.to_hex()),
             Pow(x, n) =&gt; <span class="kw">match </span>x.as_ref() {
                 Alpha =&gt; <span class="macro">format!</span>(<span class="string">&quot;alpha_pow({n})&quot;</span>),
                 x =&gt; <span class="macro">format!</span>(<span class="string">&quot;pow({}, {n})&quot;</span>, x.ocaml()),
@@ -4662,6 +4703,7 @@
             JointCombiner =&gt; <span class="string">&quot;joint\\_combiner&quot;</span>.to_string(),
             EndoCoefficient =&gt; <span class="string">&quot;endo\\_coefficient&quot;</span>.to_string(),
             Mds { row, col } =&gt; <span class="macro">format!</span>(<span class="string">&quot;mds({row}, {col})&quot;</span>),
+            ForeignFieldModulus(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;foreign\\_field\\_modulus({i})&quot;</span>),
             Literal(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;\\mathbb{{F}}({})&quot;</span>, x.to_hex()),
             Pow(x, n) =&gt; <span class="kw">match </span>x.as_ref() {
                 Alpha =&gt; <span class="macro">format!</span>(<span class="string">&quot;\\alpha^{{{n}}}&quot;</span>),
@@ -4682,6 +4724,7 @@
             JointCombiner =&gt; <span class="string">&quot;joint_combiner&quot;</span>.to_string(),
             EndoCoefficient =&gt; <span class="string">&quot;endo_coefficient&quot;</span>.to_string(),
             Mds { row, col } =&gt; <span class="macro">format!</span>(<span class="string">&quot;mds({row}, {col})&quot;</span>),
+            ForeignFieldModulus(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;foreign_field_modulus({i})&quot;</span>),
             Literal(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;0x{}&quot;</span>, x.to_hex()),
             Pow(x, n) =&gt; <span class="kw">match </span>x.as_ref() {
                 Alpha =&gt; <span class="macro">format!</span>(<span class="string">&quot;alpha^{}&quot;</span>, n),
@@ -5097,6 +5140,7 @@
                 joint_combiner: <span class="prelude-val">None</span>,
                 endo_coefficient: one,
                 mds: <span class="kw-2">&amp;</span>Vesta::sponge_params().mds,
+                foreign_field_modulus: <span class="prelude-val">None</span>,
             },
             witness: <span class="kw-2">&amp;</span>domain_evals.d8.this.w,
             coefficient: <span class="kw-2">&amp;</span>constraint_system.coefficients8,
@@ -5163,4 +5207,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (ce7f0f1aa 2022-09-28)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (c97d02cdb 2022-10-05)" ></div></body></html>

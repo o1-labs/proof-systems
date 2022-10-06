@@ -394,11 +394,11 @@
 <span class="doccomment">/// Field element wrapper for [BigUint]
 </span><span class="kw">pub trait </span>FieldFromBig&lt;F&gt; {
     <span class="doccomment">/// Deserialize from big unsigned integer
-    </span><span class="kw">fn </span>from_big(big: BigUint) -&gt; <span class="prelude-ty">Result</span>&lt;F&gt;;
+    </span><span class="kw">fn </span>from_biguint(big: BigUint) -&gt; <span class="prelude-ty">Result</span>&lt;F&gt;;
 }
 
 <span class="kw">impl</span>&lt;F: PrimeField&gt; FieldFromBig&lt;F&gt; <span class="kw">for </span>F {
-    <span class="kw">fn </span>from_big(big: BigUint) -&gt; <span class="prelude-ty">Result</span>&lt;F&gt; {
+    <span class="kw">fn </span>from_biguint(big: BigUint) -&gt; <span class="prelude-ty">Result</span>&lt;F&gt; {
         big.try_into()
             .map_err(|<span class="kw">_</span>| FieldHelpersError::FromBigToField)
     }
@@ -543,7 +543,7 @@
         <span class="macro">assert_eq!</span>(big_1024, BigUint::new(<span class="macro">vec!</span>[<span class="number">1024</span>]));
 
         <span class="macro">assert_eq!</span>(
-            BaseField::from_big(big_1024).expect(<span class="string">&quot;Failed to deserialize big uint&quot;</span>),
+            BaseField::from_biguint(big_1024).expect(<span class="string">&quot;Failed to deserialize big uint&quot;</span>),
             fe_1024
         );
 
@@ -559,7 +559,7 @@
         );
 
         <span class="macro">assert_eq!</span>(
-            BaseField::from_big(BigUint::from_bytes_be(<span class="kw-2">&amp;</span>be_zero_32bytes))
+            BaseField::from_biguint(BigUint::from_bytes_be(<span class="kw-2">&amp;</span>be_zero_32bytes))
                 .expect(<span class="string">&quot;Failed to convert big uint&quot;</span>),
             field_zero
         );
@@ -567,10 +567,10 @@
         <span class="macro">assert_eq!</span>(big_zero_32, big_zero_1);
 
         <span class="macro">assert_eq!</span>(
-            BaseField::from_big(big_zero_32).expect(<span class="string">&quot;Failed&quot;</span>),
-            BaseField::from_big(big_zero_1).expect(<span class="string">&quot;Failed&quot;</span>)
+            BaseField::from_biguint(big_zero_32).expect(<span class="string">&quot;Failed&quot;</span>),
+            BaseField::from_biguint(big_zero_1).expect(<span class="string">&quot;Failed&quot;</span>)
         );
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="o1_utils" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (ce7f0f1aa 2022-09-28)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="o1_utils" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (c97d02cdb 2022-10-05)" ></div></body></html>

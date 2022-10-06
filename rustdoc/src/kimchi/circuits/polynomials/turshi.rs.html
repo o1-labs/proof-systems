@@ -1046,6 +1046,7 @@
 <span id="1046">1046</span>
 <span id="1047">1047</span>
 <span id="1048">1048</span>
+<span id="1049">1049</span>
 </pre><pre class="rust"><code><span class="doccomment">//!This implements the constraints of the Cairo gates
 //!
 //! Cairo programs can have the following assembly-like instructions:
@@ -1292,6 +1293,7 @@
             joint_combiner: <span class="prelude-val">None</span>,
             endo_coefficient: cs.endo,
             mds: <span class="kw-2">&amp;</span>G::sponge_params().mds,
+            foreign_field_modulus: <span class="prelude-val">None</span>,
         };
 
         <span class="kw">let </span>pt = F::rand(rng);
@@ -2095,4 +2097,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (ce7f0f1aa 2022-09-28)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (c97d02cdb 2022-10-05)" ></div></body></html>

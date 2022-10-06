@@ -408,6 +408,7 @@
 <span id="408">408</span>
 <span id="409">409</span>
 <span id="410">410</span>
+<span id="411">411</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Range check gate
 
 </span><span class="kw">use </span>ark_ff::{FftField, PrimeField, Zero};
@@ -595,6 +596,7 @@
                     joint_combiner: <span class="prelude-val">Some</span>(F::rand(rng)),
                     endo_coefficient: cs.endo,
                     mds: <span class="kw-2">&amp;</span>G::sponge_params().mds,
+                    foreign_field_modulus: <span class="prelude-val">None</span>,
                 },
                 witness: <span class="kw-2">&amp;</span>witness_evals.d8.this.w,
                 coefficient: <span class="kw-2">&amp;</span>cs.coefficients8,
@@ -819,4 +821,4 @@
     lookup::tables::get_table::&lt;F&gt;(GateLookupTable::RangeCheck)
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (ce7f0f1aa 2022-09-28)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (c97d02cdb 2022-10-05)" ></div></body></html>

@@ -1,0 +1,392 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/foreign_field_add/circuitgates.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>circuitgates.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../../normalize.css"><link rel="stylesheet" href="../../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../../dark.css" disabled><link rel="stylesheet" href="../../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../../storage.js"></script><script defer src="../../../../../source-script.js"></script><script defer src="../../../../../source-files.js"></script><script defer src="../../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../../kimchi/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../../kimchi/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../../kimchi/index.html"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
+<span id="2">2</span>
+<span id="3">3</span>
+<span id="4">4</span>
+<span id="5">5</span>
+<span id="6">6</span>
+<span id="7">7</span>
+<span id="8">8</span>
+<span id="9">9</span>
+<span id="10">10</span>
+<span id="11">11</span>
+<span id="12">12</span>
+<span id="13">13</span>
+<span id="14">14</span>
+<span id="15">15</span>
+<span id="16">16</span>
+<span id="17">17</span>
+<span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
+<span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
+<span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
+<span id="65">65</span>
+<span id="66">66</span>
+<span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
+<span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
+<span id="80">80</span>
+<span id="81">81</span>
+<span id="82">82</span>
+<span id="83">83</span>
+<span id="84">84</span>
+<span id="85">85</span>
+<span id="86">86</span>
+<span id="87">87</span>
+<span id="88">88</span>
+<span id="89">89</span>
+<span id="90">90</span>
+<span id="91">91</span>
+<span id="92">92</span>
+<span id="93">93</span>
+<span id="94">94</span>
+<span id="95">95</span>
+<span id="96">96</span>
+<span id="97">97</span>
+<span id="98">98</span>
+<span id="99">99</span>
+<span id="100">100</span>
+<span id="101">101</span>
+<span id="102">102</span>
+<span id="103">103</span>
+<span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
+<span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
+<span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
+<span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
+<span id="168">168</span>
+<span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
+<span id="172">172</span>
+<span id="173">173</span>
+<span id="174">174</span>
+<span id="175">175</span>
+<span id="176">176</span>
+<span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Foreign field addition gate.
+
+</span><span class="kw">use </span><span class="kw">crate</span>::circuits::{
+    argument::{Argument, ArgumentEnv, ArgumentType},
+    expr::constraints::ExprOps,
+    gate::GateType,
+};
+<span class="kw">use </span>ark_ff::PrimeField;
+<span class="kw">use </span>o1_utils::{foreign_field::TWO_TO_LIMB, LIMB_COUNT};
+<span class="kw">use </span>std::{array, marker::PhantomData};
+
+<span class="comment">//~ These circuit gates are used to constrain that
+//~
+//~ ```text
+//~ left_input +/- right_input = field_overflow * foreign_modulus + result
+//~```
+//~
+//~ Documentation:
+//~
+//~  For more details please see the [FFadd RFC](../rfcs/ffadd.md)
+//~
+//~ Mapping:
+//~  To make things clearer, the following mapping between the variable names
+//~  used in the code and those of the RFC document can be helpful.
+//~
+//~ ```text
+//~     left_input_lo -&gt; a0  right_input_lo -&gt; b0  result_lo -&gt; r0  bound_lo -&gt; u0
+//~     left_input_mi -&gt; a1  right_input_mi -&gt; b1  result_mi -&gt; r1  bound_mi -&gt; u1
+//~     left_input_hi -&gt; a2  right_input_hi -&gt; b2  result_hi -&gt; r2  bound_hi -&gt; u2
+//~
+//~     field_overflow  -&gt; q
+//~     sign            -&gt; s
+//~     carry_lo        -&gt; c0
+//~     carry_mi        -&gt; c1
+//~     bound_carry_lo  -&gt; k0
+//~     bound_carry_mi  -&gt; k1
+//~```
+//~
+//~ Note:
+//~  Our limbs are 88-bit long. We denote with:
+//~  - `lo` the least significant limb (in little-endian, this is from 0 to 87)
+//~  - `mi` the middle limb            (in little-endian, this is from 88 to 175)
+//~  - `hi` the most significant limb  (in little-endian, this is from 176 to 263)
+//~
+//~ Let `left_input_lo`, `left_input_mi`, `left_input_hi` be 88-bit limbs of the left element
+//~
+//~ Let `right_input_lo`, `right_input_mi`, `right_input_hi` be 88-bit limbs of the right element
+//~
+//~ Let `foreign_modulus_lo`, `foreign_modulus_mi`, `foreign_modulus_hi` be 88-bit limbs of the foreign modulus
+//~
+//~ Then the limbs of the result are
+//~
+//~ - `result_lo = left_input_lo +/- right_input_lo - field_overflow * foreign_modulus_lo - 2^{88} * result_carry_lo`
+//~ - `result_mi = left_input_mi +/- right_input_mi - field_overflow * foreign_modulus_mi - 2^{88} * result_carry_mi + result_carry_lo`
+//~ - `result_hi = left_input_hi +/- right_input_hi - field_overflow * foreign_modulus_hi + result_carry_mi`
+//~
+//~ `field_overflow` $=0$ or $1$ or $-1$ handles overflows in the field
+//~
+//~ `result_carry_i` $= -1, 0, 1$ are auxiliary variables that handle carries between limbs
+//~
+//~ Apart from the range checks of the chained inputs, we need to do an additional range check for a final bound
+//~ to make sure that the result is less than the modulus, by adding `2^{3*88} - foreign_modulus` to it.
+//~ (This can be computed easily from the limbs of the modulus)
+//~ Note that `2^{264}` as limbs represents: (0, 0, 0, 1) then:
+//~
+//~ The upper-bound check can be calculated as
+//~ - `bound_lo = result_lo - foreign_modulus_lo - bound_carry_lo * 2^{88}`
+//~ - `bound_mi = result_mi - foreign_modulus_mi - bound_carry_mi * 2^{88} + bound_carry_lo`
+//~ - `bound_hi = result_hi - foreign_modulus_hi + 2^{88} + bound_carry_mi`
+//~
+//~ Which is equivalent to another foreign field addition with right input 2^{264}, q = 1 and s = 1
+//~ - `bound_lo = result_lo + s *      0 - q * foreign_modulus_lo - bound_carry_lo * 2^{88}`
+//~ - `bound_mi = result_mi + s *      0 - q * foreign_modulus_mi - bound_carry_mi * 2^{88} + bound_carry_lo`
+//~ - `bound_hi = result_hi + s * 2^{88} - q * foreign_modulus_hi                           + bound_carry_mi`
+//~
+//~ `bound_carry_i` $= 0$ or $1$ or $-1$ are auxiliary variables that handle carries between limbs
+//~
+//~ The range check of `bound` can be skipped until the end of the operations
+//~ and `result` is an intermediate value that is unused elsewhere (since the final `result`
+//~ must have had the right amount of moduli subtracted along the way, meaning a multiple of the modulus).
+//~ In other words, intermediate results could potentially give a valid witness that satisfies the constraints
+//~ but where the result is larger than the modulus (yet smaller than 2^{264}). The reason that we have a
+//~ final bound check is to make sure that the final result (`min_result`) is indeed the minimum one
+//~ (meaning less than the modulus).
+//~
+//~ You could lay this out as a double-width gate for chained foreign additions and a final row, e.g.
+//~
+//~ | col | `ForeignFieldAdd`       | more `ForeignFieldAdd` | final `ForeignFieldAdd` | final `Zero`      |
+//~ | --- | ----------------------- | ---------------------- | ----------------------- | ----------------- |
+//~ |   0 | `left_input_lo`  (copy) | `result_lo` (copy)     | `min_result_lo` (copy)  | `bound_lo` (copy) |
+//~ |   1 | `left_input_mi`  (copy) | `result_mi` (copy)     | `min_result_mi` (copy)  | `bound_mi` (copy) |
+//~ |   2 | `left_input_hi`  (copy) | `result_hi` (copy)     | `min_result_hi` (copy)  | `bound_hi` (copy) |
+//~ |   3 | `right_input_lo` (copy) |  ...                   |  0              (check) |                   |
+//~ |   4 | `right_input_mi` (copy) |  ...                   |  0              (check) |                   |
+//~ |   5 | `right_input_hi` (copy) |  ...                   |  2^88           (check) |                   |
+//~ |   6 | `sign`           (copy) |  ...                   |  1              (check) |                   |
+//~ |   7 | `field_overflow`        |  ...                   |  1              (check) |                   |
+//~ |   8 | `carry_lo`              |  ...                   | `bound_carry_lo`        |                   |
+//~ |   9 | `carry_mi`              |  ...                   | `bound_carry_mi`        |                   |
+//~ |  10 |                         |                        |                         |                   |
+//~ |  11 |                         |                        |                         |                   |
+//~ |  12 |                         |                        |                         |                   |
+//~ |  13 |                         |                        |                         |                   |
+//~ |  14 |                         |                        |                         |                   |
+//~
+//~ We reuse the foreign field addition gate for the final bound check since this is an addition with a
+//~ specific parameter structure. Checking that the correct right input, overflow, and sign are used shall
+//~ be done by copy constraining these values with a public input value. One could have a specific gate
+//~ for just this check requiring less constrains, but the cost of adding one more selector gate outweights
+//~ the savings of one row and a few constraints of difference.
+
+</span><span class="doccomment">/// Implementation of the foreign field addition gate
+/// - Operates on Curr and Next rows.
+</span><span class="kw">pub struct </span>ForeignFieldAdd&lt;F&gt;(PhantomData&lt;F&gt;);
+
+<span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>ForeignFieldAdd&lt;F&gt;
+<span class="kw">where
+    </span>F: PrimeField,
+{
+    <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldAdd);
+    <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">7</span>;
+
+    <span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;) -&gt; Vec&lt;T&gt; {
+        <span class="kw">let </span>foreign_modulus: [T; LIMB_COUNT] = array::from_fn(|i| env.foreign_modulus(i));
+        <span class="kw">let </span>two_to_limb = T::literal(F::from(TWO_TO_LIMB));
+
+        <span class="kw">let </span>left_input_lo = env.witness_curr(<span class="number">0</span>);
+        <span class="kw">let </span>left_input_mi = env.witness_curr(<span class="number">1</span>);
+        <span class="kw">let </span>left_input_hi = env.witness_curr(<span class="number">2</span>);
+
+        <span class="kw">let </span>right_input_lo = env.witness_curr(<span class="number">3</span>);
+        <span class="kw">let </span>right_input_mi = env.witness_curr(<span class="number">4</span>);
+        <span class="kw">let </span>right_input_hi = env.witness_curr(<span class="number">5</span>);
+
+        <span class="comment">// sign in &lt;7 to be able to check against public input of opcodes
+        </span><span class="kw">let </span>sign = env.witness_curr(<span class="number">6</span>);
+
+        <span class="kw">let </span>field_overflow = env.witness_curr(<span class="number">7</span>);
+
+        <span class="comment">// Result carry bits for limb overflows / underflows.
+        </span><span class="kw">let </span>carry_lo = env.witness_curr(<span class="number">8</span>);
+        <span class="kw">let </span>carry_mi = env.witness_curr(<span class="number">9</span>);
+
+        <span class="kw">let </span>result_lo = env.witness_next(<span class="number">0</span>);
+        <span class="kw">let </span>result_mi = env.witness_next(<span class="number">1</span>);
+        <span class="kw">let </span>result_hi = env.witness_next(<span class="number">2</span>);
+
+        <span class="comment">// Field overflow and sign constraints
+        </span><span class="kw">let </span><span class="kw-2">mut </span>checks = <span class="macro">vec!</span>[
+            <span class="comment">// Field overflow bit is 0 or s.
+            </span>field_overflow.clone() * (field_overflow.clone() - sign.clone()),
+            <span class="comment">// Sign flag is 1 or -1
+            </span>(sign.clone() + T::one()) * (sign.clone() - T::one()),
+        ];
+
+        <span class="comment">// Constraints to check the carry flags are -1, 0, or 1.
+        </span>checks.push(carry(<span class="kw-2">&amp;</span>carry_lo));
+        checks.push(carry(<span class="kw-2">&amp;</span>carry_mi));
+
+        <span class="comment">// Auxiliary inline function to obtain the constraints of a foreign field addition result
+        </span><span class="kw">let </span><span class="kw-2">mut </span>result = {
+            <span class="comment">// r_0 = a_0 + s * b_0 - q * f_0 - 2^88 * c_0
+            </span><span class="kw">let </span>result_computed_lo = left_input_lo + sign.clone() * right_input_lo
+                - field_overflow.clone() * foreign_modulus[<span class="number">0</span>].clone()
+                - carry_lo.clone() * two_to_limb.clone();
+            <span class="comment">// r_1 = a_1 + s * b_1 - q * f_1 - 2^88 * c_1 + c_0
+            </span><span class="kw">let </span>result_computed_mi = left_input_mi + sign.clone() * right_input_mi
+                - field_overflow.clone() * foreign_modulus[<span class="number">1</span>].clone()
+                - carry_mi.clone() * two_to_limb
+                + carry_lo;
+            <span class="comment">// r_2 = a_2 + s * b_2 - q * f_2 + c_1
+            </span><span class="kw">let </span>result_computed_hi = left_input_hi + sign * right_input_hi
+                - field_overflow * foreign_modulus[<span class="number">2</span>].clone()
+                + carry_mi;
+
+            <span class="comment">// Result values match
+            </span><span class="macro">vec!</span>[
+                result_lo - result_computed_lo,
+                result_mi - result_computed_mi,
+                result_hi - result_computed_hi,
+            ]
+        };
+
+        <span class="comment">// Result values match
+        </span>checks.append(<span class="kw-2">&amp;mut </span>result);
+
+        checks
+    }
+}
+
+<span class="comment">// Auxiliary function to obtain the constraints to check a carry flag
+</span><span class="kw">fn </span>carry&lt;F: PrimeField, T: ExprOps&lt;F&gt;&gt;(flag: <span class="kw-2">&amp;</span>T) -&gt; T {
+    <span class="comment">// Carry bits are -1, 0, or 1.
+    </span>flag.clone() * (flag.clone() - T::one()) * (flag.clone() + T::one())
+}
+</code></pre></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (c97d02cdb 2022-10-05)" ></div></body></html>

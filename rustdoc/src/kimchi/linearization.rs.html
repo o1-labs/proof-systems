@@ -148,6 +148,18 @@
 <span id="148">148</span>
 <span id="149">149</span>
 <span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the linearization.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::alphas::Alphas;
@@ -158,6 +170,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::complete_add::CompleteAdd;
 <span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::endomul_scalar::EndomulScalar;
 <span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::endosclmul::EndosclMul;
+<span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::foreign_field_add::circuitgates::ForeignFieldAdd;
 <span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::permutation;
 <span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::poseidon::Poseidon;
 <span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::range_check;
@@ -178,6 +191,7 @@
     chacha: bool,
     range_check: bool,
     lookup_constraint_system: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>LookupConfiguration&lt;F&gt;&gt;,
+    foreign_field_add: bool,
 ) -&gt; (Expr&lt;ConstantExpr&lt;F&gt;&gt;, Alphas&lt;F&gt;) {
     <span class="comment">// register powers of alpha so that we don&#39;t reuse them across mutually inclusive constraints
     </span><span class="kw">let </span><span class="kw-2">mut </span>powers_of_alpha = Alphas::&lt;F&gt;::default();
@@ -204,6 +218,10 @@
 
     <span class="kw">if </span>range_check {
         expr += range_check::gadget::combined_constraints(<span class="kw-2">&amp;</span>powers_of_alpha);
+    }
+
+    <span class="kw">if </span>foreign_field_add {
+        expr += ForeignFieldAdd::combined_constraints(<span class="kw-2">&amp;</span>powers_of_alpha);
     }
 
     <span class="comment">// permutation
@@ -286,10 +304,16 @@
     chacha: bool,
     range_check: bool,
     lookup_constraint_system: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>LookupConfiguration&lt;F&gt;&gt;,
+    foreign_field_addition: bool,
 ) -&gt; (Linearization&lt;Vec&lt;PolishToken&lt;F&gt;&gt;&gt;, Alphas&lt;F&gt;) {
     <span class="kw">let </span>evaluated_cols = linearization_columns::&lt;F&gt;(lookup_constraint_system);
 
-    <span class="kw">let </span>(expr, powers_of_alpha) = constraints_expr(chacha, range_check, lookup_constraint_system);
+    <span class="kw">let </span>(expr, powers_of_alpha) = constraints_expr(
+        chacha,
+        range_check,
+        lookup_constraint_system,
+        foreign_field_addition,
+    );
 
     <span class="kw">let </span>linearization = expr
         .linearize(evaluated_cols)
@@ -299,4 +323,4 @@
     (linearization, powers_of_alpha)
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (ce7f0f1aa 2022-09-28)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (c97d02cdb 2022-10-05)" ></div></body></html>

@@ -365,6 +365,7 @@
 <span id="365">365</span>
 <span id="366">366</span>
 <span id="367">367</span>
+<span id="368">368</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements short Weierstrass curve
 //! endomorphism optimised variable base
 //! scalar multiplication custom Plonk polynomials.
@@ -513,6 +514,7 @@
             joint_combiner: <span class="prelude-val">None</span>,
             mds: <span class="kw-2">&amp;</span>G::sponge_params().mds,
             endo_coefficient: cs.endo,
+            foreign_field_modulus: <span class="prelude-val">None</span>,
         };
 
         <span class="kw">let </span>evals: [ProofEvaluations&lt;G::ScalarField&gt;; <span class="number">2</span>] = [
@@ -733,4 +735,4 @@
     EndoMulResult { acc, n: n_acc }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (ce7f0f1aa 2022-09-28)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (c97d02cdb 2022-10-05)" ></div></body></html>

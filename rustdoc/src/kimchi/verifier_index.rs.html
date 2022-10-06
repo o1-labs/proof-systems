@@ -452,6 +452,29 @@
 <span id="452">452</span>
 <span id="453">453</span>
 <span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the verifier index as [`VerifierIndex`].
 //! You can derive this struct from the [`ProverIndex`] struct.
 
@@ -476,6 +499,7 @@
     commitment::{CommitmentCurve, PolyComm},
     srs::SRS,
 };
+<span class="kw">use </span>num_bigint::BigUint;
 <span class="kw">use </span>once_cell::sync::OnceCell;
 <span class="kw">use </span>oracle::FqSponge;
 <span class="kw">use </span>serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -563,9 +587,15 @@
     </span><span class="attribute">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
     </span><span class="kw">pub </span>chacha_comm: <span class="prelude-ty">Option</span>&lt;[PolyComm&lt;G&gt;; <span class="number">4</span>]&gt;,
 
-    <span class="comment">// Range check gates polynomial commitments
-    </span><span class="attribute">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    <span class="attribute">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
     </span><span class="kw">pub </span>range_check_comm: <span class="prelude-ty">Option</span>&lt;[PolyComm&lt;G&gt;; range_check::gadget::GATE_COUNT]&gt;,
+
+    <span class="comment">// Foreign field modulus
+    </span><span class="kw">pub </span>foreign_field_modulus: <span class="prelude-ty">Option</span>&lt;BigUint&gt;,
+
+    <span class="comment">// Foreign field addition gates polynomial commitments
+    </span><span class="attribute">#[serde(bound = <span class="string">&quot;Option&lt;PolyComm&lt;G&gt;&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="kw">pub </span>foreign_field_add_comm: <span class="prelude-ty">Option</span>&lt;PolyComm&lt;G&gt;&gt;,
 
     <span class="doccomment">/// wire coordinate shifts
     </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[o1_utils::serialization::SerdeAs; PERMUTS]&quot;</span>)]
@@ -691,6 +721,16 @@
                         .commit_evaluations_non_hiding(domain, <span class="kw-2">&amp;</span>poly[i].eval8, <span class="prelude-val">None</span>)
                 })
             }),
+
+            foreign_field_add_comm: <span class="self">self
+                </span>.cs
+                .foreign_field_add_selector_poly
+                .as_ref()
+                .map(|poly| {
+                    <span class="self">self</span>.srs
+                        .commit_evaluations_non_hiding(domain, <span class="kw-2">&amp;</span>poly.eval8, <span class="prelude-val">None</span>)
+                }),
+
             shift: <span class="self">self</span>.cs.shift,
             zkpm: {
                 <span class="kw">let </span>cell = OnceCell::new();
@@ -705,6 +745,7 @@
             endo: <span class="self">self</span>.cs.endo,
             lookup_index,
             linearization: <span class="self">self</span>.linearization.clone(),
+            foreign_field_modulus: <span class="self">self</span>.cs.foreign_field_modulus.clone(),
         }
     }
 }
@@ -820,6 +861,8 @@
             <span class="comment">// Optional gates
             </span>chacha_comm,
             range_check_comm,
+            foreign_field_add_comm,
+            foreign_field_modulus: <span class="kw">_</span>,
 
             <span class="comment">// Lookup index; optional
             </span>lookup_index,
@@ -859,6 +902,9 @@
             <span class="kw">for </span>range_check_comm <span class="kw">in </span>range_check_comm {
                 fq_sponge.absorb_g(<span class="kw-2">&amp;</span>range_check_comm.unshifted);
             }
+        }
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(foreign_field_add_comm) = foreign_field_add_comm {
+            fq_sponge.absorb_g(<span class="kw-2">&amp;</span>foreign_field_add_comm.unshifted);
         }
 
         <span class="comment">// Lookup index; optional
@@ -907,4 +953,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (ce7f0f1aa 2022-09-28)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (c97d02cdb 2022-10-05)" ></div></body></html>

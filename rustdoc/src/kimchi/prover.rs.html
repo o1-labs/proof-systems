@@ -1483,6 +1483,27 @@
 <span id="1483">1483</span>
 <span id="1484">1484</span>
 <span id="1485">1485</span>
+<span id="1486">1486</span>
+<span id="1487">1487</span>
+<span id="1488">1488</span>
+<span id="1489">1489</span>
+<span id="1490">1490</span>
+<span id="1491">1491</span>
+<span id="1492">1492</span>
+<span id="1493">1493</span>
+<span id="1494">1494</span>
+<span id="1495">1495</span>
+<span id="1496">1496</span>
+<span id="1497">1497</span>
+<span id="1498">1498</span>
+<span id="1499">1499</span>
+<span id="1500">1500</span>
+<span id="1501">1501</span>
+<span id="1502">1502</span>
+<span id="1503">1503</span>
+<span id="1504">1504</span>
+<span id="1505">1505</span>
+<span id="1506">1506</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements prover&#39;s zk-proof primitive.
 
 </span><span class="kw">use crate</span>::{
@@ -1498,7 +1519,7 @@
             complete_add::CompleteAdd,
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
-            generic, permutation,
+            foreign_field_add, generic, permutation,
             permutation::ZK_ROWS,
             poseidon::Poseidon,
             range_check,
@@ -2104,6 +2125,15 @@
                 );
             }
 
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(selector) = index.cs.foreign_field_add_selector_poly.as_ref() {
+                index_evals.extend(
+                    foreign_field_add::gadget::circuit_gates()
+                        .iter()
+                        .enumerate()
+                        .map(|(<span class="kw">_</span>, gate_type)| (<span class="kw-2">*</span>gate_type, <span class="kw-2">&amp;</span>selector.eval8)),
+                );
+            }
+
             <span class="kw">let </span>mds = <span class="kw-2">&amp;</span>G::sponge_params().mds;
             Environment {
                 constants: Constants {
@@ -2113,6 +2143,7 @@
                     joint_combiner: lookup_context.joint_combiner,
                     endo_coefficient: index.cs.endo,
                     mds,
+                    foreign_field_modulus: index.cs.foreign_field_modulus.clone(),
                 },
                 witness: <span class="kw-2">&amp;</span>lagrange.d8.this.w,
                 coefficient: <span class="kw-2">&amp;</span>index.cs.coefficients8,
@@ -2225,6 +2256,17 @@
                     <span class="macro">assert_eq!</span>(range_check_constraint.domain().size, t8.domain().size);
                     t8 += <span class="kw-2">&amp;</span>range_check_constraint;
                     <span class="macro">check_constraint!</span>(index, range_check_constraint);
+                }
+            }
+
+            <span class="comment">// foreign field addition
+            </span>{
+                <span class="kw">if </span>index.cs.foreign_field_add_selector_poly.is_some() {
+                    <span class="kw">let </span>ffadd = foreign_field_add::gadget::combined_constraints(<span class="kw-2">&amp;</span>all_alphas)
+                        .evaluations(<span class="kw-2">&amp;</span>env);
+                    <span class="macro">assert_eq!</span>(ffadd.domain().size, t4.domain().size);
+                    t4 += <span class="kw-2">&amp;</span>ffadd;
+                    <span class="macro">check_constraint!</span>(index, ffadd);
                 }
             }
 
@@ -2969,4 +3011,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (ce7f0f1aa 2022-09-28)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (c97d02cdb 2022-10-05)" ></div></body></html>

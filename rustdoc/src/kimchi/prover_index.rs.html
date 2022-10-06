@@ -181,6 +181,10 @@
 <span id="181">181</span>
 <span id="182">182</span>
 <span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the prover index as [`ProverIndex`].
 
 </span><span class="kw">use crate</span>::{
@@ -265,6 +269,7 @@
             cs.lookup_constraint_system
                 .as_ref()
                 .map(|lcs| <span class="kw-2">&amp;</span>lcs.configuration),
+            cs.foreign_field_add_selector_poly.is_some(),
         );
 
         <span class="comment">// set `max_quot_size` to the degree of the quotient polynomial,
@@ -331,6 +336,7 @@
     };
     <span class="kw">use </span>commitment_dlog::srs::endos;
     <span class="kw">use </span>mina_curves::pasta::{Fp, Pallas, Vesta};
+    <span class="kw">use </span>num_bigint::BigUint;
 
     <span class="doccomment">/// Create new index for lookups.
     ///
@@ -343,6 +349,7 @@
         prev_challenges: usize,
         lookup_tables: Vec&lt;LookupTable&lt;Fp&gt;&gt;,
         runtime_tables: <span class="prelude-ty">Option</span>&lt;Vec&lt;RuntimeTableCfg&lt;Fp&gt;&gt;&gt;,
+        foreign_modulus: <span class="prelude-ty">Option</span>&lt;BigUint&gt;,
     ) -&gt; ProverIndex&lt;Vesta&gt; {
         <span class="comment">// not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
         </span><span class="kw">let </span>cs = ConstraintSystem::&lt;Fp&gt;::create(gates)
@@ -350,6 +357,7 @@
             .runtime(runtime_tables)
             .public(public)
             .prev_challenges(prev_challenges)
+            .foreign_field_modulus(<span class="kw-2">&amp;</span>foreign_modulus)
             .build()
             .unwrap();
         <span class="kw">let </span><span class="kw-2">mut </span>srs = SRS::&lt;Vesta&gt;::create(cs.domain.d1.size());
@@ -361,8 +369,8 @@
     }
 
     <span class="kw">pub fn </span>new_index_for_test(gates: Vec&lt;CircuitGate&lt;Fp&gt;&gt;, public: usize) -&gt; ProverIndex&lt;Vesta&gt; {
-        new_index_for_test_with_lookups(gates, public, <span class="number">0</span>, <span class="macro">vec!</span>[], <span class="prelude-val">None</span>)
+        new_index_for_test_with_lookups(gates, public, <span class="number">0</span>, <span class="macro">vec!</span>[], <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (ce7f0f1aa 2022-09-28)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (c97d02cdb 2022-10-05)" ></div></body></html>

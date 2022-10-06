@@ -209,10 +209,30 @@
 <span id="209">209</span>
 <span id="210">210</span>
 <span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Range check witness computation
 
 </span><span class="kw">use </span>ark_ff::PrimeField;
-<span class="kw">use </span>o1_utils::FieldHelpers;
+<span class="kw">use </span>o1_utils::{FieldHelpers, ForeignElement};
 <span class="kw">use </span>std::array;
 
 <span class="kw">use </span><span class="kw">crate</span>::circuits::polynomial::COLUMNS;
@@ -374,27 +394,38 @@
     F::from_bits(<span class="kw-2">&amp;</span>fe.to_bits()[start..end]).expect(<span class="string">&quot;failed to deserialize field bits&quot;</span>)
 }
 
-<span class="doccomment">/// initializes a range check row
+<span class="doccomment">/// handles range-check witness cells
+</span><span class="kw">pub fn </span>handle_standard_witness_cell&lt;F: PrimeField&gt;(
+    witness: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS],
+    witness_cell: <span class="kw-2">&amp;</span>WitnessCell,
+    row: usize,
+    col: usize,
+    value: F,
+) {
+    <span class="kw">match </span>witness_cell {
+        WitnessCell::Copy(copy_cell) =&gt; {
+            witness[col][row] = witness[copy_cell.col][copy_cell.row];
+        }
+        WitnessCell::Value =&gt; {
+            witness[col][row] = value;
+        }
+        WitnessCell::Limb(limb_cell) =&gt; {
+            witness[col][row] = value_to_limb(
+                witness[limb_cell.col][limb_cell.row], <span class="comment">// limb cell (row, col)
+                </span>limb_cell.start,                       <span class="comment">// starting bit
+                </span>limb_cell.end,                         <span class="comment">// ending bit (exclusive)
+            </span>);
+        }
+        WitnessCell::Zero =&gt; {
+            witness[col][row] = F::zero();
+        }
+    }
+}
+
+<span class="doccomment">/// initialize a range_check_row
 </span><span class="kw">fn </span>init_range_check_row&lt;F: PrimeField&gt;(witness: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS], row: usize, value: F) {
     <span class="kw">for </span>col <span class="kw">in </span><span class="number">0</span>..COLUMNS {
-        <span class="kw">match </span><span class="kw-2">&amp;</span>WITNESS_SHAPE[row][col] {
-            WitnessCell::Copy(copy_cell) =&gt; {
-                witness[col][row] = witness[copy_cell.col][copy_cell.row];
-            }
-            WitnessCell::Value =&gt; {
-                witness[col][row] = value;
-            }
-            WitnessCell::Limb(limb_cell) =&gt; {
-                witness[col][row] = value_to_limb(
-                    witness[limb_cell.col][limb_cell.row], <span class="comment">// limb cell (row, col)
-                    </span>limb_cell.start,                       <span class="comment">// starting bit
-                    </span>limb_cell.end,                         <span class="comment">// ending bit (exclusive)
-                </span>);
-            }
-            WitnessCell::Zero =&gt; {
-                witness[col][row] = F::zero();
-            }
-        }
+        handle_standard_witness_cell(witness, <span class="kw-2">&amp;</span>WITNESS_SHAPE[row][col], row, col, value);
     }
 }
 
@@ -420,5 +451,14 @@
 
     witness
 }
+
+<span class="doccomment">/// Extend an existing witness with a multi-range-check gate for foreign field
+/// elements fe
+</span><span class="kw">pub fn </span>extend_witness&lt;F: PrimeField&gt;(witness: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS], fe: ForeignElement&lt;F, <span class="number">3</span>&gt;) {
+    <span class="kw">let </span>limbs_witness = create_multi_witness(fe[<span class="number">0</span>], fe[<span class="number">1</span>], fe[<span class="number">2</span>]);
+    <span class="kw">for </span>col <span class="kw">in </span><span class="number">0</span>..COLUMNS {
+        witness[col].extend(limbs_witness[col].iter())
+    }
+}
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (ce7f0f1aa 2022-09-28)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (c97d02cdb 2022-10-05)" ></div></body></html>

@@ -651,6 +651,43 @@
 <span id="651">651</span>
 <span id="652">652</span>
 <span id="653">653</span>
+<span id="654">654</span>
+<span id="655">655</span>
+<span id="656">656</span>
+<span id="657">657</span>
+<span id="658">658</span>
+<span id="659">659</span>
+<span id="660">660</span>
+<span id="661">661</span>
+<span id="662">662</span>
+<span id="663">663</span>
+<span id="664">664</span>
+<span id="665">665</span>
+<span id="666">666</span>
+<span id="667">667</span>
+<span id="668">668</span>
+<span id="669">669</span>
+<span id="670">670</span>
+<span id="671">671</span>
+<span id="672">672</span>
+<span id="673">673</span>
+<span id="674">674</span>
+<span id="675">675</span>
+<span id="676">676</span>
+<span id="677">677</span>
+<span id="678">678</span>
+<span id="679">679</span>
+<span id="680">680</span>
+<span id="681">681</span>
+<span id="682">682</span>
+<span id="683">683</span>
+<span id="684">684</span>
+<span id="685">685</span>
+<span id="686">686</span>
+<span id="687">687</span>
+<span id="688">688</span>
+<span id="689">689</span>
+<span id="690">690</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk circuit constraint primitive.
 </span><span class="kw">use super</span>::{gate::SelectorPolynomial, lookup::runtime_tables::RuntimeTableCfg};
 <span class="kw">use crate</span>::{
@@ -661,7 +698,7 @@
         lookup::{index::LookupConstraintSystem, tables::LookupTable},
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
         polynomials::permutation::{Shifts, ZK_ROWS},
-        polynomials::range_check,
+        polynomials::{foreign_field_add, range_check},
         wires::<span class="kw-2">*</span>,
     },
     curve::KimchiCurve,
@@ -672,7 +709,8 @@
     univariate::DensePolynomial <span class="kw">as </span>DP, EvaluationDomain, Evaluations <span class="kw">as </span>E,
     Radix2EvaluationDomain <span class="kw">as </span>D,
 };
-<span class="kw">use </span>o1_utils::ExtendedEvaluations;
+<span class="kw">use </span>num_bigint::BigUint;
+<span class="kw">use </span>o1_utils::{ExtendedEvaluations, FieldHelpers};
 <span class="kw">use </span>once_cell::sync::OnceCell;
 <span class="kw">use </span>serde::{de::DeserializeOwned, Deserialize, Serialize};
 <span class="kw">use </span>serde_with::serde_as;
@@ -771,6 +809,13 @@
     </span><span class="kw">pub </span>range_check_selector_polys:
         <span class="prelude-ty">Option</span>&lt;[SelectorPolynomial&lt;F&gt;; range_check::gadget::GATE_COUNT]&gt;,
 
+    <span class="doccomment">/// Foreign field modulus
+    </span><span class="kw">pub </span>foreign_field_modulus: <span class="prelude-ty">Option</span>&lt;BigUint&gt;,
+
+    <span class="doccomment">/// Foreign field addition gate selector polynomial
+    </span><span class="attribute">#[serde(bound = <span class="string">&quot;Option&lt;SelectorPolynomial&lt;F&gt;&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="kw">pub </span>foreign_field_add_selector_poly: <span class="prelude-ty">Option</span>&lt;SelectorPolynomial&lt;F&gt;&gt;,
+
     <span class="doccomment">/// wire coordinate shifts
     </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[o1_utils::serialization::SerdeAs; PERMUTS]&quot;</span>)]
     </span><span class="kw">pub </span>shift: [F; PERMUTS],
@@ -803,6 +848,7 @@
     lookup_tables: Vec&lt;LookupTable&lt;F&gt;&gt;,
     runtime_tables: <span class="prelude-ty">Option</span>&lt;Vec&lt;RuntimeTableCfg&lt;F&gt;&gt;&gt;,
     precomputations: <span class="prelude-ty">Option</span>&lt;Arc&lt;DomainConstantEvaluations&lt;F&gt;&gt;&gt;,
+    foreign_field_modulus: <span class="prelude-ty">Option</span>&lt;BigUint&gt;,
 }
 
 <span class="doccomment">/// Create selector polynomial for a circuit gate
@@ -868,6 +914,7 @@
             lookup_tables: <span class="macro">vec!</span>[],
             runtime_tables: <span class="prelude-val">None</span>,
             precomputations: <span class="prelude-val">None</span>,
+            foreign_field_modulus: <span class="prelude-val">None</span>,
         }
     }
 
@@ -1024,6 +1071,21 @@
         shared_precomputations: Arc&lt;DomainConstantEvaluations&lt;F&gt;&gt;,
     ) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.precomputations = <span class="prelude-val">Some</span>(shared_precomputations);
+        <span class="self">self
+    </span>}
+
+    <span class="doccomment">/// Set up the foreign field modulus passed as an optional BigUint
+    /// If not invoked, it is `None` by default.
+    /// Panics if the BigUint being passed needs more than 3 limbs of 88 bits each
+    /// and warns if the foreign modulus being passed is smaller than the native modulus
+    /// because right now we only support foreign modulus that are larger than the native modulus.
+    </span><span class="kw">pub fn </span>foreign_field_modulus(<span class="kw-2">mut </span><span class="self">self</span>, foreign_field_modulus: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;BigUint&gt;) -&gt; <span class="self">Self </span>{
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(ffmod) = foreign_field_modulus.clone() {
+            <span class="kw">if </span>ffmod &lt;= F::modulus_biguint() {
+                <span class="macro">println!</span>(<span class="string">&quot;Smaller foreign field modulus is still only supported by FFAdd but not yet for FFMul&quot;</span>);
+            }
+        }
+        <span class="self">self</span>.foreign_field_modulus = foreign_field_modulus.clone();
         <span class="self">self
     </span>}
 
@@ -1210,6 +1272,16 @@
             }
         };
 
+        <span class="comment">// Foreign field addition constraint selector polynomial
+        </span><span class="kw">let </span>ffadd_gates = foreign_field_add::gadget::circuit_gates();
+        <span class="kw">let </span>foreign_field_add_selector_poly = {
+            <span class="kw">if </span>circuit_gates_used.is_disjoint(<span class="kw-2">&amp;</span>ffadd_gates.into_iter().collect()) {
+                <span class="prelude-val">None
+            </span>} <span class="kw">else </span>{
+                <span class="prelude-val">Some</span>(selector_polynomial(ffadd_gates[<span class="number">0</span>], <span class="kw-2">&amp;</span>gates, <span class="kw-2">&amp;</span>domain))
+            }
+        };
+
         <span class="comment">//
         // Coefficient
         // -----------
@@ -1261,6 +1333,8 @@
             mull8,
             emull,
             range_check_selector_polys,
+            foreign_field_add_selector_poly,
+            foreign_field_modulus: <span class="self">self</span>.foreign_field_modulus,
             gates,
             shift: shifts.shifts,
             endo,
@@ -1305,4 +1379,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (ce7f0f1aa 2022-09-28)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (c97d02cdb 2022-10-05)" ></div></body></html>

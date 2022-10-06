@@ -349,6 +349,7 @@
 <span id="349">349</span>
 <span id="350">350</span>
 <span id="351">351</span>
+<span id="352">352</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements an abstraction to keep track of the powers of alphas.
 //! As a recap, alpha is a challenge sent by the verifier in PLONK,
 //! and is used to aggregate multiple constraints into a single polynomial.
@@ -682,6 +683,7 @@
                 .lookup_constraint_system
                 .as_ref()
                 .map(|lcs| <span class="kw-2">&amp;</span>lcs.configuration),
+            index.cs.foreign_field_add_selector_poly.is_some(),
         );
         <span class="comment">// make sure this is present in the specification
         </span><span class="kw">let </span>manifest_dir = std::env::var(<span class="string">&quot;CARGO_MANIFEST_DIR&quot;</span>).unwrap();
@@ -701,4 +703,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (ce7f0f1aa 2022-09-28)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (c97d02cdb 2022-10-05)" ></div></body></html>

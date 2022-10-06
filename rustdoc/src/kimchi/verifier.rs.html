@@ -942,6 +942,9 @@
 <span id="942">942</span>
 <span id="943">943</span>
 <span id="944">944</span>
+<span id="945">945</span>
+<span id="946">946</span>
+<span id="947">947</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements zk-proof batch verifier functionality.
 
 </span><span class="kw">use crate</span>::{
@@ -1278,6 +1281,7 @@
                 joint_combiner: joint_combiner.as_ref().map(|j| j.<span class="number">1</span>),
                 endo_coefficient: index.endo,
                 mds: <span class="kw-2">&amp;</span>G::sponge_params().mds,
+                foreign_field_modulus: index.foreign_field_modulus.clone(),
             };
             ft_eval0 -= PolishToken::evaluate(
                 <span class="kw-2">&amp;</span>index.linearization.constant_term,
@@ -1496,6 +1500,7 @@
                 joint_combiner: oracles.joint_combiner.as_ref().map(|j| j.<span class="number">1</span>),
                 endo_coefficient: index.endo,
                 mds: <span class="kw-2">&amp;</span>G::sponge_params().mds,
+                foreign_field_modulus: index.foreign_field_modulus.clone(),
             };
 
             <span class="kw">for </span>(col, tokens) <span class="kw">in </span><span class="kw-2">&amp;</span>index.linearization.index_terms {
@@ -1585,6 +1590,7 @@
                             }
                             RangeCheck0 =&gt; <span class="kw-2">&amp;</span>index.range_check_comm.as_ref().unwrap()[<span class="number">0</span>],
                             RangeCheck1 =&gt; <span class="kw-2">&amp;</span>index.range_check_comm.as_ref().unwrap()[<span class="number">1</span>],
+                            ForeignFieldAdd =&gt; index.foreign_field_add_comm.as_ref().unwrap(),
                         };
                         scalars.push(scalar);
                         commitments.push(c);
@@ -1887,4 +1893,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (ce7f0f1aa 2022-09-28)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (c97d02cdb 2022-10-05)" ></div></body></html>

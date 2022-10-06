@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":[["circuitgates","Foreign field addition gate."],["gadget","This module obtains the gates of a foreign field addition circuit."],["witness","This module computes the witness of a foreign field addition circuit."]]};

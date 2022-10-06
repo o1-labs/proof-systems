@@ -166,6 +166,14 @@
 <span id="166">166</span>
 <span id="167">167</span>
 <span id="168">168</span>
+<span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
+<span id="172">172</span>
+<span id="173">173</span>
+<span id="174">174</span>
+<span id="175">175</span>
+<span id="176">176</span>
 </pre><pre class="rust"><code><span class="doccomment">//! An argument is simply a number of constraints,
 //! which we want to enforce on all points of the domain.
 //! Both the permutation and the plookup arguments fit this type.
@@ -268,6 +276,14 @@
     </span><span class="kw">pub fn </span>mds(<span class="kw-2">&amp;</span><span class="self">self</span>, row: usize, col: usize) -&gt; T {
         T::constant(ConstantExpr::&lt;F&gt;::Mds { row, col }, <span class="self">self</span>.data.as_ref())
     }
+
+    <span class="doccomment">/// Helper to access the foreign field modulus limb at index idx
+    </span><span class="kw">pub fn </span>foreign_modulus(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; T {
+        T::constant(
+            ConstantExpr::&lt;F&gt;::ForeignFieldModulus(idx),
+            <span class="self">self</span>.data.as_ref(),
+        )
+    }
 }
 
 <span class="doccomment">/// Argument environment data for constraints of field elements
@@ -335,4 +351,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (ce7f0f1aa 2022-09-28)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (c97d02cdb 2022-10-05)" ></div></body></html>

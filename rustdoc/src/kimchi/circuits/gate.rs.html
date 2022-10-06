@@ -529,6 +529,13 @@
 <span id="529">529</span>
 <span id="530">530</span>
 <span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk constraint gate primitive.
 
 </span><span class="kw">use crate</span>::{
@@ -536,8 +543,8 @@
         argument::{Argument, ArgumentEnv},
         constraints::ConstraintSystem,
         polynomials::{
-            chacha, complete_add, endomul_scalar, endosclmul, poseidon, range_check, turshi,
-            varbasemul,
+            chacha, complete_add, endomul_scalar, endosclmul, foreign_field_add, poseidon,
+            range_check, turshi, varbasemul,
         },
         wires::<span class="kw-2">*</span>,
     },
@@ -638,8 +645,8 @@
     <span class="doccomment">/// Range check (16-24)
     </span>RangeCheck0 = <span class="number">16</span>,
     RangeCheck1 = <span class="number">17</span>,
-    <span class="comment">// ForeignFieldAdd = 25,
-    // ForeignFieldMul = 26,
+    ForeignFieldAdd = <span class="number">25</span>,
+    <span class="comment">//ForeignFieldMul = 26,
 </span>}
 
 <span class="doccomment">/// Selector polynomial
@@ -761,6 +768,9 @@
             RangeCheck0 | RangeCheck1 =&gt; <span class="self">self
                 </span>.verify_range_check::&lt;G&gt;(row, witness, cs)
                 .map_err(|e| e.to_string()),
+            ForeignFieldAdd =&gt; <span class="self">self
+                </span>.verify_foreign_field_add::&lt;G&gt;(row, witness, cs)
+                .map_err(|e| e.to_string()),
         }
     }
 
@@ -783,6 +793,7 @@
             joint_combiner: <span class="prelude-val">Some</span>(F::one()),
             endo_coefficient: cs.endo,
             mds: <span class="kw-2">&amp;</span>G::sponge_params().mds,
+            foreign_field_modulus: cs.foreign_field_modulus.clone(),
         };
         <span class="comment">// Create the argument environment for the constraints over field elements
         </span><span class="kw">let </span>env = ArgumentEnv::&lt;F, F&gt;::create(argument_witness, <span class="self">self</span>.coeffs.clone(), constants);
@@ -840,6 +851,9 @@
             }
             GateType::RangeCheck1 =&gt; {
                 range_check::circuitgates::RangeCheck1::constraint_checks(<span class="kw-2">&amp;</span>env)
+            }
+            GateType::ForeignFieldAdd =&gt; {
+                foreign_field_add::circuitgates::ForeignFieldAdd::constraint_checks(<span class="kw-2">&amp;</span>env)
             }
         };
 
@@ -1061,4 +1075,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (ce7f0f1aa 2022-09-28)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (c97d02cdb 2022-10-05)" ></div></body></html>
