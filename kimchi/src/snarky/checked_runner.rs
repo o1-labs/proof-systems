@@ -45,19 +45,6 @@ pub enum Constraint<F: PrimeField> {
     KimchiConstraint(KimchiConstraint<CVar<F>, F>),
 }
 
-/// The two ways to create a [SnarkyType].
-#[derive(Default)]
-pub enum TypeCreation {
-    /// This will create constraints in the constraint system to ensure that the type is valid.
-    /// This is done by calling [SnarkyType::check] on a snarky type.
-    #[default]
-    Checked,
-
-    /// This will create a new type without any constraints.
-    /// This should only be used internally when we know the type is already constrained to be valid.
-    Unsafe,
-}
-
 /// The mode in which the [RunState] is running.
 #[derive(Default, Clone, Copy)]
 pub enum Mode {
@@ -196,12 +183,25 @@ where
 
     /// Creates a new non-deterministic variable associated to a value type ([SnarkyType]),
     /// and a closure that can compute it when in witness generation mode.
-    pub fn compute<T, FUNC>(
-        &mut self,
-        check: TypeCreation,
-        loc: String,
-        to_compute_value: FUNC,
-    ) -> T
+    pub fn compute<T, FUNC>(&mut self, loc: String, to_compute_value: FUNC) -> T
+    where
+        T: SnarkyType<F>,
+        FUNC: Fn(&dyn WitnessGeneration<F>) -> T::OutOfCircuit,
+    {
+        self.compute_inner(true, loc, to_compute_value)
+    }
+
+    /// Same as [Self::compute] except that it does not attempt to constrain the value it computes.
+    /// This is to be used internally only, when we know that the value cannot be malformed.
+    pub(crate) fn compute_unsafe<T, FUNC>(&mut self, loc: String, to_compute_value: FUNC) -> T
+    where
+        T: SnarkyType<F>,
+        FUNC: Fn(&dyn WitnessGeneration<F>) -> T::OutOfCircuit,
+    {
+        self.compute_inner(false, loc, to_compute_value)
+    }
+
+    fn compute_inner<T, FUNC>(&mut self, checked: bool, loc: String, to_compute_value: FUNC) -> T
     where
         T: SnarkyType<F>,
         FUNC: Fn(&dyn WitnessGeneration<F>) -> T::OutOfCircuit,
@@ -225,7 +225,7 @@ where
                 let snarky_type = T::from_cvars_unsafe(field_vars, aux);
 
                 // constrain the conversion
-                if matches!(check, TypeCreation::Checked) {
+                if checked {
                     snarky_type.check(self);
                 }
 
@@ -245,7 +245,7 @@ where
                 let snarky_type = T::from_cvars_unsafe(cvars, aux);
 
                 // constrain the created circuit variables
-                if matches!(check, TypeCreation::Checked) {
+                if checked {
                     snarky_type.check(self);
                 }
 
@@ -323,7 +323,7 @@ where
     fn add_constraint_inner(&mut self, constraints: Vec<AnnotatedConstraint<F>>) {
         let cs = match &mut self.system {
             Some(cs) => cs,
-            None => return, // TODO: silent fail?
+            None => return, // TODO: why silent fail?
         };
 
         for constraint in constraints {
@@ -369,7 +369,7 @@ where
                 let b_clone = b.clone();
                 let then_clone = then_.clone();
                 let else_clone = else_.clone();
-                let res: CVar<F> = self.compute(TypeCreation::Checked, loc!(), move |env| {
+                let res: CVar<F> = self.compute(loc!(), move |env| {
                     let b = env.read_var(&b_clone);
                     let res_var = if b == F::one() {
                         &then_clone

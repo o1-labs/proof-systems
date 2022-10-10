@@ -3,10 +3,7 @@ use mina_curves::pasta::{Fp, Vesta};
 
 use crate::{
     loc,
-    snarky::{
-        checked_runner::{RunState, TypeCreation},
-        cvar::CVar,
-    },
+    snarky::{checked_runner::RunState, cvar::CVar},
 };
 
 fn main_circuit(runner: &mut RunState<Fp>) {

@@ -3,9 +3,7 @@ use ark_ff::PrimeField;
 use crate::{
     loc,
     snarky::{
-        checked_runner::{RunState, TypeCreation},
-        constraint_system::BasicSnarkyConstraint,
-        cvar::CVar,
+        checked_runner::RunState, constraint_system::BasicSnarkyConstraint, cvar::CVar,
         traits::SnarkyType,
     },
 };
@@ -161,7 +159,7 @@ where
 
                 let self_clone = self.clone();
                 let other_clone = other.clone();
-                let res: Boolean<F> = state.compute(TypeCreation::Unsafe, loc!(), move |env| {
+                let res: Boolean<F> = state.compute_unsafe(loc!(), move |env| {
                     let b1: bool = self_clone.read(env);
                     let b2: bool = other_clone.read(env);
 

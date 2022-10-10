@@ -6,7 +6,7 @@ use crate::{
     loc,
     snarky::{
         boolean::Boolean,
-        checked_runner::{RunState, TypeCreation, WitnessGeneration},
+        checked_runner::{RunState, WitnessGeneration},
         constraint_system::SnarkyCvar,
         traits::SnarkyType,
     },
@@ -162,7 +162,7 @@ where
             (_, _) => {
                 let self_clone = self.clone();
                 let other_clone = other.clone();
-                let res: CVar<F> = cs.compute(TypeCreation::Checked, loc!(), move |env| {
+                let res: CVar<F> = cs.compute(loc!(), move |env| {
                     let x: F = env.read_var(&self_clone);
                     let y: F = env.read_var(&other_clone);
                     x * y
@@ -214,9 +214,8 @@ where
             _ => {
                 let z = self - other;
                 let z_clone = z.clone();
-                let (res, z_inv) = state.compute(TypeCreation::Checked, loc!(), move |env| {
-                    Self::equal_vars(env, &z_clone)
-                });
+                let (res, z_inv): (CVar<F>, CVar<F>) =
+                    state.compute(loc!(), move |env| Self::equal_vars(env, &z_clone));
                 Self::equal_constraints(state, z, z_inv, res.clone());
 
                 let cvars = vec![res];
@@ -414,7 +413,7 @@ where
     }
 
     fn constraint_system_auxiliary() -> Self::Auxiliary {
-        todo!()
+        ()
     }
 
     fn value_to_field_elements(x: &Self::OutOfCircuit) -> (Vec<F>, Self::Auxiliary) {

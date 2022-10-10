@@ -5,7 +5,6 @@ use ark_ff::PrimeField;
 use super::{
     checked_runner::{RunState, WitnessGeneration},
     cvar::CVar,
-    prelude::TypeCreation,
 };
 
 /// A snarky type is a type that can be used in a circuit.
@@ -55,16 +54,11 @@ where
     // new functions that might help us with generics?
     //
 
-    fn compute<FUNC>(
-        cs: &mut RunState<F>,
-        check: TypeCreation,
-        loc: String,
-        to_compute_value: FUNC,
-    ) -> Self
+    fn compute<FUNC>(cs: &mut RunState<F>, loc: String, to_compute_value: FUNC) -> Self
     where
         FUNC: Fn(&dyn WitnessGeneration<F>) -> Self::OutOfCircuit,
     {
-        cs.compute(check, loc, to_compute_value)
+        cs.compute(loc, to_compute_value)
     }
 
     fn read<G>(&self, g: G) -> Self::OutOfCircuit
