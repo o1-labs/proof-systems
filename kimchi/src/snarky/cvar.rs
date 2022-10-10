@@ -127,7 +127,7 @@ where
         Self::linear_combination(&terms)
     }
 
-    pub fn mul(&self, other: &Self, label: Option<&'static str>, cs: &mut RunState<F>) -> Self {
+    pub fn mul(&self, other: &Self, _label: Option<&'static str>, cs: &mut RunState<F>) -> Self {
         match (self, other) {
             (CVar::Constant(x), CVar::Constant(y)) => CVar::Constant(*x * y),
 
@@ -384,7 +384,7 @@ where
         cvars[0].clone()
     }
 
-    fn check(&self, cs: &mut super::checked_runner::RunState<F>) {
+    fn check(&self, _cs: &mut super::checked_runner::RunState<F>) {
         // do nothing
     }
 

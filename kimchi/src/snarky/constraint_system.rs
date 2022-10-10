@@ -1382,7 +1382,7 @@ where
                 let l = witness_env.read_var(l_var);
                 let r = witness_env.read_var(r_var);
                 let o = witness_env.read_var(o_var);
-                let res = l + r + o + l * r * c3 + c4;
+                let res = *c0 * l + *c1 * r + *c2 * o + l * r * c3 + c4;
                 assert!(res.is_zero());
             }
 
