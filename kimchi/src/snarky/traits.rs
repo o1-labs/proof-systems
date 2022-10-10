@@ -75,16 +75,58 @@ where
 // Auto traits
 //
 
-impl<F, T> SnarkyType<F> for (T, T)
+impl<F> SnarkyType<F> for ()
 where
     F: PrimeField,
-    T: SnarkyType<F>,
 {
-    type Auxiliary = (T::Auxiliary, T::Auxiliary);
+    type Auxiliary = ();
 
-    type OutOfCircuit = (T::OutOfCircuit, T::OutOfCircuit);
+    type OutOfCircuit = ();
 
-    const SIZE_IN_FIELD_ELEMENTS: usize = T::SIZE_IN_FIELD_ELEMENTS * 2;
+    const SIZE_IN_FIELD_ELEMENTS: usize = 0;
+
+    fn to_cvars(&self) -> (Vec<CVar<F>>, Self::Auxiliary) {
+        (vec![], ())
+    }
+
+    fn from_cvars_unsafe(cvars: Vec<CVar<F>>, aux: Self::Auxiliary) -> Self {
+        ()
+    }
+
+    fn check(&self, cs: &mut RunState<F>) {}
+
+    fn deserialize(&self) -> (Self::OutOfCircuit, Self::Auxiliary) {
+        ((), ())
+    }
+
+    fn serialize(out_of_circuit: Self::OutOfCircuit, aux: Self::Auxiliary) -> Self {
+        ()
+    }
+
+    fn constraint_system_auxiliary() -> Self::Auxiliary {
+        ()
+    }
+
+    fn value_to_field_elements(x: &Self::OutOfCircuit) -> (Vec<F>, Self::Auxiliary) {
+        (vec![], ())
+    }
+
+    fn value_of_field_elements(x: (Vec<F>, Self::Auxiliary)) -> Self::OutOfCircuit {
+        ()
+    }
+}
+
+impl<F, T1, T2> SnarkyType<F> for (T1, T2)
+where
+    F: PrimeField,
+    T1: SnarkyType<F>,
+    T2: SnarkyType<F>,
+{
+    type Auxiliary = (T1::Auxiliary, T2::Auxiliary);
+
+    type OutOfCircuit = (T1::OutOfCircuit, T2::OutOfCircuit);
+
+    const SIZE_IN_FIELD_ELEMENTS: usize = T1::SIZE_IN_FIELD_ELEMENTS + T2::SIZE_IN_FIELD_ELEMENTS;
 
     fn to_cvars(&self) -> (Vec<CVar<F>>, Self::Auxiliary) {
         let (mut cvars1, aux1) = self.0.to_cvars();
@@ -98,8 +140,8 @@ where
         let (cvars1, cvars2) = cvars.split_at(Self::SIZE_IN_FIELD_ELEMENTS);
         let (aux1, aux2) = aux;
         (
-            T::from_cvars_unsafe(cvars1.into_iter().cloned().collect(), aux1),
-            T::from_cvars_unsafe(cvars2.into_iter().cloned().collect(), aux2),
+            T1::from_cvars_unsafe(cvars1.into_iter().cloned().collect(), aux1),
+            T2::from_cvars_unsafe(cvars2.into_iter().cloned().collect(), aux2),
         )
     }
 
