@@ -84,9 +84,6 @@ where
 
     /// Indication that we're running the witness generation (as opposed to the circuit creation).
     mode: Mode,
-
-    /// seems useless?
-    is_running: bool,
 }
 
 //
@@ -159,7 +156,6 @@ where
             num_public_inputs,
             next_private_input,
             mode: Mode::CircuitGeneration,
-            is_running: true, // ?
         }
     }
 
@@ -203,7 +199,8 @@ where
         self.compute_inner(false, loc, to_compute_value)
     }
 
-    fn compute_inner<T, FUNC>(&mut self, checked: bool, loc: String, to_compute_value: FUNC) -> T
+    // TODO: make loc argument work
+    fn compute_inner<T, FUNC>(&mut self, checked: bool, _loc: String, to_compute_value: FUNC) -> T
     where
         T: SnarkyType<F>,
         FUNC: Fn(&dyn WitnessGeneration<F>) -> T::OutOfCircuit,
@@ -294,18 +291,6 @@ where
         let constraint = BasicSnarkyConstraint::Equal(x, y);
         self.assert_(annotation, vec![constraint]);
     }
-
-    // TODO: what's the difference with assert_ ? get rid of this no?
-    /// Asserts the given list of [BasicSnarkyConstraint].
-    pub fn assert_all(
-        &mut self,
-        annotation: Option<&'static str>,
-        constraints: Vec<BasicSnarkyConstraint<CVar<F>>>,
-    ) {
-        todo!();
-    }
-
-    // TODO: rename to add_constraint"s"
     /// Adds a list of [AnnotatedConstraint]s to the circuit.
     pub fn add_constraint(&mut self, constraints: Vec<AnnotatedConstraint<F>>) {
         match self.mode {
