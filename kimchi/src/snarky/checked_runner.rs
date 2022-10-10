@@ -264,12 +264,12 @@ where
         let constraints: Vec<_> = basic_constraints
             .into_iter()
             .map(|c| AnnotatedConstraint {
-                annotation: annotation.clone(),
+                annotation,
                 constraint: Constraint::BasicSnarkyConstraint(c),
             })
             .collect();
 
-        self.add_constraint(constraints);
+        self.add_constraints(constraints);
     }
 
     // TODO: get rid of this.
@@ -292,7 +292,7 @@ where
         self.assert_(annotation, vec![constraint]);
     }
     /// Adds a list of [AnnotatedConstraint]s to the circuit.
-    pub fn add_constraint(&mut self, constraints: Vec<AnnotatedConstraint<F>>) {
+    pub fn add_constraints(&mut self, constraints: Vec<AnnotatedConstraint<F>>) {
         match self.mode {
             Mode::WitnessGeneration => {
                 if self.eval_constraints {
@@ -314,7 +314,7 @@ where
         };
 
         for constraint in constraints {
-            let label = constraint.annotation.unwrap_or("<unknown>");
+            let _label = constraint.annotation.unwrap_or("<unknown>");
 
             match constraint.constraint {
                 Constraint::BasicSnarkyConstraint(c) => {
@@ -334,23 +334,19 @@ where
         // r - e = b (t - e)
         let cvars = b.to_cvars().0;
         let b = &cvars[0];
-        match b {
-            CVar::Constant(b) => {
-                if b.is_one() {
-                    return then_;
-                } else {
-                    return else_;
-                }
+        if let CVar::Constant(b) = b {
+            if b.is_one() {
+                return then_;
+            } else {
+                return else_;
             }
-            _ => (),
-        };
+        }
 
         match (&then_, &else_) {
             (CVar::Constant(t), CVar::Constant(e)) => {
                 let t_times_b = b.scale(*t);
-                let one_minus_b = CVar::Constant(F::one()) - &b;
-                let res = t_times_b + &one_minus_b.scale(*e);
-                res
+                let one_minus_b = CVar::Constant(F::one()) - b;
+                t_times_b + &one_minus_b.scale(*e)
             }
             _ => {
                 let b_clone = b.clone();

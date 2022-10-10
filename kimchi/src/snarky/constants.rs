@@ -20,14 +20,14 @@ where
 {
     pub fn new<Curve: KimchiCurve<ScalarField = F>>() -> Self {
         let poseidon = Curve::sponge_params().clone();
-        let (endo_q, _endo_r) = Curve::OtherCurve::endos().clone();
+        let (endo_q, _endo_r) = Curve::OtherCurve::endos();
         let base = Curve::OtherCurve::prime_subgroup_generator()
             .to_coordinates()
             .unwrap();
 
         Self {
             poseidon,
-            endo: endo_q,
+            endo: *endo_q,
             base,
         }
     }

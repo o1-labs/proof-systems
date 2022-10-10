@@ -89,23 +89,17 @@ where
         (vec![], ())
     }
 
-    fn from_cvars_unsafe(_cvars: Vec<CVar<F>>, _aux: Self::Auxiliary) -> Self {
-        ()
-    }
+    fn from_cvars_unsafe(_cvars: Vec<CVar<F>>, _aux: Self::Auxiliary) -> Self {}
 
     fn check(&self, _cs: &mut RunState<F>) {}
 
-    fn constraint_system_auxiliary() -> Self::Auxiliary {
-        ()
-    }
+    fn constraint_system_auxiliary() -> Self::Auxiliary {}
 
     fn value_to_field_elements(_value: &Self::OutOfCircuit) -> (Vec<F>, Self::Auxiliary) {
         (vec![], ())
     }
 
-    fn value_of_field_elements(_fields: Vec<F>, _aux: Self::Auxiliary) -> Self::OutOfCircuit {
-        ()
-    }
+    fn value_of_field_elements(_fields: Vec<F>, _aux: Self::Auxiliary) -> Self::OutOfCircuit {}
 }
 
 impl<F, T1, T2> SnarkyType<F> for (T1, T2)
@@ -132,8 +126,8 @@ where
         let (cvars1, cvars2) = cvars.split_at(Self::SIZE_IN_FIELD_ELEMENTS);
         let (aux1, aux2) = aux;
         (
-            T1::from_cvars_unsafe(cvars1.into_iter().cloned().collect(), aux1),
-            T2::from_cvars_unsafe(cvars2.into_iter().cloned().collect(), aux2),
+            T1::from_cvars_unsafe(cvars1.to_vec(), aux1),
+            T2::from_cvars_unsafe(cvars2.to_vec(), aux2),
         )
     }
 

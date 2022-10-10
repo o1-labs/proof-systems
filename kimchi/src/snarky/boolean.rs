@@ -47,9 +47,7 @@ where
         cs.assert_(None, vec![BasicSnarkyConstraint::Boolean(self.0.clone())]);
     }
 
-    fn constraint_system_auxiliary() -> Self::Auxiliary {
-        ()
-    }
+    fn constraint_system_auxiliary() -> Self::Auxiliary {}
 
     fn value_to_field_elements(value: &Self::OutOfCircuit) -> (Vec<F>, Self::Auxiliary) {
         if *value {
@@ -97,12 +95,12 @@ where
         } else if xs.len() == 1 {
             return xs[0].clone();
         } else if xs.len() == 2 {
-            return xs[0].or(&xs[1], cs); // TODO: is this better than below?
+            return xs[0].or(xs[1], cs); // TODO: is this better than below?
         }
 
         let zero = CVar::Constant(F::zero());
 
-        let xs: Vec<_> = xs.into_iter().map(|x| &x.0).collect();
+        let xs: Vec<_> = xs.iter().map(|x| &x.0).collect();
         let sum = CVar::sum(&xs);
         let all_zero = sum.equal(cs, &zero);
 
@@ -150,8 +148,8 @@ where
                 let self_clone = self.clone();
                 let other_clone = other.clone();
                 let res: Boolean<F> = state.compute_unsafe(loc!(), move |env| {
-                    let b1: bool = self_clone.read(env);
-                    let b2: bool = other_clone.read(env);
+                    let _b1: bool = self_clone.read(env);
+                    let _b2: bool = other_clone.read(env);
 
                     /*
                     let%bind res =

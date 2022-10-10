@@ -123,7 +123,7 @@ where
     }
 
     pub fn sum(vs: &[&Self]) -> Self {
-        let terms: Vec<_> = vs.into_iter().map(|v| (F::one(), (*v).clone())).collect();
+        let terms: Vec<_> = vs.iter().map(|v| (F::one(), (*v).clone())).collect();
         Self::linear_combination(&terms)
     }
 
@@ -388,9 +388,7 @@ where
         // do nothing
     }
 
-    fn constraint_system_auxiliary() -> Self::Auxiliary {
-        ()
-    }
+    fn constraint_system_auxiliary() -> Self::Auxiliary {}
 
     fn value_to_field_elements(x: &Self::OutOfCircuit) -> (Vec<F>, Self::Auxiliary) {
         (vec![*x], ())
@@ -433,7 +431,7 @@ where
     }
 }
 
-impl<'a, F> Add<CVar<F>> for &CVar<F>
+impl<F> Add<CVar<F>> for &CVar<F>
 where
     F: PrimeField,
 {
