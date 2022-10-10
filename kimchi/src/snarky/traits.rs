@@ -14,7 +14,9 @@ pub trait SnarkyType<F>: Sized
 where
     F: PrimeField,
 {
-    /// Some additional information. (TODO: add more documentation.)
+    /// Some 'out-of-circuit' data, which is carried as part of Self.
+    /// This data isn't encoded as CVars in the circuit, since the data may be large (e.g. a sparse merkle tree),
+    /// or may only be used by witness computations / for debugging.
     type Auxiliary;
 
     /// The equivalent "out-of-circuit" type.
@@ -36,19 +38,17 @@ where
     /// The function does this by adding constraints to your constraint system.
     fn check(&self, cs: &mut RunState<F>);
 
-    /// Deserializes this type into the out-of-circuit type (along with some auxiliary data).
-    fn deserialize(&self) -> (Self::OutOfCircuit, Self::Auxiliary);
-
-    /// Serializes the out-of-circuit type (along with some auxiliary data) into this type.
-    fn serialize(out_of_circuit: Self::OutOfCircuit, aux: Self::Auxiliary) -> Self;
-
-    /// Returns some auxiliary data (TODO: more doc).
+    /// The "default" value of [Self::Auxiliary].
+    /// This is passed to [Self::from_cvars_unsafe] when we are not generating a witness,
+    /// since we have no candidate value to get the auxiliary data from.
+    /// Note that we use an explicit value here rather than Auxiliary: Default,
+    /// since the default value for the type may not match the default value we actually want to pass!
     fn constraint_system_auxiliary() -> Self::Auxiliary;
 
-    ///
-    fn value_to_field_elements(x: &Self::OutOfCircuit) -> (Vec<F>, Self::Auxiliary);
+    /// Converts an out-of-circuit value
+    fn value_to_field_elements(value: &Self::OutOfCircuit) -> (Vec<F>, Self::Auxiliary);
 
-    fn value_of_field_elements(x: (Vec<F>, Self::Auxiliary)) -> Self::OutOfCircuit;
+    fn value_of_field_elements(fields: Vec<F>, aux: Self::Auxiliary) -> Self::OutOfCircuit;
 
     //
     // new functions that might help us with generics?
@@ -67,7 +67,7 @@ where
     {
         let (cvars, aux) = self.to_cvars();
         let values = cvars.iter().map(|cvar| g.read_var(cvar)).collect();
-        Self::value_of_field_elements((values, aux))
+        Self::value_of_field_elements(values, aux)
     }
 }
 
@@ -89,29 +89,21 @@ where
         (vec![], ())
     }
 
-    fn from_cvars_unsafe(cvars: Vec<CVar<F>>, aux: Self::Auxiliary) -> Self {
+    fn from_cvars_unsafe(_cvars: Vec<CVar<F>>, _aux: Self::Auxiliary) -> Self {
         ()
     }
 
-    fn check(&self, cs: &mut RunState<F>) {}
-
-    fn deserialize(&self) -> (Self::OutOfCircuit, Self::Auxiliary) {
-        ((), ())
-    }
-
-    fn serialize(out_of_circuit: Self::OutOfCircuit, aux: Self::Auxiliary) -> Self {
-        ()
-    }
+    fn check(&self, _cs: &mut RunState<F>) {}
 
     fn constraint_system_auxiliary() -> Self::Auxiliary {
         ()
     }
 
-    fn value_to_field_elements(x: &Self::OutOfCircuit) -> (Vec<F>, Self::Auxiliary) {
+    fn value_to_field_elements(_value: &Self::OutOfCircuit) -> (Vec<F>, Self::Auxiliary) {
         (vec![], ())
     }
 
-    fn value_of_field_elements(x: (Vec<F>, Self::Auxiliary)) -> Self::OutOfCircuit {
+    fn value_of_field_elements(_fields: Vec<F>, _aux: Self::Auxiliary) -> Self::OutOfCircuit {
         ()
     }
 }
@@ -150,23 +142,26 @@ where
         self.1.check(cs);
     }
 
-    fn deserialize(&self) -> (Self::OutOfCircuit, Self::Auxiliary) {
-        todo!()
-    }
-
-    fn serialize(out_of_circuit: Self::OutOfCircuit, aux: Self::Auxiliary) -> Self {
-        todo!()
-    }
-
     fn constraint_system_auxiliary() -> Self::Auxiliary {
-        todo!()
+        (
+            T1::constraint_system_auxiliary(),
+            T2::constraint_system_auxiliary(),
+        )
     }
 
-    fn value_to_field_elements(x: &Self::OutOfCircuit) -> (Vec<F>, Self::Auxiliary) {
-        todo!()
+    fn value_to_field_elements(value: &Self::OutOfCircuit) -> (Vec<F>, Self::Auxiliary) {
+        let (mut fields, aux1) = T1::value_to_field_elements(&value.0);
+        let (fields2, aux2) = T2::value_to_field_elements(&value.1);
+        fields.extend(fields2);
+        (fields, (aux1, aux2))
     }
 
-    fn value_of_field_elements(x: (Vec<F>, Self::Auxiliary)) -> Self::OutOfCircuit {
-        todo!()
+    fn value_of_field_elements(fields: Vec<F>, aux: Self::Auxiliary) -> Self::OutOfCircuit {
+        let (fields1, fields2) = fields.split_at(T1::SIZE_IN_FIELD_ELEMENTS);
+
+        let out1 = T1::value_of_field_elements(fields1.to_vec(), aux.0);
+        let out2 = T2::value_of_field_elements(fields2.to_vec(), aux.1);
+
+        (out1, out2)
     }
 }

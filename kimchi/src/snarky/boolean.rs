@@ -47,24 +47,22 @@ where
         cs.assert_(None, vec![BasicSnarkyConstraint::Boolean(self.0.clone())]);
     }
 
-    fn deserialize(&self) -> (Self::OutOfCircuit, Self::Auxiliary) {
-        todo!()
-    }
-
-    fn serialize(out_of_circuit: Self::OutOfCircuit, aux: Self::Auxiliary) -> Self {
-        todo!()
-    }
-
     fn constraint_system_auxiliary() -> Self::Auxiliary {
-        todo!()
+        ()
     }
 
-    fn value_to_field_elements(x: &Self::OutOfCircuit) -> (Vec<F>, Self::Auxiliary) {
-        todo!()
+    fn value_to_field_elements(value: &Self::OutOfCircuit) -> (Vec<F>, Self::Auxiliary) {
+        if *value {
+            (vec![F::one()], ())
+        } else {
+            (vec![F::zero()], ())
+        }
     }
 
-    fn value_of_field_elements(x: (Vec<F>, Self::Auxiliary)) -> Self::OutOfCircuit {
-        todo!()
+    fn value_of_field_elements(fields: Vec<F>, _aux: Self::Auxiliary) -> Self::OutOfCircuit {
+        assert_eq!(fields.len(), 1);
+
+        fields[0] != F::zero()
     }
 }
 
@@ -82,10 +80,6 @@ where
 
     pub fn not(&self) -> Self {
         Self(Self::true_().0 - &self.0)
-    }
-
-    pub fn if_(&self, then_: Self, else_: Self) -> Self {
-        todo!()
     }
 
     pub fn and(&self, other: &Self, cs: &mut RunState<F>) -> Self {
@@ -140,14 +134,10 @@ where
 
     pub fn xor(&self, other: &Self, state: &mut RunState<F>) -> Self {
         match (self.to_constant(), other.to_constant()) {
-            (Some(x), Some(y)) => {
-                // (var_of_value (Caml.not (Bool.equal b1 b2)))
-                todo!()
-            }
-            (Some(true), None) => other.not(),
-            (None, Some(true)) => self.not(),
-            (Some(false), None) => other.clone(),
-            (None, Some(false)) => self.clone(),
+            (Some(true), _) => other.not(),
+            (_, Some(true)) => self.not(),
+            (Some(false), _) => other.clone(),
+            (_, Some(false)) => self.clone(),
             (None, None) => {
                 /*
                    (1 - 2 a) (1 - 2 b) = 1 - 2 c

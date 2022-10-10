@@ -62,7 +62,8 @@ pub struct RunState<F>
 where
     F: PrimeField,
 {
-    /// The constraint system used to build the circuit. Why is this an option?
+    /// The constraint system used to build the circuit.
+    /// If not set, the constraint system is not built.
     system: Option<SnarkyConstraintSystem<F>>,
 
     /// The public input of the circuit used in witness generation.
@@ -71,7 +72,8 @@ where
     /// The private input of the circuit used in witness generation. Still not sure what that is, or why we care about this.
     private_input: Vec<F>,
 
-    /// If this is set to false, constraints won't be added to the system. Why???
+    /// If set, the witness generation will check if the constraints are satisfied.
+    /// This is useful to simulate running the circuit and return an error if an assertion fails.
     eval_constraints: bool,
 
     /// The number of public inputs.

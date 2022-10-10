@@ -37,43 +37,27 @@ where
 
 pub type Term<F> = (F, usize);
 
-pub type OtherTerm<F> = (F, CVar<F>);
+pub type ScaledCVar<F> = (F, CVar<F>);
 
 impl<F> CVar<F>
 where
     F: PrimeField,
 {
-    // TODO: what is can_mutate_scale?
-    fn eval_inner(
-        &self,
-        context: &impl (Fn(usize) -> F),
-        can_mutate_scale: bool,
-        scale: F,
-        res: &mut F,
-    ) {
+    fn eval_inner(&self, context: &impl (Fn(usize) -> F), scale: F, res: &mut F) {
         match self {
-            CVar::Constant(c) if can_mutate_scale => {
-                *res += scale * c;
-            }
             CVar::Constant(c) => {
-                // TODO: I couldn't understand what this case really did due to:
-                // `Mutable.copy ~over:scratch c`
-                todo!();
-                *res += *c * scale;
+                *res += scale * c;
             }
             CVar::Var(v) => {
                 let v = context(*v); // TODO: might panic
                 *res += scale * v;
             }
             CVar::Add(a, b) => {
-                a.eval_inner(context, false, scale, res);
-                b.eval_inner(context, can_mutate_scale, scale, res);
-            }
-            CVar::Scale(s, v) if can_mutate_scale => {
-                v.eval_inner(context, can_mutate_scale, scale * s, res);
+                a.eval_inner(context, scale, res);
+                b.eval_inner(context, scale, res);
             }
             CVar::Scale(s, v) => {
-                v.eval_inner(context, true, scale * s, res);
+                v.eval_inner(context, scale * s, res);
             }
         }
     }
@@ -81,7 +65,7 @@ where
     /// Evaluate the field element associated to a variable (used during witness generation)
     pub fn eval(&self, context: &impl (Fn(usize) -> F)) -> F {
         let mut res = F::zero();
-        self.eval_inner(context, false, F::one(), &mut res);
+        self.eval_inner(context, F::one(), &mut res);
         res
     }
 
@@ -130,7 +114,7 @@ where
         }
     }
 
-    pub fn linear_combination(terms: &[OtherTerm<F>]) -> Self {
+    pub fn linear_combination(terms: &[ScaledCVar<F>]) -> Self {
         let mut res = CVar::Constant(F::zero());
         for (cst, term) in terms {
             res = res.add(&term.scale(*cst));
@@ -404,24 +388,18 @@ where
         // do nothing
     }
 
-    fn deserialize(&self) -> (Self::OutOfCircuit, Self::Auxiliary) {
-        todo!()
-    }
-
-    fn serialize(out_of_circuit: Self::OutOfCircuit, aux: Self::Auxiliary) -> Self {
-        todo!()
-    }
-
     fn constraint_system_auxiliary() -> Self::Auxiliary {
         ()
     }
 
     fn value_to_field_elements(x: &Self::OutOfCircuit) -> (Vec<F>, Self::Auxiliary) {
-        todo!()
+        (vec![*x], ())
     }
 
-    fn value_of_field_elements(x: (Vec<F>, Self::Auxiliary)) -> Self::OutOfCircuit {
-        todo!()
+    fn value_of_field_elements(fields: Vec<F>, _aux: Self::Auxiliary) -> Self::OutOfCircuit {
+        assert_eq!(fields.len(), 1);
+
+        fields[0]
     }
 }
 
