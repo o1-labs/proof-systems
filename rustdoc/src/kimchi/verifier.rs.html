@@ -945,6 +945,19 @@
 <span id="945">945</span>
 <span id="946">946</span>
 <span id="947">947</span>
+<span id="948">948</span>
+<span id="949">949</span>
+<span id="950">950</span>
+<span id="951">951</span>
+<span id="952">952</span>
+<span id="953">953</span>
+<span id="954">954</span>
+<span id="955">955</span>
+<span id="956">956</span>
+<span id="957">957</span>
+<span id="958">958</span>
+<span id="959">959</span>
+<span id="960">960</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements zk-proof batch verifier functionality.
 
 </span><span class="kw">use crate</span>::{
@@ -1426,6 +1439,19 @@
     }
     <span class="kw">let </span>elm: Vec&lt;<span class="kw">_</span>&gt; = proof.public.iter().map(|s| -<span class="kw-2">*</span>s).collect();
     <span class="kw">let </span>public_comm = PolyComm::&lt;G&gt;::multi_scalar_mul(<span class="kw-2">&amp;</span>com_ref, <span class="kw-2">&amp;</span>elm);
+    <span class="kw">let </span>public_comm = {
+        index
+            .srs()
+            .mask_custom(
+                public_comm,
+                <span class="kw-2">&amp;</span>PolyComm {
+                    unshifted: <span class="macro">vec!</span>[G::ScalarField::one(); <span class="number">1</span>],
+                    shifted: <span class="prelude-val">None</span>,
+                },
+            )
+            .unwrap()
+            .commitment
+    };
 
     <span class="comment">//~ 1. Run the [Fiat-Shamir argument](#fiat-shamir-argument).
     </span><span class="kw">let </span>OraclesResult {
