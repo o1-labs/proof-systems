@@ -29,6 +29,9 @@ where
 }
 ```
 
+One can see a CVar as an AST, where two atoms exist: a `Var(usize)` which represents a private input, an a `Constant(F)` which represents a constant.
+Anything else represents combinations of these two atoms.
+
 ### Constants
 
 Note that a circuit variable does not represent a value that has been constrained in the circuit (yet).
