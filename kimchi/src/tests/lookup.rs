@@ -33,11 +33,7 @@ fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_siz
 
     // circuit gates
     let gates = (0..num_lookups)
-        .map(|i| CircuitGate {
-            typ: GateType::Lookup,
-            coeffs: vec![],
-            wires: Wire::new(i),
-        })
+        .map(|i| CircuitGate::new(GateType::Lookup, Wire::new(i), vec![]))
         .collect();
 
     let witness = {
@@ -150,11 +146,7 @@ fn runtime_table(num: usize, indexed: bool) {
     // circuit
     let mut gates = vec![];
     for row in 0..20 {
-        gates.push(CircuitGate {
-            typ: GateType::Lookup,
-            wires: Wire::new(row),
-            coeffs: vec![],
-        });
+        gates.push(CircuitGate::new(GateType::Lookup, Wire::new(row), vec![]));
     }
 
     // witness

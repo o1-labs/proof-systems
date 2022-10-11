@@ -20,11 +20,11 @@ fn ec_test() {
     let mut gates = vec![];
 
     for row in 0..(num_doubles + num_additions + num_infs) {
-        gates.push(CircuitGate {
-            typ: GateType::CompleteAdd,
-            wires: Wire::new(row),
-            coeffs: vec![],
-        });
+        gates.push(CircuitGate::new(
+            GateType::CompleteAdd,
+            Wire::new(row),
+            vec![],
+        ));
     }
 
     let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![]);
