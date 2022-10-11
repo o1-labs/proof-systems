@@ -91,11 +91,7 @@ pub enum GenericGateSpec<F> {
 impl<F: PrimeField> CircuitGate<F> {
     /// This allows you to create two generic gates that will fit in one row, check [`Self::create_generic_gadget`] for a better to way to create these gates.
     pub fn create_generic(wires: GateWires, c: [F; GENERIC_COEFFS * 2]) -> Self {
-        CircuitGate {
-            typ: GateType::Generic,
-            wires,
-            coeffs: c.to_vec(),
-        }
+        CircuitGate::new(GateType::Generic, wires, c.to_vec())
     }
 
     /// This allows you to create two generic gates by passing the desired
