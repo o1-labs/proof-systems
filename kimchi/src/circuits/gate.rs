@@ -160,6 +160,12 @@ pub enum CircuitGateError {
 /// Gate result
 pub type CircuitGateResult<T> = std::result::Result<T, CircuitGateError>;
 
+#[derive(Clone, Debug)]
+pub enum SourceKind {
+    Span(usize, usize),
+    File(String),
+}
+
 #[serde_as]
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 /// A single gate in a circuit.
@@ -173,6 +179,12 @@ pub struct CircuitGate<F: PrimeField> {
     /// public selector polynomials that can used as handy coefficients in gates
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub coeffs: Vec<F>,
+
+    #[serde(skip)]
+    pub label: Option<&'static str>,
+
+    #[serde(skip)]
+    pub source: Option<SourceKind>,
 }
 
 impl<F> CircuitGate<F>
@@ -186,6 +198,20 @@ where
             coeffs,
             label: None,
             source: None,
+        }
+    }
+
+    pub fn with_label(self, label: &'static str) -> Self {
+        Self {
+            label: Some(label),
+            ..self
+        }
+    }
+
+    pub fn with_source(self, source: SourceKind) -> Self {
+        Self {
+            source: Some(source),
+            ..self
         }
     }
 }
