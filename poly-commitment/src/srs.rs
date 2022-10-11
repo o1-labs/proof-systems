@@ -33,8 +33,7 @@ pub struct SRS<G: CommitmentCurve> {
     pub endo_q: G::BaseField,
 }
 
-pub fn endos<G: CommitmentCurve>() -> (G::BaseField, G::ScalarField)
-{
+pub fn endos<G: CommitmentCurve>() -> (G::BaseField, G::ScalarField) {
     let endo_q: G::BaseField = oracle::sponge::endo_coefficient();
     let endo_r = {
         let potential_endo_r: G::ScalarField = oracle::sponge::endo_coefficient();
@@ -50,8 +49,7 @@ pub fn endos<G: CommitmentCurve>() -> (G::BaseField, G::ScalarField)
     (endo_q, endo_r)
 }
 
-fn point_of_random_bytes<G: CommitmentCurve>(map: &G::Map, random_bytes: &[u8]) -> G
-{
+fn point_of_random_bytes<G: CommitmentCurve>(map: &G::Map, random_bytes: &[u8]) -> G {
     // packing in bit-representation
     const N: usize = 31;
     let mut bits = [false; 8 * N];
