@@ -2079,7 +2079,7 @@ where
             EndoCoefficient => "endo_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
             ForeignFieldModulus(i) => format!("foreign_field_modulus({i})"),
-            Literal(x) => format!("field(\"0x{}\")", x.to_hex()),
+            Literal(x) => format!("field(\"0x{}\")", x.into_repr()),
             Pow(x, n) => match x.as_ref() {
                 Alpha => format!("alpha_pow({n})"),
                 x => format!("pow({}, {n})", x.ocaml()),
@@ -2100,7 +2100,7 @@ where
             EndoCoefficient => "endo\\_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
             ForeignFieldModulus(i) => format!("foreign\\_field\\_modulus({i})"),
-            Literal(x) => format!("\\mathbb{{F}}({})", x.to_hex()),
+            Literal(x) => format!("\\mathbb{{F}}({})", x.into_repr().into()),
             Pow(x, n) => match x.as_ref() {
                 Alpha => format!("\\alpha^{{{n}}}"),
                 x => format!("{}^{n}", x.ocaml()),
