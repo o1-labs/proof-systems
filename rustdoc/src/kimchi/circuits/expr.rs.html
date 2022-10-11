@@ -4683,7 +4683,7 @@
             EndoCoefficient =&gt; <span class="string">&quot;endo_coefficient&quot;</span>.to_string(),
             Mds { row, col } =&gt; <span class="macro">format!</span>(<span class="string">&quot;mds({row}, {col})&quot;</span>),
             ForeignFieldModulus(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;foreign_field_modulus({i})&quot;</span>),
-            Literal(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;field(\&quot;0x{}\&quot;)&quot;</span>, x.to_hex()),
+            Literal(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;field(\&quot;0x{}\&quot;)&quot;</span>, x.into_repr()),
             Pow(x, n) =&gt; <span class="kw">match </span>x.as_ref() {
                 Alpha =&gt; <span class="macro">format!</span>(<span class="string">&quot;alpha_pow({n})&quot;</span>),
                 x =&gt; <span class="macro">format!</span>(<span class="string">&quot;pow({}, {n})&quot;</span>, x.ocaml()),
@@ -4704,7 +4704,7 @@
             EndoCoefficient =&gt; <span class="string">&quot;endo\\_coefficient&quot;</span>.to_string(),
             Mds { row, col } =&gt; <span class="macro">format!</span>(<span class="string">&quot;mds({row}, {col})&quot;</span>),
             ForeignFieldModulus(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;foreign\\_field\\_modulus({i})&quot;</span>),
-            Literal(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;\\mathbb{{F}}({})&quot;</span>, x.to_hex()),
+            Literal(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;\\mathbb{{F}}({})&quot;</span>, x.into_repr().into()),
             Pow(x, n) =&gt; <span class="kw">match </span>x.as_ref() {
                 Alpha =&gt; <span class="macro">format!</span>(<span class="string">&quot;\\alpha^{{{n}}}&quot;</span>),
                 x =&gt; <span class="macro">format!</span>(<span class="string">&quot;{}^{n}&quot;</span>, x.ocaml()),
@@ -5207,4 +5207,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (81f391930 2022-10-09)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (a6b7274a4 2022-10-10)" ></div></body></html>
