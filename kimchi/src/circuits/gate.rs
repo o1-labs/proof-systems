@@ -173,7 +173,6 @@ pub struct CircuitGate<F: PrimeField> {
     /// public selector polynomials that can used as handy coefficients in gates
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub coeffs: Vec<F>,
-
 }
 
 impl<F> CircuitGate<F>
@@ -185,6 +184,8 @@ where
             typ,
             wires,
             coeffs,
+            label: None,
+            source: None,
         }
     }
 }

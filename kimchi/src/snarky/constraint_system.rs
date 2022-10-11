@@ -1,4 +1,7 @@
-use crate::circuits::gate::{CircuitGate, GateType};
+#![allow(clippy::all)]
+
+use crate::circuits::gate::{CircuitGate, GateType, SourceKind};
+use crate::circuits::polynomials::generic::GENERIC_COEFFS;
 use crate::circuits::polynomials::poseidon::{ROUNDS_PER_HASH, SPONGE_WIDTH};
 use crate::circuits::wires::{Wire, COLUMNS, PERMUTS};
 use ark_ff::PrimeField;
@@ -57,6 +60,8 @@ struct GateSpec<Row, Field> {
     kind: GateType,
     wired_to: Vec<Position<Row>>,
     coeffs: Vec<Field>,
+    label: &'static str,
+    source: SourceKind,
 }
 
 impl<Row, Field> GateSpec<Row, Field> {
@@ -66,6 +71,8 @@ impl<Row, Field> GateSpec<Row, Field> {
             kind,
             wired_to,
             coeffs,
+            label,
+            source,
         } = self;
         GateSpec {
             kind,
@@ -74,6 +81,8 @@ impl<Row, Field> GateSpec<Row, Field> {
                 .map(|Position { row, col }| Position { row: f(row), col })
                 .collect(),
             coeffs,
+            label,
+            source,
         }
     }
 }
@@ -84,6 +93,8 @@ impl<Field: PrimeField> GateSpec<usize, Field> {
             kind,
             wired_to,
             coeffs,
+            label,
+            source,
         } = self;
         let wires: Vec<_> = wired_to
             .into_iter()
@@ -91,6 +102,8 @@ impl<Field: PrimeField> GateSpec<usize, Field> {
             .map(|x| x.to_rust_wire())
             .collect();
         CircuitGate::new(kind, wires.try_into().unwrap(), coeffs)
+            .with_label(label)
+            .with_source(source)
     }
 }
 
@@ -400,7 +413,14 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
     }
 
     /** Adds a row/gate/constraint to a constraint system `sys`. */
-    fn add_row(&mut self, vars: Vec<Option<V>>, kind: GateType, coeffs: Vec<Field>) {
+    fn add_row(
+        &mut self,
+        label: &'static str,
+        source: String,
+        vars: Vec<Option<V>>,
+        kind: GateType,
+        coeffs: Vec<Field>,
+    ) {
         /* As we're adding a row, we're adding new cells.
            If these cells (the first 7) contain variables,
            make sure that they are wired
@@ -419,6 +439,8 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
                     kind,
                     wired_to: Vec::new(),
                     coeffs,
+                    label,
+                    source: SourceKind::File(source),
                 });
             }
         }
@@ -439,9 +461,9 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
         }
 
         // if we still have some pending gates, deal with it first
-        if let Some((l, r, o, coeffs)) = self.pending_generic_gate.take() {
+        if let Some((l, r, o, coeffs, label, loc)) = self.pending_generic_gate.take() {
             self.pending_generic_gate = None;
-            self.add_row(vec![l, r, o], GateType::Generic, coeffs.clone());
+            self.add_row(label, loc, vec![l, r, o], GateType::Generic, coeffs.clone());
         }
 
         // get gates without holding on an immutable reference
@@ -467,6 +489,8 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
                 kind: GateType::Generic,
                 wired_to: Vec::new(),
                 coeffs: pub_selectors.clone(),
+                label: "public input",
+                source: SourceKind::File("".to_string()),
             });
         }
 
@@ -479,6 +503,8 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
                 kind,
                 wired_to: _,
                 coeffs,
+                label,
+                source,
             } = gate;
             GateSpec {
                 kind,
@@ -486,6 +512,8 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
                     .map(|col| permutation(Position { row, col }))
                     .collect(),
                 coeffs,
+                label,
+                source,
             }
         };
 
@@ -596,6 +624,8 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
     */
     fn add_generic_constraint(
         &mut self,
+        label: &'static str,
+        source: String,
         l: Option<V>,
         r: Option<V>,
         o: Option<V>,
@@ -608,7 +638,13 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
                     std::mem::replace(&mut self.pending_generic_gate, None)
                 {
                     coeffs.extend(coeffs2);
-                    self.add_row(vec![l, r, o, l2, r2, o2], GateType::Generic, coeffs);
+                    self.add_row(
+                        label,
+                        source,
+                        vec![l, r, o, l2, r2, o2],
+                        GateType::Generic,
+                        coeffs,
+                    );
                 }
             }
         }
@@ -646,6 +682,7 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
                     let lx = V::External(lx);
                     let s1x1_plus_s2x2 = self.create_internal(None, vec![(ls, lx), (rs, rx)]);
                     self.add_generic_constraint(
+                        label, source
                         Some(lx),
                         Some(rx),
                         Some(s1x1_plus_s2x2),
@@ -1015,8 +1052,11 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
     /// # Panics
     ///
     /// Will panic if `witness` fields are empty.
-    pub fn add_constraint<Cvar>(&mut self, constraint: KimchiConstraint<Cvar, Field>)
-    where
+    pub fn add_constraint<Cvar>(
+        &mut self,
+        label: Option<String>,
+        constraint: KimchiConstraint<Cvar, Field>,
+    ) where
         Cvar: SnarkyCvar<Field = Field>,
     {
         match constraint {
@@ -1164,7 +1204,7 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
                     None,
                     None,
                 ];
-                self.add_row(vars, GateType::Zero, vec![]);
+                self.add_row(label, vars, GateType::Zero, vec![]);
             }
             KimchiConstraint::EcAddComplete {
                 p1,
