@@ -2,7 +2,7 @@
 name = "Kimchi"
 description = "This specification describes the Kimchi proof system."
 version = "0.1.0"
-authors = ["Izaak Meckler", "Vanishree Rao", "Matthew Ryan", "Joseph Spadavecchia", "David Wong", "Vitaly Zelov"]
+authors = ["Izaak Meckler", "Anaïs Querol", "Vanishree Rao", "Matthew Ryan", "Joseph Spadavecchia", "David Wong", "Vitaly Zelov"]
 
 [config]
 template = "template.md"
@@ -20,6 +20,7 @@ generic = "../../../kimchi/src/circuits/polynomials/generic.rs"
 poseidon = "../../../kimchi/src/circuits/polynomials/poseidon.rs"
 varbasemul = "../../../kimchi/src/circuits/polynomials/varbasemul.rs"
 range_check = "../../../kimchi/src/circuits/polynomials/range_check/circuitgates.rs"
+foreign_field_add = "../../../kimchi/src/circuits/polynomials/foreign_field_add/circuitgates.rs"
 
 # lookup
 tables = "../../../kimchi/src/circuits/lookup/tables/mod.rs"

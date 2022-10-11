@@ -244,6 +244,7 @@ impl<F: PrimeField> CircuitGate<F> {
             joint_combiner: None,
             endo_coefficient: cs.endo,
             mds: &G::sponge_params().mds,
+            foreign_field_modulus: None,
         };
 
         let pt = F::rand(rng);
@@ -756,7 +757,7 @@ fn two<F: Field, T: ExprOps<F>>() -> T {
 /// # Panics
 ///
 /// Will panic if the `typ` is not `Cairo`-related gate type or `zero` gate type.
-pub fn circuit_gate_combined_constraints<F: FftField>(typ: GateType, alphas: &Alphas<F>) -> E<F> {
+pub fn circuit_gate_combined_constraints<F: PrimeField>(typ: GateType, alphas: &Alphas<F>) -> E<F> {
     match typ {
         GateType::CairoClaim => Claim::combined_constraints(alphas),
         GateType::CairoInstruction => Instruction::combined_constraints(alphas),
@@ -771,7 +772,7 @@ pub struct Claim<F>(PhantomData<F>);
 
 impl<F> Argument<F> for Claim<F>
 where
-    F: FftField,
+    F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CairoClaim);
     const CONSTRAINTS: u32 = 5;
@@ -808,7 +809,7 @@ pub struct Instruction<F>(PhantomData<F>);
 
 impl<F> Argument<F> for Instruction<F>
 where
-    F: FftField,
+    F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CairoInstruction);
     const CONSTRAINTS: u32 = 28;
@@ -955,7 +956,7 @@ pub struct Flags<F>(PhantomData<F>);
 
 impl<F> Argument<F> for Flags<F>
 where
-    F: FftField,
+    F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CairoFlags);
     const CONSTRAINTS: u32 = 4;
@@ -1022,7 +1023,7 @@ pub struct Transition<F>(PhantomData<F>);
 
 impl<F> Argument<F> for Transition<F>
 where
-    F: FftField,
+    F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CairoTransition);
     const CONSTRAINTS: u32 = 3;

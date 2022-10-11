@@ -179,11 +179,6 @@ pub fn handle_standard_witness_cell<F: PrimeField>(
             witness[col][row] = value;
         }
         WitnessCell::Limb(limb_cell) => {
-            /*
-            println!(
-                "connecting limbs (col: {} , row: {} ) to (col: {} , row: {})",
-                limb_cell.col, limb_cell.row, col, row
-            );*/
             witness[col][row] = value_to_limb(
                 witness[limb_cell.col][limb_cell.row], // limb cell (row, col)
                 limb_cell.start,                       // starting bit
@@ -197,7 +192,7 @@ pub fn handle_standard_witness_cell<F: PrimeField>(
 }
 
 /// initialize a range_check_row
-pub fn init_range_check_row<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], row: usize, value: F) {
+fn init_range_check_row<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], row: usize, value: F) {
     for col in 0..COLUMNS {
         handle_standard_witness_cell(witness, &WITNESS_SHAPE[row][col], row, col, value);
     }
@@ -229,7 +224,7 @@ pub fn create_witness<F: PrimeField>(v0: F) -> [Vec<F>; COLUMNS] {
 /// Extend an existing witness with a multi-range-check gate for foreign field
 /// elements fe
 pub fn extend_witness<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], fe: ForeignElement<F, 3>) {
-    let limbs_witness = create_multi_witness(*fe.lo(), *fe.mi(), *fe.hi());
+    let limbs_witness = create_multi_witness(fe[0], fe[1], fe[2]);
     for col in 0..COLUMNS {
         witness[col].extend(limbs_witness[col].iter())
     }

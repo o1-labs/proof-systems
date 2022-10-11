@@ -16,7 +16,7 @@ use crate::circuits::{
     gate::{CircuitGate, CurrOrNext, GateType},
     wires::{GateWires, COLUMNS},
 };
-use ark_ff::{FftField, Field, PrimeField};
+use ark_ff::{FftField, PrimeField};
 use std::marker::PhantomData;
 use CurrOrNext::{Curr, Next};
 
@@ -175,7 +175,7 @@ impl<T> Point<T> {
 }
 
 impl Point<Variable> {
-    pub fn new_from_env<F: Field, T: ExprOps<F>>(&self, env: &ArgumentEnv<F, T>) -> Point<T> {
+    pub fn new_from_env<F: PrimeField, T: ExprOps<F>>(&self, env: &ArgumentEnv<F, T>) -> Point<T> {
         Point::create(self.x.new_from_env(env), self.y.new_from_env(env))
     }
 }
@@ -282,11 +282,18 @@ pub struct Layout<T> {
     n_next: T,
 }
 
-trait FromWitness<F, T> {
+trait FromWitness<F, T>
+where
+    F: PrimeField,
+{
     fn new_from_env(&self, env: &ArgumentEnv<F, T>) -> T;
 }
 
-impl<F: Field, T: ExprOps<F>> FromWitness<F, T> for Variable {
+impl<F, T> FromWitness<F, T> for Variable
+where
+    F: PrimeField,
+    T: ExprOps<F>,
+{
     fn new_from_env(&self, env: &ArgumentEnv<F, T>) -> T {
         let column_to_index = |_| match self.col {
             Column::Witness(i) => i,
@@ -323,7 +330,7 @@ impl Layout<Variable> {
         }
     }
 
-    fn new_from_env<F: Field, T: ExprOps<F>>(&self, env: &ArgumentEnv<F, T>) -> Layout<T> {
+    fn new_from_env<F: PrimeField, T: ExprOps<F>>(&self, env: &ArgumentEnv<F, T>) -> Layout<T> {
         Layout {
             accs: self.accs.map(|point| point.new_from_env(env)),
             bits: self.bits.map(|var| var.new_from_env(env)),
@@ -400,7 +407,7 @@ pub struct VarbaseMul<F>(PhantomData<F>);
 
 impl<F> Argument<F> for VarbaseMul<F>
 where
-    F: FftField,
+    F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::VarBaseMul);
     const CONSTRAINTS: u32 = 21;
