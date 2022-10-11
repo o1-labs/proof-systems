@@ -234,8 +234,14 @@ where
     public_input_size: Option<usize>,
     /** Whatever is not public input. */
     auxiliary_input_size: usize,
+
+    /// Enables the double generic gate optimization.
+    /// It can be useful to disable this feature for debugging.
+    generic_gate_optimization: bool,
+
     /** Queue (of size 1) of generic gate. */
     pending_generic_gate: Option<(Option<V>, Option<V>, Option<V>, Vec<Field>)>,
+
     /** V.t's corresponding to constant values. We reuse them so we don't need to
        use a fresh generic constraint each time to create a constant.
     */
@@ -295,6 +301,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
     /// # Panics
     ///
     /// Will panic if some inputs like `public_input_size` are unknown(None value).
+    // TODO: build the transposed version instead of this
     pub fn compute_witness<FUNC>(&self, external_values: FUNC) -> Vec<Vec<Field>>
     where
         FUNC: Fn(usize) -> Field,
@@ -365,6 +372,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
             equivalence_classes: HashMap::new(),
             // TODO: remove this field, it's unused
             auxiliary_input_size: 0,
+            generic_gate_optimization: false,
             pending_generic_gate: None,
             cached_constants: HashMap::new(),
             union_finds: disjoint_set::DisjointSet::new(),
@@ -622,6 +630,12 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
         o: Option<V>,
         mut coeffs: Vec<Field>,
     ) {
+        if !self.generic_gate_optimization {
+            assert!(coeffs.len() <= GENERIC_COEFFS);
+            self.add_row(vec![l, r, o], GateType::Generic, coeffs);
+            return;
+        }
+
         match self.pending_generic_gate {
             None => self.pending_generic_gate = Some((l, r, o, coeffs)),
             Some(_) => {
