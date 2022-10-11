@@ -232,6 +232,16 @@ where
 
         //~ 1. Commit (non-hiding) to the negated public input polynomial.
         let public_comm = index.srs.commit_non_hiding(&public_poly, None);
+        let public_comm = {
+            index
+                .srs
+                .mask_custom(
+                    public_comm.clone(),
+                    &public_comm.map(|_| G::ScalarField::one()),
+                )
+                .unwrap()
+                .commitment
+        };
 
         //~ 1. Absorb the commitment to the public polynomial with the Fq-Sponge.
         //~
@@ -1160,7 +1170,7 @@ where
         //~~ - the 15 registers/witness columns
         //~~ - the 6 sigmas
         //~~ - optionally, the runtime table
-        polynomials.extend(vec![(&public_poly, None, non_hiding(1))]);
+        polynomials.extend(vec![(&public_poly, None, fixed_hiding(1))]);
         polynomials.extend(vec![(&ft, None, blinding_ft)]);
         polynomials.extend(vec![(&z_poly, None, z_comm.blinders)]);
         polynomials.extend(vec![(&index.cs.genericm, None, fixed_hiding(1))]);
