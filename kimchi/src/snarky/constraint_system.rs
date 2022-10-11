@@ -1,6 +1,7 @@
 #![allow(clippy::all)]
 
 use crate::circuits::gate::{CircuitGate, GateType};
+use crate::circuits::polynomials::generic::GENERIC_COEFFS;
 use crate::circuits::polynomials::poseidon::{ROUNDS_PER_HASH, SPONGE_WIDTH};
 use crate::circuits::wires::{Wire, COLUMNS, PERMUTS};
 use ark_ff::PrimeField;
@@ -86,11 +87,7 @@ impl<Field: PrimeField> GateSpec<usize, Field> {
             .take(PERMUTS)
             .map(|x| x.to_rust_wire())
             .collect();
-        CircuitGate {
-            typ: kind,
-            wires: wires.try_into().unwrap(),
-            coeffs,
-        }
+        CircuitGate::new(kind, wires.try_into().unwrap(), coeffs)
     }
 }
 

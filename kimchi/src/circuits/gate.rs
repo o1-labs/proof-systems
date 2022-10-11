@@ -61,6 +61,7 @@ impl CurrOrNext {
     Clone,
     Copy,
     Debug,
+    Default,
     PartialEq,
     FromPrimitive,
     ToPrimitive,
@@ -78,6 +79,7 @@ impl CurrOrNext {
 #[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub enum GateType {
+    #[default]
     /// Zero gate
     Zero = 0,
     /// Generic arithmetic gate
@@ -159,39 +161,28 @@ pub enum CircuitGateError {
 pub type CircuitGateResult<T> = std::result::Result<T, CircuitGateError>;
 
 #[serde_as]
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 /// A single gate in a circuit.
 pub struct CircuitGate<F: PrimeField> {
     /// type of the gate
     pub typ: GateType,
+
     /// gate wiring (for each cell, what cell it is wired to)
     pub wires: GateWires,
+
     /// public selector polynomials that can used as handy coefficients in gates
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub coeffs: Vec<F>,
 }
 
-/*
-impl<F> std::fmt::Debug for CircuitGate<F>
+impl<F> CircuitGate<F>
 where
     F: PrimeField,
 {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let coeffs: Vec<_> = self
-            .coeffs
-            .iter()
-            .map(|c| c.into_repr().to_string())
-            .collect();
-        let coeffs = if coeffs.is_empty() {
-            "".to_string()
-        } else {
-            format!("<{}>", coeffs.join(", "))
-        };
-
-        writeln!(f, "{:?}{coeffs}", self.typ)
+    pub fn new(typ: GateType, wires: GateWires, coeffs: Vec<F>) -> Self {
+        Self { typ, wires, coeffs }
     }
 }
-*/
 
 impl<F: PrimeField> ToBytes for CircuitGate<F> {
     #[inline]
@@ -213,11 +204,7 @@ impl<F: PrimeField> ToBytes for CircuitGate<F> {
 impl<F: PrimeField> CircuitGate<F> {
     /// this function creates "empty" circuit gate
     pub fn zero(wires: GateWires) -> Self {
-        CircuitGate {
-            typ: GateType::Zero,
-            wires,
-            coeffs: Vec::new(),
-        }
+        CircuitGate::new(GateType::Zero, wires, vec![])
     }
 
     /// This function verifies the consistency of the wire
@@ -530,11 +517,11 @@ mod tests {
 
     prop_compose! {
         fn arb_circuit_gate()(typ: GateType, wires: GateWires, coeffs in arb_fp_vec(25)) -> CircuitGate<Fp> {
-            CircuitGate {
+            CircuitGate::new(
                 typ,
                 wires,
                 coeffs,
-            }
+            )
         }
     }
 

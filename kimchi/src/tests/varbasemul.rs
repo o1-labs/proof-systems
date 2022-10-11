@@ -26,16 +26,12 @@ fn varbase_mul_test() {
 
     for i in 0..(chunks * num_scalars) {
         let row = 2 * i;
-        gates.push(CircuitGate {
-            typ: GateType::VarBaseMul,
-            wires: Wire::new(row),
-            coeffs: vec![],
-        });
-        gates.push(CircuitGate {
-            typ: GateType::Zero,
-            wires: Wire::new(row + 1),
-            coeffs: vec![],
-        });
+        gates.push(CircuitGate::new(
+            GateType::VarBaseMul,
+            Wire::new(row),
+            vec![],
+        ));
+        gates.push(CircuitGate::new(GateType::Zero, Wire::new(row + 1), vec![]));
     }
 
     let mut witness: [Vec<F>; COLUMNS] =

@@ -17,7 +17,7 @@ pub const WIRES: [usize; COLUMNS] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 1
 /// Wire documents the other cell that is wired to this one.
 /// If the cell represents an internal wire, an input to the circuit,
 /// or a final output of the circuit, the cell references itself.
-#[derive(PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Default, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 #[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct Wire {
