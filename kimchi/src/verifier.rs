@@ -479,6 +479,19 @@ where
     }
     let elm: Vec<_> = proof.public.iter().map(|s| -*s).collect();
     let public_comm = PolyComm::<G>::multi_scalar_mul(&com_ref, &elm);
+    let public_comm = {
+        index
+            .srs()
+            .mask_custom(
+                public_comm,
+                &PolyComm {
+                    unshifted: vec![G::ScalarField::one(); 1],
+                    shifted: None,
+                },
+            )
+            .unwrap()
+            .commitment
+    };
 
     //~ 1. Run the [Fiat-Shamir argument](#fiat-shamir-argument).
     let OraclesResult {
