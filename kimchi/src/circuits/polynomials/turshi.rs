@@ -107,37 +107,21 @@ pub const CIRCUIT_GATE_COUNT: usize = 4;
 impl<F: PrimeField> CircuitGate<F> {
     /// This function creates a `CairoClaim` gate
     pub fn create_cairo_claim(wires: GateWires) -> Self {
-        CircuitGate {
-            typ: GateType::CairoClaim,
-            wires,
-            coeffs: vec![],
-        }
+        CircuitGate::new(GateType::CairoClaim, wires, vec![])
     }
     /// This function creates a `CairoInstruction` gate
     pub fn create_cairo_instruction(wires: GateWires) -> Self {
-        CircuitGate {
-            typ: GateType::CairoInstruction,
-            wires,
-            coeffs: vec![],
-        }
+        CircuitGate::new(GateType::CairoInstruction, wires, vec![])
     }
 
     /// This function creates a `CairoFlags` gate
     pub fn create_cairo_flags(wires: GateWires) -> Self {
-        CircuitGate {
-            typ: GateType::CairoFlags,
-            wires,
-            coeffs: vec![],
-        }
+        CircuitGate::new(GateType::CairoFlags, wires, vec![])
     }
 
     /// This function creates a `CairoTransition` gate
     pub fn create_cairo_transition(wires: GateWires) -> Self {
-        CircuitGate {
-            typ: GateType::CairoTransition,
-            wires,
-            coeffs: vec![],
-        }
+        CircuitGate::new(GateType::CairoTransition, wires, vec![])
     }
 
     /// Gadget generator of the whole cairo circuits from an absolute row and number of instructions

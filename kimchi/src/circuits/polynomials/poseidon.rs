@@ -83,11 +83,8 @@ impl<F: PrimeField> CircuitGate<F> {
         // Coefficients are passed in in the logical order
         coeffs: [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW],
     ) -> Self {
-        CircuitGate {
-            typ: GateType::Poseidon,
-            wires,
-            coeffs: coeffs.iter().flatten().copied().collect(),
-        }
+        let coeffs = coeffs.iter().flatten().copied().collect();
+        CircuitGate::new(GateType::Poseidon, wires, coeffs)
     }
 
     /// `create_poseidon_gadget(row, first_and_last_row, round_constants)`  creates an entire set of constraint for a Poseidon hash.

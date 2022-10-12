@@ -90,11 +90,7 @@ impl<Field: PrimeField> GateSpec<usize, Field> {
             .take(PERMUTS)
             .map(|x| x.to_rust_wire())
             .collect();
-        CircuitGate {
-            typ: kind,
-            wires: wires.try_into().unwrap(),
-            coeffs,
-        }
+        CircuitGate::new(kind, wires.try_into().unwrap(), coeffs)
     }
 }
 
