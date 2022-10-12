@@ -1,6 +1,4 @@
 use thiserror::Error;
 
 #[derive(Debug, Clone, Error)]
-pub enum SnarkyError {
-    
-}
+pub enum SnarkyError {}

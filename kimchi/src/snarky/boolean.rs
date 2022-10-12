@@ -20,7 +20,7 @@ where
 }
 
 /// A boolean variable.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Boolean<F: PrimeField>(CVar<F>);
 
 impl<F> SnarkyType<F> for Boolean<F>
@@ -44,7 +44,10 @@ where
 
     fn check(&self, cs: &mut RunState<F>) {
         // TODO: annotation?
-        cs.assert_(None, vec![BasicSnarkyConstraint::Boolean(self.0.clone())]);
+        cs.assert_(
+            Some("boolean check"),
+            vec![BasicSnarkyConstraint::Boolean(self.0.clone())],
+        );
     }
 
     fn constraint_system_auxiliary() -> Self::Auxiliary {}
@@ -169,7 +172,7 @@ where
                 let z = &self.0 + &other.0 - &res.0;
 
                 // TODO: annotation?
-                state.assert_r1cs(None, x, y.clone(), z);
+                state.assert_r1cs(Some("xor"), x, y.clone(), z);
 
                 res
             }
