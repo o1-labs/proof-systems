@@ -290,7 +290,13 @@ impl<Field: PrimeField, Gates: GateVector<Field>> SnarkyConstraintSystem<Field, 
     /// # Panics
     ///
     /// Will panic if some inputs like `public_input_size` are unknown(None value).
-    pub fn compute_witness<F: Fn(usize) -> Field>(&self, external_values: F) -> Vec<Vec<Field>> {
+    pub fn compute_witness<F: Fn(usize) -> Field>(&mut self, external_values: F) -> Vec<Vec<Field>> {
+        // we need to finalize the circuit first to get pending generic gates
+        if matches!(self.gates, Circuit::Unfinalized(..)) {
+            self.finalize();
+        }
+
+    
         let mut internal_values = HashMap::new();
         let public_input_size = self.public_input_size.unwrap();
         let num_rows = public_input_size + self.next_row;
