@@ -1031,22 +1031,6 @@
 <span id="1031">1031</span>
 <span id="1032">1032</span>
 <span id="1033">1033</span>
-<span id="1034">1034</span>
-<span id="1035">1035</span>
-<span id="1036">1036</span>
-<span id="1037">1037</span>
-<span id="1038">1038</span>
-<span id="1039">1039</span>
-<span id="1040">1040</span>
-<span id="1041">1041</span>
-<span id="1042">1042</span>
-<span id="1043">1043</span>
-<span id="1044">1044</span>
-<span id="1045">1045</span>
-<span id="1046">1046</span>
-<span id="1047">1047</span>
-<span id="1048">1048</span>
-<span id="1049">1049</span>
 </pre><pre class="rust"><code><span class="doccomment">//!This implements the constraints of the Cairo gates
 //!
 //! Cairo programs can have the following assembly-like instructions:
@@ -1156,37 +1140,21 @@
 </span><span class="kw">impl</span>&lt;F: PrimeField&gt; CircuitGate&lt;F&gt; {
     <span class="doccomment">/// This function creates a `CairoClaim` gate
     </span><span class="kw">pub fn </span>create_cairo_claim(wires: GateWires) -&gt; <span class="self">Self </span>{
-        CircuitGate {
-            typ: GateType::CairoClaim,
-            wires,
-            coeffs: <span class="macro">vec!</span>[],
-        }
+        CircuitGate::new(GateType::CairoClaim, wires, <span class="macro">vec!</span>[])
     }
     <span class="doccomment">/// This function creates a `CairoInstruction` gate
     </span><span class="kw">pub fn </span>create_cairo_instruction(wires: GateWires) -&gt; <span class="self">Self </span>{
-        CircuitGate {
-            typ: GateType::CairoInstruction,
-            wires,
-            coeffs: <span class="macro">vec!</span>[],
-        }
+        CircuitGate::new(GateType::CairoInstruction, wires, <span class="macro">vec!</span>[])
     }
 
     <span class="doccomment">/// This function creates a `CairoFlags` gate
     </span><span class="kw">pub fn </span>create_cairo_flags(wires: GateWires) -&gt; <span class="self">Self </span>{
-        CircuitGate {
-            typ: GateType::CairoFlags,
-            wires,
-            coeffs: <span class="macro">vec!</span>[],
-        }
+        CircuitGate::new(GateType::CairoFlags, wires, <span class="macro">vec!</span>[])
     }
 
     <span class="doccomment">/// This function creates a `CairoTransition` gate
     </span><span class="kw">pub fn </span>create_cairo_transition(wires: GateWires) -&gt; <span class="self">Self </span>{
-        CircuitGate {
-            typ: GateType::CairoTransition,
-            wires,
-            coeffs: <span class="macro">vec!</span>[],
-        }
+        CircuitGate::new(GateType::CairoTransition, wires, <span class="macro">vec!</span>[])
     }
 
     <span class="doccomment">/// Gadget generator of the whole cairo circuits from an absolute row and number of instructions

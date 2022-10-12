@@ -579,10 +579,6 @@
 <span id="579">579</span>
 <span id="580">580</span>
 <span id="581">581</span>
-<span id="582">582</span>
-<span id="583">583</span>
-<span id="584">584</span>
-<span id="585">585</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the double generic gate.
 
 </span><span class="comment">//~ The double generic gate contains two generic gates.
@@ -676,11 +672,7 @@
 <span class="kw">impl</span>&lt;F: PrimeField&gt; CircuitGate&lt;F&gt; {
     <span class="doccomment">/// This allows you to create two generic gates that will fit in one row, check [`Self::create_generic_gadget`] for a better to way to create these gates.
     </span><span class="kw">pub fn </span>create_generic(wires: GateWires, c: [F; GENERIC_COEFFS * <span class="number">2</span>]) -&gt; <span class="self">Self </span>{
-        CircuitGate {
-            typ: GateType::Generic,
-            wires,
-            coeffs: c.to_vec(),
-        }
+        CircuitGate::new(GateType::Generic, wires, c.to_vec())
     }
 
     <span class="doccomment">/// This allows you to create two generic gates by passing the desired

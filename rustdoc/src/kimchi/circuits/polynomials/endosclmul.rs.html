@@ -362,10 +362,6 @@
 <span id="362">362</span>
 <span id="363">363</span>
 <span id="364">364</span>
-<span id="365">365</span>
-<span id="366">366</span>
-<span id="367">367</span>
-<span id="368">368</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements short Weierstrass curve
 //! endomorphism optimised variable base
 //! scalar multiplication custom Plonk polynomials.
@@ -482,11 +478,7 @@
 /// variable base scalar multiplication custom Plonk constraints.
 </span><span class="kw">impl</span>&lt;F: PrimeField&gt; CircuitGate&lt;F&gt; {
     <span class="kw">pub fn </span>create_endomul(wires: GateWires) -&gt; <span class="self">Self </span>{
-        CircuitGate {
-            typ: GateType::EndoMul,
-            wires,
-            coeffs: <span class="macro">vec!</span>[],
-        }
+        CircuitGate::new(GateType::EndoMul, wires, <span class="macro">vec!</span>[])
     }
 
     <span class="doccomment">/// Verify the `EndoMul` gate.

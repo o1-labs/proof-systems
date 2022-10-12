@@ -120,7 +120,7 @@
 <span class="doccomment">/// Wire documents the other cell that is wired to this one.
 /// If the cell represents an internal wire, an input to the circuit,
 /// or a final output of the circuit, the cell references itself.
-</span><span class="attribute">#[derive(PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
+</span><span class="attribute">#[derive(PartialEq, Default, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 #[cfg_attr(feature = <span class="string">&quot;wasm_types&quot;</span>, wasm_bindgen::prelude::wasm_bindgen)]
 </span><span class="kw">pub struct </span>Wire {

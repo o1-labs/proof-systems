@@ -1319,10 +1319,6 @@
 <span id="1319">1319</span>
 <span id="1320">1320</span>
 <span id="1321">1321</span>
-<span id="1322">1322</span>
-<span id="1323">1323</span>
-<span id="1324">1324</span>
-<span id="1325">1325</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::circuits::gate::{CircuitGate, GateType};
 <span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::poseidon::{ROUNDS_PER_HASH, SPONGE_WIDTH};
 <span class="kw">use </span><span class="kw">crate</span>::circuits::wires::{Wire, COLUMNS, PERMUTS};
@@ -1415,11 +1411,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
             .take(PERMUTS)
             .map(|x| x.to_rust_wire())
             .collect();
-        CircuitGate {
-            typ: kind,
-            wires: wires.try_into().unwrap(),
-            coeffs,
-        }
+        CircuitGate::new(kind, wires.try_into().unwrap(), coeffs)
     }
 }
 

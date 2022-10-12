@@ -436,14 +436,6 @@
 <span id="436">436</span>
 <span id="437">437</span>
 <span id="438">438</span>
-<span id="439">439</span>
-<span id="440">440</span>
-<span id="441">441</span>
-<span id="442">442</span>
-<span id="443">443</span>
-<span id="444">444</span>
-<span id="445">445</span>
-<span id="446">446</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements short Weierstrass curve variable base scalar multiplication custom Plonk polynomials.
 //!
 //! ```ignore
@@ -576,16 +568,8 @@
 </span><span class="kw">impl</span>&lt;F: PrimeField&gt; CircuitGate&lt;F&gt; {
     <span class="kw">pub fn </span>create_vbmul(wires: <span class="kw-2">&amp;</span>[GateWires; <span class="number">2</span>]) -&gt; Vec&lt;<span class="self">Self</span>&gt; {
         <span class="macro">vec!</span>[
-            CircuitGate {
-                typ: GateType::VarBaseMul,
-                wires: wires[<span class="number">0</span>],
-                coeffs: <span class="macro">vec!</span>[],
-            },
-            CircuitGate {
-                typ: GateType::Zero,
-                wires: wires[<span class="number">1</span>],
-                coeffs: <span class="macro">vec!</span>[],
-            },
+            CircuitGate::new(GateType::VarBaseMul, wires[<span class="number">0</span>], <span class="macro">vec!</span>[]),
+            CircuitGate::new(GateType::Zero, wires[<span class="number">1</span>], <span class="macro">vec!</span>[]),
         ]
     }
 

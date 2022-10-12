@@ -419,9 +419,6 @@
 <span id="419">419</span>
 <span id="420">420</span>
 <span id="421">421</span>
-<span id="422">422</span>
-<span id="423">423</span>
-<span id="424">424</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the Poseidon constraint polynomials.
 
 </span><span class="comment">//~ The poseidon gate encodes 5 rounds of the poseidon permutation.
@@ -507,11 +504,8 @@
         <span class="comment">// Coefficients are passed in in the logical order
         </span>coeffs: [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW],
     ) -&gt; <span class="self">Self </span>{
-        CircuitGate {
-            typ: GateType::Poseidon,
-            wires,
-            coeffs: coeffs.iter().flatten().copied().collect(),
-        }
+        <span class="kw">let </span>coeffs = coeffs.iter().flatten().copied().collect();
+        CircuitGate::new(GateType::Poseidon, wires, coeffs)
     }
 
     <span class="doccomment">/// `create_poseidon_gadget(row, first_and_last_row, round_constants)`  creates an entire set of constraint for a Poseidon hash.

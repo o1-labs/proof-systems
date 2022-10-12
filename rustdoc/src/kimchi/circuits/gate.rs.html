@@ -536,6 +536,15 @@
 <span id="536">536</span>
 <span id="537">537</span>
 <span id="538">538</span>
+<span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
+<span id="543">543</span>
+<span id="544">544</span>
+<span id="545">545</span>
+<span id="546">546</span>
+<span id="547">547</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk constraint gate primitive.
 
 </span><span class="kw">use crate</span>::{
@@ -599,6 +608,7 @@
     Clone,
     Copy,
     Debug,
+    Default,
     PartialEq,
     FromPrimitive,
     ToPrimitive,
@@ -616,7 +626,8 @@
 #[cfg_attr(feature = <span class="string">&quot;wasm_types&quot;</span>, wasm_bindgen::prelude::wasm_bindgen)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 </span><span class="kw">pub enum </span>GateType {
-    <span class="doccomment">/// Zero gate
+    <span class="attribute">#[default]
+    </span><span class="doccomment">/// Zero gate
     </span>Zero = <span class="number">0</span>,
     <span class="doccomment">/// Generic arithmetic gate
     </span>Generic = <span class="number">1</span>,
@@ -697,16 +708,27 @@
 </span><span class="kw">pub type </span>CircuitGateResult&lt;T&gt; = std::result::Result&lt;T, CircuitGateError&gt;;
 
 <span class="attribute">#[serde_as]
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 </span><span class="doccomment">/// A single gate in a circuit.
 </span><span class="kw">pub struct </span>CircuitGate&lt;F: PrimeField&gt; {
     <span class="doccomment">/// type of the gate
     </span><span class="kw">pub </span>typ: GateType,
+
     <span class="doccomment">/// gate wiring (for each cell, what cell it is wired to)
     </span><span class="kw">pub </span>wires: GateWires,
+
     <span class="doccomment">/// public selector polynomials that can used as handy coefficients in gates
     </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>coeffs: Vec&lt;F&gt;,
+}
+
+<span class="kw">impl</span>&lt;F&gt; CircuitGate&lt;F&gt;
+<span class="kw">where
+    </span>F: PrimeField,
+{
+    <span class="kw">pub fn </span>new(typ: GateType, wires: GateWires, coeffs: Vec&lt;F&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ typ, wires, coeffs }
+    }
 }
 
 <span class="kw">impl</span>&lt;F: PrimeField&gt; ToBytes <span class="kw">for </span>CircuitGate&lt;F&gt; {
@@ -729,11 +751,7 @@
 <span class="kw">impl</span>&lt;F: PrimeField&gt; CircuitGate&lt;F&gt; {
     <span class="doccomment">/// this function creates &quot;empty&quot; circuit gate
     </span><span class="kw">pub fn </span>zero(wires: GateWires) -&gt; <span class="self">Self </span>{
-        CircuitGate {
-            typ: GateType::Zero,
-            wires,
-            coeffs: Vec::new(),
-        }
+        CircuitGate::new(GateType::Zero, wires, <span class="macro">vec!</span>[])
     }
 
     <span class="doccomment">/// This function verifies the consistency of the wire
@@ -1053,11 +1071,11 @@
 
     <span class="macro">prop_compose! </span>{
         <span class="kw">fn </span>arb_circuit_gate()(typ: GateType, wires: GateWires, coeffs <span class="kw">in </span>arb_fp_vec(<span class="number">25</span>)) -&gt; CircuitGate&lt;Fp&gt; {
-            CircuitGate {
+            CircuitGate::new(
                 typ,
                 wires,
                 coeffs,
-            }
+            )
         }
     }
 
