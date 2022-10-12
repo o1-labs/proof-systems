@@ -160,3 +160,75 @@ Variables in step 3. should either:
 * be absent (`None`) and evaluated to the default value 0
 * point to an external variable, in which case the closure passed can be used to retrieve the value
 * be an internal variable, in which case the value is computed by evaluating the AST that was used to create it.
+
+## Permutation
+
+The permutation is used to wire cells of the execution trace table (specifically, cells belonging to the first 7 columns).
+It is also known as "copy constraints".
+
+```admonish
+In snarky, the permutation is represented differently from kimchi, and thus needs to be converted to the kimchi's format before a proof can be created.
+TODO: merge the representations
+```
+
+We use the permutation in ingenious ways to optimize circuits. 
+For example, we use it to encode each constants once, and wire it to places where it is used. 
+Another example, is that we use it to assert equality between two cells.
+
+## Implementation details
+
+There's two aspect of the implementation of the permutation, the first one is a hashmap of equivalence classes, which is used to track all the positions of a variable, the second one is making use of a [union find]() data structure to link variables that are equivalent (we'll talk about that after).
+
+The two data structures are in the kimchi backend's state:
+
+```rust
+pub struct SnarkyConstraintSystem<Field>
+where
+    Field: PrimeField,
+{
+    equivalence_classes: HashMap<V, Vec<Position<Row>>>,
+    union_finds: disjoint_set::DisjointSet<V>,
+    // omitted fields...
+}
+```
+
+### equivalence classes
+
+As said previously, during circuit generation a symbolic execution trace table is created. It should look a bit like this (if there were only 3 columns and 4 rows):
+
+|     |  0  |  1  |  2 |
+| :-: | :-: | :-: | :-:| 
+|  0  |  v1 |  v1 |    |
+|  1  |     |  v2 |    |
+|  2  |     |  v2 |    |
+|  3  |     |     | v1 |
+
+From that, it should be clear that all the cells containing the variable `v1` should be connected, 
+and all the cells containing the variable `v2` should be as well.
+
+The format that the permutation expects is a [cycle](https://en.wikipedia.org/wiki/Cyclic_permutation): a list of cells where each cell is linked to the next, the last one wrapping around and linking to the first one.
+
+For example, a cycle for the `v1` variable could be:
+
+```
+(0, 0) -> (0, 1)
+(0, 1) -> (3, 2)
+(3, 2) -> (0, 0)
+```
+
+During circuit generation, a hashmap (called `equivalence_classes`) is used to track all the positions (row and column) of each variable.
+
+During finalization, all the different cycles are created by looking at all the variables existing in the hashmap.
+
+### Union finds
+
+Sometimes, we know that two variables will have equivalent values due to an `assert_equal()` being called to link them.
+Since we link two variables together, they need to be part of the same cycle, and as such we need to be able to detect that to construct correct cycles.
+
+To do this, we use a [union find]() data structure, which allows us to easily find the unions of equivalent variables.
+
+When an `assert_equal()` is called, we link the two variables together using the `union_finds` data structure.
+
+During finalization, when we create the cycles, we use the `union_finds` data structure to find the equivalent variables.
+We then create a new equivalence classes hashmap to merge the keys (variables) that are in the same set.
+This is done before using the equivalence classes hashmap to construct the cycles.
