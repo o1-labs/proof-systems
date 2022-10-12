@@ -26,7 +26,7 @@ where
 
     fn check(&self, cs: &mut RunState<F>) {
         // TODO: annotation?
-        cs.assert_(None, vec![BasicSnarkyConstraint::Boolean(self.0.clone())]);
+        cs.assert_(Some("boolean check"), vec![BasicSnarkyConstraint::Boolean(self.0.clone())]);
     }
 
     fn deserialize(&self) -> (Self::OutOfCircuit, Self::Auxiliary) {

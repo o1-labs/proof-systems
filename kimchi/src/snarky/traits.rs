@@ -10,7 +10,7 @@ use super::{
 /// A snarky type is a type that can be used in a circuit.
 /// It references an equivalent "out-of-circuit" type that one can use outside of the circuit.
 /// (For example, to construct private or public inputs, or a public output, to the circuit.)
-pub trait SnarkyType<F>: Sized
+pub trait SnarkyType<F>: std::fmt::Debug + Sized
 where
     F: PrimeField,
 {
