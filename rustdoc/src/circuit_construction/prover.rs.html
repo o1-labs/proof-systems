@@ -134,93 +134,9 @@
 <span id="134">134</span>
 <span id="135">135</span>
 <span id="136">136</span>
-<span id="137">137</span>
-<span id="138">138</span>
-<span id="139">139</span>
-<span id="140">140</span>
-<span id="141">141</span>
-<span id="142">142</span>
-<span id="143">143</span>
-<span id="144">144</span>
-<span id="145">145</span>
-<span id="146">146</span>
-<span id="147">147</span>
-<span id="148">148</span>
-<span id="149">149</span>
-<span id="150">150</span>
-<span id="151">151</span>
-<span id="152">152</span>
-<span id="153">153</span>
-<span id="154">154</span>
-<span id="155">155</span>
-<span id="156">156</span>
-<span id="157">157</span>
-<span id="158">158</span>
-<span id="159">159</span>
-<span id="160">160</span>
-<span id="161">161</span>
-<span id="162">162</span>
-<span id="163">163</span>
-<span id="164">164</span>
-<span id="165">165</span>
-<span id="166">166</span>
-<span id="167">167</span>
-<span id="168">168</span>
-<span id="169">169</span>
-<span id="170">170</span>
-<span id="171">171</span>
-<span id="172">172</span>
-<span id="173">173</span>
-<span id="174">174</span>
-<span id="175">175</span>
-<span id="176">176</span>
-<span id="177">177</span>
-<span id="178">178</span>
-<span id="179">179</span>
-<span id="180">180</span>
-<span id="181">181</span>
-<span id="182">182</span>
-<span id="183">183</span>
-<span id="184">184</span>
-<span id="185">185</span>
-<span id="186">186</span>
-<span id="187">187</span>
-<span id="188">188</span>
-<span id="189">189</span>
-<span id="190">190</span>
-<span id="191">191</span>
-<span id="192">192</span>
-<span id="193">193</span>
-<span id="194">194</span>
-<span id="195">195</span>
-<span id="196">196</span>
-<span id="197">197</span>
-<span id="198">198</span>
-<span id="199">199</span>
-<span id="200">200</span>
-<span id="201">201</span>
-<span id="202">202</span>
-<span id="203">203</span>
-<span id="204">204</span>
-<span id="205">205</span>
-<span id="206">206</span>
-<span id="207">207</span>
-<span id="208">208</span>
-<span id="209">209</span>
-<span id="210">210</span>
-<span id="211">211</span>
-<span id="212">212</span>
-<span id="213">213</span>
-<span id="214">214</span>
-<span id="215">215</span>
-<span id="216">216</span>
-<span id="217">217</span>
-<span id="218">218</span>
-<span id="219">219</span>
-<span id="220">220</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::writer::{Cs, GateSpec, System, Var, WitnessGenerator};
-<span class="kw">use </span>ark_ec::{AffineCurve, ProjectiveCurve};
-<span class="kw">use </span>ark_ff::{FftField, One, PrimeField, SquareRootField, Zero};
+<span class="kw">use </span>ark_ec::AffineCurve;
+<span class="kw">use </span>ark_ff::{One, PrimeField, Zero};
 <span class="kw">use </span>commitment_dlog::{
     commitment::{CommitmentCurve, PolyComm},
     srs::{endos, SRS},
@@ -232,93 +148,8 @@
     proof::ProverProof,
     prover_index::ProverIndex,
 };
-<span class="kw">use </span>mina_curves::pasta::{Fp, Fq, Pallas <span class="kw">as </span>Other, Vesta};
 <span class="kw">use </span>oracle::FqSponge;
 <span class="kw">use </span>std::array;
-
-<span class="doccomment">/// A [Cycle] represents the algebraic structure that
-/// allows for recursion using elliptic curves.
-</span><span class="kw">pub trait </span>Cycle {
-    <span class="kw">type </span>InnerField: FftField
-        + PrimeField
-        + SquareRootField
-        + From&lt;u128&gt;
-        + From&lt;u64&gt;
-        + From&lt;u32&gt;
-        + From&lt;u16&gt;
-        + From&lt;u8&gt;;
-    <span class="kw">type </span>OuterField: FftField
-        + PrimeField
-        + SquareRootField
-        + From&lt;u128&gt;
-        + From&lt;u64&gt;
-        + From&lt;u32&gt;
-        + From&lt;u16&gt;
-        + From&lt;u8&gt;;
-
-    <span class="kw">type </span>InnerMap: groupmap::GroupMap&lt;<span class="self">Self</span>::InnerField&gt;;
-    <span class="kw">type </span>OuterMap: groupmap::GroupMap&lt;<span class="self">Self</span>::OuterField&gt;;
-
-    <span class="kw">type </span>InnerProj: ProjectiveCurve&lt;
-            Affine = <span class="self">Self</span>::Inner,
-            ScalarField = <span class="self">Self</span>::OuterField,
-            BaseField = <span class="self">Self</span>::InnerField,
-        &gt; + From&lt;<span class="self">Self</span>::Inner&gt;
-        + Into&lt;<span class="self">Self</span>::Inner&gt;
-        + std::ops::MulAssign&lt;<span class="self">Self</span>::OuterField&gt;;
-
-    <span class="kw">type </span>Inner: CommitmentCurve&lt;
-            Projective = <span class="self">Self</span>::InnerProj,
-            Map = <span class="self">Self</span>::InnerMap,
-            BaseField = <span class="self">Self</span>::InnerField,
-            ScalarField = <span class="self">Self</span>::OuterField,
-        &gt; + From&lt;<span class="self">Self</span>::InnerProj&gt;
-        + Into&lt;<span class="self">Self</span>::InnerProj&gt;;
-
-    <span class="kw">type </span>OuterProj: ProjectiveCurve&lt;
-            Affine = <span class="self">Self</span>::Outer,
-            ScalarField = <span class="self">Self</span>::InnerField,
-            BaseField = <span class="self">Self</span>::OuterField,
-        &gt; + From&lt;<span class="self">Self</span>::Outer&gt;
-        + Into&lt;<span class="self">Self</span>::Outer&gt;
-        + std::ops::MulAssign&lt;<span class="self">Self</span>::InnerField&gt;;
-
-    <span class="kw">type </span>Outer: CommitmentCurve&lt;
-            Projective = <span class="self">Self</span>::OuterProj,
-            Map = <span class="self">Self</span>::OuterMap,
-            ScalarField = <span class="self">Self</span>::InnerField,
-            BaseField = <span class="self">Self</span>::OuterField,
-        &gt; + KimchiCurve;
-}
-
-<span class="doccomment">/// Used to configure the base curve of Pallas
-</span><span class="kw">pub struct </span>FpInner;
-<span class="doccomment">/// Used to configure the base curve of Vesta
-</span><span class="kw">pub struct </span>FqInner;
-
-<span class="kw">impl </span>Cycle <span class="kw">for </span>FpInner {
-    <span class="kw">type </span>InnerMap = &lt;Other <span class="kw">as </span>CommitmentCurve&gt;::Map;
-    <span class="kw">type </span>OuterMap = &lt;Vesta <span class="kw">as </span>CommitmentCurve&gt;::Map;
-
-    <span class="kw">type </span>InnerField = Fp;
-    <span class="kw">type </span>OuterField = Fq;
-    <span class="kw">type </span>Inner = Other;
-    <span class="kw">type </span>Outer = Vesta;
-    <span class="kw">type </span>InnerProj = &lt;Other <span class="kw">as </span>AffineCurve&gt;::Projective;
-    <span class="kw">type </span>OuterProj = &lt;Vesta <span class="kw">as </span>AffineCurve&gt;::Projective;
-}
-
-<span class="kw">impl </span>Cycle <span class="kw">for </span>FqInner {
-    <span class="kw">type </span>InnerMap = &lt;Vesta <span class="kw">as </span>CommitmentCurve&gt;::Map;
-    <span class="kw">type </span>OuterMap = &lt;Other <span class="kw">as </span>CommitmentCurve&gt;::Map;
-
-    <span class="kw">type </span>InnerField = Fq;
-    <span class="kw">type </span>OuterField = Fp;
-    <span class="kw">type </span>Inner = Vesta;
-    <span class="kw">type </span>Outer = Other;
-    <span class="kw">type </span>InnerProj = &lt;Vesta <span class="kw">as </span>AffineCurve&gt;::Projective;
-    <span class="kw">type </span>OuterProj = &lt;Other <span class="kw">as </span>AffineCurve&gt;::Projective;
-}
 
 <span class="doccomment">/// Given an index, a group map, custom blinders for the witness, a public input vector, and a circuit `main`, it creates a proof.
 ///
@@ -384,20 +215,20 @@
 /// # Panics
 ///
 /// Will panic if `constraint_system` is not built with `public` input.
-</span><span class="kw">pub fn </span>generate_prover_index&lt;C, H&gt;(
-    srs: std::sync::Arc&lt;SRS&lt;C::Outer&gt;&gt;,
+</span><span class="kw">pub fn </span>generate_prover_index&lt;Curve, Circuit&gt;(
+    srs: std::sync::Arc&lt;SRS&lt;Curve&gt;&gt;,
     public: usize,
-    main: H,
-) -&gt; ProverIndex&lt;C::Outer&gt;
+    main: Circuit,
+) -&gt; ProverIndex&lt;Curve&gt;
 <span class="kw">where
-    </span>H: FnOnce(<span class="kw-2">&amp;mut </span>System&lt;C::InnerField&gt;, Vec&lt;Var&lt;C::InnerField&gt;&gt;),
-    C: Cycle,
+    </span>Circuit: FnOnce(<span class="kw-2">&amp;mut </span>System&lt;Curve::ScalarField&gt;, Vec&lt;Var&lt;Curve::ScalarField&gt;&gt;),
+    Curve: KimchiCurve,
 {
-    <span class="kw">let </span><span class="kw-2">mut </span>system: System&lt;C::InnerField&gt; = System::default();
-    <span class="kw">let </span>z = C::InnerField::zero();
+    <span class="kw">let </span><span class="kw-2">mut </span>system: System&lt;Curve::ScalarField&gt; = System::default();
+    <span class="kw">let </span>z = Curve::ScalarField::zero();
 
     <span class="comment">// create public input variables
-    </span><span class="kw">let </span>public_input_row = <span class="macro">vec!</span>[C::InnerField::one(), z, z, z, z, z, z, z, z, z];
+    </span><span class="kw">let </span>public_input_row = <span class="macro">vec!</span>[Curve::ScalarField::one(), z, z, z, z, z, z, z, z, z];
     <span class="kw">let </span>public_input: Vec&lt;<span class="kw">_</span>&gt; = (<span class="number">0</span>..public)
         .map(|<span class="kw">_</span>| {
             <span class="kw">let </span>v = system.var(|| <span class="macro">panic!</span>(<span class="string">&quot;fail&quot;</span>));
@@ -416,15 +247,16 @@
     <span class="kw">let </span>gates = system.gates();
 
     <span class="comment">// Other base field = self scalar field
-    </span><span class="kw">let </span>(endo_q, _endo_r) = endos::&lt;C::Inner&gt;();
+    </span><span class="kw">let </span>(endo_q, _endo_r) = endos::&lt;Curve::OtherCurve&gt;();
+    <span class="comment">//let (endo_q, _endo_r) = Curve::endos();
 
-    <span class="kw">let </span>constraint_system = ConstraintSystem::&lt;C::InnerField&gt;::create(gates)
+    </span><span class="kw">let </span>constraint_system = ConstraintSystem::&lt;Curve::ScalarField&gt;::create(gates)
         .public(public)
         .build()
         <span class="comment">// TODO: return a Result instead of panicking
         </span>.expect(<span class="string">&quot;couldn&#39;t construct constraint system&quot;</span>);
 
-    ProverIndex::&lt;C::Outer&gt;::create(constraint_system, endo_q, srs)
+    ProverIndex::&lt;Curve&gt;::create(constraint_system, endo_q, srs)
 }
 
 <span class="doccomment">/// Handling coordinates in an affine curve
@@ -439,4 +271,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="circuit_construction" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (a6b7274a4 2022-10-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="circuit_construction" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (db0597f56 2022-10-11)" ></div></body></html>

@@ -1118,6 +1118,8 @@
 <span id="1118">1118</span>
 <span id="1119">1119</span>
 <span id="1120">1120</span>
+<span id="1121">1121</span>
+<span id="1122">1122</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Dlog-based polynomial commitment schema.
 //! The folowing functionality is implemented
 //!
@@ -1441,7 +1443,8 @@
     squeeze_prechallenge(sponge).to_field(endo_r)
 }
 
-<span class="kw">pub trait </span>CommitmentCurve: AffineCurve {
+<span class="kw">pub trait </span>CommitmentCurve: AffineCurve&lt;BaseField = <span class="self">Self</span>::CommitmentField&gt; {
+    <span class="kw">type </span>CommitmentField: PrimeField;
     <span class="kw">type </span>Params: SWModelParameters;
     <span class="kw">type </span>Map: GroupMap&lt;<span class="self">Self</span>::BaseField&gt;;
 
@@ -1478,6 +1481,7 @@
 <span class="kw">where
     </span>P::BaseField: PrimeField,
 {
+    <span class="kw">type </span>CommitmentField = P::BaseField;
     <span class="kw">type </span>Params = P;
     <span class="kw">type </span>Map = BWParameters&lt;P&gt;;
 
@@ -2239,4 +2243,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (a6b7274a4 2022-10-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (db0597f56 2022-10-11)" ></div></body></html>

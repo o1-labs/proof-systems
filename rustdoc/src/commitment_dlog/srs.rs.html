@@ -181,15 +181,6 @@
 <span id="181">181</span>
 <span id="182">182</span>
 <span id="183">183</span>
-<span id="184">184</span>
-<span id="185">185</span>
-<span id="186">186</span>
-<span id="187">187</span>
-<span id="188">188</span>
-<span id="189">189</span>
-<span id="190">190</span>
-<span id="191">191</span>
-<span id="192">192</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the Marlin structured reference string primitive
 
 </span><span class="kw">use </span><span class="kw">crate</span>::commitment::CommitmentCurve;
@@ -225,10 +216,7 @@
     </span><span class="kw">pub </span>endo_q: G::BaseField,
 }
 
-<span class="kw">pub fn </span>endos&lt;G: CommitmentCurve&gt;() -&gt; (G::BaseField, G::ScalarField)
-<span class="kw">where
-    </span>G::BaseField: PrimeField,
-{
+<span class="kw">pub fn </span>endos&lt;G: CommitmentCurve&gt;() -&gt; (G::BaseField, G::ScalarField) {
     <span class="kw">let </span>endo_q: G::BaseField = oracle::sponge::endo_coefficient();
     <span class="kw">let </span>endo_r = {
         <span class="kw">let </span>potential_endo_r: G::ScalarField = oracle::sponge::endo_coefficient();
@@ -244,10 +232,7 @@
     (endo_q, endo_r)
 }
 
-<span class="kw">fn </span>point_of_random_bytes&lt;G: CommitmentCurve&gt;(map: <span class="kw-2">&amp;</span>G::Map, random_bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; G
-<span class="kw">where
-    </span>G::BaseField: PrimeField,
-{
+<span class="kw">fn </span>point_of_random_bytes&lt;G: CommitmentCurve&gt;(map: <span class="kw-2">&amp;</span>G::Map, random_bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; G {
     <span class="comment">// packing in bit-representation
     </span><span class="kw">const </span>N: usize = <span class="number">31</span>;
     <span class="kw">let </span><span class="kw-2">mut </span>bits = [<span class="bool-val">false</span>; <span class="number">8 </span>* N];
@@ -263,10 +248,7 @@
     G::of_coordinates(x, y)
 }
 
-<span class="kw">impl</span>&lt;G: CommitmentCurve&gt; SRS&lt;G&gt;
-<span class="kw">where
-    </span>G::BaseField: PrimeField,
-{
+<span class="kw">impl</span>&lt;G: CommitmentCurve&gt; SRS&lt;G&gt; {
     <span class="kw">pub fn </span>max_degree(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="self">self</span>.g.len()
     }
@@ -383,4 +365,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (a6b7274a4 2022-10-10)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (db0597f56 2022-10-11)" ></div></body></html>
