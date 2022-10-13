@@ -1,0 +1,319 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Vars - Mina book</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href=".././assets/css/mdbook-admonish.css">
+        <link rel="stylesheet" href="../././mdbook-admonish.css">
+
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="../introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded affix "><li class="part-title">Foundations</li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_foundations.html"><strong aria-hidden="true">2.</strong> Terminology</a></li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_groups.html"><strong aria-hidden="true">3.</strong> Groups</a></li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_rings.html"><strong aria-hidden="true">4.</strong> Rings</a></li><li class="chapter-item expanded "><a href="../fundamentals/zkbook.html"><strong aria-hidden="true">5.</strong> Fields</a></li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_polynomials.html"><strong aria-hidden="true">6.</strong> Polynomials</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../fundamentals/zkbook_multiplying_polynomials.html"><strong aria-hidden="true">6.1.</strong> Multiplying polynomials</a></li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_fft.html"><strong aria-hidden="true">6.2.</strong> Fast Fourier transform</a></li></ol></li><li class="chapter-item expanded "><li class="part-title">Cryptographic tools</li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_commitment.html"><strong aria-hidden="true">7.</strong> Commitments</a></li><li class="chapter-item expanded "><a href="../plonk/polynomial_commitments.html"><strong aria-hidden="true">8.</strong> Polynomial commitments</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../plonk/inner_product.html"><strong aria-hidden="true">8.1.</strong> Inner product argument</a></li><li class="chapter-item expanded "><a href="../plonk/inner_product_api.html"><strong aria-hidden="true">8.2.</strong> Different functionnalities</a></li></ol></li><li class="chapter-item expanded "><li class="part-title">Proof systems</li><li class="chapter-item expanded "><a href="../fundamentals/proof_systems.html"><strong aria-hidden="true">9.</strong> Overview</a></li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_plonk.html"><strong aria-hidden="true">10.</strong> zk-SNARKs</a></li><li class="chapter-item expanded "><a href="../fundamentals/custom_constraints.html"><strong aria-hidden="true">11.</strong> Custom constraints</a></li><li class="chapter-item expanded affix "><li class="part-title">Background on PLONK</li><li class="chapter-item expanded "><a href="../plonk/overview.html"><strong aria-hidden="true">12.</strong> Overview</a></li><li class="chapter-item expanded "><a href="../plonk/glossary.html"><strong aria-hidden="true">13.</strong> Glossary</a></li><li class="chapter-item expanded "><a href="../plonk/domain.html"><strong aria-hidden="true">14.</strong> Domain</a></li><li class="chapter-item expanded "><a href="../plonk/lagrange.html"><strong aria-hidden="true">15.</strong> Lagrange basis in multiplicative subgroups</a></li><li class="chapter-item expanded "><a href="../plonk/fiat_shamir.html"><strong aria-hidden="true">16.</strong> Non-interaction with fiat-shamir</a></li><li class="chapter-item expanded "><a href="../plonk/plookup.html"><strong aria-hidden="true">17.</strong> Plookup</a></li><li class="chapter-item expanded "><a href="../plonk/maller.html"><strong aria-hidden="true">18.</strong> Maller's optimization</a></li><li class="chapter-item expanded affix "><li class="part-title">Kimchi</li><li class="chapter-item expanded "><a href="../kimchi/overview.html"><strong aria-hidden="true">19.</strong> Overview</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../kimchi/arguments.html"><strong aria-hidden="true">19.1.</strong> Arguments</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../kimchi/gates.html"><strong aria-hidden="true">19.1.1.</strong> Custom gates</a></li><li class="chapter-item expanded "><a href="../kimchi/permut.html"><strong aria-hidden="true">19.1.2.</strong> Permutation</a></li><li class="chapter-item expanded "><a href="../kimchi/lookup.html"><strong aria-hidden="true">19.1.3.</strong> Lookup</a></li></ol></li></ol></li><li class="chapter-item expanded "><li class="part-title">Snarky</li><li class="chapter-item expanded "><a href="../snarky/overview.html"><strong aria-hidden="true">20.</strong> Overview</a></li><li class="chapter-item expanded "><a href="../snarky/api.html"><strong aria-hidden="true">21.</strong> API</a></li><li class="chapter-item expanded "><a href="../snarky/snarky-wrapper.html"><strong aria-hidden="true">22.</strong> snarky wrapper</a></li><li class="chapter-item expanded "><a href="../snarky/kimchi-backend.html"><strong aria-hidden="true">23.</strong> Kimchi backend</a></li><li class="chapter-item expanded "><a href="../snarky/vars.html" class="active"><strong aria-hidden="true">24.</strong> Vars</a></li><li class="chapter-item expanded "><a href="../snarky/booleans.html"><strong aria-hidden="true">25.</strong> Booleans</a></li><li class="chapter-item expanded "><a href="../snarky/circuit-generation.html"><strong aria-hidden="true">26.</strong> Circuit generation</a></li><li class="chapter-item expanded "><a href="../snarky/witness-generation.html"><strong aria-hidden="true">27.</strong> Witness generation</a></li><li class="chapter-item expanded affix "><li class="part-title">Pickles & Inductive Proof Systems</li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_ips.html"><strong aria-hidden="true">28.</strong> Overview</a></li><li class="chapter-item expanded "><a href="../pickles/accumulation.html"><strong aria-hidden="true">29.</strong> Accumulation</a></li><li class="chapter-item expanded "><a href="../pickles/deferred.html"><strong aria-hidden="true">30.</strong> Deferred Computation</a></li><li class="chapter-item expanded "><a href="../pickles/passthrough.html"><strong aria-hidden="true">31.</strong> Passthough & Me-Only</a></li><li class="chapter-item expanded affix "><li class="part-title">RFCs</li><li class="chapter-item expanded "><a href="../plonk/zkpm.html"><strong aria-hidden="true">32.</strong> RFC 0: Alternative zero-knowledge</a></li><li class="chapter-item expanded "><a href="../plonk/final_check.html"><strong aria-hidden="true">33.</strong> RFC 1: Final check</a></li><li class="chapter-item expanded "><a href="../plonk/maller_15.html"><strong aria-hidden="true">34.</strong> RFC 2: Maller's optimization for kimchi</a></li><li class="chapter-item expanded "><a href="../rfcs/3-lookup.html"><strong aria-hidden="true">35.</strong> RFC 3: Plookup integration in kimchi</a></li><li class="chapter-item expanded "><a href="../rfcs/ffadd.html"><strong aria-hidden="true">36.</strong> RFC 4: Foreign Field Addition</a></li><li class="chapter-item expanded affix "><li class="part-title">Specifications</li><li class="chapter-item expanded "><a href="../specs/poseidon.html"><strong aria-hidden="true">37.</strong> Poseidon hash</a></li><li class="chapter-item expanded "><a href="../specs/poly-commitment.html"><strong aria-hidden="true">38.</strong> Polynomial commitment</a></li><li class="chapter-item expanded "><a href="../specs/pasta.html"><strong aria-hidden="true">39.</strong> Pasta curves</a></li><li class="chapter-item expanded "><a href="../specs/kimchi.html"><strong aria-hidden="true">40.</strong> Kimchi</a></li><li class="chapter-item expanded "><a href="../specs/urs.html"><strong aria-hidden="true">41.</strong> Universal Reference String (URS)</a></li><li class="chapter-item expanded "><a href="../specs/pickles.html"><strong aria-hidden="true">42.</strong> Pickles</a></li><li class="chapter-item expanded "><a href="../specs/consensus.html"><strong aria-hidden="true">43.</strong> Consensus</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Mina book</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://www.github.com/o1-labs/proof-systems" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+<h1 id="vars"><a class="header" href="#vars">Vars</a></h1>
+<p>In this section we will introduce two types of variables:</p>
+<ul>
+<li>Circuit vars, or <code>CVar</code>s, which are low-level variables representing field elements.</li>
+<li>Snarky vars, which are high-level variables that user can use to create more meaningful programs.</li>
+</ul>
+<h2 id="circuit-vars"><a class="header" href="#circuit-vars">Circuit vars</a></h2>
+<p>In snarky, we first define circuit variables (TODO: rename Field variable?) which represent field elements in a circuit.
+These circuit variables, or cvars, can be represented differently in the system:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub enum CVar&lt;F&gt;
+where
+    F: PrimeField,
+{
+    /// A constant.
+    Constant(F),
+
+    /// A variable that can be refered to via a `usize`.
+    Var(usize),
+
+    /// The addition of two other [CVar]s.
+    Add(Box&lt;CVar&lt;F&gt;&gt;, Box&lt;CVar&lt;F&gt;&gt;),
+
+    /// Scaling of a [CVar].
+    Scale(F, Box&lt;CVar&lt;F&gt;&gt;),
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>One can see a CVar as an AST, where two atoms exist: a <code>Var(usize)</code> which represents a private input, an a <code>Constant(F)</code> which represents a constant.
+Anything else represents combinations of these two atoms.</p>
+<h3 id="constants"><a class="header" href="#constants">Constants</a></h3>
+<p>Note that a circuit variable does not represent a value that has been constrained in the circuit (yet).
+This is why we need to know if a cvar is a constant, so that we can avoid constraining it too early. 
+For example, the following code does not encode 2 or 1 in the circuit, but will encode 3:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let x: CVar = state.exists(|_| 2) + state.exists(|_| 3);
+state.assert_eq(x, y); // 3 and y will be encoded in the circuit
+<span class="boring">}
+</span></code></pre></pre>
+<p>whereas the following code will encode all variables:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let x = y + y;
+let one: CVar = state.exists(|_| 1);
+assert_eq(x, one);
+<span class="boring">}
+</span></code></pre></pre>
+<h3 id="non-constants"><a class="header" href="#non-constants">Non-constants</a></h3>
+<p>Right after being created, a <code>CVar</code> is not constrained yet, and needs to be constrained by the application.
+That is unless the application wants the <code>CVar</code> to be a constant that will not need to be constrained (see previous example) or because the application wants the <code>CVar</code> to be a random value (unlikely) (TODO: we should add a “rand” function for that).</p>
+<p>In any case, a circuit variable which is not a constant has a value that is not known yet at circuit-generation time.
+In some situations, we might not want to constrain the </p>
+<h3 id="when-do-variables-get-constrained"><a class="header" href="#when-do-variables-get-constrained">When do variables get constrained?</a></h3>
+<p>In general, a circuit variable only gets constrained by an assertion call like <code>assert</code> or <code>assert_equals</code>.</p>
+<p>When variables are added together, or scaled, they do not directly get constrained. 
+This is due to optimizations targetting R1CS (which we don’t support anymore) that were implemented in the original snarky library, and that we have kept in snarky-rs.</p>
+<p>Imagine the following example:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let y = x1 + x2 + x3 +.... ;
+let z = y + 3;
+assert_eq(y, 6);
+assert_eq(z, 7);
+<span class="boring">}
+</span></code></pre></pre>
+<p>The first two lines will not create constraints, but simply create minimal ASTs that track all of the additions.</p>
+<p>Both assert calls will then reduce the variables to a single circuit variable, creating the same constraints twice.</p>
+<p>For this reason, there’s a function <code>seal()</code> defined in pickles and snarkyjs. (TODO: more about <code>seal()</code>, and why is it not in snarky?) (TODO: remove the R1CS optimization)</p>
+<h2 id="snarky-vars"><a class="header" href="#snarky-vars">Snarky vars</a></h2>
+<p>Handling <code>CVar</code>s can be cumbersome, as they can only represent a single field element.
+We might want to represent values that are either in a smaller range (e.g. <a href="./booleans.html">booleans</a>) or that are made out of several <code>CVar</code>s.</p>
+<p>For this, snarky’s API exposes the following trait, which allows users to define their own types:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub trait SnarkyType&lt;F&gt;: Sized
+where
+    F: PrimeField,
+{
+    /// ?
+    type Auxiliary;
+
+    /// The equivalent type outside of the circuit.
+    type OutOfCircuit;
+
+    const SIZE_IN_FIELD_ELEMENTS: usize;
+
+    fn to_cvars(&amp;self) -&gt; (Vec&lt;CVar&lt;F&gt;&gt;, Self::Auxiliary);
+
+    fn from_cvars_unsafe(cvars: Vec&lt;CVar&lt;F&gt;&gt;, aux: Self::Auxiliary) -&gt; Self;
+
+    fn check(&amp;self, cs: &amp;mut RunState&lt;F&gt;);
+
+    fn deserialize(&amp;self) -&gt; (Self::OutOfCircuit, Self::Auxiliary);
+
+    fn serialize(out_of_circuit: Self::OutOfCircuit, aux: Self::Auxiliary) -&gt; Self;
+
+    fn constraint_system_auxiliary() -&gt; Self::Auxiliary;
+
+    fn value_to_field_elements(x: &amp;Self::OutOfCircuit) -&gt; (Vec&lt;F&gt;, Self::Auxiliary);
+
+    fn value_of_field_elements(x: (Vec&lt;F&gt;, Self::Auxiliary)) -&gt; Self::OutOfCircuit;
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>Such types are always handled as <code>OutOfCircuit</code> types (e.g. <code>bool</code>) by the users, and as a type implementing <code>SnarkyType</code> by snarky (e.g. <a href="./booleans.html"><code>Boolean</code></a>).
+Thus, the user can pass them to snarky in two ways:</p>
+<p><strong>As public inputs</strong>. In this case they will be serialized into field elements for snarky before <a href="./witness-generation.html">witness-generation</a> (via the <code>value_to_field_elements()</code> function)</p>
+<p><strong>As private inputs</strong>. In this case, they must be created using the <code>compute()</code> function with a closure returning an <code>OutOfCircuit</code> value by the user. 
+The call to <code>compute()</code> will need to have some type hint, for snarky to understand what <code>SnarkyType</code> it is creating. 
+This is because the relationship is currently only one-way: a <code>SnarkyType</code> knows what out-of-circuit type it relates to, but not the other way is not true.
+(TODO: should we implement that though?)</p>
+<p>A <code>SnarkyType</code> always implements a <code>check()</code> function, which is called by snarky when <code>compute()</code> is called to create such a type.
+The <code>check()</code> function is responsible for creating the constraints that sanitize the newly-created <code>SnarkyType</code> (and its underlying <code>CVar</code>s).
+For example, creating a boolean would make sure that the underlying <code>CVar</code> is either 0 or 1.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../snarky/kimchi-backend.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next" href="../snarky/booleans.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../snarky/kimchi-backend.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next" href="../snarky/booleans.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../searcher.js" type="text/javascript" charset="utf-8"></script>
+
+        <script src="../clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+        <script type="text/javascript" src="../mermaid.min.js"></script>
+        <script type="text/javascript" src="../mermaid-init.js"></script>
+
+
+    </body>
+</html>
