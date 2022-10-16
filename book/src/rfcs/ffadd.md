@@ -31,7 +31,9 @@ b  =  (-------b0-------|-------b1-------|-------b2-------)
 r  =  (-------r0-------|-------r1-------|-------r2-------)  mod(f)
 ```
 We will perform the addition in 3 steps, one per limb. Now, when we split long additions in this way, we must be careful with carry bits between limbs. Also, even if $a$ and $b$ are foreign field elements, it could be the case that $a + b$ is already larger than the modulus (such addition could be at most $2f - 2$). But it could also be the case that the subtraction produces an underflow because $a < b$ (with a difference of at most $1 - f$). Thus we will have to consider the more general case. That is,
+
 $$ a + s \cdot b = q \cdot f + r \mod 2^{264}$$
+
 with a field overflow term $q$ that will be either $0$ (if no underflow nor overflow is produced) or $1$ (if there is overflow with $s = 1$) or $-1$ (if there is underflow with $s = -1$). Looking at this in limb form, we have:
 
 ```text
