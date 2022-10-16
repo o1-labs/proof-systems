@@ -37,9 +37,9 @@ Thus, the maximum size of the multiplication is quadratic in the size of foreign
 
 Naïvely, this implies that we have elements of size $f^2 - 1$ that must split them up into limbs of size at most $n$.  For example, if the foreign field modulus is $256$ and the native field modulus is $255$ bits, then we'd need $\log_2((2^{256})^2 - 1) \approx 512$ bits and, thus, require $512/255 \approx 3$ native limbs.  However, each limb cannot consume all $255$ bits of the native field element because we need space to perform arithmetic on the limbs themselves while constraining the foreign field multiplication.  Therefore, we need to choose a limb size that leaves space for performing these computations.
 
-Later in this document (see the section entitled "Choose the limb configuration") we determine the optimal number of limbs that reduces the number of rows and gates required to constrain foreign field multiplication.  This results in a limb size of $\ell = 88$ bits as our optimal.  Later in the section about intermediate products we place some upperbounds on the number of bits required when constraining foreign field multiplication with limbs of size $\ell$ and prove that the results of our computations can fit within the native field size.
+Later in this document (see the section entitled "Choose the limb configuration") we determine the optimal number of limbs that reduces the number of rows and gates required to constrain foreign field multiplication.  This results in $\ell = 88$ bits as our optimal limb size.  In the section about intermediate products we place some upperbounds on the number of bits required when constraining foreign field multiplication with limbs of size $\ell$ thereby proving that the computations can fit within the native field size.
 
-Observe that by combining the naïve approach above with a limb size of $88$ bits, we would require $512/88 \approx 6$ limbs for representing foreign field elements.  Each limb is stored in a witness cell (a native field element) for the prover to operate on.  However, since each limb is necessarily smaller than the native field element size, it must be copied to the range-check gate to constrain its value.  Since Kimchi only supports 7 copyable witness cells per row, this means that only one foreign field element can be stored per row.  This means a single foreign field multiplication would consume at least 4 rows (just for the operands, quotient and remainder).  This is not ideal because we want to limit the number of rows for improved performance.
+Observe that by combining the naïve approach above with a limb size of $88$ bits, we would require $512/88 \approx 6$ limbs for representing foreign field elements.  Each limb is stored in a witness cell (a native field element).  However, since each limb is necessarily smaller than the native field element size, it must be copied to the range-check gate to constrain its value.  Since Kimchi only supports 7 copyable witness cells per row, this means that only one foreign field element can be stored per row.  This means a single foreign field multiplication would consume at least 4 rows (just for the operands, quotient and remainder).  This is not ideal because we want to limit the number of rows for improved performance.
 
 **Chinese remainder theorem**
 
@@ -51,7 +51,7 @@ All that remains is to select a value for $t$ that is big enough.  That is, we s
 
 * *Native field modulus* $n$
 * *Foreign field modulus* $f$
-* *Extra field modulus* $2^t$
+* *Extra CRT modulus* $2^t$
 
 ##### 2. Choose $t$
 
@@ -132,7 +132,7 @@ m_{max} &= \frac{258 + 255}{2} = 256.5,
 \end{aligned}
 $$
 
-which is not enough space to handle anything larger than 256 bit moduli.  Instead, we will use $t=264$, giving a maximum modulus of 259 bits.
+which is not enough space to handle anything larger than 256 bit moduli.  Instead, we will use $t=264$, giving a maximum modulus $m_{max} = 259$ bits.
 
 ##### 3. Choose the limb configuration
 
@@ -191,104 +191,112 @@ Therefore, our limb configuration is:
 14. [x] Range check $q$ so that $qf + r < 2^tn$
 15. [ ] Open questions
 
+## Negated modulus
+
+Our goal is to constrain that $a \cdot b - q \cdot f = r \mod 2^t$.  Observe that the expansion of $a \cdot b - q \cdot f$ into limbs would also have subtractions between limbs, requiring our constraints to account for borrowing.  Dealing with this would create undesired complexity and increase the degree of our constraints.
+
+In order to avoid the possibility of subtractions we instead use $a \cdot b + q \cdot f'$ where
+
+$$
+\begin{aligned}
+f' &= -f \mod 2^t \\
+   &= 2^t - f
+\end{aligned}
+$$
+
+The negated modulus $f'$ becomes part of our constraint system and is not constrained.  Observe that $f' = f(2^t/f - 1)$ and recall that $t=264$ and $m_{max}=259$, so $2^t = 2^{5 + m_{max}} \ge 2^5 \cdot f$ and, thus, $f' > f$.
+
+Using the substitution of the negated modulus, we now must constrain $a \cdot b + q \cdot f' = r \mod 2^t$.
+
 ## Intermediate products
 
-Our goal is to constrain that $a \cdot b - q \cdot f - r = 0 \mod 2^t$.  Observe that
+We must constrain $a \cdot b + q \cdot f' = r \mod 2^t$ on the limbs, rather than as a whole.  As described above, each foreign field element $x$ is split into three 88-bit limbs: $x_0, x_1, x_2$, where $x_0$ contains the least significant bits and $x_2$ contains the most significant bits and so on.
+
+
+For clarity, let $X=2^{\ell}$ and $Y=2^{2\ell}$, then expanding the right-hand side into limbs we have
 
 $$
 \begin{aligned}
-\underbrace{(f - 1)}_a \cdot \underbrace{(f - 1)}_b &< \underbrace{(f - 1)}_q \cdot f + \underbrace{(f - 1)}_r.
-\end{aligned}
-$$
-
-and, thus, the subtraction $a \cdot b - q \cdot f - r$ could underflow.  Furthermore, the expansion of $a \cdot b - q \cdot f - r$ into limbs would also have subtractions between limbs, requiring our constraints to account for borrowing.  Dealing with this would create undesired complexity and increase the degree of our constraints.
-
-In order to simplify things we want to avoid subtractions by instead constraining $a \cdot b + f' \cdot g + r' = 0 \mod 2^t$ where
-
-$$
-\begin{aligned}
-f' = -f \mod 2^t ~& ~& ~& ~& ~& ~& r' = -r \mod 2^t
-\end{aligned}
-$$
-
-This must be done on the limbs, rather than as a whole.  As described above, each foreign field element $x$ is split into three 88-bit limbs: $x_0, x_1, x_2$, where $x_0$ contains the least significant bits and $x_2$ contains the most significant bits and so on.
-
-
-For clarity, let $X=2^{\ell}$ and $Y=2^{2\ell}$, then expanding the limbs we have to constrain
-
-$$
-
-\begin{aligned}
-&(a_0 + a_1X + a_2Y) \cdot (b_0 + b_1X + b_2Y) +  (q_0 + q_1X + q_2Y) \cdot (f'_0 + f'_1X + f'_2Y) +  (r'_0 + r'_1X + r'_2Y)
-&(a_0 + a_1X + a_2Y)(b_0 + b_1X + b_2Y) +  (q_0 + q_1X + q_2Y)(g_0 + g_1X + g_2Y) \\
+&(a_0 + a_1X + a_2Y) \cdot (b_0 + b_1X + b_2Y) +  (q_0 + q_1X + q_2Y) \cdot (f'_0 + f'_1X + f'_2Y) \\
 &=\\
 &~~~~~ a_0b_0 + a_0b_1X + a_0b_2Y \\
 &~~~~ + a_1b_0X + a_1b_1X^2 + a_1b_2XY \\
 &~~~~ + a_2b_0Y + a_2b_1XY + a_2b_2Y^2 \\
 &+ \\
-&~~~~~ q_0g_0 + q_0g_1X + q_0g_2Y \\
-&~~~~ + q_1g_0X + q_1g_1X^2 + q_1g_2XY \\
-&~~~~ + q_2g_0Y + q_2g_1XY + q_2g_2Y^2 \\
+&~~~~~ q_0f'_0 + q_0f'_1X + q_0f'_2Y \\
+&~~~~ + q_1f'_0X + q_1f'_1X^2 + q_1f'_2XY \\
+&~~~~ + q_2f'_0Y + q_2f'_1XY + q_2f'_2Y^2 \\
 &= \\
-&~~~~~ a_0b_0 + q_0g_0 \\
-&~~~~ + X(a_0b_1 + a_1b_0 + q_0g_1 + q_1g_0) \\
-&~~~~ + Y(a_0b_2 + a_2b_0 + q_0g_2 + q_2g_0) \\
-&~~~~ + XY(a_1b_2 + a_2b_1 + q_1g_2 + q_2g_1) \\
-&~~~~ + X^2(a_1b_1 + q_1g_1) \\
-&~~~~ + Y^2(a_2b_2 + q_2g_2)
+&~~~~~ a_0b_0 + q_0f'_0\\
+&~~~~ + X(a_0b_1 + a_1b_0 + q_0f'_1 + q_1f'_0) \\
+&~~~~ + Y(a_0b_2 + a_2b_0 + q_0f'_2 + q_2f'_0) \\
+&~~~~ + XY(a_1b_2 + a_2b_1 + q_1f'_2 + q_2f'_1) \\
+&~~~~ + X^2(a_1b_1 + q_1f'_1) \\
+&~~~~ + Y^2(a_2b_2 + q_2f'_2).
 \end{aligned}
 $$
-
-where $X=2^{88}$ and $Y=2^{176}$.
 
 
 Notice that $X^2=Y$, so the above simplifies to
 
 $$
 \begin{aligned}
-&a_0b_0 + q_0g_0 \\
-&+ X(a_0b_1 + a_1b_0 + q_0g_1 + q_1g_0) \\
-&+ Y(a_0b_2 + a_2b_0 + q_0g_2 + q_2g_0 + a_1b_1 + q_1g_1) \\
-&+ XY(a_1b_2 + a_2b_1 + q_1g_2 + q_2g_1) \\
-&+ Y^2(a_2b_2 + q_2g_2) \\
+&a_0b_0 + q_0f'_0 \\
+&+ X(a_0b_1 + a_1b_0 + q_0f'_1 + q_1f'_0) \\
+&+ Y(a_0b_2 + a_2b_0 + q_0f'_2 + q_2f'_0 + a_1b_1 + q_1f'_1) \\
+&+ XY(a_1b_2 + a_2b_1 + q_1f'_2 + q_2f'_1) \\
+&+ Y^2(a_2b_2 + q_2f'_2) \\
 \end{aligned}
 $$
 
-Recall that $t = 264$ and observe that $XY = 2^t$ and $Y^2 = 2^t2^{88}$.  Therefore, the terms with $XY$ or $Y^2$ are a multiple of modulus and, thus, congruent to zero $\mod 2^t$. So we are left with 3 intermediate products that we call $p_0, p_1, p_2$:
+Recall that $t = 264$ and observe that $XY = 2^t$ and $Y^2 = 2^t2^{88}$.  Therefore, the terms with $XY$ or $Y^2$ are a multiple of modulus and, thus, congruent to zero $\mod 2^t$. So we are left with 3 *intermediate products* that we call $p_0, p_1, p_2$:
 
-| Term  | Scale | Product                                               |
-| ----- | ----- | ----------------------------------------------------- |
-| $p_0$ | $1$   | $a_0b_0 + q_0g_0$                                     |
-| $p_1$ | $X$   | $a_0b_1 + a_1b_0 + q_0g_1 + q_1g_0$                   |
-| $p_2$ | $Y$   | $a_0b_2 + a_2b_0 + q_0g_2 + q_2g_0 + a_1b_1 + q_1g_1$ |
+| Term  | Scale | Product                                                  |
+| ----- | ----- | -------------------------------------------------------- |
+| $p_0$ | $1$   | $a_0b_0 + q_0f'_0$                                       |
+| $p_1$ | $2^{\ell}$   | $a_0b_1 + a_1b_0 + q_0f'_1 + q_1f'_0$                    |
+| $p_2$ | $2^{2\ell}$   | $a_0b_2 + a_2b_0 + q_0f'_2 + q_2f'_0 + a_1b_1 + q_1f'_1$ |
 
 So far, we have introduced these checked computations to our constraints
 > 1. Computation of $p_0, p_1, p_2$
 
-Let's call $p:= ab + qg \mod 2^t$. Remember that our goal at this point was to constrain that $p - r = 0 \mod 2^t$ (note that any more significant bits than the 264th are ignored in $\mod 2^t$). Decomposing that claim, that means
+## Constraints overview
+
+Let's call $p := ab + qf' \mod 2^t$. Remember that our goal is to constrain that $p - r = 0 \mod 2^t$ (recall that any more significant bits than the 264th are ignored in $\mod 2^t$). Decomposing that claim into limbs, that means
 
 $$
-r_0+2^{88}r_1+2^{176}r_2 = p_0+2^{88}p_1+2^{176}p_2,
+\begin{align}
+2^{2\ell}(p_2 - r_2) + 2^{\ell}(p_1 - r_1) + p_0 - r_0 = 0 \mod 2^t.
+\end{align}
 $$
 
-except that in $\mathbb{F}_n$, those terms do not fit and we have to find a way around it (since $2^t>f>n$ we seem to have the same problem as initially, but in fact we are getting closer to the solution).
+We face two challenges
 
-We must constrain that
-$$
-p_0+2^{\ell}p_1+2^{2\ell}p_2 - r_0-2^{\ell}r_1-2^{2\ell}r_2 = 0.
-$$
+*  Since $p_0, p_1, p_2$ are at least $2^{\ell}$ bits each, the terms above do not fit in $\mathbb{F}_n$ (remember $2^t > f' > f > n$)
+*  The subtraction of the remainder's limbs $r_0$ and $r_1$ could require borrowing
 
-It helps to know how many bits these intermediate products require.  On the left side of the equation, $p_0$  is at most $2\ell + 1$ bits.  We can compute this by substituting the maximum possible binary values (all bits set to 1) into $p_0 = a_0b_0 + q_0g_0$ like this
+For the moment, let's not worry about the possibility of borrows and instead focus on the first problem.
+
+## The trick
+
+The first problem is that our native field is too small to constrain (1).  The trick to overcoming this is to assume a space large enough to hold the computation, view the outcome in binary and then split it up into chunks that fit in the native modulus.
+
+To this end, it helps to know how many bits these intermediate products require.  On the left side of the equation, $p_0$  is at most $2\ell + 1$ bits.  We can compute this by substituting the maximum possible binary values (all bits set to 1) into $p_0 = a_0b_0 + q_0f'_0$ like this
 
 $$
 \begin{aligned}
-\mathsf{maxbits}(p_0) &= \log_2(\underbrace{(2^{\ell} - 1)}_{a_0}\underbrace{(2^{\ell} - 1)}_{b_0} + \underbrace{(2^{\ell} - 1)}_{q_0}\underbrace{(2^{\ell} - 1)}_{g_0}) \\
+\mathsf{maxbits}(p_0) &= \log_2(\underbrace{(2^{\ell} - 1)}_{a_0}\underbrace{(2^{\ell} - 1)}_{b_0} + \underbrace{(2^{\ell} - 1)}_{q_0}\underbrace{(2^{\ell} - 1)}_{f'_0}) \\
 &= \log_2(2(2^{2\ell} - 2^{\ell + 1} + 1)) \\
 &= \log_2(2^{2\ell + 1} - 2^{\ell + 2} + 2).
 \end{aligned}
 $$
 
-So $p_0$ fits in $2\ell + 1$ bits.  Similarly, the $p_1$ needs at most $2\ell + 2$ bits and $p_2$ takes at most $2\ell + 3$ bits.
+So $p_0$ fits in $2\ell + 1$ bits.  Similarly, $p_1$ needs at most $2\ell + 2$ bits and $p_2$ is at most $2\ell + 3$ bits.
+
+
+| Term     | $p_0$       | $p_1$       | $p_2$       |
+| -------- | ----------- | ----------- | ----------- |
+| **Bits** | $2\ell + 1$ | $2\ell + 2$ | $2\ell + 3$ |
 
 The diagram below shows the right hand side of this equality (i.e. the value $p - r$). Let's look at how the different bits of $p_0, p_1, p_2, r_0, r_1$ and $r_2$ impact it.
 
@@ -311,7 +319,7 @@ The diagram below shows the right hand side of this equality (i.e. the value $p 
              ≈ u0                           ≈ u1
 ```
 
-Within our native field modulus we can fit up to $2\ell + \delta < \log_2(n)$ bits, for small values of $\delta$ (but sufficient for our case).  Thus, we can only constrain approximately half of $p - r$ at a time. In the diagram above the vertical line at 2L bisects $p - r$ into two $\approx2\ell$ bit values: $u0$ and $u1$ (the exact definition of these values follow).
+Within our native field modulus we can fit up to $2\ell + \delta < \log_2(n)$ bits, for small values of $\delta$ (but sufficient for our case).  Thus, we can only constrain approximately half of $p - r$ at a time. In the diagram above the vertical line at 2L bisects $p - r$ into two $\approx2\ell$ bit values: $u0$ and $u1$ (the exact definition of these values follow).  Our goal is to constrain $u_0$ and $u_1$.
 
 ## Computing the zero-sum halves: $u_0$ and $u_1$
 
@@ -328,11 +336,11 @@ $$
 Note that $u_0$ is actually greater than $2\ell$ bits in length.  This may not only be because it contains $p_0$ whose length is $2\ell + 1$, but also because adding $p_{10}$ may cause an overflow.  The maximum length of $u_0$ is computed by substituting in the maximum possible binary value of $2^{\ell} - 1$ for the added terms and $0$ for the subtracted terms of the above equation.
 
 $$
-\begin{align}
+\begin{aligned}
 \mathsf{maxbits}(u_0) &= \log_2(\underbrace{(2^{\ell} - 1)(2^{\ell} - 1) + (2^{\ell} - 1)(2^{\ell} - 1)}_{p_0} + \underbrace{2^{\ell} \cdot (2^{\ell} - 1)}_{p_{10}}) \\
 &= \log_2(2^{2\ell + 1} - 2^{\ell + 2} + 2 + 2^{2\ell} - 2^\ell) \\
 &= \log_2( 3\cdot 2^{2\ell} - 5 \cdot 2^\ell +2 ) \\
-\end{align}
+\end{aligned}
 $$
 
 which is $2\ell + 2$ bits.
@@ -346,21 +354,25 @@ $$
 The maximum size of $u_1$ is computed as
 
 $$
-\begin{align}
+\begin{aligned}
 \mathsf{maxbits}(u_1) &= \mathsf{maxbits}(p_{11} + p_2)
-\end{align}
+\end{aligned}
 $$
 
 In order to obtain the maximum value of $p_{11}$, we define $p_{11} := \frac{p_1}{2^\ell}$. Since the maximum value of $p_1$ was $2^{2\ell+2}-2^{\ell+3}+4$, then the maximum value of $p_{11}$ is $2^{\ell+2}-8$. For $p_2$, the maximum value was $6\cdot 2^{2\ell} - 12 \cdot 2^\ell + 6$, and thus:
 
 $$
-\begin{align}
+\begin{aligned}
 \mathsf{maxbits}(u_1) &= log_2(\underbrace{2^{\ell+2}-8}_{p_{11}} + \underbrace{6\cdot 2^{2\ell} - 12 \cdot 2^\ell + 6}_{p_2}) \\
 &= \log_2(6\cdot 2^{2\ell} - 8 \cdot 2^\ell - 2) \\
-\end{align}
+\end{aligned}
 $$
 
 which is $2\ell + 3$ bits.
+
+| Term     | $u_0$       | $u_1$       |
+| -------- | ----------- | ----------- |
+| **Bits** | $2\ell + 2$ | $2\ell + 3$ |
 
 Thus far we have the following constraints
 > 2. Composition of $p_{10}$ and $p_{11}$ result in $p_1$
@@ -369,7 +381,11 @@ Thus far we have the following constraints
 
 For the next step we would like to constrain $u_0$ and $u_1$ to zero.  Unfortunately, we are not able to do this!
 
-As defined $u_0$ will may not be zero, since it contains $v_0$.  Similarly, the highest $\ell + 3$ bits of $p - r$ would wrap to zero $\mod 2^t$; however, when placed into the smaller $2\ell + 3$ bit $u_1$ in the native field, this wrapping does not happen.  Thus, $u_1$'s $\ell + 3$ highest bits may be nonzero.
+* Firstly, as defined $u_0$ may not be zero because we have not bisected it precisely at $2\ell$ bits, but have allowed it to contain the full $2\ell + 2$ bits.  Recall that these two additional bits are because $p_0$ is at most $2\ell + 1$ bits long, but also because adding $p_{10}$ increases it to $2\ell + 2$.  These two additional bits are not part of the first $2\ell$ bits of $p - r$ and, thus, are not necessarily zero.  That is, they are copied from the second $2\ell$ bits (i.e. $u_1$).
+
+* Secondly, whilst the highest $\ell + 3$ bits of $p - r$ would wrap to zero $\mod 2^t$, when placed into the smaller $2\ell + 3$ bit $u_1$ in the native field, this wrapping does not happen.  Thus, $u_1$'s $\ell + 3$ highest bits may be nonzero.
+
+We can deal with this non-zero issue by computing carry witness values.
 
 ## Computing carry witnesses values $v_0$ and $v_1$
 
@@ -377,7 +393,7 @@ Thus, instead of constraining $u_0$ and $u_1$ to zero, there must be satisfying 
 > 5. There exists $v_0$ such that $u_0 = v_0 \cdot 2^{2\ell}$
 > 6. There exists $v_1$ such that $u_1 + v_0 = v_1 \cdot 2^{\ell}$
 
-where $v_0$ is the result of adding the highest bit of $p_0$ and any possible carry bit from the operation of $u_0$, and $v_1$ corresponds to the highest $\ell + 3$ bits of $u_1$.how this proves
+Here $v_0$ is the last two bits of $u_0$'s $2\ell + 2$ bits, i.e., the result of adding the highest bit of $p_0$ and any possible carry bit from the operation of $u_0$.  Similarly, $v_1$ corresponds to the highest $\ell + 3$ bits of $u_1$.
 
 Remember we only need to prove the first $3\ell$ bits of $p - r$ are zero, since everything is $\mod 2^t$ and  $t = 3\ell$.  It may not be clear how this prefix witness approach, proves the $3\ell$ bits are indeed zero because within $u_0$ and $u_1$ there are bits that are nonzero.  The key observation is that these bits are too high for $\mod 2^t$.
 
@@ -386,6 +402,49 @@ By making the prefix argument with $v_0$ and $v_1$ we are proving that $u_0$ is 
 All that remains is to range check $v_0$ and $v_1$
 > 7. Range check $v_0 \in [0, 3]$
 > 8. Range check $v_1 =\in [0, 2^{\ell + 3})$
+
+## Subtractions
+
+Now let's revisit our second problem, the possibility of borrows when subtracting the limbs of the remainder.  In order to constrain
+
+$$
+2^{2\ell}(p_2 - r_2) + 2^{\ell}(p_1 - r_1) + p_0 - r_0 = 0 \mod 2^t.
+$$
+
+we end up with some subtractions on the limbs.  As we previously mentioned, this a complexity we would like to avoid.  If our overall approach were to constrain this directly (i.e. if we had enough space in $\mathbb{F_n}$), then we would keep track of borrow bits $c_i$ for each limb $i$.  For example, we'd have constraints like
+
+$$
+\begin{aligned}
+a_0 \cdot b_0 &= q_0 \cdot f'_0 + r_0 - c_0 \cdot 2^{2\ell + 1} \\
+a_1 \cdot b_1 &= q_1 \cdot f'_1 + r_1 - c_1 \cdot 2^{2\ell + 1} + c_0 \\
+a_2 \cdot b_2 &= q_2 \cdot f'_2 + r_2 + c_1
+\end{aligned}
+$$
+
+However, in our approach with $u_0$ and $u_1$ things are different.  We have
+
+$$
+\begin{aligned}
+u_0 &= p_0 + 2^{\ell}\cdot p_{10} - r_0 - 2^{\ell}\cdot r_1 \\
+&= 2^{\ell}(p_{10} - r_1) + p_0 - r_0
+\end{aligned}
+$$
+
+where $p_0 - r_0$ is $2\ell + 1$ bits and $2^{\ell}(p_{10} - r_1)$ is $2\ell$ bits.  Let's consider each possible underflow.
+
+Firstly, if $p_0 - r_0$ created an underflow we would borrow from $p_1 - r_1$ by adding $2^{2\ell + 1}$ to $p_0 - r_0$ and subtracting $1$ from $p_1 - r_1$.  However, recall that according to our definition of $u_0$, we already added to it the lowest $\ell$ bits of $p_1$ (i.e. $p_{10}$) and all of $r_1$.  So, we've already have added the bits we would borrow.  Thus, no borrowing is needed here because it already implicitly accounted for.
+
+Secondly, for $p_{10} - r_1$, we could borrow from $p_{11}$ or $p_2 - r_2$.  This is the same as saying, we'd borrow from $p_{11} + p_2 - r_2 = u_1$.  Thus, we would add $2^{2\ell}$ to $p_{10} - r_1$ and subtract $1$ from $u_1$.  Thus, the constraint becomes
+
+$$
+u_0 = 2^{\ell}(p_{10} - r_1) + p_0 - r_0 - c_0 \cdot 2^{2\ell}
+$$
+
+For $u_1$ it's not possible for $r_2 > p_2$ and, therefore, the most significant borrow bit $c_1$ should always be zero.  Thus, $u_1$'s constraint is
+
+$$
+u_1 = p_{11} + p_2 - r_2 + c_0
+$$
 
 **Costs:**
 
@@ -416,7 +475,7 @@ So we have 1 multi-range-check, 1 single-range-check and 2 low-degree range chec
 
 We check $ab - qf - r \equiv 0 \mod n$, which is over $\mathbb{F}_n$.
 
-This gives us equality $\mod 2^tn$ as long as the divisors are coprime.  That is, as long as $\mathsf{gcd}(2^t, n) = 1$.  Since the native modulus $n$ is prime, this is true.
+This gives us equality $\mod 2^t \cdot n$ as long as the divisors are coprime.  That is, as long as $\mathsf{gcd}(2^t, n) = 1$.  Since the native modulus $n$ is prime, this is true.
 
 Thus, to perform this check is simple.  We compute
 
@@ -425,7 +484,7 @@ $$
 a' &= a \mod n \\
 b' &= b \mod n \\
 q' &= q \mod n \\
-f' &= f \mod n \\
+f'' &= f \mod n \\
 r' &= r \mod n
 \end{aligned}
 $$
@@ -433,14 +492,14 @@ $$
 and then constrain
 
 $$
-a'b' - q'f' - r' = 0 \mod n.
+a' \cdot b' - q' \cdot f'' - r' = 0 \mod n.
 $$
 
-Easy peasy, lemon squeezy!
+> 9. $a' \cdot b' - q' \cdot f'' - r' = 0 \mod n$
 
-## Range check $q$ so that $qf + r < 2^tn$
+## Range check $q$ so that $q \cdot f + r < 2^t \cdot n$
 
-> The reason this range constraint is needed is that the CRT allows us to verify the desired equality $ab = qf + r$ as integers only when both side of the equation are smaller than $2^tn$.
+> The reason this range constraint is needed is that the CRT allows us to verify the desired equality $ab = qf + r$ as integers only when both side of the equation are smaller than $2^t \cdot n$.
 
 In our specific case, $t=264$, $n < 2^{255}$ and $f < 2^{256}$. Then, we can create a constraint for our case that is sufficient to check the above. Concretely, if $q$ was such that $q < 2^{256}$ (even if potentially larger than $f$), we can see that the above claim holds.
 
