@@ -1,6 +1,7 @@
 #![allow(clippy::all)]
 
 use crate::circuits::gate::{CircuitGate, GateType};
+use crate::circuits::polynomials::generic::GENERIC_COEFFS;
 use crate::circuits::polynomials::poseidon::{ROUNDS_PER_HASH, SPONGE_WIDTH};
 use crate::circuits::wires::{Wire, COLUMNS, PERMUTS};
 use ark_ff::PrimeField;
@@ -231,6 +232,11 @@ where
     public_input_size: Option<usize>,
     /** Whatever is not public input. */
     auxiliary_input_size: usize,
+
+    /// Enables the double generic gate optimization.
+    /// It can be useful to disable this feature for debugging.
+    generic_gate_optimization: bool,
+
     /** Queue (of size 1) of generic gate. */
     pending_generic_gate: Option<(Option<V>, Option<V>, Option<V>, Vec<Field>)>,
     /** V.t's corresponding to constant values. We reuse them so we don't need to
@@ -365,6 +371,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
             next_row: 0,
             equivalence_classes: HashMap::new(),
             auxiliary_input_size: 0,
+            generic_gate_optimization: false,
             pending_generic_gate: None,
             cached_constants: HashMap::new(),
             union_finds: disjoint_set::DisjointSet::new(),
@@ -622,6 +629,12 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
         o: Option<V>,
         mut coeffs: Vec<Field>,
     ) {
+        if !self.generic_gate_optimization {
+            assert!(coeffs.len() <= GENERIC_COEFFS);
+            self.add_row(vec![l, r, o], GateType::Generic, coeffs);
+            return;
+        }
+
         match self.pending_generic_gate {
             None => self.pending_generic_gate = Some((l, r, o, coeffs)),
             Some(_) => {
