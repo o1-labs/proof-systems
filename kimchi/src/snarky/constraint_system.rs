@@ -284,20 +284,34 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
     /// # Panics
     ///
     /// Will panic if some inputs like `public_input_size` are unknown(None value).
-    pub fn compute_witness<F: Fn(usize) -> Field>(&self, external_values: F) -> Vec<Vec<Field>> {
+    pub fn compute_witness<FUNC>(&mut self, external_values: FUNC) -> [Vec<Field>; COLUMNS]
+    where
+        FUNC: Fn(usize) -> Field,
+    {
+
+        // init execution trace table
         let mut internal_values = HashMap::new();
         let public_input_size = self.public_input_size.unwrap();
         let num_rows = public_input_size + self.next_row;
-        let mut res = vec![vec![Field::zero(); num_rows]; COLUMNS];
+        let mut res: [_; COLUMNS] = std::array::from_fn(|_| vec![Field::zero(); num_rows]);
+
+        // obtain public input from closure
         for i in 0..public_input_size {
             res[0][i] = external_values(i + 1);
         }
+
+        // compute rest of execution trace table
         for (i_after_input, cols) in self.rows.iter().enumerate() {
             let row_idx = i_after_input + public_input_size;
             for (col_idx, var) in cols.iter().enumerate() {
                 match var {
+                    // keep default value of zero
                     None => (),
+
+                    // use closure for external values
                     Some(V::External(var)) => res[col_idx][row_idx] = external_values(*var),
+
+                    // for internal values, compute the linear combination
                     Some(V::Internal(var)) => {
                         let (lc, c) = {
                             match self.internal_vars.get(var) {
@@ -323,6 +337,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                 }
             }
         }
+
         res
     }
 
