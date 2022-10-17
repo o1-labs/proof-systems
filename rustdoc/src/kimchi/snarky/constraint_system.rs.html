@@ -1319,6 +1319,10 @@
 <span id="1319">1319</span>
 <span id="1320">1320</span>
 <span id="1321">1321</span>
+<span id="1322">1322</span>
+<span id="1323">1323</span>
+<span id="1324">1324</span>
+<span id="1325">1325</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::circuits::gate::{CircuitGate, GateType};
 <span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::poseidon::{ROUNDS_PER_HASH, SPONGE_WIDTH};
 <span class="kw">use </span><span class="kw">crate</span>::circuits::wires::{Wire, COLUMNS, PERMUTS};
@@ -1327,14 +1331,6 @@
 <span class="kw">use </span>std::collections::{HashMap, HashSet};
 
 <span class="kw">use </span><span class="kw">super</span>::constants::Constants;
-
-<span class="doccomment">/** A gate interface, parameterized by a field. */
-</span><span class="kw">pub trait </span>GateVector&lt;Field: PrimeField&gt; {
-    <span class="kw">fn </span>create() -&gt; <span class="self">Self</span>;
-    <span class="kw">fn </span>add(<span class="kw-2">&amp;mut </span><span class="self">self</span>, gate: CircuitGate&lt;Field&gt;);
-    <span class="kw">fn </span>get(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; CircuitGate&lt;Field&gt;;
-    <span class="kw">fn </span>digest(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [u8; <span class="number">32</span>];
-}
 
 <span class="doccomment">/** A row indexing in a constraint system.
     Either a public input row, or a non-public input row that starts at index 0.
@@ -1374,6 +1370,7 @@ A position is a row and a column. */
 
 <span class="doccomment">/** A gate/row/constraint consists of a type (kind), a row, the other cells its columns/cells are
 connected to (`wired_to`), and the selector polynomial associated with the gate. */
+</span><span class="attribute">#[derive(Clone)]
 </span><span class="kw">struct </span>GateSpec&lt;Row, Field&gt; {
     kind: GateType,
     wired_to: Vec&lt;Position&lt;Row&gt;&gt;,
@@ -1519,19 +1516,23 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
 <span class="doccomment">/** Keeps track of a circuit (which is a list of gates)
   while it is being written.
 */
-</span><span class="kw">enum </span>Circuit&lt;Field, RustGates&gt; {
+</span><span class="attribute">#[derive(Clone)]
+</span><span class="kw">enum </span>Circuit&lt;F&gt;
+<span class="kw">where
+    </span>F: PrimeField,
+{
     <span class="doccomment">/** A circuit still being written. */
-    </span>Unfinalized(Vec&lt;GateSpec&lt;(), Field&gt;&gt;),
+    </span>Unfinalized(Vec&lt;GateSpec&lt;(), F&gt;&gt;),
     <span class="doccomment">/** Once finalized, a circuit is represented as a digest
         and a list of gates that corresponds to the circuit.
     */
-    </span>Compiled([u8; <span class="number">32</span>], RustGates),
+    </span>Compiled([u8; <span class="number">32</span>], Vec&lt;CircuitGate&lt;F&gt;&gt;),
 }
 
 <span class="doccomment">/** The constraint system. */
-</span><span class="kw">pub struct </span>SnarkyConstraintSystem&lt;Field, RustGates&gt;
+</span><span class="kw">pub struct </span>SnarkyConstraintSystem&lt;Field&gt;
 <span class="kw">where
-    </span>Field: ark_ff::Field,
+    </span>Field: PrimeField,
 {
     <span class="comment">// TODO: once we have a trait we can get these via the Curve (if we parameterize SnarkyConstraintSystem on the curve)
     </span>constants: Constants&lt;Field&gt;,
@@ -1547,7 +1548,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
        A gate is finalized once [finalize_and_get_gates](SnarkyConstraintSystem::finalize_and_get_gates) is called.
        The finalized tag contains the digest of the circuit.
     */
-    </span>gates: Circuit&lt;Field, RustGates&gt;,
+    </span>gates: Circuit&lt;Field&gt;,
     <span class="doccomment">/** The row to use the next time we add a constraint. */
     </span>next_row: usize,
     <span class="doccomment">/** The size of the public input (which fills the first rows of our constraint system. */
@@ -1573,7 +1574,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
     </span>union_finds: disjoint_set::DisjointSet&lt;V&gt;,
 }
 
-<span class="kw">impl</span>&lt;Field: PrimeField, Gates: GateVector&lt;Field&gt;&gt; SnarkyConstraintSystem&lt;Field, Gates&gt; {
+<span class="kw">impl</span>&lt;Field: PrimeField&gt; SnarkyConstraintSystem&lt;Field&gt; {
     <span class="doccomment">/** Converts the set of permutations (`equivalence_classes`) to
       a hash table that maps each position to the next one.
       For example, if one of the equivalence class is [pos1, pos3, pos7],
@@ -1830,20 +1831,27 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
             |gate: GateSpec&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;| gate.map_rows(|row: Row| row.to_absolute(public_input_size));
 
         <span class="comment">/* convert all the gates into our Gates.t Rust vector type */
-        </span><span class="kw">let </span><span class="kw-2">mut </span>rust_gates = Gates::create();
+        </span><span class="kw">let </span><span class="kw-2">mut </span>rust_gates = <span class="macro">vec!</span>[];
         <span class="kw">let </span><span class="kw-2">mut </span>add_gates = |gates: Vec&lt;<span class="kw">_</span>&gt;| {
             <span class="kw">for </span>gate <span class="kw">in </span>gates {
                 <span class="kw">let </span>g = to_absolute_row(gate);
-                rust_gates.add(g.to_rust_gate());
+                rust_gates.push(g.to_rust_gate());
             }
         };
         add_gates(public_gates);
         add_gates(gates);
 
-        <span class="self">self</span>.gates = Circuit::Compiled(rust_gates.digest(), rust_gates);
+        <span class="kw">let </span>digest = {
+            <span class="kw">use </span>o1_utils::hasher::CryptoDigest <span class="kw">as _</span>;
+            <span class="kw">let </span>circuit = <span class="kw">crate</span>::circuits::gate::Circuit(<span class="kw-2">&amp;</span>rust_gates);
+            circuit.digest()
+        };
+
+        <span class="self">self</span>.gates = Circuit::Compiled(digest, rust_gates);
     }
 
-    <span class="kw">pub fn </span>finalize_and_get_gates(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>Gates {
+    <span class="comment">// TODO: why does it return a mutable reference?
+    </span><span class="kw">pub fn </span>finalize_and_get_gates(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>Vec&lt;CircuitGate&lt;Field&gt;&gt; {
         <span class="self">self</span>.finalize();
         <span class="kw">match </span><span class="kw-2">&amp;mut </span><span class="self">self</span>.gates {
             Circuit::Compiled(<span class="kw">_</span>, gates) =&gt; gates,
@@ -1910,7 +1918,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
     <span class="prelude-val">Some</span>((terms_list, num_terms, has_constant_term))
 }
 
-<span class="kw">impl</span>&lt;Field: PrimeField, Gates: GateVector&lt;Field&gt;&gt; SnarkyConstraintSystem&lt;Field, Gates&gt; {
+<span class="kw">impl</span>&lt;Field: PrimeField&gt; SnarkyConstraintSystem&lt;Field&gt; {
     <span class="doccomment">/** Adds a generic constraint to the constraint system.
     As there are two generic gates per row, we queue
     every other generic gate.
