@@ -411,7 +411,7 @@ $$
 2^{2\ell}(p_2 - r_2) + 2^{\ell}(p_1 - r_1) + p_0 - r_0 = 0 \mod 2^t.
 $$
 
-we end up with some subtractions on the limbs.  As we previously mentioned, this a complexity we would like to avoid.  If our overall approach were to constrain this directly (i.e. if we had enough space in $\mathbb{F_n}$), then we would keep track of borrow bits $c_i$ for each limb $i$.  For example, we'd have constraints like
+we end up with some subtractions on the limbs.  As we previously mentioned, this a complexity we would like to avoid.  If our overall approach were to constrain this directly (i.e. if we had enough space in $\mathbb{F_n}$), then we would keep track of borrow bits $c_i$ for each limb $i$.  For example, we'd have constraints something like
 
 $$
 \begin{aligned}
@@ -432,7 +432,7 @@ $$
 
 where $p_0 - r_0$ is $2\ell + 1$ bits and $2^{\ell}(p_{10} - r_1)$ is $2\ell$ bits.  Let's consider each possible underflow.
 
-Firstly, if $p_0 - r_0$ created an underflow we would borrow from $p_1 - r_1$ by adding $2^{2\ell + 1}$ to $p_0 - r_0$ and subtracting $1$ from $p_1 - r_1$.  However, recall that according to our definition of $u_0$, we already added to it the lowest $\ell$ bits of $p_1$ (i.e. $p_{10}$) and all of $r_1$.  So, we've already have added the bits we would borrow.  Thus, no borrowing is needed here because it already implicitly accounted for.
+Firstly, if $p_0 - r_0$ created an underflow we would borrow from $p_1 - r_1$ by adding $2^{2\ell + 1}$ to $p_0 - r_0$ and subtracting $1$ from $p_1 - r_1$.  However, recall that according to our definition of $u_0$, we already added to it the lowest $\ell$ bits of $p_1$ (i.e. $p_{10}$) and all of $r_1$.  So, we've already added the bits we would borrow.  Thus, no borrowing is needed here because it already implicitly accounted for.
 
 Secondly, for $p_{10} - r_1$, we could borrow from $p_{11}$ or $p_2 - r_2$.  This is the same as saying, we'd borrow from $p_{11} + p_2 - r_2 = u_1$.  Thus, we would add $2^{2\ell}$ to $p_{10} - r_1$ and subtract $1$ from $u_1$.  Thus, the constraint becomes
 
