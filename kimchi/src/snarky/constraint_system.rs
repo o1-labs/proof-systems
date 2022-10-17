@@ -1,3 +1,5 @@
+#![allow(clippy::all)]
+
 use crate::circuits::gate::{CircuitGate, GateType};
 use crate::circuits::polynomials::poseidon::{ROUNDS_PER_HASH, SPONGE_WIDTH};
 use crate::circuits::wires::{Wire, COLUMNS, PERMUTS};
