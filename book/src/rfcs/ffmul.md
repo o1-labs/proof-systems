@@ -279,7 +279,7 @@ For the moment, let's not worry about the possibility of borrows and instead foc
 
 ## The trick
 
-The first problem is that our native field is too small to constrain (1).  The trick to overcoming this is to assume a space large enough to hold the computation, view the outcome in binary and then split it up into chunks that fit in the native modulus.
+The first problem is that our native field is too small to constrain 2^{2\ell}(p_2 - r_2) + 2^{\ell}(p_1 - r_1) + p_0 - r_0 = 0 \mod 2^t.  The trick to overcoming this is to assume a space large enough to hold the computation, view the outcome in binary and then split it up into chunks that fit in the native modulus.
 
 To this end, it helps to know how many bits these intermediate products require.  On the left side of the equation, $p_0$  is at most $2\ell + 1$ bits.  We can compute this by substituting the maximum possible binary values (all bits set to 1) into $p_0 = a_0b_0 + q_0f'_0$ like this
 
