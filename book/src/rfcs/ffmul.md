@@ -16,7 +16,7 @@ where $a, b, c \in \mathbb{F_f}$, a foreign field with modulus $f$, using the na
 
 In foreign field multiplication the foreign field modulus $f$ could be bigger or smaller than the native field modulus $n$.  When the foreign field modulus is bigger, then we need to emulate foreign field multiplication by splitting the foreign field elements up into limbs that fit into the native field element size.  When the foreign modulus is smaller everything can be constrained either in the native field or split up into limbs.
 
-Since our projected use cases are when the foreign field modulus is bigger (more on this below) we optimize our design around this scenario.  For this case, not only must we split foreign field elements up into limbs that fit within the native field, but we must also operate in a space bigger than the foreign field.  This is because the multiplication of two foreign field elements can only be checked explicitly by constraining its quotient and remainder.  That is, we must constrain
+Since our projected use cases are when the foreign field modulus is bigger (more on this below) we optimize our design around this scenario.  For this case, not only must we split foreign field elements up into limbs that fit within the native field, but we must also operate in a space bigger than the foreign field.  This is because we check the multiplication of two foreign field elements by constraining its quotient and remainder.  That is, we must constrain
 
 $$
 a \cdot b = q \cdot f + r,
@@ -136,7 +136,7 @@ which is not enough space to handle anything larger than 256 bit moduli.  Instea
 
 ##### 3. Choose the limb configuration
 
-Choosing the right limb size and the right number of limbs is a careful balance between the number of constraints (i.e. the polynomial degree) and the witness size (i.e. the number of rows).  Because one limiting factor that we have in Kimchi is the 12-bit maximum for range check lookups, we could be tempted to introduce 12-bit limbs.  However, this would mean having many more limbs, which would consume more witness elements and require significantly more rows.  It would also increase the polynomial degree by increasing the number of constraints required for the *intermediate products* (more on this later).
+Choosing the right limb size and the right number of limbs is a careful balance between the number of constraints (i.e. the polynomial degree) and the witness length (i.e. the number of rows).  Because one limiting factor that we have in Kimchi is the 12-bit maximum for range check lookups, we could be tempted to introduce 12-bit limbs.  However, this would mean having many more limbs, which would consume more witness elements and require significantly more rows.  It would also increase the polynomial degree by increasing the number of constraints required for the *intermediate products* (more on this later).
 
 We need to find a balance between the number of limbs and the size of the limbs.  The limb configuration is dependent on the value of $t$ and our maximum foreign modulus (as described in the previous section).  The larger the maximum foreign modulus, the more witness rows we will require to constrain the computation.  In particular, each limb needs to be constrained by the range check gate and, thus, must be in a copyable (i.e. permuteable) witness cell.  We have at most 7 copyable cells per row and gates can operate on at most 2 rows, meaning that we have an upperbound of at most 14 limbs per gate (or 7 limbs per row).
 
@@ -285,7 +285,7 @@ To this end, it helps to know how many bits these intermediate products require.
 
 $$
 \begin{aligned}
-\mathsf{maxbits}(p_0) &= \log_2(\underbrace{(2^{\ell} - 1)}_{a_0}\underbrace{(2^{\ell} - 1)}_{b_0} + \underbrace{(2^{\ell} - 1)}_{q_0}\underbrace{(2^{\ell} - 1)}_{f'_0}) \\
+\mathsf{maxbits}(p_0) &= \log_2(\underbrace{(2^{\ell} - 1)}_{a_{0}}\underbrace{(2^{\ell} - 1)}_{b_{0}} + \underbrace{(2^{\ell} - 1)}_{q_{0}}\underbrace{(2^{\ell} - 1)}_{f'_{0}}) \\
 &= \log_2(2(2^{2\ell} - 2^{\ell + 1} + 1)) \\
 &= \log_2(2^{2\ell + 1} - 2^{\ell + 2} + 2).
 \end{aligned}
@@ -319,7 +319,7 @@ The diagram below shows the right hand side of this equality (i.e. the value $p 
              ≈ u0                           ≈ u1
 ```
 
-Within our native field modulus we can fit up to $2\ell + \delta < \log_2(n)$ bits, for small values of $\delta$ (but sufficient for our case).  Thus, we can only constrain approximately half of $p - r$ at a time. In the diagram above the vertical line at 2L bisects $p - r$ into two $\approx2\ell$ bit values: $u0$ and $u1$ (the exact definition of these values follow).  Our goal is to constrain $u_0$ and $u_1$.
+Within our native field modulus we can fit up to $2\ell + \delta < \log_2(n)$ bits, for small values of $\delta$ (but sufficient for our case).  Thus, we can only constrain approximately half of $p - r$ at a time. In the diagram above the vertical line at 2L bisects $p - r$ into two $\approx2\ell$ bit values: $u_0$ and $u_1$ (the exact definition of these values follow).  Our goal is to constrain $u_0$ and $u_1$.
 
 ## Computing the zero-sum halves: $u_0$ and $u_1$
 
