@@ -297,7 +297,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
 
         // obtain public input from closure
         for i in 0..public_input_size {
-            res[0][i] = external_values(i + 1);
+            res[0][i] = external_values(i);
         }
 
         // compute rest of execution trace table
@@ -467,14 +467,15 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
         let public_input_size = self.public_input_size.unwrap();
         let pub_selectors: Vec<_> = vec![
             Field::one(),
+            // TODO: unecessary
             Field::zero(),
             Field::zero(),
             Field::zero(),
             Field::zero(),
         ];
         let mut public_gates = Vec::new();
-        for row in 0..(public_input_size - 1) {
-            let public_var = V::External(row + 1);
+        for row in 0..public_input_size {
+            let public_var = V::External(row);
             self.wire_(public_var, Row::PublicInput(row), 0);
             public_gates.push(GateSpec {
                 kind: GateType::Generic,
