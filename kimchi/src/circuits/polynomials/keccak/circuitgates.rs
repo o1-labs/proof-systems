@@ -158,7 +158,7 @@ where
         let rot2 = rot_bits(&env, 2);
         let rot3 = rot_bits(&env, 3);
         for i in 0..rot1.len() {
-            // 8
+            // 8 chunks
             constraints.push(
                 rot1[i].clone() * (bits.clone() - two.clone()) * (bits.clone() - three.clone())
                     + rot2[i].clone()
@@ -168,7 +168,10 @@ where
             );
         }
 
-        // TODO: how do we check that the msb is only 1 bit? binary check?
+        // TODO: how do we check that the msb is only 1/2/3 bit? binary check?
+        // TODO: substitute bits by coefficient
+        // TODO: check consecutive rot gates have same bits
+        // TODO: copy constraints between edge msbs
 
         constraints
     }
@@ -206,7 +209,6 @@ where
 //~
 //~ The 4-bit crumbs are assumed to be laid out with `0` being the least significant crumb.
 //~ Given values `in1`, `in2` and `out`, the layout looks like this:
-//~ ##### XOR gate
 //~
 //~ First we consider a XOR gate that checks that a 32-bit word `out` is the XOR of `in1` and `in2`.
 //~ This gate will use 2 rows, with a `Xor` row followed by a `Zero` row.
