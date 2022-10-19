@@ -30,7 +30,7 @@ pub fn poseidon<F: PrimeField>(
 
         let states = iter
             .by_ref()
-            .take(ROUNDS - 1)
+            .take(ROUNDS)
             .chunks(ROUNDS_PER_ROW)
             .into_iter()
             .flat_map(|mut it| {
@@ -69,6 +69,7 @@ fn round<F: PrimeField>(
     })
 }
 
+//to be replaced
 fn params<F: PrimeField>() -> ArithmeticSpongeParams<F> {
     todo!()
 }
