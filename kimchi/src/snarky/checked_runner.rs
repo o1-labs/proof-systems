@@ -184,7 +184,7 @@ where
     pub fn compute<T, FUNC>(&mut self, loc: String, to_compute_value: FUNC) -> T
     where
         T: SnarkyType<F>,
-        FUNC: Fn(&dyn WitnessGeneration<F>) -> T::OutOfCircuit,
+        FUNC: FnOnce(&dyn WitnessGeneration<F>) -> T::OutOfCircuit,
     {
         self.compute_inner(true, loc, to_compute_value)
     }
@@ -203,7 +203,7 @@ where
     fn compute_inner<T, FUNC>(&mut self, checked: bool, _loc: String, to_compute_value: FUNC) -> T
     where
         T: SnarkyType<F>,
-        FUNC: Fn(&dyn WitnessGeneration<F>) -> T::OutOfCircuit,
+        FUNC: FnOnce(&dyn WitnessGeneration<F>) -> T::OutOfCircuit,
     {
         match self.mode {
             Mode::WitnessGeneration => {
@@ -305,6 +305,12 @@ where
                 self.add_constraint_inner(constraints);
             }
         }
+    }
+    pub fn add_constraint(&mut self, constraint: Constraint<F>, annotation: Option<&'static str>) {
+        self.add_constraints(vec![AnnotatedConstraint {
+            annotation,
+            constraint,
+        }])
     }
 
     fn add_constraint_inner(&mut self, constraints: Vec<AnnotatedConstraint<F>>) {
