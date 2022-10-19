@@ -381,7 +381,7 @@ Thus far we have the following constraints
 
 For the next step we would like to constrain $u_0$ and $u_1$ to zero.  Unfortunately, we are not able to do this!
 
-* Firstly, as defined $u_0$ may not be zero because we have not bisected it precisely at $2\ell$ bits, but have allowed it to contain the full $2\ell + 2$ bits.  Recall that these two additional bits are because $p_0$ is at most $2\ell + 1$ bits long, but also because adding $p_{10}$ increases it to $2\ell + 2$.  These two additional bits are not part of the first $2\ell$ bits of $p - r$ and, thus, are not necessarily zero.  That is, they are copied from the second $2\ell$ bits (i.e. $u_1$).
+* Firstly, as defined $u_0$ may not be zero because we have not bisected it precisely at $2\ell$ bits, but have allowed it to contain the full $2\ell + 2$ bits.  Recall that these two additional bits are because $p_0$ is at most $2\ell + 1$ bits long, but also because adding $p_{10}$ increases it to $2\ell + 2$.  These two additional bits are not part of the first $2\ell$ bits of $p - r$ and, thus, are not necessarily zero.  That is, they are added from the second $2\ell$ bits (i.e. $u_1$).
 
 * Secondly, whilst the highest $\ell + 3$ bits of $p - r$ would wrap to zero $\mod 2^t$, when placed into the smaller $2\ell + 3$ bit $u_1$ in the native field, this wrapping does not happen.  Thus, $u_1$'s $\ell + 3$ highest bits may be nonzero.
 
@@ -391,9 +391,21 @@ We can deal with this non-zero issue by computing carry witness values.
 
 Instead of constraining $u_0$ and $u_1$ to zero, there must be satisfying witness $v_0$ and $v_1$ such that the following constraints hold.
 > 5. There exists $v_0$ such that $u_0 = v_0 \cdot 2^{2\ell}$
-> 6. There exists $v_1$ such that $u_1 + v_0 = v_1 \cdot 2^{\ell}$
+> 6. There exists $v_1$ such that $u_1 = v_1 \cdot 2^{\ell} - v_0$
 
-Here $v_0$ is the last two bits of $u_0$'s $2\ell + 2$ bits, i.e., the result of adding the highest bit of $p_0$ and any possible carry bit from the operation of $u_0$.  Similarly, $v_1$ corresponds to the highest $\ell + 3$ bits of $u_1$.
+Here $v_0$ is the last two bits of $u_0$'s $2\ell + 2$ bits, i.e., the result of adding the highest bit of $p_0$ and any possible carry bit from the operation of $u_0$.  Similarly, $v_1$ corresponds to the highest $\ell + 3$ bits of $u_1$.  It looks like this
+
+```text
+0             L             2L            3L            4L
+|-------------|-------------|-------------|-------------|-------------|
+                            :
+|--------------u0-----------:--| 2L + 2
+                            : ↖v0
+                            :-------------u1-------------| 2L + 3
+                            :              \____________/
+                            :                  v1➚
+```
+
 
 Remember we only need to prove the first $3\ell$ bits of $p - r$ are zero, since everything is $\mod 2^t$ and  $t = 3\ell$.  It may not be clear how this prefix witness approach, proves the $3\ell$ bits are indeed zero because within $u_0$ and $u_1$ there are bits that are nonzero.  The key observation is that these bits are too high for $\mod 2^t$.
 
@@ -405,46 +417,29 @@ All that remains is to range check $v_0$ and $v_1$
 
 ## Subtractions
 
-Now let's revisit our second problem, the possibility of borrows when subtracting the limbs of the remainder.  In order to constrain
-
-$$
-2^{2\ell}(p_2 - r_2) + 2^{\ell}(p_1 - r_1) + p_0 - r_0 = 0 \mod 2^t.
-$$
-
-we end up with some subtractions on the limbs.  As we previously mentioned, this a complexity we would like to avoid.  If our overall approach were to constrain this directly (i.e. if we had enough space in $\mathbb{F_n}$), then we would keep track of borrow bits $c_i$ for each limb $i$.  For example, we'd have constraints something like
-
-$$
-\begin{aligned}
-a_0 \cdot b_0 &= q_0 \cdot f'_0 + r_0 - c_0 \cdot 2^{2\ell + 1} \\
-a_1 \cdot b_1 &= q_1 \cdot f'_1 + r_1 - c_1 \cdot 2^{2\ell + 1} + c_0 \\
-a_2 \cdot b_2 &= q_2 \cdot f'_2 + r_2 + c_1
-\end{aligned}
-$$
-
-However, in our approach with $u_0$ and $u_1$ things are different.  We have
+Now let's revisit our second problem, the possibility of borrows when subtracting the limbs of the remainder.  In our approach with $u_0$ and $u_1$ we have
 
 $$
 \begin{aligned}
 u_0 &= p_0 + 2^{\ell}\cdot p_{10} - r_0 - 2^{\ell}\cdot r_1 \\
-&= 2^{\ell}(p_{10} - r_1) + p_0 - r_0
+&= p_0 + 2^{\ell} \cdot p_{10}  - (2^{\ell} \cdot r_1 + r_0) \\
 \end{aligned}
 $$
 
-where $p_0 - r_0$ is $2\ell + 1$ bits and $2^{\ell}(p_{10} - r_1)$ is $2\ell$ bits.  Let's consider each possible underflow.
+where the minuend is $2\ell + 2$ bits and the value $u_0$ is at most $2\ell + 2$ bits.
 
-Firstly, if $p_0 - r_0$ created an underflow we would borrow from $p_1 - r_1$ by adding $2^{2\ell + 1}$ to $p_0 - r_0$ and subtracting $1$ from $p_1 - r_1$.  However, recall that according to our definition of $u_0$, we already added to it the lowest $\ell$ bits of $p_1$ (i.e. $p_{10}$) and all of $r_1$.  So, we've already added the bits we would borrow.  Thus, no borrowing is needed here because it already implicitly accounted for.
+If there is an underflow, then we must borrow $2^{2\ell + 2}$ from outside of $u_0$, which is from $p_{11} + p_2 - r_2 = u_1$.  That is, we add $2^{2\ell + 2}$ to $u_0$ and subtract from $u_1$.  How much we subtract from $u_1$ is obscured by its overlap with $u_0$.  We know that $u_0 + 2^{\ell} \cdot u_1$ equals our product and that borrowing $2^{2\ell + 2}$ means subtracting at the absolute position of $2\ell + 2$ from the sum.  The term $u_1$ is scaled by $2^{\ell}$, so position $2\ell + 2$ corresponds to the second bit of $u_1$, so when borrowing we subtract $2$ from $u_1$.
 
-Secondly, if $p_{10} - r_1$ created an underflow, we would borrow from $p_{11}$ or $p_2 - r_2$.  This is the same as saying, we'd borrow from $p_{11} + p_2 - r_2 = u_1$.  Thus, we would add $2^{2\ell}$ to $p_{10} - r_1$ and subtract $1$ from $u_1$.  Thus, the constraint becomes
-
-$$
-u_0 = 2^{\ell}(p_{10} - r_1) + p_0 - r_0 - c_0 \cdot 2^{2\ell}
-$$
-
-For $u_1$ it's not possible for $r_2 > p_2$ and, therefore, the most significant borrow bit $c_1$ should always be zero.  Thus, $u_1$'s constraint is
+Thus, the constraints are
 
 $$
-u_1 = p_{11} + p_2 - r_2 + c_0
+\begin{aligned}
+u_0 &= 2^{\ell} \cdot (p_{10} - r_1) + p_0 - r_0 - c_0 \cdot 2^{2\ell + 1} \\
+u_1 &= p_{11} + p_2 - r_2 + 2 \cdot c_0
+\end{aligned}
 $$
+
+For $u_1$ it's not possible for $r_2 > p_{11} + p_2$ and, therefore, the most significant borrow bit $c_1$ should always be zero.
 
 **Costs:**
 

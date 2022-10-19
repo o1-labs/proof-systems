@@ -14,6 +14,14 @@ pub const LIMB_BITS: usize = 88;
 /// Number of desired limbs for foreign field elements
 pub const LIMB_COUNT: usize = 3;
 
+/// Max number of bits for $t$ modulus
+pub const T_BITS: usize = LIMB_BITS + LIMB_COUNT;
+
+/// $t$ modulus = 2^{T_BITS}
+pub fn t_modulus() -> BigUint {
+    BigUint::from(2u32).pow(T_BITS as u32)
+}
+
 /// The foreign field modulus of secp256k1 is the prime number (in big endian)
 /// FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFE FFFFFC2F
 /// given by the computation 2^256 - 2^32 - 2^9 - 2^8 - 2^7 - 2^6 - 2^4 - 1
