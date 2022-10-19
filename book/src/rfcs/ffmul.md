@@ -316,28 +316,28 @@ The diagram below shows the right hand side of this equality (i.e. the value $p 
                             :
                             |-----r2------|
 \__________________________/ \______________________________/
-             ≈ u0                           ≈ u1
+             ≈ h0                           ≈ h1
 ```
 
-Within our native field modulus we can fit up to $2\ell + \delta < \log_2(n)$ bits, for small values of $\delta$ (but sufficient for our case).  Thus, we can only constrain approximately half of $p - r$ at a time. In the diagram above the vertical line at 2L bisects $p - r$ into two $\approx2\ell$ bit values: $u_0$ and $u_1$ (the exact definition of these values follow).  Our goal is to constrain $u_0$ and $u_1$.
+Within our native field modulus we can fit up to $2\ell + \delta < \log_2(n)$ bits, for small values of $\delta$ (but sufficient for our case).  Thus, we can only constrain approximately half of $p - r$ at a time. In the diagram above the vertical line at 2L bisects $p - r$ into two $\approx2\ell$ bit values: $h_0$ and $h_1$ (the exact definition of these values follow).  Our goal is to constrain $h_0$ and $h_1$.
 
-## Computing the zero-sum halves: $u_0$ and $u_1$
+## Computing the zero-sum halves: $h_0$ and $h_1$
 
-Now we can derive how to compute $u0$ and $u1$ from $p$ and $r$.
+Now we can derive how to compute $h_0$ and $h_1$ from $p$ and $r$.
 
-The direct approach would be to bisect both $p_0$ and $p_1$ and then define $u_0$ as just the sum of the $2\ell$ lower bits of $p_0$ and $p_1$ minus $r_0$ and $r_1$.  Similarly $u_1$ would be just the sum of upper bits of $p_0, p_1$ and $p_2$ minus $r_2$.  However, each bisection requires constraints for the decomposition and range checks for the two halves.  Thus, we would like to avoid bisections are they are expensive.
+The direct approach would be to bisect both $p_0$ and $p_1$ and then define $h_0$ as just the sum of the $2\ell$ lower bits of $p_0$ and $p_1$ minus $r_0$ and $r_1$.  Similarly $h_1$ would be just the sum of upper bits of $p_0, p_1$ and $p_2$ minus $r_2$.  However, each bisection requires constraints for the decomposition and range checks for the two halves.  Thus, we would like to avoid bisections are they are expensive.
 
-Ideally, if our $p$'s lined up on the $2\ell$ boundary, we would not need to bisect at all.  However, we are unlucky and it seems like we must bisect both $p_0$ and $p_1$.  Fortunately, we can at least avoid bisecting $p_0$ by allowing it to be summed into $u_0$ like this
+Ideally, if our $p$'s lined up on the $2\ell$ boundary, we would not need to bisect at all.  However, we are unlucky and it seems like we must bisect both $p_0$ and $p_1$.  Fortunately, we can at least avoid bisecting $p_0$ by allowing it to be summed into $h_0$ like this
 
 $$
-u_0 = p_0 + 2^{\ell}\cdot p_{10} - r_0 - 2^{\ell}\cdot r_1
+h_0 = p_0 + 2^{\ell}\cdot p_{10} - r_0 - 2^{\ell}\cdot r_1
 $$
 
-Note that $u_0$ is actually greater than $2\ell$ bits in length.  This may not only be because it contains $p_0$ whose length is $2\ell + 1$, but also because adding $p_{10}$ may cause an overflow.  The maximum length of $u_0$ is computed by substituting in the maximum possible binary value of $2^{\ell} - 1$ for the added terms and $0$ for the subtracted terms of the above equation.
+Note that $h_0$ is actually greater than $2\ell$ bits in length.  This may not only be because it contains $p_0$ whose length is $2\ell + 1$, but also because adding $p_{10}$ may cause an overflow.  The maximum length of $h_0$ is computed by substituting in the maximum possible binary value of $2^{\ell} - 1$ for the added terms and $0$ for the subtracted terms of the above equation.
 
 $$
 \begin{aligned}
-\mathsf{maxbits}(u_0) &= \log_2(\underbrace{(2^{\ell} - 1)(2^{\ell} - 1) + (2^{\ell} - 1)(2^{\ell} - 1)}_{p_0} + \underbrace{2^{\ell} \cdot (2^{\ell} - 1)}_{p_{10}}) \\
+\mathsf{maxbits}(h_0) &= \log_2(\underbrace{(2^{\ell} - 1)(2^{\ell} - 1) + (2^{\ell} - 1)(2^{\ell} - 1)}_{p_0} + \underbrace{2^{\ell} \cdot (2^{\ell} - 1)}_{p_{10}}) \\
 &= \log_2(2^{2\ell + 1} - 2^{\ell + 2} + 2 + 2^{2\ell} - 2^\ell) \\
 &= \log_2( 3\cdot 2^{2\ell} - 5 \cdot 2^\ell +2 ) \\
 \end{aligned}
@@ -345,17 +345,19 @@ $$
 
 which is $2\ell + 2$ bits.
 
-Next, we compute $u_1$ as
+N.b. This computation assumes correct sizes values for $r_0$ and $r_1$, which we assure by range checks on the limbs.
+
+Next, we compute $h_1$ as
 
 $$
-u_1 = p_{11} + p_2 - r_2
+h_1 = p_{11} + p_2 - r_2
 $$
 
-The maximum size of $u_1$ is computed as
+The maximum size of $h_1$ is computed as
 
 $$
 \begin{aligned}
-\mathsf{maxbits}(u_1) &= \mathsf{maxbits}(p_{11} + p_2)
+\mathsf{maxbits}(h_1) &= \mathsf{maxbits}(p_{11} + p_2)
 \end{aligned}
 $$
 
@@ -363,14 +365,14 @@ In order to obtain the maximum value of $p_{11}$, we define $p_{11} := \frac{p_1
 
 $$
 \begin{aligned}
-\mathsf{maxbits}(u_1) &= log_2(\underbrace{2^{\ell+2}-8}_{p_{11}} + \underbrace{6\cdot 2^{2\ell} - 12 \cdot 2^\ell + 6}_{p_2}) \\
+\mathsf{maxbits}(h_1) &= log_2(\underbrace{2^{\ell+2}-8}_{p_{11}} + \underbrace{6\cdot 2^{2\ell} - 12 \cdot 2^\ell + 6}_{p_2}) \\
 &= \log_2(6\cdot 2^{2\ell} - 8 \cdot 2^\ell - 2) \\
 \end{aligned}
 $$
 
 which is $2\ell + 3$ bits.
 
-| Term     | $u_0$       | $u_1$       |
+| Term     | $h_0$       | $h_1$       |
 | -------- | ----------- | ----------- |
 | **Bits** | $2\ell + 2$ | $2\ell + 3$ |
 
@@ -379,37 +381,37 @@ Thus far we have the following constraints
 > 3. Range check $p_{11} \in [0, 2^{\ell + 2})$
 > 4. Range check $p_{10} \in [0, 2^{\ell})$
 
-For the next step we would like to constrain $u_0$ and $u_1$ to zero.  Unfortunately, we are not able to do this!
+For the next step we would like to constrain $h_0$ and $h_1$ to zero.  Unfortunately, we are not able to do this!
 
-* Firstly, as defined $u_0$ may not be zero because we have not bisected it precisely at $2\ell$ bits, but have allowed it to contain the full $2\ell + 2$ bits.  Recall that these two additional bits are because $p_0$ is at most $2\ell + 1$ bits long, but also because adding $p_{10}$ increases it to $2\ell + 2$.  These two additional bits are not part of the first $2\ell$ bits of $p - r$ and, thus, are not necessarily zero.  That is, they are added from the second $2\ell$ bits (i.e. $u_1$).
+* Firstly, as defined $h_0$ may not be zero because we have not bisected it precisely at $2\ell$ bits, but have allowed it to contain the full $2\ell + 2$ bits.  Recall that these two additional bits are because $p_0$ is at most $2\ell + 1$ bits long, but also because adding $p_{10}$ increases it to $2\ell + 2$.  These two additional bits are not part of the first $2\ell$ bits of $p - r$ and, thus, are not necessarily zero.  That is, they are added from the second $2\ell$ bits (i.e. $h_1$).
 
-* Secondly, whilst the highest $\ell + 3$ bits of $p - r$ would wrap to zero $\mod 2^t$, when placed into the smaller $2\ell + 3$ bit $u_1$ in the native field, this wrapping does not happen.  Thus, $u_1$'s $\ell + 3$ highest bits may be nonzero.
+* Secondly, whilst the highest $\ell + 3$ bits of $p - r$ would wrap to zero $\mod 2^t$, when placed into the smaller $2\ell + 3$ bit $h_1$ in the native field, this wrapping does not happen.  Thus, $h_1$'s $\ell + 3$ highest bits may be nonzero.
 
 We can deal with this non-zero issue by computing carry witness values.
 
 ## Computing carry witnesses values $v_0$ and $v_1$
 
-Instead of constraining $u_0$ and $u_1$ to zero, there must be satisfying witness $v_0$ and $v_1$ such that the following constraints hold.
-> 5. There exists $v_0$ such that $u_0 = v_0 \cdot 2^{2\ell}$
-> 6. There exists $v_1$ such that $u_1 = v_1 \cdot 2^{\ell} - v_0$
+Instead of constraining $h_0$ and $h_1$ to zero, there must be satisfying witness $v_0$ and $v_1$ such that the following constraints hold.
+> 5. There exists $v_0$ such that $h_0 = v_0 \cdot 2^{2\ell}$
+> 6. There exists $v_1$ such that $h_1 = v_1 \cdot 2^{\ell} - v_0$
 
-Here $v_0$ is the last two bits of $u_0$'s $2\ell + 2$ bits, i.e., the result of adding the highest bit of $p_0$ and any possible carry bit from the operation of $u_0$.  Similarly, $v_1$ corresponds to the highest $\ell + 3$ bits of $u_1$.  It looks like this
+Here $v_0$ is the last two bits of $h_0$'s $2\ell + 2$ bits, i.e., the result of adding the highest bit of $p_0$ and any possible carry bit from the operation of $h_0$.  Similarly, $v_1$ corresponds to the highest $\ell + 3$ bits of $h_1$.  It looks like this
 
 ```text
 0             L             2L            3L            4L
 |-------------|-------------|-------------|-------------|-------------|
                             :
-|--------------u0-----------:--| 2L + 2
+|--------------h0-----------:--| 2L + 2
                             : ↖v0
-                            :-------------u1-------------| 2L + 3
+                            :-------------h1-------------| 2L + 3
                             :              \____________/
                             :                  v1➚
 ```
 
 
-Remember we only need to prove the first $3\ell$ bits of $p - r$ are zero, since everything is $\mod 2^t$ and  $t = 3\ell$.  It may not be clear how this prefix witness approach, proves the $3\ell$ bits are indeed zero because within $u_0$ and $u_1$ there are bits that are nonzero.  The key observation is that these bits are too high for $\mod 2^t$.
+Remember we only need to prove the first $3\ell$ bits of $p - r$ are zero, since everything is $\mod 2^t$ and  $t = 3\ell$.  It may not be clear how this approach proves the $3\ell$ bits are indeed zero because within $h_0$ and $h_1$ there are bits that are nonzero.  The key observation is that these bits are too high for $\mod 2^t$.
 
-By making the prefix argument with $v_0$ and $v_1$ we are proving that $u_0$ is something prefixed with $2\ell$ zeros and that $u_1$ is something prefixed with $\ell$ zeros.  Any nonzero bits after $3\ell$ do not matter, since everything is $\mod 2^t$.
+By making the argument with $v_0$ and $v_1$ we are proving that $h_0$ is something where the $2\ell$ least significant bits are all zeros and that $h_1 + v_0$ is something where the $\ell$ are also zeros.  Any nonzero bits after $3\ell$ do not matter, since everything is $\mod 2^t$.
 
 All that remains is to range check $v_0$ and $v_1$
 > 7. Range check $v_0 \in [0, 3]$
@@ -417,29 +419,29 @@ All that remains is to range check $v_0$ and $v_1$
 
 ## Subtractions
 
-Now let's revisit our second problem, the possibility of borrows when subtracting the limbs of the remainder.  In our approach with $u_0$ and $u_1$ we have
+Now let's revisit our second problem, the possibility of borrows when subtracting the limbs of the remainder.  In our approach with $h_0$ and $h_1$ we have
 
 $$
 \begin{aligned}
-u_0 &= p_0 + 2^{\ell}\cdot p_{10} - r_0 - 2^{\ell}\cdot r_1 \\
+h_0 &= p_0 + 2^{\ell}\cdot p_{10} - r_0 - 2^{\ell}\cdot r_1 \\
 &= p_0 + 2^{\ell} \cdot p_{10}  - (2^{\ell} \cdot r_1 + r_0) \\
 \end{aligned}
 $$
 
-where the minuend is $2\ell + 2$ bits and the value $u_0$ is at most $2\ell + 2$ bits.
+where the minuend is $2\ell + 2$ bits and the value $h_0$ is at most $2\ell + 2$ bits.
 
-If there is an underflow, then we must borrow $2^{2\ell + 2}$ from outside of $u_0$, which is from $p_{11} + p_2 - r_2 = u_1$.  That is, we add $2^{2\ell + 2}$ to $u_0$ and subtract from $u_1$.  How much we subtract from $u_1$ is obscured by its overlap with $u_0$.  We know that $u_0 + 2^{\ell} \cdot u_1$ equals our product and that borrowing $2^{2\ell + 2}$ means subtracting at the absolute position of $2\ell + 2$ from the sum.  The term $u_1$ is scaled by $2^{\ell}$, so position $2\ell + 2$ corresponds to the second bit of $u_1$, so when borrowing we subtract $2$ from $u_1$.
+If there is an underflow, then we must borrow $2^{2\ell + 2}$ from outside of $h_0$, which is from $p_{11} + p_2 - r_2 = h_1$.  That is, we add $2^{2\ell + 2}$ to $h_0$ and subtract from $h_1$.  How much we subtract from $h_1$ is obscured by its overlap with $h_0$.  We know that $h_0 + 2^{\ell} \cdot h_1$ equals our product and that borrowing $2^{2\ell + 2}$ means subtracting at the absolute position of $2\ell + 2$ from the sum.  The term $h_1$ is scaled by $2^{\ell}$, so position $2\ell + 2$ corresponds to the second bit of $h_1$, so when borrowing we subtract $2$ from $h_1$.
 
 Thus, the constraints are
 
 $$
 \begin{aligned}
-u_0 &= 2^{\ell} \cdot (p_{10} - r_1) + p_0 - r_0 - c_0 \cdot 2^{2\ell + 1} \\
-u_1 &= p_{11} + p_2 - r_2 + 2 \cdot c_0
+h_0 &= 2^{\ell} \cdot (p_{10} - r_1) + p_0 - r_0 - c_0 \cdot 2^{2\ell + 1} \\
+h_1 &= p_{11} + p_2 - r_2 + 2 \cdot c_0
 \end{aligned}
 $$
 
-For $u_1$ it's not possible for $r_2 > p_{11} + p_2$ and, therefore, the most significant borrow bit $c_1$ should always be zero.
+For $h_1$ it's not possible for $r_2 > p_{11} + p_2$ and, therefore, the most significant borrow bit $c_1$ should always be zero.
 
 **Costs:**
 
@@ -484,13 +486,29 @@ r' &= r \mod n
 \end{aligned}
 $$
 
+using our native field modulus with constraints like this
+
+$$
+\begin{aligned}
+a' &= 2^{2\ell} \cdot a_2 + 2^{\ell} \cdot a_1 + a_0 \\
+b' &= 2^{2\ell} \cdot b_2 + 2^{\ell} \cdot b_1 + b_0 \\
+q' &= 2^{2\ell} \cdot q_2 + 2^{\ell} \cdot q_1 + q_0 \\
+f'' &= 2^{2\ell} \cdot f_2 + 2^{\ell} \cdot f_1 + f_0 \\
+r' & = 2^{2\ell} \cdot r_2 + 2^{\ell} \cdot r_1 + r_0 \\
+\end{aligned}
+$$
+
 and then constrain
 
 $$
 a' \cdot b' - q' \cdot f'' - r' = 0 \mod n.
 $$
 
+This requires a single constraint of the form
+
 > 9. $a' \cdot b' - q' \cdot f'' - r' = 0 \mod n$
+
+with all of the terms expanded into the limbs according the the above equations.  The values $a', b', q', f''$ and $r'$ do not need to be in the witness.
 
 ## Range check $q$ so that $q \cdot f + r < 2^t \cdot n$
 
@@ -530,12 +548,6 @@ $$
 q < f
 $$
 
-and
-
-$$
-f < 2^t
-$$
-
 instead.
 
 
@@ -566,9 +578,9 @@ We have to range constrain witness $q$ to be $<2^{264}$, but also $2^{256}$ for 
 
 Compute/Constrain intermediate products $p_0$, $p_1$, and $p_2$ as:
 
-- [x] $p_0 = a_0 \cdot b_0 - q_0 \cdot f_0$ `ForeignFieldMul`
-- [x] $p_1 = a_0 \cdot b_1 + a_1 \cdot b_0 - q_0 \cdot f_1 - q_1 \cdot f_0$ `ForeignFieldMul`
-- [x] $p_2 = a_0 \cdot b_2 + a_2 \cdot b_0 + a_1 \cdot b_1 - q_0 \cdot f_2 - q_2 \cdot f_0 - q_1 \cdot f_1$ `ForeignFieldMul`
+- [x] $p_0 = a_0 \cdot b_0 + q_0 \cdot f'_0$ `ForeignFieldMul`
+- [x] $p_1 = a_0 \cdot b_1 + a_1 \cdot b_0 + q_0 \cdot f'_1 + q_1 \cdot f'_0$ `ForeignFieldMul`
+- [x] $p_2 = a_0 \cdot b_2 + a_2 \cdot b_0 + a_1 \cdot b_1 + q_0 \cdot f'_2 + q_2 \cdot f'_0 + q_1 \cdot f'_1$ `ForeignFieldMul`
 
 where each of them is about $2\ell$-length elements.
 
@@ -585,7 +597,7 @@ Check that $p_{11} | p_{10} = p_1$:
 
 Altogether, step 6 (and the second constraint of step 5) can be combined into the following 4 constraints:
 
-- $2^\ell \cdot ( 2^\ell \cdot p_{111} + p_{110} ) + p_{10} = a_0 \cdot b_1 + a_1 \cdot b_0 - q_0 \cdot f_1 - q_1 \cdot f_0$
+- $2^\ell \cdot ( 2^\ell \cdot p_{111} + p_{110} ) + p_{10} = a_0 \cdot b_1 + a_1 \cdot b_0 + q_0 \cdot f'_1 + q_1 \cdot f'_0$
 - Range check $p_{10} < 2^\ell$
 - Range check $p_{110} < 2^\ell$
 - Range check $p_{111} \in [0, 2^2)$ with a degree-4 constraint
@@ -643,9 +655,9 @@ where $\mathsf{shift}_{v_{11}} = 2^9v_{11}$ and $\mathsf{shift}_{q_2} = 2^8q_2$.
 
 
 `ForeignFieldMul` has the following intermediate computations
-  1. $p_0 = a_0b_0 - q_0f_0$
-  2. $p_1 = a_0b_1 + a_1b_0 - q_0f_1 - q_1f_0$
-  3. $p_2 = a_0b_2 + a_2b_0 + a_1b_1 - q_0f_2 - q_2f_0 - q_1f_1$
+  1. $p_0 = a_0b_0 + q_0f'_0$
+  2. $p_1 = a_0b_1 + a_1b_0 + q_0f'_1 + q_1f'_0$
+  3. $p_2 = a_0b_2 + a_2b_0 + a_1b_1 + q_0f'_2 + q_2f'_0 + q_1f'_1$
 
 and the following constraints
 
@@ -692,120 +704,3 @@ These 2 gates are preceeded by 5 multi-range-check gates.
 | 16-19  | `multi-range-check` | $p_{10}, p_{110}, v_{10}$ |
 | 20     | `ForeignFieldMul`   |                           |
 | 21     | `Zero`              |                           |
-
-# Underflows
-
-In the above, we have used arithmetics from the point of view of the bitstrings behind these limbs. Nonetheless, they will ultimately be interpreted as native field elements. This entails no problems when we are dealing with "positive" values. However, when we subtract a "larger" value from a "smaller" value, the result will be negative. And these numbers cause wraps around the native modulus. In other words, the "minus" sign that we would normally encode in integers, gets translated as a huge field element that overflows the limb length.
-
-For this reason, when we come across subtraction (which we do when computing the intermediate products), we must include some additional conditionals to ensure that we do not cause underflows. We will include in the witness three auxiliary values (one per intermediate product) to take care of this. Whenever the subtracted part is larger than the summand, we will add a power of two (a 1 bit followed by a sufficient number of 0 bits) to the operation to obtain the correct bitstring up to the suffix that we are intersted in. Then, this amount will be deduced from the next intermediate product with a correct shift to make sure that the result is aligned.
-
-A bit more visually, we will modify the per-limb operations as follows:
-
-```text
-0             L             2L            3L            4L
-|-------------|-------------|-------------|-------------|-------------|
-                            :
-|--------------p0-----------:-| 2L + 1
-                            :
-00------------------------00:01 <- aux0
-                            :
-                            :
-              |-------------:-p1------------| 2L + 2
-                    p10➚    :        p11➚
-                            :
-              00--------------------------00:001 <- aux1
-                            :
-                            |----------------p2-------------| 2L + 3
-                            :
-                            00----------------------------00:0001 <- aux2
-                            :
-|-----r0------|             :
-                            :
-              |-----r1------|
-                            :
-                            |-----r2------|
-\__________________________/ \______________________________/
-             ≈ u0                           ≈ u1
-```
-This means,
-- if `aux0` is set to `1`, then $2^{2L + 1}$ will be added to `p0` and `2` will be subtracted from the top term.
-- if `aux1` is set to `1`, then $2^{2L + 2}$ will be added to `p1` and $2^{L+2}$ will be subtracted from the top term.
-- if `aux2` is set to `1`, then $2^{2L + 3}$ will be added to `p2` and $2^{L+3}$.
-
-
-<!--
-## Another approach
-
-Split $u_0$ and go direct!
-
-> 2. Composition of $p_{00}$ and $p_{01}$ = $p_0$
-> 3. Range check $p_{00} \in [0, 2^{2\ell})$
-> 4. Range check $p_{01} \in [0,1]$
-> 5. Composition of $p_{10}$ and $p_{11}$ = $p_1$
-> 6. Range check $p_{11} \in [0, 2^{\ell})$
-> 7. Range check $p_{10} \in [0, 2^{\ell + 2})$
-
-Now
-
-\begin{aligned}
-u_0 &= p_{00} + p_{10} - r_0 - 2^{\ell}r_1 \\
-u_1 &= p_{01} + p_{11} + p_2 - r_2
-\end{aligned}
-
-Here
-
-
-\begin{aligned}
-\mathsf{maxbits}(u_0) &= \log_2(2^{2\ell} - 1 + 2^{\ell} - 1) \\
-&= 2\ell \\
-\mathsf{maxbits}(u_1) &= \log_2(1 + 2^{\ell + 2} - 1 + 2^{2\ell + 3}) \\
-&= 2\ell + 3
-\end{aligned}
-
-Both $u_0$ and $u_1$ fit in the native field (i.e. their length in bits is at most $2\ell + \delta < \log_2(n)$), so the final constraints are
-> 8. Check $u_0 = 0$
-> 9. Check $u_1 \mod 2^{\ell} = 0$ ?
-
-If they are zero, then we don't need to range check them.
-
-**Cost:** Here we have 4 range checks, but range check (4) is a trivial degree 2 constraint.  So, there are actually 3 range checks.  Range checks (3) and (6) fit into a single multi-range-check gate and (7) requires a single range check gate followed by a degree 4 constraint.  So the constraints would look like this
-
-| Range check | Gate type(s)                                 | Witness          | Rows |
-| ----------- | -------------------------------------------- | ---------------- | ---- |
-| 4           | $(p_{01} - 1)p_{01}$                         | $p_{01}$         | < 1  |
-| 7           | $(p_{10} - 3)(p_{10} - 2)(p_{10} - 1)p_{10}$ | $p_{10}$         | < 1  |
-| 3,6         | multi-range-check                            | $p_{00}, p_{11}$ | 4    |
-| 7           | single-range-check (`RangeCheck0`)           | $p_{10}$         | 1    |
-
-These range-checks should be the dominant cost.
-
-So we have 1 multi-range-check, 1 single-range-check and 2 low-degree range checks.  This consumes just over 5 rows.
-
-Thus, in terms of range-checks the cost of this approach is the same.
-
-The only overhead are some extra terms for the composition (2).  But this assumes the original approach doesn't need to also range check $u_0$ and $u_1$, nor explicitly check they are zero.
--->
-
-## Open questions
-
-1. How does this guarantee anything about foreign modulus $f$?
-
-   Neither by CRT, nor by $2^tn > f^2 + f$ bound, is it clear (to me) how these checks tie back to the foreign field modulus.
-
-   > r is in the class of solutions of c, so as soon as r goes to a foreign field machine it is compressed back to c.
-
-2. Similar to question (1), why don't we need to range check $r$ at the end?
-
-3. Are these range checks of limbs really accurate? (related to above)
-
-4. Why don't we range check $a,b < f$ (also related to above)?
-
-a. Specifically, we have to check that $q\cdot f + r < 2^t \cdot n$ for the CRT, but also that $a\cdot b < 2^t \cdot n$. Thanks to the multi range check, we know that $a < 2^t$ and $b < 2^t$. Thus, since by definition $2^t > n$, this seems not to suffice to know that $a\cdot b < 2^t \cdot n$. Nonetheless, if we assume $a < f$ and $b < f$, since $n < f < 2^t$ and $t$ is said to be chosen such that $2^t \cdot n > f^2$, then we have that $a \cdot b < 2^t \cdot n$.
-
-b. But we are not proving that $a$ or $b$ are in $F_f$, nor $t$ being such a number. In particular, if we could assume that $a$ and $b$ are in $F_f$, wouldn't we know already that $q$ must be $< f$? Ok, no because we are in a field, you could have more solutions, right?
-
-5. Our common cases for the foreign field are secp256k1 or Vesta/Pallas with native field either Pallas or Vesta. Since our common cases are at most 1 bit larger than our native fields, then could we obtain better performance with a special implementation geared to at most 1 bit difference in modulus size?
-
-## Answers
-
-We met with Matthew and we discussed these questions with him. As long as we check off-gate that the initial multiplicands $a,b$ and final remainder $r$ (it may be the case that we have a chain of multiplications) belong to the foreign field, then it should be fine.
