@@ -285,7 +285,7 @@ To this end, it helps to know how many bits these intermediate products require.
 
 $$
 \begin{aligned}
-\mathsf{maxbits}(p_0) &= \log_2(\underbrace{(2^{\ell} - 1)}_{a_{0}}\underbrace{(2^{\ell} - 1)}_{b_{0}} + \underbrace{(2^{\ell} - 1)}_{q_{0}}\underbrace{(2^{\ell} - 1)}_{f'_{0}}) \\
+\mathsf{maxbits}(p_0) &= \log_2(\underbrace{(2^{\ell} - 1)}_{a_{0}} \underbrace{(2^{\ell} - 1)}_{b_{0}} + \underbrace{(2^{\ell} - 1)}_{q_{0}} \underbrace{(2^{\ell} - 1)}_{f'_{0}}) \\
 &= \log_2(2(2^{2\ell} - 2^{\ell + 1} + 1)) \\
 &= \log_2(2^{2\ell + 1} - 2^{\ell + 2} + 2).
 \end{aligned}
