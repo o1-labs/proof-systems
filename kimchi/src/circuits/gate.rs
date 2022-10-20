@@ -261,6 +261,7 @@ impl<F: PrimeField> CircuitGate<F> {
             endo_coefficient: cs.endo,
             mds: &G::sponge_params().mds,
             foreign_field_modulus: cs.foreign_field_modulus.clone(),
+            keccak_rotation_table: cs.keccak_rotation_table.clone(),
         };
         // Create the argument environment for the constraints over field elements
         let env = ArgumentEnv::<F, F>::create(argument_witness, self.coeffs.clone(), constants);

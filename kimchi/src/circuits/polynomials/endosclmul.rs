@@ -147,6 +147,7 @@ impl<F: PrimeField> CircuitGate<F> {
             mds: &G::sponge_params().mds,
             endo_coefficient: cs.endo,
             foreign_field_modulus: None,
+            keccak_rotation_table: None,
         };
 
         let evals: [ProofEvaluations<G::ScalarField>; 2] = [

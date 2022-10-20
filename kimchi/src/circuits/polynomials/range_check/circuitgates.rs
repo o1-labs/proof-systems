@@ -105,7 +105,7 @@ use std::marker::PhantomData;
 
 use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
-    expr::constraints::{crumb, ExprOps},
+    expr::constraints::{crumb, limb, ExprOps},
     gate::GateType,
     polynomial::COLUMNS,
 };
@@ -182,24 +182,8 @@ where
         //
         //    Cols: 0  1   2   3   4   5   6   7   8   9   10  11  12  13  14
         //    Curr: v  vp0 vp1 vp2 vp3 vp4 vp5 vc0 vc1 vc2 vc3 vc4 vc5 vc6 vc7  <- LSB
-
-        let mut power_of_2 = T::one();
-        let mut sum_of_limbs = T::zero();
-
-        // Sum 2-bit limbs
-        for i in (7..COLUMNS).rev() {
-            sum_of_limbs += power_of_2.clone() * env.witness_curr(i);
-            power_of_2 *= T::from(4u64); // 2 bits
-        }
-
-        // Sum 12-bit limbs
-        for i in (1..=6).rev() {
-            sum_of_limbs += power_of_2.clone() * env.witness_curr(i);
-            power_of_2 *= 4096u64.into(); // 12 bits
-        }
-
         // Check value v against the sum of limbs
-        constraints.push(sum_of_limbs - env.witness_curr(0));
+        constraints.push(limb(&env, 6) - env.witness_curr(0));
 
         constraints
     }
@@ -296,31 +280,23 @@ where
         let mut power_of_2 = T::one();
         let mut sum_of_limbs = T::zero();
 
-        // Next row: Sum 2-bit limbs
+        // Next row: Sum 2-bit crumbs
         for i in (7..COLUMNS).rev() {
             sum_of_limbs += power_of_2.clone() * env.witness_next(i);
             power_of_2 *= 4u64.into(); // 2 bits
         }
 
-        // Next row:  Sum remaining 2-bit limbs vc10 and vc11
+        // Next row:  Sum remaining 2-bit crumbs vc10 and vc11
         for i in (1..=2).rev() {
             sum_of_limbs += power_of_2.clone() * env.witness_next(i);
             power_of_2 *= 4u64.into(); // 2 bits
         }
 
-        // Curr row:  Sum 2-bit limbs
-        for i in (7..COLUMNS).rev() {
-            sum_of_limbs += power_of_2.clone() * env.witness_curr(i);
-            power_of_2 *= 4u64.into(); // 2 bits
-        }
+        // Curr row: Sum of 8  2-bit crumbs
+        // Curr row: Sum of 4 12-bit limbs
+        sum_of_limbs += limb(&env, 4);
 
-        // Curr row: Sum 12-bit limbs
-        for i in (3..=6).rev() {
-            sum_of_limbs += power_of_2.clone() * env.witness_curr(i);
-            power_of_2 *= 4096u64.into(); // 12 bits
-        }
-
-        // Curr row:  Sum remaining 2-bit limbs: vc0 and vc1
+        // Curr row:  Sum remaining 2-bit crumbs: vc0 and vc1
         for i in (1..=2).rev() {
             sum_of_limbs += power_of_2.clone() * env.witness_curr(i);
             power_of_2 *= 4u64.into(); // 2 bits

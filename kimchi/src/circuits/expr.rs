@@ -66,6 +66,8 @@ pub struct Constants<F: 'static> {
     pub mds: &'static Vec<Vec<F>>,
     /// The modulus for foreign field operations
     pub foreign_field_modulus: Option<BigUint>,
+    /// The table of Keccak rotations for 64-bit words
+    pub keccak_rotation_table: Option<[[F; 5]; 5]>,
 }
 
 /// The polynomials specific to the lookup argument.
@@ -2272,7 +2274,7 @@ where
 pub mod constraints {
     use std::fmt;
 
-    use crate::circuits::argument::ArgumentData;
+    use crate::circuits::argument::{ArgumentData, ArgumentEnv};
 
     use super::*;
 
@@ -2424,6 +2426,30 @@ pub mod constraints {
             * (x.clone() - 2u64.into())
             * (x.clone() - 3u64.into())
     }
+
+    /// Composes an 88 or 64-bit value from 8 crumbs and 4-6 12-bit limbs
+    /// using the layout in RangeCheck0 and KeccakRot.
+    /// Receives as input the number of 12-bit limbs involved.
+    /// It should be either 1 (for RangeCheck0) or 3 (for KeccakRot).
+    pub fn limb<F: Field, T: ExprOps<F>>(env: &ArgumentEnv<F, T>, nlimbs: usize) -> T {
+        let mut power_of_2 = T::one();
+        let mut sum_of_limbs = T::zero();
+
+        // Sum 2-bit limbs
+        for i in (7..COLUMNS).rev() {
+            sum_of_limbs += power_of_2.clone() * env.witness_curr(i);
+            power_of_2 *= T::from(4u64); // 2 bits
+        }
+
+        // Sum 12-bit limbs.
+        // The most significant limb when there are nlimbs is in row `6 - nlimbs + 1`
+        for i in (6 - nlimbs + 1..=6).rev() {
+            sum_of_limbs += power_of_2.clone() * env.witness_curr(i);
+            power_of_2 *= 4096u64.into(); // 12 bits
+        }
+
+        sum_of_limbs
+    }
 }
 
 //
@@ -2537,6 +2563,7 @@ pub mod test {
                 endo_coefficient: one,
                 mds: &Vesta::sponge_params().mds,
                 foreign_field_modulus: None,
+                keccak_rotation_table: None,
             },
             witness: &domain_evals.d8.this.w,
             coefficient: &constraint_system.coefficients8,

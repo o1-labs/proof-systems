@@ -60,8 +60,9 @@ use std::marker::PhantomData;
 
 use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
-    expr::constraints::ExprOps,
+    expr::constraints::{crumb, limb, ExprOps},
     gate::GateType,
+    polynomial::COLUMNS,
 };
 use ark_ff::PrimeField;
 
@@ -118,6 +119,76 @@ use ark_ff::PrimeField;
 //~ |     13 |      `crumb_2` |      `crumb_6` |      `crumb_10` |      `crumb_14` |
 //~ |     14 |      `crumb_3` |      `crumb_7` |      `crumb_11` |      `crumb_15` |
 //~
+//~ ALTERNATIVE ROTATION SINGLE GATE
+//~
+//~ | Gate   | `KeccakRot`    | `Zero`         |
+//~ | ------ | -------------- | -------------- |
+//~ | Column | `Curr`         | `Next`         |
+//~ | ------ | -------------- | -------------- |
+//~ |      0 | copy  `word`   | `shift`        |
+//~ |      1 |       `msb`    | `len_msb`      |
+//~ |      2 |       `lsb`    | `len_lsb`      |
+//~ |      3 | plook `limb0`  | `nlimb_most`   |
+//~ |      4 | plook `limb1`  | `nlimb_least`  |
+//~ |      5 | plook `limb2`  | `ncrumb_most`  |
+//~ |      6 | plook `limb3`  | `ncrumb_least` |
+//~ |      7 |       `crumb0` |                |
+//~ |      8 |       `crumb1` |                |
+//~ |      9 |       `crumb2` |                |
+//~ |     10 |       `crumb3` |                |
+//~ |     11 |       `crumb4` |                |
+//~ |     12 |       `crumb5` |                |
+//~ |     13 |       `crumb6` |                |
+//~ |     14 | (LSB) `crumb7` |                |
+//~
+//~ If there is no break, then `len_frag` must be 0, `nlimb` must be 4, and `ncrumb` must be 8
+//~ If there is a broken limb, then `len_frag` must be 12, `nlimb` must be 3, and `ncrumb` must be 8
+//~ If there is a broken crumb, then `len_frag` must be 2, `nlimb` must be 4, and `ncrumb` must be 7
+//~ For readability, call
+//~      `a := len_frag`
+//~      `b := nlimb`
+//~      `c := ncrumb`
+//~ The logical formula we want is
+//~ [(a = 0) AND (b = 4) AND (c = 8)] OR [(a = 12) AND (b = 3) AND (c = 8)] OR [(a = 2) AND (b = 4) AND (c = 7)]
+//~
+//~ In order to represent this as constraints, we translate it into CNF because
+//~ we can only represent conjunctions of disjunctions using constraints.
+//~
+//~ Thus, we end up with the following 9 constraints:
+//~     (1) a * (a - 2) * (a - 12)   // a can be any of 0, 2, 12
+//~     (2) (b - 3) * (b - 4)        // b can be any of 3 or 4
+//~     (3) (c - 7) * (c - 8)        // c can be any of 8 or 7
+//~     (4) (a - 12) * (b - 4)
+//~     (5) (a - 2) * (c - 8)
+//~     (6) (b - 4) * (c - 8)
+//~     (7) a * (a - 12) * (c - 7)
+//~     (8) a * (a - 2) * (b - 3)
+//~     (9) a * (b - 3) * (c - 7)
+//~
+//~ We know demonstrate equivalence between both formulas using a truth table (zero means constraint holds)
+//~ Since (1) && (2) && (3) mean that a,b,c can only be certain values, we illustrate each possible combination:
+//~
+//~ |  a | b | c | (4) | (5) | (6) | (7) | (8) | (9) |
+//~ | -- | - | - | --- | --- | --- | --- | --- | --- |
+//~ |  0 | 3 | 7 |  -  |  -  |  -  |  0  |  0  |  -  |
+//~ |  0 | 3 | 8 |  -  |  0  |  0  |  0  |  0  |  0  |
+//~ |  0 | 4 | 7 |  0  |  -  |  0  |  0  |  0  |  0  |
+//~ |  0 | 4 | 8 |  0  |  0  |  0  |  0  |  0  |  0  |
+//~ |  2 | 3 | 7 |  -  |  0  |  -  |  0  |  0  |  0  |
+//~ |  2 | 3 | 8 |  -  |  0  |  0  |  -  |  0  |  0  |
+//~ |  2 | 4 | 7 |  0  |  0  |  0  |  0  |  0  |  0  |
+//~ |  2 | 4 | 8 |  0  |  0  |  0  |  -  |  0  |  -  |
+//~ | 12 | 3 | 7 |  0  |  -  |  -  |  0  |  0  |  0  |
+//~ | 12 | 3 | 8 |  0  |  0  |  0  |  0  |  0  |  0  |
+//~ | 12 | 4 | 7 |  0  |  -  |  0  |  0  |  -  |  0  |
+//~ | 12 | 4 | 8 |  0  |  0  |  0  |  0  |  -  |  -  |
+//~
+//~ Then, we can observe that only 3 rows in the truth table satisfy all 9 constraints; the combinations:
+//~     * a = 0 , b = 4, c = 8
+//~     * a = 2 , b = 4, c = 7
+//~     * a = 12, b = 3, c = 8
+//~ Which are the same combinations mentioned in the formula above!
+//~
 #[derive(Default)]
 pub struct KeccakRot<F>(PhantomData<F>);
 
@@ -126,53 +197,140 @@ where
     F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::KeccakRot);
-    const CONSTRAINTS: u32 = 11;
+    const CONSTRAINTS: u32 = 20; //  more to come
 
-    // Constraints for rotation by 1, 2 or 3 bits
+    // Constraints for rotation by any number of bits modulo 64 (stored in coefficient)
     //   * Operates on Curr and Next rows
-    //   * Constrain the decomposition of `half` into crumbs and check rotation of 1, 2 or 3 bits between them
-    //   * The actual XOR is performed thanks to the plookups.
+    //   * Constrain the decmposition of a 64-bit `word` into 4 limbs of 12 bits and 8 crumbs of 16 bits
+    //   * Rotates the `word` into a `shift` word by `rot` number of bits
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
-        let mut constraints = vec![];
+        //   * Uses 4 plookups to check the limbs have 12 bits
+        //   * The word is divided into two halves: high and low. High (with length `rot`) goes to the least significant part of the shifted word
+        //   * Obtains a decomposition of the rotation bits into number of limbs and crumbs for the high and low parts
 
-        let half = env.witness_curr(0);
-        let half_decomp = four_bit(env, 10);
+        // The number of rotated bits
+        let rot = env.coeff(0);
 
-        let shift = env.witness_curr(1);
-        let shift_decomp = four_bit(env, 6);
+        // Get the 64-bit word to be rotated
+        let word = env.witness_curr(0);
 
-        let bits = env.witness_curr(2); // TODO: substitute by coefficient
-        let one = T::one();
-        let two = T::one().double();
-        let three = T::one().double() + T::one();
+        // When there is a break,
+        // the most and least significant parts of the fragment to be split
+        let msb = env.witness_curr(1);
+        let lsb = env.witness_curr(2);
 
-        // Check half is well decomposed
-        constraints.push(half_decomp - half);
-        // Check shift is well decomposed
-        constraints.push(shift_decomp - shift);
-        // Check edge msb is well stored
-        constraints.push(env.witness_next(1) - env.witness_next(14));
+        // Four 12-bit limbs -> the 48 most significant bits of the word
+        let limb0 = env.witness_curr(3);
+        let limb1 = env.witness_curr(4);
+        let limb2 = env.witness_curr(5);
+        let limb3 = env.witness_curr(6);
 
-        // Check crumb rotations
-        let rot1 = rot_bits(&env, 1);
-        let rot2 = rot_bits(&env, 2);
-        let rot3 = rot_bits(&env, 3);
-        for i in 0..rot1.len() {
-            // 8 chunks
-            constraints.push(
-                rot1[i].clone() * (bits.clone() - two.clone()) * (bits.clone() - three.clone())
-                    + rot2[i].clone()
-                        * (bits.clone() - one.clone())
-                        * (bits.clone() - three.clone())
-                    + rot3[i].clone() * (bits.clone() - one.clone()) * (bits.clone() - two.clone()),
-            );
-        }
+        // Eight 2-bit crumbs -> the 16 least significant bits of the word
+        let crumb0 = env.witness_curr(7);
+        let crumb1 = env.witness_curr(8);
+        let crumb2 = env.witness_curr(9);
+        let crumb3 = env.witness_curr(10);
+        let crumb4 = env.witness_curr(11);
+        let crumb5 = env.witness_curr(12);
+        let crumb6 = env.witness_curr(13);
+        let crumb7 = env.witness_curr(14);
 
-        // TODO: how do we check that the msb is only 1/2/3 bit? binary check?
-        // TODO: substitute bits by coefficient
-        // TODO: check consecutive rot gates have same bits
-        // TODO: copy constraints between edge msbs
+        // The 64-bit rotated word
+        let shift = env.witness_next(0);
 
+        // The lengths of the split fragment on each side
+        let len_msb = env.witness_next(1);
+        let len_lsb = env.witness_next(2);
+
+        // The number of full limbs involved in each side of the split word
+        let nlimb_most = env.witness_next(3);
+        let nlimb_least = env.witness_next(4);
+
+        // The number of crumbs involved in each side of the split word
+        let ncrumb_most = env.witness_next(5);
+        let ncrumb_least = env.witness_next(6);
+
+        let two = T::from(2u64);
+        let three = two.clone() + T::one();
+        let four = two.clone().double();
+        let eight = four.clone().double();
+        let seven = eight.clone() - T::one();
+        let twelve = T::from(12u64);
+        let word_len = T::from(64u64);
+
+        // Check that the 8 least significant crumbs are 2 bits each.
+        // Checking the limb length will be done with 4 plookups
+        let mut constraints = (7..COLUMNS)
+            .map(|i| crumb(&env.witness_curr(i)))
+            .collect::<Vec<T>>();
+
+        // Check decomposition lengths into number of limbs and crumbs
+        // rot = nlimb_most * 12 + ncrumb_most * 2 + len_msb
+        // 64 - rot = nlimb_least * 12 + ncrumb_least * 2 + len_lsb
+        constraints.push(
+            rot.clone()
+                - (nlimb_most.clone() * twelve.clone()
+                    + ncrumb_most.clone() * two.clone()
+                    + len_msb.clone()),
+        );
+        constraints.push(
+            word_len.clone()
+                - rot.clone()
+                - (nlimb_least.clone() * twelve.clone()
+                    + ncrumb_least.clone() * two.clone()
+                    + len_lsb.clone()),
+        );
+
+        // Define the total number of whole limbs, crumbs, and length of fragment split
+        let nlimb = nlimb_most + nlimb_least;
+        let ncrumb = ncrumb_most + ncrumb_least;
+        let len_frag = len_msb + len_lsb;
+
+        // (1): a * (a - 2) * (a - 12)
+        constraints.push(
+            len_frag.clone()
+                * (len_frag.clone() - two.clone())
+                * (len_frag.clone() - twelve.clone()),
+        );
+        // (2): (b - 3) * (b - 4)
+        constraints.push((nlimb.clone() - three.clone()) * (nlimb.clone() - four.clone()));
+        // (3): (c - 7) * (c - 8)
+        constraints.push((ncrumb.clone() - seven.clone()) * (ncrumb.clone() - eight.clone()));
+        // (4): (a - 12) * (b - 4)
+        constraints.push((len_frag.clone() - twelve.clone()) * (nlimb.clone() - four.clone()));
+        // (5): (a - 2) * (c - 8)
+        constraints.push((len_frag.clone() - two.clone()) * (ncrumb.clone() - eight.clone()));
+        // (6): (b - 4) * (c - 8)
+        constraints.push((nlimb.clone() - four.clone()) * (ncrumb.clone() - eight.clone()));
+        // (7): a * (a - 12) * (c - 7)
+        constraints.push(
+            len_frag.clone()
+                * (len_frag.clone() - twelve.clone())
+                * (ncrumb.clone() - seven.clone()),
+        );
+        // (8): a * (a - 2) * (b - 3)
+        constraints.push(
+            len_frag.clone() * (len_frag.clone() - two.clone()) * (nlimb.clone() - three.clone()),
+        );
+        // (9): a * (b - 3) * (c - 7)
+        constraints.push(
+            len_frag.clone() * (nlimb.clone() - three.clone()) * (ncrumb.clone() - seven.clone()),
+        );
+
+        // Check correct decomposition of the 64-bit word
+        constraints.push(word - limb(&env, 4));
+
+        // Check decomposition of broken fragment
+        //constraints.push(fragment - (msb * two.pow(len_msb.clone()) + lsb));
+
+        // Define most and least significant parts of the words
+        //let least = (0..ncrumb_least)
+        //let most =
+
+        /*let sum_least = (0..ncrumb_least.into())
+                    .map(|i| &env.witness_curr(7 + i) * four.clone())
+                    .fold(T::zero(), |acc, x| acc + x);
+        */
         constraints
     }
 }

@@ -245,6 +245,7 @@ impl<F: PrimeField> CircuitGate<F> {
             endo_coefficient: cs.endo,
             mds: &G::sponge_params().mds,
             foreign_field_modulus: None,
+            keccak_rotation_table: None,
         };
 
         let pt = F::rand(rng);
