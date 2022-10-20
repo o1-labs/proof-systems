@@ -37,23 +37,44 @@ Thus, the maximum size of the multiplication is quadratic in the size of foreign
 
 Naïvely, this implies that we have elements of size $f^2 - 1$ that must split them up into limbs of size at most $n$.  For example, if the foreign field modulus is $256$ and the native field modulus is $255$ bits, then we'd need $\log_2((2^{256})^2 - 1) \approx 512$ bits and, thus, require $512/255 \approx 3$ native limbs.  However, each limb cannot consume all $255$ bits of the native field element because we need space to perform arithmetic on the limbs themselves while constraining the foreign field multiplication.  Therefore, we need to choose a limb size that leaves space for performing these computations.
 
-Later in this document (see the section entitled "Choose the limb configuration") we determine the optimal number of limbs that reduces the number of rows and gates required to constrain foreign field multiplication.  This results in $\ell = 88$ bits as our optimal limb size.  In the section about intermediate products we place some upperbounds on the number of bits required when constraining foreign field multiplication with limbs of size $\ell$ thereby proving that the computations can fit within the native field size.
+Later in this document (see the section entitled "Choosing the limb configuration") we determine the optimal number of limbs that reduces the number of rows and gates required to constrain foreign field multiplication.  This results in $\ell = 88$ bits as our optimal limb size.  In the section about intermediate products we place some upperbounds on the number of bits required when constraining foreign field multiplication with limbs of size $\ell$ thereby proving that the computations can fit within the native field size.
 
 Observe that by combining the naïve approach above with a limb size of $88$ bits, we would require $512/88 \approx 6$ limbs for representing foreign field elements.  Each limb is stored in a witness cell (a native field element).  However, since each limb is necessarily smaller than the native field element size, it must be copied to the range-check gate to constrain its value.  Since Kimchi only supports 7 copyable witness cells per row, this means that only one foreign field element can be stored per row.  This means a single foreign field multiplication would consume at least 4 rows (just for the operands, quotient and remainder).  This is not ideal because we want to limit the number of rows for improved performance.
 
 **Chinese remainder theorem**
 
-Fortunately, we can do much better than this, however, by leveraging the chinese remainder theorem (CRT for short) as we will now show.  The idea is to reduce the number of bits required by constraining our multiplication modulo two coprime moduli: $n$ and $2^t$.  Here $n$ is the native modulus and $t$ is much smaller than $512$.  By constraining the multiplication with both moduli the CRT guarantees that the constraints hold modulo $2^t \cdot n$.
+Fortunately, we can do much better than this, however, by leveraging the chinese remainder theorem (CRT for short) as we will now show.  The idea is to reduce the number of bits required by constraining our multiplication modulo two coprime moduli.  Specifically, we constrain modulo
 
-All that remains is to select a value for $t$ that is big enough.  That is, we select $t$ such that $2^t \cdot n > f^2 - 1$.  As described later on in this document, by doing so we reduce the number of bits required for our use cases to $264$.  With $88$ bit limbs this means that each foreign field element only consumes $3$ witness elements, and that means the foreign field multiplication gate now only consumes $2$ rows.  The section entitled "Choose $t$" describes this in more detail.
+* binary modulus $2^t$
+* native modulus $n$
 
-##### 1. Parameters
+By constraining the multiplication with both moduli the CRT guarantees that the constraints hold with the bigger modulus $2^t \cdot n$.
+
+The advantage of this approach is that constraining with the native modulus $n$ is very fast and that $t$ is relatively small, allowing us to speed up our non-native computations.  Relatively speaking, this reduces the costs mostly to constraining with limbs over $2^t$, where $t$ is much smaller than $512$.
+
+All that remains is to select a value for $t$ that is big enough.  That is, we select $t$ such that $2^t \cdot n > f^2 - 1$.  As described later on in this document, by doing so we reduce the number of bits required for our use cases to $264$.  With $88$ bit limbs this means that each foreign field element only consumes $3$ witness elements, and that means the foreign field multiplication gate now only consumes $2$ rows.  The section entitled "Choosing $t$" describes this in more detail.
+
+**Other strategies**
+
+Within our approach we use a number of strategies to reduce the number and degree of constraints.
+
+* CRT method
+* Avoiding borrows and carries
+* Intermediate product elimination
+* Combining multiplications
+
+The rest of this document describes each part into in details.
+
+## Parameters
+
+This section describes important parameters that we require and how they are computed.
 
 * *Native field modulus* $n$
 * *Foreign field modulus* $f$
-* *Extra CRT modulus* $2^t$
+* *Binary modulus* $2^t$
+* *CRT modulus* $2^t \cdot n$
 
-##### 2. Choose $t$
+#### Choosing $t$
 
 Under the hood, we constrain $a \cdot b = q \cdot f + r \mod 2^t \cdot n$.  Since this is a multiplication in the foreign field $f$, the maximum size of $q$ and $r$ are $f - 1$, so this means
 
@@ -134,7 +155,7 @@ $$
 
 which is not enough space to handle anything larger than 256 bit moduli.  Instead, we will use $t=264$, giving a maximum modulus $m_{max} = 259$ bits.
 
-##### 3. Choose the limb configuration
+#### Choosing the limb configuration
 
 Choosing the right limb size and the right number of limbs is a careful balance between the number of constraints (i.e. the polynomial degree) and the witness length (i.e. the number of rows).  Because one limiting factor that we have in Kimchi is the 12-bit maximum for range check lookups, we could be tempted to introduce 12-bit limbs.  However, this would mean having many more limbs, which would consume more witness elements and require significantly more rows.  It would also increase the polynomial degree by increasing the number of constraints required for the *intermediate products* (more on this later).
 
@@ -173,25 +194,7 @@ Therefore, our limb configuration is:
   * Limb size $\ell = 88$ bits
   * Number of limbs is $3$
 
-##### 4. Apply CRT to constrain modulo $2^t \cdot n$
-
-* Constrain modulo $2^t$
-* Constrain modulo $n$
-
-## Checklist
-
-6. [x] Apply range constraints on the limbs of $a,b$ such that they are all $<2^{\ell}$
-7. [x] Compute witnesses $q$ and $r$ such that $ab − qf − r = 0$.  This is an unchecked computation (i.e. there are no constraints for it) and we use the num-bigint crate, which supports arbitrary modulus sizes.  Specifically, we use its `method.div_rem` function.
-8. [x] Apply range constraints on the limbs of $q,r$ such that they are all $<2^{\ell}$
-9.  [x] Compute & constrain the *intermediate products*
-10. [x] Compute & constrain the *$u$-value halves*
-11. [x] Compute & constraint the *$v$-value witness*
-12. [x] Range check $v$-values
-13. [x] Use CRT to constrain that $ab - qf - r \equiv 0 \mod n$
-14. [x] Range check $q$ so that $qf + r < 2^tn$
-15. [ ] Open questions
-
-## Negated modulus
+## Avoiding borrows
 
 Our goal is to constrain that $a \cdot b - q \cdot f = r \mod 2^t$.  Observe that the expansion of $a \cdot b - q \cdot f$ into limbs would also have subtractions between limbs, requiring our constraints to account for borrowing.  Dealing with this would create undesired complexity and increase the degree of our constraints.
 
@@ -209,6 +212,8 @@ The negated modulus $f'$ becomes part of our constraint system and is not constr
 Using the substitution of the negated modulus, we now must constrain $a \cdot b + q \cdot f' = r \mod 2^t$.
 
 ## Intermediate products
+
+This section explains how we expand our constraints into limbs and the eliminate a number of extra terms.
 
 We must constrain $a \cdot b + q \cdot f' = r \mod 2^t$ on the limbs, rather than as a whole.  As described above, each foreign field element $x$ is split into three 88-bit limbs: $x_0, x_1, x_2$, where $x_0$ contains the least significant bits and $x_2$ contains the most significant bits and so on.
 
@@ -249,7 +254,7 @@ $$
 \end{aligned}
 $$
 
-Recall that $t = 264$ and observe that $XY = 2^t$ and $Y^2 = 2^t2^{88}$.  Therefore, the terms with $XY$ or $Y^2$ are a multiple of modulus and, thus, congruent to zero $\mod 2^t$. So we are left with 3 *intermediate products* that we call $p_0, p_1, p_2$:
+Recall that $t = 264$ and observe that $XY = 2^t$ and $Y^2 = 2^t2^{88}$.  Therefore, the terms with $XY$ or $Y^2$ are a multiple of modulus and, thus, congruent to zero $\mod 2^t$. They can be eliminated and we don't need to compute them.  So we are left with 3 *intermediate products* that we call $p_0, p_1, p_2$:
 
 | Term  | Scale | Product                                                  |
 | ----- | ----- | -------------------------------------------------------- |
@@ -277,9 +282,11 @@ We face two challenges
 
 For the moment, let's not worry about the possibility of borrows and instead focus on the first problem.
 
-## The trick
+## Combining multiplications
 
-The first problem is that our native field is too small to constrain $2^{2\ell}(p_2 - r_2) + 2^{\ell}(p_1 - r_1) + p_0 - r_0 = 0 \mod 2^t$.  The trick to overcoming this is to assume a space large enough to hold the computation, view the outcome in binary and then split it up into chunks that fit in the native modulus.
+The first problem is that our native field is too small to constrain $2^{2\ell}(p_2 - r_2) + 2^{\ell}(p_1 - r_1) + p_0 - r_0 = 0 \mod 2^t$.  We could split this up by multiplying $a \cdot b$ and $q \cdot f'$ separately and create constraints that carefully track borrows and carries between limbs.  However, a more efficient approach is combined the whole computation together and accumulate all the carries and borrows in order to reduce their number.
+
+The trick is to assume a space large enough to hold the computation, view the outcome in binary and then split it up into chunks that fit in the native modulus.
 
 To this end, it helps to know how many bits these intermediate products require.  On the left side of the equation, $p_0$  is at most $2\ell + 1$ bits.  We can compute this by substituting the maximum possible binary values (all bits set to 1) into $p_0 = a_0b_0 + q_0f'_0$ like this
 
@@ -298,7 +305,7 @@ So $p_0$ fits in $2\ell + 1$ bits.  Similarly, $p_1$ needs at most $2\ell + 2$ b
 | -------- | ----------- | ----------- | ----------- |
 | **Bits** | $2\ell + 1$ | $2\ell + 2$ | $2\ell + 3$ |
 
-The diagram below shows the right hand side of this equality (i.e. the value $p - r$). Let's look at how the different bits of $p_0, p_1, p_2, r_0, r_1$ and $r_2$ impact it.
+The diagram below shows the right hand side of the zero-sum equality from (1).  That is, the value $p - r$. Let's look at how the different bits of $p_0, p_1, p_2, r_0, r_1$ and $r_2$ impact it.
 
 ```text
 0             L             2L            3L            4L
@@ -325,7 +332,7 @@ Within our native field modulus we can fit up to $2\ell + \delta < \log_2(n)$ bi
 
 Now we can derive how to compute $h_0$ and $h_1$ from $p$ and $r$.
 
-The direct approach would be to bisect both $p_0$ and $p_1$ and then define $h_0$ as just the sum of the $2\ell$ lower bits of $p_0$ and $p_1$ minus $r_0$ and $r_1$.  Similarly $h_1$ would be just the sum of upper bits of $p_0, p_1$ and $p_2$ minus $r_2$.  However, each bisection requires constraints for the decomposition and range checks for the two halves.  Thus, we would like to avoid bisections are they are expensive.
+The direct approach would be to bisect both $p_0$ and $p_1$ and then define $h_0$ as just the sum of the $2\ell$ lower bits of $p_0$ and $p_1$ minus $r_0$ and $r_1$.  Similarly $h_1$ would be just the sum of upper bits of $p_0, p_1$ and $p_2$ minus $r_2$.  However, each bisection requires constraints for the decomposition and range checks for the two halves.  Thus, we would like to avoid bisections as they are expensive.
 
 Ideally, if our $p$'s lined up on the $2\ell$ boundary, we would not need to bisect at all.  However, we are unlucky and it seems like we must bisect both $p_0$ and $p_1$.  Fortunately, we can at least avoid bisecting $p_0$ by allowing it to be summed into $h_0$ like this
 
@@ -337,7 +344,7 @@ Note that $h_0$ is actually greater than $2\ell$ bits in length.  This may not o
 
 $$
 \begin{aligned}
-\mathsf{maxbits}(h_0) &= \log_2(\underbrace{(2^{\ell} - 1)(2^{\ell} - 1) + (2^{\ell} - 1)(2^{\ell} - 1)}_{p_0} + \underbrace{2^{\ell} \cdot (2^{\ell} - 1)}_{p_{10}}) \\
+\mathsf{maxbits}(h_0) &= \log_2(\underbrace{(2^{\ell} - 1)(2^{\ell} - 1) + (2^{\ell} - 1)(2^{\ell} - 1)}_{p_0} + 2^{\ell} \cdot \underbrace{(2^{\ell} - 1)}_{p_{10}}) \\
 &= \log_2(2^{2\ell + 1} - 2^{\ell + 2} + 2 + 2^{2\ell} - 2^\ell) \\
 &= \log_2( 3\cdot 2^{2\ell} - 5 \cdot 2^\ell +2 ) \\
 \end{aligned}
@@ -419,29 +426,34 @@ All that remains is to range check $v_0$ and $v_1$
 
 ## Subtractions
 
-Now let's revisit our second problem, the possibility of borrows when subtracting the limbs of the remainder.  In our approach with $h_0$ and $h_1$ we have
+When unconstrained, computing $u_0 = p_0 + 2^{\ell} \cdot p_{10} - (r_0 + 2^{\ell} \cdot r_1)$ could require borrowing.  Fortunately, we have the constraint that the $2\ell$ least significant bits of $u_0$ are `0` (i.e. $u_0 = 2^{2\ell} \cdot v_0$), which means borrowing cannot happen.
+
+Borrowing is prevented because when the the $2\ell$ least significant bits of the result are `0` it is not possible for the minuend to be less than the subtrahend.  We can prove this by contradiction.
+
+Let
+
+* $x = p_0 + 2^{\ell} \cdot p_{10}$
+* $y = r_0 + 2^{\ell} \cdot r_1$
+* the $2\ell$ least significant bits of $x - y$ be `0`
+
+Suppose that borrowing occurs, that is, that $x < y$.  Recall that the length of $x$ is $2\ell + 2$ bits.  Therefore, since $x < y$ the top two bits of $x$ must be zero and so we have
+
+$$
+x - y = x_{2\ell} - y,
+$$
+
+where $x_{2\ell}$ denotes the $2\ell$ least significant bits of $x$.
+
+Recall also that the length of $y$ is $2\ell$ bits.  So the result of this subtraction is $2\ell$ bits.   Since the $2\ell$ least significant bits of the subtraction are `0` this means that
 
 $$
 \begin{aligned}
-h_0 &= p_0 + 2^{\ell}\cdot p_{10} - r_0 - 2^{\ell}\cdot r_1 \\
-&= p_0 + 2^{\ell} \cdot p_{10}  - (2^{\ell} \cdot r_1 + r_0) \\
+x - y  &  = 0 \\
+x &= y,
 \end{aligned}
 $$
 
-where the minuend is $2\ell + 2$ bits and the value $h_0$ is at most $2\ell + 2$ bits.
-
-If there is an underflow, then we must borrow $2^{2\ell + 2}$ from outside of $h_0$, which is from $p_{11} + p_2 - r_2 = h_1$.  That is, we add $2^{2\ell + 2}$ to $h_0$ and subtract from $h_1$.  How much we subtract from $h_1$ is obscured by its overlap with $h_0$.  We know that $h_0 + 2^{\ell} \cdot h_1$ equals our product and that borrowing $2^{2\ell + 2}$ means subtracting at the absolute position of $2\ell + 2$ from the sum.  The term $h_1$ is scaled by $2^{\ell}$, so position $2\ell + 2$ corresponds to the second bit of $h_1$, so when borrowing we subtract $2$ from $h_1$.
-
-Thus, the constraints are
-
-$$
-\begin{aligned}
-h_0 &= 2^{\ell} \cdot (p_{10} - r_1) + p_0 - r_0 - c_0 \cdot 2^{2\ell + 1} \\
-h_1 &= p_{11} + p_2 - r_2 + 2 \cdot c_0
-\end{aligned}
-$$
-
-For $h_1$ it's not possible for $r_2 > p_{11} + p_2$ and, therefore, the most significant borrow bit $c_1$ should always be zero.
+which is a contradiction with $x < y$.
 
 **Costs:**
 
@@ -470,7 +482,9 @@ So we have 1 multi-range-check, 1 single-range-check and 2 low-degree range chec
 
 ## Use CRT to constrain $ab - qf - r \equiv 0 \mod n$
 
-We check $ab - qf - r \equiv 0 \mod n$, which is over $\mathbb{F}_n$.
+While the above constrains things $\mod 2^t$, remember that our application of CRT means that we must also constrain $\mod n$.
+
+Thus, we must check $ab - qf - r \equiv 0 \mod n$, which is over $\mathbb{F}_n$.
 
 This gives us equality $\mod 2^t \cdot n$ as long as the divisors are coprime.  That is, as long as $\mathsf{gcd}(2^t, n) = 1$.  Since the native modulus $n$ is prime, this is true.
 
@@ -623,7 +637,7 @@ And some more range constraints
     - [x] Check $v_{11} \in [0,7]$ `ForeignFieldMul`
     - [x] Check $v_{10} < 2^\ell$ with range constraint `multi-range-check-4`
 
-# Layout
+# Gate layout
 
 Based on the constraints above, we need the following 12 values copied from the range check gates.
 
@@ -693,7 +707,7 @@ The `Zero` gate itself has no constraints.
 
 These 2 gates are preceeded by 5 multi-range-check gates.
 
-## Layout
+## Gadget layout
 
 | Row(s) | Gate type(s)        | Witness                   |
 | ------ | ------------------- | ------------------------- |
