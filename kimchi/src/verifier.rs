@@ -335,6 +335,7 @@ where
                 endo_coefficient: index.endo,
                 mds: &G::sponge_params().mds,
                 foreign_field_modulus: index.foreign_field_modulus.clone(),
+                keccak_rotation_table: index.keccak_rotation_table.clone(),
             };
             ft_eval0 -= PolishToken::evaluate(
                 &index.linearization.constant_term,
@@ -567,6 +568,7 @@ where
                 endo_coefficient: index.endo,
                 mds: &G::sponge_params().mds,
                 foreign_field_modulus: index.foreign_field_modulus.clone(),
+                keccak_rotation_table: index.keccak_rotation_table.clone(),
             };
 
             for (col, tokens) in &index.linearization.index_terms {

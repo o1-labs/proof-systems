@@ -59,11 +59,7 @@ fn chacha_prover() {
     let gates: Vec<CircuitGate<Fp>> = gates
         .into_iter()
         .enumerate()
-        .map(|(i, typ)| CircuitGate {
-            typ,
-            coeffs: vec![],
-            wires: Wire::new(i),
-        })
+        .map(|(i, typ)| CircuitGate::new(typ, Wire::new(i), vec![]))
         .collect();
 
     // create the index
@@ -111,17 +107,12 @@ fn chacha_setup_bad_lookup(table_id: i32) {
     let gates: Vec<CircuitGate<Fp>> = gates
         .into_iter()
         .enumerate()
-        .map(|(i, typ)| CircuitGate {
-            typ,
-            coeffs: vec![],
-            wires: Wire::new(i),
-        })
+        .map(|(i, typ)| CircuitGate::new(typ, Wire::new(i), vec![]))
         // Pad with generic gates to get a sufficiently-large domain.
-        .chain((4..513).map(|i| CircuitGate {
-            typ: GateType::Generic,
-            coeffs: vec![Fp::zero(); 10],
-            wires: Wire::new(i),
-        }))
+        .chain(
+            (4..513)
+                .map(|i| CircuitGate::new(GateType::Generic, Wire::new(i), vec![Fp::zero(); 10])),
+        )
         .collect();
 
     let mut rows = vec![];

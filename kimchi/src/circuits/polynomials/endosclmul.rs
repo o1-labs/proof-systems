@@ -114,11 +114,7 @@ use std::marker::PhantomData;
 /// variable base scalar multiplication custom Plonk constraints.
 impl<F: PrimeField> CircuitGate<F> {
     pub fn create_endomul(wires: GateWires) -> Self {
-        CircuitGate {
-            typ: GateType::EndoMul,
-            wires,
-            coeffs: vec![],
-        }
+        CircuitGate::new(GateType::EndoMul, wires, vec![])
     }
 
     /// Verify the `EndoMul` gate.

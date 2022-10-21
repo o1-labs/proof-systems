@@ -1559,6 +1559,10 @@ pub struct VerifierIndex<G: KimchiCurve> {
     // Foreign field modulus
     pub foreign_field_modulus: Option<BigUint>,
 
+    /// Keccak rotation table
+    #[serde_as(as = "Option<[[o1_utils::serialization::SerdeAs; 5]; 5]>")]
+    pub keccak_rotation_table: Option<[[G::ScalarField; 5]; 5]>,
+
     // Foreign field addition gates polynomial commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub foreign_field_add_comm: Option<PolyComm<G>>,

@@ -94,10 +94,10 @@ fn compute_subadd_values<F: PrimeField>(
         }
     });
 
-    // c1 = r2 - a2 - b2 + q · f2
-    // c0 = r1 - a1 - b1 + q · f1 + 2^88 · c1
+    // c1 = r2 - a2 - s*b2 + q*f2
     let carry_mi =
         result[HI] - left_input[HI] - sign * right_hi + field_overflow * foreign_modulus[HI];
+    // c0 = r1 - a1 - s*b1 + q*f1 + 2^88*c1
     let carry_lo = result[MI] - left_input[MI] - sign * right_input[MI]
         + field_overflow * foreign_modulus[MI]
         + two_to_limb * carry_mi;

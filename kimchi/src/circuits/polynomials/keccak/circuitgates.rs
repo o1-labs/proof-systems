@@ -139,7 +139,7 @@ where
         // 0 = word_i * 2^{rot_i} - (excess_i * 2^64 + shifted_i)
         // 0 = excess_i + shifted_i - rotated_i
         let two_to_word_len = T::literal(F::from(2u32).pow(&[64]));
-        let mut constraints = (0..3)
+        let constraints = (0..3)
             .flat_map(|i| {
                 vec![
                     env.witness_curr(i) * env.coeff(i)
