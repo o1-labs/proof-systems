@@ -334,6 +334,7 @@ where
                 joint_combiner: joint_combiner.as_ref().map(|j| j.1),
                 endo_coefficient: index.endo,
                 mds: &G::sponge_params().mds,
+                foreign_field_modulus: index.foreign_field_modulus.clone(),
             };
             ft_eval0 -= PolishToken::evaluate(
                 &index.linearization.constant_term,
@@ -478,6 +479,19 @@ where
     }
     let elm: Vec<_> = proof.public.iter().map(|s| -*s).collect();
     let public_comm = PolyComm::<G>::multi_scalar_mul(&com_ref, &elm);
+    let public_comm = {
+        index
+            .srs()
+            .mask_custom(
+                public_comm,
+                &PolyComm {
+                    unshifted: vec![G::ScalarField::one(); 1],
+                    shifted: None,
+                },
+            )
+            .unwrap()
+            .commitment
+    };
 
     //~ 1. Run the [Fiat-Shamir argument](#fiat-shamir-argument).
     let OraclesResult {
@@ -552,6 +566,7 @@ where
                 joint_combiner: oracles.joint_combiner.as_ref().map(|j| j.1),
                 endo_coefficient: index.endo,
                 mds: &G::sponge_params().mds,
+                foreign_field_modulus: index.foreign_field_modulus.clone(),
             };
 
             for (col, tokens) in &index.linearization.index_terms {
@@ -641,8 +656,8 @@ where
                             }
                             RangeCheck0 => &index.range_check_comm.as_ref().unwrap()[0],
                             RangeCheck1 => &index.range_check_comm.as_ref().unwrap()[1],
-                            KeccakXor => unimplemented!(),
-                            KeccakBits => unimplemented!(),
+                            KeccakXor | KeccakBits => unimplemented!(),
+                            ForeignFieldAdd => index.foreign_field_add_comm.as_ref().unwrap(),
                         };
                         scalars.push(scalar);
                         commitments.push(c);

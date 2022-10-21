@@ -13,7 +13,7 @@ use crate::{
             complete_add::CompleteAdd,
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
-            generic, permutation,
+            foreign_field_add, generic, permutation,
             permutation::ZK_ROWS,
             poseidon::Poseidon,
             range_check,
@@ -232,6 +232,16 @@ where
 
         //~ 1. Commit (non-hiding) to the negated public input polynomial.
         let public_comm = index.srs.commit_non_hiding(&public_poly, None);
+        let public_comm = {
+            index
+                .srs
+                .mask_custom(
+                    public_comm.clone(),
+                    &public_comm.map(|_| G::ScalarField::one()),
+                )
+                .unwrap()
+                .commitment
+        };
 
         //~ 1. Absorb the commitment to the public polynomial with the Fq-Sponge.
         //~
@@ -619,6 +629,15 @@ where
                 );
             }
 
+            if let Some(selector) = index.cs.foreign_field_add_selector_poly.as_ref() {
+                index_evals.extend(
+                    foreign_field_add::gadget::circuit_gates()
+                        .iter()
+                        .enumerate()
+                        .map(|(_, gate_type)| (*gate_type, &selector.eval8)),
+                );
+            }
+
             let mds = &G::sponge_params().mds;
             Environment {
                 constants: Constants {
@@ -628,6 +647,7 @@ where
                     joint_combiner: lookup_context.joint_combiner,
                     endo_coefficient: index.cs.endo,
                     mds,
+                    foreign_field_modulus: index.cs.foreign_field_modulus.clone(),
                 },
                 witness: &lagrange.d8.this.w,
                 coefficient: &index.cs.coefficients8,
@@ -740,6 +760,17 @@ where
                     assert_eq!(range_check_constraint.domain().size, t8.domain().size);
                     t8 += &range_check_constraint;
                     check_constraint!(index, range_check_constraint);
+                }
+            }
+
+            // foreign field addition
+            {
+                if index.cs.foreign_field_add_selector_poly.is_some() {
+                    let ffadd = foreign_field_add::gadget::combined_constraints(&all_alphas)
+                        .evaluations(&env);
+                    assert_eq!(ffadd.domain().size, t4.domain().size);
+                    t4 += &ffadd;
+                    check_constraint!(index, ffadd);
                 }
             }
 
@@ -1125,6 +1156,11 @@ where
             .map(|(p, d1_size)| (p, None, non_hiding(*d1_size)))
             .collect::<Vec<_>>();
 
+        let fixed_hiding = |d1_size: usize| PolyComm {
+            unshifted: vec![G::ScalarField::one(); d1_size],
+            shifted: None,
+        };
+
         //~ 1. Then, include:
         //~~ - the negated public polynomial
         //~~ - the ft polynomial
@@ -1134,11 +1170,11 @@ where
         //~~ - the 15 registers/witness columns
         //~~ - the 6 sigmas
         //~~ - optionally, the runtime table
-        polynomials.extend(vec![(&public_poly, None, non_hiding(1))]);
+        polynomials.extend(vec![(&public_poly, None, fixed_hiding(1))]);
         polynomials.extend(vec![(&ft, None, blinding_ft)]);
         polynomials.extend(vec![(&z_poly, None, z_comm.blinders)]);
-        polynomials.extend(vec![(&index.cs.genericm, None, non_hiding(1))]);
-        polynomials.extend(vec![(&index.cs.psm, None, non_hiding(1))]);
+        polynomials.extend(vec![(&index.cs.genericm, None, fixed_hiding(1))]);
+        polynomials.extend(vec![(&index.cs.psm, None, fixed_hiding(1))]);
         polynomials.extend(
             witness_poly
                 .iter()

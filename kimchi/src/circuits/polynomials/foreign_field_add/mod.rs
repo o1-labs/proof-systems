@@ -1,4 +1,4 @@
-//! Range check gate module
+//! Foreign Field Addition module
 
 pub mod circuitgates;
 pub mod gadget;
