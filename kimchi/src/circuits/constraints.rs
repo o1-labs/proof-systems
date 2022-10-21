@@ -431,7 +431,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
                 F::from(2u32),
             ],
             [
-                F::from(60u32),
+                F::from(62u32),
                 F::from(6u32),
                 F::from(43u32),
                 F::from(15u32),
