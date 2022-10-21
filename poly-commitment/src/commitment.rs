@@ -321,7 +321,8 @@ pub fn squeeze_challenge<
     squeeze_prechallenge(sponge).to_field(endo_r)
 }
 
-pub trait CommitmentCurve: AffineCurve {
+pub trait CommitmentCurve: AffineCurve<BaseField = Self::CommitmentField> {
+    type CommitmentField: PrimeField;
     type Params: SWModelParameters;
     type Map: GroupMap<Self::BaseField>;
 
@@ -358,6 +359,7 @@ impl<P: SWModelParameters> CommitmentCurve for SWJAffine<P>
 where
     P::BaseField: PrimeField,
 {
+    type CommitmentField = P::BaseField;
     type Params = P;
     type Map = BWParameters<P>;
 

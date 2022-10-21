@@ -60,6 +60,7 @@ fn create_test_prover_index(public_size: usize) -> ProverIndex<Vesta> {
         0,
         vec![range_check::gadget::lookup_table()],
         None,
+        None,
     )
 }
 
@@ -553,10 +554,10 @@ fn verify_range_check0_test_copy_constraints() {
                 ),
                 Err(CircuitGateError::CopyConstraint {
                     typ: cs.gates[row].typ,
-                    src: Wire { row: row, col: col },
+                    src: Wire { row, col },
                     dst: Wire {
                         row: 3,
-                        col: 2 * row + col + 2
+                        col: 2 * row + col + 2,
                     }
                 })
             );

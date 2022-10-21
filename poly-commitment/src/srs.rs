@@ -33,10 +33,7 @@ pub struct SRS<G: CommitmentCurve> {
     pub endo_q: G::BaseField,
 }
 
-pub fn endos<G: CommitmentCurve>() -> (G::BaseField, G::ScalarField)
-where
-    G::BaseField: PrimeField,
-{
+pub fn endos<G: CommitmentCurve>() -> (G::BaseField, G::ScalarField) {
     let endo_q: G::BaseField = oracle::sponge::endo_coefficient();
     let endo_r = {
         let potential_endo_r: G::ScalarField = oracle::sponge::endo_coefficient();
@@ -52,10 +49,7 @@ where
     (endo_q, endo_r)
 }
 
-fn point_of_random_bytes<G: CommitmentCurve>(map: &G::Map, random_bytes: &[u8]) -> G
-where
-    G::BaseField: PrimeField,
-{
+fn point_of_random_bytes<G: CommitmentCurve>(map: &G::Map, random_bytes: &[u8]) -> G {
     // packing in bit-representation
     const N: usize = 31;
     let mut bits = [false; 8 * N];
@@ -71,10 +65,7 @@ where
     G::of_coordinates(x, y)
 }
 
-impl<G: CommitmentCurve> SRS<G>
-where
-    G::BaseField: PrimeField,
-{
+impl<G: CommitmentCurve> SRS<G> {
     pub fn max_degree(&self) -> usize {
         self.g.len()
     }

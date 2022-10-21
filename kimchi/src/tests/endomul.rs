@@ -29,19 +29,11 @@ fn endomul_test() {
     for s in 0..num_scalars {
         for i in 0..chunks {
             let row = rows_per_scalar * s + i;
-            gates.push(CircuitGate {
-                typ: GateType::EndoMul,
-                wires: Wire::new(row),
-                coeffs: vec![],
-            });
+            gates.push(CircuitGate::new(GateType::EndoMul, Wire::new(row), vec![]));
         }
 
         let row = rows_per_scalar * s + chunks;
-        gates.push(CircuitGate {
-            typ: GateType::Zero,
-            wires: Wire::new(row),
-            coeffs: vec![],
-        });
+        gates.push(CircuitGate::new(GateType::Zero, Wire::new(row), vec![]));
     }
 
     let (endo_q, endo_r) = endos::<Other>();

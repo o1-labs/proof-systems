@@ -17,7 +17,7 @@ use crate::{
     curve::KimchiCurve,
     proof::ProofEvaluations,
 };
-use ark_ff::{FftField, Field, PrimeField};
+use ark_ff::{Field, PrimeField};
 use std::marker::PhantomData;
 
 //~ We implement custom gate constraints for short Weierstrass curve
@@ -114,11 +114,7 @@ use std::marker::PhantomData;
 /// variable base scalar multiplication custom Plonk constraints.
 impl<F: PrimeField> CircuitGate<F> {
     pub fn create_endomul(wires: GateWires) -> Self {
-        CircuitGate {
-            typ: GateType::EndoMul,
-            wires,
-            coeffs: vec![],
-        }
+        CircuitGate::new(GateType::EndoMul, wires, vec![])
     }
 
     /// Verify the `EndoMul` gate.
@@ -146,6 +142,7 @@ impl<F: PrimeField> CircuitGate<F> {
             joint_combiner: None,
             mds: &G::sponge_params().mds,
             endo_coefficient: cs.endo,
+            foreign_field_modulus: None,
         };
 
         let evals: [ProofEvaluations<G::ScalarField>; 2] = [
@@ -182,7 +179,7 @@ pub struct EndosclMul<F>(PhantomData<F>);
 
 impl<F> Argument<F> for EndosclMul<F>
 where
-    F: FftField,
+    F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMul);
     const CONSTRAINTS: u32 = 11;

@@ -59,7 +59,7 @@ fn test_example_circuit() {
     let proof_system_constants = fp_constants();
 
     // generate circuit and index
-    let prover_index = generate_prover_index::<FpInner, _>(srs, PUBLIC_INPUT_LENGTH, |sys, p| {
+    let prover_index = generate_prover_index::<_, _>(srs, PUBLIC_INPUT_LENGTH, |sys, p| {
         circuit::<_, Pallas, _>(&proof_system_constants, None, sys, p)
     });
 
