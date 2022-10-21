@@ -119,7 +119,7 @@ use ark_ff::PrimeField;
 //~ |     13 |      `crumb_2` |      `crumb_6` |      `crumb_10` |      `crumb_14` |
 //~ |     14 |      `crumb_3` |      `crumb_7` |      `crumb_11` |      `crumb_15` |
 //~
-//~ ALTERNATIVE ROTATION SINGLE GATE
+//~ ALTERNATIVE ROTATION SINGLE GATE WITH CONSTANTS
 //~
 //~ | Gate   | `KeccakRot`    | `Zero`         |
 //~ | ------ | -------------- | -------------- |
@@ -189,6 +189,27 @@ use ark_ff::PrimeField;
 //~     * a = 12, b = 3, c = 8
 //~ Which are the same combinations mentioned in the formula above!
 //~
+//~ ALTERNATIVE ROTATION SINGLE GATE WITH FLAGS
+//~
+//~ | Gate   | `KeccakRot`    | `Zero`         |
+//~ | ------ | -------------- | -------------- |
+//~ | Column | `Curr`         | `Next`         |
+//~ | ------ | -------------- | -------------- |
+//~ |      0 | copy  `word`   | `shift`        |
+//~ |      1 |       `msb`    |                |
+//~ |      2 |       `lsb`    |                |
+//~ |      3 | plook `limb0`  |                |
+//~ |      4 | plook `limb1`  |                |
+//~ |      5 | plook `limb2`  |                |
+//~ |      6 | plook `limb3`  |                |
+//~ |      7 |       `crumb0` |                |
+//~ |      8 |       `crumb1` |                |
+//~ |      9 |       `crumb2` |                |
+//~ |     10 |       `crumb3` |                |
+//~ |     11 |       `crumb4` |                |
+//~ |     12 |       `crumb5` |                |
+//~ |     13 |       `crumb6` |                |
+//~ |     14 | (LSB) `crumb7` |                |
 #[derive(Default)]
 pub struct KeccakRot<F>(PhantomData<F>);
 
@@ -207,9 +228,6 @@ where
         //   * Uses 4 plookups to check the limbs have 12 bits
         //   * The word is divided into two halves: high and low. High (with length `rot`) goes to the least significant part of the shifted word
         //   * Obtains a decomposition of the rotation bits into number of limbs and crumbs for the high and low parts
-
-        // The number of rotated bits
-        let rot = env.coeff(0);
 
         // Get the 64-bit word to be rotated
         let word = env.witness_curr(0);
@@ -235,28 +253,16 @@ where
         let crumb6 = env.witness_curr(13);
         let crumb7 = env.witness_curr(14);
 
-        // The 64-bit rotated word
-        let shift = env.witness_next(0);
 
-        // The lengths of the split fragment on each side
-        let len_msb = env.witness_next(1);
-        let len_lsb = env.witness_next(2);
 
-        // The number of full limbs involved in each side of the split word
-        let nlimb_most = env.witness_next(3);
-        let nlimb_least = env.witness_next(4);
-
-        // The number of crumbs involved in each side of the split word
-        let ncrumb_most = env.witness_next(5);
-        let ncrumb_least = env.witness_next(6);
-
-        let two = T::from(2u64);
+        let two = T::from(2);
         let three = two.clone() + T::one();
         let four = two.clone().double();
         let eight = four.clone().double();
         let seven = eight.clone() - T::one();
-        let twelve = T::from(12u64);
-        let word_len = T::from(64u64);
+        let twelve = T::from(12);
+        let word_len = T::from(64);
+        let to_to_twelve = two.clone().pow(12);
 
         // Check that the 8 least significant crumbs are 2 bits each.
         // Checking the limb length will be done with 4 plookups
@@ -264,61 +270,26 @@ where
             .map(|i| crumb(&env.witness_curr(i)))
             .collect::<Vec<T>>();
 
-        // Check decomposition lengths into number of limbs and crumbs
-        // rot = nlimb_most * 12 + ncrumb_most * 2 + len_msb
-        // 64 - rot = nlimb_least * 12 + ncrumb_least * 2 + len_lsb
-        constraints.push(
-            rot.clone()
-                - (nlimb_most.clone() * twelve.clone()
-                    + ncrumb_most.clone() * two.clone()
-                    + len_msb.clone()),
-        );
-        constraints.push(
-            word_len.clone()
-                - rot.clone()
-                - (nlimb_least.clone() * twelve.clone()
-                    + ncrumb_least.clone() * two.clone()
-                    + len_lsb.clone()),
-        );
-
-        // Define the total number of whole limbs, crumbs, and length of fragment split
-        let nlimb = nlimb_most + nlimb_least;
-        let ncrumb = ncrumb_most + ncrumb_least;
-        let len_frag = len_msb + len_lsb;
-
-        // (1): a * (a - 2) * (a - 12)
-        constraints.push(
-            len_frag.clone()
-                * (len_frag.clone() - two.clone())
-                * (len_frag.clone() - twelve.clone()),
-        );
-        // (2): (b - 3) * (b - 4)
-        constraints.push((nlimb.clone() - three.clone()) * (nlimb.clone() - four.clone()));
-        // (3): (c - 7) * (c - 8)
-        constraints.push((ncrumb.clone() - seven.clone()) * (ncrumb.clone() - eight.clone()));
-        // (4): (a - 12) * (b - 4)
-        constraints.push((len_frag.clone() - twelve.clone()) * (nlimb.clone() - four.clone()));
-        // (5): (a - 2) * (c - 8)
-        constraints.push((len_frag.clone() - two.clone()) * (ncrumb.clone() - eight.clone()));
-        // (6): (b - 4) * (c - 8)
-        constraints.push((nlimb.clone() - four.clone()) * (ncrumb.clone() - eight.clone()));
-        // (7): a * (a - 12) * (c - 7)
-        constraints.push(
-            len_frag.clone()
-                * (len_frag.clone() - twelve.clone())
-                * (ncrumb.clone() - seven.clone()),
-        );
-        // (8): a * (a - 2) * (b - 3)
-        constraints.push(
-            len_frag.clone() * (len_frag.clone() - two.clone()) * (nlimb.clone() - three.clone()),
-        );
-        // (9): a * (b - 3) * (c - 7)
-        constraints.push(
-            len_frag.clone() * (nlimb.clone() - three.clone()) * (ncrumb.clone() - seven.clone()),
-        );
-
         // Check correct decomposition of the 64-bit word
         constraints.push(word - limb(&env, 4));
+
+        // COMPUTE SHIFTED WORD
+
+        for i in 0..12 {
+            let part = env.witness_curr(3 + i);
+            let flag = env.coeff(i);
+
+        // The 64-bit rotated word
+        let rotated = flag word - 
+
+            let mut rot_limb0 = (f_limb0 - T::from(1)).clone() * limb0.clone() * to_to_twelve.clone()
+            + f_limb0 * limb0.clone();
+
+        }
+
+
+
+        let mut rot_limb
 
         // Check decomposition of broken fragment
         //constraints.push(fragment - (msb * two.pow(len_msb.clone()) + lsb));
