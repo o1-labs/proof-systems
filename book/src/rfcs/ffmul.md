@@ -43,22 +43,45 @@ Observe that by combining the naïve approach above with a limb size of $88$ bit
 
 **Chinese remainder theorem**
 
-Fortunately, we can do much better than this, however, by leveraging the chinese remainder theorem (CRT for short) as we will now show.  The idea is to reduce the number of bits required by constraining our multiplication modulo two coprime moduli.  Specifically, we constrain modulo
+Fortunately, we can do much better than this, however, by leveraging the chinese remainder theorem (CRT for short) as we will now show.  The idea is to reduce the number of bits required by constraining our multiplication modulo two coprime moduli: $2^t$ and $n$.  By constraining the multiplication with both moduli the CRT guarantees that the constraints hold with the bigger modulus $2^t \cdot n$.
 
-* binary modulus $2^t$
-* native modulus $n$
+The advantage of this approach is that constraining with the native modulus $n$ is very fast, allowing us to speed up our non-native computations.  This practically reduces the costs to constraining with limbs over $2^t$, where $t$ is something much smaller than $512$.
 
-By constraining the multiplication with both moduli the CRT guarantees that the constraints hold with the bigger modulus $2^t \cdot n$.
+For this to work, we must select a value for $t$ that is big enough.  That is, we select $t$ such that $2^t \cdot n > f^2 - 1$.  As described later on in this document, by doing so we reduce the number of bits required for our use cases to $264$.  With $88$ bit limbs this means that each foreign field element only consumes $3$ witness elements, and that means the foreign field multiplication gate now only consumes $2$ rows.  The section entitled "Choosing $t$" describes this in more detail.
 
-The advantage of this approach is that constraining with the native modulus $n$ is very fast and that $t$ is relatively small, allowing us to speed up our non-native computations.  Relatively speaking, this reduces the costs mostly to constraining with limbs over $2^t$, where $t$ is much smaller than $512$.
+**Overall approach**
 
-All that remains is to select a value for $t$ that is big enough.  That is, we select $t$ such that $2^t \cdot n > f^2 - 1$.  As described later on in this document, by doing so we reduce the number of bits required for our use cases to $264$.  With $88$ bit limbs this means that each foreign field element only consumes $3$ witness elements, and that means the foreign field multiplication gate now only consumes $2$ rows.  The section entitled "Choosing $t$" describes this in more detail.
+Bringing it all together, our approach is to verify that
+
+$$
+\begin{align}
+a \cdot b = q \cdot f + r
+\end{align}
+$$
+
+over $\mathbb{Z^+}$.  In order to do this efficiently we use the CRT, which means that the equation holds mod $M = 2^t \cdot n$.  For the equation to hold over the integers we must also check that each side of the equation is less than $2^t \cdot n$.
+
+The overall steps are therefore
+
+1. Apply CRT to equation (1)
+    * Check validity with binary modulus $\mod 2^t$
+    * Check validity with native modulus $\mod n$
+2. Check each side of equation (1) is less than $M$
+    * $a \cdot b < 2^t \cdot n$
+    * $q \cdot f + r < 2^t \cdot n$
+
+This then implies that
+
+$$
+a \cdot b = c \mod f.
+$$
+
+That is, $a$ multiplied with $b$ is equal to $c$ where $a,b,c \in F_{f}$.
 
 **Other strategies**
 
-Within our approach we use a number of strategies to reduce the number and degree of constraints.
+Within our overall approach, aside from the CRT, we also use a number of other strategies to reduce the number and degree of constraints.
 
-* CRT method
 * Avoiding borrows and carries
 * Intermediate product elimination
 * Combining multiplications
@@ -196,7 +219,9 @@ Therefore, our limb configuration is:
 
 ## Avoiding borrows
 
-Our goal is to constrain that $a \cdot b - q \cdot f = r \mod 2^t$.  Observe that the expansion of $a \cdot b - q \cdot f$ into limbs would also have subtractions between limbs, requiring our constraints to account for borrowing.  Dealing with this would create undesired complexity and increase the degree of our constraints.
+When we constrain $a \cdot b - q \cdot f = r \mod 2^t$ we want to be as efficient as possible.
+
+Observe that the expansion of $a \cdot b - q \cdot f$ into limbs would also have subtractions between limbs, requiring our constraints to account for borrowing.  Dealing with this would create undesired complexity and increase the degree of our constraints.
 
 In order to avoid the possibility of subtractions we instead use $a \cdot b + q \cdot f'$ where
 
@@ -265,7 +290,7 @@ Recall that $t = 264$ and observe that $XY = 2^t$ and $Y^2 = 2^t2^{88}$.  Theref
 So far, we have introduced these checked computations to our constraints
 > 1. Computation of $p_0, p_1, p_2$
 
-## Constraints overview
+## Constraining $\mod 2^t$
 
 Let's call $p := ab + qf' \mod 2^t$. Remember that our goal is to constrain that $p - r = 0 \mod 2^t$ (recall that any more significant bits than the 264th are ignored in $\mod 2^t$). Decomposing that claim into limbs, that means
 
@@ -305,7 +330,7 @@ So $p_0$ fits in $2\ell + 1$ bits.  Similarly, $p_1$ needs at most $2\ell + 2$ b
 | -------- | ----------- | ----------- | ----------- |
 | **Bits** | $2\ell + 1$ | $2\ell + 2$ | $2\ell + 3$ |
 
-The diagram below shows the right hand side of the zero-sum equality from (1).  That is, the value $p - r$. Let's look at how the different bits of $p_0, p_1, p_2, r_0, r_1$ and $r_2$ impact it.
+The diagram below shows the right hand side of the zero-sum equality from equation (2).  That is, the value $p - r$. Let's look at how the different bits of $p_0, p_1, p_2, r_0, r_1$ and $r_2$ impact it.
 
 ```text
 0             L             2L            3L            4L
@@ -526,44 +551,36 @@ with all of the terms expanded into the limbs according the the above equations.
 
 ## Range check $q$ so that $q \cdot f + r < 2^t \cdot n$
 
-> The reason this range constraint is needed is that the CRT allows us to verify the desired equality $ab = qf + r$ as integers only when both side of the equation are smaller than $2^t \cdot n$.
+Until now we have constrained that equation $a \cdot b = q \cdot f + r$  holds modulo $2^t$ and modulo $n$, so by the CRT it holds modulo $M = 2^t \cdot n$.  Remember that, as outlined in the "Overview" section, that we want to prove our equation over the positive integers, rather than $\mod M$.  By doing so, we assure that our solution is not equal to some $q' \cdot M + r'$ where $q', r' \in F_{M}$, in which case $q$ or $r$ would be invalid.
 
-In our specific case, $t=264$, $n < 2^{255}$ and $f < 2^{256}$. Then, we can create a constraint for our case that is sufficient to check the above. Concretely, if $q$ was such that $q < 2^{256}$ (even if potentially larger than $f$), we can see that the above claim holds.
-
-If $q < 2^{256}$, and since $f < 2^{256}$ as well, then the main check becomes:
+First, let's consider the right hand side.  We have
 
 $$
 \begin{aligned}
-  q f + r &< 2^{256} \cdot 2^{256} + 2^{264} = 2^{512} + 2^{264}\\
-  2^t \cdot n &< 2^{264} \cdot 2^{255} \\
-  &\implies \\
-  2^{264} \cdot (2^{248} + 1) &< 2^{264}\cdot 2^{255} \\
-  &\equiv\\
-  (2^{248} + 1) &<  2^{255} \\
-   &\implies \\
-   q f + r &<  2^t \cdot n \quad \text{ if } \quad q < 2^{256}
+q \cdot f + r &< 2^t \cdot n \\
+r &< 2^t \cdot n - q \cdot f \\
 \end{aligned}
 $$
 
-Note that the above condition holds by far,
+Recall that we have parameterized that $2^t \cdot n \ge f^2$
 
-Value $r < f$, so we can check
-
-$$
-\begin{aligned}
-qf + r < qf + f - 1 < qf + f = f(q + 1) &< >2^tn \\
-q &< 2^t\frac{n}{f} - 1.
-\end{aligned}
-$$
-
-However, maybe we should just check
+So we can check
 
 $$
-q < f
+r < f^2 - q \cdot f
 $$
 
-instead.
+We seem to be stuck, so let's assume that we check $q < f$.  Thus, we now have
 
+$$
+r < f^2 - (f - 1)f = f
+$$
+
+Therefore, to check $q \cdot f + r < 2^t \cdot n$, we just need to check
+* $q < f$
+* $r < f$
+
+which should come at no surprise, since that is how we parameterized $2^t \cdot n$.  Note that by checking $q < f$ we assure correctness, while checking $r < q$ assures our solution is unique.
 
 ## Constraints
 
