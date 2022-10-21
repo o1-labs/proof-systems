@@ -408,7 +408,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
     /// Creates the 5x5 table of rotation bits for Keccak modulo 64
     /// | y \ x |  0 |  1 |  2 |  3 |  4 |
     /// | ----- | -- | -- | -- | -- | -- |
-    /// | 0     |  0 |  1 | 60 | 28 | 27 |
+    /// | 0     |  0 |  1 | 62 | 28 | 27 |
     /// | 1     | 36 | 44 |  6 | 55 | 20 |
     /// | 2     |  3 | 10 | 43 | 25 | 39 |
     /// | 3     | 41 | 45 | 15 | 21 |  8 |

@@ -14,16 +14,6 @@
 //~ \end{align}
 //~
 //~ FOR $0\leq x, y \leq 4$ and $\rho[x,y]$ is the rotation offset defined for Keccak.
-//~ The values are in the table below extracted from the Keccak reference
-//~ <https://keccak.team/files/Keccak-reference-3.0.pdf>
-//~
-//~ |       | x = 3 | x = 4 | x = 0 | x = 1 | x = 2 |
-//~ | ----- | ----- | ----- | ----- | ----- | ----- |
-//~ | y = 2 |  155  |  231  |    3  |   10  |  171  |
-//~ | y = 1 |   55  |  276  |   36  |  300  |    6  |
-//~ | y = 0 |   28  |   91  |    0  |    1  |  190  |
-//~ | y = 4 |  120  |   78  |  210  |   66  |  253  |
-//~ | y = 3 |   21  |  136  |  105  |   45  |   15  |
 //~
 //~ ##### Design Approach:
 //~
@@ -41,175 +31,95 @@
 //~ ```admonition::notice
 //~  We could half the number of rows of the 64-bit XOR gadget by having lookups
 //~  for 8 bits at a time, but for now we will use the 4-bit XOR table that we have.
-//~  If we had 8-bit XOR table, we could half rotation rows as well but with twice as many rotation gate types.
 //~ ```
-//~
-//~ ##### Rotation gates
-//~
-//~ Notice that the keccak hash function involves rotation operations with different offsets at different points of the computation.
-//~ In fact, every word is rotated by a different offset at a certain stage. Instead of creating different gates for each offset,
-//~ we take the following approach that is much more efficient.
-//~ - 1 bit
-//~ - 2 bits
-//~ - 3 bits
-//~ - a multiple of 4 bits
-//~ To rotate a word by $n = 4m + r$ bits where $r < 4$, we first invoke the gate for rotation by $m/2$ bytes.
-//~ Then we invoke the gate to rotate by r bits.
 //~
 use std::marker::PhantomData;
 
 use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
-    expr::constraints::{crumb, limb, ExprOps},
+    expr::constraints::ExprOps,
     gate::GateType,
-    polynomial::COLUMNS,
 };
 use ark_ff::PrimeField;
 
-//~ ##### `KeccakRot` - Constraints for rotation by 1 or 2 or 3 bits
+//~ ##### `KeccakRot` - Constraints for rotation of 64-bit words
 //~
-//~ * This circuit gate is used to constrain that a 64-bit word is rotated by 1-2-3 bit to its shifted value.
+//~ * This circuit gate is used to constrain that a 64-bit word is rotated by r<64 bits to the "left".
 //~ * The rotation is performed towards the most significant side (thus, the new LSB is fed with the old MSB).
-//~ * This gate operates on the `Curr` row and the `Next` row (if we stick to 4-bit XOR table).
+//~ * This gate operates only on the `Curr` row.
 //~
-//~ It uses three different types of constraints
-//~ * copy    - copy to another cell (32-bits)
-//~ * plookup - xor-table plookup (4-bits)
+//~ The idea is to split the rotation operation into two parts:
+//~ * Shift to the left
+//~ * Add the excess bits to the right
 //~
-//~ Consider rotating 64 bit $C[x]$ by 1, 2 or 3 bits. We first decompose it to $C[x]_{lo}$ and $C[x]_{hi}$
-//~ (32-bit components). Consider $C[x]_{lo}. In the gate described below, we first
-//~ decompose $C[x]_{lo}$ into bytes. For each byte, we also consider the MSBs; denote
-//~ the MSBs of $C[x]_i$ by $c[x]_i$. We constrain that $CS[x]_i = 2^n(C[x]_i − 2^(4-n) c[x]_i )+c[x]_{i−1}$.
-//~ (To clarify, $C[x]_i$ is a crumb and $c[x]_i$ is the most significant bit of $C[x]_i$). Note
-//~ that we need to “copy” the edge elements between $C[x]_{lo}$ and $C[x]_{hi}$ as shown in
-//~ the diagram. We also need to check that $(C[x]_i − c[x]_i , C[x]_i − c[x]_i , 0)$ in XOR
-//~ table to ensure that $c[x]_i$ is the MSB of $C[x]_i$. TODO: ??
+//~ We represent shifting with multiplication modulo 2^{64}. That is, for each word to be rotated, we provide in
+//~ the witness a quotient and a remainder, similarly to `ForeignFieldMul` such that the following operation holds:
 //~
-//~ Here we show the full layout for the whole 64-bit word, which is a concatenation of the following gates:
+//~ $$word \cdot 2^{rot} = quo \cdot 2^{64} + rem$$
 //~
-//~  | Row | `CircuitGate` | Purpose                        |
-//~  | --- | ------------- | ------------------------------ |
-//~  |   0 | `KeccakRot`   | Rot first 2 bytes of low  half |
-//~  |   1 | `Zero`        | Rot last  2 bytes of low  half |
-//~  |   2 | `KeccakRot`   | Rot first 2 bytes of high half |
-//~  |   3 | `Zero`        | Rot last  2 bytes of high half |
+//~ Then, the remainder corresponds to the shifted word, and the quotient corresponds to the excess bits.
+//~ Thus, in order to obtain the rotated word, we need to add the quotient to the remainder as follows:
 //~
-//~ The 4-bit crumbs are assumed to be laid out with `0` being the least significant crumb.
-//~ We split the 64-bit word into two 32-bit halves and then split each of these into 4-bit crumbs `crumb_i`.
-//~ We call the `n` most significant bits of each crumb `msb_i` (where `n` is a coefficient of the gate and ranges between 1,2,3)
-//~ Two consecutive Keccak rotation gates need to have the same `bits`=n value
+//~ $$rotated = rem + quo$$
 //~
-//~ | Gate   | `KeccakRot`    | `Zero          | `KeccakRot`     | `Zero`          |
-//~ | ------ | -------------- | -------------- | --------------- | --------------- |
-//~ | Column | `Curr`         | `Next`         | `Curr`          | `Next`          |
-//~ | ------ | -------------- | -------------- | --------------- | --------------- |
-//~ |      0 | copy `lo`      | copy `msb_15`  | copy `hi`       | copy  `msb_7`   |
-//~ |      1 | copy `sft_lo`  | copy `edge`    | copy `sft_hi`   |       `edge`    |
-//~ |      2 | copy `bits`    |                | copy `bits`     |                 |
-//~ |      3 | copy `sft_0`   | copy `sft_4`   | copy `sft_8`    | copy `sft_12`   |
-//~ |      4 | copy `sft_1`   | copy `sft_5`   | copy `sft_9`    | copy `sft_13`   |
-//~ |      5 | copy `sft_2`   | copy `sft_6`   | copy `sft_10`   | copy `sft_14`   |
-//~ |      6 | copy `sft_3`   | copy `sft_7`   | copy `sft_11`   | copy `sft_15`   |
-//~ |      7 |      `msb_0`   |      `msb_4`   |      `msb_8`    |      `msb_12`   |
-//~ |      8 |      `msb_1`   |      `msb_5`   |      `msb_9`    |      `msb_13`   |
-//~ |      9 |      `msb_2`   |      `msb_6`   |      `msb_10`   |      `msb_14`   |
-//~ |     10 |      `msb_3`   |      `msb_7`   |      `msb_11`   |      `msb_15`   |
-//~ |     11 |      `crumb_0` |      `crumb_4` |      `crumb_8`  |      `crumb_12` |
-//~ |     12 |      `crumb_1` |      `crumb_5` |      `crumb_9`  |      `crumb_13` |
-//~ |     13 |      `crumb_2` |      `crumb_6` |      `crumb_10` |      `crumb_14` |
-//~ |     14 |      `crumb_3` |      `crumb_7` |      `crumb_11` |      `crumb_15` |
+//~ We can fit up to 3 rotations in one single `KeccakRot` because, as opposed to `ForeignFieldMul` and `ForeignFieldAdd`
+//~ gates, the length of these terms fit in a single limb. Not only a limb, but a 64-bit word (which needs `RangeCheck0`
+//~ gates to check that words and rotated words do not have more than 64 bits). Then, using the following layout and
+//~ assuming the gate has a coefficient storing the value2 $2^{rot0}, 2^{rot1}, 2^{rot2}$,
 //~
-//~ ALTERNATIVE ROTATION SINGLE GATE WITH CONSTANTS
+//~ | Gate   | `KeccakRot`     |
+//~ | ------ | --------------- |
+//~ | Column | `Curr`          |
+//~ | ------ | --------------- |
+//~ |      0 | copy `word0`    |
+//~ |      1 | copy `word1`    |
+//~ |      2 |      `word2`    |
+//~ |      3 |      `rotated0` |
+//~ |      4 |      `rotated1` |
+//~ |      5 |      `rotated2` |
+//~ |      6 |      `excess0`  |
+//~ |      7 |      `excess1`  |
+//~ |      8 |      `excess2`  |
+//~ |      9 |      `shifted0` |
+//~ |     10 |      `shifted1` |
+//~ |     11 |      `shifted2` |
+//~ |     12 |                 |
+//~ |     13 |                 |
+//~ |     14 |                 |
 //~
-//~ | Gate   | `KeccakRot`    | `Zero`         |
-//~ | ------ | -------------- | -------------- |
-//~ | Column | `Curr`         | `Next`         |
-//~ | ------ | -------------- | -------------- |
-//~ |      0 | copy  `word`   | `shift`        |
-//~ |      1 |       `msb`    | `len_msb`      |
-//~ |      2 |       `lsb`    | `len_lsb`      |
-//~ |      3 | plook `limb0`  | `nlimb_most`   |
-//~ |      4 | plook `limb1`  | `nlimb_least`  |
-//~ |      5 | plook `limb2`  | `ncrumb_most`  |
-//~ |      6 | plook `limb3`  | `ncrumb_least` |
-//~ |      7 |       `crumb0` |                |
-//~ |      8 |       `crumb1` |                |
-//~ |      9 |       `crumb2` |                |
-//~ |     10 |       `crumb3` |                |
-//~ |     11 |       `crumb4` |                |
-//~ |     12 |       `crumb5` |                |
-//~ |     13 |       `crumb6` |                |
-//~ |     14 | (LSB) `crumb7` |                |
+//~ In Keccak, rotations are performed over a 5x5 matrix state of w-bit words each cell. The values used
+//~ to perform the rotation are fixed, public, and known in advance, according to the following table:
 //~
-//~ If there is no break, then `len_frag` must be 0, `nlimb` must be 4, and `ncrumb` must be 8
-//~ If there is a broken limb, then `len_frag` must be 12, `nlimb` must be 3, and `ncrumb` must be 8
-//~ If there is a broken crumb, then `len_frag` must be 2, `nlimb` must be 4, and `ncrumb` must be 7
-//~ For readability, call
-//~      `a := len_frag`
-//~      `b := nlimb`
-//~      `c := ncrumb`
-//~ The logical formula we want is
-//~ [(a = 0) AND (b = 4) AND (c = 8)] OR [(a = 12) AND (b = 3) AND (c = 8)] OR [(a = 2) AND (b = 4) AND (c = 7)]
+//~ | y \ x |   0 |   1 |   2 |   3 |   4 |
+//~ | ----- | --- | --- | --- | --- | --- |
+//~ | 0     |   0 |   1 | 190 |  28 |  91 |
+//~ | 1     |  36 | 300 |   6 |  55 | 276 |
+//~ | 2     |   3 |  10 | 171 | 153 | 231 |
+//~ | 3     | 105 |  45 |  15 |  21 | 136 |
+//~ | 4     | 210 |  66 | 253 | 120 |  78 |
 //~
-//~ In order to represent this as constraints, we translate it into CNF because
-//~ we can only represent conjunctions of disjunctions using constraints.
+//~ But since we are always using 64-bit words, we can have an equivalent table with these values modulo 64
+//~ to avoid needing multiple passes of the rotation gate (a single step would cause overflows):
 //~
-//~ Thus, we end up with the following 9 constraints:
-//~     (1) a * (a - 2) * (a - 12)   // a can be any of 0, 2, 12
-//~     (2) (b - 3) * (b - 4)        // b can be any of 3 or 4
-//~     (3) (c - 7) * (c - 8)        // c can be any of 8 or 7
-//~     (4) (a - 12) * (b - 4)
-//~     (5) (a - 2) * (c - 8)
-//~     (6) (b - 4) * (c - 8)
-//~     (7) a * (a - 12) * (c - 7)
-//~     (8) a * (a - 2) * (b - 3)
-//~     (9) a * (b - 3) * (c - 7)
+//~ | y \ x |   0 |   1 |   2 |   3 |   4 |
+//~ | ----- | --- | --- | --- | --- | --- |
+//~ | 0     |   0 |   1 |  62 |  28 |  27 |
+//~ | 1     |  36 |  44 |   6 |  55 |  20 |
+//~ | 2     |   3 |  10 |  43 |  25 |  39 |
+//~ | 3     |  41 |  45 |  15 |  21 |   8 |
+//~ | 4     |  18 |   2 |  61 |  56 |  14 |
 //~
-//~ We know demonstrate equivalence between both formulas using a truth table (zero means constraint holds)
-//~ Since (1) && (2) && (3) mean that a,b,c can only be certain values, we illustrate each possible combination:
+//~ Since there is one value of the coordinates (x, y) where the rotation is 0 bits, we can skip that step in the
+//~ gadget. This will save us one gate, and thus the whole 25-1=24 rotations will be performed in just 8 rows.
 //~
-//~ |  a | b | c | (4) | (5) | (6) | (7) | (8) | (9) |
-//~ | -- | - | - | --- | --- | --- | --- | --- | --- |
-//~ |  0 | 3 | 7 |  -  |  -  |  -  |  0  |  0  |  -  |
-//~ |  0 | 3 | 8 |  -  |  0  |  0  |  0  |  0  |  0  |
-//~ |  0 | 4 | 7 |  0  |  -  |  0  |  0  |  0  |  0  |
-//~ |  0 | 4 | 8 |  0  |  0  |  0  |  0  |  0  |  0  |
-//~ |  2 | 3 | 7 |  -  |  0  |  -  |  0  |  0  |  0  |
-//~ |  2 | 3 | 8 |  -  |  0  |  0  |  -  |  0  |  0  |
-//~ |  2 | 4 | 7 |  0  |  0  |  0  |  0  |  0  |  0  |
-//~ |  2 | 4 | 8 |  0  |  0  |  0  |  -  |  0  |  -  |
-//~ | 12 | 3 | 7 |  0  |  -  |  -  |  0  |  0  |  0  |
-//~ | 12 | 3 | 8 |  0  |  0  |  0  |  0  |  0  |  0  |
-//~ | 12 | 4 | 7 |  0  |  -  |  0  |  0  |  -  |  0  |
-//~ | 12 | 4 | 8 |  0  |  0  |  0  |  0  |  -  |  -  |
+//~ The layout of the rotation gadget would be as follows:
 //~
-//~ Then, we can observe that only 3 rows in the truth table satisfy all 9 constraints; the combinations:
-//~     * a = 0 , b = 4, c = 8
-//~     * a = 2 , b = 4, c = 7
-//~     * a = 12, b = 3, c = 8
-//~ Which are the same combinations mentioned in the formula above!
+//~  | Rows   | `CircuitGate` | Purpose                                                             |
+//~  | ------ | ------------- | ------------------------------------------------------------------- |
+//~  | 0..24  | `RangeCheck0` | Check words to be rotated are 64-bit long, probably already checked |
+//~  | 25..48 | `RangeCheck0` | Check rotated words are 64-bit long, perhaps optimizable            |
+//~  | 49..56 | `KeccakRot`   | 8 rows to rotate 24 words                                           |
 //~
-//~ ALTERNATIVE ROTATION SINGLE GATE WITH FLAGS
-//~
-//~ | Gate   | `KeccakRot`    | `Zero`         |
-//~ | ------ | -------------- | -------------- |
-//~ | Column | `Curr`         | `Next`         |
-//~ | ------ | -------------- | -------------- |
-//~ |      0 | copy  `word`   | `shift`        |
-//~ |      1 |       `msb`    |                |
-//~ |      2 |       `lsb`    |                |
-//~ |      3 | plook `limb0`  |                |
-//~ |      4 | plook `limb1`  |                |
-//~ |      5 | plook `limb2`  |                |
-//~ |      6 | plook `limb3`  |                |
-//~ |      7 |       `crumb0` |                |
-//~ |      8 |       `crumb1` |                |
-//~ |      9 |       `crumb2` |                |
-//~ |     10 |       `crumb3` |                |
-//~ |     11 |       `crumb4` |                |
-//~ |     12 |       `crumb5` |                |
-//~ |     13 |       `crumb6` |                |
-//~ |     14 | (LSB) `crumb7` |                |
 #[derive(Default)]
 pub struct KeccakRot<F>(PhantomData<F>);
 
@@ -218,114 +128,30 @@ where
     F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::KeccakRot);
-    const CONSTRAINTS: u32 = 20; //  more to come
+    const CONSTRAINTS: u32 = 6;
 
-    // Constraints for rotation by any number of bits modulo 64 (stored in coefficient)
-    //   * Operates on Curr and Next rows
-    //   * Constrain the decmposition of a 64-bit `word` into 4 limbs of 12 bits and 8 crumbs of 16 bits
-    //   * Rotates the `word` into a `shift` word by `rot` number of bits
+    // Constraints for rotation of three 64-bit words by any three number of bits modulo 64
+    // (stored in coefficient as a power-of-two form)
+    //   * Operates on Curr row
+    //   * Shifts the words by `rot` bits and then adds the excess to obtain the rotated word.
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
-        //   * Uses 4 plookups to check the limbs have 12 bits
-        //   * The word is divided into two halves: high and low. High (with length `rot`) goes to the least significant part of the shifted word
-        //   * Obtains a decomposition of the rotation bits into number of limbs and crumbs for the high and low parts
-
-        // Get the 64-bit word to be rotated
-        let word = env.witness_curr(0);
-
-        // When there is a break,
-        // the most and least significant parts of the fragment to be split
-        let msb = env.witness_curr(1);
-        let lsb = env.witness_curr(2);
-
-        // Four 12-bit limbs -> the 48 most significant bits of the word
-        let limb0 = env.witness_curr(3);
-        let limb1 = env.witness_curr(4);
-        let limb2 = env.witness_curr(5);
-        let limb3 = env.witness_curr(6);
-
-        // Eight 2-bit crumbs -> the 16 least significant bits of the word
-        let crumb0 = env.witness_curr(7);
-        let crumb1 = env.witness_curr(8);
-        let crumb2 = env.witness_curr(9);
-        let crumb3 = env.witness_curr(10);
-        let crumb4 = env.witness_curr(11);
-        let crumb5 = env.witness_curr(12);
-        let crumb6 = env.witness_curr(13);
-        let crumb7 = env.witness_curr(14);
-
-
-
-        let two = T::from(2);
-        let three = two.clone() + T::one();
-        let four = two.clone().double();
-        let eight = four.clone().double();
-        let seven = eight.clone() - T::one();
-        let twelve = T::from(12);
-        let word_len = T::from(64);
-        let to_to_twelve = two.clone().pow(12);
-
-        // Check that the 8 least significant crumbs are 2 bits each.
-        // Checking the limb length will be done with 4 plookups
-        let mut constraints = (7..COLUMNS)
-            .map(|i| crumb(&env.witness_curr(i)))
+        // Obtains the following constraints for i=0,1,2:
+        // 0 = word_i * 2^{rot_i} - (excess_i * 2^64 + shifted_i)
+        // 0 = excess_i + shifted_i - rotated_i
+        let two_to_word_len = T::literal(F::from(2u32).pow(&[64]));
+        let mut constraints = (0..3)
+            .flat_map(|i| {
+                vec![
+                    env.witness_curr(i) * env.coeff(i)
+                        - (env.witness_curr(i + 6) * two_to_word_len.clone()
+                            + env.witness_curr(i + 9)),
+                    env.witness_curr(i + 6) + env.witness_curr(i + 9) - env.witness_curr(i + 3),
+                ]
+            })
             .collect::<Vec<T>>();
-
-        // Check correct decomposition of the 64-bit word
-        constraints.push(word - limb(&env, 4));
-
-        // COMPUTE SHIFTED WORD
-
-        for i in 0..12 {
-            let part = env.witness_curr(3 + i);
-            let flag = env.coeff(i);
-
-        // The 64-bit rotated word
-        let rotated = flag word - 
-
-            let mut rot_limb0 = (f_limb0 - T::from(1)).clone() * limb0.clone() * to_to_twelve.clone()
-            + f_limb0 * limb0.clone();
-
-        }
-
-
-
-        let mut rot_limb
-
-        // Check decomposition of broken fragment
-        //constraints.push(fragment - (msb * two.pow(len_msb.clone()) + lsb));
-
-        // Define most and least significant parts of the words
-        //let least = (0..ncrumb_least)
-        //let most =
-
-        /*let sum_least = (0..ncrumb_least.into())
-                    .map(|i| &env.witness_curr(7 + i) * four.clone())
-                    .fold(T::zero(), |acc, x| acc + x);
-        */
         constraints
     }
 }
-
-//~ ###### Rotation by integral multiple of 4 bits
-//~
-//~ Consider rotating 64 bit $E$ by a multiple $m$ of 4 bits to get $B$. We first decompose
-//~ $E$ into chunks of 8 bits $E_{14,15}$ , $E_{12,13}$ , $E_{10,11}$ , $E_{8,9} , $E_{6,7}$ , $E_{4,5}$ , $E_{2,3}$ , $E_{0,1}$ so that
-//~ $E = \sum_{i = 0}^7 (2^8)^i \cdot E_{2i,2i+1}$. Here, we chose the subscripts this way to continue
-//~ the byte narrative while temporarily switching to 8-bit chunks. $E_{2i,2i+1}$ is the ith 8-bit chunk.
-//~
-//~ Depending on the value of m we write the corresponding weights for these 8-bit values like in
-//~ the decomposition of $B$. The weight corresponding to $E_{2i,2i+1}$ is denoted by $w_{2i,2i+1}$. However,
-//~ depending on the value of $m$, there can be one 8-bit component that could get split between the
-//~ most significant and the least significant part of B. In the example in the diagram, it is $E_{8,9}$.
-//~ For this element the weight assigned will be $0$; we will incorporate this element by splitting it
-//~ up with the constraint $E_{8,9} = 2^4 E_9 + E_8$. We will incorporate these elements by always giving
-//~ the weight $(2^4)^{15} to the lower significant part – namely $E_8$ in this example and $1$ to the other
-//~ part $E_9$. The values of the weights will be enforced using permutation polynomial.
-//~
-//~ Towards specifying the right 8-bit element to be split, we will use a sequence of separate weights
-//~ $c_{2i,2i+1}$ which are zeroes for all $E_{2i,2i+1}$ except $c_{8,9}$. The weights $c_{2i,2i+1}$ will be combined into
-//~ a 32 bit value $c$ whose value will be enforced using the permutation polynomial.
-//~
 
 //~ ##### `KeccakXor` - XOR constraints for 32-bit words
 //~
@@ -515,39 +341,4 @@ fn four_bit<F: PrimeField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>, max: usize) -
         sum = four_bit.clone() * sum + env.witness_curr(i);
     }
     sum
-}
-
-// Computes the rotation of eight 4-bit crumbs by 1,2 or 3 bits to the most significant position.
-// It performs the following operation:
-// `shift_i = 2^b · ( crumb_i - 2^{4-b} · msb_i ) + msb_{i-1}`
-// This means for each possible value of the rotation bit:
-// - Rot 1-bit: `shift_i = 2 · ( crumb_i - 8 · msb_i ) + msb_{i-1}`
-// - Rot 2-bit: `shift_i = 4 · ( crumb_i - 4 · msb_i ) + msb_{i-1}`
-// - Rot 3-bit: `shift_i = 8 · ( crumb_i - 2 · msb_i ) + msb_{i-1}`
-//
-fn rot_bits<F: PrimeField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>, rot: u64) -> Vec<T> {
-    let mut constraints = vec![];
-    let two = T::one() + T::one();
-    let term = two.pow(rot);
-    let weight = two.pow(4 - rot);
-    let mut prev = env.witness_next(0); // first previous msb is located in auxiliary position
-    for i in 0..4 {
-        // curr row
-        let shift = env.witness_curr(3 + i);
-        let msb = env.witness_curr(7 + i);
-        let crumb = env.witness_curr(11 + i);
-        let rot = term.clone() * (crumb - weight.clone() * msb.clone()) + prev;
-        constraints.push(rot - shift);
-        prev = msb;
-    }
-    // next row
-    for i in 0..4 {
-        let shift = env.witness_next(3 + i);
-        let msb = env.witness_next(7 + i);
-        let crumb = env.witness_next(11 + i);
-        let rot = term.clone() * (crumb - weight.clone() * msb.clone()) + prev;
-        constraints.push(rot - shift);
-        prev = msb;
-    }
-    constraints
 }

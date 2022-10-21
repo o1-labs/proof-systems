@@ -108,11 +108,6 @@ impl<F: Field, T: ExprOps<F>> ArgumentEnv<F, T> {
             self.data.as_ref(),
         )
     }
-
-    /// Helper to access the rotation bits at coordinates (x,y)
-    pub fn rot_bits(&self, x: usize, y: usize) -> F {
-        self.data.as_ref().unwrap().witness.rot_bits(x, y)
-    }
 }
 
 /// Argument environment data for constraints of field elements
