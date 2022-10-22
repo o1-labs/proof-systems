@@ -8,7 +8,7 @@ use crate::{
         lookup::{index::LookupConstraintSystem, tables::LookupTable},
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
         polynomials::permutation::{Shifts, ZK_ROWS},
-        polynomials::{foreign_field_mul, range_check},
+        polynomials::{foreign_field_add, foreign_field_mul, range_check},
         wires::*,
     },
     curve::KimchiCurve,
@@ -121,6 +121,10 @@ pub struct ConstraintSystem<F: PrimeField> {
 
     /// Foreign field modulus
     pub foreign_field_modulus: Option<BigUint>,
+
+    /// Foreign field addition gate selector polynomial
+    #[serde(bound = "Option<SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
+    pub foreign_field_add_selector_poly: Option<SelectorPolynomial<F>>,
 
     /// Foreign field multiplication gate selector polynomial
     #[serde(bound = "Option<SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
@@ -384,17 +388,18 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         self
     }
 
-    /// Set up the foreign field modulus passed as a BigUint
+    /// Set up the foreign field modulus passed as an optional BigUint
     /// If not invoked, it is `None` by default.
     /// Panics if the BigUint being passed needs more than 3 limbs of 88 bits each
-    /// or if the foreign modulus being passed is smaller than the native modulus.
-    pub fn foreign_field_modulus(mut self, foreign_field_modulus: Option<BigUint>) -> Self {
-        if let Some(modulus) = foreign_field_modulus.clone() {
-            if modulus <= F::modulus_biguint() {
-                panic!("Foreign field modulus must be greater than the native modulus");
+    /// and warns if the foreign modulus being passed is smaller than the native modulus
+    /// because right now we only support foreign modulus that are larger than the native modulus.
+    pub fn foreign_field_modulus(mut self, foreign_field_modulus: &Option<BigUint>) -> Self {
+        if let Some(ffmod) = foreign_field_modulus.clone() {
+            if ffmod <= F::modulus_biguint() {
+                println!("Smaller foreign field modulus is still only supported by FFAdd but not yet for FFMul");
             }
         }
-        self.foreign_field_modulus = foreign_field_modulus;
+        self.foreign_field_modulus = foreign_field_modulus.clone();
         self
     }
 
@@ -581,13 +586,23 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             }
         };
 
-        // Foreign field multiplication constraint selector polynomial
-        let ffmul_gates = foreign_field_mul::gadget::circuit_gates();
-        let foreign_field_mul_selector_poly = {
-            if circuit_gates_used.is_disjoint(&ffmul_gates.into_iter().collect()) {
+        // Foreign field addition constraint selector polynomial
+        let foreign_field_add_gates = foreign_field_add::gadget::circuit_gates();
+        let foreign_field_add_selector_poly = {
+            if circuit_gates_used.is_disjoint(&foreign_field_add_gates.into_iter().collect()) {
                 None
             } else {
-                Some(selector_polynomial(ffmul_gates[0], &gates, &domain))
+                Some(selector_polynomial(foreign_field_add_gates[0], &gates, &domain))
+            }
+        };
+
+        // Foreign field multiplication constraint selector polynomial
+        let foreign_field_mul_gates = foreign_field_mul::gadget::circuit_gates();
+        let foreign_field_mul_selector_poly = {
+            if circuit_gates_used.is_disjoint(&foreign_field_mul_gates.into_iter().collect()) {
+                None
+            } else {
+                Some(selector_polynomial(foreign_field_mul_gates[0], &gates, &domain))
             }
         };
 
@@ -642,6 +657,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             mull8,
             emull,
             range_check_selector_polys,
+            foreign_field_add_selector_poly,
             foreign_field_mul_selector_poly,
             foreign_field_modulus: self.foreign_field_modulus,
             gates,

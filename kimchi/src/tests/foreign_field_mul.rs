@@ -85,7 +85,7 @@ fn test_zero_mul() {
 
     let foreign_modulus = ForeignElement::<PallasField, 3>::from_be(SECP256K1_MOD);
 
-    let left_input = ForeignElement::<PallasField, 3>::create([
+    let left_input = ForeignElement::<PallasField, 3>::new([
         PallasField::zero(),
         PallasField::zero(),
         PallasField::zero(),
@@ -144,9 +144,9 @@ fn test_one_mul() {
     assert_eq!(witness[1][21], PallasField::zero());
     assert_eq!(witness[2][21], PallasField::zero());
     assert_eq!(witness[3][21], PallasField::zero());
-    assert_eq!(witness[4][21], *left_input.lo());
-    assert_eq!(witness[5][21], *left_input.mi());
-    assert_eq!(witness[6][21], *left_input.hi());
+    assert_eq!(witness[4][21], left_input[0]);
+    assert_eq!(witness[5][21], left_input[1]);
+    assert_eq!(witness[6][21], left_input[2]);
 }
 #[test]
 // Test maximum values whose squaring fits in the native field
@@ -184,9 +184,9 @@ fn test_max_native_square() {
     assert_eq!(witness[1][21], PallasField::zero());
     assert_eq!(witness[2][21], PallasField::zero());
     assert_eq!(witness[3][21], PallasField::zero());
-    assert_eq!(witness[4][21], *product.lo());
-    assert_eq!(witness[5][21], *product.mi());
-    assert_eq!(witness[6][21], *product.hi());
+    assert_eq!(witness[4][21], product[0]);
+    assert_eq!(witness[5][21], product[1]);
+    assert_eq!(witness[6][21], product[2]);
 }
 
 #[test]
@@ -224,9 +224,9 @@ fn test_max_foreign_square() {
     assert_eq!(witness[1][21], PallasField::zero());
     assert_eq!(witness[2][21], PallasField::zero());
     assert_eq!(witness[3][21], PallasField::zero());
-    assert_eq!(witness[4][21], *product.lo());
-    assert_eq!(witness[5][21], *product.mi());
-    assert_eq!(witness[6][21], *product.hi());
+    assert_eq!(witness[4][21], product[0]);
+    assert_eq!(witness[5][21], product[1]);
+    assert_eq!(witness[6][21], product[2]);
 }
 
 #[test]

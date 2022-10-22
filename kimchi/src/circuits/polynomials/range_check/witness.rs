@@ -9,7 +9,7 @@ use crate::circuits::polynomial::COLUMNS;
 /// Witness cell for range check gadget
 pub enum WitnessCell {
     Copy(CopyWitnessCell),
-    Value(ValueWitnessCell),
+    Value,
     Limb(LimbWitnessCell),
     Zero,
 }
@@ -28,14 +28,12 @@ impl CopyWitnessCell {
 }
 
 /// Witness cell for a range check field element limb
-pub struct ValueWitnessCell {
-    index: usize,
-}
+pub struct ValueWitnessCell;
 
 impl ValueWitnessCell {
     /// Create a value witness cell
-    pub const fn create(index: usize) -> WitnessCell {
-        WitnessCell::Value(ValueWitnessCell { index })
+    pub const fn create() -> WitnessCell {
+        WitnessCell::Value
     }
 }
 
@@ -88,7 +86,7 @@ pub const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 4] = [
     range_check_row(1),
     /* row 3, RangeCheck1 row */
     [
-        ValueWitnessCell::create(0),
+        ValueWitnessCell::create(),
         /* 2-bit crumbs (placed here to keep lookup pattern */
         /*               the same as RangeCheck0) */
         LimbWitnessCell::create(2, 0, 86, 88),
@@ -135,7 +133,7 @@ pub const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 4] = [
 /// The row layout for `RangeCheck0`
 const fn range_check_row(row: usize) -> [WitnessCell; COLUMNS] {
     [
-        ValueWitnessCell::create(0),
+        ValueWitnessCell::create(),
         /* 12-bit copies */
         // Copy cells are required because we have a limit
         // of 4 lookups per row.  These two lookups are moved to
@@ -171,14 +169,14 @@ pub fn handle_standard_witness_cell<F: PrimeField>(
     witness_cell: &WitnessCell,
     row: usize,
     col: usize,
-    value: &[F],
+    value: F,
 ) {
     match witness_cell {
         WitnessCell::Copy(copy_cell) => {
             witness[col][row] = witness[copy_cell.col][copy_cell.row];
         }
-        WitnessCell::Value(value_cell) => {
-            witness[col][row] = value[value_cell.index];
+        WitnessCell::Value => {
+            witness[col][row] = value;
         }
         WitnessCell::Limb(limb_cell) => {
             witness[col][row] = value_to_limb(
@@ -196,7 +194,7 @@ pub fn handle_standard_witness_cell<F: PrimeField>(
 /// initialize a range_check_row
 fn init_range_check_row<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], row: usize, value: F) {
     for col in 0..COLUMNS {
-        handle_standard_witness_cell(witness, &WITNESS_SHAPE[row][col], row, col, &[value]);
+        handle_standard_witness_cell(witness, &WITNESS_SHAPE[row][col], row, col, value);
     }
 }
 
@@ -226,7 +224,7 @@ pub fn create_witness<F: PrimeField>(v0: F) -> [Vec<F>; COLUMNS] {
 /// Extend an existing witness with a multi-range-check gate for foreign field
 /// elements fe
 pub fn extend_witness<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], fe: ForeignElement<F, 3>) {
-    let limbs_witness = create_multi_witness(*fe.lo(), *fe.mi(), *fe.hi());
+    let limbs_witness = create_multi_witness(fe[0], fe[1], fe[2]);
     for col in 0..COLUMNS {
         witness[col].extend(limbs_witness[col].iter())
     }

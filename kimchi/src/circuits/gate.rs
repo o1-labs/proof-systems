@@ -5,7 +5,7 @@ use crate::{
         argument::{Argument, ArgumentEnv},
         constraints::ConstraintSystem,
         polynomials::{
-            chacha, complete_add, endomul_scalar, endosclmul, foreign_field_mul, poseidon,
+            chacha, complete_add, endomul_scalar, endosclmul, foreign_field_add, foreign_field_mul, poseidon,
             range_check, turshi, varbasemul,
         },
         wires::*,
@@ -61,6 +61,7 @@ impl CurrOrNext {
     Clone,
     Copy,
     Debug,
+    Default,
     PartialEq,
     FromPrimitive,
     ToPrimitive,
@@ -78,6 +79,7 @@ impl CurrOrNext {
 #[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub enum GateType {
+    #[default]
     /// Zero gate
     Zero = 0,
     /// Generic arithmetic gate
@@ -107,7 +109,7 @@ pub enum GateType {
     /// Range check (16-24)
     RangeCheck0 = 16,
     RangeCheck1 = 17,
-    //ForeignFieldAdd = 25,
+    ForeignFieldAdd = 25,
     ForeignFieldMul = 26,
 }
 
@@ -159,16 +161,27 @@ pub enum CircuitGateError {
 pub type CircuitGateResult<T> = std::result::Result<T, CircuitGateError>;
 
 #[serde_as]
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 /// A single gate in a circuit.
 pub struct CircuitGate<F: PrimeField> {
     /// type of the gate
     pub typ: GateType,
+
     /// gate wiring (for each cell, what cell it is wired to)
     pub wires: GateWires,
+
     /// public selector polynomials that can used as handy coefficients in gates
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub coeffs: Vec<F>,
+}
+
+impl<F> CircuitGate<F>
+where
+    F: PrimeField,
+{
+    pub fn new(typ: GateType, wires: GateWires, coeffs: Vec<F>) -> Self {
+        Self { typ, wires, coeffs }
+    }
 }
 
 impl<F: PrimeField> ToBytes for CircuitGate<F> {
@@ -191,11 +204,7 @@ impl<F: PrimeField> ToBytes for CircuitGate<F> {
 impl<F: PrimeField> CircuitGate<F> {
     /// this function creates "empty" circuit gate
     pub fn zero(wires: GateWires) -> Self {
-        CircuitGate {
-            typ: GateType::Zero,
-            wires,
-            coeffs: Vec::new(),
-        }
+        CircuitGate::new(GateType::Zero, wires, vec![])
     }
 
     /// This function verifies the consistency of the wire
@@ -230,6 +239,9 @@ impl<F: PrimeField> CircuitGate<F> {
             RangeCheck0 | RangeCheck1 => self
                 .verify_range_check::<G>(row, witness, cs)
                 .map_err(|e| e.to_string()),
+            ForeignFieldAdd => self
+                .verify_foreign_field_add::<G>(row, witness, cs)
+                .map_err(|e| e.to_string()),
             ForeignFieldMul => self
                 .verify_foreign_field_mul::<G>(row, witness, cs)
                 .map_err(|e| e.to_string()),
@@ -255,7 +267,7 @@ impl<F: PrimeField> CircuitGate<F> {
             joint_combiner: Some(F::one()),
             endo_coefficient: cs.endo,
             mds: &G::sponge_params().mds,
-            foreign_field_modulus: None,
+            foreign_field_modulus: cs.foreign_field_modulus.clone(),
         };
         // Create the argument environment for the constraints over field elements
         let env = ArgumentEnv::<F, F>::create(argument_witness, self.coeffs.clone(), constants);
@@ -313,6 +325,9 @@ impl<F: PrimeField> CircuitGate<F> {
             }
             GateType::RangeCheck1 => {
                 range_check::circuitgates::RangeCheck1::constraint_checks(&env)
+            }
+            GateType::ForeignFieldAdd => {
+                foreign_field_add::circuitgates::ForeignFieldAdd::constraint_checks(&env)
             }
             GateType::ForeignFieldMul => {
                 foreign_field_mul::circuitgates::ForeignFieldMul::constraint_checks(&env)
@@ -515,11 +530,11 @@ mod tests {
 
     prop_compose! {
         fn arb_circuit_gate()(typ: GateType, wires: GateWires, coeffs in arb_fp_vec(25)) -> CircuitGate<Fp> {
-            CircuitGate {
+            CircuitGate::new(
                 typ,
                 wires,
                 coeffs,
-            }
+            )
         }
     }
 

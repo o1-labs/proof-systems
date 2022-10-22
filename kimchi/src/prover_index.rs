@@ -82,6 +82,7 @@ impl<G: KimchiCurve> ProverIndex<G> {
             cs.lookup_constraint_system
                 .as_ref()
                 .map(|lcs| &lcs.configuration),
+            cs.foreign_field_add_selector_poly.is_some(),
             cs.foreign_field_mul_selector_poly.is_some(),
         );
 
@@ -170,7 +171,7 @@ pub mod testing {
             .runtime(runtime_tables)
             .public(public)
             .prev_challenges(prev_challenges)
-            .foreign_field_modulus(foreign_modulus)
+            .foreign_field_modulus(&foreign_modulus)
             .build()
             .unwrap();
         let mut srs = SRS::<Vesta>::create(cs.domain.d1.size());

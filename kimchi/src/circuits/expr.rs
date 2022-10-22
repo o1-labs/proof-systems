@@ -14,8 +14,7 @@ use ark_poly::{
 };
 use itertools::Itertools;
 use num_bigint::BigUint;
-use o1_utils::foreign_field::ForeignElement;
-use o1_utils::FieldHelpers;
+use o1_utils::{FieldHelpers, ForeignElement};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::ops::{Add, AddAssign, Mul, Neg, Sub};
@@ -341,7 +340,7 @@ impl<F: Field> ConstantExpr<F> {
             Mds { row, col } => c.mds[*row][*col],
             ForeignFieldModulus(i) => {
                 if let Some(modulus) = c.foreign_field_modulus.clone() {
-                    ForeignElement::<F, 3>::from_biguint(modulus).limbs[*i]
+                    ForeignElement::<F, 3>::from_biguint(modulus)[*i]
                 } else {
                     F::zero()
                 }
@@ -532,7 +531,7 @@ impl<F: FftField> PolishToken<F> {
                 Mds { row, col } => stack.push(c.mds[*row][*col]),
                 ForeignFieldModulus(i) => {
                     if let Some(modulus) = c.foreign_field_modulus.clone() {
-                        stack.push(ForeignElement::<F, 3>::from_biguint(modulus.clone()).limbs[*i])
+                        stack.push(ForeignElement::<F, 3>::from_biguint(modulus.clone())[*i])
                     }
                 }
                 VanishesOnLast4Rows => stack.push(eval_vanishes_on_last_4_rows(d, pt)),
@@ -2101,7 +2100,7 @@ where
             EndoCoefficient => "endo\\_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
             ForeignFieldModulus(i) => format!("foreign\\_field\\_modulus({i})"),
-            Literal(x) => format!("\\mathbb{{F}}({})", x.to_hex()),
+            Literal(x) => format!("\\mathbb{{F}}({})", x.into_repr().into()),
             Pow(x, n) => match x.as_ref() {
                 Alpha => format!("\\alpha^{{{n}}}"),
                 x => format!("{}^{n}", x.ocaml()),

@@ -16,7 +16,7 @@ use crate::{
     error::VerifierIndexError,
     prover_index::ProverIndex,
 };
-use ark_ff::PrimeField;
+use ark_ff::{One, PrimeField};
 use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D};
 use commitment_dlog::{
     commitment::{CommitmentCurve, PolyComm},
@@ -115,8 +115,11 @@ pub struct VerifierIndex<G: KimchiCurve> {
     pub range_check_comm: Option<[PolyComm<G>; range_check::gadget::GATE_COUNT]>,
 
     // Foreign field modulus
-    #[serde(bound = "Option<BigUint>: Serialize + DeserializeOwned")]
     pub foreign_field_modulus: Option<BigUint>,
+
+    // Foreign field addition gates polynomial commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub foreign_field_add_comm: Option<PolyComm<G>>,
 
     /// Foreign field multiplication gates polynomial commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
@@ -157,6 +160,14 @@ impl<G: KimchiCurve> ProverIndex<G> {
         if let Some(verifier_index) = &self.verifier_index {
             return verifier_index.clone();
         }
+
+        let mask_fixed = |commitment: PolyComm<G>| {
+            let blinders = commitment.map(|_| G::ScalarField::one());
+            self.srs
+                .mask_custom(commitment, &blinders)
+                .unwrap()
+                .commitment
+        };
 
         let domain = self.cs.domain.d1;
 
@@ -206,9 +217,9 @@ impl<G: KimchiCurve> ProverIndex<G> {
                 self.srs
                     .commit_evaluations_non_hiding(domain, &self.cs.coefficients8[i], None)
             }),
-            generic_comm: self.srs.commit_non_hiding(&self.cs.genericm, None),
+            generic_comm: mask_fixed(self.srs.commit_non_hiding(&self.cs.genericm, None)),
 
-            psm_comm: self.srs.commit_non_hiding(&self.cs.psm, None),
+            psm_comm: mask_fixed(self.srs.commit_non_hiding(&self.cs.psm, None)),
 
             complete_add_comm: self.srs.commit_evaluations_non_hiding(
                 domain,
@@ -238,6 +249,15 @@ impl<G: KimchiCurve> ProverIndex<G> {
                         .commit_evaluations_non_hiding(domain, &poly[i].eval8, None)
                 })
             }),
+
+            foreign_field_add_comm: self
+                .cs
+                .foreign_field_add_selector_poly
+                .as_ref()
+                .map(|poly| {
+                    self.srs
+                    .commit_evaluations_non_hiding(domain, &poly.eval8, None)
+                }),
 
             foreign_field_mul_comm: self
                 .cs
@@ -378,8 +398,9 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             // Optional gates
             chacha_comm,
             range_check_comm,
+            foreign_field_add_comm,
             foreign_field_mul_comm,
-            foreign_field_modulus,
+            foreign_field_modulus: _,
 
             // Lookup index; optional
             lookup_index,
@@ -420,10 +441,11 @@ impl<G: KimchiCurve> VerifierIndex<G> {
                 fq_sponge.absorb_g(&range_check_comm.unshifted);
             }
         }
-        if foreign_field_modulus.is_some() {
-            if let Some(foreign_field_mul) = foreign_field_mul_comm {
-                fq_sponge.absorb_g(&foreign_field_mul.unshifted);
-            }
+        if let Some(foreign_field_mul) = foreign_field_mul_comm {
+            fq_sponge.absorb_g(&foreign_field_mul.unshifted);
+        }
+        if let Some(foreign_field_add_comm) = foreign_field_add_comm {
+            fq_sponge.absorb_g(&foreign_field_add_comm.unshifted);
         }
 
         // Lookup index; optional

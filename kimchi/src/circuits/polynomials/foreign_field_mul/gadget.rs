@@ -1,6 +1,8 @@
+//! This module obtains the gates of a foreign field addition circuit.
+
 use std::collections::HashMap;
 
-use ark_ff::{FftField, PrimeField, Zero};
+use ark_ff::{PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
@@ -154,7 +156,6 @@ impl<F: PrimeField> CircuitGate<F> {
             &gamma,
             &lcs.configuration.lookup_info,
         )?;
-
         let lookup_env = Some(LookupEnvironment {
             aggreg: &lookup_env_data.aggreg8,
             sorted: &lookup_env_data.sorted8,
@@ -214,7 +215,7 @@ impl<F: PrimeField> CircuitGate<F> {
 }
 
 // Data required by the lookup environment
-struct LookupEnvironmentData<F: FftField> {
+struct LookupEnvironmentData<F: PrimeField> {
     // Aggregation evaluations
     aggreg8: Evaluations<F, D<F>>,
     // Sorted evaluations
@@ -350,6 +351,7 @@ fn set_up_lookup_env_data<F: PrimeField>(
     })
 }
 
+// TODO: Check do we use this anywhere
 pub fn circuit_gate_selector_index(typ: GateType) -> usize {
     match typ {
         GateType::ForeignFieldMul => 0,
@@ -384,7 +386,7 @@ pub fn combined_constraints<F: PrimeField>(alphas: &Alphas<F>) -> E<F> {
 }
 
 /// Get the foreign field multiplication lookup table
-pub fn lookup_table<F: FftField>() -> LookupTable<F> {
+pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
     lookup::tables::get_table::<F>(GateLookupTable::RangeCheck)
 }
 

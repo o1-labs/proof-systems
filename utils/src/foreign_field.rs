@@ -1,12 +1,17 @@
 //! Describes helpers for foreign field arithmetics
 
-use std::fmt::Display;
-
-use crate::{field_helpers::FieldHelpers, serialization::SerdeAs};
-use ark_ff::{FftField, Field, PrimeField};
+use crate::field_helpers::FieldHelpers;
+use ark_ff::{Field, PrimeField};
 use num_bigint::BigUint;
-use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
+use std::fmt::{Debug, Formatter};
+use std::ops::{Index, IndexMut};
+
+/// Index of low limb (in 3-limb foreign elements)
+pub const LO: usize = 0;
+/// Index of middle limb (in 3-limb foreign elements)
+pub const MI: usize = 1;
+/// Index of high limb (in 3-limb foreign elements)
+pub const HI: usize = 2;
 
 /// Limb length for foreign field elements
 pub const LIMB_BITS: usize = 88;
@@ -34,18 +39,45 @@ pub const SECP256K1_MOD: &[u8] = &[
 /// Bit length of the foreign field modulus
 pub const FOREIGN_BITS: usize = 8 * SECP256K1_MOD.len(); // 256 bits
 
-#[serde_as]
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+/// Two to the power of the limb length
+pub const TWO_TO_LIMB: u128 = 2u128.pow(LIMB_BITS as u32);
+
+#[derive(Clone, PartialEq, Eq)]
 /// Represents a foreign field element
 pub struct ForeignElement<F: Field, const N: usize> {
     /// limbs in little endian order
-    #[serde_as(as = "[SerdeAs; N]")]
-    pub limbs: [F; N],
+    limbs: [F; N],
     /// number of limbs used for the foreign field element
-    pub len: usize,
+    len: usize,
+}
+
+impl<F: Field, const N: usize> Debug for ForeignElement<F, N> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "ForeignElement(")?;
+        for i in 0..self.len {
+            write!(f, "{:?}", self.limbs[i].to_hex())?;
+            if i != self.len - 1 {
+                write!(f, ", ")?;
+            }
+        }
+        write!(f, ")")
+    }
 }
 
 impl<F: Field, const N: usize> ForeignElement<F, N> {
+    /// Creates a new foreign element from an array containing N limbs
+    pub fn new(limbs: [F; N]) -> Self {
+        Self { limbs, len: N }
+    }
+
+    /// Creates a new foreign element representing the value zero
+    pub fn zero() -> Self {
+        Self {
+            limbs: [F::zero(); N],
+            len: N,
+        }
+    }
+
     /// Initializes a new foreign element from a big unsigned integer
     /// Panics if the BigUint is too large to fit in the `N` limbs
     pub fn from_biguint(big: BigUint) -> Self {
@@ -67,6 +99,17 @@ impl<F: Field, const N: usize> ForeignElement<F, N> {
             limbs,
             len: limbs.len(),
         }
+    }
+
+    /// Initializes a new foreign element from an absolute `BigUint` but the equivalent
+    /// foreign element obtained corresponds to the negated input. It first converts the
+    /// input big element to a big integer modulo the foreign field modulus, and then
+    /// computes the negation of the result.
+    pub fn neg(&self, modulus: &BigUint) -> Self {
+        let big = self.to_biguint();
+        let ok = big % modulus;
+        let neg = modulus - ok;
+        Self::from_biguint(neg)
     }
 
     /// Initializes a new foreign element from a set of bytes in big endian
@@ -104,44 +147,16 @@ impl<F: PrimeField, const N: usize> ForeignElement<F, N> {
     }
 }
 
-impl<F: FftField> ForeignElement<F, 3> {
-    /// Creates a new foreign element from an array containing 3 limbs
-    pub fn create(limbs: [F; 3]) -> Self {
-        Self { limbs, len: 3 }
-    }
-
-    /// Returns a reference to the lowest limb of the foreign element
-    pub fn lo(&self) -> &F {
-        &self.limbs[0]
-    }
-
-    /// Returns a reference to the middle limb of the foreign element
-    pub fn mi(&self) -> &F {
-        &self.limbs[1]
-    }
-
-    /// Returns a reference to the highest limb of the foreign element
-    pub fn hi(&self) -> &F {
-        &self.limbs[2]
+impl<F: Field, const N: usize> Index<usize> for ForeignElement<F, N> {
+    type Output = F;
+    fn index(&self, idx: usize) -> &Self::Output {
+        &self.limbs[idx]
     }
 }
 
-impl<F: FftField, const N: usize> Display for ForeignElement<F, N> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut s = String::new();
-        let order = ["lo", "mi", "hi"];
-        s += "{ ";
-        for (i, limb) in self.limbs.iter().enumerate() {
-            let hex = limb.to_hex();
-            let len = LIMB_BITS / 8 * 2;
-            s += &(order[i % N].to_owned() + ": ");
-            s.push_str(&hex[0..len as usize]);
-            if i < N - 1 {
-                s += " , ";
-            }
-        }
-        s += " }";
-        write!(f, "{}", s)
+impl<F: Field, const N: usize> IndexMut<usize> for ForeignElement<F, N> {
+    fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
+        &mut self.limbs[idx]
     }
 }
 
