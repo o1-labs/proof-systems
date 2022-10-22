@@ -76,7 +76,7 @@ $$
 a \cdot b = c \mod f.
 $$
 
-That is, $a$ multiplied with $b$ is equal to $c$ where $a,b,c \in F_{f}$.
+That is, $a$ multiplied with $b$ is equal to $c$ where $a,b,c \in \mathbb{F_f}$.  There is a lot more to each of these steps.  That is the subject of the rest of this document.
 
 **Other strategies**
 
@@ -581,6 +581,28 @@ Therefore, to check $q \cdot f + r < 2^t \cdot n$, we just need to check
 * $r < f$
 
 which should come at no surprise, since that is how we parameterized $2^t \cdot n$.  Note that by checking $q < f$ we assure correctness, while checking $r < q$ assures our solution is unique.
+
+**TODO:** What about checking $a \cdot b < 2^t \cdot n$?
+
+**Constraints**
+
+To perform these checks we use the *upper bound check* from the foreign field addition gate.  The details of this check are fully described in the [Foreign Field Addition RFC](](https://github.com/o1-labs/proof-systems/blob/master/book/src/rfcs/ffadd.md#upper-bound-check)).
+
+To check $q < f$, we must add an addition `ForeignFieldAdd` gate to the end of the foreign field multiplication gadget layout, which takes as one of its parameters $q$.  The special upper bound check addition gate checks that indeed $q < f$.  The output of this special addition gate is a *bound*.
+
+To perform the $r < f$ check we perform a range check on the *bound* output by the upper bound check.
+
+**TODO:** Does the *upper bound check* gate require us to also range check $q$ and or $r$.
+
+## Chaining multiplications
+
+Every independent multiplication requires checks for $q < f$ and $r < f$.
+
+However, we can also have a chain of interrelated multiplications or a chain of interrelated multiplications and additions (if the gate layouts supported it).
+
+**TODO:** For chains of operations we need concrete rules for when we need to perform the check $q < f$ and $r < f$.
+
+For now, the safest approach is to always check $q < f$ and $r < f$ after each multiplication even if they are in a chain.
 
 ## Constraints
 
