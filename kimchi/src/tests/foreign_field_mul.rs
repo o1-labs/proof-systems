@@ -93,11 +93,11 @@ fn test_zero_mul() {
     let right_input = ForeignElement::<PallasField, 3>::from_be(ZERO);
 
     let witness =
-        foreign_field_mul::witness::create_witness(left_input, right_input, foreign_modulus);
+        foreign_field_mul::witness::create_witness(left_input, right_input, foreign_modulus.clone());
 
     assert_eq!(
         Ok(()),
-        foreign_field_mul::witness::check_witness(&witness, foreign_modulus)
+        foreign_field_mul::witness::check_witness(&witness, &foreign_modulus)
     );
 
     for row in 0..22 {
@@ -126,11 +126,11 @@ fn test_one_mul() {
     let right_input = ForeignElement::<PallasField, 3>::from_be(ONE);
 
     let witness =
-        foreign_field_mul::witness::create_witness(left_input, right_input, foreign_modulus);
+        foreign_field_mul::witness::create_witness(left_input.clone(), right_input, foreign_modulus.clone());
 
     assert_eq!(
         Ok(()),
-        foreign_field_mul::witness::check_witness(&witness, foreign_modulus)
+        foreign_field_mul::witness::check_witness(&witness, &foreign_modulus)
     );
 
     for row in 0..=19 {
@@ -160,12 +160,12 @@ fn test_max_native_square() {
     let witness = foreign_field_mul::witness::create_witness(
         left_input.clone(),
         right_input,
-        foreign_modulus,
+        foreign_modulus.clone(),
     );
 
     assert_eq!(
         Ok(()),
-        foreign_field_mul::witness::check_witness(&witness, foreign_modulus)
+        foreign_field_mul::witness::check_witness(&witness, &foreign_modulus)
     );
 
     /*
@@ -201,12 +201,12 @@ fn test_max_foreign_square() {
     let witness = foreign_field_mul::witness::create_witness(
         left_input.clone(),
         right_input,
-        foreign_modulus,
+        foreign_modulus.clone(),
     );
 
     assert_eq!(
         Ok(()),
-        foreign_field_mul::witness::check_witness(&witness, foreign_modulus)
+        foreign_field_mul::witness::check_witness(&witness, &foreign_modulus)
     );
     /*
         for row in 0..22 {
@@ -239,12 +239,12 @@ fn test_max_native_multiplicands() {
     let right_input = ForeignElement::<PallasField, 3>::from_be(MAX_NAT);
 
     let witness =
-        foreign_field_mul::witness::create_witness(left_input, right_input, foreign_modulus);
+        foreign_field_mul::witness::create_witness(left_input, right_input, foreign_modulus.clone());
 
     // fails zer
     assert_eq!(
         Ok(()),
-        foreign_field_mul::witness::check_witness(&witness, foreign_modulus)
+        foreign_field_mul::witness::check_witness(&witness, &foreign_modulus)
     );
 
     /*for row in 0..22 {
@@ -265,10 +265,10 @@ fn test_max_foreign_multiplicands() {
     let right_input = ForeignElement::<PallasField, 3>::from_be(MAX_FOR);
 
     let witness =
-        foreign_field_mul::witness::create_witness(left_input, right_input, foreign_modulus);
+        foreign_field_mul::witness::create_witness(left_input, right_input, foreign_modulus.clone());
 
     assert_eq!(
         Ok(()),
-        foreign_field_mul::witness::check_witness(&witness, foreign_modulus)
+        foreign_field_mul::witness::check_witness(&witness, &foreign_modulus)
     );
 }

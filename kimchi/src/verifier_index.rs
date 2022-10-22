@@ -256,7 +256,7 @@ impl<G: KimchiCurve> ProverIndex<G> {
                 .as_ref()
                 .map(|poly| {
                     self.srs
-                    .commit_evaluations_non_hiding(domain, &poly.eval8, None)
+                        .commit_evaluations_non_hiding(domain, &poly.eval8, None)
                 }),
 
             foreign_field_mul_comm: self

@@ -6,8 +6,8 @@ use crate::circuits::{
     polynomials::range_check::{
         self,
         witness::{
-            extend_witness, handle_standard_witness_cell, value_to_limb, CopyWitnessCell,
-            ValueWitnessCell, ZeroWitnessCell,
+            extend_witness, handle_standard_witness_cell, value_to_limb, AssignWitnessCell,
+            CopyWitnessCell, WitnessValues, ZeroWitnessCell,
         },
     },
 };
@@ -27,22 +27,22 @@ use std::array;
 //     * ValueLimb := contiguous range of bits overcted a value
 //
 // TODO: Currently located in range check, but could be moved elsewhere
-pub enum WitnessCell {
-    Standard(range_check::witness::WitnessCell),
-    Shift(ShiftWitnessCell),
+pub enum WitnessCell<'a> {
+    Standard(range_check::witness::WitnessCell<'a>),
+    Shift(ShiftCopyWitnessCell),
     ValueLimb(ValueLimbWitnessCell),
 }
 
 // Witness cell copied and shifted from another
-pub struct ShiftWitnessCell {
+pub struct ShiftCopyWitnessCell {
     row: usize,
     col: usize,
     shift: u64,
 }
 
-impl ShiftWitnessCell {
-    pub const fn create(row: usize, col: usize, shift: u64) -> WitnessCell {
-        WitnessCell::Shift(ShiftWitnessCell { row, col, shift })
+impl ShiftCopyWitnessCell {
+    pub const fn create(row: usize, col: usize, shift: u64) -> WitnessCell<'static> {
+        WitnessCell::Shift(ShiftCopyWitnessCell { row, col, shift })
     }
 }
 
@@ -59,7 +59,7 @@ pub struct ValueLimbWitnessCell {
 }
 
 impl ValueLimbWitnessCell {
-    pub const fn create(kind: ValueType, start: usize, end: usize) -> WitnessCell {
+    pub const fn create(kind: ValueType, start: usize, end: usize) -> WitnessCell<'static> {
         WitnessCell::ValueLimb(ValueLimbWitnessCell { kind, start, end })
     }
 }
@@ -91,8 +91,8 @@ const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 2] = [
         WitnessCell::Standard(CopyWitnessCell::create(2, 0)), // left_input_hi
         WitnessCell::Standard(CopyWitnessCell::create(4, 0)), // right_input_lo
         WitnessCell::Standard(CopyWitnessCell::create(5, 0)), // right_input_mi
-        ShiftWitnessCell::create(20, 12, 8),                  // carry_shift from carry_top_over
-        ShiftWitnessCell::create(20, 9, 9), // product_shift from product_mi_top_over
+        ShiftCopyWitnessCell::create(20, 12, 8),              // carry_shift from carry_top_over
+        ShiftCopyWitnessCell::create(20, 9, 9), // product_shift from product_mi_top_over
         ValueLimbWitnessCell::create(ValueType::ProductMi, 0, LIMB_BITS), // product_mi_bot
         ValueLimbWitnessCell::create(ValueType::ProductMi, LIMB_BITS, 2 * LIMB_BITS), // product_mi_top_limb
         ValueLimbWitnessCell::create(ValueType::ProductMi, 2 * LIMB_BITS, 2 * LIMB_BITS + 2), // product_mi_top_over
@@ -111,9 +111,9 @@ const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 2] = [
         WitnessCell::Standard(CopyWitnessCell::create(12, 0)), // remainder_lo
         WitnessCell::Standard(CopyWitnessCell::create(13, 0)), // remainder_mi
         WitnessCell::Standard(CopyWitnessCell::create(14, 0)), // remainder_hi
-        WitnessCell::Standard(ValueWitnessCell::create(0)),   // aux_lo
-        WitnessCell::Standard(ValueWitnessCell::create(1)),   // aux_mi
-        WitnessCell::Standard(ValueWitnessCell::create(2)),   // aux_hi
+        WitnessCell::Standard(AssignWitnessCell::create("aux_lo")),
+        WitnessCell::Standard(AssignWitnessCell::create("aux_mi")),
+        WitnessCell::Standard(AssignWitnessCell::create("aux_hi")),
         WitnessCell::Standard(ZeroWitnessCell::create()),
         WitnessCell::Standard(ZeroWitnessCell::create()),
         WitnessCell::Standard(ZeroWitnessCell::create()),
@@ -128,15 +128,20 @@ fn init_foreign_field_mul_rows<F: PrimeField>(
     product_mi: F,
     carry_bot: F,
     carry_top: F,
-    aux: [F; 3],
+    values: &WitnessValues<F>,
 ) {
     for (row, wit) in WITNESS_SHAPE.iter().enumerate() {
         // must go in reverse order because otherwise the shift cells will be uninitialized
         for col in (0..COLUMNS).rev() {
             match &wit[col] {
-                WitnessCell::Standard(standard_cell) => {
-                    handle_standard_witness_cell(witness, standard_cell, offset + row, col, &aux)
-                }
+                WitnessCell::Standard(standard_cell) => handle_standard_witness_cell(
+                    witness,
+                    standard_cell,
+                    offset + row,
+                    col,
+                    F::zero(),
+                    values,
+                ),
                 WitnessCell::Shift(shift_cell) => {
                     witness[col][offset + row] = F::from(2u32).pow([shift_cell.shift])
                         * witness[shift_cell.col][shift_cell.row];
@@ -168,16 +173,16 @@ pub fn create_witness<F: PrimeField>(
     let mut witness = array::from_fn(|_| vec![F::zero(); 0]);
 
     // Create multi-range-check witness for left_input and right_input
-    extend_witness(&mut witness, left_input);
-    extend_witness(&mut witness, right_input);
+    extend_witness(&mut witness, left_input.clone());
+    extend_witness(&mut witness, right_input.clone());
 
     // Compute quotient and remainder and add to witness
     let (quotient, remainder) =
         (left_input.to_biguint() * right_input.to_biguint()).div_rem(&foreign_modulus.to_biguint());
     let quotient = ForeignElement::from_biguint(quotient);
     let remainder = ForeignElement::from_biguint(remainder);
-    extend_witness(&mut witness, quotient);
-    extend_witness(&mut witness, remainder);
+    extend_witness(&mut witness, quotient.clone());
+    extend_witness(&mut witness, remainder.clone());
 
     let two = F::from(2u32);
     let two_to_limb = two.pow(&[LIMB_BITS as u64]);
@@ -224,29 +229,27 @@ pub fn create_witness<F: PrimeField>(
         ForeignElement::new([product_mi_bot, product_mi_top_limb, carry_top_limb]),
     );
 
-    // Create foreign field multiplication and zero witness rows
+    // Create foreign ForeignFieldMul witness rows (curr and next)
     for w in &mut witness {
         w.extend(std::iter::repeat(F::zero()).take(2));
     }
 
     let carry_bot = F::from_biguint(carry_bot).expect("big_f does not fit in F");
 
+    let mut values = WitnessValues::create();
+    values["aux_lo"] = aux_lo;
+    values["aux_mi"] = aux_mi;
+    values["aux_hi"] = aux_hi;
+
     // ForeignFieldMul and Zero row
-    init_foreign_field_mul_rows(
-        &mut witness,
-        20,
-        product_mi,
-        carry_bot,
-        carry_top,
-        [aux_lo, aux_mi, aux_hi],
-    );
+    init_foreign_field_mul_rows(&mut witness, 20, product_mi, carry_bot, carry_top, &values);
 
     witness
 }
 
 pub fn check_witness<F: PrimeField>(
     witness: &[Vec<F>; COLUMNS],
-    foreign_mod: ForeignElement<F, 3>,
+    foreign_mod: &ForeignElement<F, 3>,
 ) -> Result<(), String> {
     let left_input_lo = witness[0][20];
     let left_input_mi = witness[1][20];
@@ -288,7 +291,7 @@ pub fn check_witness<F: PrimeField>(
     let right_input = ForeignElement::new([right_input_lo, right_input_mi, right_input_hi]);
     let quotient = ForeignElement::new([quotient_lo, quotient_mi, quotient_hi]);
     let (product_lo, product_mi, product_hi, _aux_lo, _aux_mi, _aux_hi) =
-        compute_auxiliar(left_input, right_input, quotient, foreign_mod);
+        compute_auxiliar(left_input, right_input, quotient, foreign_mod.clone());
 
     let two_to_8 = F::from(2u32.pow(8));
     let two_to_9 = F::from(2u32.pow(9));

@@ -592,7 +592,11 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             if circuit_gates_used.is_disjoint(&foreign_field_add_gates.into_iter().collect()) {
                 None
             } else {
-                Some(selector_polynomial(foreign_field_add_gates[0], &gates, &domain))
+                Some(selector_polynomial(
+                    foreign_field_add_gates[0],
+                    &gates,
+                    &domain,
+                ))
             }
         };
 
@@ -602,7 +606,11 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             if circuit_gates_used.is_disjoint(&foreign_field_mul_gates.into_iter().collect()) {
                 None
             } else {
-                Some(selector_polynomial(foreign_field_mul_gates[0], &gates, &domain))
+                Some(selector_polynomial(
+                    foreign_field_mul_gates[0],
+                    &gates,
+                    &domain,
+                ))
             }
         };
 

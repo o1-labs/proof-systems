@@ -4,7 +4,10 @@ use crate::circuits::{
     polynomial::COLUMNS,
     polynomials::range_check::{
         self,
-        witness::{extend_witness, handle_standard_witness_cell, CopyWitnessCell, ZeroWitnessCell},
+        witness::{
+            extend_witness, handle_standard_witness_cell, CopyWitnessCell, WitnessValues,
+            ZeroWitnessCell,
+        },
     },
 };
 use ark_ff::{Field, PrimeField};
@@ -196,8 +199,8 @@ pub fn create_witness<F: PrimeField>(
 //     * ValueLimb := contiguous range of bits extracted from a value
 //
 // TODO: Currently located in range check, but could be moved elsewhere
-pub enum WitnessCell<F: Field> {
-    Standard(range_check::witness::WitnessCell),
+pub enum WitnessCell<'a, F: Field> {
+    Standard(range_check::witness::WitnessCell<'a>),
     FieldElement(FieldElementCell),
     Constant(F),
     Ignore,
@@ -216,7 +219,10 @@ pub struct FieldElementCell {
 }
 
 impl FieldElementCell {
-    pub const fn create<F: Field>(kind: FieldElementType, limb_idx: usize) -> WitnessCell<F> {
+    pub const fn create<F: Field>(
+        kind: FieldElementType,
+        limb_idx: usize,
+    ) -> WitnessCell<'static, F> {
         WitnessCell::FieldElement(FieldElementCell { kind, limb_idx })
     }
 }
@@ -339,6 +345,7 @@ fn handle_ffadd_rows<F: PrimeField>(
                 offset + row,
                 col,
                 F::zero(), /* unused by this gate */
+                &WitnessValues::create(),
             )
         }
         WitnessCell::FieldElement(elem_cell) => {

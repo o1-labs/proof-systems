@@ -13,8 +13,9 @@ use crate::{
             complete_add::CompleteAdd,
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
-            foreign_field_mul::{self, circuitgates::ForeignFieldMul},
-            foreign_field_add, generic, permutation,
+            foreign_field_add,
+            foreign_field_mul,
+            generic, permutation,
             permutation::ZK_ROWS,
             poseidon::Poseidon,
             range_check::{self},
@@ -765,8 +766,8 @@ where
 
             // foreign field addition
             if index.cs.foreign_field_add_selector_poly.is_some() {
-                let ffadd = foreign_field_add::gadget::combined_constraints(&all_alphas)
-                .evaluations(&env);
+                let ffadd =
+                    foreign_field_add::gadget::combined_constraints(&all_alphas).evaluations(&env);
                 assert_eq!(ffadd.domain().size, t4.domain().size);
                 t4 += &ffadd;
                 check_constraint!(index, ffadd);
@@ -775,7 +776,8 @@ where
             // foreign field multiplication
             if index.cs.foreign_field_mul_selector_poly.is_some() {
                 assert!(index.cs.foreign_field_modulus.is_some());
-                let ffmul = foreign_field_add::gadget::combined_constraints(&all_alphas).evaluations(&env);
+                let ffmul =
+                    foreign_field_add::gadget::combined_constraints(&all_alphas).evaluations(&env);
                 assert_eq!(ffmul.domain().size, t4.domain().size);
                 t4 += &ffmul;
                 check_constraint!(index, ffmul);

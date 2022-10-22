@@ -2,12 +2,17 @@
 
 use ark_ff::PrimeField;
 use o1_utils::{FieldHelpers, ForeignElement};
-use std::array;
+use std::{
+    array,
+    collections::HashMap,
+    ops::{Index, IndexMut},
+};
 
 use crate::circuits::polynomial::COLUMNS;
 
 /// Witness cell for range check gadget
-pub enum WitnessCell {
+pub enum WitnessCell<'a> {
+    Assign(AssignWitnessCell<'a>),
     Copy(CopyWitnessCell),
     Value,
     Limb(LimbWitnessCell),
@@ -22,7 +27,7 @@ pub struct CopyWitnessCell {
 
 impl CopyWitnessCell {
     /// Create a copy witness cell
-    pub const fn create(row: usize, col: usize) -> WitnessCell {
+    pub const fn create(row: usize, col: usize) -> WitnessCell<'static> {
         WitnessCell::Copy(CopyWitnessCell { row, col })
     }
 }
@@ -32,8 +37,43 @@ pub struct ValueWitnessCell;
 
 impl ValueWitnessCell {
     /// Create a value witness cell
-    pub const fn create() -> WitnessCell {
+    pub const fn create() -> WitnessCell<'static> {
         WitnessCell::Value
+    }
+}
+
+/// Map of witness values
+///     name (String) -> value (F)
+pub struct WitnessValues<F>(HashMap<String, F>);
+
+impl<F> WitnessValues<F> {
+    pub fn create() -> WitnessValues<F> {
+        WitnessValues(HashMap::new())
+    }
+}
+
+impl<'a, F> Index<&'a str> for WitnessValues<F> {
+    type Output = F;
+    fn index(&self, name: &'a str) -> &Self::Output {
+        &self.0[name]
+    }
+}
+
+impl<'a, F> IndexMut<&'a str> for WitnessValues<F> {
+    fn index_mut(&mut self, name: &'a str) -> &mut Self::Output {
+        self.0.get_mut(name).expect("failed to get witness value")
+    }
+}
+
+/// Witness cell assigned from value
+pub struct AssignWitnessCell<'a> {
+    value_name: &'a str,
+}
+
+impl<'a> AssignWitnessCell<'a> {
+    /// Create witness cell assigned from value
+    pub const fn create(value_name: &str) -> WitnessCell {
+        WitnessCell::Assign(AssignWitnessCell { value_name })
     }
 }
 
@@ -48,7 +88,7 @@ pub struct LimbWitnessCell {
 impl LimbWitnessCell {
     /// Creates a limb witness cell.
     /// Params: source (row, col), starting bit offset and ending bit offset (exclusive)
-    pub const fn create(row: usize, col: usize, start: usize, end: usize) -> WitnessCell {
+    pub const fn create(row: usize, col: usize, start: usize, end: usize) -> WitnessCell<'static> {
         WitnessCell::Limb(LimbWitnessCell {
             row,
             col,
@@ -63,7 +103,7 @@ pub struct ZeroWitnessCell;
 
 impl ZeroWitnessCell {
     /// Create a zero witness cell
-    pub const fn create() -> WitnessCell {
+    pub const fn create() -> WitnessCell<'static> {
         WitnessCell::Zero
     }
 }
@@ -131,7 +171,7 @@ pub const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 4] = [
 ];
 
 /// The row layout for `RangeCheck0`
-const fn range_check_row(row: usize) -> [WitnessCell; COLUMNS] {
+const fn range_check_row(row: usize) -> [WitnessCell<'static>; COLUMNS] {
     [
         ValueWitnessCell::create(),
         /* 12-bit copies */
@@ -170,8 +210,12 @@ pub fn handle_standard_witness_cell<F: PrimeField>(
     row: usize,
     col: usize,
     value: F,
+    values: &WitnessValues<F>,
 ) {
     match witness_cell {
+        WitnessCell::Assign(assign_cell) => {
+            witness[col][row] = values[assign_cell.value_name];
+        }
         WitnessCell::Copy(copy_cell) => {
             witness[col][row] = witness[copy_cell.col][copy_cell.row];
         }
@@ -194,7 +238,14 @@ pub fn handle_standard_witness_cell<F: PrimeField>(
 /// initialize a range_check_row
 fn init_range_check_row<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], row: usize, value: F) {
     for col in 0..COLUMNS {
-        handle_standard_witness_cell(witness, &WITNESS_SHAPE[row][col], row, col, value);
+        handle_standard_witness_cell(
+            witness,
+            &WITNESS_SHAPE[row][col],
+            row,
+            col,
+            value,
+            &WitnessValues::create(),
+        );
     }
 }
 
