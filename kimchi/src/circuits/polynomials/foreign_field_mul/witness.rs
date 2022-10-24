@@ -83,7 +83,7 @@ fn create_layout<F: PrimeField>() -> [[Box<dyn WitnessCell<F>>; COLUMNS]; 2] {
 
 /// Create a foreign field multiplication witness
 /// Input: multiplicands left_input and right_input
-pub fn create_witness<F: PrimeField>(
+pub fn create<F: PrimeField>(
     left_input: ForeignElement<F, 3>,
     right_input: ForeignElement<F, 3>,
     foreign_modulus: ForeignElement<F, 3>,
