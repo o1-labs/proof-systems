@@ -1,15 +1,16 @@
 //! Foreign field multiplication witness computation
 
-use crate::circuits::{
-    expr::constraints::crumb,
-    polynomial::COLUMNS,
-    polynomials::range_check::{
-        self,
+use crate::{
+    circuits::{
+        expr::constraints::crumb,
+        polynomial::COLUMNS,
+        polynomials::range_check::{self},
         witness::{
-            extend_witness, handle_standard_witness_cell, value_to_limb, AssignWitnessCell,
-            CopyWitnessCell, WitnessValues, ZeroWitnessCell,
+            self, ConstantCell, CopyCell, CopyShiftCell, VariableBitsCell, VariableCell, Variables,
+            WitnessCell,
         },
     },
+    variable_map,
 };
 use ark_ff::{Field, PrimeField};
 use num_bigint::BigUint;
@@ -19,50 +20,6 @@ use o1_utils::{
     foreign_field::{ForeignElement, LIMB_BITS},
 };
 use std::array;
-
-// Extend standard WitnessCell to support foreign field multiplication
-// specific cell types
-//
-//     * Shift     := value is copied from another cell and right shifted (little-endian)
-//     * ValueLimb := contiguous range of bits overcted a value
-//
-// TODO: Currently located in range check, but could be moved elsewhere
-pub enum WitnessCell<'a> {
-    Standard(range_check::witness::WitnessCell<'a>),
-    Shift(ShiftCopyWitnessCell),
-    ValueLimb(ValueLimbWitnessCell),
-}
-
-// Witness cell copied and shifted from another
-pub struct ShiftCopyWitnessCell {
-    row: usize,
-    col: usize,
-    shift: u64,
-}
-
-impl ShiftCopyWitnessCell {
-    pub const fn create(row: usize, col: usize, shift: u64) -> WitnessCell<'static> {
-        WitnessCell::Shift(ShiftCopyWitnessCell { row, col, shift })
-    }
-}
-
-// Witness cell containing a limb of a value
-pub enum ValueType {
-    ProductMi,
-    CarryBot,
-    CarryTop,
-}
-pub struct ValueLimbWitnessCell {
-    kind: ValueType,
-    start: usize,
-    end: usize,
-}
-
-impl ValueLimbWitnessCell {
-    pub const fn create(kind: ValueType, start: usize, end: usize) -> WitnessCell<'static> {
-        WitnessCell::ValueLimb(ValueLimbWitnessCell { kind, start, end })
-    }
-}
 
 // Witness layout
 //   * The values and cell contents are in little-endian order, which
@@ -83,84 +40,45 @@ impl ValueLimbWitnessCell {
 //
 //     so that most significant limb, q2, is in W[2][0].
 //
-const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 2] = [
-    // ForeignFieldMul row
+fn create_layout<F: PrimeField>() -> [[Box<dyn WitnessCell<F>>; COLUMNS]; 2] {
     [
-        WitnessCell::Standard(CopyWitnessCell::create(0, 0)), // left_input_lo
-        WitnessCell::Standard(CopyWitnessCell::create(1, 0)), // left_input_mi
-        WitnessCell::Standard(CopyWitnessCell::create(2, 0)), // left_input_hi
-        WitnessCell::Standard(CopyWitnessCell::create(4, 0)), // right_input_lo
-        WitnessCell::Standard(CopyWitnessCell::create(5, 0)), // right_input_mi
-        ShiftCopyWitnessCell::create(20, 12, 8),              // carry_shift from carry_top_over
-        ShiftCopyWitnessCell::create(20, 9, 9), // product_shift from product_mi_top_over
-        ValueLimbWitnessCell::create(ValueType::ProductMi, 0, LIMB_BITS), // product_mi_bot
-        ValueLimbWitnessCell::create(ValueType::ProductMi, LIMB_BITS, 2 * LIMB_BITS), // product_mi_top_limb
-        ValueLimbWitnessCell::create(ValueType::ProductMi, 2 * LIMB_BITS, 2 * LIMB_BITS + 2), // product_mi_top_over
-        ValueLimbWitnessCell::create(ValueType::CarryBot, 0, 2), // carry_bot
-        ValueLimbWitnessCell::create(ValueType::CarryTop, 0, LIMB_BITS), // carry_top_limb
-        ValueLimbWitnessCell::create(ValueType::CarryTop, LIMB_BITS, LIMB_BITS + 3), // carry_top_over
-        WitnessCell::Standard(ZeroWitnessCell::create()),
-        WitnessCell::Standard(ZeroWitnessCell::create()),
-    ],
-    // Zero row
-    [
-        WitnessCell::Standard(CopyWitnessCell::create(6, 0)), // right_input_hi
-        WitnessCell::Standard(CopyWitnessCell::create(8, 0)), // quotient_lo
-        WitnessCell::Standard(CopyWitnessCell::create(9, 0)), // quotient_mi
-        WitnessCell::Standard(CopyWitnessCell::create(10, 0)), // quotient_hi
-        WitnessCell::Standard(CopyWitnessCell::create(12, 0)), // remainder_lo
-        WitnessCell::Standard(CopyWitnessCell::create(13, 0)), // remainder_mi
-        WitnessCell::Standard(CopyWitnessCell::create(14, 0)), // remainder_hi
-        WitnessCell::Standard(AssignWitnessCell::create("aux_lo")),
-        WitnessCell::Standard(AssignWitnessCell::create("aux_mi")),
-        WitnessCell::Standard(AssignWitnessCell::create("aux_hi")),
-        WitnessCell::Standard(ZeroWitnessCell::create()),
-        WitnessCell::Standard(ZeroWitnessCell::create()),
-        WitnessCell::Standard(ZeroWitnessCell::create()),
-        WitnessCell::Standard(ZeroWitnessCell::create()),
-        WitnessCell::Standard(ZeroWitnessCell::create()),
-    ],
-];
-
-fn init_foreign_field_mul_rows<F: PrimeField>(
-    witness: &mut [Vec<F>; COLUMNS],
-    offset: usize,
-    product_mi: F,
-    carry_bot: F,
-    carry_top: F,
-    values: &WitnessValues<F>,
-) {
-    for (row, wit) in WITNESS_SHAPE.iter().enumerate() {
-        // must go in reverse order because otherwise the shift cells will be uninitialized
-        for col in (0..COLUMNS).rev() {
-            match &wit[col] {
-                WitnessCell::Standard(standard_cell) => handle_standard_witness_cell(
-                    witness,
-                    standard_cell,
-                    offset + row,
-                    col,
-                    F::zero(),
-                    values,
-                ),
-                WitnessCell::Shift(shift_cell) => {
-                    witness[col][offset + row] = F::from(2u32).pow([shift_cell.shift])
-                        * witness[shift_cell.col][shift_cell.row];
-                }
-                WitnessCell::ValueLimb(value_limb_cell) => {
-                    witness[col][offset + row] = value_to_limb(
-                        match value_limb_cell.kind {
-                            // value
-                            ValueType::CarryBot => carry_bot,
-                            ValueType::CarryTop => carry_top,
-                            ValueType::ProductMi => product_mi,
-                        },
-                        value_limb_cell.start, // starting bit
-                        value_limb_cell.end,   // ending bit (exclusive)
-                    );
-                }
-            }
-        }
-    }
+        // ForeignFieldMul row
+        [
+            CopyCell::create(0, 0),                               // left_input_lo
+            CopyCell::create(1, 0),                               // left_input_mi
+            CopyCell::create(2, 0),                               // left_input_hi
+            CopyCell::create(4, 0),                               // right_input_lo
+            CopyCell::create(5, 0),                               // right_input_mi
+            CopyShiftCell::create(20, 12, 8),                     // carry_shift from carry_top_over
+            CopyShiftCell::create(20, 9, 9), // product_shift from product_mi_top_over
+            VariableBitsCell::create("product_mi", 0, LIMB_BITS), // product_mi_bot
+            VariableBitsCell::create("product_mi", LIMB_BITS, 2 * LIMB_BITS), // product_mi_top_limb
+            VariableBitsCell::create("product_mi", 2 * LIMB_BITS, 2 * LIMB_BITS + 2), // product_mi_top_over
+            VariableBitsCell::create("carry_bot", 0, 2), // CarryBot, 0, 2), // carry_bot
+            VariableBitsCell::create("carry_top", 0, LIMB_BITS), // carry_top_limb
+            VariableBitsCell::create("carry_top", LIMB_BITS, LIMB_BITS + 3), // carry_top_over
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+        ],
+        // Zero row
+        [
+            CopyCell::create(6, 0),         // right_input_hi
+            CopyCell::create(8, 0),         // quotient_lo
+            CopyCell::create(9, 0),         // quotient_mi
+            CopyCell::create(10, 0),        // quotient_hi
+            CopyCell::create(12, 0),        // remainder_lo
+            CopyCell::create(13, 0),        // remainder_mi
+            CopyCell::create(14, 0),        // remainder_hi
+            VariableCell::create("aux_lo"), // aux_lo
+            VariableCell::create("aux_mi"), // aux_mi
+            VariableCell::create("aux_hi"), // aux_hi
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+        ],
+    ]
 }
 
 /// Create a foreign field multiplication witness
@@ -173,16 +91,16 @@ pub fn create_witness<F: PrimeField>(
     let mut witness = array::from_fn(|_| vec![F::zero(); 0]);
 
     // Create multi-range-check witness for left_input and right_input
-    extend_witness(&mut witness, left_input.clone());
-    extend_witness(&mut witness, right_input.clone());
+    range_check::witness::extend(&mut witness, left_input.clone());
+    range_check::witness::extend(&mut witness, right_input.clone());
 
     // Compute quotient and remainder and add to witness
     let (quotient, remainder) =
         (left_input.to_biguint() * right_input.to_biguint()).div_rem(&foreign_modulus.to_biguint());
     let quotient = ForeignElement::from_biguint(quotient);
     let remainder = ForeignElement::from_biguint(remainder);
-    extend_witness(&mut witness, quotient.clone());
-    extend_witness(&mut witness, remainder.clone());
+    range_check::witness::extend(&mut witness, quotient.clone());
+    range_check::witness::extend(&mut witness, remainder.clone());
 
     let two = F::from(2u32);
     let two_to_limb = two.pow(&[LIMB_BITS as u64]);
@@ -224,7 +142,7 @@ pub fn create_witness<F: PrimeField>(
     let carry_top_limb = F::from_biguint(carry_top_limb).expect("big_f does not fit in F");
 
     // Define the row for the multi-range check for the product_mi_bot, product_mi_top_limb, and carry_top_limb
-    extend_witness(
+    range_check::witness::extend(
         &mut witness,
         ForeignElement::new([product_mi_bot, product_mi_top_limb, carry_top_limb]),
     );
@@ -236,13 +154,20 @@ pub fn create_witness<F: PrimeField>(
 
     let carry_bot = F::from_biguint(carry_bot).expect("big_f does not fit in F");
 
-    let mut values = WitnessValues::create();
-    values["aux_lo"] = aux_lo;
-    values["aux_mi"] = aux_mi;
-    values["aux_hi"] = aux_hi;
-
     // ForeignFieldMul and Zero row
-    init_foreign_field_mul_rows(&mut witness, 20, product_mi, carry_bot, carry_top, &values);
+    witness::init(
+        &mut witness,
+        20,
+        &create_layout(),
+        &variable_map![
+            "product_mi" => product_mi,
+            "carry_bot" => carry_bot,
+            "carry_top" => carry_top,
+            "aux_lo" => aux_lo,
+            "aux_mi" => aux_mi,
+            "aux_hi" => aux_hi
+        ],
+    );
 
     witness
 }
