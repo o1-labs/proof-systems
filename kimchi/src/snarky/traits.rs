@@ -175,7 +175,7 @@ impl<F: PrimeField, const T: usize> SnarkyType<F> for [CVar<F>; T] {
         cvars.try_into().unwrap()
     }
 
-    fn check(&self, cs: &mut RunState<F>) {}
+    fn check(&self, _cs: &mut RunState<F>) {}
 
     fn constraint_system_auxiliary() -> Self::Auxiliary {
         ()
