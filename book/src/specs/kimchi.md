@@ -1541,6 +1541,10 @@ pub struct VerifierIndex<G: KimchiCurve> {
     // Foreign field modulus
     pub foreign_field_modulus: Option<BigUint>,
 
+    // Foreign field addition gates polynomial commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub foreign_field_add_comm: Option<PolyComm<G>>,
+
     /// Foreign field multiplication gates polynomial commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub foreign_field_mul_comm: Option<PolyComm<G>>,
