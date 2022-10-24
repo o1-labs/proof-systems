@@ -1,37 +1,24 @@
-use crate::{
-    circuits::{
-        constraints::ConstraintSystem,
-        gate::{CircuitGate, CircuitGateError, GateType},
-        polynomial::COLUMNS,
-        polynomials::foreign_field_add::{
-            self,
-            witness::{create_witness, FFOps},
-        },
-        wires::Wire,
+use super::framework::TestFramework;
+use crate::circuits::{
+    constraints::ConstraintSystem,
+    gate::{CircuitGate, CircuitGateError, GateType},
+    polynomial::COLUMNS,
+    polynomials::foreign_field_add::{
+        self,
+        witness::{self, FFOps},
     },
-    proof::ProverProof,
-    prover_index::{testing::new_index_for_test_with_lookups, ProverIndex},
-    verifier::verify,
+    wires::Wire,
 };
 use ark_ec::AffineCurve;
 use ark_ff::{One, Zero};
-use commitment_dlog::commitment::CommitmentCurve;
-use groupmap::GroupMap;
-use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
+use mina_curves::pasta::{Pallas, Vesta};
 use num_bigint::BigUint;
 use num_traits::FromPrimitive;
 use o1_utils::{
     foreign_field::{ForeignElement, HI, LO, MI, SECP256K1_MOD, TWO_TO_LIMB},
     FieldHelpers,
 };
-use oracle::{
-    constants::PlonkSpongeConstantsKimchi,
-    sponge::{DefaultFqSponge, DefaultFrSponge},
-};
-use rand::Rng;
-
-type BaseSponge = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
-type ScalarSponge = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>;
+use rand::{rngs::StdRng, Rng, SeedableRng};
 
 type PallasField = <Pallas as AffineCurve>::BaseField;
 type VestaField = <Vesta as AffineCurve>::BaseField;
@@ -157,25 +144,6 @@ fn create_test_constraint_system_ffadd(
         .unwrap()
 }
 
-fn create_test_prover_index(num: usize, modulus: BigUint) -> ProverIndex<Vesta> {
-    let (mut next_row, mut gates) = CircuitGate::<PallasField>::create_foreign_field_add(0, num);
-
-    // Temporary workaround for lookup-table/domain-size issue
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::new(next_row)));
-        next_row += 1;
-    }
-
-    new_index_for_test_with_lookups(
-        gates,
-        0,
-        0,
-        vec![foreign_field_add::gadget::lookup_table()],
-        None,
-        Some(modulus),
-    )
-}
-
 // returns the maximum value for a field of modulus size
 fn field_max(modulus: BigUint) -> BigUint {
     modulus - 1u32
@@ -194,7 +162,7 @@ fn test_ffadd(
         .iter()
         .map(|x| BigUint::from_bytes_be(x))
         .collect::<Vec<BigUint>>();
-    let witness = create_witness(&inputs, ops, foreign_modulus);
+    let witness = witness::create(&inputs, ops, foreign_modulus);
 
     let all_rows = witness[0].len();
 
@@ -280,14 +248,53 @@ fn random_input(modulus: BigUint, big: bool) -> Vec<u8> {
 }
 
 // obtains a random operation
-fn random_operation() -> FFOps {
-    let mut rng = rand::thread_rng();
-    let op = rng.gen_range(0..2);
+fn random_operation(rng: &mut StdRng) -> FFOps {
+    let op: u32 = rng.gen_range(0..2);
     match op {
         0 => FFOps::Add,
         1 => FFOps::Sub,
         _ => panic!("Invalid operation"),
     }
+}
+
+fn prove_and_verify(operation_count: usize) {
+    let rng = &mut StdRng::from_seed([
+        0, 131, 43, 175, 229, 252, 206, 26, 67, 193, 86, 160, 1, 90, 131, 86, 168, 4, 95, 50, 48,
+        9, 192, 13, 250, 215, 172, 130, 24, 164, 162, 221,
+    ]);
+
+    // Create circuit
+    let (mut next_row, mut gates) =
+        CircuitGate::<PallasField>::create_foreign_field_add(0, operation_count);
+    // Temporary workaround for lookup-table/domain-size issue
+    for _ in 0..(1 << 13) {
+        gates.push(CircuitGate::zero(Wire::new(next_row)));
+        next_row += 1;
+    }
+
+    // Create foreign modulus
+    let foreign_modulus = BigUint::from_bytes_be(SECP256K1_MOD);
+
+    // Create inputs and operations
+    let inputs = (0..operation_count + 1)
+        .into_iter()
+        .map(|_| BigUint::from_bytes_be(&random_input(foreign_modulus.clone(), true)))
+        .collect::<Vec<BigUint>>();
+    let operations = (0..operation_count)
+        .into_iter()
+        .map(|_| random_operation(rng))
+        .collect::<Vec<_>>();
+
+    // Create witness
+    let witness = witness::create(&inputs, &operations, foreign_modulus.clone());
+
+    TestFramework::default()
+        .gates(gates)
+        .witness(witness)
+        .lookup_tables(vec![foreign_field_add::gadget::lookup_table()])
+        .foreign_modulus(Some(foreign_modulus))
+        .setup()
+        .prove_and_verify();
 }
 
 #[test]
@@ -923,6 +930,11 @@ fn test_random_bad_parameters() {
 #[test]
 // Test with chain of random operations
 fn test_random_chain() {
+    let rng = &mut StdRng::from_seed([
+        0, 131, 43, 175, 229, 252, 206, 26, 67, 193, 86, 160, 1, 90, 131, 86, 168, 4, 95, 50, 48,
+        9, 192, 13, 250, 215, 172, 130, 24, 164, 162, 221,
+    ]);
+
     let nops = 20;
     let foreign_mod = BigUint::from_bytes_be(SECP256K1_MOD);
     let inputs = (0..nops + 1)
@@ -931,7 +943,7 @@ fn test_random_chain() {
         .collect::<Vec<_>>();
     let operations = (0..nops)
         .into_iter()
-        .map(|_| random_operation())
+        .map(|_| random_operation(rng))
         .collect::<Vec<_>>();
     let (witness, _cs) = test_ffadd(SECP256K1_MOD, inputs.clone(), &operations);
     let mut left = vec![inputs[0].clone()];
@@ -951,43 +963,16 @@ fn test_random_chain() {
     check_result(witness, results);
 }
 
+// Prove and verify a randomly generated operation
 #[test]
-// Tests a proof generation and verification
-fn test_prover_ffadd() {
-    let foreign_mod = BigUint::from_bytes_be(SECP256K1_MOD);
-    let nops = 4;
+fn prove_and_verify_1() {
+    prove_and_verify(1);
+}
 
-    // Create prover index
-    let prover_index = create_test_prover_index(nops, foreign_mod.clone());
-
-    // Create inputs and operations
-    let inputs = (0..nops + 1)
-        .into_iter()
-        .map(|_| BigUint::from_bytes_be(&random_input(foreign_mod.clone(), true)))
-        .collect::<Vec<BigUint>>();
-    let operations = (0..nops)
-        .into_iter()
-        .map(|_| random_operation())
-        .collect::<Vec<_>>();
-    // Create witness
-    let witness = create_witness(&inputs, &operations, foreign_mod);
-
-    // Verify computed witness satisfies the circuit
-    prover_index.cs.verify::<Vesta>(&witness, &[]).unwrap();
-
-    // Generate proof
-    let group_map = <Vesta as CommitmentCurve>::Map::setup();
-    let proof =
-        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &[], &prover_index)
-            .expect("failed to generate proof");
-
-    // Get the verifier index
-    let verifier_index = prover_index.verifier_index();
-
-    // Verify proof
-    let res = verify::<Vesta, BaseSponge, ScalarSponge>(&group_map, &verifier_index, &proof);
-
-    assert!(!res.is_err());
+// Prove and verify a chain of 6 randomly generated operations
+#[test]
+fn prove_and_verify_6() {
+    prove_and_verify(6);
 }
 
 /*
