@@ -17,7 +17,7 @@ pub use self::{
 
 use super::polynomial::COLUMNS;
 
-/// Interface for that all types of Witness cells
+/// Witness cell interface
 pub trait WitnessCell<F: Field> {
     fn value(&self, witness: &mut [Vec<F>; COLUMNS], variables: &Variables<F>) -> F;
 }
