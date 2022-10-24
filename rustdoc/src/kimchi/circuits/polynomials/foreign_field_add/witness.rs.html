@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/foreign_field_add/witness.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>witness.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../../normalize.css"><link rel="stylesheet" href="../../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../../dark.css" disabled><link rel="stylesheet" href="../../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../../storage.js"></script><script defer src="../../../../../source-script.js"></script><script defer src="../../../../../source-files.js"></script><script defer src="../../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><a class="sidebar-logo" href="../../../../../kimchi/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../../kimchi/index.html"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/foreign_field_add/witness.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>witness.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../../normalize.css"><link rel="stylesheet" href="../../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../../dark.css" disabled><link rel="stylesheet" href="../../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../../storage.js"></script><script defer src="../../../../../source-script.js"></script><script defer src="../../../../../source-files.js"></script><script defer src="../../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><a class="sidebar-logo" href="../../../../../kimchi/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../../../kimchi/index.html"><img class="rust-logo" src="../../../../../rust-logo.svg" alt="logo"></a><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../wheel.svg"></a></div></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -281,89 +281,18 @@
 <span id="281">281</span>
 <span id="282">282</span>
 <span id="283">283</span>
-<span id="284">284</span>
-<span id="285">285</span>
-<span id="286">286</span>
-<span id="287">287</span>
-<span id="288">288</span>
-<span id="289">289</span>
-<span id="290">290</span>
-<span id="291">291</span>
-<span id="292">292</span>
-<span id="293">293</span>
-<span id="294">294</span>
-<span id="295">295</span>
-<span id="296">296</span>
-<span id="297">297</span>
-<span id="298">298</span>
-<span id="299">299</span>
-<span id="300">300</span>
-<span id="301">301</span>
-<span id="302">302</span>
-<span id="303">303</span>
-<span id="304">304</span>
-<span id="305">305</span>
-<span id="306">306</span>
-<span id="307">307</span>
-<span id="308">308</span>
-<span id="309">309</span>
-<span id="310">310</span>
-<span id="311">311</span>
-<span id="312">312</span>
-<span id="313">313</span>
-<span id="314">314</span>
-<span id="315">315</span>
-<span id="316">316</span>
-<span id="317">317</span>
-<span id="318">318</span>
-<span id="319">319</span>
-<span id="320">320</span>
-<span id="321">321</span>
-<span id="322">322</span>
-<span id="323">323</span>
-<span id="324">324</span>
-<span id="325">325</span>
-<span id="326">326</span>
-<span id="327">327</span>
-<span id="328">328</span>
-<span id="329">329</span>
-<span id="330">330</span>
-<span id="331">331</span>
-<span id="332">332</span>
-<span id="333">333</span>
-<span id="334">334</span>
-<span id="335">335</span>
-<span id="336">336</span>
-<span id="337">337</span>
-<span id="338">338</span>
-<span id="339">339</span>
-<span id="340">340</span>
-<span id="341">341</span>
-<span id="342">342</span>
-<span id="343">343</span>
-<span id="344">344</span>
-<span id="345">345</span>
-<span id="346">346</span>
-<span id="347">347</span>
-<span id="348">348</span>
-<span id="349">349</span>
-<span id="350">350</span>
-<span id="351">351</span>
-<span id="352">352</span>
-<span id="353">353</span>
-<span id="354">354</span>
-<span id="355">355</span>
-<span id="356">356</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module computes the witness of a foreign field addition circuit.
 
-</span><span class="kw">use </span><span class="kw">crate</span>::circuits::{
-    polynomial::COLUMNS,
-    polynomials::range_check::{
-        <span class="self">self</span>,
-        witness::{extend_witness, handle_standard_witness_cell, CopyWitnessCell, ZeroWitnessCell},
+</span><span class="kw">use </span><span class="kw">crate</span>::circuits::witness::Variables;
+<span class="kw">use crate</span>::{
+    circuits::{
+        polynomial::COLUMNS,
+        polynomials::range_check,
+        witness::{<span class="self">self</span>, ConstantCell, CopyCell, VariableCell, WitnessCell},
     },
+    variable_map,
 };
-<span class="kw">use </span>ark_ff::{Field, PrimeField};
+<span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>num_bigint::BigUint;
 <span class="kw">use </span>o1_utils::foreign_field::{ForeignElement, HI, LO, MI, TWO_TO_LIMB};
 <span class="kw">use </span>std::array;
@@ -464,7 +393,7 @@
 /// inputs: list of all inputs to the chain of additions/subtractions
 /// opcode: true for addition, false for subtraction
 /// modulus: modulus of the foreign field
-</span><span class="kw">pub fn </span>create_witness&lt;F: PrimeField&gt;(
+</span><span class="kw">pub fn </span>create&lt;F: PrimeField&gt;(
     inputs: <span class="kw-2">&amp;</span>Vec&lt;BigUint&gt;,
     opcodes: <span class="kw-2">&amp;</span>Vec&lt;FFOps&gt;,
     modulus: BigUint,
@@ -483,7 +412,7 @@
 
     <span class="comment">// Create multi-range-check witness for first left input
     </span><span class="kw">let </span><span class="kw-2">mut </span>left = ForeignElement::from_biguint(inputs[LO].clone());
-    extend_witness(<span class="kw-2">&amp;mut </span>witness, left.clone());
+    range_check::witness::extend(<span class="kw-2">&amp;mut </span>witness, left.clone());
     <span class="kw">let </span><span class="kw-2">mut </span>add_values: Vec&lt;(F, F, F, F)&gt; = <span class="macro">vec!</span>[];
     <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..num {
         <span class="kw">let </span>right = ForeignElement::from_biguint(inputs[i + <span class="number">1</span>].clone());
@@ -492,8 +421,8 @@
         <span class="comment">// Create multi-range-check witness for right_input (left_input was done in previous iteration) and output
         // We only obtain the 3 lower limbs of right because the range check takes only 264 bits now
         </span><span class="kw">let </span>right_3_limb = ForeignElement::new([right[LO], right[MI], right[HI]]);
-        extend_witness(<span class="kw-2">&amp;mut </span>witness, right_3_limb);
-        extend_witness(<span class="kw-2">&amp;mut </span>witness, output.clone());
+        range_check::witness::extend(<span class="kw-2">&amp;mut </span>witness, right_3_limb);
+        range_check::witness::extend(<span class="kw-2">&amp;mut </span>witness, output.clone());
 
         add_values.append(<span class="kw-2">&amp;mut </span><span class="macro">vec!</span>[(sign, overflow, carry_lo, carry_mi)]);
         left = output; <span class="comment">// output
@@ -509,7 +438,7 @@
     <span class="macro">assert_eq!</span>(overflow, F::one());
 
     <span class="comment">// Final RangeCheck for bound
-    </span>extend_witness(<span class="kw-2">&amp;mut </span>witness, bound);
+    </span>range_check::witness::extend(<span class="kw-2">&amp;mut </span>witness, bound);
     <span class="kw">let </span><span class="kw-2">mut </span>offset = witness[LO].len(); <span class="comment">// number of witness rows of the gadget before the first row of the addition gate
 
     // Include FFAdds gates for operations and final bound check
@@ -542,41 +471,6 @@
     witness
 }
 
-<span class="comment">// ==================
-// WITNESS CELL CODE
-// ==================
-
-// Extend standard WitnessCell to support foreign field addition
-// specific cell types
-//
-//     * ValueLimb := contiguous range of bits extracted from a value
-//
-// TODO: Currently located in range check, but could be moved elsewhere
-</span><span class="kw">pub enum </span>WitnessCell&lt;F: Field&gt; {
-    Standard(range_check::witness::WitnessCell),
-    FieldElement(FieldElementCell),
-    Constant(F),
-    Ignore,
-}
-
-<span class="doccomment">/// Witness cell containing a type of value that is a field element
-</span><span class="kw">pub enum </span>FieldElementType {
-    Overflow,
-    Carry,
-    Sign,
-}
-
-<span class="kw">pub struct </span>FieldElementCell {
-    <span class="kw">pub </span>kind: FieldElementType,
-    <span class="kw">pub </span>limb_idx: usize,
-}
-
-<span class="kw">impl </span>FieldElementCell {
-    <span class="kw">pub const fn </span>create&lt;F: Field&gt;(kind: FieldElementType, limb_idx: usize) -&gt; WitnessCell&lt;F&gt; {
-        WitnessCell::FieldElement(FieldElementCell { kind, limb_idx })
-    }
-}
-
 <span class="kw">fn </span>init_foreign_field_add_rows&lt;F: PrimeField&gt;(
     witness: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS],
     offset: usize,
@@ -587,32 +481,33 @@
 ) {
     <span class="kw">let </span>left_row = <span class="number">8 </span>* index;
     <span class="kw">let </span>right_row = <span class="number">8 </span>* index + <span class="number">4</span>;
-    <span class="kw">let </span>witness_shape: [[WitnessCell&lt;F&gt;; COLUMNS]; <span class="number">1</span>] = [
+    <span class="kw">let </span>witness_shape: [[Box&lt;<span class="kw">dyn </span>WitnessCell&lt;F&gt;&gt;; COLUMNS]; <span class="number">1</span>] = [
         <span class="comment">// ForeignFieldAdd row
         </span>[
-            WitnessCell::Standard(CopyWitnessCell::create(left_row, <span class="number">0</span>)), <span class="comment">// left_input_lo
-            </span>WitnessCell::Standard(CopyWitnessCell::create(left_row + <span class="number">1</span>, <span class="number">0</span>)), <span class="comment">// left_input_mi
-            </span>WitnessCell::Standard(CopyWitnessCell::create(left_row + <span class="number">2</span>, <span class="number">0</span>)), <span class="comment">// left_input_hi
-            </span>WitnessCell::Standard(CopyWitnessCell::create(right_row, <span class="number">0</span>)), <span class="comment">// right_input_lo
-            </span>WitnessCell::Standard(CopyWitnessCell::create(right_row + <span class="number">1</span>, <span class="number">0</span>)), <span class="comment">// right_input_mi
-            </span>WitnessCell::Standard(CopyWitnessCell::create(right_row + <span class="number">2</span>, <span class="number">0</span>)), <span class="comment">// right_input_hi
-            </span>FieldElementCell::create(FieldElementType::Sign, <span class="number">0</span>),         <span class="comment">// sign
-            </span>FieldElementCell::create(FieldElementType::Overflow, <span class="number">0</span>),     <span class="comment">// field_overflow
-            </span>FieldElementCell::create(FieldElementType::Carry, LO),       <span class="comment">// carry_lo
-            </span>FieldElementCell::create(FieldElementType::Carry, MI),       <span class="comment">// carry_mi
-            </span>WitnessCell::Standard(ZeroWitnessCell::create()),
-            WitnessCell::Standard(ZeroWitnessCell::create()),
-            WitnessCell::Standard(ZeroWitnessCell::create()),
-            WitnessCell::Standard(ZeroWitnessCell::create()),
-            WitnessCell::Standard(ZeroWitnessCell::create()),
+            CopyCell::create(left_row, <span class="number">0</span>),      <span class="comment">// left_input_lo
+            </span>CopyCell::create(left_row + <span class="number">1</span>, <span class="number">0</span>),  <span class="comment">// left_input_mi
+            </span>CopyCell::create(left_row + <span class="number">2</span>, <span class="number">0</span>),  <span class="comment">// left_input_hi
+            </span>CopyCell::create(right_row, <span class="number">0</span>),     <span class="comment">// right_input_lo
+            </span>CopyCell::create(right_row + <span class="number">1</span>, <span class="number">0</span>), <span class="comment">// right_input_mi
+            </span>CopyCell::create(right_row + <span class="number">2</span>, <span class="number">0</span>), <span class="comment">// right_input_hi
+            </span>VariableCell::create(<span class="string">&quot;sign&quot;</span>),
+            VariableCell::create(<span class="string">&quot;overflow&quot;</span>), <span class="comment">// field_overflow
+            </span>VariableCell::create(<span class="string">&quot;carry_lo&quot;</span>),
+            VariableCell::create(<span class="string">&quot;carry_mi&quot;</span>),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
         ],
     ];
 
-    <span class="kw">for </span>(row, wit) <span class="kw">in </span>witness_shape.iter().enumerate() {
-        <span class="kw">for </span>(col, cell) <span class="kw">in </span>wit.iter().enumerate() {
-            handle_ffadd_rows(witness, cell, (row, col), offset, sign, overflow, carry);
-        }
-    }
+    witness::init(
+        witness,
+        offset,
+        <span class="kw-2">&amp;</span>witness_shape,
+        <span class="kw-2">&amp;</span><span class="macro">variable_map!</span>[<span class="string">&quot;sign&quot; </span>=&gt; sign, <span class="string">&quot;overflow&quot; </span>=&gt; overflow, <span class="string">&quot;carry_lo&quot; </span>=&gt; carry[<span class="number">0</span>], <span class="string">&quot;carry_mi&quot; </span>=&gt; carry[<span class="number">1</span>]],
+    );
 }
 
 <span class="kw">fn </span>init_foreign_field_fin_rows&lt;F: PrimeField&gt;(
@@ -623,92 +518,51 @@
 ) {
     <span class="kw">let </span>out_row = <span class="number">8 </span>* num; <span class="comment">// row where the final result is stored in RC
     </span><span class="kw">let </span>bound_row = <span class="number">8 </span>* num + <span class="number">4</span>; <span class="comment">// row where the final bound is stored in RC
-    </span><span class="kw">let </span>witness_shape: [[WitnessCell&lt;F&gt;; COLUMNS]; <span class="number">2</span>] = [
+    </span><span class="kw">let </span>witness_shape: [[Box&lt;<span class="kw">dyn </span>WitnessCell&lt;F&gt;&gt;; COLUMNS]; <span class="number">2</span>] = [
         [
             <span class="comment">// ForeignFieldFin row
-            </span>WitnessCell::Standard(CopyWitnessCell::create(out_row, <span class="number">0</span>)), <span class="comment">// result_lo
-            </span>WitnessCell::Standard(CopyWitnessCell::create(out_row + <span class="number">1</span>, <span class="number">0</span>)), <span class="comment">// result_mi
-            </span>WitnessCell::Standard(CopyWitnessCell::create(out_row + <span class="number">2</span>, <span class="number">0</span>)), <span class="comment">// result_hi
-            </span>WitnessCell::Constant(F::zero()),                           <span class="comment">// 0
-            </span>WitnessCell::Constant(F::zero()),                           <span class="comment">// 0
-            </span>WitnessCell::Constant(F::from(TWO_TO_LIMB)),                <span class="comment">// 2^88
-            </span>WitnessCell::Constant(F::one()),                            <span class="comment">// sign
-            </span>WitnessCell::Constant(F::one()),                            <span class="comment">// field_overflow
-            </span>FieldElementCell::create(FieldElementType::Carry, LO),      <span class="comment">// carry_lo
-            </span>FieldElementCell::create(FieldElementType::Carry, MI),      <span class="comment">// carry_mi
-            </span>WitnessCell::Standard(ZeroWitnessCell::create()),
-            WitnessCell::Standard(ZeroWitnessCell::create()),
-            WitnessCell::Standard(ZeroWitnessCell::create()),
-            WitnessCell::Standard(ZeroWitnessCell::create()),
-            WitnessCell::Standard(ZeroWitnessCell::create()),
+            </span>CopyCell::create(out_row, <span class="number">0</span>),               <span class="comment">// result_lo
+            </span>CopyCell::create(out_row + <span class="number">1</span>, <span class="number">0</span>),           <span class="comment">// result_mi
+            </span>CopyCell::create(out_row + <span class="number">2</span>, <span class="number">0</span>),           <span class="comment">// result_hi
+            </span>ConstantCell::create(F::zero()),            <span class="comment">// 0
+            </span>ConstantCell::create(F::zero()),            <span class="comment">// 0
+            </span>ConstantCell::create(F::from(TWO_TO_LIMB)), <span class="comment">// 2^88
+            </span>ConstantCell::create(F::one()),             <span class="comment">// sign
+            </span>ConstantCell::create(F::one()),             <span class="comment">// field_overflow
+            </span>VariableCell::create(<span class="string">&quot;carry_lo&quot;</span>),
+            VariableCell::create(<span class="string">&quot;carry_mi&quot;</span>),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
         ],
         [
             <span class="comment">// Zero Row
-            </span>WitnessCell::Standard(CopyWitnessCell::create(bound_row, <span class="number">0</span>)), <span class="comment">// bound_lo
-            </span>WitnessCell::Standard(CopyWitnessCell::create(bound_row + <span class="number">1</span>, <span class="number">0</span>)), <span class="comment">// bound_mi
-            </span>WitnessCell::Standard(CopyWitnessCell::create(bound_row + <span class="number">2</span>, <span class="number">0</span>)), <span class="comment">// bound_hi
-            </span>WitnessCell::Standard(ZeroWitnessCell::create()),
-            WitnessCell::Standard(ZeroWitnessCell::create()),
-            WitnessCell::Standard(ZeroWitnessCell::create()),
-            WitnessCell::Standard(ZeroWitnessCell::create()),
-            WitnessCell::Standard(ZeroWitnessCell::create()),
-            WitnessCell::Standard(ZeroWitnessCell::create()),
-            WitnessCell::Standard(ZeroWitnessCell::create()),
-            WitnessCell::Standard(ZeroWitnessCell::create()),
-            WitnessCell::Standard(ZeroWitnessCell::create()),
-            WitnessCell::Standard(ZeroWitnessCell::create()),
-            WitnessCell::Standard(ZeroWitnessCell::create()),
-            WitnessCell::Standard(ZeroWitnessCell::create()),
+            </span>CopyCell::create(bound_row, <span class="number">0</span>),     <span class="comment">// bound_lo
+            </span>CopyCell::create(bound_row + <span class="number">1</span>, <span class="number">0</span>), <span class="comment">// bound_mi
+            </span>CopyCell::create(bound_row + <span class="number">2</span>, <span class="number">0</span>), <span class="comment">// bound_hi
+            </span>ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
         ],
     ];
 
-    <span class="kw">for </span>(row, wit) <span class="kw">in </span>witness_shape.iter().enumerate() {
-        <span class="kw">for </span>(col, cell) <span class="kw">in </span>wit.iter().enumerate() {
-            handle_ffadd_rows(
-                witness,
-                cell,
-                (row, col),
-                offset,
-                F::zero(),
-                F::zero(),
-                carry,
-            );
-        }
-    }
-}
-
-<span class="kw">fn </span>handle_ffadd_rows&lt;F: PrimeField&gt;(
-    witness: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS],
-    witness_cell: <span class="kw-2">&amp;</span>WitnessCell&lt;F&gt;,
-    coordinates: (usize, usize), <span class="comment">/* row, col */
-    </span>offset: usize,
-    sign: F,
-    overflow: F,
-    carry: [F; <span class="number">2</span>],
-) {
-    <span class="kw">let </span>(row, col) = coordinates;
-    <span class="kw">match </span>witness_cell {
-        WitnessCell::Standard(standard_cell) =&gt; {
-            handle_standard_witness_cell(
-                witness,
-                standard_cell,
-                offset + row,
-                col,
-                F::zero(), <span class="comment">/* unused by this gate */
-            </span>)
-        }
-        WitnessCell::FieldElement(elem_cell) =&gt; {
-            witness[col][offset + row] = {
-                <span class="kw">match </span>elem_cell.kind {
-                    FieldElementType::Overflow =&gt; overflow,
-                    FieldElementType::Carry =&gt; carry[elem_cell.limb_idx],
-                    FieldElementType::Sign =&gt; sign,
-                }
-            }
-        }
-        WitnessCell::Constant(field_elem) =&gt; witness[col][offset + row] = <span class="kw-2">*</span>field_elem,
-        WitnessCell::Ignore =&gt; (),
-    }
+    witness::init(
+        witness,
+        offset,
+        <span class="kw-2">&amp;</span>witness_shape,
+        <span class="kw-2">&amp;</span><span class="macro">variable_map!</span>[ <span class="string">&quot;carry_lo&quot; </span>=&gt; carry[<span class="number">0</span>], <span class="string">&quot;carry_mi&quot; </span>=&gt; carry[<span class="number">1</span>]],
+    );
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (b8b5caee0 2022-10-16)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0-nightly (7fcf850d7 2022-10-23)" ></div></body></html>
