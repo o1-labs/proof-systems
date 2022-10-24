@@ -8,7 +8,7 @@ pub mod constants;
 pub mod constraint_system;
 pub mod cvar;
 pub mod errors;
-pub mod poseidon;
+pub(crate) mod poseidon;
 pub mod traits;
 
 #[cfg(test)]
