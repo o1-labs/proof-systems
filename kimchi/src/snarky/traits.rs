@@ -177,9 +177,7 @@ impl<F: PrimeField, const T: usize> SnarkyType<F> for [CVar<F>; T] {
 
     fn check(&self, _cs: &mut RunState<F>) {}
 
-    fn constraint_system_auxiliary() -> Self::Auxiliary {
-        ()
-    }
+    fn constraint_system_auxiliary() -> Self::Auxiliary {}
 
     fn value_to_field_elements(value: &Self::OutOfCircuit) -> (Vec<F>, Self::Auxiliary) {
         (value.to_vec(), ())

@@ -36,8 +36,7 @@ pub fn poseidon<F: PrimeField>(
             .flat_map(|mut it| {
                 let mut n = || it.next().unwrap();
                 let (r0, r1, r2, r3, r4) = (n(), n(), n(), n(), n());
-                let state = [r0, r4, r1, r2, r3].into_iter();
-                state
+                [r0, r4, r1, r2, r3].into_iter()
             })
             .collect_vec()
             .try_into()
