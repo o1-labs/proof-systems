@@ -225,7 +225,7 @@ impl<F: PrimeField> CircuitGate<F> {
                     endo_coefficient: cs.endo,
                     mds: &G::sponge_params().mds,
                     foreign_field_modulus: cs.foreign_field_modulus.clone(),
-                    keccak_rotation_table: cs.keccak_rotation_table.clone(),
+                    keccak_rotation_table: cs.keccak_rotation_table,
                 },
                 witness: &witness_evals.d8.this.w,
                 coefficient: &cs.coefficients8,

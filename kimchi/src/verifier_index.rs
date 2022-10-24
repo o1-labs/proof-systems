@@ -273,7 +273,7 @@ impl<G: KimchiCurve> ProverIndex<G> {
             lookup_index,
             linearization: self.linearization.clone(),
             foreign_field_modulus: self.cs.foreign_field_modulus.clone(),
-            keccak_rotation_table: self.cs.keccak_rotation_table.clone(),
+            keccak_rotation_table: self.cs.keccak_rotation_table,
         }
     }
 }

@@ -2274,7 +2274,7 @@ where
 pub mod constraints {
     use std::fmt;
 
-    use crate::circuits::argument::{ArgumentData, ArgumentEnv};
+    use crate::circuits::argument::ArgumentData;
 
     use super::*;
 
