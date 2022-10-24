@@ -279,21 +279,19 @@ impl<F: Copy> JointLookup<SingleLookup<F>, LookupTableID> {
     Copy, Clone, Serialize, Deserialize, Debug, EnumIter, PartialEq, Eq, PartialOrd, Ord, Hash,
 )]
 pub enum LookupPattern {
-    ChaCha,
+    ChaChaXor,
     ChaChaFinal,
     LookupGate,
     RangeCheckGate,
-    Xor,
 }
 
 impl LookupPattern {
     /// Returns the maximum number of lookups per row that are used by the pattern.
     pub fn max_lookups_per_row(&self) -> usize {
         match self {
-            LookupPattern::ChaCha
+            LookupPattern::ChaChaXor
             | LookupPattern::ChaChaFinal
-            | LookupPattern::RangeCheckGate
-            | LookupPattern::Xor => 4,
+            | LookupPattern::RangeCheckGate => 4,
             LookupPattern::LookupGate => 3,
         }
     }
@@ -301,7 +299,7 @@ impl LookupPattern {
     /// Returns the maximum number of values that are used in any vector lookup in this pattern.
     pub fn max_joint_size(&self) -> u32 {
         match self {
-            LookupPattern::ChaCha | LookupPattern::ChaChaFinal | LookupPattern::Xor => 3,
+            LookupPattern::ChaChaXor | LookupPattern::ChaChaFinal => 3,
             LookupPattern::LookupGate => 2,
             LookupPattern::RangeCheckGate => 1,
         }
@@ -318,7 +316,7 @@ impl LookupPattern {
             column,
         };
         match self {
-            LookupPattern::ChaCha => {
+            LookupPattern::ChaChaXor => {
                 (0..4)
                     .map(|i| {
                         // each row represents an XOR operation
@@ -394,39 +392,13 @@ impl LookupPattern {
                     })
                     .collect()
             }
-            LookupPattern::Xor => {
-                (0..4)
-                    .map(|i| {
-                        // each row represents for XOR operations
-                        // where l XOR r = o
-                        //
-                        // 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
-                        // - - - l l l l r r r r  o  o  o  o
-                        // - - - l l l l r r r r  o  o  o  o
-                        // - - - l l l l r r r r  o  o  o  o
-                        // - - - l l l l r r r r  o  o  o  o
-                        let left = curr_row(3 + i);
-                        let right = curr_row(7 + i);
-                        let output = curr_row(11 + i);
-                        let l = |loc: LocalPosition| SingleLookup {
-                            value: vec![(F::one(), loc)],
-                        };
-                        JointLookup {
-                            table_id: LookupTableID::Constant(XOR_TABLE_ID),
-                            entry: vec![l(left), l(right), l(output)],
-                        }
-                    })
-                    .collect()
-            }
         }
     }
 
     /// Returns the lookup table used by the pattern, or `None` if no specific table is rqeuired.
     pub fn table(&self) -> Option<GateLookupTable> {
         match self {
-            LookupPattern::ChaCha | LookupPattern::ChaChaFinal | LookupPattern::Xor => {
-                Some(GateLookupTable::Xor)
-            }
+            LookupPattern::ChaChaXor | LookupPattern::ChaChaFinal => Some(GateLookupTable::Xor),
             LookupPattern::LookupGate => None,
             LookupPattern::RangeCheckGate => Some(GateLookupTable::RangeCheck),
         }
@@ -437,11 +409,12 @@ impl LookupPattern {
         use CurrOrNext::{Curr, Next};
         use GateType::*;
         match (gate_type, curr_or_next) {
-            (ChaCha0 | ChaCha1 | ChaCha2, Curr | Next) => Some(LookupPattern::ChaCha),
+            (ChaCha0 | ChaCha1 | ChaCha2 | KeccakXor, Curr | Next) => {
+                Some(LookupPattern::ChaChaXor)
+            }
             (ChaChaFinal, Curr | Next) => Some(LookupPattern::ChaChaFinal),
             (Lookup, Curr) => Some(LookupPattern::LookupGate),
             (RangeCheck0, Curr) | (RangeCheck1, Curr | Next) => Some(LookupPattern::RangeCheckGate),
-            (KeccakXor, Curr | Next) => Some(LookupPattern::Xor),
             _ => None,
         }
     }
@@ -456,11 +429,10 @@ impl GateType {
     /// how these work.
     pub fn lookup_kinds() -> Vec<LookupPattern> {
         vec![
-            LookupPattern::ChaCha,
+            LookupPattern::ChaChaXor,
             LookupPattern::ChaChaFinal,
             LookupPattern::LookupGate,
             LookupPattern::RangeCheckGate,
-            LookupPattern::Xor,
         ]
     }
 }
