@@ -9,7 +9,7 @@ use mina_curves::pasta::{Fp, Pallas, Vesta};
 type PallasField = <Pallas as AffineCurve>::BaseField;
 
 fn create_test_constraint_system() -> ConstraintSystem<Fp> {
-    let (mut next_row, mut gates) = CircuitGate::<Fp>::create_keccak_xor(0);
+    let (mut next_row, mut gates) = CircuitGate::<Fp>::create_keccak(0);
 
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
@@ -28,7 +28,7 @@ fn test_64bit_xor() {
     let one_zeros: u64 = 11936128518282651045;
     let witness = create(zero_ones, one_zeros);
 
-    for row in 0..=7 {
+    for row in 0..=9 {
         assert_eq!(
             cs.gates[row].verify_witness::<Vesta>(
                 row,
@@ -40,6 +40,6 @@ fn test_64bit_xor() {
         );
     }
 
-    assert_eq!(witness[0][5], PallasField::from(2u64.pow(32) - 1));
     assert_eq!(witness[0][7], PallasField::from(2u64.pow(32) - 1));
+    assert_eq!(witness[0][9], PallasField::from(2u64.pow(32) - 1));
 }

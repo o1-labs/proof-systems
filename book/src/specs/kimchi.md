@@ -1451,6 +1451,37 @@ Given values `in1`, `in2` and `out`, the layout looks like this:
 |     13 | plookup2 `out_2` | plookup6 `out_6` |
 |     14 | plookup3 `out_3` | plookup7 `out_7` |
 
+##### `KeccakWord` - 32-bit decomposition gate
+
+* This circuit gate is used to constrain that two values of 64 bits are decomposed
+  correctly in two halves of 32 bits. It will be used to constrain all inputs and
+  intermediate values of the XOR gates.
+* This gate operates on the `Curr` row.
+* This is not a definitive gate. It may be integrated with other gates in the future.
+
+It uses one type of constraint
+* copy    - copy to another cell (32-bits to the XOR gate, and 64-bits to the RangeCheck gate)
+
+| Column |      `Curr`   |
+| ------ | ------------- |
+|      0 | copy `in1`    |
+|      1 | copy `in1_lo` |
+|      2 | copy `in1_hi` |
+|      3 | copy `in2`    |
+|      4 | copy `in2_lo` |
+|      5 | copy `in2_hi` |
+|      6 |               |
+|      7 |               |
+|      8 |               |
+|      9 |               |
+|     10 |               |
+|     11 |               |
+|     12 |               |
+|     13 |               |
+|     14 |               |
+
+Note that these gates can be concatenated and the final output will still be satisfied
+despite having the positions for the second input to zero, because zero is a valid instance.
 
 
 ## Setup
