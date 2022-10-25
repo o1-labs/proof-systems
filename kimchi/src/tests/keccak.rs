@@ -1,5 +1,5 @@
 use crate::circuits::{
-    constraints::ConstraintSystem, gate::CircuitGate, polynomials::keccak::witness::create,
+    constraints::ConstraintSystem, gate::CircuitGate, polynomials::keccak::witness::create_xor,
     wires::Wire,
 };
 
@@ -26,7 +26,7 @@ fn test_64bit_xor() {
 
     let zero_ones: u64 = 6510615555426900570;
     let one_zeros: u64 = 11936128518282651045;
-    let witness = create(zero_ones, one_zeros);
+    let witness = create_xor(zero_ones, one_zeros);
 
     for row in 0..=9 {
         assert_eq!(

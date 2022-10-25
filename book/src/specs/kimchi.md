@@ -1421,7 +1421,7 @@ Different rows are constrained using different CircuitGate types
 
 * This circuit gate is used to constrain that a 64-bit word is rotated by r<64 bits to the "left".
 * The rotation is performed towards the most significant side (thus, the new LSB is fed with the old MSB).
-* This gate operates only on the `Curr` row.
+* This gate operates on the `Curr` and `Next` rows.
 
 The idea is to split the rotation operation into two parts:
 * Shift to the left
@@ -1430,37 +1430,47 @@ The idea is to split the rotation operation into two parts:
 We represent shifting with multiplication modulo 2^{64}. That is, for each word to be rotated, we provide in
 the witness a quotient and a remainder, similarly to `ForeignFieldMul` such that the following operation holds:
 
-$$word \cdot 2^{rot} = quo \cdot 2^{64} + rem$$
+$$word \cdot 2^{rot} = quotient \cdot 2^{64} + remainder$$
 
 Then, the remainder corresponds to the shifted word, and the quotient corresponds to the excess bits.
-Thus, in order to obtain the rotated word, we need to add the quotient to the remainder as follows:
+Thus, in order to obtain the rotated word, we need to add the quotient and the remainder as follows:
 
-$$rotated = rem + quo$$
+$$rotated = shifted + excess$$
 
-We can fit up to 3 rotations in one single `KeccakRot` because, as opposed to `ForeignFieldMul` and `ForeignFieldAdd`
- gates, the length of these terms fit in a single limb. Not only a limb, but a 64-bit word (which needs `RangeCheck0`
-gates to check that words and rotated words do not have more than 64 bits). Then, using the following layout and
-assuming the gate has a coefficient storing the value2 $2^{rot0}, 2^{rot1}, 2^{rot2}$,
+The input word is known to be of length 64 bits. All we need for soundness is check that the shifted and
+excess parts of the word have the correct size as well. That means, we need to range check that:
+$$
+\begin{aligned}
+excess &< 2^{rot}\\
+shifted &< 2^{64}
+\end{aligned}
+$$
+The latter can be obtained with a `RangeCheck0` gate setting the two most significant limbs to zero.
+The former is equivalent to the following check:
+$$excess - 2^{rot} + 2^{64} < 2^{64}$$
+which is doable with the constraints in a `RangeCheck0` gate. Since our current row within the `KeccakRot` gate
+is almost empty, we can use it to perform the range check within the same gate. Then, using the following layout
+and assuming that the gate has a coefficient storing the value $2^{rot}$,
 
-| Gate   | `KeccakRot`     |
-| ------ | --------------- |
-| Column | `Curr`          |
-| ------ | --------------- |
-|      0 | copy `word0`    |
-|      1 | copy `word1`    |
-|      2 |      `word2`    |
-|      3 |      `rotated0` |
-|      4 |      `rotated1` |
-|      5 |      `rotated2` |
-|      6 |      `excess0`  |
-|      7 |      `excess1`  |
-|      8 |      `excess2`  |
-|      9 |      `shifted0` |
-|     10 |      `shifted1` |
-|     11 |      `shifted2` |
-|     12 |                 |
-|     13 |                 |
-|     14 |                 |
+| Gate   | `KeccakRot`         | `RangeCheck0`    |
+| ------ | ------------------- | ---------------- |
+| Column | `Curr`              | `Next`           |
+| ------ | ------------------- | ---------------- |
+|      0 | copy `word`         |`shifted`         |
+|      1 | copy `rotated`      | 0                |
+|      2 |      `excess`       | 0                |
+|      3 |      `bound_limb0`  | `shifted_limb0`  |
+|      4 |      `bound_limb1`  | `shifted_limb1`  |
+|      5 |      `bound_limb2`  | `shifted_limb2`  |
+|      6 |      `bound_limb3`  | `shifted_limb3`  |
+|      7 |      `bound_crumb0` | `shifted_crumb0` |
+|      8 |      `bound_crumb1` | `shifted_crumb1` |
+|      9 |      `bound_crumb2` | `shifted_crumb2` |
+|     10 |      `bound_crumb3` | `shifted_crumb3` |
+|     11 |      `bound_crumb4` | `shifted_crumb4` |
+|     12 |      `bound_crumb5` | `shifted_crumb5` |
+|     13 |      `bound_crumb6` | `shifted_crumb6` |
+|     14 |      `bound_crumb7` | `shifted_crumb7` |
 
 In Keccak, rotations are performed over a 5x5 matrix state of w-bit words each cell. The values used
 to perform the rotation are fixed, public, and known in advance, according to the following table:
@@ -1485,15 +1495,7 @@ to avoid needing multiple passes of the rotation gate (a single step would cause
 | 4     |  18 |   2 |  61 |  56 |  14 |
 
 Since there is one value of the coordinates (x, y) where the rotation is 0 bits, we can skip that step in the
-gadget. This will save us one gate, and thus the whole 25-1=24 rotations will be performed in just 8 rows.
-
-The layout of the rotation gadget would be as follows:
-
- | Rows   | `CircuitGate` | Purpose                                                             |
- | ------ | ------------- | ------------------------------------------------------------------- |
- | 0..24  | `RangeCheck0` | Check words to be rotated are 64-bit long, probably already checked |
- | 25..48 | `RangeCheck0` | Check rotated words are 64-bit long, perhaps optimizable            |
- | 49..56 | `KeccakRot`   | 8 rows to rotate 24 words                                           |
+gadget. This will save us one gate, and thus the whole 25-1=24 rotations will be performed in just 48 rows.
 
 ##### `KeccakWord` - 32-bit decomposition gate
 

@@ -186,7 +186,7 @@ pub fn extend_word_rows<F: PrimeField>(
 
 /// Create a keccak xor multiplication witness
 /// Input: first input and second input
-pub fn create<F: PrimeField>(input1: u64, input2: u64) -> [Vec<F>; COLUMNS] {
+pub fn create_xor<F: PrimeField>(input1: u64, input2: u64) -> [Vec<F>; COLUMNS] {
     let output = input1 ^ input2;
 
     // First generic gate with all zeros
