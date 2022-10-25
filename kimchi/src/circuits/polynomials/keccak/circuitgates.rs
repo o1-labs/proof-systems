@@ -1,9 +1,11 @@
-//~ The keccak gadget is comprised of _ circuit gates (KeccakXOR, .., and Zero)
+//~ The Keccak gadget is comprised of _ circuit gates (KeccakXor, .., and Zero)
 //~
 //~ Keccak works with 64-bit words. The state is represented using $5\times 5$ matrix
 //~ of 64 bit words. Each compression step of Keccak consists of 24 rounds. Let us
-//~ denote the state matrix with A. Each round then consists of the following 5 steps:
+//~ denote the state matrix with A (indexing elements as A[x,y]), from which we derive
+//~further states as follows in each round. Each round then consists of the following 5 steps:
 //~
+//~ $$
 //~ \begin{align}
 //~ C[x] &= A[x,0] \oplus A[x,1] \oplus A[x,2] \oplus A[x,3] \oplus A[x,4] \\
 //~ D[x] &= C[x-1] \oplus ROT(C[x+1],1) \\
@@ -12,6 +14,7 @@
 //~ F[x,y] &= B[x,y] \oplus ((NOT B[x+1,y]) AND B[x+2,y]) \\
 //~ Fp[0,0] &= F[0,0] \oplus RC
 //~ \end{align}
+//~ $$
 //~
 //~ FOR $0\leq x, y \leq 4$ and $\rho[x,y]$ is the rotation offset defined for Keccak.
 //~ The values are in the table below extracted from the Keccak reference
@@ -43,10 +46,10 @@
 //~ This is a basic operation that is typically done for 64-bit initial state and
 //~ intermediate values.
 //~
-//~ Let `inp` be a 64-bit word. The constraint is: `in` $= 2^32 \cdot$ `in_hi` $+$ `in_lo`.
-//~ It takes 3 cells for values `in`, `in_hi`, `in_lo`. We have not yet placed them w.r.t
+//~ Let `inp` be a 64-bit word. The constraint is: `in` $= 2^{32} \cdot$ `in_hi` $+$ `in_lo`.
+//~ It takes 3 cells for values `in`, `in_hi`, `in_lo`. We have not yet placed them w.r.t.
 //~ other rows of the Keccak computation; the only requirement is that all these cells be
-//~ within the first 7 columns for permutation equation accessibility.
+//~ within the first 7 columns for permutation argument accessibility.
 //
 //~ ##### XOR gate
 //~
@@ -80,25 +83,25 @@
 //~ * `out_hi` $=$ `in1_hi` $\oplus$ `in2_hi`,
 //~ where each element is 32 bits long.
 //~
-//~ | Gates |    `Xor` |   `Zero` |    `Xor` |   `Zero` |
-//~ | ----- | -------- | -------- | -------- | -------- |
-//~ | Rows  |       0  |       1  |       2  |        3 |
-//~ | Cols  |          |          |          |          |
-//~ |     0 | `in1_lo` | `out_lo` | `in1_hi` | `out_hi` |
-//~ |     1 |          | `in2_lo` |          | `in2_hi` |
-//~ |     2 |          |          |          |          |
-//~ |     3 |  `in2_0` |  `in2_4` |  `in2_8` | `in2_12` |
-//~ |     4 |  `in2_1` |  `in2_5` |  `in2_9` | `in2_13` |
-//~ |     5 |  `in2_2` |  `in2_6` | `in2_10` | `in2_14` |
-//~ |     6 |  `in2_3` |  `in2_7` | `in2_11` | `in2_15` |
-//~ |     7 |  `in1_0` |  `in1_4` |  `in2_8` | `in2_12` |
-//~ |     8 |  `in1_1` |  `in1_5` |  `in2_9` | `in2_13` |
-//~ |     9 |  `in1_2` |  `in1_6` | `in2_10` | `in2_14` |
-//~ |    10 |  `in1_3` |  `in1_7` | `in2_11` | `in2_15` |
-//~ |    11 |  `out_0` |  `out_4` |  `in2_8` | `in2_12` |
-//~ |    12 |  `out_1` |  `out_5` |  `in2_9` | `in2_13` |
-//~ |    13 |  `out_2` |  `out_6` | `in2_10` | `in2_14` |
-//~ |    14 |  `out_3` |  `out_7` | `in2_11` | `in2_15` |
+//~ | Gates | `KeccakXor` |   `Zero` | `KeccakXor` |   `Zero` |
+//~ | ----- | ----------- | -------- | ----------- | -------- |
+//~ | Rows  |          0  |       1  |          2  |        3 |
+//~ | Cols  |             |          |             |          |
+//~ |     0 |    `in1_lo` | `out_lo` |    `in1_hi` | `out_hi` |
+//~ |     1 |             | `in2_lo` |             | `in2_hi` |
+//~ |     2 |             |          |             |          |
+//~ |     3 |     `in2_0` |  `in2_4` |     `in2_8` | `in2_12` |
+//~ |     4 |     `in2_1` |  `in2_5` |     `in2_9` | `in2_13` |
+//~ |     5 |     `in2_2` |  `in2_6` |    `in2_10` | `in2_14` |
+//~ |     6 |     `in2_3` |  `in2_7` |    `in2_11` | `in2_15` |
+//~ |     7 |     `in1_0` |  `in1_4` |     `in2_8` | `in2_12` |
+//~ |     8 |     `in1_1` |  `in1_5` |     `in2_9` | `in2_13` |
+//~ |     9 |     `in1_2` |  `in1_6` |    `in2_10` | `in2_14` |
+//~ |    10 |     `in1_3` |  `in1_7` |    `in2_11` | `in2_15` |
+//~ |    11 |     `out_0` |  `out_4` |     `in2_8` | `in2_12` |
+//~ |    12 |     `out_1` |  `out_5` |     `in2_9` | `in2_13` |
+//~ |    13 |     `out_2` |  `out_6` |    `in2_10` | `in2_14` |
+//~ |    14 |     `out_3` |  `out_7` |    `in2_11` | `in2_15` |
 //~
 //~ ```admonition::notice
 //~  We could half the number of rows of the 64-bit XOR gadget by having lookups
@@ -111,9 +114,9 @@
 //~
 //~  | Row | `CircuitGate` | Purpose                        |
 //~  | --- | ------------- | ------------------------------ |
-//~  |   0 | `Xor`         | Xor first 2 bytes of low  half |
+//~  |   0 | `KeccakXor`   | Xor first 2 bytes of low  half |
 //~  |   1 | `Zero`        | Xor last  2 bytes of low  half |
-//~  |   2 | `Xor`         | Xor first 2 bytes of high half |
+//~  |   2 | `KeccakXor`   | Xor first 2 bytes of high half |
 //~  |   3 | `Zero`        | Xor last  2 bytes of high half |
 //~
 
@@ -135,7 +138,7 @@ use ark_ff::PrimeField;
 //~ * copy    - copy to another cell (32-bits)
 //~ * plookup - xor-table plookup (4-bits)
 //~
-//~ The 4-bit crumbs are assumed to be laid out with `0` being the least significant crumb.
+//~ The 4-bit crumbs are assumed to be laid out with `0` column being the least significant crumb.
 //~ Given values `in1`, `in2` and `out`, the layout looks like this:
 //~
 //~ | Column |          `Curr`  |          `Next`  |
@@ -167,16 +170,16 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::KeccakXor);
     const CONSTRAINTS: u32 = 3;
 
-    // Constraints for Xor
+    // Constraints for KeccakXor
     //   * Operates on Curr and Next rows
     //   * Constrain the decomposition of `in1`, `in2` and `out`
     //   * The actual XOR is performed thanks to the plookups.
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
         let mut constraints = vec![];
 
-        let out_sum = four_bit(env, 14);
-        let in1_sum = four_bit(env, 10);
-        let in2_sum = four_bit(env, 6);
+        let out_sum = four_bit_sum(env, 14);
+        let in1_sum = four_bit_sum(env, 10);
+        let in2_sum = four_bit_sum(env, 6);
 
         // Check first input is well formed
         constraints.push(in1_sum - env.witness_curr(0));
@@ -255,9 +258,9 @@ fn half<F: PrimeField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>, idx: usize) -> T 
 /// | `Curr` |  crumb0 |  crumb1 |  crumb2 |  crumb3 |
 /// | `Next` |  crumb4 |  crumb5 |  crumb6 |  crumb7 |
 ///
-fn four_bit<F: PrimeField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>, max: usize) -> T {
+fn four_bit_sum<F: PrimeField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>, max: usize) -> T {
     let mut sum = T::zero();
-    let two = T::one() + T::one();
+    let two = T::from(2u64);
     let four_bit = two.pow(4);
     for i in (max - 3..=max).rev() {
         sum = four_bit.clone() * sum + env.witness_next(i);
