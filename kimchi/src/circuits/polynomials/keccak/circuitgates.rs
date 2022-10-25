@@ -266,7 +266,7 @@ where
     }
 }
 
-//~ ##### `KeccakBits` - 32-bit decomposition gate
+//~ ##### `KeccakWord` - 32-bit decomposition gate
 //~
 //~ This is a basic operation that is typically done for 64-bit initial state and
 //~ intermediate values.
@@ -282,7 +282,7 @@ where
 //~ * This gate operates on the `Curr` row.
 //~ * This is not a definitive gate. It may be integrated with other gates in the future.
 //~
-//~ It uses one type of constraints
+//~ It uses one type of constraint
 //~ * copy    - copy to another cell (32-bits to the XOR gate, and 64-bits to the RangeCheck gate)
 //~
 //~ | Column |      `Curr`   |
@@ -307,13 +307,13 @@ where
 //~ despite having the positions for the second input to zero, because zero is a valid instance.
 
 #[derive(Default)]
-pub struct KeccakBits<F>(PhantomData<F>);
+pub struct KeccakWord<F>(PhantomData<F>);
 
-impl<F> Argument<F> for KeccakBits<F>
+impl<F> Argument<F> for KeccakWord<F>
 where
     F: PrimeField,
 {
-    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::KeccakBits);
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::KeccakWord);
     const CONSTRAINTS: u32 = 2;
 
     // Constraints for Bits
@@ -328,8 +328,8 @@ where
 /// into halves of 32 bits located in positions `idx+1` and `idx+2` in the `Curr` row.
 fn half<F: PrimeField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>, idx: usize) -> T {
     let two = T::one() + T::one();
-    let half_bits = two.pow(32);
-    env.witness_curr(idx) - (env.witness_curr(idx + 2) * half_bits + env.witness_curr(idx + 1))
+    let two_to_32 = two.pow(32);
+    env.witness_curr(idx) - (env.witness_curr(idx + 2) * two_to_32 + env.witness_curr(idx + 1))
 }
 
 /// Computes the decomposition of a 32-bit word whose most significant 4-bit crumb

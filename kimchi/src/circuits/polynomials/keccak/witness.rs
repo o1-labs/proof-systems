@@ -3,20 +3,27 @@ use crate::{
     circuits::{
         polynomial::COLUMNS,
         polynomials::range_check::witness::extend_single,
-        witness::{self, ConstantCell, CopyBitsCell, Variables, WitnessCell},
+        witness::{self, ConstantCell, CopyBitsCell, CopyCell, Variables, WitnessCell},
     },
     variables,
 };
 use ark_ff::PrimeField;
 use std::array;
 
+/// Identifier of halves in decomposition
+#[derive(Copy, Clone)]
+enum Half {
+    Lo = 0,
+    Hi = 1,
+}
+
 fn xor_row<F: PrimeField>(
-    rc_row: usize,
+    word_row: usize,
     curr_row: usize,
-    offset: usize,
+    half: Half,
 ) -> [Box<dyn WitnessCell<F>>; COLUMNS] {
     [
-        CopyBitsCell::create(rc_row, 0, offset, 32 + offset), // in1
+        CopyCell::create(word_row, 1 + half as usize), // in1
         ConstantCell::create(F::zero()),
         ConstantCell::create(F::zero()),
         CopyBitsCell::create(curr_row + 1, 1, 0, 4), // in2_0
@@ -35,13 +42,13 @@ fn xor_row<F: PrimeField>(
 }
 
 fn zero_row<F: PrimeField>(
-    rc_row: usize,
+    word_row: usize,
     curr_row: usize,
-    offset: usize,
+    half: Half,
 ) -> [Box<dyn WitnessCell<F>>; COLUMNS] {
     [
-        CopyBitsCell::create(rc_row + 2, 0, offset, offset + 32), // out
-        CopyBitsCell::create(rc_row + 1, 0, offset, offset + 32), // in2
+        CopyCell::create(word_row + 1, 1 + half as usize), // out
+        CopyCell::create(word_row, 4 + half as usize),     // in2
         ConstantCell::create(F::zero()),
         CopyBitsCell::create(curr_row + 1, 1, 16, 20), // in2_8
         CopyBitsCell::create(curr_row + 1, 1, 20, 24), // in2_9
@@ -58,41 +65,41 @@ fn zero_row<F: PrimeField>(
     ]
 }
 
-const fn bit_rows(rc_row: usize) -> [[WitnessCell; COLUMNS]; 2] {
+fn word_rows<F: PrimeField>(rc_row: usize) -> [[Box<dyn WitnessCell<F>>; COLUMNS]; 2] {
     [
         [
-            CopyWitnessCell::create(rc_row, 0),         // 64 bit first input
-            LimbWitnessCell::create(rc_row, 0, 0, 32),  // 32 bit low half of first input
-            LimbWitnessCell::create(rc_row, 0, 32, 64), // 32 bit high half of first input
-            CopyWitnessCell::create(rc_row + 1, 0),     // 64 bit second input
-            LimbWitnessCell::create(rc_row + 1, 0, 0, 32), // 32 bit low half of second input
-            LimbWitnessCell::create(rc_row + 1, 0, 32, 64), // 32 bit high half of second input
-            ZeroWitnessCell::create(),
-            ZeroWitnessCell::create(),
-            ZeroWitnessCell::create(),
-            ZeroWitnessCell::create(),
-            ZeroWitnessCell::create(),
-            ZeroWitnessCell::create(),
-            ZeroWitnessCell::create(),
-            ZeroWitnessCell::create(),
-            ZeroWitnessCell::create(),
+            CopyCell::create(rc_row, 0),                 // 64 bit first input
+            CopyBitsCell::create(rc_row, 0, 0, 32),      // 32 bit low half of first input
+            CopyBitsCell::create(rc_row, 0, 32, 64),     // 32 bit high half of first input
+            CopyCell::create(rc_row + 1, 0),             // 64 bit second input
+            CopyBitsCell::create(rc_row + 1, 0, 0, 32),  // 32 bit low half of second input
+            CopyBitsCell::create(rc_row + 1, 0, 32, 64), // 32 bit high half of second input
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
         ],
         [
-            CopyWitnessCell::create(rc_row + 2, 0),        // 64 bit output
-            LimbWitnessCell::create(rc_row + 2, 0, 0, 32), // 32 bit low half of output
-            LimbWitnessCell::create(rc_row + 2, 0, 32, 64), // 32 bit high half of output
-            ZeroWitnessCell::create(),
-            ZeroWitnessCell::create(),
-            ZeroWitnessCell::create(),
-            ZeroWitnessCell::create(),
-            ZeroWitnessCell::create(),
-            ZeroWitnessCell::create(),
-            ZeroWitnessCell::create(),
-            ZeroWitnessCell::create(),
-            ZeroWitnessCell::create(),
-            ZeroWitnessCell::create(),
-            ZeroWitnessCell::create(),
-            ZeroWitnessCell::create(),
+            CopyCell::create(rc_row + 2, 0),             // 64 bit output
+            CopyBitsCell::create(rc_row + 2, 0, 0, 32),  // 32 bit low half of output
+            CopyBitsCell::create(rc_row + 2, 0, 32, 64), // 32 bit high half of output
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
         ],
     ]
 }
@@ -104,42 +111,38 @@ const fn bit_rows(rc_row: usize) -> [[WitnessCell; COLUMNS]; 2] {
 //     Zero rows must be instantiated before the rest, otherwise they copy 0.
 //
 fn layout_xor<F: PrimeField>(
-    rc_row: usize,
+    word_row: usize,
     curr_row: usize,
 ) -> [[Box<dyn WitnessCell<F>>; COLUMNS]; 4] {
     // TODO: new more automated pattern for the 4-bit crumbs
     [
         // XOR row low
-        xor_row(bit_row, curr_row, Half::Lo),
+        xor_row(word_row, curr_row, Half::Lo),
         // Zero row low
-        zero_row(bit_row, curr_row, Half::Lo),
+        zero_row(word_row, curr_row, Half::Lo),
         // XOR row low
-        xor_row(bit_row, curr_row + 2, Half::Hi),
+        xor_row(word_row, curr_row + 2, Half::Hi),
         // Zero row low
-        zero_row(bit_row, curr_row + 2, Half::Hi),
+        zero_row(word_row, curr_row + 2, Half::Hi),
     ]
 }
 
 /// Initializes two rows of inputs pairs and one output value
-fn init_keccak_bit_rows<F: PrimeField>(
+fn init_keccak_word_rows<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
     rc_row: usize,
-    bit_row: usize,
+    word_row: usize,
 ) {
-    let bit_rows = bit_rows(rc_row);
-    for (i, wit) in bit_rows.iter().enumerate() {
-        for (col, cell) in wit.iter().enumerate() {
-            handle_standard_witness_cell(witness, cell, bit_row + i, col, F::zero())
-        }
-    }
+    let word_rows = word_rows(rc_row);
+    witness::init(witness, word_row, &word_rows, &variables!());
 }
 
 fn init_keccak_xor_rows<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
-    bit_row: usize,
+    word_row: usize,
     curr_row: usize,
 ) {
-    let xor_rows = layout_xor(rc_row, curr_row);
+    let xor_rows = layout_xor(word_row, curr_row);
 
     // First, the two first columns of all rows
     for (i, wit) in xor_rows.iter().enumerate() {
@@ -156,25 +159,29 @@ fn init_keccak_xor_rows<F: PrimeField>(
 }
 
 /// Extends the xor rows to the full witness
-pub fn extend_xor<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], rc_row: usize, curr_row: usize) {
+pub fn extend_xor_rows<F: PrimeField>(
+    witness: &mut [Vec<F>; COLUMNS],
+    word_row: usize,
+    xor_row: usize,
+) {
     let xor_witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 4]);
     for col in 0..COLUMNS {
         witness[col].extend(xor_witness[col].iter());
     }
-    init_keccak_xor_rows(witness, bit_row, xor_row);
+    init_keccak_xor_rows(witness, word_row, xor_row);
 }
 
 /// Extends the bit decomposition rows to the full witness
-pub fn extend_bit_rows<F: PrimeField>(
+pub fn extend_word_rows<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
     rc_row: usize,
-    bit_row: usize,
+    word_row: usize,
 ) {
     let bit_witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 2]);
     for col in 0..COLUMNS {
         witness[col].extend(bit_witness[col].iter());
     }
-    init_keccak_bit_rows(witness, rc_row, bit_row);
+    init_keccak_word_rows(witness, rc_row, word_row);
 }
 
 /// Create a keccak xor multiplication witness
@@ -186,12 +193,13 @@ pub fn create<F: PrimeField>(input1: u64, input2: u64) -> [Vec<F>; COLUMNS] {
     let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero()]);
 
     let rc_row = 1;
-    let bit_row = rc_row + 3;
-    let xor_row = bit_row + 2;
+    let word_row = rc_row + 3;
+    let xor_row = word_row + 2;
     extend_single(&mut witness, input1.into());
     extend_single(&mut witness, input2.into());
     extend_single(&mut witness, output.into());
-    extend_xor(&mut witness, 1, 4);
+    extend_word_rows(&mut witness, rc_row, word_row);
+    extend_xor_rows(&mut witness, word_row, xor_row);
 
     witness
 }

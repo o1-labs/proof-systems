@@ -17,7 +17,7 @@ use crate::{
     },
 };
 
-use super::circuitgates::{KeccakBits, KeccakRot, KeccakXor};
+use super::circuitgates::{KeccakRot, KeccakWord, KeccakXor};
 
 pub const GATE_COUNT: usize = 3;
 
@@ -25,7 +25,7 @@ impl<F: PrimeField> CircuitGate<F> {
     /// Create Keccak gadget. Right now it includes:
     /// - Generic gate with public input zero to constrain 64-bit length
     /// - 3 RangeCheck0 for the inputs and output
-    /// - 2 KeccakBits gate for the bit decomposition of the inputs and output
+    /// - 2 KeccakWord gate for the bit decomposition of the inputs and output
     /// - 2 Keccak xor gadgets for one 64-bit value
     ///     
     /// Outputs tuple (next_row, circuit_gates) where
@@ -50,12 +50,12 @@ impl<F: PrimeField> CircuitGate<F> {
 
         gates.append(&mut vec![
             CircuitGate {
-                typ: GateType::KeccakBits,
+                typ: GateType::KeccakWord,
                 wires: Wire::new(new_row + 1),
                 coeffs: vec![],
             },
             CircuitGate {
-                typ: GateType::KeccakBits,
+                typ: GateType::KeccakWord,
                 wires: Wire::new(new_row + 2),
                 coeffs: vec![],
             },
@@ -119,7 +119,7 @@ impl<F: PrimeField> CircuitGate<F> {
 pub fn circuit_gates() -> [GateType; GATE_COUNT] {
     [
         GateType::KeccakXor,
-        GateType::KeccakBits,
+        GateType::KeccakWord,
         GateType::KeccakRot,
     ]
 }
@@ -128,7 +128,7 @@ pub fn circuit_gates() -> [GateType; GATE_COUNT] {
 pub fn circuit_gate_constraint_count<F: PrimeField>(typ: GateType) -> u32 {
     match typ {
         GateType::KeccakXor => KeccakXor::<F>::CONSTRAINTS,
-        GateType::KeccakBits => KeccakBits::<F>::CONSTRAINTS,
+        GateType::KeccakWord => KeccakWord::<F>::CONSTRAINTS,
         GateType::KeccakRot => KeccakRot::<F>::CONSTRAINTS,
         _ => panic!("invalid gate type"),
     }
@@ -138,7 +138,7 @@ pub fn circuit_gate_constraint_count<F: PrimeField>(typ: GateType) -> u32 {
 pub fn circuit_gate_constraints<F: PrimeField>(typ: GateType, alphas: &Alphas<F>) -> E<F> {
     match typ {
         GateType::KeccakXor => KeccakXor::combined_constraints(alphas),
-        GateType::KeccakBits => KeccakBits::<F>::combined_constraints(alphas),
+        GateType::KeccakWord => KeccakWord::<F>::combined_constraints(alphas),
         GateType::KeccakRot => KeccakRot::<F>::combined_constraints(alphas),
         _ => panic!("invalid gate type"),
     }
@@ -147,7 +147,7 @@ pub fn circuit_gate_constraints<F: PrimeField>(typ: GateType, alphas: &Alphas<F>
 /// Get the combined constraints for all range check circuit gate types
 pub fn combined_constraints<F: PrimeField>(alphas: &Alphas<F>) -> E<F> {
     KeccakXor::combined_constraints(alphas)
-        + KeccakBits::combined_constraints(alphas)
+        + KeccakWord::combined_constraints(alphas)
         + KeccakRot::combined_constraints(alphas)
 }
 

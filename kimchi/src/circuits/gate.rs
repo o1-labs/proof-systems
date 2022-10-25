@@ -113,7 +113,7 @@ pub enum GateType {
     // ForeignFieldMul = 26,
     // Gates for Keccak follow:
     KeccakXor = 27,
-    KeccakBits = 28,
+    KeccakWord = 28,
     KeccakRot = 29,
 }
 
@@ -243,7 +243,7 @@ impl<F: PrimeField> CircuitGate<F> {
             RangeCheck0 | RangeCheck1 => self
                 .verify_range_check::<G>(row, witness, cs)
                 .map_err(|e| e.to_string()),
-            KeccakXor | KeccakBits | KeccakRot => Ok(()), // TODO
+            KeccakXor | KeccakWord | KeccakRot => Ok(()), // TODO
             ForeignFieldAdd => self
                 .verify_foreign_field_add::<G>(row, witness, cs)
                 .map_err(|e| e.to_string()),
@@ -330,7 +330,7 @@ impl<F: PrimeField> CircuitGate<F> {
                 range_check::circuitgates::RangeCheck1::constraint_checks(&env)
             }
             GateType::KeccakXor => keccak::circuitgates::KeccakXor::constraint_checks(&env),
-            GateType::KeccakBits => keccak::circuitgates::KeccakBits::constraint_checks(&env),
+            GateType::KeccakWord => keccak::circuitgates::KeccakWord::constraint_checks(&env),
             GateType::KeccakRot => keccak::circuitgates::KeccakRot::constraint_checks(&env),
             GateType::ForeignFieldAdd => {
                 foreign_field_add::circuitgates::ForeignFieldAdd::constraint_checks(&env)
