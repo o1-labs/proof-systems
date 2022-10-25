@@ -3,7 +3,6 @@ use super::{
     constraint_system::KimchiConstraint,
     prelude::{CVar, RunState},
 };
-use crate::loc;
 use ark_ff::PrimeField;
 use itertools::Itertools;
 use oracle::{
@@ -16,13 +15,15 @@ const ROUNDS: usize = 55;
 const ROUNDS_PER_ROW: usize = 5;
 
 pub fn poseidon<F: PrimeField>(
+    loc: String,
     runner: &mut RunState<F>,
     preimage: (CVar<F>, CVar<F>),
 ) -> (CVar<F>, CVar<F>) {
     let initial_state = [preimage.0, preimage.1, CVar::Constant(F::zero())];
     let (constraint, hash) = {
         let mut iter = successors((initial_state, 0_usize).into(), |(prev, i)| {
-            let state = round(prev, runner, *i);
+            //this case may justify moving to Cow
+            let state = round(loc.clone(), prev, runner, *i);
             Some((state, i + 1))
         })
         .take(ROUNDS + 1)
@@ -54,12 +55,13 @@ pub fn poseidon<F: PrimeField>(
 }
 
 fn round<F: PrimeField>(
+    loc: String,
     elements: &[CVar<F>; 3],
     runner: &mut RunState<F>,
     round: usize,
 ) -> [CVar<F>; 3] {
     let params = params();
-    runner.compute(loc!(), |env| {
+    runner.compute(loc, |env| {
         let state = elements.clone().map(|var| env.read_var(&var));
         //remove
         let mut state = state.to_vec();

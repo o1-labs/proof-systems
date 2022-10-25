@@ -410,7 +410,8 @@ where
             panic!("woot");
         }
     }
-    pub fn poseidon(&mut self, preimage: (CVar<F>, CVar<F>)) -> (CVar<F>, CVar<F>) {
-        super::poseidon::poseidon(self, preimage)
+
+    pub fn poseidon(&mut self, loc: String, preimage: (CVar<F>, CVar<F>)) -> (CVar<F>, CVar<F>) {
+        super::poseidon::poseidon(loc, self, preimage)
     }
 }
