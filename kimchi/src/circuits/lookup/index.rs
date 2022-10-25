@@ -39,30 +39,26 @@ pub enum LookupError {
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
 pub struct LookupSelectors<T> {
     /// Chacha pattern lookup selector
-    pub chacha: Option<T>,
+    pub chacha_xor: Option<T>,
     /// ChachaFinal pattern lookup selector
     pub chacha_final: Option<T>,
     /// LookupGate pattern lookup selector
     pub lookup_gate: Option<T>,
     /// RangeCheckGate pattern lookup selector
     pub range_check_gate: Option<T>,
-    /// Keccak xor pattern lookup selector
-    pub keccak_xor: Option<T>,
 }
 
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
 struct LookupSelectorsSerdeAs<F: FftField> {
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
-    pub chacha: Option<E<F, D<F>>>,
+    pub chacha_xor: Option<E<F, D<F>>>,
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
     pub chacha_final: Option<E<F, D<F>>>,
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
     pub lookup_gate: Option<E<F, D<F>>>,
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
     pub range_check_gate: Option<E<F, D<F>>>,
-    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
-    pub keccak_xor: Option<E<F, D<F>>>,
 }
 
 impl<F: FftField> serde_with::SerializeAs<LookupSelectors<E<F, D<F>>>>
@@ -73,11 +69,10 @@ impl<F: FftField> serde_with::SerializeAs<LookupSelectors<E<F, D<F>>>>
         S: serde::Serializer,
     {
         let repr = LookupSelectorsSerdeAs {
-            chacha: val.chacha.clone(),
+            chacha_xor: val.chacha_xor.clone(),
             chacha_final: val.chacha_final.clone(),
             lookup_gate: val.lookup_gate.clone(),
             range_check_gate: val.range_check_gate.clone(),
-            keccak_xor: val.keccak_xor.clone(),
         };
         repr.serialize(serializer)
     }
@@ -91,18 +86,16 @@ impl<'de, F: FftField> serde_with::DeserializeAs<'de, LookupSelectors<E<F, D<F>>
         Dz: serde::Deserializer<'de>,
     {
         let LookupSelectorsSerdeAs {
-            chacha,
+            chacha_xor,
             chacha_final,
             lookup_gate,
             range_check_gate,
-            keccak_xor,
         } = LookupSelectorsSerdeAs::deserialize(deserializer)?;
         Ok(LookupSelectors {
-            chacha,
+            chacha_xor,
             chacha_final,
             lookup_gate,
             range_check_gate,
-            keccak_xor,
         })
     }
 }
@@ -112,11 +105,10 @@ impl<T> std::ops::Index<LookupPattern> for LookupSelectors<T> {
 
     fn index(&self, index: LookupPattern) -> &Self::Output {
         match index {
-            LookupPattern::ChaCha => &self.chacha,
+            LookupPattern::ChaChaXor => &self.chacha_xor,
             LookupPattern::ChaChaFinal => &self.chacha_final,
             LookupPattern::LookupGate => &self.lookup_gate,
             LookupPattern::RangeCheckGate => &self.range_check_gate,
-            LookupPattern::Xor => &self.keccak_xor,
         }
     }
 }
@@ -124,11 +116,10 @@ impl<T> std::ops::Index<LookupPattern> for LookupSelectors<T> {
 impl<T> std::ops::IndexMut<LookupPattern> for LookupSelectors<T> {
     fn index_mut(&mut self, index: LookupPattern) -> &mut Self::Output {
         match index {
-            LookupPattern::ChaCha => &mut self.chacha,
+            LookupPattern::ChaChaXor => &mut self.chacha_xor,
             LookupPattern::ChaChaFinal => &mut self.chacha_final,
             LookupPattern::LookupGate => &mut self.lookup_gate,
             LookupPattern::RangeCheckGate => &mut self.range_check_gate,
-            LookupPattern::Xor => &mut self.keccak_xor,
         }
     }
 }
@@ -136,32 +127,29 @@ impl<T> std::ops::IndexMut<LookupPattern> for LookupSelectors<T> {
 impl<T> LookupSelectors<T> {
     pub fn map<U, F: Fn(T) -> U>(self, f: F) -> LookupSelectors<U> {
         let LookupSelectors {
-            chacha,
+            chacha_xor,
             chacha_final,
             lookup_gate,
             range_check_gate,
-            keccak_xor,
         } = self;
         // This closure isn't really redundant -- it shields the parameter from a copy -- but
         // clippy isn't smart enough to figure that out..
         #[allow(clippy::redundant_closure)]
         let f = |x| f(x);
         LookupSelectors {
-            chacha: chacha.map(f),
+            chacha_xor: chacha_xor.map(f),
             chacha_final: chacha_final.map(f),
             lookup_gate: lookup_gate.map(f),
             range_check_gate: range_check_gate.map(f),
-            keccak_xor: keccak_xor.map(f),
         }
     }
 
     pub fn as_ref(&self) -> LookupSelectors<&T> {
         LookupSelectors {
-            chacha: self.chacha.as_ref(),
+            chacha_xor: self.chacha_xor.as_ref(),
             chacha_final: self.chacha_final.as_ref(),
             lookup_gate: self.lookup_gate.as_ref(),
             range_check_gate: self.range_check_gate.as_ref(),
-            keccak_xor: self.keccak_xor.as_ref(),
         }
     }
 }

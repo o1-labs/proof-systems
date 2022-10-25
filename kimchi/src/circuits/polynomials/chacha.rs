@@ -505,7 +505,7 @@ mod tests {
     #[test]
     fn chacha_linearization() {
         let lookup_info = LookupInfo::create(
-            [LookupPattern::ChaCha, LookupPattern::ChaChaFinal]
+            [LookupPattern::ChaChaXor, LookupPattern::ChaChaFinal]
                 .into_iter()
                 .collect(),
             false,

@@ -446,11 +446,10 @@ impl<G: KimchiCurve> VerifierIndex<G> {
 
             lookup_selectors:
                 LookupSelectors {
-                    chacha,
+                    chacha_xor,
                     chacha_final,
                     lookup_gate,
                     range_check_gate,
-                    keccak_xor,
                 },
 
             max_joint_size: _,
@@ -466,8 +465,8 @@ impl<G: KimchiCurve> VerifierIndex<G> {
                 fq_sponge.absorb_g(&runtime_tables_selector.unshifted);
             }
 
-            if let Some(chacha) = chacha {
-                fq_sponge.absorb_g(&chacha.unshifted);
+            if let Some(chacha_xor) = chacha_xor {
+                fq_sponge.absorb_g(&chacha_xor.unshifted);
             }
             if let Some(chacha_final) = chacha_final {
                 fq_sponge.absorb_g(&chacha_final.unshifted);
@@ -477,9 +476,6 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             }
             if let Some(range_check_gate) = range_check_gate {
                 fq_sponge.absorb_g(&range_check_gate.unshifted);
-            }
-            if let Some(keccak_xor) = keccak_xor {
-                fq_sponge.absorb_g(&keccak_xor.unshifted);
             }
         }
         fq_sponge.digest_fq()
