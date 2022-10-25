@@ -411,6 +411,10 @@ where
         }
     }
 
+    pub(crate) fn poseidon_params(&self) -> oracle::poseidon::ArithmeticSpongeParams<F> {
+        self.system.as_ref().map(|sys| sys.sponge_params()).unwrap()
+    }
+
     pub fn poseidon(&mut self, loc: String, preimage: (CVar<F>, CVar<F>)) -> (CVar<F>, CVar<F>) {
         super::poseidon::poseidon(loc, self, preimage)
     }

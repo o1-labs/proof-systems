@@ -21,9 +21,10 @@ pub fn poseidon<F: PrimeField>(
 ) -> (CVar<F>, CVar<F>) {
     let initial_state = [preimage.0, preimage.1, CVar::Constant(F::zero())];
     let (constraint, hash) = {
+        let params = runner.poseidon_params();
         let mut iter = successors((initial_state, 0_usize).into(), |(prev, i)| {
             //this case may justify moving to Cow
-            let state = round(loc.clone(), prev, runner, *i);
+            let state = round(loc.clone(), prev, runner, *i, &params);
             Some((state, i + 1))
         })
         .take(ROUNDS + 1)
@@ -59,18 +60,13 @@ fn round<F: PrimeField>(
     elements: &[CVar<F>; 3],
     runner: &mut RunState<F>,
     round: usize,
+    params: &ArithmeticSpongeParams<F>,
 ) -> [CVar<F>; 3] {
-    let params = params();
     runner.compute(loc, |env| {
         let state = elements.clone().map(|var| env.read_var(&var));
         //remove
         let mut state = state.to_vec();
-        full_round::<F, PlonkSpongeConstantsKimchi>(&params, &mut state, round);
+        full_round::<F, PlonkSpongeConstantsKimchi>(params, &mut state, round);
         state.try_into().unwrap()
     })
-}
-
-//to be replaced
-fn params<F: PrimeField>() -> ArithmeticSpongeParams<F> {
-    todo!()
 }
