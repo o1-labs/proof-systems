@@ -1200,7 +1200,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                 states
                     .map(|round| round.map(|x| self.reduce_to_var(x)))
                     .into_iter()
-                    .zip({ self.constants.poseidon.round_constants.clone() }.into_iter())
+                    .zip(self.constants.poseidon.round_constants.clone().into_iter())
                     .chunks(5)
                     .into_iter()
                     .for_each(|rounds| {

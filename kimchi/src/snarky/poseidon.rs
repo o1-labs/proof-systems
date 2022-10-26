@@ -1,7 +1,10 @@
-use super::{
-    checked_runner::Constraint,
-    constraint_system::KimchiConstraint,
-    prelude::{CVar, RunState},
+use crate::{
+    circuits::polynomials::poseidon::{ROUNDS_PER_HASH, ROUNDS_PER_ROW},
+    snarky::{
+        checked_runner::Constraint,
+        constraint_system::KimchiConstraint,
+        prelude::{CVar, RunState},
+    },
 };
 use ark_ff::PrimeField;
 use itertools::Itertools;
@@ -10,9 +13,6 @@ use oracle::{
     poseidon::ArithmeticSpongeParams,
 };
 use std::iter::successors;
-
-const ROUNDS: usize = 55;
-const ROUNDS_PER_ROW: usize = 5;
 
 pub fn poseidon<F: PrimeField>(
     loc: String,
@@ -27,12 +27,12 @@ pub fn poseidon<F: PrimeField>(
             let state = round(loc.clone(), prev, runner, *i, &params);
             Some((state, i + 1))
         })
-        .take(ROUNDS + 1)
+        .take(ROUNDS_PER_HASH + 1)
         .map(|(r, _)| r);
 
         let states = iter
             .by_ref()
-            .take(ROUNDS)
+            .take(ROUNDS_PER_HASH)
             .chunks(ROUNDS_PER_ROW)
             .into_iter()
             .flat_map(|mut it| {
