@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":[["constants",""],["constraint_system",""]]};
+window.SIDEBAR_ITEMS = {"mod":[["constants","Constants used for poseidon."],["constraint_system",""]]};
