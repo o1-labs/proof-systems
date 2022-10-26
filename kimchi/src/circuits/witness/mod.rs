@@ -3,6 +3,7 @@ mod constant_cell;
 mod copy_bits_cell;
 mod copy_cell;
 mod copy_shift_cell;
+mod crumb_cell;
 mod variable_cell;
 mod variables;
 
@@ -11,6 +12,7 @@ pub use self::{
     copy_bits_cell::CopyBitsCell,
     copy_cell::CopyCell,
     copy_shift_cell::CopyShiftCell,
+    crumb_cell::CrumbCell,
     variable_cell::VariableCell,
     variables::{variable_map, variables, Variables},
 };

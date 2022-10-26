@@ -409,12 +409,11 @@ impl LookupPattern {
         use CurrOrNext::{Curr, Next};
         use GateType::*;
         match (gate_type, curr_or_next) {
-            (ChaCha0 | ChaCha1 | ChaCha2 | KeccakXor, Curr | Next) => {
-                Some(LookupPattern::ChaChaXor)
-            }
+            (ChaCha0 | ChaCha1 | ChaCha2, Curr | Next) => Some(LookupPattern::ChaChaXor),
             (ChaChaFinal, Curr | Next) => Some(LookupPattern::ChaChaFinal),
             (Lookup, Curr) => Some(LookupPattern::LookupGate),
             (RangeCheck0, Curr) | (RangeCheck1, Curr | Next) => Some(LookupPattern::RangeCheckGate),
+            (Xor16, Curr) => Some(LookupPattern::ChaChaXor),
             _ => None,
         }
     }

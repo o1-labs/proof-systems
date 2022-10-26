@@ -1301,7 +1301,7 @@ the savings of one row and a few constraints of difference.
 
 #### Keccak
 
-The Keccak gadget is comprised of _ circuit gates (KeccakXor, .., and Zero)
+The Keccak gadget is comprised of 3 circuit gates (Xor16, Rot64, and Zero)
 
  Keccak works with 64-bit words. The state is represented using $5\times 5$ matrix
 of 64 bit words. Each compression step of Keccak consists of 24 rounds. Let us
@@ -1334,89 +1334,56 @@ Kimchi framework that dictated those approaches.
 * only 4 lookups per row
 * only first 7 columns are available to the permutation polynomial
 
+##### `Xor16` - Chainable XOR constraints for words of multiples of 16 bits.
+
+* This circuit gate is used to constrain that `in1` xored with `in2` equals `out`
+* The length of `in1`, `in2` and `out` must be the same and a multiple of 16bits.
+* This gate operates on the `Curr` and `Next` rows.
+
+It uses three different types of constraints
+* copy          - copy to another cell (32-bits)
+* plookup       - xor-table plookup (4-bits)
+* decomposition - the constraints inside the gate
+
+The 4-bit crumbs are assumed to be laid out with `0` column being the least significant crumb.
+Given values `in1`, `in2` and `out`, the layout looks like this:
+
+| Column |          `Curr`  |          `Next`  |
+| ------ | ---------------- | ---------------- |
+|      0 | copy     `in1`   | copy     `in1'`  |
+|      1 | copy     `in2`   | copy     `in2'`  |
+|      2 | copy     `out`   | copy     `out'`  |
+|      3 | plookup0 `in1_0` |                  |
+|      4 | plookup1 `in1_1` |                  |
+|      5 | plookup2 `in1_2` |                  |
+|      6 | plookup3 `in1_3` |                  |
+|      7 | plookup0 `in2_0` |                  |
+|      8 | plookup1 `in2_1` |                  |
+|      9 | plookup2 `in2_2` |                  |
+|     10 | plookup3 `in2_3` |                  |
+|     11 | plookup0 `out_0` |                  |
+|     12 | plookup1 `out_1` |                  |
+|     13 | plookup2 `out_2` |                  |
+|     14 | plookup3 `out_3` |                  |
+
+One single gate with next values of `in1'`, `in2'` and `out'` being zero can be used to check
+that the original `in1`, `in2` and `out` had 16-bits. We can chain this gate 4 times as follows
+to obtain a gadget for 64-bit words XOR:
+
+ | Row | `CircuitGate` | Purpose                                    |
+ | --- | ------------- | ------------------------------------------ |
+ |   0 | `Xor16`       | Xor 2 least significant bytes of the words |
+ |   1 | `Xor16`       | Xor next 2 bytes of the words              |
+ |   2 | `Xor16`       | Xor next 2 bytes of the words              |
+ |   3 | `Xor16`       | Xor 2 most significant bytes of the words  |
+ |   4 | `Zero`        | Zero values, can be reused as generic gate |
+
 ```admonition::notice
  We could half the number of rows of the 64-bit XOR gadget by having lookups
  for 8 bits at a time, but for now we will use the 4-bit XOR table that we have.
+ Rough computations show that if we run 8 or more Keccaks in one circuit we should
+ use the 8-bit XOR table.
 ```
-
-##### `KeccakXor` - XOR constraints for 32-bit words
-
-Let `inp` be a 64-bit word. The constraint is: `in` $= 2^{32} \cdot$ `in_hi` $+$ `in_lo`.
-It takes 3 cells for values `in`, `in_hi`, `in_lo`. We have not yet placed them w.r.t.
-other rows of the Keccak computation; the only requirement is that all these cells be
-within the first 7 columns for permutation argument accessibility.
-* This circuit gate is used to constrain that `in1` xored with `in2` equals `out`.
-* This gate operates on the `Curr` row and the `Next` row.
-
-It uses three different types of constraints
-* copy    - copy to another cell (32-bits)
-* plookup - xor-table plookup (4-bits)
-
-The 4-bit crumbs are assumed to be laid out with `0` being the least significant crumb.
-Given values `in1`, `in2` and `out`, the layout looks like this:
-
- First we consider a XOR gate that checks that a 32-bit word `out` is the XOR of `in1` and `in2`.
- This gate will use 2 rows, with a `Xor` row followed by a `Zero` row.
-
-| Gates | `KeccakXor`      | `Zero`           |
-| ----- | ---------------- | ---------------- |
-| Rows  |           0      |           1      |
-| Cols  |                  |                  |
-|     0 | copy     `in1`   | copy     `out`   |
-|     1 |                  | copy     `in2`   |
-|     2 |                  |                  |
-|     3 | plookup0 `in2_0` | plookup4 `in2_4` |
-|     4 | plookup1 `in2_1` | plookup5 `in2_5` |
-|     5 | plookup2 `in2_2` | plookup6 `in2_6` |
-|     6 | plookup3 `in2_3` | plookup8 `in2_7` |
-|     7 | plookup0 `in1_0` | plookup4 `in1_4` |
-|     8 | plookup1 `in1_1` | plookup5 `in1_5` |
-|     9 | plookup2 `in1_2` | plookup6 `in1_6` |
-|    10 | plookup3 `in1_3` | plookup7 `in1_7` |
-|    11 | plookup0 `out_0` | plookup4 `out_4` |
-|    12 | plookup1 `out_1` | plookup5 `out_5` |
-|    13 | plookup2 `out_2` | plookup6 `out_6` |
-|    14 | plookup3 `out_3` | plookup7 `out_7` |
-
-Now we apply this gate twice to obtain a XOR gadget for 64-bit words by halving:
-
-Consider the following operations:
-* `out_lo` $=$ `in1_lo` $\oplus$ `in2_lo` and
-* `out_hi` $=$ `in1_hi` $\oplus$ `in2_hi`,
-where each element is 32 bits long.
-
-| Gates | `KeccakXor` |   `Zero` | `KeccakXor` |   `Zero` |
-| ----- | ----------- | -------- | ----------- | -------- |
-| Rows  |          0  |       1  |          2  |        3 |
-| Cols  |             |          |             |          |
-|     0 |    `in1_lo` | `out_lo` |    `in1_hi` | `out_hi` |
-|     1 |             | `in2_lo` |             | `in2_hi` |
-|     2 |             |          |             |          |
-|     3 |     `in2_0` |  `in2_4` |     `in2_8` | `in2_12` |
-|     4 |     `in2_1` |  `in2_5` |     `in2_9` | `in2_13` |
-|     5 |     `in2_2` |  `in2_6` |    `in2_10` | `in2_14` |
-|     6 |     `in2_3` |  `in2_7` |    `in2_11` | `in2_15` |
-|     7 |     `in1_0` |  `in1_4` |     `in2_8` | `in2_12` |
-|     8 |     `in1_1` |  `in1_5` |     `in2_9` | `in2_13` |
-|     9 |     `in1_2` |  `in1_6` |    `in2_10` | `in2_14` |
-|    10 |     `in1_3` |  `in1_7` |    `in2_11` | `in2_15` |
-|    11 |     `out_0` |  `out_4` |     `in2_8` | `in2_12` |
-|    12 |     `out_1` |  `out_5` |     `in2_9` | `in2_13` |
-|    13 |     `out_2` |  `out_6` |    `in2_10` | `in2_14` |
-|    14 |     `out_3` |  `out_7` |    `in2_11` | `in2_15` |
-
-
-##### Gate types:
-
-Different rows are constrained using different CircuitGate types
-
- | Row | `CircuitGate` | Purpose                        |
- | --- | ------------- | ------------------------------ |
- |   0 | `KeccakXor`   | Xor first 2 bytes of low  half |
- |   1 | `Zero`        | Xor last  2 bytes of low  half |
- |   2 | `KeccakXor`   | Xor first 2 bytes of high half |
- |   3 | `Zero`        | Xor last  2 bytes of high half |
-
 ##### `KeccakRot` - Constraints for rotation of 64-bit words
 
 * This circuit gate is used to constrain that a 64-bit word is rotated by r<64 bits to the "left".
@@ -1497,45 +1464,6 @@ to avoid needing multiple passes of the rotation gate (a single step would cause
 Since there is one value of the coordinates (x, y) where the rotation is 0 bits, we can skip that step in the
 gadget. This will save us one gate, and thus the whole 25-1=24 rotations will be performed in just 48 rows.
 
-##### `KeccakWord` - 32-bit decomposition gate
-
-This is a basic operation that is typically done for 64-bit initial state and
-intermediate values.
-
-Let `inp` be a 64-bit word. The constraint is: `in` $= 2^32 \cdot$ `in_hi` $+$ `in_lo`.
-It takes 3 cells for values `in`, `in_hi`, `in_lo`. We have not yet placed them w.r.t
-other rows of the Keccak computation; the only requirement is that all these cells be
-within the first 7 columns for permutation equation accessibility.
-
-* This circuit gate is used to constrain that two values of 64 bits are decomposed
-  correctly in two halves of 32 bits. It will be used to constrain all inputs and
-  intermediate values of the XOR gates.
-* This gate operates on the `Curr` row.
-* This is not a definitive gate. It may be integrated with other gates in the future.
-
-It uses one type of constraint
-* copy    - copy to another cell (32-bits to the XOR gate, and 64-bits to the RangeCheck gate)
-
-| Column |      `Curr`   |
-| ------ | ------------- |
-|      0 | copy `in1`    |
-|      1 | copy `in1_lo` |
-|      2 | copy `in1_hi` |
-|      3 | copy `in2`    |
-|      4 | copy `in2_lo` |
-|      5 | copy `in2_hi` |
-|      6 |               |
-|      7 |               |
-|      8 |               |
-|      9 |               |
-|     10 |               |
-|     11 |               |
-|     12 |               |
-|     13 |               |
-|     14 |               |
-
-Note that these gates can be concatenated and the final output will still be satisfied
-despite having the positions for the second input to zero, because zero is a valid instance.
 
 
 ## Setup
