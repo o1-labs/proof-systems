@@ -4,6 +4,7 @@ mod copy_bits_cell;
 mod copy_cell;
 mod copy_shift_cell;
 mod crumb_cell;
+mod sum_copy_bits_cell;
 mod variable_cell;
 mod variables;
 
@@ -13,6 +14,7 @@ pub use self::{
     copy_cell::CopyCell,
     copy_shift_cell::CopyShiftCell,
     crumb_cell::CrumbCell,
+    sum_copy_bits_cell::SumCopyBitsCell,
     variable_cell::VariableCell,
     variables::{variable_map, variables, Variables},
 };

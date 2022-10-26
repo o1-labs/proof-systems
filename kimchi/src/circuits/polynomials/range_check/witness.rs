@@ -78,7 +78,7 @@ fn layout<F: PrimeField>() -> [[Box<dyn WitnessCell<F>>; COLUMNS]; 4] {
 }
 
 /// The row layout for `RangeCheck0`
-fn range_check_0_row<F: PrimeField>(
+pub fn range_check_0_row<F: PrimeField>(
     limb_name: &'static str,
     row: usize,
 ) -> [Box<dyn WitnessCell<F>>; COLUMNS] {
